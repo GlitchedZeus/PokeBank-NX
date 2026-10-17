@@ -4,6 +4,8 @@
 #include "UI/BackupSelectionScreen.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/SharedEditorChrome.h"
+#include "UI/HomeQuitConfirm.h"
 #include "UI/TouchInput.h"
 #include "UI/Dialogs/DialogFrame.h"
 #include "Utils/HelperUtilities.h"
@@ -124,7 +126,9 @@ namespace UI {
 
         // Handle delete confirmation dialog
         if (showDeleteConfirmation) {
-            // Tappable buttons (captured last frame): A = Delete, B = Cancel.
+            // Deleting a backup is irreversible, so it is never on A (P0 #320): the same
+            // Y-confirms rule as Release / Discard. Tappable buttons (captured last frame):
+            // Y = Delete, B = Cancel.
             // Explicit tap terminology: justTapped() is the same clean-release
             // gesture historically exposed as justPressed(). Never use
             // justTouchedDown() to confirm deleting app-owned backup content.
@@ -135,18 +139,20 @@ namespace UI {
                            touch.x() >= b.x && touch.x() < b.x + b.w &&
                            touch.y() >= b.y && touch.y() < b.y + b.h;
                 };
-                if (in(deleteDeleteBtn))      kDown |= HidNpadButton_A;
+                if (in(deleteDeleteBtn))      kDown |= HidNpadButton_Y;
                 else if (in(deleteCancelBtn)) kDown |= HidNpadButton_B;
             }
-            if (kDown & HidNpadButton_A) {
-                // Confirm deletion
+            // One host-tested decision table (HomeQuitConfirm.h): only an explicit Y deletes,
+            // A and B cancel, and an ambiguous A+Y / B+Y frame resolves to Cancel.
+            using PokeBank::UIModel::HomeQuit::Decision;
+            const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);
+            if (decision == Decision::Quit) {
                 deleteBackup(deleteConfirmationIndex);
                 showDeleteConfirmation = false;
                 deleteConfirmationIndex = -1;
                 return;
             }
-            if (kDown & HidNpadButton_B) {
-                // Cancel deletion
+            if (decision == Decision::Stay) {
                 showDeleteConfirmation = false;
                 deleteConfirmationIndex = -1;
                 return;
@@ -292,9 +298,10 @@ namespace UI {
             backups[selectedIndex].legacyUnscoped) {
             drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Ownership Info"}, {"B", "Back"}});
         } else if (selectedIndex > 0) {
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}});
+            // The shared green-A Select / red-B Cancel picker footer (SharedEditorChrome).
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false, .xLabel = "Delete"});
         } else {
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         }
 
         // Transient failure notice, centred just above the nav bar (same treatment as the editor's).
@@ -335,22 +342,27 @@ namespace UI {
     }
 
     void BackupSelectionScreen::drawDeleteConfirmation(PKSEFramebuffer& fb) {
+        // The modal owns touch: the covered backup-list footer is dropped (P0 #320 layering), and
+        // only the Cancel / Delete buttons drawn below publish targets.
+        beginTopTouchLayer();
         constexpr int w = 560, h = 248;
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
 
-        int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, "Delete Backup?", Colors::Warning);
+        int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, "Delete this backup?", Colors::Warning);
         fb.drawText(x + 24, cy, "This action cannot be undone.", Colors::TextDim);
         if (deleteConfirmationIndex >= 0 && deleteConfirmationIndex < (int)backups.size()) {
             fb.drawText(x + 24, cy + 28, backups[deleteConfirmationIndex].displayName, Colors::Text);
         }
 
-        // Buttons carry their glyph (B: Cancel, A: Delete); Delete stays red. Rects are stashed so
-        // update() can hit-test taps next frame.
+        // Buttons carry their glyph (B: Cancel, Y: Delete); Delete stays red. Rects are stashed so
+        // update() can hit-test taps next frame. The footer is the shared confirm footer.
         const int bh = TouchTargetMin, by = y + h - bh - 16, bw = (w - 48 - 16) / 2;
         const int cancelX = x + 24, delX = x + w - 24 - bw;
+        SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
+                                               "Y", "Delete", "A", "Cancel"));
         drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
-        drawGlyphButton(fb, delX,    by, bw, bh, "A", "Delete", Colors::Red, Colors::White);
+        drawGlyphButton(fb, delX,    by, bw, bh, "Y", "Delete", Colors::Red, Colors::White);
         deleteCancelBtn = { cancelX, by, bw, bh };
         deleteDeleteBtn = { delX,    by, bw, bh };
     }

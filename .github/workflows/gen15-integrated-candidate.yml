@@ -1,0 +1,122 @@
+name: PokeBank NX Gen I-V Integrated Candidate
+
+# ONE integrated Gen I-V application NRO per exact head (Gen I-IV baseline
+# plus the Gen V shared-editor work). Hardware TEST candidate only:
+# DEVICE_ACCEPTED stays false until the owner physically tests that exact file.
+on:
+  # Every exact PR head (PR #307 targets the #306 baseline branch).
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen15-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+
+jobs:
+  candidate:
+    name: Gen I-V integrated devkitA64 NRO + packaged RomFS verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout exact application head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact application identity
+        id: identity
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git diff --check HEAD^ HEAD
+          echo "sha=$EXPECTED_SHA" >> "$GITHUB_OUTPUT"
+          echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+          echo "short=${EXPECTED_SHA:0:8}" >> "$GITHUB_OUTPUT"
+
+      - name: Gen V application contracts gate the candidate
+        run: |
+          set -euo pipefail
+          python3 tests/test_verify_nro_romfs.py
+          python3 tests/test_gen5_readonly_ui_contract.py
+          for bin in test_gen5_bag_screen test_gen5_trainer test_gen5_party_box_parity test_gen5_source_e2e test_gen5_export_validation test_gen5_save_diagnostics; do
+            make -f Makefile.host "build-host/$bin"
+            "./build-host/$bin"
+          done
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Stage complete RomFS without replacing branch artwork
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          tools/prepare_release_romfs.sh recovery-work/romfs
+
+      - name: Clean devkitA64 compile, link and package
+        run: |
+          set -euo pipefail
+          rm -rf build-host
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282 bash -lc '
+            set -euo pipefail
+            : "${DEVKITPRO:?DEVKITPRO is not set}"
+            git config --global --add safe.directory /work
+            make clean || true
+            make -j2
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee gen15-candidate-build.log
+
+      - name: Verify complete packaged RomFS in final NRO
+        run: |
+          set -euo pipefail
+          python3 tools/verify_nro_romfs.py PokeBankNX.nro --list > gen15-packaged-romfs.txt
+          tail -12 gen15-packaged-romfs.txt
+
+      - name: Package exact-head Gen I-V candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.identity.outputs.sha }}"
+          out="gen15-candidate"
+          name="PokeBank-NX-Gen1-5-Candidate-${{ steps.identity.outputs.short }}.nro"
+          mkdir -p "$out"
+          cp PokeBankNX.nro "$out/$name"
+          (cd "$out" && sha256sum "$name" > SHA256SUMS.txt)
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\nARTIFACT=%s\nSIZE_BYTES=%s\nSHA256=%s\nRUN_ID=%s\nSOURCE_SAVE_WRITES=DISABLED\nDEVICE_ACCEPTED=false\nSTATUS=NOT DEVICE TESTED\n' \
+            "${{ steps.identity.outputs.sha }}" "${{ steps.identity.outputs.tree }}" "$name" \
+            "$(stat -c %s "$out/$name")" "$(cut -d' ' -f1 "$out/SHA256SUMS.txt")" "${{ github.run_id }}" \
+            > "$out/BUILD_IDENTITY.txt"
+          cp gen15-packaged-romfs.txt gen15-candidate-build.log "$out/"
+          cat "$out/BUILD_IDENTITY.txt"
+
+      - name: Upload exact-head Gen I-V candidate NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-Gen1-5-Candidate-${{ steps.identity.outputs.short }}
+          path: gen15-candidate/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve failed build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-Gen1-5-Failed-${{ github.run_id }}
+          path: gen15-candidate-build.log
+          if-no-files-found: warn
+          retention-days: 14

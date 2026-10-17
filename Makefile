@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
@@ -261,6 +261,10 @@ game-card-art:
 	@cp -f "$(GAME_CARD_ART_SOURCE)/platinum_nds.png" "$(GAME_CARD_ART_DIR)/platinum_nds.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/heartgold_nds.png" "$(GAME_CARD_ART_DIR)/heartgold_nds.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/soulsilver_nds.png" "$(GAME_CARD_ART_DIR)/soulsilver_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black_nds.png" "$(GAME_CARD_ART_DIR)/black_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white_nds.png" "$(GAME_CARD_ART_DIR)/white_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black2_nds.png" "$(GAME_CARD_ART_DIR)/black2_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white2_nds.png" "$(GAME_CARD_ART_DIR)/white2_nds.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)
@@ -305,7 +309,10 @@ types:
 #---------------------------------------------------------------------------------
 FONT_DIR         := romfs/fonts
 FONT_FILE        := $(FONT_DIR)/Nunito.ttf
-FONT_URL         := https://github.com/google/fonts/raw/main/ofl/nunito/Nunito%5Bwght%5D.ttf
+# Pinned to the exact google/fonts commit include/UI/NunitoMetrics.h was generated from
+# (tools/gen_nunito_metrics.py), so text-width layout rules match the bundled font
+# (SHA-256 bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207).
+FONT_URL         := https://raw.githubusercontent.com/google/fonts/47d54ca1ebb14fd864695f1d39dc734f39017c33/ofl/nunito/Nunito%5Bwght%5D.ttf
 # Fallback fonts for glyphs Nunito lacks. Symbols covers gender ♂/♀ + star ★;
 # Symbols2 covers the card-suit heart ♥ (and other suits) that Symbols omits.
 SYMBOL_FONT_FILE  := $(FONT_DIR)/NotoSansSymbols.ttf

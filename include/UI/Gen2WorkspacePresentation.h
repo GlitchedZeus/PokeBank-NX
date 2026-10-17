@@ -2,9 +2,11 @@
 #pragma once
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/SharedDataPaneLayout.h"
 #include "UI/StatsRadar.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include <algorithm>
+#include <string>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen2Workspace {
@@ -40,8 +42,18 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     } else {
         rows.push_back({"Caught history", "No caught data recorded"});
     }
+    // Origin & Legality (formerly under the move rows): Crystal checks the current level against
+    // the recorded met level; Gold/Silver record nothing to check.
+    rows.push_back({"Legality", game == G::SourceGame::Crystal
+        ? Gen2Native::caughtLevelLegalityText(Gen2Native::caughtLevelLegality(p.level, caught))
+        : "Not checked"});
     return rows;
 }
+
+// The GEN II DATA pane text is laid out by the ONE shared data-pane layout
+// (UI/SharedDataPaneLayout.h, SharedDataPane::layoutRows): "Label: value" when it fits, otherwise
+// the label then the value wrapped beneath it, "..." where the pane runs out, so caught-history
+// text never spills into the BATTLE STATS graph or past the panel.
 } // namespace PokeBank::UIModel::Gen2Workspace
 
 namespace UI::Gen2WorkspacePresentation {
@@ -59,7 +71,20 @@ inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
             return row.label == "HP" || row.label == "Status";
         }), rows.end());
     }
-    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", rows,
-        PokeBank::UIModel::Gen2Workspace::battleStats(p));
+    // The shared composition draws both panes, the title and the graph; the rows are laid out
+    // here so long caught-history values wrap inside the data pane instead of overflowing it.
+    namespace W = PokeBank::UIModel::Gen2Workspace;
+    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", std::vector<W::DataRow>{},
+        W::battleStats(p));
+    namespace Pane = PokeBank::UIModel::SharedDataPane;
+    const auto lines = Pane::layoutRows(rows, Pane::kTextWidth,
+        h - Pane::kTextTop - Pane::kTextBottom, [&fb](const std::string& text) {
+            int tw = 0, th = 0;
+            fb.measureText(text, tw, th, TextStyle::Caption);
+            return tw;
+        });
+    for (const auto& line : lines)
+        fb.drawText(x + 12 + Pane::kTextInset, y + Pane::kTextTop + line.y, line.text,
+                    line.label ? Colors::TextDim : Colors::Text, TextStyle::Caption);
 }
 } // namespace UI::Gen2WorkspacePresentation

@@ -189,6 +189,33 @@ void runGame(SourceGame game, Family family) {
         assert(added->nickname == "DRAFT" && added->level == 50 && added->otName == "BLUE" && added->tid == 0);
         assert(identity->originalBytes() == immutableSource);
         identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        // A blank English nickname defaults to the upper-case retail species name.
+        BoxPokemonCreate unnamed; unnamed.species = 25; unnamed.level = 5; unnamed.language = 2;
+        unnamed.otName = "BLUE";
+        assert(identity->stageAddBoxPokemon(0, 1, unnamed, error));
+        assert(identity->boxedPokemon(0, 1, error)->nickname == "PIKACHU");
+        identity->discard();
+        // Japanese records: 5-character nickname and OT (PKHeX PK3); a 6th character is refused.
+        BoxPokemonCreate japanese; japanese.species = 25; japanese.level = 5; japanese.language = 1;
+        japanese.otName = "サトシ";
+        japanese.nickname = "ピカチュウ";
+        assert(identity->stageAddBoxPokemon(0, 1, japanese, error));
+        identity->discard();
+        japanese.nickname = "ピカチュウダ";
+        assert(!identity->stageAddBoxPokemon(0, 1, japanese, error));
+        japanese.nickname = "ピカ"; japanese.otName = "サトシサトシ";
+        assert(!identity->stageAddBoxPokemon(0, 1, japanese, error));
+        assert(identity->stagedBytes() == immutableSource);
+        // Pokerus strain 0 with days left is never written (Create or Edit); real states are.
+        BoxPokemonCreate sick; sick.species = 25; sick.level = 5; sick.language = 2; sick.otName = "BLUE";
+        sick.pokerus = 0x0F;
+        assert(!identity->stageAddBoxPokemon(0, 1, sick, error));
+        BoxPokemonEdit pokerus; pokerus.pokerus = 0x0F;
+        assert(!identity->stageBoxPokemonEdit(0, 0, pokerus, error));
+        pokerus.pokerus = 0x21;
+        assert(identity->stageBoxPokemonEdit(0, 0, pokerus, error));
+        identity->discard();
+        error.clear();
         create.otName = "TOOLONGOT";
         assert(!identity->stageAddBoxPokemon(0, 1, create, error));
         assert(identity->stagedBytes() == immutableSource);
@@ -383,6 +410,20 @@ void runGame(SourceGame game, Family family) {
         assert(editor->stageBoxPokemonEdit(0, 3, correlatedEdit, error));
         correlated = editor->boxedPokemon(0, 3, error);
         assert(correlated && correlated->encryptedBytes == correlatedEditPreview->encryptedBytes);
+
+        // Unown's letter is the PID-derived Gen III form: the staged editor reaches it through a
+        // PID re-roll that keeps Nature / Shiny, and refuses a letter for any other species.
+        {
+            BoxPokemonEdit unown;
+            unown.species = 201;
+            unown.form = 7; // H
+            auto unownPreview = editor->previewEdit(0, 3, unown, error);
+            assert(unownPreview && error.empty() && unownPreview->form == 7);
+            assert(unownPreview->nature == correlated->nature && unownPreview->shiny == correlated->shiny);
+            BoxPokemonEdit wrongSpecies;
+            wrongSpecies.form = 3;
+            assert(!editor->previewEdit(0, 3, wrongSpecies, error));
+        }
 
         const auto beforeImpossible = editor->stagedBytes();
         BoxPokemonEdit impossibleGender;
@@ -597,6 +638,115 @@ void exportGame(SourceGame game, Family family) {
     fs::remove_all(root);
 }
 
+// Phase 4: Box and Bag edits exported SEPARATELY through the real transaction. A Box export may
+// only change active-slot PC-storage sectors (logical ids 5..13: payload and their checksum); a
+// Bag export may only change active-slot non-storage sectors. The inactive slot, every other
+// sector and the tail of the 128 KiB image stay byte-identical; Party (logical sector 1) is never
+// written by a Box export. A foreign Bag workspace, racing destinations and a mid-publication
+// failure are refused without residue; malformed images never open a working copy.
+void phase4Game(SourceGame game, Family family) {
+    namespace fs = std::filesystem;
+    using PokeVault::Integration::Common::ExportFailurePoint;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g3-phase4-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    fs::create_directories(root);
+    auto entries = [&] {
+        return static_cast<size_t>(std::distance(fs::directory_iterator(root), fs::directory_iterator()));
+    };
+    const auto source = fixture(family, game);
+    const auto parsed = parse(source, game);
+    assert(parsed);
+    const uint8_t active = parsed.save->metadata().activeSlot;
+    const auto slot = Detail::validateSlot(source, active);
+    assert(slot.valid);
+    // Logical sector id owning a byte of the image, or -1 outside the active slot.
+    auto sectorOf = [&](size_t i) -> int {
+        for (size_t id = 0; id < Detail::kSectorCount; ++id) {
+            const size_t begin = slot.logicalSectorOffsets[id];
+            if (i >= begin && i < begin + Detail::kSectorSize) return static_cast<int>(id);
+        }
+        return -1;
+    };
+    auto checkFootprint = [&](const std::vector<uint8_t>& edited, bool storageOnly) {
+        assert(edited.size() == source.size());
+        bool changed = false;
+        for (size_t i = 0; i < edited.size(); ++i) {
+            if (edited[i] == source[i]) continue;
+            const int id = sectorOf(i);
+            assert(id >= 0); // never the inactive slot or the image tail
+            assert(storageOnly ? id >= 5 : id < 5);
+            changed = true;
+        }
+        assert(changed);
+    };
+    PokeVault::Integration::Gen3::Gen3ExportRequest request;
+    request.rootDirectory = root.string();
+    request.sourcePath = "sdmc:/retroarch/saves/fixture.srm";
+    request.timestamp = "20261015-120000";
+    std::string error;
+
+    {   // Box only
+        auto editor = StagedPokemonEditor::create(source, game, error);
+        assert(editor);
+        BoxPokemonEdit edit; edit.level = 33;
+        assert(editor->stageBoxPokemonEdit(0, 0, edit, error));
+        request.directoryStem = "box";
+        for (auto point : {ExportFailurePoint::AfterFirstPublishedFile,
+                           ExportFailurePoint::DestinationAppearsAsEmptyDirectory,
+                           ExportFailurePoint::DestinationAppearsAsFile}) {
+            auto faulty = request;
+            faulty.failurePoint = point;
+            assert(!PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, faulty).success);
+            if (point != ExportFailurePoint::AfterFirstPublishedFile) {
+                assert(entries() == 1 && fs::exists(root / "box") && !fs::is_directory(root / "box/edited.sav"));
+                fs::remove(root / "box");
+            }
+            assert(entries() == 0);
+        }
+        auto exported = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request);
+        assert(exported.success);
+        const auto edited = slurpFile(fs::path(exported.directory) / "edited.sav");
+        checkFootprint(edited, true);
+        auto reopened = parse(edited, game);
+        assert(reopened && reopened.save->party().size() == parsed.save->party().size());
+        fs::remove_all(exported.directory);
+    }
+    {   // Bag only
+        auto editor = StagedPokemonEditor::create(source, game, error);
+        auto bag = StagedInventoryEditor::create(source, game, error);
+        assert(editor && bag && bag->stageInventoryQuantity(InventoryPouch::Items, 13, 5, error));
+        request.directoryStem = "bag";
+        auto exported = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request, bag.get());
+        assert(exported.success);
+        checkFootprint(slurpFile(fs::path(exported.directory) / "edited.sav"), false);
+        fs::remove_all(exported.directory);
+
+        // A Bag workspace from a different, fully valid save (another save counter) is refused.
+        std::vector<uint8_t> other(Detail::kSaveSize, 0);
+        writeSlot(other, 0, 11, 2, family, game);
+        writeSlot(other, 1, 9, 5, family, game);
+        auto foreign = StagedInventoryEditor::create(other, game, error);
+        assert(foreign && foreign->stageInventoryQuantity(InventoryPouch::Items, 13, 2, error));
+        request.directoryStem = "foreign";
+        auto refused = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request, foreign.get());
+        assert(!refused.success && refused.error.find("different saves") != std::string::npos);
+        assert(entries() == 0);
+    }
+    {   // Malformed images
+        auto truncated = source; truncated.resize(source.size() - 1);
+        assert(!StagedPokemonEditor::create(truncated, game, error));
+        auto oversized = source; oversized.push_back(0);
+        assert(!StagedPokemonEditor::create(oversized, game, error));
+        assert(!StagedPokemonEditor::create(std::vector<uint8_t>{}, game, error));
+        auto broken = source;
+        for (uint8_t s = 0; s < 2; ++s)  // both copies' storage sector payloads corrupted
+            broken[Detail::validateSlot(source, s).logicalSectorOffsets[5] + 0x10] ^= 0x5A;
+        assert(!StagedPokemonEditor::create(broken, game, error));
+    }
+    fs::remove_all(root);
+}
+
 int main() {
     // A PK3 egg stores language=Japanese as a placeholder, so its OT charset comes from the
     // containing save. clone() must carry that non-byte context or a Japanese OT becomes Latin.
@@ -635,5 +785,10 @@ int main() {
     exportGame(SourceGame::EmeraldGBA, Family::Emerald);
     exportGame(SourceGame::FireRedGBA, Family::FRLG);
     exportGame(SourceGame::LeafGreenGBA, Family::FRLG);
+    phase4Game(SourceGame::RubyGBA, Family::RS);
+    phase4Game(SourceGame::SapphireGBA, Family::RS);
+    phase4Game(SourceGame::EmeraldGBA, Family::Emerald);
+    phase4Game(SourceGame::FireRedGBA, Family::FRLG);
+    phase4Game(SourceGame::LeafGreenGBA, Family::FRLG);
     std::cout << "Generation III staged boxed Pokemon editor: PASS\n";
 }

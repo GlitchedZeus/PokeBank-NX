@@ -3,11 +3,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+# The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+# which a generation surface includes textually. Expand that one include so a
+# surface's contract covers the shared code it compiles.
+def _expand_surface_includes(text: str) -> str:
+    import re as _re
+    def inline(match):
+        name = match.group(1)
+        nested = ROOT / "src/UI" / name
+        return match.group(0) + ("\n" + _expand_surface_includes(nested.read_text(encoding="utf-8"))
+                                 if nested.is_file() else "")
+    return _re.sub(r'#include "(SharedPokemonEditorSurface\.inc)"', inline, text)
+
+
 def read(rel: str) -> str:
     path = ROOT / rel
     if not path.is_file():
         raise AssertionError(f"missing touch contract source: {rel}")
-    return path.read_text(encoding="utf-8")
+    return _expand_surface_includes(path.read_text(encoding="utf-8"))
 
 def require(text: str, rel: str, *needles: str) -> None:
     for needle in needles:
@@ -41,15 +55,17 @@ assert "focusId(tapped, true);" in gen1_foundation
 
 classic_actions = read("src/UI/ClassicReleaseActionFix.inc")
 narrow_gen1 = read("include/UI/NarrowPokemonActionMenu.h")
+# One shared action order for every generation; no greyed placeholders.
 for needle in (
-    "constexpr Model gen1(", 'result.append("Add to Master Vault");',
-    'result.append("Add to Bank...");', 'result.append("Transfer to Game...");',
-    'result.append("Make Shiny");', 'result.append("Release", index(A::Remove));',
-    'result.append("Review Pending Changes", review);',
+    "constexpr Model gen1(", 'case A::Remove: return "Release";',
+    'case A::ReviewPendingChanges: return "Review Pending Changes";',
+    'inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";',
 ):
     assert needle in narrow_gen1, f"Gen I narrow menu: {needle}"
-assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(' in classic_actions
-assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(' in classic_actions
+for gone in ('"Make Shiny"', '"Add to Master Vault"', '"Add to Bank..."', '"Transfer to Game..."'):
+    assert "append(" + gone not in narrow_gen1, f"Gen I narrow menu still lists {gone}"
+assert 'const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);' in classic_actions
+assert 'const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);' in classic_actions
 assert 'screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300' in classic_actions
 assert 'screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500' in classic_actions
 assert "const int w = pokemon ? 650 : 560;" not in classic_actions

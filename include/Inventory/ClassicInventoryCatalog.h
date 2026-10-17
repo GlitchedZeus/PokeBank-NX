@@ -1,6 +1,8 @@
 #ifndef POKEBANK_INVENTORY_CLASSIC_INVENTORY_CATALOG_H
 #define POKEBANK_INVENTORY_CLASSIC_INVENTORY_CATALOG_H
 
+#include "Inventory/ItemQuantityPolicy.h"
+
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -40,6 +42,9 @@ std::span<const uint16_t> addableItems(ClassicGame game, ClassicPocket pocket) n
 bool supportsPocket(ClassicGame game, ClassicPocket pocket) noexcept;
 bool isAddableItem(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
 QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
+// The classic game / pocket as the shared item quantity policy (Inventory/ItemQuantityPolicy.h) names it.
+QuantityPolicy::Game quantityPolicyGame(ClassicGame game) noexcept;
+QuantityPolicy::Pocket quantityPolicyPocket(ClassicPocket pocket) noexcept;
 bool isStorySensitiveKeyItem(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
 uint16_t classicMachineMove(ClassicGame game, uint16_t itemId) noexcept;
 std::string displayItemName(ClassicGame game, ClassicPocket pocket, uint16_t itemId);

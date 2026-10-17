@@ -693,6 +693,64 @@ void testExactGameForms() {
     }
 }
 
+void testUnownStoredLetters() {
+    // PKHeX personal tables give Unown one entry (formCount 1), but Gen IV stores its 28 letters
+    // (A-Z, !, ?) in the form bits; every letter is editable, nothing past "?" is.
+    for (const auto group : {Enums::GameVersion::DP, Enums::GameVersion::PT, Enums::GameVersion::HGSS}) {
+        auto unown = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makeEntity(201, 0x12345678u, 26), group);
+        assert(unown && unown->formCount() == 28);
+        for (uint8_t letter : {uint8_t(1), uint8_t(25), uint8_t(26), uint8_t(27), uint8_t(0)}) {
+            const uint32_t pid = unown->pid();
+            assert(unown->setForm(letter));
+            Pokemon::Pokemon4ReadOnly stored(unown->encryptedBytes(), group);
+            assert(stored.valid() && stored.species() == 201 && stored.form() == letter);
+            assert(unown->pid() == pid); // a cosmetic form never rerolls the PID
+        }
+        const auto before = unown->encryptedBytes();
+        assert(!unown->setForm(28));
+        assert(unown->encryptedBytes() == before);
+    }
+}
+
+std::vector<std::byte> withStoredForm(std::vector<std::byte> encrypted, uint8_t form) {
+    auto d = Encryption::decryptArray4(encrypted);
+    d[0x40] = static_cast<std::byte>((static_cast<uint8_t>(d[0x40]) & 0x07u) | (form << 3));
+    return Encryption::encryptArray4(d);
+}
+
+void testBattleOnlyFormsStayStored() {
+    // Castform weather forms and Cherrim Sunshine exist only in battle (PKHeX FormInfo.BattleForms):
+    // the editor never writes them, but a record already holding one is preserved, not rewritten,
+    // and can be returned to form 0.
+    for (const auto group : {Enums::GameVersion::DP, Enums::GameVersion::PT, Enums::GameVersion::HGSS}) {
+        // Castform has four stored form indices, Cherrim two (Overcast/Sunshine); only 0 is writable.
+        for (const auto& [species, ability] : {std::pair<uint16_t, uint16_t>{351, 59}, {421, 122}}) {
+            auto mon = Pokemon::Pokemon4Mutable::fromEncrypted(makeEntity(species, 0x12345678u, ability), group);
+            assert(mon && mon->form() == 0);
+            assert(mon->formCount() == (species == 351 ? 4 : 2));
+            const auto before = mon->encryptedBytes();
+            for (uint8_t form = 1; form < 4; ++form) {
+                assert(!mon->setForm(form));
+                assert(mon->encryptedBytes() == before);
+            }
+            assert(mon->setForm(0));
+
+            auto stored = Pokemon::Pokemon4Mutable::fromEncrypted(
+                withStoredForm(makeEntity(species, 0x12345678u, ability), 1), group);
+            assert(stored && stored->form() == 1);
+            const auto kept = stored->encryptedBytes();
+            assert(stored->setForm(1));           // re-selecting the current form is a no-op
+            assert(stored->encryptedBytes() == kept);
+            assert(!stored->setForm(2));
+            assert(stored->encryptedBytes() == kept);
+            assert(stored->setForm(0));
+            Pokemon::Pokemon4ReadOnly reverted(stored->encryptedBytes(), group);
+            assert(reverted.valid() && reverted.form() == 0);
+        }
+    }
+}
+
 void testItemDrivenAndStorageFormRules() {
     // Diamond/Pearl do not expose Giratina Origin Forme in their personal table.
     auto dpGiratina = Pokemon::Pokemon4Mutable::fromEncrypted(
@@ -774,6 +832,8 @@ int main() {
     testExactBallSemantics();
     testExactMetLocationSemantics();
     testExactGameForms();
+    testUnownStoredLetters();
+    testBattleOnlyFormsStayStored();
     testItemDrivenAndStorageFormRules();
     testNativeStoredCreateDraft();
     testBadInputFailsClosed();

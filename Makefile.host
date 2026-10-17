@@ -7,8 +7,13 @@ include Makefile.host.standalone
 include Makefile.host.shared-editor
 include Makefile.host.hardware-fixes
 include Makefile.host.gen4
+include Makefile.host.gen5
 include Makefile.host.source-instances
 include Makefile.host.product-ui
 include Makefile.host.exports
+include Makefile.host.home-providers
+include Makefile.host.gen14
+include Makefile.host.qa
+include Makefile.host.item-quantity-policy
 
 include Makefile.host.machine

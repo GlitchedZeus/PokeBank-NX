@@ -113,7 +113,8 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
         }
         return false;
     }
-    if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return false;
+    if (state.itemPicker || state.confirmExit || unified.selector.open() ||
+        pickerStateFor(screen).model.active()) return false;
 
     // The final hardware surface is the SharedPokemonShell fullscreen layout, not the older
     // centered workspace geometry. Hit-test exactly that 1280x720 Switch surface.
@@ -155,10 +156,8 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
         return true;
     }
 
-    const auto moveCell = Unified::moveRowFocus(rightW);
-    for (int slot = 0; slot < 4; ++slot) {
-        const int yy = contentY + 62 + slot * 32;
-        if (!pointInRect(px, py, rightX + moveCell.x, yy - 5, moveCell.width, 28)) continue;
+    // Same rows the shared Moves panel draws (UI/Gen2MovesPanel.h).
+    if (const int slot = UI::Gen2MovesPanel::hitSlot(px, py, rightX, contentY, rightW); slot >= 0) {
         unified.focus = {Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
         if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
         return true;
@@ -170,7 +169,8 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
     auto& state = stateFor(screen);
     auto& unified = unifiedStateFor(screen);
     if (state.mode == Mode::None) return;
-    if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return;
+    if (state.itemPicker || state.confirmExit || unified.selector.open() ||
+        pickerStateFor(screen).model.active()) return;
 
     // Keep Details/Stats/Moves focus intact until release resolves the actual
     // tap. Contact alone can still turn into a long Details-panel swipe.

@@ -1,5 +1,8 @@
+#include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
+#include "UI/Gen12ReviewDiscardConfirm.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -13,6 +16,7 @@ struct SharedSurfaceState {
     bool cloneActive = false;
     bool provenanceActive = false;
     int cloneBox = 0;
+    PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
 };
 
 SharedSurfaceState& sharedSurfaceStateFor(const TrainerViewScreen& screen) {
@@ -155,6 +159,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             auto& shared = sharedSurfaceStateFor(screen);
             shared.cloneActive = true;
             shared.cloneBox = legacy.pokemonBox;
+            legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
         }
@@ -203,9 +208,18 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
     const int boxes = static_cast<int>(editor->metadata().boxCount);
     if (down & HidNpadButton_L) shared.cloneBox = (shared.cloneBox - 1 + boxes) % boxes;
     if (down & HidNpadButton_R) shared.cloneBox = (shared.cloneBox + 1) % boxes;
-    if (down & HidNpadButton_B) {
+    // Leaving the Clone dialog (B, or after staging) returns to Pokemon Actions, exactly like
+    // Legality & Provenance: Clone hides the action sheet while it owns input.
+    auto backToActions = [&] {
         shared.cloneActive = false;
+        auto& actions = editorOverlayState(screen);
+        actions.active = true;
+        actions.pokemonActions = true;
+        actions.review = false;
         screen.controllerNavigation.reset();
+    };
+    if (down & HidNpadButton_B) {
+        backToActions();
         return true;
     }
     if (!(down & HidNpadButton_A)) return true;
@@ -225,7 +239,7 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
         screen.postStatus(error.empty() ? "Clone failed" : error, 300);
         return true;
     }
-    shared.cloneActive = false;
+    backToActions();
     gscTrainer(screen).refreshStagedBoxPresentation(error);
     screen.postStatus("Clone added to Box " + std::to_string(shared.cloneBox + 1) +
                       " / Slot " + std::to_string(destinationSlot + 1), 300);
@@ -238,6 +252,32 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (!legacy.active || !legacy.review) return false;
     auto* editor = stagedEditor(screen);
     if (!editor) return true;
+    // Discard Staged is two explicit steps: X asks, only Y in the confirmation discards.
+    namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
+    switch (Discard::step(sharedSurfaceStateFor(screen).reviewDiscard,
+                          (down & HidNpadButton_X) != 0, (down & HidNpadButton_Y) != 0,
+                          (down & HidNpadButton_B) != 0)) {
+        case Discard::Outcome::NotHandled:
+            break;
+        case Discard::Outcome::AskConfirm:
+        case Discard::Outcome::Cancelled:
+            screen.controllerNavigation.reset();
+            return true;
+        case Discard::Outcome::Swallowed:
+            return true;
+        case Discard::Outcome::Discard: {
+            editor->discard();
+            std::string refreshError;
+            gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
+            legacy.review = false;
+            legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+            legacy.active = legacy.pokemonActions;
+            legacy.pokemonRow = 0;
+            screen.controllerNavigation.reset();
+            screen.postStatus("All staged Gen II changes discarded", 300);
+            return true;
+        }
+    }
     const auto& changes = editor->pendingChanges();
     const int count = std::max(1, static_cast<int>(changes.size()));
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -251,17 +291,6 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();
-        return true;
-    }
-    if (down & HidNpadButton_X) {
-        editor->discard();
-        std::string refreshError;
-        gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
-        legacy.review = false;
-        legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
-        legacy.active = legacy.pokemonActions;
-        legacy.pokemonRow = 0;
-        screen.postStatus("All staged Gen II changes discarded", 300);
         return true;
     }
     if (down & HidNpadButton_A) {
@@ -289,12 +318,11 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         pokemon.has_value(), gen2ActionCapabilities(), !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(
         legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, pokemon.has_value());
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             pokemon ? "Pokemon Actions" : "Empty Slot",
                             "GEN II / READ-ONLY SOURCE", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
 void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -307,8 +335,8 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     constexpr int x = 220, y = 92, w = 840, h = 480;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Truthful status only — full encounter legality is not implemented", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52, "Origin & Legality: not checked", Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string, std::string>, 7> rows{{
         {"Source game", sharedGameName(screen)},
         {"Location", "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " + std::to_string(legacy.pokemonSlot + 1)},
@@ -316,7 +344,7 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         {"Source mutation", "HARD DISABLED"},
         {"Staged validation", "Strict serialize + reparse"},
         {"Move compatibility", pokemon ? "Checked by exact-game Gen II rules" : "No Pokemon selected"},
-        {"Encounter legality", "Not checked"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
     }};
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         const int yy = y + 92 + i * 46;
@@ -464,7 +492,7 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
     }
     const int statusY = y + 246;
     fb.drawHDivider(x + 14, statusY - 12, w - 28);
-    fb.drawText(x + 18, statusY, "Encounter legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, statusY, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 152, statusY, "Not checked", Colors::Text, TextStyle::Caption);
     fb.drawText(x + 18, statusY + 28, "GEN II DATA", Colors::Accent, TextStyle::Caption);
 
@@ -552,7 +580,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Exit"}});
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
 }
 
 } // namespace

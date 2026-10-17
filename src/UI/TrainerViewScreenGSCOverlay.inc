@@ -447,16 +447,6 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
                                   " Slot " + std::to_string(destinationSlot + 1) + "; source unchanged", 300);
             break;
         }
-        case Actions::SlotAction::Shiny: {
-            if (!editor->stageBoxPokemonShiny(static_cast<std::size_t>(state.pokemonBox),
-                                              static_cast<std::size_t>(state.pokemonSlot),
-                                              pokemon && !pokemon->shiny, error))
-                screen.postStatus(error.empty() ? "Shiny toggle failed" : error, 360);
-            else
-                screen.postStatus(pokemon->shiny ? "Non-shiny DV state staged; source unchanged"
-                                                 : "Legal Gen II shiny DV state staged; source unchanged", 300);
-            break;
-        }
         case Actions::SlotAction::Add:
             stageAddPokemon(screen, state.pokemonBox);
             break;
@@ -800,7 +790,6 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 {"View", "Read-only Pokemon summary"},
                 {"Edit", pokemon->nickname + " Lv. " + std::to_string(pokemon->level)},
                 {"Clone", "Append to an empty box slot"},
-                {pokemon->shiny ? "Make Non-Shiny" : "Make Shiny", "Real Gen II DV rules"},
                 {"Add Pokemon", "Append to this box"},
                 {"Review Pending Changes", std::to_string(editor->pendingChanges().size()) + " change(s)"},
                 {"Close", "No source write"},
@@ -821,7 +810,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
+                    "Origin & Legality: not checked",
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

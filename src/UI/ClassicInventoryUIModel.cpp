@@ -88,6 +88,17 @@ ClassicInventoryActionAvailability classicInventoryActionAvailability(
     return inventoryActionAvailability(true, categorySupported, hasSelection, quantityEditable);
 }
 
+// The one Gen I-III per-item quantity query: the classic catalog's addable gate, then the shared
+// QuantityPolicy rule (native pocket caps; key items and HMs unique at 1).
+ClassicItemQuantity classicItemQuantity(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
+    namespace Inv = PokeVault::Inventory;
+    if (!Inv::isAddableItem(game, pocket, itemId)) return {false, 0, 0};
+    const auto rule = Inv::QuantityPolicy::quantityRule(Inv::quantityPolicyGame(game),
+                                                        Inv::quantityPolicyPocket(pocket), itemId);
+    if (!rule.valid) return {false, 0, 0};
+    return {rule.editable, rule.minimum, rule.maximum};
+}
+
 bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {
     return supported && visibleItems == 0;
 }

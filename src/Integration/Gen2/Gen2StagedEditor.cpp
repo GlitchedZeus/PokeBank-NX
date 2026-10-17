@@ -342,7 +342,9 @@ bool validHeldItem(uint8_t item) noexcept {
 uint8_t maxPP(uint8_t move, uint8_t ppUps) noexcept {
     if (move == 0 || move > kMaxGen2Move || ppUps > 3) return 0;
     const uint8_t base = kGen2BasePP[move];
-    return static_cast<uint8_t>(std::min<unsigned>(63u, base + (static_cast<unsigned>(base) * ppUps) / 5u));
+    // pret/pokecrystal ComputeMaxPP: each PP Up adds base/5, and that
+    // per-PP-Up bonus is capped at 7 (a 40-PP move with three PP Ups ends at 61, not 64).
+    return static_cast<uint8_t>(std::min<unsigned>(63u, base + std::min<unsigned>(7u, base / 5u) * ppUps));
 }
 
 std::string array4(const std::array<uint8_t, 4>& values) {
@@ -516,6 +518,14 @@ bool StagedEditor::encodeTrainerName(std::string_view name, std::vector<uint8_t>
     return encodeInternationalASCII(name, kInternationalTrainerNameMax,
                                     layoutFor(metadata_.family).trainerNameBytes,
                                     encoded, error, "trainer name");
+}
+
+bool StagedEditor::encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
+                                std::string& error) const {
+    // A Pokemon's OT is a player name (7 characters internationally) stored in an 11-byte field.
+    return encodeInternationalASCII(name, kInternationalTrainerNameMax,
+                                    layoutFor(metadata_.family).stringLength,
+                                    encoded, error, "OT name");
 }
 
 bool StagedEditor::encodePokemonName(std::string_view name, std::vector<uint8_t>& encoded,
@@ -718,7 +728,7 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     }
     if (edit.otName) {
         std::vector<uint8_t> ignored;
-        if (!encodePokemonName(*edit.otName, ignored, error)) return false;
+        if (!encodeOTName(*edit.otName, ignored, error)) return false;
         after.originalTrainer = *edit.otName;
     }
     if (edit.heldItem) {
@@ -730,7 +740,15 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     }
     if (edit.trainerId) after.trainerId = *edit.trainerId;
     if (edit.friendship) after.friendship = *edit.friendship;
-    if (edit.pokerus) after.pokerus = *edit.pokerus;
+    if (edit.pokerus) {
+        // Strain (high nibble) 0 with days left is not a state the games produce
+        // (pokecrystal GivePokerus always picks a non-zero strain).
+        if (*edit.pokerus != 0 && (*edit.pokerus >> 4) == 0) {
+            error = "Pokerus strain 0 cannot have days remaining";
+            return false;
+        }
+        after.pokerus = *edit.pokerus;
+    }
     if (edit.caughtData) after.caughtData = *edit.caughtData;
 
     if (edit.statExperience) after.statExperience = *edit.statExperience;
@@ -810,10 +828,15 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     // Species changes can alter the DV-derived gender; there is no independent gender byte in PK2.
     putEditableDVs(after, editableDVs(after));
 
+    // Only re-encode a name the edit actually changed. Unchanged fields keep their exact stored
+    // bytes, so glyphs the editor cannot type (e.g. MR.MIME's 0xE8, accented or in-game-trade
+    // names) never block an unrelated edit such as a level change.
+    const bool nicknameChanged = edit.nickname && *edit.nickname != before.nickname;
+    const bool otChanged = edit.otName && *edit.otName != before.originalTrainer;
     std::vector<uint8_t> nicknameBytes;
     std::vector<uint8_t> otBytes;
-    if (!encodePokemonName(after.nickname, nicknameBytes, error) ||
-        !encodePokemonName(after.originalTrainer, otBytes, error)) return false;
+    if ((nicknameChanged && !encodePokemonName(after.nickname, nicknameBytes, error)) ||
+        (otChanged && !encodeOTName(after.originalTrainer, otBytes, error))) return false;
 
     const auto& layout = layoutFor(metadata_.family);
     if (!validBoxLocation(metadata_, layout, box, slot, error)) return false;
@@ -830,10 +853,12 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     const std::size_t body = boxBodyStart(layout, box) + slot * kStoredBodySize;
     writePokemonBody(staged_, body, after);
     staged_[list + 1 + slot] = static_cast<uint8_t>(after.species);
-    std::copy(otBytes.begin(), otBytes.end(), staged_.begin() +
-              static_cast<std::ptrdiff_t>(boxOTStart(layout, box) + slot * layout.stringLength));
-    std::copy(nicknameBytes.begin(), nicknameBytes.end(), staged_.begin() +
-              static_cast<std::ptrdiff_t>(boxNicknameStart(layout, box) + slot * layout.stringLength));
+    if (otChanged)
+        std::copy(otBytes.begin(), otBytes.end(), staged_.begin() +
+                  static_cast<std::ptrdiff_t>(boxOTStart(layout, box) + slot * layout.stringLength));
+    if (nicknameChanged)
+        std::copy(nicknameBytes.begin(), nicknameBytes.end(), staged_.begin() +
+                  static_cast<std::ptrdiff_t>(boxNicknameStart(layout, box) + slot * layout.stringLength));
     if (!syncCurrentBoxCopy(box, error)) {
         staged_ = stagedBackup;
         return false;
@@ -1044,9 +1069,17 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.level = pokemon.level;
     created.statExperience = pokemon.statExperience;
     created.friendship = pokemon.friendship;
+    if (pokemon.pokerus != 0 && (pokemon.pokerus >> 4) == 0) {
+        error = "Pokerus strain 0 cannot have days remaining";
+        return false;
+    }
     created.pokerus = pokemon.pokerus;
     created.caughtData = pokemon.caughtData;
     created.nickname = pokemon.nickname.empty() ? std::string(Names::getSpeciesName(pokemon.species)) : pokemon.nickname;
+    // An un-nicknamed Pokemon carries the upper-case retail species name (pret/pokecrystal
+    // data/pokemon/names.asm); evolution renames only a name equal to the old species name.
+    if (pokemon.nickname.empty())
+        for (auto& ch : created.nickname) if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
     created.originalTrainer = pokemon.otName.empty() ? trainerName_ : pokemon.otName;
     created.partyRecord = false;
     created.isEgg = false;
@@ -1078,7 +1111,7 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     }
 
     std::vector<uint8_t> otBytes, nicknameBytes;
-    if (!encodePokemonName(created.originalTrainer, otBytes, error) ||
+    if (!encodeOTName(created.originalTrainer, otBytes, error) ||
         !encodePokemonName(created.nickname, nicknameBytes, error)) return false;
 
     const auto& layout = layoutFor(metadata_.family);

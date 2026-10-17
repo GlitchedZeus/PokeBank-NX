@@ -70,7 +70,7 @@ int main() {
     assert(emptyDirty[2] == Action::Close);
     assert(surfaceForAction(empty[0]) == Surface::CreateDraft);
     assert(std::string(actionLabel(Action::Close)) == "Cancel");
-    assert(std::string(actionLabel(Action::LegalityProvenance)) == "Legality & Provenance");
+    assert(std::string(actionLabel(Action::LegalityProvenance)) == "Origin & Legality");
     constexpr auto menuGeometry = actionMenuGeometry();
     static_assert(menuGeometry.rowStart == 86 && menuGeometry.rowHeight == 42 && menuGeometry.rowStep == 46);
 

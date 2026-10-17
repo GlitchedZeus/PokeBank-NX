@@ -79,8 +79,9 @@ for stale in (
 ):
     require(stale not in backup_selection,
             "Save Backups must not bypass the shared controller glyph legend")
-require('{{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}}' in backup_selection,
-        "Save Backups must advertise D-pad/Left Stick selection alongside active actions")
+require('SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false, .xLabel = "Delete"});' in backup_selection,
+        "Save Backups must advertise D-pad/Left Stick selection alongside active actions "
+        "through the shared green-A Select / red-B Cancel picker footer")
 require("Colors::Warning, 2" in backup_selection and "Colors::Orange, 2" not in backup_selection,
         "transient backup failures must use the semantic theme warning color")
 

@@ -227,10 +227,44 @@ ExportTransactionResult publishVerifiedExport(const ExportTransactionRequest& re
     if (request.failurePoint == ExportFailurePoint::AfterManifestWrite)
         return fail("Injected failure after manifest write");
 
-    // Publish only after all bytes, hashes and strict parser checks succeeded. The rename remains
-    // inside the same app-owned export root; no source-save path is ever opened for writing.
-    if (::rename(temporaryDirectory.c_str(), finalDirectory.c_str()) != 0)
-        return fail("Could not publish verified export directory");
+    if (request.failurePoint == ExportFailurePoint::DestinationAppearsAsEmptyDirectory)
+        (void)::mkdir(finalDirectory.c_str(), 0777);
+    if (request.failurePoint == ExportFailurePoint::DestinationAppearsAsFile) {
+        FILE* other = std::fopen(finalDirectory.c_str(), "wb");
+        if (other) std::fclose(other);
+    }
+
+    // Publish only after all bytes, hashes and strict parser checks succeeded. Everything stays
+    // inside the app-owned export root; no source-save path is ever opened for writing.
+    // rename(2) of a directory silently REPLACES an existing empty directory, so never rename onto
+    // the destination. Claim it exclusively instead: mkdir fails with EEXIST if anything
+    // (directory, file, link) appeared at that path since it was chosen, and nothing of the other
+    // writer is touched. Files then move in, manifest last, so a reader never sees a manifest
+    // without both verified saves beside it (same protocol as Integration/Common, QA-F3).
+    if (::mkdir(finalDirectory.c_str(), 0777) != 0)
+        return fail(errno == EEXIST
+            ? "Export destination appeared before publication; nothing was replaced"
+            : "Could not publish verified export directory");
+    const std::string publishedBackup = join(finalDirectory, "original_backup.srm");
+    const std::string publishedEdited = join(finalDirectory, "edited.srm");
+    const std::string publishedManifest = join(finalDirectory, "EDIT_MANIFEST.txt");
+    auto unpublish = [&](const std::string& message) {
+        // Return moved files to the temporary directory and drop ONLY the directory this call
+        // created, then clean up as for any other failure.
+        (void)::rename(publishedBackup.c_str(), backupPath.c_str());
+        (void)::rename(publishedEdited.c_str(), editedPath.c_str());
+        (void)::rename(publishedManifest.c_str(), manifestPath.c_str());
+        ::rmdir(finalDirectory.c_str());
+        return fail(message);
+    };
+    if (::rename(backupPath.c_str(), publishedBackup.c_str()) != 0)
+        return unpublish("Could not publish verified export directory");
+    if (request.failurePoint == ExportFailurePoint::AfterFirstPublishedFile)
+        return unpublish("Injected failure during publication");
+    if (::rename(editedPath.c_str(), publishedEdited.c_str()) != 0 ||
+        ::rename(manifestPath.c_str(), publishedManifest.c_str()) != 0)
+        return unpublish("Could not publish verified export directory");
+    ::rmdir(temporaryDirectory.c_str());
 
     result.success = true;
     result.directory = finalDirectory;

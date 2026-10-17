@@ -1,4 +1,5 @@
 #include "Legacy/LegacySourceBindings.h"
+#include "Integration/Gen5/Gen5SourcePathIdentity.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -16,6 +17,23 @@ extern "C" Result fsdevGetLastResult(void) __attribute__((weak));
 namespace PokeVault::Legacy {
     namespace {
         using Owners = std::unordered_map<std::string, BindingRecord>;
+        bool validSourceExtension(const BindingRecord& binding) {
+            if (binding.sourceVariant.empty())
+                return binding.physicalIdentity.empty() && binding.contentFingerprint.empty();
+            if (!binding.contentFingerprint.empty() &&
+                (binding.physicalIdentity.empty() || binding.contentFingerprint.size() != 64 ||
+                 !std::all_of(binding.contentFingerprint.begin(),binding.contentFingerprint.end(),
+                    [](unsigned char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'); })))
+                return false;
+            const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";
+            const bool sequel = binding.gameIdentity == "black2_nds" || binding.gameIdentity == "white2_nds";
+            return !binding.sourcePath.empty() &&
+                ((bw && binding.expectedRawFamily == "BW") ||
+                 (sequel && binding.expectedRawFamily == "B2W2")) &&
+                (binding.sourceVariant == "gen5-copy-0-primary" ||
+                 binding.sourceVariant == "gen5-copy-1-backup") &&
+                binding.physicalIdentity.find('\0') == std::string::npos;
+        }
         constexpr const char* Header = "# PokeBank NX legacy source bindings v1\n";
         enum class ReadStatus { Missing, Valid, Invalid };
         char hexDigit(unsigned value) noexcept {
@@ -91,17 +109,24 @@ namespace PokeVault::Legacy {
                     fields.push_back(std::move(field));
                     if (tab == std::string_view::npos) break;
                     start = tab + 1;
-                } while (fields.size() <= 6);
-                if (!decoded || (fields.size() != 2 && fields.size() != 3 && fields.size() != 6)) {
+                } while (fields.size() <= 9);
+                if (!decoded || (fields.size() != 2 && fields.size() != 3 &&
+                                 fields.size() != 6 && fields.size() != 7 && fields.size() != 8 && fields.size() != 9)) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 BindingRecord binding;
                 binding.profileIdentity = fields[1];
                 if (fields.size() >= 3) binding.gameIdentity = fields[2];
-                if (fields.size() == 6) {
+                if (fields.size() >= 6) {
                     binding.sourcePath = fields[3];
                     binding.sourceType = fields[4];
                     binding.expectedRawFamily = fields[5];
+                }
+                if (fields.size() >= 7) binding.sourceVariant = fields[6];
+                if (fields.size() >= 8) binding.physicalIdentity = fields[7];
+                if (fields.size() == 9) binding.contentFingerprint = fields[8];
+                if (!validSourceExtension(binding)) {
+                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 if (!owners.emplace(fields[0], std::move(binding)).second) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
@@ -123,6 +148,13 @@ namespace PokeVault::Legacy {
                 if (!binding.sourcePath.empty())
                     bytes += "\t" + hexEncode(binding.sourcePath) + "\t" +
                         hexEncode(binding.sourceType) + "\t" + hexEncode(binding.expectedRawFamily);
+                if (!binding.sourceVariant.empty()) {
+                    bytes += "\t" + hexEncode(binding.sourceVariant);
+                    if (!binding.physicalIdentity.empty())
+                        bytes += "\t" + hexEncode(binding.physicalIdentity);
+                    if (!binding.contentFingerprint.empty())
+                        bytes += "\t" + hexEncode(binding.contentFingerprint);
+                }
                 bytes += "\n";
             }
             return bytes;
@@ -294,7 +326,8 @@ namespace PokeVault::Legacy {
             return !value.empty() && value.find('\0') == std::string_view::npos;
         };
         if (!safe(source) || !safe(binding.profileIdentity) || !safe(binding.gameIdentity) ||
-            !safe(binding.sourcePath) || !safe(binding.sourceType) || !safe(binding.expectedRawFamily)) {
+            !safe(binding.sourcePath) || !safe(binding.sourceType) || !safe(binding.expectedRawFamily) ||
+            !validSourceExtension(binding)) {
             errno = EINVAL; return fail("assign-file");
         }
         // Metadata transaction paths must never alias an assigned source save.
@@ -305,7 +338,9 @@ namespace PokeVault::Legacy {
             const bool sameFile = sourceExists && ::stat(metadataPath.c_str(), &metadataInfo) == 0 &&
                 sourceInfo.st_ino != 0 && sourceInfo.st_dev == metadataInfo.st_dev &&
                 sourceInfo.st_ino == metadataInfo.st_ino;
-            if (binding.sourcePath == metadataPath || sameFile) {
+            const bool sdAlias = Integration::Gen5::gen5BindingGame(binding.gameIdentity) &&
+                Integration::Gen5::sameSdOwnershipPath(binding.sourcePath, metadataPath);
+            if (binding.sourcePath == metadataPath || sameFile || sdAlias) {
                 errno = EINVAL; return fail("assignment-aliases-metadata");
             }
         }
@@ -323,7 +358,7 @@ namespace PokeVault::Legacy {
         };
         if (!safe(sourceIdentity) || !safe(binding.profileIdentity) ||
             !safe(binding.gameIdentity) || !safe(binding.sourcePath) ||
-            !safe(binding.sourceType) || !safe(binding.expectedRawFamily)) {
+            !safe(binding.sourceType) || !safe(binding.expectedRawFamily) || !validSourceExtension(binding)) {
             errno = EINVAL;
             return fail("replace-file-assignment");
         }
@@ -332,6 +367,8 @@ namespace PokeVault::Legacy {
         selected.sourceIdentity = sourceIdentity;
         selected.sourcePath = binding.sourcePath;
         selected.gameId = binding.gameIdentity;
+        selected.physicalIdentity = binding.physicalIdentity;
+        selected.contentFingerprint = binding.contentFingerprint;
         applyClaims(selected);
         if (!Source::visibleToProfile(selected, binding.profileIdentity)) {
             errno = EEXIST; return fail("replace-file-assignment-conflict");
@@ -351,7 +388,9 @@ namespace PokeVault::Legacy {
             const bool sameFile = sourceExists && ::stat(metadataPath.c_str(), &metadataInfo) == 0 &&
                 sourceInfo.st_ino != 0 && sourceInfo.st_dev == metadataInfo.st_dev &&
                 sourceInfo.st_ino == metadataInfo.st_ino;
-            if (binding.sourcePath == metadataPath || sameFile) {
+            const bool sdAlias = Integration::Gen5::gen5BindingGame(binding.gameIdentity) &&
+                Integration::Gen5::sameSdOwnershipPath(binding.sourcePath, metadataPath);
+            if (binding.sourcePath == metadataPath || sameFile || sdAlias) {
                 errno = EINVAL;
                 return fail("assignment-aliases-metadata");
             }
@@ -377,11 +416,30 @@ namespace PokeVault::Legacy {
         for (const auto& [identity, binding] : owners_) {
             bool matches = identity == instance.sourceIdentity ||
                 std::find(instance.sourceAliases.begin(), instance.sourceAliases.end(), identity) != instance.sourceAliases.end();
+            if (Integration::Gen5::gen5BindingGame(binding.gameIdentity) &&
+                Integration::Gen5::gen5BindingGame(instance.gameId))
+                matches |= Integration::Gen5::sameSdOwnershipPath(binding.sourcePath, instance.path());
             if (!binding.sourcePath.empty()) {
                 struct stat bound{};
                 matches |= binding.sourcePath == instance.path() || (exists &&
                     ::stat(binding.sourcePath.c_str(), &bound) == 0 &&
                     selected.st_dev == bound.st_dev && selected.st_ino == bound.st_ino);
+            }
+            // Inodes can be reused after deletion. Live path/inode aliases
+            // above retain ownership through in-place emulator changes. A
+            // renamed source needs its original physical ID AND snapshot.
+            const bool samePhysical = !binding.physicalIdentity.empty() &&
+                binding.physicalIdentity == instance.physicalIdentity;
+            if (samePhysical && !matches) {
+                if (!binding.contentFingerprint.empty() && !instance.contentFingerprint.empty() &&
+                    binding.contentFingerprint == instance.contentFingerprint)
+                    matches = true;
+                else if (instance.gameId == binding.gameIdentity) {
+                    // Could be a changed moved source OR a reused inode for
+                    // another same-title save. Do not fabricate its owner.
+                    instance.claimConflict = true;
+                    instance.diagnostic = "Gen V source ownership is ambiguous; repair or forget the stale remembered assignment before choosing this file";
+                }
             }
             if (matches) {
                 Source::mergeProfileClaim(instance, binding.profileIdentity);

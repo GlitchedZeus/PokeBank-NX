@@ -1,0 +1,209 @@
+# Gen I-IV completion campaign (Thread C) host tests.
+GEN1_EXPORT_SOURCES := tests/test_gen1_export_transaction.cpp $(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen1/Gen1ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Integration/Gen1/Gen1PackedMove.cpp src/Utils/SHA256.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_export_transaction
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_export_transaction_sanitize
+host-test: $(HOST_BUILD)/test_gen1_export_transaction
+host-sanitize: $(HOST_BUILD)/test_gen1_export_transaction_sanitize
+$(HOST_BUILD)/test_gen1_export_transaction: $(GEN1_EXPORT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_EXPORT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_export_transaction_sanitize: $(GEN1_EXPORT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_EXPORT_SOURCES) -o $@
+
+# Gen I/II shared-editor contract fixes: two-step Review discard, modal exit footer, picker entry.
+GEN12_REVIEW_PARITY_SOURCES := tests/test_gen12_review_parity.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen12_review_parity
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_review_parity_sanitize
+host-test: $(HOST_BUILD)/test_gen12_review_parity
+host-sanitize: $(HOST_BUILD)/test_gen12_review_parity_sanitize
+$(HOST_BUILD)/test_gen12_review_parity: $(GEN12_REVIEW_PARITY_SOURCES) include/UI/Gen12ReviewDiscardConfirm.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN12_REVIEW_PARITY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen12_review_parity_sanitize: $(GEN12_REVIEW_PARITY_SOURCES) include/UI/Gen12ReviewDiscardConfirm.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN12_REVIEW_PARITY_SOURCES) -o $@
+
+# Gen II Actions -> Clone dialog ownership (ClassicReleaseActionFix.inc).
+GEN2_CLONE_FLOW_SOURCES := tests/test_gen2_clone_flow.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen2_clone_flow
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_clone_flow_sanitize
+host-test: $(HOST_BUILD)/test_gen2_clone_flow
+host-sanitize: $(HOST_BUILD)/test_gen2_clone_flow_sanitize
+$(HOST_BUILD)/test_gen2_clone_flow: $(GEN2_CLONE_FLOW_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_CLONE_FLOW_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_clone_flow_sanitize: $(GEN2_CLONE_FLOW_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_CLONE_FLOW_SOURCES) -o $@
+
+# Gen I/II Y Random DVs confirmation.
+GEN12_REROLL_SOURCES := tests/test_gen12_dv_reroll.cpp src/Integration/Gen2/Gen2PersonalData.cpp
+GEN12_REROLL_DEPS := include/UI/Gen12DVReroll.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen1PokemonEditorOverlayFoundation.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen12_dv_reroll
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_dv_reroll_sanitize
+host-test: $(HOST_BUILD)/test_gen12_dv_reroll
+host-sanitize: $(HOST_BUILD)/test_gen12_dv_reroll_sanitize
+$(HOST_BUILD)/test_gen12_dv_reroll: $(GEN12_REROLL_SOURCES) $(GEN12_REROLL_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN12_REROLL_SOURCES) -o $@
+$(HOST_BUILD)/test_gen12_dv_reroll_sanitize: $(GEN12_REROLL_SOURCES) $(GEN12_REROLL_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN12_REROLL_SOURCES) -o $@
+
+# Gen III PID gender accessor (PokemonRecord::gender), cross-checked against PKSM personal3.
+GEN3_GENDER_SOURCES := tests/test_gen3_gender.cpp src/Pokemon/PersonalInfoTable.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen3_gender
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_gender_sanitize
+host-test: $(HOST_BUILD)/test_gen3_gender
+host-sanitize: $(HOST_BUILD)/test_gen3_gender_sanitize
+$(HOST_BUILD)/test_gen3_gender: $(GEN3_GENDER_SOURCES) include/Integration/Gen3/Gen3Gender.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_GENDER_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_gender_sanitize: $(GEN3_GENDER_SOURCES) include/Integration/Gen3/Gen3Gender.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_GENDER_SOURCES) -o $@
+
+# Gen I View navigation (read-only, focusable).
+GEN1_VIEW_NAV_SOURCES := tests/test_gen1_view_navigation.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_view_navigation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_view_navigation_sanitize
+host-test: $(HOST_BUILD)/test_gen1_view_navigation
+host-sanitize: $(HOST_BUILD)/test_gen1_view_navigation_sanitize
+$(HOST_BUILD)/test_gen1_view_navigation: $(GEN1_VIEW_NAV_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_VIEW_NAV_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_view_navigation_sanitize: $(GEN1_VIEW_NAV_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_VIEW_NAV_SOURCES) -o $@
+
+# Gen II Pokerus / Crystal Met Time / OT Gender selectors.
+GEN2_FIELD_SELECTOR_SOURCES := tests/test_gen2_field_selector.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen2_field_selector
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_field_selector_sanitize
+host-test: $(HOST_BUILD)/test_gen2_field_selector
+host-sanitize: $(HOST_BUILD)/test_gen2_field_selector_sanitize
+$(HOST_BUILD)/test_gen2_field_selector: $(GEN2_FIELD_SELECTOR_SOURCES) include/UI/Gen2FieldSelector.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_FIELD_SELECTOR_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_field_selector_sanitize: $(GEN2_FIELD_SELECTOR_SOURCES) include/UI/Gen2FieldSelector.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_FIELD_SELECTOR_SOURCES) -o $@
+
+# Gen I-III picker paging parity with the shared editor.
+GEN13_PAGING_SOURCES := tests/test_gen13_picker_paging.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen13_picker_paging
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen13_picker_paging_sanitize
+host-test: $(HOST_BUILD)/test_gen13_picker_paging
+host-sanitize: $(HOST_BUILD)/test_gen13_picker_paging_sanitize
+$(HOST_BUILD)/test_gen13_picker_paging: $(GEN13_PAGING_SOURCES) include/UI/Gen13PickerPaging.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN13_PAGING_SOURCES) -o $@
+$(HOST_BUILD)/test_gen13_picker_paging_sanitize: $(GEN13_PAGING_SOURCES) include/UI/Gen13PickerPaging.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN13_PAGING_SOURCES) -o $@
+
+# Gen I Edit working-copy draft.
+GEN1_EDIT_DRAFT_SOURCES := tests/test_gen1_edit_draft.cpp $(GEN1_POKEMON_COMMON) src/Integration/Gen1/Gen1PackedMove.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_edit_draft
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_edit_draft_sanitize
+host-test: $(HOST_BUILD)/test_gen1_edit_draft
+host-sanitize: $(HOST_BUILD)/test_gen1_edit_draft_sanitize
+$(HOST_BUILD)/test_gen1_edit_draft: $(GEN1_EDIT_DRAFT_SOURCES) include/UI/Gen1EditDraft.h src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_EDIT_DRAFT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_edit_draft_sanitize: $(GEN1_EDIT_DRAFT_SOURCES) include/UI/Gen1EditDraft.h src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_EDIT_DRAFT_SOURCES) -o $@
+
+# Gen II Create/Edit workspace: one input owner per frame, footer == action (hardware a0633b6d).
+GEN2_WORKSPACE_LAYERS_SOURCES := tests/test_gen2_workspace_layers.cpp
+GEN2_WORKSPACE_LAYERS_DEPS := include/UI/Gen2WorkspaceLayers.h include/UI/Gen2FieldSelector.h \
+	src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen2HardwareFinalFix.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_workspace_layers
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_workspace_layers_sanitize
+host-test: $(HOST_BUILD)/test_gen2_workspace_layers
+host-sanitize: $(HOST_BUILD)/test_gen2_workspace_layers_sanitize
+$(HOST_BUILD)/test_gen2_workspace_layers: $(GEN2_WORKSPACE_LAYERS_SOURCES) $(GEN2_WORKSPACE_LAYERS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_WORKSPACE_LAYERS_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_workspace_layers_sanitize: $(GEN2_WORKSPACE_LAYERS_SOURCES) $(GEN2_WORKSPACE_LAYERS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_WORKSPACE_LAYERS_SOURCES) -o $@
+
+# Gen I/II Pokemon Actions sheet: real commands only, shared order (owner campaign phase 3).
+CLASSIC_ACTION_MENU_SOURCES := tests/test_classic_pokemon_action_menu.cpp
+CLASSIC_ACTION_MENU_DEPS := include/UI/ClassicPokemonActionMenu.h include/UI/NarrowPokemonActionMenu.h \
+	include/UI/SharedPokemonEditorContract.h include/UI/Gen1PokemonEditorUIContract.h \
+	include/UI/PokemonViewActions.h src/UI/ClassicReleaseActionFix.inc src/UI/Gen2SharedSurfaceParity.inc \
+	src/UI/Gen2SharedPokemonSurface.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc \
+	src/UI/TrainerViewScreenGSCOverlay.inc
+HOST_TESTS += $(HOST_BUILD)/test_classic_pokemon_action_menu
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize
+host-test: $(HOST_BUILD)/test_classic_pokemon_action_menu
+host-sanitize: $(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize
+$(HOST_BUILD)/test_classic_pokemon_action_menu: $(CLASSIC_ACTION_MENU_SOURCES) $(CLASSIC_ACTION_MENU_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CLASSIC_ACTION_MENU_SOURCES) -o $@
+$(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize: $(CLASSIC_ACTION_MENU_SOURCES) $(CLASSIC_ACTION_MENU_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_ACTION_MENU_SOURCES) -o $@
+
+# Gen II inline Shiny / Pokerus / Gender (owner campaign phase 10).
+GEN2_INLINE_FIELDS_SOURCES := tests/test_gen2_inline_fields.cpp
+GEN2_INLINE_FIELDS_DEPS := include/UI/Gen2NativePresentation.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen2HardwareFinalFix.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_inline_fields
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_inline_fields_sanitize
+host-test: $(HOST_BUILD)/test_gen2_inline_fields
+host-sanitize: $(HOST_BUILD)/test_gen2_inline_fields_sanitize
+$(HOST_BUILD)/test_gen2_inline_fields: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_inline_fields_sanitize: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@
+
+# Crystal Met Location chooser (owner campaign phase 11).
+GEN2_LOCATION_PICKER_SOURCES := tests/test_gen2_location_picker.cpp $(GEN2_STAGED_EDITOR_COMMON)
+GEN2_LOCATION_PICKER_DEPS := include/UI/Gen2PokemonPickerModel.h src/UI/Gen2PokemonPickerOverlay.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_location_picker
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_location_picker_sanitize
+host-test: $(HOST_BUILD)/test_gen2_location_picker
+host-sanitize: $(HOST_BUILD)/test_gen2_location_picker_sanitize
+$(HOST_BUILD)/test_gen2_location_picker: $(GEN2_LOCATION_PICKER_SOURCES) $(GEN2_LOCATION_PICKER_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_LOCATION_PICKER_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_location_picker_sanitize: $(GEN2_LOCATION_PICKER_SOURCES) $(GEN2_LOCATION_PICKER_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_LOCATION_PICKER_SOURCES) -o $@
+
+# Gen I list editors: whole rows above the status line, no "Row x/y" counters (phases 1/5).
+GEN1_LIST_FIT_SOURCES := tests/test_gen1_list_fit.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_list_fit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_list_fit_sanitize
+host-test: $(HOST_BUILD)/test_gen1_list_fit
+host-sanitize: $(HOST_BUILD)/test_gen1_list_fit_sanitize
+$(HOST_BUILD)/test_gen1_list_fit: $(GEN1_LIST_FIT_SOURCES) include/UI/Gen1ListFit.h src/UI/Gen1PokemonEditorOverlayUX.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_list_fit_sanitize: $(GEN1_LIST_FIT_SOURCES) include/UI/Gen1ListFit.h src/UI/Gen1PokemonEditorOverlayUX.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@
+
+GEN2_MOVES_PANEL_SOURCES := tests/test_gen2_moves_panel.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Names/MoveNames.cpp src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
+GEN2_MOVES_PANEL_DEPS := include/UI/Gen2MovesPanel.h include/UI/ClassicMovesPanel.h include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen2_moves_panel
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_moves_panel_sanitize
+host-test: $(HOST_BUILD)/test_gen2_moves_panel
+host-sanitize: $(HOST_BUILD)/test_gen2_moves_panel_sanitize
+$(HOST_BUILD)/test_gen2_moves_panel: $(GEN2_MOVES_PANEL_SOURCES) $(GEN2_MOVES_PANEL_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_MOVES_PANEL_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_moves_panel_sanitize: $(GEN2_MOVES_PANEL_SOURCES) $(GEN2_MOVES_PANEL_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_MOVES_PANEL_SOURCES) -o $@

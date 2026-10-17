@@ -1,9 +1,12 @@
+#include <iterator>
+#include <fstream>
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <string>
 #include <vector>
 namespace {
 struct Text { int x, y, w, h; std::string value; UI::Color color; };
@@ -82,6 +85,14 @@ int main() {
                             assert(false);
                         }
                         for (std::size_t j=i+1;j<texts.size();++j) assert(!intersects(t,texts[j]));
+                        // Phase 9: text in the GEN II DATA pane (x 12..210) stays inside it and
+                        // never reaches the BATTLE STATS pane that starts at x 220.
+                        if (t.x < 12 + 198) {
+                            if (t.x + t.w > 12 + 198 - 10) {
+                                std::cerr << "Data text spills: " << t.value << " right " << t.x + t.w << '\n';
+                                assert(false);
+                            }
+                        }
                     }
                 }
             }
@@ -94,6 +105,48 @@ int main() {
             else assert(W::battleStats(p)[0] != 999);
         }
     }
+    // The final hardware panel (506 x 304 from the 1280x720 shell): every Crystal landmark, time,
+    // level and OT gender keeps all data text inside the data pane and above the panel bottom.
+    for (bool party : {false, true}) {
+        p.partyRecord = party;
+        for (uint16_t location = 0; location < 128; ++location) {
+            for (uint16_t time = 1; time <= 3; ++time) {
+                p.caughtData = static_cast<uint16_t>((time << 14) | (63u << 8) | 0x80 | location);
+                texts.clear();
+                UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 506, 304, p, G::SourceGame::Crystal);
+                for (const auto& t : texts) {
+                    if (t.x >= 12 + 198) continue; // graph pane
+                    assert(t.x >= 12 && t.x + t.w <= 12 + 198 - 10);
+                    assert(t.y >= 0 && t.y + t.h <= 304);
+                }
+            }
+        }
+    }
+    // A value too long for the pane wraps (and a word longer than the pane breaks); rows that
+    // cannot fit end with "..." rather than overflowing.
+    {
+        const auto measure = [](const std::string& text) { return static_cast<int>(text.size()) * 9; };
+        std::vector<W::DataRow> rows{{"Met", "A landmark name that is far too long for this narrow pane"},
+                                     {"Note", "Supercalifragilisticexpialidocious"}};
+        for (int i = 0; i < 20; ++i) rows.push_back({"Row", std::to_string(i)});
+        // Gen II rows go through the ONE shared data-pane layout.
+        {
+            std::ifstream in("include/UI/Gen2WorkspacePresentation.h", std::ios::binary);
+            const std::string header((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            assert(header.find("Pane::layoutRows(rows, Pane::kTextWidth") != std::string::npos);
+            assert(header.find("layoutDataRows") == std::string::npos); // no second Gen II copy
+        }
+        namespace Pane = PokeBank::UIModel::SharedDataPane;
+        const auto lines = Pane::layoutRows(rows, Pane::kTextWidth, 200, measure);
+        assert(!lines.empty() && static_cast<int>(lines.size()) == 200 / Pane::kLineHeight);
+        for (const auto& line : lines) {
+            assert(measure(line.text) <= Pane::kTextWidth);
+            assert(line.y + Pane::kLineHeight <= 200);
+        }
+        assert(lines.front().label && lines.front().text == "Met");
+        assert(lines.back().text.size() >= 3 && lines.back().text.substr(lines.back().text.size() - 3) == "...");
+    }
+
     // The cramped accepted legacy layer prioritizes real caught history over
     // auxiliary party rows, while the final 1280x720 hardware panel has room for both.
     p.partyRecord = true;
@@ -238,7 +291,7 @@ int main() {
         UI::SharedSpeciesPicker::drawContent(fb,100,76,dex,251,true,
             [](uint16_t id){ return std::to_string(id); }, [](uint16_t id){ return std::to_string(id); });
         assert((sprites == std::vector<std::pair<uint16_t,bool>>{{dex,false},{dex,true}}));
-        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Intended: Shiny";}));
+        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Shiny: Yes";}));
     }
     std::cout << "Gen II production Data/Graph and shared species renderer: native gating, exact generation title, bounded nonoverlapping text, sprite identity PASS\n";
 }

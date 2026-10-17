@@ -40,14 +40,60 @@ require("envGetHeapOverrideAddr()" in host_source and
         "nested host must preserve the outer hbloader child heap instead of trying to re-own the process heap")
 
 
-game_launcher = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
-retro_start = game_launcher.index("if (descriptor.backend == GameLaunchBackend::RetroArch)")
-homebrew_start = game_launcher.index("if (descriptor.backend == GameLaunchBackend::HomebrewNro)", retro_start)
-retro_block = game_launcher[retro_start:homebrew_start]
-require("envSetNextLoad(target.c_str(), argv.c_str())" in retro_block,
-        "device-proven RetroArch startup must chain directly to the resolved target")
-require("prepareRetroArchReturnHost" not in retro_block and
-        "envSetNextLoad(returnHostPath.c_str()" not in retro_block,
-        "experimental return host must stay out of the hardware-critical RetroArch startup path")
+policy = (ROOT / "runtime/return_host/source/return_host_policy.h").read_text(encoding="utf-8")
+require('#include "return_host_policy.h"' in host_source and
+        "rh_parse_args(argc, argv, &g_state)" in host_source and
+        "rh_next_action(&g_state, g_nextNroPath)" in host_source,
+        "nested host must take every launch/return decision from the shared, host-tested policy")
+require("'\\\\'" not in host_source and "'\\\\'" not in policy,
+        "libnx argvSetup has no escape character; the host must never backslash-escape argv")
+require("smExit();" in host_source.split("int main(", 1)[1],
+        "nested host must close SM before running children, as nx-hbloader main() does")
+require('"sdmc:/switch/PokeBank-NX/runtime/return-host.log"' in host_source and
+        "O_TRUNC" in host_source,
+        "nested host must leave a bounded per-launch stage log for device diagnosis")
 
-print("RetroArch return-host packaging + direct-startup contract: PASS")
+game_launcher = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
+request = game_launcher[game_launcher.index("bool requestGameLaunch("):]
+request = request[:request.index("\n}\n")]
+require("buildGameLaunchChainPlan(descriptor, options)" in request and
+        "envSetNextLoad(plan.nroPath.c_str(), plan.argv.c_str())" in request,
+        "every homebrew handoff must go through the bounded, host-tested chain plan")
+gate = request.index("if (returnHostOptedIn())")
+require(request.index("prepareReturnHost(hostPath, hostError)") > gate and
+        request.count("prepareReturnHost(") == 1 and
+        request.count("options.returnHostEnabled = true;") == 1,
+        "the return host must stay behind the explicit owner opt-in; the default stays direct")
+require("std::string quoted(" not in game_launcher,
+        "the escaping quoted() helper produced argv libnx cannot parse; use gameLaunchAppendArg")
+
+# Default (direct) handoff hygiene. hbloader reuses this process for the emulator, so everything
+# PokeBank opened must be released on the normal return from main(): newlib closes stdio
+# streams, then libnx __appExit() unmounts fsdev devices and closes fs/time/hid/applet/sm.
+# The handoff therefore must never short-circuit that path, and the explicit teardown in
+# main() must stay in reverse-init order.
+main_source = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+teardown = main_source[main_source.index("uiManager.run();"):]
+order = ["}  // UIManager", "UI::SpriteManager::cleanup();", "UI::SystemIcons::cleanup();",
+         "SDL_Quit();", "romfsExit();", "accountExit();", "nsExit();", "return 0;"]
+positions = [teardown.index(step) for step in order]
+require(positions == sorted(positions),
+        "main() must release UI/SDL, RomFS, account and ns before returning to the loader")
+for path in ["src/main.cpp", "src/UI/UI.cpp", "src/UI/GameLauncher.cpp", "src/UI/SaveSelectScreen.cpp"]:
+    text = (ROOT / path).read_text(encoding="utf-8")
+    require("svcExitProcess" not in text and "std::exit(" not in text and
+            "std::quick_exit" not in text and "_Exit(" not in text,
+            f"{path}: a launch must leave through main()'s teardown, never an abrupt exit")
+for source in (ROOT / "src").rglob("*.cpp"):
+    text = source.read_text(encoding="utf-8", errors="replace")
+    require("void __appExit" not in text and "void userAppExit" not in text,
+            f"{source}: overriding libnx __appExit/userAppExit would skip loader-handoff cleanup")
+save_select = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
+require('fsdevUnmountDevice("pbpreview")' in save_select,
+        "installed-save preview mounts must be unmounted after use")
+require("fsSaveDataInfoReaderClose(&reader);" in save_select,
+        "save-data info readers must be closed")
+require("g_gameLaunchHandoffRequested = true;" in request,
+        "UI.cpp records return focus only for real handoffs")
+
+print("Return-host packaging + opt-in launch-plan + handoff hygiene contract: PASS")

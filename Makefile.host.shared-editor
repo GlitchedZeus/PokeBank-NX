@@ -104,3 +104,140 @@ $(NATURE_PICKER_TEST): tests/test_nature_picker_layout.cpp include/UI/NaturePick
 $(NATURE_PICKER_SANITIZE): tests/test_nature_picker_layout.cpp include/UI/NaturePickerLayout.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Owner's 14-point shared Pokemon editor UI contract, run for Gen I-V layouts
+# (and the Gen V adapter's native data); Gen VI-IX add their generation here.
+SHARED_EDITOR_CONTRACT_TEST := $(HOST_BUILD)/test_shared_editor_contract
+SHARED_EDITOR_CONTRACT_SANITIZE := $(HOST_BUILD)/test_shared_editor_contract_sanitize
+SHARED_EDITOR_CONTRACT_INPUTS := tests/test_shared_editor_contract.cpp \
+    include/UI/SharedPokemonEditorWorkspace.h include/UI/SharedPokemonEditorContract.h \
+    include/UI/NarrowPokemonActionMenu.h include/Integration/Gen5/Gen5EditorFields.h \
+    include/Integration/Gen5/Gen5SharedScreenState.h include/Integration/Gen5/Gen5DisplayStats.h \
+    include/Names/MoveBattleStats5.h src/UI/SharedPokemonEditorSurface.inc \
+    src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+
+HOST_TESTS += $(SHARED_EDITOR_CONTRACT_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_CONTRACT_SANITIZE)
+host-test: $(SHARED_EDITOR_CONTRACT_TEST)
+host-sanitize: $(SHARED_EDITOR_CONTRACT_SANITIZE)
+
+$(SHARED_EDITOR_CONTRACT_TEST): $(SHARED_EDITOR_CONTRACT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+
+$(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+
+# Shared Gen I-V editor unit: Moves panel, Move chooser, picker footer, inline toggles and the
+# DETAILS viewport, plus source contracts that the real Gen III-V surfaces use them.
+SHARED_EDITOR_UNIT_SOURCES := tests/test_shared_editor_unit.cpp src/Names/MoveNames.cpp src/Names/LocationNames.cpp \
+	src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+SHARED_EDITOR_UNIT_TEST := $(HOST_BUILD)/test_shared_editor_unit
+SHARED_EDITOR_UNIT_SANITIZE := $(HOST_BUILD)/test_shared_editor_unit_sanitize
+
+HOST_TESTS += $(SHARED_EDITOR_UNIT_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_UNIT_SANITIZE)
+host-test: $(SHARED_EDITOR_UNIT_TEST)
+host-sanitize: $(SHARED_EDITOR_UNIT_SANITIZE)
+
+$(SHARED_EDITOR_UNIT_TEST): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h include/UI/SharedDataPaneLayout.h \
+	include/Names/MoveTypes34.h include/Names/LocationDisplayNames.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
+
+$(SHARED_EDITOR_UNIT_SANITIZE): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h include/UI/SharedDataPaneLayout.h \
+	include/Names/MoveTypes34.h include/Names/LocationDisplayNames.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
+
+# Round 2: one geometry per menu kind (SharedMenuGeometry.h) and one field-state contract
+# (SharedFieldState.h), checked against every real Gen I-V species / item / location name with the
+# bundled font's advances (NunitoMetrics.h).
+SHARED_MENU_GEOMETRY_SOURCES := tests/test_shared_menu_geometry.cpp src/Names/SpeciesNames.cpp \
+	src/Names/ItemNames.cpp src/Names/LocationNames.cpp
+SHARED_MENU_GEOMETRY_INPUTS := $(SHARED_MENU_GEOMETRY_SOURCES) include/UI/SharedMenuGeometry.h \
+	include/UI/SharedFieldState.h include/UI/NunitoMetrics.h include/Names/LocationDisplayNames.h \
+	include/UI/SharedPokemonEditorContract.h
+SHARED_MENU_GEOMETRY_TEST := $(HOST_BUILD)/test_shared_menu_geometry
+SHARED_MENU_GEOMETRY_SANITIZE := $(HOST_BUILD)/test_shared_menu_geometry_sanitize
+
+HOST_TESTS += $(SHARED_MENU_GEOMETRY_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_MENU_GEOMETRY_SANITIZE)
+host-test: $(SHARED_MENU_GEOMETRY_TEST)
+host-sanitize: $(SHARED_MENU_GEOMETRY_SANITIZE)
+
+$(SHARED_MENU_GEOMETRY_TEST): $(SHARED_MENU_GEOMETRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_MENU_GEOMETRY_SOURCES) -o $@
+
+$(SHARED_MENU_GEOMETRY_SANITIZE): $(SHARED_MENU_GEOMETRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_MENU_GEOMETRY_SOURCES) -o $@
+
+# Phase 6: Y re-rolls IVs/EVs through the real PK3 / PK4 / PK5 record code; Shiny, Gender,
+# Nature and Ability never change (shiny/non-shiny drafts, gender-ratio edge cases).
+SHARED_REROLL_SOURCES := tests/test_shared_stat_reroll.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp \
+	src/Encryption/Encryption3FRLG.cpp \
+	src/Pokemon/BaseStatsGen89.cpp \
+	src/Pokemon/PersonalInfoTable.cpp \
+	src/Pokemon/Experience.cpp \
+	src/Pokemon/Pokemon4Mutable.cpp \
+	src/Pokemon/Pokemon4ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp \
+	src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp \
+	src/Pokemon/PersonalInfo4HGSS.cpp \
+	src/Encryption/Encryption4.cpp \
+	src/Names/SpeciesNames.cpp \
+	src/Names/ItemPresence.cpp \
+	src/Names/MoveInfo.cpp \
+	src/Names/MovePresence.cpp \
+	src/Names/ItemNames.cpp \
+	src/Names/NatureNames.cpp \
+	src/Names/AbilityNames.cpp \
+	src/Utils/StringHelpers.cpp \
+	src/Utils/HelperUtilities.cpp
+SHARED_REROLL_TEST := $(HOST_BUILD)/test_shared_stat_reroll
+SHARED_REROLL_SANITIZE := $(HOST_BUILD)/test_shared_stat_reroll_sanitize
+
+HOST_TESTS += $(SHARED_REROLL_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_REROLL_SANITIZE)
+host-test: $(SHARED_REROLL_TEST)
+host-sanitize: $(SHARED_REROLL_SANITIZE)
+
+$(SHARED_REROLL_TEST): $(SHARED_REROLL_SOURCES) include/UI/SharedStatReroll.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_REROLL_SOURCES) -o $@
+
+$(SHARED_REROLL_SANITIZE): $(SHARED_REROLL_SOURCES) include/UI/SharedStatReroll.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_REROLL_SOURCES) -o $@
+
+# Phase 2: Gen IV / V bags query QuantityPolicy (one per-item rule), capped by the native writer.
+SHARED_BAG_QUANTITY_SOURCES := tests/test_shared_bag_quantity.cpp src/Inventory/ItemQuantityPolicy.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+SHARED_BAG_QUANTITY_TEST := $(HOST_BUILD)/test_shared_bag_quantity
+SHARED_BAG_QUANTITY_SANITIZE := $(HOST_BUILD)/test_shared_bag_quantity_sanitize
+
+HOST_TESTS += $(SHARED_BAG_QUANTITY_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_BAG_QUANTITY_SANITIZE)
+host-test: $(SHARED_BAG_QUANTITY_TEST)
+host-sanitize: $(SHARED_BAG_QUANTITY_SANITIZE)
+
+$(SHARED_BAG_QUANTITY_TEST): $(SHARED_BAG_QUANTITY_SOURCES) include/Inventory/ItemQuantityPolicy.h \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_BAG_QUANTITY_SOURCES) -o $@
+
+$(SHARED_BAG_QUANTITY_SANITIZE): $(SHARED_BAG_QUANTITY_SOURCES) include/Inventory/ItemQuantityPolicy.h \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_BAG_QUANTITY_SOURCES) -o $@

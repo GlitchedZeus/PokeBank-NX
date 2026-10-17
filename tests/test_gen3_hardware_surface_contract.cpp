@@ -17,8 +17,27 @@ void contains(const std::string& text, const char* needle) {
     if (text.find(needle) == std::string::npos) std::cerr << "Missing surface contract: " << needle << '\n';
     assert(text.find(needle) != std::string::npos);
 }
+// The source between two needles (exclusive of the end needle); both must exist in order.
+std::string routeBetween(const std::string& text, const char* begin, const char* end) {
+    const auto start = text.find(begin);
+    if (start == std::string::npos) std::cerr << "Missing route start: " << begin << '\n';
+    assert(start != std::string::npos);
+    const auto stop = text.find(end, start);
+    if (stop == std::string::npos) std::cerr << "Missing route end: " << end << '\n';
+    assert(stop != std::string::npos);
+    return text.substr(start, stop - start);
+}
+
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
+    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
+    // or no input does nothing.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Multi = PokeBank::UIModel::ClassicPackedMove;
     constexpr UI::SharedPokemonShell::Geometry geometry(1280, 720, 46);
     namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
@@ -83,6 +102,16 @@ int main() {
 
     // Production routing and renderer wiring (Switch compilation is a separate native gate).
     const auto surface = read("src/UI/Gen3SharedPokemonSurface.inc");
+    {
+        // The Boxes tap route (empty or occupied cell) opens the same guarded menu as A. It must
+        // never be gated on occupancy and never stage an Add directly from the first touch.
+        const auto boxTap = routeBetween(surface,
+            "screen.detailViewActive && touch.justTapped()", "const bool inBoxes = boxEntrySurface(screen);");
+        assert(boxTap.find("beginActions(screen);") != std::string::npos);
+        assert(boxTap.find("selectedOccupied") == std::string::npos);
+        assert(boxTap.find("beginCreate") == std::string::npos);
+        assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+    }
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto move = read("src/UI/ClassicPackedMoveOverlay.inc");
     const auto bridge = read("src/Legacy/FRLGReadOnlyTrainer.cpp");
@@ -120,8 +149,11 @@ int main() {
     contains(surface, "state.session.setShiny(state.speciesPreviewShiny)");
     assert(surface.find("state.session.mode == SessionModel::Mode::Create && (down & HidNpadButton_Y)") == std::string::npos);
     contains(surface, "state.speciesPreview, 386, state.speciesPreviewShiny");
-    contains(surface, "{{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}, {\"A\", \"Choose\"}, {\"B\", \"Cancel\"}}");
-    contains(surface, "PID (read-only)");
+    // The species picker footer is the shared one: ... Y Normal/Shiny, A Select, B Cancel.
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
+    contains(surface, "SharedEditorChrome::drawPickerFooter(fb, footer)");
+    contains(surface, "{\"PID\", std::to_string(p.pid)}");
+    assert(surface.find("PID (read-only)") == std::string::npos); // label no longer runs into the value
     // Read-only Gen III PID-linked information must remain legible. In passive View
     // mode every derived row is informational; in Create/Edit PID remains readable
     // while still non-editable.
@@ -129,8 +161,9 @@ int main() {
     contains(surface, "readableReadOnly ? Colors::TextSecondary");
     contains(surface, "readableReadOnly ? Colors::Text");
     contains(surface, "Trainer ID");
-    contains(surface, "down & (HidNpadButton_Left | HidNpadButton_L)");
-    contains(surface, "down & (HidNpadButton_Right | HidNpadButton_R)");
+    // Left or L / Right or R page by 10 through the shared list scheme (Gen13PickerPaging.h).
+    contains(surface, "static_cast<int>(state.speciesPreview) - 1, 386, gen3PickerKeys(down)) + 1)");
+    contains(surface, "(down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,\n            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,");
     contains(surface, "if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;");
     contains(surface, "Utils::promptNumber(\"Generation III Experience\"");
     contains(surface, "p.tid = static_cast<uint16_t>(r.value)"); contains(surface, "SID (read-only)");
@@ -155,18 +188,19 @@ int main() {
     contains(surface, "SharedPokemonShell::drawPortrait"); contains(surface, "getTypeSprite");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
     contains(shell, "BATTLE STATS"); contains(shell, "StatsRadar::drawGen3Labeled");
-    contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
+    contains(surface, "Presentation::kOriginLegalityHeading, rows,"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
     contains(shell, "scrollWindow(total, visibleRows, focus)");
     contains(shell, "independentFirstRow >= 0");
     contains(shell, "window.first = std::min<std::size_t>(");
     contains(surface, "state.detailsTouchScroll.updateVertical(");
     contains(surface, "detailPixelOffset, firstDetailRow");
-    contains(shell, "visibleRows = 8");
+    contains(shell, "viewport.visibleRows");
+    contains(shell, "detailsViewport(Geometry(1280, 720, 56)).visibleRows == 8");
     contains(shell, "labelWidth + 28");
     contains(shell, "fitDetailsText");
     contains(shell, "drawVerticalScrollIndicator");
-    contains(shell, "viewportY = y + 216");
+    contains(shell, "viewportY = viewport.top");
     contains(shell, "fb.setClipRect");
     contains(shell, "fb.clearClip()");
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
@@ -177,7 +211,7 @@ int main() {
     contains(surface, "EncounterPicker::choiceAt");
     contains(surface, "forGameSpeciesWithGen3Provenance");
     contains(surface, "Encounter origin");
-    contains(surface, "origin →");
+    contains(surface, "met as ");
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");
@@ -190,7 +224,7 @@ int main() {
     contains(surface, "Shared::passiveViewMoveColumn");
     contains(surface, "Shared::normalizePassiveViewFocus");
     contains(surface, "visibleMoveFocus = Shared::normalizeMoveRowFocus");
-    contains(surface, "Shared::moveRowFocus(rightW)");
+    contains(surface, "SharedMovesPanel::draw(fb, movesLayout, slots, kGen3MoveGame");
     contains(surface, "beginMoveEditor(screen, state, static_cast<int>(state.focus.row))");
     const auto contextStart = surface.find("bool handleMoveEditor(");
     const auto contextEnd = surface.find("bool handleWorkspace(", contextStart);
@@ -202,11 +236,11 @@ int main() {
     contains(contextualMoveEditor, "state.moveEditorRow == 2");
     contains(surface, "beginMoveEditor");
     contains(surface, "drawMoveEditor");
-    contains(surface, "Contextual editor — B always cancels this dialog");
+    contains(surface, "SharedMoveFacts::detailLine(");
     contains(surface, "Keep these move details");
     contains(surface, "Discard these move details");
     contains(surface, "\"Move — Generation III\"");
-    contains(surface, "\"Empty + compatible moves only • exact Gen III Acc / Pwr / PP\"");
+    contains(surface, "SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, kGen3MoveGame)");
     contains(surface, "Gen3::Learnset::directlyLearnable");
     contains(surface, "target != PickerTarget::Ability && target != PickerTarget::Move");
     const auto valuePickerBegin = surface.find("void drawValuePicker(");
@@ -235,7 +269,7 @@ int main() {
     contains(surface, "moveLayout.rowStep");
     contains(surface, "Held Item — Generation III");
     contains(surface, "Names::machineDisplayLabel(Enums::GameVersion::FRLG");
-    contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Page\"}");
+    contains(surface, "footer.gridPaging = true;");
     assert(surface.find("Add Pokemon") != std::string::npos); // Box action still exists.
     const auto moveEditorBegin = surface.find("void drawMoveEditor(");
     const auto workspaceBegin = surface.find("void drawWorkspace(", moveEditorBegin);
@@ -285,7 +319,7 @@ int main() {
     contains(move, "resizeSelection(screen, state, nav)");
     contains(move, "D-pad/Stick to resize");
     contains(move, "{\"D-pad/Stick\", \"Resize Selection\"}");
-    contains(surface, "{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}");
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(move, "setLegacyHoldingPresentation(screen, true)");
     contains(move, "drawVisual(fb");
     contains(surface, "state.previewRecord");

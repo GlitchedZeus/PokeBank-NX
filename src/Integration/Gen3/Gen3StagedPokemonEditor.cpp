@@ -102,6 +102,47 @@ uint8_t originVersion(SourceGame game) noexcept {
     return 0;
 }
 
+// Name of an un-nicknamed Pokemon. English Gen III stores species names in upper case
+// (pret/pokeemerald gSpeciesNames, pokefirered likewise) and evolution renames only a name equal
+// to the old species name. Other record languages keep the existing English default until their
+// localized retail names are pinned.
+std::string defaultNickname(uint16_t species, uint8_t language) {
+    std::string name = Names::getSpeciesName(species);
+    if (language == 2)
+        for (auto& ch : name) if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
+    return name;
+}
+
+// A Pokerus byte is strain (high nibble) and days (low nibble); 0 is "never infected". Strain 0
+// with days left is not a state the games produce (pokeemerald pokemon.c infection always sets a
+// non-zero strain), so it is refused instead of being written.
+constexpr bool validPokerus(uint8_t raw) noexcept { return raw == 0 || (raw >> 4) != 0; }
+
+// Japanese PK3 names are 5 characters for both nickname and OT; other languages allow 10 / 7
+// (PKHeX PK3 MaxStringLengthNickname / MaxStringLengthTrainer).
+constexpr std::size_t maxNicknameLength(uint8_t language) noexcept { return language == 1 ? 5 : 10; }
+constexpr std::size_t maxOtLength(uint8_t language) noexcept { return language == 1 ? 5 : 7; }
+
+// Unown (201) is the only Gen III species whose form is stored: its letter is PID-derived
+// (Pokemon3FRLG::form, PKHeX PK3 Form / EntityPID.GetUnownForm3). Deoxys' form follows the game.
+bool applyUnownLetter(Pokemon::Pokemon3FRLG& pokemon, const std::optional<uint8_t>& form,
+                      std::string& error) {
+    if (!form || *form == pokemon.form()) return true;
+    if (pokemon.speciesID() != 201) {
+        error = "Only Unown stores a form (its letter) in a Generation III record";
+        return false;
+    }
+    if (*form >= 28) {
+        error = "Unown letter must be A-Z, ! or ?";
+        return false;
+    }
+    if (!pokemon.setUnownLetter(*form, pokemon.id32())) {
+        error = "No Generation III PID gives that Unown letter with this Nature and Shiny state";
+        return false;
+    }
+    return true;
+}
+
 bool validLanguage(uint8_t language) noexcept {
     // PK3 language ids: Japanese, English, French, Italian, German, Spanish.
     return language == 1 || language == 2 || language == 3 ||
@@ -431,7 +472,22 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         pokemon.setLanguage(*edit.language);
     }
     if (edit.friendship) pokemon.setFriendship(*edit.friendship);
-    if (edit.pokerus) pokemon.setPokerus(*edit.pokerus);
+    if (edit.pokerus) {
+        if (!validPokerus(*edit.pokerus)) {
+            error = "Pokerus strain 0 cannot have days remaining";
+            return false;
+        }
+        pokemon.setPokerus(*edit.pokerus);
+    }
+    // Name lengths follow the record's (possibly just edited) language.
+    if ((edit.nickname || edit.language) && pokemon.nickname().size() > maxNicknameLength(pokemon.language())) {
+        error = "Nickname is too long for this Generation III record language";
+        return false;
+    }
+    if ((edit.otName || edit.language) && pokemon.otName().size() > maxOtLength(pokemon.language())) {
+        error = "OT name is too long for this Generation III record language";
+        return false;
+    }
     if (edit.ball) {
         if (*edit.ball < 1 || *edit.ball > 12 || *edit.ball == 0) {
             error = "Generation III Ball must be one of the native Master-through-Premier ids";
@@ -466,7 +522,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
 
     const bool pidLinkedEdit =
         edit.nature.has_value() || edit.gender.has_value() ||
-        edit.shiny.has_value() || edit.abilityNumber.has_value();
+        edit.shiny.has_value() || edit.abilityNumber.has_value() || edit.form.has_value();
     const uint8_t expectedNature = edit.nature.value_or(pokemon.nature());
     const uint8_t expectedGender = edit.gender.value_or(pokemon.gender());
     const bool expectedShiny = edit.shiny.value_or(pokemon.isShiny(pokemon.id32(), ""));
@@ -494,11 +550,14 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         pokemon.setAbilityNumber(*edit.abilityNumber);
     }
+    // Unown's letter is the fourth PID-derived trait; set last so it keeps the others.
+    if (!applyUnownLetter(pokemon, edit.form, error)) return false;
 
     if (pokemon.nature() != expectedNature ||
         pokemon.gender() != expectedGender ||
         pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
-        pokemon.abilityNumber() != expectedAbilityNumber) {
+        pokemon.abilityNumber() != expectedAbilityNumber ||
+        (edit.form && pokemon.form() != *edit.form)) {
         error = "Requested Generation III PID-linked field combination is not representable";
         return false;
     }
@@ -569,7 +628,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     if (create.species == 0 || create.species > 386 ||
         create.level < 1 || create.level > 100 ||
         !validHeldItem(sourceGame_, create.heldItem) ||
-        !validLanguage(create.language) ||
+        !validLanguage(create.language) || !validPokerus(create.pokerus) ||
         create.ball < 1 || create.ball > 12 ||
         create.metLevel > 100 || create.metLocation > 255) {
         error = "Generation III Create draft contains an unsupported field value";
@@ -595,16 +654,16 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setMetLocation(create.metLocation);
     pokemon.setOTGender(trainer_.gender & 1);
     const auto ot = Utils::utf8ToUtf16(create.otName.value_or(trainer_.name));
-    if (ot.size() > 7 || !pokemon.canStoreNickname(ot)) {
+    if (ot.size() > maxOtLength(create.language) || !pokemon.canStoreNickname(ot)) {
         error = "Create OT name cannot be represented in the Generation III character set";
         return false;
     }
     pokemon.setOTName(ot);
 
     std::string nickname = create.nickname;
-    if (nickname.empty()) nickname = Names::getSpeciesName(create.species);
+    if (nickname.empty()) nickname = defaultNickname(create.species, create.language);
     const auto nickname16 = Utils::utf8ToUtf16(nickname);
-    if (nickname16.size() > 10 || !pokemon.canStoreNickname(nickname16)) {
+    if (nickname16.size() > maxNicknameLength(create.language) || !pokemon.canStoreNickname(nickname16)) {
         error = "Create nickname cannot be represented in the Generation III character set";
         return false;
     }
@@ -666,10 +725,12 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         }
         pokemon.setAbilityNumber(*create.abilityNumber);
     }
+    if (!applyUnownLetter(pokemon, create.form, error)) return false;
     if (pokemon.nature() != expectedNature ||
         pokemon.gender() != expectedGender ||
         pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
-        pokemon.abilityNumber() != expectedAbilityNumber) {
+        pokemon.abilityNumber() != expectedAbilityNumber ||
+        (create.form && pokemon.form() != *create.form)) {
         error = "Requested Generation III Create PID-linked field combination is not representable";
         return false;
     }
@@ -684,7 +745,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     auto after = boxedPokemon(box, slot, error);
     const std::string expectedNickname = create.nickname.empty()
-        ? std::string(Names::getSpeciesName(create.species)) : create.nickname;
+        ? defaultNickname(create.species, create.language) : create.nickname;
     const std::string expectedOt = create.otName.value_or(trainer_.name);
     if (!after || after->species != create.species || after->level != create.level ||
         (create.experience && after->experience != *create.experience) ||

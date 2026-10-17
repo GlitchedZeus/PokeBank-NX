@@ -12,6 +12,8 @@
 #include <cstdio>
 #include <dirent.h>
 #include <set>
+#include <string_view>
+#include <vector>
 #include <sys/stat.h>
 
 namespace PokeVault::Legacy {
@@ -111,12 +113,58 @@ namespace PokeVault::Legacy {
             return extension == ".sav" || extension == ".srm";
         }
 
-        IdentityHint identityHint(const std::string& path) {
-            std::string compact;
-            compact.reserve(path.size());
-            for (unsigned char c : path)
-                if (std::isalnum(c)) compact.push_back(static_cast<char>(std::tolower(c)));
+        // Lower-case alphanumeric tokens of the save's own file stem and its immediate folder.
+        // Higher directories never decide identity (QA-F6): "/myleafgreenerybackups/game.sav" or
+        // "/backups/emerald-era/firered/x.sav" must not be read through an unrelated name.
+        std::vector<std::string> identityTokens(const std::string& path) {
+            std::string scope = path;
+            const size_t dot = scope.find_last_of('.');
+            const size_t slash = scope.find_last_of("/\\");
+            if (dot != std::string::npos && (slash == std::string::npos || dot > slash))
+                scope.erase(dot);
+            const size_t fileStart = scope.find_last_of("/\\");
+            if (fileStart != std::string::npos) {
+                const size_t folderStart = fileStart == 0 ? std::string::npos
+                                                          : scope.find_last_of("/\\", fileStart - 1);
+                scope = scope.substr(folderStart == std::string::npos ? 0 : folderStart + 1);
+            }
+            std::vector<std::string> tokens;
+            std::string token;
+            for (size_t i = 0; i <= scope.size(); ++i) {
+                const unsigned char c = i < scope.size() ? static_cast<unsigned char>(scope[i]) : '/';
+                if (std::isalnum(c)) {
+                    token.push_back(static_cast<char>(std::tolower(c)));
+                } else if (!token.empty()) {
+                    tokens.push_back(std::move(token));
+                    token.clear();
+                }
+            }
+            return tokens;
+        }
 
+        // A release is named by an isolated token: "firered", "pokemonfirered", "firered" +
+        // "version" (also "pokemonfireredversion"), or two adjacent tokens such as "Fire Red".
+        bool tokenNamesRelease(const std::vector<std::string>& tokens, std::string_view release) {
+            auto exact = [&](std::string_view token) {
+                for (const std::string_view prefix : {std::string_view{}, std::string_view{"pokemon"},
+                                                      std::string_view{"poke"}})
+                    for (const std::string_view suffix : {std::string_view{}, std::string_view{"version"}})
+                        if (token.size() == prefix.size() + release.size() + suffix.size() &&
+                            token.substr(0, prefix.size()) == prefix &&
+                            token.substr(prefix.size(), release.size()) == release &&
+                            token.substr(prefix.size() + release.size()) == suffix)
+                            return true;
+                return false;
+            };
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                if (exact(tokens[i])) return true;
+                if (i + 1 < tokens.size() && exact(tokens[i] + tokens[i + 1])) return true;
+            }
+            return false;
+        }
+
+        IdentityHint identityHint(const std::string& path) {
+            const auto tokens = identityTokens(path);
             const std::array<std::pair<std::string_view, IdentityHint>, 5> names{{
                 {"firered", IdentityHint::FireRed}, {"leafgreen", IdentityHint::LeafGreen},
                 {"sapphire", IdentityHint::Sapphire}, {"emerald", IdentityHint::Emerald},
@@ -125,7 +173,7 @@ namespace PokeVault::Legacy {
             IdentityHint result = IdentityHint::None;
             size_t matches = 0;
             for (const auto& [needle, hint] : names) {
-                if (compact.find(needle) == std::string::npos) continue;
+                if (!tokenNamesRelease(tokens, needle)) continue;
                 result = hint;
                 ++matches;
             }

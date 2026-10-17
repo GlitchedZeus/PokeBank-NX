@@ -1,3 +1,4 @@
+#include "UI/ClassicPokemonActionMenu.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/Gen2StagedAccess.h"
 #include "Gen2TrainerSessionOverlay.inc"
@@ -120,14 +121,13 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // Keep the live box as background; the narrow modal owns every foreground
     // hitbox. All active rows retain the exact Gen II staged command indices.
     screen.drawLegacyBase(fb);
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             title,
                             screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
 void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -162,6 +162,25 @@ void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!legacy.lastExportDirectory.empty())
         fb.drawText(x + 24, y + h - 44, "Last verified export: " + legacy.lastExportDirectory,
                     Colors::Success, TextStyle::Caption);
+    if (sharedSurfaceStateFor(screen).reviewDiscard.confirming) {
+        // Second step of Discard Staged; nothing changes until Y. The nav bar is the only touch
+        // target, so a tap maps to exactly the same B/Y as the controller.
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 150));
+        constexpr int cw = 760, ch = 240;
+        constexpr int cx = (1280 - cw) / 2;
+        constexpr int cy = (672 - ch) / 2;
+        drawPanelSurface(fb, cx, cy, cw, ch, false, 18);
+        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(cx + 34, cy + 96,
+                    std::to_string(changes.size()) + " pending Gen II edit(s) in this workspace are lost.",
+                    Colors::Text, TextStyle::Body);
+        fb.drawText(cx + 34, cy + 140,
+                    "Export Copy first to keep them. The original save is never written.",
+                    Colors::TextDim, TextStyle::Caption);
+        drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Discard"}});
+        return;
+    }
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Export Copy"},
                     {"X", "Discard Staged"}, {"B", "Back"}});
 }

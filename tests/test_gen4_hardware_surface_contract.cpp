@@ -16,10 +16,32 @@
 #include <string>
 
 namespace {
+// The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+// which a generation surface includes textually. Expand that one include so a
+// surface's contract covers the shared code it compiles.
+std::string expandSurfaceIncludes(const std::string& text) {
+    std::string out;
+    std::size_t pos = 0;
+    const std::string marker = "#include \"";
+    while (true) {
+        const auto at = text.find(marker, pos);
+        if (at == std::string::npos) { out += text.substr(pos); break; }
+        const auto close = text.find('"', at + marker.size());
+        const std::string name = text.substr(at + marker.size(), close - at - marker.size());
+        out += text.substr(pos, close + 1 - pos);
+        pos = close + 1;
+        if (name == "SharedPokemonEditorSurface.inc") {
+            std::ifstream nested("src/UI/" + name, std::ios::binary);
+            if (nested) out += "\n" + expandSurfaceIncludes(
+                {std::istreambuf_iterator<char>(nested), std::istreambuf_iterator<char>()});
+        }
+    }
+    return out;
+}
 std::string read(const char* path) {
     std::ifstream in(path, std::ios::binary);
     assert(in);
-    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    return expandSurfaceIncludes({std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()});
 }
 void contains(const std::string& text, const char* needle) {
     if (text.find(needle) == std::string::npos)
@@ -28,25 +50,39 @@ void contains(const std::string& text, const char* needle) {
 }
 }
 
+// The source between two needles (exclusive of the end needle); both must exist in order.
+std::string routeBetween(const std::string& text, const char* begin, const char* end) {
+    const auto start = text.find(begin);
+    if (start == std::string::npos) std::cerr << "Missing route start: " << begin << '\n';
+    assert(start != std::string::npos);
+    const auto stop = text.find(end, start);
+    if (stop == std::string::npos) std::cerr << "Missing route end: " << end << '\n';
+    assert(stop != std::string::npos);
+    return text.substr(start, stop - start);
+}
+
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
+    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
+    // or no input does nothing.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
     // Behavior-level contract: the older popup is narrow and never makes a
     // disabled transfer command available through touch or controller A.
     constexpr auto actions = Shared::actionsForSlot(true, {true, true, true}, true);
     constexpr auto rendered = Narrow::classic(actions, true);
-    static_assert(rendered.count == 11);
-    static_assert(rendered.rows[0].nativeIndex == 0);
-    static_assert(rendered.rows[1].nativeIndex == -1);
-    static_assert(rendered.rows[2].nativeIndex == -1);
-    static_assert(rendered.rows[3].nativeIndex == -1);
-    static_assert(rendered.rows[4].nativeIndex == 1);
-    static_assert(rendered.rows[5].nativeIndex == 2);
-    static_assert(rendered.rows[6].nativeIndex == 3);
-    static_assert(rendered.rows[7].nativeIndex == -1);
-    static_assert(rendered.rows[8].nativeIndex == 4);
-    static_assert(rendered.rows[9].nativeIndex == 5);
-    static_assert(rendered.rows[10].nativeIndex == 6);
+    // Shared order, only real commands: View, Edit, Clone, Release, Origin & Legality,
+    // Review, Cancel. No greyed placeholders (Make Shiny, Master Vault, Bank, Transfer).
+    static_assert(rendered.count == 7);
+    static_assert(rendered.rows[0].nativeIndex == 0 && rendered.rows[6].nativeIndex == 6);
+    for (int i = 0; i < rendered.count; ++i)
+        assert(rendered.rows[static_cast<std::size_t>(i)].nativeIndex == i);
+    assert(std::string(rendered.rows[4].label) == "Origin & Legality");
     static_assert(Narrow::geometry(12).width == 440);
     static_assert(Narrow::geometry(12).height <= 720 - 56);
     static_assert(Narrow::geometry(9).rowHeight >= 54);
@@ -270,10 +306,14 @@ int main() {
     contains(surface, "appendClippedTouchButton(screen.touchButtons, 41000 + row");
     contains(surface, "detailPixelOffset, firstDetailRow");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
-    contains(surface, "Shared::normalizeMoveRowFocus(Shared::Generation::Gen4");
-    contains(surface, "Shared::moveRowColumn(Shared::Generation::Gen4");
-    contains(surface, "Shared::passiveViewMoveColumn(Shared::Generation::Gen4");
-    contains(surface, "Shared::moveRowFocus(g.rightW)");
+    // Gen IV drives the shared workspace model with its own Gen IV layout.
+    const auto workspaceModel = read("include/UI/SharedPokemonEditorWorkspace.h");
+    contains(surface, "static constexpr auto generation = Shared::Generation::Gen4;");
+    contains(surface, "Workspace::navigate(A::generation, state.focus, keys, passive, editable,");
+    contains(workspaceModel, "focus = Shared::normalizeMoveRowFocus(generation, focus);");
+    contains(workspaceModel, ": Shared::moveRowColumn(generation, focus, -1);");
+    contains(workspaceModel, "focus = passive ? Shared::passiveViewMoveColumn(generation, focus, -1)");
+    contains(surface, "SharedMovesPanel::draw(fb, movesLayout, slots, A::moveGame(screen),");
 
     // Gen IV inherits the accepted D-pad / left-stick repeat navigation path.
     contains(surface, "screen.controllerNavigation.apply(");
@@ -291,17 +331,16 @@ int main() {
     contains(surface, "Could not reconcile Species/Shiny while preserving PID-linked traits");
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
-    contains(surface, "openMoveEditor(screen, state, state.focus.row)");
-    contains(surface, "A: choose compatible Gen IV move");
-    contains(surface, "OK = native   Transfer/Preserved = warning");
+    contains(surface, "openMoveEditor<A>(screen, state, activation.row)");
     contains(surface, "PP Ups");
     contains(surface, "state.moveEditorRow = 0; // Shared move editor opens on the Move row");
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
     contains(surface, "state.session.working->setMove(slot, value)");
     contains(surface, "uint16_t moveBaseline = 0;");
-    contains(surface, "state.moveBaseline = state.session.working->moves()");
-    contains(surface, "state.session.working->setMove(slot, state.moveBaseline)");
+    contains(surface, "state.moveBaseline = A::workingMove(screen, state, slot)");
+    contains(surface, "A::setMove(screen, state, slot, state.moveBaseline)");
+    contains(surface, "gen4(state).session.working->moves()[static_cast<size_t>(slot)]");
     contains(surface, "PickerTarget::Move");
     contains(surface, "#include \"Integration/Gen4/Gen4MoveCompatibility.h\"");
     contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
@@ -357,8 +396,10 @@ int main() {
     contains(editPath,"Utils::promptNumber(");
     contains(addPath,"if(!r.accepted)return true;");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"Gen4::gen4BagMaxQuantity(");
-    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"gen4QuantityRule(screen,static_cast<size_t>(state.itemAddPocket),id)");
+    contains(addPath,"if(rule.editable)");
+    contains(editPath,"gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId)");
+    contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
     contains(addPath,"static_cast<uint16_t>(r.value)");
@@ -392,7 +433,7 @@ int main() {
     contains(surface, "status = \"Preserved\"");
     contains(surface, "MoveResult::Unsupported");
     contains(surface, "status = \"Transfer\"");
-    contains(surface, "Gen IV move compatibility • event/encounter legality is not fully checked");
+    contains(surface, "Gen IV move compatibility checked • Origin & Legality: incomplete");
     assert(surface.find("Names::isMovePresent") == std::string::npos);
     assert(surface.find("Native Gen IV move catalog") == std::string::npos);
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);
@@ -413,6 +454,16 @@ int main() {
     contains(surface, "screen.selectedItemIndex = tapped;");
     contains(surface, "beginActions(screen);");
     assert(surface.find("if (selectedOccupied(screen)) beginActions(screen);") == std::string::npos);
+    {
+        // The Boxes tap route (empty or occupied cell) opens the same guarded menu as A. It must
+        // never be gated on occupancy and never stage an Add directly from the first touch.
+        const auto boxTap = routeBetween(surface,
+            "screen.detailViewActive && touch.justTapped()", "if (!partyEntry && !boxEntry && !storageEntry) return false;");
+        assert(boxTap.find("beginActions(screen);") != std::string::npos);
+        assert(boxTap.find("selectedOccupied") == std::string::npos);
+        assert(boxTap.find("beginCreate") == std::string::npos);
+        assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+    }
     // A stale six-party hit target cannot pick an out-of-range party member.
     contains(surface, "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())");
     contains(surface, "screen.touchedButtonId(touch)");
@@ -428,17 +479,15 @@ int main() {
     contains(boxPanel, "? \"A / tap: Actions\" : \"A / tap: Edit\"");
     contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
     contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
-    contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
-    contains(surface, "add(MenuAction::AddBank, \"Add to Bank...\", false);");
-    contains(surface, "add(MenuAction::TransferGame, \"Transfer to Game...\", false);");
-    contains(surface, "add(MenuAction::Clone, \"Clone\", false);");
-    contains(surface, "add(MenuAction::MakeShiny, \"Make Shiny\", false);");
+    contains(surface, "add(MenuAction::MovePokemon, \"Move\", stagedAvailable);");
+    assert(surface.find("\"Make Shiny\"") == std::string::npos);
+    assert(surface.find("add(MenuAction::AddMasterVault") == std::string::npos);
     contains(surface, "PickerTarget::Species");
     assert(surface.find("createSpeciesInitialized") == std::string::npos);
     contains(surface, "state.session.working->setSpecies(value)");
     contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
     contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
-    contains(surface, "\"Y\", \"Normal/Shiny\"");
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
     contains(surface, "PickerTarget::HeldItem");
     contains(surface, "PickerTarget::Language");
@@ -464,11 +513,7 @@ int main() {
     assert(surface.find("Create is not enabled in the Edit milestone") == std::string::npos);
     contains(surface, "\"Clone\"");
     contains(surface, "\"Release\"");
-    contains(surface, "\"Legality & Provenance\"");
-    contains(surface, "\"Add to Master Vault\"");
-    contains(surface, "\"Add to Bank...\"");
-    contains(surface, "\"Transfer to Game...\"");
-    contains(surface, "\"Make Shiny\"");
+    contains(surface, "NarrowPokemonMenu::kOriginLegalityLabel");
     contains(staged, "stageCloneBoxPokemon");
     contains(staged, "stageReleaseBoxPokemon");
     contains(surface, "partyEntrySurface");
@@ -488,8 +533,10 @@ int main() {
     // metadata, SID/Origin remain inspectable read-only, and fixed-only rows are skipped.
     contains(surface, "bool detailEditable(const State& state");
     contains(surface, "hasAlternateValidForm");
-    contains(surface, "if (detailEditable(state, state.focus.row, p)) return;");
-    contains(surface, "if (pidLinkedRowEditable(state, state.focus.row, p)) return;");
+    contains(workspaceModel, "if (detailEditable(static_cast<int>(focus.row))) return focus;");
+    contains(workspaceModel, "if (pidEditable(static_cast<int>(focus.row))) return focus;");
+    contains(surface, "return UI::Gen4SharedEditorSurface::detailEditable(gen4(state), row, p);");
+    contains(surface, "return pidLinkedRowEditable(gen4(state), row, p);");
     contains(surface, "\"OT\", \"Trainer ID\"");
     assert(surface.find("OT (read-only)") == std::string::npos);
     assert(surface.find("TID (read-only)") == std::string::npos);
@@ -497,11 +544,12 @@ int main() {
     contains(surface, "setOriginalTrainerName");
     contains(surface, "setTID");
     contains(surface, "Origin (read-only)");
-    contains(surface, "state.session.mode == SessionModel::Mode::View || editable");
+    contains(surface, "state.focus.row == row && (viewMode || editable);");
+    contains(surface, "return gen4(state).session.mode == SessionModel::Mode::View;");
 
     // A nested move choice must render above the contextual Move editor, never behind it.
-    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor(screen, fb, state);");
-    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker(screen, fb, state);");
+    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor<A>(screen, fb, state);");
+    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker<A>(screen, fb, state);");
     assert(moveEditorDraw != std::string::npos && valuePickerDraw > moveEditorDraw);
 
     // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
@@ -556,7 +604,7 @@ int main() {
     contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
     contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen2Editor, "\"A\", \"Choose\"");
+    contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb, footer);"); // A Select / B Cancel
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
     contains(spriteRuntime, "sprites/items/");
@@ -568,10 +616,10 @@ int main() {
     // Gen I is included in the shared move text formatting requirements:
     // all four native picker paths consume the identical separator formatter.
     const auto fixedMoveRows = read("include/UI/MovePickerRowUI.h");
-    contains(gen1Move, "MovePickerRowUI::draw(fb");
-    contains(gen2Move, "MovePickerRowUI::draw(fb");
-    contains(gen3Picker, "MovePickerRowUI::draw(fb");
-    contains(surface, "MovePickerRowUI::draw(fb");
+    contains(gen1Move, "SharedMovesPanel::drawChooserRow(fb");
+    contains(gen2Move, "SharedMovesPanel::drawChooserRow(fb");
+    contains(gen3Picker, "SharedMovesPanel::drawChooserRow(fb");
+    contains(surface, "SharedMovesPanel::drawChooserRow(fb");
     contains(fixedMoveRows, "Presentation::numberedName(move)");
     contains(fixedMoveRows, "x+308");
     contains(fixedMoveRows, "x+423");
@@ -617,7 +665,8 @@ int main() {
 
     // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
     contains(session, "PokemonEditorExitGuard::requiresConfirmation");
-    contains(surface, "if (state.session.confirmExit)");
+    contains(surface, "if (A::confirmExit(screen, state)) {");
+    contains(surface, "return gen4(state).session.confirmExit;");
     contains(surface, "HidNpadButton_Y");
     contains(surface, "Dialogs::drawDialogFrame");
     contains(surface, "\"Unsaved changes\"");
@@ -654,8 +703,9 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "A: Edit Quantity  |  Y: Remove...");
-    contains(baseUi, "X: Add Item");
+    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
+    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");

@@ -1,0 +1,84 @@
+name: PokeBank NX App QA Contracts
+
+# Thread 4 independent application QA: source-immutability and export-safety contracts across every
+# export path (Gen I/II/III Bag and Pokemon, Gen IV, Gen V PK5 and Bag), under GCC and Clang with
+# ASan/UBSan, the Gen I-V acceptance matrix (docs/qa/GEN1_5_MATRIX.md), plus the NRO audit tooling
+# regression. Known open defects are reproduced separately by
+# `make qa-known-failures` (see docs/qa/FINDINGS.md) and are never part of this gate.
+
+on:
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'src/Integration/**'
+      - 'src/Pokemon/**'
+      - 'src/Encryption/**'
+      - 'src/Legacy/**'
+      - 'src/Utils/**'
+      - 'src/UI/**'
+      - 'runtime/return_host/source/**'
+      - 'tests/test_qa_*'
+      - 'tests/fuzz_synthetic_saves.h'
+      - 'tests/fixtures/**'
+      - 'tests/test_verify_nro_romfs.py'
+      - 'tools/qa/**'
+      - 'tools/verify_nro_romfs.py'
+      - 'Makefile.host'
+      - 'Makefile.host.qa'
+      - '.github/workflows/app-qa-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-app-qa-contracts-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Export contracts (${{ matrix.compiler }}, plain + ASan/UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    env:
+      APPLICATION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ASAN_OPTIONS: detect_leaks=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APPLICATION_SHA }}
+          submodules: recursive
+      - name: Record exact identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPLICATION_SHA"
+          echo "APPLICATION_SHA=$APPLICATION_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+      - name: Install clang sanitizer runtimes
+        if: matrix.compiler == 'clang++'
+        run: sudo apt-get install -y libclang-rt-dev || sudo apt-get install -y "libclang-rt-$(clang++ --version | sed -n 's/.*version \([0-9]*\).*/\1/p' | head -1)-dev"
+      - name: Source immutability and export safety (C1-C5)
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -j"$(nproc)" CXX=${{ matrix.compiler }} qa-contracts
+      - name: Gen I-V acceptance matrix (20 versions, real production paths)
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -j"$(nproc)" CXX=${{ matrix.compiler }} qa-matrix
+          cat build-host/qa-*/GEN1_5_MATRIX.generated.md >> "$GITHUB_STEP_SUMMARY"
+
+  tools:
+    name: NRO audit tooling regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - run: make -f Makefile.host qa-tools-test
+      - name: Gen I-V cross-generation UI contracts (enforced contracts fail; XFAIL ones are reported)
+        run: python3 tests/test_qa_cross_gen_contract.py --list

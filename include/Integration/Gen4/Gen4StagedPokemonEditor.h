@@ -109,6 +109,10 @@ private:
 
     [[nodiscard]] std::optional<size_t> boxRecordOffset(
         const Gen4ReadOnlySave& parsed, size_t box, size_t slot) const noexcept;
+    // True when the source held a valid empty record at this box slot, at the same offset in the
+    // same selected Storage copy as the staged parse.
+    [[nodiscard]] bool originalEmptyRecordAt(const Gen4ReadOnlySave& stagedParse, size_t box,
+                                             size_t slot, size_t offset) const;
     [[nodiscard]] std::optional<size_t> partyRecordOffset(
         const Gen4ReadOnlySave& parsed, size_t slot) const noexcept;
     [[nodiscard]] std::optional<Gen4ReadOnlySave> reparse(

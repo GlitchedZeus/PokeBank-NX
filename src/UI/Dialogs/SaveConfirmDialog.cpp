@@ -4,6 +4,8 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorChrome.h"
 #include "Globals.h"
 
 namespace UI {
@@ -15,9 +17,46 @@ namespace Dialogs {
             const size_t slash = path.find_last_of('/');
             return (slash == std::string::npos) ? path : path.substr(slash + 1);
         }
+
+        void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+
+        // Gen I-V footer: names exactly what each visible button does (same ids and semantics).
+        PokeBank::UIModel::SharedEditorPresentation::Footer classicSaveConfirmFooter(
+            const TrainerViewScreen& screen) {
+            PokeBank::UIModel::SharedEditorPresentation::Footer footer;
+            if (screen.exitingWithUnsavedChanges && screen.itemsShortcutActive) {
+                footer.push("B", "Keep Editing");
+                if (!screen.sourceReadOnly()) {
+                    footer.push("Y", "Discard & Home");
+                    footer.push("A", "Save Working Copy & Home");
+                } else {
+                    footer.push("A", "Discard & Home");
+                }
+            } else if (screen.exitingWithUnsavedChanges) {
+                footer.push("B", "Keep Editing");
+                footer.push("A", "Discard & Exit");
+            } else {
+                footer.push("B", "Cancel");
+                footer.push("A", "Save Changes");
+            }
+            return footer;
+        }
     }
 
+    // Gen I-V: the dialog owns the frame (the covered screen footer stops being tappable,
+    // the Gen2WorkspaceLayers rule) and draws its own footer. Gen VI+ keeps its original
+    // presentation: the body below is unchanged and draws no footer for them.
     void drawSaveConfirmDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
+        paintSaveConfirmContents(screen, fb);
+        if (classicSessionDialog)
+            SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));
+    }
+
+    namespace {
+    void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         constexpr int w = 560;
 
         // Exiting with unsaved changes is a different question ("throw these away?"), not a
@@ -149,6 +188,7 @@ namespace Dialogs {
         drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B", "Cancel", 90);
         drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", 91);
     }
+    } // namespace
 
 }
 }

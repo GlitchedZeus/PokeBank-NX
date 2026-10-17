@@ -61,13 +61,15 @@ int main() {
         assert(descriptor->fieldState(Shared::FieldIdentity::Language) == Exact::FieldState::Editable);
         assert(descriptor->fieldState(Shared::FieldIdentity::Ball) == Exact::FieldState::Editable);
 
-        // First Gen III candidate freezes every PID / trainer-id correlated field.
-        assert(descriptor->fieldState(Shared::FieldIdentity::Nature) == Exact::FieldState::ReadOnly);
-        assert(descriptor->fieldState(Shared::FieldIdentity::Gender) == Exact::FieldState::ReadOnly);
-        assert(descriptor->fieldState(Shared::FieldIdentity::Shiny) == Exact::FieldState::ReadOnly);
-        assert(descriptor->fieldState(Shared::FieldIdentity::Ability) == Exact::FieldState::ReadOnly);
+        // Gen IV parity: PID-derived traits (and the Unown letter) are editable through the staged
+        // PID re-roll; the PID itself is never typed in. Moves / PP / PP Ups are editable.
+        for (const auto field : {Shared::FieldIdentity::Nature, Shared::FieldIdentity::Gender,
+                                 Shared::FieldIdentity::Shiny, Shared::FieldIdentity::Ability,
+                                 Shared::FieldIdentity::Form, Shared::FieldIdentity::TrainerId,
+                                 Shared::FieldIdentity::Move, Shared::FieldIdentity::MovePP,
+                                 Shared::FieldIdentity::MovePPUps})
+            assert(descriptor->fieldState(field) == Exact::FieldState::Editable);
         assert(descriptor->fieldState(Shared::FieldIdentity::PersonalityId) == Exact::FieldState::ReadOnly);
-        assert(descriptor->fieldState(Shared::FieldIdentity::TrainerId) == Exact::FieldState::ReadOnly);
         assert(descriptor->fieldState(Shared::FieldIdentity::SecretId) == Exact::FieldState::ReadOnly);
         assert(descriptor->fieldState(Shared::FieldIdentity::OriginGame) == Exact::FieldState::ReadOnly);
 
@@ -101,7 +103,7 @@ int main() {
         }
 
         assert(descriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
-        assert(!descriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
+        assert(descriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature)); // PID-coordinated staged edit
         assert(!descriptor->source.canWriteOriginalSource());
         assert(!descriptor->source.sourcePolicyWouldAllowDirectEdit());
     }

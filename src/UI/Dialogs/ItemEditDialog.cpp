@@ -6,6 +6,8 @@
 #include "UI/Dialogs/EditControls.h"   // shared step buttons + A/B choice buttons
 #include "UI/ScreenChrome.h"           // drawGlyphButton (remove-confirm buttons)
 #include "UI/TrainerViewScreen.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"
@@ -19,6 +21,11 @@ using namespace Utils;
 namespace UI {
 namespace Dialogs {
     void drawItemEditDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+        // Gen I-V: the dialog owns the touch layer and draws its own footer. Gen VI+ keeps its
+        // original presentation.
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
         constexpr int w = 560, h = 360;
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
@@ -76,12 +83,18 @@ namespace Dialogs {
         drawEditChoiceButton(screen, fb, x + 24,             cby, cbw, cbh, "B", "Cancel",  0);
         drawEditChoiceButton(screen, fb, x + 24 + cbw + gap, cby, cbw, cbh, "Y", "Remove",  2);
         drawEditChoiceButton(screen, fb, x + w - 24 - cbw,   cby, cbw, cbh, "A", "Confirm", 1);
+        if (classicSessionDialog)
+            drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Remove"}, {"A", "Confirm"}});
     }
 
     // Confirm before deleting the selected item from the Items list. Mirrors the storage
     // release confirm: red frame, B = Cancel (id 0), A = Remove (id 1). The delete itself runs in
     // TrainerViewScreen's itemRemoveConfirmActive handler.
     void drawItemRemoveConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+        // Gen I-V: own the touch layer and draw this dialog's footer. Gen VI+ keeps its presentation.
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
         const bool g3Items = (screen.trainer.getGameGroup() == Enums::GameVersion::FRLG);
         std::string itemName = "this item";
         if (screen.selectedCategory >= 0 && screen.selectedCategory < static_cast<int>(screen.trainer.items.size())) {
@@ -106,8 +119,12 @@ namespace Dialogs {
         const int cancelX = remX - bw - 16;    // left  = Cancel (id 0 -> B)
         drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
         screen.touchButtons.push_back({0, cancelX, by, bw, bh});
-        drawGlyphButton(fb, remX,    by, bw, bh, "A", "Remove", Colors::Red, Colors::White);
+        // Gen I-V: Y removes (A and B cancel); the button shows and taps as Y.
+        drawGlyphButton(fb, remX,    by, bw, bh, classicSessionDialog ? "Y" : "A", "Remove",
+                        Colors::Red, Colors::White);
         screen.touchButtons.push_back({1, remX, by, bw, bh});
+        if (classicSessionDialog)
+            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter("Y", "Remove"));
     }
 }
 }

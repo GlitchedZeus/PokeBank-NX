@@ -204,7 +204,8 @@ namespace Pokemon {
         }
     }
 
-    void Pokemon3FRLG::rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit) noexcept {
+    void Pokemon3FRLG::rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit,
+                                 int letterOverride) noexcept {
         const uint32_t tid = id32();
         const uint16_t tsv = static_cast<uint16_t>((tid & 0xFFFF) ^ (tid >> 16));
         const uint8_t  gr  = getPersonalInfo(speciesID(), form()).genderRatio;
@@ -220,7 +221,8 @@ namespace Pokemon {
         // wanted letter, so every candidate tested is a letter match and the search costs what it did
         // before. The other 24 bits still come from the walk, so nature/gender/shiny stay uniform.
         const bool isUnown = (speciesID() == 201);
-        const int  wantLetter = isUnown ? static_cast<int>(form()) : -1;
+        const int  wantLetter = isUnown
+            ? (letterOverride >= 0 && letterOverride < 28 ? letterOverride : static_cast<int>(form())) : -1;
         uint32_t letterPatterns[10] = {};   // 8-bit values v with v % 28 == wantLetter (at most 10)
         int letterPatternCount = 0;
         if (isUnown) {
@@ -260,6 +262,16 @@ namespace Pokemon {
             return;
         }
         // no PID satisfied the constraints within the budget -> leave the mon unchanged
+    }
+
+    bool Pokemon3FRLG::setUnownLetter(uint8_t letter, uint32_t trainerID32) noexcept {
+        if (speciesID() != 201 || letter >= 28) return false;
+        if (form() == letter) return true;
+        // Unown is genderless and has one ability; nature and shininess are the traits to keep.
+        const int shiny = isShiny(trainerID32, "") ? 1 : 0;
+        const uint32_t before = pid();
+        rerollPID(shiny, -1, static_cast<int>(before % 25), -1, letter);
+        return form() == letter;
     }
 
     void Pokemon3FRLG::rerollPreservingShiny(int wantGender, int wantNature, int wantAbilityBit) noexcept {

@@ -1,5 +1,8 @@
+#include "UI/SharedEditorChrome.h"
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
+#include "Integration/Gen1/Gen1ExportTransaction.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
@@ -533,24 +536,6 @@ std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     return out;
 }
 
-bool pathExists(const std::string& path) noexcept {
-    struct stat st{};
-    return ::stat(path.c_str(), &st) == 0;
-}
-
-bool writeBytes(const std::string& path, std::span<const uint8_t> bytes) {
-    FILE* out = std::fopen(path.c_str(), "wb");
-    if (!out) return false;
-    const bool ok = std::fwrite(bytes.data(), 1, bytes.size(), out) == bytes.size();
-    const bool closeOk = std::fclose(out) == 0;
-    return ok && closeOk;
-}
-
-bool writeText(const std::string& path, const std::string& text) {
-    return writeBytes(path, std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(text.data()), text.size()));
-}
-
 std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
     error.clear();
     auto* trainer = rbyTrainer(screen);
@@ -564,60 +549,31 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         return {};
     }
 
-    std::vector<uint8_t> inventoryCandidate;
-    if (auto* inventory = trainer->stagedInventory(); inventory && inventory->hasPendingChanges()) {
-        inventoryCandidate = inventory->finalize(error);
-        if (inventoryCandidate.empty()) return {};
-    }
-    const auto edited = pokemon->finalizedBytes(error, inventoryCandidate);
-    if (edited.empty()) {
-        if (error.empty()) error = "Generation I staged export finalization failed";
-        return {};
-    }
-
     const std::string root = PokeBank::Paths::gen1ExportsRoot();
     if (!PokeBank::Paths::ensureGen1ExportsRoot(&error)) return {};
     const std::string timestamp = Utils::getTimestamp();
-    std::string exportDir = PokeBank::Paths::gen1ExportDirectory(screen.sourceGameId, timestamp);
+    const std::string exportDir = PokeBank::Paths::gen1ExportDirectory(screen.sourceGameId, timestamp);
     if (exportDir.empty()) {
         error = "Could not construct safe Generation I export path";
         return {};
     }
-    const std::string baseName = exportDir.substr(root.size() + 1);
-    for (int suffix = 2; pathExists(exportDir) && suffix < 1000; ++suffix)
-        exportDir = root + "/" + baseName + "-" + std::to_string(suffix);
-    if (pathExists(exportDir) || ::mkdir(exportDir.c_str(), 0777) != 0) {
-        error = "Could not create unique Generation I export directory";
-        return {};
-    }
 
-    if (!writeBytes(exportDir + "/original_backup.srm", pokemon->originalBytes())) {
-        error = "Could not write automatic original Generation I backup";
+    // Same verified transaction as the live editor: no unverified direct file writes.
+    PokeVault::Integration::Gen1::Gen1ExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = exportDir.substr(root.size() + 1);
+    request.sourcePath = screen.backupDir;
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#endif
+    const auto result = PokeVault::Integration::Gen1::publishVerifiedGen1Export(
+        *pokemon, request, trainer->stagedInventory());
+    if (!result.success) {
+        error = result.error.empty() ? "Verified Generation I export failed" : result.error;
         return {};
     }
-    if (!writeBytes(exportDir + "/edited.srm", edited)) {
-        error = "Could not write staged Generation I edited save";
-        return {};
-    }
-
-    std::string manifest;
-    manifest += "PokeBank NX Generation I staged boxed-Pokemon export\n";
-    manifest += "GAME_ID=" + screen.sourceGameId + "\n";
-    manifest += "SOURCE_PATH=" + screen.backupDir + "\n";
-    manifest += "SOURCE_KIND=RetroArchLegacy_READ_ONLY\n";
-    manifest += "ORIGINAL_BACKUP=original_backup.srm\n";
-    manifest += "EDITED_SAVE=edited.srm\n";
-    manifest += "LIVE_RETROARCH_WRITE=DISABLED\n";
-    manifest += "LIVE_INSTALLED_GAME_WRITE=DISABLED\n";
-    manifest += "PARTY_EDIT=DEFERRED\n";
-    manifest += "LAYOUT=International_RBY_only\n";
-    manifest += "PENDING_CHANGES:\n";
-    for (const auto& line : pendingLines(screen)) manifest += "- " + line + "\n";
-    if (!writeText(exportDir + "/EDIT_MANIFEST.txt", manifest)) {
-        error = "Edited save was written, but provenance manifest creation failed";
-        return {};
-    }
-    return exportDir;
+    return result.directory;
 }
 
 void discardAll(TrainerViewScreen& screen) {
@@ -788,8 +744,12 @@ void drawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
         drawRow(fb, x + 108, rowY, w - 216, std::to_string(value), text, value == state.pickerValue);
         rowY += 50;
     }
-    drawNavBar(fb, {{"Up/Down", "±1"}, {"Left/Right", "±10"},
-                    {"A", "Select"}, {"B", "Cancel"}});
+    PokeBank::UIModel::SharedEditorPresentation::Footer footer;
+    footer.push("Up/Down", "±1");
+    footer.push("Left/Right", "±10");
+    for (const auto& hint : PokeBank::UIModel::SharedEditorPresentation::pickerFooter({false, false}))
+        footer.push(hint.glyph, hint.label); // A Select, B Cancel
+    UI::SharedEditorChrome::drawFooter(fb, footer);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -808,7 +768,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
             {"Edit", "Summary / Moves / DVs / Stat Exp / Trainer"},
             {"Clone", "Choose a destination box; uses its first empty slot"},
             {"Remove", "Stages synchronized Gen I box compaction"},
-            {"Legality & Provenance", "Format validation; full encounter legality not claimed"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
             {"Cancel", "No mutation"},
         };
@@ -816,7 +776,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         rows = {
             {"Add Pokemon", "Draft first; no mutation until explicit Stage Add"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
-            {"Legality & Provenance", "International R/B/Y editor capability"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "International R/B/Y editor capability"},
             {"Cancel", "No mutation"},
         };
     }
@@ -827,7 +787,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     }
     fb.drawText(x + 32, y + h - 38, "No live RetroArch or installed-game writes",
                 Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec{true, false});
 }
 
 void drawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -998,7 +958,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto* trainer = rbyTrainer(screen);
     auto* e = editor(screen);
-    fb.drawText(x + 28, y + 20, "Generation I Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 20, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     fb.drawText(x + 32, y + 92, "Source game", Colors::TextDim);
     fb.drawText(x + 300, y + 92, screen.sourceGameId, Colors::Text);
     fb.drawText(x + 32, y + 132, "Region/layout", Colors::TextDim);
@@ -1009,7 +969,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     fb.drawText(x + 300, y + 212, "DEFERRED", Colors::Text);
     fb.drawText(x + 32, y + 252, "Format validation", Colors::TextDim);
     fb.drawText(x + 300, y + 252, "Strict reparse + R/B/Y identity + checksum on export", Colors::Text);
-    fb.drawText(x + 32, y + 292, "Encounter legality", Colors::TextDim);
+    fb.drawText(x + 32, y + 292, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim);
     fb.drawText(x + 300, y + 292, "NOT CLAIMED by this editor", Colors::Accent);
     fb.drawText(x + 32, y + 332, "Original bytes", Colors::TextDim);
     fb.drawText(x + 300, y + 332, e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable", Colors::Text);

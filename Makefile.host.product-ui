@@ -48,3 +48,59 @@ $(HOST_BUILD)/test_quick_games_drawer_motion: tests/test_quick_games_drawer_moti
 $(HOST_BUILD)/test_quick_games_drawer_motion_sanitize: tests/test_quick_games_drawer_motion.cpp include/UI/QuickGamesDrawerMotion.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_quick_games_drawer_motion.cpp -o $@
+
+# P0 #320: Product Home quit guard + opt-in input trace.
+HOME_INPUT_GUARD_TEST := $(HOST_BUILD)/test_home_input_guard
+HOME_INPUT_GUARD_SANITIZE := $(HOST_BUILD)/test_home_input_guard_sanitize
+HOME_INPUT_GUARD_HEADERS := include/UI/HomeQuitConfirm.h include/UI/InputTrace.h
+HOST_TESTS += $(HOME_INPUT_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(HOME_INPUT_GUARD_SANITIZE)
+host-test: $(HOME_INPUT_GUARD_TEST)
+host-sanitize: $(HOME_INPUT_GUARD_SANITIZE)
+
+$(HOME_INPUT_GUARD_TEST): tests/test_home_input_guard.cpp $(HOME_INPUT_GUARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(HOME_INPUT_GUARD_SANITIZE): tests/test_home_input_guard.cpp $(HOME_INPUT_GUARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Round 2 phase 7: emulator-save backups (original source read-only, app-owned export records only).
+EMU_BACKUP_TEST := $(HOST_BUILD)/test_emulator_backup_access
+EMU_BACKUP_SANITIZE := $(HOST_BUILD)/test_emulator_backup_access_sanitize
+EMU_BACKUP_SOURCES := tests/test_emulator_backup_access.cpp \
+	src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp
+EMU_BACKUP_INPUTS := $(EMU_BACKUP_SOURCES) include/UI/SourceBackupClassification.h \
+	include/Integration/Common/VerifiedStagedExport.h
+HOST_TESTS += $(EMU_BACKUP_TEST)
+HOST_SANITIZE_TESTS += $(EMU_BACKUP_SANITIZE)
+host-test: $(EMU_BACKUP_TEST)
+host-sanitize: $(EMU_BACKUP_SANITIZE)
+
+$(EMU_BACKUP_TEST): $(EMU_BACKUP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(EMU_BACKUP_SOURCES) -o $@
+
+$(EMU_BACKUP_SANITIZE): $(EMU_BACKUP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(EMU_BACKUP_SOURCES) -o $@
+
+# Round 2 phase 13 / L06: party and summary-panel taps open the native Actions sheet (Gen III-V).
+L06_TAP_TEST := $(HOST_BUILD)/test_party_summary_tap_routing
+L06_TAP_SANITIZE := $(HOST_BUILD)/test_party_summary_tap_routing_sanitize
+L06_TAP_INPUTS := tests/test_party_summary_tap_routing.cpp include/UI/Gen4BoxTouchActions.h \
+	include/Integration/Gen5/Gen5BoxTouchNavigation.h src/UI/Gen3SharedPokemonSurface.inc \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+HOST_TESTS += $(L06_TAP_TEST)
+HOST_SANITIZE_TESTS += $(L06_TAP_SANITIZE)
+host-test: $(L06_TAP_TEST)
+host-sanitize: $(L06_TAP_SANITIZE)
+
+$(L06_TAP_TEST): $(L06_TAP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(L06_TAP_SANITIZE): $(L06_TAP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
