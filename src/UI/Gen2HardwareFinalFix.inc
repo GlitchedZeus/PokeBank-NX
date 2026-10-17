@@ -188,7 +188,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
                     r == 0 ? Colors::TextDim : Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     Colors::Text, TextStyle::Caption);
-        const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
+        const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
         fb.drawText(x + 282, yy, stat, Colors::TextSecondary, TextStyle::Caption);
     }
     fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);

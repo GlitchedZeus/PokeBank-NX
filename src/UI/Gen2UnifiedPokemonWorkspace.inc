@@ -429,13 +429,14 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 return true;
             }
             if (focus.row == 9) {
-                // Pending Met Time is editor-only until a legitimate location creates caught
-                // history; recorded history offers only the encounter's allowed times.
-                unifiedStateFor(screen).selector = caught.present
-                    ? PokeBank::UIModel::Gen2FieldSelector::metTime(
-                          caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught))
-                    : PokeBank::UIModel::Gen2FieldSelector::metTime(state.crystalMetTime, false, 0);
-                screen.controllerNavigation.reset();
+                // A cycles Met Time in place (like Pokerus), no popup. Pending Met Time is
+                // editor-only until a legitimate location creates caught history; recorded history
+                // offers only the encounter's allowed times and keeps every other caught bit.
+                namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
+                const uint8_t next = caught.present
+                    ? Selector::nextMetTime(caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught))
+                    : Selector::nextMetTime(state.crystalMetTime, false, 0);
+                applyFieldSelector(screen, state, Selector::Field::MetTime, next);
                 return true;
             }
             if (focus.row == 10) {
@@ -744,7 +745,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
                     Colors::Text, TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     Colors::Text, TextStyle::Caption);
-        const std::string stat = r < 4 ? std::to_string(battle[static_cast<std::size_t>(r)]) : "—";
+        const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
         fb.drawText(x + 282, yy, stat, Colors::TextDim, TextStyle::Caption);
     }
     fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);

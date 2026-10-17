@@ -75,6 +75,22 @@ constexpr Selector metTime(uint8_t current, bool recorded, uint8_t allowedMask) 
     return s;
 }
 
+// Inline Crystal met time: A advances to the next choice metTime() offers (wrapping), skipping
+// times the recorded encounter does not allow, with no popup. Returns `current` when no other
+// choice is selectable. The value is the 2-bit caught-time code (Gen2Native::CrystalCaughtData).
+constexpr uint8_t nextMetTime(uint8_t current, bool recorded, uint8_t allowedMask) noexcept {
+    const Selector s = metTime(current, recorded, allowedMask);
+    int start = -1;
+    for (int i = 0; i < s.count; ++i)
+        if (s.choices[static_cast<std::size_t>(i)].value == current) { start = i; break; }
+    for (int step = 1; step <= s.count; ++step) {
+        const int i = start < 0 ? step - 1 : (start + step) % s.count;
+        const auto& choice = s.choices[static_cast<std::size_t>(i)];
+        if (choice.enabled && (choice.value != current || start < 0)) return choice.value;
+    }
+    return current;
+}
+
 // Crystal OT gender. Recorded caught history is Male/Female; an unrecorded pending value may also
 // be Unknown.
 constexpr Selector otGender(Gen2Native::CrystalOtGenderChoice current, bool recorded) noexcept {
