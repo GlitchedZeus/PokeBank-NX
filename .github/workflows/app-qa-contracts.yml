@@ -82,5 +82,7 @@ jobs:
       - run: git submodule update --init --recursive vendor/PKSM-Core
       - name: NRO audit tooling + hardware round 1 regression gate (the owner's 42 PASS items on 7fea1797)
         run: make -f Makefile.host qa-tools-test
+      - name: Manual-only workflows whose source checks drifted from the tree (report; owners fix)
+        run: python3 tools/qa/manual_workflow_staleness.py | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Gen I-V cross-generation UI contracts (enforced contracts fail; XFAIL ones are reported)
         run: python3 tests/test_qa_cross_gen_contract.py --list
