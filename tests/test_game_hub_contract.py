@@ -790,13 +790,13 @@ for cleared in ("g_touchGlyphAccum.clear();", "g_touchGlyphHits.clear();", "g_na
 modals = source[source.index("        if (overlay != Overlay::None) beginTopTouchLayer();"):]
 modals = modals[:modals.index("\n    }\n}")]
 branches = modals.split("} else if (overlay == Overlay::")
-require(len(branches) == 16 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
-        "all 16 Home modals render in the layered overlay section")
+require(len(branches) == 18 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
+        "all 18 Home modals render in the layered overlay section")
 branches[0] = branches[0][branches[0].index("if (overlay == Overlay::QuitConfirm)") + len("if (overlay == Overlay::"):]
 for branch in branches:
     name = branch[:branch.index(")")].split(" ")[0]
     require("drawNavBar(" in branch or "drawProductHelpOverlay(" in branch or
-            "SharedEditorChrome::drawPickerFooter(" in branch,
+            "SharedEditorChrome::drawPickerFooter(" in branch or "SharedEditorChrome::drawFooter(" in branch,
             "Home modal " + name + " must draw its own footer above the covered Home footer")
 require("{\"B\", \"Quit PokeBank NX (asks first; Y confirms)\"}" in source and
         "Exit PokeBank NX from Product Home" not in source,
@@ -808,3 +808,20 @@ require('if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L
         "The full Games browser footer shows L/R Profile when more than one profile exists")
 classic_lr = source[source.index("            if (users.size() > 1) {\n                if (kDown & HidNpadButton_L) setUser(userIndex - 1);"):]
 require("setUser(userIndex + 1)" in classic_lr[:300], "L/R in the full Games browser switches profile only")
+# Round 2 phase 7: + -> Backups for an emulator game lists app-owned export records by exact
+# SOURCE_PATH (SourceBackupClassification.h); the original emulator save is read-only and the only
+# deletion is one whole export record behind an explicit Y (HomeQuit::decide).
+workspace = body("void SaveSelectScreen::activateGameWorkspace()")
+require("openEmulatorBackups();" in workspace and "External emulator sources stay read-only" not in source,
+        "+ -> Backups opens the emulator backups list instead of a dead-end notice")
+opener = body("void SaveSelectScreen::openEmulatorBackups(")
+require("SB::list(PokeBank::Paths::exportsRoot(), source)" in opener and "instance.path()" in opener and
+        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener,
+        "Emulator backups come only from exact validated / assigned source paths")
+delete_block = source[source.index("if (overlay == Overlay::EmulatorBackupDeleteConfirm) {"):]
+delete_block = delete_block[:delete_block.index("            return;\n        }\n")]
+require("PokeBank::UIModel::HomeQuit::decide(kDown)" in delete_block and "Decision::Quit" in delete_block and
+        "SB::deleteRecord(" in delete_block, "Deleting an export record needs the explicit-Y decision")
+require(source.count("SB::deleteRecord(") == 1, "Export records are deleted only from the Y-confirmed decision")
+require('confirmFooter(\n                                                   "Y", "Delete", "A", "Cancel")' in source,
+        "The export-record delete decision uses the shared confirm footer")
