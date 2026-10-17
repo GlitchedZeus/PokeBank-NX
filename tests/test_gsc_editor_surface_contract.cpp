@@ -230,9 +230,10 @@ int main() {
     // and the encounter's allowed-time mask are unchanged.
     assert(unified.find("Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
-    assert(unified.find("Pending Met Time is editor-only") != std::string::npos);
+    assert(unified.find("Pending Met Time is") != std::string::npos);
     assert(unified.find("crystalAllowedTimeMask") != std::string::npos);
-    assert(unified.find("caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught)") != std::string::npos);
+    // Met Time cycles inline (round 2 phase 11) over the same pending/recorded + allowed-time rules.
+    assert(unified.find("Selector::nextMetTime(caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught))") != std::string::npos);
     assert(picker.find("resolvedMetTime = state.crystalMetTime") != std::string::npos);
     assert(unified.find("passiveViewMoveColumn") != std::string::npos);
     assert(parity.find("passiveViewMoveColumn") != std::string::npos);
