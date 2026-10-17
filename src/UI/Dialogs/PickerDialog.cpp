@@ -133,9 +133,11 @@ namespace Dialogs {
         const auto viewport = PokeBank::UIModel::InventoryPickerLayout::viewport(W, H);
         const int listTop = viewport.y;
         const int visible = viewport.visibleRows;
+        // A held scrollbar thumb owns the viewport: hand the live-drag helper an empty rect so
+        // the rows do not also follow the finger.
         const auto visual = liveVerticalListVisual(
             sel, count, rowH,
-            viewport.x, viewport.y, viewport.w, viewport.h);
+            viewport.x, viewport.y, screen.pickerScrollbar.capturing() ? 0 : viewport.w, viewport.h);
         const int visualSel = visual.index;
         int first = visualSel - visible / 2;
         if (first > count - visible) first = count - visible;
@@ -195,8 +197,8 @@ namespace Dialogs {
         }
         fb.clearClip();
 
-        // Scrollbar follows the same visual row + residual pixels as the content.
-        drawScrollbar(fb, px + pw - 14, viewport.y, viewport.h, count * rowH,
+        // Shared draggable scrollbar; follows the same visual row + residual pixels as the content.
+        drawScrollbar(fb, screen.pickerScrollbar, px + pw - 14, viewport.y, viewport.h, count * rowH,
                       first * rowH - visual.offset);
 
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}});

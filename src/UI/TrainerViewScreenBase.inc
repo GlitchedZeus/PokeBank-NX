@@ -2757,9 +2757,18 @@ namespace UI {
             // Native list uses the same staged-picker contract as Gen I-IV:
             // contact may turn into a swipe, so it cannot retarget the choice
             // before release. A completed same-row tap selects and confirms.
+            // The shared scrollbar runs first: a held thumb or a track tap moves the window and
+            // owns the frame's touch, so no row under the finger can be tapped or swiped.
+            const int pickerRowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);
+            const auto pickerBar = SharedScrollbar::handleTouch(pickerScrollbar, SharedScrollbar::sample(touch),
+                SharedScrollbar::pixels(count * pickerRowH, pickerViewport.h,
+                    std::clamp(pickerSel - page / 2, 0, std::max(0, count - page)) * pickerRowH));
+            if (pickerBar.changed)
+                pickerSel = std::clamp((pickerBar.scroll + pickerRowH / 2) / pickerRowH + page / 2,
+                                       0, count - 1);
             const int ptb = touchedButtonId(touch);
-            if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
-            if (touch.justReleased() && touch.dragged() &&
+            if (!pickerBar.consumed && ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
+            if (!pickerBar.consumed && touch.justReleased() && touch.dragged() &&
                 pickerViewport.contains(touch.startX(), touch.startY()) &&
                 std::abs(touch.deltaY()) >= 24 &&
                 std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -3404,9 +3413,14 @@ namespace UI {
                 if (kDown & HidNpadButton_Down) ++details.legalityScroll;
                 if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);
                 if (kDown & HidNpadButton_R)    details.legalityScroll += 8;
+                const int reportRowH = Modals::ReportScrollViewport::RowHeight;
+                const auto legalityBar = SharedScrollbar::handleTouch(details.legalityScrollbar,
+                    SharedScrollbar::sample(touch), details.legalityScroll * reportRowH);
+                if (legalityBar.changed)
+                    details.legalityScroll = (legalityBar.scroll + reportRowH / 2) / reportRowH;
                 const auto reportViewport =
                     Modals::reportScrollViewport(1280, 720, 820);
-                if (touch.justReleased() && touch.dragged() &&
+                if (!legalityBar.consumed && touch.justReleased() && touch.dragged() &&
                     reportViewport.contains(touch.startX(), touch.startY()) &&
                     std::abs(touch.deltaY()) >= 24 &&
                     std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -3426,9 +3440,14 @@ namespace UI {
                 if (kDown & HidNpadButton_Down) ++details.ribbonScroll;
                 if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);
                 if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;
+                const int reportRowH = Modals::ReportScrollViewport::RowHeight;
+                const auto ribbonBar = SharedScrollbar::handleTouch(details.ribbonScrollbar,
+                    SharedScrollbar::sample(touch), details.ribbonScroll * reportRowH);
+                if (ribbonBar.changed)
+                    details.ribbonScroll = (ribbonBar.scroll + reportRowH / 2) / reportRowH;
                 const auto reportViewport =
                     Modals::reportScrollViewport(1280, 720, 860);
-                if (touch.justReleased() && touch.dragged() &&
+                if (!ribbonBar.consumed && touch.justReleased() && touch.dragged() &&
                     reportViewport.contains(touch.startX(), touch.startY()) &&
                     std::abs(touch.deltaY()) >= 24 &&
                     std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -3459,7 +3478,16 @@ namespace UI {
             // never activates whatever row happens to be under the release point.
             const bool gen2Passive = sourceGameId == "gold_gbc" || sourceGameId == "silver_gbc" ||
                                      sourceGameId == "crystal_gbc";
-            if (touch.justReleased() && touch.dragged()) {
+            // Shared scrollbar on that pane: a held thumb owns the touch and may never release
+            // onto a row. Dragging it is a manual scroll, like a finger drag on the content.
+            const auto leftBar = SharedScrollbar::handleTouch(details.leftScrollbar,
+                SharedScrollbar::sample(touch), details.leftScroll);
+            if (leftBar.changed) {
+                details.leftScroll = leftBar.scroll;
+                details.leftScrollManual = true;
+            }
+            if (leftBar.consumed) tb = -1;
+            if (!leftBar.consumed && touch.justReleased() && touch.dragged()) {
                 const bool inGen2Data = gen2Passive && touch.startX() >= 796 && touch.startX() < 1016 &&
                                         touch.startY() >= 393 && touch.startY() < 609;
                 const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
