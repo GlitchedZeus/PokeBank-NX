@@ -349,8 +349,12 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);
     int touchTap = screen.touchedButtonId(touch);
     if (!pickerBarConsumed && !speciesTouchOwned && touchTap >= firstTouchId && touchTap < endTouchId) {
-        if (picker.model.kind == Gen2Picker::Kind::Species)
+        if (picker.model.kind == Gen2Picker::Kind::Species) {
+            // A row tap commits that species: close the search grid so the synthesized A below
+            // is the chooser's Select, not a key press on the grid (keys phase runs next).
+            picker.speciesChooser.search.closeGrid();
             picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;
+        }
         else
             picker.model.index = std::clamp(touchTap - 2000, 0, std::max(0, pickerCount - 1));
         down |= HidNpadButton_A;
@@ -398,14 +402,16 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         const int listCount = picker.model.kind == Gen2Picker::Kind::Species ? 251
                             : picker.model.kind == Gen2Picker::Kind::Move ? 252
                             : picker.model.locationCount();
+        const uint16_t pagedFrom = picker.model.speciesChoice();
         if (keys.any() && listCount > 0) {
             picker.scroll.stop();
-            if (picker.model.kind == Gen2Picker::Kind::Species)   // pages over the filtered list
+            picker.model.index = PokeBank::UIModel::SharedPickerPaging::pagedRow(
+                picker.model.index, listCount, keys);
+            // R2-SEARCH: with a species filter typed, the same keys page over the filtered list
+            // instead (computed from the choice before the whole-dex step above).
+            if (picker.model.kind == Gen2Picker::Kind::Species && picker.speciesChooser.filtered())
                 picker.model.index = static_cast<int>(SharedSpeciesPicker::paged(
-                    picker.speciesChooser, picker.model.speciesChoice(), keys)) - 1;
-            else
-                picker.model.index = PokeBank::UIModel::SharedPickerPaging::pagedRow(
-                    picker.model.index, listCount, keys);
+                    picker.speciesChooser, pagedFrom, keys)) - 1;
         }
         if (picker.model.kind == Gen2Picker::Kind::Species && (down & HidNpadButton_Y))
             picker.model.previewShiny = !picker.model.previewShiny;

@@ -781,7 +781,12 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         // Keep the existing preview steady while a contact may become a swipe.
         // The release-confirmed row target is the only direct-tap selection.
         int species = selectedId(3000, 152, tapped);
-        if (species >= 1) { state.pickerValue = species; down |= HidNpadButton_A; }
+        if (species >= 1) {
+            // A row tap commits that species: close the search grid so the synthesized A is
+            // the chooser's Select, not a key press on the grid (keys phase runs next).
+            state.speciesChooser.search.closeGrid();
+            state.pickerValue = species; down |= HidNpadButton_A;
+        }
         const int dy = touch.deltaY();
         if (touch.justReleased() && touch.dragged() &&
             SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
