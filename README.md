@@ -325,7 +325,8 @@ Please avoid posting personal/private save files publicly. Use a disposable test
 ## Project documentation
 
 - [**Complete Gen I–V hardware acceptance matrix**](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) — 106 starter checks, all 20 games, expand to every reachable action.
-- [**October 16 owner-tested NRO checklist**](https://github.com/GlitchedZeus/PokeBank-NX/blob/8587f20bbfe9c984f6b2165da38c8da5bb34926e/docs/hardware/RETEST_7fea1797.md) — exact candidate and input diagnostics; 42/54 results were reported separately by the owner.
+- [**Owner's 42/54 hardware retest results and round-two backlog**](docs/hardware/OWNER_RETEST_7fea1797_20261017.md) — confirmed passes, actual problem reports, unverified items and new feature requests.
+- [**Exact NRO hardware retest checklist and input diagnostics**](https://github.com/GlitchedZeus/PokeBank-NX/blob/8587f20bbfe9c984f6b2165da38c8da5bb34926e/docs/hardware/RETEST_7fea1797.md) — original candidate instructions.
 - [**Three-branch consolidation plan**](docs/THREE_BRANCH_CONSOLIDATION_PLAN.md) — accepted `main`, future Gen VI+ branch and legality integration branch.
 - [Current Engineering Status](CURRENT_STATUS.md), [Project Status](PROJECT_STATUS.md) and [Build / NRO Artifact Record](docs/BUILD_RECORD.md).
 - [Game Support Matrix](docs/GAME_SUPPORT_MATRIX.md), [v1.0 Roadmap](docs/V1_ROADMAP.md) and [UI Ownership](docs/UI_OWNERSHIP_STATUS.md).
