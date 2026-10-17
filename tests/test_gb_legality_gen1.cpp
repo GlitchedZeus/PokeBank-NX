@@ -67,7 +67,17 @@ const Case kCases[] = {
     {"dragonite-catch-rate", "4200bf3c001a022d23562b523039041eb0000000000000000000009abc000000003c00bf00b000830072008b", "8092875050505050505050", "8c8e8d5050505050505050", true},
     {"pikachu-gen2-tm-thunderpunch", "5400301400171700542d56093039001f40000000000000000000009abc00000000140030001e0015002d001d", "8092875050505050505050", "8c8e8d5050505050505050", true},
     {"pikachu-gen2-tm-no-item", "54003014001717be542d56093039001f40000000000000000000009abc00000000140030001e0015002d001d", "8092875050505050505050", "8c8e8d5050505050505050", false},
-    {"level-exp-mismatch", "a5000f03000000ff212700003039001388000000000000000000009abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
+    // Level 3 with 5000 EXP (the level-17 total): EXP ahead of the stored level is what a Pokemon
+    // still in the Day Care looks like (pokered IncrementDayCareMonExp), so Incomplete, not Invalid.
+    {"level-exp-daycare-stale", "a5000f03000000ff212700003039001388000000000000000000009abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
+    // Level 30 with 27 EXP: nothing lowers EXP below the stored level's threshold. PKHeX derives
+    // the level from EXP and reads this as a valid level-1 Rattata.
+    {"level-exp-ahead", "a5000f03000000ff21270000303900001b000000000000000000009abc000000001e000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
+    // Level 100 with one EXP over the level-100 total (1,000,000 for Rattata): within the Day
+    // Care's reach ($50FFFF), so Incomplete; PKHeX: Level:LevelEXPTooHigh.
+    {"level-100-exp-daycare", "a5000f03000000ff212700003039" "0f4241" "00000000000000000000" "9abc0000000064000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", false},
+    // Level 100 with $510000 EXP: past the Day Care's reach, so Invalid for both.
+    {"level-100-exp-beyond-daycare", "a5000f03000000ff212700003039" "510000" "00000000000000000000" "9abc0000000064000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", false},
     {"rattata-statexp-battle", "a5000f03000000ff21270000303900001b0205050a0003004dea609abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
     {"rattata-statexp-vitamins", "a5000f03000000ff21270000303900001b640000000a00000000009abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
     {"rattata-statexp-one-zero", "a5000f03000000ff21270000303900001b0205050a0000004dea609abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", false},
@@ -176,9 +186,13 @@ bool uncertainCase(const std::string& name) {
     // Jigglypuff (HP 115, others below 72) split six ways under Exp. All adds 1 HP and 0
     // elsewhere per battle.
     // defect-statexp-jp-2542 is the same zero-next-to-battle-gains case on a Japanese record.
+    // level-exp-daycare-stale and level-100-exp-daycare: a Pokemon still in the Day Care carries
+    // EXP ahead of its stored level (pokered engine/overworld/daycare_exp.asm adds one EXP per step
+    // with no level check and holds the top byte at $50); no party or box record does.
     return name == "mew-unrecorded-event" || name == "mew-wrong-dvs" ||
            name == "rattata-statexp-one-zero" || name == "rattata-statexp-eleven-vitamins" ||
-           name == "defect-statexp-jp-2542";
+           name == "defect-statexp-jp-2542" || name == "level-exp-daycare-stale" ||
+           name == "level-100-exp-daycare";
 }
 }  // namespace
 
@@ -205,8 +219,8 @@ int main() {
                 ++incomplete;
                 continue;
             }
-            // Deliberately stricter than PKHeX: level must match EXP.
-            const bool expectValid = name == "level-exp-mismatch" ? false : c.pkhexValid;
+            // Deliberately stricter than PKHeX: the stored level cannot be ahead of its EXP.
+            const bool expectValid = name == "level-exp-ahead" ? false : c.pkhexValid;
             if ((verdict == Legality::Verdict::NoProblemsFound) != expectValid ||
                 verdict == Legality::Verdict::Incomplete) {
                 std::cerr << "MISMATCH " << c.name << " [" << label << "]: expected "

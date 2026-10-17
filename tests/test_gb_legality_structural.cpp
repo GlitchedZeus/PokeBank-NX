@@ -57,6 +57,14 @@ bool hasText(const std::vector<GB::Problem>& problems, const std::string& needle
     return false;
 }
 
+// A non-definitive problem (a Warning on the production path).
+bool hasWarning(const std::vector<GB::Problem>& problems, const std::string& needle) {
+    for (const auto& p : problems)
+        if (p.text.find(needle) != std::string::npos && !p.definitive)
+            return true;
+    return false;
+}
+
 bool hasIssue(const Legality::Report& r, Legality::Severity s, const std::string& needle) {
     for (const auto& issue : r.issues)
         if (issue.severity == s && issue.text.find(needle) != std::string::npos)
@@ -179,11 +187,23 @@ void levelExpGrid() {
         check(Pokemon::getExpForLevel(100, s.nxGrowth) == max, "level-100 total of species " + std::to_string(s.national));
         for (int level : levels) {
             const uint32_t at = gameExp(s.growth, level), next = gameExp(s.growth, std::min(100, level + 1));
+            // kDayCareReach: the Day Care holds the top EXP byte at $50 (pokered
+            // IncrementDayCareMonExp, pokecrystal DayCareStep), so $50FFFF is the most a
+            // Pokemon still in the Day Care can carry.
+            constexpr uint32_t kDayCareReach = 0x50FFFF;
             const uint32_t exps[] = {0, at > 0 ? at - 1 : 0, at, at + 1, next > 0 ? next - 1 : 0, next, max - 1, max,
-                                     max + 1, max + 1000000};
+                                     max + 1, max + 1000000, kDayCareReach, kDayCareReach + 1, 0xFFFFFF};
             for (uint32_t exp : exps) {
                 const bool above = exp > max;
-                const bool mismatch = !above && gameLevel(s.growth, exp) != level;
+                const int expLevel = gameLevel(s.growth, exp);
+                // The stored level ahead of its EXP: impossible in both games.
+                const bool ahead = !above && expLevel < level;
+                // EXP ahead of the stored level: a Pokemon still in the Day Care.
+                const bool stale = !above && expLevel > level;
+                // EXP above the level-100 total within the Day Care's reach: Gen I adds it at any
+                // stored level, Gen II only while the stored level is below 100.
+                const bool dayCare1 = above && exp <= kDayCareReach;
+                const bool dayCare2 = dayCare1 && level < 100;
                 const std::string name = "species " + std::to_string(s.national) + " level " + std::to_string(level) +
                                          " EXP " + std::to_string(exp);
                 GB::Entity2 e2;
@@ -192,16 +212,28 @@ void levelExpGrid() {
                 e2.exp = exp;
                 e2.nickname = "MON";
                 const auto p2 = GB::formatProblems(e2);
-                check(hasText(p2, "above the level-100 total") == above, name + " PK2 cap");
-                check(hasText(p2, "does not match EXP") == mismatch, name + " PK2 level");
+                check(hasText(p2, "above the level-100 total") == (above && !dayCare2), name + " PK2 cap");
+                check(hasWarning(p2, "above the level-100 total") == dayCare2, name + " PK2 cap (Day Care)");
+                check(hasText(p2, "does not match EXP") == ahead, name + " PK2 level ahead");
+                check(hasWarning(p2, "is below the level the EXP gives") == stale, name + " PK2 stale level");
                 GB::Entity1 e1;
                 e1.species = s.national;
                 e1.level = static_cast<uint8_t>(level);
                 e1.exp = exp;
                 e1.nickname = "MON";
                 const auto p1 = GB::formatProblems(e1);
-                check(hasText(p1, "above the level-100 total") == above, name + " PK1 cap");
-                check(hasText(p1, "does not match EXP") == mismatch, name + " PK1 level");
+                check(hasText(p1, "above the level-100 total") == (above && !dayCare1), name + " PK1 cap");
+                check(hasWarning(p1, "above the level-100 total") == dayCare1, name + " PK1 cap (Day Care)");
+                check(hasText(p1, "does not match EXP") == ahead, name + " PK1 level ahead");
+                check(hasWarning(p1, "is below the level the EXP gives") == stale, name + " PK1 stale level");
+                // Exactly one level/EXP problem, and never both a definitive and a tentative one.
+                int count1 = 0, count2 = 0;
+                for (const auto& p : p1)
+                    count1 += p.area == GB::Area::Stats;
+                for (const auto& p : p2)
+                    count2 += p.area == GB::Area::Stats;
+                check(count1 == (above || ahead || stale ? 1 : 0), name + " PK1 one level/EXP problem");
+                check(count2 == (above || ahead || stale ? 1 : 0), name + " PK2 one level/EXP problem");
             }
         }
     }
@@ -226,7 +258,32 @@ void levelExpGrid() {
     capped.exp += 1;
     check(GB::checkGen2(capped).status == GB::Status::Illegal &&
               hasText(GB::checkGen2(capped).problems, "above the level-100 total"),
-          "level-100 Bulbasaur one EXP above the cap (PKHeX LevelEXPTooHigh)");
+          "level-100 Bulbasaur one EXP above the cap (PKHeX LevelEXPTooHigh; DayCareStep skips level 100)");
+    // The same EXP on a level-99 deposit is what DayCareStep produces: Uncertain, not Illegal.
+    GB::Entity2 deposited = capped;
+    deposited.level = 99;
+    const GB::Result dep = GB::checkGen2(deposited);
+    check(dep.status == GB::Status::Uncertain && hasWarning(dep.problems, "above the level-100 total"),
+          "level-99 Bulbasaur one EXP above the cap (Day Care slot)");
+    deposited.exp = 0x510000;
+    check(GB::checkGen2(deposited).status == GB::Status::Illegal, "level-99 Bulbasaur past the Day Care's reach");
+    // EXP ahead of the stored level, below the cap: a stale Day Care level (Uncertain).
+    GB::Entity2 stale = bulbasaur2({33, 45, 0, 0});
+    stale.level = 5;
+    stale.exp = gameExp(MediumSlow, 30);
+    const GB::Result st = GB::checkGen2(stale);
+    check(st.status == GB::Status::Uncertain && hasWarning(st.problems, "is below the level the EXP gives"),
+          "level-5 Bulbasaur with the level-30 total (Day Care slot)");
+    // Gen I: a level-100 deposit keeps gaining EXP (no level check), so the same record is
+    // Uncertain as a PK1 up to $50FFFF and Illegal past it.
+    GB::Entity1 dep1 = bulbasaur1({33, 45, 0, 0});
+    dep1.level = 100;
+    dep1.exp = gameExp(MediumSlow, 100) + 1;
+    check(GB::checkGen1(dep1).status == GB::Status::Uncertain, "PK1 level 100 one EXP above the cap (Day Care slot)");
+    dep1.exp = 0x50FFFF;
+    check(GB::checkGen1(dep1).status == GB::Status::Uncertain, "PK1 level 100 at the Day Care's reach");
+    dep1.exp = 0x510000;
+    check(GB::checkGen1(dep1).status == GB::Status::Illegal, "PK1 level 100 past the Day Care's reach");
 }
 
 // ---------------------------------------------------------------- 2. a real Red save
@@ -292,13 +349,21 @@ void realRedSave() {
     struct Case {
         uint32_t exp;
         Legality::Verdict expect;
-        const char* invalid;  // the Invalid issue expected, or nullptr
+        Legality::Severity severity;  // of the issue expected
+        const char* text;             // the issue expected, or nullptr
     };
     const Case cases[] = {
-        {max, Legality::Verdict::NoProblemsFound, nullptr},
-        {max + 1, Legality::Verdict::Invalid, "above the level-100 total"},
-        {max + 500000, Legality::Verdict::Invalid, "above the level-100 total"},
-        {max - 1, Legality::Verdict::Invalid, "does not match EXP"},
+        {max, Legality::Verdict::NoProblemsFound, Legality::Severity::Invalid, nullptr},
+        // Above the cap within the Day Care's reach: Incomplete with a Warning (pokered
+        // IncrementDayCareMonExp adds EXP at level 100 too); PKHeX: LevelEXPTooHigh.
+        {max + 1, Legality::Verdict::Incomplete, Legality::Severity::Warning, "above the level-100 total"},
+        {max + 500000, Legality::Verdict::Incomplete, Legality::Severity::Warning, "above the level-100 total"},
+        {0x50FFFF, Legality::Verdict::Incomplete, Legality::Severity::Warning, "above the level-100 total"},
+        // Past the reach: Invalid.
+        {0x510000, Legality::Verdict::Invalid, Legality::Severity::Invalid, "above the level-100 total"},
+        {0xFFFFFF, Legality::Verdict::Invalid, Legality::Severity::Invalid, "above the level-100 total"},
+        // The stored level ahead of its EXP: Invalid.
+        {max - 1, Legality::Verdict::Invalid, Legality::Severity::Invalid, "does not match EXP"},
     };
     for (const Case& c : cases) {
         const std::string name = "Red save, level-100 Bulbasaur, EXP " + std::to_string(c.exp);
@@ -313,10 +378,14 @@ void realRedSave() {
         const Pokemon::Pokemon1ReadOnly pk(record);
         const auto report = Legality::analyze(pk, pk.getGameGroup(), "red_gb");
         check(report.verdict() == c.expect, name + ": verdict");
-        if (c.invalid)
-            check(hasIssue(report, Legality::Severity::Invalid, c.invalid), name + ": " + c.invalid);
+        if (c.text)
+            check(hasIssue(report, c.severity, c.text), name + ": " + c.text);
         else
-            check(!hasIssue(report, Legality::Severity::Invalid, "EXP"), name + ": no EXP problem");
+            check(!hasIssue(report, Legality::Severity::Invalid, "EXP") && !hasIssue(report, Legality::Severity::Warning, "EXP"),
+                  name + ": no EXP problem");
+        if (c.expect == Legality::Verdict::Incomplete)
+            check(!report.hasInvalid() && report.coverage.encounter == Legality::CoverageLevel::Partial,
+                  name + ": Day Care slot is unfinished, not Invalid");
         check(bytes == original, name + ": save bytes unchanged");
         check(std::equal(parsed.save->sourceBytes().begin(), parsed.save->sourceBytes().end(), original.begin()),
               name + ": parsed source bytes unchanged");
@@ -398,6 +467,17 @@ void productionPk2() {
           "native PK2 level 100, one EXP above the cap");
     check(hasIssue(nativePk2(50, 0, {33, 45, 0, 0}), Legality::Severity::Invalid, "does not match EXP"),
           "native PK2 level 50 with 0 EXP");
+    // A Day Care slot's stale level (pokecrystal DayCareStep): Incomplete with a Warning.
+    const auto stale = nativePk2(50, gameExp(MediumSlow, 70), {33, 45, 0, 0});
+    check(stale.verdict() == Legality::Verdict::Incomplete && !stale.hasInvalid() &&
+              hasIssue(stale, Legality::Severity::Warning, "is below the level the EXP gives"),
+          "native PK2 level 50 with the level-70 total: Incomplete");
+    const auto deposited99 = nativePk2(99, max + 1, {33, 45, 0, 0});
+    check(deposited99.verdict() == Legality::Verdict::Incomplete && !deposited99.hasInvalid() &&
+              hasIssue(deposited99, Legality::Severity::Warning, "above the level-100 total"),
+          "native PK2 level 99 one EXP above the cap: Incomplete");
+    check(hasIssue(nativePk2(99, 0x510000, {33, 45, 0, 0}), Legality::Severity::Invalid, "above the level-100 total"),
+          "native PK2 level 99 past the Day Care's reach: Invalid");
     check(hasIssue(nativePk2(5, gameExp(MediumSlow, 5), {33, 45, 33, 0}), Legality::Severity::Invalid,
                    "Duplicate move: Tackle"),
           "native PK2 duplicate Tackle");

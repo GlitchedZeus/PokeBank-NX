@@ -1925,30 +1925,60 @@ std::string describe(const Origin& o) {
     return out;
 }
 
+/// The Day Care's reach. Both generations add one EXP per step to the deposited Pokemon
+/// and hold the top byte of the three-byte total at $50 when it would pass it (pokered
+/// engine/overworld/daycare_exp.asm IncrementDayCareMonExp; pokecrystal
+/// engine/events/happiness_egg.asm DayCareStep with MAX_DAY_CARE_EXP = $500000), so a
+/// Pokemon still in the Day Care never carries more than $50FFFF EXP.
+constexpr uint32_t kDayCareExpMax = 0x50FFFF;
+
 /// Level against EXP. The games keep the stored level at the level the EXP gives: battle
 /// EXP raises it as thresholds are crossed and stops EXP at the level-100 total (pokered
 /// engine/battle/experience.asm, pokecrystal engine/battle/core.asm); Rare Candy sets EXP
 /// to the new level's total; the Day Care sets the level from EXP on withdrawal and caps
 /// (Gen I, pokered scripts/Daycare.asm) or resets (Gen II, pokecrystal RetrieveBreedmon)
-/// the EXP to it. Only a Pokemon still in the Day Care carries a stale level, and that
-/// slot is not a party or box record. PKHeX rejects EXP above the level-100 total
-/// (LevelEXPTooHigh) and derives the level from EXP, so it does not compare the two.
-static std::string levelExpProblem(uint8_t species, uint8_t level, uint32_t exp) {
+/// the EXP to it. The one record the games leave out of step is the Pokemon still in the
+/// Day Care: its EXP grows a step at a time while the stored level stays what it was on
+/// deposit (Gen I has no level check at all; Gen II's DayCareStep skips a level-100
+/// deposit). So EXP ahead of the stored level, including EXP above the level-100 total
+/// within the Day Care's reach, is only suspicious (a Day Care slot exported on its own),
+/// never impossible; a stored level ahead of its EXP is impossible, since nothing lowers
+/// EXP below the stored level's threshold. PKHeX rejects EXP above the level-100 total on
+/// a level-100 Pokemon (LevelVerifier.Verify, LevelEXPTooHigh) and otherwise derives the
+/// level from EXP without comparing the two.
+static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, uint32_t exp) {
     const uint8_t growth = Pokemon::getGrowthRate(species);
     const uint32_t max = Pokemon::getExpForLevel(100, growth);
-    if (exp > max)
-        return "EXP " + std::to_string(exp) + " is above the level-100 total of " + std::to_string(max);
+    if (exp > max) {
+        const std::string text =
+            "EXP " + std::to_string(exp) + " is above the level-100 total of " + std::to_string(max);
+        // A Day Care slot carries it only within the step counter's reach, and in Gen II
+        // only while the stored level let DayCareStep keep adding.
+        const bool dayCare = exp <= kDayCareExpMax && (format == 1 || level < 100);
+        if (!dayCare)
+            return {Area::Stats, text};
+        return {Area::Stats,
+                text + "; only a Pokemon still in the Day Care carries that (Gen I adds EXP there without a "
+                       "level check, Gen II until the stored level is 100)",
+                false};
+    }
     const uint8_t expLevel = Pokemon::getLevelFromExp(exp, growth);
-    if (level != expLevel)
-        return "Level " + std::to_string(level) + " does not match EXP (expected " + std::to_string(expLevel) + ")";
-    return {};
+    if (level == expLevel)
+        return {};
+    if (level > expLevel)
+        return {Area::Stats, "Level " + std::to_string(level) + " does not match EXP (expected " +
+                                 std::to_string(expLevel) + ")"};
+    return {Area::Stats,
+            "Level " + std::to_string(level) + " is below the level the EXP gives (" + std::to_string(expLevel) +
+                "); only a Pokemon still in the Day Care carries a stale level",
+            false};
 }
 
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
     if (e.species != 0 && e.species <= kMaxSpecies1) {
-        if (const std::string level = levelExpProblem(e.species, e.level, e.exp); !level.empty())
-            out.push_back({Area::Stats, level});
+        if (Problem level = levelExpProblem(1, e.species, e.level, e.exp); !level.text.empty())
+            out.push_back(std::move(level));
     }
     if (Problem stats = statExpProblem(e.statExp, false); !stats.text.empty())
         out.push_back(std::move(stats));
@@ -1965,8 +1995,8 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         out.push_back({Area::Misc, pokerus});
     // An unhatched egg's EXP is judged against its encounter (Odd Eggs carry 125).
     if (!e.isEgg && e.species != 0 && e.species <= kMaxSpecies2) {
-        if (const std::string level = levelExpProblem(e.species, e.level, e.exp); !level.empty())
-            out.push_back({Area::Stats, level});
+        if (Problem level = levelExpProblem(2, e.species, e.level, e.exp); !level.text.empty())
+            out.push_back(std::move(level));
     }
     if (e.nickname.empty())
         out.push_back({Area::Trainer, "Nickname is empty"});

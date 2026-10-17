@@ -201,7 +201,31 @@ UNCERTAIN_REASONS = (
      lambda r, ctx: not r.egg and battle_stat_exp_with_zero(r)),
     ("korean-trainer-name", "Korean trainer name has characters outside the Hangul pages",
      lambda r, ctx: r.korean and korean_one_byte_char(r.ot)),
+    # A Pokemon still in the Day Care: its EXP grows a step at a time while the stored level
+    # stays what it was on deposit (pokered engine/overworld/daycare_exp.asm, pokecrystal
+    # engine/events/happiness_egg.asm DayCareStep). PKHeX derives the level from EXP (VALID).
+    ("daycare-stale-level", "is below the level the EXP gives", lambda r, ctx: daycare_stale_level(r, ctx)),
+    # The same slot past the level-100 total, within the step counter's reach ($50FFFF); Gen II
+    # only while the stored level is below 100. PKHeX: Level:LevelEXPTooHigh (INVALID).
+    ("daycare-exp-over-cap", "only a Pokemon still in the Day Care carries that",
+     lambda r, ctx: daycare_exp_over_cap(r, ctx)),
 )
+
+DAY_CARE_EXP_MAX = 0x50FFFF
+
+
+def daycare_stale_level(r, ctx):
+    if r.egg or r.species not in ctx.growth:
+        return False
+    growth = ctx.growth[r.species]
+    return r.exp <= exp_for(growth, 100) and level_for(growth, r.exp) > r.level
+
+
+def daycare_exp_over_cap(r, ctx):
+    if r.egg or r.species not in ctx.growth:
+        return False
+    top = exp_for(ctx.growth[r.species], 100)
+    return top < r.exp <= DAY_CARE_EXP_MAX and (r.format == 1 or r.level < 100)
 
 
 def stat_exp(r):
@@ -239,7 +263,9 @@ def level_exp(r, ctx, pk, pb):
         return False
     expected = level_for(growth, r.exp)
     problems = pokebank_problems(pb[1])
-    if expected == r.level or not problems:
+    # Only the stored level ahead of its EXP is Invalid; EXP ahead of the level is a Day Care
+    # slot (UNCERTAIN_REASONS daycare-stale-level).
+    if expected >= r.level or not problems:
         return False
     for p in problems:
         m = LEVEL_EXP.match(p)
@@ -258,8 +284,9 @@ DELIBERATE = (
     # Japanese Crystal's GS Ball Celebi (Mobile System GB, 2001-2002): PKHeX models the
     # Ilex Forest Celebi for Virtual Console only (Encounters2.CelebiVC).
     ("gs-ball-celebi", "INVALID", "VALID", gs_ball),
-    # The stored level is the level the EXP gives (battle, Rare Candy, Day Care withdrawal in
-    # pokered/pokecrystal); PKHeX derives the level from EXP and does not compare them.
+    # The stored level is never ahead of its EXP (battle, Rare Candy and Day Care withdrawal in
+    # pokered/pokecrystal keep EXP at or above the level's total); PKHeX derives the level from
+    # EXP and does not compare them.
     ("level-exp", "VALID", "INVALID", level_exp),
     # PKHeX's word filter (a PKHeX setting) rejects some nicknames; Game Boy games filter none.
     ("pkhex-word-filter", "INVALID", "VALID", word_filter),
@@ -350,16 +377,22 @@ def self_test():
         f"4 gs 1 {pk2(251, 30, exp_for(3, 30), caught=(30 << 8) | 14)} {jp} {jp} 0",
         f"5 kor 8 {pk2(1, 5, 135)} {kor} {kor} 0",
         f"6 sx 0 {pk2(1, 5, 135, stat_exp=(65535, 0, 1, 32768, 65534))} {intl} {intl} 0",
+        f"7 dc 0 {pk2(1, 5, exp_for(3, 30))} {intl} {intl} 0",
+        f"8 dc2 0 {pk2(1, 99, exp_for(3, 100) + 1)} {intl} {intl} 0",
     ]
     pkhex = ["0 VALID x ; ", "1 INVALID x ; Move1:Duplicate", "2 INVALID x ; Encounter:EncInvalid",
              "3 VALID x ; ", "4 INVALID x ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
-             "5 INVALID x ; Move2:None", "6 INVALID x ; EVs:EffortShouldBeZero"]
+             "5 INVALID x ; Move2:None", "6 INVALID x ; EVs:EffortShouldBeZero", "7 VALID x ; ",
+             "8 INVALID x ; Level:LevelEXPTooHigh"]
     pokebank = ["0 VALID x ;", "1 INVALID x ; | Duplicate move: Tackle",
                 "2 UNCERTAIN no known origin ; | Mew was only distributed at events; the event list is not known",
                 "3 INVALID x ; | Level 50 does not match EXP (expected 1)",
                 "4 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
                 "5 UNCERTAIN x ; | Needs a trade between Korean Gold/Silver and a Western game (Bulbapedia)",
-                "6 UNCERTAIN x ; | Stat experience from battles with one stat still at zero needs every one"]
+                "6 UNCERTAIN x ; | Stat experience from battles with one stat still at zero needs every one",
+                "7 UNCERTAIN x ; | Level 5 is below the level the EXP gives (30); only a Pokemon still in the Day Care",
+                "8 UNCERTAIN x ; | EXP 1059861 is above the level-100 total of 1059860; only a Pokemon still in the "
+                "Day Care carries that"]
 
     def run(c, a, b):
         with tempfile.TemporaryDirectory() as tmp:
@@ -400,6 +433,21 @@ def self_test():
          edit(lines, 3, lines[3].replace(pk2(1, 50, 0), pk2(1, 50, exp_for(3, 50)))), pkhex, pokebank),
         ("level-exp exception with another problem", "differ", lines, pkhex,
          edit(pokebank, 3, "3 INVALID x ; | Level 50 does not match EXP (expected 1) | Bulbasaur cannot learn X")),
+        # The stored level ahead of its EXP is the deliberate class; EXP ahead of the level is not.
+        ("level-exp exception claimed for a stale Day Care level", "differ",
+         edit(lines, 3, lines[3].replace(pk2(1, 50, 0), pk2(1, 5, exp_for(3, 30)))), pkhex,
+         edit(pokebank, 3, "3 INVALID x ; | Level 5 does not match EXP (expected 30)")),
+        ("stale-level reason when the level is ahead", "differ",
+         edit(lines, 7, lines[7].replace(pk2(1, 5, exp_for(3, 30)), pk2(1, 50, exp_for(3, 30)))), pkhex, pokebank),
+        ("stale-level reason when level and EXP agree", "differ",
+         edit(lines, 7, lines[7].replace(pk2(1, 5, exp_for(3, 30)), pk2(1, 30, exp_for(3, 30)))), pkhex, pokebank),
+        ("Day Care over-cap reason at level 100 (DayCareStep skips it)", "differ",
+         edit(lines, 8, lines[8].replace(pk2(1, 99, exp_for(3, 100) + 1), pk2(1, 100, exp_for(3, 100) + 1))),
+         pkhex, pokebank),
+        ("Day Care over-cap reason past $50FFFF", "differ",
+         edit(lines, 8, lines[8].replace(pk2(1, 99, exp_for(3, 100) + 1), pk2(1, 99, 0x510000))), pkhex, pokebank),
+        ("Day Care over-cap reason on an egg", "differ",
+         edit(lines, 8, lines[8][:-1] + "1"), pkhex, pokebank),
         ("GS Ball exception at the wrong place", "differ",
          edit(lines, 4, lines[4].replace(pk2(251, 30, exp_for(3, 30), caught=(30 << 8) | 14),
                                          pk2(251, 30, exp_for(3, 30), caught=(30 << 8) | 15))), pkhex, pokebank),

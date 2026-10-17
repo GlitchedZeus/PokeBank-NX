@@ -166,7 +166,13 @@ class Mon:
 # Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
 # games never do. The "-ok" variants stay legal (the boundaries the rules must not cross).
 STRUCTURAL = ("dup-move", "dup-move-all", "exp-zero", "exp-below", "exp-next", "exp-top-ok",
-              "exp-cap-ok", "exp-cap-plus1", "exp-cap-big", "exp-cap-minus1")
+              "exp-cap-ok", "exp-cap-plus1", "exp-cap-big", "exp-cap-minus1",
+              # Day Care slots (pokered IncrementDayCareMonExp, pokecrystal DayCareStep): EXP ahead
+              # of the stored level, and EXP past the level-100 total up to the step counter's
+              # reach ($50FFFF) or just past it.
+              "exp-daycare-stale", "exp-daycare-99", "exp-daycare-reach", "exp-daycare-past")
+
+DAY_CARE_EXP_MAX = 0x50FFFF
 
 
 def structural_defect(mon, rng, variant, growth):
@@ -187,6 +193,18 @@ def structural_defect(mon, rng, variant, growth):
         mon.exp = exp_for(growth, min(100, mon.level + 1)) + (1 if mon.level == 100 else 0)
     elif variant == "exp-top-ok":  # one short of the next level: still this level
         mon.exp = exp_for(growth, mon.level + 1) - 1 if mon.level < 100 else exp_for(growth, 100)
+    elif variant == "exp-daycare-stale":  # a later level's total, the deposit level unchanged
+        mon.level = min(mon.level, 99)
+        mon.exp = exp_for(growth, rng.randint(mon.level + 1, 100))
+    elif variant == "exp-daycare-99":  # a level-99 deposit carried past the level-100 total
+        mon.level = 99
+        mon.exp = rng.randint(exp_for(growth, 100) + 1, DAY_CARE_EXP_MAX)
+    elif variant == "exp-daycare-reach":  # a level-100 deposit at the counter's reach (Gen I only)
+        mon.level = 100
+        mon.exp = rng.choice((DAY_CARE_EXP_MAX, rng.randint(exp_for(growth, 100) + 1, DAY_CARE_EXP_MAX)))
+    elif variant == "exp-daycare-past":  # past what any Day Care slot reaches
+        mon.level = rng.choice((99, 100))
+        mon.exp = rng.choice((DAY_CARE_EXP_MAX + 1, rng.randint(DAY_CARE_EXP_MAX + 1, 0xFFFFFF)))
     else:
         mon.level = 100
         top = exp_for(growth, 100)
