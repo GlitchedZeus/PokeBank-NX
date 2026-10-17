@@ -3074,6 +3074,42 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::openEmulatorBackups(const std::string& notice) {
+        namespace SB = PokeBank::UIModel::SourceBackups;
+        emuBackupListings.clear();
+        emuBackupRows.clear();
+        emuBackupNotice = notice;
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        // Exact source files only: the validated instances, or the remembered assigned file.
+        std::vector<std::string> sources;
+        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+            for (const auto& instance : title.legacyInstances) sources.push_back(instance.path());
+        } else if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                    title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
+            const auto assigned = legacyBindings->resolveFileForGame(currentProfileIdentity(), title.gameId);
+            if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready)
+                sources.push_back(assigned.binding.sourcePath);
+        }
+        for (const std::string& source : sources) {
+            if (source.empty()) continue;
+            emuBackupListings.push_back(SB::list(PokeBank::Paths::exportsRoot(), source));
+            const int li = static_cast<int>(emuBackupListings.size()) - 1;
+            const auto& entries = emuBackupListings.back().entries;
+            for (int ei = 0; ei < static_cast<int>(entries.size()); ++ei)
+                if (entries[static_cast<size_t>(ei)].kind != SB::Kind::StagedWorkingCopy)
+                    emuBackupRows.push_back({li, ei});
+        }
+        if (!emuBackupListings.empty()) // one informational row for unsaved edits
+            emuBackupRows.push_back({0, static_cast<int>(emuBackupListings[0].entries.size()) - 1});
+        else if (emuBackupNotice.empty())
+            emuBackupNotice = "This game has no assigned emulator save yet. Use Source / Game File first.";
+        emuBackupIndex = std::clamp(emuBackupIndex, 0, std::max(0, static_cast<int>(emuBackupRows.size()) - 1));
+        emuBackupScroll = std::clamp(emuBackupScroll, 0, std::max(0, emuBackupIndex));
+        overlay = Overlay::EmulatorBackups;
+    }
+
     void SaveSelectScreen::activateGameWorkspace() {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
@@ -3104,7 +3140,9 @@ namespace UI {
                     overlay = Overlay::None;
                     selectCurrentTitle();
                 } else {
-                    hubNotice = "External emulator sources stay read-only; staged/export history is managed inside the game workspace.";
+                    // Emulator games: the original save stays read-only; app-owned export
+                    // records are listed and managed here (round 2 phase 7).
+                    openEmulatorBackups();
                 }
                 return;
             case 7: // Source / Game File
@@ -3207,6 +3245,24 @@ namespace UI {
             }
             return;
         }
+        // Deleting an app-owned export record is irreversible: only an explicit Y deletes, A/B keep.
+        if (overlay == Overlay::EmulatorBackupDeleteConfirm) {
+            namespace SB = PokeBank::UIModel::SourceBackups;
+            using PokeBank::UIModel::HomeQuit::Decision;
+            const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);
+            if (decision == Decision::Stay) {
+                overlay = Overlay::EmulatorBackups;
+            } else if (decision == Decision::Quit &&
+                       emuBackupIndex >= 0 && emuBackupIndex < static_cast<int>(emuBackupRows.size())) {
+                const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
+                const SB::Refusal result = SB::deleteRecord(emuBackupListings[static_cast<size_t>(row.listing)],
+                                                            static_cast<size_t>(row.entry));
+                openEmulatorBackups(result == SB::Refusal::None
+                    ? "Export record deleted. The original emulator save was not touched."
+                    : SB::refusalReason(result));
+            }
+            return;
+        }
         // P0 #320: leaving PokeBank NX (quit or a launch handoff) needs an explicit Y in a visible
         // decision; A and B stay on the screen that opened it.
         if (overlay == Overlay::QuitConfirm) {
@@ -3301,6 +3357,7 @@ namespace UI {
                         case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
                         case Overlay::Options: optionsIndex = r.idx; break;
+                        case Overlay::EmulatorBackups: emuBackupIndex = r.idx; break;
                         default: break;
                     }
                     break;
@@ -3330,6 +3387,7 @@ namespace UI {
                         case Overlay::Gen5Candidates: gen5CandidateIndex = idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
                         case Overlay::Options: optionsIndex = idx; break;
+                        case Overlay::EmulatorBackups: emuBackupIndex = idx; break;
                         default: activate = false; break;
                     }
                     if (activate) kDown |= HidNpadButton_A;
@@ -3781,6 +3839,27 @@ namespace UI {
             return;
         }
 
+        if (overlay == Overlay::EmulatorBackups) {
+            namespace SB = PokeBank::UIModel::SourceBackups;
+            const int count = static_cast<int>(emuBackupRows.size());
+            if (kDown & HidNpadButton_B) { overlay = Overlay::GameWorkspace; return; }
+            if (count == 0) return;
+            if (kDown & HidNpadButton_Up) emuBackupIndex = (emuBackupIndex + count - 1) % count;
+            if (kDown & HidNpadButton_Down) emuBackupIndex = (emuBackupIndex + 1) % count;
+            constexpr int visible = 5;
+            if (emuBackupIndex < emuBackupScroll) emuBackupScroll = emuBackupIndex;
+            if (emuBackupIndex >= emuBackupScroll + visible) emuBackupScroll = emuBackupIndex - visible + 1;
+            const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
+            const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
+            const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
+            if (kDown & HidNpadButton_A) emuBackupNotice = SB::policyFor(entry.kind).reason;
+            if (kDown & HidNpadButton_Y) {
+                const SB::Refusal refusal = SB::canDelete(listing, static_cast<size_t>(row.entry));
+                if (refusal == SB::Refusal::None) overlay = Overlay::EmulatorBackupDeleteConfirm;
+                else emuBackupNotice = SB::refusalReason(refusal);
+            }
+            return;
+        }
         if (overlay == Overlay::Options) {
             if (kDown & HidNpadButton_Up)   optionsIndex = (optionsIndex + 2) % 3;
             if (kDown & HidNpadButton_Down) optionsIndex = (optionsIndex + 1) % 3;
@@ -5458,6 +5537,94 @@ namespace UI {
                     {"B", "Quit PokeBank NX (asks first; Y confirms)"}
                 }, "Games opens the full artwork browser. Profile and Settings use the top-right controls.");
             }
+        } else if (overlay == Overlay::EmulatorBackups) {
+            namespace SB = PokeBank::UIModel::SourceBackups;
+            constexpr int w = 900, rowH = 70, visible = 5;
+            const int rows = static_cast<int>(emuBackupRows.size());
+            const int shown = std::clamp(rows, 1, visible);
+            const int h = 150 + shown * rowH + 56; // content-driven height
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const std::string game = (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()))
+                ? "Pokémon " + u->titles[static_cast<size_t>(titleIndex)].label : std::string("This game");
+            fb.drawText(x + 28, y + 18, "BACKUPS / EMULATOR SAVE", Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44, game + " — Backups", Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 80,
+                        "The emulator's own save is read only. Only PokeBank NX export records can be deleted.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            const auto stamp = [](const std::string& t) {
+                return t.size() == 15 ? t.substr(0, 4) + "-" + t.substr(4, 2) + "-" + t.substr(6, 2) + " " +
+                                            t.substr(9, 2) + ":" + t.substr(11, 2)
+                                      : t;
+            };
+            const auto fileName = [](const std::string& path) {
+                const auto slash = path.find_last_of('/');
+                return slash == std::string::npos ? path : path.substr(slash + 1);
+            };
+            const int listY = y + 116;
+            for (int i = emuBackupScroll; i < std::min(rows, emuBackupScroll + visible); ++i) {
+                const auto row = emuBackupRows[static_cast<size_t>(i)];
+                const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
+                const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
+                const auto policy = SB::policyFor(entry.kind);
+                const int ry = listY + (i - emuBackupScroll) * rowH;
+                const bool focused = i == emuBackupIndex;
+                if (focused) fb.drawFilledRoundedRect(x + 20, ry, w - 40, rowH - 6, 10, Colors::PanelAlt);
+                std::string title = policy.label;
+                std::string detail;
+                Color badge = Colors::TextMuted;
+                const char* tag = "";
+                switch (entry.kind) {
+                    case SB::Kind::OriginalSource:
+                        detail = fileName(entry.path) + (entry.exists ? "" : "  (not found on the SD card)");
+                        tag = "READ ONLY"; badge = Colors::Warning;
+                        break;
+                    case SB::Kind::AppBackup:
+                    case SB::Kind::ExportedCopy:
+                        title += "  ·  " + stamp(entry.timestamp);
+                        detail = fileName(entry.recordDir) + "/" + fileName(entry.path) +
+                                 (entry.exists ? "" : "  (missing)");
+                        tag = "APP-OWNED"; badge = Colors::Info;
+                        break;
+                    case SB::Kind::StagedWorkingCopy:
+                        detail = policy.reason;
+                        tag = "IN EDITOR";
+                        break;
+                }
+                fb.drawText(x + 40, ry + 10, title, focused ? Colors::TextPrimary : Colors::TextSecondary,
+                            TextStyle::Body);
+                fb.drawText(x + 40, ry + 38, detail, Colors::TextMuted, TextStyle::Caption);
+                int tw = 0, th = 0;
+                fb.measureText(tag, tw, th, TextStyle::Caption);
+                fb.drawText(x + w - 44 - tw, ry + 12, tag, badge, TextStyle::Caption);
+                overlayRects.push_back({x + 20, ry, w - 40, rowH - 6, i});
+            }
+            if (rows > visible)
+                drawScrollbar(fb, x + w - 14, listY, visible * rowH, rows * rowH, emuBackupScroll * rowH);
+            if (!emuBackupNotice.empty())
+                fb.drawText(x + 28, y + h - 42, emuBackupNotice, Colors::TextMuted, TextStyle::Caption);
+            bool deletable = false;
+            if (emuBackupIndex >= 0 && emuBackupIndex < rows) {
+                const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
+                deletable = SB::canDelete(emuBackupListings[static_cast<size_t>(row.listing)],
+                                          static_cast<size_t>(row.entry)) == SB::Refusal::None;
+            }
+            if (deletable)
+                drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Details"}, {"Y", "Delete"}, {"B", "Back"}});
+            else
+                drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Details"}, {"B", "Back"}});
+        } else if (overlay == Overlay::EmulatorBackupDeleteConfirm) {
+            constexpr int w = 820, h = 250;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 132));
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 30, y + 30, "Delete this export record?", Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 30, y + 92, "Removes its app backup and exported copy. Press Y to delete; A or B keeps it.",
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 30, y + 136, "The original emulator save is never touched.",
+                        Colors::TextMuted, TextStyle::Caption);
+            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
+                                                   "Y", "Delete", "A", "Cancel"));
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
