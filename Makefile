@@ -309,7 +309,10 @@ types:
 #---------------------------------------------------------------------------------
 FONT_DIR         := romfs/fonts
 FONT_FILE        := $(FONT_DIR)/Nunito.ttf
-FONT_URL         := https://github.com/google/fonts/raw/main/ofl/nunito/Nunito%5Bwght%5D.ttf
+# Pinned to the exact google/fonts commit include/UI/NunitoMetrics.h was generated from
+# (tools/gen_nunito_metrics.py), so text-width layout rules match the bundled font
+# (SHA-256 bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207).
+FONT_URL         := https://raw.githubusercontent.com/google/fonts/47d54ca1ebb14fd864695f1d39dc734f39017c33/ofl/nunito/Nunito%5Bwght%5D.ttf
 # Fallback fonts for glyphs Nunito lacks. Symbols covers gender ♂/♀ + star ★;
 # Symbols2 covers the card-suit heart ♥ (and other suits) that Symbols omits.
 SYMBOL_FONT_FILE  := $(FONT_DIR)/NotoSansSymbols.ttf
