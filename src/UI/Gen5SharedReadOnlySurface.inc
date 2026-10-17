@@ -164,6 +164,7 @@ struct Gen5EditorState : EditorSurface::EditorState {
     const TrainerViewScreen* owner = nullptr;
     bool workspaceOpen = false;
     PendingPidChange5 pid;
+    SharedScrollbar::State bagAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
 };
 constexpr int kGen5PidCancelTouch = 41700;
 constexpr int kGen5PidConfirmTouch = 41701;
@@ -912,7 +913,16 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
     switch(bag.surface()) {
         case BagSurface::AddPicker: {
             const int count=static_cast<int>(bag.addChoices().size());
-            if(tap>=kGen5BagAddTouchBase && tap<kGen5BagAddTouchBase+count &&
+            // Shared scrollbar first: the window is centred on the cursor, so the thumb moves the
+            // cursor to the row that puts the window where the finger put it; touch is then owned.
+            const int addSelected=static_cast<int>(bag.addIndex());
+            const auto addBar=SharedScrollbar::handleTouch(editorStateFor(screen).bagAddScrollbar,
+                SharedScrollbar::sample(touch),
+                SharedScrollbar::rows(count,kGen5BagAddRows,
+                    std::clamp(addSelected-kGen5BagAddRows/2,0,std::max(0,count-kGen5BagAddRows))));
+            if(addBar.changed && count>0)
+                bag.moveAddCursor(std::clamp(addBar.scroll+kGen5BagAddRows/2,0,count-1)-addSelected);
+            if(!addBar.consumed && tap>=kGen5BagAddTouchBase && tap<kGen5BagAddTouchBase+count &&
                bag.tapAddChoice(static_cast<size_t>(tap-kGen5BagAddTouchBase)))
                 keys|=HidNpadButton_A;
             if(keys&HidNpadButton_Up)bag.moveAddCursor(-1);
@@ -1827,6 +1837,9 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,
                                               screen.trainer.getGameGroup(),id,name);
         }
+        SharedScrollbar::drawAndPublish(fb,editorStateFor(screen).bagAddScrollbar,x+w-8,y+88,
+            SharedScrollbar::kTrackWidth,kGen5BagAddRows*kGen5BagAddRowH,
+            SharedScrollbar::rows(count,kGen5BagAddRows,start));
         fb.drawText(x+24,y+h-38,std::to_string(selected+1)+" / "+std::to_string(count)+
             "  |  A or tap opens the quantity keypad",Colors::Accent,TextStyle::Caption);
     } else {
