@@ -71,8 +71,10 @@ struct OverlayState {
     int reviewRow = 0;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
+    SharedScrollbar::State pickerScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
     TouchScrollState reviewScroll;
     TouchPickerViewport reviewViewport;
+    SharedScrollbar::State reviewScrollbar;   // R2-SCROLLBAR: draggable thumb on Pending Changes
     ClassicPocket pendingPocket = ClassicPocket::Items;
     uint16_t pendingItem = 0;
     uint16_t pendingQuantity = 0;
@@ -675,14 +677,21 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
         const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        if (maxFirstRow > 0) {
+        // Shared scrollbar first: a held thumb moves the window, not the row, and owns the touch.
+        const auto pickerBar = SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(count, visibleRows, state.pickerViewport.firstRow));
+        if (pickerBar.changed) {
+            state.pickerViewport.firstRow = pickerBar.scroll;
+            state.pickerScroll.stop();
+        }
+        if (maxFirstRow > 0 && !pickerBar.consumed) {
             state.pickerScroll.updateVertical(
                 touch, x + 12, listTop, width - 24, listBottom - listTop,
                 rowH, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
             state.pickerScroll.stop();
         }
-        if (touchId >= 0 && touchId < count) {
+        if (!pickerBar.consumed && touchId >= 0 && touchId < count) {
             state.pickerScroll.stop();
             state.pickerRow = touchId;
             down |= HidNpadButton_A;
@@ -747,14 +756,20 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         const int x = (1280 - width) / 2;
         state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
         const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        if (maxFirstRow > 0) {
+        const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(count, visibleRows, state.reviewViewport.firstRow));
+        if (reviewBar.changed) {
+            state.reviewViewport.firstRow = reviewBar.scroll;
+            state.reviewScroll.stop();
+        }
+        if (maxFirstRow > 0 && !reviewBar.consumed) {
             state.reviewScroll.updateVertical(
                 touch, x + 30, y + 94, width - 60, visibleRows * rowStep,
                 rowStep, state.reviewViewport.firstRow, maxFirstRow + 1);
         } else {
             state.reviewScroll.stop();
         }
-        if (touchId >= 0 && touchId < count) {
+        if (!reviewBar.consumed && touchId >= 0 && touchId < count) {
             state.reviewScroll.stop();
             state.reviewRow = touchId;
         }
@@ -1033,6 +1048,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                     x + 12, listTop, width - 24, listBottom - listTop);
         }
         fb.clearClip();
+        SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + width - 14, listTop,
+            SharedScrollbar::kTrackWidth, listBottom - listTop,
+            SharedScrollbar::rows(count, visibleRows, start));
         fb.drawText(x + pad, y + height - 38,
             std::to_string(state.pickerRow + 1) + " / " + std::to_string(count) +
             "  |  A adds x1 (held items: highlights the stack)",
@@ -1105,6 +1123,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         x + 30, listTop, width - 60, visibleRows * rowStep);
             }
             fb.clearClip();
+            SharedScrollbar::drawAndPublish(fb, state.reviewScrollbar, x + width - 16, listTop,
+                SharedScrollbar::kTrackWidth, visibleRows * rowStep,
+                SharedScrollbar::rows(count, visibleRows, start));
         }
         drawNavBar(fb, {{"Up/Down", "Browse"}, {"B", "Back to Options"}});
         if (!state.lastExportDirectory.empty())

@@ -65,6 +65,7 @@ struct EditorState {
     int detailsFocus = 0;
     TouchScrollState detailsTouchScroll;
     TouchPickerViewport detailsViewport;
+    SharedScrollbar::State detailsScrollbar;   // draggable thumb beside the Details rows
 
     bool speciesPreviewShiny = false;
     bool valuePicker = false;
@@ -72,6 +73,7 @@ struct EditorState {
     int pickerRow = 0;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
+    SharedScrollbar::State pickerScrollbar;    // draggable thumb on the value / move picker list
     std::vector<uint16_t> pickerValues;
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
@@ -204,8 +206,24 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     if (state.pickerTarget != PickerTarget::Species)
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
     const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
+    // Shared scrollbar first on the row lists that draw one: a held thumb moves the viewport,
+    // never the selection, and owns the frame's touch. The Species modal and the held-item grid
+    // publish no track, so a stale one from an earlier picker must not capture here.
+    const bool pickerHasScrollbar = state.pickerTarget != PickerTarget::Species &&
+                                    state.pickerTarget != PickerTarget::HeldItem;
+    if (!pickerHasScrollbar) state.pickerScrollbar = {};
+    const auto pickerBar = pickerHasScrollbar
+        ? SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
+              SharedScrollbar::rows(maxFirstRow + visibleRows, visibleRows, state.pickerViewport.firstRow))
+        : SharedScrollbar::TouchResult{};
+    if (pickerBar.changed) {
+        state.pickerViewport.firstRow = pickerBar.scroll;
+        state.pickerScroll.stop();
+    }
     // The Species modal owns its own gesture. Other pickers scroll only when overflowing.
-    if (count > 0 && (state.pickerTarget == PickerTarget::Species || maxFirstRow > 0)) {
+    if (pickerBar.consumed) {
+        state.pickerScroll.stop();
+    } else if (count > 0 && (state.pickerTarget == PickerTarget::Species || maxFirstRow > 0)) {
         if (state.pickerTarget == PickerTarget::Species) {
             const int dy = touch.deltaY();
             if (touch.justReleased() && touch.dragged() &&
@@ -253,7 +271,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // Keep semantic focus fixed during picker drags; commit only the
     // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= 6000 && touchTap < 6000 + count) {
+    if (!pickerBar.consumed && touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
         down |= HidNpadButton_A;
     }
@@ -491,11 +509,22 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
     constexpr int visibleDetailRows = Workspace::kVisibleDetailRows;
     const SharedPokemonShell::Geometry detailGeometry(1280, 720, kNavBarH);
     state.detailsViewport.ensure(state.detailsFocus, rows, visibleDetailRows);
-    state.detailsTouchScroll.updateVertical(
-        touch, detailGeometry.leftX + 8, detailGeometry.y + 216,
-        detailGeometry.leftW - 16, visibleDetailRows * 38, 38,
-        state.detailsViewport.firstRow,
-        TouchPickerViewport::maxFirst(rows, visibleDetailRows) + 1);
+    // Shared scrollbar first: a held thumb moves the Details viewport (not the focused field)
+    // and owns the frame's touch, so no row under the finger is dragged or tapped.
+    const auto detailsBar = SharedScrollbar::handleTouch(state.detailsScrollbar, SharedScrollbar::sample(touch),
+        SharedScrollbar::rows(rows, visibleDetailRows, state.detailsViewport.firstRow));
+    if (detailsBar.changed) {
+        state.detailsViewport.firstRow = detailsBar.scroll;
+        state.detailsTouchScroll.stop();
+    }
+    if (detailsBar.consumed)
+        state.detailsTouchScroll.stop();
+    else
+        state.detailsTouchScroll.updateVertical(
+            touch, detailGeometry.leftX + 8, detailGeometry.y + 216,
+            detailGeometry.leftW - 16, visibleDetailRows * 38, 38,
+            state.detailsViewport.firstRow,
+            TouchPickerViewport::maxFirst(rows, visibleDetailRows) + 1);
     if (down & (HidNpadButton_Up | HidNpadButton_Down |
                 HidNpadButton_L | HidNpadButton_R))
         state.detailsTouchScroll.stop();
@@ -517,7 +546,7 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
     // dragging through DETAILS/STATS/MOVES. Only a completed tap can select.
     const int pressedRow = screen.touchedButtonId(touch);
     Shared::Focus tapped{};
-    if (Workspace::focusForTouch(pressedRow, rows, tapped)) {
+    if (!detailsBar.consumed && Workspace::focusForTouch(pressedRow, rows, tapped)) {
         state.focus = tapped;
         if (tapped.panel == Shared::Panel::Details) state.detailsFocus = tapped.row;
         if (editable) down |= HidNpadButton_A;
@@ -667,9 +696,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, value, A::moveGame(screen), selected);
         }
         fb.clearClip();
-        SharedPokemonShell::drawVerticalScrollIndicator(fb, x + w - 18, y + moveLayout.rowStart,
-            visible * moveLayout.rowStep, static_cast<std::size_t>(count),
-            static_cast<std::size_t>(visible), static_cast<std::size_t>(first));
+        SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 18, y + moveLayout.rowStart,
+            SharedScrollbar::kTrackWidth, visible * moveLayout.rowStep,
+            SharedScrollbar::rows(count, visible, first));
         Presentation::PickerFooterSpec footer;
         footer.jump = true;
         footer.xLabel = "Sort";
@@ -754,9 +783,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                                     Enums::getBallName(static_cast<uint8_t>(value)));
     }
     fb.clearClip();
-    SharedPokemonShell::drawVerticalScrollIndicator(fb, x + w - 14, viewportTop - 4,
-        visible * rowStep, static_cast<std::size_t>(count),
-        static_cast<std::size_t>(visible), static_cast<std::size_t>(first));
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 14, viewportTop - 4,
+        SharedScrollbar::kTrackWidth, visible * rowStep,
+        SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
     footer.page = count > visible;
     footer.jump = count > 50;
@@ -849,7 +878,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return A::detailLabel(static_cast<int>(row)); },
         [&](size_t row) { return A::detailValue(screen, state, *raw, static_cast<int>(row)); },
-        detailPixelOffset, firstDetailRow);
+        detailPixelOffset, firstDetailRow, &state.detailsScrollbar);
     {
         for (int row = std::max(0, firstDetailRow - 1);
              row < std::min(detailRows,

@@ -39,6 +39,7 @@ struct UX2State {
     TouchPickerViewport editorViewport;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
+    SharedScrollbar::State pickerScrollbar;   // R2-SCROLLBAR: draggable thumb on the Move chooser
     TouchScrollState reviewScroll;
     TouchPickerViewport reviewViewport;
 

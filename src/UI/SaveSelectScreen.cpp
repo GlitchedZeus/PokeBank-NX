@@ -3323,6 +3323,27 @@ namespace UI {
             // vertical tile scroller needs this event to capture the gesture.
         }
 
+        // Shared scrollbars (R2-SCROLLBAR): the list on screen that owns one decides the frame's
+        // touch before any row focus or tap resolves. Its track geometry comes from the last draw.
+        const SharedScrollbar::Touch barTouch = SharedScrollbar::sample(touch);
+        SharedScrollbar::State* const activeBar = [&]() -> SharedScrollbar::State* {
+            switch (overlay) {
+                case Overlay::GamesDrawer: return &gamesDrawerScrollbar;
+                case Overlay::ProfilePicker: return &profileScrollbar;
+                case Overlay::GameFilePicker: return &launchFileScrollbar;
+                case Overlay::LegacyInstances: return &legacyInstanceScrollbar;
+                case Overlay::LegacyAssignment: return &legacyAssignmentScrollbar;
+                case Overlay::Gen4Candidates: return &gen4CandidateScrollbar;
+                case Overlay::Gen5Candidates: return &gen5CandidateScrollbar;
+                case Overlay::EmulatorBackups: return &emuBackupScrollbar;
+                case Overlay::None: return classicGamesActive ? &classicGamesScrollbar : nullptr;
+                default: return nullptr;
+            }
+        }();
+        const bool barTrackTouchedDown = activeBar && touch.justTouchedDown() &&
+            SharedScrollbar::hitTrack(activeBar->track, touch.x(), touch.y());
+        const bool barOwnsTouch = activeBar && SharedScrollbar::owns(*activeBar, barTouch);
+
         // Activate only a target containing both the contact origin and release point.
         auto tappedHit = [&](const HitRect& r) -> bool {
             return touch.startX() >= r.x && touch.startX() < r.x + r.w &&
@@ -3337,7 +3358,9 @@ namespace UI {
         };
         if (touch.justTouchedDown()) {
             const int tx = touch.x(), ty = touch.y();
-            if (classicGamesActive && overlay == Overlay::None) {
+            if (barTrackTouchedDown) {
+                // Contact on a scrollbar track never moves focus to the row beside it.
+            } else if (classicGamesActive && overlay == Overlay::None) {
                 for (const auto& r : titleRects)
                     if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                         titleIndex = r.idx; headerActionIndex = -1; break;
@@ -3367,13 +3390,14 @@ namespace UI {
         if (touch.justTapped()) {
             if (classicGamesActive && overlay == Overlay::None) {
                 const int idx = tappedRect(titleRects);
-                if (idx >= 0) {
+                if (idx >= 0 && !barOwnsTouch) {
                     titleIndex = idx; headerActionIndex = -1;
                     scrollClassicSelectionIntoView(); kDown |= HidNpadButton_A;
                 }
             } else {
                 const int idx = tappedRect(overlayRects);
-                bool activate = idx >= 0;
+                // A release that ends a scrollbar drag or track tap selects nothing.
+                bool activate = idx >= 0 && !barOwnsTouch;
                 if (activate) {
                     switch (overlay) {
                         case Overlay::GamesDrawer: gamesDrawerIndex = idx; break;
@@ -3404,7 +3428,15 @@ namespace UI {
             const int totalRows = (count + cols - 1) / cols;
             const int maxFirstRow = std::max(0, totalRows - visibleRows);
             gamesDrawerScroll = std::clamp(gamesDrawerScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0)
+            // Shared scrollbar first: a held thumb moves the grid rows and owns the touch.
+            const auto drawerBar = SharedScrollbar::handleTouch(gamesDrawerScrollbar, barTouch,
+                                                               gamesDrawerScroll * (tileH + gap));
+            if (drawerBar.changed) {
+                gamesDrawerScroll = std::clamp(
+                    (drawerBar.scroll + (tileH + gap) / 2) / (tileH + gap), 0, maxFirstRow);
+                gamesDrawerTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !drawerBar.consumed)
                 gamesDrawerTouchScroll.updateVertical(
                     touch, drawerX + margin, gridY, drawerW - margin * 2,
                     visibleRows * (tileH + gap) - gap, tileH + gap,
@@ -3484,7 +3516,12 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             profilePickerScroll = std::clamp(profilePickerScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto profileBar = SharedScrollbar::handleTouch(profileScrollbar, barTouch, profilePickerScroll * rowH);
+            if (profileBar.changed) {
+                profilePickerScroll = std::clamp((profileBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                profileTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !profileBar.consumed) {
                 profileTouchScroll.updateVertical(
                     touch, x + 24, y + 136, w - 48, visibleRows * rowH,
                     rowH, profilePickerScroll, maxFirstRow + 1);
@@ -3562,7 +3599,12 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             launchFileScroll = std::clamp(launchFileScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto launchBar = SharedScrollbar::handleTouch(launchFileScrollbar, barTouch, launchFileScroll * rowH);
+            if (launchBar.changed) {
+                launchFileScroll = std::clamp((launchBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                launchFileTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !launchBar.consumed) {
                 launchFileTouchScroll.updateVertical(
                     touch, x + 24, y + 132, w - 48, visibleRows * rowH,
                     rowH, launchFileScroll, maxFirstRow + 1);
@@ -3618,7 +3660,13 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             legacyAssignmentScroll = std::clamp(legacyAssignmentScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto assignBar = SharedScrollbar::handleTouch(legacyAssignmentScrollbar, barTouch,
+                                                               legacyAssignmentScroll * rowH);
+            if (assignBar.changed) {
+                legacyAssignmentScroll = std::clamp((assignBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                legacyAssignmentTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !assignBar.consumed) {
                 legacyAssignmentTouchScroll.updateVertical(
                     touch, x + 24, y + 108, w - 48, visibleRows * rowH,
                     rowH, legacyAssignmentScroll, maxFirstRow + 1);
@@ -3699,7 +3747,12 @@ namespace UI {
             const int x=(1280-w)/2,y=(720-h)/2;
             const int maxFirst=std::max(0,count-visibleRows);
             gen5CandidateScroll=std::clamp(gen5CandidateScroll,0,maxFirst);
-            if(maxFirst>0)
+            const auto gen5Bar = SharedScrollbar::handleTouch(gen5CandidateScrollbar, barTouch, gen5CandidateScroll * rowH);
+            if (gen5Bar.changed) {
+                gen5CandidateScroll = std::clamp((gen5Bar.scroll + rowH / 2) / rowH, 0, maxFirst);
+                gen5CandidateTouchScroll.stop();
+            }
+            if(maxFirst>0 && !gen5Bar.consumed)
                 gen5CandidateTouchScroll.updateVertical(
                     touch,x+24,y+108,w-48,visibleRows*rowH,
                     rowH,gen5CandidateScroll,maxFirst+1);
@@ -3791,7 +3844,12 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             gen4CandidateScroll = std::clamp(gen4CandidateScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto gen4Bar = SharedScrollbar::handleTouch(gen4CandidateScrollbar, barTouch, gen4CandidateScroll * rowH);
+            if (gen4Bar.changed) {
+                gen4CandidateScroll = std::clamp((gen4Bar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                gen4CandidateTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !gen4Bar.consumed) {
                 gen4CandidateTouchScroll.updateVertical(
                     touch, x + 24, y + 108, w - 48, visibleRows * rowH,
                     rowH, gen4CandidateScroll, maxFirstRow + 1);
@@ -3844,11 +3902,17 @@ namespace UI {
             const int count = static_cast<int>(emuBackupRows.size());
             if (kDown & HidNpadButton_B) { overlay = Overlay::GameWorkspace; return; }
             if (count == 0) return;
+            const auto emuBar = SharedScrollbar::handleTouch(emuBackupScrollbar, barTouch, emuBackupScroll);
+            if (emuBar.changed) emuBackupScroll = emuBar.scroll;
             if (kDown & HidNpadButton_Up) emuBackupIndex = (emuBackupIndex + count - 1) % count;
             if (kDown & HidNpadButton_Down) emuBackupIndex = (emuBackupIndex + 1) % count;
             constexpr int visible = 5;
-            if (emuBackupIndex < emuBackupScroll) emuBackupScroll = emuBackupIndex;
-            if (emuBackupIndex >= emuBackupScroll + visible) emuBackupScroll = emuBackupIndex - visible + 1;
+            // Controller navigation reveals its row; a scrollbar drag moves the window alone.
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
+                if (emuBackupIndex < emuBackupScroll) emuBackupScroll = emuBackupIndex;
+                if (emuBackupIndex >= emuBackupScroll + visible) emuBackupScroll = emuBackupIndex - visible + 1;
+            }
+            emuBackupScroll = std::clamp(emuBackupScroll, 0, std::max(0, count - visible));
             const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
             const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
             const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
@@ -3890,7 +3954,13 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - LEGACY_INSTANCE_VISIBLE_ROWS);
             legacyInstanceScroll = std::clamp(legacyInstanceScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto instanceBar = SharedScrollbar::handleTouch(legacyInstanceScrollbar, barTouch,
+                                                                 legacyInstanceScroll * rowH);
+            if (instanceBar.changed) {
+                legacyInstanceScroll = std::clamp((instanceBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                legacyInstanceTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !instanceBar.consumed) {
                 legacyInstanceTouchScroll.updateVertical(
                     touch, x + 24, y + 122, w - 48,
                     LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
@@ -4002,7 +4072,14 @@ namespace UI {
                 const int totalRows = (classicCount + cols - 1) / cols;
                 const int maxFirstRow = std::max(0, totalRows - CLASSIC_VISIBLE_ROWS);
                 scrollRow = std::clamp(scrollRow, 0, maxFirstRow);
-                if (maxFirstRow > 0) {
+                constexpr int classicRowStep = CLASSIC_TILE_H + CLASSIC_GAP;
+                const auto classicBar = SharedScrollbar::handleTouch(classicGamesScrollbar, barTouch,
+                                                                    scrollRow * classicRowStep);
+                if (classicBar.changed) {
+                    scrollRow = std::clamp((classicBar.scroll + classicRowStep / 2) / classicRowStep, 0, maxFirstRow);
+                    classicGamesTouchScroll.stop();
+                }
+                if (maxFirstRow > 0 && !classicBar.consumed) {
                     // The viewport first row, not titleIndex, owns the physical scroll.
                     classicGamesTouchScroll.updateVertical(
                         touch, startX, CLASSIC_GRID_Y, gridW,
@@ -4383,6 +4460,10 @@ namespace UI {
         }
 
         fb.clearClip();
+        // Classic Games grid: the track sits in the right margin beside the tile grid.
+        drawScrollbar(fb, classicGamesScrollbar, std::min(fb.getWidth() - 20, startX + gridW + 10),
+                      CLASSIC_GRID_Y, clipH, totalRows * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP,
+                      firstRow * (CLASSIC_TILE_H + CLASSIC_GAP) - liveOffset);
         // L/R switches PROFILE in this full browser (not the game, as on Product Home), so the
         // footer says so whenever it does anything; with one profile L/R is inert and unlisted.
         std::vector<ControllerHint> classicHints = {{"D-pad/Stick","Choose"},{"A","Open"},
@@ -5035,10 +5116,9 @@ namespace UI {
                 }
 
                 fb.clearClip();
-                if (totalRows > visibleRows)
-                    drawScrollbar(fb, x + w - 8, gridY, gridH,
-                                  totalRows * (tileH + gap) - gap,
-                                  gamesDrawerScroll * (tileH + gap) - liveOffset);
+                drawScrollbar(fb, gamesDrawerScrollbar, x + w - 11, gridY, gridH,
+                              totalRows * (tileH + gap) - gap,
+                              gamesDrawerScroll * (tileH + gap) - liveOffset);
             } else {
                 fb.drawText(x + 28, 150, "No Pokémon games found for this profile.",
                             Colors::TextMuted, TextStyle::Body);
@@ -5115,6 +5195,8 @@ namespace UI {
                 }
             }
             fb.clearClip();
+            drawScrollbar(fb, profileScrollbar, x + w - 14, listTop, visibleRows * rowH,
+                          count * rowH, first * rowH - liveOffset);
 
             fb.drawText(x + 30, y + h - 42,
                         "Changing profile changes only which saves are shown; it never modifies save data.",
@@ -5261,6 +5343,8 @@ namespace UI {
                             TextStyle::Body);
             }
             fb.clearClip();
+            drawScrollbar(fb, launchFileScrollbar, x + w - 14, listTop, visibleRows * rowH,
+                          count * rowH, first * rowH - liveOffset);
             if (!launchFileNotice.empty())
                 fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
                             Colors::Info, TextStyle::Caption);
@@ -5288,6 +5372,10 @@ namespace UI {
             drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
                                  x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true,
                                  liveOffset);
+            drawScrollbar(fb, legacyInstanceScrollbar, x + w - 14, y + 122,
+                          LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
+                          static_cast<int>(parent.legacyInstances.size()) * rowH,
+                          first * rowH - liveOffset);
             const int drawFirst = std::max(0, first - 1);
             const int drawLast = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
                                                first + LEGACY_INSTANCE_VISIBLE_ROWS + 1);
@@ -5340,6 +5428,8 @@ namespace UI {
                             Colors::TextMuted, TextStyle::Caption);
             }
             fb.clearClip();
+            drawScrollbar(fb, legacyAssignmentScrollbar, x + w - 14, listTop, visibleRows * rowH,
+                          count * rowH, first * rowH - liveOffset);
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -5442,6 +5532,8 @@ namespace UI {
             const int liveOffset=gen5CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb,gen5Instances,gen5CandidateIndex,
                                  first,x,y+108,w,rowH,visibleRows,false,liveOffset);
+            drawScrollbar(fb, gen5CandidateScrollbar, x + w - 14, y + 108, visibleRows * rowH,
+                          static_cast<int>(gen5Instances.size()) * rowH, first * rowH - liveOffset);
             const int drawFirst=std::max(0,first-1);
             const int drawLast=std::min<int>(static_cast<int>(gen5Instances.size()),
                                               first+visibleRows+1);
@@ -5504,6 +5596,8 @@ namespace UI {
             const int liveOffset = gen4CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
                                  x, y + 108, w, rowH, visibleRows, false, liveOffset);
+            drawScrollbar(fb, gen4CandidateScrollbar, x + w - 14, y + 108, visibleRows * rowH,
+                          static_cast<int>(gen4Instances.size()) * rowH, first * rowH - liveOffset);
             const int drawFirst = std::max(0, first - 1);
             const int drawLast = std::min<int>(static_cast<int>(gen4Instances.size()),
                                                first + visibleRows + 1);
@@ -5599,8 +5693,9 @@ namespace UI {
                 fb.drawText(x + w - 44 - tw, ry + 12, tag, badge, TextStyle::Caption);
                 overlayRects.push_back({x + 20, ry, w - 40, rowH - 6, i});
             }
-            if (rows > visible)
-                drawScrollbar(fb, x + w - 14, listY, visible * rowH, rows * rowH, emuBackupScroll * rowH);
+            SharedScrollbar::drawAndPublish(fb, emuBackupScrollbar, x + w - 14, listY,
+                SharedScrollbar::kTrackWidth, visible * rowH,
+                SharedScrollbar::rows(rows, visible, emuBackupScroll));
             if (!emuBackupNotice.empty())
                 fb.drawText(x + 28, y + h - 42, emuBackupNotice, Colors::TextMuted, TextStyle::Caption);
             bool deletable = false;
