@@ -167,7 +167,9 @@ int main() {
     // The established inline page owns rendering and exactly two cursor rows.
     assert(trainerPage.find("drawTrainerSession") == std::string::npos);
     assert(trainerPage.find("drawFilledRect") == std::string::npos);
-    assert(trainerPage.find("screen.trainerSelectedRow = (screen.trainerSelectedRow + 1) % 2") != std::string::npos);
+    // Gen I and Gen II share one Trainer session flow (R2-TRAINER); its two-row cursor lives there.
+    assert(trainerPage.find("UI::ClassicTrainerSession::handle(") != std::string::npos);
+    assert(readFile("include/UI/ClassicTrainerSessionInput.h").find("screen.trainerSelectedRow = (screen.trainerSelectedRow + 1) % kRows") != std::string::npos);
     assert(trainerPage.find("editor->stageTrainerEdit(name, money, error)") != std::string::npos);
     assert(parity.find("trainerSessionFor") == std::string::npos);
     const auto base = readFile("src/UI/TrainerViewScreenBase.inc");

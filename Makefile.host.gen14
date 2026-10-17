@@ -233,3 +233,20 @@ $(HOST_BUILD)/test_crystal_met_time_inline: $(CRYSTAL_MET_TIME_SOURCES) $(CRYSTA
 $(HOST_BUILD)/test_crystal_met_time_inline_sanitize: $(CRYSTAL_MET_TIME_SOURCES) $(CRYSTAL_MET_TIME_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CRYSTAL_MET_TIME_SOURCES) -o $@
+
+GEN1_TRAINER_EDIT_SOURCES := tests/test_gen1_trainer_edit.cpp $(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen1/Gen1ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Integration/Gen1/Gen1PackedMove.cpp src/Utils/SHA256.cpp
+GEN1_TRAINER_EDIT_DEPS := include/Integration/Gen1/Gen1StagedTrainerEditor.h include/UI/ClassicTrainerSession.h include/UI/ClassicTrainerEditability.h \
+	include/Integration/Gen1/Gen1ExportTransaction.h src/UI/TrainerViewScreenBase.inc \
+	src/UI/Gen1PokemonEditorOverlayFoundation.inc src/UI/Gen2TrainerSessionOverlay.inc src/UI/Gen1PokemonEditorOverlayUX.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen1_trainer_edit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_trainer_edit_sanitize
+host-test: $(HOST_BUILD)/test_gen1_trainer_edit
+host-sanitize: $(HOST_BUILD)/test_gen1_trainer_edit_sanitize
+$(HOST_BUILD)/test_gen1_trainer_edit: $(GEN1_TRAINER_EDIT_SOURCES) $(GEN1_TRAINER_EDIT_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_TRAINER_EDIT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_trainer_edit_sanitize: $(GEN1_TRAINER_EDIT_SOURCES) $(GEN1_TRAINER_EDIT_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_TRAINER_EDIT_SOURCES) -o $@

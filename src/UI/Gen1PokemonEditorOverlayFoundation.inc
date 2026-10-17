@@ -1,3 +1,4 @@
+#include "UI/ClassicTrainerSessionInput.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
@@ -728,9 +729,44 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     return true;
 }
 
+// R2-TRAINER: the HOME Trainer page stages Gen I Name / Money through the staged Trainer editor
+// with the same session flow as Gen II (UI/ClassicTrainerSessionInput.h). Changes appear in
+// Review, Discard restores them, Export writes them; the source save is never touched.
+bool gen1TrainerMainPage(const TrainerViewScreen& screen) {
+    const auto& state = ux2StateFor(const_cast<TrainerViewScreen&>(screen));
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Trainer &&
+        state.mode == UX2Mode::Closed && state.picker == UX2Picker::None &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
+bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                              int stickX, int stickY, const TouchInput& touch) {
+    if (!gen1TrainerMainPage(screen)) return false;
+    auto* trainer = rbyTrainer(screen);
+    if (!trainer || !trainer->stagedTrainerEditable()) return false;
+    auto* editor = trainer->stagedTrainer();
+    UI::ClassicTrainerSession::Fields fields;
+    fields.name = editor->trainerName();
+    fields.money = editor->money();
+    fields.nameMax = static_cast<int>(editor->nameMax());
+    fields.moneyMax = PokeVault::Integration::Gen1::kGen1MaxMoney;
+    fields.nameGuide = "1-7 letters, digits, space - . ? !";
+    fields.nameEditable = editor->nameEditable();
+    fields.nameReadOnlyReason = "Japanese Gen I trainer names are read-only here";
+    return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
+        [&](const std::string& name, uint32_t money, std::string& error) {
+            if (name != editor->trainerName() && !editor->stageTrainerName(name, error)) return false;
+            if (money != editor->money() && !editor->stageMoney(money, error)) return false;
+            return true;
+        });
+}
+
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
                    const TouchInput& touch) {
     if (!isGen1SourceUX(screen)) return false;
+    if (handleGen1TrainerSession(screen, down, held, stickX, stickY, touch)) return true;
     auto& state = ux2StateFor(screen);
     // An active picker owns all input even while the underlying fullscreen editor
     // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.

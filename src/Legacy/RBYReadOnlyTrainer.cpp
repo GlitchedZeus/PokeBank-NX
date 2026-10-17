@@ -71,6 +71,9 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     stagedError.clear();
     trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
     trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
+
+    stagedError.clear();
+    trainer->stagedTrainer_ = Integration::Gen1::StagedTrainerEditor::create(save, stagedError);
     return trainer;
 }
 
