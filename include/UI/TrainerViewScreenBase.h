@@ -20,6 +20,7 @@
 #include "UI/InventoryUIContract.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedScrollbar.h"
 #include "Trainer/Bank.h"
 #include "Panels/PartyPokemonPanel.h"
 #include "Panels/ItemsPanel.h"
@@ -432,6 +433,9 @@ namespace UI {
             bool leftScrollManual = false;               // finger drag owns scroll until direct/controller selection resumes
             int legalityScroll = 0;                      // first visible legality-report row
             int ribbonScroll = 0;                        // first visible ribbon/mark row
+            SharedScrollbar::State leftScrollbar;        // draggable thumb: info / native-data pane
+            SharedScrollbar::State legalityScrollbar;    // draggable thumb: legality report overlay
+            SharedScrollbar::State ribbonScrollbar;      // draggable thumb: ribbon / mark overlay
             std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)
             std::vector<std::byte> editSnapshot;         // baseline bytes for the "Unsaved changes" marker + revert
         };
@@ -471,6 +475,8 @@ namespace UI {
         Dialogs::PickerKind pickerKind = Dialogs::PickerKind::Nature;
         int pickerSlot = 0;   // which of the 4 move slots (when pickerKind == Move)
         int pickerSel = 0;    // highlighted option index
+        SharedScrollbar::State pickerScrollbar;   // draggable thumb on the picker list
+        SharedScrollbar::State itemsScrollbar;    // draggable thumb on the paged Items panel list
         int pickerCount = 0;  // number of options in the list
         // A pouch-item picker opened to CHANGE an existing item's type (Potion -> Super Potion),
         // not to add a new one. Changes the confirm behavior + the picker title; reuses PouchItem.

@@ -103,6 +103,8 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         UI::SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, move, Enums::GameVersion::GSC, selected);
     }
     fb.clearClip();
+    SharedScrollbar::drawAndPublish(fb, overlay.moveScrollbar, x + panelW - 18, viewportTop,
+        SharedScrollbar::kTrackWidth, viewportH, SharedScrollbar::rows(count, visible, first));
     UI::SharedEditorChrome::drawPickerFooter(fb);
 }
 
@@ -143,7 +145,14 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int listY = (720 - kHardwareMovePickerLayout.height) / 2 + kHardwareMovePickerLayout.rowStart;
     const int listW = kHardwareMovePickerLayout.width - 48;
     const int listH = visible * kHardwareMovePickerLayout.rowStep;
-    if (maxFirstRow > 0) {
+    // Shared scrollbar first: a held thumb moves the window, never the move, and owns the touch.
+    const auto moveBar = SharedScrollbar::handleTouch(picker.moveScrollbar, SharedScrollbar::sample(touch),
+        SharedScrollbar::rows(count, visible, picker.moveViewport.firstRow));
+    if (moveBar.changed) {
+        picker.moveViewport.firstRow = moveBar.scroll;
+        picker.moveScroll.stop();
+    }
+    if (maxFirstRow > 0 && !moveBar.consumed) {
         picker.moveScroll.updateVertical(
             touch, listX, listY, listW, listH, kHardwareMovePickerLayout.rowStep,
             picker.moveViewport.firstRow, maxFirstRow + 1);
@@ -151,7 +160,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         picker.moveScroll.stop();
     }
     const int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
+    if (!moveBar.consumed && touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);
         down |= HidNpadButton_A;
     }

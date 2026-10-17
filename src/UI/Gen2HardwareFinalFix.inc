@@ -148,9 +148,14 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
-    SharedPokemonShell::drawVerticalScrollIndicator(
-        fb, x + w - 10, viewportY + 6, std::max(0, viewportH - 12),
-        rows.size(), 8, window.first);
+    // The shared draggable scrollbar replaces the draw-only
+    // SharedPokemonShell::drawVerticalScrollIndicator here: drawUnifiedDetails published this
+    // exact track (x + w - 10, viewportY + 6, viewportH - 12) a moment ago, so repaint it from
+    // the same geometry with the captured-thumb highlight intact.
+    SharedScrollbar::paint(fb, SharedScrollbar::layout(x + w - 10, viewportY + 6,
+        SharedScrollbar::kTrackWidth, std::max(0, viewportH - 12),
+        SharedScrollbar::rows(rows.size(), static_cast<std::size_t>(8), window.first)),
+        unified.detailsScrollbar.capturing());
     fb.drawFilledRect(x + w - 50, y + h - 34, 38, 26, Colors::Panel);
 }
 
