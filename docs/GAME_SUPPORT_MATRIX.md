@@ -1,22 +1,23 @@
 # PokeBank NX — Game Support / Verification Matrix
 
-Last updated: **2026-10-14**
+Last updated: **2026-10-17** (verified project status; historical generation detail below retained).
 
-This matrix separates implemented support from physical device acceptance.
+**Gen I–V application baseline:** [PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) is an unmerged draft. The owner's exact [`7fea1797` NRO retest](hardware/OWNER_RETEST_7fea1797_20261017.md) recorded **42 PASS / 54 targeted checks**, not per-title exhaustive acceptance. Six entries have reported problems/investigations and six other items remain unverified. Tested game/emulator/controller names were not supplied, so this matrix does **not** mark all 20 games accepted on that build. [All-release gate #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313) stays OPEN.
 
-No current adapter is approved for direct live writing to an installed-game save or emulator source. **Open draft implementation is not a feature merged into the default branch or owner-device acceptance.**
-
-| Generation | Games | Read / source state | Staged editing state | Device state |
+| Generation | Games | Read / source state | Staged editing state | Physical acceptance evidence |
 |---|---|---|---|---|
-| I | Red / Blue / Yellow | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
-| II | Gold / Silver / Crystal | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
-| III | Ruby / Sapphire / Emerald / FireRed / LeafGreen | RetroArch / provider-aware legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
-| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual assignment foundation | Party + Box View/Edit, Create, native field/move/form work | Earlier integrated milestone accepted; latest finalization **HARDWARE PENDING** |
-| V | Black / White / Black 2 / White 2 | Experimental RetroArch/DraStic/melonDS/manual exact BW/B2W2 Save Instances, profile assignment, Primary/Backup | Experimental shared PK5 native staged View/Edit/Create/Review + app-owned export on [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) | **CI GREEN; SWITCH HARDWARE PENDING** |
-| 3DS | X/Y, ORAS, SM/USUM | Provider/research planning only | Not started | **NOT SUPPORTED** |
-| Modern Switch | LGPE, SWSH, BDSP, PLA, SV, Z-A and other tracked identities | validation/source foundation varies by title | production editor/write support not advertised | **NOT GENERALLY ACCEPTED** |
+| I | Red / Blue / Yellow | RetroArch / provider-aware validated legacy sources | Shared native View/Create/Edit, Trainer/Items foundation | Earlier accepted foundation; current shared Moves, controls and scroll among owner's targeted PASS; Bag Add and Gen I Trainer enhancement pending |
+| II | Gold / Silver / Crystal | RetroArch / validated legacy sources | Shared native DV/Stat Exp, View/Create/Edit and inventory | Earlier accepted foundation; Gen II Create A/B and Data pane PASS in latest report; Bag Add and Crystal inline Met Time pending |
+| III | Ruby / Sapphire / Emerald / FireRed / LeafGreen | RetroArch / validated provider-aware legacy sources | Shared Gen III editor and Bag staged edits | Earlier accepted foundation; current Move/PP and location layout PASS; Bag Add workflow needs repair |
+| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual sources | Shared PK4 staged View/Edit/Create/Review/Export Copy | Earlier milestone; current Moves/location targeted PASS; emulator Bag Add and export/reopen not fully verified |
+| V | Black / White / Black 2 / White 2 | Exact BW/B2W2 source instances, profile assignment, DraStic/melonDS/RetroArch/manual paths | Shared PK5 Create/Edit, Trainer/Party/Boxes, Bag, Review/Export Copy | Party/Boxes/Trainer display PASS; left-side clipping and PP/PP Ups spacing reported; Create/Review/Discard/Export need dedicated retest |
+| VI–IX | Later 3DS and Switch families | Separate research/future integration | No owner-accepted Gen VI–IX shared editor | **ON HOLD** until exact Gen I–V owner acceptance |
 
-FireRed/LeafGreen GBA and separately tracked Switch release identities remain distinct game/platform identities.
+**Legality is separate.** [PR #314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314) contains production-wired Gen I–IV analysis in its own branch and an engine-only Gen V analyzer; it has **not** been integrated into the latest hardware NRO. Differential corpus success is not a universal historical legality certificate.
+
+**Permanent source safety:** original emulator/installed saves are read-only; editor work stays in the app-owned staged copy; export generates an independent result; no source injection authorized.
+
+The generation-specific material below records earlier accepted foundation and implementation details; treat the newer snapshot above as the active acceptance status.
 
 ## Generation I
 
