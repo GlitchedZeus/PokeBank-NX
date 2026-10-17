@@ -475,11 +475,17 @@ int main() {
         ++checked;
     }
 
-    // Records this analyzer does not judge: Warning (Unknown), never Invalid.
+    // A GBA wild record relabelled as Colosseum/XD origin (version 15) matches no
+    // GameCube template: Invalid, never certified (EncounterGenerator3GC yields nothing).
     {
         auto pk = base;
         setVersion(pk, 15);
-        expectWarning("Colosseum/XD origin", pk, "Colosseum/XD");
+        expectInvalid("GBA wild record mislabelled as Colosseum/XD origin", pk,
+                      "Unable to match an encounter from the origin game");
+    }
+    // Records this analyzer does not judge: Warning (Unknown), never Invalid.
+    {
+        auto pk = base;
         for (uint8_t v : {0, 6, 7, 10, 14}) {
             pk = base;
             setVersion(pk, v);

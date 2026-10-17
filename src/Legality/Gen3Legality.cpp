@@ -4280,7 +4280,7 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
     }
     if (!isGbaVersion(pk.version) && pk.version != kVerCXD) {
         add(Severity::Warning, CheckIdentifier::SourceGame,
-            "Origin game id " + std::to_string(pk.version) + " is not a Gen III game; encounter rules were not run");
+            "Origin game id " + std::to_string(pk.version) + " is not a Gen III cartridge; encounter rules were not run");
         return r;
     }
 
