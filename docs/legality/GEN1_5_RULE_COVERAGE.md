@@ -90,8 +90,8 @@ PKHeX invalid, PokeBank NX "No problems found". Every tool fails on either.
 
 | Gen | Corpus | False Invalid | False Valid | PKHeX-invalid caught as Invalid | PKHeX-valid certified "No problems found" |
 |---|---|---|---|---|---|
-| I | `pkhex_gb_diff` seeds 1-3, 3 x 50,000; every record also run through `Legality::analyze` | 0 | 0 | matches PKHeX except the listed differences; production 150,000 / 150,000 equal to the origin search | yes, except the listed Incomplete cases |
-| II | same, PK2, 3 x 50,000; production 137,600 equal to the origin search (12,400 Korean skipped) | 0 | 0 | same | same |
+| I | `pkhex_gb_diff` seeds 1-3, 3 x 50,000; every record also run through `Legality::analyze` | 0 | 0 | matches PKHeX except the listed differences; production 150,000 / 150,000 equal to the origin search (seed 1 rerun with the stored name bytes on the app path: 50,000 / 50,000) | yes, except the listed Incomplete cases |
+| II | same, PK2, 3 x 50,000; production 137,600 equal to the origin search (12,400 Korean skipped; seed 1 rerun with the stored name bytes: 45,824 / 45,824) | 0 | 0 | same | same |
 | III | `pkhex_gen34_diff` seeds 1-3, 3 mutations, Colosseum/XD included, plus a grown Gen III corpus (21,963) | 0 | 0 | 49,617 / 49,632 (99.97%; the 15 hold an Enigma Berry and are Incomplete) | base 46,782 / 48,636 (96.19%); grown 21,602 / 21,963 (98.36%) |
 | IV | `pkhex_gen34_diff` seeds 1-3, 3 mutations (Gen IV grown corpus: Lane B, 76,388 records, 0 / 0) | 0 | 0 | 83,508 / 83,508 (100%) | 67,387 / 69,497 (96.96%). 129 PKHeX-valid records are Invalid by the deliberately stricter met-location rule (`PKHEX_DISAGREEMENT_REVIEW.md` item 14) |
 | V | `pkhex_gen5_diff` seeds 1, 2, 7, 11, 4 mutations (539,297 records) | 0 | 0 | 288,992 / 290,183 (99.6%); Gen III/IV-origin transfers 95,786 / 95,894; Colosseum/XD 3,442 / 3,470 | 247,234 / 249,114 (99.2%): native 138,951 / 139,021; trade 8,499 / 8,499; event 15,889 / 15,898; Gen III/IV transfer 83,895 / 85,696 (Colosseum/XD 1,842 / 2,021, was 0 / 1,995) |
@@ -102,17 +102,19 @@ Total on the final engine head: 300,000 (Gen I/II) + 273,236 (Gen III/IV) + 539,
 Before this round, Gen III caught 13-14% and Gen IV 31-32% of PKHeX-invalid records, and
 neither could certify any record.
 
-## 3. Test counts (host suites, this head)
+## 3. Test counts (host suites, `host-test` on `c36679b002204f097419e1e54b1583ea6eb83200`)
 
 | Suite | Cases |
 |---|---|
-| `test_gb_legality_gen1` | 198 checks vs PKHeX verdicts (15 deliberately Incomplete) |
+| `test_gb_legality_gen1` | 207 checks vs PKHeX verdicts (21 deliberately Incomplete) |
 | `test_gb_legality_gen2` | 244 checks |
-| `test_gb_legality_structural` | 1,511 checks |
-| `test_legality_gen3` | 268 cases + 12,000 fuzz records |
-| `test_legality_gen4` | 198 cases + 40,000 fuzz records (400,000 in the gen34 CI job) |
-| `test_legality_gen5` | 167 cases + 40,000 fuzz records (400,000 in the gen5 CI job) |
-| `test_legality_title_matrix` | 175 cases across all 20 titles (positive, negative, malformed, Unknown, original-game and title-specific) |
+| `test_gb_legality_structural` | 4,781 checks |
+| `test_legality_gen3` | 506 cases + 12,000 fuzz records |
+| `test_gen3_legality_context` | Gen III routing through `Legality::analyze`, Colosseum/XD included |
+| `test_legality_gen4` | 247 cases + 40,000 fuzz records (400,000 in the gen34 CI job) |
+| `test_legality_gen5` | 204 cases + 40,000 fuzz records (400,000 in the gen5 CI job) |
+| `test_legality_gen5_adapter` | 5,069 cases (`Gen5App::analyze`: slots, games, trainers, malformed input) |
+| `test_legality_title_matrix` | 183 cases across all 20 titles (positive, negative, malformed, Unknown, original-game and title-specific) |
 
 Each also builds with ASan/UBSan, and GCC and Clang where the lane gates require it. The
 lane gates (L1-L6) and their workflows are listed in `LEGALITY_GATE_MATRIX.md`.
