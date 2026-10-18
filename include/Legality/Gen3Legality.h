@@ -1,16 +1,19 @@
 /**
- * Gen3Legality.h - Gen III (Ruby, Sapphire, Emerald, FireRed, LeafGreen) legality for PK3 records.
+ * Gen3Legality.h - Gen III legality for PK3 records (Ruby, Sapphire, Emerald, FireRed,
+ * LeafGreen and Colosseum/XD origins).
  *
  * Part of the shared legality analyzer: it returns the same Legality::Report,
  * Issue, Severity and CoverageSummary as analyze(), so callers read one verdict
  * model. The input is a decrypted PK3 record (80-byte box or 100-byte party).
  * The record is only read, never modified, and nothing is written back.
  *
- * Rules and data follow PKHeX.Core at the commit pinned in Gen3LegalityData.h
- * (see docs/legality/GEN3_PKHEX_RULE_INVENTORY.md). A rule PKHeX treats as a
- * definite failure is reported as Invalid; anything this analyzer cannot decide
- * (Colosseum/XD origin, unknown game versions, search limits) is reported as a
- * Warning with partial coverage, never as Invalid.
+ * Rules and data follow PKHeX.Core at the commit pinned in Gen3LegalityData.h and
+ * Gen3LegalityDataCxd.h (see docs/legality/GEN3_PKHEX_RULE_INVENTORY.md). A rule
+ * PKHeX treats as a definite failure is reported as Invalid; anything this analyzer
+ * cannot decide (unknown game versions, search limits) is reported as a Warning with
+ * partial coverage, never as Invalid. A Colosseum/XD origin (version 15) is judged
+ * with PKHeX's GameCube templates, team locks and RNG (EncounterGenerator3GC); the
+ * same rules serve later formats through Gen3Cxd.h.
  */
 #pragma once
 
@@ -55,6 +58,10 @@ struct Pk3 {
     uint32_t ribbons = 0;
     bool fateful = false;
     uint8_t partyLevel = 0;
+    // Knowledge flags for Gen3Cxd::judge, which builds a Pk3 from a later format's fields.
+    // read() leaves both true: a PK3 in a Gen III save carries its own met fields and moves.
+    bool metKnown = true;    // false: met level/location are a transfer's (PKHeX Format != 3 rules)
+    bool movesKnown = true;  // false: the moves are not Gen III moves; move checks are skipped
 
     // Derived exactly like PKHeX's PK3 accessors.
     uint8_t form = 0, gender = 0, nature = 0, currentLevel = 1;

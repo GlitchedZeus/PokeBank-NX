@@ -1,17 +1,21 @@
 /**
- * Gen3Legality.cpp - Gen III PK3 legality analyzer (R/S/E/FR/LG).
+ * Gen3Legality.cpp - Gen III PK3 legality analyzer (R/S/E/FR/LG and Colosseum/XD origins).
  *
  * A port of the PKHeX.Core Gen III legality pipeline at the commit pinned in
  * Gen3LegalityData.h: PID/IV method detection (MethodFinder), the encounter
- * generator and finder (EncounterGenerator3 / EncounterFinder, including the
- * Method H lead/slot frame search and event gift seed revision), evolution
- * chains, move learnability (LearnGroup3, MoveBreed3) and every verifier that
- * runs for a PK3. See docs/legality/GEN3_PKHEX_RULE_INVENTORY.md for the rule
- * list and the documented severity policy.
+ * generator and finder (EncounterGenerator3 / EncounterGenerator3GC /
+ * EncounterFinder, including the Method H lead/slot frame search, event gift
+ * seed revision, the GameCube shadow team locks (LockFinder / TeamLockResult),
+ * Poke Spot seeds (MethodPokeSpot) and the starter / trainer-ID seeds of
+ * MethodCXD), evolution chains, move learnability (LearnGroup3, MoveBreed3) and
+ * every verifier that runs for a PK3. See docs/legality/GEN3_PKHEX_RULE_INVENTORY.md
+ * for the rule list and the documented severity policy.
  *
  * The analyzer only reads its input and returns a Legality::Report.
  */
 #include "Legality/Gen3Legality.h"
+
+#include "Legality/Gen3Cxd.h"
 
 #include <algorithm>
 #include <array>
@@ -23,6 +27,7 @@
 #include <vector>
 
 #include "Legality/Gen3LegalityData.h"
+#include "Legality/Gen3LegalityDataCxd.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon.h"
@@ -32,6 +37,7 @@ namespace Legality {
 namespace Gen3Pk3 {
 
 namespace D = ::Legality::Gen3Data;
+namespace X = ::Legality::Gen3DataCxd;
 
 namespace {
 
@@ -110,7 +116,7 @@ int learnSourceForMask(uint8_t mask) noexcept {
 
 int learnSourceForVersion(uint8_t version) noexcept {
     switch (version) {
-        case kVerE: return 1;
+        case kVerE: case kVerCXD: return 1; // GameData.GetLearnSource: COLO/XD/CXD -> LearnSource3E
         case kVerFR: return 2;
         case kVerLG: return 3;
         default: return 0;
@@ -286,6 +292,29 @@ Seeds xdSeeds(uint32_t first, uint32_t second) noexcept {
     return out;
 }
 
+inline uint32_t xdNext16(uint32_t& s) noexcept { s = xdNext(s); return s >> 16; }
+inline uint32_t xdNext15(uint32_t& s) noexcept { s = xdNext(s); return (s >> 16) & 0x7FFFu; }
+constexpr uint32_t xdPrev1000(uint32_t s) noexcept { return 0x251CC8E1u * s + 0x94750758u; } // XDRNG.Prev1000
+
+/// XDRNG.GetSeedsIVs (XDRNG.cs:271-287): seeds whose next two 15-bit outputs are
+/// first/second (both already shifted << 16); each hit also yields its top-bit flip.
+Seeds xdSeedsIVs(uint32_t first, uint32_t second) noexcept {
+    Seeds out;
+    constexpr uint32_t kMult = 0x343FDu;
+    constexpr uint32_t kSub = 0x269EC3u - 0xFFFFu;
+    constexpr uint64_t kBase = (uint64_t{kMult} + 1u) * 0xFFFFu;
+    uint64_t t = static_cast<uint32_t>(second - first * kMult - kSub) & 0x7FFFFFFFu;
+    const uint64_t kmax = (kBase - t) >> 31;
+    for (uint64_t k = 0; k <= kmax; ++k, t += 0x80000000ull) {
+        if (t % kMult < 0x10000u) {
+            const uint32_t s = xdPrev(first | static_cast<uint16_t>(t / kMult));
+            out.push(s);
+            out.push(s ^ 0x80000000u);
+        }
+    }
+    return out;
+}
+
 uint32_t xdSequentialIV32(uint32_t seed) noexcept {
     uint32_t result = 0;
     for (int i = 0; i < 6; ++i) {
@@ -450,6 +479,312 @@ bool read(std::span<const uint8_t> d, Pk3& o) {
     o.isNicknamed = o.nickname != std::u16string_view(speciesName3(o.species, o.language));
     return true;
 }
+
+// ---------------------------------------------------------------------------
+// Colosseum / XD RNG (PKHeX MethodCXD, MethodPokeSpot, LockFinder / TeamLockResult)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+constexpr uint32_t kNotForced = 0xFFFFFFFFu; // TeamLockResult.NOT_FORCED
+
+/// PKHeX's GameCube searches have no bound; a guard that runs out makes the analysis
+/// Unknown (every Invalid finding is reported as a Warning) instead of guessing.
+struct CxdGuard {
+    bool& capped;
+    uint32_t budget;
+    bool spend() noexcept {
+        if (budget == 0) { capped = true; return false; }
+        --budget;
+        return true;
+    }
+};
+
+/// MethodCXD.IsValidNameScreenEndSeed (MethodCXD.cs:644-677): on the name screen each
+/// frame has a 10% chance (rand >> 16 <= 0x1999) to spawn a ball, which consumes four
+/// more calls; a seed is reachable when the four frames before it all skipped the spawn,
+/// or when an earlier reachable seed spawned a ball that lands on it.
+bool isValidNameScreenEndSeed(uint32_t seed, CxdGuard& g, int depth = 0) noexcept {
+    constexpr uint32_t kThreshold = 0x1999u;
+    if (depth > 256 || !g.spend()) { g.capped = true; return false; }
+    const bool p1 = (seed >> 16) > kThreshold;
+    const bool p2 = xdPrev16(seed) > kThreshold;
+    const bool p3 = xdPrev16(seed) > kThreshold;
+    const bool p4 = xdPrev16(seed) > kThreshold;
+    if (p1 && p2 && p3 && p4) return true;
+    if (xdPrev16(seed) <= kThreshold && isValidNameScreenEndSeed(xdPrev(seed), g, depth + 1)) return true;
+    if (xdPrev16(seed) <= kThreshold && p1 && isValidNameScreenEndSeed(xdPrev(seed), g, depth + 1)) return true;
+    if (xdPrev16(seed) <= kThreshold && p1 && p2 && isValidNameScreenEndSeed(xdPrev(seed), g, depth + 1)) return true;
+    if (xdPrev16(seed) <= kThreshold && p1 && p2 && p3 && isValidNameScreenEndSeed(xdPrev(seed), g, depth + 1)) return true;
+    return false;
+}
+
+/// MethodCXD.TryGetSeedTrainerID (MethodCXD.cs:680-692): the TID then SID are the two
+/// 16-bit outputs 1000 frames after a reachable name-screen seed.
+bool cxdTrainerIdHasSeed(uint16_t tid, uint16_t sid, bool& capped) noexcept {
+    CxdGuard g{capped, 100000};
+    for (uint32_t s : xdSeeds(static_cast<uint32_t>(tid) << 16, static_cast<uint32_t>(sid) << 16))
+        if (isValidNameScreenEndSeed(xdPrev1000(s), g)) return true;
+    return false;
+}
+
+bool isMaleEevee(uint32_t pid) noexcept { return (pid & 0xFFu) >= 31; } // EntityGender.VM
+
+/// MethodCXD.GetPIDRegular: two 16-bit outputs, high half first.
+uint32_t xdPidRegular(uint32_t& seed) noexcept {
+    const uint32_t a = xdNext16(seed);
+    const uint32_t b = xdNext16(seed);
+    return (a << 16) | b;
+}
+
+/// MethodCXD.GetColoStarterPID (MethodCXD.cs:510-523): rerolled until male and not shiny.
+bool coloStarterPid(uint32_t& seed, uint16_t tid, uint16_t sid, uint32_t& pid, CxdGuard& g) noexcept {
+    while (g.spend()) {
+        pid = xdPidRegular(seed);
+        if (isMaleEevee(pid) && !isShinyPid(pid, tid, sid)) return true;
+    }
+    return false;
+}
+
+/// MethodCXD.IsMatchIVs: the two 15-bit IV halves follow the seed.
+bool xdMatchIVs(uint32_t iv1, uint32_t iv2, uint32_t seed) noexcept {
+    if (iv1 != xdNext15(seed)) return false;
+    return iv2 == xdNext15(seed);
+}
+
+/// MethodCXD.TryGetSeedStarterColo (MethodCXD.cs:571-612). Call structure after the seed
+/// that produced TID/SID: fake PID x2, [IVs x2, ability, PID] for Umbreon, then the same
+/// again for Espeon; both PIDs are rerolled until male and not shiny.
+bool coloStarterSeed(const Pk3& pk, uint32_t iv1, uint32_t iv2, uint32_t& result, bool& capped) noexcept {
+    CxdGuard g{capped, 100000};
+    for (uint32_t seed : xdSeeds(static_cast<uint32_t>(pk.tid) << 16, static_cast<uint32_t>(pk.sid) << 16)) {
+        if (pk.species == 197 && !xdMatchIVs(iv1, iv2, xdNextN(seed, 4))) continue;
+        uint32_t s = xdNextN(seed, 7);
+        uint32_t pid = 0;
+        if (!coloStarterPid(s, pk.tid, pk.sid, pid, g)) return false;
+        if (pk.species == 197) {
+            if (pid != pk.pid) continue;
+            result = seed;
+            return true;
+        }
+        const uint32_t afterFake = xdNextN(s, 2);
+        if (!xdMatchIVs(iv1, iv2, afterFake)) continue;
+        s = xdNextN(afterFake, 3);
+        if (!coloStarterPid(s, pk.tid, pk.sid, pid, g)) return false;
+        if (pid != pk.pid) continue;
+        result = seed;
+        return true;
+    }
+    return false;
+}
+
+/// MethodCXD.TryGetSeedStarterXD (MethodCXD.cs:614-636): TID, SID, fake PID x2, IVs x2,
+/// ability, PID; Eevee's PID is not rerolled.
+bool xdStarterSeed(const Pk3& pk, uint32_t iv1, uint32_t iv2, uint32_t& result) noexcept {
+    for (uint32_t seed : xdSeeds(static_cast<uint32_t>(pk.tid) << 16, static_cast<uint32_t>(pk.sid) << 16)) {
+        if (!xdMatchIVs(iv1, iv2, xdNextN(seed, 4))) continue;
+        uint32_t s = xdNextN(seed, 7);
+        if (xdPidRegular(s) != pk.pid) continue;
+        result = seed;
+        return true;
+    }
+    return false;
+}
+
+/// MethodPokeSpot.IsValidActivation (MethodPokeSpot.cs:8-50): 0 invalid, 1 neither Munchlax
+/// nor Bonsly could spawn, 2 only Munchlax could. seed is the frame before the PID.
+int pokeSpotActivation(uint8_t slot, uint32_t seed, uint32_t& origin) noexcept {
+    const uint32_t esv = (seed >> 16) % 100u;
+    const uint8_t rolled = esv < 50 ? 0 : esv < 85 ? 1 : 2; // MethodPokeSpot.GetSlot
+    if (rolled != slot) return 0;
+    uint32_t preSlot = xdPrev16(seed);
+    if (preSlot % 3 == 0) { origin = xdPrev(seed); return 1; }
+    if (preSlot % 100 < 10) return 0;
+    preSlot = xdPrev16(seed);
+    if (preSlot % 3 == 0) { origin = xdPrev(seed); return 2; }
+    return 0;
+}
+
+/// MethodPokeSpot.TryGetOriginSeedPID (MethodPokeSpot.cs:63-84).
+bool pokeSpotOriginPid(uint32_t pid, uint8_t slot, uint32_t& origin) noexcept {
+    for (uint32_t seed : xdSeeds(pid & 0xFFFF0000u, pid << 16))
+        if (pokeSpotActivation(slot, seed, origin) != 0) return true;
+    return false;
+}
+
+/// MethodPokeSpot.IsValidAnimation (MethodPokeSpot.cs:373-410): the spot animation is
+/// rand(10) != 3, then 1, 2 or 5 more calls depending on its value.
+bool pokeSpotAnimation(uint32_t seed) noexcept {
+    uint32_t anim = xdPrev16(seed) % 10;
+    if (anim < 5 && anim != 3) return true;
+    anim = xdPrev16(seed) % 10;
+    if (anim >= 5 && anim != 8) return true;
+    seed = xdPrevN(seed, 3);
+    return (seed >> 16) % 10 == 8;
+}
+
+/// MethodPokeSpot.TryGetOriginSeedIVs (MethodPokeSpot.cs:140-175) for a PK3 (original met
+/// level): fake ID x2, level, fake PID x2, then IVs x2 and ability.
+bool pokeSpotOriginIVs(const Pk3& pk, uint8_t levelMin, uint8_t levelMax) noexcept {
+    const uint32_t iv32 = pk.iv32 & 0x3FFFFFFFu;
+    const uint32_t iv1 = iv32 & 0x7FFFu;
+    const uint32_t iv2 = iv32 >> 15;
+    const uint32_t delta = 1u + levelMax - levelMin;
+    for (uint32_t preIV : xdSeedsIVs(iv1 << 16, iv2 << 16)) {
+        if (!pokeSpotAnimation(xdPrevN(preIV, 6))) continue;
+        const uint32_t lvl16 = xdPrevN(preIV, 2) >> 16;
+        const uint32_t lvl = levelMin + lvl16 % delta;
+        if (pk.metKnown ? pk.metLevel != lvl : pk.metLevel < lvl) continue; // MethodPokeSpot.cs:160-163
+        return true;
+    }
+    return false;
+}
+
+/// TeamLockResult (TeamLockResult.cs): reverse-generates the trainer's party from the
+/// shadow's origin seed. The locks are popped from the end of the team array; a
+/// non-shadow prior lock allows any gap (GetAllLocks), otherwise the member must sit
+/// right before (GetSingleLock, with anti-shiny reroll frames); VerifyNPC then checks the
+/// CPU trainer's shiny value against every regenerated member.
+struct TeamLockSearch {
+    const X::TeamLock& team;
+    uint32_t tsv;
+    CxdGuard& guard;
+    std::vector<uint32_t> seeds;    // FrameCache: seeds[i] = Prev^(i+2)(origin), value = seed >> 16
+    std::vector<uint32_t> teamPids; // Team stack, first pushed first
+    uint32_t rcsv = kNotForced;
+
+    TeamLockSearch(const X::TeamLock& t, uint32_t originSeed, uint32_t trainerSv, CxdGuard& g)
+        : team(t), tsv(trainerSv), guard(g) {
+        seeds.push_back(xdPrevN(originSeed, 2));
+    }
+
+    uint32_t cache(int index) {
+        while (static_cast<size_t>(index) >= seeds.size()) seeds.push_back(xdPrev(seeds.back()));
+        return seeds[static_cast<size_t>(index)] >> 16;
+    }
+    const X::NpcLock& lock(int i) const noexcept { return X::kNpcLocks[team.lockStart + static_cast<size_t>(i)]; }
+
+    /// NPCLock.MatchesLock.
+    static bool matches(const X::NpcLock& l, uint32_t pid) noexcept {
+        if (l.state != 0 && l.nature == 0) return true; // non-locked shadow
+        if (l.gender != 2 && l.gender != ((pid & 0xFFu) < l.ratio ? 1 : 0)) return false;
+        return l.nature == pid % 25;
+    }
+    static int frames(const X::NpcLock& l) noexcept { return l.state > 1 ? 5 : 7; } // NPCLock.FramesConsumed
+
+    bool run() { return find(0, nullptr, static_cast<int>(team.lockCount) - 1); }
+
+    /// FindLockSeed: lockIndex is the lock popped next (Stack order reverses the array).
+    bool find(int frame, const X::NpcLock* prior, int lockIndex) {
+        if (lockIndex < 0) return verifyNpc(frame);
+        const X::NpcLock& current = lock(lockIndex);
+        if (prior != nullptr && prior->state == 0) return allLocks(frame, current, *prior, lockIndex);
+        return singleLock(frame, current, lockIndex);
+    }
+
+    bool tryFrame(uint32_t pid, int frame, const X::NpcLock& current, int lockIndex) {
+        teamPids.push_back(pid);
+        if (find(frame, &current, lockIndex - 1)) return true;
+        teamPids.pop_back();
+        return false;
+    }
+
+    /// GetSingleLock (TeamLockResult.cs:86-129).
+    bool singleLock(int ctr, const X::NpcLock& current, int lockIndex) {
+        const uint32_t pid = (cache(ctr + 1) << 16) | cache(ctr);
+        if (!matches(current, pid)) return false;
+        if (tryFrame(pid, ctr + frames(current), current, lockIndex)) return true;
+        bool forcedOT = false;
+        int start = 2;
+        while (guard.spend()) {
+            const uint32_t upper = cache(start + 1);
+            const uint32_t lower = cache(start);
+            const uint32_t sv = (upper ^ lower) >> 3;
+            if (sv == tsv) {
+                // anti-shiny reroll for the player: a possible frame
+            } else if (rcsv != kNotForced) {
+                if (sv != rcsv) {
+                    if (forcedOT) rcsv = kNotForced;
+                    return false;
+                }
+                // A CPU-shiny reroll frame. PKHeX re-tests this same frame forever here
+                // (TeamLockResult.cs:118-123, `continue` without advancing); the frame is
+                // treated like the GetAllLocks case and the search moves on.
+                forcedOT = true;
+            }
+            if (tryFrame(pid, start + frames(current), current, lockIndex)) return true;
+            start += 2;
+        }
+        return false;
+    }
+
+    /// GetAllLocks (TeamLockResult.cs:131-178).
+    bool allLocks(int ctr, const X::NpcLock& current, const X::NpcLock& prior, int lockIndex) {
+        const int start = ctr;
+        bool forcedOT = false;
+        while (guard.spend()) {
+            const int p7 = ctr - 7;
+            if (p7 > start) {
+                const uint32_t upper = cache(p7 + 1);
+                const uint32_t lower = cache(p7);
+                const uint32_t cid = (upper << 16) | lower;
+                const uint32_t sv = (upper ^ lower) >> 3;
+                if (sv == tsv) {
+                    // interrupt ignored: the result is shiny for the player
+                } else if (matches(prior, cid)) {
+                    if (rcsv != kNotForced) {
+                        if (sv != rcsv) {
+                            if (forcedOT) rcsv = kNotForced;
+                            return false;
+                        }
+                    } else {
+                        rcsv = sv;
+                        forcedOT = true;
+                    }
+                }
+            }
+            const uint32_t pid = (cache(ctr + 1) << 16) | cache(ctr);
+            if (matches(current, pid) && tryFrame(pid, ctr + frames(current), current, lockIndex)) return true;
+            ctr += 2;
+        }
+        return false;
+    }
+
+    /// VerifyNPC (TeamLockResult.cs:180-212). PKHeX enumerates its Team stack top first with
+    /// pos counting down from Count - 1, which pairs the k-th pushed frame with Locks[k].
+    bool verifyNpc(int ctr) {
+        const uint32_t tid = cache(ctr + 1);
+        const uint32_t sid = cache(ctr);
+        const uint32_t cpusv = (tid ^ sid) >> 3;
+        if (rcsv != kNotForced && rcsv != cpusv) return false;
+        for (size_t k = 0; k < teamPids.size(); ++k) {
+            const uint32_t pid = teamPids[k];
+            const uint32_t psv = ((pid & 0xFFFFu) ^ (pid >> 16)) >> 3;
+            if (psv != cpusv) continue;
+            if (lock(static_cast<int>(k)).state == 0) return false; // no shiny CPU Pokemon
+            if (tsv != kNotForced) return false;                      // XD: no shiny shadow Pokemon
+        }
+        return true;
+    }
+};
+
+/// LockFinder.IsAllShadowLockValid (LockFinder.cs:7-29): XD never yields a shiny shadow;
+/// with no prior team any seed is fine; otherwise one team permutation must regenerate.
+bool shadowLockValid(const Pk3& pk, bool xd, uint8_t teamSet, uint32_t seed, bool& capped) {
+    if (xd && pk.shiny) return false;
+    const X::TeamSet& set = X::kTeamSets[teamSet];
+    if (set.count == 0) return true;
+    const uint32_t tsv = xd ? (static_cast<uint32_t>(pk.tid ^ pk.sid) >> 3) : kNotForced;
+    CxdGuard g{capped, 400000};
+    for (size_t i = 0; i < set.count; ++i) {
+        TeamLockSearch search(X::kTeamLocks[X::kTeamSetMembers[set.start + i]], seed, tsv, g);
+        if (search.run()) return true;
+        if (capped) return false;
+    }
+    return false;
+}
+
+} // namespace
 
 // ---------------------------------------------------------------------------
 // PID/IV correlation (PKHeX MethodFinder, Gen III subset)
@@ -758,7 +1093,24 @@ bool pokewalkerMatch(const Pk3& pk, uint32_t pid, PidIv& out) noexcept {
 
 } // namespace
 
-PidIv analyzePidIv(const Pk3& pk) {
+namespace {
+
+/// MethodFinder.GetColoStarterMatch (MethodFinder.cs:555-572): a CXD Espeon met at 25+
+/// or Umbreon met at 26+ is first tried as a Colosseum starter, whose PID and IVs
+/// follow from the trainer's TID/SID (MethodCXD.TryGetSeedStarterColo).
+bool coloStarterMatch(const Pk3& pk, uint32_t iv1, uint32_t iv2, PidIv& out, bool& capped) noexcept {
+    if (pk.version != kVerCXD) return false;
+    const bool starter = (pk.species == 196 && pk.metLevel >= 25) || (pk.species == 197 && pk.metLevel >= 26);
+    if (!starter) return false;
+    uint32_t result = 0;
+    if (!coloStarterSeed(pk, iv1, iv2, result, capped)) return false;
+    out = makePidIv(CXD_ColoStarter, result);
+    return true;
+}
+
+} // namespace
+
+PidIv analyzePidIv(const Pk3& pk, bool& capped) {
     const uint32_t pid = pk.pid;
     const uint32_t top = pid & 0xFFFF0000u;
     const uint32_t bot = pid << 16;
@@ -768,8 +1120,7 @@ PidIv analyzePidIv(const Pk3& pk) {
     PidIv r;
     if (lcrngMatch(top, bot, iv1, iv2, r)) return r;
     if (pk.species == 201 && lcrngUnownMatch(top, bot, iv1, iv2, r)) return r;
-    // Colosseum starters (CXD_ColoStarter) only exist for CXD-origin records,
-    // which the analyzer reports as unsupported before any PIDIV use.
+    if (coloStarterMatch(pk, iv1, iv2, r, capped)) return r;
     if (xdrngMatch(pk, top, bot, iv1, iv2, r)) return r;
     if (roamerMatch(top, bot, iv32, r)) return r;
     if (channelMatch(pk, top, bot, iv32, r)) return r;
@@ -784,6 +1135,11 @@ PidIv analyzePidIv(const Pk3& pk) {
     }
     if (pokewalkerMatch(pk, pid, r)) return r;
     return PidIv{};
+}
+
+PidIv analyzePidIv(const Pk3& pk) {
+    bool capped = false;
+    return analyzePidIv(pk, capped);
 }
 
 namespace {
@@ -1020,7 +1376,8 @@ void devolve3(std::array<Evo, 3>& result, const Pk3& pk, uint8_t encLevelMin) {
 std::vector<Evo> originChain(const Pk3& pk) {
     std::vector<Evo> out;
     const uint8_t maxLevel = pk.currentLevel;
-    const uint8_t minLevel = pk.isEgg ? 5 : pk.metLevel;
+    // EncounterOrigin.GetLevelOriginMin3: a record no longer in PK3 format starts at level 2.
+    const uint8_t minLevel = pk.isEgg ? 5 : (pk.metKnown ? pk.metLevel : 2);
     if (pk.isEgg) {
         Evo e; e.species = pk.species; e.form = pk.form; e.levelMax = maxLevel; e.levelMin = maxLevel;
         out.push_back(e);
@@ -1040,7 +1397,7 @@ std::vector<Evo> originChain(const Pk3& pk) {
 
 /// EvolutionChain.GetEvolutionChainsAllGens(pk, enc).Gen3 for a PK3 still in Gen III.
 std::vector<Evo> evolutionHistory(const Pk3& pk, uint16_t encSpecies, uint8_t encLevelMin, bool encInvalid) {
-    const uint8_t minLevel = std::max(pk.metLevel, encLevelMin);
+    const uint8_t minLevel = std::max(pk.metKnown ? pk.metLevel : uint8_t{0}, encLevelMin);
     const uint8_t maxLevel = pk.currentLevel;
     std::vector<Evo> chain;
     if (pk.isEgg) {
@@ -1108,7 +1465,17 @@ namespace {
 // Encounter template view shared by the generator, the move check and the verifiers
 // ---------------------------------------------------------------------------
 
-enum class Kind : uint8_t { Invalid, Slot, Static, Trade, Gift, GiftNY, GiftJPN, Colo, Egg };
+enum class Kind : uint8_t {
+    Invalid, Slot, Static, Trade, Gift, GiftNY, GiftJPN, Colo, Egg,
+    // Colosseum / XD (GameCube) templates, EncounterEnumerator3GC order.
+    XdTrade, ColoShadow, ColoStarter, ColoGiftCxd, XdShadow, XdStatic, XdSlot,
+};
+
+constexpr bool isShadowKind(Kind k) noexcept { return k == Kind::ColoShadow || k == Kind::XdShadow; }
+/// IFatefulEncounterReadOnly { FatefulEncounter: true }: every XD template.
+constexpr bool isXdFatefulKind(Kind k) noexcept {
+    return k == Kind::XdTrade || k == Kind::XdShadow || k == Kind::XdStatic || k == Kind::XdSlot;
+}
 
 enum Rating : uint8_t { RMatch = 0, RDeferred = 1, RDeferredErrors = 2, RPartialMatch = 3, RMaxNotMatch = 4 };
 
@@ -1126,6 +1493,7 @@ struct Enc {
     std::array<uint16_t, 4> moves{};
     uint8_t fixedBall = 0;   // 0 none, 4 Poke Ball, 5 Safari Ball
     uint8_t rating = RMatch;
+    bool eReader = false;    // Kind::ColoShadow: Encounters3Colo.EReader row (Japanese Card e Room)
 };
 
 const char* kindName(Kind k) noexcept {
@@ -1138,6 +1506,13 @@ const char* kindName(Kind k) noexcept {
         case Kind::GiftJPN: return "PCJP gift";
         case Kind::Colo: return "Colosseum bonus gift";
         case Kind::Egg: return "egg";
+        case Kind::XdTrade: return "XD in-game trade";
+        case Kind::ColoShadow: return "Colosseum shadow Pokemon";
+        case Kind::ColoStarter: return "Colosseum starter";
+        case Kind::ColoGiftCxd: return "Colosseum gift";
+        case Kind::XdShadow: return "XD shadow Pokemon";
+        case Kind::XdStatic: return "XD gift";
+        case Kind::XdSlot: return "XD Poke Spot slot";
         default: return "none";
     }
 }
@@ -1547,6 +1922,96 @@ Enc makeColoEnc(uint16_t index) noexcept {
     return e;
 }
 
+const X::Shadow& shadowOf(const Enc& e) noexcept {
+    if (e.kind == Kind::XdShadow) return X::kXdShadows[e.index];
+    return e.eReader ? X::kColoEReader[e.index] : X::kColoShadows[e.index];
+}
+
+void setMoves(Enc& e, const uint16_t* moves) noexcept {
+    e.hasMoveset = moves[0] != 0;
+    for (size_t i = 0; i < 4; ++i) e.moves[i] = moves[i];
+}
+
+Enc makeShadowEnc(Kind kind, uint16_t index, bool eReader) noexcept {
+    Enc e;
+    e.kind = kind;
+    e.index = index;
+    e.eReader = eReader;
+    const X::Shadow& s = shadowOf(e);
+    e.species = s.species;
+    e.levelMin = e.levelMax = s.level;
+    e.versionMask = D::CXD;
+    setMoves(e, s.moves);
+    e.fixedBall = s.fixedBall;
+    return e;
+}
+
+Enc makeColoStarterEnc(uint16_t index) noexcept {
+    const auto& s = X::kColoStarters[index];
+    Enc e;
+    e.kind = Kind::ColoStarter;
+    e.index = index;
+    e.species = s.species;
+    e.levelMin = e.levelMax = s.level;
+    e.versionMask = D::CXD;
+    setMoves(e, s.moves);
+    e.fixedBall = kBallPoke;
+    return e;
+}
+
+Enc makeColoGiftCxdEnc(uint16_t index) noexcept {
+    const auto& g = X::kColoGifts[index];
+    Enc e;
+    e.kind = Kind::ColoGiftCxd;
+    e.index = index;
+    e.species = g.species;
+    e.levelMin = e.levelMax = g.level;
+    e.versionMask = D::CXD;
+    setMoves(e, g.moves);
+    e.fixedBall = kBallPoke;
+    return e;
+}
+
+Enc makeXdStaticEnc(uint16_t index) noexcept {
+    const auto& g = X::kXdGifts[index];
+    Enc e;
+    e.kind = Kind::XdStatic;
+    e.index = index;
+    e.species = g.species;
+    e.levelMin = e.levelMax = g.level;
+    e.versionMask = D::CXD;
+    setMoves(e, g.moves);
+    e.fixedBall = kBallPoke;
+    return e;
+}
+
+Enc makeXdTradeEnc(uint16_t index) noexcept {
+    const auto& t = X::kXdTrades[index];
+    Enc e;
+    e.kind = Kind::XdTrade;
+    e.index = index;
+    e.species = t.species;
+    e.levelMin = e.levelMax = t.level;
+    e.versionMask = D::CXD;
+    setMoves(e, t.moves);
+    e.fixedBall = kBallPoke;
+    return e;
+}
+
+/// EncounterSlot3XD: index is the slot number (0..2), area the Poke Spot (0..2).
+Enc makeXdSlotEnc(uint16_t area, uint16_t slot) noexcept {
+    const auto& s = X::kPokeSpots[area].slots[slot];
+    Enc e;
+    e.kind = Kind::XdSlot;
+    e.index = slot;
+    e.area = area;
+    e.species = s.species;
+    e.levelMin = s.levelMin;
+    e.levelMax = s.levelMax;
+    e.versionMask = D::CXD;
+    return e;
+}
+
 Enc makeEggEnc(uint16_t species, uint8_t version) noexcept {
     Enc e;
     e.kind = Kind::Egg;
@@ -1597,6 +2062,12 @@ bool isGenderSpecificMatch(uint8_t otGenderRule, uint8_t value) noexcept {
         case 2: case 9: return value == 1; // Only1, RandD3_1
         default: return true;
     }
+}
+
+/// GameCube IsMatchLocation / IsMatchLevel (Format == 3: exact; otherwise lost to the transfer).
+bool gcLocation(const Pk3& pk, uint8_t location) noexcept { return !pk.metKnown || pk.metLocation == location; }
+bool gcLevel(const Pk3& pk, const Evo& evo, uint8_t level) noexcept {
+    return pk.metKnown ? pk.metLevel == level : evo.levelMax >= level;
 }
 
 bool isMatchExact(const Pk3& pk, const Enc& e, const Evo& evo) {
@@ -1692,6 +2163,41 @@ bool isMatchExact(const Pk3& pk, const Enc& e, const Evo& evo) {
             if (pk.metLevel != c.level) return false;
             return evo.form == 0;
         }
+        // GameCube templates (PK3 egg location is always 0, so IsMatchEggLocation holds).
+        // IsMatchLevel / IsMatchLocation: a record no longer in PK3 format (Gen3Cxd::judge
+        // with hasOriginalMet false) lost its met level and location to the transfer, so
+        // the location is not compared and the template level must be within the chain
+        // (e.g. EncounterShadow3Colo.cs:171-182, EncounterShadow3XD.cs:122-141).
+        case Kind::XdTrade: { // EncounterTrade3XD.IsMatchExact: the SID is the player's
+            const auto& t = X::kXdTrades[e.index];
+            return gcLocation(pk, t.location) && gcLevel(pk, evo, t.level) && pk.tid == t.tid && evo.form == 0;
+        }
+        case Kind::ColoShadow: { // EncounterShadow3Colo.IsMatchExact
+            const auto& s = shadowOf(e);
+            return gcLocation(pk, s.location) && gcLevel(pk, evo, s.level) && evo.form == 0;
+        }
+        case Kind::ColoStarter: { // EncounterStarter3Colo.IsMatchExact (male only)
+            const auto& s = X::kColoStarters[e.index];
+            return gcLocation(pk, X::kColoStarterLocation) && gcLevel(pk, evo, s.level) && pk.gender == 0 &&
+                   evo.form == 0;
+        }
+        case Kind::ColoGiftCxd: { // EncounterGift3Colo.IsMatchExact (Version CXD)
+            const auto& g = X::kColoGifts[e.index];
+            return pk.version == kVerCXD && gcLocation(pk, g.location) && gcLevel(pk, evo, g.level) && evo.form == 0;
+        }
+        case Kind::XdShadow: { // EncounterShadow3XD.IsMatchLocation: Miror B. rebattles
+            const auto& s = shadowOf(e);
+            const uint8_t met = pk.metLocation;
+            const bool location = !pk.metKnown || met == s.location || met == 59 || met == 90 || met == 91 ||
+                                  met == 92 || met == 113;
+            return location && gcLevel(pk, evo, s.level) && evo.form == 0;
+        }
+        case Kind::XdStatic: { // EncounterStatic3XD.IsMatchExact
+            const auto& g = X::kXdGifts[e.index];
+            return gcLocation(pk, g.location) && gcLevel(pk, evo, g.level) && evo.form == 0;
+        }
+        case Kind::XdSlot: // EncounterSlot3XD.IsMatchExact: handled by the area location
+            return true;
         default:
             return false;
     }
@@ -1723,6 +2229,21 @@ uint8_t matchRating(const Pk3& pk, const Enc& e) {
             if (c.version == kVerR && pk.language != 1) return RPartialMatch;
             return RMatch;
         }
+        case Kind::ColoShadow: { // EncounterShadow3Colo.IsMatchPartial
+            if (pk.fateful) return RPartialMatch;
+            const auto& s = shadowOf(e);
+            return (s.fixedBall != 0 && pk.ball != s.fixedBall) ? RPartialMatch : RMatch;
+        }
+        case Kind::XdShadow: { // EncounterShadow3XD.IsMatchPartial
+            if (!pk.fateful) return RPartialMatch;
+            const auto& s = shadowOf(e);
+            return (s.fixedBall != 0 && pk.ball != s.fixedBall) ? RPartialMatch : RMatch;
+        }
+        case Kind::ColoStarter: // EncounterStarter3Colo.GetMatchRating: fateful clashes with XD's Eevee
+            if (pk.ball != kBallPoke) return RPartialMatch;
+            return pk.fateful ? RDeferredErrors : RMatch;
+        case Kind::ColoGiftCxd: case Kind::XdStatic: case Kind::XdTrade: // FixedBall Poke
+            return pk.ball != kBallPoke ? RPartialMatch : RMatch;
         default:
             return RMatch;
     }
@@ -1874,6 +2395,39 @@ std::vector<Enc> enumerateEncounters(const Pk3& pk, const std::vector<Evo>& chai
         en.out.push_back(egg);
         Enc split;
         if (tryGetSplit3(egg, chain, split)) en.out.push_back(split);
+    }
+    if (en.hasDeferred) en.out.push_back(en.deferred);
+    return std::move(en.out);
+}
+
+/// EncounterEnumerator3GC: Colosseum / XD template candidates in PKHeX's exact order
+/// (XD trades, Colosseum shadows, starters, Duking's Plusle, XD shadows, XD gifts, then
+/// the Japanese e-Reader shadows and the Poke Spot slots at the met location, then the
+/// deferred partial match). The state machine moves to Fallback once an e-Reader row
+/// matched, so the Poke Spot slots are only enumerated when none did.
+std::vector<Enc> enumerateEncountersGC(const Pk3& pk, const std::vector<Evo>& chain) {
+    Enumerator en{pk, chain, {}, {}, false, RMaxNotMatch};
+    if (chain.empty() || pk.isEgg) return {}; // EncounterStateUtil.CanBeWildEncounter (PK3 egg location is 0)
+    for (uint16_t i = 0; i < X::kXdTradeCount; ++i) en.consider(makeXdTradeEnc(i));
+    for (uint16_t i = 0; i < X::kColoShadowCount; ++i) en.consider(makeShadowEnc(Kind::ColoShadow, i, false));
+    for (uint16_t i = 0; i < X::kColoStarterCount; ++i) en.consider(makeColoStarterEnc(i));
+    for (uint16_t i = 0; i < X::kColoGiftCount; ++i) en.consider(makeColoGiftCxdEnc(i));
+    for (uint16_t i = 0; i < X::kXdShadowCount; ++i) en.consider(makeShadowEnc(Kind::XdShadow, i, false));
+    for (uint16_t i = 0; i < X::kXdGiftCount; ++i) en.consider(makeXdStaticEnc(i));
+    bool eReaderMatched = false;
+    if (pk.language == 1) {
+        for (uint16_t i = 0; i < X::kColoEReaderCount && !eReaderMatched; ++i) {
+            const size_t before = en.out.size();
+            en.consider(makeShadowEnc(Kind::ColoShadow, i, true));
+            eReaderMatched = en.out.size() > before;
+        }
+    }
+    if (!eReaderMatched) {
+        for (uint16_t a = 0; a < X::kPokeSpotCount; ++a) {
+            // EncounterEnumerator3GC.cs:106-117: the area location is compared for a PK3 only.
+            if (pk.metKnown && X::kPokeSpots[a].location != pk.metLocation) continue;
+            for (uint16_t slot = 0; slot < 3; ++slot) en.consider(makeXdSlotEnc(a, slot));
+        }
     }
     if (en.hasDeferred) en.out.push_back(en.deferred);
     return std::move(en.out);
@@ -2297,6 +2851,17 @@ uint8_t typeCompatible(const Pk3& pk, const Enc& e, PidIv& v, bool& capped) noex
             return v.type == M4 && s.species == 175 ? CNotIdeal : CMismatch;
         }
         case Kind::Colo: return (v.type == CXD || v.type == CXDAnti) ? CMatch : CMismatch;
+        case Kind::XdTrade: return v.type == CXD ? CMatch : CMismatch;                          // EncounterTrade3XD
+        case Kind::ColoShadow:                                                                   // EncounterShadow3Colo
+            if (e.eReader) return CMatch; // fixed IVs: no PID/IV correlation
+            return v.type == CXD ? CMatch : CMismatch;
+        case Kind::ColoStarter: return v.type == CXD_ColoStarter ? CMatch : CMismatch;          // EncounterStarter3Colo
+        case Kind::ColoGiftCxd: case Kind::XdShadow:                                             // Gift3Colo, Shadow3XD
+            return (v.type == CXD || v.type == CXDAnti) ? CMatch : CMismatch;
+        case Kind::XdStatic:                                                                     // EncounterStatic3XD
+            if (v.type == CXD || v.type == CXDAnti) return CMatch;
+            return (v.type == CXD_ColoStarter && pk.species == 197) ? CMatch : CMismatch;
+        case Kind::XdSlot: return v.type == PokeSpot ? CMatch : CMismatch;                      // EncounterSlot3XD
         default: return v.type == None ? CMatch : CMismatch; // Trade3 (no correlation), Egg3
     }
 }
@@ -2373,6 +2938,59 @@ Generated generateEncounters(const Pk3& pk, const std::vector<Evo>& chain, PidIv
         g.lastResort = static_cast<int>(g.list.size());
         g.list.push_back(defer);
         g.lastResortFlag = deferType == DPidiv ? YInvalidPidiv : deferType == DSlotNumber ? YInvalidFrame : YNone;
+    }
+    return g;
+}
+
+/// EncounterGenerator3GC.GetIsShadowLockValidEReader: e-Reader shadows have fixed IVs, so
+/// the origin is searched from the PID alone; a valid lock sets the PIDIV to (CXD, origin).
+bool eReaderLockValid(const Pk3& pk, const Enc& e, PidIv& pidiv, bool& capped) {
+    for (uint32_t seed : xdSeeds(pk.pid & 0xFFFF0000u, pk.pid << 16)) {
+        const uint32_t origin = xdNextN(seed, 4);
+        if (!shadowLockValid(pk, false, shadowOf(e).teamSet, origin, capped)) continue;
+        pidiv = makePidIv(CXD, origin);
+        return true;
+    }
+    return false;
+}
+
+/// EncounterGenerator3GC.GetEncounters: the PIDIV is refined per template (Poke Spot seeds,
+/// e-Reader origin), shadow locks are verified before the type check, and the first
+/// candidate that failed either check is the InvalidPIDIV last resort.
+Generated generateEncountersGC(const Pk3& pk, const std::vector<Evo>& chain, PidIv& pidiv) {
+    Generated g;
+    if (chain.empty()) return g;
+    bool hasPartial = false;
+    Enc partial;
+    for (const Enc& e : enumerateEncountersGC(pk, chain)) {
+        if (e.kind == Kind::XdSlot) {
+            const auto& slot = X::kPokeSpots[e.area].slots[e.index];
+            uint32_t pidOrigin = 0;
+            if (pokeSpotOriginPid(pk.pid, static_cast<uint8_t>(e.index), pidOrigin) &&
+                pokeSpotOriginIVs(pk, slot.levelMin, slot.levelMax)) {
+                pidiv = makePidIv(PokeSpot, pidOrigin);
+                pidiv.mutated = PokeSpot;
+            }
+        } else if (isShadowKind(e.kind)) {
+            const bool valid = e.eReader
+                ? eReaderLockValid(pk, e, pidiv, g.capped)
+                : shadowLockValid(pk, e.kind == Kind::XdShadow, shadowOf(e).teamSet, pidiv.originSeed, g.capped);
+            if (!valid) {
+                if (!hasPartial) { partial = e; hasPartial = true; }
+                continue;
+            }
+        }
+        if (typeCompatible(pk, e, pidiv, g.capped) == CMatch) {
+            g.list.push_back(e);
+        } else if (!hasPartial) {
+            partial = e;
+            hasPartial = true;
+        }
+    }
+    if (hasPartial) {
+        g.lastResort = static_cast<int>(g.list.size());
+        g.list.push_back(partial);
+        g.lastResortFlag = YInvalidPidiv;
     }
     return g;
 }
@@ -2735,6 +3353,8 @@ struct EncCheck { bool valid = true; std::string text; };
 
 EncCheck verifyEncounter3(const Pk3& pk, const Enc& e) {
     auto bad = [](std::string text) { return EncCheck{false, std::move(text)}; };
+    if (e.kind == Kind::ColoShadow && e.eReader && pk.language != 1) // EncounterVerifier G3EReader
+        return bad("Colosseum e-Reader shadow Pokemon were only distributed to Japanese games");
     if (e.kind == Kind::Static) {
         const auto& s = D::kStatics[e.index];
         if (s.species == 151 && pk.language != 1)
@@ -2766,11 +3386,18 @@ bool verifyEvolution(const Pk3& pk, const Enc& e, const std::vector<Evo>& histor
 }
 
 /// EncounterFinder.FindVerifiedEncounter over the eagerly generated candidate list.
+/// Move verification, or "nothing to check" when the caller does not know the Gen III moves.
+MoveResults movesFor(const Pk3& pk, const Enc& e, const std::vector<Evo>& history) {
+    if (pk.movesKnown) return verifyMoves(pk, e, history);
+    return MoveResults{MEmpty, MEmpty, MEmpty, MEmpty};
+}
+
 void findEncounter(const Pk3& pk, Analysis& a) {
     const std::vector<Evo> chain = originChain(pk);
-    a.pidiv = analyzePidIv(pk);
-    const Generated g = generateEncounters(pk, chain, a.pidiv);
-    a.capped = g.capped;
+    a.pidiv = analyzePidIv(pk, a.capped);
+    const Generated g = pk.version == kVerCXD ? generateEncountersGC(pk, chain, a.pidiv)
+                                              : generateEncounters(pk, chain, a.pidiv);
+    a.capped = a.capped || g.capped;
     const size_t n = g.list.size();
     if (n == 0) {
         a.enc = makeInvalidEnc(pk);
@@ -2781,7 +3408,7 @@ void findEncounter(const Pk3& pk, Analysis& a) {
         else hint = "Unable to match an encounter from the origin game";
         a.invalid(CheckIdentifier::Encounter, std::move(hint));
         a.history = evolutionHistory(pk, pk.species, a.enc.levelMin, true);
-        a.moves = verifyMoves(pk, a.enc, a.history);
+        a.moves = movesFor(pk, a.enc, a.history);
         return;
     }
 
@@ -2805,7 +3432,7 @@ void findEncounter(const Pk3& pk, Analysis& a) {
         if (!check.valid) parse.push_back(Finding{SInvalid, CheckIdentifier::Encounter, check.text});
 
         a.history = evolutionHistory(pk, e.species, e.levelMin, e.kind == Kind::Invalid);
-        a.moves = verifyMoves(pk, e, a.history);
+        a.moves = movesFor(pk, e, a.history);
         if (!allMovesValid(a.moves) && peekIsNext(i)) continue;
         if (!parse.empty() && peekIsNext(i)) continue;
 
@@ -2842,6 +3469,7 @@ uint8_t shinyRule(const Enc& e) noexcept {
     switch (e.kind) {
         case Kind::Gift: return D::kGifts[e.index].shiny;
         case Kind::GiftNY: case Kind::GiftJPN: case Kind::Colo: return 1;
+        case Kind::ColoStarter: case Kind::ColoGiftCxd: case Kind::XdShadow: return 1; // Shiny.Never
         default: return 0;
     }
 }
@@ -2854,6 +3482,7 @@ bool giftHasFixedTrainer(const D::Gift& g) noexcept {
 bool isFixedTrainer(const Enc& e) noexcept {
     switch (e.kind) {
         case Kind::Trade: case Kind::GiftNY: case Kind::GiftJPN: case Kind::Colo: return true;
+        case Kind::XdTrade: case Kind::ColoGiftCxd: return true; // EncounterTrade3XD, EncounterGift3Colo
         case Kind::Gift: return giftHasFixedTrainer(D::kGifts[e.index]);
         default: return false;
     }
@@ -2877,12 +3506,22 @@ std::u16string_view tradeString(const D::Trade& t, uint8_t lang, bool trainer) n
     return list[index];
 }
 
-bool coloTrainerMatch(const Pk3& pk, const D::ColoGift& c) noexcept {
-    if (pk.language >= 8 || c.names[pk.language] == nullptr) return false;
-    std::u16string_view expect(c.names[pk.language]);
+/// EncounterGift3Colo.IsTrainerMatch: the GameCube name is cut to the GBA length (5 JPN, 7 INT).
+bool coloTrainerMatch(const Pk3& pk, const char16_t* const* names) noexcept {
+    if (pk.language >= 8 || names[pk.language] == nullptr) return false;
+    std::u16string_view expect(names[pk.language]);
     const size_t max = pk.language == 1 ? 5 : 7;
     if (expect.size() > max) expect = expect.substr(0, max);
     return std::u16string_view(pk.ot) == expect;
+}
+
+bool coloTrainerMatch(const Pk3& pk, const D::ColoGift& c) noexcept { return coloTrainerMatch(pk, c.names); }
+
+/// EncounterTrade3XD.IsTrainerMatch / IsNicknameMatch in a Gen III context: exact per-language
+/// name; language 0 never matches.
+bool xdFixedNameMatch(uint8_t language, const char16_t* const* names, std::u16string_view actual) noexcept {
+    if (language == 0 || language >= 8 || names[language] == nullptr) return false;
+    return actual == std::u16string_view(names[language]);
 }
 
 bool withinEncounterRange(const Pk3& pk, const Enc& e) noexcept {
@@ -2950,6 +3589,18 @@ void verifyNickname(const Pk3& pk, Analysis& a) {
     }
     if (e.kind == Kind::Colo && !coloTrainerMatch(pk, D::kColoGifts[e.index]))
         a.invalid(CheckIdentifier::Trainer, "OT name does not match the Colosseum gift");
+    if (e.kind == Kind::ColoGiftCxd && !coloTrainerMatch(pk, X::kColoGifts[e.index].names))
+        a.invalid(CheckIdentifier::Trainer, "OT name does not match the Colosseum gift");
+    if (e.kind == Kind::XdTrade) { // NicknameVerifier.VerifyTrade for IFixedTrainer / IFixedNickname
+        const auto& t = X::kXdTrades[e.index];
+        if (!xdFixedNameMatch(pk.language, t.trainerNames, pk.ot))
+            a.invalid(CheckIdentifier::Trainer, "OT name does not match the XD in-game trade");
+        if (t.nicknames != nullptr) {
+            if (!xdFixedNameMatch(pk.language, t.nicknames, nick))
+                a.invalid(CheckIdentifier::Trainer, "Nickname does not match the XD in-game trade");
+            return; // IFixedNickname
+        }
+    }
 
     if (pk.isEgg) {
         if (!pk.isNicknamed) a.invalid(CheckIdentifier::Egg, "Egg must be flagged as nicknamed");
@@ -3007,6 +3658,22 @@ void verifyTrainerId(const Pk3& pk, Analysis& a) {
         if (lcSeeds(static_cast<uint32_t>(pk.sid) << 16, static_cast<uint32_t>(pk.tid) << 16).n == 0) {
             const uint8_t sev = e.kind == Kind::Egg && !pk.isEgg ? SFishy : SInvalid;
             a.add(sev, CheckIdentifier::Trainer, "Ruby/Sapphire cannot generate this TID/SID pair");
+        }
+    } else if (pk.version == kVerCXD) {
+        // TrainerIDVerifier.VerifyTrainerID_CXD: the TID/SID follow the name screen's seed by
+        // 1000 frames. PAL copies of XD skip the name screen's ball sequence, so an XD
+        // encounter is exempt for languages above English and only Fishy for English.
+        uint8_t sev = SInvalid;
+        bool check = true;
+        if (e.kind == Kind::XdSlot || e.kind == Kind::XdShadow || e.kind == Kind::XdStatic) {
+            if (pk.language > 2) check = false;
+            else if (pk.language == 2) sev = SFishy;
+        }
+        if (check) {
+            bool capped = false;
+            const bool found = cxdTrainerIdHasSeed(pk.tid, pk.sid, capped);
+            if (capped) a.capped = true;
+            else if (!found) a.add(sev, CheckIdentifier::Trainer, "Colosseum/XD cannot generate this TID/SID pair from the name screen");
         }
     }
     if (pk.tid == 0 && pk.sid == 0) a.fishy(CheckIdentifier::Trainer, "TID and SID are both zero");
@@ -3119,6 +3786,10 @@ void verifyRibbons(const Pk3& pk, Analysis& a) {
         if (e.kind == Kind::Gift) {
             const bool national = D::kGifts[e.index].national;
             if (bit(24) != national) (national ? missing : bad).push_back("National");
+        } else if (isShadowKind(e.kind)) {
+            // RibbonRules.GetValidRibbonStateNational: a shadow Pokemon is purified (and gets the
+            // ribbon) before it can leave Colosseum/XD.
+            if (!bit(24)) missing.push_back("National");
         } else if (bit(24)) {
             bad.push_back("National");
         }
@@ -3167,6 +3838,14 @@ void verifyAbility(const Pk3& pk, Analysis& a) {
             a.invalid(CheckIdentifier::Ability, "Ability does not match the in-game trade");
             return;
         }
+    }
+    if (pk.version == kVerCXD) {
+        // AbilityVerifier.VerifyAbilityPreCapsule: a CXD Pokemon with two abilities can have
+        // either without matching the PID (CanMismatch). A single-ability species must not set
+        // the bit unless it is a shadow Pokemon (re-battles flip it; CheckMatch).
+        if (same && pk.species != 210 && pk.species != 329 && pk.species != 330 && abit != 0 && !isShadowKind(e.kind))
+            a.invalid(CheckIdentifier::Ability, "Ability bit is set for a species with one ability");
+        return;
     }
     if (same && pk.species != 210 && pk.species != 329 && pk.species != 330) {
         if (abit != 0) a.invalid(CheckIdentifier::Ability, "Ability bit is set for a species with one ability");
@@ -3292,8 +3971,9 @@ void verifyTrash(const Pk3& pk, Analysis& a) {
     flagIsNicknameClean(pk, a);
 }
 
+void verifyFateful(const Pk3& pk, Analysis& a);
+
 void verifyMisc(const Pk3& pk, Analysis& a) {
-    const Enc& e = a.enc;
     if (pk.isEgg) {
         if (pk.friendship > personal(pk.species).hatchCycles)
             a.invalid(CheckIdentifier::Egg, "Egg hatch counter is above the species maximum");
@@ -3303,7 +3983,17 @@ void verifyMisc(const Pk3& pk, Analysis& a) {
         if (pk.language != 1) a.invalid(CheckIdentifier::Egg, "Gen III eggs are always flagged Japanese");
     }
     verifyTrash(pk, a);
-    // MiscFatefulEncounterVerifier
+    verifyFateful(pk, a);
+    // MiscPokerusVerifier
+    const uint8_t strain = pk.pokerus >> 4;
+    const uint8_t days = pk.pokerus & 0xF;
+    if (days > (strain & 3) + 1) a.invalid(CheckIdentifier::Misc, "Pokerus days remaining exceed the strain duration");
+}
+
+/// MiscVerifier.VerifyFatefulEncounter (MiscVerifier.cs): the fateful (obedience) flag follows
+/// the template; XD sets it on every Pokemon it sends to a GBA game, Colosseum never does.
+void verifyFateful(const Pk3& pk, Analysis& a) {
+    const Enc& e = a.enc;
     bool checkInactive = true;
     if (e.kind == Kind::Gift) {
         const auto& g = D::kGifts[e.index];
@@ -3323,12 +4013,13 @@ void verifyMisc(const Pk3& pk, Analysis& a) {
     } else if (e.kind == Kind::Static && D::kStatics[e.index].fateful) {
         checkInactive = false;
         if (!pk.fateful) a.invalid(CheckIdentifier::EventGift, "Event encounter is missing its fateful encounter flag");
+    } else if (isXdFatefulKind(e.kind)) {
+        // IFatefulEncounterReadOnly { FatefulEncounter: true }: XD sets the obedience flag on
+        // every Pokemon it sends to a GBA game (XK3.ConvertToPK3); Colosseum never does.
+        checkInactive = false;
+        if (!pk.fateful) a.invalid(CheckIdentifier::EventGift, "XD Pokemon are missing the fateful encounter flag");
     }
     if (checkInactive && pk.fateful) a.invalid(CheckIdentifier::EventGift, "Fateful encounter flag is not possible for this encounter");
-    // MiscPokerusVerifier
-    const uint8_t strain = pk.pokerus >> 4;
-    const uint8_t days = pk.pokerus & 0xF;
-    if (days > (strain & 3) + 1) a.invalid(CheckIdentifier::Misc, "Pokerus days remaining exceed the strain duration");
 }
 
 void verifyMovePP(const Pk3& pk, Analysis& a) {
@@ -3456,7 +4147,23 @@ void reportMoves(const Pk3& pk, Analysis& a) {
     }
 }
 
-/// Full PKHeX pipeline for a GBA-origin PK3 (version R/S/E/FR/LG, species 1-386).
+/// CXDVerifier (LegalityAnalysis.ParsePK3 runs it for Version CXD): the XD starter Eevee's
+/// PID and IVs follow from the TID/SID, and the Colosseum/XD player characters are male.
+void verifyCxd(const Pk3& pk, Analysis& a) {
+    if (pk.version != kVerCXD) return;
+    if (a.enc.kind == Kind::XdStatic && a.enc.species == 133 &&
+        (a.pidiv.type == CXD || a.pidiv.type == CXD_ColoStarter)) {
+        const uint32_t iv32 = pk.iv32 & 0x3FFFFFFFu;
+        uint32_t seed = 0;
+        if (!xdStarterSeed(pk, iv32 & 0x7FFFu, iv32 >> 15, seed))
+            a.invalid(CheckIdentifier::PidRng, "XD starter Eevee PID and IVs do not follow from this TID/SID");
+        else
+            a.pidiv = makePidIv(CXD, seed);
+    }
+    if (pk.otGender == 1) a.invalid(CheckIdentifier::Trainer, "Colosseum/XD Pokemon have a male Original Trainer");
+}
+
+/// Full PKHeX pipeline for a Gen III PK3 (version R/S/E/FR/LG or Colosseum/XD, species 1-386).
 void runChecks(const Pk3& pk, Analysis& a, bool& enigma) {
     findEncounter(pk, a);
     verifyPid(pk, a);
@@ -3475,6 +4182,7 @@ void runChecks(const Pk3& pk, Analysis& a, bool& enigma) {
     verifyItem(pk, a, enigma);
     verifyContest(pk, a);
     verifyMarking(pk, a);
+    verifyCxd(pk, a);
     reportMoves(pk, a);
 }
 
@@ -3521,6 +4229,8 @@ std::string describeEncounter(const Pk3& pk, const Enc& e) {
     std::string text = kindName(e.kind);
     if (e.kind == Kind::Slot && e.area >= D::kAreaCount) text += " (mass outbreak)";
     if (e.kind == Kind::Static && D::kStatics[e.index].roaming) text += " (roaming)";
+    if (e.kind == Kind::ColoShadow && e.eReader) text += " (e-Reader)";
+    if (e.kind == Kind::XdShadow && shadowOf(e).location != pk.metLocation) text += " (Miror B. rebattle)";
     text += " " + speciesLabel(e.species);
     text += " at met location " + std::to_string(pk.metLocation) + ", level " + std::to_string(pk.metLevel);
     return text;
@@ -3597,11 +4307,9 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
             "Species index " + std::to_string(pk.speciesInternal) + " is not a Gen III Pokemon");
         return r;
     }
-    if (!isGbaVersion(pk.version)) {
+    if (!isGbaVersion(pk.version) && pk.version != kVerCXD) {
         add(Severity::Warning, CheckIdentifier::SourceGame,
-            pk.version == kVerCXD
-                ? std::string("Colosseum/XD origin; Gen III cartridge rules cannot verify this Pokemon")
-                : "Origin game id " + std::to_string(pk.version) + " is not a Gen III cartridge; encounter rules were not run");
+            "Origin game id " + std::to_string(pk.version) + " is not a Gen III cartridge; encounter rules were not run");
         return r;
     }
 
@@ -3611,7 +4319,9 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
     bool problem = false;
     for (auto& f : a.findings) {
         if (f.sev != SInfo) problem = true;
-        add(mapSeverity(f.sev), f.id, std::move(f.text));
+        // A search guard was hit: nothing below is proven, so no finding may stay Invalid.
+        const Severity sev = (a.capped && f.sev == SInvalid) ? Severity::Warning : mapSeverity(f.sev);
+        add(sev, f.id, std::move(f.text));
     }
     if (enigma) {
         problem = true;
@@ -3621,7 +4331,7 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
     if (a.capped) {
         problem = true;
         add(Severity::Warning, CheckIdentifier::PidRng,
-            "RNG frame search reached its limit; the wild encounter lead could not be decided");
+            "RNG search reached its limit; the encounter could not be decided (Invalid findings above are undecided)");
     }
     if (a.unsupported) {
         problem = true;
@@ -3661,5 +4371,142 @@ void applyGen3Analyzer(Report& r, const Gen3Pk3::Verification& verified, std::st
 void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
     applyGen3Analyzer(r, Gen3Pk3::verify(pk, exactSourceGameId), exactSourceGameId);
 }
+
+// ---------------------------------------------------------------------------
+// Gen3Cxd: the GameCube rules on the fields a later format keeps (Gen3Cxd.h)
+// ---------------------------------------------------------------------------
+
+namespace Gen3Cxd {
+
+namespace {
+
+using namespace Legality::Gen3Pk3;
+
+Template templateOf(const Enc& e) noexcept {
+    switch (e.kind) {
+        case Kind::XdTrade: return Template::XdTrade;
+        case Kind::ColoShadow: return e.eReader ? Template::ColoEReaderShadow : Template::ColoShadow;
+        case Kind::ColoStarter: return Template::ColoStarter;
+        case Kind::ColoGiftCxd: return Template::ColoGift;
+        case Kind::XdShadow: return Template::XdShadow;
+        case Kind::XdStatic: return Template::XdGift;
+        case Kind::XdSlot: return Template::XdPokeSpot;
+        default: return Template::None;
+    }
+}
+
+uint8_t templateLocation(const Enc& e) noexcept {
+    switch (e.kind) {
+        case Kind::XdTrade: return X::kXdTrades[e.index].location;
+        case Kind::ColoShadow: case Kind::XdShadow: return shadowOf(e).location;
+        case Kind::ColoStarter: return X::kColoStarterLocation;
+        case Kind::ColoGiftCxd: return X::kColoGifts[e.index].location;
+        case Kind::XdStatic: return X::kXdGifts[e.index].location;
+        case Kind::XdSlot: return X::kPokeSpots[e.area].location;
+        default: return 0;
+    }
+}
+
+/// "XD shadow Pokemon Zapdos, level 50, met location 162" (template facts, not the record's).
+std::string templateLabel(const Enc& e) {
+    std::string text = kindName(e.kind);
+    if (e.kind == Kind::ColoShadow && e.eReader) text += " (e-Reader)";
+    text += " " + speciesLabel(e.species) + ", level " + std::to_string(e.levelMin);
+    if (e.levelMax != e.levelMin) text += "-" + std::to_string(e.levelMax);
+    text += ", met location " + std::to_string(templateLocation(e));
+    if (e.kind == Kind::XdShadow) text += " (or a Miror B. rebattle location: 59, 90, 91, 92, 113)";
+    return text;
+}
+
+} // namespace
+
+Result judge(const Input& in) {
+    Result out;
+    if (in.species == 0 || in.species > D::kMaxSpecies) {
+        out.warnings.push_back("Species #" + std::to_string(in.species) + " is not a Gen III Pokemon; Colosseum/XD rules were not run");
+        return out;
+    }
+    Pk3 pk;
+    pk.species = in.species;
+    pk.pid = in.pid;
+    pk.tid = in.tid;
+    pk.sid = in.sid;
+    pk.language = in.language;
+    pk.otGender = in.otGender == 0 ? 0 : 1;
+    pk.ball = in.ball;
+    pk.fateful = in.fateful;
+    pk.isEgg = in.isEgg;
+    pk.version = kVerCXD;
+    pk.metKnown = in.hasOriginalMet;
+    pk.metLevel = in.metLevel;
+    pk.metLocation = in.hasOriginalMet ? in.metLocation : 0;
+    for (size_t i = 0; i < 6; ++i) {
+        pk.ivs[i] = in.ivs[i] & 0x1F;
+        pk.iv32 |= static_cast<uint32_t>(pk.ivs[i]) << (i * 5);
+    }
+    pk.abilityBit = in.abilityKnown && in.abilityBit != 0 ? 1 : 0;
+    pk.iv32 |= static_cast<uint32_t>(pk.isEgg) << 30 | static_cast<uint32_t>(pk.abilityBit) << 31;
+    if (in.ribbonsKnown) pk.ribbons = (in.ribbonNational ? 1u << 24 : 0u) | (in.ribbonEarth ? 1u << 25 : 0u);
+    if (pk.fateful) pk.ribbons |= 1u << 31;
+    pk.currentLevel = in.currentLevel == 0 ? 1 : (in.currentLevel > 100 ? 100 : in.currentLevel);
+    pk.movesKnown = in.movesKnown;
+    if (in.movesKnown) pk.moves = in.moves;
+    if (in.namesKnown) {
+        pk.nickname = in.nickname;
+        pk.ot = in.ot;
+        pk.isNicknamed = in.isNicknamed;
+    }
+    const auto& pi = personal(pk.species);
+    pk.form = pk.species == 201 ? unownForm(pk.pid) : 0;
+    pk.gender = genderFromRatio(pk.pid, pi.gender);
+    pk.nature = static_cast<uint8_t>(pk.pid % 25);
+    pk.shiny = isShinyPid(pk.pid, pk.tid, pk.sid);
+
+    // Candidates before the RNG, lock, ball and fateful rules (PKHeX enumerator order).
+    for (const Enc& e : enumerateEncountersGC(pk, originChain(pk))) out.candidates.push_back(templateLabel(e));
+
+    Analysis a;
+    findEncounter(pk, a);
+    verifyPid(pk, a);
+    verifyLanguage(pk, a);
+    if (in.namesKnown) {
+        verifyNickname(pk, a);
+        verifyTrainerName(pk, a);
+    }
+    verifyTrainerId(pk, a);
+    verifyIvs(pk, a);
+    if (in.ribbonsKnown) verifyRibbons(pk, a);
+    if (in.abilityKnown) verifyAbility(pk, a);
+    verifyBall(pk, a);
+    verifyFateful(pk, a);
+    verifyCxd(pk, a);
+    if (in.movesKnown) reportMoves(pk, a);
+
+    for (auto& f : a.findings) {
+        if (f.sev == SInvalid) out.invalid.push_back(std::move(f.text));
+        else if (f.sev == SFishy) out.warnings.push_back(std::move(f.text));
+    }
+    out.capped = a.capped;
+    if (a.capped) out.warnings.push_back("RNG search reached its limit; the Colosseum/XD origin could not be decided");
+    if (a.unsupported) out.warnings.push_back("A word-filter pattern could not be evaluated");
+    out.pidType = a.pidiv.type;
+    if (a.enc.kind != Kind::Invalid) {
+        out.matched = templateOf(a.enc);
+        out.encounter = templateLabel(a.enc);
+        out.encounterSpecies = a.enc.species;
+        out.encounterLevel = a.enc.levelMin;
+        out.encounterLevelMax = a.enc.levelMax;
+        out.encounterLocation = templateLocation(a.enc);
+        out.encounterMoves = a.enc.hasMoveset ? a.enc.moves : std::array<uint16_t, 4>{};
+        out.shadow = isShadowKind(a.enc.kind);
+        out.xd = isXdFatefulKind(a.enc.kind);
+    }
+    if (a.capped || a.unsupported) out.verdict = Verdict::Undecided;
+    else if (!out.invalid.empty()) out.verdict = Verdict::Invalid;
+    else out.verdict = Verdict::Matched;
+    return out;
+}
+
+} // namespace Gen3Cxd
 
 } // namespace Legality

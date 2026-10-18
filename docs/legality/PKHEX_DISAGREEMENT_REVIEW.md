@@ -440,13 +440,52 @@ with 117 in the D/P met-location field, and HeartGold and SoulSilver records wit
   0 false Invalid and 0 false Valid. It lists 112 (mutation) and 109 (grown) records under this
   rule, every one a `metlocext` mutation, on D, P, Pt, HG and SS records.
 
+## 15-A. Colosseum/XD team lock search: the CPU-shiny reroll frame (more lenient, Gen III GameCube lane)
+
+Found while porting `TeamLockResult.GetSingleLock` (`TeamLockResult.cs:86-129`) for the
+shadow team locks of `Gen3Legality.cpp` (`TeamLockSearch::singleLock`).
+
+- **PKHeX.** In the reroll loop, a frame whose shiny value equals the forced CPU shiny value
+  (`sv == RCSV`, `:118-123`) sets `forcedOT = true` and `continue`s without advancing the frame
+  counter, so the same frame is re-tested forever: PKHeX would never return from that branch.
+  In practice the branch is unreachable for the published templates (RCSV is only forced by
+  a prior `GetAllLocks` lock, and the differential corpora never enter it), which is why PKHeX
+  does not hang on real records.
+- **The games.** Colosseum and XD have no decompilation; the only source for the lock
+  structure is PKHeX. The reroll frame itself is the CPU trainer's anti-shiny reroll, the same
+  event `GetAllLocks` (`:131-178`) handles by moving on to the next frame.
+- **Change.** The port treats the frame as `GetAllLocks` does and advances (`start += 2`). This
+  can only find a seed where PKHeX would not terminate; it never produces a new Invalid. A
+  budget (`CxdGuard`, 400000 steps per lock search) bounds the whole search; reaching it is
+  reported Unknown (16-A). Verified against the PKHeX oracle on 3914/3928/3908 GameCube records
+  (seeds 1-3) with 0 false Invalid and 0 false Valid.
+
+## 16-A. Colosseum/XD RNG searches are bounded (Unknown instead of a hang, Gen III GameCube lane)
+
+- **PKHeX.** `MethodCXD.IsValidNameScreenEndSeed` (`MethodCXD.cs:644-677`) recurses without a
+  depth limit, `TryGetSeedTrainerID` (`:680-693`) and `TryGetSeedStarterColo` (`:571-612`) loop
+  until a seed is found, and the team lock search (15-A) is unbounded.
+- **Change.** `Gen3Legality.cpp` caps them (`CxdGuard`: name-screen recursion depth 256,
+  100000 steps for the trainer-ID and Colosseum starter seeds, 400000 steps per lock search).
+  A capped search reports "RNG search reached its limit" (Warning, Unknown), and every Invalid
+  finding made under a cap is demoted to a Warning: a cap can never add an Invalid. No record of
+  the seed 1-3 mutation and grown corpora, the 70 constructed fixtures or the fuzz loops reached
+  a cap, so this is a guard, not a disagreement about any real record.
+
+Also checked while porting, not disagreements: `TeamLockResult.VerifyNPC` (`:180-212`)
+enumerates its team stack top first with `pos` counting down, which pairs the k-th pushed frame
+with `Locks[k]`; the port replicates that pairing exactly (`TeamLockSearch::verifyNpc`). A GBA
+wild record relabelled with version 15 is Invalid here ("Unable to match an encounter from the
+origin game") because PKHeX's `EncounterGenerator3GC` finds no template for it (EncInvalid);
+the earlier Warning was the analyzer's own scope limit, not a PKHeX verdict.
+
 ## Not disagreements (checked)
 
 These Invalid sites match a PKHeX rule:
 
 | PokeBank NX | PKHeX |
 |---|---|
-| Colosseum/XD female OT, `Legality.cpp:325` | `CXDVerifier.cs:20` (`G3OTGender`) |
+| Colosseum/XD female OT, `Legality.cpp:325` (Pal Park PK4) and `Gen3Legality.cpp` `verifyCxd` (PK3) | `CXDVerifier.cs:20` (`G3OTGender`) |
 | Korean Shaymin, `:1335` | `EncounterVerifier.cs:33` |
 | Korean hatch at Seabreak Path / Flower Paradise, `:1585` | `EncounterVerifier.cs:211` |
 | Pal Park split-ball fields, `:1491` | `MiscVerifierG4.cs:72-94` |

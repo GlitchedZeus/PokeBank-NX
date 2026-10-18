@@ -318,16 +318,23 @@ namespace Legality {
             return false;
         }
 
+        // gen3Analyzed: the record is a PK3 the Gen III analyzer (Gen3Legality.cpp) judged in
+        // this same analyze() call. It judges a Colosseum/XD origin (version 15) with PKHeX's
+        // GameCube templates, team locks and RNG (one verdict path), so the older GameCube
+        // evidence below runs only for the formats it does not read (a Pal Park PK4).
         void addGen3PidEvidence(Report& r, const Pokemon::Pokemon& pk,
-                                uint16_t species) {
+                                uint16_t species, bool gen3Analyzed = false) {
             const std::array<uint8_t, 6> ivs{
                 pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
             };
-            if (pk.originGame() == 15 && pk.otGender() != 0) {
+            const bool gameCubeJudged = gen3Analyzed && pk.originGame() == 15;
+            if (pk.originGame() == 15 && pk.otGender() != 0 && !gameCubeJudged) {
+                // CXDVerifier.cs G3OTGender; the Gen III analyzer reports it for a PK3.
                 add(r, Severity::Invalid,
                     "Pokemon Colosseum/XD-origin PK3 cannot have a female OT gender",
                     CheckIdentifier::Trainer);
             }
+            if (gameCubeJudged) return;
 
             const auto correlation =
                 Gen3PidIv::analyze(pk.pid(), ivs, species == 201);
@@ -1685,7 +1692,7 @@ namespace Legality {
                             CheckIdentifier::Egg);
                 }
             }
-            addGen3PidEvidence(r, pk, species);
+            addGen3PidEvidence(r, pk, species, gen3Verified.ran);
         } else if (sourceProfile && exactGeneration == 4 &&
                    storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
             const bool isHgss =

@@ -93,7 +93,7 @@ static class Grow3
         var game = rng.Next(2) == 0 ? pk.Version : cart;
         Learnset learn = game switch
         {
-            GameVersion.E => LearnSource3E.Instance.GetLearnset(pk.Species, 0),
+            GameVersion.E or GameVersion.CXD => LearnSource3E.Instance.GetLearnset(pk.Species, 0), // Colosseum/XD learn as Emerald
             GameVersion.FR => LearnSource3FR.Instance.GetLearnset(pk.Species, 0),
             GameVersion.LG => LearnSource3LG.Instance.GetLearnset(pk.Species, 0),
             _ => LearnSource3RS.Instance.GetLearnset(pk.Species, 0),

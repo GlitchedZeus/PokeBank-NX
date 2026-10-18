@@ -4,8 +4,11 @@
 //   dotnet PKHeXGen34Oracle.dll probe HEX        (80-byte PK3 or 136-byte PK4, decrypted)
 //
 // Builds every Gen III encounter PKHeX knows for species 1-386 in Ruby, Sapphire,
-// Emerald, FireRed and LeafGreen (Colosseum/XD origins skipped), and every Gen IV
-// encounter for species 1-493 in Diamond, Pearl, Platinum, HeartGold and SoulSilver.
+// Emerald, FireRed and LeafGreen, every Colosseum/XD (GameCube) encounter as the PK3 it
+// becomes once traded into each of those five GBA games (CK3/XK3.ConvertToPK3, with a
+// trainer whose TID/SID the name screen can produce; the e-Reader shadows with a Japanese
+// trainer), and every Gen IV encounter for species 1-493 in Diamond, Pearl, Platinum,
+// HeartGold and SoulSilver.
 // Each is converted with a fixed test trainer ("Tester"), then MUTATIONS single-field
 // mutations of each are added. One line per record:
 //   <id> <cartridge> <decrypted box hex> VALID|INVALID <encounter type>:<species> ; <identifier>:<result> ...
@@ -102,7 +105,10 @@ void Run(int gen, GameVersion[] versions, ushort maxSpecies)
         IPersonalInfo pi = gen == 3 ? PersonalTable.E[species] : PersonalTable.HGSS[species];
         for (byte form = 0; form < Math.Max((byte)1, pi.FormCount); form++)
         {
-            foreach (var version in versions)
+            // Gen III also enumerates the GameCube (Colosseum/XD) templates, which only
+            // EncounterGenerator3GC yields; their records are held in each GBA game's save.
+            GameVersion[] origins = gen == 3 ? [.. versions, GameVersion.CXD] : versions;
+            foreach (var version in origins)
             {
                 var tid = (ushort)rng.Next(1, 65535);
                 var sid = (ushort)rng.Next(1, 65535);
@@ -131,19 +137,28 @@ void Run(int gen, GameVersion[] versions, ushort maxSpecies)
                 {
                     if (enc.Context != (gen == 3 ? EntityContext.Gen3 : EntityContext.Gen4))
                         continue;
-                    if (gen == 3 && (enc.Version is GameVersion.CXD or GameVersion.COLO or GameVersion.XD))
-                        continue;
                     var key = $"{version}:{enc.GetType().Name}:{enc.Species}:{enc.Form}:{enc.Version}:{enc.Location}:{enc.EggLocation}:{enc.LevelMin}:{enc.LongName}";
                     if (!seen.Add(key))
                         continue;
+                    // A GameCube-origin record sits in each GBA game's save (one record per
+                    // cart, each converted anew); any other sits in its own origin game's save.
+                    var gameCube = enc.Version is GameVersion.CXD or GameVersion.COLO or GameVersion.XD;
+                    foreach (var holder in gameCube ? versions : [version])
+                    {
+                    // GameCube trainers draw TID/SID 1000 frames after the name screen's seed;
+                    // the e-Reader shadows exist only in Japanese Colosseum.
+                    var owner = gameCube ? CxdTrainer(rng, enc is EncounterShadow3Colo { IsEReader: true }) : tr;
                     PKM made;
-                    try { made = enc.ConvertToPKM(tr); }
+                    try { made = enc.ConvertToPKM(owner); }
                     catch (Exception) { continue; }
+                    // A GameCube record enters a GBA save through the link cable as a PK3.
+                    if (made is CK3 ck3) made = ck3.ConvertToPK3();
+                    else if (made is XK3 xk3) made = xk3.ConvertToPK3();
                     if (made is not (PK3 or PK4))
                         continue;
                     var cart = made.Version; // the record sits in a save of its own origin game
                     if (!versions.Contains(cart))
-                        cart = version;
+                        cart = holder;
                     if (grown)
                     {
                         EmitGrown(gen, cart, made);
@@ -169,9 +184,31 @@ void Run(int gen, GameVersion[] versions, ushort maxSpecies)
                         var name = gen == 3 ? Mutate3((PK3)copy, rng) : Mutate4((PK4)copy, rng);
                         Emit($"m{count++}-{name}", cart, copy);
                     }
+                    }
                 }
             }
         }
+    }
+}
+
+// A Colosseum/XD trainer: the name screen's final seed, advanced 1000 frames, yields
+// TID then SID (MethodCXD.TryGetSeedTrainerID); PKHeX rejects pairs no such seed produces.
+static SimpleTrainerInfo CxdTrainer(Random rng, bool japanese)
+{
+    while (true)
+    {
+        var seed = (uint)rng.NextInt64(0, 1L << 32);
+        if (!MethodCXD.IsValidNameScreenEndSeed(XDRNG.Prev1000(seed), out _))
+            continue;
+        var tid = (ushort)XDRNG.Next16(ref seed);
+        var sid = (ushort)XDRNG.Next16(ref seed);
+        return new SimpleTrainerInfo(GameVersion.CXD)
+        {
+            OT = japanese ? "\u30c6\u30b9\u30c8" : "Tester",
+            TID16 = tid,
+            SID16 = sid,
+            Language = (int)(japanese ? LanguageID.Japanese : LanguageID.English),
+        };
     }
 }
 
@@ -443,7 +480,7 @@ static string Mutate3(PK3 pk, Random rng)
         case 7: pk.SetEV(rng.Next(6), rng.Next(256)); return "ev";
         case 8: pk.SetIV(rng.Next(6), rng.Next(32)); return "iv";
         case 9: pk.FatefulEncounter = !pk.FatefulEncounter; return "fateful";
-        case 10: pk.Version = (GameVersion)rng.Next(1, 6); return "version";
+        case 10: pk.Version = (GameVersion)new byte[] { 1, 2, 3, 4, 5, 15 }[rng.Next(6)]; return "version";
         case 11: pk.Language = rng.Next(0, 8); return "language";
         case 12: pk.HeldItem = rng.Next(0, 377); return "item";
         case 13: pk.EXP = (uint)Math.Max(0, (int)pk.EXP + rng.Next(-2000, 2000)); return "exp";

@@ -16,6 +16,10 @@
 // checks add no Warning of their own to them). The older Gen III checks judge the
 // record's origin game and evolution lineage and yield to a certified analysis, so
 // every Valid fixture is prodClean; the yield itself is tested below.
+// Colosseum/XD origins (version 15) are fixtures too: PKHeX-built GameCube records held in
+// a GBA save, PKHeX's own GameCube test records and constructed variants (fateful flag,
+// female OT, ball, met level, ribbons, PID, OT/nickname, language) whose verdict the oracle
+// probe confirmed; the shared Gen3Cxd::judge is run on the same records.
 // Then constructed rule cases, malformed sizes and checksums, origin games this
 // analyzer does not judge, the production merge rule, input immutability and a
 // deterministic fuzz pass (ASan/UBSan under host-sanitize).
@@ -30,6 +34,7 @@
 #include <vector>
 
 #include "Encryption/Encryption3FRLG.h"
+#include "Legality/Gen3Cxd.h"
 #include "Legality/Gen3Legality.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
@@ -219,6 +224,79 @@ const Case kCases[] = {
     {"g1093-item+trade+move+evolve", Expect::Valid, true, "sapphire_gba", "EncounterGift3:25", "878EE17DF5A000007752618553FF000000000102BBC8BBFF000000003C8000001A005000E803000000FF0000130054002D0056000F1E281400000000000000000000000000FF0A211403AB2600000000"},  // PKHeX: VALID; older checks: mv-preserved-EncounterGift
     {"g18837-trade+item", Expect::Valid, true, "firered_gba", "EncounterGift3NY:359", "023CB1A448020000BBBCCDC9C6FF000000000202CABDC8D3D7FF0000D617000078016100538E0000002300000D002C000E00B4000A191E0A00000000000000000000000000FF2321A610BE0F00000000"},  // PKHeX: VALID; older checks: mv-preserved-EncounterGiftNY
     {"g2858-evolve+move+move+trade", Expect::Valid, true, "sapphire_gba", "EncounterSlot3:50", "07F121808388913BBECFC1CECCC3C9FF00000202CED9E7E8D9E6FF0007EE000033000000A844000000FF00000A0048019A005B00230F0F0A00000000000000000000000000831422403F5FAA00000000"},  // PKHeX: VALID; older checks: mv-transfer-origin
+    // Colosseum/XD origins (version 15) held in a GBA save: PKHeX-built GameCube records from the
+    // oracle (seed 1), PKHeX's own GameCube test records (CK3/XK3 converted with ConvertToPK3) and
+    // constructed single-field variants whose PKHeX verdict the oracle probe confirmed.
+    {"colo-shadow-bayleef", Expect::Valid, true, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00130F0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E27D9249C0C00000001"},  // PKHeX: VALID (team lock: Cipher Peon, Phenac Stadium)
+    {"xd-shadow-zapdos", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF00285F0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB227BAA5CD0500000081"},  // PKHeX: VALID (team lock, Shiny.Never)
+    {"xd-shadow-teddiursa-pokeball", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:216", "11CD1EF03DC1287ACEBFBEBEC3CFCCCDBBFF0202CED9E7E8D9E6FF00061B0000D80000003305000000460000D8001F017A00E80014141E23000000000000000000000000008F8B276A317B2B00000081"},  // PKHeX: VALID (FixedBall Poke)
+    {"xd-shadow-poochyena", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:261", "0BEA163ABB79E21CCAC9C9BDC2D3BFC8BBFF0202CED9E7E8D9E6FF00D1D300001E010000E8030000004600005B00D700310150010A050F2800000000000000000000000000A28A27DEF9971300000081"},  // PKHeX: VALID
+    {"xd-shadow-zapdos@rebattle90", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF00286F0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000005AB227BAA5CD0500000081"},  // PKHeX: VALID (Miror B. rebattle, met location 90)
+    {"xd-shadow-zapdos@rebattle59", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028500000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000003BB227BAA5CD0500000081"},  // PKHeX: VALID (Miror B. rebattle, met location 59)
+    {"xd-shadow-zapdos+earth", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028610000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB227BAA5CD0500000083"},  // PKHeX: VALID (Mt. Battle Earth Ribbon)
+    {"xd-shadow-zapdos+master", Expect::Valid, true, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028470000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB20FBAA5CD0500000081"},  // PKHeX: VALID (any wild ball)
+    {"colo-shadow-bayleef+earth", Expect::Valid, true, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF0013110000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E27D9249C0C00000003"},  // PKHeX: VALID (Mt. Battle Earth Ribbon)
+    {"colo-shadow-bayleef+master", Expect::Valid, true, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF0013F70000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E0FD9249C0C00000001"},  // PKHeX: VALID (any wild ball)
+    {"ereader-togepi", Expect::Fishy, false, "emerald_gba", "EncounterShadow3Colo:175", "065CEF6E023F32FA648A9CAEFF00000000000102635D64FF000000006C290000AF00000000190000004600007600CC00BA0019010A140A0A000000000000000000000000008094270000000000000001"},  // PKHeX: VALID, Fishy IVs:IVAllEqual_0 (Japanese Card e Room, fixed zero IVs)
+    {"ereader-mareep", Expect::Fishy, false, "emerald_gba", "EncounterShadow3Colo:179", "684E6DDC7B2ED1E07278AE9DFF00000000000102635D64FF0000000049E20000B300000020AB000000460000570054005600B2000A1E14280000000000000000000000000080A5270000000000000001"},  // PKHeX: VALID, Fishy IVs:IVAllEqual_0
+    {"ereader-scizor", Expect::Fishy, false, "emerald_gba", "EncounterShadow3Colo:212", "ACAF11AC8239CB036AA05B71FF00000000000102635D64FF000000006C110000D400000048E8010000460000D200E8000E00A30014231E140000000000000000000000000080B2270000000000000001"},  // PKHeX: VALID, Fishy IVs:IVAllEqual_0
+    {"colo-starter-espeon", Expect::Valid, true, "emerald_gba", "EncounterStarter3Colo:196", "7014AC5C737153FFBFCDCABFC9C8FF0000000202CED9E7E8D9E6FF00BCE80000C4000000093D0000004600005D00D80073000E011914141400000000000000000000000000FE99275BFE181600000000"},  // PKHeX: VALID (CXD_ColoStarter PID/IV from TID/SID)
+    {"colo-starter-umbreon", Expect::Valid, true, "emerald_gba", "EncounterStarter3Colo:197", "74B20AF6CA1B6124CFC7BCCCBFC9C8FF00000202CED9E7E8D9E6FF0017B30000C5000000A8440000002300002C000D01220121011914140A00000000000000000000000000FE9A2702C5653E00000000"},  // PKHeX: VALID
+    {"xd-starter-eevee", Expect::Valid, true, "emerald_gba", "EncounterStatic3XD:133", "FBDC617CFE5981F4BFBFD0BFBFFF000000000202CED9E7E8D9E6FF0099BF000085000000E803000000460000210027002C001C00231E190F00000000000000000000000000008A27046ED23100000080"},  // PKHeX: VALID (CXDVerifier TryGetSeedStarterXD)
+    {"xd-gift-chikorita", Expect::Valid, true, "emerald_gba", "EncounterStatic3XD:152", "2125555BF597C363BDC2C3C5C9CCC3CEBBFF0202CED9E7E8D9E6FF0053720000980000008700000000460000F60021002D00520105232805000000000000000000000000001085274125AB2300000080"},  // PKHeX: VALID (fateful, Poke Ball)
+    {"xd-gift-cyndaquil", Expect::Valid, true, "emerald_gba", "EncounterStatic3XD:155", "58334273D0EC3EE7BDD3C8BEBBCBCFC3C6FF0202CED9E7E8D9E6FF00401300009B0000008700000000460000B30021002B0033010F231E050000000000000000000000000010852790CAAA1F00000080"},  // PKHeX: VALID
+    {"xd-gift-totodile", Expect::Valid, true, "emerald_gba", "EncounterStatic3XD:158", "893866F81408F852CEC9CEC9BEC3C6BFFF000202CED9E7E8D9E6FF000C6800009E0000008700000000460000F2000A002B0034010F231E05000000000000000000000000001085273E129C2C00000080"},  // PKHeX: VALID
+    {"xd-trade-meditite", Expect::Valid, true, "emerald_gba", "EncounterTrade3XD:307", "87B210B31D913851C7BFBEC3CEC3CEBFFF000202BECFC5C3C8C1FF001774000064010000401F000000460000DF005D00F700C50005190F0500000000000000000000000000749427D6C3FD0C00000080"},  // PKHeX: VALID (OT DUKING, TID 37149)
+    {"xd-trade-shuckle", Expect::Valid, true, "emerald_gba", "EncounterTrade3XD:213", "63DBD1071D9151C5CDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF004C290000D500000054150000004600005C00A400BC00E3000A0A0A05000000000000000000000000007494272462B83D00000080"},  // PKHeX: VALID
+    {"xd-trade-larvitar", Expect::Valid, true, "emerald_gba", "EncounterTrade3XD:246", "1C28B05D1D91F57AC6BBCCD0C3CEBBCCFF000202BECFC5C3C8C1FF007C740000F60000001027000000230000C9005D012C00C8000A14190F00000000000000000000000000749427F5BBB02B00000080"},  // PKHeX: VALID
+    {"xd-trade-elekid-zaprong", Expect::Valid, true, "emerald_gba", "EncounterTrade3XD:239", "E42163BDB8A1BEF9D4BBCACCC9C8C1FF00000202C2C9CCBEBFC6FF00B6D30000EF000000401F000000460000080007000900EE000F0F0F0500000000000000000000000000A4942782E14D2B00000080"},  // PKHeX: VALID (OT HORDEL, nickname ZAPRONG)
+    {"pokespot-sandshrew", Expect::Valid, true, "emerald_gba", "EncounterSlot3XD:27", "EC60A4A3C22497D1CDBBC8BECDC2CCBFD1FF0202CED9E7E8D9E6FF004F0B00001B000000401F0000004600000A006F000000000023280000000000000000000000000000005A9427E276E20400000080"},  // PKHeX: VALID (Rock Poke Spot, PIDType.PokeSpot)
+    {"pokespot-zubat", Expect::Valid, true, "emerald_gba", "EncounterSlot3XD:41", "82B5C678C7EFD82AD4CFBCBBCEFF000000000202CED9E7E8D9E6FF00DD0A000029000000E8030000004600008D003000000000000F140000000000000000000000000000005C8A27837DF32A00000080"},  // PKHeX: VALID (Cave Poke Spot)
+    {"pokespot-hoppip", Expect::Valid, true, "emerald_gba", "EncounterSlot3XD:187", "AD001E0766C57128C2C9CACAC3CAFF0000000202CED9E7E8D9E6FF0030B80000BB000000DF110000004600009600EB002700210028051E23000000000000000000000000005B9327210CD32600000080"},  // PKHeX: VALID (Oasis Poke Spot)
+    {"pokespot-phanpy", Expect::Valid, true, "emerald_gba", "EncounterSlot3XD:231", "94DD4BB7E07667E5CAC2BBC8CAD3FF0000000202CED9E7E8D9E6FF0022E10000E700000031130000004600003C0121002D006F0028232828000000000000000000000000005B9127C001703500000080"},  // PKHeX: VALID (Oasis Poke Spot)
+    {"pokespot-aron", Expect::Valid, true, "emerald_gba", "EncounterSlot3XD:304", "0972E6C2601126F5BBCCC9C8FF00000000000202CED9E7E8D9E6FF00034B00007E0100007A1C00000023000021006A00BD001D00231E0A0F000000000000000000000000005C92279EA6493100000080"},  // PKHeX: VALID (Cave Poke Spot)
+    {"colo-gift-plusle", Expect::Valid, true, "emerald_gba", "EncounterGift3Colo:311", "C5F3900A1D910000CAC6CFCDC6BFFF0000000202BECFC5C3C8C1FF00C6FE00006101000095080000004600002D00560062000E0128141E1400000000000000000000000000FE8D277624943A00000000"},  // PKHeX: VALID (Version CXD, OT DUKING, met location 254)
+    {"bonus-disc-celebi-jpn", Expect::Valid, true, "ruby_gba", "EncounterGift3Colo:251", "18BE6C35917900005E7A9780FF00000000000102518A64FF0000000087910000FB00000030020000006400005D006900D700DB001914051900000000000000000000000000FF0AA11D3B9F1F00000000"},  // PKHeX: VALID (Japanese bonus disc, Version R)
+    {"bonus-disc-pikachu-jpn", Expect::Valid, true, "ruby_gba", "EncounterGift3Colo:25", "E819603F917900009C56618553FF0000000001025A7B5C5171FF0000EC0E000019000000E80300000046000054002D00270056001E281E1400000000000000000000000000FF0A218A2B1D3C00000000"},  // PKHeX: VALID (Japanese bonus disc)
+    {"bonus-disc-hooh", Expect::Valid, true, "sapphire_gba", "EncounterGift3Colo:250", "64EA810A40270000C2C9AEC9C2FF000000000202C7BBCECEC6BFFF00453D0000FA000000CE8A06000000000069007E00F10081001405051400000000000000000000000000FFC620BB5B841A00000000"},  // PKHeX: VALID (Mt. Battle Ho-Oh, Version S)
+    {"pkhex-vaporeon-split-evo", Expect::Valid, true, "emerald_gba", "EncounterStatic3XD:133", "2F104A98D4ED598FD0BBCAC9CCBFC9C8FF000202C7BBCECEFF000000D7B200008600000000B205000000000037002C0062003E0019191E14375D3A6B784D00000000000000008A272DF8721A00000082"},  // PKHeX: VALID (134 - VAPOREON - B2D7984A102F XD split evo starter.pk3; Fishy Level:LevelEXPThreshold is Info here)
+    {"pkhex-shuckle-nofateful-xk3", Expect::Valid, true, "emerald_gba", "EncounterTrade3XD:213", "A30311411D91598FCDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF00ED420000D500000054150000004700005C00A400BC00E3000A0A0A05000000000000000000000000007494274795362300000080"},  // PKHeX: VALID (213 - SHUCKLE - 1904411103A3 NoFateful.xk3: the flag is set on conversion)
+    {"pkhex-hooh-italian-longot", Expect::Valid, true, "sapphire_gba", "EncounterGift3Colo:250", "05EB25C640270000C2C9AEC9C2FF000000000402C7C9C8CEBF00C600AB660000FA000000CE8A06000046000069007E00F10081001405051400000000000000000000000000FFC620691E3C3B00000000"},  // PKHeX: VALID (250 - HO-OH - 2241C625EB05 Italian longOT.ck3)
+    {"pkhex-entei-missing-winning", Expect::Fishy, false, "emerald_gba", "EncounterShadow3Colo:248", "3B126F9F393031D4CED3CCBBC8C3CEBBCCFF0202D1BFCDFF00000000B1AA0000F8000000B01E040000FF0000F20057009D003B000F0A0A050000000000000000000000000076B72791EF512124C90E03"},  // PKHeX: VALID, Fishy Trainer:OTSuspicious (Legal (Missing Winning Ribbon).ck3, Tyranitar)
+    {"pkhex-entei-has-winning", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:248", "3B126F9F393031D4CED3CCBBC8C3CEBBCCFF0202D1BFCDFF00000000B2AA0000F8000000B01E040000FF0000F20057009D003B000F0A0A050000000000000000000000000076B72791EF512124C90F03"},  // PKHeX: Ribbon:FirstComplex (Illegal (has Winning Ribbon).ck3)
+    {"pkhex-shuckle-gift-nofateful-ck3", Expect::Invalid, false, "emerald_gba", "EncounterTrade3XD:213", "A30311411D91598FCDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF00ED7B0000D500000054150000000000005C00A400BC00E3000A0A0A05000000000000000000000000007494274795362300000000"},  // PKHeX: Fateful:FatefulMissing (XD Shuckle Gift no Fateful.ck3)
+    {"pkhex-ultraball-teddiursa", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:216", "5039BA5592361166CEBFBEBEC3CFCCCDBBFF0202C7DDD7DCD5D9E0006B290000D800BA00EF0C0000FFFF0000D8001F01ED00E8001F201837A0FC00620000000000000000008F8B17FEFBBF3D00000081"},  // PKHeX: Encounter:EncInvalid Ball:BallEncMismatch (UltraBallTeddiursa.xk3)
+    {"colo-shadow-bayleef+fateful", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00138F0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E27D9249C0C00000081"},  // PKHeX: Encounter:EncInvalid Fateful:FatefulInvalid (Colosseum never sets the flag)
+    {"colo-shadow-bayleef+metlevel", Expect::Invalid, false, "emerald_gba", "EncounterInvalid:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00140F0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039F27D9249C0C00000001"},  // PKHeX: Encounter:EncInvalid (met level 31, template 30)
+    {"colo-shadow-bayleef-national", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00130E0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E27D9249C0C00000000"},  // PKHeX: Ribbon:RibbonsMissing_0 (a purified shadow carries the National Ribbon)
+    {"colo-shadow-bayleef+femaleot", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00138F0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039EA7D9249C0C00000001"},  // PKHeX: Trainer:G3OTGender
+    {"colo-shadow-bayleef+safari", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:153", "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF0013170000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E2FD9249C0C00000001"},  // PKHeX: Ball:BallEncMismatch (Safari Ball)
+    {"colo-shadow-bayleef+pid", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:153", "3F4B17DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00130F0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E27D9249C0C00000001"},  // PKHeX: PID:PIDTypeMismatch (team lock / XDRNG)
+    {"xd-shadow-zapdos-fateful", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028DF0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB227BAA5CD0500000001"},  // PKHeX: Encounter:EncInvalid Fateful:FatefulMissing
+    {"xd-shadow-zapdos@loc75", Expect::Invalid, false, "emerald_gba", "EncounterInvalid:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028600000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004BB227BAA5CD0500000081"},  // PKHeX: Encounter:EncGiftNotFound (met location 75 is neither Citadark Isle nor a rebattle)
+    {"xd-shadow-zapdos+femaleot", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028DF0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB2A7BAA5CD0500000081"},  // PKHeX: Trainer:G3OTGender
+    {"xd-shadow-zapdos-national", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF00285E0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB227BAA5CD0500000080"},  // PKHeX: Ribbon:RibbonsMissing_0
+    {"xd-shadow-zapdos+metlevel", Expect::Invalid, false, "emerald_gba", "EncounterInvalid:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF00295F0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB327BAA5CD0500000081"},  // PKHeX: Encounter:EncGiftNotFound (met level 51)
+    {"xd-shadow-zapdos+safari", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:145", "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF0028670000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB22FBAA5CD0500000081"},  // PKHeX: Ball:BallEncMismatch
+    {"xd-shadow-zapdos+pid", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:145", "22F2477BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF00285F0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB227BAA5CD0500000081"},  // PKHeX: PID:PIDTypeMismatch
+    {"xd-shadow-teddiursa+great", Expect::Invalid, false, "emerald_gba", "EncounterShadow3XD:216", "11CD1EF03DC1287ACEBFBEBEC3CFCCCDBBFF0202CED9E7E8D9E6FF0006130000D80000003305000000460000D8001F017A00E80014141E23000000000000000000000000008F8B1F6A317B2B00000081"},  // PKHeX: Encounter:EncInvalid Ball:BallEncMismatch (FixedBall Poke)
+    {"xd-gift-chikorita+master", Expect::Invalid, false, "emerald_gba", "EncounterStatic3XD:152", "2125555BF597C363BDC2C3C5C9CCC3CEBBFF0202CED9E7E8D9E6FF00535A0000980000008700000000460000F60021002D005201052328050000000000000000000000000010850F4125AB2300000080"},  // PKHeX: Encounter:EncInvalid Ball:BallEncMismatch
+    {"xd-gift-chikorita-fateful", Expect::Invalid, false, "emerald_gba", "EncounterStatic3XD:152", "2125555BF597C363BDC2C3C5C9CCC3CEBBFF0202CED9E7E8D9E6FF0053F20000980000008700000000460000F60021002D00520105232805000000000000000000000000001085274125AB2300000000"},  // PKHeX: Fateful:FatefulMissing
+    {"colo-starter-espeon+fateful", Expect::Invalid, false, "emerald_gba", "EncounterStarter3Colo:196", "7014AC5C737153FFBFCDCABFC9C8FF0000000202CED9E7E8D9E6FF00BC680000C4000000093D0000004600005D00D80073000E011914141400000000000000000000000000FE99275BFE181600000080"},  // PKHeX: Fateful:FatefulInvalid
+    {"colo-starter-espeon+femaleot", Expect::Invalid, false, "emerald_gba", "EncounterStarter3Colo:196", "7014AC5C737153FFBFCDCABFC9C8FF0000000202CED9E7E8D9E6FF00BC680000C4000000093D0000004600005D00D80073000E011914141400000000000000000000000000FE99A75BFE181600000000"},  // PKHeX: Trainer:G3OTGender
+    {"colo-starter-espeon+ivhp", Expect::Invalid, false, "emerald_gba", "EncounterStarter3Colo:196", "7014AC5C737153FFBFCDCABFC9C8FF0000000202CED9E7E8D9E6FF00BBE80000C4000000093D0000004600005D00D80073000E011914141400000000000000000000000000FE99275AFE181600000000"},  // PKHeX: PID:PIDTypeMismatch (starter IVs follow the TID/SID seed)
+    {"colo-starter-umbreon+metlevel", Expect::Invalid, false, "emerald_gba", "EncounterInvalid:197", "74B20AF6CA1B6124CFC7BCCCBFC9C8FF00000202CED9E7E8D9E6FF0016B30000C5000000A8440000002300002C000D01220121011914140A00000000000000000000000000FE992702C5653E00000000"},  // PKHeX: Encounter:EncInvalid (met level 25, template 26)
+    {"xd-starter-eevee+ivhp", Expect::Invalid, false, "emerald_gba", "EncounterStatic3XD:133", "FBDC617CFE5981F4BFBFD0BFBFFF000000000202CED9E7E8D9E6FF009ABF000085000000E803000000460000210027002C001C00231E190F00000000000000000000000000008A27056ED23100000080"},  // PKHeX: PID:PIDTypeMismatch (CXDVerifier: Eevee PID/IVs follow the TID/SID)
+    {"xd-starter-eevee+pid", Expect::Invalid, false, "emerald_gba", "EncounterStatic3XD:133", "FBDC607CFE5981F4BFBFD0BFBFFF000000000202CED9E7E8D9E6FF0099BF000085000000E803000000460000210027002C001C00231E190F00000000000000000000000000008A27046ED23100000080"},  // PKHeX: PID:PIDTypeMismatch
+    {"pokespot-sandshrew+metlevel", Expect::Invalid, false, "emerald_gba", "EncounterSlot3XD:27", "EC60A4A3C22497D1CDBBC8BECDC2CCBFD1FF0202CED9E7E8D9E6FF00530B00001B000000401F0000004600000A006F000000000023280000000000000000000000000000005A9827E276E20400000080"},  // PKHeX: PID:PIDTypeMismatch (level animation seed)
+    {"pokespot-sandshrew@loc91", Expect::Invalid, false, "emerald_gba", "EncounterInvalid:27", "EC60A4A3C22497D1CDBBC8BECDC2CCBFD1FF0202CED9E7E8D9E6FF004F0C00001B000000401F0000004600000A006F000000000023280000000000000000000000000000005B9427E276E20400000080"},  // PKHeX: Encounter:EncGiftNotFound (Sandshrew is a Rock Poke Spot slot, not Oasis)
+    {"xd-trade-shuckle+ot", Expect::Invalid, false, "emerald_gba", "EncounterTrade3XD:213", "63DBD1071D9151C5CDC2CFBDC5C6BFFF00000202BBCFC5C3C8C1FF004C290000D500000054150000004600005C00A400BC00E3000A0A0A05000000000000000000000000007494272462B83D00000080"},  // PKHeX: Trainer:EncTradeChangedOT
+    {"xd-trade-elekid+nick", Expect::Invalid, false, "emerald_gba", "EncounterTrade3XD:239", "E42163BDB8A1BEF9BBBBCACCC9C8C1FF00000202C2C9CCBEBFC6FF00B6D30000EF000000401F000000460000080007000900EE000F0F0F0500000000000000000000000000A4942782E14D2B00000080"},  // PKHeX: Nickname:EncTradeChangedNickname
+    {"xd-trade-shuckle+femaleot", Expect::Invalid, false, "emerald_gba", "EncounterTrade3XD:213", "63DBD1071D9151C5CDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF004CA90000D500000054150000004600005C00A400BC00E3000A0A0A05000000000000000000000000007494A72462B83D00000080"},  // PKHeX: Trainer:G3OTGender
+    {"colo-gift-plusle+ot", Expect::Invalid, false, "emerald_gba", "EncounterGift3Colo:311", "C5F3900A1D910000CAC6CFCDC6BFFF0000000202BBCFC5C3C8C1FF00C6FE00006101000095080000004600002D00560062000E0128141E1400000000000000000000000000FE8D277624943A00000000"},  // PKHeX: Trainer:EncTradeChangedOT
+    {"ereader-togepi+english", Expect::Invalid, false, "emerald_gba", "EncounterInvalid:175", "065CEF6E023F32FA648A9CAEFF00000000000202635D64FF000000006C290000AF00000000190000004600007600CC00BA0019010A140A0A000000000000000000000000008094270000000000000001"},  // PKHeX: Encounter:EncInvalid (e-Reader shadows are Japanese only)
+    {"ereader-togepi+fateful", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:175", "065CEF6E023F32FA648A9CAEFF00000000000102635D64FF000000006CA90000AF00000000190000004600007600CC00BA0019010A140A0A000000000000000000000000008094270000000000000081"},  // PKHeX: Encounter:EncInvalid Fateful:FatefulInvalid
+    {"ereader-togepi+pid", Expect::Invalid, false, "emerald_gba", "EncounterShadow3Colo:175", "065CEE6E023F32FA648A9CAEFF00000000000102635D64FF000000006C290000AF00000000190000004600007600CC00BA0019010A140A0A000000000000000000000000008094270000000000000001"},  // PKHeX: PID:PIDTypeMismatch (e-Reader lock from the PID's seed)
 };
 
 using Legality::Severity;
@@ -475,11 +553,17 @@ int main() {
         ++checked;
     }
 
-    // Records this analyzer does not judge: Warning (Unknown), never Invalid.
+    // A GBA wild record relabelled as Colosseum/XD origin (version 15) matches no
+    // GameCube template: Invalid, never certified (EncounterGenerator3GC yields nothing).
     {
         auto pk = base;
         setVersion(pk, 15);
-        expectWarning("Colosseum/XD origin", pk, "Colosseum/XD");
+        expectInvalid("GBA wild record mislabelled as Colosseum/XD origin", pk,
+                      "Unable to match an encounter from the origin game");
+    }
+    // Records this analyzer does not judge: Warning (Unknown), never Invalid.
+    {
+        auto pk = base;
         for (uint8_t v : {0, 6, 7, 10, 14}) {
             pk = base;
             setVersion(pk, v);
@@ -494,6 +578,80 @@ int main() {
         put16(pk, 0x22, 175);  // Enigma Berry: the e-Reader berry lives in the save
         refreshChecksum(pk);
         expectWarning("Enigma Berry", pk, "Enigma Berry");
+    }
+
+    // Gen3Cxd::judge (the shared GameCube judge for later formats) on the same fixtures: a
+    // Colosseum/XD record PKHeX accepts is Matched with its met fields known and, as after
+    // Pal Park, with them unknown; one PKHeX rejects for a field the judge sees is Invalid;
+    // a GBA-origin record is not its business and matches nothing.
+    {
+        auto judgeOf = [](const std::vector<uint8_t>& pk, bool metKnown) {
+            Legality::Gen3Pk3::Pk3 f;
+            if (!Legality::Gen3Pk3::read(pk, f)) { std::cerr << "FAIL judge: unreadable fixture\n"; ++failures; }
+            Legality::Gen3Cxd::Input in;
+            in.species = f.species; in.currentLevel = f.currentLevel; in.hasOriginalMet = metKnown;
+            in.metLevel = f.metLevel; in.metLocation = f.metLocation; in.ball = f.ball; in.fateful = f.fateful;
+            in.isEgg = f.isEgg; in.pid = f.pid; in.ivs = f.ivs; in.tid = f.tid; in.sid = f.sid;
+            in.otGender = f.otGender; in.language = f.language;
+            in.namesKnown = true; in.ot = f.ot; in.nickname = f.nickname; in.isNicknamed = f.isNicknamed;
+            in.movesKnown = metKnown; in.moves = f.moves;
+            in.ribbonsKnown = true; in.ribbonNational = ((f.ribbons >> 24) & 1u) != 0; in.ribbonEarth = ((f.ribbons >> 25) & 1u) != 0;
+            in.abilityKnown = true; in.abilityBit = f.abilityBit;
+            return Legality::Gen3Cxd::judge(in);
+        };
+        using JV = Legality::Gen3Cxd::Verdict;
+        auto failJudge = [&](const std::string& what, const Legality::Gen3Cxd::Result& j) {
+            ++failures;
+            std::cerr << "FAIL " << what << " [" << j.encounter << "]\n";
+            for (const auto& t : j.invalid) std::cerr << "    I " << t << "\n";
+            for (const auto& t : j.warnings) std::cerr << "    W " << t << "\n";
+        };
+        int judged = 0;
+        for (const Case& c : kCases) {
+            const auto pk = fromHex(c.hex);
+            Legality::Gen3Pk3::Pk3 f;
+            if (!Legality::Gen3Pk3::read(pk, f) || f.version != 15) continue;
+            for (bool metKnown : {true, false}) {
+                const auto j = judgeOf(pk, metKnown);
+                const std::string what = std::string("judge ") + c.name + (metKnown ? " (met known)" : " (met unknown)");
+                if (c.expect == Expect::Valid || c.expect == Expect::Fishy) {
+                    if (j.verdict != JV::Matched || j.matched == Legality::Gen3Cxd::Template::None || j.encounter.empty() ||
+                        j.encounterSpecies == 0 || j.candidates.empty())
+                        failJudge(what + ": expected Matched", j);
+                    if ((c.expect == Expect::Fishy) != !j.warnings.empty()) failJudge(what + ": warnings do not follow PKHeX Fishy", j);
+                    if (j.shadow != (std::string_view(c.pkhexEncounter).find("Shadow") != std::string_view::npos))
+                        failJudge(what + ": shadow flag", j);
+                } else if (c.expect == Expect::Invalid && metKnown &&
+                           std::string_view(c.name).find("winning") == std::string_view::npos) {
+                    // (the Winning Ribbon is not among the fields the judge is given)
+                    if (j.verdict != JV::Invalid || j.invalid.empty()) failJudge(what + ": expected Invalid", j);
+                }
+                ++judged;
+            }
+        }
+        if (judged < 100) { ++failures; std::cerr << "FAIL judge: only " << judged << " Colosseum/XD fixtures\n"; }
+        checked += judged;
+        // Not a GameCube record: a certified GBA wild matches no Colosseum/XD template.
+        const auto gba = judgeOf(base, true);
+        if (gba.verdict != JV::Invalid || !gba.candidates.empty()) failJudge("judge GBA-origin record", gba);
+        // Unknown species: Undecided with a warning, never Invalid.
+        Legality::Gen3Cxd::Input bad;
+        bad.species = 400;
+        const auto unknown = Legality::Gen3Cxd::judge(bad);
+        if (unknown.verdict != JV::Undecided || unknown.warnings.empty() || !unknown.invalid.empty()) failJudge("judge species 400", unknown);
+        // An egg has no GameCube template.
+        auto eggIn = Legality::Gen3Cxd::Input{};
+        eggIn.species = 216; eggIn.isEgg = true; eggIn.currentLevel = 5; eggIn.metLevel = 0; eggIn.ball = 4; eggIn.language = 2;
+        const auto egg = Legality::Gen3Cxd::judge(eggIn);
+        if (egg.verdict != JV::Invalid) failJudge("judge egg", egg);
+        checked += 3;
+    }
+
+    // A zeroed buffer carrying only the Colosseum/XD version bits is an empty slot (Warning).
+    {
+        std::vector<uint8_t> zero(80, 0);
+        setVersion(zero, 15);
+        expectWarning("zeroed Colosseum/XD record", zero, "no species");
     }
 
     // Malformed sizes: an unreadable-record Warning with structure coverage None.
