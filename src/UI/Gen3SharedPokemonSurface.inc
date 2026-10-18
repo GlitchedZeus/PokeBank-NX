@@ -2102,13 +2102,14 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             visibleMoveFocus.panel == Shared::Panel::Moves ? static_cast<int>(visibleMoveFocus.row) : -1);
     }
     struct DataRow { std::string label, value; };
+    // Same data pane as Gen IV/V: the PID is shown once, in gold (ReadOnly field state), in the
+    // STATS panel's PID-linked block; no "(read-only)" text row here (QA CG16).
     const std::vector<DataRow> rows{
         {"Origin", Enums::getOriginGameName(p.originGame)},
         {"Language", Enums::getLanguageName(p.language)},
         {"Ball", Enums::getBallName(p.ball)},
         {"Met Location", metLocationText(p)},
         {"Encounter origin", encounterOriginText(screen, p)},
-        {"PID", "Derived (read-only)"},
         {"Legality", Presentation::legalityLabel(Presentation::LegalityState::NotChecked)}
     };
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,

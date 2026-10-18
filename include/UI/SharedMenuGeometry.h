@@ -125,7 +125,9 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::SpeciesPicker:
             return {Kind::List, 600, 1, 44, 4, 9, 84, 20, 16, 12, 34, 8, Text::Body};
         case MenuType::MovePicker:
-            return {Kind::List, 760, 1, 44, 4, 10, 84, 20, 16, 12, 0, 8, Text::Body};
+            // The accepted Move chooser (M01-M08 PASS): 760 px, 86 px title + captions,
+            // 10 rows of 42 px (38 px highlight), 14 px bottom margin -> 520 px when full.
+            return {Kind::List, 760, 1, 42, 4, 10, 86, 24, 14, 16, 0, 8, Text::Body};
         case MenuType::LocationPicker:
             // The accepted Met Location window (owner round 1 L03/L04 PASS): 900 px, name left,
             // method / level right, editor value-list rows.

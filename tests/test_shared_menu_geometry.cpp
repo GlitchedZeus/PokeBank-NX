@@ -15,6 +15,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <fstream>
+#include <iterator>
 #include <iostream>
 #include <string>
 
@@ -189,6 +191,32 @@ void editorValueLists() {
     }
 }
 
+// QA CG13: every MenuType has a real consumer; the Move chooser and the save / discard dialog
+// read their geometry from the shared rules and keep their accepted pixels.
+void consumers() {
+    const auto move = G::layout(G::MenuType::MovePicker, 1000);
+    require(move.frame.w == 760 && move.frame.h == 520 && move.visibleRows == 10 &&
+            move.rule.headerH == 86 && move.rule.rowHeight == 42 &&
+            move.rule.rowHeight - move.rule.rowGap == 38, "MovePicker rule = the accepted chooser");
+    const auto save = G::rule(G::MenuType::SaveDiscard);
+    G::Layout row;
+    row.buttons = {100 + save.padX, 400, save.width - 2 * save.padX, 56};
+    const auto b0 = G::buttonRect(row, 0, 2), b1 = G::buttonRect(row, 1, 2);
+    require(save.width == 560 && b0.x == 124 && b0.w == 248 && b1.x == 100 + 560 - 24 - 248 && b1.w == 248,
+            "SaveDiscard rule = the accepted 560 px dialog and its two buttons");
+    std::ifstream movePresentation("include/UI/MovePickerPresentation.h"), saveDialog("src/UI/Dialogs/SaveConfirmDialog.cpp"),
+        gen3("src/UI/Gen3SharedPokemonSurface.inc");
+    const std::string mp{std::istreambuf_iterator<char>(movePresentation), {}};
+    const std::string sd{std::istreambuf_iterator<char>(saveDialog), {}};
+    const std::string g3{std::istreambuf_iterator<char>(gen3), {}};
+    require(mp.find("Geo::layout(Geo::MenuType::MovePicker, 1000)") != std::string::npos,
+            "Move chooser derives from MenuType::MovePicker");
+    require(sd.find("Geo::rule(Geo::MenuType::SaveDiscard)") != std::string::npos &&
+            sd.find("constexpr int w = kSaveDiscard.width;") != std::string::npos,
+            "save / discard dialog lays out via MenuType::SaveDiscard");
+    require(g3.find("Derived (read-only)") == std::string::npos, "CG16: no \"(read-only)\" PID text in Gen III");
+}
+
 void fieldStates() {
     using S = F::State;
     using T = F::Token;
@@ -218,6 +246,7 @@ int main() {
     textMetrics();
     namesFit();
     editorValueLists();
+    consumers();
     fieldStates();
     if (failures) {
         std::cerr << failures << " failure(s)\n";
