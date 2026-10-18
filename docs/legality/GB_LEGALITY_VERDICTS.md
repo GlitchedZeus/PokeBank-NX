@@ -233,32 +233,53 @@ About a quarter of the records are Japanese, encoded with PKHeX's own
   - Korean Gold/Silver: 20 `kor2-*` kinds of 40 records each, one rule per kind, plus a
     Korean share of the random kinds.
 
-Seeds 1–3, 50,000 records each:
+Seeds 1–5, 50,000 records each (`tools/pkhex_gb_diff/run.sh /home/user/ext/pkhex
+/home/user/ext/pokered 50000 <seed> <gen>`; CI runs seeds 1–3). Every record has a verdict
+from both programs and lands in one class:
 
 | | PK1 | PK2 |
 |---|---|---|
-| Records | 150,000 | 150,000 |
-| Matching legal | 109,865 | 104,661 |
-| Matching invalid | 38,741 | 42,282 |
+| Records | 250,000 | 250,000 |
+| Matching legal | 181,346 | 173,259 |
+| Matching invalid | 56,461 | 67,415 |
 | **Differing** | **0** | **0** |
-| Deliberately uncertain: Mew/Celebi from an unrecorded event (PKHeX INVALID) | 66 | 107 |
-| Deliberately uncertain: Korean, needs a Korean–Western trade (PKHeX INVALID / VALID) | – | 777 / 152 |
-| Deliberately uncertain: Korean met data (PKHeX INVALID / VALID) | – | 472 / 63 |
-| Deliberately uncertain: two of the reasons above (PKHeX INVALID) | – | 16 |
-| Deliberately uncertain: Korean trainer name outside the Hangul pages (PKHeX INVALID) | – | 82 |
-| Deliberately different: stored level not the level of the EXP (ours INVALID, PKHeX VALID) | 1,328 | 1,352 |
-| Deliberately different: GS Ball Celebi (ours VALID, PKHeX INVALID) | – | 36 |
+| Deliberately uncertain, total | 10,922 | 7,494 |
+| – Mew/Celebi from an unrecorded event (PKHeX INVALID) | 120 | 164 (+6 with Korean met data) |
+| – battle stat experience with a stat still at 0 (PKHeX INVALID) | 6,191 | 2,812 (+2 with the Korean trade) |
+| – Day Care: EXP over the level-100 total within `$50FFFF` (PKHeX INVALID) | 2,320 | 366 |
+| – Day Care: stored level below its EXP (PKHeX VALID) | 1,239 | 728 (+1 with the Korean trade) |
+| – Korean, needs a Korean–Western trade (PKHeX INVALID / VALID) | – | 1,277 / 246 |
+| – Korean met data (PKHeX INVALID / VALID) | – | 797 / 97 (+17 with the trade) |
+| – Korean trainer name outside the Hangul pages (PKHeX INVALID) | – | 140 |
+| – Korean trainer name on a PK1 (PKHeX INVALID / VALID) | 75 / 300 | – |
+| – digit in a Western name (PKHeX VALID; 1 word-filter INVALID) | 300 | 300 |
+| – glyphless byte in a name (PKHeX INVALID / VALID) | 31 / 233 | 39 / 233 |
+| – Japanese trainer name outside the kana (PKHeX INVALID) | 61 | 119 |
+| – ？/！ in a Japanese trainer name, only Gen I origins (PKHeX INVALID) | 52 | 150 |
+| Deliberately different, total | 1,271 | 1,832 |
+| – stored level ahead of its EXP (ours INVALID, PKHeX VALID) | 1,160 | 1,652 |
+| – Korean-named PK1 with no Gen II origin (ours INVALID, PKHeX VALID) | 100 | – |
+| – ？/！ with a Gen II origin open (ours VALID, PKHeX INVALID `G1CharOT`) | 11 | 120 |
+| – GS Ball Celebi (ours VALID, PKHeX INVALID) | – | 60 |
 
-Every one of the 300,000 records has a verdict from both programs. The structural kinds
-all agree with PKHeX where PKHeX decides: duplicate moves, EXP 0 and EXP over the
-level-100 total are Invalid for both (450 records per format); the two legal boundaries
-are legal for both (180 per format). The 150 Korean
-records PKHeX accepts but that only a trade explains are mostly Crystal Odd Eggs: PKHeX
-allows the Odd Egg for Korean records (`ParseSettings.AllowGen2OddEgg` excludes only
-Japanese) while it rules out every other Crystal source. No record of these seeds is
-uncertain through the evolution-order rule: the 60 `evo-order` histories (two moves
-learned in an order the Gen I games alone cannot produce) are all legal for both
-programs, through Stadium 2's reminder.
+Seeds 1–3 alone (the CI set): PK1 108,738 legal / 33,926 invalid / 0 differing; PK2 103,891 /
+40,525 / 0. The previous published counts (before the Day Care, name and Korean-PK1 kinds were
+added, same seeds) were PK1 109,865 / 38,741 / 0 and PK2 104,661 / 42,282 / 0; the corpus is
+not the same, so the two sets are not comparable record for record.
+
+Production parity passed on every run: PK1 50,000 of 50,000 records through `Legality::analyze`
+per seed (174–177 of them with a verdict that needs the stored name bytes the parsers do not
+carry yet); PK2 45,824–45,949 per seed (4,051–4,176 Korean records skipped, which the parsers do
+not read; 52–56 needing the name bytes).
+
+The structural kinds all agree with PKHeX where PKHeX decides: duplicate moves, EXP 0 and EXP
+over the level-100 total at level 100 are Invalid for both; the two legal boundaries are legal
+for both. The Korean records PKHeX accepts but that only a trade explains are mostly Crystal Odd
+Eggs: PKHeX allows the Odd Egg for Korean records (`ParseSettings.AllowGen2OddEgg` excludes
+only Japanese) while it rules out every other Crystal source. No record of these seeds is
+uncertain through the evolution-order rule: the `evo-order` histories (two moves learned in an
+order the Gen I games alone cannot produce) are all legal for both programs, through Stadium 2's
+reminder.
 
 `tests/test_gb_legality_gen1.cpp` (through `Legality::analyze`) and
 `tests/test_gb_legality_gen2.cpp` keep PKHeX-verdict samples of every corpus kind in the
