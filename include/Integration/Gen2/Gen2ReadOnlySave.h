@@ -55,6 +55,11 @@ struct PokemonRecord {
     uint16_t specialDefense = 0;
     std::string originalTrainer;
     std::string nickname;
+    // The stored name fields as they are in the save (11 bytes, 6 on a Japanese save),
+    // terminator and padding included. The legality engine reads the bytes the decoder
+    // cannot show: the in-game-trade marker, bytes with no glyph, Hangul page bytes.
+    std::vector<uint8_t> originalTrainerRaw;
+    std::vector<uint8_t> nicknameRaw;
     bool partyRecord = false;
     bool isEgg = false;
     bool shiny = false;

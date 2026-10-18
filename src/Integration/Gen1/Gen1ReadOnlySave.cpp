@@ -266,6 +266,8 @@ bool parsePokemon(std::span<const uint8_t> body, std::span<const uint8_t> ot,
     }
     out.originalTrainer = decodeGen1String(ot, region);
     out.nickname = decodeGen1String(nick, region);
+    out.originalTrainerRaw.assign(ot.begin(), ot.end());
+    out.nicknameRaw.assign(nick.begin(), nick.end());
     out.partyRecord = party;
     out.rawBodySize = body.size();
     std::copy(body.begin(), body.end(), out.rawBody.begin());

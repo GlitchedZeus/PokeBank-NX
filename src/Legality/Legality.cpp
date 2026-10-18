@@ -196,7 +196,9 @@ namespace Legality {
                     }
                 }
             }
-            if (rec.originalTrainer.empty()) {
+            // With the stored bytes, GB::checkGen1/checkGen2 judge the trainer name (a Hangul
+            // name decodes to nothing in a Western save's text; it is not empty).
+            if (rec.originalTrainer.empty() && rec.originalTrainerRaw.empty()) {
                 add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
             }
 
@@ -209,6 +211,8 @@ namespace Legality {
             e.statExp = rec.statExperience;
             e.otName = rec.originalTrainer;
             e.nickname = rec.nickname;
+            e.otRaw = rec.originalTrainerRaw;
+            e.nickRaw = rec.nicknameRaw;
             std::vector<GB::Problem> problems;
             if (!structural) {
                 // The origin search cannot run, but the rules that hold for any origin still do.
@@ -1003,7 +1007,9 @@ namespace Legality {
                     }
                 }
             }
-            if (rec.originalTrainer.empty()) {
+            // With the stored bytes, GB::checkGen1/checkGen2 judge the trainer name (a Hangul
+            // name decodes to nothing in a Western save's text; it is not empty).
+            if (rec.originalTrainer.empty() && rec.originalTrainerRaw.empty()) {
                 add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
             }
 
@@ -1017,6 +1023,8 @@ namespace Legality {
             e.isEgg = rec.isEgg;
             e.otName = rec.originalTrainer;
             e.nickname = rec.nickname;
+            e.otRaw = rec.originalTrainerRaw;
+            e.nickRaw = rec.nicknameRaw;
             std::vector<GB::Problem> problems;
             if (!structural) {
                 problems = GB::formatProblems(e);

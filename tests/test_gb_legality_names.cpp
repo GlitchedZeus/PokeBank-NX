@@ -401,7 +401,8 @@ void japaneseTrainerName() {
 // ---------------------------------------------------------------- production path
 
 // What Gen1ReadOnlySave.cpp parsePokemon stores for the Rattata above, decoded names only.
-Legality::Report productionPk1(const std::string& ot, const std::string& nick) {
+Legality::Report productionPk1(const std::string& ot, const std::string& nick, std::vector<uint8_t> otRaw = {},
+                               std::vector<uint8_t> nickRaw = {}) {
     PokeVault::Integration::Gen1::PokemonRecord rec{};
     rec.rawSpecies = 0xA5;
     rec.species = 19;
@@ -416,6 +417,8 @@ Legality::Report productionPk1(const std::string& ot, const std::string& nick) {
     rec.level = 3;
     rec.originalTrainer = ot;
     rec.nickname = nick;
+    rec.originalTrainerRaw = std::move(otRaw);
+    rec.nicknameRaw = std::move(nickRaw);
     rec.partyRecord = true;
     const Pokemon::Pokemon1ReadOnly pk(rec);
     return Legality::analyze(pk, pk.getGameGroup(), "red_gb");
@@ -457,12 +460,17 @@ void production() {
           "production PK2 digit in the nickname: Incomplete");
     const auto twoJp = productionPk2("サ？", "モン");
     check(twoJp.verdict() == Legality::Verdict::NoProblemsFound, "production PK2 Japanese trainer name with ？: No problems found");
-    // The byte rules need the stored name bytes, which the save parsers do not carry yet
-    // (docs/legality/handoff/lane-d-raw-names.patch): a control byte inside a name reads
-    // as a shorter name today, with no warning.
-    const auto truncated = productionPk1("A", "MON");
-    check(truncated.verdict() == Legality::Verdict::NoProblemsFound,
-          "production PK1 cannot see a glyphless byte behind the decoded name (handoff)");
+    // The save parsers carry the stored name bytes (Gen1ReadOnlySave/Gen2ReadOnlySave
+    // parsePokemon), so the byte rules reach Legality::analyze.
+    const auto truncated = productionPk1("A", "MON", padded({0x80, 0x05, 0x81}), western("MON"));
+    check(truncated.verdict() == Legality::Verdict::Incomplete && !truncated.hasInvalid() &&
+              hasIssue(truncated, Legality::Severity::Warning, "no glyph in the Western font"),
+          "production PK1 glyphless byte behind the decoded name: Incomplete with a Warning");
+    const auto cleanBytes = productionPk1("ASH", "MON", western("ASH"), western("MON"));
+    check(cleanBytes.verdict() == Legality::Verdict::NoProblemsFound, "production PK1 with clean stored bytes: No problems found");
+    // A record built without bytes (tests, tools) keeps the decoded-name checks only.
+    const auto noBytes = productionPk1("A", "MON");
+    check(noBytes.verdict() == Legality::Verdict::NoProblemsFound, "production PK1 without stored bytes: decoded names only");
 }
 
 } // namespace

@@ -221,6 +221,8 @@ bool parsePokemon(
     }
     out.originalTrainer = decodeGen2String(ot, region);
     out.nickname = decodeGen2String(nick, region);
+    out.originalTrainerRaw.assign(ot.begin(), ot.end());
+    out.nicknameRaw.assign(nick.begin(), nick.end());
     out.partyRecord = party;
     out.rawBodySize = body.size();
     std::copy(body.begin(), body.end(), out.rawBody.begin());
