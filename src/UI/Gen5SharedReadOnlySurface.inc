@@ -1840,11 +1840,11 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             SharedScrollbar::rows(count,UI::SharedBagAddPicker::visibleRows(count),
                                   UI::SharedBagAddPicker::firstVisible(selected,count)));
     } else {
-        SharedEditorChrome::beginModal(screen.touchButtons);
         const auto& item=bag.pendingRemove();
-        UI::SharedBagAddPicker::drawRemoveConfirm(fb,game,"Remove Gen V Item?",
+        UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,game,"Remove Gen V Item?",
             item?item->itemId:0,item?bagItemLabel(screen,item->itemId):std::string(),
             item?item->count:0,"Staged bag only; Discard All in Review restores it.");
+        return; // drawRemoveConfirm draws its own Y Remove / B Cancel footer.
     }
     drawNavBar(fb,hints);
 }

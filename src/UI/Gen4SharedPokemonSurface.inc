@@ -107,6 +107,10 @@ struct State : Surface::EditorState {
     std::vector<uint16_t> itemAddNativeChoices;
     ItemPickerSort::Mode itemAddSort = ItemPickerSort::Mode::Native;
     SharedScrollbar::State itemAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
+    // Key Item warning before a Key Item is staged (UI/SharedBagAddFlow.h needsKeyItemWarning).
+    bool itemKeyWarningActive = false;
+    int itemKeyWarningPocket = 0;
+    uint16_t itemKeyWarningId = 0;
     bool itemRemoveConfirmActive = false;
     int itemRemovePocket = 0;
     int itemRemoveVisibleRow = 0;
@@ -147,6 +151,7 @@ bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     const auto& state = stateFor(screen);
     return state.actions || state.review || state.legality || state.confirmRelease ||
            state.itemRemoveConfirmActive || state.itemAddPickerActive ||
+           state.itemKeyWarningActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
@@ -1698,6 +1703,50 @@ PokeVault::Inventory::QuantityPolicy::ItemQuantityRule gen4PolicyRule(
     return PokeBank::UIModel::Gen4BagQuantity::policyRule(game, pocket, id);
 }
 
+// Highlight the row holding `id` in the visible pocket (after an Add or a focus-existing pick).
+void focusGen4Item(TrainerViewScreen& screen,size_t pocket,uint16_t id) {
+    if(pocket>=screen.trainer.items.size())return;
+    const auto visible=screen.visibleItemIndices();
+    const auto& rows=screen.trainer.items[pocket];
+    for(size_t i=0;i<visible.size();++i)
+        if(rows[static_cast<size_t>(visible[i])].itemId==id) {
+            screen.selectedItemIndex=static_cast<int>(i);
+            screen.currentPage=screen.selectedItemIndex/8;
+            break;
+        }
+}
+
+// Stage one shared-flow Add through the real Gen IV writer; a refused write or refresh restores
+// every staged byte. Used by the picker's A and by the Key Item warning's A-confirm.
+bool stageGen4BagAdd(TrainerViewScreen& screen,State& state,size_t addPocket,uint16_t id,
+                     uint16_t quantity) {
+    auto* current=editor(screen);
+    if(!current) {
+        screen.postStatus("Gen IV staged workspace unavailable",280);
+        return false;
+    }
+    auto backup=*current;
+    std::string error;
+    if(!current->stageBagAdd(addPocket,id,quantity,&error)) {
+        screen.postStatus(error,300);
+        return false;
+    }
+    if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+        *current=std::move(backup);
+        std::string restored;
+        (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+        screen.postStatus("Gen IV Add refresh failed; previous stage retained: "+error,360);
+        return false;
+    }
+    state.itemAddPickerActive=false;
+    state.itemAddChoices.clear();
+    focusGen4Item(screen,addPocket,id);
+    screen.controllerNavigation.reset();
+    screen.postStatus("Gen IV item added to staged workspace ONLY (x"+
+                      std::to_string(quantity)+"); A on it sets the quantity",280);
+    return true;
+}
+
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                         u64 held,int stickX,int stickY,const TouchInput& touch) {
     const bool itemsScreen=screen.detailViewActive &&
@@ -1796,19 +1845,9 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         pocketState.capacity=Gen4::bagLayout(staged->layout())[addPocket].slots;
         for(const auto& stack:pouch)
             if(stack.itemId==id)pocketState.heldInPocket=stack.count;
-        const auto decision=BagAdd::decidePick(gen4PolicyRule(screen,addPocket,id),pocketState,
-                                               Gen4::bagPocketName(addPocket));
+        const auto addRule=gen4PolicyRule(screen,addPocket,id);
+        const auto decision=BagAdd::decidePick(addRule,pocketState,Gen4::bagPocketName(addPocket));
         screen.controllerNavigation.reset();
-        const auto focus=[&]() {
-            const auto visible=screen.visibleItemIndices();
-            const auto& rows=screen.trainer.items[addPocket];
-            for(size_t i=0;i<visible.size();++i)
-                if(rows[static_cast<size_t>(visible[i])].itemId==id) {
-                    screen.selectedItemIndex=static_cast<int>(i);
-                    screen.currentPage=screen.selectedItemIndex/8;
-                    break;
-                }
-        };
         switch(decision.outcome) {
             case BagAdd::PickOutcome::NotAllowed:
                 screen.postStatus(decision.message,300);
@@ -1816,7 +1855,7 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             case BagAdd::PickOutcome::FocusExisting:
                 state.itemAddPickerActive=false;
                 state.itemAddChoices.clear();
-                focus();
+                focusGen4Item(screen,addPocket,id);
                 screen.postStatus(decision.message,260);
                 return true;
             case BagAdd::PickOutcome::PocketFull:
@@ -1827,30 +1866,44 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             case BagAdd::PickOutcome::StageNew:
                 break;
         }
-        auto* current=editor(screen);
-        if(!current) {
-            screen.postStatus("Gen IV staged workspace unavailable",280);
+        if(BagAdd::needsKeyItemWarning(addRule)) {
+            // Same as Gen I-III: a Key Item is staged only after an A-confirmed warning.
+            state.itemAddPickerActive=false;
+            state.itemAddChoices.clear();
+            state.itemKeyWarningActive=true;
+            state.itemKeyWarningPocket=static_cast<int>(addPocket);
+            state.itemKeyWarningId=id;
             return true;
         }
-        auto backup=*current;
-        std::string error;
-        if(!current->stageBagAdd(addPocket,id,decision.quantity,&error)) {
-            screen.postStatus(error,300);
+        (void)stageGen4BagAdd(screen,state,addPocket,id,decision.quantity);
+        return true;
+    }
+    if(state.itemKeyWarningActive) {
+        // A confirms, B cancels with nothing staged; nothing else acts.
+        namespace BagAdd=PokeBank::UIModel::BagAdd;
+        if(down&HidNpadButton_B) {
+            state.itemKeyWarningActive=false;
+            screen.controllerNavigation.reset();
             return true;
         }
-        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
-            *current=std::move(backup);
-            std::string restored;
-            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
-            screen.postStatus("Gen IV Add refresh failed; previous stage retained: "+error,360);
+        if(!(down&HidNpadButton_A))return true;
+        state.itemKeyWarningActive=false;
+        const size_t pocket=static_cast<size_t>(state.itemKeyWarningPocket);
+        if(!itemsScreen || screen.selectedCategory!=state.itemKeyWarningPocket) {
+            screen.postStatus("Gen IV pocket changed; add cancelled",280);
             return true;
         }
-        state.itemAddPickerActive=false;
-        state.itemAddChoices.clear();
-        focus();
-        screen.controllerNavigation.reset();
-        screen.postStatus("Gen IV item added to staged workspace ONLY (x"+
-                          std::to_string(decision.quantity)+"); A on it sets the quantity",280);
+        BagAdd::PocketState pocketState{};
+        if(pocket<screen.trainer.items.size())
+            for(const auto& stack:screen.trainer.items[pocket])
+                if(stack.itemId==state.itemKeyWarningId)pocketState.heldInPocket=stack.count;
+        const auto decision=BagAdd::decidePick(gen4PolicyRule(screen,pocket,state.itemKeyWarningId),
+                                               pocketState);
+        if(decision.outcome!=BagAdd::PickOutcome::StageNew) {
+            screen.postStatus(decision.message,280);
+            return true;
+        }
+        (void)stageGen4BagAdd(screen,state,pocket,state.itemKeyWarningId,decision.quantity);
         return true;
     }
     if(state.itemRemoveConfirmActive) {
@@ -2088,10 +2141,20 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
                    {"A","Add"},{"B","Cancel"},{"X","Sort"}});
 }
 
+void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
+    screen.drawGSCOverlay(fb);
+    const auto game=screen.trainer.getGameGroup();
+    const uint16_t id=state.itemKeyWarningId;
+    SharedEditorChrome::beginModal(screen.touchButtons);
+    UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
+        Names::machineDisplayLabel(game,id,Names::getItemName(id)),false);
+    drawNavBar(fb,{{"A","Confirm"},{"B","Cancel"}});
+}
+
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
     screen.drawGSCOverlay(fb);
     SharedEditorChrome::beginModal(screen.touchButtons);
-    UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.trainer.getGameGroup(),
+    UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,screen.trainer.getGameGroup(),
         "Remove Gen IV Item?",state.itemRemoveId,Names::getItemName(state.itemRemoveId),
         state.itemRemoveCount,"Staged copy only; Discard Changes restores it.");
     drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
@@ -2202,6 +2265,7 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
     if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
+    else if (state.itemKeyWarningActive)drawItemKeyWarning(screen,fb,state);
     else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);

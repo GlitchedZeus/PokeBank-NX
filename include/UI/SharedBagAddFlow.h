@@ -135,6 +135,13 @@ struct RowDecision {
     return decideRow(QP::quantityRule(game, pocket, itemId), current, writerCap);
 }
 
+// Key Items (bikes, rods, story items) are tied to story/event progress: every surface asks for
+// an A-confirmed warning before one is added to or removed from the staged bag. Decided by the
+// policy's item kind, never by pocket alone (a Key Item stored in the PC is still a Key Item).
+[[nodiscard]] constexpr bool needsKeyItemWarning(const QP::ItemQuantityRule& rule) noexcept {
+    return rule.valid && rule.kind == QP::ItemKind::KeyItem;
+}
+
 // The picker phase as a tiny state machine. Each event is consumed once; nothing here mutates
 // the bag. The surface performs the staging the returned decision names.
 class Flow {

@@ -87,6 +87,11 @@ int main() {
     assert(classicInventoryMaximumQuantity(*gold, ClassicPocket::Items, 18) == 99);
     assert(classicInventoryNeedsStoryWarning(*gold, ClassicPocket::KeyItems, 54));
     assert(!classicInventoryNeedsStoryWarning(*gold, ClassicPocket::Balls, 5));
+    // Shared rule (SharedBagAddFlow needsKeyItemWarning): a Key Item in the PC warns too; a
+    // regular PC item and an HM (unique, but not story-gated) do not.
+    assert(classicInventoryNeedsStoryWarning(*gold, ClassicPocket::PCItems, 7));
+    assert(!classicInventoryNeedsStoryWarning(*gold, ClassicPocket::PCItems, 18));
+    assert(!classicInventoryNeedsStoryWarning(*gold, ClassicPocket::TMHM, 243));
 
     assert(classicInventoryAction(ClassicInventoryInput::A) == ClassicInventoryAction::EditAmount);
     assert(classicInventoryAction(ClassicInventoryInput::X) == ClassicInventoryAction::AddItem);

@@ -42,7 +42,7 @@ BAG_ADD_FLOW_SOURCES := tests/test_bag_add_flow_gen15.cpp \
 BAG_ADD_FLOW_INPUTS := $(BAG_ADD_FLOW_SOURCES) include/UI/SharedBagAddFlow.h \
     include/Inventory/ItemQuantityPolicy.h include/UI/Gen4BagQuantity.h \
     include/Integration/Gen4/Gen4BagCatalog.h include/Integration/Gen5/Gen5BagScreen.h \
-    include/Integration/Gen5/Gen5Bag.h
+    include/Integration/Gen5/Gen5Bag.h include/UI/SharedMenuGeometry.h
 
 HOST_TESTS += $(BAG_ADD_FLOW_TEST)
 HOST_SANITIZE_TESTS += $(BAG_ADD_FLOW_SANITIZE)

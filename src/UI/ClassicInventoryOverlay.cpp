@@ -937,6 +937,30 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         !state.warningActive && !state.discardConfirmActive && !state.removeConfirmActive) return;
 
     screen.touchButtons.clear();
+    // Bag confirmations draw through the shared Gen I-V presentation (UI/SharedBagAddPicker.h:
+    // SharedMenuGeometry RemoveConfirm / KeyItemWarning), the same as Gen IV/V.
+    if (state.removeConfirmActive || state.warningActive) {
+        SharedEditorChrome::beginModal(screen.touchButtons);
+        const auto confirmGame = exactGame(screen);
+        const std::string name = confirmGame
+            ? PokeVault::Inventory::displayItemName(*confirmGame, state.pendingPocket, state.pendingItem)
+            : std::string("this item");
+        const auto group = !confirmGame ? Enums::GameVersion::FRLG
+            : *confirmGame <= ClassicGame::Yellow ? Enums::GameVersion::RBY
+            : *confirmGame <= ClassicGame::Crystal ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
+        if (state.removeConfirmActive) {
+            UI::SharedBagAddPicker::drawRemoveConfirm(fb, screen.touchButtons, group, "Remove " + name + "?",
+                state.pendingItem, name, stagedQuantity(screen, state.pendingPocket, state.pendingItem),
+                "Staged copy only; the original source save stays unchanged.");
+            drawNavBar(fb, {{"Y", "Remove"}, {"B", "Cancel"}});
+        } else {
+            UI::SharedBagAddPicker::drawKeyItemWarning(fb, screen.touchButtons, group, state.pendingItem,
+                                                       name, state.pendingQuantity == 0);
+            drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
+        }
+        return;
+    }
+
     const bool compactPicker = state.pickerActive;
     const auto pickerGeometry =
         UI::SharedBagAddPicker::pickerLayout(static_cast<int>(state.pickerItems.size()));
@@ -959,27 +983,6 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto game = exactGame(screen);
     const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
                              : std::optional<ClassicPocket>{};
-
-    if (state.removeConfirmActive) {
-        const auto name = game ? PokeVault::Inventory::displayItemName(*game, state.pendingPocket, state.pendingItem)
-                               : std::string("this item");
-        fb.drawText(x + 30, y + 24, "Remove " + name + "?", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 100, "Removes it from " + std::string(PokeVault::Inventory::pocketName(state.pendingPocket)) +
-                    " in the staged copy.", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 30, y + 142, "The original source save stays unchanged.", Colors::TextDim, TextStyle::Body);
-        drawNavBar(fb, {{"Y", "Remove"}, {"B", "Cancel"}});
-        return;
-    }
-
-    if (state.warningActive) {
-        fb.drawText(x + 30, y + 24, "Key Item Warning", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 100, "This Key Item may depend on story/event state.", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 30, y + 142, "Changing inventory does not reproduce or reverse the associated story event.",
-                    Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + 196, "No unrelated event flags will be modified.", Colors::TextDim, TextStyle::Body);
-        drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
-        return;
-    }
 
     if (state.discardConfirmActive) {
         fb.drawText(x + 30, y + 24, "Discard Staged Changes?", Colors::Text, TextStyle::Heading);
