@@ -7,7 +7,7 @@
 #   make -f Makefile.host qa-contracts         export-safety / source-immutability contracts (+ ASan/UBSan)
 #   make -f Makefile.host qa-libfuzzer         clang libFuzzer binaries (CXX=clang++)
 #   make -f Makefile.host qa-libfuzzer-run     time-boxed libFuzzer run (QA_FUZZ_SECONDS per target)
-#   make -f Makefile.host qa-tools-test        tools/qa NRO audit regression
+#   make -f Makefile.host qa-tools-test        tools/qa NRO audit regression + hardware round 1 gate
 #   make -f Makefile.host qa-known-failures    reproductions of OPEN defects (expected to fail until fixed)
 #   make -f Makefile.host qa                   fuzz smoke + contracts + tools (what CI gates on)
 #
@@ -176,6 +176,8 @@ qa-known-failures: $(QA_BUILD)/san/test_qa_known_failures
 qa-tools-test:
 	python3 tests/test_qa_nro_audit.py
 	python3 tests/test_qa_regressions_assets.py
+	python3 tests/test_hw_round1_regression_gate.py
+	python3 tests/test_qa_hw_round1_gate_mutations.py
 
 qa: qa-fuzz-smoke qa-contracts qa-matrix qa-tools-test
 

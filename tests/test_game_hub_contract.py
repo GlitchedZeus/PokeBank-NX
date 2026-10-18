@@ -761,8 +761,19 @@ require("PokeBank::UIModel::HomeQuit::decide(kDown)" in leave and "Decision::Qui
         "Only the leave decision's explicit Y may quit or start the launch handoff")
 require(source.count("appExitRequested = true;") == 1 and source.count("requestGameLaunch(") == 1,
         "App exit and launch handoff each have exactly one site: the leave decision's Y")
-require('"Quit PokeBank NX?"' in source and '{{"Y", "Quit"}, {"B", "Stay"}, {"A", "Stay"}}' in source and
-        '{{"Y", "Launch"}, {"B", "Cancel"}, {"A", "Cancel"}}' in source and "pendingLaunchNotice" in leave + source,
+# R2-LAUNCH: the leave decision is sized by SharedMenuGeometry::LaunchConfirm, its text comes from
+# LeaveDecisionLayout (word-wrapped, quit-route notice kept), and it shows real coloured B / A / Y
+# buttons plus the shared confirm footer. Only Y commits.
+layout_header = (ROOT / "include/UI/LeaveDecisionLayout.h").read_text(encoding="utf-8")
+leave_draw = source[source.index("        if (overlay == Overlay::QuitConfirm) {\n            // R2-LAUNCH"):]
+leave_draw = leave_draw[:leave_draw.index("        } else if (overlay == Overlay::OpenFailure) {")]
+require('"Quit PokeBank NX?"' in layout_header and '"Launch " + std::string(gameName) + "?"' in layout_header and
+        "G::layout(G::MenuType::LaunchConfirm" in leave_draw and
+        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice)" in leave_draw and
+        'drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");' in leave_draw and
+        'drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");' in leave_draw and
+        'quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);' in leave_draw and
+        'confirmFooter(\n                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay")' in leave_draw,
         "The leave decision is visible, names Y as the only commit and shows the quit-route notice")
 require("inputTrace().frame(\"home\", padGetButtonsDown(&pad), padGetButtons(&pad), kDown," in source,
         "Product Home records raw edges, held state and the logical mask in the opt-in input trace")

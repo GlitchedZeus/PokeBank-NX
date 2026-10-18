@@ -104,3 +104,22 @@ $(L06_TAP_TEST): $(L06_TAP_INPUTS)
 $(L06_TAP_SANITIZE): $(L06_TAP_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# R2-LAUNCH: the leave decision follows SharedMenuGeometry::LaunchConfirm and every line fits.
+LEAVE_LAYOUT_TEST := $(HOST_BUILD)/test_leave_decision_layout
+LEAVE_LAYOUT_SANITIZE := $(HOST_BUILD)/test_leave_decision_layout_sanitize
+LEAVE_LAYOUT_INPUTS := tests/test_leave_decision_layout.cpp include/UI/LeaveDecisionLayout.h \
+	include/UI/SharedMenuGeometry.h include/UI/NunitoMetrics.h include/UI/GameLaunchModel.h \
+	include/UI/HomeQuitConfirm.h
+HOST_TESTS += $(LEAVE_LAYOUT_TEST)
+HOST_SANITIZE_TESTS += $(LEAVE_LAYOUT_SANITIZE)
+host-test: $(LEAVE_LAYOUT_TEST)
+host-sanitize: $(LEAVE_LAYOUT_SANITIZE)
+
+$(LEAVE_LAYOUT_TEST): $(LEAVE_LAYOUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(LEAVE_LAYOUT_SANITIZE): $(LEAVE_LAYOUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
