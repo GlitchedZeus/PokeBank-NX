@@ -201,6 +201,40 @@ file:line, the PokeBank NX function and the fixtures. None is an improvement ove
 removes a gap the differential could not see before the oracle gained the `egg`, `evomove` and
 `kyurem` corpus groups.
 
+### Colosseum/XD-origin transfers judged by the GameCube judge (Verified parity)
+
+Pal Park (PK4) and Poke Transfer (PK5) records with version 15 now run the Gen III GameCube judge
+(`Gen4::judgeCxdOrigin`, `src/Legality/Gen4LegalityPalPark.cpp`). The differential found each
+place the transfer changes what PKHeX compares, and each now follows PKHeX:
+
+- The Gen III level is bounded by the met level, the level at transfer (`EvolutionGroup3.Devolve`
+  for format 4, `EvolutionGroup4.Devolve` for format 5).
+- A two-ability Gen III species keeps its GameCube ability bit apart from the PID
+  (`AbilityVerifier.cs:273-274`), in format 4 and format 5.
+- Spanish Duking's Pokemon read "GERMいN" after Pal Park (`Encounters3Colo.TrainerNameDukingSpanish4`,
+  used by `EncounterTrade3XD.IsTrainerMatch` and `EncounterGift3Colo.IsTrainerMatch`).
+- Templates that differ only in the met location the transfer lost (Colosseum Shadow Suicune with
+  Surf or with Hydro Pump) are tried in order, as PKHeX defers to the next encounter when the
+  moves do not fit.
+- A Pokemon that evolved after the transfer is matched on its Gen III pre-evolutions
+  (`EvoChainsAllGens.Gen3`).
+
+Fixtures: `transfer-cxd`, `transfer-cxd-ability`, `transfer-cxd-suicune-hydro`,
+`transfer-xd-duking-spanish`, `transfer-xd-evolved-later` (`tests/test_legality_gen5.cpp`) and the
+Pal Park Colosseum/XD rows of `tests/test_legality_title_matrix.cpp`.
+
+### A Gen III Pokemon that evolved after its transfer keeps its only Gen III ability against the PID (Unresolved difference)
+
+Example: a Shadow Pidgeotto snagged in XD, transferred at level 30 and then evolved into Pidgeot,
+holding Keen Eye with PID bit 0 set (`b121630`, seed 1). PKHeX accepts it: `EvolutionGroup3.Evolve`
+leaves the unreached Pidgeot stage in the Gen III history, so `VerifyAbilityGen3Transfer` sees
+Pidgeot's single Gen III ability and allows the mismatch. The Gen IV games recalculate the ability
+from the PID when a Pokemon evolves (pokeplatinum `src/evolution.c:436` calls `Pokemon_CalcAbility`,
+`src/pokemon.c:4746-4764`), so after a Gen IV evolution the record should hold Tangled Feet. There is
+no Gen V decompilation to show the same for an evolution in Black/White. PokeBank NX reports a
+Warning ("PKHeX accepts it"), so the record is Incomplete, never Invalid. Evidence that would settle
+it: the Gen V evolution routine, or a captured Pokemon of this history.
+
 ### PGF shiny PID that also fits a Gen III event pattern (Unresolved difference)
 
 PKHeX's `MiscFatefulEncounterVerifier` accepts a card's shiny PID only when `MethodFinder.Analyze`
@@ -235,5 +269,7 @@ here so it is not mistaken for a verified rule.
   reviewed in `PKHEX_DISAGREEMENT_REVIEW.md` items 15-C, 16-C and 17-C. None is an improvement
   over PKHeX; two are Warnings where PokeBank NX used to be stricter without evidence, and one is
   the same acceptance PKHeX has.
-- Colosseum / XD-origin records, PKHeX "fishy" Gen III results and the capsule-location Celebi /
-  beasts remain Incomplete; see the inventory's "Still Incomplete".
+- PKHeX "fishy" Gen III results, an undecided Colosseum / XD judge answer and the
+  capsule-location Celebi / beasts remain Incomplete; see the inventory's "Still Incomplete".
+- Blue-Striped Basculin without its hidden ability matched to a B2/W2 Dream World encounter is a
+  Warning, as `AbilityVerifier.IsEdgeCaseBasculin` accepts it (`PKHEX_DISAGREEMENT_REVIEW.md` item 18).

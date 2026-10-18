@@ -838,3 +838,24 @@ the Pal Park and Poke Transfer callers (`Gen4::judgeCxdOrigin`, `src/Legality/Ge
   one ability, always gets ability 1 (pokeplatinum `src/main_menu/gba_pokemon.c:170-260`,
   `:759-783`). The judge is told the bit only when the species has two Gen III abilities. A
   matched, unevolved XD Eevee with Adaptability is therefore Invalid, as PKHeX says.
+- **Format-5 ability.** The format-5 origin check required the PID to match even for a
+  two-ability Gen III species of Colosseum/XD origin. PKHeX lets it differ
+  (`AbilityVerifier.cs:273-274`); 15 XD shadow transfers in seed 1 read Invalid until `c33cb2c9`.
+- **Transfer-only details.** The full seed-1 listing then showed nine more PKHeX-valid records
+  read Invalid. Spanish Duking's name after Pal Park is "GERMいN"
+  (`Encounters3Colo.TrainerNameDukingSpanish4`); templates that differ only in the lost met location
+  (Shadow Suicune with Surf or Hydro Pump) are now tried in order; a Pokemon that evolved after the
+  transfer is matched on its Gen III pre-evolutions. Fixed in `69624064`; seed 1 then gave 0 false
+  Invalid and 0 false Valid.
+
+## 20. A Gen III Pokemon that evolved after its transfer keeps its Gen III ability against the PID (Warning, coordinator)
+
+A Shadow Pidgeotto transferred at level 30 and later evolved into Pidgeot, holding Keen Eye with
+PID bit 0 set (seed 1, `b121630`). PKHeX accepts it because `EvolutionGroup3.Evolve` leaves the
+unreached Pidgeot stage in the Gen III history (the stage is skipped, not removed), and
+`VerifyAbilityGen3Transfer` then reads Pidgeot's single Gen III ability. The Gen IV games set the
+ability from the PID on evolution (pokeplatinum `src/evolution.c:436`, `src/pokemon.c:4746-4764`),
+so a Gen IV evolution gives Tangled Feet. Black/White have no decompilation, so an evolution in
+Gen V is not proven either way. PokeBank NX reports a Warning ("PKHeX accepts it"): Incomplete,
+never Invalid (`Gen4::Analyzer::verifyAbility5`). Listed as an Unresolved difference in
+`PKHEX_VERIFIED_IMPROVEMENTS.md`.
