@@ -196,7 +196,7 @@ $(HOST_BUILD)/test_gen1_list_fit_sanitize: $(GEN1_LIST_FIT_SOURCES) include/UI/G
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@
 
 GEN2_MOVES_PANEL_SOURCES := tests/test_gen2_moves_panel.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Names/MoveNames.cpp src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
-GEN2_MOVES_PANEL_DEPS := include/UI/Gen2MovesPanel.h include/UI/ClassicMovesPanel.h include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp
+GEN2_MOVES_PANEL_DEPS := include/UI/Gen2MovesPanel.h include/UI/ClassicMovesPanel.h include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc
 HOST_TESTS += $(HOST_BUILD)/test_gen2_moves_panel
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_moves_panel_sanitize
 host-test: $(HOST_BUILD)/test_gen2_moves_panel
@@ -250,3 +250,19 @@ $(HOST_BUILD)/test_gen1_trainer_edit: $(GEN1_TRAINER_EDIT_SOURCES) $(GEN1_TRAINE
 $(HOST_BUILD)/test_gen1_trainer_edit_sanitize: $(GEN1_TRAINER_EDIT_SOURCES) $(GEN1_TRAINER_EDIT_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_TRAINER_EDIT_SOURCES) -o $@
+
+CLASSIC_STAT_FIELD_SOURCES := tests/test_classic_stat_field_state.cpp $(GEN2_STAGED_EDITOR_COMMON) \
+	src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
+CLASSIC_STAT_FIELD_DEPS := include/UI/ClassicStatFieldState.h include/UI/SharedFieldState.h \
+	src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp \
+	src/UI/Gen2UnifiedPokemonWorkspace.inc src/UI/Gen2HardwareFinalFix.inc src/UI/Modals/Gen2PokemonDetailsModal.cpp
+HOST_TESTS += $(HOST_BUILD)/test_classic_stat_field_state
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_stat_field_state_sanitize
+host-test: $(HOST_BUILD)/test_classic_stat_field_state
+host-sanitize: $(HOST_BUILD)/test_classic_stat_field_state_sanitize
+$(HOST_BUILD)/test_classic_stat_field_state: $(CLASSIC_STAT_FIELD_SOURCES) $(CLASSIC_STAT_FIELD_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CLASSIC_STAT_FIELD_SOURCES) -o $@
+$(HOST_BUILD)/test_classic_stat_field_state_sanitize: $(CLASSIC_STAT_FIELD_SOURCES) $(CLASSIC_STAT_FIELD_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_STAT_FIELD_SOURCES) -o $@

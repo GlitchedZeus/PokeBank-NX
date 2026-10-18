@@ -6,6 +6,8 @@
 #include "Pokemon/Experience.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/ClassicMovesPanel.h"
+#include "UI/ClassicStatFieldState.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/ClassicTypeBadges.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
@@ -133,7 +135,9 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     compactRow(fb, leftX + 18, contentY + 343, "OT", p.originalTrainer, 90);
     compactRow(fb, leftX + 18, contentY + 386, "Trainer ID", std::to_string(p.trainerId), 90);
 
-    // STATS — DV / Stat Exp are neutral; calculated battle Stat values are accent.
+    // STATS — same field-state contract as the Gen I editor (UI/ClassicStatFieldState.h): stored
+    // DV / Stat Exp Text, derived HP DV and calculated Stat ReadOnly gold (R2-GOLD). The HP DV
+    // shown is always the one derived from the four stored DVs, as in Create / Edit.
     fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
     fb.drawText(midX + 104, contentY + 48, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
@@ -143,13 +147,20 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     for (int i = 0; i < 5; ++i) {
         const int y = contentY + 80 + i * 38;
         fb.drawText(midX + 16, y, statNames[i], Colors::TextDim, TextStyle::Caption);
-        const std::string dv = std::to_string(p.dvs[static_cast<size_t>(i)]) + (i == 0 ? " *" : "");
-        fb.drawText(midX + 96, y, dv, Colors::Text, TextStyle::Caption);
+        namespace CSF = PokeBank::UIModel::ClassicStatFields;
+        const auto cell = [](int row, int column) {
+            return SharedEditorChrome::fieldColor(
+                SharedEditorChrome::FieldState::style(CSF::cellState(row, column), false).value);
+        };
+        const uint8_t dvValue = i == 0
+            ? CSF::derivedHpDv({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]})
+            : p.dvs[static_cast<size_t>(i)];
+        fb.drawText(midX + 96, y, std::to_string(dvValue) + (i == 0 ? " *" : ""), cell(i, 0), TextStyle::Caption);
         fb.drawText(midX + 192, y, std::to_string(p.statExperience[static_cast<size_t>(i)]),
-                    Colors::Text, TextStyle::Caption);
+                    cell(i, 1), TextStyle::Caption);
         fb.drawText(midX + 300, y,
                     p.hasBattleStats ? std::to_string(p.battleStats[static_cast<size_t>(i)]) : "-",
-                    Colors::Accent, TextStyle::Caption);
+                    cell(i, 2), TextStyle::Caption);
     }
 
     // Reserve two independent explanatory regions. They never share a baseline with
@@ -158,9 +169,9 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const std::string splitSpecial = p.hasBattleStats ? std::to_string(p.battleStats[4]) : "-";
     fb.drawText(midX + 16, contentY + 306, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 16, contentY + 334, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(midX + 82, contentY + 334, splitSpecial, Colors::Accent, TextStyle::Caption);
+    fb.drawText(midX + 82, contentY + 334, splitSpecial, Colors::ShinyStar, TextStyle::Caption); // ReadOnly (gold)
     fb.drawText(midX + 198, contentY + 334, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(midX + 264, contentY + 334, splitSpecial, Colors::Accent, TextStyle::Caption);
+    fb.drawText(midX + 264, contentY + 334, splitSpecial, Colors::ShinyStar, TextStyle::Caption); // ReadOnly (gold)
     fb.drawText(midX + 16, contentY + 364,
                 "* one stored Gen I Special stat; split display only",
                 Colors::TextDim, TextStyle::Caption);

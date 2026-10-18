@@ -6,10 +6,17 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
 #include "UI/Common.h"
+#include "UI/Gen13PickerPaging.h"
+#include "UI/SharedMenuGeometry.h"
+#include "UI/SharedScrollbar.h"
+#include "UI/SharedSearchInput.h"
 #include "UI/TouchGesture.h"
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace UI::SharedSpeciesPicker {
 
@@ -98,59 +105,319 @@ inline bool touchStartedInside(const TouchGestureSnapshot& touch,
 
 } // namespace
 
+// ---- Live incremental species search (R2-SEARCH, Phase 3) ------------------------------------
+//
+// One Chooser per owning picker: the live query and its on-screen key grid (SharedSearchInput),
+// the filtered dex list, the draggable scrollbar (SharedScrollbar) and the rows the last draw
+// published so the owner can attach its own touch ids. The owner keeps its species variable as
+// the source of truth; the chooser only offers the filtered neighbourhood of that species
+// (neighbour / paged / snap) and tells the owner which input it consumed. Filtering is a
+// prefix match on the normalised name (SharedSearchInput::searchKey), rebuilt on every query
+// change over at most 649 names, and reads nothing from any save.
+//
+// Geometry: the accepted 1080x520 modal and its 560px list are kept (gestureStartedInList above
+// pins them); the row cell follows Lane S's SharedMenuGeometry SpeciesPicker rule (leading
+// 34 px icon, 8 px sprite gap, 12 px cell padding, Body label) so every generation's chooser
+// looks the same. While the key grid is open the list shows kSearchVisibleRows and the grid sits
+// under it, in the list column; the sprite / shiny preview on the right is untouched.
+inline constexpr int kVisibleRows = 9;
+inline constexpr int kSearchVisibleRows = 5;
+inline constexpr int kRowStep = 43;
+inline constexpr int kRowHeight = 39;
+inline constexpr int kListX = 20;
+inline constexpr int kListY = 84;
+inline constexpr int kListW = 560;
+inline constexpr int kKeyGridH = 176;
+
+namespace MenuGeometry = PokeBank::UIModel::SharedMenuGeometry;
+inline constexpr MenuGeometry::Rule kRowRule = MenuGeometry::rule(MenuGeometry::MenuType::SpeciesPicker);
+static_assert(kRowRule.kind == MenuGeometry::Kind::List && kRowRule.spriteSize > 0,
+              "the species chooser row rule carries a leading sprite");
+
+struct VisibleRow {
+    uint16_t species = 0;
+    int x = 0, y = 0, w = 0, h = 0;
+};
+
+struct Chooser {
+    SharedSearchInput::State search;
+    SharedScrollbar::State scrollbar;
+    std::vector<uint16_t> matches;      // filtered dex numbers, ascending
+    unsigned matchedRevision = 0;
+    int matchedCount = -1;
+    bool matched = false;
+    std::array<VisibleRow, kVisibleRows> rows{};   // published by drawContent (static positions)
+    int rowCount = 0;
+
+    void reset() { *this = Chooser{}; }
+    [[nodiscard]] bool searching() const noexcept { return search.open; }
+    [[nodiscard]] bool filtered() const noexcept { return !search.query.empty(); }
+    [[nodiscard]] int count() const noexcept { return static_cast<int>(matches.size()); }
+    [[nodiscard]] int visibleRows() const noexcept { return search.open ? kSearchVisibleRows : kVisibleRows; }
+};
+
+// Rebuild the filtered list when the query or the game's species bound changed. `available`
+// says whether this game offers a dex number (Gen I: all of 1..151; Gen IV/V: the native list);
+// `name` returns its display name. The result never contains a species the game cannot hold.
+template <class Available, class Name>
+inline void refilter(Chooser& c, int speciesCount, Available available, Name name) {
+    if (c.matched && c.matchedRevision == c.search.revision && c.matchedCount == speciesCount) return;
+    c.matches.clear();
+    const std::string key = SharedSearchInput::searchKey(c.search.query);
+    for (int s = 1; s <= speciesCount; ++s) {
+        const auto species = static_cast<uint16_t>(s);
+        if (!available(species)) continue;
+        if (!key.empty()) {
+            const std::string n = SharedSearchInput::searchKey(name(species));
+            if (n.size() < key.size() || n.compare(0, key.size(), key) != 0) continue;
+        }
+        c.matches.push_back(species);
+    }
+    c.matched = true;
+    c.matchedRevision = c.search.revision;
+    c.matchedCount = speciesCount;
+}
+
+inline int indexOf(const Chooser& c, uint16_t species) noexcept {
+    const auto it = std::lower_bound(c.matches.begin(), c.matches.end(), species);
+    return it != c.matches.end() && *it == species ? static_cast<int>(it - c.matches.begin()) : -1;
+}
+// The species to highlight: `species` itself when it matches, else the first match at or after
+// it, else the last match; 0 when nothing matches.
+inline uint16_t snap(const Chooser& c, uint16_t species) noexcept {
+    if (c.matches.empty()) return 0;
+    const auto it = std::lower_bound(c.matches.begin(), c.matches.end(), species);
+    return it != c.matches.end() ? *it : c.matches.back();
+}
+inline uint16_t neighbour(const Chooser& c, uint16_t species, int steps) noexcept {
+    if (c.matches.empty()) return species;
+    int index = indexOf(c, species);
+    if (index < 0) index = indexOf(c, snap(c, species));
+    index = std::clamp(index + steps, 0, c.count() - 1);
+    return c.matches[static_cast<std::size_t>(index)];
+}
+// Shared Gen I-V list paging (Gen13PickerPaging.h) applied to the filtered list.
+inline uint16_t paged(const Chooser& c, uint16_t species,
+                      const PokeBank::UIModel::SharedPickerPaging::Keys& keys) noexcept {
+    if (c.matches.empty() || !keys.any()) return species;
+    int index = indexOf(c, species);
+    if (index < 0) index = indexOf(c, snap(c, species));
+    index = PokeBank::UIModel::SharedPickerPaging::pagedRow(index, c.count(), keys);
+    return c.matches[static_cast<std::size_t>(index)];
+}
+// First visible position (0-based) that centres `species` in the current window.
+inline int firstVisible(const Chooser& c, uint16_t species) noexcept {
+    const int visible = c.visibleRows();
+    int index = indexOf(c, species);
+    if (index < 0) index = std::max(0, indexOf(c, snap(c, species)));
+    return std::clamp(index - visible / 2, 0, std::max(0, c.count() - visible));
+}
+
+inline SharedSearchInput::Rect keyGridRect(int modalX, int modalY) noexcept {
+    return {modalX + kListX, modalY + kListY + kSearchVisibleRows * kRowStep + 8, kListW, kKeyGridH};
+}
+
+struct Input {
+    PokeBank::UIModel::SharedPickerPaging::Keys nav;   // D-pad / stick (+ L/R/ZL/ZR) as resolved by the owner
+    bool a = false, b = false;
+    bool search = false;                                // X or Minus: open / close the search grid
+    SharedSearchInput::Touch touch;
+};
+struct Handled {
+    bool keys = false;         // D-pad / A / B went to the key grid: the owner must not browse, select or cancel
+    bool touch = false;        // the frame's touch belongs to the key grid or the scrollbar
+    bool queryChanged = false;
+    bool blockSelect = false;  // nothing matches: A selects nothing
+};
+
+inline constexpr int ModalX = (1280 - ModalWidth) / 2;                   // 100 on the 1280x720 panel
+inline constexpr int ModalY = (720 - NavBarHeight - ModalHeight) / 2;     // 76
+
+// Snap the owner's species into the (re)filtered list; flags the no-match state.
+template <class Available, class Name>
+inline void settle(Chooser& c, Handled& h, uint16_t& species, int speciesCount,
+                   Available available, Name name) {
+    refilter(c, speciesCount, available, name);
+    if (c.count() > 0) species = snap(c, species);
+    else h.blockSelect = true;
+}
+
+// Touch phase, BEFORE the owner's own row tap / drag handling: the key grid (while open) and the
+// scrollbar own their touches; `species` follows the thumb and is snapped into the filter.
+template <class Available, class Name>
+inline Handled handleTouch(Chooser& c, const SharedSearchInput::Touch& touch, uint16_t& species,
+                           int speciesCount, int modalX, int modalY, Available available, Name name) {
+    Handled h;
+    using SharedSearchInput::Event;
+    const Event te = SharedSearchInput::handleTouch(c.search, touch, keyGridRect(modalX, modalY));
+    if (te != Event::None) h.touch = true;
+    if (te == Event::QueryChanged) h.queryChanged = true;
+    if (te == Event::Closed) h.keys = true;   // the Done key's release closed the grid: nothing else this frame
+    refilter(c, speciesCount, available, name);
+    if (!h.touch && c.count() > 0) {
+        const int visible = c.visibleRows();
+        const SharedScrollbar::Touch st{touch.down, touch.justDown, touch.justReleased,
+                                        touch.x, touch.y, touch.startX, touch.startY};
+        const auto sb = SharedScrollbar::handleTouch(c.scrollbar, st,
+            SharedScrollbar::rows(c.count(), visible, firstVisible(c, species)));
+        if (sb.changed)
+            species = c.matches[static_cast<std::size_t>(std::clamp(sb.scroll + visible / 2, 0, c.count() - 1))];
+        if (sb.consumed) h.touch = true;
+    }
+    settle(c, h, species, speciesCount, available, name);
+    return h;
+}
+
+// Keys phase, BEFORE the owner's own browsing / A / B: X or Minus (`search`) toggles the grid;
+// while it is open the D-pad / stick, A and B drive the keys and the owner must not browse,
+// select or cancel this frame. Y is never consumed (the owner keeps its shiny toggle).
+template <class Available, class Name>
+inline Handled handleKeys(Chooser& c, const PokeBank::UIModel::SharedPickerPaging::Keys& nav,
+                          bool a, bool b, bool search, uint16_t& species, int speciesCount,
+                          Available available, Name name) {
+    Handled h;
+    using SharedSearchInput::Event;
+    if (search) { c.search.toggleGrid(); h.keys = true; }
+    if (c.search.open) {
+        const SharedSearchInput::Keys k{nav.up, nav.down, nav.left, nav.right, a, b};
+        const Event ke = SharedSearchInput::handleKeys(c.search, k);
+        if (ke != Event::None) h.keys = true;
+        if (ke == Event::QueryChanged) h.queryChanged = true;
+    }
+    settle(c, h, species, speciesCount, available, name);
+    if (h.blockSelect && a) h.keys = true;   // nothing to select
+    return h;
+}
+
+// Both phases in one call for owners whose touch and keys arrive together.
+template <class Available, class Name>
+inline Handled handle(Chooser& c, const Input& in, uint16_t& species, int speciesCount,
+                      int modalX, int modalY, Available available, Name name) {
+    Handled t = handleTouch(c, in.touch, species, speciesCount, modalX, modalY, available, name);
+    const Handled k = handleKeys(c, in.nav, in.a, in.b, in.search, species, speciesCount, available, name);
+    t.keys = t.keys || k.keys;
+    t.queryChanged = t.queryChanged || k.queryChanged;
+    t.blockSelect = k.blockSelect;
+    return t;
+}
+
 // Extracted from the accepted Gen I visual picker and shared with Generation II.
 // Browsing is preview-only; the generation supplies only its dex bound and text.
+// With a Chooser the list is the filtered one, the search field / key grid and the draggable
+// scrollbar are drawn, and chooser->rows receives the drawn rows for the owner's touch ids.
 template <class RowText, class TitleText>
 void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  int speciesCount, bool previewShiny, RowText rowText, TitleText titleText,
                  const TouchGestureSnapshot* gesture = nullptr,
                  bool shinyToggleAvailable = true,
-                 std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF}) {
-        fb.drawText(x + 24, y + 50,
-                    shinyToggleAvailable ? "Drag to browse • tap to choose • Y Normal/Shiny"
-                                         : "Drag to browse • tap to choose",
-                    Colors::TextDim, TextStyle::Caption);
-        constexpr int visible = 9;
-        constexpr int rowStep = 43;
-        constexpr int rowHeight = 39;
-        const int listX = x + 20, listW = 560;
-        const int listY = y + 84;
+                 std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF},
+                 Chooser* chooser = nullptr) {
+        const bool searching = chooser && chooser->searching();
+        if (!chooser) {
+            fb.drawText(x + 24, y + 50,
+                        shinyToggleAvailable ? "Drag to browse • tap to choose • Y Normal/Shiny"
+                                             : "Drag to browse • tap to choose",
+                        Colors::TextDim, TextStyle::Caption);
+        } else if (searching) {
+            SharedSearchInput::drawField(fb, x + 24, y + 50, chooser->search, "Search:",
+                                         "A / tap types • B or Done closes search");
+        } else if (chooser->filtered()) {
+            SharedSearchInput::drawField(fb, x + 24, y + 50, chooser->search, "Filter:",
+                                         shinyToggleAvailable ? "X / − Search • Y Normal/Shiny" : "X / − Search");
+        } else {
+            fb.drawText(x + 24, y + 50,
+                        shinyToggleAvailable ? "Drag to browse • tap to choose • X / − Search • Y Normal/Shiny"
+                                             : "Drag to browse • tap to choose • X / − Search",
+                        Colors::TextDim, TextStyle::Caption);
+        }
+        const int visible = chooser ? chooser->visibleRows() : kVisibleRows;
+        constexpr int rowStep = kRowStep;
+        constexpr int rowHeight = kRowHeight;
+        const int listX = x + kListX, listW = kListW;
+        const int listY = y + kListY;
         const int listH = visible * rowStep;
+
+        // Positions are 1-based rows of the list being shown: the whole dex without a chooser,
+        // the filtered matches with one. speciesAt maps a position back to its dex number.
+        const int count = chooser ? chooser->count() : speciesCount;
+        const auto speciesAt = [&](int position) -> uint16_t {
+            if (!chooser) return static_cast<uint16_t>(position);
+            return chooser->matches[static_cast<std::size_t>(std::clamp(position, 1, std::max(1, count)) - 1)];
+        };
+        int selectedPosition = chooser ? indexOf(*chooser, static_cast<uint16_t>(selectedSpecies)) + 1
+                                       : std::clamp(selectedSpecies, 1, speciesCount);
+        if (selectedPosition < 1) selectedPosition = 1;
+        if (chooser) chooser->rowCount = 0;
+
+        if (count <= 0) {
+            fb.drawText(listX + 16, listY + 12,
+                        "No species match \"" + (chooser ? chooser->search.query : std::string()) + "\"",
+                        Colors::TextDim, TextStyle::Body);
+            fb.drawText(listX + 16, listY + 44, "Backspace or Clear to widen the search",
+                        Colors::TextDim, TextStyle::Caption);
+            if (chooser) {
+                chooser->scrollbar.track = {};
+                if (searching) SharedSearchInput::drawGrid(fb, chooser->search, keyGridRect(x, y));
+            }
+            return;
+        }
 
         // Direct-manipulation preview: while a finger is physically dragging this list, move the
         // rendered rows by the exact pixel delta. Whole rows are folded into a temporary visual
         // species and only the sub-row remainder is translated. The semantic selection is still
         // committed by the owning input handler on release, so drag can never become an accidental A.
-        int visualSpecies = std::clamp(selectedSpecies, 1, speciesCount);
+        int visualSpecies = std::clamp(selectedPosition, 1, count);
         int liveOffset = 0;
-        if (gesture && touchStartedInside(*gesture, listX, listY, listW, listH) &&
+        const bool barHeld = chooser && chooser->scrollbar.capturing();
+        if (gesture && !barHeld && touchStartedInside(*gesture, listX, listY, listW, listH) &&
             permitsVerticalPreview(*gesture)) {
             const int requestedRows = -gesture->deltaY / rowStep;
-            visualSpecies = std::clamp(selectedSpecies + requestedRows, 1, speciesCount);
-            const int appliedRows = visualSpecies - selectedSpecies;
+            visualSpecies = std::clamp(selectedPosition + requestedRows, 1, count);
+            const int appliedRows = visualSpecies - selectedPosition;
             liveOffset = gesture->deltaY + appliedRows * rowStep;
             // Resist rather than expose empty space at either edge.
             if ((visualSpecies == 1 && liveOffset > 0) ||
-                (visualSpecies == speciesCount && liveOffset < 0))
+                (visualSpecies == count && liveOffset < 0))
                 liveOffset /= 3;
         }
 
         const int start = std::clamp(visualSpecies - visible / 2, 1,
-                                     std::max(1, speciesCount - visible + 1));
+                                     std::max(1, count - visible + 1));
         fb.setClipRect(listX, listY, listW, listH - 2);
         const int firstDraw = std::max(1, start - 1);
-        const int lastDraw = std::min(speciesCount, start + visible);
-        for (int species = firstDraw; species <= lastDraw; ++species) {
-            const int rowY = listY + (species - start) * rowStep + liveOffset;
-            const bool selected = species == visualSpecies;
+        const int lastDraw = std::min(count, start + visible);
+        const int labelX = chooser ? listX + kRowRule.cellPadX + kRowRule.spriteSize + kRowRule.spriteGap
+                                   : listX + 16;
+        for (int position = firstDraw; position <= lastDraw; ++position) {
+            const int rowY = listY + (position - start) * rowStep + liveOffset;
+            const bool selected = position == visualSpecies;
+            const uint16_t species = speciesAt(position);
             if (selected) fb.drawSelectionHighlight(listX, rowY, listW, rowHeight);
-            fb.drawText(listX + 16, rowY + 9,
-                        rowText(static_cast<uint16_t>(species)),
-                        selected ? Colors::Text : Colors::TextDim);
+            if (chooser) {
+                // Leading icon per the shared SpeciesPicker row rule (SharedMenuGeometry.h).
+                if (auto* icon = SpriteManager::getIconSprite(species, previewShiny); icon && icon->data)
+                    fb.drawSpriteStaticContained(listX + kRowRule.cellPadX,
+                        rowY + (rowHeight - kRowRule.spriteSize) / 2,
+                        kRowRule.spriteSize, kRowRule.spriteSize,
+                        icon->width, icon->height, icon->data, icon->channels);
+            }
+            fb.drawText(labelX, rowY + 9, rowText(species), selected ? Colors::Text : Colors::TextDim);
         }
         fb.clearClip();
+        if (chooser) {
+            // Static row rectangles (no live offset) for the owner's touch ids, the same contract
+            // every generation used before the chooser existed.
+            for (int position = start; position < start + visible && position <= count; ++position) {
+                auto& row = chooser->rows[static_cast<std::size_t>(chooser->rowCount++)];
+                row = {speciesAt(position), listX, listY + (position - start) * rowStep, listW, rowHeight};
+            }
+            SharedScrollbar::drawAndPublish(fb, chooser->scrollbar, listX + listW + 8, listY,
+                SharedScrollbar::kTrackWidth, listH - 4,
+                SharedScrollbar::rows(count, visible, start - 1));
+            if (searching) SharedSearchInput::drawGrid(fb, chooser->search, keyGridRect(x, y));
+        }
 
-        const uint16_t preview = static_cast<uint16_t>(visualSpecies);
+        const uint16_t preview = speciesAt(visualSpecies);
         const int previewX = x + 610;
         constexpr int previewW = 353;
         fb.drawText(previewX, y + 86, titleText(preview), Colors::Text, TextStyle::Heading);

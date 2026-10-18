@@ -23,6 +23,7 @@
 #include "UI/InputTrace.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/LeaveDecisionLayout.h"
+#include "UI/EmulatorBackupLayout.h"
 #include "Enums/GameVersion.h"
 #include "Save/GetSaveFileContents.h"
 #include "Trainer/Trainer.h"
@@ -3907,13 +3908,13 @@ namespace UI {
             if (emuBar.changed) emuBackupScroll = emuBar.scroll;
             if (kDown & HidNpadButton_Up) emuBackupIndex = (emuBackupIndex + count - 1) % count;
             if (kDown & HidNpadButton_Down) emuBackupIndex = (emuBackupIndex + 1) % count;
-            constexpr int visible = 5;
+            // Viewport rows come from SharedMenuGeometry's BackupMenu rule (EmulatorBackupLayout).
+            namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+            const auto emuLayout = EB::layout(count);
             // Controller navigation reveals its row; a scrollbar drag moves the window alone.
-            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
-                if (emuBackupIndex < emuBackupScroll) emuBackupScroll = emuBackupIndex;
-                if (emuBackupIndex >= emuBackupScroll + visible) emuBackupScroll = emuBackupIndex - visible + 1;
-            }
-            emuBackupScroll = std::clamp(emuBackupScroll, 0, std::max(0, count - visible));
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                emuBackupScroll = EB::revealRow(emuLayout, emuBackupScroll, emuBackupIndex);
+            emuBackupScroll = EB::clampScroll(emuLayout, emuBackupScroll);
             const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
             const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
             const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
@@ -5640,19 +5641,23 @@ namespace UI {
                 }, "Games opens the full artwork browser. Profile and Settings use the top-right controls.");
             }
         } else if (overlay == Overlay::EmulatorBackups) {
+            // CG13: frame, rows, focus highlight and touch targets come from SharedMenuGeometry's
+            // BackupMenu rule (EmulatorBackupLayout places the text inside them); the action
+            // notice is a toast above the footer, sized to its text.
             namespace SB = PokeBank::UIModel::SourceBackups;
-            constexpr int w = 900, rowH = 70, visible = 5;
+            namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+            namespace G = PokeBank::UIModel::SharedMenuGeometry;
             const int rows = static_cast<int>(emuBackupRows.size());
-            const int shown = std::clamp(rows, 1, visible);
-            const int h = 150 + shown * rowH + 56; // content-driven height
-            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
-            drawModalSurface(fb, x, y, w, h);
+            const G::Layout layout = EB::layout(rows, fb.getWidth(), fb.getHeight());
+            const G::Rect frame = layout.frame;
+            const int visible = layout.visibleRows;
+            drawModalSurface(fb, frame.x, frame.y, frame.w, frame.h);
             const std::string game = (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()))
                 ? "Pokémon " + u->titles[static_cast<size_t>(titleIndex)].label : std::string("This game");
-            fb.drawText(x + 28, y + 18, "BACKUPS / EMULATOR SAVE", Colors::Accent, TextStyle::Caption);
-            fb.drawText(x + 28, y + 44, game + " — Backups", Colors::TextPrimary, TextStyle::Heading);
-            fb.drawText(x + 28, y + 80,
-                        "The emulator's own save is read only. Only PokeBank NX export records can be deleted.",
+            const int textX = frame.x + layout.rule.padX;
+            fb.drawText(textX, frame.y + EB::kHeadingTop, game + " — Backups", Colors::TextPrimary,
+                        TextStyle::Heading);
+            fb.drawText(textX, frame.y + EB::kExplainerTop, std::string(EB::kExplainer),
                         Colors::TextSecondary, TextStyle::Caption);
             const auto stamp = [](const std::string& t) {
                 return t.size() == 15 ? t.substr(0, 4) + "-" + t.substr(4, 2) + "-" + t.substr(6, 2) + " " +
@@ -5663,15 +5668,15 @@ namespace UI {
                 const auto slash = path.find_last_of('/');
                 return slash == std::string::npos ? path : path.substr(slash + 1);
             };
-            const int listY = y + 116;
             for (int i = emuBackupScroll; i < std::min(rows, emuBackupScroll + visible); ++i) {
                 const auto row = emuBackupRows[static_cast<size_t>(i)];
                 const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
                 const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
                 const auto policy = SB::policyFor(entry.kind);
-                const int ry = listY + (i - emuBackupScroll) * rowH;
+                const G::Rect cell = G::cellRect(layout, i - emuBackupScroll);
+                const G::Rect label = EB::labelRect(layout, cell);
                 const bool focused = i == emuBackupIndex;
-                if (focused) fb.drawFilledRoundedRect(x + 20, ry, w - 40, rowH - 6, 10, Colors::PanelAlt);
+                if (focused) fb.drawFilledRoundedRect(cell.x, cell.y, cell.w, cell.h, 10, Colors::PanelAlt);
                 std::string title = policy.label;
                 std::string detail;
                 Color badge = Colors::TextMuted;
@@ -5693,19 +5698,26 @@ namespace UI {
                         tag = "IN EDITOR";
                         break;
                 }
-                fb.drawText(x + 40, ry + 10, title, focused ? Colors::TextPrimary : Colors::TextSecondary,
-                            TextStyle::Body);
-                fb.drawText(x + 40, ry + 38, detail, Colors::TextMuted, TextStyle::Caption);
+                fb.drawText(label.x, cell.y + EB::kLabelTop, title,
+                            focused ? Colors::TextPrimary : Colors::TextSecondary, TextStyle::Body);
+                fb.drawText(label.x, cell.y + EB::kDetailTop, detail, Colors::TextMuted, TextStyle::Caption);
                 int tw = 0, th = 0;
                 fb.measureText(tag, tw, th, TextStyle::Caption);
-                fb.drawText(x + w - 44 - tw, ry + 12, tag, badge, TextStyle::Caption);
-                overlayRects.push_back({x + 20, ry, w - 40, rowH - 6, i});
+                fb.drawText(cell.right() - layout.rule.cellPadX - tw, cell.y + EB::kLabelTop + 2, tag, badge,
+                            TextStyle::Caption);
+                overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
             }
-            SharedScrollbar::drawAndPublish(fb, emuBackupScrollbar, x + w - 14, listY,
-                SharedScrollbar::kTrackWidth, visible * rowH,
+            SharedScrollbar::drawAndPublish(fb, emuBackupScrollbar, frame.right() - 14, layout.list.y,
+                SharedScrollbar::kTrackWidth, layout.list.h,
                 SharedScrollbar::rows(rows, visible, emuBackupScroll));
-            if (!emuBackupNotice.empty())
-                fb.drawText(x + 28, y + h - 42, emuBackupNotice, Colors::TextMuted, TextStyle::Caption);
+            if (!emuBackupNotice.empty()) {
+                const G::Rect toast = EB::noticeRect(G::textWidth(emuBackupNotice, G::Text::Caption),
+                                                     fb.getWidth(), fb.getHeight());
+                fb.drawFilledRoundedRect(toast.x, toast.y, toast.w, toast.h, 8, Colors::Panel);
+                fb.drawRoundedRect(toast.x, toast.y, toast.w, toast.h, 8, Colors::Warning, 2);
+                fb.drawText(toast.x + EB::kNoticePadX, toast.y + 7, emuBackupNotice, Colors::Text,
+                            TextStyle::Caption);
+            }
             bool deletable = false;
             if (emuBackupIndex >= 0 && emuBackupIndex < rows) {
                 const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];

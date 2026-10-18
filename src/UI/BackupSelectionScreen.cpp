@@ -5,6 +5,7 @@
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedEditorChrome.h"
+#include "UI/SharedMenuGeometry.h"
 #include "UI/HomeQuitConfirm.h"
 #include "UI/TouchInput.h"
 #include "UI/Dialogs/DialogFrame.h"
@@ -17,12 +18,24 @@
 using namespace Utils;
 
 namespace UI {
-    // UI Layout constants
+    // UI Layout constants: the accepted hardware pixels, written out. SharedMenuGeometry's
+    // BackupMenu rule records exactly these values (the same contract as the emulator Backups
+    // list), and the static_assert below fails the build if the screen and the rule ever diverge.
+    namespace BackupGeometry = PokeBank::UIModel::SharedMenuGeometry;
+    constexpr BackupGeometry::Rule kBackupRule = BackupGeometry::rule(BackupGeometry::MenuType::BackupMenu);
     constexpr int CARD_X = 40;
     constexpr int CARD_Y = 84;
     constexpr int CARD_W = 1200;
     constexpr int LIST_ROW_H = 62;
     constexpr int LIST_MAX_VISIBLE = 8;   // rows that fit in the card before scrolling
+    constexpr int LIST_TOP = CARD_Y + 62;
+    constexpr int LIST_X = CARD_X + 14;
+    constexpr int LIST_W = CARD_W - 28;
+    static_assert(CARD_W == kBackupRule.width && CARD_X == (BackupGeometry::kScreenW - kBackupRule.width) / 2 &&
+                      LIST_ROW_H == kBackupRule.rowHeight && LIST_MAX_VISIBLE == kBackupRule.maxVisibleRows &&
+                      LIST_TOP == CARD_Y + kBackupRule.headerH && LIST_X == CARD_X + kBackupRule.padX &&
+                      LIST_W == CARD_W - 2 * kBackupRule.padX && kBackupRule.rowGap == 10,
+                  "Save Backups and SharedMenuGeometry's BackupMenu rule must stay one contract");
 
     BackupSelectionScreen::BackupSelectionScreen(
         AccountUid userUid, u64 titleId, const std::string& titleName)
@@ -166,9 +179,9 @@ namespace UI {
         const int maxFirstRow = std::max(0, count - LIST_MAX_VISIBLE);
         backupFirstRow = std::clamp(backupFirstRow, 0, maxFirstRow);
         selectedIndex = std::clamp(selectedIndex, 0, std::max(0, count - 1));
-        const int listY = CARD_Y + 62;
-        const int listX = CARD_X + 14;
-        const int listW = CARD_W - 28;
+        const int listY = LIST_TOP;
+        const int listX = LIST_X;
+        const int listW = LIST_W;
         // The shared scrollbar runs first: a held thumb owns the frame's touch, so the list
         // neither finger-scrolls nor taps the tile underneath it.
         const auto backupBar = SharedScrollbar::handleTouch(backupScrollbar, SharedScrollbar::sample(touch),
@@ -332,18 +345,18 @@ namespace UI {
     }
 
     void BackupSelectionScreen::drawBackupList(PKSEFramebuffer& fb) {
-        const int startY = CARD_Y + 62;
+        const int startY = LIST_TOP;
         const int total = (int)backups.size();
         const int first = std::clamp(backupFirstRow, 0, std::max(0, total - LIST_MAX_VISIBLE));
         const int liveOffset = backupScroll.offset();
         const int drawFirst = std::max(0, first - 1);
         const int drawLast = std::min(total, first + LIST_MAX_VISIBLE + 1);
-        fb.setClipRect(CARD_X + 14, startY, CARD_W - 28, LIST_MAX_VISIBLE * LIST_ROW_H);
+        fb.setClipRect(LIST_X, startY, LIST_W, LIST_MAX_VISIBLE * LIST_ROW_H);
         for (int i = drawFirst; i < drawLast; i++) {
             const int itemY = startY + (i - first) * LIST_ROW_H + liveOffset;
             const bool selected = (i == selectedIndex);
             // The first row is the "create new backup" action — accent it to stand out.
-            drawHomeTile(fb, CARD_X + 14, itemY, CARD_W - 28, LIST_ROW_H - 10,
+            drawHomeTile(fb, LIST_X, itemY, LIST_W, LIST_ROW_H - 10,
                          backups[i].displayName, selected, (i == 0));
         }
         fb.clearClip();

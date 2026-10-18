@@ -1,4 +1,5 @@
 #include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicStatFieldState.h"
 #include "UI/Modals/Gen2PokemonDetailsModal.h"
 
 #include "Integration/Gen2/Gen2BattleStats.h"
@@ -193,17 +194,28 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 304, contentY + 48, "Stat", Colors::TextDim, TextStyle::Caption);
     const std::array<const char*,5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
-    const std::array<uint8_t,5> dvs{p.dvHP(), p.dvATK(), p.dvDEF(), p.dvSPE(), p.dvSpecial()};
+    // R2-GOLD: same field-state contract as the editors (UI/ClassicStatFieldState.h): derived HP DV
+    // (always recomputed from the four stored DVs) and calculated Stat are ReadOnly gold.
+    namespace CSF = PokeBank::UIModel::ClassicStatFields;
+    const auto cellColor = [](int row, int column) {
+        return SharedEditorChrome::fieldColor(
+            SharedEditorChrome::FieldState::style(CSF::cellState(row, column), false).value);
+    };
+    const std::array<uint8_t,5> dvs{
+        CSF::derivedHpDv({static_cast<uint8_t>(p.dvATK()), static_cast<uint8_t>(p.dvDEF()),
+                          static_cast<uint8_t>(p.dvSPE()), static_cast<uint8_t>(p.dvSpecial())}),
+        static_cast<uint8_t>(p.dvATK()), static_cast<uint8_t>(p.dvDEF()),
+        static_cast<uint8_t>(p.dvSPE()), static_cast<uint8_t>(p.dvSpecial())};
     const std::array<uint16_t,5> statExp{p.statExpHP(), p.statExpATK(), p.statExpDEF(), p.statExpSPE(), p.statExpSpecial()};
     for (int i = 0; i < 5; ++i) {
         const int y = contentY + 88 + i * 48;
         fb.drawText(midX + 16, y, labels[static_cast<std::size_t>(i)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(midX + 96, y, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(midX + 192, y, std::to_string(statExp[static_cast<std::size_t>(i)]), Colors::Text, TextStyle::Caption);
+                    cellColor(i, 0), TextStyle::Caption);
+        fb.drawText(midX + 192, y, std::to_string(statExp[static_cast<std::size_t>(i)]), cellColor(i, 1), TextStyle::Caption);
         const std::string stat = i < 4 ? std::to_string(battleStats[static_cast<std::size_t>(i)])
                                       : "A" + std::to_string(battleStats[4]) + " / D" + std::to_string(battleStats[5]);
-        fb.drawText(midX + 290, y, stat, Colors::Text, TextStyle::Caption);
+        fb.drawText(midX + 290, y, stat, cellColor(i, 2), TextStyle::Caption);
     }
     fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
     compactRow(fb, midX + 16, contentY + 356, "Shiny", p.isShiny(0, {}) ? "Yes" : "No", 124);

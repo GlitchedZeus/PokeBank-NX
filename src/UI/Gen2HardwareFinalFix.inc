@@ -165,7 +165,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     const auto& p = state.working;
     const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
-    const std::array<uint8_t, 5> dvs{p.dvs[0], p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
+    const std::array<uint8_t, 5> dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     const int shinyY = y + 366;
     const int genderY = y + 408;
 
@@ -190,17 +190,17 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
         }
         fb.drawText(x + 18, yy, labels[static_cast<std::size_t>(r)], rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 114, yy, std::to_string(dvs[static_cast<std::size_t>(r)]) + (r == 0 ? " *" : ""),
-                    r == 0 ? Colors::TextDim : Colors::Text, TextStyle::Caption);
+                    gen2StatCellColor(r, 0), TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
-                    Colors::Text, TextStyle::Caption);
+                    gen2StatCellColor(r, 1), TextStyle::Caption);
         const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
-        fb.drawText(x + 282, yy, stat, Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2), TextStyle::Caption);
     }
     fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), gen2StatCellColor(4, 2), TextStyle::Caption);
     fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), gen2StatCellColor(4, 2), TextStyle::Caption);
 
     // Generation II stores exactly one Special DV and one Special Stat Exp value.
     // Both split battle stats are calculated from that same authentic pair.

@@ -189,7 +189,8 @@ int main() {
     assert(storage.find("Colors::AccentPrimary") == std::string::npos);
 
     const std::string gen1 = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
-    assert(gen1.find("c == 2 ? Colors::TextSecondary : Colors::Text") != std::string::npos);
+    // R2-GOLD: Gen I stat cells follow the shared field-state contract (read-only values gold).
+    assert(gen1.find("ClassicStatFields::cellState(r, c)") != std::string::npos);
 
     const std::string gen2 = readFile("src/UI/Gen2PokemonEditorFoundation.inc");
     assert(gen2.find("drawFilledRoundedRect(x, y - 5, w, 28, 8, Colors::SurfaceSelected)") == std::string::npos);
@@ -226,8 +227,9 @@ int main() {
     assert(repaint.find("shinySelected ? Colors::SelectedText : (p.shiny") != std::string::npos);
     assert(repaint.find("genderSelected ? Colors::SelectedText : gen2GenderColor") != std::string::npos);
     assert(repaint.find("Colors::Accent") == std::string::npos);
-    assert(repaint.find("stat, Colors::TextSecondary") != std::string::npos);
-    assert(repaint.find("r == 0 ? Colors::TextDim : Colors::Text") != std::string::npos);
+    // R2-GOLD: derived HP DV and calculated stats use the shared field-state colours.
+    assert(repaint.find("stat, gen2StatCellColor(r, 2)") != std::string::npos);
+    assert(repaint.find("gen2StatCellColor(r, 0)") != std::string::npos);
     const std::string unified = readFile("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     assert(unified.find("selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption") != std::string::npos);
     assert(unified.find("rows[static_cast<std::size_t>(row)].first") != std::string::npos);
