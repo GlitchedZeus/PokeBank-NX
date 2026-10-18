@@ -115,6 +115,11 @@ struct Result {
     uint8_t encounterLevelMax = 0;      ///< Poke Spot: the slot's maximum; otherwise encounterLevel
     uint8_t encounterLocation = 0;      ///< template met location (Poke Spot: the area)
     std::array<uint16_t, 4> encounterMoves{};  ///< fixed template moveset; all 0 when level-up moves
+    /// Transfer only (hasOriginalMet false): the movesets of later templates of the same kind,
+    /// species and level that differ from the matched one only in a met location the transfer
+    /// lost (e.g. Colosseum Shadow Suicune with Surf or Hydro Pump). PKHeX defers to the next
+    /// encounter when the moves do not fit, so the caller tries these in order.
+    std::vector<std::array<uint16_t, 4>> alternativeMoves;
     bool shadow = false;                ///< a shadow Pokemon: purified, so it carries the National Ribbon
     bool xd = false;                    ///< an XD template: the fateful (obedience) flag is set
     /// Every GameCube template compatible with the known species, level and location,

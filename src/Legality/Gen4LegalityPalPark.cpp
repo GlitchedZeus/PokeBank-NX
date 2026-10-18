@@ -1068,7 +1068,32 @@ CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input) {
             in.abilityBit = input.ability == g3.ability2 ? 1 : 0;
         }
     }
-    const C::Result r = C::judge(in);
+    C::Result r = C::judge(in);
+    // PKHeX searches the Orre templates over the record's whole Generation III chain (EvoChainsAllGens
+    // .Gen3), which holds the pre-evolutions too: a Pokemon may have evolved after the transfer. So a
+    // failed match on the current species is retried on each Gen III pre-evolution before it counts;
+    // the Gen IV/V analyzer then checks the evolution itself. The ability bit is not used for a
+    // pre-evolution, because an evolution after the transfer takes its ability from the PID.
+    if (r.verdict == C::Verdict::Invalid) {
+        bool undecided = false;
+        C::Result undecidedResult;
+        uint16_t species = input.species;
+        for (int depth = 0; depth < 3 && species >= 1 && species <= Gen3Data::kMaxSpecies; ++depth) {
+            uint16_t pre = 0;
+            for (uint16_t p = 1; p <= Gen3Data::kMaxSpecies && pre == 0; ++p)
+                for (uint16_t e = Gen3Data::kEvolutionStart[p]; e < Gen3Data::kEvolutionStart[p + 1]; ++e)
+                    if (Gen3Data::kEvolutions[e].species == species) { pre = p; break; }
+            if (pre == 0) break;
+            species = pre;
+            C::Input pin = in;
+            pin.species = pre;
+            pin.abilityKnown = false;
+            C::Result pr = C::judge(pin);
+            if (pr.verdict == C::Verdict::Matched) { r = std::move(pr); undecided = false; break; }
+            if (pr.verdict == C::Verdict::Undecided && !undecided) { undecided = true; undecidedResult = std::move(pr); }
+        }
+        if (undecided && r.verdict == C::Verdict::Invalid) r = std::move(undecidedResult);
+    }
 
     CxdOriginJudgement j;
     switch (r.verdict) {
@@ -1104,6 +1129,7 @@ CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input) {
     j.fixedTrainer = r.matched == C::Template::XdTrade || r.matched == C::Template::ColoGift;
     j.shadow = r.shadow;
     j.moves = r.encounterMoves;
+    j.alternativeMoves = r.alternativeMoves;
     j.gender = 0xFF;
     j.ability = 0;
     j.invalidReasons = r.invalid;

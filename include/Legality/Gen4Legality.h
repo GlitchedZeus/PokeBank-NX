@@ -169,6 +169,9 @@ struct CxdOriginJudgement {
     bool fixedTrainer = false;         // IFixedTrainer (Duking's trades, bonus-disc gifts): the judge checked the OT
     bool shadow = false;               // IShadow3: the National Ribbon is awarded on purification (required)
     std::array<uint16_t, 4> moves{};   // IMoveset moves the Pokemon had at the encounter (zero when none)
+    // Movesets of later templates that differ only in the met location the transfer lost; the
+    // analyzer tries them in order when `moves` does not fit (PKHeX defers to the next encounter).
+    std::vector<std::array<uint16_t, 4>> alternativeMoves;
     uint8_t gender = 0xFF;             // fixed gender or 0xFF
     int8_t ability = 0;                // AbilityPermission (0 Any12)
     std::vector<std::string> invalidReasons;  // Invalid findings (NoMatch, or Matched with a template-specific rule broken)

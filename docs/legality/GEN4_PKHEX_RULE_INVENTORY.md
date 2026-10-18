@@ -72,7 +72,7 @@ PKHeX's lazy sequence; the ManualFlag counts only when the last-resort element w
 | Mystery Gift cards (PCD/PGT: species, level, moves, OT, TID/SID, ball, ribbons, fateful, PID type, shiny, Manaphy egg, Ranger Manaphy egg) | D P Pt HG SS | `PCD`, `PGT`, `EncounterGenerator4` (MGDB `wc4.pkl`), `MysteryGiftVerifier` is dead code (no caller in the checkout) | record | `pcdMatchExact` (:217), `pcdRating` (:248), `isRangerManaphy` (:252), `isG4ManaphyPidValid` (:263), `mg4Match` (`Gen4LegalityRng.cpp:270`) | Invalid when no card matches; fateful without any card: Invalid (`run` :1655) | `pcd`, `pgt`, `m2449-egglocation`, `m50908-move`, `m50928-contest` | Implemented |
 | Eggs (Day-Care Couple 2000, traded egg 2002, Pt/HG/SS egg field pair, egg moves, PID bit 15, hatch level 1 / met level 0, hatched egg location rules, Korean Seabreak lockout `EncounterVerifier.cs:211`) | D P Pt HG SS | `EncounterEgg4`, `EncounterVerifier.VerifyEncounterEgg`, `EggStateLegality`, `MoveBreed4` | record | `verifyEgg4Hatched` (:381), `moveBreed4Validate` (`Gen4LegalityMoves.cpp:534`), `verifyEncounter` | Invalid for a non-egg species, wrong hatch level, bad egg location, unbreedable move set | `egg-hatched`, `egg-unhatched`, `m3-egg`, `m54-egg`, `m2579-egg`, `m81-egglocation`, `h30959-egglocation`, `h28429-move`, `h31717-move` | Implemented |
 | Pal Park (Gen III origin: slot, static, trade, gift, NY/JP/Colo gifts, egg3; Method H frames; met 55; level >= met) | R S E FR LG via D P Pt HG SS | `EncounterGenerator3`, `MethodH`, `CommonEvent3Checker`, `MystryMew`, `ChannelJirachi`, `TransferVerifier.VerifyTransferLegalityG3` | record | `Gen4LegalityPalPark.cpp` `searchEncounters3` (:829/:838), `matchRating3` (:900), `slot3MatchExact` (:504) ... `colo3MatchExact` (:607); `run` (:1650-1652) | Invalid when no Gen III template matches or met location is not 55 | `p0`, `p4`, `p8`, `p9320`, `p10120`, `p28412`, `h33229-move`, section 4b (met 56) | Implemented |
-| Colosseum/XD origin through Pal Park (version 15) | Colo XD via D P Pt HG SS | `EncounterGenerator3` Orre templates (`Encounters3Colo`, `Encounters3XD`), `CXDVerifier`, `RibbonRules.GetValidRibbonStateNational` (IShadow3) | record + judge | `findCxdEncounter` (:613), `judgeCxdOrigin` (`Gen4LegalityPalPark.cpp`, integration point) | Judge Matched: template rules (ball, fateful, shiny, moves, National ribbon = shadow) as for any Gen III origin. NoMatch: Invalid. Undecided or no judge (production today): Warning "the Colosseum/XD encounter is not verified", EXP/fateful/ribbon/move rules that need the template are skipped, never certified | section 4b | Partial: consumer implemented and tested with a fake judge; the production judge returns Unavailable until Lane A's `Gen3Cxd.h` is wired (section 6) |
+| Colosseum/XD origin through Pal Park (version 15) | Colo XD via D P Pt HG SS | `EncounterGenerator3` Orre templates (`Encounters3Colo`, `Encounters3XD`), `CXDVerifier`, `RibbonRules.GetValidRibbonStateNational` (IShadow3) | record + judge | `findCxdEncounter` (:613), `judgeCxdOrigin` (`Gen4LegalityPalPark.cpp`, integration point) | Judge Matched: template rules (ball, fateful, shiny, moves, National ribbon = shadow) as for any Gen III origin. NoMatch: Invalid. Undecided or no judge (production today): Warning "the Colosseum/XD encounter is not verified", EXP/fateful/ribbon/move rules that need the template are skipped, never certified | section 4b | Implemented: production passes `judgeCxdOrigin`, which runs `Gen3Cxd::judge` (section 6). Undecided judge answers stay Incomplete |
 | Evolution chain reaches the species from the encounter (level, item, trade, friendship, form-specific evolutions) | all | `EvolutionVerifier`, `EvolutionTree.Evolves4/Evolves3` | record | `verifyEvolution` (:471), `evolutionHistory` (`Gen4LegalityMoves.cpp:179`) | Invalid when the encounter species cannot evolve into the record's species at its level | `m16273-species`, section 3 | Implemented |
 | Encounter-level sanity: current level >= met level, level within slot range, met level of a hatched egg | all | `EncounterVerifier`, `LevelVerifier` | record | `isWithinEncounterRange` (:370), `verifyLevel` (:984) | Invalid | `h41946-metlevel`, `m106-exp`, `m514-exp`, `m2533-exp` | Implemented |
 
@@ -148,7 +148,10 @@ Invalid); the certification rate therefore reads lower than before and is report
 ## 6. Colosseum/XD origin integration point (version 15)
 
 `Gen4::judgeCxdOrigin(const CxdOriginInput&)` at the end of `src/Legality/Gen4LegalityPalPark.cpp`
-(marked `INTEGRATION POINT`) returns `Status::Unavailable` today. `analyzePk4` (:1776) calls the
+runs Lane A's `Gen3Cxd::judge` on the fields Pal Park keeps (original level bounded by the met
+level, as PKHeX's `EvolutionGroup3.Devolve` bounds it; the ability bit only when the Gen III species
+has two abilities, since Pal Park picks the ability from that bit, pokeplatinum
+src/main_menu/gba_pokemon.c:759-783). `analyzePk4` (:1776) calls the
 judge only for version 15 and hands its `CxdOriginJudgement` to the analyzer, whose
 `findCxdEncounter` (:613) turns a `Matched` judgement into an `EncKind::Cxd3` template (species,
 form, level range, fixed ball, fateful, shiny, moves, fixed trainer, shadow) and runs the same
@@ -156,11 +159,10 @@ Gen III-origin rules as any Pal Park record (`matchRating3`, `isFixedTrainer3`, 
 `evolutionHistory3`, `verifyMoves3`, `verifyEvolution`, ribbons with National iff shadow,
 fateful, ball). `NoMatch` is Invalid with the judge's reasons; `Undecided`/`Unavailable` is the
 Warning "Pal Park transfer from Colosseum/XD: the Colosseum/XD encounter is not verified" with the
-template-dependent rules skipped. The hook therefore never certifies a Colo/XD record today.
-Wiring (coordinator, `Gen4LegalityPalPark.cpp` only): `#include "Legality/Gen3Cxd.h"` and replace
-the body of `judgeCxdOrigin` with the call into Lane A's judge, mapping its result onto
-`CxdOriginJudgement`. The 4-argument `analyzePk4` overload takes any `CxdOriginJudge` (tests use a
-fake), so the mapping is testable without the header.
+template-dependent rules skipped. The judge's generic TID/SID heuristics are dropped from its
+warnings because the Gen IV trainer check already reports them. The 4-argument `analyzePk4`
+overload takes any `CxdOriginJudge`; a null judge (tests only) leaves every version-15 record
+Incomplete.
 
 ## 7. Severity policy and deliberate differences
 

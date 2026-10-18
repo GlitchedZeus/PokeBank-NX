@@ -3524,6 +3524,15 @@ bool xdFixedNameMatch(uint8_t language, const char16_t* const* names, std::u16st
     return actual == std::u16string_view(names[language]);
 }
 
+/// After a transfer to Gen IV+ (Format != 3), Pal Park reads the Spanish "GERMÁN" with the Japanese
+/// glyph for Á (StringConverter345.TransferGlyphs34), so PKHeX expects "GERMいN" for Duking's
+/// Pokemon: EncounterTrade3XD.IsTrainerMatch (all but Elekid) and EncounterGift3Colo (Plusle).
+bool dukingSpanish4(const Pk3& pk, const char16_t* const* names, uint16_t species, bool isTrade) noexcept {
+    if (pk.metKnown || pk.language != 7 || names != X::kTrainerNameDuking) return false;
+    if (isTrade ? species == 239 : species != 311) return false;
+    return std::u16string_view(pk.ot) == std::u16string_view(X::kTrainerNameDukingSpanish4);
+}
+
 bool withinEncounterRange(const Pk3& pk, const Enc& e) noexcept {
     const uint8_t level = pk.currentLevel;
     if (e.isEgg) return level == e.levelMin;
@@ -3589,11 +3598,12 @@ void verifyNickname(const Pk3& pk, Analysis& a) {
     }
     if (e.kind == Kind::Colo && !coloTrainerMatch(pk, D::kColoGifts[e.index]))
         a.invalid(CheckIdentifier::Trainer, "OT name does not match the Colosseum gift");
-    if (e.kind == Kind::ColoGiftCxd && !coloTrainerMatch(pk, X::kColoGifts[e.index].names))
+    if (e.kind == Kind::ColoGiftCxd && !coloTrainerMatch(pk, X::kColoGifts[e.index].names) &&
+        !dukingSpanish4(pk, X::kColoGifts[e.index].names, X::kColoGifts[e.index].species, false))
         a.invalid(CheckIdentifier::Trainer, "OT name does not match the Colosseum gift");
     if (e.kind == Kind::XdTrade) { // NicknameVerifier.VerifyTrade for IFixedTrainer / IFixedNickname
         const auto& t = X::kXdTrades[e.index];
-        if (!xdFixedNameMatch(pk.language, t.trainerNames, pk.ot))
+        if (!xdFixedNameMatch(pk.language, t.trainerNames, pk.ot) && !dukingSpanish4(pk, t.trainerNames, t.species, true))
             a.invalid(CheckIdentifier::Trainer, "OT name does not match the XD in-game trade");
         if (t.nicknames != nullptr) {
             if (!xdFixedNameMatch(pk.language, t.nicknames, nick))
@@ -4498,6 +4508,19 @@ Result judge(const Input& in) {
         out.encounterLevelMax = a.enc.levelMax;
         out.encounterLocation = templateLocation(a.enc);
         out.encounterMoves = a.enc.hasMoveset ? a.enc.moves : std::array<uint16_t, 4>{};
+        if (!pk.metKnown && !pk.movesKnown && a.enc.hasMoveset) {
+            PidIv pidiv = a.pidiv;
+            const Generated g = generateEncountersGC(pk, originChain(pk), pidiv);
+            bool after = false;
+            for (const Enc& e : g.list) {
+                if (!after) { after = e.kind == a.enc.kind && e.index == a.enc.index; continue; }
+                if (e.kind != a.enc.kind || e.species != a.enc.species || e.levelMin != a.enc.levelMin ||
+                    !e.hasMoveset || e.moves == a.enc.moves || !verifyEncounter3(pk, e).valid)
+                    continue;
+                if (std::find(out.alternativeMoves.begin(), out.alternativeMoves.end(), e.moves) == out.alternativeMoves.end())
+                    out.alternativeMoves.push_back(e.moves);
+            }
+        }
         out.shadow = isShadowKind(a.enc.kind);
         out.xd = isXdFatefulKind(a.enc.kind);
     }

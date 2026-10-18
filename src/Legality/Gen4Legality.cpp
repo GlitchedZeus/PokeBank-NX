@@ -648,6 +648,15 @@ void Analyzer::findCxdEncounter() {
         if (e.severity != kValid) parse_.push_back(e);
         setCxdHistory();
         moves_ = format5() ? verifyMoves5(pk_, info_, h5_, *f5_) : verifyMoves3(pk_, info_, history3_);
+        for (const auto& alt : j->alternativeMoves) {
+            if (allValid(moves_)) break;
+            Template a = t;
+            a.moves = alt;
+            const EncInfo altInfo = encInfo(a);
+            MoveResults m = format5() ? verifyMoves5(pk_, altInfo, h5_, *f5_) : verifyMoves3(pk_, altInfo, history3_);
+            if (!allValid(m)) continue;
+            t = a; enc_ = a; info_ = altInfo; moves_ = m;
+        }
         const Check evo = verifyEvolution(t, history_, moves_);
         if (evo.severity != kValid) parse_.push_back(evo);
         for (const std::string& r : j->invalidReasons) invalid(CheckIdentifier::Encounter, r);
@@ -1199,8 +1208,24 @@ void Analyzer::verifyAbility5() {
     if (abilIndex < 0) return;
     const int number = pk_.hiddenAbility5 ? 4 : (1 << (pk_.pid & 1));
     const uint8_t gen = encGeneration();
+    // PKHeX keeps a species in the Generation III history even when the met level (the level at
+    // transfer) is below its evolution level (EvolutionGroup3.Evolve leaves the unreached stage in
+    // place), so for a Gen III Pokemon that evolved after the transfer it takes the evolved species'
+    // Gen III abilities (VerifyAbilityGen3Transfer) and accepts its only Gen III ability, or any
+    // Colosseum/XD ability, without a PID match. The games recalculate the ability from the PID on
+    // evolution (pokeplatinum src/evolution.c:436, src/pokemon.c:4746-4764), so such a record is
+    // suspicious, but it is reported as a Warning rather than ruled out.
+    bool pkhexAccepts = false;
+    if (gen3Origin() && pk_.species <= 386 && !h5_.gen3.empty() && h5_.gen3.front().species != pk_.species) {
+        const D::Personal3& own = D::kPersonalE3[pk_.species];
+        pkhexAccepts = own.ability1 != own.ability2 ? pk_.version == kVerCXD : pk_.ability == own.ability1;
+    }
     auto pidMatch = [&]() { // GetPIDAbilityMatch
-        if (pi.abilities[static_cast<std::size_t>(number >> 1)] != pk_.ability)
+        if (pi.abilities[static_cast<std::size_t>(number >> 1)] == pk_.ability) return;
+        if (pkhexAccepts)
+            fishy(CheckIdentifier::Ability, "Ability does not match the PID, which sets the ability when a Pokemon evolves after "
+                                            "its transfer; PKHeX accepts it");
+        else
             invalid(CheckIdentifier::Ability, "Ability does not match the PID's ability bit");
     };
     auto checkMatch = [&](uint8_t generation, bool mustMatch) { // CheckMatch (format 5)

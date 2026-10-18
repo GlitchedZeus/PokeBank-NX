@@ -302,10 +302,9 @@ gave 0 false Invalid and 0 false Valid.
   (Japanese Colosseum bonus disc) is Incomplete because PKHeX grades its fixed all-zero IVs
   Fishy (`IndividualValueVerifier`, IVAllEqual_0); an English XD TID/SID without a name-screen
   seed is Incomplete (Fishy, section 3); a search that reaches a guard is Unknown (never seen in
-  the corpora). The Gen IV (Pal Park) and Gen V (Poke Transfer) analyzers still report the
-  GameCube encounter as unverified until they call `Gen3Cxd::judge`
-  (`docs/legality/handoff/lane-b-gen4-palpark-cxd-judge.patch`,
-  `docs/legality/handoff/lane-c-gen5-transfer-cxd-judge.patch`).
+  the corpora). The Gen IV (Pal Park) and Gen V (Poke Transfer) analyzers call `Gen3Cxd::judge`
+  through `Gen4::judgeCxdOrigin` (`src/Legality/Gen4LegalityPalPark.cpp`), with the original level
+  bounded by the met level; see `GEN1_5_PRODUCTION_CALL_GRAPH.md` sections 6 and 7.
 
 ## 7. Colosseum/XD (GameCube) origins
 

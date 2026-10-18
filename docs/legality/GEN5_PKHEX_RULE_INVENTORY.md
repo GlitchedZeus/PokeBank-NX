@@ -928,9 +928,8 @@ Known gaps (reported as Incomplete, never Invalid):
 - Fateful records that match no supported PGF card (`EncGiftNotFound`): the
   card list is not proven complete, so the analyzer warns. "Supported PGF" is
   defined below.
-- Gen III/IV-origin PK5 records that the origin analysis cannot settle:
-  Colosseum / XD origins (the Orre encounter tables are not ported), and
-  PKHeX "fishy" Gen III origin results, which stay Warnings (see "Poke Transfer
+- Gen III/IV-origin PK5 records that the origin analysis cannot settle: an
+  undecided Colosseum / XD judge answer, and PKHeX "fishy" Gen III origin results, which stay Warnings (see "Poke Transfer
   / Pal Park origin" below).
 
 ## PokeBank NX: rules ported in this round
@@ -980,20 +979,17 @@ relative to `PKHeX.Core/`.
   -fno-sanitize-recover=all`); `.github/workflows/legality-gen5-pkhex-diff.yml` runs both and
   the differential.
 
-### Colosseum / XD integration point
+### Colosseum / XD origins
 
-`Gen5Analyzer::analyzeOrigin` (`src/Legality/Gen5Legality.cpp:1644-1661`) returns before the
-Gen IV bridge when `p_.version == kVersionCXD` (15), and `Gen5Analyzer::transfer` (`:1731`)
-adds the Warning "Colosseum / XD origin: the original encounter and moves are not checked".
-When Lane A's `include/Legality/Gen3Cxd.h` exists, the hunk is: in `analyzeOrigin`, replace
-the `p_.version == kVersionCXD` early return with a call to the Gen III GameCube origin
-analysis on the same PK4-shaped view (`G4::Pk4 view` with `format = 5`), store its result in
-`origin_` the way `G4::analyzeOrigin5` is stored, and drop the Warning at `:1731` when that
-result reports an encounter; `mergeOrigin` then handles its lines unchanged. Until then the
-2,964 PKHeX-valid and 1,287 of the 5,053 PKHeX-invalid Colosseum / XD transfers on the six
-seeds stay Incomplete (the other 3,766 are Invalid on Gen V-side rules). The existing fixture
-set keeps a Colosseum / XD record Incomplete, so the integration can be tested by flipping
-that expectation when the analysis lands.
+`Gen5Analyzer::analyzeOrigin` (`src/Legality/Gen5Legality.cpp:1655`) sends a version-15 record
+through the same Gen IV bridge as any Gen III origin. `G4::analyzeOrigin5` runs
+`judgeCxdOrigin` (`src/Legality/Gen4Legality.cpp:1771`), the Gen III GameCube judge, and analyzes
+only a Matched or NoMatch answer; an undecided answer leaves the record Incomplete. The male-OT
+Colosseum / XD rule (`:1716`) applies only when the origin was not analyzed. The format-5 ability
+check lets a Colosseum / XD record of a two-ability Gen III species keep an ability that does not
+match the PID (`AbilityVerifier.cs:273-274`), because the GameCube games store the ability bit apart
+from the PID. Fixtures: `transfer-cxd`, `transfer-cxd-ability` and the National Ribbon edit in
+`tests/test_legality_gen5.cpp`.
 
 ## PokeBank NX: names, trades, events and transfers
 
