@@ -1035,7 +1035,9 @@ CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input) {
     namespace C = Legality::Gen3Cxd;
     C::Input in;
     in.species = input.species;
-    in.currentLevel = input.level;
+    // PKHeX bounds the Gen III part of a transferred record's evolution chain by its met level,
+    // the level at transfer (EvolutionGroup3.Devolve for format 4, EvolutionGroup4 for format 5).
+    in.currentLevel = input.metLevel != 0 && input.metLevel < input.level ? input.metLevel : input.level;
     in.hasOriginalMet = false;
     in.metLevel = input.metLevel;
     in.ball = input.ball;
