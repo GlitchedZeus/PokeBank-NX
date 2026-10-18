@@ -6,7 +6,7 @@
 #include "Pokemon/Experience.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/ClassicMovesPanel.h"
-#include "UI/ClassicStatFieldState.h"
+#include "UI/ClassicFieldColor.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/ClassicTypeBadges.h"
 #include "UI/Common.h"
@@ -169,9 +169,9 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const std::string splitSpecial = p.hasBattleStats ? std::to_string(p.battleStats[4]) : "-";
     fb.drawText(midX + 16, contentY + 306, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 16, contentY + 334, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(midX + 82, contentY + 334, splitSpecial, Colors::ShinyStar, TextStyle::Caption); // ReadOnly (gold)
+    fb.drawText(midX + 82, contentY + 334, splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor(), TextStyle::Caption);
     fb.drawText(midX + 198, contentY + 334, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(midX + 264, contentY + 334, splitSpecial, Colors::ShinyStar, TextStyle::Caption); // ReadOnly (gold)
+    fb.drawText(midX + 264, contentY + 334, splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor(), TextStyle::Caption);
     fb.drawText(midX + 16, contentY + 364,
                 "* one stored Gen I Special stat; split display only",
                 Colors::TextDim, TextStyle::Caption);

@@ -2,7 +2,7 @@
 #include "UI/ClassicGameContext.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/ClassicMovesPanel.h"
-#include "UI/ClassicStatFieldState.h"
+#include "UI/ClassicFieldColor.h"
 
 namespace UI::Gen1PokemonEditor {
 
@@ -275,14 +275,14 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(gridX + 12, gridY + 286, "Shiny",
                 shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
-                shinySelected ? Colors::SelectedText : (presentation.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
+                ::UI::ClassicFieldColor::shinyValueColor(shinySelected), TextStyle::Caption);
 
     const std::string splitSpecial = std::to_string(stats[4]);
     fb.drawText(gridX + 12, gridY + 334, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 362, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 78, gridY + 362, splitSpecial, Colors::ShinyStar, TextStyle::Caption); // ReadOnly (gold)
+    fb.drawText(gridX + 78, gridY + 362, splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor(), TextStyle::Caption);
     fb.drawText(gridX + 194, gridY + 362, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 260, gridY + 362, splitSpecial, Colors::ShinyStar, TextStyle::Caption); // ReadOnly (gold)
+    fb.drawText(gridX + 260, gridY + 362, splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor(), TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 392, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
 
     // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V.

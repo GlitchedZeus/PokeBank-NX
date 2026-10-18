@@ -220,7 +220,8 @@ int main() {
     const auto repaint = gen2Hardware.substr(repaintStart, repaintEnd - repaintStart);
     assert(repaint.find("rows[row].first, selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(repaint.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
-    assert(repaint.find("shinySelected ? Colors::SelectedText : (p.shiny") != std::string::npos);
+    // QA CG16: the Shiny value is an Editable field (SelectedText when focused, never raw gold).
+    assert(repaint.find("::UI::ClassicFieldColor::shinyValueColor(shinySelected)") != std::string::npos);
     assert(repaint.find("genderSelected ? Colors::SelectedText : gen2GenderColor") != std::string::npos);
     assert(repaint.find("Colors::Accent") == std::string::npos);
     // R2-GOLD: derived HP DV and calculated stats use the shared field-state colours.
@@ -231,7 +232,7 @@ int main() {
     assert(unified.find("rows[static_cast<std::size_t>(row)].first") != std::string::npos);
     assert(unified.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     assert(gen1.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
-    assert(gen1.find("shinySelected ? Colors::SelectedText : (presentation.shiny") != std::string::npos);
+    assert(gen1.find("::UI::ClassicFieldColor::shinyValueColor(shinySelected)") != std::string::npos);
 
     const std::string radar = readFile("include/UI/StatsRadar.h");
     assert(radar.find("fillPolygon(fb, data") == std::string::npos);

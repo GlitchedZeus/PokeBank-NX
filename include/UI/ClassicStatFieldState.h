@@ -27,6 +27,15 @@ constexpr FS::State cellState(int row, int column) noexcept {
     return FS::State::Editable;
 }
 
+// The split Special Attack / Special Defense display is calculated from the one stored Special
+// stat (Gen I) or the one Special DV / Stat Exp pair (Gen II): ReadOnly (gold).
+inline constexpr FS::State kSplitSpecialState = FS::State::ReadOnly;
+
+// Shiny is the inline Yes / No toggle (A flips it by rerolling DVs, Gen12DVReroll.h): an Editable
+// field, so its value is never drawn gold. Gold means locked; a shiny Pokemon is marked by the
+// shiny star, not by a gold value (QA CG16).
+inline constexpr FS::State kShinyState = FS::State::Editable;
+
 // HP DV from the four stored DVs (Attack, Defense, Speed, Special).
 constexpr uint8_t derivedHpDv(const std::array<uint8_t, 4>& storedDvs) noexcept {
     return static_cast<uint8_t>(((storedDvs[0] & 1U) << 3U) | ((storedDvs[1] & 1U) << 2U) |
@@ -37,6 +46,8 @@ static_assert(cellState(kHpRow, kDvColumn) == FS::State::ReadOnly);
 static_assert(cellState(1, kDvColumn) == FS::State::Editable);
 static_assert(cellState(kHpRow, kStatExpColumn) == FS::State::Editable);
 static_assert(cellState(4, kStatColumn) == FS::State::ReadOnly);
+static_assert(kSplitSpecialState == FS::State::ReadOnly);
+static_assert(kShinyState == FS::State::Editable);
 static_assert(derivedHpDv({7, 10, 10, 10}) == 8);
 
 } // namespace PokeBank::UIModel::ClassicStatFields

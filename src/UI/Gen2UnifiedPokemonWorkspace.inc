@@ -3,7 +3,7 @@
 #include "UI/Gen2FieldSelector.h"
 #include "UI/Gen2WorkspaceLayers.h"
 #include "UI/Gen2MovesPanel.h"
-#include "UI/ClassicStatFieldState.h"
+#include "UI/ClassicFieldColor.h"
 #include "UI/SharedEditorPresentation.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
@@ -793,7 +793,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         }
         fb.drawText(x + 18, yy, capabilityRows[static_cast<std::size_t>(i)].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 134, yy, capabilityRows[static_cast<std::size_t>(i)].second,
-                    selected ? Colors::Text : (i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text),
+                    ::UI::ClassicFieldColor::shinyValueColor(selected),
                     TextStyle::Caption);
     }
 }

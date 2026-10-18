@@ -7,6 +7,7 @@
 #include "UI/ClassicStatFieldState.h"
 
 #include <cassert>
+#include <cctype>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -20,6 +21,16 @@ std::string read(const char* path) {
     std::ifstream in(path, std::ios::binary);
     assert(in && "run from the repository root");
     return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+// Same rule as the QA cross-gen contract: a drawText( statement (up to its ';') that names
+// Colors::ShinyStar draws an editor value in raw gold.
+bool drawsRawGold(const std::string& src) {
+    for (auto at = src.find("drawText("); at != std::string::npos; at = src.find("drawText(", at + 1)) {
+        if (at > 0 && (std::isalnum(static_cast<unsigned char>(src[at - 1])) || src[at - 1] == '_')) continue;
+        const auto end = src.find(';', at);
+        if (src.substr(at, end - at).find("Colors::ShinyStar") != std::string::npos) return true;
+    }
+    return false;
 }
 } // namespace
 
@@ -65,6 +76,42 @@ int main() {
     const auto gen2View = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     assert(gen2View.find("CSF::derivedHpDv(") != std::string::npos);
     assert(gen2View.find("stat, cellColor(i, 2)") != std::string::npos);
+    // QA CG16: Shiny is an Editable inline toggle (never gold); the split SpA / SpD display is
+    // ReadOnly gold. No Gen I / II editor value is drawn in a raw gold token; each goes through
+    // UI/ClassicFieldColor.h (the shared field-state colour).
+    assert(FS::style(CSF::kShinyState, false).value == FS::Token::Text);
+    assert(FS::style(CSF::kShinyState, true).value == FS::Token::Selected);
+    assert(FS::style(CSF::kShinyState, true).activates);
+    assert(FS::style(CSF::kSplitSpecialState, false).value == FS::Token::Gold);
+    assert(!FS::style(CSF::kSplitSpecialState, true).activates);
+    const auto colorHeader = read("include/UI/ClassicFieldColor.h");
+    assert(colorHeader.find("fieldColor(SharedEditorChrome::FieldState::style(state, focused).value)") != std::string::npos);
+    const char* const editorSurfaces[] = {
+        "src/UI/Gen1PokemonDetailsPresentation.cpp", "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
+        "src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+        "src/UI/Gen2HardwareFinalFix.inc", "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+        "src/UI/Gen2PokemonEditorFoundation.inc", "src/UI/Modals/Gen2PokemonDetailsModal.cpp"};
+    for (const char* path : editorSurfaces) {
+        const auto src = read(path);
+        if (drawsRawGold(src)) {
+            std::cerr << path << ": editor value drawn in raw Colors::ShinyStar\n";
+            return 1;
+        }
+    }
+    assert(gen1Edit.find("::UI::ClassicFieldColor::shinyValueColor(shinySelected)") != std::string::npos);
+    assert(gen1Edit.find("splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor()") != std::string::npos);
+    assert(gen1View.find("splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor()") != std::string::npos);
+    for (const char* path : {"src/UI/Gen2HardwareFinalFix.inc", "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+                             "src/UI/Gen2PokemonEditorFoundation.inc", "src/UI/Gen1PokemonEditorOverlayFoundation.inc"}) {
+        assert(read(path).find("::UI::ClassicFieldColor::shinyValueColor(") != std::string::npos);
+    }
+    // QA CG17: the Gen I overlay and Gen II foundation headers name the exact source game.
+    for (const char* path : {"src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen2PokemonEditorFoundation.inc"}) {
+        const auto src = read(path);
+        const auto header = src.find("Source save immutable");
+        const auto game = src.rfind("ClassicGameContext::exactGameName(screen.sourceGameId)", header);
+        assert(header != std::string::npos && game != std::string::npos && header - game < 400);
+    }
     std::cout << "Gen I/II STATS field states: derived HP DV and calculated stats gold everywhere PASS\n";
     return 0;
 }

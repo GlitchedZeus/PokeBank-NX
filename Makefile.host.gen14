@@ -255,7 +255,9 @@ CLASSIC_STAT_FIELD_SOURCES := tests/test_classic_stat_field_state.cpp $(GEN2_STA
 	src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
 CLASSIC_STAT_FIELD_DEPS := include/UI/ClassicStatFieldState.h include/UI/SharedFieldState.h \
 	src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp \
-	src/UI/Gen2UnifiedPokemonWorkspace.inc src/UI/Gen2HardwareFinalFix.inc src/UI/Modals/Gen2PokemonDetailsModal.cpp
+	src/UI/Gen2UnifiedPokemonWorkspace.inc src/UI/Gen2HardwareFinalFix.inc src/UI/Modals/Gen2PokemonDetailsModal.cpp \
+	include/UI/ClassicFieldColor.h src/UI/Gen1PokemonEditorOverlayFoundation.inc src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc
 HOST_TESTS += $(HOST_BUILD)/test_classic_stat_field_state
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_stat_field_state_sanitize
 host-test: $(HOST_BUILD)/test_classic_stat_field_state
