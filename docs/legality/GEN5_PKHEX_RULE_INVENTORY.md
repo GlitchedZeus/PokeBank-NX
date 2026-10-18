@@ -897,7 +897,10 @@ QUIRKS TO DECIDE ON:
 ## PokeBank NX: deliberate differences and known gaps
 
 Measured with `tools/pkhex_gen5_diff/run.sh` (every Gen V encounter PKHeX can
-build, plus single-field mutations).
+build, unhatched bred eggs, evolutions by move, the Kyurem forms, plus
+single-field mutations). Differences that were removed, and the ones that
+remain unresolved, are classified in
+[PKHEX_VERIFIED_IMPROVEMENTS.md](PKHEX_VERIFIED_IMPROVEMENTS.md).
 
 Deliberately stricter than PKHeX: only the theoretical text-buffer case below
 (PKHEX_DISAGREEMENT_REVIEW.md item 12), which no PKHeX-built record reaches. run.sh
@@ -929,6 +932,68 @@ Known gaps (reported as Incomplete, never Invalid):
   Colosseum / XD origins (the Orre encounter tables are not ported), and
   PKHeX "fishy" Gen III origin results, which stay Warnings (see "Poke Transfer
   / Pal Park origin" below).
+
+## PokeBank NX: rules ported in this round
+
+Every rule below is reached from `Legality::analyzePk5` (`src/Legality/Gen5Legality.cpp:2392`)
+through `Gen5Analyzer::run`, in the order structure, personal, chain, internal, forms,
+egg state, basic moves, encounter (or transfer), abilities, gender, Wurmple, move pool,
+evolution by move, ribbons, names, origin merge, save context. Each has at least one
+accepting and one rejecting fixture in `tests/test_legality_gen5.cpp` (`kCases`) and is
+exercised by the differential's corpus groups named in the last column. PKHeX paths are
+relative to `PKHeX.Core/`.
+
+| Rule | Games | PKHeX | Data | PokeBank NX | Expected | Fixtures | Status |
+|---|---|---|---|---|---|---|---|
+| Unhatched bred egg: moves must follow the inheritance order (level-1 moves of the breeding game's learnset, then the father's egg moves, inherited level-up moves, TMs, Volt Tackle last for Pichu) | B, W, B2, W2 | `Legality/Moves/Breeding/MoveBreed5.cs:17-40` (`Validate`), `:115` (`GetBaseEggMoves`), `:152-153` (TM list), `Legality/Breeding.cs:54` (`GetCanInheritMoves`) | BW and B2W2 learnsets, BW egg moves, BW TM flags of the breeding game | `Breed5::valid` `:714-803`, called from `Gen5Analyzer::movePool` `:1802` for an unhatched egg whose matched template is a bred egg | Invalid "Unhatched egg's moves are not in an order Gen V egg move inheritance can produce ..."; moves and breeding coverage Complete when the order fits | `egg-b7730`, `egg-b11015`, `egg-b58750`, `egg-b17360` (accepted), `egg-b12020`, `egg-b52180`, `egg-b28890`, `egg-m18178-move`, `egg-m53276-move` (Invalid); corpus group `egg` | Ported |
+| Kyurem: Fusion Flare only on White Kyurem (form 1), Fusion Bolt only on Black Kyurem (form 2), Scary Face not on a fused form | B2, W2 (and a traded Kyurem in B/W) | `Legality/LearnSource/Verify/LearnVerifier.cs:110`, `:125-147` (`FlagFormExclusiveKyurem`) | none | `Gen5Analyzer::movesBasic` `:1207-1209` | Invalid "Fusion Flare is only known by White Kyurem" / "Fusion Bolt is only known by Black Kyurem" / "Scary Face is replaced by the fusion move on a fused Kyurem" | `kyurem-form{0,1,2}-{scaryface,fusionflare,fusionbolt}` (3 accepted, 6 Invalid); corpus group `kyurem` | Ported |
+| Shedinja evolved from a Gen V Nincada is in a Poke Ball | B, W, B2, W2 | `Legality/Verifiers/Ball/BallVerifier.cs:42-50` (`VerifyEvolvedShedinja`) | none | `Gen5Analyzer::encounterGen5` `:1530` | Invalid "Shedinja evolved from Nincada in Gen V is always in a Poke Ball" | `shedinja-ball4` (accepted), `shedinja-ball3` (Invalid) | Ported |
+| Combee slot deferred for a Vespiquen whose PID made the Combee male (`PID & 0xFF >= 0x1F`): another matching template is preferred | B2, W2 | `Legality/Encounters/Templates/Gen5/EncounterSlot5.cs:113-122` (`GetMatchRating`, `DeferredErrors`) | encounter tables | `Gen5Analyzer::encounterGen5` `:1519` (re-picks `match_` from `matchAll_`) | Invalid "Gender does not match the PID of the Combee" only when every matching template is a Combee slot | `vespiquen-female` (accepted), `vespiquen-malepid` (Invalid) | Ported |
+| Evolution by knowing a move (Mr. Mime / Sudowoodo: Mimic; Ambipom: Double Hit; Lickilicky: Rollout; Tangrowth, Yanmega, Mamoswine: AncientPower): the pre-evolution must have been able to know the move by the level it evolved at, and a move slot must have been free | B, W, B2, W2 | `Legality/Restrictions/EvolutionRestrictions.cs:95-133` (`IsValidEvolutionWithMove`, `GetCanKnowMove` with `AtAnyTimeChain`), `:191` (`IsMoveSlotAvailable`) | learnsets, egg moves, encounter moves of the pre-evolutions; per-stage level caps | `Gen5Analyzer::evolutionMove` `:1870`, `stageLevelMax` `:1747`, `movesFor(template, preEvolutionsOnly)` | Invalid "<Species> evolves by knowing <Move>, which <Pre> cannot have known by level N in Gen V" / "... but every move slot holds an inherited egg move, so it never had the move" | `tangrowth-l35` (Invalid), `tangrowth-l36`, `tangrowth-l40`, `mrmime-l10`, `mrmime-l20`, `evomove-b134120`, `evomove-b133720`, `evomove-b133740` (accepted); corpus group `evomove` | Ported |
+| Per-stage level cap: a pre-evolution reached by level-up evolutions is at most the current level minus one per level-up stage; a stage that evolves otherwise keeps the level | all | `Legality/Evolutions/Reversal/EvolutionReversal.cs:25-35`, `:110` (`Devolve`, `LevelMax`) | evolution table | `Gen5Analyzer::stageLevelMax` `:1747`; used by `movePool` and `evolutionMove` | A level-up move of a pre-evolution above its cap is not a source | `tangrowth-l35` vs `tangrowth-l36` | Ported |
+| Boxed PK5 (Box, GTS, Battle Box) has full PP | all | `Legality/Verifiers/MovePPVerifier.cs:123`, `:131-144` (`GetIsStoredHealed`: `PK5 => OnlyHealed`) | none | `Gen5Analyzer::movesBasic` `:1203`; slot from `Pk5Input::slot`, else the record size | Invalid "PP of X is not full on a boxed Pokemon, which the game healed when it was deposited"; a party record or `Pk5Slot::Unknown` with 220 bytes is not checked | adapter test (`tests/test_legality_gen5_adapter.cpp`, Box vs Party on byte 0x30) | Ported |
+| Shaymin Sky Forme cannot be stored in a box | all | `Legality/Verifiers/FormVerifier.cs:150-154` (`FormParty`) | none | `Gen5Analyzer::forms` `:1115-1117`; slot as above | Invalid "Shaymin Sky Forme cannot be stored in a box" | existing Shaymin fixtures, adapter test | Ported (slot now explicit) |
+| Pokerus on an unhatched egg is accepted | all | `Editing/Pokerus.cs:21-27` (`IsObtainable` true for PK5), `Legality/Verifiers/Misc/MiscPokerusVerifier.cs:23-29` | none | `Gen5Analyzer::eggState` `:1152-1166` (rule removed) | strain and days only, as for a hatched Pokemon | corpus group `egg` (57 false Invalids on seed 1 before the removal) | Parity restored |
+| Save context: the record's game vs the save's game, the save's trainer vs the OT, the save's language | all | none (PKHeX has no save-side check at format 5) | `Pk5Input::game`, `Pk5Input::trainer` | `Gen5Analyzer::saveContext` `:1905` | Info "Originates from X and sits in a Y save: it was traded in"; Info "Original Trainer is the save's trainer" / "... is not the save's trainer (received in a trade)"; Warning "Trainer ID and Secret ID are the save's, but the OT name or gender is not; suspicious provenance"; Warning and source-game coverage Partial for a non-Gen V game id | adapter test (`trainer`, `other game`, `unknown id` cases) | Added (beyond PKHeX; Info/Warning only, never Invalid) |
+
+### Engine API and app adapter
+
+- `Legality::analyzePk5(std::span<const uint8_t> record, const Pk5Input& input = {})`
+  (`include/Legality/Gen5Legality.h`). `record` is 136 (box) or 220 (party) bytes, encrypted
+  by default (`Pk5Input::encrypted = false` for a decrypted record); `Pk5Input::game` is the
+  save's game (20 W, 21 B, 22 W2, 23 B2; 0 unknown); `Pk5Input::slot` is Party, Box or
+  Unknown (Unknown falls back to the record size); `Pk5Input::trainer` carries the save's
+  TID, SID, OT, OT gender and language when `present`. The call reads the record only and
+  is deterministic; malformed sizes, an undecryptable record, a bad checksum or sanity byte
+  are reported in the `Report`. An all-zero record or species 0 gives an empty report
+  (an empty slot). Existing `analyzePk5(record)` call sites are unchanged.
+- `Legality::Gen5App::analyze(record, sourceGameId, Options)`
+  (`include/Legality/Gen5AppAdapter.h`, `src/Legality/Gen5AppAdapter.cpp`) maps the app's id
+  strings `black_nds`, `white_nds`, `black2_nds`, `white2_nds` to the version byte, calls
+  `analyzePk5`, and returns the `Report`, its `Verdict` and the verdict, coverage and issue
+  lines. An Incomplete report never renders as "No problems found"
+  (`tests/test_legality_gen5_adapter.cpp` checks the rendering of every fixture and of 5,000
+  fuzzed records, including malformed sizes, broken checksums and empty slots). It depends on
+  nothing outside the legality engine.
+- Build: `Makefile.host.gen5-legality` (`test_legality_gen5`, `test_legality_gen5_adapter`,
+  both with `_sanitize` variants under `-fsanitize=address,undefined
+  -fno-sanitize-recover=all`); `.github/workflows/legality-gen5-pkhex-diff.yml` runs both and
+  the differential.
+
+### Colosseum / XD integration point
+
+`Gen5Analyzer::analyzeOrigin` (`src/Legality/Gen5Legality.cpp:1644-1661`) returns before the
+Gen IV bridge when `p_.version == kVersionCXD` (15), and `Gen5Analyzer::transfer` (`:1731`)
+adds the Warning "Colosseum / XD origin: the original encounter and moves are not checked".
+When Lane A's `include/Legality/Gen3Cxd.h` exists, the hunk is: in `analyzeOrigin`, replace
+the `p_.version == kVersionCXD` early return with a call to the Gen III GameCube origin
+analysis on the same PK4-shaped view (`G4::Pk4 view` with `format = 5`), store its result in
+`origin_` the way `G4::analyzeOrigin5` is stored, and drop the Warning at `:1731` when that
+result reports an encounter; `mergeOrigin` then handles its lines unchanged. Until then the
+2,964 PKHeX-valid and 1,287 of the 5,053 PKHeX-invalid Colosseum / XD transfers on the six
+seeds stay Incomplete (the other 3,766 are Invalid on Gen V-side rules). The existing fixture
+set keeps a Colosseum / XD record Incomplete, so the integration can be tested by flipping
+that expectation when the analysis lands.
 
 ## PokeBank NX: names, trades, events and transfers
 
@@ -994,6 +1059,20 @@ cards. A record that matches none gets the Warning "Fateful encounter does not
 match any event card in the pinned Gen V database" (event coverage Partial),
 never Invalid. PKHeX reports `EncGiftNotFound`, but a database PokeBank NX
 cannot prove complete is no proof that the card never existed.
+
+Provenance audit of that database (decoded from `pgf.pkl`, 709 entries of 0xCC bytes):
+700 are Pokemon cards (card type 1) and 9 are item cards, which no record can match.
+Of the 700: language 0 (any) on 687, Japanese (1) on 1, English (2) on 12; origin game 0
+(the receiving game) on all 700; 48 are eggs; 100 are always shiny; dates run from 2010 to
+2014 and none is missing; 12 (title, species, language, game, card id) keys repeat
+(30 duplicate entries, for example "It's Darkrai!" card 28, "Zekrom!" / "Reshiram!" card 33
+and the shiny Dialga / Palkia / Giratina cards 148-150), which the matcher treats as one
+card each. PKHeX's `RestrictLanguage` and `RestrictVersion` fields are 0 on every card at the
+pinned commit, so no card is region- or game-locked here; a later PKHeX commit (9ac42ff26)
+that fills them is not an ancestor of the pin and was not used. Reliability: the entries
+are PKHeX's captures of distributed wonder cards; PokeBank NX did not re-verify them against
+original distributions, which is why a non-match is a Warning and a match is Complete only
+for the card's fixed data.
 
 For a matched card, the following are checked:
 
@@ -1121,35 +1200,191 @@ contest stats (`EncounterTrade3`, `EncounterTrade4PID`).
   of its 8. PKHeX reads to the end of the buffer and allows a 12-character
   Western OT. PokeBank NX is stricter. No record PKHeX builds reaches it, so
   run.sh never meets it.
-- **Hatched bred Pokemon.** PKHeX checks only that each move has a source; it
-  replays the inheritance order (`MoveBreed`) only for an unhatched egg.
-  PokeBank NX does the same. Moves and breeding coverage are Complete for a
-  hatched Pokemon and Partial (Warning) for an unhatched bred egg.
+- **Bred Pokemon.** PKHeX checks only that each move of a hatched Pokemon has
+  a source, and replays the inheritance order (`MoveBreed5`) for an unhatched
+  egg. PokeBank NX now does both (`Breed5::valid`): moves and breeding coverage
+  are Complete for a hatched Pokemon and for an unhatched egg whose order fits;
+  an order that does not fit is Invalid.
+- **Pokerus on an egg.** Accepted, as PKHeX does (`Pokerus.IsObtainable`);
+  the former Invalid had no original-game evidence and was a false Invalid on
+  57 PKHeX-built eggs of seed 1.
+- **Save context.** `Pk5Input` adds the save's game, trainer and language.
+  They only add Info lines and two Warnings (non-Gen V game id; TID/SID of the
+  save with another OT name or gender), never an Invalid: a traded Pokemon
+  legitimately carries another trainer, and PKHeX has no such rule.
+- **PKHeX quirks (a)-(g).** (a) Entree Forest gender mismatch
+  (`EncounterStatic5Entree.cs:94` returns true early): PokeBank NX checks the
+  gender against the template like every other static, so a mismatch is Invalid
+  only when no other template matches; the differential has no record that
+  reaches the difference. (b) PGF `Level` setter offset: a writing bug, no
+  reading effect; nothing to decide. (c) `MoveBreed5` drops HM06 Dive from the
+  inheritable TM list: parity kept and recorded as an Unresolved difference in
+  PKHEX_VERIFIED_IMPROVEMENTS.md. (d) Roamer location bitmask, (e) egg location
+  30002 (spin trade) and (f) the capsule locations 30010 / 30012 from
+  `GetTransferMetLocation4`: ported as PKHeX reads them; (f) stays a Warning on a
+  non-fateful Celebi / beast (Still Incomplete). (g) No per-stat 252 EV cap at
+  format 5: parity (PKHeX accepts an EV of 255 at format 5 and so does PokeBank
+  NX; only the 510 sum and the egg rule apply).
 
 ### Still Incomplete
 
-- Colosseum / XD-origin records: the Orre encounters, moves and PID/IV are not
-  checked (Warning "Colosseum / XD origin: the original encounter and moves are
-  not checked").
+Each item names the evidence that would settle it. Counts are over the six seeds
+of the current round (808,678 records).
+
+- Colosseum / XD-origin records (2,964 PKHeX-valid, 1,287 PKHeX-invalid left
+  Incomplete): the Orre encounters, moves and PID/IV are not checked (Warning
+  "Colosseum / XD origin: the original encounter and moves are not checked").
+  Needs Lane A's `include/Legality/Gen3Cxd.h`; the hunk is described above.
 - Gen III/IV-origin records with a PKHeX "fishy" result, kept as a Warning as
   PKHeX does: a Ruby / Sapphire egg whose TID/SID has no Ruby / Sapphire seed
-  (`TrainerIDNoSeed`), and a Gen III wild encounter whose PID/IV is on no
-  reachable RNG frame (`EncConditionBadRNGFrame`).
+  (`TrainerIDNoSeed`; 2,184 PKHeX-valid R/S transfers), and a Gen III wild
+  encounter whose PID/IV is on no reachable RNG frame
+  (`EncConditionBadRNGFrame`). Needs the Ruby / Sapphire trainer-ID seeding
+  (pokeruby `src/main_menu.c` / `new_game.c` RNG at name entry) analysed for
+  every reachable seed, which is Lane A's territory.
 - A Celebi or Raikou / Entei / Suicune at an event-capsule transfer location
   (30010-30013) that is not fateful: PKHeX's converter gives these locations
-  only to event Pokemon, but its verifier accepts them (Warning).
-- Fateful records that match no supported PGF card.
-- Names with a UTF-16 unit outside `Gen5Text::inDomain`.
-- Japanese / Korean player OTs of exactly 6 characters.
-- A Gen V nickname that differs from the matched card's nickname.
-- A PGF shiny PID that also fits a Gen III event pattern.
+  only to event Pokemon, but its verifier accepts them (Warning). Needs the
+  Poke Transfer (Black / White transfer software) location assignment, for which
+  no decompilation exists; a captured non-event transfer at such a location
+  would also settle it.
+- Fateful records that match no supported PGF card (1,021 PKHeX-invalid `card`
+  mutations and 1,273 `base` / other mutations left Incomplete, all
+  `EncGiftNotFound` in PKHeX). Needs proof that PKHeX's 700 Pokemon cards are
+  the complete set of Gen V distributions; the audit above shows the database
+  is a capture set, not a proven-complete list.
+- Names with a UTF-16 unit outside `Gen5Text::inDomain` (81 `otname`
+  mutations, PKHeX `WordFilterFlaggedPattern_01`). Needs the Gen V name-entry
+  character tables for every language (no decompilation).
+- Japanese / Korean player OTs of exactly 6 characters: name entry stops at 5,
+  but a Gen IV-origin Japanese OT of 6 is possible through Poke Transfer and the
+  Gen V side cannot tell the two apart. Needs the Gen V name-entry limit as
+  code (no decompilation).
+- A Gen V nickname that differs from the matched card's nickname: the card
+  either fixes it or allows any nickname; the 23 PKHeX-valid event records left
+  Incomplete carry a nickname whose language rule PKHeX resolves through the
+  card's `IsNicknamed` flag that PokeBank NX reads conservatively.
+- A PGF shiny PID that also fits a Gen III event pattern (160 PKHeX-invalid
+  `iv` mutations). Needs the Mystery Gift receiver's shiny PID generation (no
+  Gen V decompilation).
 - Encounter-dependent rules where several Gen V templates match and PKHeX's
   choice is not modelled: gender from a two-gender pre-evolution, and the
-  Wurmple branch.
+  Wurmple branch (108 PKHeX-valid native records left Incomplete). Needs
+  PKHeX's full candidate ordering (`EncounterGenerator5` yield order), which is
+  a PKHeX implementation detail rather than game evidence; the records are
+  legal either way and only lack certification.
 - Colosseum / XD-origin names, OTs, contest sheen and event ribbons that only
   an in-game trade or an event card can explain (see the table).
+- The hidden-ability flag on a fateful Gen IV origin, review item 15-C: needs a
+  Gen IV event card whose Pokemon PKHeX treats as an unevolved card with the
+  flag, or confirmation that none exists.
 
-### Measured
+### Measured (this round: seeds 1, 2, 7, 11, 13, 17)
+
+Command, per seed (PKHeX at the pinned commit, oracle rebuilt with the `egg`,
+`evomove` and `kyurem` groups):
+
+```
+GEN5_DIFF_KEEP=<dir> SHOW=40 tools/pkhex_gen5_diff/run.sh /home/user/ext/pkhex SEED 4
+```
+
+Every run: `false Valid ... : 0`, `PASS: no false Invalid`, exit 0; 0 mismatches
+in casing (47,748 units), word-filter lists (4,533 / 3,405 / 362), word-filter
+verdicts (47,648 strings x 3 origins) and fixed names (225 nicknames, 339 OTs).
+
+| Seed | PKHeX VALID / NX No problems | PKHeX INVALID / NX Invalid | PKHeX VALID / NX Incomplete | PKHeX INVALID / NX Incomplete | false Valid | false Invalid |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 | 61,191 | 72,211 | 941 | 495 | 0 | 0 |
+| 2 | 61,364 | 71,883 | 891 | 490 | 0 | 0 |
+| 7 | 61,511 | 71,914 | 898 | 520 | 0 | 0 |
+| 11 | 61,472 | 72,168 | 898 | 495 | 0 | 0 |
+| 13 | 61,751 | 72,149 | 913 | 520 | 0 | 0 |
+| 17 | 61,090 | 71,540 | 894 | 479 | 0 | 0 |
+| all | 368,379 | 431,865 | 5,435 | 2,999 | 0 | 0 |
+
+808,678 records; 373,814 PKHeX-valid, 434,864 PKHeX-invalid. Corpus groups
+(PKHeX verdict / PokeBank NX verdict):
+
+| Group | VALID / No problems | INVALID / Invalid | VALID / Incomplete | INVALID / Incomplete |
+|---|---:|---:|---:|---:|
+| base (every encounter PKHeX can build, converted transfers) | 214,281 | 214,660 | 3,841 | 1,273 |
+| card (every PGF card) | 15,509 | 25,457 | 13 | 1,021 |
+| egg (unhatched bred eggs: base moves, inherited sets, shuffled orders) | 31,475 | 78,680 | 1 | 4 |
+| evomove (evolutions by move from grown records) | 2,059 | 4,977 | 78 | 51 |
+| grown (levelled copies) | 96,258 | 96,081 | 1,502 | 649 |
+| kyurem (forms 0-2 x Scary Face / Fusion Flare / Fusion Bolt) | 32 | 76 | 0 | 0 |
+| lang (trades with every language) | 2,303 | 3,277 | 0 | 0 |
+| table (the trade table) | 6,462 | 8,657 | 0 | 1 |
+
+Share of PKHeX-valid records certified "No problems found" (valid
+certification; the rate is not rule completeness):
+
+| Origin | Game | PKHeX-valid | Certified |
+|---|---|---:|---:|
+| native | B | 49,019 | 49,002 (99.97%) |
+| native | W | 43,493 | 43,470 (99.95%) |
+| native | B2 | 59,409 | 59,371 (99.94%) |
+| native | W2 | 56,518 | 56,488 (99.95%) |
+| native | all | 208,439 | 208,331 (99.95%) |
+| trade | all | 12,769 | 12,769 (100%) |
+| event | B | 7,612 | 7,606 (99.92%) |
+| event | W | 5,504 | 5,497 (99.87%) |
+| event | B2 | 5,442 | 5,433 (99.83%) |
+| event | W2 | 5,390 | 5,389 (99.98%) |
+| event | all | 23,948 | 23,925 (99.90%) |
+| transfer | R | 9,298 | 8,177 (87.94%) |
+| transfer | S | 7,515 | 6,435 (85.63%) |
+| transfer | E | 10,423 | 10,371 (99.50%) |
+| transfer | FR | 10,530 | 10,490 (99.62%) |
+| transfer | LG | 9,809 | 9,763 (99.53%) |
+| transfer | CXD | 2,964 | 0 (not analyzed) |
+| transfer | D | 16,344 | 16,344 (100%) |
+| transfer | P | 15,077 | 15,077 (100%) |
+| transfer | Pt | 16,026 | 16,025 (99.99%) |
+| transfer | HG | 16,053 | 16,053 (100%) |
+| transfer | SS | 14,619 | 14,619 (100%) |
+| transfer | all | 128,658 | 123,354 (95.88%) |
+| all | | 373,814 | 368,379 (98.55%) |
+
+Share of PKHeX-invalid records reported Invalid (invalid detection):
+
+| Origin | Game | PKHeX-invalid | Invalid here |
+|---|---|---:|---:|
+| native | all | 233,559 | 233,533 (99.99%) |
+| trade | all | 17,441 | 17,439 (99.99%) |
+| event | B / W / B2 / W2 | 39,604 | 38,040 (96.05%) |
+| event | Gen III/IV versions (mutated) | 673 | 673 (100%) |
+| event | all | 40,277 | 38,713 (96.12%) |
+| transfer | R | 12,400 | 12,400 (100%) |
+| transfer | S | 10,116 | 10,116 (100%) |
+| transfer | E | 10,094 | 10,093 (99.99%) |
+| transfer | FR | 10,264 | 10,264 (100%) |
+| transfer | LG | 9,238 | 9,237 (99.99%) |
+| transfer | CXD | 5,053 | 3,766 (74.53%) |
+| transfer | D | 17,307 | 17,305 (99.99%) |
+| transfer | P | 15,505 | 15,502 (99.98%) |
+| transfer | Pt | 16,634 | 16,631 (99.98%) |
+| transfer | HG | 17,536 | 17,535 (99.99%) |
+| transfer | SS | 15,852 | 15,850 (99.99%) |
+| transfer | B / W / B2 / W2 (version byte mutated) | 3,588 | 3,481 (97.02%) |
+| transfer | all | 143,587 | 142,180 (99.02%) |
+| all | | 434,864 | 431,865 (99.31%) |
+
+The 5,435 PKHeX-valid records left Incomplete: 5,304 transfers (2,964
+Colosseum / XD; 2,184 Ruby / Sapphire `TrainerIDNoSeed` eggs and the
+`EncConditionBadRNGFrame` wild encounters, both PKHeX Fishy; the rest word
+filter domain), 108 native (several templates match; gender / Wurmple), 23
+event (nickname vs card). The 2,999 PKHeX-invalid records left Incomplete, by
+PKHeX's first result: 1,545 `EncGiftNotFound` (fateful records matching no
+card after a met-location, species or version mutation), 1,287 Colosseum / XD,
+about 480 `TrainerIDNoSeed` (R/S fishy, plus a mutation PKHeX reports only as
+Fishy), 182 `PIDTypeMismatch` (shiny card PID that fits a BACD pattern), 81
+`WordFilterFlaggedPattern_01` on OTs outside the modelled text domain, 101
+`FatefulMissing` / `FatefulInvalid` on fateful-flag toggles whose record then
+matches no template on either side, 80 `Move:Unobtainable` on Gen III/IV-origin
+records whose PKHeX result depends on the Colosseum / XD or fishy branch.
+
+### Measured (previous round: seeds 1, 2, 7 and 11)
 
 `tools/pkhex_gen5_diff/run.sh /path/to/PKHeX SEED 4` for seeds 1, 2, 7 and 11
 (fresh corpora, PKHeX at the pinned commit). Each run produced:

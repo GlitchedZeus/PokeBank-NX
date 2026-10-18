@@ -6,12 +6,15 @@
 //   dotnet PKHeXGen5Oracle.dll wordfilter SEED  (PKHeX word filter verdicts for test strings)
 //
 // generate builds, with a fixed test trainer, every Gen V encounter PKHeX knows for
-// species 1-649 in Black, White, Black 2 and White 2 ("native"), every in-game trade
-// in every Gen V language ("trade"), every PGF card in PKHeX's Mystery Gift database
-// ("event"), Gen III/IV encounters converted PK3 -> PK4 -> PK5 the way Poke Transfer
-// does ("transfer"), and "grown" copies of the PKHeX-valid ones (levelled, moves
-// relearned from PKHeX's own learnable set, EVs, sometimes evolved). Each record then
-// gets MUTATIONS single-field mutations. One line per record:
+// species 1-649 in Black, White, Black 2 and White 2 ("native"), unhatched eggs of every
+// breedable species with inherited moves in PKHeX's own MoveBreed order and in a shuffled
+// order ("egg"), every in-game trade in every Gen V language ("trade"), every PGF card in
+// PKHeX's Mystery Gift database ("event"), Gen III/IV encounters converted PK3 -> PK4 ->
+// PK5 the way Poke Transfer does ("transfer"), "grown" copies of the PKHeX-valid ones
+// (levelled, moves relearned from PKHeX's own learnable set, EVs, sometimes evolved),
+// move-evolutions forced at any level ("evomove") and fused Kyurem forms with the
+// form-exclusive moves ("kyurem"). Each record then gets MUTATIONS single-field
+// mutations. One line per record:
 //   <id> <decrypted 136-byte PK5 hex> VALID|INVALID <encounter type>:<species> <origin> <group> <game> ; <identifier>:<result> ...
 // The records are synthetic (made by PKHeX from its own templates), never a personal save.
 using System.Reflection;
@@ -93,6 +96,7 @@ gen.Trades();
 gen.Cards();
 gen.Transfers();
 gen.Grown();
+gen.SpecialForms();
 return 0;
 
 /// <summary>Test strings for names: species names, bad-word samples, digits, scripts.</summary>
@@ -294,7 +298,14 @@ sealed class Generator(Random rng, int mutations)
                             continue;
                         var origin = OriginOf(enc);
                         if (TryConvert(enc, tr) is { } pk)
+                        {
                             EmitWithMutations(pk, origin, "base");
+                            if (enc is EncounterEgg5 egg)
+                            {
+                                foreach (var unhatched in Unhatched(egg, pk))
+                                    EmitWithMutations(unhatched, origin, "egg");
+                            }
+                        }
                         // In-game trades: every other language too.
                         if (enc is EncounterTrade5BW or EncounterTrade5B2W2)
                         {
@@ -551,6 +562,120 @@ sealed class Generator(Random rng, int mutations)
                 }
             }
             Emit(pk, origin, "grown", withMutations: true);
+        }
+    }
+
+    /// <summary>
+    /// Unhatched eggs of this template: the level-1 moves alone, then with moves the father
+    /// can pass on (egg moves, inherited level-up moves, TMs, Volt Tackle for Pichu) in the
+    /// order PKHeX's MoveBreed expects, then the same moves in a shuffled order.
+    /// </summary>
+    private IEnumerable<PK5> Unhatched(EncounterEgg5 egg, PK5 hatched)
+    {
+        var species = egg.Species;
+        bool bw = egg.Version is GameVersion.B or GameVersion.W;
+        ILearnSource ls = bw ? LearnSource5BW.Instance : LearnSource5B2W2.Instance;
+        var baseMoves = ls.GetLearnset(species, 0).GetBaseEggMoves(EncounterEgg5.Level).ToArray();
+        var eggMoves = LearnSource5BW.Instance.GetEggMoves(species, 0).ToArray();
+        var inherit = ls.GetInheritMoves(species, 0).ToArray();
+        IPersonalInfoTM pi = bw ? PersonalTable.BW[species] : PersonalTable.B2W2[species];
+        var tmList = PersonalInfo5BW.MachineMoves[..^1].ToArray();
+        var tms = tmList.Where((_, i) => pi.GetIsLearnTM(i)).ToArray();
+        for (int k = 0; k < 3; k++)
+        {
+            var pk = hatched.Clone();
+            pk.IsEgg = true;
+            pk.IsNicknamed = true;
+            pk.Nickname = SpeciesName.GetSpeciesNameGeneration(0, pk.Language, 5);
+            pk.MetLocation = 0;
+            pk.MetDate = null;
+            pk.OriginalTrainerFriendship = pk.PersonalInfo.HatchCycles;
+            var wanted = new List<ushort>(baseMoves);
+            if (k > 0)
+            {
+                var extra = new List<ushort>();
+                if (eggMoves.Length > 0) extra.Add(eggMoves[rng.Next(eggMoves.Length)]);
+                if (inherit.Length > 0 && rng.Next(2) == 0) extra.Add(inherit[rng.Next(inherit.Length)]);
+                if (tms.Length > 0 && rng.Next(2) == 0) extra.Add(tms[rng.Next(tms.Length)]);
+                if (species == (int)Species.Pichu && rng.Next(2) == 0) extra.Add((ushort)Move.VoltTackle);
+                foreach (var m in extra)
+                {
+                    if (!wanted.Contains(m))
+                        wanted.Add(m);
+                }
+                while (wanted.Count > 4)
+                    wanted.RemoveAt(0);
+            }
+            var moves = new ushort[4];
+            for (int i = 0; i < wanted.Count; i++)
+                moves[i] = wanted[i];
+            if (k == 2)
+            {
+                moves = moves.OrderBy(_ => rng.Next()).ToArray(); // probably not an order breeding produces
+                if (moves[0] == 0 && wanted.Count > 0)
+                    (moves[0], moves[wanted.Count - 1]) = (moves[wanted.Count - 1], moves[0]);
+            }
+            else
+            {
+                var expected = new ushort[4];
+                MoveBreed.GetExpectedMoves(moves, egg, expected);
+                moves = expected;
+            }
+            pk.SetMoves(moves);
+            pk.Move1_PPUps = pk.Move2_PPUps = pk.Move3_PPUps = pk.Move4_PPUps = 0;
+            pk.HealPP();
+            yield return pk;
+        }
+    }
+
+    /// <summary>Species that evolve by levelling up while knowing a move (EvolutionRestrictions), with their evolution.</summary>
+    private static ushort MoveEvolution(ushort species) => species switch
+    {
+        (int)Species.MimeJr => (int)Species.MrMime,
+        (int)Species.Bonsly => (int)Species.Sudowoodo,
+        (int)Species.Aipom => (int)Species.Ambipom,
+        (int)Species.Lickitung => (int)Species.Lickilicky,
+        (int)Species.Tangela => (int)Species.Tangrowth,
+        (int)Species.Yanma => (int)Species.Yanmega,
+        (int)Species.Piloswine => (int)Species.Mamoswine,
+        _ => 0,
+    };
+
+    /// <summary>Forces the move evolution at the current level (valid or not, PKHeX decides) and the fused Kyurem forms.</summary>
+    public void SpecialForms()
+    {
+        foreach (var (seed, origin) in grownSeeds.ToArray())
+        {
+            var to = MoveEvolution(seed.Species);
+            if (to != 0)
+            {
+                var pk = seed.Clone();
+                if (pk.CurrentLevel < 100 && rng.Next(2) == 0)
+                    pk.EXP = Experience.GetEXP((byte)rng.Next(pk.CurrentLevel + 1, 101), pk.PersonalInfo.EXPGrowth);
+                pk.Species = to;
+                pk.Form = 0;
+                pk.RefreshAbility(pk.AbilityNumber >> 1);
+                pk.Gender = pk.GetSaneGender();
+                if (!pk.IsNicknamed)
+                    pk.Nickname = SpeciesName.GetSpeciesNameGeneration(to, pk.Language, 5);
+                Emit(pk, origin, "evomove", withMutations: true);
+            }
+            if (seed.Species == (int)Species.Kyurem)
+            {
+                ushort[] exclusive = [(ushort)Move.ScaryFace, (ushort)Move.FusionFlare, (ushort)Move.FusionBolt];
+                for (byte form = 0; form <= 2; form++)
+                {
+                    foreach (var move in exclusive)
+                    {
+                        var pk = seed.Clone();
+                        pk.Form = form;
+                        pk.RefreshAbility(pk.AbilityNumber >> 1); // the fused forms have their own ability
+                        pk.SetMove(0, move);
+                        pk.HealPP();
+                        Emit(pk, origin, "kyurem", withMutations: false);
+                    }
+                }
+            }
         }
     }
 

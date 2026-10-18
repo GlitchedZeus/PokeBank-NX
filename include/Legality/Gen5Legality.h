@@ -79,13 +79,45 @@ bool validHatchLocation(uint16_t location, uint8_t version) noexcept;
 
 } // namespace Gen5
 
+/// Where the record was read from. PKHeX StorageSlotType: a boxed Gen V Pokemon was
+/// healed when it was deposited (MovePPVerifier.GetIsStoredHealed: PK5 -> OnlyHealed), and
+/// Shaymin's Sky Forme reverts in a box (FormVerifier). Unknown applies neither rule
+/// beyond what the record length (136 box / 220 party) already shows.
+enum class Pk5Slot : uint8_t { Unknown, Party, Box };
+
+/// Optional save-side trainer context. The record is compared with it for information
+/// only: a Pokemon from another trainer is normal (trades), so the only Warning is a
+/// trainer ID equal to the save's with another OT name or gender (suspicious provenance).
+struct Pk5Trainer {
+    bool present = false;
+    uint16_t tid = 0, sid = 0;
+    std::array<uint16_t, 8> ot{};  // UTF-16 units as stored in the save, 0xFFFF-terminated
+    bool female = false;
+    uint8_t language = 0;          // 0: unknown
+};
+
+/// Input contract of analyzePk5. Every field after `encrypted` is optional and defaults to
+/// "unknown", so a call site that only passes `{.encrypted = ...}` keeps its behaviour.
 struct Pk5Input {
     /// True for a record as stored in a save (encrypted and shuffled); false for
     /// an already-decrypted record.
     bool encrypted = true;
+    /// The save's game (PKHeX GameVersion id: 20 White, 21 Black, 22 White 2, 23 Black 2),
+    /// or 0 when unknown. A record whose origin game differs was traded in; that is reported
+    /// as information, never as a problem. An id outside 20-23 is a Warning (source game
+    /// coverage Partial), so the report is Incomplete rather than wrong.
+    uint8_t game = 0;
+    Pk5Slot slot = Pk5Slot::Unknown;
+    Pk5Trainer trainer{};
 };
 
-/// Analyze one PK5 record. An all-zero or species-0 record returns an empty report.
+/// Analyze one PK5 record (136-byte box or 220-byte party, encrypted or decrypted).
+///
+/// Read-only contract: the bytes are only read; nothing is written back, no save is
+/// touched, and the same input always gives the same Report. Any other size, an
+/// undecryptable record, a bad checksum or a set sanity (bad egg) field is reported in
+/// the Report (structure coverage None / Partial), never thrown. An all-zero or
+/// species-0 record returns an empty report (an empty slot is not a Pokemon).
 Report analyzePk5(std::span<const uint8_t> record, const Pk5Input& input = {});
 
 } // namespace Legality
