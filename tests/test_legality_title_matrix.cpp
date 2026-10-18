@@ -587,8 +587,11 @@ void cases() {
                        b[kBody] = glitch;
                    })));
     }
+    // With the stored bytes, a leading 0x01 reads as a Korean (Hangul page) name, as PKHeX's
+    // StringConverter2KOR.IsHangul does; eleven bytes with no terminator are too long for any
+    // trainer name, so the record stays Invalid.
     record("Yellow", "malformed", "OT name bytes 01 02 03 ... (no glyphs)",
-           expect(O::Invalid, {invalid("Original trainer name is empty")}),
+           expect(O::Invalid, {invalid("Original trainer name is longer than")}),
            run("Yellow", save("Yellow", caterpie3(), [](std::vector<uint8_t>& b) {
                    for (std::size_t i = 0; i < 11; ++i)
                        b[kOt + i] = static_cast<uint8_t>(i + 1);
