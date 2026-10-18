@@ -15,6 +15,8 @@
  */
 #include "Legality/Gen3Legality.h"
 
+#include "Legality/Gen3Cxd.h"
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -631,7 +633,8 @@ bool pokeSpotOriginIVs(const Pk3& pk, uint8_t levelMin, uint8_t levelMax) noexce
     for (uint32_t preIV : xdSeedsIVs(iv1 << 16, iv2 << 16)) {
         if (!pokeSpotAnimation(xdPrevN(preIV, 6))) continue;
         const uint32_t lvl16 = xdPrevN(preIV, 2) >> 16;
-        if (pk.metLevel != levelMin + lvl16 % delta) continue;
+        const uint32_t lvl = levelMin + lvl16 % delta;
+        if (pk.metKnown ? pk.metLevel != lvl : pk.metLevel < lvl) continue; // MethodPokeSpot.cs:160-163
         return true;
     }
     return false;
@@ -1373,7 +1376,8 @@ void devolve3(std::array<Evo, 3>& result, const Pk3& pk, uint8_t encLevelMin) {
 std::vector<Evo> originChain(const Pk3& pk) {
     std::vector<Evo> out;
     const uint8_t maxLevel = pk.currentLevel;
-    const uint8_t minLevel = pk.isEgg ? 5 : pk.metLevel;
+    // EncounterOrigin.GetLevelOriginMin3: a record no longer in PK3 format starts at level 2.
+    const uint8_t minLevel = pk.isEgg ? 5 : (pk.metKnown ? pk.metLevel : 2);
     if (pk.isEgg) {
         Evo e; e.species = pk.species; e.form = pk.form; e.levelMax = maxLevel; e.levelMin = maxLevel;
         out.push_back(e);
@@ -1393,7 +1397,7 @@ std::vector<Evo> originChain(const Pk3& pk) {
 
 /// EvolutionChain.GetEvolutionChainsAllGens(pk, enc).Gen3 for a PK3 still in Gen III.
 std::vector<Evo> evolutionHistory(const Pk3& pk, uint16_t encSpecies, uint8_t encLevelMin, bool encInvalid) {
-    const uint8_t minLevel = std::max(pk.metLevel, encLevelMin);
+    const uint8_t minLevel = std::max(pk.metKnown ? pk.metLevel : uint8_t{0}, encLevelMin);
     const uint8_t maxLevel = pk.currentLevel;
     std::vector<Evo> chain;
     if (pk.isEgg) {
@@ -2060,6 +2064,12 @@ bool isGenderSpecificMatch(uint8_t otGenderRule, uint8_t value) noexcept {
     }
 }
 
+/// GameCube IsMatchLocation / IsMatchLevel (Format == 3: exact; otherwise lost to the transfer).
+bool gcLocation(const Pk3& pk, uint8_t location) noexcept { return !pk.metKnown || pk.metLocation == location; }
+bool gcLevel(const Pk3& pk, const Evo& evo, uint8_t level) noexcept {
+    return pk.metKnown ? pk.metLevel == level : evo.levelMax >= level;
+}
+
 bool isMatchExact(const Pk3& pk, const Enc& e, const Evo& evo) {
     switch (e.kind) {
         case Kind::Slot:
@@ -2154,32 +2164,37 @@ bool isMatchExact(const Pk3& pk, const Enc& e, const Evo& evo) {
             return evo.form == 0;
         }
         // GameCube templates (PK3 egg location is always 0, so IsMatchEggLocation holds).
+        // IsMatchLevel / IsMatchLocation: a record no longer in PK3 format (Gen3Cxd::judge
+        // with hasOriginalMet false) lost its met level and location to the transfer, so
+        // the location is not compared and the template level must be within the chain
+        // (e.g. EncounterShadow3Colo.cs:171-182, EncounterShadow3XD.cs:122-141).
         case Kind::XdTrade: { // EncounterTrade3XD.IsMatchExact: the SID is the player's
             const auto& t = X::kXdTrades[e.index];
-            return pk.metLocation == t.location && pk.metLevel == t.level && pk.tid == t.tid && evo.form == 0;
+            return gcLocation(pk, t.location) && gcLevel(pk, evo, t.level) && pk.tid == t.tid && evo.form == 0;
         }
         case Kind::ColoShadow: { // EncounterShadow3Colo.IsMatchExact
             const auto& s = shadowOf(e);
-            return pk.metLocation == s.location && pk.metLevel == s.level && evo.form == 0;
+            return gcLocation(pk, s.location) && gcLevel(pk, evo, s.level) && evo.form == 0;
         }
         case Kind::ColoStarter: { // EncounterStarter3Colo.IsMatchExact (male only)
             const auto& s = X::kColoStarters[e.index];
-            return pk.metLocation == X::kColoStarterLocation && pk.metLevel == s.level && pk.gender == 0 &&
+            return gcLocation(pk, X::kColoStarterLocation) && gcLevel(pk, evo, s.level) && pk.gender == 0 &&
                    evo.form == 0;
         }
         case Kind::ColoGiftCxd: { // EncounterGift3Colo.IsMatchExact (Version CXD)
             const auto& g = X::kColoGifts[e.index];
-            return pk.version == kVerCXD && pk.metLocation == g.location && pk.metLevel == g.level && evo.form == 0;
+            return pk.version == kVerCXD && gcLocation(pk, g.location) && gcLevel(pk, evo, g.level) && evo.form == 0;
         }
         case Kind::XdShadow: { // EncounterShadow3XD.IsMatchLocation: Miror B. rebattles
             const auto& s = shadowOf(e);
             const uint8_t met = pk.metLocation;
-            const bool location = met == s.location || met == 59 || met == 90 || met == 91 || met == 92 || met == 113;
-            return location && pk.metLevel == s.level && evo.form == 0;
+            const bool location = !pk.metKnown || met == s.location || met == 59 || met == 90 || met == 91 ||
+                                  met == 92 || met == 113;
+            return location && gcLevel(pk, evo, s.level) && evo.form == 0;
         }
         case Kind::XdStatic: { // EncounterStatic3XD.IsMatchExact
             const auto& g = X::kXdGifts[e.index];
-            return pk.metLocation == g.location && pk.metLevel == g.level && evo.form == 0;
+            return gcLocation(pk, g.location) && gcLevel(pk, evo, g.level) && evo.form == 0;
         }
         case Kind::XdSlot: // EncounterSlot3XD.IsMatchExact: handled by the area location
             return true;
@@ -2409,7 +2424,8 @@ std::vector<Enc> enumerateEncountersGC(const Pk3& pk, const std::vector<Evo>& ch
     }
     if (!eReaderMatched) {
         for (uint16_t a = 0; a < X::kPokeSpotCount; ++a) {
-            if (X::kPokeSpots[a].location != pk.metLocation) continue;
+            // EncounterEnumerator3GC.cs:106-117: the area location is compared for a PK3 only.
+            if (pk.metKnown && X::kPokeSpots[a].location != pk.metLocation) continue;
             for (uint16_t slot = 0; slot < 3; ++slot) en.consider(makeXdSlotEnc(a, slot));
         }
     }
@@ -3370,6 +3386,12 @@ bool verifyEvolution(const Pk3& pk, const Enc& e, const std::vector<Evo>& histor
 }
 
 /// EncounterFinder.FindVerifiedEncounter over the eagerly generated candidate list.
+/// Move verification, or "nothing to check" when the caller does not know the Gen III moves.
+MoveResults movesFor(const Pk3& pk, const Enc& e, const std::vector<Evo>& history) {
+    if (pk.movesKnown) return verifyMoves(pk, e, history);
+    return MoveResults{MEmpty, MEmpty, MEmpty, MEmpty};
+}
+
 void findEncounter(const Pk3& pk, Analysis& a) {
     const std::vector<Evo> chain = originChain(pk);
     a.pidiv = analyzePidIv(pk, a.capped);
@@ -3386,7 +3408,7 @@ void findEncounter(const Pk3& pk, Analysis& a) {
         else hint = "Unable to match an encounter from the origin game";
         a.invalid(CheckIdentifier::Encounter, std::move(hint));
         a.history = evolutionHistory(pk, pk.species, a.enc.levelMin, true);
-        a.moves = verifyMoves(pk, a.enc, a.history);
+        a.moves = movesFor(pk, a.enc, a.history);
         return;
     }
 
@@ -3410,7 +3432,7 @@ void findEncounter(const Pk3& pk, Analysis& a) {
         if (!check.valid) parse.push_back(Finding{SInvalid, CheckIdentifier::Encounter, check.text});
 
         a.history = evolutionHistory(pk, e.species, e.levelMin, e.kind == Kind::Invalid);
-        a.moves = verifyMoves(pk, e, a.history);
+        a.moves = movesFor(pk, e, a.history);
         if (!allMovesValid(a.moves) && peekIsNext(i)) continue;
         if (!parse.empty() && peekIsNext(i)) continue;
 
@@ -3949,8 +3971,9 @@ void verifyTrash(const Pk3& pk, Analysis& a) {
     flagIsNicknameClean(pk, a);
 }
 
+void verifyFateful(const Pk3& pk, Analysis& a);
+
 void verifyMisc(const Pk3& pk, Analysis& a) {
-    const Enc& e = a.enc;
     if (pk.isEgg) {
         if (pk.friendship > personal(pk.species).hatchCycles)
             a.invalid(CheckIdentifier::Egg, "Egg hatch counter is above the species maximum");
@@ -3960,7 +3983,17 @@ void verifyMisc(const Pk3& pk, Analysis& a) {
         if (pk.language != 1) a.invalid(CheckIdentifier::Egg, "Gen III eggs are always flagged Japanese");
     }
     verifyTrash(pk, a);
-    // MiscFatefulEncounterVerifier
+    verifyFateful(pk, a);
+    // MiscPokerusVerifier
+    const uint8_t strain = pk.pokerus >> 4;
+    const uint8_t days = pk.pokerus & 0xF;
+    if (days > (strain & 3) + 1) a.invalid(CheckIdentifier::Misc, "Pokerus days remaining exceed the strain duration");
+}
+
+/// MiscVerifier.VerifyFatefulEncounter (MiscVerifier.cs): the fateful (obedience) flag follows
+/// the template; XD sets it on every Pokemon it sends to a GBA game, Colosseum never does.
+void verifyFateful(const Pk3& pk, Analysis& a) {
+    const Enc& e = a.enc;
     bool checkInactive = true;
     if (e.kind == Kind::Gift) {
         const auto& g = D::kGifts[e.index];
@@ -3987,10 +4020,6 @@ void verifyMisc(const Pk3& pk, Analysis& a) {
         if (!pk.fateful) a.invalid(CheckIdentifier::EventGift, "XD Pokemon are missing the fateful encounter flag");
     }
     if (checkInactive && pk.fateful) a.invalid(CheckIdentifier::EventGift, "Fateful encounter flag is not possible for this encounter");
-    // MiscPokerusVerifier
-    const uint8_t strain = pk.pokerus >> 4;
-    const uint8_t days = pk.pokerus & 0xF;
-    if (days > (strain & 3) + 1) a.invalid(CheckIdentifier::Misc, "Pokerus days remaining exceed the strain duration");
 }
 
 void verifyMovePP(const Pk3& pk, Analysis& a) {
@@ -4342,5 +4371,142 @@ void applyGen3Analyzer(Report& r, const Gen3Pk3::Verification& verified, std::st
 void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
     applyGen3Analyzer(r, Gen3Pk3::verify(pk, exactSourceGameId), exactSourceGameId);
 }
+
+// ---------------------------------------------------------------------------
+// Gen3Cxd: the GameCube rules on the fields a later format keeps (Gen3Cxd.h)
+// ---------------------------------------------------------------------------
+
+namespace Gen3Cxd {
+
+namespace {
+
+using namespace Legality::Gen3Pk3;
+
+Template templateOf(const Enc& e) noexcept {
+    switch (e.kind) {
+        case Kind::XdTrade: return Template::XdTrade;
+        case Kind::ColoShadow: return e.eReader ? Template::ColoEReaderShadow : Template::ColoShadow;
+        case Kind::ColoStarter: return Template::ColoStarter;
+        case Kind::ColoGiftCxd: return Template::ColoGift;
+        case Kind::XdShadow: return Template::XdShadow;
+        case Kind::XdStatic: return Template::XdGift;
+        case Kind::XdSlot: return Template::XdPokeSpot;
+        default: return Template::None;
+    }
+}
+
+uint8_t templateLocation(const Enc& e) noexcept {
+    switch (e.kind) {
+        case Kind::XdTrade: return X::kXdTrades[e.index].location;
+        case Kind::ColoShadow: case Kind::XdShadow: return shadowOf(e).location;
+        case Kind::ColoStarter: return X::kColoStarterLocation;
+        case Kind::ColoGiftCxd: return X::kColoGifts[e.index].location;
+        case Kind::XdStatic: return X::kXdGifts[e.index].location;
+        case Kind::XdSlot: return X::kPokeSpots[e.area].location;
+        default: return 0;
+    }
+}
+
+/// "XD shadow Pokemon Zapdos, level 50, met location 162" (template facts, not the record's).
+std::string templateLabel(const Enc& e) {
+    std::string text = kindName(e.kind);
+    if (e.kind == Kind::ColoShadow && e.eReader) text += " (e-Reader)";
+    text += " " + speciesLabel(e.species) + ", level " + std::to_string(e.levelMin);
+    if (e.levelMax != e.levelMin) text += "-" + std::to_string(e.levelMax);
+    text += ", met location " + std::to_string(templateLocation(e));
+    if (e.kind == Kind::XdShadow) text += " (or a Miror B. rebattle location: 59, 90, 91, 92, 113)";
+    return text;
+}
+
+} // namespace
+
+Result judge(const Input& in) {
+    Result out;
+    if (in.species == 0 || in.species > D::kMaxSpecies) {
+        out.warnings.push_back("Species #" + std::to_string(in.species) + " is not a Gen III Pokemon; Colosseum/XD rules were not run");
+        return out;
+    }
+    Pk3 pk;
+    pk.species = in.species;
+    pk.pid = in.pid;
+    pk.tid = in.tid;
+    pk.sid = in.sid;
+    pk.language = in.language;
+    pk.otGender = in.otGender == 0 ? 0 : 1;
+    pk.ball = in.ball;
+    pk.fateful = in.fateful;
+    pk.isEgg = in.isEgg;
+    pk.version = kVerCXD;
+    pk.metKnown = in.hasOriginalMet;
+    pk.metLevel = in.metLevel;
+    pk.metLocation = in.hasOriginalMet ? in.metLocation : 0;
+    for (size_t i = 0; i < 6; ++i) {
+        pk.ivs[i] = in.ivs[i] & 0x1F;
+        pk.iv32 |= static_cast<uint32_t>(pk.ivs[i]) << (i * 5);
+    }
+    pk.abilityBit = in.abilityKnown && in.abilityBit != 0 ? 1 : 0;
+    pk.iv32 |= static_cast<uint32_t>(pk.isEgg) << 30 | static_cast<uint32_t>(pk.abilityBit) << 31;
+    if (in.ribbonsKnown) pk.ribbons = (in.ribbonNational ? 1u << 24 : 0u) | (in.ribbonEarth ? 1u << 25 : 0u);
+    if (pk.fateful) pk.ribbons |= 1u << 31;
+    pk.currentLevel = in.currentLevel == 0 ? 1 : (in.currentLevel > 100 ? 100 : in.currentLevel);
+    pk.movesKnown = in.movesKnown;
+    if (in.movesKnown) pk.moves = in.moves;
+    if (in.namesKnown) {
+        pk.nickname = in.nickname;
+        pk.ot = in.ot;
+        pk.isNicknamed = in.isNicknamed;
+    }
+    const auto& pi = personal(pk.species);
+    pk.form = pk.species == 201 ? unownForm(pk.pid) : 0;
+    pk.gender = genderFromRatio(pk.pid, pi.gender);
+    pk.nature = static_cast<uint8_t>(pk.pid % 25);
+    pk.shiny = isShinyPid(pk.pid, pk.tid, pk.sid);
+
+    // Candidates before the RNG, lock, ball and fateful rules (PKHeX enumerator order).
+    for (const Enc& e : enumerateEncountersGC(pk, originChain(pk))) out.candidates.push_back(templateLabel(e));
+
+    Analysis a;
+    findEncounter(pk, a);
+    verifyPid(pk, a);
+    verifyLanguage(pk, a);
+    if (in.namesKnown) {
+        verifyNickname(pk, a);
+        verifyTrainerName(pk, a);
+    }
+    verifyTrainerId(pk, a);
+    verifyIvs(pk, a);
+    if (in.ribbonsKnown) verifyRibbons(pk, a);
+    if (in.abilityKnown) verifyAbility(pk, a);
+    verifyBall(pk, a);
+    verifyFateful(pk, a);
+    verifyCxd(pk, a);
+    if (in.movesKnown) reportMoves(pk, a);
+
+    for (auto& f : a.findings) {
+        if (f.sev == SInvalid) out.invalid.push_back(std::move(f.text));
+        else if (f.sev == SFishy) out.warnings.push_back(std::move(f.text));
+    }
+    out.capped = a.capped;
+    if (a.capped) out.warnings.push_back("RNG search reached its limit; the Colosseum/XD origin could not be decided");
+    if (a.unsupported) out.warnings.push_back("A word-filter pattern could not be evaluated");
+    out.pidType = a.pidiv.type;
+    if (a.enc.kind != Kind::Invalid) {
+        out.matched = templateOf(a.enc);
+        out.encounter = templateLabel(a.enc);
+        out.encounterSpecies = a.enc.species;
+        out.encounterLevel = a.enc.levelMin;
+        out.encounterLevelMax = a.enc.levelMax;
+        out.encounterLocation = templateLocation(a.enc);
+        out.encounterMoves = a.enc.hasMoveset ? a.enc.moves : std::array<uint16_t, 4>{};
+        out.shadow = isShadowKind(a.enc.kind);
+        out.xd = isXdFatefulKind(a.enc.kind);
+    }
+    if (a.capped || a.unsupported) out.verdict = Verdict::Undecided;
+    else if (!out.invalid.empty()) out.verdict = Verdict::Invalid;
+    else out.verdict = Verdict::Matched;
+    return out;
+}
+
+} // namespace Gen3Cxd
 
 } // namespace Legality
