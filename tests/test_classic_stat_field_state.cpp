@@ -105,13 +105,17 @@ int main() {
                              "src/UI/Gen2PokemonEditorFoundation.inc", "src/UI/Gen1PokemonEditorOverlayFoundation.inc"}) {
         assert(read(path).find("::UI::ClassicFieldColor::shinyValueColor(") != std::string::npos);
     }
-    // QA CG17: the Gen I overlay and Gen II foundation headers name the exact source game.
+    // QA CG17: the Gen I overlay and Gen II foundation headers are the shared Gen III-V context
+    // line (Box / Slot • <Game> • Source save immutable • mode), with no developer wording.
     for (const char* path : {"src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen2PokemonEditorFoundation.inc"}) {
         const auto src = read(path);
-        const auto header = src.find("Source save immutable");
-        const auto game = src.rfind("ClassicGameContext::exactGameName(screen.sourceGameId)", header);
-        assert(header != std::string::npos && game != std::string::npos && header - game < 400);
+        assert(src.find("GameContext::contextLine(") != std::string::npos);
+        assert(src.find("screen.sourceGameId,") != std::string::npos);
+        for (const char* dev : {"PKSE three-panel workspace", "DETAILS | VALUES | MOVES  •", "Party mutation deferred"})
+            assert(src.find(dev) == std::string::npos);
     }
+    assert(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find("GameContext::SurfaceMode::CreateDraft") != std::string::npos);
+    assert(read("src/UI/Gen2PokemonEditorFoundation.inc").find("if (state.slot >= 0) record += \" / Slot \"") != std::string::npos);
     std::cout << "Gen I/II STATS field states: derived HP DV and calculated stats gold everywhere PASS\n";
     return 0;
 }

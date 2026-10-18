@@ -997,10 +997,15 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::string title = state.mode == Mode::Create ? "Create Pokemon — GEN II DRAFT"
                                                          : "Edit Pokemon — GEN II STAGED";
     fb.drawText(workspaceX + 24, workspaceY + 14, title, Colors::Text, TextStyle::Heading);
-    const std::string game(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
+    // Shared source-game context line (Gen III-V shape): Box / Slot • <Game> • Source save immutable • mode.
+    // A Create draft has no slot until it is added (the staged box assigns the next one).
+    namespace GameContext = PokeBank::UIModel::ClassicGameContext;
+    std::string record = "Box " + std::to_string(state.box + 1);
+    if (state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
     fb.drawText(workspaceX + 24, workspaceY + 50,
-                (game.empty() ? std::string() : game + "  •  ") +
-                "DETAILS | VALUES | MOVES  •  Source save immutable  •  Party mutation deferred",
+                GameContext::contextLine(record, screen.sourceGameId,
+                                         state.mode == Mode::Create ? GameContext::SurfaceMode::CreateDraft
+                                                                    : GameContext::SurfaceMode::EditStaged),
                 Colors::TextDim, TextStyle::Caption);
 
     constexpr int contentY = workspaceY + 78, contentH = 520;
