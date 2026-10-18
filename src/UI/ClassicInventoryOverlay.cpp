@@ -11,6 +11,7 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/SharedBagAddFlow.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
@@ -70,8 +71,10 @@ struct OverlayState {
     int reviewRow = 0;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
+    SharedScrollbar::State pickerScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
     TouchScrollState reviewScroll;
     TouchPickerViewport reviewViewport;
+    SharedScrollbar::State reviewScrollbar;   // R2-SCROLLBAR: draggable thumb on Pending Changes
     ClassicPocket pendingPocket = ClassicPocket::Items;
     uint16_t pendingItem = 0;
     uint16_t pendingQuantity = 0;
@@ -527,27 +530,34 @@ bool selectPickerItem(TrainerViewScreen& screen) {
     ClassicPocket pocket{};
     if (!currentPocket(screen, game, pocket) || state.pickerItems.empty()) return false;
     const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(state.pickerRow)];
-    const uint16_t existing = stagedQuantity(screen, pocket, itemId);
-    if (existing != 0) {
-        state.pickerActive = false;
-        refreshPresentation(screen);
-        focusItem(screen, itemId);
-        screen.postStatus("Already in this category; focused the existing item", 240);
-        return true;
-    }
-
-    const auto rule = PokeBank::UIModel::classicItemQuantity(game, pocket, itemId);
-    uint16_t quantity = rule.minimum;
-    if (rule.editable) {
-        const auto result = Utils::promptNumber(
-            "Add " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
-            static_cast<int>(rule.minimum), static_cast<int>(rule.minimum),
-            static_cast<int>(rule.maximum));
-        if (!result.accepted) return true;
-        quantity = static_cast<uint16_t>(result.value);
+    // The shared Gen I-V Add decision (UI/SharedBagAddFlow.h): an existing stack is focused,
+    // a new item is staged at quantity 1 with NO numpad; A on its row edits the quantity later.
+    // Capacity is left to the staged writer, whose refusal names the exact full pocket.
+    PokeBank::UIModel::BagAdd::PocketState pocketState{};
+    pocketState.heldInPocket = stagedQuantity(screen, pocket, itemId);
+    const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule rule =
+        PokeBank::UIModel::classicItemQuantityRule(game, pocket, itemId);
+    const auto decision = PokeBank::UIModel::BagAdd::decidePick(rule, pocketState);
+    using PokeBank::UIModel::BagAdd::PickOutcome;
+    switch (decision.outcome) {
+        case PickOutcome::NotAllowed:
+            screen.postStatus(decision.message, 240);
+            return true;
+        case PickOutcome::FocusExisting:
+            state.pickerActive = false;
+            refreshPresentation(screen);
+            focusItem(screen, itemId);
+            screen.postStatus(decision.message, 240);
+            return true;
+        case PickOutcome::PocketFull:
+            state.pickerActive = false;
+            screen.postStatus(decision.message, 300);
+            return true;
+        case PickOutcome::StageNew:
+            break;
     }
     state.pickerActive = false;
-    queueMutationWithWarning(screen, game, pocket, itemId, quantity);
+    queueMutationWithWarning(screen, game, pocket, itemId, decision.quantity);
     return true;
 }
 
@@ -667,14 +677,21 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
         const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        if (maxFirstRow > 0) {
+        // Shared scrollbar first: a held thumb moves the window, not the row, and owns the touch.
+        const auto pickerBar = SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(count, visibleRows, state.pickerViewport.firstRow));
+        if (pickerBar.changed) {
+            state.pickerViewport.firstRow = pickerBar.scroll;
+            state.pickerScroll.stop();
+        }
+        if (maxFirstRow > 0 && !pickerBar.consumed) {
             state.pickerScroll.updateVertical(
                 touch, x + 12, listTop, width - 24, listBottom - listTop,
                 rowH, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
             state.pickerScroll.stop();
         }
-        if (touchId >= 0 && touchId < count) {
+        if (!pickerBar.consumed && touchId >= 0 && touchId < count) {
             state.pickerScroll.stop();
             state.pickerRow = touchId;
             down |= HidNpadButton_A;
@@ -739,14 +756,20 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         const int x = (1280 - width) / 2;
         state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
         const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        if (maxFirstRow > 0) {
+        const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(count, visibleRows, state.reviewViewport.firstRow));
+        if (reviewBar.changed) {
+            state.reviewViewport.firstRow = reviewBar.scroll;
+            state.reviewScroll.stop();
+        }
+        if (maxFirstRow > 0 && !reviewBar.consumed) {
             state.reviewScroll.updateVertical(
                 touch, x + 30, y + 94, width - 60, visibleRows * rowStep,
                 rowStep, state.reviewViewport.firstRow, maxFirstRow + 1);
         } else {
             state.reviewScroll.stop();
         }
-        if (touchId >= 0 && touchId < count) {
+        if (!reviewBar.consumed && touchId >= 0 && touchId < count) {
             state.reviewScroll.stop();
             state.reviewRow = touchId;
         }
@@ -892,10 +915,16 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             else screen.postStatus("This item has a fixed/presence-only quantity", 240);
             return true;
         }
-        const auto rule = PokeBank::UIModel::classicItemQuantity(game, pocket, itemId);
+        const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule rule =
+            PokeBank::UIModel::classicItemQuantityRule(game, pocket, itemId);
+        const auto row = PokeBank::UIModel::BagAdd::decideRow(rule, quantity);
+        if (row.outcome != PokeBank::UIModel::BagAdd::RowOutcome::EditQuantity) {
+            screen.postStatus(row.message, 240);
+            return true;
+        }
         const auto result = Utils::promptNumber(
             "Edit " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
-            static_cast<int>(quantity), static_cast<int>(rule.minimum), static_cast<int>(rule.maximum));
+            static_cast<int>(row.current), static_cast<int>(row.minimum), static_cast<int>(row.maximum));
         if (result.accepted)
             applyMutation(screen, pocket, itemId, static_cast<uint16_t>(result.value));
         return true;
@@ -1019,9 +1048,12 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                     x + 12, listTop, width - 24, listBottom - listTop);
         }
         fb.clearClip();
+        SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + width - 14, listTop,
+            SharedScrollbar::kTrackWidth, listBottom - listTop,
+            SharedScrollbar::rows(count, visibleRows, start));
         fb.drawText(x + pad, y + height - 38,
             std::to_string(state.pickerRow + 1) + " / " + std::to_string(count) +
-            "  |  Choose exact native item (quantity confirmed afterward)",
+            "  |  A adds x1 (held items: highlights the stack)",
             Colors::Accent, TextStyle::Caption);
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
                         {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
@@ -1091,6 +1123,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         x + 30, listTop, width - 60, visibleRows * rowStep);
             }
             fb.clearClip();
+            SharedScrollbar::drawAndPublish(fb, state.reviewScrollbar, x + width - 16, listTop,
+                SharedScrollbar::kTrackWidth, visibleRows * rowStep,
+                SharedScrollbar::rows(count, visibleRows, start));
         }
         drawNavBar(fb, {{"Up/Down", "Browse"}, {"B", "Back to Options"}});
         if (!state.lastExportDirectory.empty())

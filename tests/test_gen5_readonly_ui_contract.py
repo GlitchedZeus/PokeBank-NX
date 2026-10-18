@@ -1098,7 +1098,7 @@ items_panel = read("src/UI/Panels/ItemsPanel.cpp")
 bag_model = read("include/Integration/Gen5/Gen5BagScreen.h")
 require(surface, "return handleBag(screen,keys,tap,touch);", "bag.stepRow(-1,ws)", "bag.stepPage(1,", "bag.beginQuantity(ws,error)",
         "bag.openAdd(ws,error)", "bag.requestRemove(ws,error)", "bag.confirmRemove(ws,refresh,error)",
-        "bag.confirmAdd(ws,id,r.value,refresh,error)", "state.openReviewFromBrowse(ws)",
+        "bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),id),", "state.openReviewFromBrowse(ws)",
         "CategoryTouch::PreviousId", "bag.tapRow(static_cast<size_t>(tap),ws)",
         "bag.tapAddChoice(", "drawBag(screen,fb);", "ws.bagReviewChanges()",
         "case G::HubTile5::Items:")

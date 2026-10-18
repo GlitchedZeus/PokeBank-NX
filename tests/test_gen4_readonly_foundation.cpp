@@ -14,6 +14,8 @@
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
+#include "UI/Gen4BagQuantity.h"
+#include "UI/SharedBagAddFlow.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/CRC16.h"
@@ -1192,6 +1194,75 @@ void testNativeGen4Bag() {
         assert(trainer->items[kMachines][0].count==1 &&
                trainer->items[kMachines][1].count==99);
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // B04: the shared Gen I-V Bag Add flow (UI/SharedBagAddFlow.h) on the real Gen IV
+        // writer: A stages a new item at x1 with no keypad, A on the row edits only an
+        // editable stack up to the native cap, a held item focuses its stack, a unique Key
+        // Item stays at 1, and the export reopens while the source stays byte-identical.
+        {
+            namespace BA=PokeBank::UIModel::BagAdd;
+            namespace QP=PokeVault::Inventory::QuantityPolicy;
+            constexpr size_t kKeys=static_cast<size_t>(Bag::KeyItems);
+            QP::Game policyGame{};
+            assert(QP::gameFromId(game,policyGame));
+            const auto stateFor=[&](size_t pocket,uint16_t id) {
+                BA::PocketState state{};
+                const auto& rows=trainer->items[pocket];
+                state.usedSlots=rows.size();
+                state.capacity=G4::bagLayout(layout)[pocket].slots;
+                for(const auto& stack:rows)if(stack.itemId==id)state.heldInPocket=stack.count;
+                return state;
+            };
+            const auto rowOf=[&](size_t pocket,uint16_t id) {
+                const auto& rows=trainer->items[pocket];
+                for(size_t i=0;i<rows.size();++i)if(rows[i].itemId==id)return i;
+                return rows.size();
+            };
+            const auto antidote=PokeBank::UIModel::Gen4BagQuantity::policyRule(policyGame,kMedicine,18);
+            BA::Flow flow;
+            assert(flow.openPicker(true) && flow.cancel());
+            assert(workspace->stagedBytes()==workspace->stagedBytes());
+            assert(flow.openPicker(true));
+            const auto pick=flow.pick(antidote,stateFor(kMedicine,18),G4::bagPocketName(kMedicine));
+            assert(pick.outcome==BA::PickOutcome::StageNew && pick.quantity==1);
+            assert(workspace->stageBagAdd(kMedicine,18,pick.quantity,&error) && error.empty());
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            const size_t antidoteRow=rowOf(kMedicine,18);
+            assert(antidoteRow<trainer->items[kMedicine].size() &&
+                   trainer->items[kMedicine][antidoteRow].count==1);
+            const auto row=BA::decideRow(antidote,1,G4::gen4BagMaxQuantity(kMedicine,18));
+            assert(row.outcome==BA::RowOutcome::EditQuantity && row.maximum==999);
+            assert(!workspace->stageBagQuantity(kMedicine,antidoteRow,1000,&error));
+            assert(workspace->stageBagQuantity(kMedicine,antidoteRow,row.maximum,&error));
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            // Held: focus the existing stack, nothing staged, never a duplicate.
+            const auto heldBytes=workspace->stagedBytes();
+            assert(flow.openPicker(true));
+            assert(flow.pick(antidote,stateFor(kMedicine,18)).outcome==BA::PickOutcome::FocusExisting);
+            assert(workspace->stagedBytes()==heldBytes);
+            // Bicycle: unique, staged at 1, no quantity editor, the writer refuses 2.
+            const auto bike=PokeBank::UIModel::Gen4BagQuantity::policyRule(policyGame,kKeys,450);
+            assert(bike.valid && bike.unique);
+            assert(flow.openPicker(true));
+            const auto bikePick=flow.pick(bike,stateFor(kKeys,450));
+            assert(bikePick.outcome==BA::PickOutcome::StageNew && bikePick.quantity==1);
+            assert(workspace->stageBagAdd(kKeys,450,bikePick.quantity,&error) && error.empty());
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            assert(BA::decideRow(bike,1,G4::gen4BagMaxQuantity(kKeys,450)).outcome==
+                   BA::RowOutcome::FixedQuantity);
+            assert(!workspace->stageBagQuantity(kKeys,rowOf(kKeys,450),2,&error));
+            // Export + reopen; the source is untouched.
+            const auto out=workspace->finalizedBytes(&error);
+            const auto reopened=Gen4ReadOnlySave::parse(out,layout,game,&error);
+            assert(reopened);
+            const auto reBag=G4::decodeReadOnlyBag(*reopened);
+            assert(reBag);
+            const auto has=[&](size_t pocket,uint16_t id,uint16_t count) {
+                return std::any_of((*reBag)[pocket].begin(),(*reBag)[pocket].end(),
+                    [&](const auto& s){return s.itemId==id && s.count==count;});
+            };
+            assert(has(kMedicine,18,999) && has(kKeys,450,1));
+            assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        }
         workspace->discard();
         assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
         assert(trainer->items[kBalls][0].count==43 &&

@@ -14,6 +14,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/TouchScroll.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/QuickGamesDrawerMotion.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/GameLaunchModel.h"
@@ -222,6 +223,16 @@ namespace UI {
         int gamesDrawerIndex = 0;
         int gamesDrawerScroll = 0;
         TouchScrollState gamesDrawerTouchScroll;
+        SharedScrollbar::State gamesDrawerScrollbar;   // draggable thumb beside the Quick Games grid
+        // One shared draggable scrollbar per scrolling list on this screen (R2-SCROLLBAR).
+        SharedScrollbar::State profileScrollbar;
+        SharedScrollbar::State launchFileScrollbar;
+        SharedScrollbar::State legacyInstanceScrollbar;
+        SharedScrollbar::State legacyAssignmentScrollbar;
+        SharedScrollbar::State gen4CandidateScrollbar;
+        SharedScrollbar::State gen5CandidateScrollbar;
+        SharedScrollbar::State classicGamesScrollbar;
+        SharedScrollbar::State emuBackupScrollbar;
         PokeBank::UIModel::QuickGamesDrawerMotion quickDrawerMotion;
         int profilePickerIndex = 0;
         int profilePickerScroll = 0; // independent visible first row; never scroll the focus index

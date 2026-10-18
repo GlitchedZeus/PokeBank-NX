@@ -1,0 +1,23 @@
+# Lane P: shared draggable scrollbar component and live species search (header-only, host fakes).
+SHARED_SCROLLBAR_TEST := $(HOST_BUILD)/test_shared_scrollbar
+SHARED_SCROLLBAR_SANITIZE := $(HOST_BUILD)/test_shared_scrollbar_sanitize
+SHARED_SCROLLBAR_SOURCES := tests/test_shared_scrollbar.cpp
+SHARED_SCROLLBAR_INPUTS := $(SHARED_SCROLLBAR_SOURCES) include/UI/SharedScrollbar.h \
+    tests/touch_fakes/UI/TouchInput.h
+
+HOST_TESTS += $(SHARED_SCROLLBAR_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE)
+host-test: $(SHARED_SCROLLBAR_TEST)
+host-sanitize: $(SHARED_SCROLLBAR_SANITIZE)
+
+.PHONY: host-pickers
+host-pickers: $(SHARED_SCROLLBAR_TEST)
+	./$(SHARED_SCROLLBAR_TEST)
+
+$(SHARED_SCROLLBAR_TEST): $(SHARED_SCROLLBAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/touch_fakes -Iinclude $(SHARED_SCROLLBAR_SOURCES) -o $@
+
+$(SHARED_SCROLLBAR_SANITIZE): $(SHARED_SCROLLBAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude $(SHARED_SCROLLBAR_SOURCES) -o $@

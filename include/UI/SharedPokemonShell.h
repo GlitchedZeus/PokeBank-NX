@@ -1,5 +1,6 @@
 #pragma once
 #include "UI/ClassicGameContext.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedDataPaneLayout.h"
@@ -69,14 +70,12 @@ inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bo
             sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
 }
+// Draw-only wrapper over the one shared scrollbar (UI/SharedScrollbar.h). Surfaces that own a
+// SharedScrollbar::State use drawAndPublish so the same thumb is draggable and the track pages.
 inline void drawVerticalScrollIndicator(PKSEFramebuffer& fb, int x, int y, int height,
     std::size_t totalRows, std::size_t visibleCapacity, std::size_t firstVisible) {
-    constexpr int width = 4;
-    const auto thumb = PokeBank::UIModel::SharedPokemonEditor::scrollThumb(
-        totalRows, visibleCapacity, firstVisible, height);
-    if (!thumb.visible) return;
-    fb.drawFilledRoundedRect(x, y, width, height, 2, Colors::Divider);
-    fb.drawFilledRoundedRect(x, y + thumb.offset, width, thumb.length, 2, Colors::TextDim);
+    SharedScrollbar::paint(fb, SharedScrollbar::layout(x, y, SharedScrollbar::kTrackWidth, height,
+        SharedScrollbar::rows(totalRows, visibleCapacity, firstVisible)));
 }
 
 // Bound inline text without splitting a UTF-8 code point when adding an ellipsis.
@@ -103,7 +102,8 @@ inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, 
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value,
-    int pixelOffset = 0, int independentFirstRow = -1) {
+    int pixelOffset = 0, int independentFirstRow = -1,
+    SharedScrollbar::State* scrollbar = nullptr) {
     const auto viewport = PokeBank::UIModel::SharedEditorPresentation::detailsViewport(y, h);
     const std::size_t visibleRows = static_cast<std::size_t>(viewport.visibleRows);
     // Keep one value column across scrolling windows, sized for the real field labels.
@@ -147,8 +147,15 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         fb.drawText(x + valueInset, yy + 7, rowValue, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
-    drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
-        std::max(0, viewportH - 12), total, visibleRows, window.first);
+    // Owners that pass their SharedScrollbar::State get the draggable thumb (geometry published
+    // for next frame's hit-test); the draw-only indicator is the same component without capture.
+    if (scrollbar)
+        SharedScrollbar::drawAndPublish(fb, *scrollbar, x + w - 10, viewportY + 6,
+            SharedScrollbar::kTrackWidth, std::max(0, viewportH - 12),
+            SharedScrollbar::rows(total, visibleRows, window.first));
+    else
+        drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
+            std::max(0, viewportH - 12), total, visibleRows, window.first);
     // No "Rows N-M / T" counter: the scrollbar alone reports position.
 }
 // The native-data and six-stat radar composition is shared by exact-format providers.

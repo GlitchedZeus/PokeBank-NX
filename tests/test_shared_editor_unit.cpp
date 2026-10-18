@@ -132,6 +132,15 @@ static void testMovesPanelBounds() {
     const auto l = UI::SharedMovesPanel::layout(g.rightX, g.y, g.rightW);
     require(l.bottom() <= g.y + UI::SharedMovesPanel::kDataPaneOffset - 4, "moves rows end above the data pane");
     require(l.nameMaxW() >= 200, "move names have room");
+    {
+        // S01 (owner round 1): "PP" and "PP Ups" captions were too close to read.
+        namespace Geo = PokeBank::UIModel::SharedMenuGeometry;
+        const int ppCaptionRight = l.ppRight();
+        const int upsCaptionLeft = l.upsRight() - Geo::textWidth("PP Ups", Geo::Text::Caption);
+        require(upsCaptionLeft - ppCaptionRight >= 20, "S01: PP and PP Ups captions are at least 20 px apart");
+        require(l.ppRight() - Geo::textWidth("63/63", Geo::Text::Caption) >= l.nameX() + l.nameMaxW(),
+                "S01: PP values never reach the move name column");
+    }
     for (auto game : {GameVersion::RBY, GameVersion::GSC, GameVersion::FRLG, GameVersion::DP,
                       GameVersion::PT, GameVersion::HGSS, GameVersion::BW, GameVersion::B2W2}) {
         const uint16_t last = Facts::maxMoveId(Facts::eraFor(game));
