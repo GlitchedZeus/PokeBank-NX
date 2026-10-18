@@ -29,10 +29,8 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
-    # d51c1ff (batch 3): ENFORCED.
+    # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED. Every contract is enforced.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
-    "CG16-shared-field-state": "S (Gen III PID label) + C (Gen I/II raw-gold Shiny values, R2-GOLD)",
-    "CG17-exact-source-game-header": "S (exactGameName 0f132eb) + C (Gen I/II headers, R2-GOLD)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
