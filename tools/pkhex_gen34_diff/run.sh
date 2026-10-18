@@ -2,7 +2,8 @@
 # Differential test: PokeBank NX's Gen III (PK3) and Gen IV (PK4) legality verdicts against PKHeX.Core.
 #   tools/pkhex_gen34_diff/run.sh PKHEX_CHECKOUT [SEED] [MUTATIONS] [GENS] [CORPUS]
 # GENS is 3, 4 or 34 (default). The oracle builds every Gen III encounter PKHeX knows
-# (species 1-386; R/S/E/FR/LG; Colosseum/XD origins skipped) and every Gen IV encounter
+# (species 1-386; R/S/E/FR/LG, plus every Colosseum/XD encounter held in each of those
+# five GBA games) and every Gen IV encounter
 # (species 1-493; D/P/Pt/HG/SS), all forms, plus MUTATIONS seeded single-field mutations
 # of each. CORPUS "grown" (Gen IV) replaces those with PKHeX-valid records played forward
 # (levels, moves, EVs, evolution, items, trades) and Pal Park transfers of PKHeX-valid
