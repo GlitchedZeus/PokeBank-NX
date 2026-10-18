@@ -1,5 +1,6 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "Integration/Gen2/Gen2ExportTransaction.h"
+#include "test_temp_dir.h"
 
 #include <cassert>
 #include <cstdio>
@@ -75,8 +76,7 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     assert(!edited.empty());
     assert(source == std::vector<uint8_t>(editor->originalBytes().begin(), editor->originalBytes().end()));
 
-    const std::string root = "/tmp/pokebank-gen2-export-" + std::to_string(::getpid());
-    ::mkdir(root.c_str(), 0777);
+    const std::string root = PokeBankTest::freshTempBase("pokebank-gen2-export");  // fresh per run
     const std::string stem = "verified-" + tag;
 
     // This is the same staged-editor-level abstraction used by the real Gen II UI. It owns
@@ -214,8 +214,7 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
 void phase4(const L& layout, SourceGame game, const std::string& tag) {
     const auto source = fixture(layout, true);
     const size_t partyLength = listLen(6, 48, 11);
-    const std::string root = "/tmp/pokebank-gen2-phase4-" + std::to_string(::getpid());
-    ::mkdir(root.c_str(), 0777);
+    const std::string root = PokeBankTest::freshTempBase("pokebank-gen2-phase4");  // fresh per run
     auto exportWith = [&](auto&& stage, const std::string& stem) {
         auto parsed = parse(source, game);
         assert(parsed);

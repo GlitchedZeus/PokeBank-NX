@@ -1,6 +1,7 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "test_temp_dir.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Utils/SHA256.h"
 #include "utils/crypto.hpp"
@@ -622,7 +623,7 @@ void testFieldFidelity() {
 void testAssignmentsOnDisk() {
     using namespace PokeVault::Integration::Gen4;
     namespace fs=std::filesystem;
-    const auto root=fs::temp_directory_path()/("pokebank-g4-"+std::to_string(getpid()));
+    const fs::path root=PokeBankTest::freshTempBase("pokebank-g4");  // fresh per run
     fs::create_directories(root);
     const auto savePath=root/"assigned.sav";
     const auto otherPath=root/"another.sav";
@@ -706,7 +707,7 @@ void testAssignmentsOnDisk() {
 void testSourceDiscovery() {
     using namespace PokeVault::Integration::Gen4;
     namespace fs=std::filesystem;
-    const auto root=fs::temp_directory_path()/("pokebank-g4-discovery-"+std::to_string(getpid()));
+    const fs::path root=PokeBankTest::freshTempBase("pokebank-g4-discovery");  // fresh per run
     const auto retro=root/"retroarch";
     const auto drastic=root/"drastic";
     const auto drasticBackup=drastic/"user"/"backup";
