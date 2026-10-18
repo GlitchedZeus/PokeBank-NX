@@ -1,10 +1,12 @@
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/SharedBagAddFlow.h"
 
 #include <array>
 #include <algorithm>
 
 namespace PokeBank::UIModel {
 namespace {
+
 
 constexpr std::array<ClassicPocket, 6> kGen1Categories{{
     ClassicPocket::Items, ClassicPocket::Medicines, ClassicPocket::Balls,
@@ -69,9 +71,11 @@ uint16_t classicInventoryMaximumQuantity(ClassicGame game, ClassicPocket pocket,
     return PokeVault::Inventory::quantityRule(game, pocket, itemId).maximum;
 }
 
+// The shared Gen I-V Key Item warning rule (UI/SharedBagAddFlow.h): by the policy's item kind, so
+// a Key Item kept in the PC warns too.
 bool classicInventoryNeedsStoryWarning(ClassicGame game, ClassicPocket pocket,
                                        uint16_t itemId) noexcept {
-    return PokeVault::Inventory::isStorySensitiveKeyItem(game, pocket, itemId);
+    return BagAdd::needsKeyItemWarning(classicItemQuantityRule(game, pocket, itemId));
 }
 
 std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game, ClassicPocket pocket) {

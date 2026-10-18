@@ -402,7 +402,12 @@ int main() {
     assert(addPath.find("Utils::promptNumber(")==std::string::npos);
     contains(editPath,"Utils::promptNumber(");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"BagAdd::decidePick(gen4PolicyRule(screen,addPocket,id),pocketState,");
+    contains(addPath,"const auto addRule=gen4PolicyRule(screen,addPocket,id);");
+    contains(addPath,"BagAdd::decidePick(addRule,pocketState,");
+    // A Key Item is staged only after the shared A-confirmed warning (same as Gen I-III).
+    contains(addPath,"if(BagAdd::needsKeyItemWarning(addRule)) {");
+    contains(addPath,"if(state.itemKeyWarningActive) {");
+    contains(surface,"UI::SharedBagAddPicker::drawKeyItemWarning(");
     contains(addPath,"case BagAdd::PickOutcome::FocusExisting:");
     contains(addPath,"case BagAdd::PickOutcome::PocketFull:");
     contains(editPath,"BagAdd::decideRow(");
@@ -410,9 +415,10 @@ int main() {
     contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
-    contains(addPath,"stageBagAdd(addPocket,id,decision.quantity,&error)");
+    contains(addPath,"(void)stageGen4BagAdd(screen,state,addPocket,id,decision.quantity);");
+    contains(surface,"if(!current->stageBagAdd(addPocket,id,quantity,&error)) {");
     contains(editPath,"static_cast<uint16_t>(r.value)");
-    contains(addPath,"*current=std::move(backup)");
+    contains(surface,"bool stageGen4BagAdd(TrainerViewScreen& screen,State& state,size_t addPocket,uint16_t id,");
     contains(editPath,"*current=std::move(backup)");
     assert(editPath.find("Utils::promptNumber(")<editPath.find("stageBagQuantity("));
     assert(surface.find("drawItemQuantity(")==std::string::npos);

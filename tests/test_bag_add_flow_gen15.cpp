@@ -19,6 +19,7 @@
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "UI/Gen4BagQuantity.h"
+#include "UI/SharedMenuGeometry.h"
 
 #include <algorithm>
 #include <array>
@@ -714,9 +715,49 @@ void run(G::SaveFamily family, std::string_view gameId, uint8_t version, QP::Gam
 }
 } // namespace gen5
 
+// CG13 / owner "key item warning menu": the Key Item warning is decided by ONE rule (the policy's
+// item kind) for every game, and its confirm text fits the shared KeyItemWarning frame.
+void keyItemWarningRule() {
+    struct W { QP::Game game; QP::Pocket pocket; uint16_t id; bool warns; };
+    const W cases[] = {
+        {QP::Game::Red, QP::Pocket::KeyItems, 6, true},        // Bicycle
+        {QP::Game::Red, QP::Pocket::KeyItems, 76, true},       // Old Rod
+        {QP::Game::Red, QP::Pocket::PCItems, 6, true},         // Key Item kept in the PC
+        {QP::Game::Red, QP::Pocket::TMHM, 196, false},         // HM01: unique, not story-gated
+        {QP::Game::Red, QP::Pocket::Medicine, 20, false},      // Potion
+        {QP::Game::Crystal, QP::Pocket::KeyItems, 115, true},  // GS Ball
+        {QP::Game::Emerald, QP::Pocket::KeyItems, 259, true},  // Mach Bike
+        {QP::Game::FireRed, QP::Pocket::TMHM, 289, false},     // TM01
+        {QP::Game::Platinum, QP::Pocket::KeyItems, 450, true}, // Bicycle
+        {QP::Game::HeartGold, QP::Pocket::KeyItems, 445, true},// Old Rod
+        {QP::Game::Diamond, QP::Pocket::TMHM, 420, false},     // HM01
+        {QP::Game::White2, QP::Pocket::KeyItems, 450, true},   // Bicycle (view-only pocket in Gen V)
+        {QP::Game::Black, QP::Pocket::TMHM, 328, false},       // Gen V TM: unique, not story-gated
+        {QP::Game::Black, QP::Pocket::Items, 0, false},        // invalid never warns
+    };
+    for (const auto& c : cases)
+        CHECK(BagAdd::needsKeyItemWarning(QP::quantityRule(c.game, c.pocket, c.id)) == c.warns);
+
+    namespace MG = PokeBank::UIModel::SharedMenuGeometry;
+    for (const auto type : {MG::MenuType::KeyItemWarning, MG::MenuType::RemoveConfirm}) {
+        const auto l = MG::layout(type, 0);
+        CHECK(MG::wellFormed(l));
+        CHECK(!l.frame.overlaps(MG::kFooterBand));
+        const int textW = l.frame.w - 2 * l.rule.padX - 40;  // minus the item sprite column
+        CHECK(MG::fitsWidth("Story/event state is not replayed or undone; no event flags change.",
+                            MG::Text::Caption, l.frame.w - 2 * l.rule.padX));
+        CHECK(MG::fitsWidth("Staged copy only; the original source save stays unchanged.",
+                            MG::Text::Caption, l.frame.w - 2 * l.rule.padX));
+        CHECK(MG::fitsWidth("Silph Scope: remove this Key Item?", MG::Text::Body, textW));
+        CHECK(MG::buttonRect(l, 0, 2).inside(l.frame) && MG::buttonRect(l, 1, 2).inside(l.frame));
+        CHECK(!MG::buttonRect(l, 0, 2).overlaps(MG::buttonRect(l, 1, 2)));
+    }
+}
+
 } // namespace
 
 int main() {
+    keyItemWarningRule();
     namespace G1 = PokeVault::Integration::Gen1;
     gen1::run(G1::SourceGame::Red, QP::Game::Red);
     gen1::run(G1::SourceGame::Blue, QP::Game::Blue);
