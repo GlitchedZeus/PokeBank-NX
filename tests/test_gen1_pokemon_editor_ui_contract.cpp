@@ -254,7 +254,8 @@ int main() {
 
     const auto hardware = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     assert(hardware.find("Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r)") != std::string::npos);
-    assert(hardware.find("(r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
+    // R2-GOLD: cell colours come from the shared field-state contract (derived HP DV / Stat gold).
+    assert(hardware.find("PokeBank::UIModel::ClassicStatFields::cellState(r, c), selected).value") != std::string::npos);
     assert(hardware.find("std::to_string(Editor::derivedHPDV(dvs)) + \" *\"") != std::string::npos);
     assert(hardware.find("leftLabels{\"Species\", \"Nickname\", \"Level\", \"EXP\", \"OT\", \"Trainer ID\"}") != std::string::npos);
     assert(hardware.find("levelSelected") == std::string::npos);
