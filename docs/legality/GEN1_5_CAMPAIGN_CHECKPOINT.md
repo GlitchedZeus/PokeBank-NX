@@ -178,8 +178,28 @@ separately from corpus detection rates and test counts. No merge without the own
 - Integration: [GEN1_5_APP_INTEGRATION_PREP.md](GEN1_5_APP_INTEGRATION_PREP.md) (trial merge with
   #307, five conflicts, combined test plan). Nothing merged.
 
+## Final campaign (owner mandate 2026-10-17): result
+
+- Lanes merged into this branch: C (Gen V audit, `Pk5Input`, `Gen5App::analyze`) `f61de953`;
+  A (Colosseum/XD in the Gen III analyzer) `5e4e318f`; B (Gen IV audit, Colosseum/XD judge in Pal
+  Park) `4a8b5faa`; D (Gen I/II audit) `0bbb0a6f`. Then the stored Gen I/II name bytes reach the
+  engine (`5028a0a3`), the Colosseum/XD judge runs for Poke Transfer records (`93279d10`,
+  `d113b8a9`, `c33cb2c9`, `69624064`), the Gen I oracle pins moved (`b19f6732`) and the Gen III
+  context test follows the single GameCube path (`c36679b0`).
+- Differentials on the engine head `69624064`: 1,112,533 records (Gen I/II 300,000; Gen III/IV
+  273,236; Gen V 539,297), 0 false Invalid, 0 false Valid. 129 Gen IV records are Invalid by the
+  deliberately stricter item 14. Colosseum/XD-origin Gen V transfers certify 1,842 / 2,021 (0 before).
+- Host suites (`host-test`, GCC) pass; title matrix 183 / 183. Sanitizer, Clang and CI results
+  for the final head are in the final report.
+- Every deliberate difference: `PKHEX_DISAGREEMENT_REVIEW.md` items 1-20; only four entries are
+  Verified improvements (`PKHEX_VERIFIED_IMPROVEMENTS.md`: D-1, D-2, D-3, IV-1).
+- #307 rechecked at `348129fda54dc4c5a6ca04838f8479ab9af19aad`: ten conflicting files, all with a
+  proposed resolution (`GEN1_5_APP_INTEGRATION_PREP.md`); `handoff/overlay-verdict-fix.patch`
+  still applies. Nothing merged.
+- Final report: `/mnt/project-files/legality/final-campaign-report.md` (sections A-G).
+
 ## Next steps
 
-1. Every gate on the exact final commit; final report to the owner.
+1. Owner decisions listed at the top of the final report.
 2. Reviewed integration with #307 and a combined Gen I-V app and legality test campaign on
    Switch hardware (owner decides; nothing is merged before that).
