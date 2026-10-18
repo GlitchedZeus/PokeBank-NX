@@ -54,6 +54,9 @@ Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 // Shared Gen II held-item picker optionally renders matching ROMFS artwork.
 // This isolated render host test deliberately has no image/assets backend.
 Sprite* SpriteManager::getItemSprite(const std::string&) { return nullptr; }
+// The shared species chooser (SharedSpeciesPicker::drawContent) previews the box icon; no
+// assets backend here either, so the chooser draws its text-only fallback.
+Sprite* SpriteManager::getIconSprite(uint16_t, bool) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;

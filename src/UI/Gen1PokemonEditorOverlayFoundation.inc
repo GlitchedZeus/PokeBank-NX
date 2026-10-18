@@ -535,11 +535,14 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (state.mode == UX2Mode::Edit) title = "Edit Pokemon — STAGED";
     if (add) title = "Create Pokemon — DRAFT";
     fb.drawText(x + 24, y + 14, title, Colors::Text, TextStyle::Heading);
-    const std::string game(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
+    // Shared source-game context line (Gen III-V shape): Box / Slot • <Game> • Source save immutable • mode.
+    namespace GameContext = PokeBank::UIModel::ClassicGameContext;
+    const auto surfaceMode = add ? GameContext::SurfaceMode::CreateDraft
+        : state.mode == UX2Mode::Edit ? GameContext::SurfaceMode::EditStaged : GameContext::SurfaceMode::ViewReadOnly;
     fb.drawText(x + 24, y + 46,
-                "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1) +
-                (game.empty() ? std::string() : "   •   " + game) +
-                "   •   PKSE three-panel workspace   •   Source save immutable",
+                GameContext::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
+                                             std::to_string(state.slot + 1),
+                                         screen.sourceGameId, surfaceMode),
                 Colors::TextDim, TextStyle::Caption);
 
     const int contentY = y + 74;
