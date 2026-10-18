@@ -10,6 +10,8 @@ GEN4_FOUNDATION_SOURCES := tests/test_gen4_readonly_foundation.cpp \
 	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp \
 	src/Names/ItemPresence.cpp src/Names/MoveInfo.cpp src/Names/MovePresence.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp
 
 GEN4_TEST := $(HOST_BUILD)/test_gen4_readonly_foundation

@@ -190,12 +190,24 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(ws.bagDirty() && trainer->items[0][0].count == 99);
     assert(trainer->hasStagedChanges());
 
-    // X = Add picker in Medicine: existing stacks are excluded; touch picks.
+    // X = Add picker in Medicine: every native item is listed, held ones too; touch picks.
     while (bag.pocket() != 3) bag.changePocket(1);
     assert(bag.openAdd(ws, error) && bag.surface() == Surface::AddPicker);
     const auto& choices = bag.addChoices();
-    assert(std::find(choices.begin(), choices.end(), uint16_t{17}) == choices.end());
-    assert(std::find(choices.begin(), choices.end(), uint16_t{26}) == choices.end());
+    assert(std::find(choices.begin(), choices.end(), uint16_t{17}) != choices.end());
+    assert(std::find(choices.begin(), choices.end(), uint16_t{26}) != choices.end());
+    {
+        // A on a held item (Potion) focuses its existing stack: never a duplicate, nothing staged.
+        namespace QP = PokeVault::Inventory::QuantityPolicy;
+        QP::Game policyGame{};
+        assert(QP::gameFromId(game, policyGame));
+        while (bag.chosenAddItem() != 17) bag.moveAddCursor(1);
+        const auto held = bag.pickAdd(ws, QP::quantityRule(policyGame, QP::Pocket::Medicine, 17), okRefresh, error);
+        assert(held.outcome == PokeBank::UIModel::BagAdd::PickOutcome::FocusExisting && error.empty());
+        assert(bag.surface() == Surface::Browse && bag.row() == 0);
+        assert(trainer->items[3].size() == 2 && trainer->items[3][0].count == 12);
+        assert(bag.openAdd(ws, error) && bag.surface() == Surface::AddPicker);
+    }
     const auto fullRestore = std::find(choices.begin(), choices.end(), uint16_t{591});
     assert(fullRestore != choices.end());
     const size_t index = static_cast<size_t>(fullRestore - choices.begin());
@@ -296,7 +308,23 @@ void fullPocketRefusesAdd() {
     Screen bag;
     bag.changePocket(-1);
     assert(bag.pocket() == 4);
-    assert(!bag.openAdd(ws, error) && bag.surface() == Surface::Browse && !error.empty());
+    // Every slot is used and every native berry is held: the picker opens (same meaning as
+    // Gen I-IV) and a pick can only focus the existing stack; nothing is ever staged.
+    assert(bag.openAdd(ws, error) && bag.surface() == Surface::AddPicker);
+    namespace QP = PokeVault::Inventory::QuantityPolicy;
+    const auto rule = QP::quantityRule(QP::Game::White, QP::Pocket::Berries, bag.chosenAddItem());
+    const auto state = bag.addPocketState(ws);
+    assert(state.usedSlots == state.capacity && state.heldInPocket == 1);
+    const auto decision = bag.pickAdd(ws, rule, [](std::string&) { return true; }, error);
+    assert(decision.outcome == PokeBank::UIModel::BagAdd::PickOutcome::FocusExisting);
+    assert(bag.surface() == Surface::Browse && !ws.bagDirty());
+    // A held count beyond the slots (full pocket, new id) is refused with the exact slot count.
+    PokeBank::UIModel::BagAdd::PocketState full{};
+    full.usedSlots = state.capacity;
+    full.capacity = state.capacity;
+    const auto refused = PokeBank::UIModel::BagAdd::decidePick(rule, full, G::bagPocketName5(4));
+    assert(refused.outcome == PokeBank::UIModel::BagAdd::PickOutcome::PocketFull);
+    assert(refused.message.find("Berries is full (" + std::to_string(state.capacity) + " of ") == 0);
 }
 
 } // namespace

@@ -3,7 +3,7 @@ name: PokeBank NX App QA Contracts
 # Thread 4 independent application QA: source-immutability and export-safety contracts across every
 # export path (Gen I/II/III Bag and Pokemon, Gen IV, Gen V PK5 and Bag), under GCC and Clang with
 # ASan/UBSan, the Gen I-V acceptance matrix (docs/qa/GEN1_5_MATRIX.md), plus the NRO audit tooling
-# regression. Known open defects are reproduced separately by
+# regression and the hardware round 1 regression gate (tests/test_hw_round1_regression_gate.py). Known open defects are reproduced separately by
 # `make qa-known-failures` (see docs/qa/FINDINGS.md) and are never part of this gate.
 
 on:
@@ -17,14 +17,13 @@ on:
       - 'src/Utils/**'
       - 'src/UI/**'
       - 'runtime/return_host/source/**'
-      - 'tests/test_qa_*'
-      - 'tests/fuzz_synthetic_saves.h'
-      - 'tests/fixtures/**'
-      - 'tests/test_verify_nro_romfs.py'
+      # tests/** and Makefile.host.*: the hardware round 1 gate guards tests across the tree and checks
+      # that each C++ guard is still run by `make -f Makefile.host host-test`.
+      - 'tests/**'
       - 'tools/qa/**'
       - 'tools/verify_nro_romfs.py'
       - 'Makefile.host'
-      - 'Makefile.host.qa'
+      - 'Makefile.host.*'
       - '.github/workflows/app-qa-contracts.yml'
   workflow_dispatch:
 
@@ -79,6 +78,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - run: make -f Makefile.host qa-tools-test
+      # The round 1 gate dry-runs `make host-test`, whose Gen IV/V rules list PKSM-Core sources.
+      - run: git submodule update --init --recursive vendor/PKSM-Core
+      - name: NRO audit tooling + hardware round 1 regression gate (the owner's 42 PASS items on 7fea1797)
+        run: make -f Makefile.host qa-tools-test
       - name: Gen I-V cross-generation UI contracts (enforced contracts fail; XFAIL ones are reported)
         run: python3 tests/test_qa_cross_gen_contract.py --list

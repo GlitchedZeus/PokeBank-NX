@@ -59,6 +59,10 @@ struct ClassicItemQuantity {
 };
 [[nodiscard]] ClassicItemQuantity classicItemQuantity(ClassicGame game, ClassicPocket pocket,
                                                       uint16_t itemId) noexcept;
+// The same gate as classicItemQuantity, as the full QuantityPolicy rule the shared Gen I-V Bag Add
+// flow (UI/SharedBagAddFlow.h) consumes; invalid (valid == false) outside the classic catalog.
+[[nodiscard]] PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
+    ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
 
 } // namespace PokeBank::UIModel
 

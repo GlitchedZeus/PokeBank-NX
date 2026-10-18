@@ -99,6 +99,14 @@ ClassicItemQuantity classicItemQuantity(ClassicGame game, ClassicPocket pocket, 
     return {rule.editable, rule.minimum, rule.maximum};
 }
 
+PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
+    ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
+    namespace Inv = PokeVault::Inventory;
+    if (!Inv::isAddableItem(game, pocket, itemId)) return {};
+    return Inv::QuantityPolicy::quantityRule(Inv::quantityPolicyGame(game),
+                                             Inv::quantityPolicyPocket(pocket), itemId);
+}
+
 bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {
     return supported && visibleItems == 0;
 }
