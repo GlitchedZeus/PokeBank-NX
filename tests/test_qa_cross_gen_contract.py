@@ -30,9 +30,9 @@ XFAIL: dict[str, str] = {
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1) and are ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
-    "CG13-shared-menu-geometry": "S (SharedMenuGeometry 0f132eb) + I/P/2R consumers",
-    "CG16-shared-field-state": "S (Gen III-V 0f132eb) + C (Gen I/II gold field state)",
-    "CG17-exact-source-game-header": "S (exactGameName 0f132eb) + C (Gen I/II headers)",
+    "CG13-shared-menu-geometry": "S (MovePicker, SaveDiscard) + I (ItemPicker, RemoveConfirm 74b55e8; KeyItemWarning) + P (SpeciesPicker f82ffe5) + 2R (BackupMenu)",
+    "CG16-shared-field-state": "S (Gen III PID label) + C (Gen I/II raw-gold Shiny values, R2-GOLD)",
+    "CG17-exact-source-game-header": "S (exactGameName 0f132eb) + C (Gen I/II headers, R2-GOLD)",
     "CG18-trainer-edit-footer": "C (R2-TRAINER 6d6c55d5)",
     "CG15-shared-species-search": "P (shared chooser 2876ffe; Gen IV kSpeciesSearch flag removal)",
 }
