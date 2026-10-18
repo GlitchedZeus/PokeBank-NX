@@ -27,10 +27,9 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
-    # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED.
+    # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
+    # CG12 and CG14 XPASSed on #307 d104310 (batch 1) and are ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
-    "CG12-single-bag-add-flow": "I (SharedBagAddFlow, 52017cd1)",
-    "CG14-shared-draggable-scrollbar": "P (SharedScrollbar call sites, 0867c9b8)",
     "CG15-shared-species-search": "P (shared chooser 2876ffe; Gen IV kSpeciesSearch flag removal)",
 }
 

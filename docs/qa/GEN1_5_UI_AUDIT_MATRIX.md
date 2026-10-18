@@ -73,7 +73,9 @@ contract lists them as not shown; differences between generations are flagged fo
 | CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG10-single-navigation-repeat-engine: Navigation repeat timings live only in the shared NavigationRepeat engine | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG11-no-generic-modern-ui-in-gen1-5: In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG14-shared-draggable-scrollbar: Every scrollbar is the one SharedScrollbar: drawn through it, never privately, and draggable (its State is hit-tested with handleTouch) | XFAIL until P (SharedScrollbar call sites, 0867c9b8) | 11 | 15 | 14 | 11 | 11 |
+| CG12-single-bag-add-flow: Gen I-V Add Item goes through SharedBagAddFlow: staged at quantity 1 with no numpad; a quantity editor opens only from an inventory row the rule lets you edit | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG15-shared-species-search: Species live search (SharedSearchInput prefix filter) is in the one shared chooser for all five generations; no generation switches it off | XFAIL until P (shared chooser 2876ffe; Gen IV kSpeciesSearch flag removal) | 4 | 4 | 4 | 4 | 3 |
+| CG14-shared-draggable-scrollbar: Every scrollbar is the one SharedScrollbar: drawn through it, never privately, and draggable (its State is hit-tested with handleTouch) | PASS | 0 | 0 | 0 | 0 | 0 |
 
 Counts are violations attributed to each generation; a violation in a shared component (no
 generation in its file name) counts for every generation. Full lists:
