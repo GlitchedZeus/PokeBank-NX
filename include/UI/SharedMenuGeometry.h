@@ -88,6 +88,7 @@ enum class MenuType : uint8_t {
     BackupMenu,       // backup list (Home)
     LaunchConfirm,    // launch the game: Y commits
     SaveDiscard,      // save / discard staged work
+    ChoicePicker,     // short editor value lists: Language, Ability, Form, Gender, Pokerus
     Count
 };
 
@@ -118,15 +119,24 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::HeldItemPicker:
             return {Kind::Grid, 1040, 4, 40, 4, 10, 90, 22, 16, 8, 30, 6, Text::Caption};
         case MenuType::BallPicker:
-            return {Kind::Grid, 640, 3, 44, 4, 9, 64, 20, 16, 10, 30, 8, Text::Body};
+            // One column, ball sprite leading its name (was a 640 px row with the sprite at the far
+            // right edge). Same rows as ChoicePicker so every editor value list reads alike.
+            return {Kind::List, 440, 1, 42, 4, 8, 86, 22, 39, 16, 32, 8, Text::Body};
         case MenuType::SpeciesPicker:
             return {Kind::List, 600, 1, 44, 4, 9, 84, 20, 16, 12, 34, 8, Text::Body};
         case MenuType::MovePicker:
             return {Kind::List, 760, 1, 44, 4, 10, 84, 20, 16, 12, 0, 8, Text::Body};
         case MenuType::LocationPicker:
-            return {Kind::List, 640, 1, 44, 4, 10, 64, 20, 16, 12, 0, 8, Text::Body};
+            // The accepted Met Location window (owner round 1 L03/L04 PASS): 900 px, name left,
+            // method / level right, editor value-list rows.
+            return {Kind::List, 900, 1, 42, 4, 8, 86, 22, 39, 16, 0, 8, Text::Body};
+        case MenuType::ChoicePicker:
+            // Editor value lists: 86 px title + counter, 42 px rows (38 px cells), 8 visible.
+            return {Kind::List, 440, 1, 42, 4, 8, 86, 22, 39, 16, 0, 8, Text::Body};
         case MenuType::BoxMenu:
-            return {Kind::List, 440, 1, 52, 4, 6, 60, 10, 12, 16, 0, 8, Text::Body};
+            // The narrow Pokemon actions sheet over the box grid (NarrowPokemonActionMenu.h):
+            // context + title header, up to 11 commands (the sheets list 3-9), never scrolls.
+            return {Kind::List, 440, 1, 46, 6, 11, 78, 10, 34, 18, 0, 8, Text::Body};
         case MenuType::BackupMenu:
             return {Kind::List, 760, 1, 56, 6, 7, 64, 20, 16, 16, 0, 8, Text::Body};
         case MenuType::KeyItemWarning:
@@ -136,7 +146,8 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::LaunchConfirm:
             return {Kind::Confirm, 640, 1, 0, 0, 0, 60, 28, 18, 0, 0, 8, Text::Body, 56, 3};
         case MenuType::SaveDiscard:
-            return {Kind::Confirm, 640, 1, 0, 0, 0, 60, 28, 18, 0, 0, 8, Text::Body, 56, 3};
+            // The accepted Gen I-V exit / save dialog width (Dialogs/SaveConfirmDialog.cpp, 560).
+            return {Kind::Confirm, 560, 1, 0, 0, 0, 60, 24, 16, 0, 0, 8, Text::Body, 56, 3};
         case MenuType::Count: break;
     }
     return {};

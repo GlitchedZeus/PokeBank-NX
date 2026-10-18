@@ -342,3 +342,28 @@ $(GEN5_PID_TEST): $(GEN5_PID_INPUTS)
 $(GEN5_PID_SANITIZE): $(GEN5_PID_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_pid_coordination.cpp -o $@
+
+# S04 owner hardware item: one end-to-end Gen V trace through the shared screen
+# state (Create/Edit/Clone/Move/Release/Held Item/Bag -> Review -> cancel ->
+# Discard All -> redo -> Export Copy -> reopen); source file byte-identical.
+GEN5_S04_TRACE_TEST := $(HOST_BUILD)/test_gen5_review_discard_export_trace
+GEN5_S04_TRACE_SANITIZE := $(HOST_BUILD)/test_gen5_review_discard_export_trace_sanitize
+GEN5_S04_TRACE_SOURCES := tests/test_gen5_review_discard_export_trace.cpp \
+    src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp \
+    src/Legacy/Gen5ReadOnlyTrainer.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
+    src/Names/SpeciesNames.cpp
+GEN5_S04_TRACE_INPUTS := $(GEN5_S04_TRACE_SOURCES) include/Integration/Gen5/Gen5BagScreen.h \
+    include/Integration/Gen5/Gen5SourceDiscovery.h $(GEN5_TRAINER_INPUTS) $(GEN5_SAVE_INPUTS)
+
+HOST_TESTS += $(GEN5_S04_TRACE_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_S04_TRACE_SANITIZE)
+host-test: $(GEN5_S04_TRACE_TEST)
+host-sanitize: $(GEN5_S04_TRACE_SANITIZE)
+
+$(GEN5_S04_TRACE_TEST): $(GEN5_S04_TRACE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN5_S04_TRACE_SOURCES) -o $@
+
+$(GEN5_S04_TRACE_SANITIZE): $(GEN5_S04_TRACE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_S04_TRACE_SOURCES) -o $@

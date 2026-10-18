@@ -85,7 +85,7 @@ int main() {
     assert(std::string(rendered.rows[4].label) == "Origin & Legality");
     static_assert(Narrow::geometry(12).width == 440);
     static_assert(Narrow::geometry(12).height <= 720 - 56);
-    static_assert(Narrow::geometry(9).rowHeight >= 54);
+    static_assert(Narrow::geometry(9).rowHeight == 46); // shared compact BoxMenu rule (Phase 2)
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
@@ -213,7 +213,8 @@ int main() {
     assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
-    contains(surface, "Gen4ItemListWindow::first(");
+    // The Add picker window is the shared SharedMenuGeometry window (full window on wrap).
+    contains(surface, "UI::SharedBagAddPicker::drawPicker(");
     const auto classicMove = read("src/UI/ClassicPackedMoveOverlay.inc");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     // Require Gen IV to enter the already accepted Y tap/hold-release path,
@@ -278,7 +279,10 @@ int main() {
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
     contains(itemsPanel, "ClassicMachineArtwork::artKey(");
     contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
-    contains(surface, "ItemPickerArtwork::drawNativeItem(");
+    // Exact-game machine art: the surface hands its own game group to the shared picker,
+    // which draws every row through ItemPickerArtwork::drawNativeItem.
+    contains(read("include/UI/SharedBagAddPicker.h"), "ItemPickerArtwork::drawNativeItem(");
+    contains(surface, "UI::SharedBagAddPicker::drawPicker(fb,screen.touchButtons,kGen4BagAddTouchBase,game,");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
     const auto gen2Editor = read("src/UI/Gen2PokemonEditorFoundation.inc");
@@ -354,9 +358,9 @@ int main() {
     contains(surface, "state.itemAddPickerActive");
     contains(surface, "Gen4::gen4BagChoices(staged->layout()");
     contains(surface, "current->stageBagAdd(");
-    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,");
+    contains(surface, "#include \"UI/SharedBagAddPicker.h\"");
     contains(surface, "Gen IV item added to staged workspace ONLY (x");
-    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,");
+    contains(surface, "UI::SharedBagAddPicker::drawRemoveConfirm(");
     const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
     const auto quantityEntryAt=surface.find(
         "// Forward controller movement and B/Exit to the shared Items panel.",removeGuardAt);
@@ -389,9 +393,10 @@ int main() {
     contains(surface,"int stickX,int stickY,const TouchInput& touch)");
     contains(addPath,"touch.justReleased() && touch.dragged()");
     contains(addPath,"touch.justTapped()");
-    contains(addPath,"startRow==endRow && selected<size");
+    contains(addPath,"startHit>=0 && startHit==endHit");
+    contains(addPath,"AddPicker::hitChoice(");
     contains(addPath,"keys|=HidNpadButton_A");
-    contains(addPath,"Gen4ItemListWindow::first(");
+    contains(addPath,"AddPicker::visibleRows(size)");
     // B01-B06: Add never opens a keypad. The shared Gen I-V flow (UI/SharedBagAddFlow.h)
     // stages the item at x1, or focuses an already-held stack; A on the row edits quantity.
     assert(addPath.find("Utils::promptNumber(")==std::string::npos);
@@ -542,10 +547,10 @@ int main() {
     contains(surface, "\"OT\", \"Trainer ID\"");
     assert(surface.find("OT (read-only)") == std::string::npos);
     assert(surface.find("TID (read-only)") == std::string::npos);
-    contains(surface, "SID (read-only)");
+    contains(surface, "\"SID\", \"Held Item\"");
     contains(surface, "setOriginalTrainerName");
     contains(surface, "setTID");
-    contains(surface, "Origin (read-only)");
+    contains(surface, "case 6: case 10: return true;"); // SID / Origin: gold ReadOnly field state
     contains(surface, "state.focus.row == row && (viewMode || editable);");
     contains(surface, "return gen4(state).session.mode == SessionModel::Mode::View;");
 
@@ -593,9 +598,11 @@ int main() {
     // Item pictures must be actual per-ball/item PNGs and part of reproducible
     // ROMFS recovery, not a generic placeholder drawn for every choice.
     // All Held Item generations now use one exact Gen III grid renderer.
-    contains(sharedHeld, "ItemPickerArtwork::draw(fb, cellX + cellWidth - 24");
+    // Phase 2: the sprite leads each cell and the name follows at the HeldItemPicker rule's gap.
+    contains(sharedHeld, "const int spriteRight = cellX + rule.cellPadX + rule.spriteSize;");
+    contains(sharedHeld, "ItemPickerArtwork::draw(fb, spriteRight, cellY + 2, rule.spriteSize");
     contains(sharedHeld, "fb.drawSelectionHighlight(cellX, cellY - 3");
-    contains(sharedHeld, "fb.drawText(cellX + 10, cellY + 7");
+    contains(sharedHeld, "fb.drawText(spriteRight + rule.spriteGap, cellY + 7");
     contains(gen2Held, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(gen2Editor, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(gen2Editor, "Gen2HeldItemPickerPresentation::drawList(fb, x, y");
@@ -604,8 +611,9 @@ int main() {
     contains(gen3Picker, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
-    contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
+    // Phase 2: the ball sprite leads its name (BallPicker rule), in Gen III and Gen IV/V alike.
+    contains(surface, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
+    contains(gen3Picker, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
     contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb, footer);"); // A Select / B Cancel
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
@@ -730,9 +738,12 @@ int main() {
     const auto addItemEnd = surface.find("void drawItemRemoveConfirm(", addItemStart);
     assert(addItemStart != std::string::npos && addItemEnd > addItemStart);
     const auto addItemBody = surface.substr(addItemStart, addItemEnd - addItemStart);
-    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1)") != std::string::npos);
-    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1)") == std::string::npos);
-    contains(addItemBody, "ItemPickerArtwork::draw");
+    // The shared picker (UI/SharedBagAddPicker.h) draws that neutral border and the row art.
+    contains(addItemBody, "UI::SharedBagAddPicker::drawPicker(");
+    const auto sharedPicker = read("include/UI/SharedBagAddPicker.h");
+    contains(sharedPicker, "fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1)");
+    assert(sharedPicker.find("Colors::FocusBorder") == std::string::npos);
+    contains(sharedPicker, "ItemPickerArtwork::drawNativeItem(");
 
     // The fixed-form Bulbasaur field is clearly informational in View.
     contains(surface, "Default (fixed)");

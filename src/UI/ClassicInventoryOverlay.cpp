@@ -12,6 +12,7 @@
 #include "Trainer/Trainer.h"
 #include "UI/ClassicInventoryUIModel.h"
 #include "UI/SharedBagAddFlow.h"
+#include "UI/SharedBagAddPicker.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
@@ -667,14 +668,11 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 
     if (state.pickerActive) {
         const int count = static_cast<int>(state.pickerItems.size());
-        constexpr int width = PokeBank::UIModel::ClassicAddItemPickerLayout::Width;
-        const int marginY = PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(720);
-        constexpr int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
-        const int x = (1280 - width) / 2;
-        constexpr int height = PokeBank::UIModel::ClassicAddItemPickerLayout::Height;
-        const int listTop = marginY + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
-        const int listBottom = marginY + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
-        const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
+        // The shared Gen I-V ItemPicker geometry (UI/SharedMenuGeometry.h via
+        // UI/SharedBagAddPicker.h): the same rows the picker draws and publishes as touch targets.
+        const auto geometry = UI::SharedBagAddPicker::pickerLayout(count);
+        const int rowH = geometry.rule.rowHeight;
+        const int visibleRows = std::max(1, geometry.visibleRows);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
         const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
         // Shared scrollbar first: a held thumb moves the window, not the row, and owns the touch.
@@ -686,7 +684,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         }
         if (maxFirstRow > 0 && !pickerBar.consumed) {
             state.pickerScroll.updateVertical(
-                touch, x + 12, listTop, width - 24, listBottom - listTop,
+                touch, geometry.list.x, geometry.list.y, geometry.list.w, geometry.list.h,
                 rowH, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
             state.pickerScroll.stop();
@@ -940,9 +938,11 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     screen.touchButtons.clear();
     const bool compactPicker = state.pickerActive;
-    const int width = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Width : 900;
-    const int y = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(fb.getHeight()) : 66;
-    const int height = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Height : 610;
+    const auto pickerGeometry =
+        UI::SharedBagAddPicker::pickerLayout(static_cast<int>(state.pickerItems.size()));
+    const int width = compactPicker ? pickerGeometry.frame.w : 900;
+    const int y = compactPicker ? pickerGeometry.frame.y : 66;
+    const int height = compactPicker ? pickerGeometry.frame.h : 610;
     const int x = (fb.getWidth() - width) / 2;
     const int radius = compactPicker ? 16 : 18;
     if (compactPicker) {
@@ -990,41 +990,36 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.pickerActive && game && pocket) {
-        constexpr int pad = PokeBank::UIModel::ClassicAddItemPickerLayout::HorizontalPadding;
-        fb.drawText(x + pad, y + 16, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
-                    Colors::Text, TextStyle::Heading);
+        // Same shared ItemPicker presentation as Gen IV/V (UI/SharedBagAddPicker.h): leading
+        // sprite, name, held quantity right; one rectangle is the highlight and the touch target.
+        namespace MG = PokeBank::UIModel::SharedMenuGeometry;
+        const auto& l = pickerGeometry;
+        const int pad = l.rule.padX;
         const int count = static_cast<int>(state.pickerItems.size());
-        std::string pos = std::to_string(state.pickerRow + 1) + " / " + std::to_string(count);
-        int posW = 0, posH = 0;
-        fb.measureText(pos, posW, posH, TextStyle::Caption);
-        fb.drawText(x + width - pad - posW, y + 22, pos, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + pad, y + 54,
-                    std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort),
+        fb.drawText(x + pad, y + 8, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(x + pad, y + 40,
+                    std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort) +
+                        "  |  " + std::to_string(state.pickerRow + 1) + " / " + std::to_string(count),
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawHDivider(x + pad, y + 76, width - pad * 2);
 
-        const int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
-        const int listTop = y + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
-        // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
-        const int listBottom = y + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
-        const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
+        const int rowH = l.rule.rowHeight;
+        const int listTop = l.list.y;
+        const int listBottom = l.list.bottom();
+        const int visibleRows = std::max(1, l.visibleRows);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
         const int start = state.pickerViewport.firstRow;
         const int drawFirst = std::max(0, start - 1);
         const int drawLast = std::min(count, start + visibleRows + 1);
         const int liveOffset = state.pickerScroll.offset();
-        fb.setClipRect(x + 12, listTop, width - 24, listBottom - listTop);
+        fb.setClipRect(l.list.x, listTop, l.list.w, l.list.h);
         for (int i = drawFirst; i < drawLast; ++i) {
             const int rowY = listTop + (i - start) * rowH + liveOffset;
+            const MG::Rect cell{l.list.x, rowY, l.list.w, rowH - l.rule.rowGap};
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             std::string label = artName;
-            if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            // Gen IV visual parity: only focused row has the highlight. The
-            // old full-width blue row cards obscured the foreground contrast.
-            if (i == state.pickerRow)
-                fb.drawSelectionHighlight(x + 18, rowY, width - 36, rowH - 5);
-            fb.drawText(x + 32, rowY + 9, label, Colors::Text, TextStyle::Body);
+            if (i == state.pickerRow) fb.drawSelectionHighlight(cell.x, cell.y, cell.w, cell.h);
             // Native IDs are never interchangeable across generations.
             // A label like TM43 cannot select art without its actual GBA/GBC
             // taught move. PC Items uses the same discs as the TM/HM pocket.
@@ -1041,20 +1036,28 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 if (ItemSpriteKey::isGen2Mail(slug))
                     spriteKey = "gsc-mail-icon-" + slug;
             }
-            ItemPickerArtwork::draw(fb, x + width - 31, rowY + 3, 32, spriteKey);
+            const auto sprite = MG::spriteRect(l, cell);
+            ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey);
+            const auto text = MG::labelRect(l, cell, UI::SharedBagAddPicker::kHeldColumnW);
+            fb.drawText(text.x, MG::textTop(cell, l.rule.label), label,
+                        i == state.pickerRow ? Colors::Text : Colors::TextSecondary, TextStyle::Body);
+            const std::string held =
+                UI::SharedBagAddPicker::heldLabel(stagedQuantity(screen, *pocket, itemId));
+            if (!held.empty())
+                fb.drawText(text.right() + 8, MG::textTop(cell, MG::Text::Caption), held,
+                            Colors::Accent, TextStyle::Caption);
             if (rowY + rowH > listTop && rowY < listBottom)
                 appendClippedTouchButton(screen.touchButtons, i,
-                    x + 12, rowY, width - 24, rowH - 4,
-                    x + 12, listTop, width - 24, listBottom - listTop);
+                    cell.x, cell.y, cell.w, cell.h,
+                    l.list.x, listTop, l.list.w, l.list.h);
         }
         fb.clearClip();
-        SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + width - 14, listTop,
-            SharedScrollbar::kTrackWidth, listBottom - listTop,
-            SharedScrollbar::rows(count, visibleRows, start));
-        fb.drawText(x + pad, y + height - 38,
-            std::to_string(state.pickerRow + 1) + " / " + std::to_string(count) +
-            "  |  A adds x1 (held items: highlights the stack)",
-            Colors::Accent, TextStyle::Caption);
+        {
+            const auto track = UI::SharedBagAddPicker::scrollbarTrack(count, SharedScrollbar::kTrackWidth);
+            SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, track.x, track.y,
+                SharedScrollbar::kTrackWidth, track.h,
+                SharedScrollbar::rows(count, visibleRows, start));
+        }
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
                         {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
         return;

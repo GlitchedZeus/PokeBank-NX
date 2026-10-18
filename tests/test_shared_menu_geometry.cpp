@@ -6,6 +6,7 @@
 //     label column, measured with the bundled font's real advances;
 //   * the field-state contract (gold == locked, outline always visible, states distinct).
 
+#include "Enums/Ball.h"
 #include "Names/ItemNames.h"
 #include "Names/LocationDisplayNames.h"
 #include "Names/SpeciesNames.h"
@@ -33,7 +34,7 @@ void require(bool ok, const std::string& what) {
 const char* typeName(G::MenuType t) {
     constexpr const char* names[] = {"ItemPicker", "KeyItemWarning", "RemoveConfirm", "HeldItemPicker",
         "BallPicker", "SpeciesPicker", "MovePicker", "LocationPicker", "BoxMenu", "BackupMenu",
-        "LaunchConfirm", "SaveDiscard"};
+        "LaunchConfirm", "SaveDiscard", "ChoicePicker"};
     return names[static_cast<int>(t)];
 }
 
@@ -153,12 +154,38 @@ void namesFit() {
                     widest = std::max(widest, G::textWidth(name, l.rule.label));
                 }
             }
-        require(label.w - widest <= 260, "location picker has no wide empty band");
+        // The 900 px location window is the accepted L03/L04 layout (method / level on the right).
         // PKHeX keeps BW2 id 3 as the game's text-variable escapes; id 0 is the dash sentinel.
         require(Names::getMetLocationDisplayName(22, 3) == "Unknown location", "no raw text-variable escapes");
         require(Names::getMetLocationDisplayName(20, 0) == "None" &&
                 Names::getMetLocationDisplayName(12, 0) == "None", "no location reads None");
         require(Names::getMetLocationDisplayName(20, 4) == "Nuvema Town", "real Gen V names unchanged");
+    }
+}
+
+// Phase 2: every editor value list (Ball, Language, Ability, Form, Gender, Pokerus, Met Location)
+// keeps the accepted 42 px rows / 38 px cells / 86 px header; Ball sprites lead their names.
+void editorValueLists() {
+    for (auto type : {G::MenuType::BallPicker, G::MenuType::ChoicePicker, G::MenuType::LocationPicker})
+        for (int n = 1; n <= 30; ++n) {
+            const auto l = G::layout(type, n);
+            const int visible = std::min(8, n);
+            require(l.frame.h == 125 + visible * 42, "value list keeps the accepted height");
+            for (int i = 0; i < visible; ++i) {
+                const auto c = G::cellRect(l, i);
+                require(c.x == l.frame.x + 22 && c.w == l.frame.w - 44 && c.y == l.frame.y + 86 + i * 42 &&
+                        c.h == 38, "value list cells keep the accepted rows");
+            }
+        }
+    require(G::layout(G::MenuType::BallPicker, 12).frame.w == G::layout(G::MenuType::ChoicePicker, 12).frame.w,
+            "Ball and the other value lists are the same size");
+    const auto balls = G::layout(G::MenuType::BallPicker, 26);
+    const auto cell = G::cellRect(balls, 0);
+    const auto label = G::labelRect(balls, cell);
+    require(label.x - G::spriteRect(balls, cell).right() == 8, "ball sprite leads its name at an 8 px gap");
+    for (uint8_t id = 1; id <= 26; ++id) {
+        const std::string name = Enums::getBallName(id);
+        if (!name.empty()) require(G::fitsWidth(name, G::Text::Body, label.w), "ball name fits: " + name);
     }
 }
 
@@ -190,6 +217,7 @@ int main() {
     geometryEveryType();
     textMetrics();
     namesFit();
+    editorValueLists();
     fieldStates();
     if (failures) {
         std::cerr << failures << " failure(s)\n";

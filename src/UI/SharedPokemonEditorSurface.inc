@@ -181,6 +181,18 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
 
 // The Met Location picker is wider so place names and met level fit on one row (Gen III too).
 inline constexpr int kMetLocationPickerWidth = 900;
+static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
+    PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
+
+// Phase 2: ONE geometry for every editor value list (UI/SharedMenuGeometry.h). Ball, Met
+// Location and the short choice lists (Language, Ability, Form, Gender, Pokerus) share their
+// rows; draw and touch handling both read this layout, so they cannot drift apart.
+inline PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
+    namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
+                     : target == PickerTarget::MetLocation ? G::MenuType::LocationPicker
+                                                           : G::MenuType::ChoicePicker, count);
+}
 
 inline bool compactPicker(PickerTarget target) noexcept {
     return target == PickerTarget::Language || target == PickerTarget::Ball ||
@@ -254,10 +266,9 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                 pickerLayout.visibleRows * pickerLayout.rowStep,
                 pickerLayout.rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
-            const int pickerW = nature ? natureLayout.width
-                : state.pickerTarget == PickerTarget::MetLocation ? kMetLocationPickerWidth
-                : compact ? 640 : 680;
-            const int pickerH = nature ? natureLayout.height : compact ? 125 + visibleRows * 42 : 560;
+            const auto valueList = valueListLayout(state.pickerTarget, count);
+            const int pickerW = nature ? natureLayout.width : compact ? valueList.frame.w : 680;
+            const int pickerH = nature ? natureLayout.height : compact ? valueList.frame.h : 560;
             const int rowStep = nature ? natureLayout.rowStep : 42;
             const int px = (1280 - pickerW) / 2;
             const int py = (720 - kNavBarH - pickerH) / 2;
@@ -623,13 +634,13 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
     const auto natureLayout=PokeBank::UIModel::NaturePickerLayout::forChoices(totalChoices);
     const int visibleChoices=naturePicker ? natureLayout.visibleRows :
         compactChoices ? std::min(8,totalChoices) : 10;
+    const auto valueList = valueListLayout(state.pickerTarget, totalChoices);
     const int w = heldItems ? HeldItemGrid::modalWidth : movePicker ? moveLayout.width :
         speciesPicker ? 760 : naturePicker ? natureLayout.width :
-        state.pickerTarget == PickerTarget::MetLocation ? kMetLocationPickerWidth :
-        compactChoices ? 640 : 680;
+        compactChoices ? valueList.frame.w : 680;
     const int h = heldItems ? HeldItemGrid::modalHeight : movePicker ? moveLayout.height :
         speciesPicker ? 560 : naturePicker ? natureLayout.height :
-        compactChoices ? 125 + visibleChoices * 42 : 560;
+        compactChoices ? valueList.frame.h : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
 
@@ -775,12 +786,17 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                         w - 76 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
             fb.drawText(x + w - 38 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+        } else if (state.pickerTarget == PickerTarget::Ball) {
+            // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
+            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, w - 44, 38};
+            const auto sprite = PokeBank::UIModel::SharedMenuGeometry::spriteRect(valueList, cell);
+            ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,
+                                    Enums::getBallName(static_cast<uint8_t>(value)));
+            fb.drawText(PokeBank::UIModel::SharedMenuGeometry::labelRect(valueList, cell).x, yy + 7,
+                        label, Colors::Text, TextStyle::Body);
         } else {
             fb.drawText(x + 38, yy + 7, label, Colors::Text, TextStyle::Body);
         }
-        if(state.pickerTarget == PickerTarget::Ball)
-            ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
-                                    Enums::getBallName(static_cast<uint8_t>(value)));
     }
     fb.clearClip();
     SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 14, viewportTop - 4,
@@ -878,6 +894,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return A::detailLabel(static_cast<int>(row)); },
         [&](size_t row) { return A::detailValue(screen, state, *raw, static_cast<int>(row)); },
+        [&](size_t row) {
+            return A::detailLocked(screen, state, static_cast<int>(row), *raw)
+                ? PokeBank::UIModel::SharedFieldState::State::ReadOnly
+                : PokeBank::UIModel::SharedFieldState::State::Editable;
+        },
         detailPixelOffset, firstDetailRow, &state.detailsScrollbar);
     {
         for (int row = std::max(0, firstDetailRow - 1);
@@ -911,7 +932,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(g.midX + 126, yy, std::to_string(iv[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(g.midX + 190, yy, std::to_string(ev[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
-        fb.drawText(g.midX + 274, yy, std::to_string(stats[static_cast<size_t>(row)]), Colors::TextSecondary, TextStyle::Caption);
+        // Phase 4: a calculated stat is derived, never edited: the gold ReadOnly field state.
+        fb.drawText(g.midX + 274, yy, std::to_string(stats[static_cast<size_t>(row)]),
+                    SharedFieldStateColors::color(PokeBank::UIModel::SharedFieldState::Token::Gold), TextStyle::Caption);
     }
     fb.drawHDivider(g.midX + 14, g.y + 310, g.midW - 28);
     fb.drawText(g.midX + 18, g.y + 318, "PID-LINKED / SAFE EDIT", Colors::TextDim, TextStyle::Caption);
@@ -930,6 +953,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
                     TextStyle::Caption);
         Color valueColor = selected ? Colors::SelectedText : Colors::Text;
         if (i == 1 && editable && !selected) valueColor = genderValueColor(A::gender(*raw));
+        if (i == 4) valueColor = SharedFieldStateColors::color(PokeBank::UIModel::SharedFieldState::Token::Gold);   // PID: derived, gold ReadOnly
         fb.drawText(g.midX + 130, yy, A::pidRowValue(screen, *raw, row),
                     valueColor, TextStyle::Caption);
         // Keep the PID status on its own subordinate line, so the 10-digit

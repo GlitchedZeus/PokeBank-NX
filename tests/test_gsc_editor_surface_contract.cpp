@@ -167,7 +167,9 @@ int main() {
     // The established inline page owns rendering and exactly two cursor rows.
     assert(trainerPage.find("drawTrainerSession") == std::string::npos);
     assert(trainerPage.find("drawFilledRect") == std::string::npos);
-    assert(trainerPage.find("screen.trainerSelectedRow = (screen.trainerSelectedRow + 1) % 2") != std::string::npos);
+    // Gen I and Gen II share one Trainer session flow (R2-TRAINER); its two-row cursor lives there.
+    assert(trainerPage.find("UI::ClassicTrainerSession::handle(") != std::string::npos);
+    assert(readFile("include/UI/ClassicTrainerSessionInput.h").find("screen.trainerSelectedRow = (screen.trainerSelectedRow + 1) % kRows") != std::string::npos);
     assert(trainerPage.find("editor->stageTrainerEdit(name, money, error)") != std::string::npos);
     assert(parity.find("trainerSessionFor") == std::string::npos);
     const auto base = readFile("src/UI/TrainerViewScreenBase.inc");
@@ -230,9 +232,10 @@ int main() {
     // and the encounter's allowed-time mask are unchanged.
     assert(unified.find("Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
-    assert(unified.find("Pending Met Time is editor-only") != std::string::npos);
+    assert(unified.find("Pending Met Time is") != std::string::npos);
     assert(unified.find("crystalAllowedTimeMask") != std::string::npos);
-    assert(unified.find("caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught)") != std::string::npos);
+    // Met Time cycles inline (round 2 phase 11) over the same pending/recorded + allowed-time rules.
+    assert(unified.find("Selector::nextMetTime(caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught))") != std::string::npos);
     assert(picker.find("resolvedMetTime = state.crystalMetTime") != std::string::npos);
     assert(unified.find("passiveViewMoveColumn") != std::string::npos);
     assert(parity.find("passiveViewMoveColumn") != std::string::npos);

@@ -1,9 +1,12 @@
 #pragma once
+#include <type_traits>
 #include "UI/ClassicGameContext.h"
 #include "UI/SharedScrollbar.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedDataPaneLayout.h"
+#include "UI/SharedFieldState.h"
+#include "UI/SharedFieldStateColors.h"
 #include "UI/Common.h"
 #include "UI/SpriteManager.h"
 #include "UI/StatsRadar.h"
@@ -97,23 +100,32 @@ inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, 
     return suffix;
 }
 
+// S03 (owner round 1): ONE value column for every generation's DETAILS rows. It used to start
+// after the widest label, so Gen V's "Language (read-only)" pushed it right and clipped species,
+// nicknames and items. The label column is now fixed, "(read-only)" is no longer label text
+// (a locked value is shown in the gold ReadOnly state of UI/SharedFieldState.h instead), and
+// tests/test_shared_editor_unit.cpp checks every Gen III-V label fits kDetailLabelWidth.
+using PokeBank::UIModel::SharedEditorPresentation::kDetailLabelX;
+using PokeBank::UIModel::SharedEditorPresentation::kDetailValueInset;
+using PokeBank::UIModel::SharedEditorPresentation::kDetailLabelWidth;
+using PokeBank::UIModel::SharedEditorPresentation::detailValueWidth;
+static_assert(Geometry(1280, 720, 56).leftW == PokeBank::UIModel::SharedEditorPresentation::kDetailsPanelWidth,
+              "the DETAILS column model matches the shell's left panel");
+
 // Scroll only the Details rows below the fixed portrait/type header.
 // Shared inline rows keep label and value on one baseline with a full-row focus outline.
-template <class Label, class Value>
+// `state(row)` returns the row's SharedFieldState: Editable rows draw as before, ReadOnly rows
+// keep a gold value (also when focused), Disabled rows are muted; the outline is always drawn.
+template <class Label, class Value, class StateFor>
+    requires std::is_invocable_v<StateFor&, std::size_t>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value,
-    int pixelOffset = 0, int independentFirstRow = -1,
+    StateFor state, int pixelOffset = 0, int independentFirstRow = -1,
     SharedScrollbar::State* scrollbar = nullptr) {
+    namespace FieldState = PokeBank::UIModel::SharedFieldState;
     const auto viewport = PokeBank::UIModel::SharedEditorPresentation::detailsViewport(y, h);
     const std::size_t visibleRows = static_cast<std::size_t>(viewport.visibleRows);
-    // Keep one value column across scrolling windows, sized for the real field labels.
-    int labelWidth = 0;
-    for (std::size_t row = 0; row < total; ++row) {
-        int width = 0, height = 0;
-        fb.measureText(label(row), width, height, TextStyle::Caption);
-        labelWidth = std::max(labelWidth, width);
-    }
-    const int valueInset = std::max(112, std::min(labelWidth + 28, w - 100));
+    const int valueInset = kDetailValueInset;
     auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
     if (independentFirstRow >= 0 && total > visibleRows) {
         // Finger scrolling changes the viewport, not which field is selected.
@@ -138,13 +150,15 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         const auto row = static_cast<std::size_t>(rowIndex);
         const int yy = viewport.firstRowY + i * viewport.rowStep + pixelOffset;
         const bool selected = focused && row == focus;
-        if (selected)
+        const auto style = FieldState::style(state(row), selected);
+        if (style.focusOutline)
             fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
-        const std::string rowLabel = fitDetailsText(fb, label(row), valueInset - 28);
-        const std::string rowValue = fitDetailsText(fb, value(row), std::max(0, w - valueInset - 28));
-        fb.drawText(x + 16, yy + 7, rowLabel,
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + valueInset, yy + 7, rowValue, Colors::Text, TextStyle::Caption);
+        const std::string rowLabel = fitDetailsText(fb, label(row), kDetailLabelWidth);
+        const std::string rowValue = fitDetailsText(fb, value(row), std::max(0, detailValueWidth(w)));
+        fb.drawText(x + kDetailLabelX, yy + 7, rowLabel, SharedFieldStateColors::color(style.label),
+                    TextStyle::Caption);
+        fb.drawText(x + valueInset, yy + 7, rowValue, SharedFieldStateColors::color(style.value),
+                    TextStyle::Caption);
     }
     fb.clearClip();
     // Owners that pass their SharedScrollbar::State get the draggable thumb (geometry published
@@ -157,6 +171,16 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
             std::max(0, viewportH - 12), total, visibleRows, window.first);
     // No "Rows N-M / T" counter: the scrollbar alone reports position.
+}
+// Rows without per-row state draw as Editable (the previous presentation).
+template <class Label, class Value>
+inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
+    std::size_t total, std::size_t focus, bool focused, Label label, Value value,
+    int pixelOffset = 0, int independentFirstRow = -1,
+    SharedScrollbar::State* scrollbar = nullptr) {
+    drawScrollableDetails(fb, x, y, w, h, total, focus, focused, label, value,
+        [](std::size_t) { return PokeBank::UIModel::SharedFieldState::State::Editable; },
+        pixelOffset, independentFirstRow, scrollbar);
 }
 // The native-data and six-stat radar composition is shared by exact-format providers.
 template <class Rows>

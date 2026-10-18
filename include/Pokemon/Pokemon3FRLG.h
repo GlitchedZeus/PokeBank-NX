@@ -271,9 +271,9 @@ namespace Pokemon {
         // wantLetter (Unown only) replaces the preserved current letter; -1 keeps it.
         void rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit = -1,
                        int wantLetter = -1) noexcept;
-        // rerollPID that also holds the mon's CURRENT shininess, retrying without that constraint if
-        // it can't be met in budget. Editing one PID-derived field must not quietly change the others,
-        // but the edit the user asked for still has to land -- so shiny is the constraint that yields.
+        // rerollPID that also holds the mon's CURRENT shininess. The PID is constructed to hold every
+        // pinned trait (Gen3PidSearch.h), so shininess never yields; an impossible request (a gender
+        // the species cannot have) leaves the record unchanged.
         void rerollPreservingShiny(int wantGender, int wantNature, int wantAbilityBit = -1) noexcept;
         // The PID low bit a re-roll has to preserve so that editing some OTHER PID-derived field
         // cannot desync the PID from the stored ability bit. -1 (unconstrained) unless the species

@@ -655,14 +655,15 @@ bool hasPending(TrainerViewScreen& screen) {
     if (!trainer) return false;
     const bool pokemon = trainer->stagedPokemon() && trainer->stagedPokemon()->hasPendingChanges();
     const bool inventory = trainer->stagedInventory() && trainer->stagedInventory()->hasPendingChanges();
-    return pokemon || inventory;
+    const bool trainerFields = trainer->stagedTrainer() && trainer->stagedTrainer()->hasPendingChanges();
+    return pokemon || inventory || trainerFields;
 }
 
 std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     auto* trainer = rbyTrainer(screen);
     if (!trainer || !trainer->stagedPokemon()) return {};
     return PokeVault::Integration::Gen1::gen1ExportChangeLines(
-        *trainer->stagedPokemon(), trainer->stagedInventory());
+        *trainer->stagedPokemon(), trainer->stagedInventory(), trainer->stagedTrainer());
 }
 
 std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
@@ -699,7 +700,7 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
     request.applicationSha = POKEVAULT_GIT_COMMIT;
 #endif
     const auto result = PokeVault::Integration::Gen1::publishVerifiedGen1Export(
-        *pokemon, request, trainer->stagedInventory());
+        *pokemon, request, trainer->stagedInventory(), trainer->stagedTrainer());
     if (!result.success) {
         error = result.error.empty() ? "Verified Generation I export failed" : result.error;
         return {};
@@ -712,6 +713,11 @@ void discardAll(TrainerViewScreen& screen) {
     if (!trainer) return;
     if (auto* e = trainer->stagedPokemon()) e->discard();
     if (auto* e = trainer->stagedInventory()) e->discard();
+    if (auto* e = trainer->stagedTrainer()) {
+        e->discard();
+        screen.trainer.trainerName = e->trainerName();
+        screen.trainer.money = e->money();
+    }
     refreshBoxes(screen);
     ClassicInventory::refreshPresentation(screen);
 }

@@ -2,6 +2,7 @@
 
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen1PokemonEditorUIContract.h"
+#include "UI/SharedMenuGeometry.h"
 
 #include <array>
 #include <cstddef>
@@ -55,11 +56,17 @@ struct Geometry {
     [[nodiscard]] constexpr int rowWidth() const noexcept { return width - 20; }
 };
 
+// Phase 2 (owner round 1: "shrink box menu ... not so much blank space"): the sheet takes its
+// row pitch, header and padding from the ONE BoxMenu rule (UI/SharedMenuGeometry.h), so every
+// generation's box menu is the same compact size: 46 px rows (40 px cards) instead of 54.
 [[nodiscard]] constexpr Geometry geometry(int actionCount, int screenW = 1280,
                                           int screenH = 720, int footerH = 56) noexcept {
+    constexpr auto rule = SharedMenuGeometry::rule(SharedMenuGeometry::MenuType::BoxMenu);
     Geometry g{};
-    g.rowHeight = actionCount <= 9 ? 54 : actionCount == 10 ? 52 :
-                  actionCount == 11 ? 48 : 44;
+    g.width = rule.width;
+    g.headerHeight = rule.headerH;
+    g.bottomHeight = rule.padBottom;
+    g.rowHeight = rule.rowHeight;
     g.height = g.headerHeight + actionCount * g.rowHeight + g.bottomHeight;
     g.x = (screenW - g.width) / 2;
     g.y = (screenH - footerH - g.height) / 2;
@@ -198,7 +205,8 @@ static_assert(classic(SharedPokemonEditor::actionsForSlot(false), false).count =
 static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)).visualIndex(-1) == -1);
 static_assert(gen1(Gen1Editor::actionsForSlot(true), true).visualIndex(-1) == -1);
 static_assert(geometry(12).height <= 720 - 56);
-static_assert(geometry(9).rowHeight >= 54);
+static_assert(geometry(9).rowHeight == 46 && geometry(8).height == 78 + 8 * 46 + 34,
+              "box menu: compact shared rows, content-driven height");
 static_assert(geometry(2).width == 440);
 
 } // namespace PokeBank::UIModel::NarrowPokemonMenu

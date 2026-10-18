@@ -5,6 +5,7 @@
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Inventory/ItemQuantityPolicy.h"
+#include "UI/SharedBagAddPicker.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
@@ -322,6 +323,10 @@ struct Gen5Editor {
     static bool detailEditable(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                int row, const Record&) {
         return Fields::detailEditable(draft(screen), row, b2w2(screen));
+    }
+    static bool detailLocked(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
+                             int row, const Record& p) {
+        return Fields::detailLocked(p, row, singleForm(screen, p));
     }
     static std::string detailValue(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                    const Record& p, int row) {
@@ -864,8 +869,6 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 // Controller and touch reach the same Gen5BagScreen entry points. Every
 // accepted change is staged in app memory through Gen5StagedBag only.
 constexpr int kGen5BagAddTouchBase=81000;
-constexpr int kGen5BagAddRows=9;
-constexpr int kGen5BagAddRowH=43;
 int bagItemsPerPage() noexcept {
     return std::max(1,(CONTENT_PANEL_HEIGHT-106)/52); // mirrors Panels::drawItems
 }
@@ -912,21 +915,23 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
             // Shared scrollbar first: the window is centred on the cursor, so the thumb moves the
             // cursor to the row that puts the window where the finger put it; touch is then owned.
             const int addSelected=static_cast<int>(bag.addIndex());
+            const int addRows=UI::SharedBagAddPicker::visibleRows(count);
             const auto addBar=SharedScrollbar::handleTouch(editorStateFor(screen).bagAddScrollbar,
                 SharedScrollbar::sample(touch),
-                SharedScrollbar::rows(count,kGen5BagAddRows,
-                    std::clamp(addSelected-kGen5BagAddRows/2,0,std::max(0,count-kGen5BagAddRows))));
+                SharedScrollbar::rows(count,addRows,UI::SharedBagAddPicker::firstVisible(addSelected,count)));
             if(addBar.changed && count>0)
-                bag.moveAddCursor(std::clamp(addBar.scroll+kGen5BagAddRows/2,0,count-1)-addSelected);
+                bag.moveAddCursor(std::clamp(addBar.scroll+addRows/2,0,count-1)-addSelected);
             if(!addBar.consumed && tap>=kGen5BagAddTouchBase && tap<kGen5BagAddTouchBase+count &&
                bag.tapAddChoice(static_cast<size_t>(tap-kGen5BagAddTouchBase)))
                 keys|=HidNpadButton_A;
+            // Page size = the rows the shared picker shows (UI/SharedBagAddPicker.h).
+            const int pageRows=UI::SharedBagAddPicker::visibleRows(count);
             if(keys&HidNpadButton_Up)bag.moveAddCursor(-1);
             if(keys&HidNpadButton_Down)bag.moveAddCursor(1);
-            if(keys&(HidNpadButton_L|HidNpadButton_Left))bag.moveAddCursor(-kGen5BagAddRows);
-            if(keys&(HidNpadButton_R|HidNpadButton_Right))bag.moveAddCursor(kGen5BagAddRows);
-            if(keys&HidNpadButton_ZL)bag.moveAddCursor(-5*kGen5BagAddRows);
-            if(keys&HidNpadButton_ZR)bag.moveAddCursor(5*kGen5BagAddRows);
+            if(keys&(HidNpadButton_L|HidNpadButton_Left))bag.moveAddCursor(-pageRows);
+            if(keys&(HidNpadButton_R|HidNpadButton_Right))bag.moveAddCursor(pageRows);
+            if(keys&HidNpadButton_ZL)bag.moveAddCursor(-5*pageRows);
+            if(keys&HidNpadButton_ZR)bag.moveAddCursor(5*pageRows);
             if(keys&HidNpadButton_B) {
                 bag.cancel();
             } else if(keys&HidNpadButton_A) {
@@ -1801,56 +1806,34 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         drawNavBar(fb,serialized);
         return;
     }
-    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
+    const auto game=screen.trainer.getGameGroup();
     if(bag.surface()==BagSurface::AddPicker) {
-        const int w=780,h=532,x=(fb.getWidth()-w)/2;
-        const int y=(fb.getHeight()-kNavBarH-h)/2;
-        fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-        fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-        fb.drawText(x+24,y+17,"Add Item - Generation V",Colors::Text,TextStyle::Heading);
-        fb.drawText(x+24,y+53,std::string(G::bagPocketName5(bag.pocket()))+
-            "  |  native pocket catalog, released items only",
-            Colors::TextSecondary,TextStyle::Caption);
         const auto& choices=bag.addChoices();
         const int count=static_cast<int>(choices.size());
         const int selected=static_cast<int>(bag.addIndex());
-        const int start=std::clamp(selected-kGen5BagAddRows/2,0,
-                                   std::max(0,count-kGen5BagAddRows));
-        for(int row=0;row<kGen5BagAddRows && start+row<count;++row) {
-            const int index=start+row;
-            const int yy=y+88+row*kGen5BagAddRowH;
-            const auto id=choices[static_cast<size_t>(index)];
-            const std::string name=bagItemLabel(screen,id);
-            if(index==selected)fb.drawSelectionHighlight(x+18,yy,w-36,kGen5BagAddRowH-5);
-            screen.touchButtons.push_back({kGen5BagAddTouchBase+index,x+18,yy,w-36,
-                                           kGen5BagAddRowH-5});
-            fb.drawText(x+32,yy+9,name,Colors::Text,TextStyle::Body);
-            ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,
-                                              screen.trainer.getGameGroup(),id,name);
-        }
-        SharedScrollbar::drawAndPublish(fb,editorStateFor(screen).bagAddScrollbar,x+w-8,y+88,
-            SharedScrollbar::kTrackWidth,kGen5BagAddRows*kGen5BagAddRowH,
-            SharedScrollbar::rows(count,kGen5BagAddRows,start));
-        fb.drawText(x+24,y+h-38,std::to_string(selected+1)+" / "+std::to_string(count)+
-            "  |  A adds x1 (held items: highlights the stack)",Colors::Accent,TextStyle::Caption);
+        UI::SharedBagAddPicker::drawPicker(fb,screen.touchButtons,kGen5BagAddTouchBase,game,
+            "Add Item",std::string(G::bagPocketName5(bag.pocket()))+"  |  released items only",
+            count,selected,
+            [&](int index){return bagItemLabel(screen,choices[static_cast<size_t>(index)]);},
+            [&](int index){return choices[static_cast<size_t>(index)];},
+            [&](int index) {
+                const auto rows=ws.bagPresentation();
+                const auto id=choices[static_cast<size_t>(index)];
+                if(!rows || bag.pocket()>=rows->size())return uint16_t{0};
+                for(const auto& stack:(*rows)[bag.pocket()])if(stack.itemId==id)return stack.count;
+                return uint16_t{0};
+            });
+        const auto track=UI::SharedBagAddPicker::scrollbarTrack(count,SharedScrollbar::kTrackWidth);
+        SharedScrollbar::drawAndPublish(fb,editorStateFor(screen).bagAddScrollbar,track.x,track.y,
+            SharedScrollbar::kTrackWidth,track.h,
+            SharedScrollbar::rows(count,UI::SharedBagAddPicker::visibleRows(count),
+                                  UI::SharedBagAddPicker::firstVisible(selected,count)));
     } else {
+        SharedEditorChrome::beginModal(screen.touchButtons);
         const auto& item=bag.pendingRemove();
-        const int w=625,h=244,x=(fb.getWidth()-w)/2;
-        const int y=(fb.getHeight()-kNavBarH-h)/2;
-        fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-        fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-        fb.drawText(x+24,y+20,"Remove Gen V Item?",Colors::Text,TextStyle::Heading);
-        if(item) {
-            const std::string name=bagItemLabel(screen,item->itemId);
-            fb.drawText(x+24,y+69,name+"  |  Count "+std::to_string(item->count),
-                        Colors::Text,TextStyle::Body);
-            ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,
-                                              screen.trainer.getGameGroup(),item->itemId,name);
-        }
-        fb.drawText(x+24,y+113,"Only the app-owned staged bag changes. Original SAV5 is immutable.",
-                    Colors::TextSecondary,TextStyle::Caption);
-        fb.drawText(x+24,y+163,"Discard All in Review restores the source bag.",
-                    Colors::Accent,TextStyle::Caption);
+        UI::SharedBagAddPicker::drawRemoveConfirm(fb,game,"Remove Gen V Item?",
+            item?item->itemId:0,item?bagItemLabel(screen,item->itemId):std::string(),
+            item?item->count:0,"Staged bag only; Discard All in Review restores it.");
     }
     drawNavBar(fb,hints);
 }

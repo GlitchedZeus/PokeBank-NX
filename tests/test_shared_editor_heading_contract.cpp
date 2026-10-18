@@ -62,6 +62,22 @@ int main() {
             assert(context.find(Classic::modeLabel(mode)) != std::string::npos);
         }
     }
+    // S03: Gen III-V headers name the exact game in View / Edit / Create too.
+    const std::array<std::pair<const char*, const char*>, 14> laterGames{{
+        {"ruby_gba", "Ruby"}, {"sapphire_gba", "Sapphire"}, {"emerald_gba", "Emerald"},
+        {"firered_gba", "FireRed"}, {"leafgreen_gba", "LeafGreen"},
+        {"diamond_nds", "Diamond"}, {"pearl_nds", "Pearl"}, {"platinum_nds", "Platinum"},
+        {"heartgold_nds", "HeartGold"}, {"soulsilver_nds", "SoulSilver"},
+        {"black_nds", "Black"}, {"white_nds", "White"}, {"black2_nds", "Black 2"}, {"white2_nds", "White 2"},
+    }};
+    for (const auto& [id, expected] : laterGames) {
+        assert(Classic::exactGameName(id) == expected);
+        for (const auto mode : modes)
+            assert(Classic::contextLine("Box 1 / Slot 1", id, mode).find(std::string(" • ") + expected + " • ") !=
+                   std::string::npos);
+    }
+    assert(Classic::contextLine("Box 2 / Slot 3", "white2_nds", Classic::SurfaceMode::CreateDraft) ==
+           "Box 2 / Slot 3 • White 2 • Source save immutable • DRAFT");
     const auto yellow = Classic::contextLine("Box 1 / Slot 1", "yellow_gb", Classic::SurfaceMode::ViewReadOnly);
     assert(yellow.find("Box 1 / Slot 1 • Yellow • Source save immutable • READ ONLY") != std::string::npos);
 

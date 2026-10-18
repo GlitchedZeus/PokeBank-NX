@@ -1154,8 +1154,8 @@ assert "write" not in dex_model.split("namespace PokeVault")[1].lower().replace(
 # through the shared pickers, keypads and move editor; nothing is Gen V-only UI.
 fields = read("include/Integration/Gen5/Gen5EditorFields.h")
 require(fields, '"Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",',
-        '"Held Item", "Friendship", "Language (read-only)", "Origin (read-only)", "Ball",',
-        '"Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful Encounter"',
+        '"Held Item", "Friendship", "Language", "Origin", "Ball",',
+        '"Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful"',
         "ItemStorage5.GetAllHeld()", "BagCatalog5::kUnreleased", "Master (1) .. Dream (25)",
         "NativeMetLocations5.begin()", "move <= MaxNativeMove5", "kMaxSpecies = 649",
         "probe.stage(Field::Form, 0, form, error)", "info.ability2 != info.ability1",
