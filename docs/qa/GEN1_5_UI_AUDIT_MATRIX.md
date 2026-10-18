@@ -76,8 +76,8 @@ contract lists them as not shown; differences between generations are flagged fo
 | CG12-single-bag-add-flow: Gen I-V Add Item goes through SharedBagAddFlow: staged at quantity 1 with no numpad; a quantity editor opens only from an inventory row the rule lets you edit | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG15-shared-species-search: Species live search (SharedSearchInput prefix filter) is in the one shared chooser for all five generations; no generation switches it off | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG13-shared-menu-geometry: Every menu type lays out through SharedMenuGeometry (one rule per type, used by a real picker in every generation) | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG16-shared-field-state: Locked values are gold through SharedFieldState and never editable; no field label says "(read-only)"; no editor value is drawn in raw gold | XFAIL until S (Gen III PID label) + C (Gen I/II raw-gold Shiny values, R2-GOLD) | 8 | 3 | 0 | 0 | 0 |
-| CG17-exact-source-game-header: Create / Edit / View headers name the exact source game in all 20 Gen I-V versions | XFAIL until S (exactGameName 0f132eb) + C (Gen I/II headers, R2-GOLD) | 1 | 1 | 0 | 0 | 0 |
+| CG16-shared-field-state: Locked values are gold through SharedFieldState and never editable; no field label says "(read-only)"; no editor value is drawn in raw gold | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG17-exact-source-game-header: Create / Edit / View headers name the exact source game in all 20 Gen I-V versions | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG18-trainer-edit-footer: The Trainer page shows "A: Edit" only when Name / Money are editable in this session (Gen I staged Trainer editor included) | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG14-shared-draggable-scrollbar: Every scrollbar is the one SharedScrollbar: drawn through it, never privately, and draggable (its State is hit-tested with handleTouch) | PASS | 0 | 0 | 0 | 0 | 0 |
 
