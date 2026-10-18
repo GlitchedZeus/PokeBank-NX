@@ -142,12 +142,13 @@ int main() {
     assert(gen1Fix.find("SpriteManager::getTypeSprite") != std::string::npos);
     assert(gen2Final.find("SpriteManager::getTypeSprite") != std::string::npos);
 
-    // Calculated Gen II stats are neutral; stored DV/Stat Exp stay bright and derived HP DV stays dim.
-    assert(gen1Fix.find("const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
+    // R2-GOLD: stored DV / Stat Exp stay bright; derived HP DV and calculated stats are ReadOnly
+    // gold through the shared field-state contract (UI/ClassicStatFieldState.h), View and Edit alike.
+    assert(gen1Fix.find("ClassicStatFields::cellState(r, c), selected).value") != std::string::npos);
     assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
-    assert(gen1Passive.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
+    assert(gen1Passive.find("cell(i, 2), TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);
-    assert(gen2Final.find("stat, Colors::TextSecondary, TextStyle::Caption") != std::string::npos);
+    assert(gen2Final.find("stat, gen2StatCellColor(r, 2), TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("stat, Colors::Accent, TextStyle::Caption") == std::string::npos);
 
     // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
@@ -211,7 +212,7 @@ int main() {
     assert(gen2Fix.find("focus.row = 1;") != std::string::npos);
     assert(gen2Fix.find("focus.column = 0;") != std::string::npos);
     assert(gen2Fix.find("focus.panel = Unified::Panel::Details") == std::string::npos);
-    assert(gen2Final.find("r == 0 ? Colors::TextDim : Colors::Text") != std::string::npos);
+    assert(gen2Final.find("gen2StatCellColor(r, 0)") != std::string::npos); // R2-GOLD: derived HP DV is ReadOnly gold
 
     // Final hardware layers must never present the stale workspace label.
     assert(gen1Fix.find("PKSE three-panel workspace") == std::string::npos);

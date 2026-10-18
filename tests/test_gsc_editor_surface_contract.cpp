@@ -193,7 +193,8 @@ int main() {
     assert(unified.find("\"Sp. Atk\"") != std::string::npos);
     assert(unified.find("\"Sp. Def\"") != std::string::npos);
     assert(unified.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
-    assert(unified.find("fb.drawText(x + 282, yy, stat, Colors::TextDim") != std::string::npos);
+    // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
+    assert(unified.find("fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2)") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
     const auto valuesEnd = unified.find("void drawUnifiedMoveEditor", valuesBegin);
     assert(valuesBegin != std::string::npos && valuesEnd != std::string::npos && valuesEnd > valuesBegin);
