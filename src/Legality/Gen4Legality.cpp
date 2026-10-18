@@ -1224,7 +1224,9 @@ void Analyzer::verifyAbility5() {
     if (pi.abilities[0] != pi.abilities[1] && gen3Origin() && pk_.species <= 386 && !h5_.gen3.empty()) {
         const uint16_t max3 = h5_.gen3.front().species;
         const D::Personal3& pers = D::kPersonalE3[max3];
-        if (pers.ability1 == pers.ability2 && pk_.species == max3) { // VerifyAbilityGen3Transfer
+        // Two Gen III abilities: Colosseum/XD stores the ability bit apart from the PID (AbilityVerifier.cs:273-274).
+        if (pers.ability1 != pers.ability2) canMismatch = pk_.version == kVerCXD;
+        else if (pk_.species == max3) { // VerifyAbilityGen3Transfer
             const bool evolved45 = h5_.gen4.size() > 1 || h5_.gen5.size() > 1;
             bool decided = false;
             if (evolved45) {

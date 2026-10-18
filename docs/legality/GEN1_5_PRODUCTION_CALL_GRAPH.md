@@ -52,6 +52,10 @@ promotes Incomplete to a verdict.
   issues; `Uncertain` -> Warnings with encounter/event coverage Partial.
 - Verified by `tools/pkhex_gb_diff` production-parity (`production_parity.cpp`): the app path and
   the search agree on every corpus record.
+- Raw name bytes: `Gen1::PokemonRecord::originalTrainerRaw` / `nicknameRaw` are passed as `e.otRaw` /
+  `e.nickRaw` (`Legality.cpp:201-214`), so the glyph and terminator rules (D-3 in
+  `PKHEX_VERIFIED_IMPROVEMENTS.md`) run on the stored bytes, not the decoded string. An OT with
+  bytes but no decodable glyph is a Warning (Incomplete), not "OT is empty".
 
 ## 4. PK2 (Gold, Silver, Crystal)
 
@@ -60,7 +64,8 @@ promotes Incomplete to a verdict.
 
 - Gate: verified native PK2; Crystal-only met data, Korean rules and the exact source profile
   are passed through `e`. Korean records whose cross-language history is unproven stay Incomplete.
-- Same verdict mapping as PK1. Parity measured by `pkhex_gb_diff` (Korean skipped, counted).
+- Same verdict mapping as PK1, with the same raw name bytes (`Legality.cpp:1012-1026`). Parity
+  measured by `pkhex_gb_diff` (Korean skipped, counted).
 
 ## 5. PK3 (Ruby, Sapphire, Emerald, FireRed, LeafGreen; GameCube origins held in them)
 
@@ -79,9 +84,14 @@ merges the analyzer's report.
 - Merge rule (`applyGen3Analyzer`): Invalid and Warning issues are appended (deduplicated by text);
   older-check Warnings that the analyzer verified for this exact record are downgraded to Info;
   coverage becomes Complete only when the analyzer certified AND the older checks raised nothing.
-- GameCube (version byte 15) origins: until Lane A lands, the analyzer stops at a Warning
-  ("Colosseum/XD origin; Gen III cartridge rules cannot verify this Pokemon", `Gen3Legality.cpp:3600-3605`); the legacy evidence blocks in `Legality.cpp:360-530` add
-  Info/Warning only. After Lane A, `Gen3Cxd` is the single judge and this row changes.
+- GameCube (version byte 15) origins: the same encounter search considers the Colosseum and XD
+  templates (`Kind::XdTrade` ... `Kind::XdSlot`, `Gen3Legality.cpp:1471`) and `verifyCxd`
+  (`Gen3Legality.cpp:4152`) applies the shadow, team-lock, name-screen and starter PID rules. A GBA
+  record relabelled with version 15 matches nothing and is Invalid, as in PKHeX. The legacy evidence
+  blocks in `Legality.cpp:360-530` still add Info/Warning only (one older Info about GameCube RNG
+  evidence can appear next to a matched record; it never changes the verdict).
+- `Gen3Cxd::judge` (`Gen3Legality.cpp:4379-4510`, `include/Legality/Gen3Cxd.h`) exposes the same
+  rules for a record that has left PK3 format; PK4 and PK5 call it (sections 6 and 7).
 
 ## 6. PK4 (Diamond, Pearl, Platinum, HeartGold, SoulSilver)
 
@@ -96,8 +106,13 @@ exactSourceGameId, &evidence)` (`Gen4Legality.cpp`).
   Warnings to Info; analyzer issues are appended; coverage becomes Complete only when the older
   checks raised nothing and the analyzer's own verdict is NoProblemsFound.
 - Pal Park (`Gen4LegalityPalPark.cpp`): Gen III-origin PK4s are judged through the Gen III
-  templates retained after transfer. Colosseum/XD origins stop at a Warning
-  (`Gen4Legality.cpp:1662`) until `Gen3Cxd` is wired.
+  templates retained after transfer. Colosseum/XD origins (version 15): `findVerifiedEncounter`
+  calls `findCxdEncounter` (`Gen4Legality.cpp:516, 628`), which asks the judge passed to
+  `analyzePk4`. Production passes `&Gen4::judgeCxdOrigin` (`Gen4Legality.cpp:1785-1790`,
+  `Gen4LegalityPalPark.cpp:1033`), which runs `Gen3Cxd::judge` with the original level bounded by
+  the met level and the ability bit only when the Gen III species has two abilities. NoMatch ->
+  Invalid; Undecided -> Warning (Incomplete); Matched -> the template's moves, ball and level are
+  checked like any other encounter. A null judge (tests only) leaves the record Incomplete.
 - Known reader limitation (Main Development, not engine): `Pokemon4ReadOnly.cpp:58` hides a Bad
   Egg, so the analyzer sees a zeroed record and returns Incomplete without a reason.
 
@@ -109,7 +124,10 @@ engine but has NO caller in this branch's app.
 - Gate: 136 or 220 bytes; all-zero returns an empty report; decrypt when `input.encrypted`;
   `Gen5::read` failure -> structure None; checksum mismatch -> Invalid; sanity flag -> Invalid.
 - Gen III/IV-origin records are routed through `Gen4::analyzeOrigin5` (a PK4 view of the record,
-  `Gen5Legality.cpp` `analyzeOrigin`); Colosseum/XD origins stop at a Warning until `Gen3Cxd`.
+  `Gen5Legality.cpp:1655` `analyzeOrigin`). Colosseum/XD origins go the same way: `analyzeOrigin5`
+  runs `judgeCxdOrigin` (`Gen4Legality.cpp:1771`) and analyzes only a Matched or NoMatch answer, so
+  an undecided judge leaves the Gen V record Incomplete. The male-OT Colosseum/XD rule applies only
+  when the origin was not analyzed (`Gen5Legality.cpp:1716`).
 - Wiring plan: #307's Gen V read-only panel (`src/UI/Gen5SharedReadOnlySurface.inc`, Main
   Development) must call the adapter Lane C adds (`include/Legality/Gen5AppAdapter.h`) with the raw
   136/220-byte record and the exact game id; the adapter renders `verdict()`, never `ok()`.
@@ -120,9 +138,9 @@ engine but has NO caller in this branch's app.
 |---|---|---|---|---|---|
 | PK1 | yes | `GB::checkGen1` | native PK1 | yes | unrecorded GB events, glitches, Korean edge cases (Incomplete) |
 | PK2 | yes | `GB::checkGen2` | native PK2 | yes | same, plus Day Care slot context |
-| PK3 | yes | `Gen3Pk3::verify` + `applyGen3Analyzer` | FRLG group, 80/100 bytes | yes | Colosseum/XD (Lane A), Enigma Berry save context, PKHeX "Fishy" RNG cases |
-| PK4 | yes | `applyGen4Analyzer` -> `analyzePk4` | native PK4, 136/236 bytes | yes | Colosseum/XD via Pal Park (Lane A + B), reader-hidden Bad Egg |
-| PK5 | **no** | `analyzePk5` | 136/220 bytes | yes (engine) | no app caller until #307 integration; Colosseum/XD transfers |
+| PK3 | yes | `Gen3Pk3::verify` + `applyGen3Analyzer` | FRLG group, 80/100 bytes | yes (Colosseum/XD included) | e-Reader all-zero IVs (Incomplete), English XD TID/SID with no seed (Warning), Enigma Berry without save context, PKHeX "Fishy" RNG cases |
+| PK4 | yes | `applyGen4Analyzer` -> `analyzePk4` | native PK4, 136/236 bytes | yes (Pal Park Colosseum/XD included) | undecided Colosseum/XD judge answers, reader-hidden Bad Egg |
+| PK5 | **no** | `analyzePk5` (+ `Gen5App::analyze` adapter) | 136/220 bytes | yes (engine) | no app caller until #307 integration |
 
 The invalid-site inventory gate (`tools/audit_legality_l5_invalid_site_gate.py`) lists every place
 `Severity::Invalid` is raised in `Legality.cpp`, so a new Invalid cannot appear outside an audited
