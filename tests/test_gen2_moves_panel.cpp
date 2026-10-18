@@ -6,6 +6,9 @@
 #include "UI/SharedPokemonShell.h"
 
 #include <cassert>
+#include "UI/MovePickerPresentation.h"
+#include <iterator>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -129,6 +132,19 @@ int main() {
                 require(!overlaps(t, texts[j]), "chooser overlap: " + t.value + " / " + texts[j].value);
         }
         require(biteType && !unknown, "chooser shows the native Gen I/II type");
+    }
+    // The Gen I move picker uses the same row count as every Gen II-V move chooser, and that many
+    // 42 px rows fit its 520 px panel (list top y+86).
+    {
+        std::ifstream in("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", std::ios::binary);
+        const std::string ux3((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        std::size_t uses = 0;
+        for (std::size_t at = ux3.find("compactPickerLayout().visibleRows"); at != std::string::npos;
+             at = ux3.find("compactPickerLayout().visibleRows", at + 1)) ++uses;
+        require(uses == 3 && ux3.find("constexpr int visible = 9") == std::string::npos,
+                "Gen I move picker handle/draw/touch read the shared visible row count");
+        constexpr auto pl = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
+        static_assert(86 + pl.visibleRows * 42 <= 520 - 12, "Gen I move rows fit the 520 px picker");
     }
     std::cout << "Gen I/II shared moves panel: PASS\n";
     return 0;
