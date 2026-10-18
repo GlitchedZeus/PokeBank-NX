@@ -326,7 +326,7 @@ bool StagedPokemonEditor::revertPokemon(size_t b,size_t s,std::string& error) {
     return commit(std::move(bytes),error);
 }
 void StagedPokemonEditor::discard() noexcept {view_=original_;changes_.clear();}
-std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std::span<const uint8_t> inventory) const {
+std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std::span<const uint8_t> inventory,std::span<const uint8_t> trainer) const {
     error.clear();
     if (packedMove_.active) {
         error = "Place or cancel carried Pokemon before finalizing the Gen I staged save";
@@ -339,6 +339,16 @@ std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std:
             const bool allowed=(i>=0x25C9 && i<0x25F3)||(i>=0x27E6 && i<0x284C);
             if(allowed) bytes[i]=inventory[i];
             else if(i!=Checksum && inventory[i]!=originalBytes()[i]) {error="Inventory baseline does not match this Pokemon editor";return {};}
+        }
+    }
+    if(!trainer.empty()) {
+        // International player name (0x2598, 11 bytes) and money (0x25F3, 3 bytes BCD); see
+        // Gen1StagedTrainerEditor.h for the pinned layout sources.
+        if(trainer.size()!=kRawSaveSize || !parse(trainer,metadata().sourceGame)) {error="Trainer candidate failed identity/layout validation";return {};}
+        for(size_t i=0;i<trainer.size();++i) {
+            const bool allowed=(i>=0x2598 && i<0x2598+11)||(i>=0x25F3 && i<0x25F6);
+            if(allowed) bytes[i]=trainer[i];
+            else if(i!=Checksum && trainer[i]!=originalBytes()[i]) {error="Trainer baseline does not match this Pokemon editor";return {};}
         }
     }
     repair(bytes);auto check=parse(bytes,metadata().sourceGame);

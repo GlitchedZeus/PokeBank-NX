@@ -8,6 +8,7 @@
 #include "Names/ItemPouches.h"
 #include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
 #include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
+#include "UI/ClassicTrainerEditability.h"  // Trainer page footer: A Edit only when Name / Money are editable
 #include "UI/Gen4BagQuantity.h"        // Gen IV bag footer: one per-item quantity query
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"   // getPouchItems -> the add-item picker's per-pouch list
 #include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0
@@ -5260,7 +5261,11 @@ namespace UI {
                 }
             } else if (selectedMode == ViewMode::Trainer) {
                 // X saves only from the HOME menu (see the X handler), so the flow is edit -> B -> X.
-                instructions = "Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App";
+                // "A: Edit" only where Name / Money really can be edited in this session (R2-TRAINER):
+                // a mutable workspace or a classic staged Trainer editor (Gen I / Gen II).
+                instructions = PokeBank::UIModel::ClassicTrainerSession::trainerPageInstructions(
+                    PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(
+                        trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit)));
             }
         } else {
             // HOME main menu.
