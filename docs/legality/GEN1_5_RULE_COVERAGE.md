@@ -24,7 +24,7 @@ Every app screen calls one function, `Legality::analyze(pokemon, gameGroup, exac
 | II | Gold, Silver, Crystal | `src/UI/Modals/Gen2PokemonDetailsModal.cpp:235` | `analyzeNativeGen2` -> `GB::checkGen2` (`Legality.cpp:962`, `:1031`) | yes |
 | III | Ruby, Sapphire, Emerald, FireRed, LeafGreen | `src/UI/Gen3SharedPokemonSurface.inc:1587`, `src/UI/Modals/PokemonDetailsModal.cpp:65`, `src/UI/TrainerViewScreenBase.inc:3241` | older checks, then `Gen3Pk3::verify` + `applyGen3Analyzer` (`Legality.cpp:1124`, `:3255`) | yes |
 | IV | Diamond, Pearl, Platinum, HeartGold, SoulSilver | `src/UI/Gen4SharedPokemonSurface.inc:1863` | older checks, then `applyGen4Analyzer` (`Legality.cpp:3256`) | yes |
-| V | Black, White, Black 2, White 2 | **none** | `Legality::analyzePk5` exists as engine API only | **no**: this branch has no PK5 reader, and the Gen V panel on #307 does not call legality (see `GEN1_5_APP_INTEGRATION_PREP.md`) |
+| V | Black, White, Black 2, White 2 | **none** | `Legality::analyzePk5` and the app adapter `Legality::Gen5App::analyze` (`include/Legality/Gen5AppAdapter.h`) exist as engine API | **no**: this branch has no PK5 reader, and the Gen V panel on #307 does not call legality yet (see `GEN1_5_APP_INTEGRATION_PREP.md`) |
 
 So four of five generations (15 of 20 titles) are production-wired today. Gen V's rules are
 complete in the engine but reach the app only after the reviewed integration with #307.
@@ -64,7 +64,7 @@ met-location fields, and the Gen V name-buffer length) rest on decomp or record-
 | Markings, ground tile | n/a | n/a | P (markings) | P | E |
 | Moves (level-up, TM/HM, tutor, egg, event, evolution order) | P (incl. Stadium 2 reminder) | P | P | P | E |
 | Evolution | P | P | P | P | E |
-| Transfer (Time Capsule, Pal Park, Poke Transfer) | P (Time Capsule) | P (Time Capsule, Crystal met data) | n/a | P (Pal Park, Gen III origin verified) | E (Gen V side, and the Gen III/IV original encounter and moves through the Gen IV analyzer; Colosseum/XD origin not checked) |
+| Transfer (Time Capsule, Pal Park, Poke Transfer) | P (Time Capsule) | P (Time Capsule, Crystal met data) | n/a | P (Pal Park, Gen III and Colosseum/XD origin verified) | E (Gen V side, and the Gen III/IV/Colosseum/XD original encounter and moves through the Gen IV analyzer) |
 
 Detail per rule, with PKHeX file references: `GB_LEGALITY_VERDICTS.md` (I, II),
 `GEN3_PKHEX_RULE_INVENTORY.md`, `GEN4_PKHEX_RULE_INVENTORY.md`, `GEN5_PKHEX_RULE_INVENTORY.md`.
@@ -73,12 +73,13 @@ Detail per rule, with PKHeX file references: `GB_LEGALITY_VERDICTS.md` (I, II),
 
 - Gen I/II: unrecorded GB-era distributions (Mew, Celebi), glitch encounters, Korean edge
   cases, Day Care slots (`GB_LEGALITY_VERDICTS.md`, "Not covered yet").
-- Gen III/IV: Colosseum/XD origins (Orre tables not ported); PKHeX "Fishy" findings
-  (bad RNG frame, PID 0, SID 0, all IVs equal, R/S TID without a seed); a checksum or
-  sanity mismatch; Enigma Berry holders.
-- Gen V: Colosseum/XD-origin transfers (Orre tables not ported); Gen III/IV-origin transfers
-  with a PKHeX "Fishy" result (R/S TID without a seed, bad Gen III RNG frame); fateful records
-  matching no supported PGF card; the text cases in the Gen V inventory's "Still Incomplete".
+- Gen III/IV: PKHeX "Fishy" findings (bad RNG frame, PID 0, SID 0, all IVs equal, R/S TID
+  without a seed, e-Reader all-zero IVs, an English XD TID/SID without a name-screen seed); an
+  undecided Colosseum/XD judge answer; a checksum or sanity mismatch; Enigma Berry holders.
+- Gen V: Gen III/IV/Colosseum/XD-origin transfers with a PKHeX "Fishy" or undecided origin
+  result; a Gen III Pokemon that evolved after its transfer and kept its Gen III ability against
+  the PID (review item 20); fateful records matching no supported PGF card; the text cases in
+  the Gen V inventory's "Still Incomplete".
 
 ## 2. Corpus detection rates (PKHeX differential)
 
