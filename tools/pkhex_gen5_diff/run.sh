@@ -43,7 +43,9 @@ g++ -std=c++20 -O2 -I"$repo/include" "$here/gen5_diff.cpp" "$repo/src/Legality/G
     "$repo/src/Legality/Gen4Legality.cpp" "$repo/src/Legality/Gen4LegalityData.cpp" \
     "$repo/src/Legality/Gen4LegalityEncounters.cpp" "$repo/src/Legality/Gen4LegalityMoves.cpp" \
     "$repo/src/Legality/Gen4LegalityPalPark.cpp" "$repo/src/Legality/Gen4LegalityRng.cpp" \
-    "$repo/src/Legality/Gen4LegalityText.cpp" "$repo/src/Names/SpeciesNames.cpp" \
+    "$repo/src/Legality/Gen4LegalityText.cpp" "$repo/src/Legality/Gen3Legality.cpp" \
+    "$repo/src/Legality/Gen3LegalityData.cpp" "$repo/src/Legality/Gen3LegalityDataCxd.cpp" \
+    "$repo/src/Names/SpeciesNames.cpp" \
     "$repo/src/Names/MoveNames.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen5_diff"
 
 # Text helpers against .NET and PKHeX: invariant casing of every UTF-16 unit inside the

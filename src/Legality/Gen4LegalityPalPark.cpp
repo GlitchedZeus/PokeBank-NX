@@ -11,6 +11,8 @@
  * PKHeX's finder only peeks one element ahead, so the eager list and its ManualFlag are equivalent.
  */
 #include "Gen4LegalityInternal.h"
+#include "Legality/Gen3Cxd.h"
+#include "Legality/Gen3LegalityData.h"
 
 #include <algorithm>
 
@@ -904,6 +906,7 @@ int matchRating3(const Template& t, const Pk4& pk) {
     case EncKind::Trade3: case EncKind::GiftNY3: case EncKind::GiftJP3: return kMatch;
     case EncKind::Gift3: return gift3Rating(D::kGifts3[t.index], pk);
     case EncKind::GiftColo3: return colo3Rating(D::kGiftsColo3[t.index], pk);
+    case EncKind::Cxd3: return kMatch; // the GameCube judge already rated it (Gen4Legality.cpp findCxdEncounter)
     default: return -1; // EncounterEgg3 is not IEncounterMatch
     }
 }
@@ -988,6 +991,7 @@ bool isFixedTrainer3(const Template& t) noexcept {
     switch (t.kind) {
     case EncKind::Trade3: case EncKind::GiftNY3: case EncKind::GiftJP3: case EncKind::GiftColo3: return true;
     case EncKind::Gift3: return D::kGifts3[t.index].fixedTrainer != 0;
+    case EncKind::Cxd3: return t.fixedTrainer; // Duking's trades, bonus-disc gifts: the GameCube judge checked the OT
     default: return false;
     }
 }
@@ -1016,6 +1020,100 @@ bool isNicknameMatch3(const Template& t, const Pk4& pk, std::u16string_view nick
     if (s.species == kJynx && pk.version == kVerLG && language == kLangItalian) language = 2;
     if (language <= 0 || language >= 8) return false;
     return nickname == std::u16string_view(D::kTrade3Strings[s.nicknames + language]);
+}
+
+// ======================================================================= Colosseum/XD judge adapter
+// The production Colosseum/XD judge: the Gen III GameCube judge (include/Legality/Gen3Cxd.h)
+// run on the fields a Pal Park transfer keeps. The met level is the transfer level and the met
+// location is Pal Park's, so the judge runs with hasOriginalMet false (PKHeX Format != 3). The
+// Gen IV moves are not the Gen III moves, so the judge does not see them; findCxdEncounter
+// verifies them against the template moves it returns. The judge has already applied the
+// GameCube ball, fateful, shiny, ribbon and ability rules to the known fields, so the matched
+// template restates the record's own values for those (no second, divergent check).
+CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input) {
+    using Status = CxdOriginJudgement::Status;
+    namespace C = Legality::Gen3Cxd;
+    C::Input in;
+    in.species = input.species;
+    in.currentLevel = input.level;
+    in.hasOriginalMet = false;
+    in.metLevel = input.metLevel;
+    in.ball = input.ball;
+    in.fateful = input.fateful;
+    in.isEgg = input.isEgg;
+    in.pid = input.pid;
+    in.ivs = input.ivs;
+    in.tid = input.tid;
+    in.sid = input.sid;
+    in.otGender = input.otGender;
+    in.language = input.language;
+    in.namesKnown = true;
+    in.ot = input.otName;
+    in.nickname = input.nickname;
+    in.isNicknamed = input.isNicknamed;
+    in.ribbonsKnown = true;
+    in.ribbonNational = input.ribbonNational;
+    in.ribbonEarth = input.ribbonEarth;
+    // Orre stores the ability bit apart from the PID. Pal Park reads that bit only for a species
+    // whose two Gen III abilities it keeps (pokeplatinum src/main_menu/gba_pokemon.c:759-783: a
+    // species in sSpeciesWithNewAbilities, or with one ability, always gets ability 1), so the
+    // stored Gen IV ability names the Orre bit only for a species with two Gen III abilities.
+    if (input.species >= 1 && input.species <= Gen3Data::kMaxSpecies) {
+        const Gen3Data::Personal& g3 = Gen3Data::kPersonal[input.species];
+        if (g3.ability2 != 0 && g3.ability2 != g3.ability1 &&
+            (input.ability == g3.ability1 || input.ability == g3.ability2)) {
+            in.abilityKnown = true;
+            in.abilityBit = input.ability == g3.ability2 ? 1 : 0;
+        }
+    }
+    const C::Result r = C::judge(in);
+
+    CxdOriginJudgement j;
+    switch (r.verdict) {
+    case C::Verdict::Invalid:
+        j.status = Status::NoMatch;
+        j.invalidReasons = r.invalid;
+        j.warnings = r.warnings;
+        return j;
+    case C::Verdict::Undecided:
+        j.status = Status::Undecided;
+        // An undecided judge's findings are not proven: they stay Warnings.
+        for (const std::string& t : r.invalid) j.warnings.push_back("Colosseum/XD origin (undecided): " + t);
+        j.warnings.insert(j.warnings.end(), r.warnings.begin(), r.warnings.end());
+        return j;
+    case C::Verdict::Matched:
+        break;
+    }
+    static constexpr const char* kNames[] = {
+        "Colosseum/XD encounter", "XD in-game trade", "Colosseum shadow Pokemon",
+        "Colosseum e-Reader shadow Pokemon", "Colosseum starter", "Colosseum gift",
+        "XD shadow Pokemon", "XD gift", "XD Poke Spot",
+    };
+    const auto kind = static_cast<std::size_t>(r.matched);
+    j.status = Status::Matched;
+    j.templateName = kind < std::size(kNames) ? kNames[kind] : kNames[0];
+    j.species = r.encounterSpecies;
+    j.form = 0;
+    j.levelMin = r.encounterLevel;
+    j.levelMax = r.encounterLevelMax != 0 ? r.encounterLevelMax : r.encounterLevel;
+    j.fixedBall = 0;
+    j.fateful = input.fateful;
+    j.shiny = 0;
+    j.fixedTrainer = r.matched == C::Template::XdTrade || r.matched == C::Template::ColoGift;
+    j.shadow = r.shadow;
+    j.moves = r.encounterMoves;
+    j.gender = 0xFF;
+    j.ability = 0;
+    j.invalidReasons = r.invalid;
+    // The generic trainer-ID heuristics (zero, equal, PKHeX default pairs) are the Gen IV
+    // analyzer's own (verifyTrainer); keep only the GameCube-specific findings here.
+    for (const std::string& w : r.warnings) {
+        const bool generic = w == "TID and SID are both zero" || w == "TID and SID are equal" || w == "TID is zero" ||
+                             w == "SID is zero" || w == "TID/SID pair is suspicious";
+        if (!generic) j.warnings.push_back(w);
+    }
+    if (!r.encounter.empty()) j.notes.push_back("Colosseum/XD origin matched " + r.encounter);
+    return j;
 }
 
 } // namespace Legality::Gen4

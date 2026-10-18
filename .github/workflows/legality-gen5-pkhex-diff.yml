@@ -94,7 +94,8 @@ jobs:
             src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp \
             src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityEncounters.cpp \
             src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp src/Legality/Gen4LegalityRng.cpp \
-            src/Legality/Gen4LegalityText.cpp -o build/fuzz_gen5
+            src/Legality/Gen4LegalityText.cpp src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp \
+            src/Legality/Gen3LegalityDataCxd.cpp -o build/fuzz_gen5
           mkdir -p build/fuzz_corpus
           python3 -I -c "import re,sys; [open(f'build/fuzz_corpus/s{i}','wb').write(b'\0'+bytes.fromhex(h)) for i,h in enumerate(re.findall(r'\"([0-9A-F]{272})\"', open('tests/test_legality_gen5.cpp').read()))]"
           build/fuzz_gen5 -max_total_time=600 -max_len=221 build/fuzz_corpus

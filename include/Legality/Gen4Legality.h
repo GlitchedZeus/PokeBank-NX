@@ -22,7 +22,9 @@
 #include <array>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "Legality/Legality.h"
 
@@ -106,6 +108,81 @@ struct MoveEvidence {
     }
 };
 
+// ---------------------------------------------------------------- Colosseum/XD origin
+// A PK4 whose origin game is 15 (Pokemon Colosseum / XD: Gale of Darkness) reached the DS
+// through a GBA game and Pal Park. Its Orre encounter (shadow Pokemon, Mt. Battle and
+// Agate gifts, Duking's trades, Poke Spot wild Pokemon, the starters) is judged by the shared
+// Gen III GameCube judge (include/Legality/Gen3Cxd.h, Gen III lane) from the fields the record
+// still carries. Gen4Legality.cpp hands those fields to the judge named by CxdOriginJudge and
+// verifies everything else (evolution, current moves, level and EXP, EVs and IVs, ribbons,
+// contest stats, the Pal Park met data, ball, ability, gender, form, PP, item, markings)
+// against the template the judge returns. The production judge is judgeCxdOrigin
+// (Gen4LegalityPalPark.cpp); until it is wired to Gen3Cxd it answers Unavailable and a
+// Colosseum/XD record stays a Warning with only the origin-independent rules applied.
+
+/// The fields a Pal Park transfer keeps from its Colosseum/XD origin.
+struct CxdOriginInput {
+    uint16_t species = 0;
+    uint8_t form = 0;
+    uint8_t level = 0;                 // current level (from EXP)
+    uint8_t metLevel = 0;              // Pal Park writes the level at transfer
+    uint8_t ball = 0;
+    bool fateful = false;
+    bool isEgg = false;
+    bool isShiny = false;
+    uint32_t pid = 0;
+    std::array<uint8_t, 6> ivs{};      // HP Atk Def Spe SpA SpD
+    std::array<uint8_t, 6> evs{};
+    uint32_t exp = 0;
+    uint16_t tid = 0, sid = 0;
+    uint8_t otGender = 0;
+    uint8_t language = 0;
+    uint8_t ability = 0;
+    uint16_t heldItem = 0;
+    std::u16string otName;              // decoded (UTF-16)
+    std::u16string nickname;            // decoded (UTF-16)
+    bool isNicknamed = false;
+    std::array<uint16_t, 4> moves{};    // current moves (may have changed since the origin)
+    std::array<uint8_t, 16> ribbons{};  // 0x24-0x27, 0x3C-0x3F, 0x60-0x63 as stored
+    bool ribbonNational = false;        // IRibbonSetEvent3.RibbonNational (0x3C bit 5)
+    bool ribbonEarth = false;           // IRibbonSetEvent3.RibbonEarth (0x3C bit 6)
+};
+
+/// What the judge established about a Colosseum/XD origin.
+struct CxdOriginJudgement {
+    enum class Status : uint8_t {
+        Unavailable,  // no judge wired: the origin stays unverified (Warning)
+        Undecided,    // the judge could not decide; `warnings` say what is missing
+        NoMatch,      // no Orre encounter can produce the record; `invalidReasons` say why
+        Matched,      // `template` fields below describe the matched Orre encounter
+    };
+    Status status = Status::Unavailable;
+    // Matched template (IEncounterTemplate view): EncounterShadow3Colo/XD, EncounterStatic3XD,
+    // EncounterTrade3XD, EncounterStarter3Colo, EncounterGift3Colo, EncounterSlot3XD.
+    const char* templateName = nullptr;
+    uint16_t species = 0;
+    uint8_t form = 0;
+    uint8_t levelMin = 0, levelMax = 0;
+    uint8_t fixedBall = 0;             // 0: any Generation III ball (snagged Pokemon keep the snag ball)
+    bool fateful = false;              // IFatefulEncounterReadOnly (XD templates set it, Colosseum does not)
+    uint8_t shiny = 0;                 // PKHeX Shiny: 0 Random, 1 Never
+    bool fixedTrainer = false;         // IFixedTrainer (Duking's trades, bonus-disc gifts): the judge checked the OT
+    bool shadow = false;               // IShadow3: the National Ribbon is awarded on purification (required)
+    std::array<uint16_t, 4> moves{};   // IMoveset moves the Pokemon had at the encounter (zero when none)
+    uint8_t gender = 0xFF;             // fixed gender or 0xFF
+    int8_t ability = 0;                // AbilityPermission (0 Any12)
+    std::vector<std::string> invalidReasons;  // Invalid findings (NoMatch, or Matched with a template-specific rule broken)
+    std::vector<std::string> warnings;        // Warnings (Undecided reasons, suspicious provenance)
+    std::vector<std::string> notes;           // Info notes
+};
+
+/// Judges a Colosseum/XD origin from the fields a Pal Park transfer still carries.
+using CxdOriginJudge = CxdOriginJudgement (*)(const CxdOriginInput&);
+
+/// The production judge (Gen4LegalityPalPark.cpp): the adapter to the Gen III GameCube judge.
+/// Answers Status::Unavailable until that judge is wired in.
+CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input);
+
 } // namespace Gen4
 
 /// Analyze one decrypted PK4 record. exactSourceGameId names the cartridge whose save
@@ -117,6 +194,10 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
 /// search established (left default when the search did not run).
 Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
                   Gen4::MoveEvidence* evidence);
+/// As above, with the judge consulted for a Colosseum/XD origin (version 15). The two
+/// overloads above use Gen4::judgeCxdOrigin; a null judge means no judge (Unavailable).
+Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
+                  Gen4::MoveEvidence* evidence, Gen4::CxdOriginJudge judge);
 
 /// Folds the Gen IV analyzer into a report produced by analyze() for a native PK4
 /// entity (no-op for any other entity). Invalid and Warning issues are added once each;

@@ -24,7 +24,7 @@ SOURCES = [
     # Legality.cpp runs the Gen I origin search (GBLegality) since #303.
     "src/Legality/GBLegality.cpp", "src/Legality/GBLegalityData.cpp",
     # Legality.cpp runs the Gen III PK3 analyzer (Gen3Legality) on R/S/E/FR/LG records.
-    "src/Legality/Gen3Legality.cpp", "src/Legality/Gen3LegalityData.cpp",
+    "src/Legality/Gen3Legality.cpp", "src/Legality/Gen3LegalityData.cpp", "src/Legality/Gen3LegalityDataCxd.cpp",
     # Legality.cpp runs the Gen IV PK4 analyzer (Gen4Legality) on D/P/Pt/HG/SS records.
     "src/Legality/Gen4Legality.cpp", "src/Legality/Gen4LegalityHook.cpp",
     "src/Legality/Gen4LegalityEncounters.cpp", "src/Legality/Gen4LegalityMoves.cpp",

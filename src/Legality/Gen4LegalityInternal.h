@@ -196,6 +196,9 @@ enum class EncKind : uint8_t {
     // Generation III templates (Pal Park origin): EncounterSlot3(+Swarm), EncounterStatic3, EncounterTrade3,
     // EncounterGift3, EncounterGift3NY, EncounterGift3JPN, EncounterGift3Colo, EncounterEgg3.
     Slot3, Static3, Trade3, Gift3, GiftNY3, GiftJP3, GiftColo3, Egg3,
+    // A Colosseum/XD (version 15) encounter as the Gen III GameCube judge described it
+    // (Gen4Legality.h CxdOriginJudgement): shadow, static, trade, starter, gift or Poke Spot.
+    Cxd3,
 };
 inline bool isGen3Kind(EncKind k) noexcept { return k >= EncKind::Slot3; }
 /// The facts of a matched encounter template that the evolution and move code reads.
@@ -301,6 +304,9 @@ struct Template {
     const D::Slot3* slot3 = nullptr;
     int index = -1;
     Gift gift{};                  // PCD / Ranger Manaphy
+    bool fixedTrainer = false;    // Cxd3: IFixedTrainer (the judge checked the OT)
+    bool shadow = false;          // Cxd3: IShadow3 (National Ribbon required once purified)
+    const char* name = nullptr;   // Cxd3: template name from the judge
 };
 Template makeTemplate(const Candidate& c, const Pk4& pk);
 EncInfo encInfo(const Template& t);

@@ -1701,6 +1701,7 @@ void cases() {
     using L = G4::Layout;
     const auto noEncounter = invalid("No matching Gen IV encounter for this species, level, location, ball and PID/IV");
     const auto colosseumXD = warning("the Colosseum/XD encounter is not verified");
+    const auto defaultTrainer = warning("Trainer ID/Secret ID pair is suspicious");
     const auto mismatch = "Assigned game/family does not match the validated save; explicit reassignment required";
     // PKHeX does not compare the two met-location fields (PKHEX_DISAGREEMENT_REVIEW.md item 14).
     const auto metLocationField = [](int dp, int expected, int met) {
@@ -1803,9 +1804,15 @@ void cases() {
                true));
 
     // Unknown: the history depends on data outside the record.
+    // The Gen3Cxd judge matches each Orre template; these oracle records carry PKHeX's default
+    // trainer (TID 12345, SID 54321), which PKHeX and the engine both call Fishy, so they stay
+    // Incomplete for that reason alone and no longer show the "not verified" Warning
+    // (tests/test_legality_gen4.cpp checks the matched template names).
     record("Diamond", "unknown", "Colosseum Umbreon brought in through Pal Park (origin game 15)",
-           expect(O::Incomplete, {colosseumXD}), run(fromHex(kColosseumUmbreon), "diamond_nds"));
-    record("Pearl", "unknown", "XD Eevee brought in through Pal Park (origin game 15)", expect(O::Incomplete, {colosseumXD}),
+           expect(O::Incomplete, {defaultTrainer}, {colosseumXD}),
+           run(fromHex(kColosseumUmbreon), "diamond_nds"));
+    record("Pearl", "unknown", "XD Eevee brought in through Pal Park (origin game 15)",
+           expect(O::Incomplete, {defaultTrainer}, {colosseumXD}),
            run(fromHex(kXDEevee), "pearl_nds"));
     // pokeplatinum res/field/scripts/scripts_route_210_grandma_wilma_house.s:81-82 checks the
     // party Pokemon's current type is Dragon (:103-106, :117 teach Draco Meteor). Arceus is a
@@ -1815,8 +1822,10 @@ void cases() {
            run(edited(kDiamondEventArceus, [](std::vector<uint8_t>& pk) { setLe16(pk, kMoves + 6, 434); }),
                "platinum_nds"));
     record("HeartGold", "unknown", "Colosseum Shadow Quilava brought in through Pal Park",
-           expect(O::Incomplete, {colosseumXD}), run(fromHex(kColosseumShadowQuilava), "heartgold_nds"));
-    record("SoulSilver", "unknown", "XD Shadow Ledyba brought in through Pal Park", expect(O::Incomplete, {colosseumXD}),
+           expect(O::Incomplete, {defaultTrainer}, {colosseumXD}),
+           run(fromHex(kColosseumShadowQuilava), "heartgold_nds"));
+    record("SoulSilver", "unknown", "XD Shadow Ledyba brought in through Pal Park",
+           expect(O::Incomplete, {defaultTrainer}, {colosseumXD}),
            run(fromHex(kXDShadowLedyba), "soulsilver_nds"));
 
     // Original game: the expected verdict follows from the pret disassemblies.

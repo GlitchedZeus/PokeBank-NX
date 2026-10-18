@@ -424,6 +424,18 @@ uint32_t next() {
     return static_cast<uint32_t>(rngState >> 16);
 }
 
+// --- Colosseum/XD integration point (Gen4::CxdOriginJudge) ---------------------------
+// Fake judges stand in for the Gen III GameCube judge (include/Legality/Gen3Cxd.h): what the
+// analyzer does with each Status is what is under test here.
+Legality::Gen4::CxdOriginInput lastCxdInput;
+Legality::Gen4::CxdOriginJudgement fakeCxdAnswer;
+int fakeCxdCalls = 0;
+Legality::Gen4::CxdOriginJudgement fakeCxdJudge(const Legality::Gen4::CxdOriginInput& in) {
+    lastCxdInput = in;
+    ++fakeCxdCalls;
+    return fakeCxdAnswer;
+}
+
 }  // namespace
 
 int main() {
@@ -529,7 +541,8 @@ int main() {
         if (has(r, Severity::Invalid) || !hasText(r, Severity::Warning, "sanity") || r.verdict() != Verdict::Incomplete)
             fail("sanity word: expected a Warning", r);
 
-        // A 236-byte party record is judged on its 136 stored bytes.
+        // A 236-byte party record is judged on its 136 stored bytes, apart from the stored-record
+        // rules of section 4c (these fixtures are healed, Land Forme and mood 0, so none applies).
         for (const auto& [box, game] : valid) {
             auto party = box;
             party.resize(236, 0);
@@ -625,6 +638,315 @@ int main() {
             !hasText(native, Severity::Invalid, "cannot be learned"))
             fail("audited move pool with an unverified move: expected Invalid and the Warning kept", native);
         ++checked;
+    }
+
+    // 4b. Colosseum/XD origin (version 15): the Gen4::CxdOriginJudge integration point.
+    {
+        using Legality::Gen4::CxdOriginJudgement;
+        using Status = CxdOriginJudgement::Status;
+        constexpr std::string_view kCxdWarning = "Pal Park transfer from Colosseum/XD: the Colosseum/XD encounter is not verified";
+        const char* game = "soulsilver_nds";
+        // A PKHeX-valid Pal Park record (Emerald wild slot) with its origin game set to Colosseum/XD.
+        auto cxd = *findFixture("p10120");
+        cxd[0x5F] = 15;
+        refreshChecksum(cxd);
+        const auto species = static_cast<uint16_t>(cxd[8] | (cxd[9] << 8));
+        const uint8_t metLevel = static_cast<uint8_t>(cxd[0x84] & 0x7F);
+        const uint8_t ball = cxd[0x86] > cxd[0x83] ? cxd[0x86] : cxd[0x83];
+        const bool fateful = (cxd[0x40] & 1) != 0;
+        auto moveAt = [&](const std::vector<uint8_t>& pk, int i) { return static_cast<uint16_t>(pk[0x28 + 2 * i] | (pk[0x29 + 2 * i] << 8)); };
+        // Production judge (judgeCxdOrigin -> Gen3Cxd::judge): the relabelled Emerald Doduo matches
+        // no Orre encounter, so it is Invalid (PKHeX: EncInvalid), directly and through the hook.
+        const Report direct = Legality::analyzePk4(cxd, game);
+        if (direct.verdict() != Verdict::Invalid || !hasText(direct, Severity::Invalid, "Unable to match an encounter from the origin game") ||
+            hasText(direct, Severity::Warning, kCxdWarning))
+            fail("Colosseum/XD origin, production judge: expected Invalid (no Orre encounter)", direct);
+        // A null judge is Unavailable: the Warning, Incomplete, never Invalid.
+        const Report viaNull = Legality::analyzePk4(cxd, game, nullptr, nullptr);
+        if (viaNull.verdict() != Verdict::Incomplete || has(viaNull, Severity::Invalid) || !hasText(viaNull, Severity::Warning, kCxdWarning))
+            fail("Colosseum/XD origin, null judge: expected the Warning only", viaNull);
+        const Report native = analyzeNative(cxd, game);
+        if (native.verdict() != Verdict::Invalid || !hasText(native, Severity::Invalid, "Unable to match an encounter from the origin game"))
+            fail("Colosseum/XD origin through Legality::analyze: expected Invalid (no Orre encounter)", native);
+        Legality::Gen4::MoveEvidence ev;
+        (void)Legality::analyzePk4(cxd, game, &ev, nullptr);
+        if (ev.encounterMatched || ev.allMovesVerified()) fail("Colosseum/XD origin unverified: the move evidence must not claim a match", direct);
+        checked += 4;
+        // The origin-independent rules still apply while the Orre encounter is unverified (null judge).
+        {
+            auto evs = cxd;
+            for (int i = 0; i < 6; ++i) evs[0x18 + i] = 255;
+            refreshChecksum(evs);
+            const Report r = Legality::analyzePk4(evs, game, nullptr, nullptr);
+            if (r.verdict() != Verdict::Invalid || !hasText(r, Severity::Invalid, "EV total is above 510") || !hasText(r, Severity::Warning, kCxdWarning))
+                fail("Colosseum/XD origin with 1530 EVs: expected Invalid and the Warning", r);
+            auto met = cxd;
+            met[0x80] = 56; met[0x46] = 56;
+            refreshChecksum(met);
+            const Report m = Legality::analyzePk4(met, game, nullptr, nullptr);
+            if (m.verdict() != Verdict::Invalid || !hasText(m, Severity::Invalid, "must have been met at Pal Park"))
+                fail("Colosseum/XD origin met outside Pal Park: expected Invalid", m);
+            auto pp = cxd;
+            pp[0x30] = 99;
+            refreshChecksum(pp);
+            const Report q = Legality::analyzePk4(pp, game, nullptr, nullptr);
+            if (q.verdict() != Verdict::Invalid || !hasText(q, Severity::Invalid, "PP is above its maximum"))
+                fail("Colosseum/XD origin with 99 PP: expected Invalid", q);
+            // Encounter-dependent rules are not applied to an unverified origin: a move the Orre
+            // template might supply, the National Ribbon and the fateful flag stay unjudged (Warning).
+            auto ribbon = cxd;
+            ribbon[0x3F] |= 1 << 5;  // National Ribbon
+            ribbon[0x40] ^= 1;       // fateful flag flipped
+            ribbon[0x2E] = 85; ribbon[0x2F] = 0; ribbon[0x33] = 15;  // move 4: Thunderbolt (Doduo cannot learn it)
+            refreshChecksum(ribbon);
+            const Report u = Legality::analyzePk4(ribbon, game, nullptr, nullptr);
+            if (u.verdict() != Verdict::Incomplete || has(u, Severity::Invalid))
+                fail("Colosseum/XD origin unverified: encounter-dependent fields must not be judged", u);
+            checked += 4;
+        }
+        // A judge that matched an Orre template: the record is verified against it.
+        fakeCxdAnswer = CxdOriginJudgement{};
+        fakeCxdAnswer.status = Status::Matched;
+        fakeCxdAnswer.templateName = "fake XD Poke Spot";
+        fakeCxdAnswer.species = species;
+        fakeCxdAnswer.levelMin = fakeCxdAnswer.levelMax = metLevel;
+        fakeCxdAnswer.fixedBall = ball;
+        fakeCxdAnswer.fateful = fateful;
+        for (int i = 0; i < 4; ++i) fakeCxdAnswer.moves[static_cast<size_t>(i)] = moveAt(cxd, i);
+        fakeCxdCalls = 0;
+        const Report matched = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (matched.verdict() != Verdict::NoProblemsFound || !hasText(matched, Severity::Info, "Colosseum/XD origin: fake XD Poke Spot"))
+            fail("Colosseum/XD origin matched by the judge: expected No problems found", matched);
+        const uint32_t pid = static_cast<uint32_t>(cxd[0]) | static_cast<uint32_t>(cxd[1]) << 8 |
+                             static_cast<uint32_t>(cxd[2]) << 16 | static_cast<uint32_t>(cxd[3]) << 24;
+        if (fakeCxdCalls != 1 || lastCxdInput.species != species || lastCxdInput.metLevel != metLevel || lastCxdInput.ball != ball ||
+            lastCxdInput.fateful != fateful || lastCxdInput.pid != pid || lastCxdInput.moves[0] != moveAt(cxd, 0) ||
+            lastCxdInput.otName.empty() || lastCxdInput.nickname.empty() || lastCxdInput.level < metLevel)
+            fail("Colosseum/XD judge input: expected the record's fields", matched);
+        Legality::Gen4::MoveEvidence evm;
+        (void)Legality::analyzePk4(cxd, game, &evm, &fakeCxdJudge);
+        if (!evm.encounterMatched || !evm.allMovesVerified()) fail("Colosseum/XD origin matched: expected the move evidence to say so", matched);
+        checked += 3;
+        // Template-specific rules against the matched template.
+        {
+            auto t = fakeCxdAnswer;
+            t.shadow = true;  // a purified Shadow Pokemon carries the National Ribbon
+            fakeCxdAnswer = t;
+            const Report r = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (r.verdict() != Verdict::Invalid || !hasText(r, Severity::Invalid, "ribbon(s) are not obtainable"))
+                fail("Colosseum/XD shadow template without the National Ribbon: expected Invalid", r);
+            auto purified = cxd;
+            purified[0x3F] |= 1 << 5;
+            refreshChecksum(purified);
+            const Report ok = Legality::analyzePk4(purified, game, nullptr, &fakeCxdJudge);
+            if (ok.verdict() != Verdict::NoProblemsFound) fail("Colosseum/XD shadow template with the National Ribbon: expected No problems found", ok);
+            t.shadow = false;
+            t.fateful = !fateful;  // XD templates set the flag, Colosseum ones do not
+            fakeCxdAnswer = t;
+            const Report f = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (f.verdict() != Verdict::Invalid || !hasText(f, Severity::Invalid, "Fateful encounter flag"))
+                fail("Colosseum/XD template with the other fateful flag: expected Invalid", f);
+            t.fateful = fateful;
+            t.fixedBall = ball == 4 ? 1 : 4;
+            fakeCxdAnswer = t;
+            const Report b = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (b.verdict() != Verdict::Invalid || !hasText(b, Severity::Invalid, "is not possible for this encounter"))
+                fail("Colosseum/XD template with another fixed ball: expected Invalid", b);
+            t.fixedBall = ball;
+            t.moves = {};  // no template moves: the current moves must come from the Gen III learnsets
+            fakeCxdAnswer = t;
+            auto shadowForce = cxd;
+            shadowForce[0x2E] = 85; shadowForce[0x2F] = 0; shadowForce[0x33] = 15;  // Thunderbolt
+            refreshChecksum(shadowForce);
+            const Report mv = Legality::analyzePk4(shadowForce, game, nullptr, &fakeCxdJudge);
+            if (mv.verdict() != Verdict::Invalid || !hasText(mv, Severity::Invalid, "cannot be learned"))
+                fail("Colosseum/XD matched template with an unlearnable move: expected Invalid", mv);
+            t.moves = {85, 0, 0, 0};  // ...unless the template supplies it (IMoveset moves are contiguous)
+            fakeCxdAnswer = t;
+            const Report mv2 = Legality::analyzePk4(shadowForce, game, nullptr, &fakeCxdJudge);
+            if (mv2.verdict() != Verdict::NoProblemsFound) fail("Colosseum/XD template supplying the move: expected No problems found", mv2);
+            t.moves = {};
+            t.invalidReasons = {"fake: the PID/IV pair is not a Colosseum/XD frame"};
+            t.warnings = {"fake: provenance warning"};
+            fakeCxdAnswer = t;
+            const Report reasons = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (reasons.verdict() != Verdict::Invalid || !hasText(reasons, Severity::Invalid, "fake: the PID/IV pair") ||
+                !hasText(reasons, Severity::Warning, "fake: provenance warning"))
+                fail("Colosseum/XD matched template with judge findings: expected them reported", reasons);
+            checked += 6;
+        }
+        // NoMatch: Invalid with the judge's reasons (or a default one).
+        fakeCxdAnswer = CxdOriginJudgement{};
+        fakeCxdAnswer.status = Status::NoMatch;
+        fakeCxdAnswer.invalidReasons = {"fake: no Orre encounter for this species"};
+        const Report none = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (none.verdict() != Verdict::Invalid || !hasText(none, Severity::Invalid, "fake: no Orre encounter"))
+            fail("Colosseum/XD origin rejected by the judge: expected Invalid with its reason", none);
+        fakeCxdAnswer.invalidReasons.clear();
+        const Report none2 = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (none2.verdict() != Verdict::Invalid || !hasText(none2, Severity::Invalid, "No Colosseum/XD encounter matches"))
+            fail("Colosseum/XD origin rejected without a reason: expected the default Invalid", none2);
+        // Undecided: the Warning plus the judge's own warnings and notes; never Invalid.
+        fakeCxdAnswer = CxdOriginJudgement{};
+        fakeCxdAnswer.status = Status::Undecided;
+        fakeCxdAnswer.warnings = {"fake: shadow tables incomplete"};
+        fakeCxdAnswer.notes = {"fake: note"};
+        const Report und = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (und.verdict() != Verdict::Incomplete || has(und, Severity::Invalid) || !hasText(und, Severity::Warning, kCxdWarning) ||
+            !hasText(und, Severity::Warning, "fake: shadow tables incomplete") || !hasText(und, Severity::Info, "fake: note"))
+            fail("Colosseum/XD origin undecided: expected the Warnings and the note", und);
+        // Ability of a Colosseum/XD origin (AbilityVerifier.cs:237-295): the Orre games store the
+        // ability bit apart from the PID and Pal Park reads that bit (pokeplatinum
+        // src/main_menu/gba_pokemon.c:759-783), so a species with two Gen III abilities (Doduo) may
+        // hold either; a species with one Gen III ability (Eevee, Run Away) keeps it whatever the
+        // PID says, and its Gen IV second ability must match the PID. An ability the species never
+        // has is Invalid. All of this is decided while the encounter is still undecided.
+        {
+            // The title matrix's XD Eevee (Pearl save): PID B3526AE5, ability 50 Run Away.
+            auto eevee = fromHex("E56A52B3000050C485000000393031D4E80300004632000200000000000000000000000000000000210027002C001C00231E190F00000000F44B241F0000000001000000000000002F012F0140012F012F01FFFF0000000048A10C02E0FF000F00000000000000003E0149015701580149015601FFFF00000000001A0A100000370000040A000000");
+            // Undecided (null judge): the Gen III ability is open and the PID bit's Gen IV ability
+            // must match the PID under every history, so neither is Invalid yet.
+            const Report openNull = Legality::analyzePk4(eevee, "pearl_nds", nullptr, nullptr);
+            if (openNull.verdict() != Verdict::Incomplete || has(openNull, Severity::Invalid) || !hasText(openNull, Severity::Warning, kCxdWarning))
+                fail("XD Eevee with its Gen III ability, undecided: expected Incomplete", openNull);
+            // Production judge: the XD Eevee gift matches; Incomplete only for the English XD
+            // TID/SID without a name-screen seed (PKHeX Fishy), never Invalid.
+            const Report open = Legality::analyzePk4(eevee, "pearl_nds");
+            if (open.verdict() != Verdict::Incomplete || has(open, Severity::Invalid) || hasText(open, Severity::Warning, kCxdWarning) ||
+                !hasText(open, Severity::Info, "Colosseum/XD origin matched XD gift Eevee"))
+                fail("XD Eevee with its Gen III ability: expected the matched XD gift, Incomplete", open);
+            eevee[0x15] = 91;  // Adaptability: the PID bit's Gen IV ability
+            refreshChecksum(eevee);
+            const Report adaptNull = Legality::analyzePk4(eevee, "pearl_nds", nullptr, nullptr);
+            if (has(adaptNull, Severity::Invalid)) fail("XD Eevee with the PID bit's ability, undecided: unexpected Invalid", adaptNull);
+            // Once the unevolved XD Eevee is matched, Pal Park gave it ability 1 (Eevee is in
+            // sSpeciesWithNewAbilities, pokeplatinum src/main_menu/gba_pokemon.c:170-260,771-779).
+            const Report adapt = Legality::analyzePk4(eevee, "pearl_nds");
+            if (!hasText(adapt, Severity::Invalid, "only Generation III ability"))
+                fail("XD Eevee with the PID bit's ability, matched: expected Invalid", adapt);
+            eevee[0x15] = 22;  // Intimidate: not an Eevee ability
+            refreshChecksum(eevee);
+            if (!hasText(Legality::analyzePk4(eevee, "pearl_nds"), Severity::Invalid, "not one of this species' abilities"))
+                fail("XD Eevee with a foreign ability: expected Invalid", adapt);
+            auto doduo = cxd;  // Doduo: Run Away / Early Bird in Gen III too; Colosseum/XD may hold either
+            doduo[0x15] = doduo[0x15] == 50 ? 48 : 50;
+            refreshChecksum(doduo);
+            const Report other = Legality::analyzePk4(doduo, game, nullptr, nullptr);
+            if (has(other, Severity::Invalid)) fail("Colosseum/XD Doduo with the other ability while undecided: unexpected Invalid", other);
+            CxdOriginJudgement t;
+            t.status = Status::Matched;
+            t.templateName = "fake Doduo";
+            t.species = species; t.form = 0; t.levelMin = 1; t.levelMax = metLevel; t.fixedBall = ball; t.fateful = fateful; t.shiny = 0;
+            fakeCxdAnswer = t;
+            const Report matchedOther = Legality::analyzePk4(doduo, game, nullptr, &fakeCxdJudge);
+            if (has(matchedOther, Severity::Invalid)) fail("Colosseum/XD Doduo with the other ability, encounter matched: unexpected Invalid", matchedOther);
+            auto plain = *findFixture("p10120");  // the same Emerald-origin bytes: the PID decides
+            plain[0x15] = plain[0x15] == 50 ? 48 : 50;
+            refreshChecksum(plain);
+            if (!hasText(Legality::analyzePk4(plain, game), Severity::Invalid, "does not match the PID's ability bit"))
+                fail("Emerald Doduo with the other ability: expected Invalid", other);
+            checked += 6;
+        }
+        // The judge is only consulted for a Colosseum/XD origin.
+        fakeCxdCalls = 0;
+        (void)Legality::analyzePk4(*findFixture("p10120"), game, nullptr, &fakeCxdJudge);
+        (void)Legality::analyzePk4(*findFixture("static"), gameOf("static"), nullptr, &fakeCxdJudge);
+        if (fakeCxdCalls != 0) fail("Colosseum/XD judge consulted for another origin", und);
+        checked += 4;
+    }
+
+    // 4c. Stored-record rules: a 136-byte record is a PC (box) record, a 236-byte one a party
+    //     record. PKHeX applies these only with a slot origin (LegalityAnalysis.IsStoredSlot).
+    {
+        constexpr std::string_view kPP = "PP is below its maximum for a Pokemon stored in the PC";
+        constexpr std::string_view kMood = "Walking mood of a Pokemon stored in the PC of HeartGold/SoulSilver should be zero";
+        constexpr std::string_view kSkyPt = "Shaymin's Sky Forme reverts to Land Forme when Platinum stores it in the PC";
+        constexpr std::string_view kSkyOther = "Shaymin's Sky Forme in a PC-stored record cannot be verified for this game";
+        auto asParty = [](std::vector<uint8_t> pk) { pk.resize(236, 0); return pk; };
+        const auto base = *findFixture("static");  // HeartGold Bulbasaur, moves 33/45 at full PP, mood 0
+        const char* hg = gameOf("static");
+        // MovePPVerifier.cs:110-143: a stored record below full PP is a Warning (never Invalid); the
+        // same bytes as a party record, and a stored record at full PP, are untouched.
+        {
+            auto pp = base;
+            pp[0x30] = 20;  // Tackle: 35 healed
+            refreshChecksum(pp);
+            const Report box = Legality::analyzePk4(pp, hg);
+            if (box.verdict() != Verdict::Incomplete || has(box, Severity::Invalid) || !hasText(box, Severity::Warning, "Move 1 " + std::string(kPP)))
+                fail("stored record below full PP: expected the Warning only", box);
+            const Report party = Legality::analyzePk4(asParty(pp), hg);
+            if (hasText(party, Severity::Warning, kPP) || party.verdict() != Legality::analyzePk4(base, hg).verdict())
+                fail("party record below full PP: expected no stored-record Warning", party);
+            if (hasText(Legality::analyzePk4(base, hg), Severity::Warning, kPP)) fail("stored record at full PP: unexpected Warning", box);
+            const Report native = analyzeNative(pp, hg);
+            if (native.verdict() != Verdict::Incomplete || !hasText(native, Severity::Warning, kPP))
+                fail("stored record below full PP through Legality::analyze: expected Incomplete", native);
+            const Report nativeParty = analyzeNative(asParty(pp), hg);
+            if (hasText(nativeParty, Severity::Warning, kPP)) fail("party record below full PP through Legality::analyze: unexpected Warning", nativeParty);
+            // PP Ups raise the healed value: 35 * 8 / 5 = 56.
+            auto ups = base;
+            ups[0x34] = 3;
+            ups[0x30] = 56;
+            refreshChecksum(ups);
+            if (hasText(Legality::analyzePk4(ups, hg), Severity::Warning, kPP)) fail("stored record healed with PP Ups: unexpected Warning", box);
+            ups[0x30] = 55;
+            refreshChecksum(ups);
+            if (!hasText(Legality::analyzePk4(ups, hg), Severity::Warning, "Move 1 " + std::string(kPP))) fail("stored record one below the PP Up maximum: expected the Warning", box);
+            // An empty move slot and an egg (base-PP rule) never get the stored-record Warning.
+            auto empty = base;
+            empty[0x2A] = empty[0x2B] = 0;  // drop move 2
+            empty[0x31] = 0;
+            refreshChecksum(empty);
+            if (hasText(Legality::analyzePk4(empty, hg), Severity::Warning, kPP)) fail("stored record with an empty move slot: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(*findFixture("egg-unhatched"), gameOf("egg-unhatched")), Severity::Warning, kPP))
+                fail("stored egg: unexpected stored-record PP Warning", box);
+            checked += 9;
+        }
+        // MiscVerifierG4.cs:115-134: a non-zero walking mood on a stored record of a known HG/SS save.
+        {
+            auto mood = base;
+            mood[0x87] = 5;
+            refreshChecksum(mood);
+            const Report box = Legality::analyzePk4(mood, hg);
+            if (box.verdict() != Verdict::Incomplete || has(box, Severity::Invalid) || !hasText(box, Severity::Warning, kMood))
+                fail("stored record with a walking mood in an HG/SS save: expected the Warning only", box);
+            if (hasText(Legality::analyzePk4(asParty(mood), hg), Severity::Warning, kMood)) fail("party record with a walking mood: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(mood, ""), Severity::Warning, kMood)) fail("walking mood without a known save: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(mood, "platinum_nds"), Severity::Warning, kMood)) fail("walking mood in a Platinum save: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(mood, "diamond_nds"), Severity::Warning, kMood)) fail("walking mood in a Diamond save: unexpected Warning", box);
+            const Report native = analyzeNative(mood, "soulsilver_nds");
+            if (native.verdict() != Verdict::Incomplete || !hasText(native, Severity::Warning, kMood))
+                fail("stored record with a walking mood through Legality::analyze: expected Incomplete", native);
+            checked += 6;
+        }
+        // FormVerifier.cs:150-154: Shaymin's Sky Forme on a stored record. Platinum reverts it in
+        // every PC store function; HG/SS storage code does not; D/P have no Sky Forme at all.
+        {
+            auto sky = *findFixture("static-fateful");  // Platinum Shaymin, Land Forme
+            sky[0x40] = static_cast<uint8_t>((sky[0x40] & 0x07) | (1 << 3));
+            sky[0x15] = 32;  // Serene Grace: the Sky Forme's ability
+            refreshChecksum(sky);
+            const Report pt = Legality::analyzePk4(sky, "platinum_nds");
+            if (pt.verdict() != Verdict::Incomplete || has(pt, Severity::Invalid) || !hasText(pt, Severity::Warning, kSkyPt))
+                fail("stored Sky Forme in a Platinum save: expected the Warning only", pt);
+            const Report ptParty = Legality::analyzePk4(asParty(sky), "platinum_nds");
+            if (ptParty.verdict() != Verdict::NoProblemsFound || hasText(ptParty, Severity::Warning, kSkyPt))
+                fail("party Sky Forme in a Platinum save: expected No problems found", ptParty);
+            const Report ss = Legality::analyzePk4(sky, "soulsilver_nds");
+            if (has(ss, Severity::Invalid) || !hasText(ss, Severity::Warning, kSkyOther) || hasText(ss, Severity::Warning, kSkyPt))
+                fail("stored Sky Forme in a SoulSilver save: expected the unverified Warning", ss);
+            const Report unknown = Legality::analyzePk4(sky, "");
+            if (has(unknown, Severity::Invalid) || !hasText(unknown, Severity::Warning, kSkyOther)) fail("stored Sky Forme without a known save: expected the unverified Warning", unknown);
+            const Report dp = Legality::analyzePk4(sky, "diamond_nds");
+            if (!hasText(dp, Severity::Invalid, "Form 1 is out of range") || hasText(dp, Severity::Warning, kSkyPt) || hasText(dp, Severity::Warning, kSkyOther))
+                fail("stored Sky Forme in a Diamond save: expected the out-of-range Invalid only", dp);
+            const Report native = analyzeNative(sky, "platinum_nds");
+            if (native.verdict() != Verdict::Incomplete || !hasText(native, Severity::Warning, kSkyPt))
+                fail("stored Sky Forme through Legality::analyze: expected Incomplete", native);
+            if (hasText(Legality::analyzePk4(*findFixture("static-fateful"), "platinum_nds"), Severity::Warning, kSkyPt))
+                fail("stored Land Forme: unexpected Warning", pt);
+            checked += 7;
+        }
     }
 
     // 5. Fuzz: random bytes at every size class, then one to four random bytes in a valid

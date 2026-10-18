@@ -2,10 +2,14 @@
 # records and a deterministic fuzz pass. tools/pkhex_gen5_diff/run.sh reproduces the
 # fixture verdicts at scale against PKHeX.Core. A Gen III/IV-origin (Poke Transfer) record's
 # original encounter is checked by the Gen IV analyzer (Gen4::analyzeOrigin5), so the Gen IV
-# legality sources are part of the Gen V analyzer.
+# legality sources are part of the Gen V analyzer. A Colosseum/XD origin is judged by the Gen III
+# GameCube judge (Gen3Cxd), so the Gen III analyzer sources are as well.
 GEN5_GEN4_ORIGIN_SOURCES := src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp \
 	src/Legality/Gen4LegalityEncounters.cpp src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp \
-	src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp
+	src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp \
+	src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp
+# Gen3Legality.cpp includes Pokemon/Pokemon.h, whose default virtuals leave parameters unused.
+GEN5_LEGALITY_FLAGS := -Wno-unused-parameter
 GEN5_LEGALITY_SOURCES := tests/test_legality_gen5.cpp src/Legality/Gen5Legality.cpp \
 	src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
 	src/Pokemon/Experience.cpp $(GEN5_GEN4_ORIGIN_SOURCES)
@@ -16,11 +20,11 @@ host-sanitize: $(HOST_BUILD)/test_legality_gen5_sanitize
 
 $(HOST_BUILD)/test_legality_gen5: $(GEN5_LEGALITY_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_legality_gen5_sanitize: $(GEN5_LEGALITY_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
 # App adapter (include/Legality/Gen5AppAdapter.h): raw PK5 bytes + the app's source game id.
 GEN5_ADAPTER_SOURCES := tests/test_legality_gen5_adapter.cpp src/Legality/Gen5AppAdapter.cpp \
@@ -33,8 +37,8 @@ host-sanitize: $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
 
 $(HOST_BUILD)/test_legality_gen5_adapter: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
 
 $(HOST_BUILD)/test_legality_gen5_adapter_sanitize: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@

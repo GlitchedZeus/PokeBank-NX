@@ -531,6 +531,7 @@ const char* originKindName(G4::EncKind k) {
         case K::Gift3: case K::GiftNY3: case K::GiftJP3: return "Gen III event gift";
         case K::GiftColo3: return "Colosseum / XD bonus disc gift";
         case K::Egg3: return "Gen III egg";
+        case K::Cxd3: return "Colosseum / XD encounter";
         case K::Invalid: break;
     }
     return "encounter";
