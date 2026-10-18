@@ -265,7 +265,7 @@ public:
     Analyzer(const Pk4& pk, Table cart, const CxdOriginJudgement* cxd = nullptr, bool cartKnown = true)
         : pk_(pk), cart_(cart), cartKnown_(cartKnown), cxd_(cxd) {}
     /// Format-5 mode: pk is the view of a PK5 of Generation III/IV origin (pk.format == 5).
-    Analyzer(const Pk4& pk, const Format5Data& f5) : pk_(pk), f5_(&f5) {}
+    Analyzer(const Pk4& pk, const Format5Data& f5, const CxdOriginJudgement* cxd = nullptr) : pk_(pk), f5_(&f5), cxd_(cxd) {}
     Report run();
     /// The format-5 run: the encounter search, move/evolution history and the encounter-dependent
     /// verifiers LegalityAnalysis runs for a PK5 (see analyzeOrigin5).
@@ -337,6 +337,7 @@ private:
     Check verifyEgg4Hatched() const;
     void findVerifiedEncounter();
     void findCxdEncounter();
+    void setCxdHistory();
     Check verifyEvolution(const Template& t, const std::vector<Evo>& history, const MoveResults& moves) const;
 
     // UpdateChecks
@@ -512,7 +513,7 @@ std::string encounterHint(const Pk4& pk) {
 
 void Analyzer::findVerifiedEncounter() {
     // A Colosseum/XD origin (Pal Park too) is judged by the shared GameCube judge, not by the ported tables.
-    if (!format5() && pk_.version == kVerCXD) { findCxdEncounter(); return; }
+    if (pk_.version == kVerCXD) { findCxdEncounter(); return; }
     // A Gen III origin (Pal Park) record runs EncounterGenerator3 and the Gen III learn/evolution rules.
     const bool gen3 = gen3Origin();
     if (format5()) {
@@ -597,6 +598,20 @@ void Analyzer::findVerifiedEncounter() {
         invalid(CheckIdentifier::PidRng, "The PID/IV correlation type does not match this encounter");
 }
 
+/// The evolution history of a Colosseum/XD origin: through Gen III and Gen IV for a Pal Park
+/// record, and on to Gen V for a Poke Transfer record (format 5).
+void Analyzer::setCxdHistory() {
+    if (format5()) {
+        h5_ = evolutionHistory5(pk_, info_, level_, *f5_);
+        history3_.gen3 = h5_.gen3;
+        history3_.gen4 = h5_.gen4;
+        history_ = h5_.gen4;
+    } else {
+        history3_ = evolutionHistory3(pk_, info_, level_);
+        history_ = history3_.gen4;
+    }
+}
+
 /// Colosseum/XD origin (version 15). PKHeX runs EncounterGenerator3 over the Orre templates
 /// (Encounters3Colo/ColoShadow/XD/XDShadow). Here that search is the Gen III GameCube judge's
 /// (include/Legality/Gen3Cxd.h through Gen4::judgeCxdOrigin); this analyzer consumes its answer:
@@ -629,11 +644,10 @@ void Analyzer::findCxdEncounter() {
         search_.list.push_back(Candidate{EncKind::Cxd3, -1, -1, j->species, kVerCXD, Lead::Invalid});
         enc_ = t;
         info_ = encInfo(t);
-        const Check e = verifyEncounter(t);
+        const Check e = format5() ? verifyEncounter5(t) : verifyEncounter(t);
         if (e.severity != kValid) parse_.push_back(e);
-        history3_ = evolutionHistory3(pk_, info_, level_);
-        history_ = history3_.gen4;
-        moves_ = verifyMoves3(pk_, info_, history3_);
+        setCxdHistory();
+        moves_ = format5() ? verifyMoves5(pk_, info_, h5_, *f5_) : verifyMoves3(pk_, info_, history3_);
         const Check evo = verifyEvolution(t, history_, moves_);
         if (evo.severity != kValid) parse_.push_back(evo);
         for (const std::string& r : j->invalidReasons) invalid(CheckIdentifier::Encounter, r);
@@ -645,8 +659,7 @@ void Analyzer::findCxdEncounter() {
     // EncounterInvalid view of the record (species, met level, current level).
     enc_ = makeTemplate3(Candidate{}, pk_);
     info_ = encInfo(enc_);
-    history3_ = evolutionHistory3(pk_, info_, level_);
-    history_ = history3_.gen4;
+    setCxdHistory();
     moves_ = MoveResults{}; // nothing verified: the hook must not treat the moves as verified
     if (status == Status::NoMatch) {
         if (j->invalidReasons.empty()) invalid(CheckIdentifier::Encounter, "No Colosseum/XD encounter matches this Pokemon");
@@ -657,8 +670,8 @@ void Analyzer::findCxdEncounter() {
     }
     cxdUndecided_ = true;
     const char* name = versionName(pk_.version);
-    fishy(CheckIdentifier::Transfer, std::string("Pal Park transfer from ") + (name != nullptr ? name : "Colosseum/XD") +
-                                         ": the Colosseum/XD encounter is not verified");
+    fishy(CheckIdentifier::Transfer, std::string(format5() ? "Poke Transfer from " : "Pal Park transfer from ") +
+                                         (name != nullptr ? name : "Colosseum/XD") + ": the Colosseum/XD encounter is not verified");
     if (j != nullptr) {
         for (const std::string& w : j->warnings) fishy(CheckIdentifier::Encounter, w);
         for (const std::string& n : j->notes) note(CheckIdentifier::Encounter, n);
@@ -1743,10 +1756,23 @@ MoveEvidence Analyzer::evidence() const noexcept {
 
 } // namespace
 
+namespace {
+CxdOriginInput cxdInput(const Pk4& pk);
+} // namespace
+
 Origin5 analyzeOrigin5(const Pk4& pk, uint8_t currentLevel, const Format5Data& f5) {
-    // Poke Transfer refuses eggs; Colosseum/XD (Orre tables not ported) and species above 493 are left
-    // to the Gen V analyzer, as is any record without a Generation III/IV origin game.
+    // Poke Transfer refuses eggs; species above 493 are left to the Gen V analyzer, as is any record
+    // without a Generation III/IV or Colosseum/XD origin game.
     if (pk.format != 5 || !f5.ready() || pk.isEgg || pk.species == 0 || pk.species > kMaxSpecies4) return {};
+    if (pk.version == kVerCXD) {
+        // Colosseum/XD: the Gen III GameCube judge on the fields Poke Transfer keeps. Only a decided
+        // answer (matched template, or no Orre encounter) is analyzed here; an undecided one stays
+        // with the Gen V analyzer, which reports the origin as unverified.
+        const CxdOriginJudgement j = judgeCxdOrigin(cxdInput(pk));
+        if (j.status != CxdOriginJudgement::Status::Matched && j.status != CxdOriginJudgement::Status::NoMatch) return {};
+        Analyzer a(pk, f5, &j);
+        return a.run5(currentLevel);
+    }
     const bool gen3 = pk.version >= 1 && pk.version <= 5;
     if (!gen3 && !isGen4Version(pk.version)) return {};
     Analyzer a(pk, f5);

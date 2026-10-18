@@ -1653,8 +1653,9 @@ std::array<int, 2> sheenRange(const Pk5& p, bool gen3) {
 
 // Runs the Gen III/IV origin analysis (Gen4::analyzeOrigin5) on a view of this record.
 void Gen5Analyzer::analyzeOrigin() {
-    // Poke Transfer refuses eggs; Colosseum / XD origin and species above 493 stay with this analyzer.
-    if (p_.isEgg || p_.species == 0 || p_.species > 493 || p_.version == kVersionCXD || raw_.size() < 136) return;
+    // Poke Transfer refuses eggs; species above 493 stay with this analyzer. A Colosseum / XD origin
+    // is analyzed when the Gen III GameCube judge decides it (Gen4::analyzeOrigin5).
+    if (p_.isEgg || p_.species == 0 || p_.species > 493 || raw_.size() < 136) return;
     G4::Pk4 view;
     if (!G4::read(raw_.first(136), view)) return;
     // PK5 0x41 is the nature and 0x42 the hidden-ability / N flags; 0x44-0x47 and 0x86 are unused and
@@ -1710,8 +1711,9 @@ void Gen5Analyzer::transfer() {
         if (gen4Card || transferTradeName(T::load5(p_.ot))) a_.warn(CheckIdentifier::Misc, text + " from zero; it may have started with an event's or trade's stats");
         else a_.invalid(CheckIdentifier::Misc, text);
     }
-    // PKHeX CXDVerifier: the Colosseum / XD player characters are male.
-    if (p_.version == kVersionCXD && p_.otGender != 0)
+    // PKHeX CXDVerifier: the Colosseum / XD player characters are male. The GameCube judge applies
+    // the same rule when the origin was analyzed.
+    if (p_.version == kVersionCXD && p_.otGender != 0 && !origin_.analyzed)
         a_.invalid(CheckIdentifier::Trainer, "Colosseum / XD Pokemon have a male Original Trainer");
     if (isGen3Version(p_.version)) {
         // Pal Park (PKHeX PK3.ConvertToPK4): the PK3 has no egg location, so it stays 0,
