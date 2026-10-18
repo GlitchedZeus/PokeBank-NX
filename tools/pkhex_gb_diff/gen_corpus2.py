@@ -431,6 +431,10 @@ def time_capsule_mon(d, rng, japanese=False):
     return mon
 
 
+# Gen I statics with no Gen II source at all: the birds and Mewtwo (Gen II breeds starters
+# and fossils from Time Capsule parents, so an egg origin stays open for them).
+GEN1_ONLY_STATIC = (144, 145, 146, 150)
+
 KOREAN_NICKS = ("피카", "친구", "꼬마", "별님", "용용이", "BUDDY", "Mon")
 
 
@@ -682,6 +686,17 @@ def main():
         japanize(d, mon, rng)
         mon.ot = rng.choice(("サ？", "ゴ！", "ミナ？"))
         emit("jp-ot-mark-ok", mon)
+        # The same marks on a Pokemon only Gen I produces (a fossil, starter, bird or Mewtwo
+        # moved through the Time Capsule): PKHeX's Gen I kana set applies to its one origin.
+        species, level, v = rng.choice([s for s in d.g1.statics if s[0] in GEN1_ONLY_STATIC and s[2] != g1.BU])
+        yellow = v == g1.YW
+        m1 = g1.Mon(species, level, g1.encounter_moves(d.g1, species, level, yellow),
+                    d.g1.personal[yellow][species]["catch"], yellow)
+        g1.grow(d.g1, m1, min(100, level + rng.randrange(0, 30)), rng)
+        mon = Mon(m1.species, m1.level, m1.moves, False)
+        japanize(d, mon, rng)
+        mon.ot = rng.choice(("サ？", "ゴ！", "ミナ？"))
+        emit("jp-ot-mark-gen1", mon)
         mon = grown_wild()
         mon.ot_raw = bytes([g1.TRADE_OT, 0x80 + rng.randrange(26)] + [g1.TERMINATOR] * 9)
         emit("defect2-trade-ot-bad-term", mon)

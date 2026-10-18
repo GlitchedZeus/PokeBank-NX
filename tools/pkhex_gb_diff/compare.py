@@ -30,6 +30,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
 
 
 class ProtocolError(Exception):
@@ -228,7 +229,27 @@ UNCERTAIN_REASONS = (
     ("name-glyphless", "holds a byte with no glyph in the", lambda r, ctx: name_glyphless(r, ctx)),
     # TrainerNameVerifier: StringConverter1/2.GetIsJapanese on the trainer name (G1CharOT).
     ("jp-ot-charset", "Japanese trainer name has a character outside the kana", lambda r, ctx: jp_ot_charset(r, ctx)),
+    # A Japanese trainer name with ？ or ！ (StringConverter2 only) on a record whose every
+    # origin is Gen I: the Gen I naming screen is not disassembled. PKHeX: Trainer:G1CharOT.
+    ("jp-ot-mark-gen1", "so a Red/Blue/Yellow origin is unverified", lambda r, ctx: jp_ot_mark(r, ctx)),
 )
+
+
+def jp_ot_mark(r, ctx):
+    """A Japanese trainer name of kana with at least one ？ or ！ (either format)."""
+    if not r.japanese or r.ot[0] == 0x5D:
+        return False
+    table = ctx.jp[r.format]
+    mark = False
+    for b in r.ot[:name_end(r.ot)]:
+        c = table[b]
+        if c is None:
+            return False
+        if c in "？！":
+            mark = True
+        elif not ("　" <= c <= "ー"):
+            return False
+    return mark
 
 
 def name_end(raw):
@@ -268,8 +289,8 @@ def jp_ot_charset(r, ctx):
         c = table[b]
         if c is None:
             return False  # PKHeX's decoder stops here and judges the shorter name
-        if not ("　" <= c <= "ー" or (r.format == 2 and c in "？！")):
-            return True
+        if not ("　" <= c <= "ー" or c in "？！"):
+            return True  # ？ and ！ are judged per origin (jp-ot-mark-gen1)
     return False
 
 DAY_CARE_EXP_MAX = 0x50FFFF
@@ -355,6 +376,12 @@ DELIBERATE = (
     # (its catch-rate byte is no held item, or its moves or species are not Gen II's): PKHeX
     # accepts it as a Red/Blue/Yellow native, where no Korean name can be written.
     ("korean-pk1-origin", "VALID", "INVALID", lambda r, ctx, pk, pb: korean_pk1_origin(r, ctx, pk, pb)),
+    # ？ or ！ in a Japanese trainer name with a Gen II origin open: PKHeX judges the
+    # name by the first encounter it matched (TrainerNameVerifier.VerifyGBOTWithinBounds uses
+    # StringConverter1.GetIsJapanese for a Gen I match, which lacks the marks) and does not
+    # look for another, so it is INVALID (Trainer:G1CharOT) while the Gen II origin is legal.
+    ("jp-ot-mark-gen1-pick", "INVALID", "VALID",
+     lambda r, ctx, pk, pb: jp_ot_mark(r, ctx) and set(pkhex_codes(pk[1])) == {"Trainer:G1CharOT"}),
 )
 
 
@@ -435,7 +462,7 @@ def self_test():
         nul_jp[b] = False
         jp_table[b] = c
     nul = {1: {"EN": nul_en, "JP": nul_jp}, 2: {"EN": nul_en, "JP": nul_jp}}
-    ctx = Context({1: 3, 151: 3, 251: 3, 25: 0, 19: 0}, {0xA5: 19}, nul, {1: jp_table, 2: jp_table})
+    ctx = Context({1: 3, 151: 3, 251: 3, 25: 0, 19: 0, 144: 5}, {0xA5: 19}, nul, {1: jp_table, 2: jp_table})
 
     def pk1(species_internal, level, exp, catch=255, moves=(33, 39)):
         body = bytearray(44)
@@ -476,12 +503,15 @@ def self_test():
         f"11 digit 0 {pk1(0xA5, 3, 27)} 80f7505050505050505050 {intl}",
         f"12 glyph 0 {pk1(0xA5, 3, 27)} 8005815050505050505050 {intl}",
         f"13 jpot 1 {pk1(0xA5, 3, 27)} 8af750505050 8a8b50505050",
+        f"14 jpmark 1 {pk2(1, 5, 135)} 8ae650505050 8a8b50505050 0",
+        f"15 jpmark1 1 {pk2(144, 50, 156250)} 8ae650505050 8a8b50505050 0",
     ]
     pkhex = ["0 VALID x ; ", "1 INVALID x ; Move1:Duplicate", "2 INVALID x ; Encounter:EncInvalid",
              "3 VALID x ; ", "4 INVALID x ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
              "5 INVALID x ; Move2:None", "6 INVALID x ; EVs:EffortShouldBeZero", "7 VALID x ; ",
              "8 INVALID x ; Level:LevelEXPTooHigh", "9 VALID x ; ", "10 VALID x ; ", "11 VALID x ; ",
-             "12 VALID x ; ", "13 INVALID x ; Trainer:G1CharOT"]
+             "12 VALID x ; ", "13 INVALID x ; Trainer:G1CharOT", "14 INVALID x ; Trainer:G1CharOT",
+             "15 INVALID x ; Trainer:G1CharOT"]
     korean_pk1 = ("Korean Gold/Silver trainer name on a Red/Blue/Yellow record: no Korean Gen I game "
                   "exists, so it needs a trade")
     pokebank = ["0 VALID x ;", "1 INVALID x ; | Duplicate move: Tackle",
@@ -497,7 +527,10 @@ def self_test():
                 f"10 INVALID wild Rattata in Gold/Silver (level 2+) ; | Catch rate 255 is not a Gen II held item | {korean_pk1}",
                 "11 UNCERTAIN x ; | Trainer name has a digit; the English naming screens offer none, and no game",
                 "12 UNCERTAIN x ; | Trainer name holds a byte with no glyph in the Western font (the name reads shorter)",
-                "13 UNCERTAIN x ; | Japanese trainer name has a character outside the kana (PKHeX rejects it)"]
+                "13 UNCERTAIN x ; | Japanese trainer name has a character outside the kana (PKHeX rejects it)",
+                "14 VALID egg Bulbasaur in Gold/Silver ;",
+                "15 UNCERTAIN Articuno in Red/Blue/Yellow ; | Japanese trainer name has ？ or ！, which only the "
+                "Gold/Silver/Crystal naming screen offers, so a Red/Blue/Yellow origin is unverified"]
 
     def run(c, a, b):
         with tempfile.TemporaryDirectory() as tmp:
@@ -569,6 +602,14 @@ def self_test():
          edit(lines, 13, lines[13].replace("8af750505050 8a8b50505050", "8a8b50505050 8a8b50505050")), pkhex, pokebank),
         ("Japanese character reason on a Western record", "differ",
          edit(lines, 13, f"13 jpot 0 {pk1(0xA5, 3, 27)} 80f7505050505050505050 {intl}"), pkhex, pokebank),
+        ("Japanese mark exception with another PKHeX complaint", "differ", lines,
+         edit(pkhex, 14, "14 INVALID x ; Trainer:G1CharOT Move1:None"), pokebank),
+        ("Japanese mark exception on a kana-only trainer name", "differ",
+         edit(lines, 14, lines[14].replace("8ae650505050 8a8b", "8a8b50505050 8a8b")), pkhex, pokebank),
+        ("Japanese mark exception with a digit beside the mark", "differ",
+         edit(lines, 14, lines[14].replace("8ae650505050 8a8b", "8ae6f7505050 8a8b")), pkhex, pokebank),
+        ("Japanese mark reason on a Western record", "differ",
+         edit(lines, 15, f"15 jpmark1 0 {pk2(144, 50, 156250)} {intl} {intl} 0"), pkhex, pokebank),
         ("GS Ball exception at the wrong place", "differ",
          edit(lines, 4, lines[4].replace(pk2(251, 30, exp_for(3, 30), caught=(30 << 8) | 14),
                                          pk2(251, 30, exp_for(3, 30), caught=(30 << 8) | 15))), pkhex, pokebank),

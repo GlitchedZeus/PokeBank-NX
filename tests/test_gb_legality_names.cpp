@@ -62,7 +62,8 @@ bool hasIssue(const Legality::Report& r, Legality::Severity s, const std::string
 }
 
 void dump(const GB::Result& r, const std::string& what) {
-    std::fprintf(stderr, "  %s: status %d\n", what.c_str(), static_cast<int>(r.status));
+    std::fprintf(stderr, "  %s: status %d, origin %s\n", what.c_str(), static_cast<int>(r.status),
+                 GB::describe(r.origin).c_str());
     for (const auto& p : r.problems)
         std::fprintf(stderr, "    %s%s\n", p.definitive ? "" : "(warning) ", p.text.c_str());
 }
@@ -331,16 +332,29 @@ void digits() {
 
 void japaneseTrainerName() {
     // StringConverter1.GetIsJapanese: kana only. PKHeX: Trainer:G1CharOT for a full-width
-    // digit or ？ on a PK1; ？ and ！ pass on a PK2 (StringConverter2.GetIsJapanese).
+    // digit, or for ？ when the encounter it matched is Gen I; ？ and ！ pass with a Gen II
+    // encounter (StringConverter2.GetIsJapanese).
     GB::Entity1 e = rattata("サ１", "モン", false);
     e.language = GB::Language::Japanese;
     e.otRaw = {0x8A, 0xF7, 0x50, 0x50, 0x50, 0x50};
     GB::Result r = GB::checkGen1(e);
     check(r.status == GB::Status::Uncertain && has(r.problems, "outside the kana", false),
           "PK1 Japanese trainer name with a full-width digit: Uncertain");
+    // ？ and ！ belong to the Gold/Silver/Crystal screen (StringConverter2.GetIsJapanese): with
+    // only Gen I origins the record is Uncertain; with a Gen II origin (the catch-rate byte is
+    // a Gen II held item, so the Rattata was caught there and traded back) it is Legal.
     e.otName = "サ？";
     e.otRaw = {0x8A, 0xE6, 0x50, 0x50, 0x50, 0x50};
-    check(GB::checkGen1(e).status == GB::Status::Uncertain, "PK1 Japanese trainer name with ？: Uncertain");
+    r = GB::checkGen1(e);
+    check(r.status == GB::Status::Uncertain && has(r.problems, "a Red/Blue/Yellow origin is unverified", false),
+          "PK1 Japanese trainer name with ？: Uncertain (only Gen I origins)");
+    e.catchRate = 83;  // a Gen II held item
+    r = GB::checkGen1(e);
+    check(r.status == GB::Status::Legal && r.origin.generation == 2,
+          "PK1 Japanese trainer name with ？ and a Gen II origin: Legal");
+    if (r.status != GB::Status::Legal)
+        dump(r, "rattata-mark-gen2");
+    e.catchRate = 255;
     e.otName = "サシス";
     e.otRaw = {0x8A, 0x8B, 0x8C, 0x50, 0x50, 0x50};
     check(GB::checkGen1(e).status == GB::Status::Legal, "PK1 Japanese trainer name in kana: Legal");
@@ -355,6 +369,27 @@ void japaneseTrainerName() {
     p.otName = "サ１";
     p.otRaw = {0x8A, 0xF7, 0x50, 0x50, 0x50, 0x50};
     check(GB::checkGen2(p).status == GB::Status::Uncertain, "PK2 Japanese trainer name with a digit: Uncertain");
+    // PKHeX applies the Gen I kana set when the origin it matched is Gen I. A PK2 Articuno
+    // (Seafoam Islands, level 50; Gen II has no encounter and no egg for it) with ？ in its
+    // trainer name has only Gen I origins, so it is Uncertain, not Legal; a kana name keeps
+    // it Legal. (A fossil or starter would not do: Gen II breeds them from Time Capsule parents.)
+    GB::Entity2 o = pidgey("サシ", "フリ", false);
+    o.species = 144;
+    o.level = 50;
+    o.moves = {64, 58, 0, 0};
+    o.pp = {35, 10, 0, 0};
+    o.exp = 156250;
+    o.language = GB::Language::Japanese;
+    r = GB::checkGen2(o);
+    check(r.status == GB::Status::Legal, "PK2 Articuno (Gen I static) with a kana trainer name: Legal");
+    if (r.status != GB::Status::Legal)
+        dump(r, "articuno");
+    o.otName = "サ？";
+    r = GB::checkGen2(o);
+    check(r.status == GB::Status::Uncertain && has(r.problems, "a Red/Blue/Yellow origin is unverified", false),
+          "PK2 Articuno with ？ in the trainer name: Uncertain (only Gen I origins)");
+    if (r.status != GB::Status::Uncertain)
+        dump(r, "articuno-mark");
     // The nickname is not held to the kana (PKHeX checks the trainer name only).
     p.otName = "サシ";
     p.otRaw = {0x8A, 0x8B, 0x50, 0x50, 0x50, 0x50};

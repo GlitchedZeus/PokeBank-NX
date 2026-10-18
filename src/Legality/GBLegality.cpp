@@ -1641,17 +1641,27 @@ std::vector<uint32_t> codePointsOf(const std::string& s) {
 /// Rules on the characters of the decoded names. None is definitive: the English naming
 /// screens are the only ones disassembled, and PKHeX's Japanese character rule is not
 /// checked against a Japanese ROM.
+/// ？ (U+FF1F) or ！ (U+FF01): StringConverter2.GetIsJapanese allows them, StringConverter1
+/// does not.
+bool hasJapaneseMark(const std::string& s) {
+    for (uint32_t cp : codePointsOf(s))
+        if (cp == 0xFF1F || cp == 0xFF01)
+            return true;
+    return false;
+}
+
 std::vector<Problem> nameCharsetProblems(const Subject& pk) {
     std::vector<Problem> out;
     if (pk.language == Language::Japanese) {
         // TrainerNameVerifier.VerifyGBOTWithinBounds: StringConverter1.GetIsJapanese
         // (U+3000-U+30FC), StringConverter2.GetIsJapanese adds ？ and ！. PKHeX rejects the
         // trainer name (G1CharOT); the Japanese games' naming screens are not disassembled
-        // here, so it stays a warning.
+        // here, so it stays a warning. The two marks are judged per origin in `evaluate`
+        // (a Gen II origin writes them on either format).
         if (!pk.tradeTrainer) {
             for (uint32_t cp : codePointsOf(pk.otName)) {
                 const bool kana = cp >= 0x3000 && cp <= 0x30FC;
-                const bool mark = pk.format == 2 && (cp == 0xFF1F || cp == 0xFF01);
+                const bool mark = cp == 0xFF1F || cp == 0xFF01;
                 if (!kana && !mark) {
                     out.push_back({Area::Trainer, "Japanese trainer name has a character outside the kana "
                                                   "(PKHeX rejects it; the Japanese naming screen is not "
@@ -1833,6 +1843,21 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
     if (pk.tradeTrainer && !(enc.kind == EncounterKind::Trade && enc.generation == 1))
         ev.problems.push_back({Area::Trainer, "The in-game-trade trainer marker only appears on Pokemon "
                                               "received in a Red/Blue/Yellow in-game trade"});
+    // TrainerNameVerifier.VerifyGBOTWithinBounds judges a Japanese trainer name by the
+    // origin's generation: StringConverter1.GetIsJapanese (kana only) for a Gen I origin,
+    // StringConverter2.GetIsJapanese (kana, ？ and ！) for Gen II. The marks are fine for a
+    // Gen II origin on either format (a PK1 carries them back through the Time Capsule); a
+    // Gen I origin for them is unverified here (the Japanese Red/Blue/Yellow naming screen
+    // is not disassembled), so it only keeps that origin from reading Legal. PKHeX judges
+    // by the first encounter it matches, which can be the Gen I one while a Gen II origin
+    // is open.
+    if (enc.generation == 1 && pk.language == Language::Japanese && !pk.tradeTrainer &&
+        hasJapaneseMark(pk.otName))
+        ev.problems.push_back({Area::Trainer, "Japanese trainer name has ？ or ！, which only the "
+                                              "Gold/Silver/Crystal naming screen offers (PKHeX; the "
+                                              "Red/Blue/Yellow screen is not disassembled), so a "
+                                              "Red/Blue/Yellow origin is unverified",
+                               false});
 
     if (pk.format == 1) {
         if (mc.anyGen2 && !isHeldItemRate(pk.catchRate))

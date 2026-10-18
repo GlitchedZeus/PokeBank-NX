@@ -305,9 +305,11 @@ def finish(d, mon, rng, japanese):
 
 
 def with_byte(rng, text, byte, length=11):
-    """`text` (A-Z, space) in a `length`-byte field with `byte` inserted at a random place."""
+    """`text` (A-Z, space) in a `length`-byte field with `byte` inserted at a random place.
+    A byte on the Hangul pages (<= 0x0B) never goes first: there it would make the record
+    Korean (PK1/PK2.Korean, StringConverter2KOR.IsHangul) instead of a damaged Western one."""
     core = [CHARS[c] for c in text]
-    core.insert(rng.randrange(len(core) + 1), byte)
+    core.insert(rng.randrange(1 if byte <= 0x0B else 0, len(core) + 1), byte)
     core = core[:length - 1]
     return bytes(core + [TERMINATOR] * (length - len(core)))
 
@@ -315,7 +317,7 @@ def with_byte(rng, text, byte, length=11):
 def with_byte_jp(rng, encoder, text, byte):
     """The Japanese counterpart: `text` in a 6-byte field with `byte` inserted."""
     core = [encoder.index[c] for c in text]
-    core.insert(rng.randrange(len(core) + 1), byte)
+    core.insert(rng.randrange(1 if byte <= 0x0B else 0, len(core) + 1), byte)
     core = core[:5]
     return bytes(core + [TERMINATOR] * (6 - len(core)))
 
