@@ -43,6 +43,9 @@
 #include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "UI/Gen4SharedPokemonSession.h"
+#include "UI/Gen4BagQuantity.h"
+#include "UI/SharedStatReroll.h"
+#include "test_qa_matrix_round2.h"
 #include "UI/SharedPokemonEditorWorkspace.h"
 #include "Utils/StringHelpers.h"
 
@@ -197,6 +200,155 @@ const S::HomeCardSnapshot& refreshHome(S::HomeSnapshotCache& cache, const Legacy
 
 bool hasLine(const std::vector<std::string>& lines, const std::string& text) {
     return std::find(lines.begin(), lines.end(), text) != lines.end();
+}
+
+// ------------------------------------------------------------------------------------------------
+// Round 2 cells (bag-add, reroll), each on a fresh Gen4ReadOnlyTrainer bridge over the in-memory
+// synthetic save, so they never disturb the cells above.
+//   bag-add  Gen4BagQuantity::policyRule + BagAdd::decidePick / decideRow with the pocket state and
+//            writer cap Gen4SharedPokemonSurface.inc handleItemQuantity builds, staged through the
+//            bridge's Gen4StagedPokemonEditor::stageBagAdd (row edits: stageBagQuantity) and
+//            refreshStagedPokemonPresentation, exactly as that handler does
+//   reroll   the Y handler of SharedPokemonEditorSurface.inc with the Gen IV adapter
+//            (Gen4SharedPokemonSurface.inc setIv / setEv on Session::working), then Session::keep
+// ------------------------------------------------------------------------------------------------
+void runRound2Gen4(Matrix& m, const VersionSpec& v, const Bytes& original) {
+    namespace R2 = round2;
+    const std::string ver = v.version;
+    std::string parseError;
+    const auto parsed = G4::Gen4ReadOnlySave::parse(original, v.layout, v.gameId, &parseError);
+
+    cell(m, ver, "bag-add", "Gen4BagQuantity::policyRule + decidePick (pocket slots / held from the bridge): "
+             "Antidote StageNew x1 (no numpad) -> stageBagAdd -> refreshed Medicine shows Antidote x1 (strict "
+             "reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 "
+             "then FixedQuantity, x2 refused", [&](Probe& p) {
+        p.expect(parsed.has_value(), "parse: " + parseError);
+        if (!parsed) return;
+        std::string error;
+        auto trainer = Legacy::Gen4ReadOnlyTrainer::create(*parsed, v.gameId, error);
+        p.expect(trainer && trainer->stagedPokemon(), "Gen4ReadOnlyTrainer staged workspace: " + error);
+        if (!trainer || !trainer->stagedPokemon()) return;
+        auto& editor = *trainer->stagedPokemon();
+        PokeVault::Inventory::QuantityPolicy::Game game{};
+        p.expect(PokeVault::Inventory::QuantityPolicy::gameFromId(v.gameId, game), "gameFromId");
+        const auto item = [&](std::string name, G4::BagPocket pocket, uint16_t id) {
+            R2::BagItem i;
+            i.name = std::move(name);
+            i.id = id;
+            i.pocket = static_cast<size_t>(pocket);
+            i.rule = PokeBank::UIModel::Gen4BagQuantity::policyRule(game, i.pocket, id);
+            i.writerCap = G4::gen4BagMaxQuantity(i.pocket, id);
+            return i;
+        };
+        const auto rowOf = [&](const R2::BagItem& i) -> std::optional<size_t> {
+            const auto& rows = trainer->items[i.pocket];
+            for (size_t r = 0; r < rows.size(); ++r)
+                if (rows[r].itemId == i.id) return r;
+            return std::nullopt;
+        };
+        R2::BagBackend b;
+        b.held = [&](const R2::BagItem& i) -> uint16_t {
+            const auto r = rowOf(i);
+            return r ? trainer->items[i.pocket][*r].count : 0;
+        };
+        b.state = [&](const R2::BagItem& i) {
+            R2::BagAdd::PocketState s{};
+            s.usedSlots = trainer->items[i.pocket].size();
+            s.capacity = G4::bagLayout(editor.layout())[i.pocket].slots;
+            s.heldInPocket = b.held(i);
+            return s;
+        };
+        b.stage = [&](const R2::BagItem& i, uint16_t q, std::string& err) {
+            if (!G4::gen4BagItemAllowed(editor.layout(), i.pocket, i.id)) { err = "not in the native catalog"; return false; }
+            auto backup = editor;
+            const auto r = rowOf(i);
+            const bool ok = r ? editor.stageBagQuantity(i.pocket, *r, q, &err) : editor.stageBagAdd(i.pocket, i.id, q, &err);
+            if (!ok) return false;
+            if (!trainer->refreshStagedPokemonPresentation(err)) {
+                editor = std::move(backup);
+                std::string ignored;
+                (void)trainer->refreshStagedPokemonPresentation(ignored);
+                return false;
+            }
+            return true;
+        };
+        b.bytes = [&] { return editor.stagedBytes(); };
+        for (const auto& f : R2::bagAddChecks(b, item("Antidote", G4::BagPocket::Medicine, 18),
+                                              item("Potion", G4::BagPocket::Medicine, kPotion),
+                                              item("Bicycle", G4::BagPocket::KeyItems, 450)))
+            p.expect(false, f);
+        std::string err;
+        const auto out = editor.finalizedBytes(&err);
+        p.expect(!out.empty(), "finalize: " + err);
+        if (!out.empty()) {
+            const auto re = G4::Gen4ReadOnlySave::parse(out, v.layout, v.gameId, &err);
+            const auto bag = re ? G4::decodeReadOnlyBag(*re) : std::nullopt;
+            const auto has = [&](G4::BagPocket pocket, uint16_t id) {
+                if (!bag) return false;
+                for (const auto& s : (*bag)[static_cast<size_t>(pocket)])
+                    if (s.itemId == id && s.count == 1) return true;
+                return false;
+            };
+            p.expect(has(G4::BagPocket::Medicine, 18) && has(G4::BagPocket::KeyItems, 450),
+                     "reparsed bag lacks Antidote x1 / Bicycle x1: " + err);
+        }
+        p.expect(editor.originalBytes() == original, "workspace original differs from the source");
+    });
+
+    cell(m, ver, "reroll", "Y = SharedStatReroll::reroll via Session::working setEV(0)/setIV/setEV -> keep, x" +
+             std::to_string(R2::kRerolls) + " per case: Pikachu shiny/non-shiny x male/female keep shiny, gender "
+             "and PID; IVs/EVs land as rolled", [&](Probe& p) {
+        p.expect(parsed.has_value(), "parse: " + parseError);
+        if (!parsed) return;
+        std::string error;
+        auto editor = G4::Gen4StagedPokemonEditor::create(original, v.layout, v.gameId, &error);
+        p.expect(editor.has_value(), "staged editor: " + error);
+        if (!editor) return;
+        namespace Reroll = PokeBank::UIModel::SharedStatReroll;
+        Reroll::Rng rng(0x5EED4u);
+        for (const bool shiny : {false, true})
+            for (const uint8_t gender : {uint8_t{0}, uint8_t{1}}) {
+                const std::string what = std::string(shiny ? "shiny" : "non-shiny") + (gender ? " female" : " male");
+                auto rec = editor->boxedPokemon(0, 0, &error);
+                p.expect(rec.has_value(), "box 1/1: " + error);
+                if (!rec) return;
+                Session4::Session setup;
+                p.expect(setup.begin(*rec, parsed->rawFamily(), Session4::Mode::Edit, error), "begin: " + error);
+                if (!setup.working) return;
+                if (setup.working->shiny() != shiny) p.expect(setup.cycleShiny(), what + ": cycleShiny refused");
+                if (setup.working->gender() != gender) p.expect(setup.cycleGender(), what + ": cycleGender refused");
+                if (!setup.keep(*editor, 0, 0, error)) {
+                    p.expect(false, what + ": Keep start state: " + error);
+                    continue;
+                }
+                auto start = editor->editableBoxPokemon(0, 0, &error);
+                p.expect(start && start->shiny() == shiny && start->gender() == gender, what + ": start state not staged");
+                if (!start) return;
+                for (int i = 0; i < R2::kRerolls; ++i) {
+                    rec = editor->boxedPokemon(0, 0, &error);
+                    if (!rec) { p.expect(false, "box 1/1: " + error); return; }
+                    Session4::Session y;
+                    if (!y.begin(*rec, parsed->rawFamily(), Session4::Mode::Edit, error)) {
+                        p.expect(false, "begin: " + error);
+                        return;
+                    }
+                    const auto next = Reroll::reroll(rng, {y.working->ivs(), y.working->evs()});
+                    for (size_t s = 0; s < 6; ++s) y.working->setEV(s, 0);
+                    for (size_t s = 0; s < 6; ++s) y.working->setIV(s, next.ivs[s]);
+                    for (size_t s = 0; s < 6; ++s) y.working->setEV(s, next.evs[s]);
+                    if (!y.keep(*editor, 0, 0, error)) {
+                        p.expect(false, what + ": Keep reroll " + std::to_string(i) + ": " + error);
+                        break;
+                    }
+                    const auto now = editor->editableBoxPokemon(0, 0, &error);
+                    if (!now) { p.expect(false, "box 1/1: " + error); return; }
+                    p.expect(now->ivs() == next.ivs && now->evs() == next.evs, what + ": rolled IVs/EVs not staged");
+                    p.expect(now->shiny() == shiny && now->gender() == gender && now->pid() == start->pid(),
+                             what + ": reroll " + std::to_string(i) + " changed shiny/gender/PID");
+                }
+            }
+        p.expect(editor->originalBytes() == original, "workspace original differs from the source");
+    });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -897,6 +1049,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         p.expect(reopened.status == G4::OpenStatus::Ready && reopened.save &&
                      reopened.save->party()[0].partyLevel() == 33, "reopen after relaunch");
     });
+
+    runRound2Gen4(m, v, original);
 
     std::error_code ec;
     fs::remove_all(root, ec);

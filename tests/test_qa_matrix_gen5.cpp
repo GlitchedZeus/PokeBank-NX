@@ -26,6 +26,7 @@
 
 #include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5Bag.h"
+#include "Integration/Gen5/Gen5BagScreen.h"
 #include "Integration/Gen5/Gen5BlankSlot.h"
 #include "Integration/Gen5/Gen5CreateValidation.h"
 #include "Integration/Gen5/Gen5EditorFields.h"
@@ -46,6 +47,9 @@
 #include "Source/HomeCardSnapshot.h"
 #include "Source/SaveProviderIdentity.h"
 #include "UI/SharedPokemonEditorWorkspace.h"
+#include "UI/SharedBagAddFlow.h"
+#include "UI/SharedStatReroll.h"
+#include "test_qa_matrix_round2.h"
 
 #include <sys/stat.h>
 
@@ -1013,6 +1017,154 @@ Outcome relaunch(Ctx& c) {
 }
 
 // --------------------------------------------------------------------------------------------
+// Round 2 cells (bag-add, reroll), each on a fresh Gen5ReadOnlyTrainer bridge.
+//   bag-add  Gen5BagScreen openAdd / moveAddCursor / pickAdd(ws, rule, refresh, error) with the
+//            rule Gen5SharedReadOnlySurface.inc gen5PolicyRule builds, then beginQuantity +
+//            BagAdd::decideRow as its A-on-row handler (tests/test_bag_add_flow_gen15.cpp gen5)
+//   reroll   the Y handler of SharedPokemonEditorSurface.inc with the Gen V adapter (setIv / setEv
+//            = Gen5SharedPokemonSession::stage(Field::IV / Field::EV)), then keepWithPresentation
+// --------------------------------------------------------------------------------------------
+namespace QP = PokeVault::Inventory::QuantityPolicy;
+
+QP::ItemQuantityRule gen5Rule(const Ctx& c, size_t pocket, uint16_t id) {
+    // Gen5SharedReadOnlySurface.inc gen5PolicyRule (Gen5Bag.h pocket order).
+    static constexpr std::array<QP::Pocket, 5> kPockets{{QP::Pocket::Items, QP::Pocket::KeyItems,
+                                                         QP::Pocket::TMHM, QP::Pocket::Medicine, QP::Pocket::Berries}};
+    QP::Game game{};
+    if (pocket >= kPockets.size() || !QP::gameFromId(c.spec.game, game)) return {};
+    return QP::quantityRule(game, kPockets[pocket], id);
+}
+
+uint16_t heldIn(const G5::Gen5StagedPokemonWorkspace& ws, size_t pocket, uint16_t id) {
+    const auto bag = ws.bagPresentation();
+    if (!bag) return 0;
+    for (const auto& s : (*bag)[pocket])
+        if (s.itemId == id) return s.count;
+    return 0;
+}
+
+Outcome bagAdd(Ctx& c) {
+    namespace BagAdd = PokeBank::UIModel::BagAdd;
+    using BagSurface = G5::Gen5BagScreen::Surface;
+    auto t = c.trainer();
+    auto& ws = t->stagedPokemon();
+    auto& bag = t->bagScreen();
+    const auto refresh = refresher(*t);
+    std::string error;
+    constexpr size_t kMedicine = 3, kKey = 1;
+    constexpr uint16_t kAntidote = 18;
+    const uint16_t potion = G5::BagCatalog5::kMedicine[0];
+    const auto choose = [&](uint16_t id) {
+        for (int guard = 0; guard < 1000 && bag.chosenAddItem() != id; ++guard) bag.moveAddCursor(1);
+        return bag.chosenAddItem() == id;
+    };
+    while (bag.pocket() != kMedicine) bag.changePocket(1);
+    need(heldIn(ws, kMedicine, kAntidote) == 0 && heldIn(ws, kMedicine, potion) == 12, "synthetic Medicine pocket");
+
+    // A on a new stackable item: staged x1 at once, no keypad.
+    const auto antidote = gen5Rule(c, kMedicine, kAntidote);
+    need(antidote.valid && antidote.editable && antidote.minimum == 1, "Antidote policy rule");
+    need(bag.openAdd(ws, error) && bag.surface() == BagSurface::AddPicker, "openAdd(Medicine): " + error);
+    need(choose(kAntidote), "Antidote not in the Add picker");
+    const auto pick = bag.pickAdd(ws, antidote, refresh, error);
+    need(pick.outcome == BagAdd::PickOutcome::StageNew && pick.quantity == 1 && pick.quantity == antidote.minimum &&
+             error.empty(), "pickAdd(Antidote) is not StageNew x1: " + error);
+    need(bag.surface() == BagSurface::Browse && heldIn(ws, kMedicine, kAntidote) == 1,
+         "staged bag does not hold Antidote x1");
+    // A on that row: the quantity editor on [1, 999].
+    const auto request = bag.beginQuantity(ws, error);
+    need(request && request->itemId == kAntidote && request->current == 1, "beginQuantity on Antidote: " + error);
+    const auto row = BagAdd::decideRow(antidote, request->current, request->maximum);
+    need(row.outcome == BagAdd::RowOutcome::EditQuantity && row.minimum == 1 && row.maximum == 999,
+         "Antidote row is not EditQuantity [1,999]");
+
+    // A on the held Potion: focus the existing stack, nothing staged.
+    const auto reviewBefore = ws.bagReviewChanges().size();
+    need(bag.openAdd(ws, error) && choose(potion), "openAdd / Potion not in the picker: " + error);
+    const auto held = bag.pickAdd(ws, gen5Rule(c, kMedicine, potion), refresh, error);
+    need(held.outcome == BagAdd::PickOutcome::FocusExisting && error.empty(), "pickAdd(Potion) is not FocusExisting");
+    const auto focused = bag.selected(ws);
+    need(heldIn(ws, kMedicine, potion) == 12 && ws.bagReviewChanges().size() == reviewBefore && focused &&
+             focused->itemId == potion, "re-pick changed the stage or did not focus the Potion");
+
+    // A unique Key Item: Gen V Key Items cannot be added, and their row has a fixed quantity.
+    while (bag.pocket() != kKey) bag.changePocket(1);
+    need(!bag.openAdd(ws, error) && bag.surface() == BagSurface::Browse, "Key Items Add picker opened");
+    const uint16_t key = c.b2w2() ? G5::BagCatalog5::kKeyB2W2[0] : G5::BagCatalog5::kKeyBW[0];
+    const auto keyRule = gen5Rule(c, kKey, key);
+    need(keyRule.valid && !keyRule.editable && keyRule.maximum == 1, "Key Item policy rule not unique / max 1");
+    need(BagAdd::decideRow(keyRule, 1, G5::bagPocketLayout5(c.spec.family, kKey).maxCount).outcome ==
+             BagAdd::RowOutcome::FixedQuantity, "Key Item row is not FixedQuantity");
+    need(!bag.beginQuantity(ws, error).has_value(), "Key Item opened a quantity editor");
+
+    // The staged bag really holds it: export candidate re-parses with Antidote x1.
+    const auto out = G5::buildStagedSaveCandidate(ws, &error);
+    need(out && out->bagChanged, "export candidate: " + error);
+    const auto reopened = G5::Gen5ReadOnlySave::parse(out->bytes, c.spec.game, &error, G5::SaveCopySelection::Primary);
+    need(reopened.has_value(), "candidate strict reparse: " + error);
+    const auto exported = G5::decodeBag5(*reopened);
+    need(exported && std::any_of((*exported)[kMedicine].begin(), (*exported)[kMedicine].end(),
+                                 [](const auto& s) { return s.itemId == kAntidote && s.count == 1; }),
+         "re-parsed Medicine pocket lacks Antidote x1");
+    need(c.sourceUntouched(), "bag add touched the source file");
+    return passed("Gen5BagScreen::pickAdd(ws, gen5PolicyRule, refresh): Antidote StageNew x1 (no numpad), staged bag "
+                  "x1 (candidate strict reparse); beginQuantity + decideRow EditQuantity [1,999]; held Potion -> "
+                  "FocusExisting, nothing staged; Key Items not addable, key row FixedQuantity, no editor");
+}
+
+Outcome reroll(Ctx& c) {
+    namespace Reroll = PokeBank::UIModel::SharedStatReroll;
+    using FI = Shared::FieldIdentity;
+    auto t = c.trainer();
+    auto& ws = t->stagedPokemon();
+    auto& ui = t->sharedScreen();
+    std::string error;
+    const auto openEdit = [&]() -> G5::Gen5SharedPokemonSession& {
+        const bool opened = ui.openActions(ws, Slot{Region::Box, 0, 0}, error) &&
+                            ui.activate(ws, Shared::Action::Edit, error);
+        need(opened, "open Edit on box 1 slot 1: " + error);
+        return ui.editDraft();
+    };
+    const auto keep = [&](G5::Gen5SharedPokemonSession& draft) {
+        if (!draft.dirty()) {
+            ui.discardDraft();  // nothing to Keep (B asks Keep/Discard on an Edit draft; Discard)
+            return;
+        }
+        need(ui.keepWithPresentation(ws, refresher(*t), error), "Keep: " + error);
+    };
+    Reroll::Rng rng(0x5EED5u);
+    for (const bool shiny : {false, true})
+        for (const uint8_t gender : {uint8_t{0}, uint8_t{1}}) {
+            const std::string what = std::string(shiny ? "shiny" : "non-shiny") + (gender ? " female" : " male");
+            auto& setup = openEdit();
+            if (setup.current()->shiny() != shiny) need(F::toggleShiny(setup, error), what + ": Shiny: " + error);
+            if (setup.current()->gender() != gender)
+                need(G5::stageSharedField(setup, FI::Gender, 0, gender, error), what + ": Gender: " + error);
+            keep(setup);
+            const auto start = ws.viewBox(0, 0);
+            need(start && start->shiny() == shiny && start->gender() == gender, what + ": start state not staged");
+            for (int i = 0; i < round2::kRerolls; ++i) {
+                auto& draft = openEdit();
+                const auto cur = draft.current();
+                need(cur.has_value(), "no draft");
+                const auto next = Reroll::reroll(rng, {cur->ivs(), cur->evs()});
+                for (size_t s = 0; s < 6; ++s) need(draft.stage(NF::EV, s, 0, error), "EV clear: " + error);
+                for (size_t s = 0; s < 6; ++s) need(draft.stage(NF::IV, s, next.ivs[s], error), "IV: " + error);
+                for (size_t s = 0; s < 6; ++s) need(draft.stage(NF::EV, s, next.evs[s], error), "EV: " + error);
+                keep(draft);
+                const auto now = ws.viewBox(0, 0);
+                need(now && now->ivs() == next.ivs && now->evs() == next.evs, what + ": rolled IVs/EVs not staged");
+                need(now->shiny() == shiny && now->gender() == gender && now->pid() == start->pid(),
+                     what + ": reroll " + std::to_string(i) + " changed shiny/gender/PID");
+            }
+        }
+    need(c.sourceUntouched(), "reroll touched the source file");
+    return passed("Y = SharedStatReroll::reroll via Gen5SharedPokemonSession::stage(EV 0 / IV / EV) -> "
+                  "keepWithPresentation, x" + std::to_string(round2::kRerolls) +
+                  " per case: Gen V-origin Eevee shiny/non-shiny x male/female keep shiny, gender and PID");
+}
+
+// --------------------------------------------------------------------------------------------
 void runVersion(Matrix& m, const Spec& spec) {
     Ctx c;
     c.spec = spec;
@@ -1050,6 +1202,9 @@ void runVersion(Matrix& m, const Spec& spec) {
     runCell(m, v, "review", [&] { return review(c); });
     runCell(m, v, "export", [&] { return exportCell(c, m); });
     runCell(m, v, "immutability", [&] { return immutability(c); });
+    // Round 2 cells: before home-refresh, which rewrites the source file.
+    runCell(m, v, "bag-add", [&] { return bagAdd(c); });
+    runCell(m, v, "reroll", [&] { return reroll(c); });
     runCell(m, v, "home-refresh", [&] { return homeRefresh(c, m); });
     runCell(m, v, "relaunch", [&] { return relaunch(c); });
     std::error_code ignored;

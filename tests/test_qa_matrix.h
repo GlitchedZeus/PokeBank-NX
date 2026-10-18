@@ -13,6 +13,7 @@
 #pragma once
 
 #include <array>
+#include <initializer_list>
 #include <map>
 #include <string>
 #include <string_view>
@@ -23,7 +24,7 @@ namespace qamatrix {
 enum class Status { Pass, Fail, Known, HardwareOnly, Unsupported };
 
 // Column order of docs/qa/GEN1_5_MATRIX.md.
-inline constexpr std::array<std::string_view, 21> kCells = {
+inline constexpr std::array<std::string_view, 26> kCells = {
     "discovery",      // the version's production discovery / inspection accepts the synthetic save
     "linking",        // LegacySourceBindings assignment round-trips and resolves to the same file
     "provider",       // SaveProviderIdentity / provider label for the source
@@ -45,7 +46,28 @@ inline constexpr std::array<std::string_view, 21> kCells = {
     "immutability",   // source bytes and mtime unchanged after every step
     "home-refresh",   // Home snapshot refresh after the file changes
     "relaunch",       // a fresh process (new cache / bindings reload) sees the current file
+    // Round 2 cells (lane work merged into this branch):
+    "bag-add",        // shared Bag Add flow: new item staged at x1 without a numpad, held item
+                      // focused, unique item fixed; the staged bag really holds it
+    "trainer-edit",   // Gen I staged Trainer Name / Money (packed BCD money), source untouched
+    "special-stat",   // Gen II Special shown as real SpA/SpD numbers
+    "met-time",       // Crystal Met Time cycles inline with A and round-trips through export
+    "reroll",         // the generation's Y reroll keeps shininess and gender (and Unown letter)
 };
+
+// Cells that only exist for some generations. A version outside a cell's scope has no entry for
+// it: the table prints "-" there and the runner treats a recorded out-of-scope entry as an error.
+// Inside the scope every version must record a verdict (Gold/Silver met-time is N/A by format).
+inline bool cellApplies(std::string_view cell, std::string_view version) {
+    const auto in = [&](std::initializer_list<std::string_view> versions) {
+        for (auto v : versions)
+            if (v == version) return true;
+        return false;
+    };
+    if (cell == "trainer-edit") return in({"red", "blue", "yellow"});
+    if (cell == "special-stat" || cell == "met-time") return in({"gold", "silver", "crystal"});
+    return true;
+}
 
 struct Entry {
     std::string version;
