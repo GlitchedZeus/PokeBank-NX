@@ -7,20 +7,42 @@
 // - heading + explanatory caption fit the header band; label + detail fit each cell;
 // - every row label, tag, policy reason and refusal reason fits its column or the notice toast,
 //   and the toast never covers the frame or the footer;
-// - scroll clamping / reveal keep the focused row on screen.
+// - scroll clamping / reveal keep the focused row on screen;
+// - both backup menus read the one rule: Save Backups (BackupSelectionScreen.cpp) takes its card,
+//   rows and visible count from rule(BackupMenu), the emulator list lays out via layout(BackupMenu).
 #include "UI/EmulatorBackupLayout.h"
 #include "UI/SourceBackupClassification.h"
 
 #include <cassert>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 namespace E = PokeBank::UIModel::EmulatorBackupLayout;
 namespace G = PokeBank::UIModel::SharedMenuGeometry;
 namespace SB = PokeBank::UIModel::SourceBackups;
 
+namespace {
+std::string slurp(const char* path) {
+    std::ifstream in(path);
+    assert(in && "run from the repository root");
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+} // namespace
+
 int main() {
     using G::Text;
+    {
+        const std::string saveBackups = slurp("src/UI/BackupSelectionScreen.cpp");
+        assert(saveBackups.find("rule(BackupGeometry::MenuType::BackupMenu)") != std::string::npos);
+        for (const char* k : {"CARD_W = kBackupRule.width", "LIST_ROW_H = kBackupRule.rowHeight",
+                              "LIST_MAX_VISIBLE = kBackupRule.maxVisibleRows"})
+            assert(saveBackups.find(k) != std::string::npos);
+        const std::string home = slurp("src/UI/SaveSelectScreen.cpp");
+        assert(home.find("EB::layout(rows, fb.getWidth(), fb.getHeight())") != std::string::npos);
+        assert(home.find("G::cellRect(layout, i - emuBackupScroll)") != std::string::npos);
+    }
     for (int rows = 1; rows <= 40; ++rows) {
         const G::Layout l = E::layout(rows);
         assert(l.type == G::MenuType::BackupMenu);
