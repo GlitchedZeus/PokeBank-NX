@@ -9,7 +9,8 @@
 //   and the toast never covers the frame or the footer;
 // - scroll clamping / reveal keep the focused row on screen;
 // - both backup menus read the one rule: Save Backups (BackupSelectionScreen.cpp) takes its card,
-//   rows and visible count from rule(BackupMenu), the emulator list lays out via layout(BackupMenu).
+//   rows and visible count are static_assert-tied to rule(BackupMenu), the emulator list lays
+//   out via layout(BackupMenu).
 #include "UI/EmulatorBackupLayout.h"
 #include "UI/SourceBackupClassification.h"
 
@@ -36,8 +37,9 @@ int main() {
     {
         const std::string saveBackups = slurp("src/UI/BackupSelectionScreen.cpp");
         assert(saveBackups.find("rule(BackupGeometry::MenuType::BackupMenu)") != std::string::npos);
-        for (const char* k : {"CARD_W = kBackupRule.width", "LIST_ROW_H = kBackupRule.rowHeight",
-                              "LIST_MAX_VISIBLE = kBackupRule.maxVisibleRows"})
+        for (const char* k : {"CARD_W == kBackupRule.width", "LIST_ROW_H == kBackupRule.rowHeight",
+                              "LIST_MAX_VISIBLE == kBackupRule.maxVisibleRows",
+                              "LIST_TOP == CARD_Y + kBackupRule.headerH", "LIST_X == CARD_X + kBackupRule.padX"})
             assert(saveBackups.find(k) != std::string::npos);
         const std::string home = slurp("src/UI/SaveSelectScreen.cpp");
         assert(home.find("EB::layout(rows, fb.getWidth(), fb.getHeight())") != std::string::npos);

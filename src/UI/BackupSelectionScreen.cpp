@@ -18,23 +18,24 @@
 using namespace Utils;
 
 namespace UI {
-    // UI Layout constants. The card, header, row pitch, tile gap, inset and visible rows are
-    // SharedMenuGeometry's BackupMenu rule (the same contract as the emulator Backups list);
-    // only the card's vertical placement under the title bar is this screen's.
+    // UI Layout constants: the accepted hardware pixels, written out. SharedMenuGeometry's
+    // BackupMenu rule records exactly these values (the same contract as the emulator Backups
+    // list), and the static_assert below fails the build if the screen and the rule ever diverge.
     namespace BackupGeometry = PokeBank::UIModel::SharedMenuGeometry;
     constexpr BackupGeometry::Rule kBackupRule = BackupGeometry::rule(BackupGeometry::MenuType::BackupMenu);
-    constexpr int CARD_X = (BackupGeometry::kScreenW - kBackupRule.width) / 2;
+    constexpr int CARD_X = 40;
     constexpr int CARD_Y = 84;
-    constexpr int CARD_W = kBackupRule.width;
-    constexpr int LIST_ROW_H = kBackupRule.rowHeight;
-    constexpr int LIST_MAX_VISIBLE = kBackupRule.maxVisibleRows; // rows that fit in the card before scrolling
-    constexpr int LIST_TOP = CARD_Y + kBackupRule.headerH;
-    constexpr int LIST_X = CARD_X + kBackupRule.padX;
-    constexpr int LIST_W = CARD_W - 2 * kBackupRule.padX;
-    // The accepted hardware layout, unchanged: 1200 px card at x 40, list at y 146, x 54, 1172 px
-    // wide, 62 px rows with 52 px tiles (the "- 10" tile gap below), 8 visible.
-    static_assert(CARD_X == 40 && CARD_W == 1200 && LIST_ROW_H == 62 && LIST_MAX_VISIBLE == 8 &&
-                  LIST_TOP == 146 && LIST_X == 54 && LIST_W == 1172 && kBackupRule.rowGap == 10);
+    constexpr int CARD_W = 1200;
+    constexpr int LIST_ROW_H = 62;
+    constexpr int LIST_MAX_VISIBLE = 8;   // rows that fit in the card before scrolling
+    constexpr int LIST_TOP = CARD_Y + 62;
+    constexpr int LIST_X = CARD_X + 14;
+    constexpr int LIST_W = CARD_W - 28;
+    static_assert(CARD_W == kBackupRule.width && CARD_X == (BackupGeometry::kScreenW - kBackupRule.width) / 2 &&
+                      LIST_ROW_H == kBackupRule.rowHeight && LIST_MAX_VISIBLE == kBackupRule.maxVisibleRows &&
+                      LIST_TOP == CARD_Y + kBackupRule.headerH && LIST_X == CARD_X + kBackupRule.padX &&
+                      LIST_W == CARD_W - 2 * kBackupRule.padX && kBackupRule.rowGap == 10,
+                  "Save Backups and SharedMenuGeometry's BackupMenu rule must stay one contract");
 
     BackupSelectionScreen::BackupSelectionScreen(
         AccountUid userUid, u64 titleId, const std::string& titleName)
@@ -355,7 +356,7 @@ namespace UI {
             const int itemY = startY + (i - first) * LIST_ROW_H + liveOffset;
             const bool selected = (i == selectedIndex);
             // The first row is the "create new backup" action — accent it to stand out.
-            drawHomeTile(fb, LIST_X, itemY, LIST_W, LIST_ROW_H - kBackupRule.rowGap,
+            drawHomeTile(fb, LIST_X, itemY, LIST_W, LIST_ROW_H - 10,
                          backups[i].displayName, selected, (i == 0));
         }
         fb.clearClip();
