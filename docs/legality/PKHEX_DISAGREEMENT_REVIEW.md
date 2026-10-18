@@ -791,3 +791,50 @@ evolution.
 both sides, PKHeX VALID) and the `form 3` edit (Invalid). Keep: forms 0-2 accepted, form 3+
 Invalid. Not a disagreement with PKHeX; it was one at the base commit (forms 1-2 were Invalid)
 and is recorded here because the brief asked for the evidence.
+
+## 18. Blue-Striped Basculin without its hidden ability from the B2/W2 Dream World (Warning, coordinator)
+
+### What PokeBank NX does
+
+A Black 2/White 2 Blue-Striped Basculin (species 550, form 1) with Rock Head, no hidden-ability
+flag, matched to the B2/W2 Dream World Basculin (an `OnlyHidden` template). Before this change
+the encounter search rejected the template on the missing flag and the record read Invalid
+("lacks the hidden ability this encounter always gives"). Now the search leaves that one case
+to the ability rule, which follows PKHeX's Basculin exception, and the record reads Incomplete
+with the Warning "Blue-Striped Basculin without its hidden ability matched a Dream World
+encounter that gives the hidden ability; PKHeX accepts it". Reckless on the same record stays
+Invalid. `src/Legality/Gen5Legality.cpp` `checkCommon` and `Gen5Analyzer::abilities`.
+
+### PKHeX
+
+`AbilityVerifier.IsEdgeCaseBasculin` (`Legality/Verifiers/Ability/AbilityVerifier.cs:100-132`)
+decides any form-1 Basculin without the flag and without Adaptability by its ability alone,
+before the template's permission is consulted, so PKHeX calls the record VALID.
+
+### The games
+
+Gen V has no decompilation. The Dream World side ran on Nintendo's servers; no original-game
+source shows what it could write. Without evidence either way the record cannot be Invalid,
+and because the matched template gives the hidden ability it cannot be certified either.
+
+### Measured
+
+Found by CI on `1ceea5634d1bfc251087727aa9444ec0a1109305` (`legality-gen5-pkhex-diff`, record
+`m46984-metlocation`). Fixed in `b2db59b3`; the four CI seeds then gave 0 false Invalid and
+0 false Valid. Test: `tests/test_legality_gen5.cpp` (the record and its Reckless edit).
+
+## 19. Colosseum/XD origins after a transfer: level bound and ability bit (parity, coordinator)
+
+Two points where the GameCube judge (`include/Legality/Gen3Cxd.h`) needs the right input from
+the Pal Park and Poke Transfer callers (`Gen4::judgeCxdOrigin`, `src/Legality/Gen4LegalityPalPark.cpp`).
+
+- **Level.** PKHeX bounds the Gen III part of a transferred record's evolution chain by the met
+  level, the level at transfer (`Legality/Evolutions/EvolutionGroup/EvolutionGroup3.cs:19-24`
+  for a PK4, `EvolutionGroup4.cs` for a PK5). The first wiring passed the current level; the
+  Gen V differential showed 35 false Valid, all `metlevel` mutations of Colosseum/XD transfers.
+  The judge now gets the lower of the two (`d113b8a9`), and all 35 read Invalid.
+- **Ability bit.** Orre stores the ability bit apart from the PID. Pal Park reads it only for a
+  species whose two Gen III abilities it keeps; a species in `sSpeciesWithNewAbilities`, or with
+  one ability, always gets ability 1 (pokeplatinum `src/main_menu/gba_pokemon.c:170-260`,
+  `:759-783`). The judge is told the bit only when the species has two Gen III abilities. A
+  matched, unevolved XD Eevee with Adaptability is therefore Invalid, as PKHeX says.
