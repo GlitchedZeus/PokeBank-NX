@@ -1683,21 +1683,23 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         "Verified app-memory PK5 fields and native Bag slots; original SAV5 unchanged",
         Colors::Accent,TextStyle::Caption);
     const auto pending=ws.pendingReview();
+    // A staged Move is ONE row ("Move"), not its Clone + Remove halves (Gen5ReviewRows.h).
+    const auto records=PokeVault::Integration::Gen5::groupReviewRows5(pending);
     const auto bagChanges=ws.bagReviewChanges();
     const auto trainerChanges=ws.trainerReviewChanges();
-    const size_t total=pending.size()+bagChanges.size()+trainerChanges.size();
+    const size_t total=records.size()+bagChanges.size()+trainerChanges.size();
     constexpr size_t pageSize=ScreenState::kReviewPageSize;
     const size_t pages=std::max(size_t{1},(total+pageSize-1)/pageSize);
     const size_t page=std::min(state.reviewPage(),pages-1);
-    fb.drawText(x+24,y+94,std::to_string(pending.size())+" staged Pokemon  /  "+
+    fb.drawText(x+24,y+94,std::to_string(records.size())+" staged Pokemon  /  "+
         std::to_string(bagChanges.size())+" Bag  /  "+std::to_string(trainerChanges.size())+
         " Trainer  /  Page "+std::to_string(page+1)+
         " of "+std::to_string(pages),Colors::Text,TextStyle::Body);
     for(size_t row=0;row<pageSize;++row) {
         const size_t i=page*pageSize+row;
         if(i>=total)break;
-        if(i>=pending.size()+bagChanges.size()) {
-            const auto& c=trainerChanges[i-pending.size()-bagChanges.size()];
+        if(i>=records.size()+bagChanges.size()) {
+            const auto& c=trainerChanges[i-records.size()-bagChanges.size()];
             using TField=PokeVault::Integration::Gen5::TrainerChange5::Field;
             const int yy=y+133+static_cast<int>(row)*91;
             fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
@@ -1707,8 +1709,8 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             fb.drawText(x+32,yy+43,c.before+" -> "+c.after,Colors::TextSecondary,TextStyle::Caption);
             continue;
         }
-        if(i>=pending.size()) {
-            const auto& c=bagChanges[i-pending.size()];
+        if(i>=records.size()) {
+            const auto& c=bagChanges[i-records.size()];
             const int yy=y+133+static_cast<int>(row)*91;
             fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
             fb.drawText(x+32,yy+8,std::string("Bag / ")+
@@ -1720,9 +1722,33 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             fb.drawText(x+32,yy+43,what,Colors::TextSecondary,TextStyle::Caption);
             continue;
         }
-        const auto& change=pending[i];
+        const auto& record=records[i];
+        const auto& change=pending[record.change];
         const auto& loc=change.location;
         const int yy=y+133+static_cast<int>(row)*91;
+        if(record.kind==PokeVault::Integration::Gen5::ReviewRow5::Kind::Move) {
+            const auto& removal=pending[record.removal];
+            const auto boxLabel=[](const auto& s) {
+                return "Box "+std::to_string(s.box+1)+" / Slot "+std::to_string(s.slot+1);
+            };
+            fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
+            fb.drawText(x+32,yy+8,"Move  "+boxLabel(removal.location)+"  ->  "+boxLabel(loc),
+                        Colors::Text,TextStyle::Body);
+            std::string error;
+            const auto moved=PokeVault::Integration::Gen5::verifyStagedReview(change,&error);
+            const auto vacated=PokeVault::Integration::Gen5::verifyStagedReview(removal,&error);
+            uint16_t species=0;
+            if(moved)
+                for(const auto& f:moved->fields)
+                    if(f.field==PokeVault::Integration::Gen5::StagedPokemon5Record::Field::CloneBox)
+                        species=static_cast<uint16_t>(f.after);
+            fb.drawText(x+32,yy+43,
+                moved && vacated
+                    ? std::string(Names::getSpeciesName(species))+" moved; the original slot is now empty"
+                    : std::string("Unverified staged difference - no legality conclusion"),
+                moved && vacated ? Colors::TextSecondary : Colors::Warning,TextStyle::Caption);
+            continue;
+        }
         const std::string label=loc.region==Region::Party
             ? "Party slot "+std::to_string(loc.slot+1)
             : "Box "+std::to_string(loc.box+1)+" / Slot "+std::to_string(loc.slot+1);

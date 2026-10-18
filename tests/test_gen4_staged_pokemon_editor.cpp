@@ -465,6 +465,14 @@ void testMoveSwapAndCrossBoxTransactions() {
                                moved->originalEncryptedBytes().end(), firstBytes.begin()));
     assert(editor->originalBytes() == original);
     const auto postMove = editor->stagedBytes();
+    {
+        // S04 follow-up: Review lists a staged Move as ONE line, not "X -> (empty)" plus
+        // "(empty) -> X". The staged bytes are the same two-slot transaction.
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 1);
+        assert(lines[0].rfind("Moved ", 0) == 0);
+        assert(lines[0].find(": Box 1 slot 1 -> Box 1 slot 2") != std::string::npos);
+    }
     assert(!editor->stageMoveBoxPokemon(0, 0, 1, 0, &error));
     assert(editor->stagedBytes() == postMove);
     assert(!editor->stageMoveBoxPokemon(0, 1, 18, 0, &error));
@@ -490,6 +498,18 @@ void testMoveSwapAndCrossBoxTransactions() {
     assert(editor->stageMoveBoxPokemon(0, 2, 1, 0, &error) && error.empty());
     assert(!editor->boxedPokemon(0, 2, &error));
     assert(editor->boxedPokemon(1, 0, &error));
+    {
+        // Net effect against the ORIGINAL: Box 1/1's Pokemon now lives in Box 2/1 (one Moved
+        // line, destination before the source in slot order is still paired), and the created
+        // Pokemon sits in Box 1/2 (one plain line).
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 2);
+        const auto movedLine = std::find_if(lines.begin(), lines.end(), [](const std::string& l) {
+            return l.rfind("Moved ", 0) == 0;
+        });
+        assert(movedLine != lines.end());
+        assert(movedLine->find(": Box 1 slot 1 -> Box 2 slot 1") != std::string::npos);
+    }
     assert(editor->originalBytes() == original);
     editor->discard();
     assert(editor->stagedBytes() == untouched);

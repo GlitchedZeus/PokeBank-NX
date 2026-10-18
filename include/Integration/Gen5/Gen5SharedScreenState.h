@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5CreateValidation.h"
 #include "Integration/Gen5/Gen5CreateInputRules.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
+#include "Integration/Gen5/Gen5ReviewRows.h"
 
 #include <algorithm>
 #include <array>
@@ -513,10 +514,10 @@ public:
         else if(delta<0 && reviewPage_>0)--reviewPage_;
     }
 
-    // Review lists staged PK5 records, then each verified Bag change, then
-    // each verified Trainer field change.
+    // Review lists staged PK5 records (a staged Move as ONE row, Gen5ReviewRows.h), then
+    // each verified Bag change, then each verified Trainer field change.
     [[nodiscard]] static size_t reviewRowCount(const Workspace& workspace) {
-        return workspace.changedRecordCount()+workspace.bagReviewChanges().size()+
+        return reviewRecordRows5(workspace)+workspace.bagReviewChanges().size()+
                workspace.trainerReviewChanges().size();
     }
     // The Bag has no Pokemon action menu, so the shared Items panel opens the

@@ -367,7 +367,25 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
     const auto bagRows = ws.bagReviewChanges();
     require(rows.size() == 7, T + "Review lists 7 staged PK5 records (got " + std::to_string(rows.size()) + ")");
     require(bagRows.size() == 1, T + "Review lists 1 Bag change");
-    require(G::Gen5SharedScreenState::reviewRowCount(ws) == 8, T + "Review row count = 7 PK5 + 1 Bag");
+    // S04 follow-up: the staged Move (Clone to Box 2/1 + Remove of Box 1/2) is ONE Review row.
+    {
+        const auto pending = ws.pendingReview();
+        const auto grouped = G::groupReviewRows5(pending);
+        require(grouped.size() == 6, T + "Review shows 6 Pokemon rows: the Move is one row (got " +
+                                         std::to_string(grouped.size()) + ")");
+        std::size_t moves = 0;
+        for (const auto& row : grouped) {
+            if (row.kind != G::ReviewRow5::Kind::Move) continue;
+            ++moves;
+            const auto& to = pending[row.change].location;
+            const auto& from = pending[row.removal].location;
+            require(to.region == Region::Box && to.box == 1 && to.slot == 0 &&
+                    from.region == Region::Box && from.box == 0 && from.slot == 1,
+                    T + "Move row reads Box 1 / Slot 2 -> Box 2 / Slot 1");
+        }
+        require(moves == 1, T + "exactly one Move row (the Clone from Party 1 stays a Clone)");
+    }
+    require(G::Gen5SharedScreenState::reviewRowCount(ws) == 7, T + "Review row count = 6 Pokemon rows + 1 Bag");
     require(std::all_of(rows.begin(), rows.end(), [](const ReviewRow& x) { return x.verified; }),
             T + "every Review PK5 row independently verifies");
     {
