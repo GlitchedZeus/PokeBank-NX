@@ -140,7 +140,10 @@ constexpr Rule rule(MenuType type) noexcept {
             // context + title header, up to 11 commands (the sheets list 3-9), never scrolls.
             return {Kind::List, 440, 1, 46, 6, 11, 78, 10, 34, 18, 0, 8, Text::Body};
         case MenuType::BackupMenu:
-            return {Kind::List, 760, 1, 56, 6, 7, 64, 20, 16, 16, 0, 8, Text::Body};
+            // The accepted Save Backups screen (BackupSelectionScreen.cpp): full-width 1200 px card,
+            // 62 px header (CARD_Y + 62), 62 px rows (LIST_ROW_H) with 52 px tiles
+            // (itemY + LIST_ROW_H - 10), tiles inset 14 px (CARD_X + 14), 8 visible (LIST_MAX_VISIBLE).
+            return {Kind::List, 1200, 1, 62, 10, 8, 62, 14, 14, 16, 0, 8, Text::Body};
         case MenuType::KeyItemWarning:
             return {Kind::Confirm, 600, 1, 0, 0, 0, 60, 28, 18, 0, 0, 8, Text::Body, 56, 2};
         case MenuType::RemoveConfirm:
@@ -287,6 +290,10 @@ constexpr bool allWellFormed() noexcept {
 static_assert(detail::allWellFormed(), "every menu type fits above the footer at every size");
 static_assert(layout(MenuType::BoxMenu, 3).frame.h < layout(MenuType::BoxMenu, 6).frame.h,
               "height is content-driven");
+static_assert(rule(MenuType::BackupMenu).width == 1200 && rule(MenuType::BackupMenu).rowHeight == 62 &&
+              rule(MenuType::BackupMenu).rowHeight - rule(MenuType::BackupMenu).rowGap == 52 &&
+              rule(MenuType::BackupMenu).maxVisibleRows == 8 && layout(MenuType::BackupMenu, 50).visibleRows == 8,
+              "BackupMenu records the accepted Save Backups list");
 static_assert(layout(MenuType::HeldItemPicker, 400).cellWidth == 249,
               "the Held Item reference grid keeps its accepted 249 px cells");
 

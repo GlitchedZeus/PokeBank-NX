@@ -215,6 +215,19 @@ void consumers() {
             sd.find("constexpr int w = kSaveDiscard.width;") != std::string::npos,
             "save / discard dialog lays out via MenuType::SaveDiscard");
     require(g3.find("Derived (read-only)") == std::string::npos, "CG16: no \"(read-only)\" PID text in Gen III");
+    // BackupMenu records the accepted Save Backups screen exactly (2R routes Save Backups and the
+    // emulator Backups list through the rule); its pixels are pinned by QA's touch contracts.
+    std::ifstream backupScreen("src/UI/BackupSelectionScreen.cpp");
+    const std::string bs{std::istreambuf_iterator<char>(backupScreen), {}};
+    const auto backup = G::rule(G::MenuType::BackupMenu);
+    const auto has = [&](const std::string& needle) { return bs.find(needle) != std::string::npos; };
+    require(has("constexpr int CARD_W = " + std::to_string(backup.width) + ";") &&
+            has("constexpr int LIST_ROW_H = " + std::to_string(backup.rowHeight) + ";") &&
+            has("constexpr int LIST_MAX_VISIBLE = " + std::to_string(backup.maxVisibleRows) + ";") &&
+            has("itemY + LIST_ROW_H - " + std::to_string(backup.rowGap)) &&
+            has("CARD_X + " + std::to_string(backup.padX)) &&
+            has("CARD_Y + " + std::to_string(backup.headerH)),
+            "BackupMenu rule == BackupSelectionScreen's accepted constants");
 }
 
 void fieldStates() {
