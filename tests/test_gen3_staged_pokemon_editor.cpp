@@ -483,6 +483,12 @@ void runGame(SourceGame game, Family family) {
     assert(editor->placeSparseMove(0, 5, error));
     assert(!editor->boxedPokemon(0, 0, error));
     assert(editor->boxedPokemon(0, 5, error)->encryptedBytes == originalMon);
+    {
+        // One Review row per Move, in player words (S04 follow-up, same as Gen IV/V).
+        const auto& move = editor->pendingChanges().back();
+        assert(move.label == "Move Pokemon" && move.beforeValue == "1 Pokemon" &&
+               move.afterValue == "Box 1 / Slot 6");
+    }
     assert(editor->boxedPokemon(0, 2, error)->encryptedBytes == originalMon);
     assert(editor->beginSparseMove(0, {7,2}, error));
     // First row-major source is 2; slot 7 is one row down, one column left.

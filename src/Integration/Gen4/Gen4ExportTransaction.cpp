@@ -78,17 +78,42 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
         lines.push_back("Party slot " + std::to_string(i + 1) + ": " + from +
                         (from == to ? " (edited)" : " -> " + to));
     }
-    for (size_t box = 0; box < kBoxCount; ++box) {
-        for (size_t slot = 0; slot < kBoxSlots; ++slot) {
-            const auto& oldMon = before->box(box, slot);
-            const auto& newMon = after->box(box, slot);
-            if (sameRecord(oldMon, newMon)) continue;
-            const std::string from = describe(oldMon);
-            const std::string to = describe(newMon);
-            if (from == kEmpty && to == kEmpty) continue;
-            lines.push_back("Box " + std::to_string(box + 1) + " slot " + std::to_string(slot + 1) +
-                            ": " + from + (from == to ? " (edited)" : " -> " + to));
+    // A staged Move (stageMoveBoxPokemon, or a Clone plus a Release of its unchanged original) is
+    // ONE Review line: the slot that became empty paired with an empty slot that now holds the
+    // exact same native record. The staged bytes are unchanged; this only groups the two diffs.
+    // Pairs are found first, then lines are emitted in slot order (at the vacated slot).
+    constexpr size_t kSlots = kBoxCount * kBoxSlots;
+    const auto slotName = [](size_t index) {
+        return "Box " + std::to_string(index / kBoxSlots + 1) + " slot " +
+               std::to_string(index % kBoxSlots + 1);
+    };
+    const auto oldAt = [&](size_t index) -> const auto& { return before->box(index / kBoxSlots, index % kBoxSlots); };
+    const auto newAt = [&](size_t index) -> const auto& { return after->box(index / kBoxSlots, index % kBoxSlots); };
+    std::vector<size_t> moveTo(kSlots, kSlots);       // vacated slot -> its destination
+    std::vector<bool> isDestination(kSlots, false);
+    for (size_t source = 0; source < kSlots; ++source) {
+        if (describe(oldAt(source)) == kEmpty || describe(newAt(source)) != kEmpty) continue;
+        for (size_t d = 0; d < kSlots; ++d) {
+            if (d == source || isDestination[d] || describe(oldAt(d)) != kEmpty ||
+                !sameRecord(newAt(d), oldAt(source))) continue;
+            moveTo[source] = d;
+            isDestination[d] = true;
+            break;
         }
+    }
+    for (size_t index = 0; index < kSlots; ++index) {
+        if (isDestination[index]) continue;
+        const auto& oldMon = oldAt(index);
+        const auto& newMon = newAt(index);
+        if (sameRecord(oldMon, newMon)) continue;
+        const std::string from = describe(oldMon);
+        const std::string to = describe(newMon);
+        if (from == kEmpty && to == kEmpty) continue;
+        if (moveTo[index] < kSlots) {
+            lines.push_back("Moved " + from + ": " + slotName(index) + " -> " + slotName(moveTo[index]));
+            continue;
+        }
+        lines.push_back(slotName(index) + ": " + from + (from == to ? " (edited)" : " -> " + to));
     }
     // Bag edits are review changes too: a Bag-only export must never confirm an empty list.
     // Quantities are compared per native pocket and item id (all stacks of an item together).

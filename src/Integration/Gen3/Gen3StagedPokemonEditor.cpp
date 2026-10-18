@@ -972,8 +972,10 @@ bool StagedPokemonEditor::placeSparseMove(std::size_t box, std::size_t anchor,
             staged_ = backup; error = "Sparse move failed exact reparse"; return false;
         }
     }
+    // One Review row per Move (same as Gen IV/V), in player words: what moved and where to.
     changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(anchor),
-        "Sparse Pokemon move", std::to_string(carrySlots_.size()) + " carried", "Exact native slots"});
+        "Move Pokemon", std::to_string(carrySlots_.size()) + " Pokemon",
+        "Box " + std::to_string(box + 1) + " / Slot " + std::to_string(anchor + 1)});
     carrySlots_.clear(); carryRecords_.clear(); beforeCarry_.clear();
     return true;
 }
