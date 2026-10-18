@@ -248,7 +248,8 @@ void ux3HandleMovePicker(TrainerViewScreen& screen, uint64_t down) {
     const auto keys = ux3PickerKeys(down);
     index = PokeBank::UIModel::SharedPickerPaging::pagedRow(index, static_cast<int>(choices.size()), keys);
     state.pickerValue = choices[static_cast<size_t>(index)];
-    constexpr int visible = 9;
+    // Same row count as every Gen II-V move chooser (MovePickerPresentation::compactPickerLayout).
+    constexpr int visible = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout().visibleRows;
     const int count = static_cast<int>(choices.size());
     state.pickerViewport.ensure(index, count, visible);
     if (keys.any()) {
@@ -558,7 +559,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     // exact Gen I facts from pret/pokered, same columns as Gen II-V.
     const auto columns = SharedMovesPanel::chooserColumns(x + 40, w - 80);
     SharedMovesPanel::drawChooserCaptions(fb, columns, y + 60, Enums::GameVersion::RBY);
-    constexpr int visible = 9, rowStep = 42;
+    constexpr int visible = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout().visibleRows, rowStep = 42;
     const int count = static_cast<int>(choices.size());
     state.pickerViewport.ensure(selectedIndex, count, visible);
     const int start = state.pickerViewport.firstRow;
@@ -771,7 +772,7 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         int current = 0;
         for (int i = 0; i < static_cast<int>(choices.size()); ++i)
             if (choices[static_cast<size_t>(i)] == state.pickerValue) { current = i; break; }
-        constexpr int visible = 9;
+        constexpr int visible = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout().visibleRows;
         const int count = static_cast<int>(choices.size());
         state.pickerViewport.ensure(current, count, visible);
         const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
