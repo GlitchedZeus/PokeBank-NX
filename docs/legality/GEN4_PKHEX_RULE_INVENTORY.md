@@ -235,6 +235,6 @@ for both corpora (`.github/workflows/legality-gen34-pkhex-diff.yml`).
 | Gap | Why it cannot be decided here | What would decide it |
 |---|---|---|
 | Korean GTS lockout (`LanguageVerifier.CheckGTS`) | needs the save's language | pass the save's language through `Legality::Context` |
-| Colosseum/XD origin templates | the Orre judge is Lane A's | wire `judgeCxdOrigin` (section 6) |
+| Colosseum/XD origin when the judge answers Undecided (a search guard, an English XD TID/SID without a seed) | PKHeX itself grades these Fishy, or the RNG search was capped | stays a Warning; the judge is wired (section 6) |
 | Stored-record rules as Invalid | D/P and HG/SS box UI and `data/eoo.dat` are not in any decomp | a witness for those store paths (then PKHeX parity would allow Invalid for the PP rule) |
 | My Pokémon Ranch gifts | Wii software, no decomp | stays a Warning |

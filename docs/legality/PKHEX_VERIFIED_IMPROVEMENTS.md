@@ -83,8 +83,8 @@ pret/pokecrystal `3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6`.
 - **PKHeX.** `EncounterTrade1.IsTrainerNameValid` (Legality/Encounters/Templates/Gen1/EncounterTrade1.cs:70-80)
   requires `[0x5D, 0x50, ...]`; a record whose marker is followed by a letter matches no
   trade and is then INVALID through `G1CharOT`. PKHeX agrees; the improvement is that the
-  rule is now reachable for the two byte decoders here (see the hand-off), where the decoded
-  "*" alone could not tell the cases apart.
+  rule now runs on the stored bytes in production (the save parsers keep them since
+  `5028a0a3`), where the decoded "*" alone could not tell the cases apart.
 - **Evidence.** pokered `constants/charmap.asm:25` (`<TRAINER>` = `$5d`), `macros/data.asm:85`
   (`dname` pads with `@` = `$50`), `engine/events/in_game_trades.asm`, pokecrystal
   `data/events/npc_trades.asm` (`dname \9, NAME_LENGTH`).

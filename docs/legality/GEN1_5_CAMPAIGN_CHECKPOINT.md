@@ -37,40 +37,45 @@ reports Invalid (the rest are Incomplete); certifies = share of PKHeX-valid reco
 | 4 | Gold | `GB::checkGen2` (app, since round 2) | Gen II corpus 3 × 50,000; app path parity 18,291/18,291 (seed 1) | 0 / 0 (differences in GB_LEGALITY_VERDICTS.md) | matches PKHeX | yes | Done |
 | 5 | Silver | same | same | 0 / 0 | matches PKHeX | yes | Done |
 | 6 | Crystal | same | same | 0 / 0 | matches PKHeX | yes | Done |
-| 7 | Ruby | `Gen3Pk3` analyzer via `Legality::analyze` (app) | 8,413 | 0 / 0 | 8,796 / 8,799 | 95.3%, 97.9% | Done |
-| 8 | Sapphire | same | 8,071 | 0 / 0 | 7,812 / 7,813 | 95.6%, 97.6% | Done |
-| 9 | Emerald | same | 8,351 | 0 / 0 | 8,196 / 8,197 | 96.8%, 98.2% | Done |
-| 10 | FireRed | same | 9,303 | 0 / 0 | 9,142 / 9,145 | 96.2%, 98.4% | Done |
-| 11 | LeafGreen | same | 9,250 | 0 / 0 | 9,164 / 9,166 | 95.7%, 98.7% | Done |
-| 12 | Diamond | `Gen4` analyzer via `Legality::analyze` (app) | 12,514 | 0 / 0 | 14,614 / 14,614 | 99.7%, 99.3% | Done |
-| 13 | Pearl | same | 12,167 | 0 / 0 | 13,961 / 13,961 | 99.7%, 99.2% | Done |
-| 14 | Platinum | same | 11,831 | 0 / 0 | 13,744 / 13,744 | 99.7%, 99.2% | Done |
-| 15 | HeartGold | same | 16,513 | 0 / 0 | 20,720 / 20,720 | 100%, 99.2% | Done |
-| 16 | SoulSilver | same | 16,385 | 0 / 0 | 20,560 / 20,560 | 100%, 99.2% | Done |
-| 17 | Black | `Legality::analyzePk5` (engine only: no PK5 path in the app yet) | 227,135 across B/W/B2/W2 (seeds 1, 2, 7, 11) | 0 / 0 | 231,941 / 233,840 (99.2%) | engine: native, trade, event and Gen III/IV transfers (98.1%); Colosseum/XD transfers stay Incomplete. App: not wired | Engine done; app wiring with #307 |
-| 18 | White | same | same | same | same | same | same |
-| 19 | Black 2 | same | same | same | same | same | same |
-| 20 | White 2 | same | same | same | same | same | same |
+| 7 | Ruby | `Gen3Pk3` analyzer via `Legality::analyze` (app) | 9,457 | 0 / 0 | 10,187 / 10,191 | 96.0%, 98.2% | Done |
+| 8 | Sapphire | same | 9,126 | 0 / 0 | 9,128 / 9,134 | 95.6%, 98.2% | Done |
+| 9 | Emerald | same | 9,404 | 0 / 0 | 9,458 / 9,460 | 96.5%, 98.1% | Done |
+| 10 | FireRed | same | 10,292 | 0 / 0 | 10,466 / 10,468 | 96.3%, 98.5% | Done |
+| 11 | LeafGreen | same | 10,357 | 0 / 0 | 10,378 / 10,379 | 96.4%, 98.7% | Done |
+| 12 | Diamond | `Gen4` analyzer via `Legality::analyze` (app) | 12,546 | 0 / 0 | 14,574 / 14,574 | 97.0% | Done |
+| 13 | Pearl | same | 12,224 | 0 / 0 | 13,904 / 13,904 | 96.6% | Done |
+| 14 | Platinum | same | 11,874 | 0 / 0 | 13,705 / 13,705 | 97.0% | Done |
+| 15 | HeartGold | same | 16,443 | 0 / 0 | 20,790 / 20,790 | 97.1% | Done |
+| 16 | SoulSilver | same | 16,410 | 0 / 0 | 20,535 / 20,535 | 97.1% | Done |
+| 17 | Black | `Legality::analyzePk5` (engine) and `Gen5App::analyze` (adapter; no app caller until #307) | 38,425 | 0 / 0 | 46,271 / 46,623 | 99.97% | Engine done; app wiring with #307 |
+| 18 | White | same | 33,245 | 0 / 0 | 40,944 / 41,200 | 99.95% | same |
+| 19 | Black 2 | same | 47,564 | 0 / 0 | 54,475 / 54,743 | 99.95% | same |
+| 20 | White 2 | same | 44,184 | 0 / 0 | 50,219 / 50,494 | 99.95% | same |
 
-Gen III and IV: `tools/pkhex_gen34_diff/run.sh PKHeX <seed> 3` for seeds 1-3 (Gen III and IV
-mutation corpus), `... <seed> 3 4 grown` (grown Gen IV) and `GROW=1 ... <seed> 3` (grown Gen III),
-the CI set, on `d05d64f9`. The 10 uncaught Gen III records all hold an Enigma Berry (a deliberate
-Unknown). The Gen IV records not certified in the base corpus (112) are exactly the ones the
-deliberately stricter met-location rule rejects (review item 14). Gen V from
-`tools/pkhex_gen5_diff/run.sh PKHeX <seed> 4` for seeds 1, 2, 7 and 11 (460,475 records).
-Gen V "No problems found" by origin: native 117,358/117,444, in-game trade 8,587/8,587,
-event 16,060/16,073, Gen III/IV transfer 80,992/82,536 (the rest are PKHeX "Fishy" R/S egg
-TIDs and Gen III RNG frames, kept as Warnings, and one name outside the modelled text set);
-Colosseum/XD transfer 0/1,995 (not analyzed).
+Gen V per-game rows count native, trade and event records of that game. Gen III/IV-origin
+transfers into Gen V (all four games): 83,895 / 85,696 PKHeX-valid certify, 95,786 / 95,894
+PKHeX-invalid caught; Colosseum/XD-origin transfers 1,842 / 2,021 certify (none did before
+this campaign) and 3,442 / 3,470 caught. Colosseum and XD as origins of a PK3 are judged by the
+Gen III analyzer (Lane A) and appear in the Gen III rows' corpus.
+
+Gen III and IV: `tools/pkhex_gen34_diff/run.sh PKHeX <seed> 3` for seeds 1-3 (the Gen III/IV
+mutation corpus, Colosseum/XD included) and `GROW=1 ... 1 3 34 grown` (grown Gen III, 21,963
+records), on the engine head `69624064`. The 15 uncaught Gen III records all hold an Enigma
+Berry, whose legality depends on the berry stored in the original save (a deliberate Unknown). 129 PKHeX-valid Gen IV records are
+Invalid by the deliberately stricter met-location rule (review item 14); each is checked against
+its byte-level predicate. Gen V: `tools/pkhex_gen5_diff/run.sh PKHeX <seed> 4` for seeds 1, 2, 7
+and 11 (539,297 records). Gen I/II: `tools/pkhex_gb_diff/run.sh` seeds 1-3, 50,000 records each
+for PK1 and PK2 (300,000). Total: 1,112,533 records, 0 false Invalid, 0 false Valid.
 
 ## Open Unknown / Incomplete cases
 
 - **Gen III/IV:** records stay Incomplete when PKHeX itself only calls them "Fishy" (bad RNG
-  frame, PID 0, SID 0, all IVs equal, a Ruby/Sapphire TID without a seed), for a Colosseum/XD
-  origin (Orre tables not ported), a checksum or sanity mismatch, or an Enigma Berry. That is
-  about 4% of PKHeX-valid Gen III base records (2% grown) and 0.8% of grown Gen IV records.
-- **Gen V:** Colosseum/XD-origin PK5 records (Orre tables not ported) and Gen III/IV-origin
-  ones with a PKHeX "Fishy" origin result stay Incomplete; fateful records that match no PGF
+  frame, PID 0, SID 0, all IVs equal, a Ruby/Sapphire TID without a seed), for an English XD
+  TID/SID with no seed, a checksum or sanity mismatch, or an Enigma Berry. That is about 4% of
+  PKHeX-valid Gen III base records (2% grown) and 3% of Gen IV records.
+- **Gen V:** Gen III/IV-origin records (Colosseum/XD included) with a PKHeX "Fishy" origin
+  result, and a Gen III species that evolved after its transfer with an ability the PID does not
+  set (review item 20), stay Incomplete; fateful records that match no PGF
   card (warned, not Invalid: the card list is not proven complete); a BACD PID coincidence
   on a shiny card PID; JP/KR OT names of exactly six characters; a nickname that differs
   from the card's; gender when several templates match; names outside the modelled text

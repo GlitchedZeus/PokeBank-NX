@@ -8,9 +8,9 @@ Three separate measures, kept apart on purpose (owner priority 7):
    corpora. They measure agreement on those corpora, not completeness of the rules.
 3. **Test counts**: how many test cases and fuzz inputs run in the host suites.
 
-Heads measured: the Gen III/IV numbers locally on `d05d64f9e0db42e20a0d505a4e0f5bcd31f0c96e`; Gen V and
-the test counts on `e7572bf5a6e6adcfb9fdc709651c68246024259b` (Gen III/IV verdicts are byte-identical
-between the two). CI reruns every differential on each pushed head.
+Heads measured: every differential locally on the engine head `69624064` (Gen I/II on
+`b19f6732637ad0d208e4a7e87b0af6d13698cab7`, which adds only CI pins); later commits change tests
+and docs only. CI reruns every differential on each pushed head.
 Reference: PKHeX.Core `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`.
 
 ## 1. Production wiring
@@ -90,11 +90,14 @@ PKHeX invalid, PokeBank NX "No problems found". Every tool fails on either.
 
 | Gen | Corpus | False Invalid | False Valid | PKHeX-invalid caught as Invalid | PKHeX-valid certified "No problems found" |
 |---|---|---|---|---|---|
-| I | `pkhex_gb_diff`, 3 x 50,000; app-path parity PK1 20,000 / 20,000 | 0 | 0 | matches PKHeX except the listed differences | yes, except the listed Incomplete cases |
-| II | same, PK2; app-path parity 18,291 / 18,291 (1,709 Korean skipped) | 0 | 0 | same | same |
-| III | `pkhex_gen34_diff` seeds 1-3, 3 mutations, plus the grown Gen III corpus | 0 | 0 | 43,110 / 43,120 (99.98%; the 10 are Enigma Berry holders) | base 41,612 / 43,388 (95.91%); grown 56,806 / 57,861 (98.18%) |
-| IV | `pkhex_gen34_diff` seeds 1-3, 3 mutations, plus the grown Gen IV corpus | 0 | 0 | base 83,599 / 83,599 (100%); grown 113,993 / 113,993 (100%) | base 69,298 / 69,410 (99.84%); grown 114,336 / 115,247 (99.21%). Of the uncertified, 112 and 109 are the deliberately stricter met-location rule (`PKHEX_DISAGREEMENT_REVIEW.md` item 14) |
-| V | `pkhex_gen5_diff` seeds 1, 2, 7, 11, 4 mutations (460,475 records) | 0 | 0 | 231,941 / 233,840 (99.2%); Gen III/IV-origin transfers 88,541 / 88,548 | native 117,358 / 117,444; trade 8,587 / 8,587; event 16,060 / 16,073; Gen III/IV transfer 80,992 / 82,536 (Colosseum/XD 0 / 1,995) |
+| I | `pkhex_gb_diff` seeds 1-3, 3 x 50,000; every record also run through `Legality::analyze` | 0 | 0 | matches PKHeX except the listed differences; production 150,000 / 150,000 equal to the origin search | yes, except the listed Incomplete cases |
+| II | same, PK2, 3 x 50,000; production 137,600 equal to the origin search (12,400 Korean skipped) | 0 | 0 | same | same |
+| III | `pkhex_gen34_diff` seeds 1-3, 3 mutations, Colosseum/XD included, plus a grown Gen III corpus (21,963) | 0 | 0 | 49,617 / 49,632 (99.97%; the 15 hold an Enigma Berry and are Incomplete) | base 46,782 / 48,636 (96.19%); grown 21,602 / 21,963 (98.36%) |
+| IV | `pkhex_gen34_diff` seeds 1-3, 3 mutations (Gen IV grown corpus: Lane B, 76,388 records, 0 / 0) | 0 | 0 | 83,508 / 83,508 (100%) | 67,387 / 69,497 (96.96%). 129 PKHeX-valid records are Invalid by the deliberately stricter met-location rule (`PKHEX_DISAGREEMENT_REVIEW.md` item 14) |
+| V | `pkhex_gen5_diff` seeds 1, 2, 7, 11, 4 mutations (539,297 records) | 0 | 0 | 288,992 / 290,183 (99.6%); Gen III/IV-origin transfers 95,786 / 95,894; Colosseum/XD 3,442 / 3,470 | 247,234 / 249,114 (99.2%): native 138,951 / 139,021; trade 8,499 / 8,499; event 15,889 / 15,898; Gen III/IV transfer 83,895 / 85,696 (Colosseum/XD 1,842 / 2,021, was 0 / 1,995) |
+
+Total on the final engine head: 300,000 (Gen I/II) + 273,236 (Gen III/IV) + 539,297 (Gen V) =
+1,112,533 differential records.
 
 Before this round, Gen III caught 13-14% and Gen IV 31-32% of PKHeX-invalid records, and
 neither could certify any record.

@@ -10,6 +10,12 @@ main without coordination with Main Development, full combined testing and broz'
 | `lane-c-gen5` (Gen V lane of the legality campaign; branched from `claude/gen1-5-legality-campaign-w9mkom` at `cfe0e7dcebfb195c15f16510595377da11543545`) | #314 | `3ee9b348dd7639bbd9f2eefd2b4d26e1a4ee336f` |
 | `claude/gen5-integration-20261014` (Gen I-V app, Main Development) | #307 | `d104310da30d8095931ca16e097a2f6e2652ddfe` (fetched 2026-10-18; committed 2026-10-17T17:14:56Z) |
 
+Rechecked on 2026-10-18 with #314 at `c36679b002204f097419e1e54b1583ea6eb83200` against #307 at
+`348129fda54dc4c5a6ca04838f8479ab9af19aad`: the same ten files conflict, the overlay patch below
+still applies with `git apply --check`, #307 still tests `legalityRep.ok()` (lines 316, 510 and
+528 of `src/UI/Modals/PokemonDetailsModal.cpp`), and no #307 file calls `Legality::analyzePk5` or
+`Gen5App::analyze`.
+
 The earlier table in this file was measured on `d4dff8a681d13dde60f46907ea11ab1a6287ccf8` (#314)
 against `c9e243343476a7abdbe43e69a1a1b1cf16b47734` (#307) and listed five files. Both branches
 moved since; the live table below replaces it. Re-run the trial merge on the final heads before

@@ -146,9 +146,10 @@ nothing derived from it is committed.
 
 The engine takes the decoded names and, when the caller has them, the stored name bytes
 (`Entity1/Entity2::otRaw`, `nickRaw`; empty means not available, and the byte rules are
-skipped). `Legality::analyze` passes decoded names only until the save parsers carry the
-bytes (`docs/legality/handoff/lane-d-raw-names.patch`); `tools/pkhex_gb_diff` passes both,
-and `production_parity.cpp` counts the records whose verdict needs the bytes.
+skipped). The save parsers keep the stored bytes (`PokemonRecord::originalTrainerRaw`,
+`nicknameRaw`, since `5028a0a3`) and `Legality::analyze` passes them on; `tools/pkhex_gb_diff`
+passes both, and `production_parity.cpp` holds production to the search with the bytes and
+counts the records whose verdict depends on them.
 
 - **Lengths** (PKHeX `TrainerNameVerifier.VerifyGBOTWithinBounds`,
   `NicknameVerifier.VerifyG1NicknameWithinBounds`): trainer 7, nickname 10; 5 and 5 in
@@ -314,7 +315,7 @@ PK2 records.
   difference is only as complete as those tables.
 - **Name character sets:** the Japanese and Korean naming screens and the non-English
   Western screens are not disassembled, so those character rules (see "Names") are
-  Warnings, never Invalid. The byte rules reach production only with the hand-off patch.
+  Warnings, never Invalid. The byte rules run on the stored name bytes in production (`Gen1ReadOnlySave`/`Gen2ReadOnlySave` keep them since `5028a0a3`).
 - **Korean edge cases:** the Korean ROM is not disassembled; Korean met data, the Korean
   naming screen and the Korean–Western trade rest on PKHeX and Bulbapedia (Incomplete).
 - **Day Care slots:** the save parsers do not read the Day Care slot; a record exported
