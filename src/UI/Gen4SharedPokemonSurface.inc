@@ -1,5 +1,6 @@
 #include "Inventory/ItemQuantityPolicy.h"
 #include "UI/Gen4BagQuantity.h"
+#include "UI/SharedBagAddFlow.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
@@ -1678,6 +1679,13 @@ Gen4QuantityRule gen4QuantityRule(const TrainerViewScreen& screen, size_t pocket
     return PokeBank::UIModel::Gen4BagQuantity::rule(game, pocket, id);
 }
 
+PokeVault::Inventory::QuantityPolicy::ItemQuantityRule gen4PolicyRule(
+    const TrainerViewScreen& screen, size_t pocket, uint16_t id) noexcept {
+    PokeVault::Inventory::QuantityPolicy::Game game{};
+    if (!PokeVault::Inventory::QuantityPolicy::gameFromId(screen.sourceGameId, game)) return {};
+    return PokeBank::UIModel::Gen4BagQuantity::policyRule(game, pocket, id);
+}
+
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                         u64 held,int stickX,int stickY,const TouchInput& touch) {
     const bool itemsScreen=screen.detailViewActive &&
@@ -1772,33 +1780,51 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             return true;
         }
         const uint16_t id=state.itemAddChoices[static_cast<size_t>(state.itemAddIndex)];
-        const auto rule=gen4QuantityRule(screen,static_cast<size_t>(state.itemAddPocket),id);
-        const uint16_t limit=rule.maximum;
-        if(!rule.valid || !Gen4::gen4BagItemAllowed(
-                staged->layout(),static_cast<size_t>(state.itemAddPocket),id)) {
+        const size_t addPocket=static_cast<size_t>(state.itemAddPocket);
+        if(!Gen4::gen4BagItemAllowed(staged->layout(),addPocket,id)) {
             screen.postStatus("Gen IV item invalid in selected native pocket",300);
             return true;
         }
-        // A unique item is added once; only a quantity-editable item asks for an amount.
-        Utils::NumberResult r{};
-        r.accepted=true;
-        r.value=1;
-        if(rule.editable)
-            r=Utils::promptNumber(
-                "Add "+Names::machineDisplayLabel(
-                    screen.trainer.getGameGroup(),id,Names::getItemName(id)),
-                1,1,static_cast<int>(limit));
+        // Shared Gen I-V Add (UI/SharedBagAddFlow.h): a new item is staged at x1 with NO
+        // keypad; a held item focuses its existing stack; a full pouch is refused. A on the
+        // row afterwards edits the quantity only when the item is quantity-editable.
+        namespace BagAdd=PokeBank::UIModel::BagAdd;
+        const auto& pouch=screen.trainer.items[addPocket];
+        BagAdd::PocketState pocketState{};
+        pocketState.usedSlots=pouch.size();
+        pocketState.capacity=Gen4::bagLayout(staged->layout())[addPocket].slots;
+        for(const auto& stack:pouch)
+            if(stack.itemId==id)pocketState.heldInPocket=stack.count;
+        const auto decision=BagAdd::decidePick(gen4PolicyRule(screen,addPocket,id),pocketState,
+                                               Gen4::bagPocketName(addPocket));
         screen.controllerNavigation.reset();
-        if(!r.accepted)return true; // Cancel is byte-for-byte inert.
-        if(r.value<1 || r.value>static_cast<int>(limit)) {
-            screen.postStatus("Gen IV item quantity outside native limits",300);
-            return true;
-        }
-        if(!screen.detailViewActive ||
-           screen.selectedMode!=TrainerViewScreen::ViewMode::Items ||
-           screen.selectedCategory!=state.itemAddPocket) {
-            screen.postStatus("Gen IV pocket changed; add cancelled",280);
-            return true;
+        const auto focus=[&]() {
+            const auto visible=screen.visibleItemIndices();
+            const auto& rows=screen.trainer.items[addPocket];
+            for(size_t i=0;i<visible.size();++i)
+                if(rows[static_cast<size_t>(visible[i])].itemId==id) {
+                    screen.selectedItemIndex=static_cast<int>(i);
+                    screen.currentPage=screen.selectedItemIndex/8;
+                    break;
+                }
+        };
+        switch(decision.outcome) {
+            case BagAdd::PickOutcome::NotAllowed:
+                screen.postStatus(decision.message,300);
+                return true;
+            case BagAdd::PickOutcome::FocusExisting:
+                state.itemAddPickerActive=false;
+                state.itemAddChoices.clear();
+                focus();
+                screen.postStatus(decision.message,260);
+                return true;
+            case BagAdd::PickOutcome::PocketFull:
+                state.itemAddPickerActive=false;
+                state.itemAddChoices.clear();
+                screen.postStatus(decision.message,320);
+                return true;
+            case BagAdd::PickOutcome::StageNew:
+                break;
         }
         auto* current=editor(screen);
         if(!current) {
@@ -1807,8 +1833,7 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         }
         auto backup=*current;
         std::string error;
-        if(!current->stageBagAdd(static_cast<size_t>(state.itemAddPocket),
-                                 id,static_cast<uint16_t>(r.value),&error)) {
+        if(!current->stageBagAdd(addPocket,id,decision.quantity,&error)) {
             screen.postStatus(error,300);
             return true;
         }
@@ -1821,17 +1846,10 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         }
         state.itemAddPickerActive=false;
         state.itemAddChoices.clear();
-        const auto visible=screen.visibleItemIndices();
-        const auto& pouch=screen.trainer.items[static_cast<size_t>(state.itemAddPocket)];
-        for(size_t i=0;i<visible.size();++i)
-            if(pouch[static_cast<size_t>(visible[i])].itemId==id) {
-                screen.selectedItemIndex=static_cast<int>(i);
-                screen.currentPage=screen.selectedItemIndex/8;
-                break;
-            }
+        focus();
         screen.controllerNavigation.reset();
         screen.postStatus("Gen IV item added to staged workspace ONLY (x"+
-                          std::to_string(r.value)+")",280);
+                          std::to_string(decision.quantity)+"); A on it sets the quantity",280);
         return true;
     }
     if(state.itemRemoveConfirmActive) {
@@ -1912,15 +1930,11 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             }
             const auto candidates=Gen4::gen4BagChoices(staged->layout(),
                                                        static_cast<size_t>(pocket));
-            const auto& existing=screen.trainer.items[static_cast<size_t>(pocket)];
-            state.itemAddChoices.clear();
-            for(const uint16_t id:candidates) {
-                const bool present=std::any_of(existing.begin(),existing.end(),
-                    [id](const auto& item){return item.itemId==id && item.count>0;});
-                if(!present)state.itemAddChoices.push_back(id);
-            }
+            // Every native item of the pouch, held or not: choosing a held one focuses its
+            // stack (never a duplicate entry), exactly like Gen I-III and Gen V.
+            state.itemAddChoices=candidates;
             if(state.itemAddChoices.empty()) {
-                screen.postStatus("No supported new Gen IV item IDs in this pocket",280);
+                screen.postStatus("No supported Gen IV item IDs in this pocket",280);
                 return true;
             }
             state.itemAddPickerActive=true;
@@ -1970,12 +1984,15 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             return true;
         }
         const auto rule=gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId);
-        const uint16_t limit=rule.maximum;
-        if(!rule.valid || item.count>limit) {
+        const auto row=PokeBank::UIModel::BagAdd::decideRow(
+            gen4PolicyRule(screen,static_cast<size_t>(pocket),item.itemId),item.count,
+            Gen4::gen4BagMaxQuantity(static_cast<size_t>(pocket),item.itemId));
+        const uint16_t limit=row.maximum;
+        if(!rule.valid || row.outcome==PokeBank::UIModel::BagAdd::RowOutcome::NotAllowed) {
             screen.postStatus("Gen IV item quantity outside native limits",300);
             return true;
         }
-        if(!rule.editable) {
+        if(row.outcome==PokeBank::UIModel::BagAdd::RowOutcome::FixedQuantity) {
             // Key Items and HMs are unique: no quantity editor, nothing staged.
             screen.postStatus("This item is unique; its quantity is fixed at 1",260);
             return true;
@@ -2070,10 +2087,10 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
         SharedScrollbar::kTrackWidth, 9 * 43, SharedScrollbar::rows(count, 9, start));
     fb.drawText(x+24,y+h-38,
         std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
-        "  |  A opens numeric quantity keypad",
+        "  |  A adds x1 (held items: highlights the stack)",
         Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
-                   {"A","Set Quantity"},{"B","Cancel"},{"X","Sort"}});
+                   {"A","Add"},{"B","Cancel"},{"X","Sort"}});
 }
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {

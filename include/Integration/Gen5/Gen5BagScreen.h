@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "UI/InventoryUIContract.h"
+#include "UI/SharedBagAddFlow.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -19,8 +20,10 @@ namespace PokeVault::Integration::Gen5 {
 // pocket/row cursor and the Add/Remove modal steps; every quantity, Add and
 // Remove goes through Gen5StagedBag, which audits the exact 4-byte slot.
 // Controller and touch use the same entry points:
-//   A / tap selected row   -> quantity keypad (mutable pockets only)
-//   X / footer X           -> Add picker      (mutable pockets only)
+//   A / tap selected row   -> quantity keypad (mutable pockets, editable items only)
+//   X / footer X           -> Add picker      (mutable pockets only); A in the picker
+//                             stages the item at x1 with no keypad, or focuses an
+//                             existing stack (UI/SharedBagAddFlow.h, Gen I-V)
 //   Y / footer Y           -> Remove confirm, second Y stages the removal
 //   L/R / header arrows    -> previous/next native pocket
 // Key Items and TMs/HMs are view-only; an unrecognized bag is unavailable.
@@ -77,7 +80,7 @@ public:
     }
     [[nodiscard]] std::vector<FooterEntry> footer(const Workspace& ws) const {
         if(surface_==Surface::AddPicker)
-            return {{"D-pad/Stick","Choose"},{"L/R","Page"},{"A","Set Quantity"},{"B","Cancel"}};
+            return {{"D-pad/Stick","Choose"},{"L/R","Page"},{"A","Add"},{"B","Cancel"}};
         if(surface_==Surface::ConfirmRemove)
             return {{"Y","Confirm Remove"},{"B","Cancel"}};
         std::vector<FooterEntry> out{{"L/R","Pocket"}};
@@ -184,20 +187,11 @@ public:
                                :"Gen V bag is unavailable";
             return false;
         }
-        const auto bag=ws.bagPresentation();
-        addChoices_.clear();
-        for(const uint16_t id:gen5BagChoices(ws.sourceSave().family(),pocket_)) {
-            const bool present=std::any_of((*bag)[pocket_].begin(),(*bag)[pocket_].end(),
-                [id](const auto& stack){return stack.itemId==id;});
-            if(!present)addChoices_.push_back(id);
-        }
+        // Every native, released item of the pocket, held or not: choosing a held one
+        // focuses its stack (never a duplicate); a full pocket is refused at the pick.
+        addChoices_=gen5BagChoices(ws.sourceSave().family(),pocket_);
         if(addChoices_.empty()) {
-            error="No new native Gen V items are available for this pocket";
-            return false;
-        }
-        if(rowCount(ws,pocket_)>=bagPocketLayout5(ws.sourceSave().family(),pocket_).slots) {
-            addChoices_.clear();
-            error="Gen V pocket has no empty native slot";
+            error="No native Gen V items are available for this pocket";
             return false;
         }
         addIndex_=0;
@@ -243,6 +237,57 @@ public:
         for(size_t i=0;bag && i<(*bag)[pocket_].size();++i)
             if((*bag)[pocket_][i].itemId==itemId)row_=i;
         return true;
+    }
+
+    // The shared Gen I-V Add inputs for the chosen picker row.
+    [[nodiscard]] PokeBank::UIModel::BagAdd::PocketState addPocketState(const Workspace& ws) const {
+        PokeBank::UIModel::BagAdd::PocketState state{};
+        const auto bag=ws.bagPresentation();
+        if(!bag || pocket_>=BagPocket5Count)return state;
+        const auto& rows=(*bag)[pocket_];
+        state.usedSlots=rows.size();
+        state.capacity=bagPocketLayout5(ws.sourceSave().family(),pocket_).slots;
+        for(const auto& stack:rows)
+            if(stack.itemId==chosenAddItem())state.heldInPocket=stack.count;
+        return state;
+    }
+    // A in the Add picker, decided by UI/SharedBagAddFlow.h: a new item is staged at x1
+    // (no keypad), a held item focuses its existing stack, a full pocket is refused.
+    // Only StageNew touches the stage; every other outcome leaves every byte as it was.
+    template<class Refresh>
+    [[nodiscard]] PokeBank::UIModel::BagAdd::PickDecision pickAdd(
+        Workspace& ws,const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule& rule,
+        Refresh&& refresh,std::string& error) {
+        using PokeBank::UIModel::BagAdd::PickOutcome;
+        error.clear();
+        if(surface_!=Surface::AddPicker || chosenAddItem()==0) {
+            error="Gen V Add selection changed; cancelled";
+            return {};
+        }
+        const uint16_t itemId=chosenAddItem();
+        auto decision=PokeBank::UIModel::BagAdd::decidePick(
+            rule,addPocketState(ws),bagPocketName5(pocket_));
+        switch(decision.outcome) {
+            case PickOutcome::NotAllowed:
+                error=decision.message;
+                return decision;
+            case PickOutcome::FocusExisting: {
+                const auto bag=ws.bagPresentation();
+                for(size_t i=0;bag && i<(*bag)[pocket_].size();++i)
+                    if((*bag)[pocket_][i].itemId==itemId)row_=i;
+                cancel();
+                return decision;
+            }
+            case PickOutcome::PocketFull:
+                cancel();
+                error=decision.message;
+                return decision;
+            case PickOutcome::StageNew:
+                break;
+        }
+        if(!confirmAdd(ws,itemId,decision.quantity,std::forward<Refresh>(refresh),error))
+            decision.outcome=PickOutcome::NotAllowed;
+        return decision;
     }
 
     [[nodiscard]] bool requestRemove(const Workspace& ws,std::string& error) {
