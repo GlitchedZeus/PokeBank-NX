@@ -1,21 +1,25 @@
 # Gen I–V acceptance matrix (Thread 4)
 
 Source of truth: `make -f Makefile.host qa-matrix` (part of `make qa` and the **App QA Contracts**
-workflow, GCC and Clang, plain and ASan/UBSan). The runner fails on any FAIL, MISSING or DUPLICATE
-cell. The tables below are its generated output on `audit/app-qa-20261014` after merging #307
-`d57e5bc` (GCC and Clang identical). CI writes the same tables to each run's step summary.
+workflow, GCC and Clang, plain and ASan/UBSan). The runner fails on any FAIL, MISSING, DUPLICATE or
+out-of-scope cell. The tables below are its generated output on `audit/app-qa-20261014` after merging
+the round 2 integration branch (merge `ea99814` of `41cbe925`; GCC and Clang identical). CI writes the same tables to each run's step summary.
 
-- **Rows:** all 20 Gen I–V versions. **Columns:** 21 acceptance cells (definitions in
-  `tests/test_qa_matrix.h`).
+- **Rows:** all 20 Gen I–V versions. **Columns:** 26 acceptance cells (definitions in
+  `tests/test_qa_matrix.h`): the 21 round 1 cells plus the 5 round 2 cells `bag-add`,
+  `trainer-edit`, `special-stat`, `met-time`, `reroll` (see "Round 2 cells" below).
 - **How cells run:** through the real production entry points (RetroArch/DraStic discovery,
   `LegacySourceBindings`, read-only parsers, staged editors and workspaces, the export
   transactions, `HomeSnapshotCache` / `homeCardSnapshot`, `SharedPokemonWorkspace::navigate`), on
   synthetic saves only. Layout offsets come from existing in-repo builders, cited in each
   `tests/test_qa_matrix_gen*.cpp` header.
 - **Status:** PASS; FAIL; KNOWN (open QA-F id, strict repro in `qa-known-failures`); HW
-  (hardware-only); N/A (the format has no such data, with the reason cited).
+  (hardware-only); N/A (the format has no such data, with the reason cited); `-` (the cell is scoped
+  to other generations by `cellApplies()`: `trainer-edit` is Gen I only, `special-stat` and `met-time`
+  are Gen II only; recording an out-of-scope cell fails the run).
 
-**Result:** 415 PASS, 5 N/A (no player gender in the RBY and Gold/Silver formats), 0 FAIL, 0 KNOWN.
+**Result:** 462 PASS, 7 N/A (no player gender in the RBY and Gold/Silver formats; no caught data, so no
+Met Time, in Gold/Silver), 0 FAIL, 0 KNOWN.
 
 ## What a PASS does not cover (hardware-only residue)
 
@@ -32,6 +36,10 @@ parts below run only on the Switch and are NOT covered by any PASS here. Every N
 | home-refresh (Gen I–III) | The `SaveSelectScreen` size/mtime watch that triggers legacy re-discovery, and the party-strip drawing | `SaveSelectScreen.cpp` is UI-only; host cells drive the discovery and card functions it calls |
 | home-refresh (Gen IV/V) | Sprite selection and drawing of the snapshot | Rendering only; the snapshot data path is fully host-tested |
 | export | Writing to the real SD card (FAT32 rename/mkdir semantics) and the on-device Review / Export dialogs | Host runs on ext4/tmpfs; device filesystem semantics are not reproducible here |
+| bag-add | The picker drawing, touch selection and the `Utils::promptNumber` quantity editor the row opens; the Gen I–IV surface glue in `ClassicInventoryOverlay.cpp` / `Gen4SharedPokemonSurface.inc` (the host cell calls the same `decidePick` / `decideRow` and the same staging call with the same inputs) | UI translation units and HID |
+| trainer-edit | The Trainer page swkbd name entry and money number pad (`ClassicTrainerSession::handle`) | swkbd / HID |
+| met-time | The A press on row 9 in `Gen2UnifiedPokemonWorkspace.inc` and its `crystalAllowedTimeMask` encounter lookup (the cell uses the all-times mask that lookup falls back to) | UI-only `.inc` |
+| reroll | The Y press, `Utils::rand32()` seeding, and the three-loop EV 0 / IV / EV sequence in the surfaces (reproduced as written; the reroll itself is `Gen12DVReroll::reroll` / `SharedStatReroll::reroll`) | HID and UI-only `.inc` |
 | immutability | Emulator running concurrently against the same save | Needs a live emulator process; the app never writes the source (checked on host for bytes, size and nanosecond mtime) |
 
 ## Cross-generation comparison (classification)
@@ -52,6 +60,19 @@ Gen IV/V home cells. They are never hard-coded, so they cannot drift.
 Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.output=new-file-only`,
 `export.reparse=strict`, `nav.mutates=no`, and all four `home.party.*` facts.
 
+## Round 2 cells
+
+Each runs on its own staged workspace built from the version's in-memory synthetic save (so it cannot
+disturb the round 1 cells) and drives the production entry points the UI calls:
+
+| Cell | Versions | Production path driven |
+| --- | --- | --- |
+| `bag-add` | all 20 | `UI/SharedBagAddFlow.h` `decidePick` / `decideRow` with the surface's own rule (Gen I–III `classicItemQuantityRule`, Gen IV `Gen4BagQuantity::policyRule` + `gen4BagMaxQuantity`), staged through the real writer the surface uses: `RBYReadOnlyTrainer::stagedInventory()->stageSetQuantity`, `Gen2::StagedEditor::stageInventoryQuantity`, `FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity`, `Gen4StagedPokemonEditor::stageBagAdd` + `refreshStagedPokemonPresentation`; Gen V through `Gen5BagScreen::openAdd` / `pickAdd(ws, rule, refresh, error)` / `beginQuantity`. Checks: new stackable item → StageNew x1 (= rule minimum, no numpad) and the staged bag holds x1 (also after finalize / strict reparse); row → EditQuantity; held item → FocusExisting with no staged change; Key Item → fixed quantity (writer refuses x2; Gen V Key Items are not addable). |
+| `trainer-edit` | R/B/Y | `RBYReadOnlyTrainer::stagedTrainer()` (`Gen1StagedTrainerEditor`) and `ClassicTrainerSession::trainerFieldsEditable`: money 123456 is BCD `12 34 56`, 987654 stages as `98 76 54` at 0x25F3, name WILL → ASH; finalize → strict reparse; only name / money / checksum bytes change; Discard restores; the source is untouched. |
+| `special-stat` | G/S/C | `Gen2Workspace::battleStats` / `calculatedCell`: the Special row shows `SpA/SpD` equal to the CalcMonStats formula (stored record and a staged Special DV / Stat Exp), never a placeholder. |
+| `met-time` | Crystal (G/S: N/A) | `Gen2FieldSelector::nextMetTime` + `Gen2Native` caught-data codec, staged with `Gen2::StagedEditor::stageBoxPokemonEdit(caughtData)`: Day → Night → Morning → Day → Night, only bits 14–15 change, survives finalize / strict reparse. |
+| `reroll` | all 20 | Gen I/II `Gen12DVReroll::reroll` staged as `BoxPokemonEdit::dvs` (shiny and non-shiny, Gen II both genders and Unown letters); Gen III `SharedStatReroll::reroll` into `Gen3SharedEditor::Session::working` → `keep`; Gen IV the same into `Gen4SharedEditor::Session::working` (`setEV`/`setIV`) → `keep`; Gen V the same through `Gen5SharedPokemonSession::stage(IV/EV)` → `keepWithPresentation`. 20 rerolls per case; shiny, gender, PID (Gen III–V) and Unown letter (Gen II/III) never change. |
+
 ## Findings from the matrix work
 
 - QA-F6 (Gen III path-substring identity hint): FIXED in 82032a9.
@@ -64,30 +85,30 @@ Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.output=
 
 ## Generated matrix
 
-| Version | discovery | linking | provider | identity | trainer-name | trainer-gender | party | boxes | pokedex | bag | navigation | creation | fields | pickers | actions | working-copy | review | export | immutability | home-refresh | relaunch |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| red | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| blue | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| yellow | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| gold | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| silver | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| crystal | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| ruby | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| sapphire | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| emerald | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| firered | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| leafgreen | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| diamond | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| pearl | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| platinum | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| heartgold | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| soulsilver | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| black | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| white | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| black2 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| white2 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Version | discovery | linking | provider | identity | trainer-name | trainer-gender | party | boxes | pokedex | bag | navigation | creation | fields | pickers | actions | working-copy | review | export | immutability | home-refresh | relaunch | bag-add | trainer-edit | special-stat | met-time | reroll |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| red | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | PASS |
+| blue | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | PASS |
+| yellow | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | PASS |
+| gold | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | PASS | N/A | PASS |
+| silver | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | PASS | N/A | PASS |
+| crystal | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | PASS | PASS | PASS |
+| ruby | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| sapphire | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| emerald | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| firered | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| leafgreen | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| diamond | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| pearl | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| platinum | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| heartgold | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| soulsilver | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| black | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| white | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| black2 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
+| white2 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | - | - | - | PASS |
 
-Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
+Totals: PASS=462 KNOWN=0 HW=0 N/A=7 FAIL=0
 
 ### Cell notes
 
@@ -114,6 +135,9 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | red | immutability | PASS | source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export |
 | red | home-refresh | PASS | rewritten file -> legacy re-discovery shows new fingerprint/mtime and party L42; the stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp |
 | red | relaunch | PASS | new LegacySourceBindings::load + new discovery -> same profile assignment, current file fingerprint |
+| red | bag-add | PASS | classicItemQuantityRule + decidePick: Poke Ball StageNew x1 (no numpad) -> RBYReadOnlyTrainer::stagedInventory()->stageSetQuantity -> staged Bag Poke Ball x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| red | trainer-edit | PASS | trainerFieldsEditable(RBYReadOnlyTrainer) true; stagedTrainer: WILL/123456 (BCD 12 34 56) -> ASH / 987654 staged as BCD 98 76 54 at 0x25F3; finalize -> strict reparse ASH/987654, only name/money/checksum bytes differ; Discard restores; source bytes unchanged |
+| red | reroll | PASS | Gen12DVReroll::reroll x20 per case staged via StagedPokemonEditor::stageEdit(dvs): non-shiny {9,4,12,1} stays non-shiny, Time-Capsule-shiny {3,10,10,10} stays shiny (Gen1Shiny agrees); Gen I stores no gender |
 | blue | discovery | PASS | discoverConfiguredLegacySaves (RetroArch configured root) -> Ready blue_gb card, platform Game Boy |
 | blue | linking | PASS | claimInstanceAndSave -> visible only to its profile, resolves to the same file, persists |
 | blue | provider | PASS | discovery-recorded provider 'RetroArch' -> display 'RetroArch' |
@@ -135,6 +159,9 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | blue | immutability | PASS | source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export |
 | blue | home-refresh | PASS | rewritten file -> legacy re-discovery shows new fingerprint/mtime and party L42; the stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp |
 | blue | relaunch | PASS | new LegacySourceBindings::load + new discovery -> same profile assignment, current file fingerprint |
+| blue | bag-add | PASS | classicItemQuantityRule + decidePick: Poke Ball StageNew x1 (no numpad) -> RBYReadOnlyTrainer::stagedInventory()->stageSetQuantity -> staged Bag Poke Ball x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| blue | trainer-edit | PASS | trainerFieldsEditable(RBYReadOnlyTrainer) true; stagedTrainer: WILL/123456 (BCD 12 34 56) -> ASH / 987654 staged as BCD 98 76 54 at 0x25F3; finalize -> strict reparse ASH/987654, only name/money/checksum bytes differ; Discard restores; source bytes unchanged |
+| blue | reroll | PASS | Gen12DVReroll::reroll x20 per case staged via StagedPokemonEditor::stageEdit(dvs): non-shiny {9,4,12,1} stays non-shiny, Time-Capsule-shiny {3,10,10,10} stays shiny (Gen1Shiny agrees); Gen I stores no gender |
 | yellow | discovery | PASS | discoverConfiguredLegacySaves (RetroArch configured root) -> Ready yellow_gb card, platform Game Boy |
 | yellow | linking | PASS | claimInstanceAndSave -> visible only to its profile, resolves to the same file, persists |
 | yellow | provider | PASS | discovery-recorded provider 'RetroArch' -> display 'RetroArch' |
@@ -156,6 +183,9 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | yellow | immutability | PASS | source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export |
 | yellow | home-refresh | PASS | rewritten file -> legacy re-discovery shows new fingerprint/mtime and party L42; the stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp |
 | yellow | relaunch | PASS | new LegacySourceBindings::load + new discovery -> same profile assignment, current file fingerprint |
+| yellow | bag-add | PASS | classicItemQuantityRule + decidePick: Poke Ball StageNew x1 (no numpad) -> RBYReadOnlyTrainer::stagedInventory()->stageSetQuantity -> staged Bag Poke Ball x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| yellow | trainer-edit | PASS | trainerFieldsEditable(RBYReadOnlyTrainer) true; stagedTrainer: WILL/123456 (BCD 12 34 56) -> ASH / 987654 staged as BCD 98 76 54 at 0x25F3; finalize -> strict reparse ASH/987654, only name/money/checksum bytes differ; Discard restores; source bytes unchanged |
+| yellow | reroll | PASS | Gen12DVReroll::reroll x20 per case staged via StagedPokemonEditor::stageEdit(dvs): non-shiny {9,4,12,1} stays non-shiny, Time-Capsule-shiny {3,10,10,10} stays shiny (Gen1Shiny agrees); Gen I stores no gender |
 | gold | discovery | PASS | discoverConfiguredLegacySaves (RetroArch configured root) -> Ready gold_gbc card, platform GBC |
 | gold | linking | PASS | claimInstanceAndSave -> visible only to its profile, resolves to the same file, persists |
 | gold | provider | PASS | discovery-recorded provider 'RetroArch' -> display 'RetroArch' |
@@ -177,6 +207,10 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | gold | immutability | PASS | source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export |
 | gold | home-refresh | PASS | rewritten file -> legacy re-discovery shows new fingerprint/mtime and party L42; the stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp |
 | gold | relaunch | PASS | new LegacySourceBindings::load + new discovery -> same profile assignment, current file fingerprint |
+| gold | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> StagedEditor::stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| gold | special-stat | PASS | Gen2Workspace::battleStats / calculatedCell on box Pikachu (stored, and with a staged Special DV 13 / Stat Exp 40000): Special row shows "SpA/SpD" numbers equal to the CalcMonStats formula (base 50/40), never a dash |
+| gold | met-time | N/A | Gold/Silver PK2 records store no caught data (the 0x1D caught-time word is Crystal-only: pret/pokecrystal SetCaughtData, PKHeX PK2 CaughtData); Gen2UnifiedPokemonWorkspace.inc opens the Met Time row only for crystal_gbc and applyFieldSelector returns for other games |
+| gold | reroll | PASS | Gen12DVReroll::reroll(genderFromAttackDV, unown) x20 per case staged via stageBoxPokemonEdit(dvs): Pikachu shiny F/M and non-shiny F/M keep shiny + gender; Unown non-shiny and shiny keep the letter |
 | silver | discovery | PASS | discoverConfiguredLegacySaves (RetroArch configured root) -> Ready silver_gbc card, platform GBC |
 | silver | linking | PASS | claimInstanceAndSave -> visible only to its profile, resolves to the same file, persists |
 | silver | provider | PASS | discovery-recorded provider 'RetroArch' -> display 'RetroArch' |
@@ -198,6 +232,10 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | silver | immutability | PASS | source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export |
 | silver | home-refresh | PASS | rewritten file -> legacy re-discovery shows new fingerprint/mtime and party L42; the stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp |
 | silver | relaunch | PASS | new LegacySourceBindings::load + new discovery -> same profile assignment, current file fingerprint |
+| silver | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> StagedEditor::stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| silver | special-stat | PASS | Gen2Workspace::battleStats / calculatedCell on box Pikachu (stored, and with a staged Special DV 13 / Stat Exp 40000): Special row shows "SpA/SpD" numbers equal to the CalcMonStats formula (base 50/40), never a dash |
+| silver | met-time | N/A | Gold/Silver PK2 records store no caught data (the 0x1D caught-time word is Crystal-only: pret/pokecrystal SetCaughtData, PKHeX PK2 CaughtData); Gen2UnifiedPokemonWorkspace.inc opens the Met Time row only for crystal_gbc and applyFieldSelector returns for other games |
+| silver | reroll | PASS | Gen12DVReroll::reroll(genderFromAttackDV, unown) x20 per case staged via stageBoxPokemonEdit(dvs): Pikachu shiny F/M and non-shiny F/M keep shiny + gender; Unown non-shiny and shiny keep the letter |
 | crystal | discovery | PASS | discoverConfiguredLegacySaves (RetroArch configured root) -> Ready crystal_gbc card, platform GBC |
 | crystal | linking | PASS | claimInstanceAndSave -> visible only to its profile, resolves to the same file, persists |
 | crystal | provider | PASS | discovery-recorded provider 'RetroArch' -> display 'RetroArch' |
@@ -219,6 +257,10 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | crystal | immutability | PASS | source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export |
 | crystal | home-refresh | PASS | rewritten file -> legacy re-discovery shows new fingerprint/mtime and party L42; the stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp |
 | crystal | relaunch | PASS | new LegacySourceBindings::load + new discovery -> same profile assignment, current file fingerprint |
+| crystal | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> StagedEditor::stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| crystal | special-stat | PASS | Gen2Workspace::battleStats / calculatedCell on box Pikachu (stored, and with a staged Special DV 13 / Stat Exp 40000): Special row shows "SpA/SpD" numbers equal to the CalcMonStats formula (base 50/40), never a dash |
+| crystal | met-time | PASS | Gen2FieldSelector::nextMetTime (A, inline) on recorded caught data Day -> Night -> Morning -> Day -> Night, each staged via stageBoxPokemonEdit(caughtData): only bits 14-15 change; pending cycle Unknown->Morning->Day->Night->Unknown; finalize -> strict reparse keeps the staged word |
+| crystal | reroll | PASS | Gen12DVReroll::reroll(genderFromAttackDV, unown) x20 per case staged via stageBoxPokemonEdit(dvs): Pikachu shiny F/M and non-shiny F/M keep shiny + gender; Unown non-shiny and shiny keep the letter |
 | ruby | discovery | PASS | discoverConfiguredLegacySaves (conventional RetroArch root) -> Ready Gen III source |
 | ruby | linking | PASS | unassigned: visible to all profiles; claimInstanceAndSave -> reload from disk -> owner-only card -> resolveFRLGSaveInstance = same file |
 | ruby | provider | PASS | RetroArch (SaveProviderIdentity), platform Game Boy Advance |
@@ -240,6 +282,8 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | ruby | immutability | PASS | bytes, size and ns mtime unchanged after discovery, linking, staging, review and export |
 | ruby | home-refresh | PASS | size/mtime change -> discoverConfiguredLegacySaves -> profile card shows the new snapshot (legacy re-discovery; Home party strip passes level 0, form 0, shiny false: SaveSelectScreen.cpp RetroArchFRLG preview) |
 | ruby | relaunch | PASS | fresh bindings load + fresh discovery resolve the current file; clean workspace |
+| ruby | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Old Rod StageNew x1 then FixedQuantity, x2 refused |
+| ruby | reroll | PASS | Y = SharedStatReroll::reroll into Session working IVs/EVs -> keep, x20 per case: Bulbasaur shiny/non-shiny x male/female and Unown shiny/non-shiny keep shiny, gender, PID and Unown letter; IVs/EVs land as rolled |
 | sapphire | discovery | PASS | discoverConfiguredLegacySaves (conventional RetroArch root) -> Ready Gen III source |
 | sapphire | linking | PASS | unassigned: visible to all profiles; claimInstanceAndSave -> reload from disk -> owner-only card -> resolveFRLGSaveInstance = same file |
 | sapphire | provider | PASS | RetroArch (SaveProviderIdentity), platform Game Boy Advance |
@@ -261,6 +305,8 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | sapphire | immutability | PASS | bytes, size and ns mtime unchanged after discovery, linking, staging, review and export |
 | sapphire | home-refresh | PASS | size/mtime change -> discoverConfiguredLegacySaves -> profile card shows the new snapshot (legacy re-discovery; Home party strip passes level 0, form 0, shiny false: SaveSelectScreen.cpp RetroArchFRLG preview) |
 | sapphire | relaunch | PASS | fresh bindings load + fresh discovery resolve the current file; clean workspace |
+| sapphire | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Old Rod StageNew x1 then FixedQuantity, x2 refused |
+| sapphire | reroll | PASS | Y = SharedStatReroll::reroll into Session working IVs/EVs -> keep, x20 per case: Bulbasaur shiny/non-shiny x male/female and Unown shiny/non-shiny keep shiny, gender, PID and Unown letter; IVs/EVs land as rolled |
 | emerald | discovery | PASS | discoverConfiguredLegacySaves (conventional RetroArch root) -> Ready Gen III source |
 | emerald | linking | PASS | unassigned: visible to all profiles; claimInstanceAndSave -> reload from disk -> owner-only card -> resolveFRLGSaveInstance = same file |
 | emerald | provider | PASS | RetroArch (SaveProviderIdentity), platform Game Boy Advance |
@@ -282,6 +328,8 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | emerald | immutability | PASS | bytes, size and ns mtime unchanged after discovery, linking, staging, review and export |
 | emerald | home-refresh | PASS | size/mtime change -> discoverConfiguredLegacySaves -> profile card shows the new snapshot (legacy re-discovery; Home party strip passes level 0, form 0, shiny false: SaveSelectScreen.cpp RetroArchFRLG preview) |
 | emerald | relaunch | PASS | fresh bindings load + fresh discovery resolve the current file; clean workspace |
+| emerald | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Old Rod StageNew x1 then FixedQuantity, x2 refused |
+| emerald | reroll | PASS | Y = SharedStatReroll::reroll into Session working IVs/EVs -> keep, x20 per case: Bulbasaur shiny/non-shiny x male/female and Unown shiny/non-shiny keep shiny, gender, PID and Unown letter; IVs/EVs land as rolled |
 | firered | discovery | PASS | discoverConfiguredLegacySaves (conventional RetroArch root) -> Ready Gen III source |
 | firered | linking | PASS | unassigned: visible to all profiles; claimInstanceAndSave -> reload from disk -> owner-only card -> resolveFRLGSaveInstance = same file |
 | firered | provider | PASS | RetroArch (SaveProviderIdentity), platform Game Boy Advance |
@@ -303,6 +351,8 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | firered | immutability | PASS | bytes, size and ns mtime unchanged after discovery, linking, staging, review and export |
 | firered | home-refresh | PASS | size/mtime change -> discoverConfiguredLegacySaves -> profile card shows the new snapshot (legacy re-discovery; Home party strip passes level 0, form 0, shiny false: SaveSelectScreen.cpp RetroArchFRLG preview) |
 | firered | relaunch | PASS | fresh bindings load + fresh discovery resolve the current file; clean workspace |
+| firered | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Old Rod StageNew x1 then FixedQuantity, x2 refused |
+| firered | reroll | PASS | Y = SharedStatReroll::reroll into Session working IVs/EVs -> keep, x20 per case: Bulbasaur shiny/non-shiny x male/female and Unown shiny/non-shiny keep shiny, gender, PID and Unown letter; IVs/EVs land as rolled |
 | leafgreen | discovery | PASS | discoverConfiguredLegacySaves (conventional RetroArch root) -> Ready Gen III source |
 | leafgreen | linking | PASS | unassigned: visible to all profiles; claimInstanceAndSave -> reload from disk -> owner-only card -> resolveFRLGSaveInstance = same file |
 | leafgreen | provider | PASS | RetroArch (SaveProviderIdentity), platform Game Boy Advance |
@@ -324,6 +374,8 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | leafgreen | immutability | PASS | bytes, size and ns mtime unchanged after discovery, linking, staging, review and export |
 | leafgreen | home-refresh | PASS | size/mtime change -> discoverConfiguredLegacySaves -> profile card shows the new snapshot (legacy re-discovery; Home party strip passes level 0, form 0, shiny false: SaveSelectScreen.cpp RetroArchFRLG preview) |
 | leafgreen | relaunch | PASS | fresh bindings load + fresh discovery resolve the current file; clean workspace |
+| leafgreen | bag-add | PASS | classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Old Rod StageNew x1 then FixedQuantity, x2 refused |
+| leafgreen | reroll | PASS | Y = SharedStatReroll::reroll into Session working IVs/EVs -> keep, x20 per case: Bulbasaur shiny/non-shiny x male/female and Unown shiny/non-shiny keep shiny, gender, PID and Unown letter; IVs/EVs land as rolled |
 | diamond | discovery | PASS | discoverSources(DraStic root) -> 1 Ready DP candidate + decoy Invalid; toSaveInstance Ready gen 4 |
 | diamond | linking | PASS | assignFileAndSave -> reload in a new LegacySourceBindings -> resolveFileForGame Ready (same path/identity) -> openAssignedSource Ready |
 | diamond | provider | PASS | binding sourceType DraStic -> "Nintendo DS • DraStic"; Save Instance row "DraStic / ..." |
@@ -335,16 +387,18 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | diamond | pokedex | PASS | seen 2 / caught 1 / total 493 |
 | diamond | bag | PASS | 8 native pockets decoded; Medicine = Potion x5 (decodeReadOnlyBag + trainer view) |
 | diamond | navigation | PASS | SharedPokemonWorkspace::navigate (Gen4, View + Edit) and Gen4BoxMoveNavigation move focus only; Edit draft and staged save byte-identical |
-| diamond | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
+| diamond | creation | PASS | createBoxDraft(species 25 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | diamond | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | diamond | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
 | diamond | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | diamond | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
-| diamond | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
+| diamond | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9 |
 | diamond | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
 | diamond | immutability | PASS | source bytes, size and ns mtime identical after discovery, linking, open, staging, actions, review and export |
 | diamond | home-refresh | PASS | HomeSnapshotCache: Parsed then Reused x30 (1 parse); emulator rewrite (new mtime) -> Parsed with new party; invalid rewrite -> Stale, never Current |
 | diamond | relaunch | PASS | fresh LegacySourceBindings load + fresh HomeSnapshotCache + re-inspect see the current file (Lv33 lead, new fingerprint, same source identity) |
+| diamond | bag-add | PASS | Gen4BagQuantity::policyRule + decidePick (pocket slots / held from the bridge): Antidote StageNew x1 (no numpad) -> stageBagAdd -> refreshed Medicine shows Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| diamond | reroll | PASS | Y = SharedStatReroll::reroll via Session::working setEV(0)/setIV/setEV -> keep, x20 per case: Pikachu shiny/non-shiny x male/female keep shiny, gender and PID; IVs/EVs land as rolled |
 | pearl | discovery | PASS | discoverSources(DraStic root) -> 1 Ready DP candidate + decoy Invalid; toSaveInstance Ready gen 4 |
 | pearl | linking | PASS | assignFileAndSave -> reload in a new LegacySourceBindings -> resolveFileForGame Ready (same path/identity) -> openAssignedSource Ready |
 | pearl | provider | PASS | binding sourceType DraStic -> "Nintendo DS • DraStic"; Save Instance row "DraStic / ..." |
@@ -356,16 +410,18 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | pearl | pokedex | PASS | seen 2 / caught 1 / total 493 |
 | pearl | bag | PASS | 8 native pockets decoded; Medicine = Potion x5 (decodeReadOnlyBag + trainer view) |
 | pearl | navigation | PASS | SharedPokemonWorkspace::navigate (Gen4, View + Edit) and Gen4BoxMoveNavigation move focus only; Edit draft and staged save byte-identical |
-| pearl | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
+| pearl | creation | PASS | createBoxDraft(species 25 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | pearl | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | pearl | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
 | pearl | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | pearl | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
-| pearl | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
+| pearl | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9 |
 | pearl | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
 | pearl | immutability | PASS | source bytes, size and ns mtime identical after discovery, linking, open, staging, actions, review and export |
 | pearl | home-refresh | PASS | HomeSnapshotCache: Parsed then Reused x30 (1 parse); emulator rewrite (new mtime) -> Parsed with new party; invalid rewrite -> Stale, never Current |
 | pearl | relaunch | PASS | fresh LegacySourceBindings load + fresh HomeSnapshotCache + re-inspect see the current file (Lv33 lead, new fingerprint, same source identity) |
+| pearl | bag-add | PASS | Gen4BagQuantity::policyRule + decidePick (pocket slots / held from the bridge): Antidote StageNew x1 (no numpad) -> stageBagAdd -> refreshed Medicine shows Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| pearl | reroll | PASS | Y = SharedStatReroll::reroll via Session::working setEV(0)/setIV/setEV -> keep, x20 per case: Pikachu shiny/non-shiny x male/female keep shiny, gender and PID; IVs/EVs land as rolled |
 | platinum | discovery | PASS | discoverSources(DraStic root) -> 1 Ready PT candidate + decoy Invalid; toSaveInstance Ready gen 4 |
 | platinum | linking | PASS | assignFileAndSave -> reload in a new LegacySourceBindings -> resolveFileForGame Ready (same path/identity) -> openAssignedSource Ready |
 | platinum | provider | PASS | binding sourceType DraStic -> "Nintendo DS • DraStic"; Save Instance row "DraStic / ..." |
@@ -377,16 +433,18 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | platinum | pokedex | PASS | seen 2 / caught 1 / total 493 |
 | platinum | bag | PASS | 8 native pockets decoded; Medicine = Potion x5 (decodeReadOnlyBag + trainer view) |
 | platinum | navigation | PASS | SharedPokemonWorkspace::navigate (Gen4, View + Edit) and Gen4BoxMoveNavigation move focus only; Edit draft and staged save byte-identical |
-| platinum | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
+| platinum | creation | PASS | createBoxDraft(species 25 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | platinum | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | platinum | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
 | platinum | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | platinum | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
-| platinum | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
+| platinum | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9 |
 | platinum | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
 | platinum | immutability | PASS | source bytes, size and ns mtime identical after discovery, linking, open, staging, actions, review and export |
 | platinum | home-refresh | PASS | HomeSnapshotCache: Parsed then Reused x30 (1 parse); emulator rewrite (new mtime) -> Parsed with new party; invalid rewrite -> Stale, never Current |
 | platinum | relaunch | PASS | fresh LegacySourceBindings load + fresh HomeSnapshotCache + re-inspect see the current file (Lv33 lead, new fingerprint, same source identity) |
+| platinum | bag-add | PASS | Gen4BagQuantity::policyRule + decidePick (pocket slots / held from the bridge): Antidote StageNew x1 (no numpad) -> stageBagAdd -> refreshed Medicine shows Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| platinum | reroll | PASS | Y = SharedStatReroll::reroll via Session::working setEV(0)/setIV/setEV -> keep, x20 per case: Pikachu shiny/non-shiny x male/female keep shiny, gender and PID; IVs/EVs land as rolled |
 | heartgold | discovery | PASS | discoverSources(DraStic root) -> 1 Ready HGSS candidate + decoy Invalid; toSaveInstance Ready gen 4 |
 | heartgold | linking | PASS | assignFileAndSave -> reload in a new LegacySourceBindings -> resolveFileForGame Ready (same path/identity) -> openAssignedSource Ready |
 | heartgold | provider | PASS | binding sourceType DraStic -> "Nintendo DS • DraStic"; Save Instance row "DraStic / ..." |
@@ -398,16 +456,18 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | heartgold | pokedex | PASS | seen 2 / caught 1 / total 493 |
 | heartgold | bag | PASS | 8 native pockets decoded; Medicine = Potion x5 (decodeReadOnlyBag + trainer view) |
 | heartgold | navigation | PASS | SharedPokemonWorkspace::navigate (Gen4, View + Edit) and Gen4BoxMoveNavigation move focus only; Edit draft and staged save byte-identical |
-| heartgold | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
+| heartgold | creation | PASS | createBoxDraft(species 25 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | heartgold | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | heartgold | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
 | heartgold | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | heartgold | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
-| heartgold | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
+| heartgold | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9 |
 | heartgold | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
 | heartgold | immutability | PASS | source bytes, size and ns mtime identical after discovery, linking, open, staging, actions, review and export |
 | heartgold | home-refresh | PASS | HomeSnapshotCache: Parsed then Reused x30 (1 parse); emulator rewrite (new mtime) -> Parsed with new party; invalid rewrite -> Stale, never Current |
 | heartgold | relaunch | PASS | fresh LegacySourceBindings load + fresh HomeSnapshotCache + re-inspect see the current file (Lv33 lead, new fingerprint, same source identity) |
+| heartgold | bag-add | PASS | Gen4BagQuantity::policyRule + decidePick (pocket slots / held from the bridge): Antidote StageNew x1 (no numpad) -> stageBagAdd -> refreshed Medicine shows Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| heartgold | reroll | PASS | Y = SharedStatReroll::reroll via Session::working setEV(0)/setIV/setEV -> keep, x20 per case: Pikachu shiny/non-shiny x male/female keep shiny, gender and PID; IVs/EVs land as rolled |
 | soulsilver | discovery | PASS | discoverSources(DraStic root) -> 1 Ready HGSS candidate + decoy Invalid; toSaveInstance Ready gen 4 |
 | soulsilver | linking | PASS | assignFileAndSave -> reload in a new LegacySourceBindings -> resolveFileForGame Ready (same path/identity) -> openAssignedSource Ready |
 | soulsilver | provider | PASS | binding sourceType DraStic -> "Nintendo DS • DraStic"; Save Instance row "DraStic / ..." |
@@ -419,16 +479,18 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | soulsilver | pokedex | PASS | seen 2 / caught 1 / total 493 |
 | soulsilver | bag | PASS | 8 native pockets decoded; Medicine = Potion x5 (decodeReadOnlyBag + trainer view) |
 | soulsilver | navigation | PASS | SharedPokemonWorkspace::navigate (Gen4, View + Edit) and Gen4BoxMoveNavigation move focus only; Edit draft and staged save byte-identical |
-| soulsilver | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
+| soulsilver | creation | PASS | createBoxDraft(species 25 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | soulsilver | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | soulsilver | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
 | soulsilver | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | soulsilver | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
-| soulsilver | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
+| soulsilver | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9 |
 | soulsilver | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
 | soulsilver | immutability | PASS | source bytes, size and ns mtime identical after discovery, linking, open, staging, actions, review and export |
 | soulsilver | home-refresh | PASS | HomeSnapshotCache: Parsed then Reused x30 (1 parse); emulator rewrite (new mtime) -> Parsed with new party; invalid rewrite -> Stale, never Current |
 | soulsilver | relaunch | PASS | fresh LegacySourceBindings load + fresh HomeSnapshotCache + re-inspect see the current file (Lv33 lead, new fingerprint, same source identity) |
+| soulsilver | bag-add | PASS | Gen4BagQuantity::policyRule + decidePick (pocket slots / held from the bridge): Antidote StageNew x1 (no numpad) -> stageBagAdd -> refreshed Medicine shows Antidote x1 (strict reparse); row EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused |
+| soulsilver | reroll | PASS | Y = SharedStatReroll::reroll via Session::working setEV(0)/setIV/setEV -> keep, x20 per case: Pikachu shiny/non-shiny x male/female keep shiny, gender and PID; IVs/EVs land as rolled |
 | black | discovery | PASS | BW layout; discoverSources + inspectSourceFile ready; two different copies -> 2 labelled rows, Automatic refused |
 | black | linking | PASS | assignValidatedSource -> reload -> resolveFileForGame Ready (same path, copy 0) -> openAssignedSource ready; other profile Unassigned, sibling title refused |
 | black | provider | PASS | 'DraStic' -> 'DraStic' on the Save Instance row and the Home card (from the persisted binding) |
@@ -443,13 +505,15 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | black | creation | PASS | defaults Pikachu L5 with the save's OT/TID/SID/gender/language and exact game; species 650, level 0, party format and sibling title refused; Add -> Create draft -> Keep -> verified |
 | black | fields | PASS | 25 fields (every Editable FieldIdentity + Shiny row + Form) via stageSharedField/Name -> Keep -> verifyStagedReview -> candidate strict reparse |
 | black | pickers | PASS | species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, 276 met locations, Deerling 4 forms, ability slots; Bag add lists (no Key Items/TMs), family key-item list |
-| black | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Move,Clone,Release,Cancel], empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
+| black | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Clone,Move,Release,Cancel] (shared order), empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
 | black | working-copy | PASS | PK5 + Bag + Trainer staged in app memory; source image/file unchanged; candidate carries all three, backup copy byte-identical |
 | black | review | PASS | 3 rows (Friendship 70->222 independently replayed, Bag 12->42, Trainer name); export confirmation; Discard All restores |
 | black | export | PASS | new export dir (backup == source, edited.sav strict reparse, manifest); 159 changed bytes all whitelisted; stale observation refused, no files |
 | black | immutability | PASS | bytes, size and ns mtime of the source (and its directory) unchanged after discovery, assignment, opens, all staging, candidates and export |
 | black | home-refresh | PASS | HomeSnapshotCache + homeCardSnapshot: Parsed once, Reused while unchanged, re-validated Current after the rewrite (species 550, level 33, shiny), form 1 kept (QA-F5 fix holds) |
 | black | relaunch | PASS | reloaded bindings + new cache + new Trainer session see the rewritten file; the old fingerprint is refused |
+| black | bag-add | PASS | Gen5BagScreen::pickAdd(ws, gen5PolicyRule, refresh): Antidote StageNew x1 (no numpad), staged bag x1 (candidate strict reparse); beginQuantity + decideRow EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Key Items not addable, key row FixedQuantity, no editor |
+| black | reroll | PASS | Y = SharedStatReroll::reroll via Gen5SharedPokemonSession::stage(EV 0 / IV / EV) -> keepWithPresentation, x20 per case: Gen V-origin Eevee shiny/non-shiny x male/female keep shiny, gender and PID |
 | white | discovery | PASS | BW layout; discoverSources + inspectSourceFile ready; two different copies -> 2 labelled rows, Automatic refused |
 | white | linking | PASS | assignValidatedSource -> reload -> resolveFileForGame Ready (same path, copy 0) -> openAssignedSource ready; other profile Unassigned, sibling title refused |
 | white | provider | PASS | 'melonDS' -> 'melonDS' on the Save Instance row and the Home card (from the persisted binding) |
@@ -464,13 +528,15 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | white | creation | PASS | defaults Pikachu L5 with the save's OT/TID/SID/gender/language and exact game; species 650, level 0, party format and sibling title refused; Add -> Create draft -> Keep -> verified |
 | white | fields | PASS | 25 fields (every Editable FieldIdentity + Shiny row + Form) via stageSharedField/Name -> Keep -> verifyStagedReview -> candidate strict reparse |
 | white | pickers | PASS | species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, 276 met locations, Deerling 4 forms, ability slots; Bag add lists (no Key Items/TMs), family key-item list |
-| white | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Move,Clone,Release,Cancel], empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
+| white | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Clone,Move,Release,Cancel] (shared order), empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
 | white | working-copy | PASS | PK5 + Bag + Trainer staged in app memory; source image/file unchanged; candidate carries all three, backup copy byte-identical |
 | white | review | PASS | 3 rows (Friendship 70->222 independently replayed, Bag 12->42, Trainer name); export confirmation; Discard All restores |
 | white | export | PASS | new export dir (backup == source, edited.sav strict reparse, manifest); 159 changed bytes all whitelisted; stale observation refused, no files |
 | white | immutability | PASS | bytes, size and ns mtime of the source (and its directory) unchanged after discovery, assignment, opens, all staging, candidates and export |
 | white | home-refresh | PASS | HomeSnapshotCache + homeCardSnapshot: Parsed once, Reused while unchanged, re-validated Current after the rewrite (species 550, level 33, shiny), form 1 kept (QA-F5 fix holds) |
 | white | relaunch | PASS | reloaded bindings + new cache + new Trainer session see the rewritten file; the old fingerprint is refused |
+| white | bag-add | PASS | Gen5BagScreen::pickAdd(ws, gen5PolicyRule, refresh): Antidote StageNew x1 (no numpad), staged bag x1 (candidate strict reparse); beginQuantity + decideRow EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Key Items not addable, key row FixedQuantity, no editor |
+| white | reroll | PASS | Y = SharedStatReroll::reroll via Gen5SharedPokemonSession::stage(EV 0 / IV / EV) -> keepWithPresentation, x20 per case: Gen V-origin Eevee shiny/non-shiny x male/female keep shiny, gender and PID |
 | black2 | discovery | PASS | B2W2 layout; discoverSources + inspectSourceFile ready; two different copies -> 2 labelled rows, Automatic refused |
 | black2 | linking | PASS | assignValidatedSource -> reload -> resolveFileForGame Ready (same path, copy 0) -> openAssignedSource ready; other profile Unassigned, sibling title refused |
 | black2 | provider | PASS | 'RetroArch' -> 'RetroArch' on the Save Instance row and the Home card (from the persisted binding) |
@@ -485,13 +551,15 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | black2 | creation | PASS | defaults Pikachu L5 with the save's OT/TID/SID/gender/language and exact game; species 650, level 0, party format and sibling title refused; Add -> Create draft -> Keep -> verified |
 | black2 | fields | PASS | 25 fields (every Editable FieldIdentity + Shiny row + Form) via stageSharedField/Name -> Keep -> verifyStagedReview -> candidate strict reparse |
 | black2 | pickers | PASS | species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, 276 met locations, Deerling 4 forms, ability slots; Bag add lists (no Key Items/TMs), family key-item list |
-| black2 | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Move,Clone,Release,Cancel], empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
+| black2 | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Clone,Move,Release,Cancel] (shared order), empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
 | black2 | working-copy | PASS | PK5 + Bag + Trainer staged in app memory; source image/file unchanged; candidate carries all three, backup copy byte-identical |
 | black2 | review | PASS | 3 rows (Friendship 70->222 independently replayed, Bag 12->42, Trainer name); export confirmation; Discard All restores |
 | black2 | export | PASS | new export dir (backup == source, edited.sav strict reparse, manifest); 159 changed bytes all whitelisted; stale observation refused, no files |
 | black2 | immutability | PASS | bytes, size and ns mtime of the source (and its directory) unchanged after discovery, assignment, opens, all staging, candidates and export |
 | black2 | home-refresh | PASS | HomeSnapshotCache + homeCardSnapshot: Parsed once, Reused while unchanged, re-validated Current after the rewrite (species 550, level 33, shiny), form 1 kept (QA-F5 fix holds) |
 | black2 | relaunch | PASS | reloaded bindings + new cache + new Trainer session see the rewritten file; the old fingerprint is refused |
+| black2 | bag-add | PASS | Gen5BagScreen::pickAdd(ws, gen5PolicyRule, refresh): Antidote StageNew x1 (no numpad), staged bag x1 (candidate strict reparse); beginQuantity + decideRow EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Key Items not addable, key row FixedQuantity, no editor |
+| black2 | reroll | PASS | Y = SharedStatReroll::reroll via Gen5SharedPokemonSession::stage(EV 0 / IV / EV) -> keepWithPresentation, x20 per case: Gen V-origin Eevee shiny/non-shiny x male/female keep shiny, gender and PID |
 | white2 | discovery | PASS | B2W2 layout; discoverSources + inspectSourceFile ready; two different copies -> 2 labelled rows, Automatic refused |
 | white2 | linking | PASS | assignValidatedSource -> reload -> resolveFileForGame Ready (same path, copy 0) -> openAssignedSource ready; other profile Unassigned, sibling title refused |
 | white2 | provider | PASS | 'Manual' -> 'Manual file' on the Save Instance row and the Home card (from the persisted binding) |
@@ -506,13 +574,15 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | white2 | creation | PASS | defaults Pikachu L5 with the save's OT/TID/SID/gender/language and exact game; species 650, level 0, party format and sibling title refused; Add -> Create draft -> Keep -> verified |
 | white2 | fields | PASS | 25 fields (every Editable FieldIdentity + Shiny row + Form) via stageSharedField/Name -> Keep -> verifyStagedReview -> candidate strict reparse |
 | white2 | pickers | PASS | species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, 276 met locations, Deerling 4 forms, ability slots; Bag add lists (no Key Items/TMs), family key-item list |
-| white2 | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Move,Clone,Release,Cancel], empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
+| white2 | actions | PASS | party [View,Edit,Clone,Cancel], box [View,Edit,Clone,Move,Release,Cancel] (shared order), empty [Add,Cancel]; wrap, Release+Undo, Clone, Move, Review after staging |
 | white2 | working-copy | PASS | PK5 + Bag + Trainer staged in app memory; source image/file unchanged; candidate carries all three, backup copy byte-identical |
 | white2 | review | PASS | 3 rows (Friendship 70->222 independently replayed, Bag 12->42, Trainer name); export confirmation; Discard All restores |
 | white2 | export | PASS | new export dir (backup == source, edited.sav strict reparse, manifest); 159 changed bytes all whitelisted; stale observation refused, no files |
 | white2 | immutability | PASS | bytes, size and ns mtime of the source (and its directory) unchanged after discovery, assignment, opens, all staging, candidates and export |
 | white2 | home-refresh | PASS | HomeSnapshotCache + homeCardSnapshot: Parsed once, Reused while unchanged, re-validated Current after the rewrite (species 550, level 33, shiny), form 1 kept (QA-F5 fix holds) |
 | white2 | relaunch | PASS | reloaded bindings + new cache + new Trainer session see the rewritten file; the old fingerprint is refused |
+| white2 | bag-add | PASS | Gen5BagScreen::pickAdd(ws, gen5PolicyRule, refresh): Antidote StageNew x1 (no numpad), staged bag x1 (candidate strict reparse); beginQuantity + decideRow EditQuantity [1,999]; held Potion -> FocusExisting, nothing staged; Key Items not addable, key row FixedQuantity, no editor |
+| white2 | reroll | PASS | Y = SharedStatReroll::reroll via Gen5SharedPokemonSession::stage(EV 0 / IV / EV) -> keepWithPresentation, x20 per case: Gen V-origin Eevee shiny/non-shiny x male/female keep shiny, gender and PID |
 
 ### Cross-generation comparison
 
@@ -520,7 +590,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | --- | --- | --- |
 | `bag.read` | `yes` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `create.default.level` | `5` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
-| `create.default.species` | `1` (red, blue, yellow, diamond, pearl, platinum, heartgold, soulsilver); `25` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, black, white, black2, white2) | **NO** |
+| `create.default.species` | `25` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `export.output` | `new-file-only` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `export.reparse` | `strict` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `home.party.form` | `kept` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2); `n/a` (red, blue, yellow) | yes |

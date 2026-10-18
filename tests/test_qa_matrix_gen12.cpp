@@ -60,6 +60,16 @@
 #include "UI/MovePickerPresentation.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "test_qa_matrix_round2.h"
+#include "Integration/Gen1/Gen1Shiny.h"
+#include "Integration/Gen1/Gen1StagedTrainerEditor.h"
+#include "Legacy/RBYReadOnlyTrainer.h"
+#include "UI/ClassicInventoryUIModel.h"
+#include "UI/ClassicTrainerEditability.h"
+#include "UI/Gen12DVReroll.h"
+#include "UI/Gen2FieldSelector.h"
+#include "UI/Gen2NativePresentation.h"
+#include "UI/Gen2WorkspacePresentation.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -107,7 +117,7 @@ public:
     bool done(std::string_view cell) const { return done_.count(std::string(cell)) != 0; }
     void finish(const std::string& why) {
         for (auto cell : kCells)
-            if (!done(cell)) put(cell, Status::Fail, "not reached: " + why);
+            if (cellApplies(cell, v_) && !done(cell)) put(cell, Status::Fail, "not reached: " + why);
     }
     const std::string& version() const { return v_; }
 
@@ -542,6 +552,423 @@ std::string partySummary(size_t count) { return "party " + std::to_string(count)
 // ------------------------------------------------------------------------------------------------
 // Gen I
 // ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// Round 2 cells (bag-add, trainer-edit, special-stat, met-time, reroll). Each runs on its own
+// staged workspace built from the in-memory synthetic save, so it never disturbs the cells above.
+//   bag-add       PokeBank::UIModel::classicItemQuantityRule + BagAdd::decidePick / decideRow, staged
+//                 exactly as ClassicInventoryOverlay.cpp stageQuantity does (Gen I:
+//                 RBYReadOnlyTrainer::stagedInventory()->stageSetQuantity; Gen II: the
+//                 Gen2::StagedEditor GSCReadOnlyTrainer holds, stageInventoryQuantity)
+//   trainer-edit  RBYReadOnlyTrainer::stagedTrainer() (Gen1StagedTrainerEditor) and
+//                 ClassicTrainerSession::trainerFieldsEditable (tests/test_gen1_trainer_edit.cpp)
+//   special-stat  Gen2Workspace::battleStats / calculatedCell (tests/test_gen2_special_stat.cpp)
+//   met-time      Gen2FieldSelector::nextMetTime + Gen2Native caught-data codec, staged through
+//                 Gen2::StagedEditor::stageBoxPokemonEdit (tests/test_crystal_met_time_inline.cpp)
+//   reroll        Gen12DVReroll::reroll (the Y handler of Gen1PokemonEditorOverlayFoundation.inc /
+//                 Gen2PokemonEditorFoundation.inc) staged as BoxPokemonEdit::dvs
+//                 (tests/test_reroll_mechanics_gen15.cpp)
+// ------------------------------------------------------------------------------------------------
+void r2cell(Row& row, std::string_view cell, std::string passNote, const std::function<void(Checks&)>& body) {
+    Checks c;
+    try {
+        body(c);
+    } catch (const std::exception& e) {
+        c.expect(false, std::string("exception: ") + e.what());
+    }
+    row.check(cell, c.ok(), c.text(), std::move(passNote));
+}
+
+std::array<uint8_t, 4> editableDVs(const std::array<uint8_t, 5>& stored) {
+    return {stored[1], stored[2], stored[3], stored[4]};  // as storedDVs / editableDVs in the UI
+}
+
+void runRound2Gen1(Row& row, const Spec& spec, const G1::ReadOnlySave& save, const Bytes& original) {
+    using PokeVault::Inventory::ClassicPocket;
+    namespace R2 = round2;
+
+    r2cell(row, "bag-add",
+           "classicItemQuantityRule + decidePick: Poke Ball StageNew x1 (no numpad) -> "
+           "RBYReadOnlyTrainer::stagedInventory()->stageSetQuantity -> staged Bag Poke Ball x1 (strict reparse); "
+           "row EditQuantity [1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then "
+           "FixedQuantity, x2 refused",
+           [&](Checks& c) {
+        std::string error;
+        auto trainer = Legacy::RBYReadOnlyTrainer::create(save, error);
+        c.expect(trainer && trainer->stagedInventory(), "RBYReadOnlyTrainer staged inventory: " + error);
+        if (!trainer || !trainer->stagedInventory()) return;
+        auto& inv = *trainer->stagedInventory();
+        const auto game = PokeBank::UIModel::classicInventoryGame(spec.gameId);
+        c.expect(game.has_value(), "classicInventoryGame(" + spec.gameId + ")");
+        if (!game) return;
+        const auto item = [&](std::string name, ClassicPocket pocket, uint16_t id) {
+            R2::BagItem i;
+            i.name = std::move(name);
+            i.id = id;
+            i.rule = PokeBank::UIModel::classicItemQuantityRule(*game, pocket, id);
+            i.pocket = static_cast<size_t>(pocket);
+            return i;
+        };
+        R2::BagBackend b;
+        b.held = [&inv](const R2::BagItem& i) -> uint16_t {
+            std::string e;
+            for (const auto& entry : inv.entries(static_cast<ClassicPocket>(i.pocket), e))
+                if (entry.itemId == i.id) return entry.quantity;
+            return 0;
+        };
+        b.state = [&b](const R2::BagItem& i) { return R2::BagAdd::PocketState{b.held(i), 0, 0}; };
+        b.stage = [&inv](const R2::BagItem& i, uint16_t q, std::string& e) {
+            return inv.stageSetQuantity(static_cast<ClassicPocket>(i.pocket), i.id, q, e);
+        };
+        b.bytes = [&inv] { return Bytes(inv.stagedBytes().begin(), inv.stagedBytes().end()); };
+        const auto bad = R2::bagAddChecks(b, item("Poke Ball", ClassicPocket::Balls, 4),
+                                          item("Potion", ClassicPocket::Medicines, 20),
+                                          item("Bicycle", ClassicPocket::KeyItems, 6));
+        for (const auto& f : bad) c.expect(false, f);
+        const auto out = inv.finalize(error);
+        c.expect(!out.empty(), "finalize: " + error);
+        if (!out.empty()) {
+            c.expect(static_cast<bool>(G1::parse(out, spec.g1)), "finalized Bag fails strict parse");
+            const auto decoded = G1::decodeInventory(out, save.metadata().region);
+            const auto has = [&](uint8_t id) {
+                return std::any_of(decoded.bag.begin(), decoded.bag.end(),
+                                   [id](const auto& e) { return e.itemId == id && e.quantity == 1; });
+            };
+            c.expect(has(4) && has(6), "reparsed Bag lacks Poke Ball x1 / Bicycle x1");
+        }
+        c.expect(std::equal(inv.originalBytes().begin(), inv.originalBytes().end(), original.begin(),
+                            original.end()), "Bag workspace original differs from the source");
+    });
+
+    r2cell(row, "trainer-edit",
+           "trainerFieldsEditable(RBYReadOnlyTrainer) true; stagedTrainer: WILL/123456 (BCD 12 34 56) -> ASH / "
+           "987654 staged as BCD 98 76 54 at 0x25F3; finalize -> strict reparse ASH/987654, only name/money/"
+           "checksum bytes differ; Discard restores; source bytes unchanged",
+           [&](Checks& c) {
+        std::string error;
+        auto trainer = Legacy::RBYReadOnlyTrainer::create(save, error);
+        c.expect(trainer != nullptr, "RBYReadOnlyTrainer::create: " + error);
+        if (!trainer) return;
+        c.expect(trainer->stagedTrainerEditable(), "stagedTrainerEditable false");
+        c.expect(PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(*trainer, false),
+                 "trainerFieldsEditable false for the staged Gen I trainer");
+        auto* t = trainer->stagedTrainer();
+        c.expect(t != nullptr, "no staged Trainer editor");
+        if (!t) return;
+        c.expect(t->trainerName() == "WILL" && t->money() == 123456 && t->nameEditable(),
+                 "staged trainer starts as '" + t->trainerName() + "' / " + std::to_string(t->money()));
+        std::array<uint8_t, 3> bcd{};
+        c.expect(G1::encodeMoneyBCD3(123456, bcd) && bcd == std::array<uint8_t, 3>{0x12, 0x34, 0x56},
+                 "encodeMoneyBCD3(123456) is not 12 34 56");
+        c.expect(original[g1::kMoney] == 0x12 && original[g1::kMoney + 1] == 0x34 && original[g1::kMoney + 2] == 0x56,
+                 "synthetic source money bytes");
+        c.expect(!t->stageMoney(1000000, error) && t->money() == 123456, "money 1000000 accepted");
+        c.expect(t->stageTrainerName("ASH", error), "stageTrainerName: " + error);
+        c.expect(t->stageMoney(987654, error), "stageMoney: " + error);
+        const auto staged = t->stagedBytes();
+        c.expect(staged[g1::kMoney] == 0x98 && staged[g1::kMoney + 1] == 0x76 && staged[g1::kMoney + 2] == 0x54,
+                 "staged money is not BCD 98 76 54");
+        const auto out = t->finalize(error);
+        c.expect(!out.empty(), "finalize: " + error);
+        if (!out.empty()) {
+            auto re = G1::parse(out, spec.g1);
+            c.expect(re && re.save->trainer().name == "ASH" && re.save->trainer().money == 987654,
+                     "strict reparse does not show ASH / 987654");
+            for (size_t i = 0; i < out.size() && i < original.size(); ++i) {
+                const bool allowed = (i >= 0x2598 && i < 0x2598 + g1::kStr) ||
+                                     (i >= g1::kMoney && i < g1::kMoney + 3) || i == g1::kChecksum;
+                if (!allowed && out[i] != original[i]) {
+                    c.expect(false, "byte 0x" + qacontract::hex(i) + " outside name/money/checksum changed");
+                    break;
+                }
+            }
+        }
+        const auto changes = t->pendingChanges();
+        c.expect(changes.size() == 2 && changes[0].label == "Trainer Name" && changes[1].label == "Money",
+                 "pending change list");
+        t->discard();
+        c.expect(!t->hasPendingChanges() && t->trainerName() == "WILL" && t->money() == 123456,
+                 "Discard did not restore WILL / 123456");
+        c.expect(std::equal(save.sourceBytes().begin(), save.sourceBytes().end(), original.begin(), original.end()),
+                 "source bytes changed");
+    });
+
+    r2cell(row, "reroll",
+           "Gen12DVReroll::reroll x" + std::to_string(R2::kRerolls) +
+               " per case staged via StagedPokemonEditor::stageEdit(dvs): non-shiny {9,4,12,1} stays non-shiny, "
+               "Time-Capsule-shiny {3,10,10,10} stays shiny (Gen1Shiny agrees); Gen I stores no gender",
+           [&](Checks& c) {
+        std::string error;
+        auto editor = G1::StagedPokemonEditor::create(save, error);
+        c.expect(editor != nullptr, "StagedPokemonEditor::create: " + error);
+        if (!editor) return;
+        namespace DV = PokeBank::UIModel::Gen12DVReroll;
+        uint32_t rng = 0x5EED1u;
+        for (const DV::DVs start : {DV::DVs{9, 4, 12, 1}, DV::DVs{3, 10, 10, 10}}) {
+            const bool shiny = DV::isShiny(start);
+            G1::BoxPokemonEdit edit;
+            edit.dvs = start;
+            c.expect(editor->stageEdit(0, 0, edit, error), "stage start DVs: " + error);
+            DV::DVs current = start;
+            for (int i = 0; i < R2::kRerolls; ++i) {
+                const auto r = DV::reroll(current, rng);
+                c.expect(r.changed, "reroll produced no new DVs");
+                G1::BoxPokemonEdit next;
+                next.dvs = r.dvs;
+                if (!editor->stageEdit(0, 0, next, error)) {
+                    c.expect(false, "stage rerolled DVs: " + error);
+                    break;
+                }
+                const auto rec = editor->boxedPokemon(0, 0, error);
+                c.expect(rec.has_value(), "box 1/1 unreadable after the reroll: " + error);
+                if (!rec) break;
+                const auto stored = editableDVs(rec->dvs);
+                c.expect(stored == r.dvs, "staged DVs differ from the reroll");
+                c.expect(DV::isShiny(stored) == shiny && G1::ShinyDVs::isShiny(stored) == shiny,
+                         std::string(shiny ? "shiny" : "non-shiny") + " state lost on reroll " + std::to_string(i));
+                current = stored;
+            }
+        }
+    });
+}
+
+void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, const Bytes& original) {
+    using PokeVault::Inventory::ClassicPocket;
+    namespace R2 = round2;
+    const bool crystal = spec.g2 == G2::SourceGame::Crystal;
+
+    r2cell(row, "bag-add",
+           "classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> "
+           "StagedEditor::stageInventoryQuantity -> staged Items Antidote x1 (strict reparse); row EditQuantity "
+           "[1,99]; held Potion -> FocusExisting, nothing staged; Bicycle StageNew x1 then FixedQuantity, x2 refused",
+           [&](Checks& c) {
+        std::string error;
+        auto editor = G2::StagedEditor::create(save, error);
+        c.expect(editor != nullptr, "StagedEditor::create: " + error);
+        if (!editor) return;
+        const auto game = PokeBank::UIModel::classicInventoryGame(spec.gameId);
+        c.expect(game.has_value(), "classicInventoryGame(" + spec.gameId + ")");
+        if (!game) return;
+        // ClassicInventoryOverlay.cpp gen2Pocket: Items / Key Items map one to one.
+        const auto native = [](size_t pocket) {
+            return static_cast<ClassicPocket>(pocket) == ClassicPocket::KeyItems ? G2::InventoryPocket::KeyItems
+                                                                                 : G2::InventoryPocket::Items;
+        };
+        const auto item = [&](std::string name, ClassicPocket pocket, uint16_t id) {
+            R2::BagItem i;
+            i.name = std::move(name);
+            i.id = id;
+            i.rule = PokeBank::UIModel::classicItemQuantityRule(*game, pocket, id);
+            i.pocket = static_cast<size_t>(pocket);
+            return i;
+        };
+        R2::BagBackend b;
+        b.held = [&](const R2::BagItem& i) -> uint16_t {
+            return editor->stagedInventoryQuantity(native(i.pocket), static_cast<uint8_t>(i.id));
+        };
+        b.state = [&b](const R2::BagItem& i) { return R2::BagAdd::PocketState{b.held(i), 0, 0}; };
+        b.stage = [&](const R2::BagItem& i, uint16_t q, std::string& e) {
+            if (i.id > 0xFF || q > 0xFF) { e = "outside the stored byte"; return false; }
+            return editor->stageInventoryQuantity(native(i.pocket), static_cast<uint8_t>(i.id),
+                                                  static_cast<uint8_t>(q), e);
+        };
+        b.bytes = [&] { return Bytes(editor->stagedBytes().begin(), editor->stagedBytes().end()); };
+        const auto bad = R2::bagAddChecks(b, item("Antidote", ClassicPocket::Items, 9),
+                                          item("Potion", ClassicPocket::Items, G2::kPotionItemId),
+                                          item("Bicycle", ClassicPocket::KeyItems, 7));
+        for (const auto& f : bad) c.expect(false, f);
+        const auto out = editor->finalizedBytes(error);
+        c.expect(!out.empty(), "finalize: " + error);
+        if (!out.empty()) {
+            auto re = G2::parse(out, spec.g2);
+            c.expect(static_cast<bool>(re), "finalized save fails strict parse");
+            if (re) {
+                auto again = G2::StagedEditor::create(*re.save, error);
+                c.expect(again && again->stagedInventoryQuantity(G2::InventoryPocket::Items, 9) == 1 &&
+                             again->stagedInventoryQuantity(G2::InventoryPocket::KeyItems, 7) == 1,
+                         "reparsed Bag lacks Antidote x1 / Bicycle x1");
+            }
+        }
+        c.expect(std::equal(editor->originalBytes().begin(), editor->originalBytes().end(), original.begin(),
+                            original.end()), "Bag workspace original differs from the source");
+    });
+
+    r2cell(row, "special-stat",
+           "Gen2Workspace::battleStats / calculatedCell on box Pikachu (stored, and with a staged Special DV 13 / "
+           "Stat Exp 40000): Special row shows \"SpA/SpD\" numbers equal to the CalcMonStats formula (base 50/40), "
+           "never a dash",
+           [&](Checks& c) {
+        std::string error;
+        auto editor = G2::StagedEditor::create(save, error);
+        c.expect(editor != nullptr, "StagedEditor::create: " + error);
+        // Box records carry no stored stats: the editor's Calculated column computes them. Box 1/1
+        // as stored, and again with a staged Special DV 13 / Special Stat Exp 40000.
+        std::vector<G2::PokemonRecord> records;
+        if (editor) {
+            if (auto boxed = editor->boxedPokemon(0, 0, error)) records.push_back(*boxed);
+            G2::BoxPokemonEdit edit;
+            edit.dvs = std::array<uint8_t, 4>{9, 4, 11, 13};
+            edit.statExperience = std::array<uint16_t, 5>{100, 200, 300, 400, 40000};
+            c.expect(editor->stageBoxPokemonEdit(0, 0, edit, error), "stage Special DV / Stat Exp: " + error);
+            if (auto staged = editor->boxedPokemon(0, 0, error)) records.push_back(*staged);
+        }
+        c.expect(records.size() == 2 && !records[0].partyRecord && records[1].dvs[4] == 13 &&
+                     records[1].statExperience[4] == 40000,
+                 "box Pikachu not readable / staged Special values differ: " + error);
+        const auto expected = [](uint8_t base, uint8_t dv, uint16_t statExp, uint8_t level) {
+            uint32_t root = 0;  // independent CalcMonStats: ((base + DV) * 2 + ceil(sqrt(exp)) / 4) * L / 100 + 5
+            while (root < 255 && root * root < statExp) ++root;
+            return static_cast<uint16_t>(((static_cast<uint32_t>(base + dv) * 2U + root / 4U) * level) / 100U + 5U);
+        };
+        namespace W = PokeBank::UIModel::Gen2Workspace;
+        for (const auto& p : records) {
+            const auto* personal = G2::personalRecord(p.species);
+            c.expect(personal && personal->specialAttack != personal->specialDefense,
+                     "species " + std::to_string(p.species) + " lacks distinct SpA/SpD bases");
+            if (!personal) continue;
+            const auto battle = W::battleStats(p);
+            const uint16_t spa = expected(personal->specialAttack, p.dvs[4], p.statExperience[4], p.level);
+            const uint16_t spd = expected(personal->specialDefense, p.dvs[4], p.statExperience[4], p.level);
+            c.expect(battle[4] == spa && battle[5] == spd,
+                     "SpA/SpD " + std::to_string(battle[4]) + "/" + std::to_string(battle[5]) + " != formula " +
+                         std::to_string(spa) + "/" + std::to_string(spd));
+            const auto cell = W::calculatedCell(battle, 4);
+            c.expect(cell == std::to_string(spa) + "/" + std::to_string(spd), "Special cell '" + cell + "'");
+            c.expect(cell.find("\xE2\x80\x94") == std::string::npos && cell.find("--") == std::string::npos,
+                     "Special cell shows a placeholder");
+            for (int r = 0; r < 4; ++r)
+                c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
+                         "calculated row " + std::to_string(r));
+        }
+    });
+
+    if (!crystal) {
+        row.na("met-time",
+               "Gold/Silver PK2 records store no caught data (the 0x1D caught-time word is Crystal-only: "
+               "pret/pokecrystal SetCaughtData, PKHeX PK2 CaughtData); Gen2UnifiedPokemonWorkspace.inc opens the "
+               "Met Time row only for crystal_gbc and applyFieldSelector returns for other games");
+    } else {
+        r2cell(row, "met-time",
+               "Gen2FieldSelector::nextMetTime (A, inline) on recorded caught data Day -> Night -> Morning -> Day "
+               "-> Night, each staged via stageBoxPokemonEdit(caughtData): only bits 14-15 change; pending cycle "
+               "Unknown->Morning->Day->Night->Unknown; finalize -> strict reparse keeps the staged word",
+               [&](Checks& c) {
+            namespace Sel = PokeBank::UIModel::Gen2FieldSelector;
+            namespace Native = PokeBank::UIModel::Gen2Native;
+            for (uint8_t code = 0; code <= 3; ++code) {
+                const uint8_t next = Sel::nextMetTime(code, false, 0);
+                c.expect(next == (code + 1) % 4, "pending cycle from " + std::to_string(code));
+                const auto s = Sel::metTime(next, false, 0);
+                c.expect(std::string(s.choices[static_cast<size_t>(s.row)].label) == Native::crystalMetTimeName(next),
+                         "selector label for " + std::to_string(next));
+            }
+            std::string error;
+            auto editor = G2::StagedEditor::create(save, error);
+            c.expect(editor != nullptr, "StagedEditor::create: " + error);
+            if (!editor) return;
+            const Native::CrystalCaughtData recorded{true, 2, 12, true, 33};
+            G2::BoxPokemonEdit start;
+            start.caughtData = Native::encodeCrystalCaughtData(recorded);
+            c.expect(editor->stageBoxPokemonEdit(0, 0, start, error), "stage recorded caught data: " + error);
+            const uint16_t base = *start.caughtData;
+            constexpr uint8_t kAllTimes = 0x0E;  // crystalAllowedTimeMask fallback: every time allowed
+            const uint8_t sequence[] = {3, 1, 2, 3};
+            uint16_t last = base;
+            for (uint8_t want : sequence) {
+                const auto rec = editor->boxedPokemon(0, 0, error);
+                c.expect(rec.has_value(), "box 1/1 unreadable: " + error);
+                if (!rec) return;
+                auto caught = Native::decodeCrystalCaughtData(rec->caughtData);
+                c.expect(caught.present, "caught data not recorded");
+                const uint8_t next = Sel::nextMetTime(caught.timeOfDay, true, kAllTimes);
+                c.expect(next == want, "A from " + std::to_string(caught.timeOfDay) + " gave " + std::to_string(next));
+                caught.timeOfDay = next;
+                G2::BoxPokemonEdit edit;
+                edit.caughtData = Native::encodeCrystalCaughtData(caught);
+                c.expect(editor->stageBoxPokemonEdit(0, 0, edit, error), "stage Met Time: " + error);
+                const auto back = editor->boxedPokemon(0, 0, error);
+                c.expect(back && back->caughtData == *edit.caughtData, "staged caught word differs");
+                c.expect((*edit.caughtData & 0x3FFF) == (base & 0x3FFF), "level / OT gender / location bits changed");
+                last = *edit.caughtData;
+            }
+            const auto out = editor->finalizedBytes(error);
+            c.expect(!out.empty(), "finalize: " + error);
+            if (!out.empty()) {
+                auto re = G2::parse(out, spec.g2);
+                c.expect(static_cast<bool>(re), "finalized save fails strict parse");
+                if (re) {
+                    auto again = G2::StagedEditor::create(*re.save, error);
+                    const auto back = again ? again->boxedPokemon(0, 0, error) : std::nullopt;
+                    const auto decoded = back ? Native::decodeCrystalCaughtData(back->caughtData)
+                                              : Native::CrystalCaughtData{};
+                    c.expect(back && back->caughtData == last && decoded.timeOfDay == 3 && decoded.levelCode == 12 &&
+                                 decoded.originalTrainerFemale && decoded.location == 33,
+                             "reparsed caught data differs");
+                }
+            }
+            c.expect(std::equal(save.sourceBytes().begin(), save.sourceBytes().end(), original.begin(),
+                                original.end()), "source bytes changed");
+        });
+    }
+
+    r2cell(row, "reroll",
+           "Gen12DVReroll::reroll(genderFromAttackDV, unown) x" + std::to_string(R2::kRerolls) +
+               " per case staged via stageBoxPokemonEdit(dvs): Pikachu shiny F/M and non-shiny F/M keep shiny + "
+               "gender; Unown non-shiny and shiny keep the letter",
+           [&](Checks& c) {
+        std::string error;
+        auto editor = G2::StagedEditor::create(save, error);
+        c.expect(editor != nullptr, "StagedEditor::create: " + error);
+        if (!editor) return;
+        namespace DV = PokeBank::UIModel::Gen12DVReroll;
+        struct Case { uint16_t species; DV::DVs start; };
+        const Case cases[] = {
+            {25, {2, 10, 10, 10}}, {25, {10, 10, 10, 10}}, {25, {5, 3, 3, 3}}, {25, {12, 3, 3, 3}},
+            {201, {4, 9, 1, 12}}, {201, {2, 10, 10, 10}},
+        };
+        uint32_t rng = 0x5EED2u;
+        for (const auto& k : cases) {
+            const auto genderOf = [&k](uint8_t attack) { return static_cast<int>(G2::genderFromAttackDV(k.species, attack)); };
+            const bool unown = k.species == 201;
+            G2::BoxPokemonEdit edit;
+            edit.species = k.species;
+            edit.dvs = k.start;
+            if (!editor->stageBoxPokemonEdit(0, 0, edit, error)) {
+                c.expect(false, "stage species " + std::to_string(k.species) + " start DVs: " + error);
+                continue;
+            }
+            const bool shiny = G2::StagedEditor::isShinyDVs(k.start);
+            const int gender = genderOf(k.start[0]);
+            const int letter = DV::unownLetter(k.start);
+            DV::DVs current = k.start;
+            for (int i = 0; i < R2::kRerolls; ++i) {
+                const auto r = DV::reroll(current, rng, genderOf, unown);
+                if (!r.changed) {
+                    c.expect(false, "no new DVs for species " + std::to_string(k.species));
+                    break;
+                }
+                G2::BoxPokemonEdit next;
+                next.dvs = r.dvs;
+                if (!editor->stageBoxPokemonEdit(0, 0, next, error)) {
+                    c.expect(false, "stage rerolled DVs: " + error);
+                    break;
+                }
+                const auto rec = editor->boxedPokemon(0, 0, error);
+                if (!rec) {
+                    c.expect(false, "box 1/1 unreadable: " + error);
+                    break;
+                }
+                const auto stored = editableDVs(rec->dvs);
+                const std::string what = "species " + std::to_string(k.species) + " reroll " + std::to_string(i);
+                c.expect(stored == r.dvs && rec->species == k.species, what + ": staged record differs");
+                c.expect(G2::StagedEditor::isShinyDVs(stored) == shiny, what + ": shiny state lost");
+                c.expect(genderOf(stored[0]) == gender, what + ": gender changed");
+                if (unown) c.expect(DV::unownLetter(stored) == letter, what + ": Unown letter changed");
+                current = stored;
+            }
+        }
+    });
+}
+
 void runGen1Version(Matrix& m, const Spec& spec) {
     Row row(m, spec.version);
     std::string stage = "setup";
@@ -559,6 +986,8 @@ void runGen1Version(Matrix& m, const Spec& spec) {
         auto parsed = G1::parse(original, spec.g1);
         if (!parsed) throw std::runtime_error("strict parse rejected the synthetic save: " + parsed.detail);
         const auto& save = *parsed.save;
+        stage = "round 2 cells";
+        runRound2Gen1(row, spec, save, original);
 
         row.check("trainer-name", save.trainer().name == "WILL" && save.trainer().trainerId == 0x1234,
                   "trainer '" + save.trainer().name + "'", "WILL / TID 4660");
@@ -909,6 +1338,8 @@ void runGen2Version(Matrix& m, const Spec& spec) {
         auto parsed = G2::parse(original, spec.g2);
         if (!parsed) throw std::runtime_error("strict parse rejected the synthetic save: " + parsed.detail);
         const auto& save = *parsed.save;
+        stage = "round 2 cells";
+        runRound2Gen2(row, spec, save, original);
 
         row.check("trainer-name", save.trainer().name == "ASH" && save.trainer().trainerId == 0x1234,
                   "trainer '" + save.trainer().name + "'", "ASH / TID 4660");

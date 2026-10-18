@@ -28,13 +28,11 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
-    # CG12 and CG14 XPASSed on #307 d104310 (batch 1) and are ENFORCED.
+    # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
+    # d51c1ff (batch 3): ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
-    "CG13-shared-menu-geometry": "S (MovePicker, SaveDiscard) + I (ItemPicker, RemoveConfirm 74b55e8; KeyItemWarning) + P (SpeciesPicker f82ffe5) + 2R (BackupMenu)",
     "CG16-shared-field-state": "S (Gen III PID label) + C (Gen I/II raw-gold Shiny values, R2-GOLD)",
     "CG17-exact-source-game-header": "S (exactGameName 0f132eb) + C (Gen I/II headers, R2-GOLD)",
-    "CG18-trainer-edit-footer": "C (R2-TRAINER 6d6c55d5)",
-    "CG15-shared-species-search": "P (shared chooser 2876ffe; Gen IV kSpeciesSearch flag removal)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational

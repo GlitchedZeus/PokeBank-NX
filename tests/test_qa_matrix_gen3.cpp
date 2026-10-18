@@ -43,7 +43,10 @@
 #include "Pokemon/Experience.h"
 #include "Source/SaveInstance.h"
 #include "Source/SaveProviderIdentity.h"
+#include "test_qa_matrix_round2.h"
 #include "UI/Gen3SharedPokemonSession.h"
+#include "UI/ClassicInventoryUIModel.h"
+#include "UI/SharedStatReroll.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedPokemonEditorWorkspace.h"
 #include "Utils/Gen3Text.h"
@@ -247,7 +250,7 @@ struct Spec {
     uint16_t potionCount;      // Items pouch Potion count in the synthetic input
 };
 
-// Records each of the 21 cells exactly once; anything not reached becomes Fail with the reason.
+// Records each in-scope cell exactly once; anything not reached becomes Fail with the reason.
 class Row {
 public:
     Row(qamatrix::Matrix& m, std::string version) : m_(m), v_(std::move(version)) {}
@@ -264,7 +267,8 @@ public:
     void fact(const std::string& key, std::string value) { m_.fact(v_, key, std::move(value)); }
     void finish(const std::string& reason) {
         for (auto cell : qamatrix::kCells)
-            if (!done_.count(std::string(cell))) m_.fail(v_, cell, "not reached: " + reason);
+            if (qamatrix::cellApplies(cell, v_) && !done_.count(std::string(cell)))
+                m_.fail(v_, cell, "not reached: " + reason);
     }
 
 private:
@@ -294,6 +298,138 @@ const L::FRLGSourceCard* findCard(const std::vector<L::FRLGSourceCard>& cards, s
 }
 
 std::string str(size_t v) { return std::to_string(v); }
+
+// ---------------------------------------------------------------------------------------------
+// Round 2 cells (bag-add, reroll), each on a fresh FRLGReadOnlyTrainer bridge over the parsed
+// synthetic save, so they never disturb the cells of the main flow.
+//   bag-add  PokeBank::UIModel::classicItemQuantityRule + BagAdd::decidePick / decideRow, staged as
+//            ClassicInventoryOverlay.cpp stageQuantity does (FRLGReadOnlyTrainer::stagedInventory()
+//            ->stageInventoryQuantity); tests/test_bag_add_flow_gen15.cpp
+//   reroll   the Gen III surface's Y handler (Gen3SharedPokemonSurface.inc): SharedStatReroll::reroll
+//            into the session's working IVs/EVs, then Session::keep on the staged Pokemon workspace;
+//            tests/test_reroll_mechanics_gen15.cpp
+// ---------------------------------------------------------------------------------------------
+void runRound2Gen3(Row& row, const Spec& spec, const G3::ReadOnlySave& save, const Bytes& original) {
+    using PokeVault::Inventory::ClassicPocket;
+    namespace R2 = qamatrix::round2;
+    const auto guarded = [&](std::string_view cell, std::string note, const std::function<void(Errors&)>& body) {
+        Errors e;
+        try {
+            body(e);
+        } catch (const std::exception& ex) {
+            e.expect(false, std::string("exception: ") + ex.what());
+        }
+        row.check(cell, e.list, std::move(note));
+    };
+    const bool frlg = spec.frlg;
+
+    guarded("bag-add",
+            std::string("classicItemQuantityRule + decidePick: Antidote StageNew x1 (no numpad) -> "
+                        "FRLGReadOnlyTrainer::stagedInventory()->stageInventoryQuantity -> staged Items Antidote x1 "
+                        "(strict reparse); row EditQuantity [1,") + (frlg ? "999" : "99") +
+                "]; held Potion -> FocusExisting, nothing staged; Old Rod StageNew x1 then FixedQuantity, x2 refused",
+            [&](Errors& e) {
+        std::string error;
+        auto bridge = L::FRLGReadOnlyTrainer::create(save, error);
+        e.expect(bridge && bridge->stagedInventory(), "FRLGReadOnlyTrainer staged inventory: " + error);
+        if (!bridge || !bridge->stagedInventory()) return;
+        auto& inv = *bridge->stagedInventory();
+        const auto game = PokeBank::UIModel::classicInventoryGame(spec.gameId);
+        e.expect(game.has_value(), std::string("classicInventoryGame(") + spec.gameId + ")");
+        if (!game) return;
+        // ClassicInventoryOverlay.cpp gen3Pouch: Items / Key Items map one to one.
+        const auto pouch = [](size_t pocket) {
+            return static_cast<ClassicPocket>(pocket) == ClassicPocket::KeyItems ? G3::InventoryPouch::KeyItems
+                                                                                 : G3::InventoryPouch::Items;
+        };
+        const auto item = [&](std::string name, ClassicPocket pocket, uint16_t id) {
+            R2::BagItem i;
+            i.name = std::move(name);
+            i.id = id;
+            i.rule = PokeBank::UIModel::classicItemQuantityRule(*game, pocket, id);
+            i.pocket = static_cast<size_t>(pocket);
+            return i;
+        };
+        R2::BagBackend b;
+        b.held = [&](const R2::BagItem& i) { return inv.stagedInventoryQuantity(pouch(i.pocket), i.id); };
+        b.state = [&b](const R2::BagItem& i) { return R2::BagAdd::PocketState{b.held(i), 0, 0}; };
+        b.stage = [&](const R2::BagItem& i, uint16_t q, std::string& err) {
+            return inv.stageInventoryQuantity(pouch(i.pocket), i.id, q, err);
+        };
+        b.bytes = [&inv] { return inv.stagedBytes(); };
+        for (const auto& f : R2::bagAddChecks(b, item("Antidote", ClassicPocket::Items, 14),
+                                              item("Potion", ClassicPocket::Items, 13),
+                                              item("Old Rod", ClassicPocket::KeyItems, 262)))
+            e.expect(false, f);
+        const auto out = inv.finalizedBytes(error);
+        e.expect(!out.empty(), "finalize: " + error);
+        if (!out.empty()) {
+            auto again = G3::StagedInventoryEditor::create(out, spec.game, error);
+            e.expect(again && again->stagedInventoryQuantity(G3::InventoryPouch::Items, 14) == 1 &&
+                         again->stagedInventoryQuantity(G3::InventoryPouch::KeyItems, 262) == 1,
+                     "reparsed Bag lacks Antidote x1 / Old Rod x1: " + error);
+        }
+        e.expect(inv.originalBytes() == original, "Bag workspace original differs from the source");
+    });
+
+    guarded("reroll",
+            "Y = SharedStatReroll::reroll into Session working IVs/EVs -> keep, x" + std::to_string(R2::kRerolls) +
+                " per case: Bulbasaur shiny/non-shiny x male/female and Unown shiny/non-shiny keep shiny, gender, "
+                "PID and Unown letter; IVs/EVs land as rolled",
+            [&](Errors& e) {
+        std::string error;
+        auto bridge = L::FRLGReadOnlyTrainer::create(save, error);
+        e.expect(bridge && bridge->stagedPokemon(), "FRLGReadOnlyTrainer staged Pokemon: " + error);
+        if (!bridge || !bridge->stagedPokemon()) return;
+        auto& editor = *bridge->stagedPokemon();
+        namespace Reroll = PokeBank::UIModel::SharedStatReroll;
+        Reroll::Rng rng(0x5EED3u);
+        struct Case { uint16_t species; bool shiny; std::optional<uint8_t> gender; };
+        const Case cases[] = {
+            {0, false, 0}, {0, false, 1}, {0, true, 0}, {0, true, 1}, {201, false, std::nullopt}, {201, true, std::nullopt},
+        };
+        for (const auto& k : cases) {
+            auto rec = editor.boxedPokemon(0, 0, error);
+            e.expect(rec.has_value(), "Box 1/1 unreadable: " + error);
+            if (!rec) return;
+            SessionModel::Session setup;
+            setup.begin(*rec, SessionModel::Mode::Edit);
+            if (k.species) e.expect(setup.setSpecies(k.species, spec.gameId), "setSpecies " + str(k.species));
+            e.expect(setup.setShiny(k.shiny), "setShiny");
+            if (k.gender) e.expect(setup.setGender(*k.gender), "setGender " + str(*k.gender));
+            if (!setup.keep(editor, 0, 0, error)) {
+                e.expect(false, "Keep start state: " + error);
+                continue;
+            }
+            rec = editor.boxedPokemon(0, 0, error);
+            if (!rec) { e.expect(false, "Box 1/1 unreadable: " + error); return; }
+            const std::string what = "species " + str(rec->species) + (k.shiny ? " shiny" : " non-shiny");
+            e.expect(rec->shiny == k.shiny && (!k.gender || rec->gender == *k.gender) &&
+                         (!k.species || rec->species == k.species),
+                     what + ": start state not staged");
+            const auto start = *rec;
+            for (int i = 0; i < R2::kRerolls; ++i) {
+                SessionModel::Session y;
+                y.begin(*rec, SessionModel::Mode::Edit);
+                auto& w = y.working;
+                const auto next = Reroll::reroll(rng, {w.ivs, w.evs});
+                w.ivs = next.ivs;
+                w.evs = next.evs;
+                if (!y.keep(editor, 0, 0, error)) {
+                    e.expect(false, what + " Keep reroll " + str(static_cast<size_t>(i)) + ": " + error);
+                    break;
+                }
+                rec = editor.boxedPokemon(0, 0, error);
+                if (!rec) { e.expect(false, "Box 1/1 unreadable: " + error); return; }
+                e.expect(rec->ivs == next.ivs && rec->evs == next.evs, what + ": rolled IVs/EVs not staged");
+                e.expect(rec->shiny == start.shiny && rec->gender == start.gender && rec->pid == start.pid &&
+                             rec->form == start.form && rec->nature == start.nature,
+                         what + ": reroll " + str(static_cast<size_t>(i)) + " changed shiny/gender/PID/letter");
+            }
+        }
+        e.expect(editor.originalBytes() == original, "Pokemon workspace original differs from the source");
+    });
+}
 
 void runVersion(qamatrix::Matrix& m, const Spec& spec) {
     Row row(m, spec.version);
@@ -433,6 +569,7 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
         const auto& save = *src->save;
         std::string trainerError;
         auto trainer = L::FRLGReadOnlyTrainer::create(save, trainerError);
+        runRound2Gen3(row, spec, save, original);
 
         // ---- trainer-name / trainer-gender ----------------------------------------------------
         {
