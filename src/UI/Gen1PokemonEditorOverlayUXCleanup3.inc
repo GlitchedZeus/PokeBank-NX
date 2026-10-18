@@ -5,6 +5,7 @@
 #include "UI/SharedEditorChrome.h"
 #pragma pop_macro("drawFooter")
 #include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicFieldColor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
@@ -487,7 +488,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(leftX + 18, contentY + 292, "Lv " + std::to_string(level) + "   EXP " +
                 std::to_string(add ? draftExperience(state.draft) : pokemon->experience), Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftX + 18, contentY + 326, shiny ? "Shiny: Yes" : "Shiny: No",
-                shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                ::UI::ClassicFieldColor::shinyValueColor(false), TextStyle::Caption);
     fb.drawText(leftX + 18, contentY + 360, add ? "Draft: Not staged yet" : "State: Staged workspace",
                 Colors::Accent, TextStyle::Caption);
     fb.drawText(leftX + 18, contentY + 386, "Source save: Immutable", Colors::TextDim, TextStyle::Caption);
@@ -633,7 +634,8 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
             const bool shiny = ux3IsShiny(*pokemon);
             if (auto* sprite = SpriteManager::getIconSprite(pokemon->species, shiny); sprite && sprite->data)
                 fb.drawSpriteStaticContained(cx + 28, cy + 6, 56, 56, sprite->width, sprite->height, sprite->data, sprite->channels);
-            fb.drawText(cx + 7, cy + 68, Names::getSpeciesName(pokemon->species), shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+            fb.drawText(cx + 7, cy + 68, Names::getSpeciesName(pokemon->species), Colors::Text, TextStyle::Caption);
+            if (shiny) fb.drawShinyMark(cx + cellW - 30, cy + 6, 14, Colors::ShinyStar);
         } else if (i == writable) {
             fb.drawText(cx + 7, cy + 56, "Empty • writable", Colors::Accent, TextStyle::Caption);
         } else {

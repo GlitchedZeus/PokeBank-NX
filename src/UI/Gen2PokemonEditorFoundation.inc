@@ -1,4 +1,6 @@
 #include "UI/SharedEditorChrome.h"
+#include "UI/ClassicFieldColor.h"
+#include "UI/ClassicGameContext.h"
 // Generation II shared DETAILS | VALUES | MOVES workspace.
 // This stays layered over the accepted GSC discovery/export/action-sheet implementation.
 // Browsing edits only a local session record; StagedEditor is touched solely by Add / Keep.
@@ -837,7 +839,8 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
                     state.panel == Foundation::Panel::Values && state.row == row
                         ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(i)].second,
-                    i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                    ::UI::ClassicFieldColor::shinyValueColor(state.panel == Foundation::Panel::Values && state.row == row),
+                    TextStyle::Caption);
     }
     fb.drawText(x + 18, y + h - 27, "* HP DV derived; one Special DV feeds SpA + SpD",
                 Colors::TextDim, TextStyle::Caption);
@@ -994,7 +997,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::string title = state.mode == Mode::Create ? "Create Pokemon — GEN II DRAFT"
                                                          : "Edit Pokemon — GEN II STAGED";
     fb.drawText(workspaceX + 24, workspaceY + 14, title, Colors::Text, TextStyle::Heading);
+    const std::string game(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
     fb.drawText(workspaceX + 24, workspaceY + 50,
+                (game.empty() ? std::string() : game + "  •  ") +
                 "DETAILS | VALUES | MOVES  •  Source save immutable  •  Party mutation deferred",
                 Colors::TextDim, TextStyle::Caption);
 

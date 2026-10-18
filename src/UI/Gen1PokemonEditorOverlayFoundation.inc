@@ -1,5 +1,7 @@
 #include "UI/ClassicTrainerSessionInput.h"
 #include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicFieldColor.h"
+#include "UI/ClassicGameContext.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen12DVReroll.h"
@@ -533,8 +535,10 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (state.mode == UX2Mode::Edit) title = "Edit Pokemon — STAGED";
     if (add) title = "Create Pokemon — DRAFT";
     fb.drawText(x + 24, y + 14, title, Colors::Text, TextStyle::Heading);
+    const std::string game(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
     fb.drawText(x + 24, y + 46,
                 "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1) +
+                (game.empty() ? std::string() : "   •   " + game) +
                 "   •   PKSE three-panel workspace   •   Source save immutable",
                 Colors::TextDim, TextStyle::Caption);
 
@@ -608,7 +612,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const bool levelSelected = foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 6;
     if (shinySelected) fb.drawSelectionHighlight(gridX, gridY + 304, midW - 20, 40);
     fb.drawText(gridX + 12, gridY + 315, "Shiny", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 130, gridY + 315, shiny ? "Yes" : "No", shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+    fb.drawText(gridX + 130, gridY + 315, shiny ? "Yes" : "No", ::UI::ClassicFieldColor::shinyValueColor(shinySelected), TextStyle::Caption);
     if (levelSelected) fb.drawSelectionHighlight(gridX, gridY + 350, midW - 20, 40);
     fb.drawText(gridX + 12, gridY + 361, "Level", Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 361, std::to_string(level), Colors::Text, TextStyle::Caption);
