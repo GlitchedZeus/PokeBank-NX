@@ -955,6 +955,18 @@ constexpr const char* kFireRedScyther =
 // LeafGreen: Bellsprout L13, Route 5 (met location 105), a LeafGreen-only grass slot (b6228).
 constexpr const char* kLeafGreenBellsprout =
     "6529AEEFD0FCDD0DBCBFC6C6CDCACCC9CFCE0202CED9E7E8D9E6FF00EA64000045000000ED0400000046000016004A00230000000A28140000000000000000000000000000698D224140492500000000";
+
+// Colosseum/XD fixtures shared with tests/test_legality_gen3.cpp (PKHeX: VALID). Both are
+// Shadow Pokemon whose team lock the Gen3Cxd judge verifies; the e-Reader shadows carry
+// fixed zero IVs, which PKHeX only calls Fishy (IVAllEqual_0), so they stay Incomplete.
+constexpr const char* kColoShadowBayleef =
+    "3F4B16DB8CFE8C44BCBBD3C6BFBFC0FF00000202CED9E7E8D9E6FF00130F0000990000000055000000460000F100EB004B0022000505190F00000000000000000000000000039E27D9249C0C00000001";
+constexpr const char* kXdShadowZapdos =
+    "22F2467BC84C2639D4BBCABEC9CDFF0000000202CED9E7E8D9E6FF00285F0000910000005A620200002300004601E2003F0155001E28280F000000000000000000000000004AB227BAA5CD0500000081";
+constexpr const char* kEReaderTogepi =
+    "065CEF6E023F32FA648A9CAEFF00000000000102635D64FF000000006C290000AF00000000190000004600007600CC00BA0019010A140A0A000000000000000000000000008094270000000000000001";
+constexpr const char* kEReaderMareep =
+    "684E6DDC7B2ED1E07278AE9DFF00000000000102635D64FF0000000049E20000B300000020AB000000460000570054005600B2000A1E14280000000000000000000000000080A5270000000000000001";
 // LeafGreen: Pinsir L18, the Celadon Game Corner prize (b13480).
 constexpr const char* kLeafGreenPinsir =
     "0C4D378AB71EE760CAC3C8CDC3CCFF0000000202CED9E7E8D9E6FF0092A000007F0000007A1C0000004600000B007400140045001E1E1414000000000000000000000000005E92223286CB0300000000";
@@ -1144,7 +1156,7 @@ void cases() {
     using SG = G3::SourceGame;
     const auto noEncounter = invalid("Unable to match an encounter from the origin game");
     const auto enigma = warning("Enigma Berry: legality depends on the e-Reader berry stored in the original save");
-    const auto colosseumXD = warning("Colosseum/XD origin; Gen III cartridge rules cannot verify this Pokemon");
+    const auto eReaderIvs = warning("All IVs are 0");
 
     // Positive: each title's own record read from that title's save bytes.
     record("Ruby", "positive", "Zangoose L16, Route 114, Ruby-only slot, from Ruby save bytes",
@@ -1220,16 +1232,17 @@ void cases() {
     // Unknown: the history depends on data outside the record.
     record("Ruby", "unknown", "Zangoose holding an Enigma Berry (the berry lives in the save)", expect(O::Incomplete, {enigma}),
            run(edited(kRubyZangoose, [](std::vector<uint8_t>& pk) { setLe16(pk, kItem, kEnigmaBerry); }), "ruby_gba"));
-    record("Sapphire", "unknown", "Seviper with origin Colosseum/XD (version 15)", expect(O::Incomplete, {colosseumXD}),
-           run(withVersion(kSapphireSeviper, kColosseumXD), "sapphire_gba"));
-    record("Emerald", "unknown", "Colosseum/XD-origin record in box 1 of an Emerald save",
-           expect(O::Incomplete, {colosseumXD}),
-           runSave(save(F::Emerald, withVersion(kEmeraldSmeargle, kColosseumXD)), SG::EmeraldGBA));
+    // The Japanese e-Reader shadows (Colosseum Card e Room) have fixed zero IVs; PKHeX calls them
+    // VALID with Fishy IVAllEqual_0, and the engine keeps them Incomplete (review item 15-A).
+    record("Sapphire", "unknown", "e-Reader shadow Togepi (fixed zero IVs) held in a Sapphire save",
+           expect(O::Incomplete, {eReaderIvs}), run(fromHex(kEReaderTogepi), "sapphire_gba"));
+    record("Emerald", "unknown", "e-Reader shadow Togepi in box 1 of an Emerald save", expect(O::Incomplete, {eReaderIvs}),
+           runSave(save(F::Emerald, fromHex(kEReaderTogepi), kTesterId), SG::EmeraldGBA));
     record("FireRed", "unknown", "prize Scyther holding an Enigma Berry", expect(O::Incomplete, {enigma}),
            run(edited(kFireRedScyther, [](std::vector<uint8_t>& pk) { setLe16(pk, kItem, kEnigmaBerry); }),
                "firered_gba"));
-    record("LeafGreen", "unknown", "Bellsprout with origin Colosseum/XD (version 15)", expect(O::Incomplete, {colosseumXD}),
-           run(withVersion(kLeafGreenBellsprout, kColosseumXD), "leafgreen_gba"));
+    record("LeafGreen", "unknown", "e-Reader shadow Mareep (fixed zero IVs) held in a LeafGreen save",
+           expect(O::Incomplete, {eReaderIvs}), run(fromHex(kEReaderMareep), "leafgreen_gba"));
 
     // Original game: the expected verdict follows from the pret disassemblies.
     // pokeruby src/data/wild_encounters.json:6292-6349: Route114_Ruby has Zangoose at L15-17 only.
@@ -1296,6 +1309,24 @@ void cases() {
     record("LeafGreen", "title-specific", "the Emerald Smeargle traded into a LeafGreen save",
            expect(O::NoProblemsFound),
            runSave(save(F::FireRedLeafGreen, fromHex(kEmeraldSmeargle), kTesterId), SG::LeafGreenGBA));
+
+    // Title-specific: version 15 (Colosseum/XD) routes the record to the Gen3Cxd judge. A real
+    // Shadow Pokemon certifies in any GBA save; a GBA record relabelled with version 15 matches no
+    // Orre encounter and is Invalid (PKHeX: EncInvalid).
+    record("Sapphire", "title-specific", "Colosseum Shadow Bayleef (team lock verified) traded into a Sapphire save",
+           expect(O::NoProblemsFound),
+           runSave(save(F::RubySapphire, fromHex(kColoShadowBayleef), kTesterId), SG::SapphireGBA));
+    record("Sapphire", "title-specific", "the Sapphire Seviper with version Colosseum/XD (no Orre Seviper encounter)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kSapphireSeviper, kColosseumXD), "sapphire_gba"));
+    record("Emerald", "title-specific", "XD Shadow Zapdos (team lock verified) traded into an Emerald save",
+           expect(O::NoProblemsFound), runSave(save(F::Emerald, fromHex(kXdShadowZapdos), kTesterId), SG::EmeraldGBA));
+    record("Emerald", "title-specific", "the Emerald Smeargle with version Colosseum/XD, in box 1 of an Emerald save",
+           expect(O::Invalid, {noEncounter}),
+           runSave(save(F::Emerald, withVersion(kEmeraldSmeargle, kColosseumXD)), SG::EmeraldGBA));
+    record("LeafGreen", "title-specific", "Colosseum Shadow Bayleef traded into a LeafGreen save", expect(O::NoProblemsFound),
+           runSave(save(F::FireRedLeafGreen, fromHex(kColoShadowBayleef), kTesterId), SG::LeafGreenGBA));
+    record("LeafGreen", "title-specific", "the LeafGreen Bellsprout with version Colosseum/XD (no Orre Bellsprout encounter)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kLeafGreenBellsprout, kColosseumXD), "leafgreen_gba"));
 
     // Title-specific: the same bytes from the Bank carry no source game and are never certified.
     const std::pair<const char*, const char*> bank[] = {{"Ruby", kRubyZangoose},

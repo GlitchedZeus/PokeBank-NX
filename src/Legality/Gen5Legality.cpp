@@ -667,7 +667,12 @@ void checkCommon(const Pk5& p, const Template& t, const Personal& cur, std::vect
     const int index = abilityIndex(p, cur);
     switch (t.ability) {
         case Any12: if (number == 4) fails.push_back("has its hidden ability, which this encounter cannot give"); break;
-        case OnlyHidden: if (number != 4) fails.push_back("lacks the hidden ability this encounter always gives"); break;
+        case OnlyHidden:
+            // PKHeX IsEdgeCaseBasculin decides a Blue-Striped Basculin without the flag by its
+            // ability alone (abilities() below), before the template's permission is consulted.
+            if (number != 4 && !(p.species == 550 && p.form == 1 && p.ability != 91))
+                fails.push_back("lacks the hidden ability this encounter always gives");
+            break;
         case OnlyFirst:
             if (number == 4) fails.push_back("has its hidden ability, which this encounter cannot give");
             else if (number != 1 && index != 0) fails.push_back("ability slot is not the fixed first slot");
@@ -986,6 +991,11 @@ void Gen5Analyzer::abilities() {
         if ((p_.version == 22 || p_.version == 23) && match_.kind == Kind::Egg) expect = 120;
         else if ((p_.version == 20 || p_.version == 21) && !(match_.kind == Kind::Trade)) expect = 120;
         if (p_.ability != expect) a_.invalid(CheckIdentifier::Ability, "Blue-Striped Basculin cannot have this ability from this game and encounter");
+        else if (match_.ability == OnlyHidden)
+            // PKHeX returns VALID here, but every Dream World Pokemon carries its hidden ability.
+            // Without original-game evidence for the Dream World side this stays a Warning.
+            a_.warn(CheckIdentifier::Ability, "Blue-Striped Basculin without its hidden ability matched a Dream World "
+                                              "encounter that gives the hidden ability; PKHeX accepts it");
         return;
     }
     if (p_.ability != a0 && p_.ability != a1 && p_.ability != ah) {

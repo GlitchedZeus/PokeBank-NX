@@ -367,6 +367,26 @@ int main() {
     // Hidden-ability flag with a slot 1/2 ability (docs/legality/PKHEX_DISAGREEMENT_REVIEW.md).
     // m9008-ability from the oracle's `generate 1 4`: Scizor matching an Entree Forest
     // (hidden-ability-only) template of Scyther, flag set, Technician instead of Light Metal.
+    // m46984-metlocation (CI seed differential): a White 2 Blue-Striped Basculin with Rock Head
+    // and no hidden-ability flag, matched to the B2/W2 Dream World Basculin. PKHeX: VALID
+    // (IsEdgeCaseBasculin checks the ability before the OnlyHidden permission). It must never
+    // read Invalid; it stays a Warning because the Dream World template gives the hidden ability.
+    {
+        const auto basculin = fromHex("6D21B61F0000058826020000D6FB6724E803000046450002000000000000000000000000000000003700FD001D002C00190A0F19000000009E822215000000000A12000000000000420061007300630075006C0069006E00FFFF0000000000160000000000000000540065007300740065007200FFFF00000000001A0A1200004B0000040A000000");
+        const auto r = Legality::analyzePk5(basculin, {.encrypted = false});
+        if (has(r, Severity::Invalid) || !hasText(r, Severity::Warning, "Blue-Striped Basculin without its hidden ability") ||
+            r.verdict() != Verdict::Incomplete)
+            fail("Blue-Striped Basculin Rock Head from the Dream World: expected a Warning, no Invalid", r);
+        // Reckless (120) on the same non-egg B2/W2 record: PKHeX AbilityUnexpected, Invalid.
+        auto reckless = basculin;
+        reckless[0x15] = 120;
+        refreshChecksum(reckless);
+        if (Legality::analyzePk5(reckless, {.encrypted = false}).verdict() != Verdict::Invalid)
+            fail("Blue-Striped Basculin Reckless from a B2/W2 non-egg encounter: expected Invalid",
+                 Legality::analyzePk5(reckless, {.encrypted = false}));
+        checked += 2;
+    }
+
     // PKHeX: VALID (EncounterStatic5Entree:212, Ability:AbilityFlag). No original-game
     // evidence shows Gen V cannot produce it, so it is a Warning, never Invalid.
     {
