@@ -24,7 +24,7 @@ device acceptance.
 | E03 Origin & Legality wording | QA (CG03, enforced) | CG03 PASS on 7fea1797 (run 38947904299) |
 | E11 shiny vs non-shiny rerolls | R (phase 10/13) | lane push `951a8993`: `tests/test_reroll_mechanics_gen15.cpp` (100 rerolls per case, every generation), `docs/REROLL_MECHANICS.md`; Gen III `rerollPreservingShiny` and Gen IV `rerollPid` defects fixed there |
 | L06 party/summary taps | 2R (phase 13) | none yet |
-| S04 Gen V Review/Discard/Export | S (phase 12) | lane push `0f132eb`: `tests/test_gen5_review_discard_export_trace.cpp`, 360 checks on W/B/W2/B2, no production defect found. Retest notes: a Move appears in Review as two rows ("Clone to Box" + "Remove from Box"); Export Copy always also writes `EXPORT_MANIFEST.txt` |
+| S04 Gen V Review/Discard/Export | S (phase 12) | lane push `0f132eb`: `tests/test_gen5_review_discard_export_trace.cpp`, 372 checks on W/B/W2/B2, no production defect found. Retest notes: a Move appears in Review as two rows ("Clone to Box" + "Remove from Box"); Export Copy always also writes `EXPORT_MANIFEST.txt` |
 | S06 exported copy round-trip in an emulator | QA / owner (device only) | host export contracts C1–C5 PASS (`tests/test_qa_export_contracts.cpp`) |
 
 | PASS (owner, 42) | Lane | Guard |

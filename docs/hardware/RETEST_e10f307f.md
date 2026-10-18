@@ -49,7 +49,7 @@ Detailed steps: [PHASE13_UNVERIFIED_STEPS.md](PHASE13_UNVERIFIED_STEPS.md).
 | [ ] | E03 | Origin & Legality heading in Gen I–V | CG03 (enforced since round 1) |
 | [ ] | E11 | Rerolls keep the requested Shiny / Gender (and Gen II Unown letter) | matrix `reroll` (all 20 versions), Lane R `tests/test_reroll_mechanics_gen15.cpp`. Expected: in Gen I/II a shiny and a non-shiny can never share DVs (shininess is the DV pattern); in Gen III–V identical IVs on a shiny and a non-shiny are valid. |
 | [ ] | L06 | Party / summary taps open the right Actions screen | CG11 (no generic sheet / modal in a Gen I–V session) |
-| [ ] | S04 | Gen V Review / Discard / Export | Lane S `tests/test_gen5_review_discard_export_trace.cpp` (360 checks on W/B/W2/B2, no defect found). See notes in §5. |
+| [ ] | S04 | Gen V Review / Discard / Export | Lane S `tests/test_gen5_review_discard_export_trace.cpp` (372 checks on W/B/W2/B2, no defect found). See notes in §5. |
 | [ ] | S06 | Exported edited save loads in an emulator. The app never writes to emulator saves. To verify: copy `sdmc:/switch/PokeBank-NX/exports/…/edited.<ext>` into the emulator's save folder yourself (keep a backup of your own save first), load the game, check the edits. | export contract C2 (strict reparse as the same game). Device / emulator only otherwise. |
 
 ## 3. New this round (owner's requests) — check on device
