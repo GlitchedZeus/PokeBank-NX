@@ -1306,9 +1306,9 @@ void Analyzer::verifyForm() {
     // FormVerifier.cs:150-154 (Shaymin: FormParty unless the slot is a party slot). A 136-byte
     // record is a stored (PC) record. Platinum reverts Shaymin to Land Forme in every PC store
     // function (pokeplatinum src/pc_boxes.c:59-110; the box UI stores through them,
-    // src/applications/pc_boxes/box_app_manager.c:3952-4017), in the Day Care (src/daycare.c:112),
+    // src/applications/pc_boxes/box_app_manager.c:3952-4017), in the Day Care (src/overlay005/daycare.c:112),
     // at the GTS deposit (src/gts_application/screens/deposit.c:994-998) and in the trade room
-    // (src/trade_room/application.c:610-623). HG/SS revert only party Shaymin (pokeheartgold
+    // (src/applications/trade_room/application.c:623). HG/SS revert only party Shaymin (pokeheartgold
     // src/pokemon.c:3574-3610, src/get_egg.c:93); their PC store functions
     // (src/pokemon_storage_system.c:54-100) leave the form alone and their box UI is not in the
     // decomp. Every game runs the Wii link (Ranch, Battle Revolution) from data/eoo.dat
@@ -1445,10 +1445,10 @@ void Analyzer::verifyMovePP() {
         // Battle Box slot is OnlyHealed). Every PC store function heals PP: pokeplatinum
         // src/pc_boxes.c:59-110 (callers: box UI src/applications/pc_boxes/box_app_manager.c:3952-4017,
         // GTS src/gts_application/screens/network_handler.c:1284-1328, catching show
-        // src/scrcmd_catching_show.c:69, battle capture src/battle/battle_script.c:10748),
+        // src/scrcmd_catching_show.c:70, battle capture src/battle/battle_script.c:10748),
         // pokeheartgold src/pokemon_storage_system.c:54-100 (src/overlay_bug_contest.c:227,
         // src/scrcmd_12.c:68, src/battle/battle_command.c:7025), pokediamond
-        // arm9/src/pokemon_storage_system.c:47-80 (arm9/src/scrcmd_13.c:73). The D/P and HG/SS box UIs
+        // arm9/src/pokemon_storage_system.c:46-90 (arm9/src/scrcmd_13.c:73). The D/P and HG/SS box UIs
         // and the Wii-link module data/eoo.dat are outside the decomps, so a 136-byte (stored) record
         // below full PP is a Warning rather than PKHeX's Invalid.
         else if (!pk_.party && move != 0 && pk_.pp[i] < healed)

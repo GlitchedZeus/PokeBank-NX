@@ -402,43 +402,130 @@ SoulSilver static Raikou, not fateful, transferred with met location 30012).
   `VerifyTransferLegalityG3` requires 30001). The CI record is now a fixture in
   `tests/test_legality_gen5.cpp` (`transfer-crown-nonfateful`).
 
-## 14. Gen IV met-location fields that disagree (keep, found by the title matrix)
+## 14. Gen IV met-location fields that disagree (keep; re-investigated against every write path)
 
 Found by the 20-title matrix (`TITLE_TEST_MATRIX.md`, Gen IV rows): a Platinum Giratina-Origin
 with 117 in the D/P met-location field, and HeartGold and SoulSilver records with 178 there, read
-"No problems found". PKHeX calls them VALID too.
+"No problems found". PKHeX calls them VALID too. Re-investigated for the Gen I-V campaign: every
+write of either field in the three Gen IV decomps, Pal Park, eggs, gifts, in-game trades, the
+Pokéwalker, external software, PKHeX's converters and PKHeX's own .pk4 fixtures. The rule is kept
+with its scope unchanged; the scope is now stated exactly and every witness is listed.
 
-- **The games.** A PK4 has two met-location fields: the D/P field (0x80) and the Pt/HG/SS field
-  (0x46). Platinum and HG/SS write a met location only through one setter, which writes both: a
-  place D/P know (1-111, 2000-2010, 3000-3076; pokeplatinum `src/unk_02017038.c:38-45`,
-  pokeheartgold `asm/unk_02017FAC.s:68-97`) goes into both, and any other place puts Faraway Place
-  (3002) in the D/P field (pokeplatinum `src/pokemon.c:1732-1740`, pokeheartgold
-  `src/pokemon.c:1286-1292`). Neither decomp writes either field anywhere else: every other write
-  is `Pokemon_SetValue`/`BoxPokemon_SetValue` (Platinum) or `SetMonData`/`SetBoxMonData` (HG/SS)
-  through that setter, including gifts and events (pokeplatinum `src/unk_02092494.c:749-900`).
-  The games read the D/P field unless it holds 3002 (pokeplatinum `src/pokemon.c:1168-1174`,
-  pokeheartgold `src/pokemon.c:826-827`). D/P never write the Pt/HG/SS field, and a non-egg
-  Pokémon's met location is not rewritten later.
-- **Left out.** Pal Park records (PKHeX's own rule covers them, `MiscVerifierG4.cs:35-45`) and
-  egg-origin records (hatching in D/P rewrites the D/P field alone). A gift received in D/P keeps
-  the template's Pt/HG/SS field, and all 590 Gen IV event templates in PKHeX's database
-  (`mgdb/wc4.pkl`, decoded) hold 0 there, so the rule does not reach them. My Pokémon Ranch
-  writes its gifts on the Wii, which has no decomp, so a Ranch record only gets a Warning.
-- **Real records.** All 29 PK4 files in PKHeX's test suite (`Tests/PKHeX.Core.Tests/Legality`)
-  satisfy the rule: the Platinum and HG/SS ones hold either the same place in both fields or 3002
-  with the HG/SS place, and the D/P ones hold 0 in the Pt/HG/SS field.
+- **The rule.** A native (version 10, 11, 12, 7, 8) non-egg PK4 whose Pt/HG/SS met-location field
+  (0x46) is set and whose egg-location fields (0x44, 0x7E) are both 0 must hold in the D/P
+  met-location field (0x80) exactly what Pt/HG/SS write: the same place when D/P know it (1-111,
+  2000-2010, 3000-3076), Faraway Place (3002) otherwise. Pal Park records (origin 1-5, 15) are
+  PKHeX's own rule (`MiscVerifierG4.cs:35-45`, ported). A My Pokémon Ranch gift gets a Warning
+  instead of Invalid. `Gen4Legality.cpp` `verifyMisc` (:1352-1371), oracle predicate
+  `met_location_fields` in `tools/pkhex_gen34_diff/summarize.py`.
+- **The setter.** Platinum: `src/pokemon.c:1732-1740` (`MON_DATA_MET_LOCATION` and
+  `MON_DATA_MET_LOCATION_PTHGSS` share one case: `sub_0201708C(value)` true, or value 0, writes the
+  value into both fields; otherwise 3002 into the D/P field and the value into the Pt/HG/SS field);
+  the egg-location pair has the same case at :1722-1730; `src/unk_02017038.c:38-45` is the
+  D/P-known test. HG/SS: `src/pokemon.c:1285-1294` (met pair) and :1275-1284 (egg pair) with
+  `LocationIsDiamondPearlCompatible`; `MAPSEC_MYSTERY_ZONE` (0) also goes into both. D/P:
+  `pokediamond arm9/src/pokemon.c` writes only the D/P field (the Pt/HG/SS field does not exist in
+  its data block B accessors). The games read the D/P field unless it holds 3002 (pokeplatinum
+  `src/pokemon.c:1168-1174`, pokeheartgold `src/pokemon.c:826-827`).
+- **Every write path goes through the setter.** Platinum: all met/egg location writes are
+  `UpdateBoxMonStatusAndTrainerInfo` strategies 0-6 (`src/unk_02092494.c:440-590`, calling
+  `BoxPokemon_SetValue(MON_DATA_MET_LOCATION/EGG_LOCATION)`), whose callers are the capture path
+  (`src/pokemon.c:4654`, strategy 0), in-game trades (`src/overlay006/npc_trade.c:147`, 1), Pal Park
+  catching show (`src/scrcmd_catching_show.c:69`, 2: met location 55), Day Care egg
+  (`src/overlay005/daycare.c:706`, egg strategy; :769 strategy 3 gift), Mystery Gift
+  (`src/scrcmd_mystery_gift.c:290`, 4: `SpecialMetLoc_GetId(2, x)` = 3000+x), link-traded egg
+  (`src/overlay109/ov109_021D0D80.c:3448`, 5: met 2002 into both fields), hatch
+  (`src/egg_hatch.c:198`, 6), Battle Frontier opponents (`src/overlay104/frontier_opponents.c:334`),
+  link trade (`src/applications/trade_room/application.c:2452`). Pal Park first copies the GBA met
+  location (`src/main_menu/gba_pokemon.c:1029-1030`, through the same setter) and then strategy 2
+  overwrites it with 55. HG/SS: `BoxMonSetTrainerMemo` strategies (`src/trainer_memo.c:703-840`;
+  case 2 at :744-746 is Pal Park) called from `src/pokemon.c:3722` (capture), `src/npc_trade.c:230`,
+  `src/scrcmd_12.c:67` (Pal Park), `src/get_egg.c:593` and :634 (Day Care egg and gift egg),
+  `src/hatch_egg_task.c:56` (hatch), `src/scrcmd_mystery_gift.c:300` (gift: external location
+  `sub_02017FE4(MAPSECTYPE_EXTERNAL, ...)`). The Pokéwalker returns a Pokémon whose met location is
+  written by the same setter (course location 233, D/P-known: both fields). No decomp writes
+  `MetLocation_DP`, `MetLocation_PtHGSS`, `EggLocation_DP` or `EggLocation_PtHGSS` anywhere else.
+- **Eggs are left out, with a reason.** A traded egg in Pt/HG/SS has met location 2002 in both
+  fields while an egg; hatching in D/P rewrites the D/P field alone (D/P hatch strategy), so a
+  hatched record can legitimately hold a D/P hatch place in 0x80 and 2002 (or the Pt/HG/SS hatch
+  place) in 0x46. The rule therefore applies only when both egg-location fields are 0 (never an
+  egg). PKHeX's own hatched-egg fixtures confirm the pattern (below).
+- **External software.** My Pokémon Ranch writes its gifts on the Wii (no decomp): a Ranch record
+  that fails the pair test is a Warning. Pokémon Battle Revolution copies the record back to the DS
+  verbatim and Pokémon Ranger's Manaphy arrives as a Mystery Gift egg (strategy 4 in both games);
+  neither can produce a disagreeing non-egg pair. The DS side of every Wii link runs from
+  `data/eoo.dat` (pokeplatinum `src/main_menu/main_menu.c:1317`, pokeheartgold
+  `src/application/main_menu/main_menu.c:1503`), which no decomp covers; it is why the Ranch stays a
+  Warning and why no other external path can be verified further.
 - **PKHeX.** It reads the Pt/HG/SS field first whenever it is not 0 (`G4PKM.cs:229-237`), so it
   judges the encounter by that field alone. Its setter writes both fields the way the games do
-  (`G4PKM.cs:238-258`), so every record it builds agrees. Only its mutation of the Pt/HG/SS field
-  alone (`metlocext` in the Gen III/IV oracle) builds records this rule rejects.
-- **Change.** Invalid, with the fixture `met-location-dp-field` in `tests/test_legality_gen4.cpp`
-  and the three matrix rows. The Gen III/IV differential lists these records as "deliberately
-  stricter", and only when `met_location_fields` in `tools/pkhex_gen34_diff/summarize.py`
-  confirms from the record bytes that the two fields disagree; any other record PKHeX accepts
-  and PokeBank NX calls Invalid still fails the run. The CI set of runs
-  (seeds 1-3; mutation corpus with Gen III and IV, grown Gen IV corpus, grown Gen III corpus) has
-  0 false Invalid and 0 false Valid. It lists 112 (mutation) and 109 (grown) records under this
-  rule, every one a `metlocext` mutation, on D, P, Pt, HG and SS records.
+  (`G4PKM.cs:238-258`), so every record it builds agrees. `BK4`/`RK4` `ConvertToPK4` copy both fields
+  verbatim (a Battle Revolution or Ranch record keeps what the DS game wrote). The Ranch gift
+  templates (`Encounters4DPPt.RanchGifts`: location 3000 or Sinnoh towns, version D) are D/P-known
+  places. All 590 Gen IV event templates (`mgdb/wc4.pkl`) hold 0 in the Pt/HG/SS field, so a gift
+  received in D/P never reaches the rule. Only its single-field mutation of the Pt/HG/SS field
+  (`metlocext` in the Gen III/IV oracle) builds records this rule rejects.
+- **Real records.** All 29 PK4 files in PKHeX's test suite (`Tests/PKHeX.Core.Tests/Legality`)
+  satisfy the rule (fixture driver run of this campaign): the Platinum and HG/SS ones hold either
+  the same place in both fields or 3002 with the HG/SS place, the D/P ones hold 0 in the Pt/HG/SS
+  field; the egg-origin ones show the mixed pairs described above (Primo's Wooper egg: egg DP 3002 /
+  egg ext 2014; a Platinum traded egg: met 2002 / 2002).
+- **Change.** None to the rule. Invalid, with the fixture `met-location-dp-field` in
+  `tests/test_legality_gen4.cpp` and the three matrix rows. The Gen III/IV differential lists these
+  records as "deliberately stricter", and only when `met_location_fields` in
+  `tools/pkhex_gen34_diff/summarize.py` confirms from the record bytes that the two fields disagree;
+  any other record PKHeX accepts and PokeBank NX calls Invalid still fails the run. Seed 1 of the
+  base corpus (50999 records) after this campaign's Gen IV changes: 0 false Invalid, 0 false Valid,
+  35 records under this rule, every one a `metlocext` mutation on D, P and Pt records. The predicate
+  comment is unchanged because the scope is unchanged.
+
+## 15-B. Gen IV stored-record rules PKHeX applies only with a slot origin (more lenient, Warning)
+
+PKHeX has three rules it fires only when the analysis knows the record came from a PC box (or GTS /
+Battle Box) slot: `LegalityAnalysis.IsStoredSlot` (`LegalityAnalysis.cs:87`) is true for the asked
+type and for `SlotOrigin.Ignore`, the default. Without a slot origin (the default, and what the Gen
+III/IV oracle uses) PKHeX treats the record as if it could be a party record and never fires them.
+PokeBank NX knows the slot: the Gen IV save reader builds party entities from 236-byte slots and PC
+entities from 136-byte slots (`src/Integration/Gen4/Gen4ReadOnlySave.cpp:240`), so a 136-byte
+record is a PC record.
+
+| Rule | PKHeX with a Box slot | PokeBank NX |
+|---|---|---|
+| PP below the healed maximum (`MovePPVerifier.cs:110-143`, `GetIsStoredHealed`: PK4 OnlyHealed) | Invalid `MovePPExpectHealed` | Warning per move (`Gen4Legality.cpp:1446-1456`) |
+| Shaymin Sky Forme (`FormVerifier.cs:150-154`, format <= 6) | Invalid `FormParty` | Warning (`:1308-1321`); Platinum-specific text when the save is Platinum |
+| Walking mood not 0 on an HG/SS save (`MiscVerifierG4.cs:115-134`) | Fishy `G4PartnerMoodZero` | Warning (`:1339-1344`), only for a save known to be HG/SS |
+
+- **Why not Invalid.** The verdict policy allows Invalid only when every supported acquisition
+  history is impossible. In the decomps every PC store path behaves as PKHeX assumes: Platinum's
+  three store functions heal PP and revert Shaymin (`src/pc_boxes.c:59-110`), and every Platinum
+  insertion uses them (box UI `src/applications/pc_boxes/box_app_manager.c:3952-4017`, GTS
+  `src/gts_application/screens/network_handler.c:1284-1328`, Pal Park catching show
+  `src/scrcmd_catching_show.c:70`, battle capture overflow `src/battle/battle_script.c:10748`); the
+  Day Care (`src/overlay005/daycare.c:112`), GTS deposit (`src/gts_application/screens/deposit.c:994-998`)
+  and trade room (`src/applications/trade_room/application.c:623`) also revert Shaymin. HG/SS
+  (`src/pokemon_storage_system.c:54-100`) and D/P (`arm9/src/pokemon_storage_system.c:46-90`) heal PP
+  in every store function, called from `src/overlay_bug_contest.c:227`, `src/scrcmd_12.c:68`,
+  `src/battle/battle_command.c:7025` and `arm9/src/scrcmd_13.c:73`. But the D/P and HG/SS PC box
+  applications are not in their decomps, HG/SS storage code never reverts Shaymin (only the party
+  routines do: `src/pokemon.c:3574-3610`, `src/get_egg.c:93`, `src/field/scrcmd_pokemon_misc.c:469-470`),
+  and the Wii link (My Pokémon Ranch, Battle Revolution) runs from `data/eoo.dat`, a module outside
+  every decomp. A record returned by that module could in principle hold unhealed PP or a Sky Forme.
+  So the rules mark the record as suspicious (Warning: Incomplete, never certified) and never
+  invalidate.
+- **Walking mood.** HG/SS zero it when a Pokémon becomes the walking lead (`src/follow_mon.c:1946-1992`)
+  and on Day Care entry (`src/get_egg.c:91`). D/P/Pt never write the byte and trades copy it, so the
+  check applies only when the save is known to be HeartGold or SoulSilver; with no exact source game
+  it is not applied (PKHeX likewise needs `ActiveTrainer is SAV4HGSS`).
+- **Party records.** A 236-byte record of the same bytes gets none of these; `tests/test_legality_gen4.cpp`
+  section 4c checks both sizes directly and through `Legality::analyze` for all three rules, with
+  positive and negative cases (healed PP, PP Ups raising the maximum, empty move slot, egg, Land
+  Forme, D/P form out of range, Pt vs SS vs unknown save, mood on a D/P/Pt save).
+- **Differential.** The oracle emits every PK4 as its 136 stored bytes without a slot origin
+  (`tools/pkhex_gen34_diff/oracle/Program.cs:416-430`), so these Warnings turn PKHeX-VALID records
+  with PP mutated below the maximum into "PKHeX VALID, ours Incomplete" (seed 1 base: 642 records,
+  617 `pp` and 25 `move` mutations), never into false Invalid; certification on the base corpus moved
+  from 22992/23027 (99.85%) to 22338/23015 (97.06%) with 0 false Invalid and 0 false Valid. No
+  `summarize.py` change is needed because nothing new is Invalid.
 
 ## Not disagreements (checked)
 
