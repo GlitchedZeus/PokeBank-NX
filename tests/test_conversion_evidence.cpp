@@ -1,4 +1,5 @@
 #include "Conversion/RouteEvidence.h"
+#include "test_temp_dir.h"
 
 #include <algorithm>
 #include <cassert>
@@ -208,9 +209,8 @@ bool contains(const std::vector<std::string>& values, const std::string& needle)
 } // namespace
 
 int main() {
-    const std::string base = "/tmp/pokebank-conversion-evidence-" +
-        std::to_string(static_cast<long long>(::getpid()));
-    ensureDir(base);
+    // Fresh per run (mkdtemp); base-* siblings below inherit its unique name.
+    const std::string base = PokeBankTest::freshTempBase("pokebank-conversion-evidence");
 
     const std::string sourceProfile = "account-11111111111111112222222222222222";
     const std::string destinationProfile = "account-33333333333333334444444444444444";
@@ -770,5 +770,6 @@ int main() {
         }
     }
 
+    PokeBankTest::removeTempFamily(base);
     std::cout << "Declared-loss acknowledgement + F13 persisted provenance: PASS\n";
 }
