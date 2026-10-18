@@ -26,7 +26,12 @@ struct PickerOverlayState {
     TouchPickerViewport locationViewport;
     SharedScrollbar::State moveScrollbar;       // R2-SCROLLBAR: draggable thumb on the Move chooser
     SharedScrollbar::State locationScrollbar;   // R2-SCROLLBAR: draggable thumb on Met Location
+    SharedSpeciesPicker::Chooser speciesChooser; // R2-SEARCH: live species filter + key grid
 };
+
+// Gen II offers its whole native dex (1..251); the chooser filters by the bare species name.
+constexpr auto gen2SpeciesAvailable = [](uint16_t) { return true; };
+constexpr auto gen2SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
     static PickerOverlayState picker;
@@ -51,6 +56,7 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
     if (!(down & HidNpadButton_A) || state.itemPicker || state.confirmExit) return false;
     if (state.panel == Foundation::Panel::Identity && state.row == 0) {
         picker.model.openSpecies(state.working.species, state.working.shiny);
+        picker.speciesChooser.reset();   // R2-SEARCH: every opening starts with the full dex
     } else if (state.panel == Foundation::Panel::Moves && state.column == 0) {
         picker.model.openMove(state.working.moves[static_cast<std::size_t>(state.row)],
                               static_cast<std::size_t>(state.row));
@@ -150,11 +156,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     auto& overlay = pickerStateFor(screen);
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
-        const int speciesStart = std::clamp(model.speciesChoice() - 9 / 2, 1, 251 - 9 + 1);
-        for (int i = 0; i < 9; ++i)
-            screen.touchButtons.push_back({2000 + speciesStart + i,
-                                           modal.x + 20, modal.y + 84 + i * 43,
-                                           560, 39});
+        SharedSpeciesPicker::refilter(overlay.speciesChooser, 251, gen2SpeciesAvailable, gen2SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
@@ -163,8 +165,14 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 return std::string(prefix) + Names::getSpeciesName(species);
             },
             [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
-            &latestTouchGesture());
+            &latestTouchGesture(), true, {0xFF, 0xFF}, &overlay.speciesChooser);
+        // Touch ids stay 2000 + species; the chooser publishes the rows it actually drew.
+        for (int i = 0; i < overlay.speciesChooser.rowCount; ++i) {
+            const auto& row = overlay.speciesChooser.rows[static_cast<std::size_t>(i)];
+            screen.touchButtons.push_back({2000 + row.species, row.x, row.y, row.w, row.h});
+        }
         PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec spec;
+        spec.xLabel = "Search";
         spec.yLabel = "Normal/Shiny";
         UI::SharedEditorChrome::drawPickerFooter(fb, spec);
         return;
@@ -288,15 +296,23 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int pickerCount = picker.model.kind == Gen2Picker::Kind::Species
         ? 251 : picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
     bool pickerBarConsumed = false;   // R2-SCROLLBAR: a held thumb owns this frame's touch
+    bool speciesTouchOwned = false;   // R2-SEARCH: key grid / scrollbar took this frame's touch
     if (picker.model.kind == Gen2Picker::Kind::Species) {
+        uint16_t chosen = picker.model.speciesChoice();
+        const auto handled = SharedSpeciesPicker::handleTouch(
+            picker.speciesChooser, SharedSearchInput::sample(touch), chosen, 251,
+            SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, gen2SpeciesAvailable, gen2SpeciesName);
+        picker.model.index = static_cast<int>(chosen) - 1;
+        speciesTouchOwned = handled.touch;
         // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
         // semantic preview cursor only on release so the gesture cannot accidentally activate A.
         const int dy = touch.deltaY();
-        if (touch.justReleased() && touch.dragged() &&
+        if (!speciesTouchOwned && touch.justReleased() && touch.dragged() &&
             SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
             std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
             const int steps = std::max(1, std::abs(dy) / 43);
-            picker.model.stepList(dy < 0 ? steps : -steps);
+            picker.model.index = static_cast<int>(SharedSpeciesPicker::neighbour(
+                picker.speciesChooser, chosen, dy < 0 ? steps : -steps)) - 1;
         }
     } else {
         constexpr int panelH = 568;
@@ -332,17 +348,42 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int firstTouchId = speciesIds ? 2001 : 2000;
     const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);
     int touchTap = screen.touchedButtonId(touch);
-    if (!pickerBarConsumed && touchTap >= firstTouchId && touchTap < endTouchId) {
-        if (picker.model.kind == Gen2Picker::Kind::Species)
+    if (!pickerBarConsumed && !speciesTouchOwned && touchTap >= firstTouchId && touchTap < endTouchId) {
+        if (picker.model.kind == Gen2Picker::Kind::Species) {
+            // A row tap commits that species: close the search grid so the synthesized A below
+            // is the chooser's Select, not a key press on the grid (keys phase runs next).
+            picker.speciesChooser.search.closeGrid();
             picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;
+        }
         else
             picker.model.index = std::clamp(touchTap - 2000, 0, std::max(0, pickerCount - 1));
         down |= HidNpadButton_A;
     }
 
-    const uint64_t nav = screen.controllerNavigation.apply(
+    uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+
+    if (picker.model.kind == Gen2Picker::Kind::Species) {
+        // R2-SEARCH keys phase: X / Minus toggle the search grid; while it is open the D-pad /
+        // stick, A and B type and the chooser's own B closes only the grid (the filter stays).
+        const PokeBank::UIModel::SharedPickerPaging::Keys gridKeys{
+            (nav & HidNpadButton_Up) != 0, (nav & HidNpadButton_Down) != 0,
+            (nav & HidNpadButton_Left) != 0, (nav & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+        uint16_t chosen = picker.model.speciesChoice();
+        const auto handled = SharedSpeciesPicker::handleKeys(
+            picker.speciesChooser, gridKeys, (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+            (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0, chosen, 251,
+            gen2SpeciesAvailable, gen2SpeciesName);
+        picker.model.index = static_cast<int>(chosen) - 1;
+        if (handled.keys) {
+            down &= ~(HidNpadButton_A | HidNpadButton_B | HidNpadButton_L | HidNpadButton_R |
+                      HidNpadButton_ZL | HidNpadButton_ZR);
+            nav &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right);
+        }
+    }
 
     if (down & HidNpadButton_B) {
         closePicker(screen, picker);
@@ -361,10 +402,16 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         const int listCount = picker.model.kind == Gen2Picker::Kind::Species ? 251
                             : picker.model.kind == Gen2Picker::Kind::Move ? 252
                             : picker.model.locationCount();
+        const uint16_t pagedFrom = picker.model.speciesChoice();
         if (keys.any() && listCount > 0) {
             picker.scroll.stop();
             picker.model.index = PokeBank::UIModel::SharedPickerPaging::pagedRow(
                 picker.model.index, listCount, keys);
+            // R2-SEARCH: with a species filter typed, the same keys page over the filtered list
+            // instead (computed from the choice before the whole-dex step above).
+            if (picker.model.kind == Gen2Picker::Kind::Species && picker.speciesChooser.filtered())
+                picker.model.index = static_cast<int>(SharedSpeciesPicker::paged(
+                    picker.speciesChooser, pagedFrom, keys)) - 1;
         }
         if (picker.model.kind == Gen2Picker::Kind::Species && (down & HidNpadButton_Y))
             picker.model.previewShiny = !picker.model.previewShiny;

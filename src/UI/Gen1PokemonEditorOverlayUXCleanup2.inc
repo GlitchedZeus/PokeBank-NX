@@ -44,6 +44,7 @@ struct UX2State {
     TouchPickerViewport reviewViewport;
 
     UX2Picker picker = UX2Picker::None;
+    SharedSpeciesPicker::Chooser speciesChooser;   // R2-SEARCH: live species filter + key grid
     int pickerValue = 0;
     uint16_t pickerCommittedSpecies = 1;
     int moveSlot = 0;

@@ -1229,7 +1229,6 @@ struct Gen4Editor {
     static constexpr auto generation = Shared::Generation::Gen4;
     static constexpr int kDetailRows = static_cast<int>(detailLabels.size());
     static constexpr int kMaxSpecies = 493;
-    static constexpr bool kSpeciesSearch = false;
     static constexpr bool kCompactForm = false;
     static constexpr const char* kDetailReadOnly =
         "This Generation IV field is visible but read-only in the current G4-04 slice";
@@ -1436,7 +1435,6 @@ struct Gen4Editor {
                 SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
     }
     static std::string speciesLabel(uint16_t value) { return gen4DexLabel(value); }
-    static void speciesSearch(TrainerViewScreen&, Surface::EditorState&) {}
     static std::string heldItemArtKey(TrainerViewScreen& screen, uint16_t value) {
         const auto disc = UI::ClassicMachineArtwork::artKey(screen.trainer.getGameGroup(), value);
         return disc.empty() ? Names::getItemName(value) : disc;

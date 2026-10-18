@@ -216,7 +216,6 @@ struct Gen5Editor {
     static constexpr auto generation = PokeBank::UIModel::SharedPokemonEditor::Generation::Gen5;
     static constexpr int kDetailRows = Fields::RowCount;
     static constexpr int kMaxSpecies = Fields::kMaxSpecies;
-    static constexpr bool kSpeciesSearch = true;
     static constexpr bool kCompactForm = true;
     static constexpr const char* kDetailReadOnly =
         "Language and Origin are read-only for a Generation V record in this editor";
@@ -700,22 +699,8 @@ struct Gen5Editor {
         return classicTypes5(species, 0, b2w2(screen));
     }
     static std::string speciesLabel(uint16_t value) { return EditorSurface::dexLabel(value); }
-    // X: jump to the first species whose name contains the typed text.
-    static void speciesSearch(TrainerViewScreen& screen, EditorSurface::EditorState& state) {
-        const auto r = Utils::promptText("Search Species", "Part of a species name", {}, 12);
-        if (!r.accepted || r.text.empty()) return;
-        std::string query = r.text;
-        for (auto& c : query) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        for (size_t i = 0; i < state.pickerValues.size(); ++i) {
-            std::string name = Names::getSpeciesName(state.pickerValues[i]);
-            for (auto& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-            if (name.find(query) != std::string::npos) {
-                state.pickerRow = static_cast<int>(i);
-                return;
-            }
-        }
-        screen.postStatus("No BW/B2W2 species name contains \"" + r.text + "\"", 240);
-    }
+    // R2-SEARCH: species search is the shared in-modal chooser (SharedSpeciesPicker.h), live
+    // per keystroke; the former swkbd "jump to first match" hook is retired.
     static std::string heldItemArtKey(TrainerViewScreen& screen, uint16_t value) {
         const auto disc = UI::ClassicMachineArtwork::artKey(screen.trainer.getGameGroup(), value);
         return disc.empty() ? Names::getItemName(value) : disc;
