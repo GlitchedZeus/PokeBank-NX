@@ -13,6 +13,7 @@
 #include "Names/MoveNames.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedMenuGeometry.h"
 #include "UI/SharedMoveFacts.h"
 
 #include <algorithm>
@@ -37,13 +38,18 @@ struct Layout {
     static constexpr int kInsetX = 8;       // focus outline inset from the panel edge
     static constexpr int kTextX = 18;       // name / detail line
     static constexpr int kStatusW = 84;     // widest status: "Preserved"
-    static constexpr int kUpsW = 40;
+    // S01: each right-aligned column is as wide as its own caption, measured with the bundled
+    // font (SharedMenuGeometry::textWidth), plus a fixed gap, so "PP" and "PP Ups" never run into
+    // each other. Before, the 56 px "PP Ups" caption sat in a 40 px column and ended ~3 px from "PP".
+    static constexpr int kUpsW = PokeBank::UIModel::SharedMenuGeometry::textWidth(
+        "PP Ups", PokeBank::UIModel::SharedMenuGeometry::Text::Caption);
     static constexpr int kPpW = 64;         // "40/64"
     static constexpr int kGap = 12;
+    static constexpr int kColumnGap = 20;   // between the PP and PP Ups columns
     // Right edges of the right-aligned columns.
     int statusRight() const noexcept { return x + w - 16; }
     int upsRight() const noexcept { return statusRight() - kStatusW - kGap; }
-    int ppRight() const noexcept { return upsRight() - kUpsW - kGap; }
+    int ppRight() const noexcept { return upsRight() - kUpsW - kColumnGap; }
     int nameX() const noexcept { return x + kTextX; }
     int nameMaxW() const noexcept { return ppRight() - kPpW - kGap - nameX(); }
     int detailMaxW() const noexcept { return statusRight() - nameX(); }
@@ -65,6 +71,19 @@ constexpr Layout layout(int x, int y, int w) noexcept {
     return l;
 }
 inline constexpr int kDataPaneOffset = 244;
+
+// Caption spacing contract (S01): the visible gap between the "PP" caption's right edge and the
+// "PP Ups" caption's left edge is at least kColumnGap, and both values fit under their captions.
+namespace detail {
+namespace Geo = PokeBank::UIModel::SharedMenuGeometry;
+constexpr int captionGap() noexcept {
+    return Layout::kUpsW + Layout::kColumnGap - Geo::textWidth("PP Ups", Geo::Text::Caption);
+}
+} // namespace detail
+static_assert(detail::captionGap() >= 20, "PP and PP Ups captions are clearly apart");
+static_assert(detail::Geo::textWidth("+3", detail::Geo::Text::Caption) <= Layout::kUpsW &&
+              detail::Geo::textWidth("63/63", detail::Geo::Text::Caption) <= Layout::kPpW,
+              "values fit their columns");
 
 // ---------------------------------------------------------------------------------------------
 // Slot data supplied by the native adapter
