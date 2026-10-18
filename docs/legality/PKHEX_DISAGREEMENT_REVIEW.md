@@ -459,3 +459,120 @@ These Invalid sites match a PKHeX rule:
 the app. At the base commit it is (`7356b383`, `Legality.cpp:1029`, `analyzeNativeGen2`).
 That text is out of date, but it is not a disagreement. It was left alone because it is
 outside this review.
+
+## 15-C. Gen V hidden-ability flag on a fateful Gen IV-origin Pokemon (Warning, kept)
+
+### What PokeBank NX does
+
+`Gen5Analyzer::abilities()` (`src/Legality/Gen5Legality.cpp:1001-1005`): on a Gen III/IV-origin
+PK5 with PK5 `0x42` bit 0 set, Invalid "Hidden ability flag is set on a Gen III/IV-origin Pokemon",
+except when the record is fateful and its version is a Gen IV game, where it is the Warning "Hidden
+ability flag is set on a Gen IV event Pokemon; PKHeX accepts it on an unevolved card". When the Gen IV
+origin analysis matched an encounter, PKHeX's `CheckMatch` rule runs there instead (`Gen4Legality.cpp`).
+
+### The games
+
+- A Gen IV record has no such flag. Block B byte 0x1A-0x1B (PK4 offset 0x42-0x43) is `u16 unused2`
+  in Platinum (pokeplatinum `include/struct_defs/pokemon.h:67`) and in HeartGold / SoulSilver
+  (pokeheartgold `include/pokemon_types_def.h:68`); no Gen IV code writes it. Every Pokemon starts
+  zeroed (`Pokemon_Init` / `BoxPokemon_Init`, pokeplatinum `src/pokemon.c:292-301`, `MI_CpuClearFast`;
+  `ZeroMonData` / `ZeroBoxMonData`, pokeheartgold `src/pokemon.c:101-108`).
+- Poke Transfer has no decompilation. PKHeX's model of it, `PK4.ConvertToPK5` (`PKM/PK4.cs:315-319`),
+  copies the 136 stored bytes and clears only the mail, so 0x42 stays 0. If the real transfer
+  software does the same, a transferred Gen IV Pokemon never has the flag.
+
+That is strong evidence for Invalid, and PokeBank NX keeps Invalid everywhere except the fateful
+Gen IV case. The exception is not a doubt about the games; it is a doubt about PKHeX's acceptance
+being reached by a real record: PKHeX's `VerifyAbilityPCD` (`Legality/Verifiers/Ability/AbilityVerifier.cs:336-347`)
+compares the ability index only when the Pokemon is still the card's species, and runs `CheckMatch`
+(which rejects the flag) only when it evolved. PokeBank NX cannot identify the card without the Gen IV
+origin analysis, and a fateful Gen IV record may be a card PKHeX accepts. Calling it Invalid while
+PKHeX accepts it would be a false Invalid in the differential, and the brief forbids an Invalid that
+one open history can still explain.
+
+### Measured
+
+Six seeds, 808,678 records: no PKHeX-valid record carries the flag with a Gen III/IV origin
+(the `hidden` mutation on a transfer is Invalid on both sides: `transfer-hidden-flag`,
+`tests/test_legality_gen5.cpp:145`, plus the three `expectEdit` rows at `:305-307`, where the PCD
+case is accepted on both sides). The Warning case is therefore exercised only by fixtures.
+
+### Decision
+
+Keep: Invalid for a non-fateful or Gen III origin; Warning for a fateful Gen IV origin without the
+origin analysis; PKHeX's own rule once the Gen IV encounter is matched. To change the Warning to
+Invalid one needs either a Gen IV card whose Pokemon PKHeX treats as an unevolved card with the
+flag (none of the 590 `wc4.pkl` templates sets 0x42, so this would be PKHeX's acceptance, not the
+game's) or the Poke Transfer software's handling of 0x42, which would prove the flag impossible
+on every transfer and let the exception go. Until then the record stays Incomplete.
+
+## 16-C. Wurmple branch on a Gen V record (Invalid only when every match is Wurmple)
+
+### What PokeBank NX does
+
+`Gen5Analyzer::wurmple()` (`src/Legality/Gen5Legality.cpp:1039-1054`): for Silcoon / Beautifly /
+Cascoon / Dustox the branch is `((PID >> 16) % 10) / 5` (0 Silcoon line, 1 Cascoon line). A Pokemon
+on the other branch is Invalid "PID evolves Wurmple into the other branch" only when the matched
+template is Wurmple and no matching template is of another species; when a non-Wurmple template
+also matches it is a Warning (encounter coverage Partial); on a Gen III/IV origin without the
+origin analysis it is the Warning "... valid only if it was caught after evolving in Gen III/IV".
+
+### The games
+
+- Gen III: `GetEvolutionTargetSpecies`, `EVO_LEVEL_SILCOON` evolves when
+  `(upperPersonality % 10) <= 4`, `EVO_LEVEL_CASCOON` when `> 4` (pokeemerald `src/pokemon.c:5568-5575`,
+  pokeruby `src/pokemon_3.c:330-337`; `upperPersonality = personality >> 16`).
+- Gen IV: the same test, `monPersonalityUpper % 10 < 5` for Silcoon and `>= 5` for Cascoon
+  (pokeplatinum `src/pokemon.c:3621-3630`).
+- Gen V has no decompilation; PKHeX's `WurmpleUtil.GetWurmpleEvoVal` uses the same formula on
+  the encryption constant, which at format 5 is the PID.
+
+So a Wurmple can only ever evolve along the branch its PID picks. Silcoon, Cascoon, Beautifly and
+Dustox are also wild encounters of their own in Gen III and IV (and Dream World / Poke Transfer
+records exist in Gen V), and a wild Silcoon's PID is unconstrained. The rule therefore proves
+impossibility only when the Pokemon was a Wurmple.
+
+### PKHeX
+
+`PIDVerifier.Verify` runs `VerifyECPIDWurmple` only when `enc.Species == Wurmple`
+(`Legality/Verifiers/PIDVerifier.cs:20-21`, `:124-137`, `PIDEncryptWurmple`), on the encounter it
+chose.
+
+### Measured and decision
+
+Fixtures `wurmple` (`tests/test_legality_gen5.cpp:114`, a Gen V Wurmple egg hatched into the wrong
+branch, Invalid on both sides) and `transfer-wurmple` (`:166`, Gen III egg, Invalid on both sides).
+On the six seeds, the 108 PKHeX-valid native records left Incomplete include the cases where a
+non-Wurmple template also matches: PKHeX picks one template, PokeBank NX warns because it does not
+model PKHeX's pick. The default stays as it is: Invalid only when every matching template is
+Wurmple, which the decompiled evolution code proves; otherwise Warning.
+
+## 17-C. Mothim keeps Burmy's cloak (forms 0-2 accepted)
+
+### What PokeBank NX does
+
+Form 1 and 2 on Mothim (414) are accepted (`src/Legality/Gen5Legality.cpp:442`, `:1102-1103`);
+form 3 and above is Invalid "Form 3 does not exist" (`tests/test_legality_gen5.cpp:329`). The gender
+rule for a two-gender pre-evolution (`:1056-1061`) treats Mothim like Wormadam.
+
+### The games
+
+Evolution writes the species only: pokeplatinum `src/evolution.c:435`
+(`Pokemon_SetValue(..., MON_DATA_SPECIES, ...)`), and the species setter writes `species` alone
+(pokeplatinum `src/pokemon.c:1378-1380`); the form bits (block B 0x18, `form : 5`,
+`include/struct_defs/pokemon.h:63-65`) are left as Burmy set them. The same holds for HG/SS
+(pokeheartgold uses the same evolution flow). Gen V has no decompilation; a Mothim transferred
+from Gen IV with form 1 or 2 is a real record, and Gen V reads the form field unchanged.
+
+### PKHeX
+
+`FormInfo.IsValidOutOfBoundsForm` (`Legality/Tables/FormInfo.cs:406-409`): `Mothim => form < 3`,
+"Burmy base form is kept"; `:442` lists Mothim among the species whose form is not cleared on
+evolution.
+
+### Measured and decision
+
+`transfer-mothim` (`tests/test_legality_gen5.cpp:121`, a Gen IV Mothim with form 1, accepted on
+both sides, PKHeX VALID) and the `form 3` edit (Invalid). Keep: forms 0-2 accepted, form 3+
+Invalid. Not a disagreement with PKHeX; it was one at the base commit (forms 1-2 were Invalid)
+and is recorded here because the brief asked for the evidence.
