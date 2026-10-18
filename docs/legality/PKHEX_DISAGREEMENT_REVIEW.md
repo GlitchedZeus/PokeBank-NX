@@ -566,6 +566,95 @@ wild record relabelled with version 15 is Invalid here ("Unable to match an enco
 origin game") because PKHeX's `EncounterGenerator3GC` finds no template for it (EncInvalid);
 the earlier Warning was the analyzer's own scope limit, not a PKHeX verdict.
 
+## 15-D. Gen I/II EXP above the level-100 total, or a stored level below its EXP (downgraded)
+
+Lane D (Gen I/II). PKHeX rejects EXP above the level-100 total when the current level is 100
+(`LevelVerifier.Verify`, Legality/Verifiers/LevelVerifier.cs:45-51, `LevelEXPTooHigh`) and
+otherwise derives the level from EXP, so a level-5 record carrying level-30 EXP is VALID to
+it. PokeBank NX used to call every stored level that is not the level of the EXP Invalid.
+
+- **The games.** A Pokémon left in the Day Care gains EXP a step at a time while its stored
+  level stays what it was on deposit. Gen I adds one EXP per step with no level check and
+  holds the top byte at `$50` (pokered `engine/overworld/daycare_exp.asm:1-16`), so the EXP
+  can pass the level-100 total and reach `$50FFFF`. Gen II skips a Pokémon whose stored
+  level is 100 and caps the EXP at `MAX_DAY_CARE_EXP = $500000` (pokecrystal
+  `engine/events/happiness_egg.asm:142-190` `DayCareStep`, `constants/misc_constants.asm:52`).
+  Withdrawal recomputes the level from the EXP (pokered `scripts/Daycare.asm:69-83`,
+  pokecrystal `engine/pokemon/move_mon.asm:805` `RetrieveBreedmon`), so the stale state exists
+  only in the Day Care slot, which PokeBank NX's save parsers do not read today. Nothing in
+  either game writes a stored level *ahead* of the EXP (battle, Rare Candy and withdrawal
+  all keep EXP at or above the level's total), so that half stays Invalid.
+- **Left out.** The Day Care slot itself (not parsed). A record exported from it by another
+  tool is what these rules see.
+- **Real records.** None in hand; the rule follows the step counter's own bounds.
+- **PKHeX.** `LevelEXPTooHigh` only at level 100; no level-vs-EXP comparison otherwise.
+- **Change.** `GB::levelExpProblem` (src/Legality/GBLegality.cpp): level below the EXP's level
+  → Incomplete; EXP above the level-100 total → Incomplete up to `$50FFFF` on a PK1 at any
+  level and on a PK2 below level 100, Invalid past `$50FFFF` or at level 100 on a PK2; level
+  ahead of the EXP → Invalid (unchanged). Tests: tests/test_gb_legality_structural.cpp
+  `levelExpGrid`, `realRedSave`, `productionPk2`; tests/test_gb_legality_gen1.cpp
+  `level-exp-daycare-stale`, `level-100-exp-daycare`, `level-100-exp-beyond-daycare`.
+  compare.py: reasons `daycare-stale-level`, `daycare-exp-over-cap` (both predicates read the
+  record's own bytes), class `level-exp` tightened to the level-ahead case; corpus kinds
+  `exp-daycare-stale`, `exp-daycare-99`, `exp-daycare-reach`, `exp-daycare-past`.
+
+## 16-D. Gen I/II Japanese trainer-name characters (downgraded, with one origin-bound half)
+
+Lane D (Gen I/II). PKHeX requires a Japanese trainer name to be kana (U+3000–U+30FC,
+`StringConverter1.GetIsJapanese`, PKM/Strings/StringConverter1.cs:22-31) and, when the
+encounter it matched is Gen II, also allows ？ and ！ (`StringConverter2.GetIsJapanese`,
+StringConverter2.cs:25-34; `TrainerNameVerifier.VerifyGBOTWithinBounds`,
+Legality/Verifiers/TrainerNameVerifier.cs:145-150, `G1CharOT`). It judges the name by the
+first encounter it matched and does not look for another.
+
+- **The games.** The Japanese Red/Green/Blue/Yellow and Gold/Silver/Crystal naming screens
+  are not in the disassemblies at hand (pret/pokered and pret/pokecrystal carry the English
+  screens: `data/text/alphabets.asm`, `data/text/name_input_chars.asm`). PKHeX's sets are
+  therefore not confirmed from a primary source.
+- **Left out.** Nicknames (PKHeX does not hold them to the kana either).
+- **Real records.** None in hand.
+- **PKHeX.** INVALID on any character outside its set; INVALID on ？/！ whenever the encounter
+  it happened to match first is Gen I, even when a Gen II origin (an egg, a Gen II wild slot)
+  is open for the same record.
+- **Change.** A character outside the kana and the marks → Incomplete with a Warning
+  (`GB::nameCharsetProblems`). ？/！ are judged per origin in `GB::evaluate`: a Gen II origin
+  accepts them on either format (a PK1 brings them back through the Time Capsule), a Gen I
+  origin gets a non-definitive problem, so a record with only Gen I origins (the legendary
+  birds, Mewtwo) is Incomplete and one with a Gen II origin stays No problems found. Tests:
+  tests/test_gb_legality_names.cpp `japaneseTrainerName`, `production`. compare.py: reasons
+  `jp-ot-charset`, `jp-ot-mark-gen1`; class `jp-ot-mark-gen1-pick` (ours VALID, PKHeX
+  INVALID with `Trainer:G1CharOT` alone); corpus kinds `defect-jp-ot-charset`,
+  `defect2-jp-ot-charset`, `jp-ot-mark-ok`, `jp-ot-mark-gen1`.
+
+## 17-D. A Korean Gold/Silver trainer name on a PK1 (keep as Incomplete, Invalid when no route exists)
+
+Lane D (Gen I/II). A PK1 whose trainer-name field starts with a Hangul page byte (1–11) is
+Korean to PKHeX (`PK1.Korean`, PKM/PK1.cs:15, `StringConverter2KOR.IsHangul`), yet its Gen I
+encounter search has no Korean gate (`EncounterEnumerator1`), and `LanguageVerifier` only
+objects for a stored version (Legality/Verifiers/LanguageVerifier.cs:33-35, a PK1 stores
+none). The oracle calls a Korean-named level-3 Rattata VALID as `EncounterSlot1:19:RD:3`.
+
+- **The games.** No Korean Red/Blue/Yellow exists. Korean Gold/Silver trade with Western
+  Gen I and Gen II cartridges (Bulbapedia, "Korean character encoding (Generation II)",
+  "Trade"; the Virtual Console releases refuse), so the one way a Hangul name reaches a PK1
+  is a Korean Gold/Silver Pokémon traded to a Western Gold/Silver/Crystal and then through
+  the Time Capsule. That route rests on the same secondary source as the Korean PK2 rules
+  (review item on Korean Gold/Silver in `GB_LEGALITY_VERDICTS.md`), so it is Incomplete,
+  never Valid.
+- **Left out.** The Korean ROM is not disassembled; the Korean naming screen is PKHeX's word.
+- **Real records.** None in hand.
+- **PKHeX.** VALID as a Red/Blue/Yellow native, where no Korean name can be written.
+- **Change.** `GB::checkGen1`: a Hangul lead makes the record Korean; the search runs with
+  Gen II origins only and the Korean–Western trade flag; Legal becomes Uncertain with the
+  route named; when no Gen II origin fits (the catch-rate byte is not a Gen II held item, a
+  Gen I-only move or species) the record is Invalid, since every history is closed by a
+  verified rule. Korean names are measured on their bytes (5 characters). Tests:
+  tests/test_gb_legality_names.cpp `koreanPk1`. compare.py: reason `korean-pk1`, class
+  `korean-pk1-origin` (ours INVALID, PKHeX VALID; only with the route problem present);
+  corpus kinds `kor1-tradeback`, `kor1-rby`, `kor1-ot-one-byte`, `kor1-ot-long`.
+  Reachable from `Legality::analyze` only once the save parsers carry the name bytes
+  (docs/legality/handoff/lane-d-raw-names.patch).
+
 ## Not disagreements (checked)
 
 These Invalid sites match a PKHeX rule:

@@ -46,6 +46,11 @@ namespace Legality::GB {
         std::string otName;                 // decoded; compared against event OTs
         std::string nickname;               // decoded; compared against trade nicknames
         Language language = Language::Unknown;
+        // The name fields as stored (11 bytes, 6 in Japanese), when the caller has them.
+        // Empty means "not available": the byte-level rules (the trade marker's terminator,
+        // glyphless bytes, a Korean Gold/Silver name on a Western record) are then skipped.
+        std::vector<uint8_t> otRaw;
+        std::vector<uint8_t> nickRaw;
     };
 
     /// The fields of a native PK2 that the origin search reads.
@@ -68,6 +73,8 @@ namespace Legality::GB {
         std::string otName;
         std::string nickname;
         Language language = Language::Unknown;
+        std::vector<uint8_t> otRaw;         // as stored, when available (see Entity1)
+        std::vector<uint8_t> nickRaw;
     };
 
     enum class EncounterKind : uint8_t { None, Wild, Static, Trade, Event, Egg };

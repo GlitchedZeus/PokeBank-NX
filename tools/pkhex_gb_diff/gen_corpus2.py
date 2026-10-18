@@ -156,6 +156,8 @@ class Mon:
         self.korean = False
         self.fill_name = False  # the name fills its field with no terminator
         self.egg_name = None  # an unhatched egg's name when it is not the game's own
+        self.ot_raw = None  # the stored name bytes, when a kind sets them directly
+        self.nick_raw = None
 
 
 def encounter_moves(d, species, level, crystal):
@@ -252,14 +254,20 @@ def finish(d, mon, rng):
     if mon.korean:
         def kor(s):
             return d.kor.encode(s, 11, terminate=not mon.fill_name)
-        return body, kor(mon.ot), kor((mon.egg_name or "알") if mon.egg else mon.nick)
-    if mon.japanese:
+        ot, nick = kor(mon.ot), kor((mon.egg_name or "알") if mon.egg else mon.nick)
+    elif mon.japanese:
         def jp(s):
             return d.jp.encode(s, 6, terminate=not mon.fill_name or len(s) < 6)
-        return body, jp(mon.ot), jp((mon.egg_name or "タマゴ") if mon.egg else mon.nick)
-    def intl(s):
-        return text(s, 11) if all(c in TEXT for c in s) else d.en.encode(s, 11)
-    return body, intl(mon.ot), intl((mon.egg_name or "EGG") if mon.egg else mon.nick)
+        ot, nick = jp(mon.ot), jp((mon.egg_name or "タマゴ") if mon.egg else mon.nick)
+    else:
+        def intl(s):
+            return text(s, 11) if all(c in TEXT for c in s) else d.en.encode(s, 11)
+        ot, nick = intl(mon.ot), intl((mon.egg_name or "EGG") if mon.egg else mon.nick)
+    if mon.ot_raw is not None:
+        ot = mon.ot_raw
+    if mon.nick_raw is not None:
+        nick = mon.nick_raw
+    return body, ot, nick
 
 
 def japanize(d, mon, rng):
@@ -422,6 +430,10 @@ def time_capsule_mon(d, rng, japanese=False):
         grow(d, mon, min(100, mon.level + rng.randrange(0, 20)), rng)
     return mon
 
+
+# Gen I statics with no Gen II source at all: the birds and Mewtwo (Gen II breeds starters
+# and fossils from Time Capsule parents, so an egg origin stays open for them).
+GEN1_ONLY_STATIC = (144, 145, 146, 150)
 
 KOREAN_NICKS = ("피카", "친구", "꼬마", "별님", "용용이", "BUDDY", "Mon")
 
@@ -636,6 +648,58 @@ def main():
             grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
             g1.structural_defect(mon, rng, variant, d.personal[mon.species]["growth"])
             emit("struct2-" + variant, mon)
+
+    # Name bytes and characters on grown wild Pokemon, as in the PK1 corpus: digits, a byte
+    # with no glyph (StringConverter2 TableEN / TableJP NUL entries), a Japanese trainer name
+    # outside the kana -- ？ and ！ pass in Gen II (StringConverter2.GetIsJapanese), so
+    # jp-ot-mark-ok is the legal boundary -- and the Gen I trade marker followed by a letter.
+    def grown_wild():
+        mon = wild_mon(d, rng, rng.choice([w for w in d.wild if w[6] != C]))
+        grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
+        return mon
+
+    for _ in range(30):
+        mon = grown_wild()
+        mon.ot_raw = g1.with_byte(rng, g1.letters(rng, rng.randint(1, 5)), 0xF6 + rng.randrange(10))
+        emit("defect2-ot-digit", mon)
+        mon = grown_wild()
+        mon.nick_raw = g1.with_byte(rng, g1.letters(rng, rng.randint(1, 8)), 0xF6 + rng.randrange(10))
+        emit("defect2-nick-digit", mon)
+        mon = grown_wild()
+        if rng.random() < 0.5:
+            mon.ot_raw = g1.with_byte(rng, g1.letters(rng, rng.randint(1, 5)), rng.choice((0x05, 0x4F, 0x60, 0x74, 0xD8, 0xDE)))
+        else:
+            mon.nick_raw = g1.with_byte(rng, g1.letters(rng, rng.randint(1, 8)), rng.choice((0x05, 0x4F, 0x60, 0x74, 0xD8, 0xDE)))
+        emit("defect2-name-glyphless", mon)
+        mon = grown_wild()
+        japanize(d, mon, rng)
+        if rng.random() < 0.5:
+            mon.ot_raw = g1.with_byte_jp(rng, d.jp, mon.ot[:3], rng.choice(g1.GLYPHLESS_JP))
+        else:
+            mon.nick_raw = g1.with_byte_jp(rng, d.jp, mon.nick[:3], rng.choice(g1.GLYPHLESS_JP))
+        emit("defect2-name-glyphless-jp", mon)
+        mon = grown_wild()
+        japanize(d, mon, rng)
+        mon.ot = rng.choice(("サ１", "ア×", "ミ０", "カ。", "ゴ♂"))
+        emit("defect2-jp-ot-charset", mon)
+        mon = grown_wild()
+        japanize(d, mon, rng)
+        mon.ot = rng.choice(("サ？", "ゴ！", "ミナ？"))
+        emit("jp-ot-mark-ok", mon)
+        # The same marks on a Pokemon only Gen I produces (a fossil, starter, bird or Mewtwo
+        # moved through the Time Capsule): PKHeX's Gen I kana set applies to its one origin.
+        species, level, v = rng.choice([s for s in d.g1.statics if s[0] in GEN1_ONLY_STATIC and s[2] != g1.BU])
+        yellow = v == g1.YW
+        m1 = g1.Mon(species, level, g1.encounter_moves(d.g1, species, level, yellow),
+                    d.g1.personal[yellow][species]["catch"], yellow)
+        g1.grow(d.g1, m1, min(100, level + rng.randrange(0, 30)), rng)
+        mon = Mon(m1.species, m1.level, m1.moves, False)
+        japanize(d, mon, rng)
+        mon.ot = rng.choice(("サ？", "ゴ！", "ミナ？"))
+        emit("jp-ot-mark-gen1", mon)
+        mon = grown_wild()
+        mon.ot_raw = bytes([g1.TRADE_OT, 0x80 + rng.randrange(26)] + [g1.TERMINATOR] * 9)
+        emit("defect2-trade-ot-bad-term", mon)
 
     def emit_maybe_jp(kind, mon, japanese, korean=False):
         if japanese:

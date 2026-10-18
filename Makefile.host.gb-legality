@@ -53,3 +53,41 @@ $(HOST_BUILD)/test_gb_legality_structural: $(GB_LEGALITY_STRUCTURAL_SOURCES)
 $(HOST_BUILD)/test_gb_legality_structural_sanitize: $(GB_LEGALITY_STRUCTURAL_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Gen I/II name rules: stored name bytes (trade marker, glyphless bytes, Korean names on a
+# Western record) and decoded characters (digits, Japanese trainer names), through
+# GB::checkGen1/checkGen2 and the production analyzer.
+GB_LEGALITY_NAMES_SOURCES := tests/test_gb_legality_names.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_names
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_names_sanitize
+host-test: $(HOST_BUILD)/test_gb_legality_names
+host-sanitize: $(HOST_BUILD)/test_gb_legality_names_sanitize
+
+$(HOST_BUILD)/test_gb_legality_names: $(GB_LEGALITY_NAMES_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_names_sanitize: $(GB_LEGALITY_NAMES_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Malformed-input hardening: random and truncated records, name bytes and save buffers
+# through the GB engine, the Gen I/II decoders and save parsers, and the production
+# analyzer. Meant for the sanitizer build (host-sanitize).
+GB_LEGALITY_FUZZ_SOURCES := tests/test_gb_legality_fuzz.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_fuzz
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_fuzz_sanitize
+host-test: $(HOST_BUILD)/test_gb_legality_fuzz
+host-sanitize: $(HOST_BUILD)/test_gb_legality_fuzz_sanitize
+
+$(HOST_BUILD)/test_gb_legality_fuzz: $(GB_LEGALITY_FUZZ_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_fuzz_sanitize: $(GB_LEGALITY_FUZZ_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@

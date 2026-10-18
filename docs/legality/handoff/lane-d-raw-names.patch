@@ -1,0 +1,125 @@
+Lane D hand-off: carry the stored Gen I/II name bytes to the legality engine
+
+Why: GB::Entity1/Entity2 (include/Legality/GBLegality.h) take the stored trainer-name and
+nickname bytes (otRaw/nickRaw). With them GBLegality.cpp checks the in-game-trade marker's
+terminator (pokered macros/data.asm dname writes "<TRAINER>@"), warns on a byte the font has
+no glyph for (the decoders stop there, so the name reads shorter than it is stored), and
+reads a Hangul page byte at the start of the trainer name as Korean Gold/Silver's
+(PK1/PK2.Korean, StringConverter2KOR.IsHangul), which on a PK1 excludes every Gen I origin.
+Until the save parsers carry the bytes those rules are unreachable from Legality::analyze;
+tools/pkhex_gb_diff/production_parity.cpp counts the corpus records whose verdict needs
+them. tests/test_gb_legality_names.cpp `production()` documents today's gap and is where
+the expectations change once this lands.
+
+Files outside Lane D's ownership (Integration save parsers; the two Legality.cpp hunks
+outside the GB hand-off): not applied on lane-d-gb, proposed here for the owning lane.
+
+Notes for the reviewer:
+- The Integration PokemonRecord gains two vectors; every existing field is unchanged, so
+  callers that copy the record keep working. A Japanese save stores 6-byte fields, an
+  international one 11; the engine takes either.
+- With the bytes present, "Original trainer name is empty" is left to GB::trainerNameProblem
+  (GBLegality.cpp), which measures a Korean name on its bytes. The old check stays for a
+  record built without bytes (tests and tools).
+- Korean saves are not supported by the parsers; a Korean Pokemon inside a Western save
+  (traded on the cartridges) is what the bytes reveal.
+
+Apply from the repository root: patch -p1 < docs/legality/handoff/lane-d-raw-names.patch
+
+diff -ruN a/include/Integration/Gen1/Gen1ReadOnlySave.h b/include/Integration/Gen1/Gen1ReadOnlySave.h
+--- a/include/Integration/Gen1/Gen1ReadOnlySave.h	2026-10-18 03:39:50.794902220 +0000
++++ b/include/Integration/Gen1/Gen1ReadOnlySave.h	2026-10-18 03:39:50.796676291 +0000
+@@ -69,6 +69,11 @@
+     uint16_t special = 0;
+     std::string originalTrainer;
+     std::string nickname;
++    // The stored name fields as they are in the save (11 bytes, 6 on a Japanese save),
++    // terminator and padding included. The legality engine reads the bytes the decoder
++    // cannot show: the in-game-trade marker, bytes with no glyph, Hangul page bytes.
++    std::vector<uint8_t> originalTrainerRaw;
++    std::vector<uint8_t> nicknameRaw;
+     bool partyRecord = false;
+     std::array<uint8_t, 44> rawBody{};
+     std::size_t rawBodySize = 0;
+diff -ruN a/include/Integration/Gen2/Gen2ReadOnlySave.h b/include/Integration/Gen2/Gen2ReadOnlySave.h
+--- a/include/Integration/Gen2/Gen2ReadOnlySave.h	2026-10-18 03:39:50.795440401 +0000
++++ b/include/Integration/Gen2/Gen2ReadOnlySave.h	2026-10-18 03:39:50.796877646 +0000
+@@ -55,6 +55,11 @@
+     uint16_t specialDefense = 0;
+     std::string originalTrainer;
+     std::string nickname;
++    // The stored name fields as they are in the save (11 bytes, 6 on a Japanese save),
++    // terminator and padding included. The legality engine reads the bytes the decoder
++    // cannot show: the in-game-trade marker, bytes with no glyph, Hangul page bytes.
++    std::vector<uint8_t> originalTrainerRaw;
++    std::vector<uint8_t> nicknameRaw;
+     bool partyRecord = false;
+     bool isEgg = false;
+     bool shiny = false;
+diff -ruN a/src/Integration/Gen1/Gen1ReadOnlySave.cpp b/src/Integration/Gen1/Gen1ReadOnlySave.cpp
+--- a/src/Integration/Gen1/Gen1ReadOnlySave.cpp	2026-10-18 03:39:50.795730756 +0000
++++ b/src/Integration/Gen1/Gen1ReadOnlySave.cpp	2026-10-18 03:39:50.797223271 +0000
+@@ -266,6 +266,8 @@
+     }
+     out.originalTrainer = decodeGen1String(ot, region);
+     out.nickname = decodeGen1String(nick, region);
++    out.originalTrainerRaw.assign(ot.begin(), ot.end());
++    out.nicknameRaw.assign(nick.begin(), nick.end());
+     out.partyRecord = party;
+     out.rawBodySize = body.size();
+     std::copy(body.begin(), body.end(), out.rawBody.begin());
+diff -ruN a/src/Integration/Gen2/Gen2ReadOnlySave.cpp b/src/Integration/Gen2/Gen2ReadOnlySave.cpp
+--- a/src/Integration/Gen2/Gen2ReadOnlySave.cpp	2026-10-18 03:39:50.796028415 +0000
++++ b/src/Integration/Gen2/Gen2ReadOnlySave.cpp	2026-10-18 03:39:50.797362446 +0000
+@@ -221,6 +221,8 @@
+     }
+     out.originalTrainer = decodeGen2String(ot, region);
+     out.nickname = decodeGen2String(nick, region);
++    out.originalTrainerRaw.assign(ot.begin(), ot.end());
++    out.nicknameRaw.assign(nick.begin(), nick.end());
+     out.partyRecord = party;
+     out.rawBodySize = body.size();
+     std::copy(body.begin(), body.end(), out.rawBody.begin());
+diff -ruN a/src/Legality/Legality.cpp b/src/Legality/Legality.cpp
+--- a/src/Legality/Legality.cpp	2026-10-18 03:39:50.796269855 +0000
++++ b/src/Legality/Legality.cpp	2026-10-18 03:39:50.799800012 +0000
+@@ -196,7 +196,9 @@
+                     }
+                 }
+             }
+-            if (rec.originalTrainer.empty()) {
++            // With the stored bytes, GB::checkGen1/checkGen2 judge the trainer name (a Hangul
++            // name decodes to nothing in a Western save's text; it is not empty).
++            if (rec.originalTrainer.empty() && rec.originalTrainerRaw.empty()) {
+                 add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
+             }
+ 
+@@ -209,6 +211,8 @@
+             e.statExp = rec.statExperience;
+             e.otName = rec.originalTrainer;
+             e.nickname = rec.nickname;
++            e.otRaw = rec.originalTrainerRaw;
++            e.nickRaw = rec.nicknameRaw;
+             std::vector<GB::Problem> problems;
+             if (!structural) {
+                 // The origin search cannot run, but the rules that hold for any origin still do.
+@@ -996,7 +1000,9 @@
+                     }
+                 }
+             }
+-            if (rec.originalTrainer.empty()) {
++            // With the stored bytes, GB::checkGen1/checkGen2 judge the trainer name (a Hangul
++            // name decodes to nothing in a Western save's text; it is not empty).
++            if (rec.originalTrainer.empty() && rec.originalTrainerRaw.empty()) {
+                 add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
+             }
+ 
+@@ -1010,6 +1016,8 @@
+             e.isEgg = rec.isEgg;
+             e.otName = rec.originalTrainer;
+             e.nickname = rec.nickname;
++            e.otRaw = rec.originalTrainerRaw;
++            e.nickRaw = rec.nicknameRaw;
+             std::vector<GB::Problem> problems;
+             if (!structural) {
+                 problems = GB::formatProblems(e);

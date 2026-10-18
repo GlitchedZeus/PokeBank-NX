@@ -63,7 +63,7 @@ bool namesShowLanguage(const std::string& ot, const std::string& nick) {
 
 int main() {
     std::map<std::string, std::size_t> table;
-    std::size_t total = 0, skippedKorean = 0, lenientUnknownLanguage = 0, failures = 0;
+    std::size_t total = 0, skippedKorean = 0, lenientUnknownLanguage = 0, failures = 0, needsRawNames = 0;
     std::string line;
     while (std::getline(std::cin, line)) {
         std::istringstream in(line);
@@ -88,7 +88,12 @@ int main() {
                 continue;
             }
             const bool egg = eggFlag == "1";
-            search = checkPk2(body, ot, nick, japanese, egg).status;
+            // The app's parsers keep decoded names only: production is held to the search
+            // without the stored name bytes, and the records whose verdict the byte rules
+            // change are counted (the handoff patch brings the bytes to production).
+            search = checkPk2(body, ot, nick, japanese, egg, false).status;
+            if (checkPk2(body, ot, nick, japanese, egg, true).status != search)
+                ++needsRawNames;
             const auto region = japanese ? Gen2::RegionLayout::Japanese : Gen2::RegionLayout::International;
             // Field for field what Gen2ReadOnlySave.cpp parsePokemon stores.
             Gen2::PokemonRecord rec;
@@ -152,6 +157,11 @@ int main() {
             e.nickname = Gen1::decodeGen1String(nick, region);
             e.language = japanese ? GB::Language::Japanese : GB::Language::International;
             search = GB::checkGen1(e).status;
+            GB::Entity1 withRaw = e;
+            withRaw.otRaw = ot;
+            withRaw.nickRaw = nick;
+            if (GB::checkGen1(withRaw).status != search)
+                ++needsRawNames;
             Gen1::PokemonRecord rec;
             rec.rawSpecies = body[0];
             rec.species = Gen1::gen1InternalToNational(body[0]);
@@ -207,7 +217,8 @@ int main() {
     }
     std::cout << "production parity: " << total << " records through Legality::analyze, "
               << skippedKorean << " Korean skipped, " << lenientUnknownLanguage
-              << " lenient because the names hide the language\n";
+              << " lenient because the names hide the language, " << needsRawNames
+              << " whose verdict needs the stored name bytes the parsers do not carry yet\n";
     for (const auto& [k, v] : table)
         std::cout << "  " << k << ": " << v << '\n';
     if (failures) {

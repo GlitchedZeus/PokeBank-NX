@@ -161,12 +161,20 @@ class Mon:
         self.statexp = [0] * 5
         self.exp = None  # EXP when it is not the level's own total (a defect)
         self.fill_name = False  # Japanese only: the name fills its field with no terminator
+        self.ot_raw = None  # the stored name bytes, when a kind sets them directly
+        self.nick_raw = None
 
 
 # Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
 # games never do. The "-ok" variants stay legal (the boundaries the rules must not cross).
 STRUCTURAL = ("dup-move", "dup-move-all", "exp-zero", "exp-below", "exp-next", "exp-top-ok",
-              "exp-cap-ok", "exp-cap-plus1", "exp-cap-big", "exp-cap-minus1")
+              "exp-cap-ok", "exp-cap-plus1", "exp-cap-big", "exp-cap-minus1",
+              # Day Care slots (pokered IncrementDayCareMonExp, pokecrystal DayCareStep): EXP ahead
+              # of the stored level, and EXP past the level-100 total up to the step counter's
+              # reach ($50FFFF) or just past it.
+              "exp-daycare-stale", "exp-daycare-99", "exp-daycare-reach", "exp-daycare-past")
+
+DAY_CARE_EXP_MAX = 0x50FFFF
 
 
 def structural_defect(mon, rng, variant, growth):
@@ -187,6 +195,18 @@ def structural_defect(mon, rng, variant, growth):
         mon.exp = exp_for(growth, min(100, mon.level + 1)) + (1 if mon.level == 100 else 0)
     elif variant == "exp-top-ok":  # one short of the next level: still this level
         mon.exp = exp_for(growth, mon.level + 1) - 1 if mon.level < 100 else exp_for(growth, 100)
+    elif variant == "exp-daycare-stale":  # a later level's total, the deposit level unchanged
+        mon.level = min(mon.level, 99)
+        mon.exp = exp_for(growth, rng.randint(mon.level + 1, 100))
+    elif variant == "exp-daycare-99":  # a level-99 deposit carried past the level-100 total
+        mon.level = 99
+        mon.exp = rng.randint(exp_for(growth, 100) + 1, DAY_CARE_EXP_MAX)
+    elif variant == "exp-daycare-reach":  # a level-100 deposit at the counter's reach (Gen I only)
+        mon.level = 100
+        mon.exp = rng.choice((DAY_CARE_EXP_MAX, rng.randint(exp_for(growth, 100) + 1, DAY_CARE_EXP_MAX)))
+    elif variant == "exp-daycare-past":  # past what any Day Care slot reaches
+        mon.level = rng.choice((99, 100))
+        mon.exp = rng.choice((DAY_CARE_EXP_MAX + 1, rng.randint(DAY_CARE_EXP_MAX + 1, 0xFFFFFF)))
     else:
         mon.level = 100
         top = exp_for(growth, 100)
@@ -277,7 +297,35 @@ def finish(d, mon, rng, japanese):
             return gb_text(s, length)
     ot = bytes([TRADE_OT, TERMINATOR] + [TERMINATOR] * (length - 2)) if mon.trade_ot else text(mon.ot)
     nick = text(mon.nick)
+    if mon.ot_raw is not None:
+        ot = mon.ot_raw
+    if mon.nick_raw is not None:
+        nick = mon.nick_raw
     return body, ot, nick
+
+
+def with_byte(rng, text, byte, length=11):
+    """`text` (A-Z, space) in a `length`-byte field with `byte` inserted at a random place.
+    A byte on the Hangul pages (<= 0x0B) never goes first: there it would make the record
+    Korean (PK1/PK2.Korean, StringConverter2KOR.IsHangul) instead of a damaged Western one."""
+    core = [CHARS[c] for c in text]
+    core.insert(rng.randrange(1 if byte <= 0x0B else 0, len(core) + 1), byte)
+    core = core[:length - 1]
+    return bytes(core + [TERMINATOR] * (length - len(core)))
+
+
+def with_byte_jp(rng, encoder, text, byte):
+    """The Japanese counterpart: `text` in a 6-byte field with `byte` inserted."""
+    core = [encoder.index[c] for c in text]
+    core.insert(rng.randrange(1 if byte <= 0x0B else 0, len(core) + 1), byte)
+    core = core[:5]
+    return bytes(core + [TERMINATOR] * (6 - len(core)))
+
+
+# Bytes PKHeX's StringConverter1 tables give no character (TableEN / TableJP NUL entries):
+# the games write none into a name, and a decoder stops at one.
+GLYPHLESS_EN = (0x05, 0x4E, 0x60, 0x74, 0xD8, 0xE4)
+GLYPHLESS_JP = (0x01, 0x14, 0x3F, 0x7A, 0xEC)
 
 
 def evolution_order_pairs(d):
@@ -344,7 +392,9 @@ def main():
     def emit(kind, mon, japanese=False):
         nonlocal made
         body, ot, nick = finish(d, mon, rng, japanese)
-        out.write(f"{made} {kind} {int(japanese)} {body.hex()} {ot.hex()} {nick.hex()}\n")
+        # PKHeX LanguageID as the bytes show it (PK1.Korean: a Hangul page first byte); 0 = other.
+        lang = 1 if japanese else 8 if 1 <= ot[0] <= 11 else 0
+        out.write(f"{made} {kind} {lang} {body.hex()} {ot.hex()} {nick.hex()}\n")
         made += 1
 
     def personal_catch(species, yellow):
@@ -398,6 +448,81 @@ def main():
             grow(d, mon, min(100, level + rng.randrange(0, 40)), rng)
             structural_defect(mon, rng, variant, d.personal[False][mon.species]["growth"])
             emit("struct-" + variant, mon)
+
+    # Name bytes and characters, 30 records per kind on grown wild Pokemon: a digit (no
+    # English naming screen offers one), a byte with no glyph in the font, a Japanese trainer
+    # name outside the kana (PKHeX G1CharOT), the trade marker followed by a letter, and
+    # Korean Gold/Silver names on a Red/Blue/Yellow record, both through a Western
+    # Gold/Silver and the Time Capsule (kor1-tradeback) and as a Red/Blue/Yellow native,
+    # which no Korean name can be (kor1-rby).
+    def grown_wild():
+        species, lmin, lmax, v = rng.choice([w for w in d.wild if w[3] != BU])
+        yellow = v == YW
+        level = rng.randint(lmin, lmax)
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        grow(d, mon, min(100, level + rng.randrange(0, 40)), rng)
+        return mon
+
+    for _ in range(30):
+        mon = grown_wild()
+        mon.ot_raw = with_byte(rng, letters(rng, rng.randint(1, 5)), 0xF6 + rng.randrange(10))
+        emit("defect-ot-digit", mon)
+        mon = grown_wild()
+        mon.nick_raw = with_byte(rng, letters(rng, rng.randint(1, 8)), 0xF6 + rng.randrange(10))
+        emit("defect-nick-digit", mon)
+        mon = grown_wild()
+        if rng.random() < 0.5:
+            mon.ot_raw = with_byte(rng, letters(rng, rng.randint(1, 5)), rng.choice(GLYPHLESS_EN))
+        else:
+            mon.nick_raw = with_byte(rng, letters(rng, rng.randint(1, 8)), rng.choice(GLYPHLESS_EN))
+        emit("defect-name-glyphless", mon)
+        mon = grown_wild()
+        japanize(d, mon, rng)
+        if rng.random() < 0.5:
+            mon.ot_raw = with_byte_jp(rng, d.jp, mon.ot[:3], rng.choice(GLYPHLESS_JP))
+        else:
+            mon.nick_raw = with_byte_jp(rng, d.jp, mon.nick[:3], rng.choice(GLYPHLESS_JP))
+        emit("defect-name-glyphless-jp", mon, True)
+        mon = grown_wild()
+        japanize(d, mon, rng)
+        mon.ot = rng.choice(("サ１", "ゴ？", "ア×", "サ！", "ミ０", "カ。"))
+        emit("defect-jp-ot-charset", mon, True)
+    for species, v, _rby, gsc, idx, evolve in d.trades:
+        if v == BU or idx >= len(d.trade_names):
+            continue
+        for _ in range(3):
+            got = species + 1 if evolve else species
+            mon = Mon(got, max(gsc, 5) + rng.randrange(10), [], personal_catch(species, v == YW), v == YW)
+            mon.moves = encounter_moves(d, species, mon.level, v == YW)
+            mon.nick = d.trade_names[idx]
+            mon.ot_raw = bytes([TRADE_OT, 0x80 + rng.randrange(26)] + [TERMINATOR] * 9)
+            emit("trade-ot-bad-term", mon)
+    d2 = d.gen2()
+    import gen_corpus2 as g2
+    for _ in range(40):
+        mon = gen2_origin_mon(d, rng)
+        if mon is None:
+            continue
+        mon.ot_raw = d2.kor.encode(rng.choice(d2.kor_names), 11)
+        mon.nick_raw = d2.kor.encode(rng.choice(g2.KOREAN_NICKS), 11)
+        emit("kor1-tradeback", mon)
+        mon = grown_wild()
+        mon.ot_raw = d2.kor.encode(rng.choice(d2.kor_names), 11)
+        mon.nick_raw = d2.kor.encode(rng.choice(g2.KOREAN_NICKS), 11)
+        emit("kor1-rby", mon)
+    for _ in range(15):
+        mon = gen2_origin_mon(d, rng)
+        if mon is None:
+            continue
+        mon.ot_raw = d2.kor.encode(rng.choice(d2.kor_names)[:2] + rng.choice(("A", "Z9", " B", "x", "♂", "1")), 11)
+        mon.nick_raw = d2.kor.encode(rng.choice(g2.KOREAN_NICKS), 11)
+        emit("kor1-ot-one-byte", mon)
+        mon = gen2_origin_mon(d, rng)
+        if mon is None:
+            continue
+        mon.ot_raw = d2.kor.encode("".join(rng.choice("한별민수지훈") for _ in range(5)) + "A", 11, terminate=False)
+        mon.nick_raw = d2.kor.encode(rng.choice(g2.KOREAN_NICKS), 11)
+        emit("kor1-ot-long", mon)
 
     # The same trades in German, French, Italian and Spanish Red/Blue/Yellow.
     for species, v, _rby, gsc, idx, evolve in d.trades:

@@ -44,6 +44,17 @@ not definitive (`Problem::definitive == false`):
 3. **Korean Gold/Silver records that only a Korean–Western trade explains.** See below.
 4. **Korean records with Crystal met data**, and **Korean trainer names with
    one-byte-page characters** (Latin letters, digits, space, `/`, ♂, ♀, ×). See below.
+5. **A Day Care slot's level and EXP.** A stored level below the level its EXP gives, and
+   EXP above the level-100 total up to `$50FFFF` (any level on a PK1, below level 100 on a
+   PK2). See "Other rules".
+6. **A Korean trainer name on a PK1.** It needs the Korean–Western trade of rule 3 and a
+   Time Capsule trip. See "Korean Gold/Silver".
+7. **Name characters.** A digit in a Western name; a Japanese trainer name outside the
+   kana; ？ or ！ in a Japanese trainer name on a Gen I origin. See "Names".
+8. **Name bytes with no glyph.** A byte PKHeX's font tables give no character, before the
+   terminator. See "Names".
+9. **Mew's and Celebi's unrecorded events** are rule 2; the GS Ball Celebi is a deliberate
+   difference, not an uncertainty.
 
 ## Korean Gold/Silver
 
@@ -108,21 +119,67 @@ nothing derived from it is committed.
     total (pokered `engine/battle/experience.asm`, pokecrystal `engine/battle/core.asm`).
   - Rare Candy refuses level 100 and otherwise sets EXP to the new level's total
     (`engine/items/item_effects.asm`).
-  - The Day Care sets the level from EXP when a Pokémon is withdrawn, and caps (Gen I,
-    pokered `scripts/Daycare.asm`) or resets (Gen II, pokecrystal `RetrieveBreedmon`,
-    pret `docs/bugs_and_glitches.md` "might lose experience") the EXP to that level. A
-    Pokémon still in the Day Care carries a stale level and, in both generations, EXP that
-    can pass the level-100 total; PokeBank NX's save parsers do not read the Day Care
-    slot, and a record exported from it would be judged by these rules.
-  - PKHeX rejects EXP above the level-100 total (`LevelEXPTooHigh`) but derives the level
-    from EXP, so it does not compare the two: a stored level the EXP does not give is a
-    deliberate difference.
+  - The Day Care is the one place level and EXP part. Gen I adds one EXP per step with
+    no level check and holds the top byte at `$50` (pokered
+    `engine/overworld/daycare_exp.asm:1-16`); Gen II skips a level-100 Pokémon and caps the
+    EXP at `MAX_DAY_CARE_EXP = $500000` (pokecrystal `engine/events/happiness_egg.asm`
+    `DayCareStep`). Withdrawal recomputes the level from the EXP (pokered
+    `scripts/Daycare.asm:69-83`; pokecrystal `engine/pokemon/move_mon.asm` `RetrieveBreedmon`,
+    which also resets the EXP, pret `docs/bugs_and_glitches.md` "might lose experience").
+    So a stored level **ahead** of its EXP is Invalid; a stored level **behind** its EXP, or
+    EXP above the level-100 total up to `$50FFFF` (any level on a PK1, below 100 on a PK2),
+    is **Incomplete**: only a Pokémon still in the Day Care carries it, and the save parsers
+    do not read that slot. EXP past `$50FFFF`, or above the total at level 100 on a PK2, is
+    Invalid.
+  - PKHeX rejects EXP above the level-100 total only at level 100 (`LevelEXPTooHigh`) and
+    otherwise derives the level from EXP, so it does not compare the two: the level-ahead
+    rule is a deliberate difference (`PKHEX_VERIFIED_IMPROVEMENTS.md` D-1), the Day Care
+    softening is review item 15-D.
 - **GS Ball Celebi.** Japanese Crystal's Mobile System GB event (27 January 2001 –
   14 December 2002; Serebii, Bulbapedia) gave the GS Ball. Kurt takes it to the Ilex Forest
   shrine, which summons a wild level-30 Celebi (pokecrystal `maps/IlexForest.asm`). A
   Japanese PK2 Celebi with that met data is legal. PKHeX models this Celebi for Virtual
   Console only (`Encounters2.CelebiVC`): in the Western cartridges only the Virtual
   Console hook sets the flag (`sGSBallFlag`).
+
+## Names
+
+The engine takes the decoded names and, when the caller has them, the stored name bytes
+(`Entity1/Entity2::otRaw`, `nickRaw`; empty means not available, and the byte rules are
+skipped). `Legality::analyze` passes decoded names only until the save parsers carry the
+bytes (`docs/legality/handoff/lane-d-raw-names.patch`); `tools/pkhex_gb_diff` passes both,
+and `production_parity.cpp` counts the records whose verdict needs the bytes.
+
+- **Lengths** (PKHeX `TrainerNameVerifier.VerifyGBOTWithinBounds`,
+  `NicknameVerifier.VerifyG1NicknameWithinBounds`): trainer 7, nickname 10; 5 and 5 in
+  Japanese and Korean. A Korean name is measured on its bytes (a Hangul character is two
+  bytes). Empty trainer name: Invalid; an egg's nickname is the game's egg name.
+- **In-game-trade marker.** `<TRAINER>` (`$5D`) is followed by the terminator: pokered
+  `macros/data.asm` `dname` writes `<TRAINER>@` (PKHeX `EncounterTrade1.IsTrainerNameValid`).
+  A letter after the marker is Invalid; the marker on anything but a Red/Blue/Yellow in-game
+  trade is Invalid.
+- **Glyphless bytes.** A byte before the terminator that PKHeX's `StringConverter1/2`
+  tables give no character (the games write none; the decoders stop there, so the name
+  reads shorter than it is stored) is a Warning: a garbled Korean trade or a damaged record.
+  The glyphless kinds in the corpus are how PKHeX comes to judge an empty or shorter name.
+- **Digits.** No disassembled naming screen offers a digit (pokered
+  `data/text/alphabets.asm`; pokecrystal `data/text/name_input_chars.asm`, where only box
+  names get them), and no species, trade or event name holds one: a digit in a Western
+  trainer name or nickname is a Warning (the other languages' screens are not disassembled).
+  PKHeX accepts digits.
+- **Japanese trainer names.** PKHeX requires kana (`StringConverter1.GetIsJapanese`) and,
+  for a Gen II encounter, also ？ and ！ (`StringConverter2.GetIsJapanese`). A character
+  outside that is a Warning here. The two marks are judged per origin: fine with a Gen II
+  origin on either format, a Warning on a Gen I origin, so a record with only Gen I origins
+  is Incomplete. PKHeX judges by the first encounter it matched and does not look for
+  another, so it calls a record with ？ INVALID (`G1CharOT`) when that first match is Gen I
+  while a Gen II egg or slot is open (`jp-ot-mark-gen1-pick` below). Review item 16-D.
+- **Korean trainer names on a PK1.** A Hangul page byte (1–11) first in the trainer name
+  marks the record Korean (PKHeX `PK1.Korean`); no Korean Red/Blue/Yellow exists, so the
+  record needs the Korean–Western trade above and a Time Capsule trip: Legal becomes
+  Incomplete, and when no Gen II origin fits (the catch-rate byte is not a Gen II held
+  item, a Gen I-only move or species) it is Invalid. PKHeX accepts such a record as a
+  Red/Blue/Yellow native (`korean-pk1-origin` below). Review item 17-D.
 
 ## Evidence
 
@@ -154,7 +211,13 @@ The corpora contain:
   of the random defects): duplicate moves, EXP 0, EXP one short of the level, EXP of the
   next level, and level 100 with EXP at, one under, one over and far over the total, with
   the two boundaries that must stay legal (EXP one short of the next level, level 100 at
-  the total);
+  the total); the Day Care states (`exp-daycare-stale`, `-99`, `-reach` at `$50FFFF`,
+  `-past` at `$510000`);
+- name bytes and characters (30 records per kind and seed): digits in the trainer name
+  and nickname, a glyphless byte in a Western and in a Japanese name, a Japanese trainer
+  name outside the kana, ？/！ with a Gen II origin (`jp-ot-mark-ok`) and with only Gen I
+  origins (`jp-ot-mark-gen1`), the trade marker followed by a letter, and on PK1 the Korean
+  names (`kor1-tradeback`, `kor1-rby`, `kor1-ot-one-byte`, `kor1-ot-long`);
 - random records.
 
 About a quarter of the records are Japanese, encoded with PKHeX's own
@@ -170,32 +233,53 @@ About a quarter of the records are Japanese, encoded with PKHeX's own
   - Korean Gold/Silver: 20 `kor2-*` kinds of 40 records each, one rule per kind, plus a
     Korean share of the random kinds.
 
-Seeds 1–3, 50,000 records each:
+Seeds 1–5, 50,000 records each (`tools/pkhex_gb_diff/run.sh /home/user/ext/pkhex
+/home/user/ext/pokered 50000 <seed> <gen>`; CI runs seeds 1–3). Every record has a verdict
+from both programs and lands in one class:
 
 | | PK1 | PK2 |
 |---|---|---|
-| Records | 150,000 | 150,000 |
-| Matching legal | 109,865 | 104,661 |
-| Matching invalid | 38,741 | 42,282 |
+| Records | 250,000 | 250,000 |
+| Matching legal | 181,346 | 173,259 |
+| Matching invalid | 56,461 | 67,415 |
 | **Differing** | **0** | **0** |
-| Deliberately uncertain: Mew/Celebi from an unrecorded event (PKHeX INVALID) | 66 | 107 |
-| Deliberately uncertain: Korean, needs a Korean–Western trade (PKHeX INVALID / VALID) | – | 777 / 152 |
-| Deliberately uncertain: Korean met data (PKHeX INVALID / VALID) | – | 472 / 63 |
-| Deliberately uncertain: two of the reasons above (PKHeX INVALID) | – | 16 |
-| Deliberately uncertain: Korean trainer name outside the Hangul pages (PKHeX INVALID) | – | 82 |
-| Deliberately different: stored level not the level of the EXP (ours INVALID, PKHeX VALID) | 1,328 | 1,352 |
-| Deliberately different: GS Ball Celebi (ours VALID, PKHeX INVALID) | – | 36 |
+| Deliberately uncertain, total | 10,922 | 7,494 |
+| – Mew/Celebi from an unrecorded event (PKHeX INVALID) | 120 | 164 (+6 with Korean met data) |
+| – battle stat experience with a stat still at 0 (PKHeX INVALID) | 6,191 | 2,812 (+2 with the Korean trade) |
+| – Day Care: EXP over the level-100 total within `$50FFFF` (PKHeX INVALID) | 2,320 | 366 |
+| – Day Care: stored level below its EXP (PKHeX VALID) | 1,239 | 728 (+1 with the Korean trade) |
+| – Korean, needs a Korean–Western trade (PKHeX INVALID / VALID) | – | 1,277 / 246 |
+| – Korean met data (PKHeX INVALID / VALID) | – | 797 / 97 (+17 with the trade) |
+| – Korean trainer name outside the Hangul pages (PKHeX INVALID) | – | 140 |
+| – Korean trainer name on a PK1 (PKHeX INVALID / VALID) | 75 / 300 | – |
+| – digit in a Western name (PKHeX VALID; 1 word-filter INVALID) | 300 | 300 |
+| – glyphless byte in a name (PKHeX INVALID / VALID) | 31 / 233 | 39 / 233 |
+| – Japanese trainer name outside the kana (PKHeX INVALID) | 61 | 119 |
+| – ？/！ in a Japanese trainer name, only Gen I origins (PKHeX INVALID) | 52 | 150 |
+| Deliberately different, total | 1,271 | 1,832 |
+| – stored level ahead of its EXP (ours INVALID, PKHeX VALID) | 1,160 | 1,652 |
+| – Korean-named PK1 with no Gen II origin (ours INVALID, PKHeX VALID) | 100 | – |
+| – ？/！ with a Gen II origin open (ours VALID, PKHeX INVALID `G1CharOT`) | 11 | 120 |
+| – GS Ball Celebi (ours VALID, PKHeX INVALID) | – | 60 |
 
-Every one of the 300,000 records has a verdict from both programs. The structural kinds
-all agree with PKHeX where PKHeX decides: duplicate moves, EXP 0 and EXP over the
-level-100 total are Invalid for both (450 records per format); the two legal boundaries
-are legal for both (180 per format). The 150 Korean
-records PKHeX accepts but that only a trade explains are mostly Crystal Odd Eggs: PKHeX
-allows the Odd Egg for Korean records (`ParseSettings.AllowGen2OddEgg` excludes only
-Japanese) while it rules out every other Crystal source. No record of these seeds is
-uncertain through the evolution-order rule: the 60 `evo-order` histories (two moves
-learned in an order the Gen I games alone cannot produce) are all legal for both
-programs, through Stadium 2's reminder.
+Seeds 1–3 alone (the CI set): PK1 108,738 legal / 33,926 invalid / 0 differing; PK2 103,891 /
+40,525 / 0. The previous published counts (before the Day Care, name and Korean-PK1 kinds were
+added, same seeds) were PK1 109,865 / 38,741 / 0 and PK2 104,661 / 42,282 / 0; the corpus is
+not the same, so the two sets are not comparable record for record.
+
+Production parity passed on every run: PK1 50,000 of 50,000 records through `Legality::analyze`
+per seed (174–177 of them with a verdict that needs the stored name bytes the parsers do not
+carry yet); PK2 45,824–45,949 per seed (4,051–4,176 Korean records skipped, which the parsers do
+not read; 52–56 needing the name bytes).
+
+The structural kinds all agree with PKHeX where PKHeX decides: duplicate moves, EXP 0 and EXP
+over the level-100 total at level 100 are Invalid for both; the two legal boundaries are legal
+for both. The Korean records PKHeX accepts but that only a trade explains are mostly Crystal Odd
+Eggs: PKHeX allows the Odd Egg for Korean records (`ParseSettings.AllowGen2OddEgg` excludes
+only Japanese) while it rules out every other Crystal source. No record of these seeds is
+uncertain through the evolution-order rule: the `evo-order` histories (two moves learned in an
+order the Gen I games alone cannot produce) are all legal for both programs, through Stadium 2's
+reminder.
 
 `tests/test_gb_legality_gen1.cpp` (through `Legality::analyze`) and
 `tests/test_gb_legality_gen2.cpp` keep PKHeX-verdict samples of every corpus kind in the
@@ -214,7 +298,9 @@ PK2 records.
 | The stored level must be the level the EXP gives (PK1 and PK2): battle, Rare Candy and the Day Care keep them in step. | Derives the level from EXP; does not compare | `struct*-exp-below`, `struct*-exp-next`, `struct*-exp-cap-minus1`, level defects |
 | GS Ball Celebi in Japanese Crystal is legal | Invalid (Virtual Console only) | `gsball2-caught`, `gsball2-grown` |
 | No word filter: Game Boy games filter no names | `WordFilterFlaggedPattern` on some random nicknames | random Latin nicknames |
-| Incomplete for the non-definitive rules above | Invalid, or valid (Korean Odd Egg, Korean met data) | see the Uncertain columns |
+| A Hangul-named PK1 with no Gen II origin (catch rate not a held item, Gen I-only move or species) is Invalid | Valid as a Red/Blue/Yellow native | `korean-pk1-origin`: `kor1-rby`, `kor1-ot-long` |
+| ？/！ in a Japanese trainer name with a Gen II origin open is legal | Invalid (`G1CharOT`) when the first encounter it matched is Gen I | `jp-ot-mark-gen1-pick`: `jp-ot-mark-ok` |
+| Incomplete for the non-definitive rules above | Invalid, or valid (Korean Odd Egg, Korean met data, Day Care stale level, digits, glyphless bytes, Korean PK1) | see the Uncertain columns |
 
 ## Not covered yet
 
@@ -226,10 +312,11 @@ PK2 records.
 - **Japanese Red/Green/Blue:** encounters and in-game trades follow PKHeX's tables (the
   Red/Green slots and Japanese Blue's own slots and trades). Any other Japanese-version
   difference is only as complete as those tables.
-- **Name character sets:** checked only for Korean trainer names (unconfirmed). Names are
-  otherwise judged by length, since callers decode them.
-- **Korean edge cases:** a PK1 holding a Korean Gold/Silver Pokémon (Korean → Western
-  Red/Blue/Yellow) is not modelled.
-- **Day Care slots:** a Pokémon still in the Day Care (stale level, EXP possibly past the
-  level-100 total) is not read by the save parsers; exported on its own, it would be
-  judged Invalid by the level/EXP rules.
+- **Name character sets:** the Japanese and Korean naming screens and the non-English
+  Western screens are not disassembled, so those character rules (see "Names") are
+  Warnings, never Invalid. The byte rules reach production only with the hand-off patch.
+- **Korean edge cases:** the Korean ROM is not disassembled; Korean met data, the Korean
+  naming screen and the Korean–Western trade rest on PKHeX and Bulbapedia (Incomplete).
+- **Day Care slots:** the save parsers do not read the Day Care slot; a record exported
+  from it is judged Incomplete by the level/EXP rules, never Invalid, within the step
+  counter's reach.
