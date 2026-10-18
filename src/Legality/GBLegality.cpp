@@ -390,6 +390,7 @@ struct Subject {
     bool tradeTrainer = false;
     std::string otName, nickname;
     Language language = Language::Unknown;
+    std::vector<uint8_t> otRaw, nickRaw;    // the stored name bytes, when the caller has them
     // A Korean Gold/Silver record taken through a Western game. Bulbapedia ("Korean
     // character encoding (Generation II)", "Trade") documents that Korean cartridges
     // trade with Western Gen I and II cartridges (only the Virtual Console releases
@@ -1519,15 +1520,184 @@ std::size_t codePoints(const std::string& s) {
     return n;
 }
 
+// ---------------------------------------------------------------- name bytes
+
+constexpr uint8_t kNameTerminator = 0x50;   // "@" in pret's charmaps; PKHeX also stops at 0x00
+constexpr uint8_t kTradeOtByte = 0x5D;      // "<TRAINER>" (pokered/pokecrystal constants/charmap.asm)
+constexpr uint8_t kHangulPageMax = 0x0B;    // StringConverter2KOR: first byte of a two-byte Hangul
+
+/// The stored bytes of a name, up to its terminator.
+std::size_t nameEnd(const std::vector<uint8_t>& raw) {
+    std::size_t n = 0;
+    while (n < raw.size() && raw[n] != kNameTerminator && raw[n] != 0)
+        ++n;
+    return n;
+}
+
+/// PK1.Korean / PK2.Korean (StringConverter2KOR.IsHangul): the name starts with a Hangul page.
+bool hangulLead(const std::vector<uint8_t>& raw) {
+    return !raw.empty() && raw[0] >= 1 && raw[0] <= kHangulPageMax;
+}
+
+/// Characters in a Korean Gold/Silver name: a Hangul page byte and its index make one
+/// character, anything else one byte (StringConverter2KOR.LoadString).
+std::size_t koreanLength(const std::vector<uint8_t>& raw, bool* oneBytePage) {
+    const std::size_t end = nameEnd(raw);
+    std::size_t chars = 0;
+    for (std::size_t i = 0; i < end; ++chars) {
+        if (raw[i] >= 1 && raw[i] <= kHangulPageMax) {
+            i += 2;
+        } else {
+            if (oneBytePage)
+                *oneBytePage = true;
+            i += 1;
+        }
+    }
+    return chars;
+}
+
+/// Bytes PKHeX's tables give no glyph (StringConverter1/2 TableEN and TableJP, where the
+/// entry is NUL). The games write none of them into a name, and a decoder stops at one,
+/// so the name reads shorter than it is stored.
+bool glyphless(uint8_t format, Language lang, uint8_t b) {
+    if (b == kNameTerminator || b == 0)
+        return false;
+    if (lang == Language::Japanese) {
+        return b <= 0x04 || (b >= 0x14 && b <= 0x18) || (b >= 0x1E && b <= 0x24) || (b >= 0x35 && b <= 0x39) ||
+               b == 0x3F || (b >= 0x49 && b <= 0x4D) || b == 0x4F || (b >= 0x51 && b <= 0x5C) ||
+               (b >= 0x5E && b <= 0x6D) || (b >= 0x79 && b <= 0x7E) || (b >= 0xEC && b <= 0xEE);
+    }
+    // Western font. Gen II's table adds the line break at 0x4E, the 'd-'v ligatures at
+    // 0xD0-0xD6 keep a glyph in both, 0xDE and 0xE4 differ between the two tables.
+    if (b <= 0x4D || b == 0x4F || (b >= 0x51 && b <= 0x5C) || (b >= 0x5E && b <= 0x6F) || b == 0x74 ||
+        (b >= 0x76 && b <= 0x78) || (b >= 0xD7 && b <= 0xDD) || b == 0xE5)
+        return true;
+    if (format == 1)
+        return b == 0x4E || b == 0xE4;
+    return b == 0xDE;
+}
+
+/// Rules on the stored name bytes. Skipped when the caller did not pass them.
+std::vector<Problem> rawNameProblems(const Subject& pk) {
+    std::vector<Problem> out;
+    const bool korean = pk.language == Language::Korean;
+    if (!pk.otRaw.empty()) {
+        if (pk.otRaw[0] == kTradeOtByte) {
+            // The games write "<TRAINER>@" and pad with "@" (pokered macros/data.asm dname,
+            // pokered engine/events/in_game_trades.asm, pokecrystal data/events/npc_trades.asm);
+            // PKHeX EncounterTrade1.IsTrainerNameValid requires exactly [0x5D, 0x50, ...].
+            if (pk.otRaw.size() < 2 || pk.otRaw[1] != kNameTerminator)
+                out.push_back({Area::Trainer, "The in-game-trade trainer marker must be followed by the name "
+                                              "terminator (the games write <TRAINER>@)"});
+        } else if (!korean) {
+            const std::size_t end = nameEnd(pk.otRaw);
+            for (std::size_t i = 0; i < end; ++i) {
+                if (glyphless(pk.format, pk.language, pk.otRaw[i])) {
+                    out.push_back({Area::Trainer,
+                                   "Trainer name holds a byte with no glyph in the " +
+                                       std::string(pk.language == Language::Japanese ? "Japanese" : "Western") +
+                                       " font (the name reads shorter than it is stored): a garbled Korean "
+                                       "trade, or a damaged record",
+                                   false});
+                    break;
+                }
+            }
+        }
+    }
+    if (!pk.nickRaw.empty() && !korean) {
+        const std::size_t end = nameEnd(pk.nickRaw);
+        for (std::size_t i = 0; i < end; ++i) {
+            if (glyphless(pk.format, pk.language, pk.nickRaw[i])) {
+                out.push_back({Area::Trainer,
+                               "Nickname holds a byte with no glyph in the " +
+                                   std::string(pk.language == Language::Japanese ? "Japanese" : "Western") +
+                                   " font (the name reads shorter than it is stored): a garbled Korean trade, "
+                                   "or a damaged record",
+                               false});
+                break;
+            }
+        }
+    }
+    return out;
+}
+
+/// The code points of a decoded (UTF-8) name.
+std::vector<uint32_t> codePointsOf(const std::string& s) {
+    std::vector<uint32_t> out;
+    for (std::size_t i = 0; i < s.size();) {
+        const unsigned char c = static_cast<unsigned char>(s[i]);
+        std::size_t len = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : (c >> 3) == 30 ? 4 : 1;
+        if (i + len > s.size())
+            len = 1;
+        uint32_t cp = len == 1 ? c : static_cast<uint32_t>(c & (0xFF >> (len + 1)));
+        for (std::size_t k = 1; k < len; ++k)
+            cp = (cp << 6) | (static_cast<unsigned char>(s[i + k]) & 0x3F);
+        out.push_back(cp);
+        i += len;
+    }
+    return out;
+}
+
+/// Rules on the characters of the decoded names. None is definitive: the English naming
+/// screens are the only ones disassembled, and PKHeX's Japanese character rule is not
+/// checked against a Japanese ROM.
+std::vector<Problem> nameCharsetProblems(const Subject& pk) {
+    std::vector<Problem> out;
+    if (pk.language == Language::Japanese) {
+        // TrainerNameVerifier.VerifyGBOTWithinBounds: StringConverter1.GetIsJapanese
+        // (U+3000-U+30FC), StringConverter2.GetIsJapanese adds ？ and ！. PKHeX rejects the
+        // trainer name (G1CharOT); the Japanese games' naming screens are not disassembled
+        // here, so it stays a warning.
+        if (!pk.tradeTrainer) {
+            for (uint32_t cp : codePointsOf(pk.otName)) {
+                const bool kana = cp >= 0x3000 && cp <= 0x30FC;
+                const bool mark = pk.format == 2 && (cp == 0xFF1F || cp == 0xFF01);
+                if (!kana && !mark) {
+                    out.push_back({Area::Trainer, "Japanese trainer name has a character outside the kana "
+                                                  "(PKHeX rejects it; the Japanese naming screen is not "
+                                                  "disassembled)",
+                                   false});
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+    if (pk.language == Language::Korean)
+        return out;
+    // No Western naming screen that is disassembled offers digits: pokered
+    // data/text/alphabets.asm (Pokemon, player and rival names), pokecrystal
+    // data/text/name_input_chars.asm (NameInputLower/Upper; only box names get digits).
+    // Species names, in-game-trade and event names hold none either. The other
+    // languages' screens are not disassembled, so this is a warning.
+    const auto hasDigit = [](const std::string& s) {
+        return std::any_of(s.begin(), s.end(), [](char c) { return c >= '0' && c <= '9'; });
+    };
+    if (!pk.tradeTrainer && hasDigit(pk.otName))
+        out.push_back({Area::Trainer, "Trainer name has a digit; the English naming screens offer none, and "
+                                      "no game or event writes one (other languages' screens are not "
+                                      "disassembled)",
+                       false});
+    if (!pk.egg && hasDigit(pk.nickname))
+        out.push_back({Area::Trainer, "Nickname has a digit; the English naming screens offer none, and no "
+                                      "species, trade or event name holds one (other languages' screens are "
+                                      "not disassembled)",
+                       false});
+    return out;
+}
+
 /// TrainerNameVerifier.VerifyGBOTWithinBounds: the naming screen allows 7 characters,
-/// 5 in Japanese.
+/// 5 in Japanese and Korean. A Korean name is measured on its bytes when they are known
+/// (StringConverter2KOR: a Hangul character is two bytes), since a Western decoder reads
+/// none of it.
 std::string trainerNameProblem(const Subject& pk) {
     if (pk.tradeTrainer)
         return {};  // the in-game-trade marker; judged with the trade encounters
-    const std::size_t length = codePoints(pk.otName);
+    const bool korean = pk.language == Language::Korean;
+    const std::size_t length = korean && !pk.otRaw.empty() ? koreanLength(pk.otRaw, nullptr) : codePoints(pk.otName);
     if (length == 0)
         return "Original trainer name is empty";
-    const std::size_t limit = pk.language == Language::Japanese || pk.language == Language::Korean ? 5 : 7;
+    const std::size_t limit = pk.language == Language::Japanese || korean ? 5 : 7;
     if (length > limit)
         return "Original trainer name is longer than " + std::to_string(limit) + " characters";
     return {};
@@ -1538,8 +1708,11 @@ std::string trainerNameProblem(const Subject& pk) {
 std::string nicknameProblem(const Subject& pk) {
     if (pk.egg)
         return {};
-    const std::size_t limit = pk.language == Language::Japanese || pk.language == Language::Korean ? 5 : 10;
-    if (codePoints(pk.nickname) > limit)
+    const bool korean = pk.language == Language::Korean;
+    const std::size_t limit = pk.language == Language::Japanese || korean ? 5 : 10;
+    const std::size_t length =
+        korean && !pk.nickRaw.empty() ? koreanLength(pk.nickRaw, nullptr) : codePoints(pk.nickname);
+    if (length > limit)
         return "Nickname is longer than " + std::to_string(limit) + " characters";
     return {};
 }
@@ -1982,7 +2155,7 @@ std::vector<Problem> formatProblems(const Entity1& e) {
     }
     if (Problem stats = statExpProblem(e.statExp, false); !stats.text.empty())
         out.push_back(std::move(stats));
-    if (e.nickname.empty())
+    if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)  // the stored bytes decide when they are known (Korean names decode to nothing in a Western decoder)
         out.push_back({Area::Trainer, "Nickname is empty"});
     return out;
 }
@@ -1998,7 +2171,7 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         if (Problem level = levelExpProblem(2, e.species, e.level, e.exp); !level.text.empty())
             out.push_back(std::move(level));
     }
-    if (e.nickname.empty())
+    if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)
         out.push_back({Area::Trainer, "Nickname is empty"});
     // The games name an egg when they make it (pokegold engine/events/daycare.asm and
     // pokecrystal engine/pokemon/move_mon.asm write "EGG@") and nothing renames one.
@@ -2043,6 +2216,17 @@ Result checkGen1(const Entity1& e) {
     pk.catchRate = e.catchRate;
     pk.type1 = e.type1;
     pk.type2 = e.type2;
+    pk.otRaw = e.otRaw;
+    pk.nickRaw = e.nickRaw;
+    if (!e.otRaw.empty())
+        pk.tradeTrainer = e.otRaw[0] == kTradeOtByte;
+    // PK1.Korean (StringConverter2KOR.IsHangul): a Korean Gold/Silver trainer name. No
+    // Korean Red/Blue/Yellow exists (pokered has no Korean build; PKHeX LanguageVerifier
+    // "neither do Korean VC1"), and no Western naming screen or ROM string writes a byte
+    // below 0x0C into a name (pokered data/text/alphabets.asm; TableEN has no glyph there).
+    const bool koreanNames = pk.language != Language::Japanese && hangulLead(e.otRaw);
+    if (koreanNames)
+        pk.language = Language::Korean;
 
     // Problems that do not depend on the origin.
     std::vector<Problem> extra;
@@ -2052,9 +2236,31 @@ Result checkGen1(const Entity1& e) {
         extra.push_back({Area::Moves, pp});
     const std::vector<Problem> format = formatProblems(e);
     extra.insert(extra.end(), format.begin(), format.end());
+    for (std::vector<Problem> names : {rawNameProblems(pk), nameCharsetProblems(pk)})
+        extra.insert(extra.end(), names.begin(), names.end());
 
     const Chain chain1 = originChain(pk.species, pk.level, false);
     const Chain chain2 = originChain(pk.species, pk.level, true);
+    if (koreanNames) {
+        // The only route: caught, received or hatched in Korean Gold/Silver, traded into a
+        // Western Gold/Silver/Crystal (Bulbapedia records the cartridges trading; PKHeX
+        // does not allow it, and reads this record as a Red/Blue/Yellow native), then the
+        // Time Capsule. So no Gen I origin, and every Gen II origin a Korean record can
+        // have through a Western game; the catch-rate byte must be the held item the Time
+        // Capsule wrote. Legal becomes Uncertain, since the trade rests on one secondary
+        // source; what the Korean restrictions alone exclude is reported as such.
+        pk.westernTrade = true;
+        Chain none;
+        Result r = search(pk, none, chain2, true, extra);
+        if (r.status == Status::Legal)
+            r.status = Status::Uncertain;
+        r.problems.push_back({Area::Trainer, "Korean Gold/Silver trainer name on a Red/Blue/Yellow record: no Korean "
+                                             "Gen I game exists, so it needs a trade from Korean Gold/Silver into "
+                                             "a Western Gold/Silver/Crystal (documented for the cartridges by "
+                                             "Bulbapedia; PKHeX does not allow it) and a Time Capsule trip",
+                              false});
+        return r;
+    }
     return search(pk, chain1, chain2, gen2Possible(pk, chain1), extra);
 }
 
@@ -2096,9 +2302,19 @@ Result checkGen2(const Entity2& e) {
     pk.metLevel = static_cast<uint8_t>((e.caughtData >> 8) & 0x3F);
     pk.otGender = static_cast<uint8_t>((e.caughtData >> 7) & 1);
     pk.metLocation = static_cast<uint8_t>(e.caughtData & 0x7F);
+    pk.otRaw = e.otRaw;
+    pk.nickRaw = e.nickRaw;
+    if (!e.otRaw.empty())
+        pk.tradeTrainer = e.otRaw[0] == kTradeOtByte;
+    // PK2.Korean (StringConverter2KOR.IsHangul): the stored bytes decide, whatever the
+    // caller's decoder made of them.
+    if (pk.language != Language::Japanese && hangulLead(e.otRaw))
+        pk.language = Language::Korean;
 
     // Problems that do not depend on the origin.
     std::vector<Problem> extra;
+    for (std::vector<Problem> names : {rawNameProblems(pk), nameCharsetProblems(pk)})
+        extra.insert(extra.end(), names.begin(), names.end());
     if (pk.egg && pk.heldItem != 0)
         extra.push_back({Area::HeldItem, "An egg cannot hold an item"});
     else if (!isHoldableGen2(pk.heldItem))
@@ -2127,12 +2343,18 @@ Result checkGen2(const Entity2& e) {
     // naming screen here, so it leaves the record unconfirmed rather than invalid.
     if (pk.language == Language::Korean && !pk.tradeTrainer) {
         const std::string& ot = pk.otName;
-        const bool oneBytePage =
-            std::any_of(ot.begin(), ot.end(), [](char c) {
-                const unsigned char u = static_cast<unsigned char>(c);
-                return u < 0x80 && (std::isalnum(u) != 0 || u == ' ' || u == '/');
-            }) ||
-            ot.find("♂") != std::string::npos || ot.find("♀") != std::string::npos || ot.find("×") != std::string::npos;
+        bool oneBytePage = false;
+        if (!pk.otRaw.empty()) {
+            koreanLength(pk.otRaw, &oneBytePage);  // the stored bytes decide
+        } else {
+            oneBytePage =
+                std::any_of(ot.begin(), ot.end(), [](char c) {
+                    const unsigned char u = static_cast<unsigned char>(c);
+                    return u < 0x80 && (std::isalnum(u) != 0 || u == ' ' || u == '/');
+                }) ||
+                ot.find("♂") != std::string::npos || ot.find("♀") != std::string::npos ||
+                ot.find("×") != std::string::npos;
+        }
         if (oneBytePage)
             unconfirmed.push_back({Area::Trainer, "Korean trainer name has characters outside the Hangul pages "
                                                   "(PKHeX requires Hangul; not confirmed for the Korean naming "

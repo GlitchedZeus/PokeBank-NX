@@ -65,8 +65,10 @@ bool hex(const std::string& s, std::vector<uint8_t>& out) {
 }
 }
 
+// withRaw: hand the engine the stored name bytes (the byte rules); false is what the app
+// can do today, since its save parsers keep only the decoded names.
 Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vector<uint8_t>& ot,
-                              const std::vector<uint8_t>& nick, bool jp, bool egg) {
+                              const std::vector<uint8_t>& nick, bool jp, bool egg, bool withRaw = true) {
     namespace Gen2 = PokeVault::Integration::Gen2;
     namespace GB = Legality::GB;
     const auto region = jp ? Gen2::RegionLayout::Japanese : Gen2::RegionLayout::International;
@@ -95,6 +97,10 @@ Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vecto
     e.otName = korean ? decodeKorean(ot) : Gen2::decodeGen2String(ot, region);
     e.nickname = korean ? decodeKorean(nick) : Gen2::decodeGen2String(nick, region);
     e.language = jp ? GB::Language::Japanese : korean ? GB::Language::Korean : GB::Language::International;
+    if (withRaw) {
+        e.otRaw = ot;
+        e.nickRaw = nick;
+    }
     return GB::checkGen2(e);
 }
 
@@ -155,6 +161,8 @@ int main() {
         e.otName = decodeGen1String(ot, region);
         e.nickname = decodeGen1String(nick, region);
         e.language = jp == "1" ? GB::Language::Japanese : GB::Language::International;
+        e.otRaw = ot;
+        e.nickRaw = nick;
         const GB::Result r = GB::checkGen1(e);
         std::cout << id << verdict(r.status) << GB::describe(r.origin)
                   << (r.timeCapsule ? " [time capsule]" : "") << " ;";

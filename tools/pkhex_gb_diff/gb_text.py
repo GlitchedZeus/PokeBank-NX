@@ -26,6 +26,19 @@ def read_table(pkhex, generation, name):
     return table
 
 
+def read_nul_mask(pkhex, generation, name):
+    """For the 256-entry table `name`: True where PKHeX's entry is NUL (no character at
+    all, where its decoders stop), False for any character or named placeholder."""
+    src = (pkhex / f"PKHeX.Core/PKM/Strings/StringConverter{generation}.cs").read_text(encoding="utf-8")
+    start = src.index(f"ReadOnlySpan<char> {name} =>")
+    body = src[src.index("[", start) + 1:src.index("];", start)]
+    body = re.sub(r"//[^\n]*", "", body)
+    mask = [named == "NUL" for quoted, named in re.findall(r"'(\\'|[^'])'|\b([A-Z][A-Z0-9]{2})\b", body)]
+    if len(mask) != 256:
+        raise SystemExit(f"StringConverter{generation}.{name}: expected 256 entries, found {len(mask)}")
+    return mask
+
+
 class Encoder:
     def __init__(self, table):
         self.index = {}
