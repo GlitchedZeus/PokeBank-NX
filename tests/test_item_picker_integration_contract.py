@@ -44,10 +44,12 @@ for name,body,native in [
 
 # Original game item IDs must be mapped to move type before asking for art.
 assert "ClassicMachineArtwork::artKey(group, itemId)" in classic
-assert "ItemPickerArtwork::draw(fb, x + width - 31" in classic
+assert "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey)" in classic
 assert "ClassicMachineArtwork::artKey(" in gen3
 assert "ClassicMachineArtwork::artKey(" in gen4
-assert "ItemPickerArtwork::drawNativeItem(" in gen4
+# Gen IV (and Gen V) Add rows draw through the ONE shared picker, which draws every row's sprite.
+assert "UI::SharedBagAddPicker::drawPicker(" in gen4
+assert "ItemPickerArtwork::drawNativeItem(" in source("include/UI/SharedBagAddPicker.h")
 
 # PC / Gen IV Add labels must show the taught move, not just "TM43".
 assert "classicMachineMove(game, itemId)" in catalog

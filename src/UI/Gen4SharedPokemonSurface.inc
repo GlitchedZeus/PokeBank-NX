@@ -1,6 +1,7 @@
 #include "Inventory/ItemQuantityPolicy.h"
 #include "UI/Gen4BagQuantity.h"
 #include "UI/SharedBagAddFlow.h"
+#include "UI/SharedBagAddPicker.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
@@ -32,7 +33,6 @@
 #include "UI/ItemPickerSort.h"
 #include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/Gen4DataPresentation.h"
-#include "UI/Gen4ItemListWindow.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -1677,6 +1677,9 @@ Gen4QuantityRule gen4QuantityRule(const TrainerViewScreen& screen, size_t pocket
     return PokeBank::UIModel::Gen4BagQuantity::rule(game, pocket, id);
 }
 
+// Touch ids the shared Add picker publishes (input hit-tests the same rectangles directly).
+constexpr int kGen4BagAddTouchBase=91000;
+
 PokeVault::Inventory::QuantityPolicy::ItemQuantityRule gen4PolicyRule(
     const TrainerViewScreen& screen, size_t pocket, uint16_t id) noexcept {
     PokeVault::Inventory::QuantityPolicy::Game game{};
@@ -1704,41 +1707,30 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             state.itemAddPickerActive=false;
             return true;
         }
-        // Match the drawn nine-row foreground list. A clean tap chooses an
-        // item and opens the same quantity keyboard as controller A. Swipes
-        // move the selected window without triggering any staged mutation.
-        constexpr int panelW=780,panelH=532,rowH=43;
-        const int panelX=(1280-panelW)/2;
-        const int panelY=(720-kNavBarH-panelH)/2;
-        const int top=panelY+88,left=panelX+18,right=panelX+panelW-18;
-        const auto onList=[&](int x,int y) {
-            return x>=left && x<right && y>=top && y<top+9*rowH;
-        };
+        // Touch uses the SAME SharedMenuGeometry rectangles the picker draws: a clean tap on a
+        // row chooses it (same as A); a vertical swipe that starts on the list only scrolls.
+        namespace AddPicker=UI::SharedBagAddPicker;
+        const int pageRows=AddPicker::visibleRows(size);
         // Shared scrollbar first: the window is centred on the selection, so the thumb moves
         // the selection to the row that puts the window where the finger put it.
         const auto addBar=SharedScrollbar::handleTouch(state.itemAddScrollbar,SharedScrollbar::sample(touch),
-            SharedScrollbar::rows(size,9,PokeBank::UIModel::Gen4ItemListWindow::first(state.itemAddIndex,size,9)));
-        if(addBar.changed) state.itemAddIndex=std::clamp(addBar.scroll+9/2,0,size-1);
+            SharedScrollbar::rows(size,pageRows,AddPicker::firstVisible(state.itemAddIndex,size)));
+        if(addBar.changed) state.itemAddIndex=std::clamp(addBar.scroll+pageRows/2,0,size-1);
         if(!addBar.consumed && touch.justReleased() && touch.dragged()) {
             const int dy=touch.deltaY();
-            if(onList(touch.startX(),touch.startY()) &&
+            if(AddPicker::onList(touch.startX(),touch.startY(),size) &&
                std::abs(dy)>=24 && std::abs(dy)>std::abs(touch.deltaX())) {
-                const int rows=std::max(1,std::abs(dy)/rowH);
+                const int rows=std::max(1,std::abs(dy)/AddPicker::pickerLayout(size).rule.rowHeight);
                 state.itemAddIndex=std::clamp(
                     state.itemAddIndex+(dy<0?rows:-rows),0,size-1);
             }
             return true;
         }
-        if(!addBar.consumed && touch.justTapped() &&
-           onList(touch.startX(),touch.startY()) &&
-           onList(touch.x(),touch.y())) {
-            const int startRow=(touch.startY()-top)/rowH;
-            const int endRow=(touch.y()-top)/rowH;
-            const int first=PokeBank::UIModel::Gen4ItemListWindow::first(
-                state.itemAddIndex,size,9);
-            const int selected=first+endRow;
-            if(startRow==endRow && selected<size) {
-                state.itemAddIndex=selected;
+        if(!addBar.consumed && touch.justTapped()) {
+            const int startHit=AddPicker::hitChoice(touch.startX(),touch.startY(),state.itemAddIndex,size);
+            const int endHit=AddPicker::hitChoice(touch.x(),touch.y(),state.itemAddIndex,size);
+            if(startHit>=0 && startHit==endHit) {
+                state.itemAddIndex=endHit;
                 keys|=HidNpadButton_A;
             }
         }
@@ -1758,13 +1750,13 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         if(keys&HidNpadButton_Down)
             state.itemAddIndex=(state.itemAddIndex+1)%size;
         if(keys&(HidNpadButton_L|HidNpadButton_Left))
-            state.itemAddIndex=std::max(0,state.itemAddIndex-9);
+            state.itemAddIndex=std::max(0,state.itemAddIndex-pageRows);
         if(keys&(HidNpadButton_R|HidNpadButton_Right))
-            state.itemAddIndex=std::min(size-1,state.itemAddIndex+9);
+            state.itemAddIndex=std::min(size-1,state.itemAddIndex+pageRows);
         if(keys&HidNpadButton_ZL)
-            state.itemAddIndex=std::max(0,state.itemAddIndex-45);
+            state.itemAddIndex=std::max(0,state.itemAddIndex-5*pageRows);
         if(keys&HidNpadButton_ZR)
-            state.itemAddIndex=std::min(size-1,state.itemAddIndex+45);
+            state.itemAddIndex=std::min(size-1,state.itemAddIndex+5*pageRows);
         if(!(keys&HidNpadButton_A))return true;
         if(!itemsScreen || screen.selectedCategory!=state.itemAddPocket) {
             screen.postStatus("Gen IV Add pocket changed; cancelled",280);
@@ -2056,37 +2048,31 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
 
 void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
     screen.drawGSCOverlay(fb);
-    const int w=780,h=532,x=(fb.getWidth()-w)/2;
-    const int y=(fb.getHeight()-kNavBarH-h)/2;
-    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-    fb.drawText(x+24,y+17,"Add Item - Generation IV",Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+53,
-        std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
-        "  |  Sort: "+ItemPickerSort::label(state.itemAddSort),Colors::TextSecondary,TextStyle::Caption);
-    const int count=static_cast<int>(state.itemAddChoices.size());
-    const int start=PokeBank::UIModel::Gen4ItemListWindow::first(
-        state.itemAddIndex,count,9);
-    for(int row=0;row<9 && start+row<count;++row) {
-        const int index=start+row;
-        const int yy=y+88+row*43;
+    const auto game=screen.trainer.getGameGroup();
+    const auto label=[&](int index) {
         const auto id=state.itemAddChoices[static_cast<size_t>(index)];
-        const std::string name=Names::machineDisplayLabel(
-            screen.trainer.getGameGroup(), id, Names::getItemName(id));
-        if(index==state.itemAddIndex)
-            fb.drawSelectionHighlight(x+18,yy,w-36,38);
-        fb.drawText(x+32,yy+9,name,Colors::Text,TextStyle::Body);
-        ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,
-                                        screen.trainer.getGameGroup(), id, name);
-    }
+        return Names::machineDisplayLabel(game,id,Names::getItemName(id));
+    };
+    const int count=static_cast<int>(state.itemAddChoices.size());
+    UI::SharedBagAddPicker::drawPicker(fb,screen.touchButtons,kGen4BagAddTouchBase,game,
+        "Add Item",
+        std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
+            "  |  Sort: "+ItemPickerSort::label(state.itemAddSort),
+        count,state.itemAddIndex,label,
+        [&](int index){return state.itemAddChoices[static_cast<size_t>(index)];},
+        [&](int index) {
+            const auto id=state.itemAddChoices[static_cast<size_t>(index)];
+            const size_t pocket=static_cast<size_t>(state.itemAddPocket);
+            if(pocket>=screen.trainer.items.size())return uint16_t{0};
+            for(const auto& stack:screen.trainer.items[pocket])if(stack.itemId==id)return stack.count;
+            return uint16_t{0};
+        });
     // Shared draggable scrollbar (publishes into the mutable overlay state).
-    SharedScrollbar::drawAndPublish(fb, stateFor(screen).itemAddScrollbar, x + w - 8, y + 88,
-        SharedScrollbar::kTrackWidth, 9 * 43, SharedScrollbar::rows(count, 9, start));
-    fb.drawText(x+24,y+h-38,
-        std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
-        "  |  A adds x1 (held items: highlights the stack)",
-        Colors::Accent,TextStyle::Caption);
+    const auto track=UI::SharedBagAddPicker::scrollbarTrack(count,SharedScrollbar::kTrackWidth);
+    SharedScrollbar::drawAndPublish(fb, stateFor(screen).itemAddScrollbar, track.x, track.y,
+        SharedScrollbar::kTrackWidth, track.h,
+        SharedScrollbar::rows(count, UI::SharedBagAddPicker::visibleRows(count),
+                              UI::SharedBagAddPicker::firstVisible(state.itemAddIndex,count)));
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
                    {"A","Add"},{"B","Cancel"},{"X","Sort"}});
 }
@@ -2094,24 +2080,9 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
     screen.drawGSCOverlay(fb);
     SharedEditorChrome::beginModal(screen.touchButtons);
-    const int w=625,h=244,x=(fb.getWidth()-w)/2;
-    const int y=(fb.getHeight()-kNavBarH-h)/2;
-    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-    fb.drawText(x+24,y+20,"Remove Gen IV Item?",Colors::Text,TextStyle::Heading);
-    const std::string itemName=Names::getItemName(state.itemRemoveId);
-    fb.drawText(x+24,y+69,
-        itemName+"  |  Count "+std::to_string(state.itemRemoveCount),
-        Colors::Text,TextStyle::Body);
-    ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,
-                                    screen.trainer.getGameGroup(), state.itemRemoveId, itemName);
-    fb.drawText(x+24,y+113,
-        "Only the app-owned staged copy changes. Original source is immutable.",
-        Colors::TextSecondary,TextStyle::Caption);
-    fb.drawText(x+24,y+163,
-        "Removal is irreversible within this draft until Discard Changes.",
-        Colors::Accent,TextStyle::Caption);
+    UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.trainer.getGameGroup(),
+        "Remove Gen IV Item?",state.itemRemoveId,Names::getItemName(state.itemRemoveId),
+        state.itemRemoveCount,"Staged copy only; Discard Changes restores it.");
     drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
 }
 
