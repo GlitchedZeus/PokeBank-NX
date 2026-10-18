@@ -2,10 +2,13 @@
 
 Reference for the Gen III analyzer (`src/Legality/Gen3Legality.cpp`, `include/Legality/Gen3Legality.h`).
 It is a port of PKHeX.Core at kwsch/PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722 (GPL-3.0) for
-Pokemon whose origin is Ruby, Sapphire, Emerald, FireRed or LeafGreen. The tables it reads
-(`Gen3LegalityData.{h,cpp}`) are generated from that checkout by `tools/gen_legality_gen3_data.py`
-(`--check` verifies the committed output). Decomp evidence below cites pret/pokeemerald@731ad5bf
-and pret/pokefirered@037335f4.
+Pokemon whose origin is Ruby, Sapphire, Emerald, FireRed or LeafGreen, and (section 7) for
+Pokemon whose origin is Colosseum or XD (version 15, `GameVersion.CXD`) held in any of those
+saves. The tables it reads (`Gen3LegalityData.{h,cpp}`) are generated from that checkout by
+`tools/gen_legality_gen3_data.py`; the GameCube tables (`Gen3LegalityDataCxd.{h,cpp}`: shadow,
+starter, gift, trade and Poke Spot templates, NPC team locks) by
+`tools/gen_legality_gen3_cxd_data.py --pkhex PKHEX` (`--check` verifies the committed output of
+each). Decomp evidence below cites pret/pokeemerald@731ad5bf and pret/pokefirered@037335f4.
 
 The analyzer only reads a decrypted 80- or 100-byte record and returns a `Legality::Report`.
 Production calls it once, from `Legality::analyze` (`applyGen3Analyzer`, just before the final
@@ -22,6 +25,10 @@ Production calls it once, from `Legality::analyze` (`applyGen3Analyzer`, just be
 | `LearnVerifier`, `LearnGroup3`, `MoveBreed3`, `LearnSource3*` | "Moves" (`verifyMoves`, `reportMoves`) |
 | `EncounterSlot3`, `EncounterSlot3Swarm`, `EncounterStatic3`, `EncounterTrade3`, `EncounterGift3`, `EncounterGift3NY`, `EncounterGift3JPN`, `EncounterGift3Colo`, `EncounterEgg3` | "Encounter templates" |
 | `EncounterGenerator3`, `EncounterEnumerator3` (template order, PID/IV type filter, ball filter, lead queue and deferral) | "EncounterEnumerator3", "EncounterGenerator3" |
+| `EncounterShadow3Colo`, `EncounterShadow3XD`, `EncounterStatic3Colo` (starters), `EncounterGift3Colo` (CXD Plusle), `EncounterStatic3XD`, `EncounterTrade3XD`, `EncounterSlot3XD` / `EncounterArea3XD` (Poke Spots), `Encounters3Colo`, `Encounters3XD` | "Encounter templates" GameCube cases (`makeShadowEnc`, `makeColoStarterEnc`, `makeColoGiftCxdEnc`, `makeXdStaticEnc`, `makeXdTradeEnc`, `makeXdSlotEnc`), tables in `Gen3LegalityDataCxd.cpp` |
+| `EncounterGenerator3GC`, `EncounterEnumerator3GC` (trades, Colosseum shadows, starters, gift, XD shadows, XD gifts, e-Reader, Poke Spots, deferred) | `enumerateEncountersGC`, `generateEncountersGC` |
+| `LockFinder`, `TeamLockResult`, `NPCLock`, `TeamLock` (shadow team lock reversal) | `TeamLockSearch`, `shadowLockValid`, `eReaderLockValid` |
+| `MethodCXD` (name screen, trainer ID, starters), `MethodPokeSpot`, `XDRNG` | `isValidNameScreenEndSeed`, `cxdTrainerIdHasSeed`, `coloStarterSeed`, `xdStarterSeed`, `pokeSpotOrigin*`, `xdrng*` |
 | `MethodH`, `SlotMethodH`, `LeadFinder` (wild slot lead/frame search) | "Method H" |
 | `EncounterFinder.FindVerifiedEncounter`, `EncounterVerifier`, `EvolutionVerifier` | `findEncounter`, `verifyEncounter3`, `verifyEvolution` |
 | `SpeciesName.TryGetSpeciesAnyLanguage[CaseInsensitive]`, `WordFilter.IsFiltered` | "Species-name dictionaries", "Word filter" (`isWordFiltered`) |
@@ -58,6 +65,9 @@ are capped at 2^22 steps; reaching the cap is reported as Unknown (Warning), nev
 | MarkVerifier | `verifyMarking` | unused marking bits (I) |
 | LearnVerifier (moves) | `reportMoves` | Duplicate, EmptyInvalid, Unobtainable, UnobtainableExpect (I) |
 | EvolutionVerifier | `verifyEvolution` | EvoInvalid (I) |
+| CXDVerifier (ParsePK3 runs it for Version CXD) | `verifyCxd` | XD starter Eevee PID/IV seed, female OT (I) |
+| TrainerIDVerifier.VerifyTrainerID_CXD | `verifyTrainerId` | TID/SID not reachable from the name screen (I; F for an English XD encounter; skipped above English) |
+| RibbonRules (National, Earth), MiscVerifier fateful for XD, BallVerifier fixed balls, AbilityVerifier CXD CanMismatch, NicknameVerifier.VerifyTrade for XD trades and the Colosseum gift, EncounterVerifier G3EReader | `verifyRibbons`, `verifyFateful`, `verifyBall`, `verifyAbility`, `verifyNickname` / `verifyTrainerName`, `findEncounter` | see section 7 |
 
 Every PKHeX Invalid code the differential corpus produces for Gen III (53 code families over
 seeds 1-4, 1-25 mutations) is reported Invalid here, except `HeldItem:ItemUnreleased` on an
@@ -76,7 +86,9 @@ All differences are more lenient than PKHeX (never a new Invalid):
 | Stored checksum does not match the data | not checked by the legality analysis | Warning, never certified | The game marks such a record a Bad Egg on load (pokeemerald src/pokemon.c:3742-3746) |
 | Internal species 0 with other data present | EncInvalid | Warning ("holds no species") | Real empty slots are all zero; anything else is a damaged record, not a judged Pokemon |
 | Internal species index with no national species (unused "?" slots, >= 412) | EncInvalid | Invalid | Same as PKHeX |
-| Colosseum/XD origin (version 15) or any other non-GBA origin game | judged with PKHeX's GameCube or other logic | Warning, Gen III cartridge rules not run | Not this analyzer's scope; the existing Colosseum/XD evidence in Legality.cpp still runs |
+| Colosseum/XD origin (version 15) | EncounterGenerator3GC and the verifiers of section 7 | the same (one verdict path: `Legality.cpp` no longer adds its own GameCube evidence for a PK3 the analyzer judged) | Section 7 |
+| Other non-GBA origin game byte (0, 6-14) | EncInvalid | Warning, Gen III cartridge rules not run | Not a Gen III cartridge value; the record may be damaged rather than a judged Pokemon |
+| English XD encounter whose TID/SID has no name-screen seed | Fishy (`TrainerIDVerifier.cs:86-101`, PAL copies skip the ball sequence) | Warning | PKHeX's own grading |
 | RNG frame search reaches its cap | (unbounded) | Warning (Unknown) | Never observed in the corpus |
 | A word-filter pattern the matcher cannot evaluate | regex | Warning (Unknown) | The pinned lists have none (`unsupportedWordFilterPatterns() == 0`, asserted by the tests) |
 | PK3 flag bits (bad egg, has species, egg) | ignored by PKHeX | ignored | Same as PKHeX |
@@ -135,8 +147,9 @@ record's PKHeX label.
 | Move outside every pret pool: event-gift moves (PCNY/PCJP/WISHMKR eggs and gifts) | 29 | 169 | Info when certified |
 | Move outside every pret pool: Sketch, or a slot/egg move PKHeX accepts | 0 | 4 | Info when certified |
 
-The Colosseum/XD or unknown version bytes have no handheld table, so the encounter check is
-skipped for them. The analyzer reports such an origin as a Warning in any case.
+The Colosseum/XD or unknown version bytes have no handheld table, so the L1 encounter check is
+skipped for them. A Colosseum/XD origin is judged by the analyzer (section 7); an unknown byte is
+reported as a Warning.
 
 "Info when certified" means the following. The check still runs, and its finding is kept as an
 Info naming the analyzer's match, for example:
@@ -285,4 +298,94 @@ gave 0 false Invalid and 0 false Valid.
 - The older checks in `Legality.cpp` and the `species == 0` early return no longer block the
   analyzer's certification (section 4a). The only exception is the in-game trade met-location
   Warning, which is backed by the decomp (section 4b).
-- Colosseum/XD origins are not judged by this analyzer (Warning).
+- Colosseum/XD origins are judged (section 7). Remaining GameCube gaps: an e-Reader shadow
+  (Japanese Colosseum bonus disc) is Incomplete because PKHeX grades its fixed all-zero IVs
+  Fishy (`IndividualValueVerifier`, IVAllEqual_0); an English XD TID/SID without a name-screen
+  seed is Incomplete (Fishy, section 3); a search that reaches a guard is Unknown (never seen in
+  the corpora). The Gen IV (Pal Park) and Gen V (Poke Transfer) analyzers still report the
+  GameCube encounter as unverified until they call `Gen3Cxd::judge`
+  (`docs/legality/handoff/lane-b-gen4-palpark-cxd-judge.patch`,
+  `docs/legality/handoff/lane-c-gen5-transfer-cxd-judge.patch`).
+
+## 7. Colosseum/XD (GameCube) origins
+
+A PK3 with version 15 came from Pokemon Colosseum or Pokemon XD through the link cable
+(`CK3.ConvertToPK3`, `XK3.ConvertToPK3`: XD sets the fateful flag on everything it sends and the
+National Ribbon on shadows, `XK3.cs:224-241`; Colosseum sets the National Ribbon on shadows,
+`CK3.cs:243`). PKHeX judges such a record with `EncounterGenerator3GC` and the verifiers below;
+the analyzer runs the same path for a version-15 PK3 in any GBA save (R/S/E/FR/LG: the holding
+cartridge does not take part in a GameCube match). A GBA wild record relabelled with version 15
+matches no GameCube template and is Invalid ("Unable to match an encounter from the origin
+game"), as PKHeX grades it (EncInvalid). No GameCube template is an egg.
+
+### 7a. Rules
+
+| Rule | PKHeX | Analyzer | Behaviour | Fixtures (`tests/test_legality_gen3.cpp`) |
+|---|---|---|---|---|
+| Template order and filters: XD trades, Colosseum shadows, Colosseum starters, Colosseum gift (Plusle), XD shadows, XD gifts, e-Reader shadows (Japanese only; a match skips the Poke Spots), Poke Spots, deferred | `EncounterEnumerator3GC.cs:1-140`, `EncounterGenerator3GC.cs:30-87` | `enumerateEncountersGC`, `generateEncountersGC`, `findEncounter` | every compatible template in PKHeX order; species/level/location as the template demands | every `colo-*`, `xd-*`, `ereader-*`, `pokespot-*` row |
+| Shadow template match (species, level, met location 128 for e-Reader, otherwise the template location; re-battle locations 59/90/91/92/113 for XD shadows) | `EncounterShadow3Colo.cs:42,81,160-182`, `EncounterShadow3XD.cs` IsMatchLocation | `isMatchExact` GameCube cases, `gcLocation`, `gcLevel` | exact for a PK3; for a transferred record (`Gen3Cxd::Input::hasOriginalMet == false`) the location is not compared and the level only needs `evo.LevelMax >= Level` | `colo-shadow-bayleef`, `xd-shadow-zapdos`, `xd-shadow-zapdos@rebattle90`, `@rebattle59` (Valid), `@loc75`, `+metlevel` (Invalid) |
+| Shadow team locks: the trainer's party is regenerated backwards from the origin seed; a non-shadow prior lock allows any gap, otherwise the member sits right before, with anti-shiny reroll frames; the CPU trainer's shiny value is checked against each member; XD never yields a shiny shadow | `LockFinder.cs:7-36`, `TeamLockResult.cs:86-215` (GetSingleLock, GetAllLocks, VerifyNPC), `NPCLock.cs` | `TeamLockSearch`, `shadowLockValid` | Invalid when no permutation of the team regenerates (`ShadowLock`) | `colo-shadow-bayleef+pid`, `xd-shadow-zapdos+pid` (Invalid); all base shadows (Valid) |
+| e-Reader shadow: origin seeds from `XDRNG.GetSeeds(pid)`, lock check, language forced to Japanese | `EncounterGenerator3GC.cs:77-87`, `EncounterShadow3Colo.cs:42,81`, `EncounterVerifier.cs:24` (G3EReader non-Japanese) | `eReaderLockValid`, `findEncounter` | Invalid for a non-Japanese record; the fixed all-zero IVs stay Fishy (Warning) | `ereader-togepi`, `-mareep`, `-scizor` (Fishy), `ereader-togepi+english`, `+pid`, `+fateful` (Invalid) |
+| Colosseum starters (Espeon, Umbreon): TID, SID, then two PIDs rerolled until male and not shiny, IVs from the same seed | `MethodCXD.cs:510-523, 571-612`, `MethodFinder.cs:555-572` | `coloStarterPid`, `coloStarterSeed`, `coloStarterMatch` | Invalid when no seed yields TID/SID/PID/IVs | `colo-starter-espeon`, `-umbreon` (Valid), `+ivhp`, `+fateful`, `+femaleot`, `+metlevel` (Invalid) |
+| XD starter Eevee: TID, SID, two fake PIDs, IVs, ability, PID | `MethodCXD.cs:614-636`, `CXDVerifier.cs:15-35` | `xdStarterSeed`, `verifyCxd` | Invalid when PID and IVs do not follow from the TID/SID | `xd-starter-eevee` (Valid), `+ivhp`, `+pid` (Invalid) |
+| Trainer ID from the name screen: the name-screen end seed advances 1000 frames to the TID then SID; XD encounters exempt above English, Fishy for English | `MethodCXD.cs:644-693`, `XDRNG.cs:97-98`, `TrainerIDVerifier.cs:30-32, 86-101` | `isValidNameScreenEndSeed`, `cxdTrainerIdHasSeed`, `verifyTrainerId` | Invalid (Colosseum, Japanese XD), Fishy (English XD), skipped (other XD languages); the oracle builds every record with a valid name-screen TID/SID (`CxdTrainer`) | base rows (Valid); differential TID/SID mutations |
+| Poke Spot: activation, slot from the PID, origin seed from the IVs, spot animation, level within the slot (a transferred record: template level at most the met level) | `MethodPokeSpot.cs:8-50, 63-84, 140-175, 373-410`, `EncounterEnumerator3GC.cs:106-117` (area location compared for a PK3 only) | `pokeSpotActivation`, `pokeSpotOriginPid`, `pokeSpotOriginIVs`, `pokeSpotAnimation` | Invalid when no origin seed produces the record | `pokespot-sandshrew`, `-zubat`, `-hoppip`, `-phanpy`, `-aron` (Valid), `pokespot-sandshrew+pid`, `+metlevel`, `@loc91` (Invalid) |
+| XD trades and Colosseum gift: fixed OT and nickname per language (the GameCube name cut to the GBA length, 5 JPN / 7 INT) | `EncounterTrade3XD.cs` IsTrainerMatch / IsNicknameMatch, `EncounterGift3Colo.cs` IsTrainerMatch, `NicknameVerifier.cs:51-54, 356-361` | `xdFixedNameMatch`, `coloTrainerMatch`, `verifyNickname`, `verifyTrainerName` | Invalid on a changed OT or nickname | `xd-trade-meditite`, `-shuckle`, `-larvitar`, `-elekid-zaprong`, `colo-gift-plusle` (Valid), `xd-trade-shuckle+ot`, `xd-trade-elekid+nick`, `colo-gift-plusle+ot` (Invalid) |
+| Fateful (obedience) flag: set on every Pokemon XD sends, never by Colosseum | `MiscVerifier.cs:15,60` (VerifyFatefulEncounter), `XK3.cs:224-241`, `CK3.cs:243` | `verifyFateful` | Invalid either way | `xd-shadow-zapdos-fateful`, `xd-gift-chikorita-fateful`, `colo-shadow-bayleef+fateful`, `colo-starter-espeon+fateful`, `ereader-togepi+fateful`, PKHeX records `pkhex-shuckle-gift-nofateful-ck3` (Invalid) and `pkhex-shuckle-nofateful-xk3` (Valid) |
+| National Ribbon exactly on shadows; Earth Ribbon allowed on any Gen III visitor | `RibbonRules.cs:311-317, 333` | `verifyRibbons` | Invalid when missing on a shadow or present on a non-shadow | `colo-shadow-bayleef-national`, `xd-shadow-zapdos-national` (Invalid), `+earth` (Valid) |
+| Ball: XD shadows keep their snag ball (any GBA ball but the Safari Ball), Colosseum shadows likewise, starters, gifts, trades and Poke Spots are fixed | `BallVerifier.cs` (IFixedBall, VerifyBallEquals), template `FixedBall` | `verifyBall`, `wildBall3` | Invalid | `colo-shadow-bayleef+safari`, `xd-shadow-zapdos+safari`, `xd-shadow-teddiursa+great`, `xd-gift-chikorita+master`, PKHeX `pkhex-ultraball-teddiursa` (Invalid); `+master` on shadows (Valid) |
+| Ability: a two-ability species may carry either ability without matching the PID; a one-ability species must not set the bit unless it is a shadow (re-battles flip it) | `AbilityVerifier.cs:147-158, 203-247` | `verifyAbility` | Invalid | `pkhex-vaporeon-split-evo` (Valid) |
+| Male OT only | `CXDVerifier.cs:20` (G3OTGender) | `verifyCxd` | Invalid | `+femaleot` variants |
+| Moves: the CXD learn source is Emerald's | `LearnGroup3.cs:73` | `reportMoves`, `movesFor` | as for an Emerald origin | base rows |
+| Language: the trade/gift/e-Reader fixed language, otherwise any GBA language | `LanguageVerifier`, `EncounterShadow3Colo.cs:81` | `verifyLanguage` | Invalid | `ereader-togepi+english` |
+| Unbounded searches | `MethodCXD`, `TeamLockResult` loop until found | `CxdGuard` (name screen depth 256, trainer-ID 100000 steps, team lock 400000 steps) | Unknown (Warning "RNG search reached its limit"); every Invalid found under a cap is demoted to a Warning | never reached in the corpora (`PKHEX_DISAGREEMENT_REVIEW.md` 16-A) |
+
+PKHeX test records (`PKHeX.Core.Tests/Legality/Legal/...`, converted with the oracle's
+`cxdprobe convert`) are fixtures too: Vaporeon split evolution (VALID; its LevelEXPThreshold
+Fishy is Info here, section 3), Shuckle `.xk3` without the fateful flag (VALID: the XK3 itself
+has no flag), Italian HO-OH with a long OT (VALID, bonus disc, version Sapphire), Shuckle `.ck3`
+without the fateful flag (INVALID), Ultra Ball Teddiursa (INVALID), Tyranitar with and without
+the Winning Ribbon (Fishy / Invalid).
+
+### 7b. Shared judge for later formats
+
+`include/Legality/Gen3Cxd.h` exposes the same path as `Gen3Cxd::judge(const Input&)` for a Pal
+Park PK4 or a Poke Transfer PK5: every field the caller does not know is declared unknown and is
+neither proved nor disproved; `hasOriginalMet == false` applies PKHeX's Format != 3 rules
+(location not compared, `EncounterShadow3Colo.cs:178-182`; level within the chain, `:173-176`;
+origin chain from level 2, `EncounterOrigin.cs:73-82`; Poke Spot level at most the met level,
+`MethodPokeSpot.cs:160-163`). The verdict is Invalid, Matched or Undecided (a guard reached);
+Matched returns the template species, level, location and fixed moves so the caller can verify
+the moves of its own format. `Legality.cpp` (`addGen3PidEvidence`) skips its older GameCube
+evidence for a PK3 the analyzer judged; a Pal Park PK4 still gets it until the Gen IV analyzer
+calls the judge.
+
+### 7c. Measurement
+
+`tools/pkhex_gen34_diff/oracle/Program.cs` now builds every Colosseum/XD template
+(`GameVersion.CXD` in the origin list) as a CK3/XK3 converted to PK3 with a trainer whose
+TID/SID a name screen can produce, once per GBA cartridge (R, S, E, FR, LG), plus the usual
+single-field mutations; `GROW=1` grows them like any other Gen III record (CXD learns as
+Emerald, `oracle/Grow3.cs`). Fresh runs at commit `0a14ffcd`, `run.sh /home/user/ext/pkhex
+SEED 3 3` and `GROW=1 run.sh /home/user/ext/pkhex SEED 3`, counted by origin version 15 only:
+
+| Corpus | All records | False Invalid | False Valid | GameCube records | PKHeX-invalid caught | No problems found (PKHeX-valid) |
+|---|---|---|---|---|---|---|
+| Mutation seed 1 | 32756 | 0 | 0 | 3914 | 2176/2176 (100%) | 1689/1738 (97.18%) |
+| Mutation seed 2 | 32756 | 0 | 0 | 3928 | 2182/2182 (100%) | 1705/1746 (97.65%) |
+| Mutation seed 3 | 32756 | 0 | 0 | 3908 | 2098/2098 (100%) | 1761/1810 (97.29%) |
+| Grown seed 1 | 21910 | 0 | 0 | 2610 | - | 2573/2610 (98.58%) |
+| Grown seed 2 | 21971 | 0 | 0 | 2623 | - | 2581/2623 (98.40%) |
+| Grown seed 3 | 21928 | 0 | 0 | 2601 | - | 2560/2601 (98.42%) |
+
+The 965 unmutated GameCube records of seed 1 (415 Colosseum shadows, 450 XD shadows, 45 Poke
+Spot slots, 10 Colosseum starters, 20 XD gifts, 20 XD trades, 5 Plusle; each in five
+cartridges) are all PKHeX-VALID; 950 are certified and the 15 e-Reader shadows are Incomplete
+(IVAllEqual_0). The uncertified PKHeX-valid mutations are English XD TID/SID mutations
+(Fishy TrainerIDNoSeed), e-Reader all-zero IVs, and records that carry both an older
+"preserved move" Warning and one of these. The whole-corpus figures (all origins) for the same
+runs: seed 1 caught 16593/16601 (the 8 uncaught are Enigma Berry holders, section 3), certified
+15552/16155 (96.27%); seed 2 16612/16614, 15523/16142 (96.17%); seed 3 16400/16405,
+15789/16351 (96.56%); grown seeds 1-3 certified 98.19%, 98.22%, 98.28%. The Gen IV run
+(`run.sh /home/user/ext/pkhex 1 3 4`: 50999 records, caught 28001/28001, certified 22963/22998,
+35 deliberately stricter met-location records) is unchanged by this work.
