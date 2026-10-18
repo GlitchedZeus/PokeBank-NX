@@ -30,6 +30,10 @@ XFAIL: dict[str, str] = {
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1) and are ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
+    "CG13-shared-menu-geometry": "S (SharedMenuGeometry 0f132eb) + I/P/2R consumers",
+    "CG16-shared-field-state": "S (Gen III-V 0f132eb) + C (Gen I/II gold field state)",
+    "CG17-exact-source-game-header": "S (exactGameName 0f132eb) + C (Gen I/II headers)",
+    "CG18-trainer-edit-footer": "C (R2-TRAINER 6d6c55d5)",
     "CG15-shared-species-search": "P (shared chooser 2876ffe; Gen IV kSpeciesSearch flag removal)",
 }
 
@@ -53,6 +57,20 @@ SPECIES_CHOOSER_OWNERS = (("Gen I", "src/UI/Gen1PokemonEditorOverlayUXCleanup3.i
                           ("Gen II", "src/UI/Gen2PokemonPickerOverlay.inc"),
                           ("Gen III", "src/UI/Gen3SharedPokemonSurface.inc"),
                           ("Gen IV/V", "src/UI/SharedPokemonEditorSurface.inc"))
+
+# CG13 / CG16 / CG17 (Lane S 0f132eb) and CG18 (Lane C 6d6c55d5).
+MENU_GEOMETRY_HEADER = "include/UI/SharedMenuGeometry.h"
+FIELD_STATE_HEADER = "include/UI/SharedFieldState.h"
+FIELD_STATE_SURFACES = ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc")
+EDITOR_FILE_RX = re.compile(r"src/UI/(?:Gen[1-5]\w*\.(?:inc|cpp)|SharedPokemonEditorSurface\.inc|"
+                            r"Gen1PokemonDetailsPresentation\.cpp|Modals/Gen[12]PokemonDetailsModal\.cpp)$")
+GAME_CONTEXT_HEADER = "include/UI/ClassicGameContext.h"
+GEN15_GAME_IDS = ("red_gb", "blue_gb", "yellow_gb", "gold_gbc", "silver_gbc", "crystal_gbc", "ruby_gba",
+                  "sapphire_gba", "emerald_gba", "firered_gba", "leafgreen_gba", "diamond_nds", "pearl_nds",
+                  "platinum_nds", "heartgold_nds", "soulsilver_nds", "black_nds", "white_nds", "black2_nds",
+                  "white2_nds")
+TRAINER_EDITABILITY_HEADER = "include/UI/ClassicTrainerEditability.h"
+TRAINER_SESSION_HEADER = "include/UI/ClassicTrainerSession.h"
 
 # CG14 (Lane P 30b6ea4 / 0867c9b8): include/UI/SharedScrollbar.h is the one scrollbar; the legacy
 # entry points below only delegate to it.
@@ -577,6 +595,96 @@ def contracts(sources: list[Source]) -> list[Result]:
             r.violations.append(f"{rel}: the {gens} species picker does not filter and route input through the "
                                 "shared chooser")
     r.violations += code_hits(U, r"\bkSpeciesSearch\s*=\s*false\b")
+    res.append(r)
+
+    r = Result("CG13-shared-menu-geometry",
+               "Every menu type lays out through SharedMenuGeometry (one rule per type, used by a real "
+               "picker in every generation)")
+    geo = next((x for x in sources if x.rel == MENU_GEOMETRY_HEADER), None)
+    if geo is None:
+        r.violations.append(f"{MENU_GEOMETRY_HEADER}: missing")
+    else:
+        enum = re.search(r"enum\s+class\s+MenuType\b[^{]*\{(.*?)\}", geo.code, re.S)
+        types = [t for t in re.findall(r"\b([A-Z]\w*)\b\s*(?:=\s*\d+\s*)?,", enum.group(1) + ",")
+                 if t != "Count"] if enum else []
+        if not types:
+            r.violations.append(f"{MENU_GEOMETRY_HEADER}: MenuType enum not found")
+        for t in types:
+            if not re.search(r"\bMenuType::" + t + r"\b", geo.code.split("enum class MenuType", 1)[1].split("}", 1)[1]):
+                r.violations.append(f"{MENU_GEOMETRY_HEADER}: MenuType::{t} has no rule")
+            users = [x.rel for x in U if x.rel != MENU_GEOMETRY_HEADER and re.search(r"\bMenuType::" + t + r"\b", x.code)]
+            if not users:
+                r.violations.append(f"{MENU_GEOMETRY_HEADER}: MenuType::{t} is not used by any menu")
+    res.append(r)
+
+    r = Result("CG16-shared-field-state",
+               "Locked values are gold through SharedFieldState and never editable; no field label says "
+               "\"(read-only)\"; no editor value is drawn in raw gold")
+    fs_hdr = next((x for x in sources if x.rel == FIELD_STATE_HEADER), None)
+    if fs_hdr is None or "contractHolds()" not in fs_hdr.code or "static_assert" not in fs_hdr.code:
+        r.violations.append(f"{FIELD_STATE_HEADER}: the compile-time styling contract (gold never activates) is missing")
+    for rel in FIELD_STATE_SURFACES:
+        src = next((x for x in sources if x.rel == rel), None)
+        if src is None or not re.search(r"\bSharedFieldState::State::ReadOnly\b", src.code):
+            r.violations.append(f"{rel}: DETAILS rows do not take their state from SharedFieldState")
+    for s in U:
+        for ln, lit in s.literals:
+            if re.fullmatch(r"[A-Z][\w ]{0,24} \(read-only\)", lit):
+                r.violations.append(f"{s.rel}:{ln}: \"{lit}\" (read-only is a gold field state, not label text)")
+        if not EDITOR_FILE_RX.search(s.rel):
+            continue
+        for m in re.finditer(r"\bdrawText\s*\([^;]*?\bColors::ShinyStar\b", s.code):
+            ln = s.code.count("\n", 0, m.start()) + 1
+            r.violations.append(f"{s.rel}:{ln}: editor value drawn in raw gold (Colors::ShinyStar); use SharedFieldState")
+    res.append(r)
+
+    r = Result("CG17-exact-source-game-header",
+               "Create / Edit / View headers name the exact source game in all 20 Gen I-V versions")
+    ctx = next((x for x in sources if x.rel == GAME_CONTEXT_HEADER), None)
+    if ctx is None:
+        r.violations.append(f"{GAME_CONTEXT_HEADER}: missing")
+    else:
+        for gid in GEN15_GAME_IDS:
+            if f'"{gid}"' not in ctx.code:
+                r.violations.append(f"{GAME_CONTEXT_HEADER}: exactGameName has no name for {gid}")
+        line = [b for _, _, b in function_bodies(ctx.code, re.compile(r"^contextLine$"))]
+        if not line or "exactGameName(" not in line[0]:
+            r.violations.append(f"{GAME_CONTEXT_HEADER}: contextLine() does not name the exact game")
+    shell = next((x for x in sources if x.rel == "include/UI/SharedPokemonShell.h"), None)
+    chrome = [b for _, _, b in function_bodies(shell.code, re.compile(r"^drawChrome$"))] if shell else []
+    if not chrome or "contextLine(" not in chrome[0]:
+        r.violations.append("include/UI/SharedPokemonShell.h: drawChrome() does not draw the shared context line")
+    for s in U:
+        if s.rel == GAME_CONTEXT_HEADER:
+            continue
+        lines = s.code.splitlines()
+        for ln, lit in s.literals:
+            if "Source save immutable" not in lit:
+                continue
+            window = "\n".join(lines[max(0, ln - 6):ln + 4])
+            if not re.search(r"\b(?:exactGameName|contextLine|sourceGameTitle|sharedGameName)\s*\(", window):
+                r.violations.append(f"{s.rel}:{ln}: header without the exact source game")
+    res.append(r)
+
+    r = Result("CG18-trainer-edit-footer",
+               "The Trainer page shows \"A: Edit\" only when Name / Money are editable in this session "
+               "(Gen I staged Trainer editor included)")
+    ed = next((x for x in sources if x.rel == TRAINER_EDITABILITY_HEADER), None)
+    body = [b for _, _, b in function_bodies(ed.code, re.compile(r"^trainerFieldsEditable$"))] if ed else []
+    if not body or "GameVersion::RBY" not in body[0] or "GameVersion::GSC" not in body[0]:
+        r.violations.append(f"{TRAINER_EDITABILITY_HEADER}: trainerFieldsEditable() does not cover Gen I and Gen II")
+    sess = next((x for x in sources if x.rel == TRAINER_SESSION_HEADER), None)
+    instr = [b for _, _, b in function_bodies(sess.code, re.compile(r"^trainerPageInstructions$"))] if sess else []
+    if not instr or not re.search(r"\beditable\s*\?", instr[0]) or instr[0].count("A: Edit") != 1:
+        r.violations.append(f"{TRAINER_SESSION_HEADER}: trainerPageInstructions() must offer A: Edit only when editable")
+    base = next((x for x in U if x.rel == "src/UI/TrainerViewScreenBase.inc"), None)
+    # The footer branch is the Trainer block that assigns `instructions`.
+    blocks = [m.group(1) for m in re.finditer(r"selectedMode\s*==\s*ViewMode::Trainer\)\s*\{(.*?)\n\s*\}",
+                                              base.code if base else "", re.S) if "instructions" in m.group(1)]
+    if len(blocks) != 1 or not re.search(r"trainerPageInstructions\s*\(\s*[\w:]*trainerFieldsEditable\s*\(",
+                                         blocks[0]) or "A: Edit" in blocks[0]:
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: the Trainer page footer is not "
+                            "trainerPageInstructions(trainerFieldsEditable(...))")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
