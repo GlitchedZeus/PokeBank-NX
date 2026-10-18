@@ -16,8 +16,12 @@ fields filled from the QA-F9 audit run, and nothing else changes. Only the owner
 | QA-F9 audit run / job | |
 
 Before testing, check that the downloaded file's SHA-256 matches the value above. Round 1 baseline:
-[ROUND1_RESULTS_7fea1797.md](ROUND1_RESULTS_7fea1797.md) (42/54 PASS). Input trace for any problem:
-[RETEST_7fea1797.md](RETEST_7fea1797.md) §0.
+[ROUND1_RESULTS_7fea1797.md](ROUND1_RESULTS_7fea1797.md) (42/54 PASS).
+
+**Input trace (recommended for any input problem)**, as in [RETEST_7fea1797.md](RETEST_7fea1797.md) §0:
+create an empty file `sdmc:/switch/PokeBank-NX/config/input_trace.enable`, start PokeBank NX, reproduce
+the problem, then send `sdmc:/switch/PokeBank-NX/logs/input-trace.log`. It records only button names,
+screen tags and timings (no save data). Delete the marker file to turn it off.
 
 Mark each box PASS / FAIL / NOT VERIFIED and send notes for anything that is not PASS. "Host evidence"
 is automated host testing only; it is never device acceptance.
@@ -44,7 +48,7 @@ Detailed steps: [PHASE13_UNVERIFIED_STEPS.md](PHASE13_UNVERIFIED_STEPS.md).
 | [ ] | E11 | Rerolls keep the requested Shiny / Gender (and Gen II Unown letter) | matrix `reroll` (all 20 versions), Lane R `tests/test_reroll_mechanics_gen15.cpp`. Expected: in Gen I/II a shiny and a non-shiny can never share DVs (shininess is the DV pattern); in Gen III–V identical IVs on a shiny and a non-shiny are valid. |
 | [ ] | L06 | Party / summary taps open the right Actions screen | CG11 (no generic sheet / modal in a Gen I–V session) |
 | [ ] | S04 | Gen V Review / Discard / Export | Lane S `tests/test_gen5_review_discard_export_trace.cpp` (360 checks on W/B/W2/B2, no defect found). See notes in §5. |
-| [ ] | S06 | Exported edited save loads in an emulator | export contract C2 (strict reparse as the same game). Device / emulator only otherwise. |
+| [ ] | S06 | Exported edited save loads in an emulator. The app never writes to emulator saves. To verify: copy `sdmc:/switch/PokeBank-NX/exports/…/edited.<ext>` into the emulator's save folder yourself (keep a backup of your own save first), load the game, check the edits. | export contract C2 (strict reparse as the same game). Device / emulator only otherwise. |
 
 ## 3. New this round (owner's requests) — check on device
 
@@ -52,16 +56,17 @@ Detailed steps: [PHASE13_UNVERIFIED_STEPS.md](PHASE13_UNVERIFIED_STEPS.md).
 | --- | --- | --- | --- |
 | [ ] | R2 menus (Phase 2) | Bag menus, held-item and Ball pickers, Key Item notice, Remove confirmation and box menus are compact, with no big gaps between name and sprite; the same kind of menu is the same size in every generation. | CG13 (every menu type through SharedMenuGeometry), `tests/test_shared_menu_geometry.cpp` |
 | [ ] | R2-SEARCH (Phase 3) | Species picker: press X or − (or tap Search), type letters: the list narrows as you type ("C", then "CO"…); Backspace widens it again; Gen I–V. | CG15, `tests/test_species_search_gen15.cpp` |
-| [ ] | R2-GOLD (Phase 4) | Gen I View and Edit: locked values (calculated stats, HP DV) are gold in both; editable values are white. | CG16, `tests/test_theme.cpp` |
+| [ ] | R2-GOLD (Phase 4) | Gen I and Gen II, View and Edit: locked values (HP DV, calculated stats) are gold in both; editable values (including Shiny in Edit/Create) use the normal colour. Gen III–V: locked rows are gold, with no "(read-only)" labels. | CG16, `tests/test_theme.cpp` |
 | [ ] | Gen II Special (Phase 4) | Gen II shows a real Special value (SpA/SpD), never "--". | matrix `special-stat` (G/S/C), `tests/test_gen2_special_stat.cpp` |
 | [ ] | R2-TRAINER (Phase 5) | Gen I Trainer page: Name and Money are editable; the footer reads "A: Edit" only where a field can be edited (all generations); Money round-trips in the export. | CG18, matrix `trainer-edit` (Red/Blue/Yellow, BCD money), `tests/test_gen1_trainer_edit.cpp` |
-| [ ] | Launch menu (Phase 6) | The Launch dialog is resized with coloured A / B buttons; **Y still launches**, A/B cancel. | CG07, `tests/test_game_hub_contract.py` |
+| [ ] | Launch menu (Phase 6) | Compact Launch dialog with glyph buttons **B Back / A Stay / Y Launch**: only Y launches; A and B stay. | CG07, `tests/test_game_hub_contract.py` |
 | [ ] | R2-EMUBACKUP (Phase 7) | + on an emulator game → Backups lists the app's export records; the original emulator save stays read-only; deleting a record asks first and **only Y deletes**. | `tests/test_emulator_backup_access.cpp`, `tests/test_game_hub_contract.py` (C07 guard) |
 | [ ] | R2-SCROLLBAR (Phase 8) | Every scrollbar can be dragged (and the track tapped) to scroll fast. | CG14, `tests/test_shared_scrollbar.cpp` |
 | [ ] | Move chooser rows (Phase 9) | The move chooser shows 1–2 more rows instead of blank space, all generations. | Lane S `b1d34f9` |
 | [ ] | Rerolls (Phase 10) | As E11 above. | matrix `reroll` |
 | [ ] | Crystal Met Time (Phase 11) | Crystal: A on Met Time cycles the value in place (no menu). | matrix `met-time` (Crystal), `tests/test_crystal_met_time_inline.cpp` |
-| [ ] | Gen V Create header (Phase 12) | Gen V Create shows which game the Pokémon is made for at the top, like Gen I–IV. | CG17 |
+| [ ] | Gen V Create header (Phase 12) | Gen V Create names the exact game at the top (e.g. "Box 1 / Slot 1 • White 2 • Source save immutable • DRAFT"), like Gen I–IV. | CG17 |
+| [ ] | Review: one row per Move | A staged Move is ONE Review row in Gen III, IV and V (see §5). | Lane S `0f132eb` |
 
 ## 4. Round 1 PASS — regression check (must still pass)
 
@@ -95,7 +100,7 @@ All 42 are guarded on every pull request by
 | [ ] | E02 | Actions menu order consistent | View, Edit, Clone, Move where supported, Release, Origin & Legality, Review |
 | [ ] | E04 | Rows 1/15 counters removed | No text blocking the cursor |
 | [ ] | E05 | Green A Select / red B Cancel footers consistent | Species, moves, item pickers and confirmations |
-| [ ] | E06 | Shiny shows simply Yes / No | No DV-derived clutter; supported toggle works |
+| [ ] | E06 | Shiny shows simply Yes / No | No DV-derived clutter; supported toggle works | Round 2: Shiny value in Edit/Create is now normal (editable) colour; gold now marks only read-only values such as HP DV and calculated stats.
 | [ ] | E07 | Pokérus cycles inline with A | No unnecessary popup |
 | [ ] | E08 | Gender editing works without a huge picker | Where applicable and format-valid |
 | [ ] | E09 | Gen III language cycles inline | Only supported languages |
@@ -116,9 +121,13 @@ All 42 are guarded on every pull request by
 
 ## 5. Notes for this round (behaviour that changed on purpose)
 
-- Gen V Review: a Move is now one Review row (Lane S).
-- Export Copy always also writes `EXPORT_MANIFEST.txt` next to the exported save (Lane S).
-- Gen IV: adding a Key Item first shows a Key Item notice; this is new behaviour, not a regression.
+- Review shows a staged Move as ONE row in Gen III, IV and V (Gen V: "Move Box a/Slot b → Box c/Slot d";
+  Gen IV: "Moved <Pokémon>: …"; Gen III: "Move Pokemon: N Pokemon → …").
+- Export Copy always also writes `EXPORT_MANIFEST.txt` next to the exported save.
+- Shiny value in Edit/Create now uses the normal (editable) colour; gold now marks only read-only values
+  (HP DV, calculated stats, PID).
+- Gen IV: adding a Key Item shows a Key Item notice; A confirms the add, B cancels. This is new
+  behaviour, not a regression.
 - Documented limitations from round 1 still apply ([RETEST_7fea1797.md](RETEST_7fea1797.md) §5).
 
 ## Result
