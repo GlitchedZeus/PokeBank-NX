@@ -792,6 +792,45 @@ int main() {
         if (und.verdict() != Verdict::Incomplete || has(und, Severity::Invalid) || !hasText(und, Severity::Warning, kCxdWarning) ||
             !hasText(und, Severity::Warning, "fake: shadow tables incomplete") || !hasText(und, Severity::Info, "fake: note"))
             fail("Colosseum/XD origin undecided: expected the Warnings and the note", und);
+        // Ability of a Colosseum/XD origin (AbilityVerifier.cs:237-295): the Orre games store the
+        // ability bit apart from the PID and Pal Park reads that bit (pokeplatinum
+        // src/main_menu/gba_pokemon.c:759-783), so a species with two Gen III abilities (Doduo) may
+        // hold either; a species with one Gen III ability (Eevee, Run Away) keeps it whatever the
+        // PID says, and its Gen IV second ability must match the PID. An ability the species never
+        // has is Invalid. All of this is decided while the encounter is still undecided.
+        {
+            // The title matrix's XD Eevee (Pearl save): PID B3526AE5, ability 50 Run Away.
+            auto eevee = fromHex("E56A52B3000050C485000000393031D4E80300004632000200000000000000000000000000000000210027002C001C00231E190F00000000F44B241F0000000001000000000000002F012F0140012F012F01FFFF0000000048A10C02E0FF000F00000000000000003E0149015701580149015601FFFF00000000001A0A100000370000040A000000");
+            const Report open = Legality::analyzePk4(eevee, "pearl_nds");
+            if (open.verdict() != Verdict::Incomplete || has(open, Severity::Invalid) || !hasText(open, Severity::Warning, kCxdWarning))
+                fail("XD Eevee with its Gen III ability: expected Incomplete", open);
+            eevee[0x15] = 91;  // Adaptability: the PID bit's Gen IV ability
+            refreshChecksum(eevee);
+            const Report adapt = Legality::analyzePk4(eevee, "pearl_nds");
+            if (has(adapt, Severity::Invalid)) fail("XD Eevee with the PID bit's ability: unexpected Invalid", adapt);
+            eevee[0x15] = 22;  // Intimidate: not an Eevee ability
+            refreshChecksum(eevee);
+            if (!hasText(Legality::analyzePk4(eevee, "pearl_nds"), Severity::Invalid, "not one of this species' abilities"))
+                fail("XD Eevee with a foreign ability: expected Invalid", adapt);
+            auto doduo = cxd;  // Doduo: Run Away / Early Bird in Gen III too; Colosseum/XD may hold either
+            doduo[0x15] = doduo[0x15] == 50 ? 48 : 50;
+            refreshChecksum(doduo);
+            const Report other = Legality::analyzePk4(doduo, game);
+            if (has(other, Severity::Invalid)) fail("Colosseum/XD Doduo with the other ability while undecided: unexpected Invalid", other);
+            CxdOriginJudgement t;
+            t.status = Status::Matched;
+            t.templateName = "fake Doduo";
+            t.species = species; t.form = 0; t.levelMin = 1; t.levelMax = metLevel; t.fixedBall = ball; t.fateful = fateful; t.shiny = 0;
+            fakeCxdAnswer = t;
+            const Report matchedOther = Legality::analyzePk4(doduo, game, nullptr, &fakeCxdJudge);
+            if (has(matchedOther, Severity::Invalid)) fail("Colosseum/XD Doduo with the other ability, encounter matched: unexpected Invalid", matchedOther);
+            auto plain = *findFixture("p10120");  // the same Emerald-origin bytes: the PID decides
+            plain[0x15] = plain[0x15] == 50 ? 48 : 50;
+            refreshChecksum(plain);
+            if (!hasText(Legality::analyzePk4(plain, game), Severity::Invalid, "does not match the PID's ability bit"))
+                fail("Emerald Doduo with the other ability: expected Invalid", other);
+            checked += 6;
+        }
         // The judge is only consulted for a Colosseum/XD origin.
         fakeCxdCalls = 0;
         (void)Legality::analyzePk4(*findFixture("p10120"), game, nullptr, &fakeCxdJudge);

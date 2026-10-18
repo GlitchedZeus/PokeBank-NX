@@ -1151,11 +1151,21 @@ void Analyzer::verifyAbility() {
 /// AbilityVerifier.VerifyAbilityPreCapsule / VerifyAbilityGen3Transfer for a Gen III origin in format 4.
 bool Analyzer::abilityCanMismatch3() {
     if (pk_.species > 386) return false;              // evolved in Gen IV into a new species
-    if (history3_.gen3.empty()) return false;         // could not exist in Gen III
-    const uint16_t max3 = history3_.gen3.front().species;
+    // EvoChainsAllGens.Gen3[0] is the record's own species whenever it is one of the 386 (every one
+    // exists in Gen III), so the Colosseum/XD origin can be judged before its encounter is known.
+    if (!cxdUndecided_ && history3_.gen3.empty()) return false; // could not exist in Gen III
+    const uint16_t max3 = cxdUndecided_ ? pk_.species : history3_.gen3.front().species;
     const D::Personal3& pers = D::kPersonalE3[max3];
-    if (pers.ability1 != pers.ability2) return false; // two Gen III abilities: the PID decides
+    // Two Gen III abilities: the PID decides, except for Colosseum/XD (AbilityVerifier.cs:273-274),
+    // whose ability bit is stored apart from the PID and is what Pal Park reads
+    // (pokeplatinum src/main_menu/gba_pokemon.c:759-783, GBA_MON_DATA_ABILITY_NUM).
+    if (pers.ability1 != pers.ability2) return pk_.version == kVerCXD;
     if (pk_.species != max3) return false;            // evolved in Gen IV: must match the PID
+    if (cxdUndecided_) {
+        // Whether it evolved in Gen IV needs the encounter: the Gen III ability is open either way;
+        // the Gen IV second ability must match the PID under every history (AbilityMismatch3 or MustMatch).
+        return pk_.ability == pers.ability1;
+    }
     if (history_.size() > 1) {
         if (pk_.ability == pers.ability1) return true;
         if (pk_.ability == pi_.ability2()) return false;
