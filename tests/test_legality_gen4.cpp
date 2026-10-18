@@ -541,7 +541,8 @@ int main() {
         if (has(r, Severity::Invalid) || !hasText(r, Severity::Warning, "sanity") || r.verdict() != Verdict::Incomplete)
             fail("sanity word: expected a Warning", r);
 
-        // A 236-byte party record is judged on its 136 stored bytes.
+        // A 236-byte party record is judged on its 136 stored bytes, apart from the stored-record
+        // rules of section 4c (these fixtures are healed, Land Forme and mood 0, so none applies).
         for (const auto& [box, game] : valid) {
             auto party = box;
             party.resize(236, 0);
@@ -797,6 +798,100 @@ int main() {
         (void)Legality::analyzePk4(*findFixture("static"), gameOf("static"), nullptr, &fakeCxdJudge);
         if (fakeCxdCalls != 0) fail("Colosseum/XD judge consulted for another origin", und);
         checked += 4;
+    }
+
+    // 4c. Stored-record rules: a 136-byte record is a PC (box) record, a 236-byte one a party
+    //     record. PKHeX applies these only with a slot origin (LegalityAnalysis.IsStoredSlot).
+    {
+        constexpr std::string_view kPP = "PP is below its maximum for a Pokemon stored in the PC";
+        constexpr std::string_view kMood = "Walking mood of a Pokemon stored in the PC of HeartGold/SoulSilver should be zero";
+        constexpr std::string_view kSkyPt = "Shaymin's Sky Forme reverts to Land Forme when Platinum stores it in the PC";
+        constexpr std::string_view kSkyOther = "Shaymin's Sky Forme in a PC-stored record cannot be verified for this game";
+        auto asParty = [](std::vector<uint8_t> pk) { pk.resize(236, 0); return pk; };
+        const auto base = *findFixture("static");  // HeartGold Bulbasaur, moves 33/45 at full PP, mood 0
+        const char* hg = gameOf("static");
+        // MovePPVerifier.cs:110-143: a stored record below full PP is a Warning (never Invalid); the
+        // same bytes as a party record, and a stored record at full PP, are untouched.
+        {
+            auto pp = base;
+            pp[0x30] = 20;  // Tackle: 35 healed
+            refreshChecksum(pp);
+            const Report box = Legality::analyzePk4(pp, hg);
+            if (box.verdict() != Verdict::Incomplete || has(box, Severity::Invalid) || !hasText(box, Severity::Warning, "Move 1 " + std::string(kPP)))
+                fail("stored record below full PP: expected the Warning only", box);
+            const Report party = Legality::analyzePk4(asParty(pp), hg);
+            if (hasText(party, Severity::Warning, kPP) || party.verdict() != Legality::analyzePk4(base, hg).verdict())
+                fail("party record below full PP: expected no stored-record Warning", party);
+            if (hasText(Legality::analyzePk4(base, hg), Severity::Warning, kPP)) fail("stored record at full PP: unexpected Warning", box);
+            const Report native = analyzeNative(pp, hg);
+            if (native.verdict() != Verdict::Incomplete || !hasText(native, Severity::Warning, kPP))
+                fail("stored record below full PP through Legality::analyze: expected Incomplete", native);
+            const Report nativeParty = analyzeNative(asParty(pp), hg);
+            if (hasText(nativeParty, Severity::Warning, kPP)) fail("party record below full PP through Legality::analyze: unexpected Warning", nativeParty);
+            // PP Ups raise the healed value: 35 * 8 / 5 = 56.
+            auto ups = base;
+            ups[0x34] = 3;
+            ups[0x30] = 56;
+            refreshChecksum(ups);
+            if (hasText(Legality::analyzePk4(ups, hg), Severity::Warning, kPP)) fail("stored record healed with PP Ups: unexpected Warning", box);
+            ups[0x30] = 55;
+            refreshChecksum(ups);
+            if (!hasText(Legality::analyzePk4(ups, hg), Severity::Warning, "Move 1 " + std::string(kPP))) fail("stored record one below the PP Up maximum: expected the Warning", box);
+            // An empty move slot and an egg (base-PP rule) never get the stored-record Warning.
+            auto empty = base;
+            empty[0x2A] = empty[0x2B] = 0;  // drop move 2
+            empty[0x31] = 0;
+            refreshChecksum(empty);
+            if (hasText(Legality::analyzePk4(empty, hg), Severity::Warning, kPP)) fail("stored record with an empty move slot: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(*findFixture("egg-unhatched"), gameOf("egg-unhatched")), Severity::Warning, kPP))
+                fail("stored egg: unexpected stored-record PP Warning", box);
+            checked += 9;
+        }
+        // MiscVerifierG4.cs:115-134: a non-zero walking mood on a stored record of a known HG/SS save.
+        {
+            auto mood = base;
+            mood[0x87] = 5;
+            refreshChecksum(mood);
+            const Report box = Legality::analyzePk4(mood, hg);
+            if (box.verdict() != Verdict::Incomplete || has(box, Severity::Invalid) || !hasText(box, Severity::Warning, kMood))
+                fail("stored record with a walking mood in an HG/SS save: expected the Warning only", box);
+            if (hasText(Legality::analyzePk4(asParty(mood), hg), Severity::Warning, kMood)) fail("party record with a walking mood: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(mood, ""), Severity::Warning, kMood)) fail("walking mood without a known save: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(mood, "platinum_nds"), Severity::Warning, kMood)) fail("walking mood in a Platinum save: unexpected Warning", box);
+            if (hasText(Legality::analyzePk4(mood, "diamond_nds"), Severity::Warning, kMood)) fail("walking mood in a Diamond save: unexpected Warning", box);
+            const Report native = analyzeNative(mood, "soulsilver_nds");
+            if (native.verdict() != Verdict::Incomplete || !hasText(native, Severity::Warning, kMood))
+                fail("stored record with a walking mood through Legality::analyze: expected Incomplete", native);
+            checked += 6;
+        }
+        // FormVerifier.cs:150-154: Shaymin's Sky Forme on a stored record. Platinum reverts it in
+        // every PC store function; HG/SS storage code does not; D/P have no Sky Forme at all.
+        {
+            auto sky = *findFixture("static-fateful");  // Platinum Shaymin, Land Forme
+            sky[0x40] = static_cast<uint8_t>((sky[0x40] & 0x07) | (1 << 3));
+            sky[0x15] = 32;  // Serene Grace: the Sky Forme's ability
+            refreshChecksum(sky);
+            const Report pt = Legality::analyzePk4(sky, "platinum_nds");
+            if (pt.verdict() != Verdict::Incomplete || has(pt, Severity::Invalid) || !hasText(pt, Severity::Warning, kSkyPt))
+                fail("stored Sky Forme in a Platinum save: expected the Warning only", pt);
+            const Report ptParty = Legality::analyzePk4(asParty(sky), "platinum_nds");
+            if (ptParty.verdict() != Verdict::NoProblemsFound || hasText(ptParty, Severity::Warning, kSkyPt))
+                fail("party Sky Forme in a Platinum save: expected No problems found", ptParty);
+            const Report ss = Legality::analyzePk4(sky, "soulsilver_nds");
+            if (has(ss, Severity::Invalid) || !hasText(ss, Severity::Warning, kSkyOther) || hasText(ss, Severity::Warning, kSkyPt))
+                fail("stored Sky Forme in a SoulSilver save: expected the unverified Warning", ss);
+            const Report unknown = Legality::analyzePk4(sky, "");
+            if (has(unknown, Severity::Invalid) || !hasText(unknown, Severity::Warning, kSkyOther)) fail("stored Sky Forme without a known save: expected the unverified Warning", unknown);
+            const Report dp = Legality::analyzePk4(sky, "diamond_nds");
+            if (!hasText(dp, Severity::Invalid, "Form 1 is out of range") || hasText(dp, Severity::Warning, kSkyPt) || hasText(dp, Severity::Warning, kSkyOther))
+                fail("stored Sky Forme in a Diamond save: expected the out-of-range Invalid only", dp);
+            const Report native = analyzeNative(sky, "platinum_nds");
+            if (native.verdict() != Verdict::Incomplete || !hasText(native, Severity::Warning, kSkyPt))
+                fail("stored Sky Forme through Legality::analyze: expected Incomplete", native);
+            if (hasText(Legality::analyzePk4(*findFixture("static-fateful"), "platinum_nds"), Severity::Warning, kSkyPt))
+                fail("stored Land Forme: unexpected Warning", pt);
+            checked += 7;
+        }
     }
 
     // 5. Fuzz: random bytes at every size class, then one to four random bytes in a valid

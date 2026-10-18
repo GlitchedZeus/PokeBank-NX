@@ -262,7 +262,8 @@ class Analyzer {
 public:
     /// cxd: the Gen III GameCube judge's answer for a Colosseum/XD origin (version 15); null means
     /// no judge (CxdOriginJudgement::Status::Unavailable). Ignored for every other origin.
-    Analyzer(const Pk4& pk, Table cart, const CxdOriginJudgement* cxd = nullptr) : pk_(pk), cart_(cart), cxd_(cxd) {}
+    Analyzer(const Pk4& pk, Table cart, const CxdOriginJudgement* cxd = nullptr, bool cartKnown = true)
+        : pk_(pk), cart_(cart), cartKnown_(cartKnown), cxd_(cxd) {}
     /// Format-5 mode: pk is the view of a PK5 of Generation III/IV origin (pk.format == 5).
     Analyzer(const Pk4& pk, const Format5Data& f5) : pk_(pk), f5_(&f5) {}
     Report run();
@@ -284,6 +285,7 @@ private:
     std::vector<Check> parse_;
     uint8_t level_ = 1;     // CurrentLevel (HGSS growth of the current species/form)
     Table cart_ = Table::HGSS; // personal table of the game whose save holds the record
+    bool cartKnown_ = true;    // exactSourceGameId named one of the five Gen IV games (cart_ is not a default)
     Personal pi_{};         // LegalityAnalysis.PersonalInfo: cart table's GetFormEntry(species, form)
     Personal piEntity_{};   // PKM.PersonalInfo: PersonalTable.HGSS.GetFormEntry(species, form)
     bool gtsSanitized_ = false;
@@ -1301,6 +1303,22 @@ void Analyzer::verifyForm() {
         return;
     }
     if (species == kRotom && pk_.isEgg && form != 0) { invalid(CheckIdentifier::Egg, "Rotom eggs cannot have a form"); return; }
+    // FormVerifier.cs:150-154 (Shaymin: FormParty unless the slot is a party slot). A 136-byte
+    // record is a stored (PC) record. Platinum reverts Shaymin to Land Forme in every PC store
+    // function (pokeplatinum src/pc_boxes.c:59-110; the box UI stores through them,
+    // src/applications/pc_boxes/box_app_manager.c:3952-4017), in the Day Care (src/daycare.c:112),
+    // at the GTS deposit (src/gts_application/screens/deposit.c:994-998) and in the trade room
+    // (src/trade_room/application.c:610-623). HG/SS revert only party Shaymin (pokeheartgold
+    // src/pokemon.c:3574-3610, src/get_egg.c:93); their PC store functions
+    // (src/pokemon_storage_system.c:54-100) leave the form alone and their box UI is not in the
+    // decomp. Every game runs the Wii link (Ranch, Battle Revolution) from data/eoo.dat
+    // (pokeplatinum src/main_menu/main_menu.c:1317, pokeheartgold src/application/main_menu/
+    // main_menu.c:1503), a module outside every decomp, so a stored Sky Forme is a Warning, not Invalid.
+    if (species == kShaymin && form != 0 && !pk_.party && !pk_.isEgg) {
+        fishy(CheckIdentifier::Species, cart_ == Table::Pt && cartKnown_
+            ? "Shaymin's Sky Forme reverts to Land Forme when Platinum stores it in the PC"
+            : "Shaymin's Sky Forme in a PC-stored record cannot be verified for this game");
+    }
     const bool battle = ((species == kCastform || species == 382 || species == 383 || species == kCherrim) && form != 0) ||
                         (isMegaSpecies4(species) && form != 0);
     if (battle) invalid(CheckIdentifier::Species, "Battle-only form cannot exist outside battle");
@@ -1318,6 +1336,12 @@ void Analyzer::verifyMisc() {
     }
     // MiscVerifierG4
     if (pk_.walkingMood != 0 && pk_.isEgg) fishy(CheckIdentifier::Egg, "Eggs do not have a walking mood");
+    // MiscVerifierG4.cs:115-134 (G4PartnerMoodZero, Fishy, only for a non-party slot of an HG/SS
+    // save): HG/SS zero the mood when a Pokemon becomes the walking lead (pokeheartgold
+    // src/follow_mon.c:1946-1992) and when it enters the Day Care (src/get_egg.c:91); D/P/Pt never
+    // touch the byte and trades copy it, so only a stored record of a known HG/SS save is checked.
+    if (pk_.walkingMood != 0 && !pk_.isEgg && !pk_.party && cartKnown_ && cart_ == Table::HGSS)
+        fishy(CheckIdentifier::Misc, "Walking mood of a Pokemon stored in the PC of HeartGold/SoulSilver should be zero");
     const uint8_t leaf = pk_.shinyLeaf;
     if ((leaf > 0x1F && leaf != 0x3F) || (leaf != 0 && pk_.isEgg)) invalid(CheckIdentifier::Misc, "Shiny Leaf value is not obtainable");
     // Pal Park: D/P leave the Pt/HG/SS met location unset; Pt/HG/SS write it equal to the D/P value.
@@ -1417,6 +1441,18 @@ void Analyzer::verifyMovePP() {
             invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " cannot have PP Ups");
         const int healed = basePP(move) * (5 + pk_.ppUps[i]) / 5;
         if (pk_.pp[i] > healed) invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is above its maximum");
+        // MovePPVerifier.cs:110-143 (GetPermittedStatePP/GetIsStoredHealed: a PK4 in a Box, GTS or
+        // Battle Box slot is OnlyHealed). Every PC store function heals PP: pokeplatinum
+        // src/pc_boxes.c:59-110 (callers: box UI src/applications/pc_boxes/box_app_manager.c:3952-4017,
+        // GTS src/gts_application/screens/network_handler.c:1284-1328, catching show
+        // src/scrcmd_catching_show.c:69, battle capture src/battle/battle_script.c:10748),
+        // pokeheartgold src/pokemon_storage_system.c:54-100 (src/overlay_bug_contest.c:227,
+        // src/scrcmd_12.c:68, src/battle/battle_command.c:7025), pokediamond
+        // arm9/src/pokemon_storage_system.c:47-80 (arm9/src/scrcmd_13.c:73). The D/P and HG/SS box UIs
+        // and the Wii-link module data/eoo.dat are outside the decomps, so a 136-byte (stored) record
+        // below full PP is a Warning rather than PKHeX's Invalid.
+        else if (!pk_.party && move != 0 && pk_.pp[i] < healed)
+            fishy(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is below its maximum for a Pokemon stored in the PC");
     }
 }
 
@@ -1779,7 +1815,8 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
     Gen4::CxdOriginJudgement cxd;
     const bool cxdOrigin = pk.version == 15;
     if (cxdOrigin && judge != nullptr) cxd = judge(Gen4::cxdInput(pk));
-    Gen4::Analyzer a(pk, cart, cxdOrigin ? &cxd : nullptr);
+    const bool cartKnown = cart != Gen4::Table::HGSS || exactSourceGameId == "heartgold_nds" || exactSourceGameId == "soulsilver_nds";
+    Gen4::Analyzer a(pk, cart, cxdOrigin ? &cxd : nullptr, cartKnown);
     Report result = a.run();
     if (evidence != nullptr) *evidence = a.evidence();
     return result;
