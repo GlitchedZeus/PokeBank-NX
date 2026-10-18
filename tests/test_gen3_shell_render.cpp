@@ -1,4 +1,5 @@
 #include "UI/SharedPokemonShell.h"
+#include "UI/SharedMenuGeometry.h"
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -14,7 +15,13 @@ bool intersects(const Text& a, const Text& b) {
 namespace UI {
 PKSEFramebuffer::PKSEFramebuffer() = default;
 PKSEFramebuffer::~PKSEFramebuffer() = default;
-void PKSEFramebuffer::measureText(const std::string& s,int& w,int& h,TextStyle) { w=s.size()*9; h=18; }
+// Real Nunito advances (UI/NunitoMetrics.h via SharedMenuGeometry::textWidth), not a byte count.
+void PKSEFramebuffer::measureText(const std::string& s,int& w,int& h,TextStyle style) {
+    namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    w = G::textWidth(s, style == TextStyle::Caption ? G::Text::Caption
+                         : style == TextStyle::Body ? G::Text::Body : G::Text::Heading);
+    h = 18;
+}
 void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color,TextStyle style) {
     int w,h; measureText(s,w,h,style); texts.push_back({x,y,w,h,s});
 }
@@ -31,12 +38,12 @@ int main() {
     constexpr UI::SharedPokemonShell::Geometry g(1280,720,46);
     // Ellipsis must fit and preserve complete UTF-8 characters (the font stub measures bytes).
     assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 200) == "Pokémon");
-    assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 63) == "Pok...");
+    assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 50) == "Pok...");
     assert(UI::SharedPokemonShell::fitDetailsText(fb, "Pokémon", 9).empty());
     for (const auto theme : {UI::ThemeMode::Dark, UI::ThemeMode::Light}) {
         UI::applyTheme(theme);
         const std::array<const char*,15> labels{{"Species", "Nickname", "Level", "Experience",
-            "OT", "Trainer ID", "SID (read-only)", "Held Item", "Friendship", "Language",
+            "OT", "Trainer ID", "SID", "Held Item", "Friendship", "Language",
             "Origin", "Ball", "Met Level", "Met Location", "Pokerus"}};
         for (std::size_t focus=0; focus<15; ++focus) {
             texts.clear(); marks.clear();

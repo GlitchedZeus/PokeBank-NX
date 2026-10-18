@@ -4,6 +4,7 @@
 #include "UI/ItemPickerArtwork.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedMenuGeometry.h"
 
 #include <algorithm>
 #include <string>
@@ -51,11 +52,16 @@ inline void drawGrid(PKSEFramebuffer& fb, int x, int y,
         if (i == focused)
             fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4);
         const Item value = items[static_cast<std::size_t>(i)];
-        fb.drawText(cellX + 10, cellY + 7, labelFor(value),
-                    Colors::Text, TextStyle::Caption);
+        // Phase 2 (owner round 1: "the held item menu just needs a smidge the text and sprites
+        // closer"): the sprite leads the cell and the name follows it at the one fixed gap of the
+        // HeldItemPicker rule (UI/SharedMenuGeometry.h), instead of sitting at the far right.
+        constexpr auto rule = PokeBank::UIModel::SharedMenuGeometry::rule(
+            PokeBank::UIModel::SharedMenuGeometry::MenuType::HeldItemPicker);
+        const int spriteRight = cellX + rule.cellPadX + rule.spriteSize;
         if (value != 0)
-            ItemPickerArtwork::draw(fb, cellX + cellWidth - 24,
-                                    cellY + 2, 30, spriteNameFor(value));
+            ItemPickerArtwork::draw(fb, spriteRight, cellY + 2, rule.spriteSize, spriteNameFor(value));
+        fb.drawText(spriteRight + rule.spriteGap, cellY + 7, labelFor(value),
+                    Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
 }

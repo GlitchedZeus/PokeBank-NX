@@ -85,7 +85,7 @@ int main() {
     assert(std::string(rendered.rows[4].label) == "Origin & Legality");
     static_assert(Narrow::geometry(12).width == 440);
     static_assert(Narrow::geometry(12).height <= 720 - 56);
-    static_assert(Narrow::geometry(9).rowHeight >= 54);
+    static_assert(Narrow::geometry(9).rowHeight == 46); // shared compact BoxMenu rule (Phase 2)
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
@@ -547,10 +547,10 @@ int main() {
     contains(surface, "\"OT\", \"Trainer ID\"");
     assert(surface.find("OT (read-only)") == std::string::npos);
     assert(surface.find("TID (read-only)") == std::string::npos);
-    contains(surface, "SID (read-only)");
+    contains(surface, "\"SID\", \"Held Item\"");
     contains(surface, "setOriginalTrainerName");
     contains(surface, "setTID");
-    contains(surface, "Origin (read-only)");
+    contains(surface, "case 6: case 10: return true;"); // SID / Origin: gold ReadOnly field state
     contains(surface, "state.focus.row == row && (viewMode || editable);");
     contains(surface, "return gen4(state).session.mode == SessionModel::Mode::View;");
 
@@ -598,9 +598,11 @@ int main() {
     // Item pictures must be actual per-ball/item PNGs and part of reproducible
     // ROMFS recovery, not a generic placeholder drawn for every choice.
     // All Held Item generations now use one exact Gen III grid renderer.
-    contains(sharedHeld, "ItemPickerArtwork::draw(fb, cellX + cellWidth - 24");
+    // Phase 2: the sprite leads each cell and the name follows at the HeldItemPicker rule's gap.
+    contains(sharedHeld, "const int spriteRight = cellX + rule.cellPadX + rule.spriteSize;");
+    contains(sharedHeld, "ItemPickerArtwork::draw(fb, spriteRight, cellY + 2, rule.spriteSize");
     contains(sharedHeld, "fb.drawSelectionHighlight(cellX, cellY - 3");
-    contains(sharedHeld, "fb.drawText(cellX + 10, cellY + 7");
+    contains(sharedHeld, "fb.drawText(spriteRight + rule.spriteGap, cellY + 7");
     contains(gen2Held, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(gen2Editor, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(gen2Editor, "Gen2HeldItemPickerPresentation::drawList(fb, x, y");
@@ -609,8 +611,9 @@ int main() {
     contains(gen3Picker, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
-    contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
+    // Phase 2: the ball sprite leads its name (BallPicker rule), in Gen III and Gen IV/V alike.
+    contains(surface, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
+    contains(gen3Picker, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
     contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb, footer);"); // A Select / B Cancel
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");

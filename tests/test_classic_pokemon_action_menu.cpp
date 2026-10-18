@@ -101,10 +101,11 @@ int main() {
         else expectLabels(empty, {"Add Pokemon", "Cancel"});
     }
 
-    // Every Gen I/II sheet fits on screen at the shared fingertip row height.
+    // Every Gen I/II sheet fits on screen at the shared compact BoxMenu row height (46 px rows,
+    // 40 px cards; SharedMenuGeometry::rule(BoxMenu)).
     for (int count = 2; count <= 7; ++count) {
         const auto g = Narrow::geometry(count);
-        assert(g.rowHeight == 54 && g.y >= 0 && g.y + g.height <= 720 - 56);
+        assert(g.rowHeight == 46 && g.y >= 0 && g.y + g.height <= 720 - 56);
     }
 
     // The live Gen I / Gen II sheets build from this model; no Make Shiny anywhere in their lane.
