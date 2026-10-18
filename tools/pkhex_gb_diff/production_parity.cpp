@@ -88,11 +88,11 @@ int main() {
                 continue;
             }
             const bool egg = eggFlag == "1";
-            // The app's parsers keep decoded names only: production is held to the search
-            // without the stored name bytes, and the records whose verdict the byte rules
-            // change are counted (the handoff patch brings the bytes to production).
-            search = checkPk2(body, ot, nick, japanese, egg, false).status;
-            if (checkPk2(body, ot, nick, japanese, egg, true).status != search)
+            // The save parsers keep the stored name bytes (Gen2ReadOnlySave.cpp parsePokemon),
+            // so production is held to the search with the byte rules; the records whose
+            // verdict those rules change are counted.
+            search = checkPk2(body, ot, nick, japanese, egg, true).status;
+            if (checkPk2(body, ot, nick, japanese, egg, false).status != search)
                 ++needsRawNames;
             const auto region = japanese ? Gen2::RegionLayout::Japanese : Gen2::RegionLayout::International;
             // Field for field what Gen2ReadOnlySave.cpp parsePokemon stores.
@@ -121,6 +121,8 @@ int main() {
             rec.isEgg = egg;
             rec.originalTrainer = Gen2::decodeGen2String(ot, region);
             rec.nickname = Gen2::decodeGen2String(nick, region);
+            rec.originalTrainerRaw = ot;
+            rec.nicknameRaw = nick;
             rec.partyRecord = true;
             rec.rawBodySize = body.size();
             std::copy(body.begin(), body.end(), rec.rawBody.begin());
@@ -156,11 +158,11 @@ int main() {
             e.otName = Gen1::decodeGen1String(ot, region);
             e.nickname = Gen1::decodeGen1String(nick, region);
             e.language = japanese ? GB::Language::Japanese : GB::Language::International;
+            const GB::Status decodedOnly = GB::checkGen1(e).status;
+            e.otRaw = ot;
+            e.nickRaw = nick;
             search = GB::checkGen1(e).status;
-            GB::Entity1 withRaw = e;
-            withRaw.otRaw = ot;
-            withRaw.nickRaw = nick;
-            if (GB::checkGen1(withRaw).status != search)
+            if (decodedOnly != search)
                 ++needsRawNames;
             Gen1::PokemonRecord rec;
             rec.rawSpecies = body[0];
@@ -183,6 +185,8 @@ int main() {
             rec.level = body[0x21];
             rec.originalTrainer = e.otName;
             rec.nickname = e.nickname;
+            rec.originalTrainerRaw = ot;
+            rec.nicknameRaw = nick;
             rec.partyRecord = true;
             rec.rawBodySize = body.size();
             std::copy(body.begin(), body.end(), rec.rawBody.begin());
@@ -218,7 +222,7 @@ int main() {
     std::cout << "production parity: " << total << " records through Legality::analyze, "
               << skippedKorean << " Korean skipped, " << lenientUnknownLanguage
               << " lenient because the names hide the language, " << needsRawNames
-              << " whose verdict needs the stored name bytes the parsers do not carry yet\n";
+              << " whose verdict depends on the stored name bytes (passed to production as the parsers keep them)\n";
     for (const auto& [k, v] : table)
         std::cout << "  " << k << ": " << v << '\n';
     if (failures) {
