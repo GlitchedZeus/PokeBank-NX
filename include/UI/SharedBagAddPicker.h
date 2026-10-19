@@ -57,7 +57,11 @@ inline void drawPicker(PKSEFramebuffer& fb, Buttons& touchButtons, int touchBase
         Grid::drawMachineDetail(fb, g.frame.x + Grid::kRule.padX, g.frame.y + Grid::kDetailTop,
                                 g.frame.w - 2 * Grid::kRule.padX, game, machineMoveAt(selected));
     const int firstRow = Grid::firstRowFor(g, selected);
-    Grid::drawCells(fb, touchButtons, touchBase, g, selected, firstRow, 0, labelAt,
+    Grid::drawCells(fb, g, selected, firstRow, 0,
+        [&](const MG::Rect& cell, int index, bool focused) {
+            SharedEditorChrome::drawMenuCell(fb, touchButtons, touchBase + index, cell, focused);
+        },
+        labelAt,
         [&](PKSEFramebuffer& fb, const MG::Rect& sprite, int index) {
             ItemPickerArtwork::drawNativeItem(fb, sprite.right(), sprite.y, sprite.w, game,
                                               itemAt(index), labelAt(index));

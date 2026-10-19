@@ -8,8 +8,10 @@
 //    rows, height content-driven so a short pocket draws a short frame and the footer stays free.
 //  * Names are never clipped to reach 40 cells: the column count drops 4 -> 3 -> 2 until the
 //    widest real label of the list fits its cell (measured with the bundled font's advances).
-//  * One rectangle per cell is BOTH the focus highlight and the touch target
-//    (SharedEditorChrome::drawMenuCell, which Lane S restyles for the boxed rows of R2-BUG-012).
+//  * One rectangle per cell is BOTH the focus highlight and the touch target: drawCells hands the
+//    clipped cell to the caller's `cellChrome`, which production passes as
+//    SharedEditorChrome::drawMenuCell (Lane S restyles it for the boxed rows of R2-BUG-012). The
+//    hook keeps this header free of libnx so the grid is host-tested.
 //  * Navigation (pure, host-tested): D-pad / stick moves in the grid (Up/Down wrap by column,
 //    Left/Right stay in the row), L/R page by one screen of rows keeping the column, ZL/ZR jump
 //    five pages. The selected INDEX is the identity: a reflow (column count, sort, filter) keeps
@@ -25,7 +27,6 @@
 #include "UI/ClassicTypeBadges.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
-#include "UI/SharedEditorChrome.h"
 #include "UI/SharedMenuGeometry.h"
 #include "UI/SharedMoveFacts.h"
 #include "UI/SharedScrollbar.h"
@@ -254,13 +255,14 @@ inline int drawMachineDetail(PKSEFramebuffer& fb, int x, int y, int maxW, Enums:
     return cx - x;
 }
 
-// The cells. labelAt(i) -> std::string; drawSpriteAt(fb, spriteRect, i); heldAt(i) -> quantity
-// already held (0 = none; pass a lambda returning 0 for lists without a held column). Each cell
-// that is at least partly visible publishes touch id touchBase + i on its visible pixels only.
-template <class Buttons, class LabelAt, class DrawSpriteAt, class HeldAt>
-inline void drawCells(PKSEFramebuffer& fb, Buttons& touchButtons, int touchBase, const Grid& g,
-                      int selected, int firstRow, int pixelOffset,
-                      LabelAt&& labelAt, DrawSpriteAt&& drawSpriteAt, HeldAt&& heldAt) {
+// The cells. cellChrome(visibleRect, i, focused) draws the focus highlight AND publishes the touch
+// target on the cell's visible pixels (production: SharedEditorChrome::drawMenuCell with id
+// touchBase + i); labelAt(i) -> std::string; drawSpriteAt(fb, spriteRect, i); heldAt(i) -> quantity
+// already held (0 = none; pass a lambda returning 0 for lists without a held column).
+template <class CellChrome, class LabelAt, class DrawSpriteAt, class HeldAt>
+inline void drawCells(PKSEFramebuffer& fb, const Grid& g, int selected, int firstRow, int pixelOffset,
+                      CellChrome&& cellChrome, LabelAt&& labelAt, DrawSpriteAt&& drawSpriteAt,
+                      HeldAt&& heldAt) {
     if (g.count <= 0) return;
     firstRow = clampFirstRow(g, firstRow);
     const int firstDraw = std::max(0, firstRow - 1) * g.columns;
@@ -271,7 +273,7 @@ inline void drawCells(PKSEFramebuffer& fb, Buttons& touchButtons, int touchBase,
         const auto visible = clip(cell, g.list);
         if (visible.w <= 0) continue;
         const bool focused = i == selected;
-        SharedEditorChrome::drawMenuCell(fb, touchButtons, touchBase + i, visible, focused);
+        cellChrome(visible, i, focused);
         const MG::Rect sprite{cell.x + kRule.cellPadX, cell.y + (cell.h - kRule.spriteSize) / 2,
                               kRule.spriteSize, kRule.spriteSize};
         drawSpriteAt(fb, sprite, i);

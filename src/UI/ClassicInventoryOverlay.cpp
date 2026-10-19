@@ -1033,7 +1033,10 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             std::string label = artName;
             return label;
         };
-        AddGrid::drawCells(fb, screen.touchButtons, 0, g, state.pickerRow, start, state.pickerScroll.offset(),
+        AddGrid::drawCells(fb, g, state.pickerRow, start, state.pickerScroll.offset(),
+            [&](const PokeBank::UIModel::SharedMenuGeometry::Rect& cell, int i, bool focused) {
+                SharedEditorChrome::drawMenuCell(fb, screen.touchButtons, i, cell, focused);
+            },
             label,
             [&](PKSEFramebuffer& fb, const PokeBank::UIModel::SharedMenuGeometry::Rect& sprite, int i) {
                 const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
