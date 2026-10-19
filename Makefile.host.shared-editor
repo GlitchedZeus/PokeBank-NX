@@ -284,3 +284,24 @@ $(SHARED_BAG_QUANTITY_SANITIZE): $(SHARED_BAG_QUANTITY_SOURCES) include/Inventor
 	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_BAG_QUANTITY_SOURCES) -o $@
+
+# QA Round 3 Part 9 item 8: the Gen IV Storage save pane uses the shared Y carry (pickup,
+# drop and drawn carry stay in that pane; Y tap / hold multi-select as in Boxes).
+GEN4_STORAGE_CARRY_INPUTS := tests/test_gen4_storage_carry.cpp include/UI/ClassicCarryGrid.h \
+	include/UI/ClassicPackedMultiSelect.h src/UI/ClassicPackedMoveOverlay.inc src/UI/Panels/StoragePanel.cpp \
+	src/UI/TrainerViewScreenCompositeOverlay.cpp
+GEN4_STORAGE_CARRY_TEST := $(HOST_BUILD)/test_gen4_storage_carry
+GEN4_STORAGE_CARRY_SANITIZE := $(HOST_BUILD)/test_gen4_storage_carry_sanitize
+
+HOST_TESTS += $(GEN4_STORAGE_CARRY_TEST)
+HOST_SANITIZE_TESTS += $(GEN4_STORAGE_CARRY_SANITIZE)
+host-test: $(GEN4_STORAGE_CARRY_TEST)
+host-sanitize: $(GEN4_STORAGE_CARRY_SANITIZE)
+
+$(GEN4_STORAGE_CARRY_TEST): $(GEN4_STORAGE_CARRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@
+
+$(GEN4_STORAGE_CARRY_SANITIZE): $(GEN4_STORAGE_CARRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@
