@@ -1786,28 +1786,34 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             state.itemAddPickerActive=false;
             return true;
         }
-        // Touch uses the SAME SharedMenuGeometry rectangles the picker draws: a clean tap on a
-        // row chooses it (same as A); a vertical swipe that starts on the list only scrolls.
-        namespace AddPicker=UI::SharedBagAddPicker;
-        const int pageRows=AddPicker::visibleRows(size);
+        // Touch uses the SAME shared grid cells the picker draws (UI/SharedItemGridPicker.h,
+        // R2-BUG-006): a clean tap on a cell chooses it (same as A); a vertical swipe that starts
+        // on the grid only scrolls, by grid rows and keeping the column.
+        namespace AddGrid=UI::SharedItemGridPicker;
+        const auto addLabel=[&](int index) {
+            const auto id=state.itemAddChoices[static_cast<size_t>(index)];
+            return Names::machineDisplayLabel(screen.trainer.getGameGroup(),id,Names::getItemName(id));
+        };
+        const auto addGrid=UI::SharedBagAddPicker::pickerGrid(size,addLabel);
+        const int addFirstRow=AddGrid::firstRowFor(addGrid,state.itemAddIndex);
         // Shared scrollbar first: the window is centred on the selection, so the thumb moves
         // the selection to the row that puts the window where the finger put it.
         const auto addBar=SharedScrollbar::handleTouch(state.itemAddScrollbar,SharedScrollbar::sample(touch),
-            SharedScrollbar::rows(size,pageRows,AddPicker::firstVisible(state.itemAddIndex,size)));
-        if(addBar.changed) state.itemAddIndex=std::clamp(addBar.scroll+pageRows/2,0,size-1);
+            AddGrid::scrollModel(addGrid,addFirstRow));
+        if(addBar.changed) state.itemAddIndex=AddGrid::indexForFirstRow(addGrid,state.itemAddIndex,addBar.scroll);
         if(!addBar.consumed && touch.justReleased() && touch.dragged()) {
             const int dy=touch.deltaY();
-            if(AddPicker::onList(touch.startX(),touch.startY(),size) &&
+            if(AddGrid::onGrid(addGrid,touch.startX(),touch.startY()) &&
                std::abs(dy)>=24 && std::abs(dy)>std::abs(touch.deltaX())) {
-                const int rows=std::max(1,std::abs(dy)/AddPicker::pickerLayout(size).rule.rowHeight);
+                const int rows=std::max(1,std::abs(dy)/AddGrid::kRule.rowHeight);
                 state.itemAddIndex=std::clamp(
-                    state.itemAddIndex+(dy<0?rows:-rows),0,size-1);
+                    state.itemAddIndex+(dy<0?rows:-rows)*addGrid.columns,0,size-1);
             }
             return true;
         }
         if(!addBar.consumed && touch.justTapped()) {
-            const int startHit=AddPicker::hitChoice(touch.startX(),touch.startY(),state.itemAddIndex,size);
-            const int endHit=AddPicker::hitChoice(touch.x(),touch.y(),state.itemAddIndex,size);
+            const int startHit=AddGrid::hitIndex(addGrid,addFirstRow,touch.startX(),touch.startY());
+            const int endHit=AddGrid::hitIndex(addGrid,addFirstRow,touch.x(),touch.y());
             if(startHit>=0 && startHit==endHit) {
                 state.itemAddIndex=endHit;
                 keys|=HidNpadButton_A;
@@ -1824,18 +1830,13 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                 });
             return true;
         }
-        if(keys&HidNpadButton_Up)
-            state.itemAddIndex=(state.itemAddIndex+size-1)%size;
-        if(keys&HidNpadButton_Down)
-            state.itemAddIndex=(state.itemAddIndex+1)%size;
-        if(keys&(HidNpadButton_L|HidNpadButton_Left))
-            state.itemAddIndex=std::max(0,state.itemAddIndex-pageRows);
-        if(keys&(HidNpadButton_R|HidNpadButton_Right))
-            state.itemAddIndex=std::min(size-1,state.itemAddIndex+pageRows);
-        if(keys&HidNpadButton_ZL)
-            state.itemAddIndex=std::max(0,state.itemAddIndex-5*pageRows);
-        if(keys&HidNpadButton_ZR)
-            state.itemAddIndex=std::min(size-1,state.itemAddIndex+5*pageRows);
+        // Grid navigation (stick folded into the D-pad by controllerNavigation above): D-pad
+        // moves cell to cell, L/R page by one screen of rows, ZL/ZR jump five pages.
+        state.itemAddIndex=AddGrid::navigate(addGrid,state.itemAddIndex,AddGrid::Keys{
+            (keys&HidNpadButton_Up)!=0,(keys&HidNpadButton_Down)!=0,
+            (keys&HidNpadButton_Left)!=0,(keys&HidNpadButton_Right)!=0,
+            (keys&HidNpadButton_L)!=0,(keys&HidNpadButton_R)!=0,
+            (keys&HidNpadButton_ZL)!=0,(keys&HidNpadButton_ZR)!=0});
         if(!(keys&HidNpadButton_A))return true;
         if(!itemsScreen || screen.selectedCategory!=state.itemAddPocket) {
             screen.postStatus("Gen IV Add pocket changed; cancelled",280);
@@ -2149,13 +2150,12 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
             if(pocket>=screen.trainer.items.size())return uint16_t{0};
             for(const auto& stack:screen.trainer.items[pocket])if(stack.itemId==id)return stack.count;
             return uint16_t{0};
-        });
-    // Shared draggable scrollbar (publishes into the mutable overlay state).
-    const auto track=UI::SharedBagAddPicker::scrollbarTrack(count,SharedScrollbar::kTrackWidth);
-    SharedScrollbar::drawAndPublish(fb, stateFor(screen).itemAddScrollbar, track.x, track.y,
-        SharedScrollbar::kTrackWidth, track.h,
-        SharedScrollbar::rows(count, UI::SharedBagAddPicker::visibleRows(count),
-                              UI::SharedBagAddPicker::firstVisible(state.itemAddIndex,count)));
+        },
+        // R2-BUG-005: the move a focused Gen IV TM/HM teaches, from the Gen IV machine table.
+        [&](int index) {
+            return Names::getMachineDescriptor(game,state.itemAddChoices[static_cast<size_t>(index)]).moveId;
+        },
+        stateFor(screen).itemAddScrollbar);   // shared draggable scrollbar, published by the grid
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
                    {"A","Add"},{"B","Cancel"},{"X","Sort"}});
 }

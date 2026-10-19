@@ -1,3 +1,5 @@
+#include "UI/SharedItemGridPicker.h"
+#include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/ClassicFieldColor.h"
 #include "UI/ClassicGameContext.h"
@@ -916,6 +918,12 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     fb.drawText(x + w - 250, y + 55,
                 std::string("Sort: ") + ItemPickerSort::label(state.itemSort),
                 Colors::TextDim, TextStyle::Caption);
+    // R2-BUG-005: a focused Gen II TM/HM shows its move (the GSC machine table is shared by
+    // Gold, Silver and Crystal; ClassicInventoryCatalog, pret/pokecrystal).
+    if (state.itemChoiceIndex >= 0 && state.itemChoiceIndex < static_cast<int>(state.itemChoices.size()))
+        UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, Enums::GameVersion::GSC,
+            PokeVault::Inventory::classicMachineMove(PokeVault::Inventory::ClassicGame::Gold,
+                state.itemChoices[static_cast<std::size_t>(state.itemChoiceIndex)]));
     const int count = static_cast<int>(state.itemChoices.size());
     const int firstRow = state.itemViewport.firstRow;
     const int liveOffset = state.itemScroll.offset();

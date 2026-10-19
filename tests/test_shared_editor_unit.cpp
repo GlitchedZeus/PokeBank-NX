@@ -60,6 +60,10 @@ void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int, Color, in
 void PKSEFramebuffer::drawFilledCircle(int x, int y, int r, Color) { rects.push_back({x - r, y - r, 2 * r, 2 * r}); }
 void PKSEFramebuffer::setClipRect(int, int, int, int) {}
 void PKSEFramebuffer::clearClip() {}
+// R2-BUG-007: the chooser's Type cell asks for the type badge sprite; with no artwork on the host
+// the shared badge draws nothing and the row falls back to the type name.
+void PKSEFramebuffer::drawImageScaled(int, int, int, int, int, int, const uint8_t*, int) {}
+Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 } // namespace UI
 
 static UI::PKSEFramebuffer& fb_global() {

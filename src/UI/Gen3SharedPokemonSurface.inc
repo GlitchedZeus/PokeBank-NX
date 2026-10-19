@@ -1,3 +1,5 @@
+#include "UI/SharedItemGridPicker.h"
+#include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/ClassicTrainerSessionInput.h"
 #include "Pokemon/PersonalInfoTable.h"
@@ -1841,6 +1843,13 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
+        // R2-BUG-005: a focused Gen III TM/HM shows its move. TM01-50 / HM01-08 teach the same
+        // moves in Ruby/Sapphire/Emerald and FireRed/LeafGreen (pret pokeemerald / pokefirered),
+        // so the FireRed catalog row is exact for every Gen III game.
+        if (state.pickerRow >= 0 && state.pickerRow < count)
+            UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, kGen3MoveGame,
+                PokeVault::Inventory::classicMachineMove(PokeVault::Inventory::ClassicGame::FireRed,
+                    state.pickerValues[static_cast<std::size_t>(state.pickerRow)]));
         SharedHeldItemPickerPresentation::drawGrid(
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return pickerValueLabel(state, value); },

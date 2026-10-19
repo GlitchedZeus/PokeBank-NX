@@ -7,6 +7,7 @@
 #include "UI/SpriteManager.h"
 #include "UI/Common.h"
 #include "UI/Gen13PickerPaging.h"
+#include "UI/SharedBoxedRows.h"
 #include "UI/SharedMenuGeometry.h"
 #include "UI/SharedScrollbar.h"
 #include "UI/SharedSearchInput.h"
@@ -392,7 +393,9 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
             const int rowY = listY + (position - start) * rowStep + liveOffset;
             const bool selected = position == visualSpecies;
             const uint16_t species = speciesAt(position);
-            if (selected) fb.drawSelectionHighlight(listX, rowY, listW, rowHeight);
+            // R2-BUG-012: every species row is its own box; the focused one carries the yellow
+            // outline (UI/SharedBoxedRows.h), same as every other Gen I-V chooser.
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(listX, rowY, listW, rowHeight), {selected});
             if (chooser) {
                 // Leading icon per the shared SpeciesPicker row rule (SharedMenuGeometry.h).
                 if (auto* icon = SpriteManager::getIconSprite(species, previewShiny); icon && icon->data)

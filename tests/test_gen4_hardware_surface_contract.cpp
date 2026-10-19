@@ -394,9 +394,9 @@ int main() {
     contains(addPath,"touch.justReleased() && touch.dragged()");
     contains(addPath,"touch.justTapped()");
     contains(addPath,"startHit>=0 && startHit==endHit");
-    contains(addPath,"AddPicker::hitChoice(");
+    contains(addPath,"AddGrid::hitIndex(");   // R2-BUG-006: taps hit-test the drawn grid cells
     contains(addPath,"keys|=HidNpadButton_A");
-    contains(addPath,"AddPicker::visibleRows(size)");
+    contains(addPath,"UI::SharedBagAddPicker::pickerGrid(size,");   // page size = the drawn grid
     // B01-B06: Add never opens a keypad. The shared Gen I-V flow (UI/SharedBagAddFlow.h)
     // stages the item at x1, or focuses an already-held stack; A on the row edits quantity.
     assert(addPath.find("Utils::promptNumber(")==std::string::npos);
@@ -747,8 +747,11 @@ int main() {
     // The shared picker (UI/SharedBagAddPicker.h) draws that neutral border and the row art.
     contains(addItemBody, "UI::SharedBagAddPicker::drawPicker(");
     const auto sharedPicker = read("include/UI/SharedBagAddPicker.h");
-    contains(sharedPicker, "fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1)");
+    // R2-BUG-006: the Add picker's frame is the shared grid's (UI/SharedItemGridPicker.h).
+    const auto sharedGrid = read("include/UI/SharedItemGridPicker.h");
+    contains(sharedGrid, "fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1)");
     assert(sharedPicker.find("Colors::FocusBorder") == std::string::npos);
+    assert(sharedGrid.find("Colors::FocusBorder") == std::string::npos);
     contains(sharedPicker, "ItemPickerArtwork::drawNativeItem(");
 
     // The fixed-form Bulbasaur field is clearly informational in View.

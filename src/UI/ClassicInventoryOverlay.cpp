@@ -447,6 +447,20 @@ bool currentPocket(TrainerViewScreen& screen, ClassicGame& game, ClassicPocket& 
     return true;
 }
 
+// R2-BUG-006: the classic Add picker is the shared compact grid (UI/SharedItemGridPicker.h).
+// Input and draw build it from the SAME native labels, so the cell a tap / D-pad / scrollbar
+// lands on is the cell drawn.
+UI::SharedItemGridPicker::Grid classicPickerGrid(const TrainerViewScreen& screen, const OverlayState& state) {
+    const auto game = exactGame(screen);
+    const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
+                             : std::optional<ClassicPocket>{};
+    return UI::SharedBagAddPicker::pickerGrid(static_cast<int>(state.pickerItems.size()), [&](int index) {
+        return game && pocket
+            ? PokeVault::Inventory::displayItemName(*game, *pocket, state.pickerItems[static_cast<std::size_t>(index)])
+            : std::string();
+    });
+}
+
 bool currentItem(TrainerViewScreen& screen, uint16_t& itemId, uint16_t& quantity) {
     if (screen.selectedCategory < 0 ||
         screen.selectedCategory >= static_cast<int>(screen.trainer.items.size())) return false;
@@ -669,16 +683,18 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 
     if (state.pickerActive) {
         const int count = static_cast<int>(state.pickerItems.size());
-        // The shared Gen I-V ItemPicker geometry (UI/SharedMenuGeometry.h via
-        // UI/SharedBagAddPicker.h): the same rows the picker draws and publishes as touch targets.
-        const auto geometry = UI::SharedBagAddPicker::pickerLayout(count);
-        const int rowH = geometry.rule.rowHeight;
+        // The shared Gen I-V compact grid (R2-BUG-006, UI/SharedItemGridPicker.h): the same cells
+        // the picker draws and publishes as touch targets; the viewport scrolls by grid rows.
+        namespace AddGrid = UI::SharedItemGridPicker;
+        const auto geometry = classicPickerGrid(screen, state);
+        const int rowH = AddGrid::kRule.rowHeight;
         const int visibleRows = std::max(1, geometry.visibleRows);
-        state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
-        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
+        const int columns = geometry.columns;
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
+        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
         // Shared scrollbar first: a held thumb moves the window, not the row, and owns the touch.
         const auto pickerBar = SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
-            SharedScrollbar::rows(count, visibleRows, state.pickerViewport.firstRow));
+            AddGrid::scrollModel(geometry, state.pickerViewport.firstRow));
         if (pickerBar.changed) {
             state.pickerViewport.firstRow = pickerBar.scroll;
             state.pickerScroll.stop();
@@ -709,30 +725,28 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
                     });
                 state.pickerScroll.stop();
                 state.pickerViewport.reset();
-                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
             }
             return true;
         }
-        if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
-                    HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+        const AddGrid::Keys gridKeys{
+            (down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+            (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+        if (gridKeys.any()) {
+            // Grid navigation: D-pad cell to cell, L/R one screen of rows, ZL/ZR five.
+            // Use the visible touchscreen viewport for controller page steps.
+            const int page = visibleRows;
             state.pickerScroll.stop();
-        if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
-        if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-        // Use the visible touchscreen viewport for controller page steps, not the older
-        // pre-footer 11-row page constant.
-        const int page = visibleRows;
-        if (down & (HidNpadButton_L | HidNpadButton_Left))
-            state.pickerRow = std::max(0, state.pickerRow - page);
-        if (down & (HidNpadButton_R | HidNpadButton_Right))
-            state.pickerRow = std::min(count - 1, state.pickerRow + page);
-        if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
-                    HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
-            state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+            state.pickerRow = AddGrid::navigate(geometry, state.pickerRow, gridKeys, page);
+            state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        }
         if (down & HidNpadButton_B) { state.pickerScroll.stop(); state.pickerActive = false; return true; }
         if (down & HidNpadButton_A) {
-            if (!state.pickerViewport.containsSelection(state.pickerRow, count, visibleRows)) {
+            if (!state.pickerViewport.containsSelection(state.pickerRow, count, visibleRows, columns)) {
                 state.pickerScroll.stop();
-                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
                 screen.postStatus("Focused item brought into view; press A again or tap a visible row", 220);
                 return true;
             }
@@ -964,8 +978,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     const bool compactPicker = state.pickerActive;
-    const auto pickerGeometry =
-        UI::SharedBagAddPicker::pickerLayout(static_cast<int>(state.pickerItems.size()));
+    const auto pickerGeometry = classicPickerGrid(screen, state);
     const int width = compactPicker ? pickerGeometry.frame.w : 900;
     const int y = compactPicker ? pickerGeometry.frame.y : 66;
     const int height = compactPicker ? pickerGeometry.frame.h : 610;
@@ -995,11 +1008,11 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.pickerActive && game && pocket) {
-        // Same shared ItemPicker presentation as Gen IV/V (UI/SharedBagAddPicker.h): leading
-        // sprite, name, held quantity right; one rectangle is the highlight and the touch target.
-        namespace MG = PokeBank::UIModel::SharedMenuGeometry;
-        const auto& l = pickerGeometry;
-        const int pad = l.rule.padX;
+        // Same shared compact grid as Gen IV/V (R2-BUG-006, UI/SharedItemGridPicker.h): sprite,
+        // name and held quantity per cell; one rectangle is the highlight and the touch target.
+        namespace AddGrid = UI::SharedItemGridPicker;
+        const auto& g = pickerGeometry;
+        const int pad = AddGrid::kRule.padX;
         const int count = static_cast<int>(state.pickerItems.size());
         fb.drawText(x + pad, y + 8, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
                     Colors::Text, TextStyle::Heading);
@@ -1007,61 +1020,52 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                     std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort) +
                         "  |  " + std::to_string(state.pickerRow + 1) + " / " + std::to_string(count),
                     Colors::TextSecondary, TextStyle::Caption);
+        // The exact classic game group, so a TM/HM's detail and art use this generation's table.
+        const auto group = *game <= ClassicGame::Yellow
+            ? Enums::GameVersion::RBY
+            : *game <= ClassicGame::Crystal ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
+        if (state.pickerRow >= 0 && state.pickerRow < count)
+            AddGrid::drawMachineDetail(fb, x + pad, y + AddGrid::kDetailTop, g.frame.w - 2 * pad, group,
+                PokeVault::Inventory::classicMachineMove(*game, state.pickerItems[static_cast<std::size_t>(state.pickerRow)]));
 
-        const int rowH = l.rule.rowHeight;
-        const int listTop = l.list.y;
-        const int listBottom = l.list.bottom();
-        const int visibleRows = std::max(1, l.visibleRows);
-        state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
-        const int start = state.pickerViewport.firstRow;
-        const int drawFirst = std::max(0, start - 1);
-        const int drawLast = std::min(count, start + visibleRows + 1);
-        const int liveOffset = state.pickerScroll.offset();
-        fb.setClipRect(l.list.x, listTop, l.list.w, l.list.h);
-        for (int i = drawFirst; i < drawLast; ++i) {
-            const int rowY = listTop + (i - start) * rowH + liveOffset;
-            const MG::Rect cell{l.list.x, rowY, l.list.w, rowH - l.rule.rowGap};
+        const int visibleRows = std::max(1, g.visibleRows);
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows, g.columns);
+        const int start = state.pickerViewport.firstRow;   // ensure() above clamps it to the grid
+        const auto label = [&](int i) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             std::string label = artName;
-            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cell.x, cell.y, cell.w, cell.h), {i == state.pickerRow});  // R2-BUG-012 boxed row
-            // Native IDs are never interchangeable across generations.
-            // A label like TM43 cannot select art without its actual GBA/GBC
-            // taught move. PC Items uses the same discs as the TM/HM pocket.
-            std::string spriteKey = artName;
-            if (PokeVault::Inventory::classicMachineMove(*game, itemId) != 0) {
-                const auto group = *game <= ClassicGame::Yellow
-                    ? Enums::GameVersion::RBY
-                    : *game <= ClassicGame::Crystal
-                        ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
-                spriteKey = ClassicMachineArtwork::artKey(group, itemId);
-            } else if (*game > ClassicGame::Yellow &&
-                       *game <= ClassicGame::Crystal) {
-                const std::string slug = ItemSpriteKey::slug(artName);
-                if (ItemSpriteKey::isGen2Mail(slug))
-                    spriteKey = "gsc-mail-icon-" + slug;
-            }
-            const auto sprite = MG::spriteRect(l, cell);
-            ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey);
-            const auto text = MG::labelRect(l, cell, UI::SharedBagAddPicker::kHeldColumnW);
-            fb.drawText(text.x, MG::textTop(cell, l.rule.label), label,
-                        i == state.pickerRow ? Colors::Text : Colors::TextSecondary, TextStyle::Body);
-            const std::string held =
-                UI::SharedBagAddPicker::heldLabel(stagedQuantity(screen, *pocket, itemId));
-            if (!held.empty())
-                fb.drawText(text.right() + 8, MG::textTop(cell, MG::Text::Caption), held,
-                            Colors::Accent, TextStyle::Caption);
-            if (rowY + rowH > listTop && rowY < listBottom)
-                appendClippedTouchButton(screen.touchButtons, i,
-                    cell.x, cell.y, cell.w, cell.h,
-                    l.list.x, listTop, l.list.w, l.list.h);
-        }
-        fb.clearClip();
+            return label;
+        };
+        AddGrid::drawCells(fb, g, state.pickerRow, start, state.pickerScroll.offset(),
+            [&](const PokeBank::UIModel::SharedMenuGeometry::Rect& cell, int i, bool focused) {
+                // R2-BUG-012 boxed cell (the box IS the published touch rect), as drawMenuCell does.
+                SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cell.x, cell.y, cell.w, cell.h), {focused});
+                SharedBoxedRows::publish(screen.touchButtons, i, cell, {focused});
+            },
+            label,
+            [&](PKSEFramebuffer& fb, const PokeBank::UIModel::SharedMenuGeometry::Rect& sprite, int i) {
+                const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
+                const std::string artName = label(i);
+                // Native IDs are never interchangeable across generations.
+                // A label like TM43 cannot select art without its actual GBA/GBC
+                // taught move. PC Items uses the same discs as the TM/HM pocket.
+                std::string spriteKey = artName;
+                if (PokeVault::Inventory::classicMachineMove(*game, itemId) != 0) {
+                    spriteKey = ClassicMachineArtwork::artKey(group, itemId);
+                } else if (*game > ClassicGame::Yellow &&
+                           *game <= ClassicGame::Crystal) {
+                    const std::string slug = ItemSpriteKey::slug(artName);
+                    if (ItemSpriteKey::isGen2Mail(slug))
+                        spriteKey = "gsc-mail-icon-" + slug;
+                }
+                ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey);
+            },
+            [&](int i) { return stagedQuantity(screen, *pocket, state.pickerItems[static_cast<std::size_t>(i)]); });
         {
-            const auto track = UI::SharedBagAddPicker::scrollbarTrack(count, SharedScrollbar::kTrackWidth);
+            const auto track = AddGrid::scrollbarTrack(g, SharedScrollbar::kTrackWidth);
             SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, track.x, track.y,
-                SharedScrollbar::kTrackWidth, track.h,
-                SharedScrollbar::rows(count, visibleRows, start));
+                SharedScrollbar::kTrackWidth, track.h, AddGrid::scrollModel(g, start));
         }
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
                         {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
