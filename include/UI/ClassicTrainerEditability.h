@@ -22,7 +22,7 @@ inline bool isEmulatorGen3SourceId(std::string_view id) noexcept {
 }
 
 inline bool trainerFieldsEditable(const Trainer::Trainer& trainer, bool mutableWorkspace,
-                                  std::string_view sourceGameId = {}) {
+                                  std::string_view sourceGameId = std::string_view()) {
     // The NRO builds without RTTI: the game group identifies the class (only RBYReadOnlyTrainer
     // reports RBY and only GSCReadOnlyTrainer reports GSC), the same guard the GSC overlay uses.
     switch (trainer.getGameGroup()) {
