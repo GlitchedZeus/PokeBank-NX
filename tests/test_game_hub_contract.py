@@ -769,7 +769,7 @@ leave_draw = source[source.index("        if (overlay == Overlay::QuitConfirm) {
 leave_draw = leave_draw[:leave_draw.index("        } else if (overlay == Overlay::OpenFailure) {")]
 require('"Quit PokeBank NX?"' in layout_header and '"Launch " + std::string(gameName) + "?"' in layout_header and
         "G::layout(G::MenuType::LaunchConfirm" in leave_draw and
-        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice)" in leave_draw and
+        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice, pendingLaunchStarter)" in leave_draw and
         'drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");' in leave_draw and
         'drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");' in leave_draw and
         'quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);' in leave_draw and
