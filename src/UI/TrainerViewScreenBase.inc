@@ -5100,6 +5100,13 @@ namespace UI {
 
         // Draw instructions
         std::string instructions;
+        // Trainer page Name / Money editable in this session (a mutable workspace or a staged
+        // Trainer editor, Gen I-IV): exempts that page from the read-only footer override.
+        const auto trainerPageEditable = [&]() {
+            return PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(
+                trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit),
+                sourceGameId);
+        };
         if (actionSheet.isOpen()) {
             instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
         } else if (swapActive) {
@@ -5261,12 +5268,16 @@ namespace UI {
                 }
             } else if (selectedMode == ViewMode::Trainer) {
                 // X saves only from the HOME menu (see the X handler), so the flow is edit -> B -> X.
-                // "A: Edit" only where Name / Money really can be edited in this session (R2-TRAINER):
-                // a mutable workspace or a classic staged Trainer editor (Gen I / Gen II).
-                instructions = PokeBank::UIModel::ClassicTrainerSession::trainerPageInstructions(
-                    PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(
+                // "A: Edit" only where the FOCUSED field really can be edited in this session
+                // (R2-TRAINER / R2-BUG-001): a mutable workspace or a staged Trainer editor
+                // (Gen I-IV); a read-only Name row (Japanese save) shows no A.
+                namespace TrainerSession = PokeBank::UIModel::ClassicTrainerSession;
+                instructions = TrainerSession::trainerPageInstructions(
+                    TrainerSession::trainerFieldsEditable(
                         trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit),
-                        sourceGameId));
+                        sourceGameId) &&
+                    TrainerSession::focusedRowEditable(TrainerSession::trainerNameEditable(trainer, sourceGameId),
+                                                       trainerSelectedRow));
             }
         } else {
             // HOME main menu.
@@ -5281,8 +5292,12 @@ namespace UI {
             const bool stagedInventoryActionsAvailable =
                 detailViewActive && selectedMode == ViewMode::Items &&
                 ClassicInventory::stagedEditingAvailable(*this);
+            // R2-BUG-001: an editable Trainer page keeps its own footer on a read-only source.
             if (PokeBank::UIModel::useReadOnlyInventoryFooterOverride(
-                    sourceReadOnly(), details.active, selectedMode == ViewMode::Settings,
+                    PokeBank::UIModel::ClassicTrainerSession::readOnlyForFooterOverride(
+                        sourceReadOnly(), detailViewActive && selectedMode == ViewMode::Trainer,
+                        trainerPageEditable()),
+                    details.active, selectedMode == ViewMode::Settings,
                     stagedInventoryActionsAvailable)) {
                 instructions = "Arrows: Navigate  |  B: Back";
                 bool canOpen = !detailViewActive;
