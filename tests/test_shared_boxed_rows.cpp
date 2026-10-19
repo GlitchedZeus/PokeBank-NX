@@ -78,6 +78,20 @@ int main() {
                 std::string::npos,
             "Move contextual editor: each row boxed on its own touch rect");
 
+    // Confirmations: every choice is a boxed glyph row that presses exactly its button.
+    require(boxed.find("g_touchGlyphHits.push_back(hit);") != std::string::npos &&
+            boxed.find("buttonGlyph(fb, gx, cell.y + cell.h / 2, choice.glyph, false);") != std::string::npos,
+            "boxed confirm choices use 2R's glyph renderer and the shared glyph-hit path");
+    for (const auto& [path, sites] : {std::pair{"src/UI/Gen3SharedPokemonSurface.inc", std::size_t{2}},
+                                      std::pair{"src/UI/Gen4SharedPokemonSurface.inc", std::size_t{2}},
+                                      std::pair{"src/UI/Gen5SharedReadOnlySurface.inc", std::size_t{1}}}) {
+        const std::string text = read(path);
+        require(count(text, "SharedBoxedRows::drawGlyphChoices(") >= sites,
+                std::string("R2-BUG-012 Release / Discard / decision choices boxed in ") + path);
+    }
+    require(read("src/UI/Gen4SharedPokemonSurface.inc").find("{{{\"B\", \"Cancel\"}, {\"Y\", \"Confirm Release\"}}}") !=
+                std::string::npos, "Release still commits on Y only (B cancels)");
+
     if (failures) {
         std::cerr << failures << " failure(s)\n";
         return EXIT_FAILURE;

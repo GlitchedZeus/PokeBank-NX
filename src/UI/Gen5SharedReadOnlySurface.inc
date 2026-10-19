@@ -1782,7 +1782,7 @@ void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     dimShared(screen,fb);
     // The decision owns the frame's touch; the covered hub's footer is never tappable.
     SharedEditorChrome::beginModal(screen.touchButtons);
-    const int w=870,h=230,x=(fb.getWidth()-w)/2;
+    const int w=870,h=250,x=(fb.getWidth()-w)/2;
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
     fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
@@ -1790,6 +1790,10 @@ void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     fb.drawText(x+26,y+93,message,Colors::TextSecondary,TextStyle::Body);
     fb.drawText(x+26,y+142,"Source SAV5 is never modified.",
                 Colors::Accent,TextStyle::Caption);
+    // R2-BUG-012: each choice is its own boxed row; a tap presses exactly that button.
+    std::vector<SharedBoxedRows::GlyphChoice> choices;
+    for(const auto& key:keys)choices.push_back({key.button,key.label});
+    SharedBoxedRows::drawGlyphChoices(fb,x+26,y+h-SharedBoxedRows::kChoiceHeight-18,w-52,choices);
     if(!keys.empty())drawNavBar(fb,keys);
 }
 void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {

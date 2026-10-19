@@ -26,6 +26,7 @@
 #endif
 
 #include <string>
+#include <vector>
 
 namespace UI::SharedBoxedRows {
 
@@ -95,6 +96,47 @@ inline void drawRow(PKSEFramebuffer& fb, Buttons& touchButtons, int touchId, con
     int lw = 0, lh = 0;
     fb.measureText(label, lw, lh, labelStyle);
     fb.drawText(cell.x + kLabelInset, cell.y + (cell.h - lh) / 2, label, labelColor(s), labelStyle);
+}
+
+// Confirmation choices (Release, Remove, Discard, Create...): each choice is its own boxed row
+// showing its controller glyph (2R's ScreenChrome buttonGlyph renderer) and label, laid out side
+// by side in [x, x+w) at row y. A tap on a box presses exactly that button through the shared
+// glyph-hit path (the same one drawGlyphButton uses), so Y still commits destructive choices
+// and A / B keep their meaning. Returns the height used.
+struct GlyphChoice {
+    std::string glyph;
+    std::string label;
+};
+inline constexpr int kChoiceHeight = 46;
+inline constexpr int kChoiceGap = 16;
+template <class Choices>
+inline int drawGlyphChoices(PKSEFramebuffer& fb, int x, int y, int w, const Choices& choices) {
+    const int n = static_cast<int>(choices.size());
+    if (n <= 0) return 0;
+    const int cw = (w - kChoiceGap * (n - 1)) / n;
+    int i = 0;
+    for (const auto& choice : choices) {
+        const Geo::Rect cell{x + i * (cw + kChoiceGap), y, cw, kChoiceHeight};
+        ++i;
+        drawBox(fb, cell, {});
+#ifdef POKEBANK_BOXED_ROWS_TOUCH
+        const TouchGlyphHit hit{cell.x, cell.y, cell.w, cell.h, choice.glyph};
+        g_touchGlyphAccum.push_back(hit);
+        g_touchGlyphHits.push_back(hit);
+        const int gw = buttonGlyphWidth(fb, choice.glyph);
+#else
+        const int gw = 0;
+#endif
+        int lw = 0, lh = 0;
+        fb.measureText(choice.label, lw, lh, TextStyle::Body);
+        const int gx = cell.x + (cell.w - (gw + (gw ? 10 : 0) + lw)) / 2;
+#ifdef POKEBANK_BOXED_ROWS_TOUCH
+        buttonGlyph(fb, gx, cell.y + cell.h / 2, choice.glyph, false);
+#endif
+        fb.drawText(gx + gw + (gw ? 10 : 0), cell.y + (cell.h - lh) / 2, choice.label,
+                    Colors::TextPrimary, TextStyle::Body);
+    }
+    return kChoiceHeight;
 }
 
 // Same, for a row whose geometry the caller already owns (an existing accepted list), as a Rect.
