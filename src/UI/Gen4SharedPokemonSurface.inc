@@ -8,8 +8,8 @@
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Integration/Gen4/Gen4StagedTrainerEditor.h"
 #include "UI/ClassicTrainerSessionInput.h"
-#include "Utils/StringHelpers.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
@@ -2185,22 +2185,19 @@ bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 dow
     if (!trainerMainPage(screen, state)) return false;
     auto* staged = editor(screen);
     if (!staged) return false;
-    const auto trainer = staged->stagedTrainer();
-    if (!trainer) return false;
+    Gen4::Gen4StagedTrainerEditor trainer(*staged);
+    if (!trainer.available()) return false;
     UI::ClassicTrainerSession::Fields fields;
-    fields.name = Utils::utf16ToUtf8(trainer->name);
-    fields.money = trainer->money;
-    fields.nameMax = static_cast<int>(Gen4::Gen4StagedPokemonEditor::kTrainerNameMax);
-    fields.moneyMax = Gen4::Gen4StagedPokemonEditor::kMaxMoney;
+    fields.name = trainer.trainerName();
+    fields.money = trainer.money();
+    fields.nameMax = Gen4::Gen4StagedTrainerEditor::kNameMax;
+    fields.moneyMax = Gen4::Gen4StagedTrainerEditor::kMaxMoney;
     fields.nameGuide = "1-7 characters the game can store";
-    fields.nameEditable = staged->trainerNameEditable();
+    fields.nameEditable = trainer.nameEditable();
     fields.nameReadOnlyReason = "This save's trainer name language is read-only here";
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
-            const std::u16string wide = Utils::utf8ToUtf16(name);
-            if (wide != trainer->name && !staged->stageTrainerName(wide, &error)) return false;
-            if (money != trainer->money && !staged->stageTrainerMoney(money, &error)) return false;
-            return refreshPresentation(screen);
+            return trainer.stage(name, money, error) && refreshPresentation(screen);
         });
 }
 

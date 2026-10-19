@@ -3,6 +3,7 @@
 #include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Integration/Gen4/Gen4ExportTransaction.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
+#include "Integration/Gen4/Gen4StagedTrainerEditor.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Utils/CRC16.h"
@@ -1112,8 +1113,12 @@ void testTrainerNameMoneyRoundTrip() {
         assert(!editor->stageTrainerName(u"A\U0001F600", &error));
         assert(editor->stagedBytes() == original && !editor->hasChanges());
 
-        assert(editor->stageTrainerName(u"Ash", &error) && error.empty());
-        assert(editor->stageTrainerMoney(123456, &error) && error.empty());
+        // Through the Trainer page's editor: only the changed fields are staged.
+        PokeVault::Integration::Gen4::Gen4StagedTrainerEditor trainerEditor(*editor);
+        assert(trainerEditor.available() && trainerEditor.trainerName() == "Kylie");
+        assert(trainerEditor.stage("Kylie", 0, error) && !editor->hasChanges());
+        assert(trainerEditor.stage("Ash", 123456, error) && error.empty());
+        assert(trainerEditor.trainerName() == "Ash" && trainerEditor.money() == 123456);
         const auto after = editor->stagedTrainer(&error);
         assert(after && after->name == u"Ash" && after->money == 123456);
         assert(after->tid == before->tid && after->sid == before->sid && after->language == before->language);
