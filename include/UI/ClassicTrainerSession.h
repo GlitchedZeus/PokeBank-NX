@@ -17,4 +17,20 @@ constexpr const char* trainerPageInstructions(bool editable) noexcept {
                     : "Up/Down: Select  |  B: Back  |  +: Exit App";
 }
 
+// R2-BUG-001: on an editable Trainer page "A: Edit" is offered for the FOCUSED row only: Money
+// always, Name only when this save's name can be staged (a Japanese Gen I / III / IV name stays
+// read-only while Money still stages).
+constexpr bool focusedRowEditable(bool nameEditable, int focusedRow) noexcept {
+    return focusedRow != 0 || nameEditable;
+}
+
+// R2-BUG-001: an emulator source is read-only, yet its Trainer page is editable through a staged
+// Trainer editor. The generic read-only footer override ("Arrows: Navigate | B: Back") ran after
+// the Trainer footer and replaced it on the same frame (hardware: no "A: Edit" on Gen I). The
+// override treats the source as read-only for the footer EXCEPT on an editable Trainer page.
+constexpr bool readOnlyForFooterOverride(bool sourceReadOnly, bool trainerPage,
+                                         bool trainerFieldsEditable) noexcept {
+    return sourceReadOnly && !(trainerPage && trainerFieldsEditable);
+}
+
 } // namespace PokeBank::UIModel::ClassicTrainerSession

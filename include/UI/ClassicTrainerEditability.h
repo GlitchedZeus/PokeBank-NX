@@ -44,4 +44,28 @@ inline bool trainerFieldsEditable(const Trainer::Trainer& trainer, bool mutableW
     }
 }
 
+// Whether the Name row itself can be staged (R2-BUG-001 footer). A Japanese Gen I / III / IV save
+// keeps its name read-only while Money still stages; Gen II and mutable workspaces edit both.
+inline bool trainerNameEditable(const Trainer::Trainer& trainer, std::string_view sourceGameId = std::string_view()) {
+    switch (trainer.getGameGroup()) {
+        case Enums::GameVersion::RBY: {
+            const auto* editor = static_cast<const PokeVault::Legacy::RBYReadOnlyTrainer&>(trainer).stagedTrainer();
+            return editor && editor->nameEditable();
+        }
+        case Enums::GameVersion::FRLG: {
+            if (!isEmulatorGen3SourceId(sourceGameId)) return true;
+            const auto* editor = static_cast<const PokeVault::Legacy::FRLGReadOnlyTrainer&>(trainer).stagedTrainer();
+            return editor && editor->nameEditable();
+        }
+        case Enums::GameVersion::DP:
+        case Enums::GameVersion::PT:
+        case Enums::GameVersion::HGSS: {
+            const auto* editor = static_cast<const PokeVault::Legacy::Gen4ReadOnlyTrainer&>(trainer).stagedPokemon();
+            return editor && editor->trainerNameEditable();
+        }
+        default:
+            return true;
+    }
+}
+
 } // namespace PokeBank::UIModel::ClassicTrainerSession
