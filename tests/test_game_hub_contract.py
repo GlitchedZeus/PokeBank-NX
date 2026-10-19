@@ -724,7 +724,7 @@ require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrai
 # (never recomputed per frame) and drawn only inside the detail panel's two caption rows.
 quit_notice = source[source.index("const std::string& SaveSelectScreen::currentLaunchQuitNotice()"):
                      source.index("bool SaveSelectScreen::launchCurrentTitle()")]
-require("gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(d))" in quit_notice and
+require("gameLaunchDialogNotice(d)" in quit_notice and
         "if (key != launchQuitNoticeKey)" in quit_notice,
         "Launch notice must show the cached quit-route notice from the launcher's chain plan")
 hub_caption = source[source.index("// Caption rows under the buttons (inside the panel)"):
