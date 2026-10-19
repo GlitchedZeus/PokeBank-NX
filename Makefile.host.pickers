@@ -22,10 +22,25 @@ ITEM_GRID_SOURCES := tests/test_item_grid_picker.cpp src/Names/MoveNames.cpp
 ITEM_GRID_INPUTS := $(ITEM_GRID_SOURCES) include/UI/SharedItemGridPicker.h include/UI/ClassicTypeBadges.h \
     include/UI/SharedMenuGeometry.h include/UI/SharedMoveFacts.h include/UI/SharedScrollbar.h
 
-HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE)
-host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST)
-host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE)
+# tests/test_touch_scroll_state.cpp (TouchScroll.h, Lane P) was only built by the touch-input
+# workflow; QA Part 9 found no host Makefile ran it. It runs in host-test / host-sanitize here.
+TOUCH_SCROLL_STATE_TEST := $(HOST_BUILD)/test_touch_scroll_state
+TOUCH_SCROLL_STATE_SANITIZE := $(HOST_BUILD)/test_touch_scroll_state_sanitize
+TOUCH_SCROLL_STATE_INPUTS := tests/test_touch_scroll_state.cpp include/UI/TouchScroll.h \
+    include/UI/TouchGesture.h tests/touch_fakes/UI/TouchInput.h
+
+HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE)
+host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST)
+host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE)
+
+$(TOUCH_SCROLL_STATE_TEST): $(TOUCH_SCROLL_STATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/touch_fakes -Iinclude tests/test_touch_scroll_state.cpp -o $@
+
+$(TOUCH_SCROLL_STATE_SANITIZE): $(TOUCH_SCROLL_STATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude tests/test_touch_scroll_state.cpp -o $@
 
 $(ITEM_GRID_TEST): $(ITEM_GRID_INPUTS)
 	@mkdir -p $(HOST_BUILD)
@@ -49,6 +64,7 @@ host-pickers: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST)
 	./$(SPECIES_SEARCH_TEST)
 	./$(MOVE_TYPE_BADGES_TEST)
 	./$(ITEM_GRID_TEST)
+	./$(TOUCH_SCROLL_STATE_TEST)
 
 $(SPECIES_SEARCH_TEST): $(SPECIES_SEARCH_INPUTS)
 	@mkdir -p $(HOST_BUILD)
