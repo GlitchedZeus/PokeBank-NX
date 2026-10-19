@@ -76,10 +76,10 @@ struct Rect {
 inline constexpr Rect kFooterBand{0, kScreenH - kFooterH, kScreenW, kFooterH};
 
 enum class MenuType : uint8_t {
-    ItemPicker,       // Bag "Add Item": one column, sprite + name, quantity right
+    ItemPicker,       // item catalogs (Bag Add Item...): the compact 4-column item grid
     KeyItemWarning,   // "This is a Key Item" notice before staging one
     RemoveConfirm,    // Remove item / Release Pokemon: Y commits (frozen input rule)
-    HeldItemPicker,   // style reference: the accepted Gen III 4-column grid
+    HeldItemPicker,   // Held Item: an alias of ItemPicker (the accepted Gen III grid)
     BallPicker,       // Poke Ball grid
     SpeciesPicker,    // species list (Lane P owns its search; geometry is shared)
     MovePicker,       // Move chooser: No. / name / type / category / Pwr / Acc / PP
@@ -115,9 +115,11 @@ struct Rule {
 constexpr Rule rule(MenuType type) noexcept {
     switch (type) {
         case MenuType::ItemPicker:
-            return {Kind::List, 520, 1, 44, 4, 10, 64, 20, 16, 12, 30, 8, Text::Body};
-        case MenuType::HeldItemPicker:
+            // R2-BUG-006 / CG13: the compact item GRID (the accepted Gen III Held Item grid),
+            // content-driven row count, fitted to 1280x720 above the footer.
             return {Kind::Grid, 1040, 4, 40, 4, 10, 90, 22, 16, 8, 30, 6, Text::Caption};
+        case MenuType::HeldItemPicker:
+            return rule(MenuType::ItemPicker);  // alias, not a copy (coordinator CG13)
         case MenuType::BallPicker:
             // One column, ball sprite leading its name (was a 640 px row with the sprite at the far
             // right edge). Same rows as ChoicePicker so every editor value list reads alike.

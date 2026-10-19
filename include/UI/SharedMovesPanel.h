@@ -11,6 +11,7 @@
 // dim line with type / category / power / accuracy where the generation has them.
 
 #include "Names/MoveNames.h"
+#include "UI/ClassicTypeBadges.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SharedMenuGeometry.h"
@@ -200,6 +201,11 @@ inline void drawChooserCaptions(PKSEFramebuffer& fb, const ChooserColumns& c, in
     drawRight(fb, c.ppRight(), y, "PP", Colors::TextDim);
 }
 
+// R2-BUG-007: the Type cell is the Pokémon summary's type badge (UI/ClassicTypeBadges.h, the same
+// type sprites), kBadgeHeight tall so its 5:1 artwork (80 px) stays inside the 90 px Type column
+// and clear of Category / Pwr. Only a move whose type is unknown or varies keeps a text label.
+inline constexpr int kChooserBadgeHeight = 16;
+
 // One chooser row. `y` is the row's text baseline top; move 0 is the explicit Empty choice.
 inline void drawChooserRow(PKSEFramebuffer& fb, const ChooserColumns& c, int y,
                            uint16_t move, Enums::GameVersion game, bool selected) {
@@ -213,7 +219,9 @@ inline void drawChooserRow(PKSEFramebuffer& fb, const ChooserColumns& c, int y,
     fb.drawText(c.numberX(), y + 2, moveNumber(move), Colors::TextDim, TextStyle::Caption);
     fb.drawText(c.nameX(), y, fit(fb, Names::getMoveName(move), c.nameMaxW(), TextStyle::Body),
                 ink, TextStyle::Body);
-    fb.drawText(c.typeX(), y + 2, Facts::typeLabel(f), ink, TextStyle::Caption);
+    const bool badgeable = f.exists && !f.typeVaries && f.type <= ClassicTypeBadges::kLastGen15Type;
+    if (!badgeable || ClassicTypeBadges::drawCanonical(fb, c.typeX(), y + 2, f.type, kChooserBadgeHeight) == 0)
+        fb.drawText(c.typeX(), y + 2, Facts::typeLabel(f), ink, TextStyle::Caption);
     if (const char* category = Facts::categoryLabel(f); *category)
         fb.drawText(c.categoryX(), y + 2, category, ink, TextStyle::Caption);
     drawRight(fb, c.powerRight(), y + 2, Facts::powerLabel(f), ink);

@@ -1,18 +1,21 @@
 #pragma once
 
-// The ONE Bag "Add Item" picker and Remove-confirm presentation for the Gen IV / Gen V surfaces,
-// laid out by UI/SharedMenuGeometry.h (MenuType::ItemPicker / MenuType::RemoveConfirm). The
-// decision of what A means lives in UI/SharedBagAddFlow.h; this header only draws and hit-tests.
+// The ONE Bag "Add Item" picker and Remove-confirm presentation for the Gen I-V surfaces. The
+// picker is the shared compact grid (UI/SharedItemGridPicker.h, R2-BUG-006); the confirmations are
+// laid out by UI/SharedMenuGeometry.h (MenuType::RemoveConfirm / KeyItemWarning). The decision of
+// what A means lives in UI/SharedBagAddFlow.h; this header only draws and hit-tests.
 //
-// One rectangle per visible row is BOTH the focus highlight and the touch target
-// (SharedEditorChrome::drawMenuCell), and input hit-tests through the SAME layout
-// (hitChoice), so what is highlighted is exactly what a tap selects. Rows are content-driven
-// (a short pocket draws a short box) and never cover the screen footer.
+// One rectangle per visible cell is BOTH the focus highlight and the touch target
+// (SharedEditorChrome::drawMenuCell), and input hit-tests through the SAME grid
+// (SharedItemGridPicker::hitIndex), so what is highlighted is exactly what a tap selects.
+// The frame is content-driven (a short pocket draws a short box) and never covers the footer.
 
 #include "UI/ItemPickerArtwork.h"
 #include "UI/SharedBagAddFlow.h"
 #include "UI/SharedEditorChrome.h"
+#include "UI/SharedItemGridPicker.h"
 #include "UI/SharedMenuGeometry.h"
+#include "UI/SharedScrollbar.h"
 
 #include <string>
 #include <string_view>
@@ -20,77 +23,54 @@
 namespace UI::SharedBagAddPicker {
 
 namespace MG = PokeBank::UIModel::SharedMenuGeometry;
+namespace Grid = UI::SharedItemGridPicker;
 
-[[nodiscard]] constexpr MG::Layout pickerLayout(int count) noexcept {
-    return MG::layout(MG::MenuType::ItemPicker, count);
-}
-// Rows the picker shows at once: the page size of L/R and the scroll window.
-[[nodiscard]] constexpr int visibleRows(int count) noexcept { return pickerLayout(count).visibleRows; }
-[[nodiscard]] constexpr int firstVisible(int selected, int count) noexcept {
-    return MG::firstVisibleRow(pickerLayout(count), selected);
-}
-// The choice a touch at (x, y) lands on, or -1. Uses the drawn cell rectangles.
-[[nodiscard]] constexpr int hitChoice(int x, int y, int selected, int count) noexcept {
-    const auto l = pickerLayout(count);
-    const int cell = MG::hitCell(l, x, y);
-    if (cell < 0) return -1;
-    const int index = MG::firstVisibleRow(l, selected) + cell;
-    return index < count ? index : -1;
-}
-// The scrollbar track (Lane P's SharedScrollbar) sits in the frame's right padding beside the
-// list rows, the same height as the list.
-[[nodiscard]] constexpr MG::Rect scrollbarTrack(int count, int trackWidth) noexcept {
-    const auto l = pickerLayout(count);
-    return {l.list.right() + (l.rule.padX - trackWidth) / 2, l.list.y, trackWidth, l.list.h};
-}
-// True when (x, y) is on the row list (swipes that start here scroll the picker).
-[[nodiscard]] constexpr bool onList(int x, int y, int count) noexcept {
-    return pickerLayout(count).list.contains(x, y);
+// R2-BUG-006: the Add picker is the shared compact grid (UI/SharedItemGridPicker.h): up to 4
+// columns x 10 rows of sprite + name + held quantity, never clipping a name. Input and draw both
+// build the grid from the same labels (pickerGrid), so the cell a tap lands on is the cell drawn.
+// The decision of what A means stays in UI/SharedBagAddFlow.h (Add stages x1, no keypad).
+template <class LabelAt>
+[[nodiscard]] inline Grid::Grid pickerGrid(int count, LabelAt&& labelAt) {
+    return Grid::gridFor(count, labelAt, /*heldColumn=*/true);
 }
 
-// Trailing column of a row: the quantity already held ("x12"), empty when not held. A held
+// Trailing column of a cell: the quantity already held ("x12"), empty when not held. A held
 // item stays choosable (A focuses its stack, UI/SharedBagAddFlow.h).
-inline constexpr int kHeldColumnW = 56;
+inline constexpr int kHeldColumnW = Grid::kHeldColumnW;
 [[nodiscard]] inline std::string heldLabel(uint16_t held) {
     return held == 0 ? std::string() : "x" + std::to_string(held);
 }
 
-// Draw the picker. labelAt(index) -> std::string; itemAt(index) -> native item id;
-// heldAt(index) -> quantity already in the pocket (0 = none).
-// Each visible row publishes touch id touchBase + index.
-template <class Buttons, class LabelAt, class ItemAt, class HeldAt>
+// Draw the picker for a cursor-driven owner (the window centres the selection). labelAt(index)
+// -> std::string; itemAt(index) -> native item id; heldAt(index) -> quantity already in the
+// pocket (0 = none); machineMoveAt(index) -> the move this generation's TM/HM teaches (0 = not a
+// machine) for the R2-BUG-005 detail line. Each visible cell publishes touch id touchBase + index;
+// the draggable scrollbar publishes into `scrollbar`.
+template <class Buttons, class LabelAt, class ItemAt, class HeldAt, class MachineMoveAt>
 inline void drawPicker(PKSEFramebuffer& fb, Buttons& touchButtons, int touchBase,
                        Enums::GameVersion game, std::string_view title, const std::string& subtitle,
                        int count, int selected, LabelAt&& labelAt, ItemAt&& itemAt,
-                       HeldAt&& heldAt) {
+                       HeldAt&& heldAt, MachineMoveAt&& machineMoveAt, SharedScrollbar::State& scrollbar) {
     SharedEditorChrome::beginModal(touchButtons);
-    const auto l = pickerLayout(count);
-    const auto& f = l.frame;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 160));
-    fb.drawFilledRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Panel);
-    fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1);
-    fb.drawText(f.x + l.rule.padX, f.y + 8, std::string(title), Colors::Text, TextStyle::Heading);
-    const std::string position = count > 0
-        ? std::to_string(selected + 1) + " / " + std::to_string(count) : std::string("0 / 0");
-    fb.drawText(f.x + l.rule.padX, f.y + 40, subtitle + "  |  " + position,
-                Colors::TextSecondary, TextStyle::Caption);
-    const int first = MG::firstVisibleRow(l, selected);
-    for (int row = 0; row < l.visibleRows && first + row < count; ++row) {
-        const int index = first + row;
-        const auto cell = MG::cellRect(l, row);
-        SharedEditorChrome::drawMenuCell(fb, touchButtons, touchBase + index, cell, index == selected);
-        const std::string label = labelAt(index);
-        const auto sprite = MG::spriteRect(l, cell);
-        ItemPickerArtwork::drawNativeItem(fb, sprite.right(), sprite.y, sprite.w, game,
-                                          itemAt(index), label);
-        const auto text = MG::labelRect(l, cell, kHeldColumnW);
-        fb.drawText(text.x, MG::textTop(cell, l.rule.label), label,
-                    index == selected ? Colors::Text : Colors::TextSecondary, TextStyle::Body);
-        const std::string held = heldLabel(heldAt(index));
-        if (!held.empty())
-            fb.drawText(text.right() + 8, MG::textTop(cell, MG::Text::Caption), held, Colors::Accent,
-                        TextStyle::Caption);
-    }
+    const auto g = pickerGrid(count, labelAt);
+    Grid::drawFrame(fb, g, title, subtitle, selected);
+    if (selected >= 0 && selected < count)
+        Grid::drawMachineDetail(fb, g.frame.x + Grid::kRule.padX, g.frame.y + Grid::kDetailTop,
+                                g.frame.w - 2 * Grid::kRule.padX, game, machineMoveAt(selected));
+    const int firstRow = Grid::firstRowFor(g, selected);
+    Grid::drawCells(fb, g, selected, firstRow, 0,
+        [&](const MG::Rect& cell, int index, bool focused) {
+            SharedEditorChrome::drawMenuCell(fb, touchButtons, touchBase + index, cell, focused);
+        },
+        labelAt,
+        [&](PKSEFramebuffer& fb, const MG::Rect& sprite, int index) {
+            ItemPickerArtwork::drawNativeItem(fb, sprite.right(), sprite.y, sprite.w, game,
+                                              itemAt(index), labelAt(index));
+        },
+        heldAt);
+    const auto track = Grid::scrollbarTrack(g, SharedScrollbar::kTrackWidth);
+    SharedScrollbar::drawAndPublish(fb, scrollbar, track.x, track.y, SharedScrollbar::kTrackWidth, track.h,
+                                    Grid::scrollModel(g, firstRow));
 }
 
 // ---- Bag confirmations (Remove, Key Item warning) ------------------------------------------

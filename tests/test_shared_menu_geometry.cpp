@@ -120,19 +120,24 @@ void namesFit() {
         }
     }
     {
+        // R2-BUG-006: the item grid. A name that does not fit a 4-column cell (beside the "x999"
+        // held column) must fit the grid's 3-column cell: SharedItemGridPicker::columnsFor drops
+        // the whole grid to 3 columns rather than clip it. Most names fit 4 columns.
         const auto l = G::layout(G::MenuType::ItemPicker, 600);
-        const auto label = G::labelRect(l, G::cellRect(l, 0), G::textWidth("x999", G::Text::Body));
-        int widest = 0;
-        for (uint16_t id = 1; id <= 638; ++id) {
-            const std::string name = Names::getItemName(id);
-            if (!name.empty()) require(G::fitsWidth(name, l.rule.label, label.w), "Gen IV/V item fits: " + name);
-            widest = std::max(widest, G::textWidth(name, l.rule.label));
-        }
-        require(label.w - widest <= 260, "item picker has no wide empty band");
-        for (uint16_t id = 1; id <= 376; ++id) {
-            const std::string name = Names::getItemNameG3(id);
-            if (!name.empty()) require(G::fitsWidth(name, l.rule.label, label.w), "Gen III item fits: " + name);
-        }
+        const auto label4 = G::labelRect(l, G::cellRect(l, 0), G::textWidth("x999", G::Text::Caption));
+        const int cell3 = l.list.w / 3 - (l.cellWidth - G::cellRect(l, 0).w);
+        const int label3 = label4.w + (cell3 - G::cellRect(l, 0).w);
+        int beyond4 = 0, total = 0;
+        const auto check = [&](const std::string& name, const char* what) {
+            if (name.empty()) return;
+            ++total;
+            if (G::fitsWidth(name, l.rule.label, label4.w)) return;
+            ++beyond4;
+            require(G::fitsWidth(name, l.rule.label, label3), std::string(what) + " fits the 3-column grid: " + name);
+        };
+        for (uint16_t id = 1; id <= 638; ++id) check(Names::getItemName(id), "Gen IV/V item");
+        for (uint16_t id = 1; id <= 376; ++id) check(Names::getItemNameG3(id), "Gen III item");
+        require(beyond4 * 20 <= total, "at most 5% of item names need the 3-column grid");
     }
     {
         const auto l = G::layout(G::MenuType::HeldItemPicker, 400);

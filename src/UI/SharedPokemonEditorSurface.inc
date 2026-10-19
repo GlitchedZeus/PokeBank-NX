@@ -16,6 +16,8 @@
 //   maxPP moveChoices moveStatus moveGame moveEditorPrompt
 //   pickerLabel applyPicker speciesPreviewTypes speciesLabel
 //   heldItemArtKey chrome portraitTypes dataRows + text constants (k*)
+#include "UI/SharedItemGridPicker.h"
+#include "Names/MachineDisplay.h"
 #include "UI/SharedPokemonEditorWorkspace.h"
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/ItemPickerArtwork.h"
@@ -763,6 +765,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
+        // R2-BUG-005: a focused Gen IV / V TM/HM shows its move from this game's machine table.
+        if (state.pickerRow >= 0 && state.pickerRow < count)
+            UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, A::moveGame(screen),
+                Names::getMachineDescriptor(A::moveGame(screen),
+                    state.pickerValues[static_cast<size_t>(state.pickerRow)]).moveId);
         SharedHeldItemPickerPresentation::drawGrid(
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return A::pickerLabel(screen, state, PickerTarget::HeldItem, value); },
