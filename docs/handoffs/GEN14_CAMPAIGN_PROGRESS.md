@@ -126,7 +126,7 @@ Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
 | R2-BUG-002 Gen IV Trainer Name / Money (D, P, Pt, HG, SS) | e5dec3a2, 8dca7d07 | gated green |
 | R2-BUG-002 Gen III Trainer Name / Money (R, S, E, FR, LG) | 02cf6d1a, ea1a7a4a | gated green |
 | R2-BUG-001 Trainer footer on a read-only source (Gen I-IV) | cccec27b | gated green |
-| QA Part 9 Gen IV Storage save-pane Move / Y | c6f9011c | gated green |
+| QA Part 9 Gen IV Storage save-pane Move / Y | c6f9011c, reverted | moved to Lane S (83e3d00, integrated); C copy reverted to avoid a ClassicPackedMoveOverlay conflict |
 | R2-CHECK-009 Yellow Box Actions (no Move / Review) | — | investigated: by design, no change |
 | R2-BUG-008 Ruby Pikachu Lv. 5 Met Location | this unit | see below |
 
@@ -140,7 +140,7 @@ Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
 - "Review Pending Changes" appears only while staged changes exist (same rule as Gen II-IV).
   The hardware screenshot had nothing staged, so its absence there is expected.
 - Not reachable in Gen I: Move from the Storage screen's save pane (the Gen I Storage pane is
-  read-only and the carry is a Boxes-view facility). Gen IV now has it (QA Part 9 unit);
+  read-only and the carry is a Boxes-view facility). Gen IV has it through Lane S (83e3d00);
   extending the Storage carry to Gen I-III would be a new feature, not a fix.
 
 ### R2-BUG-008 — findings

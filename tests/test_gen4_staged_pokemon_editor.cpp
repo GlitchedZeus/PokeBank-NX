@@ -4,7 +4,6 @@
 #include "Integration/Gen4/Gen4ExportTransaction.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "Integration/Gen4/Gen4StagedTrainerEditor.h"
-#include "UI/ClassicPackedMovePane.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Utils/CRC16.h"
@@ -1184,77 +1183,8 @@ void testTrainerNameMoneyRoundTrip() {
     fs::remove_all(root);
 }
 
-std::string readText(const char* path) {
-    std::ifstream in(path, std::ios::binary);
-    assert(in && "run from the repository root");
-    return {std::istreambuf_iterator<char>(in), {}};
-}
-
-// QA Part 9: Move / Y in the Storage screen's GAME SAVE pane. A carry started there picks up AND
-// drops at the Storage pane's own cursor (stSaveBox / stSaveSlot), never the hidden Boxes-tab
-// cursor; the drop is the same atomic staged Gen IV move the Boxes view uses.
-void testStoragePaneMoveUsesStorageCursor() {
-    namespace Pane = PokeBank::UIModel::ClassicPackedMove;
-    // Storage save pane focused, Gen IV: the overlay owns it. Bank pane / Gen I-III: it does not.
-    assert(Pane::storageSavePaneOwns(true, true, true, 0));
-    assert(!Pane::storageSavePaneOwns(true, true, true, 1));
-    assert(!Pane::storageSavePaneOwns(false, true, true, 0));
-    assert(!Pane::storageSavePaneOwns(true, true, false, 0));
-    // Storage cursor: Box 3 slot 8. Hidden Boxes-tab cursor: Box 1 slot 2 (the old wrong target).
-    const Pane::GridCursor storage{2, 7};
-    const Pane::GridCursor boxesTab{0, 1};
-    const auto source = Pane::paneCursor(true, {0, 0}, boxesTab);   // pickup at Storage Box 1 slot 1
-    const auto drop = Pane::paneCursor(true, storage, boxesTab);
-    assert(source.box == 0 && source.slot == 0 && drop.box == 2 && drop.slot == 7);
-
-    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
-        auto save = makeSave(layout);
-        std::string error;
-        auto editor = Gen4StagedPokemonEditor::create(save, layout, gameId(layout), &error);
-        assert(editor && editor->boxedPokemon(0, 0, &error));
-        const auto picked = editor->boxedPokemon(0, 0, &error);
-        const auto pickedBytes = picked->originalEncryptedBytes();
-        const std::vector<std::byte> before(pickedBytes.begin(), pickedBytes.end());
-        // The overlay's drop: stageMoveBoxPokemon(source, paneCursor(storagePane ...)).
-        assert(editor->stageMoveBoxPokemon(static_cast<size_t>(source.box), static_cast<size_t>(source.slot),
-                                           static_cast<size_t>(drop.box), static_cast<size_t>(drop.slot), &error));
-        auto moved = editor->boxedPokemon(2, 7, &error);
-        assert(moved);
-        const auto after = moved->originalEncryptedBytes();
-        assert(std::equal(before.begin(), before.end(), after.begin(), after.end()));
-        assert(!editor->boxedPokemon(0, 0, &error));                         // source vacated
-        assert(!editor->boxedPokemon(static_cast<size_t>(boxesTab.box),       // not the Boxes-tab cursor
-                                     static_cast<size_t>(boxesTab.slot), &error));
-    }
-
-    // The production overlay routes every cursor read / write of a carry through its owning pane.
-    const auto overlay = readText("src/UI/ClassicPackedMoveOverlay.inc");
-    for (const char* needle : {
-             "state.storagePane = gen4StorageSavePane(screen);",
-             "const int destinationBox = cursorBox(screen, state.storagePane);",
-             "const int destinationSlot = cursorSlot(screen, state.storagePane);",
-             "cursorBox(screen, state.storagePane) = state.sourceBox;",
-             "const auto cell = selectedCell(screen, state.storagePane);",
-             "slotOccupiedForFooter(screen, state.storagePane)",
-             "if (storage && touch.justTapped()) {",
-             "(screen.selectedMode == TrainerViewScreen::ViewMode::Boxes || storage)"}) {
-        if (overlay.find(needle) == std::string::npos) {
-            std::cerr << "ClassicPackedMoveOverlay.inc lacks: " << needle << "\n";
-            assert(false);
-        }
-    }
-    // Inside the input handler no carry reads the Boxes-tab cursor directly any more.
-    const auto start = overlay.find("bool handleInput(TrainerViewScreen& screen, uint64_t down");
-    const auto end = overlay.find("void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb)");
-    assert(start != std::string::npos && end > start);
-    const auto input = overlay.substr(start, end - start);
-    assert(input.find("screen.selectedItemIndex") == std::string::npos);
-    assert(input.find("screen.selectedBoxIndex") == std::string::npos);
-}
-
 int main() {
     testTrainerNameMoneyRoundTrip();
-    testStoragePaneMoveUsesStorageCursor();
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
