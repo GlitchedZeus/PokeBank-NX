@@ -69,6 +69,7 @@ struct Gen2EditorOverlayState {
     bool pokemonFields = false;
     int selectedRow = 0;
     int reviewRow = 0;
+    SharedScrollbar::State reviewScrollbar;   // draggable thumb on Review Pending Changes
     int pokemonBox = 0;
     int pokemonSlot = 0;
     int pokemonRow = 0;
@@ -447,16 +448,6 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
                                   " Slot " + std::to_string(destinationSlot + 1) + "; source unchanged", 300);
             break;
         }
-        case Actions::SlotAction::Shiny: {
-            if (!editor->stageBoxPokemonShiny(static_cast<std::size_t>(state.pokemonBox),
-                                              static_cast<std::size_t>(state.pokemonSlot),
-                                              pokemon && !pokemon->shiny, error))
-                screen.postStatus(error.empty() ? "Shiny toggle failed" : error, 360);
-            else
-                screen.postStatus(pokemon->shiny ? "Non-shiny DV state staged; source unchanged"
-                                                 : "Legal Gen II shiny DV state staged; source unchanged", 300);
-            break;
-        }
         case Actions::SlotAction::Add:
             stageAddPokemon(screen, state.pokemonBox);
             break;
@@ -492,7 +483,23 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
 
     if (state.review) {
         const int changeCount = static_cast<int>(editor->pendingChanges().size());
-        if (changeCount > 0 && touch.justTouchedDown()) {
+        // Shared scrollbar first: the list window is centred on reviewRow, so the thumb moves
+        // reviewRow to the row that puts the window where the finger put the thumb. While the
+        // thumb is held the touch is the scrollbar's; rows neither focus nor swipe.
+        constexpr int reviewRowStep = Gen2EditorOverlayGeometry::ReviewRowStep;
+        constexpr int reviewVisible = Gen2EditorOverlayGeometry::ReviewVisibleRows;
+        const int reviewStart = std::clamp(state.reviewRow - reviewVisible / 2, 0,
+                                           std::max(0, changeCount - reviewVisible));
+        const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar,
+            SharedScrollbar::sample(touch),
+            SharedScrollbar::pixels(changeCount * reviewRowStep,
+                                    std::min(reviewVisible, std::max(changeCount, 1)) * reviewRowStep,
+                                    reviewStart * reviewRowStep));
+        if (reviewBar.changed)
+            state.reviewRow = std::clamp(
+                (reviewBar.scroll + reviewRowStep / 2) / reviewRowStep + reviewVisible / 2,
+                0, std::max(0, changeCount - 1));
+        if (changeCount > 0 && !reviewBar.consumed && touch.justTouchedDown()) {
             for (const auto& hit : screen.touchButtons) {
                 if (hit.id < 900 || hit.id >= 900 + changeCount) continue;
                 if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
@@ -503,7 +510,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
             }
         }
         const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
-        if (changeCount > 0 && touch.justReleased() && touch.dragged() &&
+        if (changeCount > 0 && !reviewBar.consumed && touch.justReleased() && touch.dragged() &&
             reviewViewport.contains(touch.startX(), touch.startY()) &&
             std::abs(touch.deltaY()) >= 24 &&
             std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -800,7 +807,6 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 {"View", "Read-only Pokemon summary"},
                 {"Edit", pokemon->nickname + " Lv. " + std::to_string(pokemon->level)},
                 {"Clone", "Append to an empty box slot"},
-                {pokemon->shiny ? "Make Non-Shiny" : "Make Shiny", "Real Gen II DV rules"},
                 {"Add Pokemon", "Append to this box"},
                 {"Review Pending Changes", std::to_string(editor->pendingChanges().size()) + " change(s)"},
                 {"Close", "No source write"},
@@ -821,7 +827,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
+                    "Origin & Legality: not checked",
                     Colors::TextDim, TextStyle::Caption);
         return;
     }
@@ -837,9 +843,11 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
             const int viewportTop = reviewViewport.y;
             const int viewportH = reviewViewport.h;
+            // A held scrollbar thumb owns the viewport: an empty rect keeps the rows still.
             const auto visual = liveVerticalListVisual(
                 state.reviewRow, count, rowStep,
-                reviewViewport.x, reviewViewport.y, reviewViewport.w, reviewViewport.h);
+                reviewViewport.x, reviewViewport.y,
+                state.reviewScrollbar.capturing() ? 0 : reviewViewport.w, reviewViewport.h);
             const int start = std::clamp(
                 visual.index - visible / 2, 0, std::max(0, count - visible));
             const int drawFirst = std::max(0, start - 1);
@@ -860,7 +868,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                     screen.touchButtons.push_back({900 + i, reviewViewport.x, rowTop, reviewViewport.w, rowStep});
             }
             fb.clearClip();
-            drawScrollbar(fb, x + w - 14, reviewViewport.y,
+            drawScrollbar(fb, state.reviewScrollbar, x + w - 14, reviewViewport.y,
                           std::min(visible, count) * rowStep,
                           std::max(1, count * rowStep), start * rowStep - visual.offset);
         }

@@ -1,3 +1,6 @@
+#include "UI/SharedEditorPresentation.h"
+#include "UI/SharedEditorChrome.h"
+#include "UI/Gen1ListFit.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
 #include "Integration/Gen1/Gen1ExportTransaction.h"
@@ -21,6 +24,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -92,14 +96,65 @@ const PokeVault::Legacy::RBYReadOnlyTrainer* rbyTrainer(const TrainerViewScreen&
     return static_cast<const PokeVault::Legacy::RBYReadOnlyTrainer*>(&screen.trainer);
 }
 
-Editor* editor(TrainerViewScreen& screen) noexcept {
+// Working-copy draft for one Gen I Edit session (as in the Gen III-V shared editor). While it
+// exists, every editor() caller - field edits, pickers, sub-editors, Random DVs, the workspace
+// display - reads and writes the draft; the real staged copy changes only when the session is
+// kept (one verified stageEdit), and Discard simply drops the draft. A draft made from another
+// trainer/staged editor (source reload) is never used.
+struct Gen1EditDraft {
+    const TrainerViewScreen* owner = nullptr;
+    const Editor* base = nullptr;
+    std::unique_ptr<Editor> draft;
+};
+
+Gen1EditDraft& editDraftFor() noexcept {
+    static Gen1EditDraft draft;
+    return draft;
+}
+
+Editor* realEditor(TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
     return trainer ? trainer->stagedPokemon() : nullptr;
 }
 
+Editor* editor(TrainerViewScreen& screen) noexcept {
+    auto* real = realEditor(screen);
+    auto& d = editDraftFor();
+    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    return real;
+}
+
 const Editor* editor(const TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
-    return trainer ? trainer->stagedPokemon() : nullptr;
+    const Editor* real = trainer ? trainer->stagedPokemon() : nullptr;
+    const auto& d = editDraftFor();
+    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    return real;
+}
+
+// Starts the session's draft from the current staged copy (strictly reparsed by create()).
+bool beginEditDraft(TrainerViewScreen& screen, std::string& error) {
+    auto* real = realEditor(screen);
+    auto& d = editDraftFor();
+    d = {};
+    if (!real) {
+        error = "Generation I staged boxed Pokemon editing is unavailable";
+        return false;
+    }
+    auto draft = Editor::create(real->view(), error);
+    if (!draft) return false;
+    d.owner = &screen;
+    d.base = real;
+    d.draft = std::move(draft);
+    return true;
+}
+
+void dropEditDraft() noexcept { editDraftFor() = {}; }
+
+bool editDraftActive(const TrainerViewScreen& screen) noexcept {
+    const auto* trainer = rbyTrainer(screen);
+    const auto& d = editDraftFor();
+    return trainer && d.draft && d.owner == &screen && d.base == trainer->stagedPokemon();
 }
 
 bool editorAvailable(const TrainerViewScreen& screen) noexcept {
@@ -210,7 +265,7 @@ const char* fieldLabel(int row) noexcept {
 
 std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
     if (row == 0) return speciesCompact(d.species);
-    if (row == 1) return d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname;
+    if (row == 1) return d.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(d.species) + " (default)" : d.nickname;
     if (row == 2) return std::to_string(d.level);
     if (row == 3) return std::to_string(draftExperience(d)) + " (derived)";
     if (row >= 4 && row < 16) {
@@ -380,7 +435,7 @@ bool editDraftField(TrainerViewScreen& screen) {
     }
     if (row == 1) {
         const std::string initial = state.draft.nickname.empty()
-            ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname;
+            ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname;
         const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
         if (!result.accepted) return false;
         state.draft.nickname = result.text;
@@ -600,14 +655,15 @@ bool hasPending(TrainerViewScreen& screen) {
     if (!trainer) return false;
     const bool pokemon = trainer->stagedPokemon() && trainer->stagedPokemon()->hasPendingChanges();
     const bool inventory = trainer->stagedInventory() && trainer->stagedInventory()->hasPendingChanges();
-    return pokemon || inventory;
+    const bool trainerFields = trainer->stagedTrainer() && trainer->stagedTrainer()->hasPendingChanges();
+    return pokemon || inventory || trainerFields;
 }
 
 std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     auto* trainer = rbyTrainer(screen);
     if (!trainer || !trainer->stagedPokemon()) return {};
     return PokeVault::Integration::Gen1::gen1ExportChangeLines(
-        *trainer->stagedPokemon(), trainer->stagedInventory());
+        *trainer->stagedPokemon(), trainer->stagedInventory(), trainer->stagedTrainer());
 }
 
 std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
@@ -644,7 +700,7 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
     request.applicationSha = POKEVAULT_GIT_COMMIT;
 #endif
     const auto result = PokeVault::Integration::Gen1::publishVerifiedGen1Export(
-        *pokemon, request, trainer->stagedInventory());
+        *pokemon, request, trainer->stagedInventory(), trainer->stagedTrainer());
     if (!result.success) {
         error = result.error.empty() ? "Verified Generation I export failed" : result.error;
         return {};
@@ -657,6 +713,11 @@ void discardAll(TrainerViewScreen& screen) {
     if (!trainer) return;
     if (auto* e = trainer->stagedPokemon()) e->discard();
     if (auto* e = trainer->stagedInventory()) e->discard();
+    if (auto* e = trainer->stagedTrainer()) {
+        e->discard();
+        screen.trainer.trainerName = e->trainerName();
+        screen.trainer.money = e->money();
+    }
     refreshBoxes(screen);
     ClassicInventory::refreshPresentation(screen);
 }
@@ -788,7 +849,7 @@ void drawPreview(PKSEFramebuffer& fb, int x, int y, int w, const PokemonRecord* 
     const uint16_t species = draft ? draft->species : (pokemon ? pokemon->species : 0);
     const uint8_t level = draft ? draft->level : (pokemon ? pokemon->level : 0);
     const std::string nickname = draft
-        ? (draft->nickname.empty() ? std::string(Names::getSpeciesName(species)) : draft->nickname)
+        ? (draft->nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(species) : draft->nickname)
         : (pokemon ? pokemon->nickname : std::string{});
     const uint32_t exp = draft ? draftExperience(*draft) : (pokemon ? pokemon->experience : 0);
 
@@ -845,16 +906,16 @@ void drawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
     const int listX = x + 330;
     const int listW = w - 360;
     const int listY = y + 82;
-    const int visible = 12;
+    // Only whole rows that end above the status line (y + h - 70) are drawn, so the focused
+    // row can never sit under it; there is no "Row x/y" counter (the list scrolls with focus).
+    const int visible = PokeBank::UIModel::Gen1ListFit::wholeRows(listY, y + h - 70 - 8, 41, 12);
     const int start = std::clamp(state.row - visible / 2, 0, 30 - visible);
     for (int i = 0; i < visible; ++i) {
         const int field = start + i;
         const std::string value = add ? draftValue(state.draft, *e, field) : existingValue(*pokemon, field);
         drawRow(fb, listX, listY + i * 41, listW, fieldLabel(field), value, field == state.row);
     }
-    fb.drawText(listX, y + h - 70,
-        "Row " + std::to_string(state.row + 1) + "/30   •   " + sectionForRow(state.row),
-        Colors::TextDim, TextStyle::Caption);
+    fb.drawText(listX, y + h - 70, sectionForRow(state.row), Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftX, y + h - 70,
         add ? "Nothing is staged until Stage Add." : "Edits are staged; source .srm stays immutable.",
         Colors::Accent, TextStyle::Caption);
@@ -912,7 +973,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         Colors::TextDim);
     static constexpr const char* names[] = {
-        "View", "Edit", "Clone", "Remove", "Legality & Provenance",
+        "View", "Edit", "Clone", "Remove", PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
         "Add Pokemon", "Review Pending Changes", "Cancel",
     };
     int rowY = y + 104;
@@ -978,7 +1039,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto* trainer = rbyTrainer(screen);
     auto* e = editor(screen);
-    fb.drawText(x + 26, y + 18, "Generation I Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 26, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     const int lx = x + 40, vx = x + 330;
     const std::array<std::pair<const char*, std::string>, 7> rows{{
         {"Source game", screen.sourceGameId},
@@ -986,7 +1047,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
         {"Source mutation", "HARD DISABLED"},
         {"Party mutation", "DEFERRED"},
         {"Format validation", "Strict reparse + checksum on export"},
-        {"Encounter legality", "NOT CLAIMED by this editor"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "NOT CLAIMED by this editor"},
         {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
     }};
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
@@ -1000,6 +1061,10 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
 
 void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto& state = stateFor(screen);
+    // The question owns the frame's touch and draws its own footer naming exactly the buttons
+    // its input handler takes (B back, Left/Right box for Clone, A stage).
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
+    namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
     if (state.mode == Mode::CloneConfirm) {
         auto* e = editor(screen);
         const int dest = e ? firstEmpty(*e, state.cloneBox) : -1;
@@ -1009,12 +1074,14 @@ void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int
             (dest >= 0 ? " / Slot " + std::to_string(dest + 1) : " / FULL"), Colors::Text, TextStyle::Heading);
         fb.drawText(x + 40, y + 186,
             "The source Pokemon stays untouched. Clone uses the first empty contiguous Gen I slot.", Colors::TextDim);
+        UI::SharedEditorChrome::drawFooter(fb, Presentation::confirmFooter("A", "Stage Clone", "Left/Right", "Box"));
     } else {
         fb.drawText(x + 26, y + 18, "Stage Removal?", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 40, y + 120,
             "Removal compacts the Gen I box arrays in staged memory only.", Colors::Text);
         fb.drawText(x + 40, y + 174,
             "The original RetroArch .srm is never written.", Colors::Accent);
+        UI::SharedEditorChrome::drawFooter(fb, Presentation::confirmFooter("A", "Confirm Remove"));
     }
 }
 
@@ -1120,7 +1187,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.picker != PickerKind::None) drawPicker(screen, fb, x, y, w, h);
-    drawFooter(fb, footerText(screen, state));
+    // A confirmation draws its own footer (drawConfirmation).
+    if (state.mode != Mode::CloneConfirm && state.mode != Mode::RemoveConfirm)
+        drawFooter(fb, footerText(screen, state));
 }
 
 } // namespace UI::Gen1PokemonEditor

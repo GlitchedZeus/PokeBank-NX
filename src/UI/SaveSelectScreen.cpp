@@ -19,6 +19,11 @@
 #include "UI/SpriteLayout.h"
 #include "UI/GameLauncher.h"
 #include "UI/TouchInput.h"
+#include "UI/HomeQuitConfirm.h"
+#include "UI/InputTrace.h"
+#include "UI/SharedEditorChrome.h"
+#include "UI/LeaveDecisionLayout.h"
+#include "UI/EmulatorBackupLayout.h"
 #include "Enums/GameVersion.h"
 #include "Save/GetSaveFileContents.h"
 #include "Trainer/Trainer.h"
@@ -46,6 +51,9 @@ using namespace Enums;
 
 namespace UI {
     namespace {
+        PokeBank::Diagnostics::InputTrace::Recorder& inputTrace() {
+            return PokeBank::Diagnostics::InputTrace::recorder();
+        }
         constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;
         constexpr int SAVE_WATCH_INTERVAL_FRAMES = 90;
         // A scrolled row may be drawn partially under a clipped viewport. Its touch rectangle
@@ -911,8 +919,9 @@ namespace UI {
             users.front().name = "Pokémon Saves";
         }
 
-        // Discovery is app-global; normal visibility is not. A filesystem source has no intrinsic
-        // Nintendo-account owner, so it appears only after an explicit persistent assignment.
+        // Discovery is app-global. A filesystem source has no intrinsic Nintendo-account owner:
+        // an unclaimed source is shown under every profile; a persistent claim limits it to the
+        // claiming profile, and a conflicting claim hides it everywhere (Source::visibleToProfile).
         for (auto& user : users) {
             const auto cards = legacyBindings
                 ? PokeVault::Legacy::buildFRLGSourceCardsForProfile(
@@ -2090,15 +2099,26 @@ namespace UI {
             legacyNotice = descriptor.detail;
             return false;
         }
-        std::string error;
-        if (!requestGameLaunch(descriptor, error)) {
-            legacyNotice = error;
-            return false;
-        }
-        recordCurrentLaunch();
-        appExitRequested = true;
-        exitRequested = true;
-        return true;
+        // The handoff closes PokeBank NX, so it waits for an explicit Y (P0 #320).
+        openLaunchDecision(LeaveKind::LaunchLegacyInstance, descriptor, title.name,
+                           "origin=legacy-instance-a");
+        return false;
+    }
+
+    void SaveSelectScreen::openLeaveDecision(LeaveKind kind, const char* origin) {
+        leaveReturnOverlay = overlay == Overlay::QuitConfirm ? Overlay::None : overlay;
+        leaveKind = kind;
+        overlay = Overlay::QuitConfirm;
+        inputTrace().event("home", kind == LeaveKind::Quit ? "quit-confirm-open" : "launch-confirm-open",
+                           origin);
+    }
+
+    void SaveSelectScreen::openLaunchDecision(LeaveKind kind, const GameLaunchDescriptor& descriptor,
+                                              const std::string& gameName, const char* origin) {
+        pendingLaunch = descriptor;
+        pendingLaunchName = gameName;
+        pendingLaunchNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(descriptor));
+        openLeaveDecision(kind, origin);
     }
 
     const std::string& SaveSelectScreen::currentLaunchQuitNotice() {
@@ -2154,15 +2174,10 @@ namespace UI {
             return false;
         }
 
-        std::string error;
-        if (!requestGameLaunch(launchDescriptor, error)) {
-            hubNotice = error;
-            return false;
-        }
-        recordCurrentLaunch();
-        appExitRequested = true;
-        exitRequested = true;
-        return true;
+        // The handoff closes PokeBank NX, so ZR (or a Launch tap) only opens the visible launch
+        // decision; the emulator starts after an explicit Y there (P0 #320).
+        openLaunchDecision(LeaveKind::LaunchTitle, launchDescriptor, title.name, "origin=launch-zr");
+        return false;
     }
 
     void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice,
@@ -3061,6 +3076,42 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::openEmulatorBackups(const std::string& notice) {
+        namespace SB = PokeBank::UIModel::SourceBackups;
+        emuBackupListings.clear();
+        emuBackupRows.clear();
+        emuBackupNotice = notice;
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        // Exact source files only: the validated instances, or the remembered assigned file.
+        std::vector<std::string> sources;
+        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
+            for (const auto& instance : title.legacyInstances) sources.push_back(instance.path());
+        } else if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                    title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
+            const auto assigned = legacyBindings->resolveFileForGame(currentProfileIdentity(), title.gameId);
+            if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready)
+                sources.push_back(assigned.binding.sourcePath);
+        }
+        for (const std::string& source : sources) {
+            if (source.empty()) continue;
+            emuBackupListings.push_back(SB::list(PokeBank::Paths::exportsRoot(), source));
+            const int li = static_cast<int>(emuBackupListings.size()) - 1;
+            const auto& entries = emuBackupListings.back().entries;
+            for (int ei = 0; ei < static_cast<int>(entries.size()); ++ei)
+                if (entries[static_cast<size_t>(ei)].kind != SB::Kind::StagedWorkingCopy)
+                    emuBackupRows.push_back({li, ei});
+        }
+        if (!emuBackupListings.empty()) // one informational row for unsaved edits
+            emuBackupRows.push_back({0, static_cast<int>(emuBackupListings[0].entries.size()) - 1});
+        else if (emuBackupNotice.empty())
+            emuBackupNotice = "This game has no assigned emulator save yet. Use Source / Game File first.";
+        emuBackupIndex = std::clamp(emuBackupIndex, 0, std::max(0, static_cast<int>(emuBackupRows.size()) - 1));
+        emuBackupScroll = std::clamp(emuBackupScroll, 0, std::max(0, emuBackupIndex));
+        overlay = Overlay::EmulatorBackups;
+    }
+
     void SaveSelectScreen::activateGameWorkspace() {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) {
@@ -3091,7 +3142,9 @@ namespace UI {
                     overlay = Overlay::None;
                     selectCurrentTitle();
                 } else {
-                    hubNotice = "External emulator sources stay read-only; staged/export history is managed inside the game workspace.";
+                    // Emulator games: the original save stays read-only; app-owned export
+                    // records are listed and managed here (round 2 phase 7).
+                    openEmulatorBackups();
                 }
                 return;
             case 7: // Source / Game File
@@ -3171,11 +3224,71 @@ namespace UI {
             padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
+        // Opt-in input trace (P0 #320): raw edges, held state, the logical mask the handlers
+        // below actually see, and the overlay/focus that receives them.
+        if (inputTrace().enabled()) {
+            const UserEntry* tracedUser = currentUser();
+            inputTrace().frame("home", padGetButtonsDown(&pad), padGetButtons(&pad), kDown,
+                "ov=" + std::to_string(static_cast<int>(overlay)) +
+                ",classic=" + std::to_string(classicGamesActive ? 1 : 0) +
+                ",hdr=" + std::to_string(headerActionIndex) +
+                ",feat=" + std::to_string(hubFeatureIndex) +
+                ",dock=" + std::to_string(hubDockFocused ? hubDockIndex : -1) +
+                ",title=" + std::to_string(titleIndex) +
+                ",games=" + std::to_string(tracedUser ? tracedUser->titles.size() : 0) +
+                ",user=" + std::to_string(userIndex) +
+                ",touch=" + std::to_string(touch.justTapped() ? 1 : 0));
+        }
 
         if (overlay == Overlay::OpenFailure) {
             if (kDown & (HidNpadButton_A | HidNpadButton_B)) {
                 overlay = Overlay::None;
                 openFailureMessage.clear();
+            }
+            return;
+        }
+        // Deleting an app-owned export record is irreversible: only an explicit Y deletes, A/B keep.
+        if (overlay == Overlay::EmulatorBackupDeleteConfirm) {
+            namespace SB = PokeBank::UIModel::SourceBackups;
+            using PokeBank::UIModel::HomeQuit::Decision;
+            const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);
+            if (decision == Decision::Stay) {
+                overlay = Overlay::EmulatorBackups;
+            } else if (decision == Decision::Quit &&
+                       emuBackupIndex >= 0 && emuBackupIndex < static_cast<int>(emuBackupRows.size())) {
+                const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
+                const SB::Refusal result = SB::deleteRecord(emuBackupListings[static_cast<size_t>(row.listing)],
+                                                            static_cast<size_t>(row.entry));
+                openEmulatorBackups(result == SB::Refusal::None
+                    ? "Export record deleted. The original emulator save was not touched."
+                    : SB::refusalReason(result));
+            }
+            return;
+        }
+        // P0 #320: leaving PokeBank NX (quit or a launch handoff) needs an explicit Y in a visible
+        // decision; A and B stay on the screen that opened it.
+        if (overlay == Overlay::QuitConfirm) {
+            using PokeBank::UIModel::HomeQuit::Decision;
+            const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);
+            if (decision == Decision::Stay) {
+                overlay = leaveReturnOverlay;
+                inputTrace().event("home", "leave-confirm-stay");
+            } else if (decision == Decision::Quit) {
+                overlay = leaveReturnOverlay;
+                if (leaveKind != LeaveKind::Quit) {
+                    std::string error;
+                    if (!requestGameLaunch(pendingLaunch, error)) {
+                        (leaveKind == LeaveKind::LaunchLegacyInstance ? legacyNotice : hubNotice) = error;
+                        inputTrace().event("home", "launch-refused");
+                        return;
+                    }
+                    recordCurrentLaunch();
+                }
+                overlay = Overlay::None;
+                inputTrace().event("home", "app-exit",
+                                   leaveKind == LeaveKind::Quit ? "origin=quit-confirm-y" : "origin=launch-confirm-y");
+                appExitRequested = true;
+                exitRequested = true;
             }
             return;
         }
@@ -3212,6 +3325,27 @@ namespace UI {
             // vertical tile scroller needs this event to capture the gesture.
         }
 
+        // Shared scrollbars (R2-SCROLLBAR): the list on screen that owns one decides the frame's
+        // touch before any row focus or tap resolves. Its track geometry comes from the last draw.
+        const SharedScrollbar::Touch barTouch = SharedScrollbar::sample(touch);
+        SharedScrollbar::State* const activeBar = [&]() -> SharedScrollbar::State* {
+            switch (overlay) {
+                case Overlay::GamesDrawer: return &gamesDrawerScrollbar;
+                case Overlay::ProfilePicker: return &profileScrollbar;
+                case Overlay::GameFilePicker: return &launchFileScrollbar;
+                case Overlay::LegacyInstances: return &legacyInstanceScrollbar;
+                case Overlay::LegacyAssignment: return &legacyAssignmentScrollbar;
+                case Overlay::Gen4Candidates: return &gen4CandidateScrollbar;
+                case Overlay::Gen5Candidates: return &gen5CandidateScrollbar;
+                case Overlay::EmulatorBackups: return &emuBackupScrollbar;
+                case Overlay::None: return classicGamesActive ? &classicGamesScrollbar : nullptr;
+                default: return nullptr;
+            }
+        }();
+        const bool barTrackTouchedDown = activeBar && touch.justTouchedDown() &&
+            SharedScrollbar::hitTrack(activeBar->track, touch.x(), touch.y());
+        const bool barOwnsTouch = activeBar && SharedScrollbar::owns(*activeBar, barTouch);
+
         // Activate only a target containing both the contact origin and release point.
         auto tappedHit = [&](const HitRect& r) -> bool {
             return touch.startX() >= r.x && touch.startX() < r.x + r.w &&
@@ -3226,7 +3360,9 @@ namespace UI {
         };
         if (touch.justTouchedDown()) {
             const int tx = touch.x(), ty = touch.y();
-            if (classicGamesActive && overlay == Overlay::None) {
+            if (barTrackTouchedDown) {
+                // Contact on a scrollbar track never moves focus to the row beside it.
+            } else if (classicGamesActive && overlay == Overlay::None) {
                 for (const auto& r : titleRects)
                     if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                         titleIndex = r.idx; headerActionIndex = -1; break;
@@ -3246,6 +3382,7 @@ namespace UI {
                         case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
                         case Overlay::Options: optionsIndex = r.idx; break;
+                        case Overlay::EmulatorBackups: emuBackupIndex = r.idx; break;
                         default: break;
                     }
                     break;
@@ -3255,13 +3392,14 @@ namespace UI {
         if (touch.justTapped()) {
             if (classicGamesActive && overlay == Overlay::None) {
                 const int idx = tappedRect(titleRects);
-                if (idx >= 0) {
+                if (idx >= 0 && !barOwnsTouch) {
                     titleIndex = idx; headerActionIndex = -1;
                     scrollClassicSelectionIntoView(); kDown |= HidNpadButton_A;
                 }
             } else {
                 const int idx = tappedRect(overlayRects);
-                bool activate = idx >= 0;
+                // A release that ends a scrollbar drag or track tap selects nothing.
+                bool activate = idx >= 0 && !barOwnsTouch;
                 if (activate) {
                     switch (overlay) {
                         case Overlay::GamesDrawer: gamesDrawerIndex = idx; break;
@@ -3275,6 +3413,7 @@ namespace UI {
                         case Overlay::Gen5Candidates: gen5CandidateIndex = idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
                         case Overlay::Options: optionsIndex = idx; break;
+                        case Overlay::EmulatorBackups: emuBackupIndex = idx; break;
                         default: activate = false; break;
                     }
                     if (activate) kDown |= HidNpadButton_A;
@@ -3291,7 +3430,15 @@ namespace UI {
             const int totalRows = (count + cols - 1) / cols;
             const int maxFirstRow = std::max(0, totalRows - visibleRows);
             gamesDrawerScroll = std::clamp(gamesDrawerScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0)
+            // Shared scrollbar first: a held thumb moves the grid rows and owns the touch.
+            const auto drawerBar = SharedScrollbar::handleTouch(gamesDrawerScrollbar, barTouch,
+                                                               gamesDrawerScroll * (tileH + gap));
+            if (drawerBar.changed) {
+                gamesDrawerScroll = std::clamp(
+                    (drawerBar.scroll + (tileH + gap) / 2) / (tileH + gap), 0, maxFirstRow);
+                gamesDrawerTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !drawerBar.consumed)
                 gamesDrawerTouchScroll.updateVertical(
                     touch, drawerX + margin, gridY, drawerW - margin * 2,
                     visibleRows * (tileH + gap) - gap, tileH + gap,
@@ -3371,7 +3518,12 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             profilePickerScroll = std::clamp(profilePickerScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto profileBar = SharedScrollbar::handleTouch(profileScrollbar, barTouch, profilePickerScroll * rowH);
+            if (profileBar.changed) {
+                profilePickerScroll = std::clamp((profileBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                profileTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !profileBar.consumed) {
                 profileTouchScroll.updateVertical(
                     touch, x + 24, y + 136, w - 48, visibleRows * rowH,
                     rowH, profilePickerScroll, maxFirstRow + 1);
@@ -3449,7 +3601,12 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             launchFileScroll = std::clamp(launchFileScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto launchBar = SharedScrollbar::handleTouch(launchFileScrollbar, barTouch, launchFileScroll * rowH);
+            if (launchBar.changed) {
+                launchFileScroll = std::clamp((launchBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                launchFileTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !launchBar.consumed) {
                 launchFileTouchScroll.updateVertical(
                     touch, x + 24, y + 132, w - 48, visibleRows * rowH,
                     rowH, launchFileScroll, maxFirstRow + 1);
@@ -3505,7 +3662,13 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             legacyAssignmentScroll = std::clamp(legacyAssignmentScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto assignBar = SharedScrollbar::handleTouch(legacyAssignmentScrollbar, barTouch,
+                                                               legacyAssignmentScroll * rowH);
+            if (assignBar.changed) {
+                legacyAssignmentScroll = std::clamp((assignBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                legacyAssignmentTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !assignBar.consumed) {
                 legacyAssignmentTouchScroll.updateVertical(
                     touch, x + 24, y + 108, w - 48, visibleRows * rowH,
                     rowH, legacyAssignmentScroll, maxFirstRow + 1);
@@ -3586,7 +3749,12 @@ namespace UI {
             const int x=(1280-w)/2,y=(720-h)/2;
             const int maxFirst=std::max(0,count-visibleRows);
             gen5CandidateScroll=std::clamp(gen5CandidateScroll,0,maxFirst);
-            if(maxFirst>0)
+            const auto gen5Bar = SharedScrollbar::handleTouch(gen5CandidateScrollbar, barTouch, gen5CandidateScroll * rowH);
+            if (gen5Bar.changed) {
+                gen5CandidateScroll = std::clamp((gen5Bar.scroll + rowH / 2) / rowH, 0, maxFirst);
+                gen5CandidateTouchScroll.stop();
+            }
+            if(maxFirst>0 && !gen5Bar.consumed)
                 gen5CandidateTouchScroll.updateVertical(
                     touch,x+24,y+108,w-48,visibleRows*rowH,
                     rowH,gen5CandidateScroll,maxFirst+1);
@@ -3678,7 +3846,12 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - visibleRows);
             gen4CandidateScroll = std::clamp(gen4CandidateScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto gen4Bar = SharedScrollbar::handleTouch(gen4CandidateScrollbar, barTouch, gen4CandidateScroll * rowH);
+            if (gen4Bar.changed) {
+                gen4CandidateScroll = std::clamp((gen4Bar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                gen4CandidateTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !gen4Bar.consumed) {
                 gen4CandidateTouchScroll.updateVertical(
                     touch, x + 24, y + 108, w - 48, visibleRows * rowH,
                     rowH, gen4CandidateScroll, maxFirstRow + 1);
@@ -3726,6 +3899,33 @@ namespace UI {
             return;
         }
 
+        if (overlay == Overlay::EmulatorBackups) {
+            namespace SB = PokeBank::UIModel::SourceBackups;
+            const int count = static_cast<int>(emuBackupRows.size());
+            if (kDown & HidNpadButton_B) { overlay = Overlay::GameWorkspace; return; }
+            if (count == 0) return;
+            const auto emuBar = SharedScrollbar::handleTouch(emuBackupScrollbar, barTouch, emuBackupScroll);
+            if (emuBar.changed) emuBackupScroll = emuBar.scroll;
+            if (kDown & HidNpadButton_Up) emuBackupIndex = (emuBackupIndex + count - 1) % count;
+            if (kDown & HidNpadButton_Down) emuBackupIndex = (emuBackupIndex + 1) % count;
+            // Viewport rows come from SharedMenuGeometry's BackupMenu rule (EmulatorBackupLayout).
+            namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+            const auto emuLayout = EB::layout(count);
+            // Controller navigation reveals its row; a scrollbar drag moves the window alone.
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                emuBackupScroll = EB::revealRow(emuLayout, emuBackupScroll, emuBackupIndex);
+            emuBackupScroll = EB::clampScroll(emuLayout, emuBackupScroll);
+            const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
+            const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
+            const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
+            if (kDown & HidNpadButton_A) emuBackupNotice = SB::policyFor(entry.kind).reason;
+            if (kDown & HidNpadButton_Y) {
+                const SB::Refusal refusal = SB::canDelete(listing, static_cast<size_t>(row.entry));
+                if (refusal == SB::Refusal::None) overlay = Overlay::EmulatorBackupDeleteConfirm;
+                else emuBackupNotice = SB::refusalReason(refusal);
+            }
+            return;
+        }
         if (overlay == Overlay::Options) {
             if (kDown & HidNpadButton_Up)   optionsIndex = (optionsIndex + 2) % 3;
             if (kDown & HidNpadButton_Down) optionsIndex = (optionsIndex + 1) % 3;
@@ -3735,8 +3935,9 @@ namespace UI {
                     applyTheme(nextThemeMode(g_themeMode));
                     Utils::saveSettings();
                 } else if (optionsIndex == 1) {
-                    appExitRequested = true;
-                    exitRequested = true;
+                    // Same guarded quit as the Home root B: never an unconfirmed A exit.
+                    openLeaveDecision(LeaveKind::Quit, "origin=options-exit");
+                    return;
                 } else {
                     overlay = Overlay::None;
                 }
@@ -3755,7 +3956,13 @@ namespace UI {
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
             const int maxFirstRow = std::max(0, count - LEGACY_INSTANCE_VISIBLE_ROWS);
             legacyInstanceScroll = std::clamp(legacyInstanceScroll, 0, maxFirstRow);
-            if (maxFirstRow > 0) {
+            const auto instanceBar = SharedScrollbar::handleTouch(legacyInstanceScrollbar, barTouch,
+                                                                 legacyInstanceScroll * rowH);
+            if (instanceBar.changed) {
+                legacyInstanceScroll = std::clamp((instanceBar.scroll + rowH / 2) / rowH, 0, maxFirstRow);
+                legacyInstanceTouchScroll.stop();
+            }
+            if (maxFirstRow > 0 && !instanceBar.consumed) {
                 legacyInstanceTouchScroll.updateVertical(
                     touch, x + 24, y + 122, w - 48,
                     LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
@@ -3867,7 +4074,14 @@ namespace UI {
                 const int totalRows = (classicCount + cols - 1) / cols;
                 const int maxFirstRow = std::max(0, totalRows - CLASSIC_VISIBLE_ROWS);
                 scrollRow = std::clamp(scrollRow, 0, maxFirstRow);
-                if (maxFirstRow > 0) {
+                constexpr int classicRowStep = CLASSIC_TILE_H + CLASSIC_GAP;
+                const auto classicBar = SharedScrollbar::handleTouch(classicGamesScrollbar, barTouch,
+                                                                    scrollRow * classicRowStep);
+                if (classicBar.changed) {
+                    scrollRow = std::clamp((classicBar.scroll + classicRowStep / 2) / classicRowStep, 0, maxFirstRow);
+                    classicGamesTouchScroll.stop();
+                }
+                if (maxFirstRow > 0 && !classicBar.consumed) {
                     // The viewport first row, not titleIndex, owns the physical scroll.
                     classicGamesTouchScroll.updateVertical(
                         touch, startX, CLASSIC_GRID_Y, gridW,
@@ -3924,9 +4138,9 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_B) {
-            // Games is now the app root, so Back exits just as the former root Home did.
-            appExitRequested = true;
-            exitRequested = true;
+            // Games is the app root. B never quits on its own (P0 #320): it opens the visible
+            // "Quit PokeBank NX?" decision, where only Y confirms and A/B stay.
+            openLeaveDecision(LeaveKind::Quit, "origin=home-root-b");
             return;
         }
         if (kDown & HidNpadButton_ZR) {
@@ -4248,9 +4462,17 @@ namespace UI {
         }
 
         fb.clearClip();
-        drawNavBar(fb, {{"D-pad/Stick","Choose"},{"A","Open"},
+        // Classic Games grid: the track sits in the right margin beside the tile grid.
+        drawScrollbar(fb, classicGamesScrollbar, std::min(fb.getWidth() - 20, startX + gridW + 10),
+                      CLASSIC_GRID_Y, clipH, totalRows * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP,
+                      firstRow * (CLASSIC_TILE_H + CLASSIC_GAP) - liveOffset);
+        // L/R switches PROFILE in this full browser (not the game, as on Product Home), so the
+        // footer says so whenever it does anything; with one profile L/R is inert and unlisted.
+        std::vector<ControllerHint> classicHints = {{"D-pad/Stick","Choose"},{"A","Open"},
                         {"X","Save / Source"},{"Y","Sort"},{"+","Favorite"},
-                        {"ZR","Launch"},{"B","Back"}});
+                        {"ZR","Launch"},{"B","Back"}};
+        if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L/R", "Profile"});
+        drawNavBar(fb, classicHints);
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
@@ -4715,15 +4937,49 @@ namespace UI {
         }
 
         // The hero card already carries the big Launch button, so the global footer does not
-        // repeat a ZR Launch hint.
+        // repeat a ZR Launch hint. B only opens the "Quit PokeBank NX?" decision (P0 #320).
         drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
-                        {"+", "Current Game"}, {"-", "Help"}, {"B", "Exit"}});
+                        {"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});
         }
 
         // Blocking overlays are shared by Product Home and the classic artwork browser.
         // Keeping this renderer outside the classic base prevents invisible modals that capture
         // input and look like a frozen application until B is pressed.
-        if (overlay == Overlay::OpenFailure) {
+        // The covered Home footer and hero glyphs never stay tappable under a modal (P0 #320).
+        if (overlay != Overlay::None) beginTopTouchLayer();
+        if (overlay == Overlay::QuitConfirm) {
+            // R2-LAUNCH: frame, message lines and button row come from SharedMenuGeometry's
+            // LaunchConfirm rule (content-driven; no fixed oversized box), the text from
+            // LeaveDecisionLayout (word-wrapped with the bundled font's advances). The buttons
+            // carry the real coloured face-button badges and are touch targets. Semantics are
+            // frozen: only Y commits (Launch / Quit), A and B stay, an ambiguous press stays.
+            namespace G = PokeBank::UIModel::SharedMenuGeometry;
+            const bool quitting = leaveKind == LeaveKind::Quit;
+            const auto text = PokeBank::UIModel::LeaveDecisionLayout::build(
+                quitting, pendingLaunchName, pendingLaunchNotice);
+            const G::Layout layout = G::layout(G::MenuType::LaunchConfirm, 0, fb.getWidth(), fb.getHeight());
+            const G::Rect frame = layout.frame;
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
+                              Color(0, 0, 0, 132));
+            drawModalSurface(fb, frame.x, frame.y, frame.w, frame.h);
+            const int textX = frame.x + layout.rule.padX;
+            fb.drawText(textX, frame.y + 18, text.heading, Colors::TextPrimary, TextStyle::Heading);
+            for (int i = 0; i < PokeBank::UIModel::LeaveDecisionLayout::kLines; ++i) {
+                if (text.lines[static_cast<size_t>(i)].empty()) continue;
+                fb.drawText(textX, G::bodyLineTop(layout, i), text.lines[static_cast<size_t>(i)],
+                            i == 0 ? Colors::TextSecondary : Colors::TextMuted,
+                            i == 0 ? TextStyle::Body : TextStyle::Caption);
+            }
+            const G::Rect back = G::buttonRect(layout, 0, 3);
+            const G::Rect stay = G::buttonRect(layout, 1, 3);
+            const G::Rect commit = G::buttonRect(layout, 2, 3);
+            drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");
+            drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");
+            drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y",
+                            quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);
+            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
+                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay"));
+        } else if (overlay == Overlay::OpenFailure) {
             constexpr int w = 860, h = 280;
             const int x = (fb.getWidth() - w) / 2;
             const int y = (fb.getHeight() - h) / 2;
@@ -4869,10 +5125,9 @@ namespace UI {
                 }
 
                 fb.clearClip();
-                if (totalRows > visibleRows)
-                    drawScrollbar(fb, x + w - 8, gridY, gridH,
-                                  totalRows * (tileH + gap) - gap,
-                                  gamesDrawerScroll * (tileH + gap) - liveOffset);
+                drawScrollbar(fb, gamesDrawerScrollbar, x + w - 11, gridY, gridH,
+                              totalRows * (tileH + gap) - gap,
+                              gamesDrawerScroll * (tileH + gap) - liveOffset);
             } else {
                 fb.drawText(x + 28, 150, "No Pokémon games found for this profile.",
                             Colors::TextMuted, TextStyle::Body);
@@ -4949,6 +5204,8 @@ namespace UI {
                 }
             }
             fb.clearClip();
+            drawScrollbar(fb, profileScrollbar, x + w - 14, listTop, visibleRows * rowH,
+                          count * rowH, first * rowH - liveOffset);
 
             fb.drawText(x + 30, y + h - 42,
                         "Changing profile changes only which saves are shown; it never modifies save data.",
@@ -5095,6 +5352,8 @@ namespace UI {
                             TextStyle::Body);
             }
             fb.clearClip();
+            drawScrollbar(fb, launchFileScrollbar, x + w - 14, listTop, visibleRows * rowH,
+                          count * rowH, first * rowH - liveOffset);
             if (!launchFileNotice.empty())
                 fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
                             Colors::Info, TextStyle::Caption);
@@ -5122,6 +5381,10 @@ namespace UI {
             drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
                                  x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true,
                                  liveOffset);
+            drawScrollbar(fb, legacyInstanceScrollbar, x + w - 14, y + 122,
+                          LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
+                          static_cast<int>(parent.legacyInstances.size()) * rowH,
+                          first * rowH - liveOffset);
             const int drawFirst = std::max(0, first - 1);
             const int drawLast = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
                                                first + LEGACY_INSTANCE_VISIBLE_ROWS + 1);
@@ -5174,6 +5437,8 @@ namespace UI {
                             Colors::TextMuted, TextStyle::Caption);
             }
             fb.clearClip();
+            drawScrollbar(fb, legacyAssignmentScrollbar, x + w - 14, listTop, visibleRows * rowH,
+                          count * rowH, first * rowH - liveOffset);
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -5241,7 +5506,7 @@ namespace UI {
             }
             if(!gen5Notice.empty())
                 drawGen5SourceNotice(fb,gen5Notice,x+28,y+h-44,w-56);
-            drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Back"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         } else if (overlay == Overlay::Gen5UnassignConfirm && u) {
             constexpr int w=760,h=270;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
@@ -5276,6 +5541,8 @@ namespace UI {
             const int liveOffset=gen5CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb,gen5Instances,gen5CandidateIndex,
                                  first,x,y+108,w,rowH,visibleRows,false,liveOffset);
+            drawScrollbar(fb, gen5CandidateScrollbar, x + w - 14, y + 108, visibleRows * rowH,
+                          static_cast<int>(gen5Instances.size()) * rowH, first * rowH - liveOffset);
             const int drawFirst=std::max(0,first-1);
             const int drawLast=std::min<int>(static_cast<int>(gen5Instances.size()),
                                               first+visibleRows+1);
@@ -5319,7 +5586,7 @@ namespace UI {
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 42, gen4Notice.substr(0, 100),
                             Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         } else if (overlay == Overlay::Gen4Candidates && u) {
             constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -5338,6 +5605,8 @@ namespace UI {
             const int liveOffset = gen4CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
                                  x, y + 108, w, rowH, visibleRows, false, liveOffset);
+            drawScrollbar(fb, gen4CandidateScrollbar, x + w - 14, y + 108, visibleRows * rowH,
+                          static_cast<int>(gen4Instances.size()) * rowH, first * rowH - liveOffset);
             const int drawFirst = std::max(0, first - 1);
             const int drawLast = std::min<int>(static_cast<int>(gen4Instances.size()),
                                                first + visibleRows + 1);
@@ -5368,9 +5637,109 @@ namespace UI {
                     {"Y", "Open the quick right-side artwork browser"},
                     {"+", "Current Game tools: Overview / Party / Boxes / Trainer / Backups"},
                     {"-", "Help / Controls"},
-                    {"B", "Exit PokeBank NX from Product Home"}
+                    {"B", "Quit PokeBank NX (asks first; Y confirms)"}
                 }, "Games opens the full artwork browser. Profile and Settings use the top-right controls.");
             }
+        } else if (overlay == Overlay::EmulatorBackups) {
+            // CG13: frame, rows, focus highlight and touch targets come from SharedMenuGeometry's
+            // BackupMenu rule (EmulatorBackupLayout places the text inside them); the action
+            // notice is a toast above the footer, sized to its text.
+            namespace SB = PokeBank::UIModel::SourceBackups;
+            namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+            namespace G = PokeBank::UIModel::SharedMenuGeometry;
+            const int rows = static_cast<int>(emuBackupRows.size());
+            const G::Layout layout = EB::layout(rows, fb.getWidth(), fb.getHeight());
+            const G::Rect frame = layout.frame;
+            const int visible = layout.visibleRows;
+            drawModalSurface(fb, frame.x, frame.y, frame.w, frame.h);
+            const std::string game = (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()))
+                ? "Pokémon " + u->titles[static_cast<size_t>(titleIndex)].label : std::string("This game");
+            const int textX = frame.x + layout.rule.padX;
+            fb.drawText(textX, frame.y + EB::kHeadingTop, game + " — Backups", Colors::TextPrimary,
+                        TextStyle::Heading);
+            fb.drawText(textX, frame.y + EB::kExplainerTop, std::string(EB::kExplainer),
+                        Colors::TextSecondary, TextStyle::Caption);
+            const auto stamp = [](const std::string& t) {
+                return t.size() == 15 ? t.substr(0, 4) + "-" + t.substr(4, 2) + "-" + t.substr(6, 2) + " " +
+                                            t.substr(9, 2) + ":" + t.substr(11, 2)
+                                      : t;
+            };
+            const auto fileName = [](const std::string& path) {
+                const auto slash = path.find_last_of('/');
+                return slash == std::string::npos ? path : path.substr(slash + 1);
+            };
+            for (int i = emuBackupScroll; i < std::min(rows, emuBackupScroll + visible); ++i) {
+                const auto row = emuBackupRows[static_cast<size_t>(i)];
+                const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
+                const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
+                const auto policy = SB::policyFor(entry.kind);
+                const G::Rect cell = G::cellRect(layout, i - emuBackupScroll);
+                const G::Rect label = EB::labelRect(layout, cell);
+                const bool focused = i == emuBackupIndex;
+                if (focused) fb.drawFilledRoundedRect(cell.x, cell.y, cell.w, cell.h, 10, Colors::PanelAlt);
+                std::string title = policy.label;
+                std::string detail;
+                Color badge = Colors::TextMuted;
+                const char* tag = "";
+                switch (entry.kind) {
+                    case SB::Kind::OriginalSource:
+                        detail = fileName(entry.path) + (entry.exists ? "" : "  (not found on the SD card)");
+                        tag = "READ ONLY"; badge = Colors::Warning;
+                        break;
+                    case SB::Kind::AppBackup:
+                    case SB::Kind::ExportedCopy:
+                        title += "  ·  " + stamp(entry.timestamp);
+                        detail = fileName(entry.recordDir) + "/" + fileName(entry.path) +
+                                 (entry.exists ? "" : "  (missing)");
+                        tag = "APP-OWNED"; badge = Colors::Info;
+                        break;
+                    case SB::Kind::StagedWorkingCopy:
+                        detail = policy.reason;
+                        tag = "IN EDITOR";
+                        break;
+                }
+                fb.drawText(label.x, cell.y + EB::kLabelTop, title,
+                            focused ? Colors::TextPrimary : Colors::TextSecondary, TextStyle::Body);
+                fb.drawText(label.x, cell.y + EB::kDetailTop, detail, Colors::TextMuted, TextStyle::Caption);
+                int tw = 0, th = 0;
+                fb.measureText(tag, tw, th, TextStyle::Caption);
+                fb.drawText(cell.right() - layout.rule.cellPadX - tw, cell.y + EB::kLabelTop + 2, tag, badge,
+                            TextStyle::Caption);
+                overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
+            }
+            SharedScrollbar::drawAndPublish(fb, emuBackupScrollbar, frame.right() - 14, layout.list.y,
+                SharedScrollbar::kTrackWidth, layout.list.h,
+                SharedScrollbar::rows(rows, visible, emuBackupScroll));
+            if (!emuBackupNotice.empty()) {
+                const G::Rect toast = EB::noticeRect(G::textWidth(emuBackupNotice, G::Text::Caption),
+                                                     fb.getWidth(), fb.getHeight());
+                fb.drawFilledRoundedRect(toast.x, toast.y, toast.w, toast.h, 8, Colors::Panel);
+                fb.drawRoundedRect(toast.x, toast.y, toast.w, toast.h, 8, Colors::Warning, 2);
+                fb.drawText(toast.x + EB::kNoticePadX, toast.y + 7, emuBackupNotice, Colors::Text,
+                            TextStyle::Caption);
+            }
+            bool deletable = false;
+            if (emuBackupIndex >= 0 && emuBackupIndex < rows) {
+                const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
+                deletable = SB::canDelete(emuBackupListings[static_cast<size_t>(row.listing)],
+                                          static_cast<size_t>(row.entry)) == SB::Refusal::None;
+            }
+            if (deletable)
+                drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Details"}, {"Y", "Delete"}, {"B", "Back"}});
+            else
+                drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Details"}, {"B", "Back"}});
+        } else if (overlay == Overlay::EmulatorBackupDeleteConfirm) {
+            constexpr int w = 820, h = 250;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 132));
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 30, y + 30, "Delete this export record?", Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 30, y + 92, "Removes its app backup and exported copy. Press Y to delete; A or B keeps it.",
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 30, y + 136, "The original emulator save is never touched.",
+                        Colors::TextMuted, TextStyle::Caption);
+            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
+                                                   "Y", "Delete", "A", "Cancel"));
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -5391,7 +5760,7 @@ namespace UI {
                             i == optionsIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;
             }
-            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         }
     }
 }

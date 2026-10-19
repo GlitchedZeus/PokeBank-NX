@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Integration/Common/VerifiedStagedExport.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
+
+#include <optional>
 
 #include <string>
 #include <vector>
@@ -14,11 +17,16 @@ struct Gen4ExportRequest {
     std::string sourcePath;
     std::string timestamp;
     std::string applicationSha = "unknown";
+    // The source file as it was at Open. When set, export re-reads sourcePath first and fails
+    // closed, writing nothing, unless size, mtime and SHA-256 are unchanged and the file still
+    // begins with the editor's original payload. Callers that open a .dsv must set it.
+    std::optional<Gen4SourceSnapshot> sourceSnapshot;
     Common::ExportFailurePoint failurePoint = Common::ExportFailurePoint::None;
 };
 
-// Human-readable per-slot differences between the original and staged saves (party + boxes),
-// derived from strict parses of both buffers. Used for the export manifest and review summaries.
+// Human-readable differences between the original and staged saves (party, boxes and per-pocket
+// Bag item quantities), derived from strict parses of both buffers. Used for the export manifest
+// and review summaries.
 [[nodiscard]] std::vector<std::string> describeStagedSlotChanges(
     const Gen4StagedPokemonEditor& editor);
 

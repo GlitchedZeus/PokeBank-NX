@@ -1,6 +1,7 @@
 #include "Utils/MoveTransaction.h"
 #include "Utils/PokeBankPaths.h"
 #include "Safety/SourceMutationPolicy.h"
+#include "test_temp_dir.h"
 
 #include <algorithm>
 #include <cassert>
@@ -151,9 +152,8 @@ void cleanup(const std::string& root, const std::vector<std::string>& storePaths
 int main() {
     using namespace PokeBank::Storage::MoveTx;
 
-    const std::string base = "/tmp/pokebank-movetx-" +
-        std::to_string(static_cast<long long>(getpid()));
-    ensureDir(base);
+    // Fresh per run (mkdtemp); base-* siblings below inherit its unique name.
+    const std::string base = PokeBankTest::freshTempBase("pokebank-movetx");
 
     const std::vector<uint8_t> sourceBefore{1,2,3,4,5};
     const std::vector<uint8_t> sourceRetired{1,2,3,4,0};
@@ -565,5 +565,6 @@ int main() {
         cleanup(root, {src.path, dst.path});
     }
 
+    PokeBankTest::removeTempFamily(base);
     std::cout << "Move transaction journal/recovery core: PASS\n";
 }

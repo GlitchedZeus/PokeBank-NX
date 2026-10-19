@@ -464,7 +464,7 @@ require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
 require(surface,
         "state.undoSelectedBoxReplacement(staged",
         "state.selectedBoxUndoAvailable(workspace)",
-        '"Y","Undo This Slot"')
+        'footer.yLabel="Undo This Slot"')
 undo_tests=read("tests/test_gen5_readonly_save.cpp")
 require(undo_tests,
         "actionUi.selectedBoxUndoAvailable(ops)",
@@ -745,7 +745,7 @@ require(shared_contract, "case FieldIdentity::FatefulEncounter:",
         "case FieldIdentity::TrainerId:",
         "case FieldIdentity::SecretId:")
 require(surface,
-         "Names::getMetLocationName(",
+         "Names::getMetLocationDisplayName(",
         "Utils::promptNumber(",
 
         )
@@ -873,7 +873,9 @@ require(screen_state, "ConfirmExport", "requestExport(const Workspace& workspace
 require(surface, "state.requestExport(staged)",
         "case Surface::ConfirmExport:",
         "if(keys&HidNpadButton_B)", "else if(keys&HidNpadButton_Y)",
-        "readNormalizedSourceReadOnly(",
+        "readSourceFileReadOnly(",
+        "request.observedSourceFile=observedFile;",
+        "request.sourceContainer=container;",
         "publishGen5WorkingCopy(staged,request)",
         "state.finishExport();",
         "WorkingCopyExportRequest request;",
@@ -1096,7 +1098,7 @@ items_panel = read("src/UI/Panels/ItemsPanel.cpp")
 bag_model = read("include/Integration/Gen5/Gen5BagScreen.h")
 require(surface, "return handleBag(screen,keys,tap,touch);", "bag.stepRow(-1,ws)", "bag.stepPage(1,", "bag.beginQuantity(ws,error)",
         "bag.openAdd(ws,error)", "bag.requestRemove(ws,error)", "bag.confirmRemove(ws,refresh,error)",
-        "bag.confirmAdd(ws,id,r.value,refresh,error)", "state.openReviewFromBrowse(ws)",
+        "bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),id),", "state.openReviewFromBrowse(ws)",
         "CategoryTouch::PreviousId", "bag.tapRow(static_cast<size_t>(tap),ws)",
         "bag.tapAddChoice(", "drawBag(screen,fb);", "ws.bagReviewChanges()",
         "case G::HubTile5::Items:")
@@ -1152,8 +1154,8 @@ assert "write" not in dex_model.split("namespace PokeVault")[1].lower().replace(
 # through the shared pickers, keypads and move editor; nothing is Gen V-only UI.
 fields = read("include/Integration/Gen5/Gen5EditorFields.h")
 require(fields, '"Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",',
-        '"Held Item", "Friendship", "Language (read-only)", "Origin (read-only)", "Ball",',
-        '"Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful Encounter"',
+        '"Held Item", "Friendship", "Language", "Origin", "Ball",',
+        '"Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful"',
         "ItemStorage5.GetAllHeld()", "BagCatalog5::kUnreleased", "Master (1) .. Dream (25)",
         "NativeMetLocations5.begin()", "move <= MaxNativeMove5", "kMaxSpecies = 649",
         "probe.stage(Field::Form, 0, form, error)", "info.ability2 != info.ability1",
@@ -1170,9 +1172,9 @@ require(surface, "Fields::detailEditable(draft(screen), row, b2w2(screen))",
         "Fields::stageTrainerId(probe, secret,", "Fields::toggleGender(probe, error)",
         "Fields::toggleShiny(probe, error)", "Fields::toggleFlag(d, row == FatefulEncounter",
         "backendState.speciesRefusal(species)", "backendState.recreateCreateSpecies(",
-        "Names::getMoveBattleStats5(move)", 'std::string("—")', "Names::moveCategoryName5(",
-        "learnability not checked", 'return "None (ID 0)";',
-        "static constexpr bool kCompactForm = true;", "static constexpr bool kSpeciesSearch = true;")
+        "return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;",
+        "learnability not checked", 'return Names::getMetLocationDisplayName(origin, location);',
+        "static constexpr bool kCompactForm = true;")  # species search: shared chooser, QA CG15
 require(native_screen, "Gen5SharedPokemonSession& editDraft() noexcept",
         "std::string speciesRefusal(uint32_t species) const",
         "bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,")
@@ -1193,7 +1195,7 @@ def _adapter_string(text, key):
     match = _re.search(key + r'\s*=\s*"([^"]*)"', text)
     assert match, f"missing adapter string {key}"
     return match.group(1)
-for _key in ("kMovePickerSubtitle", "kMoveEditorSubtitle", "kMoveLegend", "kMoveHintEditable",
+for _key in ("kMovePickerSubtitle", "kMoveEditorSubtitle",
              "kHeldItemTitle", "kMovePickerTitle", "kDataTitle"):
     _gen5_text = _adapter_string(surface, _key)
     _gen4_text = _adapter_string(_gen4_surface, _key)

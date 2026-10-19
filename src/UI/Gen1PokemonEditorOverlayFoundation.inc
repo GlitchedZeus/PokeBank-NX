@@ -1,6 +1,11 @@
+#include "UI/ClassicTrainerSessionInput.h"
+#include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicFieldColor.h"
+#include "UI/ClassicGameContext.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
-#include "UI/Gen12RerollDVsConfirm.h"
+#include "UI/Gen12DVReroll.h"
+#include "UI/Gen1EditDraft.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/ScreenChrome.h"
 #include "UI/Dialogs/DialogFrame.h"
@@ -22,12 +27,7 @@ struct FoundationState {
     uint32_t randomState = 0x6D2B79F5u;
     std::optional<PokemonRecord> editBaseline;
     bool editExitConfirm = false;
-    // Y Random DVs is two explicit steps (see Gen12RerollDVsConfirm.h).
-    PokeBank::UIModel::Gen12RerollDVs::State reroll;
 };
-
-constexpr int kRerollCancelTouchId = 5903;
-constexpr int kRerollConfirmTouchId = 5904;
 
 FoundationState& foundationStateFor(const TrainerViewScreen& screen) {
     static FoundationState state;
@@ -53,11 +53,20 @@ void foundationSyncMainMode(TrainerViewScreen& screen) {
         foundation.randomState ^= static_cast<uint32_t>((state.box + 1) * 0x9E37u);
         foundation.randomState ^= static_cast<uint32_t>((state.slot + 1) * 0x85EBu);
         foundation.editExitConfirm = false;
-        foundation.reroll = {};
         if (state.mode == UX2Mode::Edit) {
             std::string error;
+            if (!beginEditDraft(screen, error)) {
+                // Fail closed: without a draft, edits would write the staged copy directly.
+                screen.postStatus(error.empty() ? "Could not open a Generation I edit draft" : error, 360);
+                ux3ResetSessionState(screen);
+                state.mode = UX2Mode::Actions;
+                foundation.lastMainMode = UX2Mode::Closed;
+                foundation.editBaseline.reset();
+                return;
+            }
             foundation.editBaseline = ux2SelectedPokemon(screen, error);
         } else {
+            dropEditDraft();
             foundation.editBaseline.reset();
         }
     }
@@ -95,7 +104,7 @@ void foundationDrawBadge(PKSEFramebuffer& fb, int x, int y, const std::string& t
 
 std::string foundationNickname(const UX2State& state, const PokemonRecord* pokemon, bool add, uint16_t species) {
     if (add)
-        return state.draft.nickname.empty() ? std::string(Names::getSpeciesName(species)) : state.draft.nickname;
+        return state.draft.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(species) : state.draft.nickname;
     return pokemon ? pokemon->nickname : std::string{};
 }
 
@@ -135,31 +144,29 @@ bool foundationEditSessionDirty(TrainerViewScreen& screen) {
     return current && !foundationSameEditablePokemon(*foundation.editBaseline, *current);
 }
 
-bool foundationRestoreEditBaseline(TrainerViewScreen& screen) {
+// Keep: write the draft's Pokemon into the real staged copy with one verified stageEdit, then end
+// the draft. On any refusal the draft (and the session) stays open and nothing is lost.
+bool foundationCommitEditDraft(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
-    auto& foundation = foundationStateFor(screen);
-    auto* e = editor(screen);
-    if (!foundation.editBaseline || !e) return true;
-
-    const auto& baseline = *foundation.editBaseline;
-    BoxPokemonEdit edit;
-    edit.species = baseline.species;
-    edit.nickname = baseline.nickname;
-    edit.level = baseline.level;
-    edit.experience = baseline.experience;
-    edit.trainerId = baseline.trainerId;
-    edit.moves = baseline.moves;
-    edit.pp = baseline.pp;
-    edit.ppUps = baseline.ppUps;
-    edit.dvs = storedDVs(baseline);
-    edit.statExperience = baseline.statExperience;
-    edit.otName = baseline.originalTrainer;
-
+    if (!editDraftActive(screen)) return true;
     std::string error;
-    if (!e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error)) {
-        screen.postStatus(error.empty() ? "Could not restore the pre-edit staged Pokemon" : error, 360);
+    const auto drafted = ux2SelectedPokemon(screen, error);
+    auto* real = realEditor(screen);
+    if (!drafted || !real) {
+        screen.postStatus(error.empty() ? "Generation I edit draft is unavailable" : error, 360);
         return false;
     }
+    if (!real->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
+                         PokeBank::UIModel::Gen1EditDraft::editFromRecord(*drafted), error)) {
+        screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 360);
+        return false;
+    }
+    const auto staged = real->boxedPokemon(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), error);
+    if (!staged || !foundationSameEditablePokemon(*staged, *drafted)) {
+        screen.postStatus("Kept Pokemon did not match the edit draft; review the staged copy", 420);
+        return false;
+    }
+    dropEditDraft();
     refreshBoxes(screen);
     return true;
 }
@@ -173,23 +180,37 @@ void foundationExitMainMode(TrainerViewScreen& screen) {
     foundation.lastMainMode = UX2Mode::Closed;
     foundation.editBaseline.reset();
     foundation.editExitConfirm = false;
-    foundation.reroll = {};
+    dropEditDraft();
 }
 
+// Y Random DVs: a new roll every press, keeping the shown shiny state (Gen II rule on Gen I DVs;
+// Gen I stores no flag and has no gender). Gen12DVReroll.h.
 void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
     auto& state = ux2StateFor(screen);
     auto& foundation = foundationStateFor(screen);
     auto& ux3 = ux3StateFor(screen);
-    const auto dvs = Foundation::randomDVs(foundation.randomState);
+    std::array<uint8_t, 4> current = state.draft.dvs;
+    if (!add) {
+        std::string error;
+        const auto pokemon = ux2SelectedPokemon(screen, error);
+        if (!pokemon) { screen.postStatus(error.empty() ? "Pokemon unavailable" : error, 300); return; }
+        current = storedDVs(*pokemon);
+    }
+    const auto rolled = PokeBank::UIModel::Gen12DVReroll::reroll(current, foundation.randomState);
+    if (!rolled.changed) {
+        screen.postStatus("No other DVs keep this Pokemon shiny; DVs unchanged", 280);
+        return;
+    }
+    const auto dvs = rolled.dvs;
     if (add) {
         state.draft.dvs = dvs;
         ux3.preShinyDraftDVs.reset();
-        screen.postStatus("Generation I DVs randomized in draft only; Stage Add still required", 280);
+        screen.postStatus("Generation I DVs re-rolled in this draft; Add stages them", 280);
         return;
     }
     BoxPokemonEdit edit;
     edit.dvs = dvs;
-    if (ux2CommitEdit(screen, edit, "Randomized DVs staged in this edit session; source .srm unchanged"))
+    if (ux2CommitEdit(screen, edit, "Randomized DVs set in this edit draft; X Keep stages it"))
         ux3.preShinyEditDVs.reset();
 }
 
@@ -208,7 +229,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                                                   foundationNickname(state, pokemon, add, species), 10);
             if (!result.accepted) break;
             if (add) state.draft.nickname = result.text;
-            else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged in this edit session; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change set in this edit draft; X Keep stages it"); }
             break;
         }
         case 2: {
@@ -221,7 +242,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                     state.draft.level, Editor::growthRate(state.draft.species));
             } else {
                 BoxPokemonEdit edit; edit.level = static_cast<uint8_t>(result.value);
-                ux2CommitEdit(screen, edit, "Level change staged in this edit session; source .srm unchanged");
+                ux2CommitEdit(screen, edit, "Level change set in this edit draft; X Keep stages it");
             }
             break;
         }
@@ -239,7 +260,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                 state.draft.level = level;
             } else {
                 BoxPokemonEdit edit; edit.experience = experience;
-                ux2CommitEdit(screen, edit, "Experience change staged in this edit session; source .srm unchanged");
+                ux2CommitEdit(screen, edit, "Experience change set in this edit draft; X Keep stages it");
             }
             break;
         }
@@ -248,14 +269,14 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
             if (add) state.draft.otName = result.text;
-            else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged in this edit session; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change set in this edit draft; X Keep stages it"); }
             break;
         }
         case 5: {
             const auto result = Utils::promptNumber("Generation I Trainer ID", foundationTID(state, *e, pokemon, add), 0, 65535);
             if (!result.accepted) break;
             if (add) state.draft.trainerId = static_cast<uint16_t>(result.value);
-            else { BoxPokemonEdit edit; edit.trainerId = static_cast<uint16_t>(result.value); ux2CommitEdit(screen, edit, "TID change staged in this edit session; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.trainerId = static_cast<uint16_t>(result.value); ux2CommitEdit(screen, edit, "TID change set in this edit draft; X Keep stages it"); }
             break;
         }
     }
@@ -290,7 +311,7 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
             } else {
                 BoxPokemonEdit edit;
                 edit.dvs = dvs;
-                if (ux2CommitEdit(screen, edit, "DV change staged in this edit session; source .srm unchanged"))
+                if (ux2CommitEdit(screen, edit, "DV change set in this edit draft; X Keep stages it"))
                     ux3.preShinyEditDVs.reset();
             }
             return;
@@ -307,7 +328,7 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
         } else {
             BoxPokemonEdit edit;
             edit.statExperience = statExperience;
-            ux2CommitEdit(screen, edit, "Stat Exp change staged in this edit session; source .srm unchanged");
+            ux2CommitEdit(screen, edit, "Stat Exp change set in this edit draft; X Keep stages it");
         }
         return;
     }
@@ -338,8 +359,9 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
                 state.draft = BoxPokemonCreate{};
                 screen.postStatus("Create draft discarded; staged/source bytes unchanged", 300);
             } else {
-                if (!foundationRestoreEditBaseline(screen)) return;
-                screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+                // The staged copy was never touched; dropping the draft is the whole discard.
+                dropEditDraft();
+                screen.postStatus("Edit-session changes discarded; staged Pokemon unchanged", 320);
             }
             foundationExitMainMode(screen);
             return;
@@ -352,28 +374,18 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
                 foundation.editExitConfirm = false;
                 return;
             }
-            screen.postStatus("Edit session confirmed and kept staged; source .srm unchanged", 300);
+            if (!foundationCommitEditDraft(screen)) return;
+            screen.postStatus("Edit kept in the staged copy; source .srm unchanged", 300);
             foundationExitMainMode(screen);
             return;
         }
         return;
     }
 
-    if (editable) {
-        // Y Random DVs asks first; while the prompt is open it owns all input (focus, X Add,
-        // B exit and field activation are inert). Only A/Y there re-rolls.
-        namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
-        switch (Reroll::step(foundation.reroll, (down & HidNpadButton_Y) != 0,
-                             (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0)) {
-            case Reroll::Outcome::NotHandled: break;
-            case Reroll::Outcome::AskConfirm:
-            case Reroll::Outcome::Cancelled:
-            case Reroll::Outcome::Swallowed:
-                return;
-            case Reroll::Outcome::Reroll:
-                foundationRandomizeDVs(screen, add);
-                return;
-        }
+    if (editable && (down & HidNpadButton_Y)) {
+        // Y Random DVs re-rolls the draft at once: no prompt, a new roll on every press.
+        foundationRandomizeDVs(screen, add);
+        return;
     }
 
     if (down & HidNpadButton_Up) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Up);
@@ -383,6 +395,14 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     if (down & HidNpadButton_L) foundation.focus = Foundation::nextPanel(Foundation::nextPanel(foundation.focus));
     if (down & HidNpadButton_R) foundation.focus = Foundation::nextPanel(foundation.focus);
 
+    // X Keep, as in the Gen III-V shared editor: confirm this edit session (its changes are already
+    // in the staged copy) and return to Actions, exactly like the exit dialog's A Save.
+    if (state.mode == UX2Mode::Edit && (down & HidNpadButton_X)) {
+        if (!foundationCommitEditDraft(screen)) return;
+        screen.postStatus("Edit kept in the staged copy; source .srm unchanged", 300);
+        foundationExitMainMode(screen);
+        return;
+    }
     if (add && (down & HidNpadButton_X)) {
         // Same session reset as the dialog's A Keep: the next Create starts on Species, not on
         // the previous draft's focus.
@@ -477,26 +497,6 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     screen.touchButtons.push_back({5902, x + w - 24 - cbw, cby, cbw, cbh});
 }
 
-void foundationDrawRerollConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
-    if (!foundationStateFor(screen).reroll.confirming) return;
-    const bool add = ux2StateFor(screen).mode == UX2Mode::AddDraft;
-    constexpr int w = 560, h = 226;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
-    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, Reroll::kTitle, Colors::Orange);
-    fb.drawText(x + 28, cy, Reroll::kConsequence, Colors::Text);
-    fb.drawText(x + 28, cy + 34,
-                add ? "Only this draft changes; nothing is staged until Add."
-                    : "Discard on exit restores the pre-edit Pokemon.",
-                Colors::TextDim, TextStyle::Caption);
-    const int cbw = 190, cbh = TouchTargetMin, cby = y + h - cbh - 18;
-    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Cancel", Colors::PanelAlt);
-    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Re-roll", Colors::PanelAlt);
-    screen.touchButtons.push_back({kRerollCancelTouchId, x + 24, cby, cbw, cbh});
-    screen.touchButtons.push_back({kRerollConfirmTouchId, x + w - 24 - cbw, cby, cbw, cbh});
-}
-
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = ux2StateFor(screen);
     auto& foundation = foundationStateFor(screen);
@@ -535,9 +535,14 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (state.mode == UX2Mode::Edit) title = "Edit Pokemon — STAGED";
     if (add) title = "Create Pokemon — DRAFT";
     fb.drawText(x + 24, y + 14, title, Colors::Text, TextStyle::Heading);
+    // Shared source-game context line (Gen III-V shape): Box / Slot • <Game> • Source save immutable • mode.
+    namespace GameContext = PokeBank::UIModel::ClassicGameContext;
+    const auto surfaceMode = add ? GameContext::SurfaceMode::CreateDraft
+        : state.mode == UX2Mode::Edit ? GameContext::SurfaceMode::EditStaged : GameContext::SurfaceMode::ViewReadOnly;
     fb.drawText(x + 24, y + 46,
-                "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1) +
-                "   •   PKSE three-panel workspace   •   Source save immutable",
+                GameContext::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
+                                             std::to_string(state.slot + 1),
+                                         screen.sourceGameId, surfaceMode),
                 Colors::TextDim, TextStyle::Caption);
 
     const int contentY = y + 74;
@@ -610,7 +615,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const bool levelSelected = foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 6;
     if (shinySelected) fb.drawSelectionHighlight(gridX, gridY + 304, midW - 20, 40);
     fb.drawText(gridX + 12, gridY + 315, "Shiny", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 130, gridY + 315, shiny ? "Yes" : "No", shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+    fb.drawText(gridX + 130, gridY + 315, shiny ? "Yes" : "No", ::UI::ClassicFieldColor::shinyValueColor(shinySelected), TextStyle::Caption);
     if (levelSelected) fb.drawSelectionHighlight(gridX, gridY + 350, midW - 20, 40);
     fb.drawText(gridX + 12, gridY + 361, "Level", Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 361, std::to_string(level), Colors::Text, TextStyle::Caption);
@@ -643,7 +648,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::string compatibilityText = !badMove ? "OK" : (add ? "Needs correction" : "Unusual preserved");
     const Color compatibilityColor = !badMove ? Colors::Success : (add ? Colors::Error : Colors::Warning);
     fb.drawText(rightX + rightW - 148, statusY, compatibilityText, compatibilityColor, TextStyle::Caption);
-    fb.drawText(rightX + 18, statusY + 26, "Encounter legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, statusY + 26, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 118, statusY + 26, "Not checked", Colors::Text, TextStyle::Caption);
     if (badMove) {
         const std::string warning = add ? "Change marked move before Stage Add" : "Legacy/unusual move kept unless you replace it";
@@ -656,7 +661,6 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (add) footer = "D-pad/Stick Navigate   A Edit   Y Randomize DVs   L/R Panel   X Stage Add   B Cancel Draft";
     drawFooter(fb, footer);
     foundationDrawExitConfirm(screen, fb);
-    foundationDrawRerollConfirm(screen, fb);
 }
 
 } // namespace
@@ -665,43 +669,41 @@ bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
     return isGen1SourceUXCleanup3(screen);
 }
 
+// The workspace field a completed tap selects (identity rows, editable DV/Stat Exp cells, Shiny,
+// moves). Shared by Edit/Create (where the tap also activates) and read-only View (focus only).
+bool foundationFocusTouchTarget(FoundationState& foundation, int id) {
+    if (id >= 5000 && id < 5006) {
+        foundation.focus = {Foundation::Panel::Identity, static_cast<uint8_t>(id - 5000), 0};
+        return true;
+    }
+    if (id >= 5100 && id < 5150) {
+        const int encoded = id - 5100;
+        const int row = encoded / 10, col = encoded % 10;
+        if (row >= 0 && row < 5 && col >= 0 && col < 3) {
+            foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(row), static_cast<uint8_t>(col)};
+            return true;
+        }
+    }
+    if (id == 5190) {
+        foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(Foundation::ValueRow::Shiny), 0};
+        return true;
+    }
+    if (id >= 5200 && id < 5204) {
+        foundation.focus = {Foundation::Panel::Moves, static_cast<uint8_t>(id - 5200), 0};
+        return true;
+    }
+    return false;
+}
+
 uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     auto& foundation = foundationStateFor(screen);
     // No provisional field focus: a finger may turn into a scroll gesture.
     const int tapped = screen.touchedButtonId(touch);
     auto focusId = [&](int id, bool activate) {
-        if (id >= 5000 && id < 5006) {
-            foundation.focus = {Foundation::Panel::Identity, static_cast<uint8_t>(id - 5000), 0};
-            if (activate) down |= HidNpadButton_A;
-            return true;
-        }
-        if (id >= 5100 && id < 5150) {
-            const int encoded = id - 5100;
-            const int row = encoded / 10, col = encoded % 10;
-            if (row >= 0 && row < 5 && col >= 0 && col < 3) {
-                foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(row), static_cast<uint8_t>(col)};
-                if (activate) down |= HidNpadButton_A;
-                return true;
-            }
-        }
-        if (id == 5190) {
-            foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(Foundation::ValueRow::Shiny), 0};
-            if (activate) down |= HidNpadButton_A;
-            return true;
-        }
-        if (id >= 5200 && id < 5204) {
-            foundation.focus = {Foundation::Panel::Moves, static_cast<uint8_t>(id - 5200), 0};
-            if (activate) down |= HidNpadButton_A;
-            return true;
-        }
-        return false;
+        if (!foundationFocusTouchTarget(foundation, id)) return false;
+        if (activate) down |= HidNpadButton_A;
+        return true;
     };
-    if (foundation.reroll.confirming) {
-        // The re-roll prompt is modal: only its own buttons act.
-        if (tapped == kRerollCancelTouchId) down |= HidNpadButton_B;
-        else if (tapped == kRerollConfirmTouchId) down |= HidNpadButton_A;
-        return down;
-    }
     if (foundation.editExitConfirm) {
         if (tapped == 5900) down |= HidNpadButton_B;
         else if (tapped == 5901) down |= HidNpadButton_Y;
@@ -734,9 +736,44 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     return true;
 }
 
+// R2-TRAINER: the HOME Trainer page stages Gen I Name / Money through the staged Trainer editor
+// with the same session flow as Gen II (UI/ClassicTrainerSessionInput.h). Changes appear in
+// Review, Discard restores them, Export writes them; the source save is never touched.
+bool gen1TrainerMainPage(const TrainerViewScreen& screen) {
+    const auto& state = ux2StateFor(const_cast<TrainerViewScreen&>(screen));
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Trainer &&
+        state.mode == UX2Mode::Closed && state.picker == UX2Picker::None &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
+bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                              int stickX, int stickY, const TouchInput& touch) {
+    if (!gen1TrainerMainPage(screen)) return false;
+    auto* trainer = rbyTrainer(screen);
+    if (!trainer || !trainer->stagedTrainerEditable()) return false;
+    auto* editor = trainer->stagedTrainer();
+    UI::ClassicTrainerSession::Fields fields;
+    fields.name = editor->trainerName();
+    fields.money = editor->money();
+    fields.nameMax = static_cast<int>(editor->nameMax());
+    fields.moneyMax = PokeVault::Integration::Gen1::kGen1MaxMoney;
+    fields.nameGuide = "1-7 letters, digits, space - . ? !";
+    fields.nameEditable = editor->nameEditable();
+    fields.nameReadOnlyReason = "Japanese Gen I trainer names are read-only here";
+    return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
+        [&](const std::string& name, uint32_t money, std::string& error) {
+            if (name != editor->trainerName() && !editor->stageTrainerName(name, error)) return false;
+            if (money != editor->money() && !editor->stageMoney(money, error)) return false;
+            return true;
+        });
+}
+
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
                    const TouchInput& touch) {
     if (!isGen1SourceUX(screen)) return false;
+    if (handleGen1TrainerSession(screen, down, held, stickX, stickY, touch)) return true;
     auto& state = ux2StateFor(screen);
     // An active picker owns all input even while the underlying fullscreen editor
     // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.

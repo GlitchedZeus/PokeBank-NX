@@ -599,7 +599,7 @@ require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not 
 # saves; Product Home refreshes the expensive trainer/party preview only when B leaves the browser.
 update_start = source.index("void SaveSelectScreen::update")
 classic_runtime = source.index("if (classicGamesActive)", update_start)
-root_runtime = source.index("// Games is now the app root", classic_runtime)
+root_runtime = source.index("// Games is the app root. B never quits", classic_runtime)
 classic_runtime_block = source[classic_runtime:root_runtime]
 require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block and
         "scrollClassicSelectionIntoView();" in classic_runtime_block,
@@ -734,3 +734,105 @@ require("launchDescriptor.ready() ? currentLaunchQuitNotice() : std::string()" i
         "Quit-route notice must stay in the two caption rows inside the hub panel")
 require("std::string launchQuitNoticeKey;" in header,
         "Quit-route notice must be cached per resolved launch target")
+
+# P0 #320: no single press ever leaves PokeBank NX. B at the root, the legacy Options Exit, ZR /
+# Launch taps and the legacy-instance A launch only OPEN the one visible leave decision; only an
+# explicit Y there quits or hands off to the emulator, A and B stay.
+def body(name):
+    start = source.index(name)
+    return source[start:source.index("\n    }\n", start)]
+root_b = source[source.index("// Games is the app root. B never quits"):]
+root_b = root_b[:root_b.index("return;")]
+require('openLeaveDecision(LeaveKind::Quit, "origin=home-root-b");' in root_b and "appExitRequested" not in root_b,
+        "Home root B must open the quit decision, never exit directly")
+options = source[source.index("if (overlay == Overlay::Options) {"):]
+options = options[:options.index("if (overlay == Overlay::LegacyInstances)")]
+require('openLeaveDecision(LeaveKind::Quit, "origin=options-exit");' in options and "appExitRequested" not in options,
+        "The Options Exit row must route through the same quit decision")
+for launcher, call in (("bool SaveSelectScreen::launchCurrentTitle()", "openLaunchDecision(LeaveKind::LaunchTitle"),
+                       ("bool SaveSelectScreen::launchCurrentLegacyInstance()", "openLaunchDecision(LeaveKind::LaunchLegacyInstance")):
+    fn = body(launcher)
+    require(call in fn and "requestGameLaunch" not in fn and "appExitRequested" not in fn,
+            launcher + " must open the launch decision, never hand off on the press itself")
+leave = source[source.index("if (overlay == Overlay::QuitConfirm) {\n            using"):]
+leave = leave[:leave.index("            return;\n        }\n")]
+require("PokeBank::UIModel::HomeQuit::decide(kDown)" in leave and "Decision::Quit" in leave and
+        "requestGameLaunch(pendingLaunch, error)" in leave and "appExitRequested = true;" in leave,
+        "Only the leave decision's explicit Y may quit or start the launch handoff")
+require(source.count("appExitRequested = true;") == 1 and source.count("requestGameLaunch(") == 1,
+        "App exit and launch handoff each have exactly one site: the leave decision's Y")
+# R2-LAUNCH: the leave decision is sized by SharedMenuGeometry::LaunchConfirm, its text comes from
+# LeaveDecisionLayout (word-wrapped, quit-route notice kept), and it shows real coloured B / A / Y
+# buttons plus the shared confirm footer. Only Y commits.
+layout_header = (ROOT / "include/UI/LeaveDecisionLayout.h").read_text(encoding="utf-8")
+leave_draw = source[source.index("        if (overlay == Overlay::QuitConfirm) {\n            // R2-LAUNCH"):]
+leave_draw = leave_draw[:leave_draw.index("        } else if (overlay == Overlay::OpenFailure) {")]
+require('"Quit PokeBank NX?"' in layout_header and '"Launch " + std::string(gameName) + "?"' in layout_header and
+        "G::layout(G::MenuType::LaunchConfirm" in leave_draw and
+        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice)" in leave_draw and
+        'drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");' in leave_draw and
+        'drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");' in leave_draw and
+        'quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);' in leave_draw and
+        'confirmFooter(\n                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay")' in leave_draw,
+        "The leave decision is visible, names Y as the only commit and shows the quit-route notice")
+require("inputTrace().frame(\"home\", padGetButtonsDown(&pad), padGetButtons(&pad), kDown," in source,
+        "Product Home records raw edges, held state and the logical mask in the opt-in input trace")
+# Footer hints match the bindings: B is labelled Quit because it opens the quit decision, and
+# Settings + A (button or tap) is a Settings destination that leaves Home, never the app.
+require('{"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});' in source and '{"B", "Exit"}' not in source,
+        "The Product Home footer names B as Quit (the decision), never a direct Exit")
+header = source[source.index("        if (headerActionIndex >= 0) {\n            if (kDown & (HidNpadButton_Left"):]
+header = header[:header.index("        if (hubDockFocused) {")]
+require("requestedMainMenuDestination = MainMenuDestination::Settings;" in header and
+        "appExitRequested" not in header, "Settings + A reaches Settings and never exits the app")
+taps = source[source.index("        if (touch.justTapped()) {\n            for (const auto& r : headerRects)"):]
+taps = taps[:taps.index("// L/R changes the selected game from anywhere on Product Home")]
+require("MainMenuDestination::Settings" in taps and "appExitRequested" not in taps,
+        "A Settings tap reaches Settings and never exits the app")
+# Overlay layering (P0 #320, the Gen II Create class of bug): while any Home modal is open the
+# covered footer/hero glyphs are dropped, and every modal draws its OWN footer, so a tap can only
+# inject a button the topmost layer visibly offers.
+chrome = (ROOT / "include/UI/ScreenChrome.h").read_text(encoding="utf-8")
+top = chrome[chrome.index("inline void beginTopTouchLayer()"):]
+top = top[:top.index("\n    }\n")]
+for cleared in ("g_touchGlyphAccum.clear();", "g_touchGlyphHits.clear();", "g_navHits.clear();",
+                "g_navGestureHits.clear();", "g_productHeroSwipeRegistered = false;"):
+    require(cleared in top, "beginTopTouchLayer must drop the covered layer's " + cleared)
+modals = source[source.index("        if (overlay != Overlay::None) beginTopTouchLayer();"):]
+modals = modals[:modals.index("\n    }\n}")]
+branches = modals.split("} else if (overlay == Overlay::")
+require(len(branches) == 18 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
+        "all 18 Home modals render in the layered overlay section")
+branches[0] = branches[0][branches[0].index("if (overlay == Overlay::QuitConfirm)") + len("if (overlay == Overlay::"):]
+for branch in branches:
+    name = branch[:branch.index(")")].split(" ")[0]
+    require("drawNavBar(" in branch or "drawProductHelpOverlay(" in branch or
+            "SharedEditorChrome::drawPickerFooter(" in branch or "SharedEditorChrome::drawFooter(" in branch,
+            "Home modal " + name + " must draw its own footer above the covered Home footer")
+require("{\"B\", \"Quit PokeBank NX (asks first; Y confirms)\"}" in source and
+        "Exit PokeBank NX from Product Home" not in source,
+        "Home Help states that B asks before quitting")
+# The full Games browser binds L/R to profile switching (Home binds it to Change Game); its
+# footer must name that whenever it applies, so the role never surprises the user.
+classic_draw = body("void SaveSelectScreen::drawClassicGameSources")
+require('if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L/R", "Profile"});' in classic_draw,
+        "The full Games browser footer shows L/R Profile when more than one profile exists")
+classic_lr = source[source.index("            if (users.size() > 1) {\n                if (kDown & HidNpadButton_L) setUser(userIndex - 1);"):]
+require("setUser(userIndex + 1)" in classic_lr[:300], "L/R in the full Games browser switches profile only")
+# Round 2 phase 7: + -> Backups for an emulator game lists app-owned export records by exact
+# SOURCE_PATH (SourceBackupClassification.h); the original emulator save is read-only and the only
+# deletion is one whole export record behind an explicit Y (HomeQuit::decide).
+workspace = body("void SaveSelectScreen::activateGameWorkspace()")
+require("openEmulatorBackups();" in workspace and "External emulator sources stay read-only" not in source,
+        "+ -> Backups opens the emulator backups list instead of a dead-end notice")
+opener = body("void SaveSelectScreen::openEmulatorBackups(")
+require("SB::list(PokeBank::Paths::exportsRoot(), source)" in opener and "instance.path()" in opener and
+        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener,
+        "Emulator backups come only from exact validated / assigned source paths")
+delete_block = source[source.index("if (overlay == Overlay::EmulatorBackupDeleteConfirm) {"):]
+delete_block = delete_block[:delete_block.index("            return;\n        }\n")]
+require("PokeBank::UIModel::HomeQuit::decide(kDown)" in delete_block and "Decision::Quit" in delete_block and
+        "SB::deleteRecord(" in delete_block, "Deleting an export record needs the explicit-Y decision")
+require(source.count("SB::deleteRecord(") == 1, "Export records are deleted only from the Y-confirmed decision")
+require('confirmFooter(\n                                                   "Y", "Delete", "A", "Cancel")' in source,
+        "The export-record delete decision uses the shared confirm footer")

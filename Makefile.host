@@ -14,5 +14,8 @@ include Makefile.host.exports
 include Makefile.host.home-providers
 include Makefile.host.gen14
 include Makefile.host.qa
+include Makefile.host.item-quantity-policy
+include Makefile.host.pickers
+include Makefile.host.reroll-mechanics
 
 include Makefile.host.machine

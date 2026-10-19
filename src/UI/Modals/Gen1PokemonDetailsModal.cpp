@@ -5,6 +5,8 @@
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ScreenChrome.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/TrainerViewScreen.h"
 #include "Utils/StringHelpers.h"
 
@@ -34,6 +36,8 @@ std::optional<PokeVault::Integration::Gen1::SourceGame> sourceGame(const std::st
 
 void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                                  const Pokemon::Pokemon1ReadOnly& p) {
+    // The details modal owns the frame's touch and draws its own footer.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
     Gen1PokemonDetailsPresentation view;
     view.species = p.speciesID();
     view.speciesName = p.species();
@@ -82,6 +86,7 @@ void drawGen1PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     view.hasBattleStats = true;
 
     drawGen1PokemonDetailsPresentation(screen, fb, view);
+    drawNavBar(fb, {{"B", "Back"}});
 }
 
 } // namespace UI::Modals

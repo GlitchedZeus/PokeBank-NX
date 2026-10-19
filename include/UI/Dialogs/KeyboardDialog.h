@@ -128,8 +128,8 @@ namespace UI
             int pendingKeyIndex = -1; // a tapped key that closes the card, waiting for its press to show
             int pendingFrames = 0;
             int refusedFrames = 0;    // the character counter flashes after a character did not fit
-            u64 repeatingButton = 0;  // the held button that auto-repeats, and for how long it has been held
-            int repeatHeldFrames = 0;
+            u64 repeatingButton = 0;  // the held button that auto-repeats
+            PokeBank::UIModel::HoldRepeatClock repeatClock; // shared wall-clock hold timing
             /// The left stick, read as one D-pad direction at a time so it steps the selection like the
             /// D-pad and repeats on the same timing.
             PokeBank::UIModel::AnalogNavigation analogNavigation;

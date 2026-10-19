@@ -320,17 +320,16 @@ void nativeCatalogContracts() {
 // 8: the narrow Gen I-IV action menu, same geometry for every generation.
 void actionMenuContract() {
     Menu::Model gen4Like{};
-    for (const char* label : {"View Pokemon", "Add to Master Vault", "Add to Bank...",
-                              "Transfer to Game...", "Edit", "Move Pokemon", "Clone",
-                              "Release", "Make Shiny", "Legality & Provenance", "Cancel"})
+    for (const char* label : {"View", "Edit", "Clone", "Move", "Release",
+                              "Origin & Legality", "Review Pending Changes", "Cancel"})
         gen4Like.append(label, 0);
     const auto g4 = Menu::geometry(gen4Like.count);
     assert(g4.width == 440 && g4.headerHeight == 78);
     Menu::Model gen5{};
-    for (const char* label : {"View Pokemon", "Edit", "Move Pokemon", "Clone", "Release", "Cancel"})
+    for (const char* label : {"View", "Edit", "Clone", "Move", "Release", "Cancel"})
         gen5.append(label, gen5.count);
     const auto g5 = Menu::geometry(gen5.count);
-    assert(g5.width == g4.width && g5.headerHeight == g4.headerHeight && g5.rowHeight == 54);
+    assert(g5.width == g4.width && g5.headerHeight == g4.headerHeight && g5.rowHeight == 46); // shared BoxMenu rule
     assert(g5.rowX() == (1280 - 440) / 2 + 10);
 }
 
@@ -398,29 +397,32 @@ void surfaceSourceContracts() {
     contains(shared, "species, A::kMaxSpecies, previewShiny");
     contains(shared, "state.speciesPreviewShiny = !state.speciesPreviewShiny;");
     contains(gen5, "static constexpr int kMaxSpecies = Fields::kMaxSpecies;");
-    contains(gen5, "static constexpr bool kSpeciesSearch = true;");
+    // Species search is no longer a per-adapter flag: the shared chooser (UI/SharedSpeciesPicker.h +
+    // UI/SharedSearchInput.h) searches in every generation; QA CG15 guards it.
     contains(gen5, "for (uint16_t s = 1; s <= Fields::kMaxSpecies; ++s)");
-    // 12: the move row carries type, category and an em dash for undefined values.
-    contains(gen5, "Names::moveCategoryName5(stats->category)");
-    contains(gen5, "SpriteManager::getTypeSprite(SharedSpeciesPicker::canonicalToClassicType(stats->type))");
-    contains(gen5, "std::string(\"—\")");
+    // 12: the move row carries type, category and an em dash for undefined values: the ONE
+    // shared chooser row (UI/SharedMovesPanel.h) fed by the exact BW / B2W2 game version.
+    contains(shared, "SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, value, A::moveGame(screen), selected)");
+    contains(gen5, "return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;");
+    const auto chooser = read("include/UI/SharedMovesPanel.h");
+    contains(chooser, "Facts::categoryLabel(f)");
+    const auto moveFacts = read("include/UI/SharedMoveFacts.h");
+    contains(moveFacts, "s->power == Names::kMoveValueUndefined5 ? -1 : s->power");
+    contains(moveFacts, "std::string(\"\\xE2\\x80\\x94\")");
     // 8: Gen V uses the narrow Gen I-IV action menu component.
     contains(gen5, "drawNarrowPokemonActions(fb,screen.touchButtons,model,state.actionRow(),title,");
     // 14: Gen I-IV menus are unchanged: the Gen IV adapter keeps its exact
-    // strings, layout, non-compact Form picker and no species search.
-    contains(gen4, "static constexpr bool kSpeciesSearch = false;");
+    // strings, layout and non-compact Form picker (species search: shared chooser, CG15).
     contains(gen4, "static constexpr bool kCompactForm = false;");
     contains(gen4, "static constexpr int kMaxSpecies = 493;");
     contains(gen4, "\"Held Item — Generation IV\"");
     contains(gen4, "\"Empty + compatible moves only • exact Gen IV Acc / Pwr / PP\"");
-    contains(gen4, "model.append(\"Add to Master Vault\");");
-    contains(gen4, "MovePickerRowUI::draw(fb, x, y, value, bridge(screen).sourceSave().rawFamily());");
-    const auto rowUi = read("include/UI/MovePickerRowUI.h");
-    contains(rowUi, "fb.drawText(x+308,y+9,\"| Acc \"+acc");
+    contains(gen4, "model.append(entry.label, entry.enabled ? i : -1);");
+    contains(gen4, "static Enums::GameVersion moveGame(const TrainerViewScreen& screen) { return family(screen); }");
     // Gen I-III keep their accepted editors and the same shared contract layout.
     static_assert(Shared::layoutFor(Shared::Generation::Gen4).detailsRows == 16);
     static_assert(Shared::layoutFor(Shared::Generation::Gen5).detailsRows == F::RowCount);
-    static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 15);
+    static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 16);
 }
 
 // Owner hardware rule (every Gen I-V editor field): D-pad Left/Right and the
@@ -469,6 +471,22 @@ void leftRightNeverMutatesGen1To3() {
     }
 }
 
+// Save safety (Gen IV .dsv): Open snapshots the exact source FILE from the same payload the
+// staged editor holds, with the container from the read-only adapter; export hands that
+// snapshot to the transaction, which refuses a source that changed since Open.
+void gen4SourceSnapshotWiring() {
+    const auto ui = read("src/UI/UI.cpp");
+    contains(ui, "const auto payload = G4::readSourcePayloadReadOnly(sourcePath);");
+    contains(ui, "!std::equal(openedBytes.begin(), openedBytes.end(), payload.bytes.begin())");
+    contains(ui, "payload.kind == G4::SourceContainerKind::DsvFooter ? G4::Gen4SourceContainer::Dsv");
+    contains(ui, "auto snapshot = G4::snapshotGen4Source(");
+    contains(ui, "trainerScreen.gen4SourceSnapshot = std::move(snapshot);");
+    const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
+    contains(gen4, "request.sourceSnapshot = screen.gen4SourceSnapshot;");
+    contains(read("include/UI/TrainerViewScreenBase.h"),
+             "std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;");
+}
+
 } // namespace
 
 int main() {
@@ -481,5 +499,6 @@ int main() {
     actionMenuContract();
     surfaceSourceContracts();
     leftRightNeverMutatesGen1To3();
+    gen4SourceSnapshotWiring();
     std::cout << "Shared Pokemon editor UI contract (Gen I-V, 14 owner checks): PASS\n";
 }

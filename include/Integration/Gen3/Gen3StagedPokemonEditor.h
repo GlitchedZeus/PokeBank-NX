@@ -69,6 +69,7 @@ struct BoxPokemonEdit {
     std::optional<uint8_t> gender;
     std::optional<bool> shiny;
     std::optional<uint8_t> abilityNumber;
+    std::optional<uint8_t> form; // Unown letter 0..27 (PID-derived); refused for other species
 };
 
 struct BoxPokemonCreate {
@@ -94,6 +95,7 @@ struct BoxPokemonCreate {
     std::optional<uint8_t> gender;
     std::optional<bool> shiny;
     std::optional<uint8_t> abilityNumber;
+    std::optional<uint8_t> form; // Unown letter 0..27 (PID-derived); refused for other species
 };
 
 struct StagedPokemonChange {

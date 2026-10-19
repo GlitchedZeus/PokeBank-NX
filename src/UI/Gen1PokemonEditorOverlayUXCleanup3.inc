@@ -1,11 +1,20 @@
+// The composite TU includes this file with drawFooter renamed; keep the shared chrome
+// header's own drawFooter intact so later surfaces still find it.
+#pragma push_macro("drawFooter")
+#undef drawFooter
+#include "UI/SharedEditorChrome.h"
+#pragma pop_macro("drawFooter")
+#include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicFieldColor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
+#include "UI/Gen13PickerPaging.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/MovePickerPresentation.h"
-#include "UI/MovePickerRowUI.h"
+#include "UI/SharedMovesPanel.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -158,8 +167,13 @@ void ux3OpenSpeciesPicker(TrainerViewScreen& screen, uint16_t current, bool shin
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
     ux2OpenSpeciesPicker(state, current);
+    state.speciesChooser.reset();   // every opening starts with the full Gen I dex
     ux3.pickerPreviewShiny = shiny;
 }
+
+// Gen I offers its whole native dex (1..151); the chooser filters by the bare species name.
+constexpr auto ux3SpeciesAvailable = [](uint16_t) { return true; };
+constexpr auto ux3SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
 bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
@@ -211,14 +225,35 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     return false;
 }
 
+PokeBank::UIModel::SharedPickerPaging::Keys ux3PickerKeys(uint64_t down) noexcept {
+    return {(down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+            (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+}
+
 void ux3HandleSpeciesPicker(TrainerViewScreen& screen, uint64_t down) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
-    if (down & HidNpadButton_Up) state.pickerValue = std::max(1, state.pickerValue - 1);
-    if (down & HidNpadButton_Down) state.pickerValue = std::min(151, state.pickerValue + 1);
-    if (down & (HidNpadButton_L | HidNpadButton_Left)) state.pickerValue = std::max(1, state.pickerValue - 10);
-    if (down & (HidNpadButton_R | HidNpadButton_Right)) state.pickerValue = std::min(151, state.pickerValue + 10);
+    // R2-SEARCH: X / Minus open the in-modal search; while its key grid is open the D-pad /
+    // stick, A and B type, and the list below stays filtered live (keys phase; touch phase is
+    // in ux3DirectTouchInput). The owner's browsing / A / B run only when the grid did not.
+    const auto keys = ux3PickerKeys(down);
+    uint16_t species = static_cast<uint16_t>(std::clamp(state.pickerValue, 1, 151));
+    const auto handled = SharedSpeciesPicker::handleKeys(
+        state.speciesChooser, keys, (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+        (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0, species, 151,
+        ux3SpeciesAvailable, ux3SpeciesName);
+    state.pickerValue = species;
     if (down & HidNpadButton_Y) ux3.pickerPreviewShiny = !ux3.pickerPreviewShiny;
+    if (handled.keys) return;
+    // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10, ZL/ZR +-50.
+    if (keys.any()) {
+        state.pickerValue = PokeBank::UIModel::SharedPickerPaging::pagedRow(state.pickerValue - 1, 151, keys) + 1;
+        // R2-SEARCH: with a filter typed, the same keys page over the filtered list instead.
+        if (state.speciesChooser.filtered())
+            state.pickerValue = SharedSpeciesPicker::paged(state.speciesChooser, species, keys);
+    }
     if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
     if (down & HidNpadButton_A) ux3ApplySpeciesPicker(screen);
 }
@@ -230,15 +265,14 @@ void ux3HandleMovePicker(TrainerViewScreen& screen, uint64_t down) {
     int index = 0;
     for (int i = 0; i < static_cast<int>(choices.size()); ++i)
         if (choices[static_cast<size_t>(i)] == state.pickerValue) { index = i; break; }
-    if (down & HidNpadButton_Up) index = std::max(0, index - 1);
-    if (down & HidNpadButton_Down) index = std::min(static_cast<int>(choices.size()) - 1, index + 1);
-    if (down & HidNpadButton_L) index = std::max(0, index - 10);
-    if (down & HidNpadButton_R) index = std::min(static_cast<int>(choices.size()) - 1, index + 10);
+    const auto keys = ux3PickerKeys(down);
+    index = PokeBank::UIModel::SharedPickerPaging::pagedRow(index, static_cast<int>(choices.size()), keys);
     state.pickerValue = choices[static_cast<size_t>(index)];
-    constexpr int visible = 9;
+    // Same row count as every Gen II-V move chooser (MovePickerPresentation::compactPickerLayout).
+    constexpr int visible = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout().visibleRows;
     const int count = static_cast<int>(choices.size());
     state.pickerViewport.ensure(index, count, visible);
-    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_L | HidNpadButton_R)) {
+    if (keys.any()) {
         state.pickerScroll.stop();
         state.pickerViewport.reveal(index, count, visible);
     }
@@ -454,7 +488,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(leftX + 18, contentY + 292, "Lv " + std::to_string(level) + "   EXP " +
                 std::to_string(add ? draftExperience(state.draft) : pokemon->experience), Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftX + 18, contentY + 326, shiny ? "Shiny: Yes" : "Shiny: No",
-                shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                ::UI::ClassicFieldColor::shinyValueColor(false), TextStyle::Caption);
     fb.drawText(leftX + 18, contentY + 360, add ? "Draft: Not staged yet" : "State: Staged workspace",
                 Colors::Accent, TextStyle::Caption);
     fb.drawText(leftX + 18, contentY + 386, "Source save: Immutable", Colors::TextDim, TextStyle::Caption);
@@ -489,7 +523,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(rightX + 18, contentY + 54, "Move compatibility", Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 96, contentY + 54, badMove ? "Needs attention" : "OK",
                 badMove ? Colors::Warning : Colors::Accent, TextStyle::Caption);
-    fb.drawText(rightX + 18, contentY + 80, "Encounter legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 108, contentY + 80, "Not checked", Colors::Text, TextStyle::Caption);
     fb.drawHDivider(rightX + 16, contentY + 116, rightW - 32);
     fb.drawText(rightX + 18, contentY + 132, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
@@ -513,34 +547,39 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     if (speciesPicker) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedSpeciesPicker::refilter(state.speciesChooser, 151, ux3SpeciesAvailable, ux3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
             [](uint16_t species) { return speciesCompact(species); },
-            &latestTouchGesture());
-        constexpr int visibleSpecies = 9;
-        const int speciesStart = std::clamp(state.pickerValue - visibleSpecies / 2, 1, 151 - visibleSpecies + 1);
-        for (int i = 0; i < visibleSpecies; ++i) {
-            const int species = speciesStart + i;
-            screen.touchButtons.push_back({3000 + species, modal.x + 20, modal.y + 84 + i * 43, 560, 39});
+            &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
+        // Touch ids stay 3000 + species; the chooser publishes the rows it actually drew.
+        for (int i = 0; i < state.speciesChooser.rowCount; ++i) {
+            const auto& row = state.speciesChooser.rows[static_cast<std::size_t>(i)];
+            screen.touchButtons.push_back({3000 + row.species, row.x, row.y, row.w, row.h});
         }
         return;
     }
 
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     ux2DrawPanel(fb, x, y, w, h);
-    fb.drawText(x + 24, y + 18, "Choose Move", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, "Move \xE2\x80\x94 Generation I", Colors::Text, TextStyle::Heading);
 
     const auto choices = ux3MoveChoices(screen);
     int selectedIndex = 0;
     for (int i = 0; i < static_cast<int>(choices.size()); ++i)
         if (choices[static_cast<size_t>(i)] == state.pickerValue) { selectedIndex = i; break; }
-    fb.drawText(x + 24, y + 50,
-        "Compatible with " + speciesCompact(ux3CurrentSpecies(screen)) + " in " +
-        (editor(screen) ? std::string(ux3GameName(editor(screen)->metadata().sourceGame)) : std::string("Gen I")) +
-        " • exact Gen I Acc / Pwr / PP",
-        Colors::TextDim, TextStyle::Caption);
-    constexpr int visible = 9, rowStep = 42;
+    {
+        const std::string scope = "Compatible with " + speciesCompact(ux3CurrentSpecies(screen));
+        int sw = 0, sh = 0;
+        fb.measureText(scope, sw, sh, TextStyle::Caption);
+        fb.drawText(x + w - 24 - sw, y + 26, scope, Colors::TextDim, TextStyle::Caption);
+    }
+    // The shared Move chooser rows (UI/SharedMovesPanel.h): No. / Move / Type / Pwr / Acc / PP,
+    // exact Gen I facts from pret/pokered, same columns as Gen II-V.
+    const auto columns = SharedMovesPanel::chooserColumns(x + 40, w - 80);
+    SharedMovesPanel::drawChooserCaptions(fb, columns, y + 60, Enums::GameVersion::RBY);
+    constexpr int visible = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout().visibleRows, rowStep = 42;
     const int count = static_cast<int>(choices.size());
     state.pickerViewport.ensure(selectedIndex, count, visible);
     const int start = state.pickerViewport.firstRow;
@@ -557,10 +596,13 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         appendClippedTouchButton(screen.touchButtons, 4000 + idx,
             x + 24, rowY, w - 48, 38,
             x + 24, listTop, w - 48, visible * rowStep);
-        MovePickerRowUI::draw(fb,x+40,rowY+4,
-                              static_cast<uint16_t>(move),Enums::GameVersion::RBY);
+        SharedMovesPanel::drawChooserRow(fb, columns, rowY + 8, static_cast<uint16_t>(move),
+                                         Enums::GameVersion::RBY, selected);
     }
     fb.clearClip();
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 18, listTop,
+        SharedScrollbar::kTrackWidth, visible * rowStep,
+        SharedScrollbar::rows(count, visible, start));
 }
 
 void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -592,7 +634,8 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
             const bool shiny = ux3IsShiny(*pokemon);
             if (auto* sprite = SpriteManager::getIconSprite(pokemon->species, shiny); sprite && sprite->data)
                 fb.drawSpriteStaticContained(cx + 28, cy + 6, 56, 56, sprite->width, sprite->height, sprite->data, sprite->channels);
-            fb.drawText(cx + 7, cy + 68, Names::getSpeciesName(pokemon->species), shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+            fb.drawText(cx + 7, cy + 68, Names::getSpeciesName(pokemon->species), Colors::Text, TextStyle::Caption);
+            if (shiny) fb.drawShinyMark(cx + cellW - 30, cy + 6, 14, Colors::ShinyStar);
         } else if (i == writable) {
             fb.drawText(cx + 7, cy + 56, "Empty • writable", Colors::Accent, TextStyle::Caption);
         } else {
@@ -659,11 +702,12 @@ void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.recordLabel = "Staged box record";
     view.sourceStateLabel = "STAGED VIEW / READ ONLY";
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);
+    drawNavBar(fb, {{"B", "Back"}});
 }
 
 std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state) {
     if (state.picker == UX2Picker::Species)
-        return "D-pad/Stick: Navigate | L/R: Page | Y: Shiny | A: Select | B: Cancel";
+        return "D-pad/Stick: Navigate | L/R: Page | X: Search | Y: Shiny | A: Select | B: Cancel";
     if (state.picker == UX2Picker::Move)
         return "D-pad/Stick: Navigate | L/R: Page | A: Select | B: Cancel";
     switch (state.mode) {
@@ -686,11 +730,14 @@ std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state
 
 void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
     if (state.picker == UX2Picker::Species) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"Y", "Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
+        PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec spec;
+        spec.xLabel = "Search";
+        spec.yLabel = "Normal/Shiny";
+        UI::SharedEditorChrome::drawPickerFooter(fb, spec);
         return;
     }
     if (state.picker == UX2Picker::Move) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
+        UI::SharedEditorChrome::drawPickerFooter(fb);
         return;
     }
     switch (state.mode) {
@@ -701,7 +748,7 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::AddDraft:
             drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}}); return;
         case UX2Mode::Actions:
-            drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Back"}}); return;
+            UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); return; // Browse, A Select, B Cancel
         case UX2Mode::LevelExpEditor:
         case UX2Mode::MoveEditor:
         case UX2Mode::DVEditor:
@@ -728,16 +775,29 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
     };
 
     if (state.picker == UX2Picker::Species) {
+        // R2-SEARCH touch phase: the search key grid and the list scrollbar own their touches.
+        uint16_t chosen = static_cast<uint16_t>(std::clamp(state.pickerValue, 1, 151));
+        const auto handled = SharedSpeciesPicker::handleTouch(
+            state.speciesChooser, SharedSearchInput::sample(touch), chosen, 151,
+            SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, ux3SpeciesAvailable, ux3SpeciesName);
+        state.pickerValue = chosen;
+        if (handled.touch) return down;
         // Keep the existing preview steady while a contact may become a swipe.
         // The release-confirmed row target is the only direct-tap selection.
         int species = selectedId(3000, 152, tapped);
-        if (species >= 1) { state.pickerValue = species; down |= HidNpadButton_A; }
+        if (species >= 1) {
+            // A row tap commits that species: close the search grid so the synthesized A is
+            // the chooser's Select, not a key press on the grid (keys phase runs next).
+            state.speciesChooser.search.closeGrid();
+            state.pickerValue = species; down |= HidNpadButton_A;
+        }
         const int dy = touch.deltaY();
         if (touch.justReleased() && touch.dragged() &&
             SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
             std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
             const int steps = std::max(1, std::abs(dy) / 43);
-            state.pickerValue = std::clamp(state.pickerValue + (dy < 0 ? steps : -steps), 1, 151);
+            state.pickerValue = SharedSpeciesPicker::neighbour(
+                state.speciesChooser, chosen, dy < 0 ? steps : -steps);
         }
         return down;
     }
@@ -747,11 +807,19 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         int current = 0;
         for (int i = 0; i < static_cast<int>(choices.size()); ++i)
             if (choices[static_cast<size_t>(i)] == state.pickerValue) { current = i; break; }
-        constexpr int visible = 9;
+        constexpr int visible = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout().visibleRows;
         const int count = static_cast<int>(choices.size());
         state.pickerViewport.ensure(current, count, visible);
         const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
-        if (maxFirst > 0)
+        // Shared scrollbar first: a held thumb moves the window, never the chosen Move, and
+        // owns the frame's touch so no row underneath can be tapped or dragged.
+        const auto pickerBar = SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(count, visible, state.pickerViewport.firstRow));
+        if (pickerBar.changed) {
+            state.pickerViewport.firstRow = pickerBar.scroll;
+            state.pickerScroll.stop();
+        }
+        if (maxFirst > 0 && !pickerBar.consumed)
             // Exactly the drawn list: the live Move picker is kGen1MovePickerW wide and centred
             // (ux3DrawPicker list = panel x + 24, width w - 48, top y + 86).
             state.pickerScroll.updateVertical(
@@ -767,7 +835,7 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
                     HidNpadButton_L | HidNpadButton_R))
             state.pickerScroll.stop();
         int index = selectedId(4000, static_cast<int>(choices.size()), tapped);
-        if (index >= 0) {
+        if (index >= 0 && !pickerBar.consumed) {
             state.pickerScroll.stop();
             state.pickerValue = choices[static_cast<size_t>(index)];
             down |= HidNpadButton_A;

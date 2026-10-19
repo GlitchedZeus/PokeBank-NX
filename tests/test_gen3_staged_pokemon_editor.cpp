@@ -189,6 +189,33 @@ void runGame(SourceGame game, Family family) {
         assert(added->nickname == "DRAFT" && added->level == 50 && added->otName == "BLUE" && added->tid == 0);
         assert(identity->originalBytes() == immutableSource);
         identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        // A blank English nickname defaults to the upper-case retail species name.
+        BoxPokemonCreate unnamed; unnamed.species = 25; unnamed.level = 5; unnamed.language = 2;
+        unnamed.otName = "BLUE";
+        assert(identity->stageAddBoxPokemon(0, 1, unnamed, error));
+        assert(identity->boxedPokemon(0, 1, error)->nickname == "PIKACHU");
+        identity->discard();
+        // Japanese records: 5-character nickname and OT (PKHeX PK3); a 6th character is refused.
+        BoxPokemonCreate japanese; japanese.species = 25; japanese.level = 5; japanese.language = 1;
+        japanese.otName = "サトシ";
+        japanese.nickname = "ピカチュウ";
+        assert(identity->stageAddBoxPokemon(0, 1, japanese, error));
+        identity->discard();
+        japanese.nickname = "ピカチュウダ";
+        assert(!identity->stageAddBoxPokemon(0, 1, japanese, error));
+        japanese.nickname = "ピカ"; japanese.otName = "サトシサトシ";
+        assert(!identity->stageAddBoxPokemon(0, 1, japanese, error));
+        assert(identity->stagedBytes() == immutableSource);
+        // Pokerus strain 0 with days left is never written (Create or Edit); real states are.
+        BoxPokemonCreate sick; sick.species = 25; sick.level = 5; sick.language = 2; sick.otName = "BLUE";
+        sick.pokerus = 0x0F;
+        assert(!identity->stageAddBoxPokemon(0, 1, sick, error));
+        BoxPokemonEdit pokerus; pokerus.pokerus = 0x0F;
+        assert(!identity->stageBoxPokemonEdit(0, 0, pokerus, error));
+        pokerus.pokerus = 0x21;
+        assert(identity->stageBoxPokemonEdit(0, 0, pokerus, error));
+        identity->discard();
+        error.clear();
         create.otName = "TOOLONGOT";
         assert(!identity->stageAddBoxPokemon(0, 1, create, error));
         assert(identity->stagedBytes() == immutableSource);
@@ -384,6 +411,20 @@ void runGame(SourceGame game, Family family) {
         correlated = editor->boxedPokemon(0, 3, error);
         assert(correlated && correlated->encryptedBytes == correlatedEditPreview->encryptedBytes);
 
+        // Unown's letter is the PID-derived Gen III form: the staged editor reaches it through a
+        // PID re-roll that keeps Nature / Shiny, and refuses a letter for any other species.
+        {
+            BoxPokemonEdit unown;
+            unown.species = 201;
+            unown.form = 7; // H
+            auto unownPreview = editor->previewEdit(0, 3, unown, error);
+            assert(unownPreview && error.empty() && unownPreview->form == 7);
+            assert(unownPreview->nature == correlated->nature && unownPreview->shiny == correlated->shiny);
+            BoxPokemonEdit wrongSpecies;
+            wrongSpecies.form = 3;
+            assert(!editor->previewEdit(0, 3, wrongSpecies, error));
+        }
+
         const auto beforeImpossible = editor->stagedBytes();
         BoxPokemonEdit impossibleGender;
         impossibleGender.species = 81; // Magnemite is genderless.
@@ -442,6 +483,12 @@ void runGame(SourceGame game, Family family) {
     assert(editor->placeSparseMove(0, 5, error));
     assert(!editor->boxedPokemon(0, 0, error));
     assert(editor->boxedPokemon(0, 5, error)->encryptedBytes == originalMon);
+    {
+        // One Review row per Move, in player words (S04 follow-up, same as Gen IV/V).
+        const auto& move = editor->pendingChanges().back();
+        assert(move.label == "Move Pokemon" && move.beforeValue == "1 Pokemon" &&
+               move.afterValue == "Box 1 / Slot 6");
+    }
     assert(editor->boxedPokemon(0, 2, error)->encryptedBytes == originalMon);
     assert(editor->beginSparseMove(0, {7,2}, error));
     // First row-major source is 2; slot 7 is one row down, one column left.

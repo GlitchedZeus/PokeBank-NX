@@ -1,4 +1,5 @@
-#include "UI/MovePickerRowUI.h"
+#include "UI/SharedEditorChrome.h"
+#include "UI/SharedMovesPanel.h"
 // Hardware-retest adapter for the shared Generation II move picker.
 // The underlying picker/session code remains unchanged; this layer narrows the
 // normal Move list to Empty + exact-game-compatible choices, matching Gen I.
@@ -54,17 +55,6 @@ void normalizeHardwareMovePicker(const TrainerViewScreen& screen, const State& s
     if (!hardwareMoveAllowed(screen, state, picker.model.moveChoice())) picker.model.index = 0;
 }
 
-void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
-                            PickerOverlayState& picker, int delta) {
-    const auto& choices = hardwareCompatibleMoveChoices(screen, state);
-    if (choices.empty()) { picker.model.index = 0; return; }
-    const int count = static_cast<int>(choices.size());
-    const int current = hardwareMoveChoicePosition(choices, picker.model.moveChoice());
-    int next = (current + delta) % count;
-    if (next < 0) next += count;
-    picker.model.index = static_cast<int>(choices[static_cast<std::size_t>(next)]);
-}
-
 void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                             const PokeBank::UIModel::Gen2PokemonPicker::Model& model) {
     const int W = fb.getWidth(), H = fb.getHeight();
@@ -74,9 +64,16 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
     fb.drawText(x + 24, y + 18, "Move — Generation II", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-                "Empty + compatible moves only • exact Gen II Acc / Pwr / PP",
-                Colors::TextDim, TextStyle::Caption);
+    {
+        const std::string scope = "Compatible moves only";
+        int sw = 0, sh = 0;
+        fb.measureText(scope, sw, sh, TextStyle::Caption);
+        fb.drawText(x + panelW - 24 - sw, y + 26, scope, Colors::TextDim, TextStyle::Caption);
+    }
+    // The shared Move chooser rows (UI/SharedMovesPanel.h): No. / Move / Type / Pwr / Acc / PP,
+    // exact Gen II facts from pret/pokecrystal, same columns as Gen I and Gen III-V.
+    const auto columns = UI::SharedMovesPanel::chooserColumns(x + 40, panelW - 80);
+    UI::SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, Enums::GameVersion::GSC);
 
     const auto choices = hardwareCompatibleMoveChoices(screen, state);
     const int count = static_cast<int>(choices.size());
@@ -103,11 +100,12 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         if (selected)
             fb.drawSelectionHighlight(x + 24, yy, panelW - 48,
                                       kHardwareMovePickerLayout.highlightHeight);
-        MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC);
+        UI::SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, move, Enums::GameVersion::GSC, selected);
     }
     fb.clearClip();
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                    {"A", "Select"}, {"B", "Cancel"}});
+    SharedScrollbar::drawAndPublish(fb, overlay.moveScrollbar, x + panelW - 18, viewportTop,
+        SharedScrollbar::kTrackWidth, viewportH, SharedScrollbar::rows(count, visible, first));
+    UI::SharedEditorChrome::drawPickerFooter(fb);
 }
 
 } // namespace
@@ -147,7 +145,14 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int listY = (720 - kHardwareMovePickerLayout.height) / 2 + kHardwareMovePickerLayout.rowStart;
     const int listW = kHardwareMovePickerLayout.width - 48;
     const int listH = visible * kHardwareMovePickerLayout.rowStep;
-    if (maxFirstRow > 0) {
+    // Shared scrollbar first: a held thumb moves the window, never the move, and owns the touch.
+    const auto moveBar = SharedScrollbar::handleTouch(picker.moveScrollbar, SharedScrollbar::sample(touch),
+        SharedScrollbar::rows(count, visible, picker.moveViewport.firstRow));
+    if (moveBar.changed) {
+        picker.moveViewport.firstRow = moveBar.scroll;
+        picker.moveScroll.stop();
+    }
+    if (maxFirstRow > 0 && !moveBar.consumed) {
         picker.moveScroll.updateVertical(
             touch, listX, listY, listW, listH, kHardwareMovePickerLayout.rowStep,
             picker.moveViewport.firstRow, maxFirstRow + 1);
@@ -155,7 +160,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         picker.moveScroll.stop();
     }
     const int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
+    if (!moveBar.consumed && touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);
         down |= HidNpadButton_A;
     }
@@ -170,16 +175,19 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         closePicker(screen, picker);
         return true;
     }
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
-               HidNpadButton_Left | HidNpadButton_Right))
+    // Shared list paging over the compatible choices (Gen13PickerPaging.h).
+    const PokeBank::UIModel::SharedPickerPaging::Keys pageKeys{
+        (nav & HidNpadButton_Up) != 0, (nav & HidNpadButton_Down) != 0,
+        (nav & HidNpadButton_Left) != 0, (nav & HidNpadButton_Right) != 0,
+        (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+        (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+    if (pageKeys.any() && count > 0) {
         picker.moveScroll.stop();
-    if (nav & HidNpadButton_Up) stepHardwareMovePicker(screen, state, picker, -1);
-    if (nav & HidNpadButton_Down) stepHardwareMovePicker(screen, state, picker, 1);
-    if (nav & HidNpadButton_Left) stepHardwareMovePicker(screen, state, picker, -10);
-    if (nav & HidNpadButton_Right) stepHardwareMovePicker(screen, state, picker, 10);
+        const int next = PokeBank::UIModel::SharedPickerPaging::pagedRow(selectedPos, count, pageKeys);
+        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(next)]);
+    }
     const int focusedPos = hardwareMoveChoicePosition(touchChoices, picker.model.moveChoice());
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
-               HidNpadButton_Left | HidNpadButton_Right))
+    if (pageKeys.any())
         picker.moveViewport.reveal(focusedPos, count, visible);
     if (down & HidNpadButton_A) {
         if (!picker.moveViewport.containsSelection(focusedPos, count, visible)) {

@@ -12,7 +12,7 @@ Every input is synthetic and built in code. No real save, ROM or key is read or 
 ## Quick start
 
 ```sh
-git submodule update --init vendor/PKSM-Core
+git submodule update --init --recursive vendor/PKSM-Core   # nested memecrypto is required
 make -f Makefile.host qa                       # fuzz smoke + export contracts + Gen I-V matrix + tooling (CI gate)
 make -f Makefile.host qa-matrix                # Gen I-V acceptance matrix only (docs/qa/GEN1_5_MATRIX.md)
 make -f Makefile.host CXX=clang++ qa           # the same under Clang
@@ -90,9 +90,12 @@ byte-identical, and writes a hardware-test record whose status is always **NOT D
 Regression: `tests/test_qa_nro_audit.py`.
 
 [`app-qa-nro-audit.yml`](../../.github/workflows/app-qa-nro-audit.yml) runs the audit in CI against
-the exact artifact a candidate run published (downloaded from that run, never rebuilt). Its pinned
-default is the Gen I–V candidate `fa9cfcea` (run 38673482742, artifact 11945232986); dispatch it with
-other inputs for later candidates.
+the exact artifact a candidate run published (downloaded from that run, never rebuilt). It has NO
+defaults (QA-F9): a pull_request run reads the candidate identity only from
+[`CANDIDATE_UNDER_AUDIT.env`](CANDIDATE_UNDER_AUDIT.env), and a dispatch run only from its required
+inputs. Every value is bound to GitHub's run and artifact records, and on pull_request the candidate
+must be built from the head under test, with no application file changed since. When a new candidate
+is published, update every line of that file together.
 
 ## 4. CI
 

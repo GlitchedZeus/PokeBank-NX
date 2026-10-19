@@ -192,6 +192,119 @@ void flow(const std::string& dir, G::SaveFamily family, const char* game, uint8_
     std::remove((db + ".bak").c_str());
 }
 
+std::string slurpText(const std::string& path) {
+    const auto bytes = diskBytes(path);
+    return std::string(bytes.begin(), bytes.end());
+}
+
+// DeSmuME / DraStic .dsv: the backup is the WHOLE source file, verbatim (the
+// emulator metadata and the 40-byte footer included, hashed in the manifest);
+// edited.sav stays the raw 0x80000 SAV5. A missing, mismatched or mislabeled
+// container is refused before anything is published.
+void dsvBackupIsVerbatim(const std::string& dir) {
+    const auto family = G::SaveFamily::BlackWhite;
+    std::vector<uint8_t> raw(L::FullSaveSize, 0);
+    writeCopy(raw, 0, family, 21, 'D', 5);
+    writeCopy(raw, L::BlackWhiteCopySize, family, 21, 'D', 5);
+    std::vector<uint8_t> dsv = raw;
+    for (int i = 0; i < 82; ++i) dsv.push_back(static_cast<uint8_t>(0xA0 + (i % 16))); // metadata
+    std::array<uint8_t, 40> footer{};
+    const auto le32 = [&](size_t at, uint32_t v) {
+        for (int b = 0; b < 4; ++b) footer[at + b] = static_cast<uint8_t>(v >> (8 * b));
+    };
+    le32(0, static_cast<uint32_t>(L::FullSaveSize));
+    le32(4, static_cast<uint32_t>(L::FullSaveSize));
+    const char marker[] = "|-DESMUME SAVE-|";
+    std::copy(marker, marker + 16, footer.begin() + 24);
+    dsv.insert(dsv.end(), footer.begin(), footer.end());
+    const std::string path = dir + "/black_nds.dsv";
+    writeFile(path, dsv);
+
+    const auto rows = G::inspectSourceChoices(path, "DraStic", "black_nds");
+    assert(!rows.empty() && rows.front().ready());
+    const std::string profile(32, 'd');
+    const std::string db = dir + "/bindings_dsv";
+    {
+        B::LegacySourceBindings bindings(db);
+        assert(bindings.load());
+        assert(G::assignValidatedSource(bindings, rows.front(), profile, "black_nds").success);
+    }
+    B::LegacySourceBindings reloaded(db);
+    assert(reloaded.load());
+    const auto opened = G::openAssignedSource(reloaded, profile, "black_nds", G::SaveCopySelection::Primary,
+                                              rows.front().contentFingerprint);
+    assert(opened.ready());
+    std::string error;
+    auto trainer = B::Gen5ReadOnlyTrainer::create(*opened.save, "black_nds", error);
+    assert(trainer);
+    auto& ws = trainer->stagedPokemon();
+    assert(ws.stagedTrainer(&error)->setMoney(4242, &error));
+
+    std::vector<uint8_t> file, payload;
+    std::string container;
+    assert(G::readSourceFileReadOnly(path, file, payload, error, &container));
+    assert(container == "dsv-footer" && file == dsv && payload == raw);
+
+    const std::string root = dir + "/exports";
+    ::mkdir(root.c_str(), 0700);
+    G::WorkingCopyExportRequest req;
+    req.profileIdentity = profile;
+    req.timestamp = "20261015_093000";
+    req.sourcePath = path;
+    req.applicationSha = "host-e2e";
+    req.observedSourceBytes = payload;
+    req.rootDirectory = root;
+    // A .dsv source without its verbatim bytes is refused (no payload-only backup).
+    req.sourceContainer = container;
+    assert(!G::publishGen5WorkingCopy(ws, req).success);
+    // A file that does not wrap the validated payload is refused.
+    auto mismatched = dsv;
+    mismatched[0x100] ^= 0xFF;
+    req.observedSourceFile = mismatched;
+    assert(!G::publishGen5WorkingCopy(ws, req).success);
+    // A .dsv labeled as raw is refused.
+    req.observedSourceFile = file;
+    req.sourceContainer = "raw-nds-battery";
+    assert(!G::publishGen5WorkingCopy(ws, req).success);
+
+    req.sourceContainer = container;
+    const auto result = G::publishGen5WorkingCopy(ws, req);
+    assert(result.success && result.backupName == "original_backup.dsv");
+    assert(diskBytes(path) == dsv);                                   // source untouched
+    assert(diskBytes(result.directory + "/original_backup.dsv") == dsv); // verbatim, footer included
+    const auto edited = diskBytes(result.directory + "/edited.sav");
+    assert(edited.size() == L::FullSaveSize);                         // edited stays raw
+    const auto reparsed = G::Gen5ReadOnlySave::parse(edited, "black_nds", &error, G::SaveCopySelection::Primary);
+    assert(reparsed && G::decodeTrainer5(*reparsed)->money == 4242);
+    const auto manifest = slurpText(result.directory + "/EXPORT_MANIFEST.txt");
+    for (const std::string& line : {
+             std::string("SOURCE_CONTAINER=dsv-footer\n"),
+             "SOURCE_FILE_SIZE=" + std::to_string(dsv.size()) + "\n",
+             "SOURCE_FILE_SHA256=" + result.backupSha256 + "\n",
+             "SOURCE_SHA256=" + result.sourceSha256 + "\n",
+             std::string("SOURCE_SHA256_SCOPE=0x80000_SAV5_PAYLOAD\n"),
+             std::string("ORIGINAL_BACKUP=original_backup.dsv\n"),
+             "ORIGINAL_BACKUP_SHA256=" + result.backupSha256 + "\n",
+             std::string("ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE\n"),
+             std::string("EDITED_CONTAINER=raw-nds-battery\n")})
+        assert(manifest.find(line) != std::string::npos);
+    assert(result.backupSha256 != result.sourceSha256); // the file hash covers the footer too
+    for (const char* f : {"/original_backup.dsv", "/edited.sav", "/EXPORT_MANIFEST.txt"})
+        assert(std::remove((result.directory + f).c_str()) == 0);
+    assert(::rmdir(result.directory.c_str()) == 0);
+    assert(::rmdir((root + "/account-" + profile).c_str()) == 0);
+
+    // A raw source with its file bytes: the backup is that exact file, .sav.
+    const std::string rawPath = dir + "/black_nds_raw.sav";
+    writeFile(rawPath, raw);
+    assert(G::readSourceFileReadOnly(rawPath, file, payload, error, &container));
+    assert(container == "raw-nds-battery" && file == raw && payload == raw);
+    std::remove(path.c_str());
+    std::remove(rawPath.c_str());
+    std::remove(db.c_str());
+    std::remove((db + ".bak").c_str());
+}
+
 } // namespace
 
 int main() {
@@ -204,7 +317,8 @@ int main() {
         flow(dir, G::SaveFamily::Black2White2, "white2_nds", 22, backup);
         flow(dir, G::SaveFamily::Black2White2, "black2_nds", 23, backup);
     }
+    dsvBackupIsVerbatim(dir);
     assert(::rmdir((dir + "/exports").c_str()) == 0 && ::rmdir(dir.c_str()) == 0);
     std::cout << "Gen V source e2e: choose copy -> assign -> reopen -> stage -> export, "
-                 "original immutable, stale refused PASS\n";
+                 "original immutable, stale refused, .dsv backed up verbatim PASS\n";
 }

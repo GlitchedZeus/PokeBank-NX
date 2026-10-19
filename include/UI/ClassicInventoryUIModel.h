@@ -40,6 +40,30 @@ using ClassicInventoryActionAvailability = InventoryActionAvailability;
     bool categorySupported, bool hasSelection, bool quantityEditable) noexcept;
 [[nodiscard]] bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept;
 
+// Y on an item asks first ("Remove <item>?"); only a second Y removes it and B cancels, the same
+// confirm button as Release. B wins over Y in one frame, so a mashed pair never removes; A is inert.
+enum class ClassicRemoveConfirm : uint8_t { None, Remove, Cancel };
+[[nodiscard]] constexpr ClassicRemoveConfirm classicRemoveConfirmStep(bool y, bool b) noexcept {
+    if (b) return ClassicRemoveConfirm::Cancel;
+    if (y) return ClassicRemoveConfirm::Remove;
+    return ClassicRemoveConfirm::None;
+}
+
+// The one per-item quantity question every Gen I/II bag action asks: the maximum the item may
+// hold, and whether it has a quantity editor at all (key items, bikes, rods, HMs: fixed at 1, no
+// editor). Thread I's ItemQuantityPolicy can replace the body without touching callers.
+struct ClassicItemQuantity {
+    bool editable = false;
+    uint16_t minimum = 0;
+    uint16_t maximum = 0;
+};
+[[nodiscard]] ClassicItemQuantity classicItemQuantity(ClassicGame game, ClassicPocket pocket,
+                                                      uint16_t itemId) noexcept;
+// The same gate as classicItemQuantity, as the full QuantityPolicy rule the shared Gen I-V Bag Add
+// flow (UI/SharedBagAddFlow.h) consumes; invalid (valid == false) outside the classic catalog.
+[[nodiscard]] PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
+    ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
+
 } // namespace PokeBank::UIModel
 
 #endif

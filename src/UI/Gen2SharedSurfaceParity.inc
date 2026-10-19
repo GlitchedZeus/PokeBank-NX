@@ -1,3 +1,4 @@
+#include "UI/ClassicPokemonActionMenu.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/Gen2StagedAccess.h"
 #include "Gen2TrainerSessionOverlay.inc"
@@ -120,14 +121,13 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // Keep the live box as background; the narrow modal owns every foreground
     // hitbox. All active rows retain the exact Gen II staged command indices.
     screen.drawLegacyBase(fb);
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             title,
                             screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
 void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {

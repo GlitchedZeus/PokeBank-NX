@@ -16,17 +16,21 @@ lands, its reproduction moves into the passing suite as a regression test
 
 | ID | Severity | Area | Owner | Status |
 | --- | --- | --- | --- | --- |
-| QA-F2 | **Medium** (CI hygiene) | 3 invalid `one-time-*` workflow files fail on every push to every branch | Owner approval; coordinator | OPEN |
+| QA-F2 | **Medium** (CI hygiene) | 3 invalid `one-time-*` workflow files failed on every push to every branch | Thread 2R (applied); deletion: owner | **FIXED** on #307 in `96a44685` (indentation-only repair, triggers gated to `workflow_dispatch`); regression `tools/qa/check_workflows.py` in `qa-tools-test` and `app-qa-workflow-hygiene.yml` |
 | QA-F3 | Low | Common (and Gen V) export publish could replace a destination created after the uniqueness check | Thread 2 | **FIXED** in `fa9cfcea`; regression test in `qa-contracts` |
 | QA-F3b | Low | The same non-exclusive `rename()` publish remained in the Gen II transaction | Thread C (`Gen2ExportTransaction.cpp`) | **FIXED** on #307 (Thread C merge `cb88043`); regression `gen2PublishIsExclusive` in `qa-contracts` |
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
 | QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | **FIXED** in `bc83815`; regression in `test_qa_regressions.cpp` |
 | QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | **FIXED** on #307 (`PartyPreviewSlot.form`); regression in `test_qa_regressions.cpp` |
-| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread C (`RetroArchFRLGDiscovery.cpp` `identityHint`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread C (`RetroArchFRLGDiscovery.cpp` `identityHint`) | **FIXED** in `82032a9`; regression in `test_qa_regressions.cpp` |
+| QA-F7 | Low (editor gap) | Gen IV Unown letter (form) cannot be edited: `setForm` uses the personal table's raw form count (1), the pinned PKSM-Core normalises Unown to 28 | Thread C (`Pokemon4Mutable.cpp` `setForm`) | **FIXED** in `f17926f`; regression in `test_qa_regressions.cpp` |
+| QA-F8a | Low (presentation) | Gen IV net no-op clone + release reviewed as "(empty) (edited)" | Thread C | **FIXED** in `c7b0f97`; regression in `test_qa_regressions.cpp` |
+| QA-F8b | Low (export bytes) | Gen IV release zero-fills a slot that held an encrypted blank, so a net no-op clone + release still changes 126 bytes of the working copy / `edited.sav` that the review no longer lists | Thread C (`Gen4StagedPokemonEditor::stageReleaseBoxPokemon`) | **FIXED** in `f883f4d0`; regression in `test_qa_regressions.cpp` |
+| QA-F9 | **High** (release gate) | The candidate-NRO audit workflow fell back to hard-coded fa9cfcea identity defaults on every pull_request run, so run 38732921392 on #307 `a0633b6d` was green while auditing the OLD fa9cfcea NRO | Thread 4 (`app-qa-nro-audit.yml`) | **FIXED** on `audit/app-qa-20261014`; regression `tests/test_qa_nro_audit_workflow.py` in `qa-tools-test` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
-[Fuzzing evidence](#fuzzing-evidence)). All 18 export paths (including the Gen V Trainer Name/Money path and the production Gen I transaction `publishVerifiedGen1Export`) satisfy the five export-safety contracts.
+[Fuzzing evidence](#fuzzing-evidence)). All 18 export paths (including the Gen V Trainer Name/Money path and the production Gen I transaction `publishVerifiedGen1Export`) satisfy the six export-safety contracts C1–C6 (C6: Discard All restores the working copy and a later export is refused); see [SAVE_SAFETY_CHAIN.md](SAVE_SAFETY_CHAIN.md).
 
 ## QA-F4 (Low, defence in depth; FIXED in bc83815): Gen V PID replay guard conjoins the gender and ability links
 
@@ -49,7 +53,78 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   held and the new PID breaks it, and separately when the ability link held and the new PID breaks
   it.
 
-## QA-F6 (Low, identity): Gen III release hint is a substring of the whole path
+## QA-F7 (Low, editor gap; FIXED in f17926f): Gen IV Unown letter cannot be edited
+
+- **Found by:** the Gen I–V acceptance matrix (Gen IV fields cell), 2026-10-15; verified against the
+  pinned reference.
+- **Code:** `src/Pokemon/Pokemon4Mutable.cpp` `setForm`: `value >= base.formCount` with `base` read
+  from the Gen IV personal tables (`PersonalInfo4DP/PT/HGSS.cpp`), where Unown (201) has form count 1
+  because its letters share one stat entry.
+- **Reference:** `vendor/PKSM-Core/source/personal/personal.cpp` `PersonalDPPtHGSS::formCount`
+  returns 28 for species 201 ("Normalized to fit with other formCounts' return values").
+- **Effect:** in D/P, Pt and HG/SS the shared editor refuses every Unown letter except A, while other
+  multi-form species edit normally.
+- **Repro:** `tests/test_qa_known_failures.cpp` QA-F7. `createStored` Unown then `setForm(1)` is
+  refused in layout groups 77/78/79; Burmy (control) is accepted.
+- **Suggested fix:** use the same normalisation as the pinned reference for Unown's form bound. Any
+  extra Unown rules (e.g. letter/PID relation) need a citation before they are enforced.
+
+## QA-F9 (High, release gate; FIXED): the NRO audit audited a stale, defaulted artifact
+
+- **Reported by:** the owner, 2026-10-15, on #307 head `a0633b6d`.
+- **Evidence status:** run **38732921392** ("Exact-head audit of the published candidate NRO") is
+  **INVALID as candidate evidence**. It downloaded and audited the fa9cfcea NRO from run 38673482742,
+  not the a0633b6d candidate from run 38732921202.
+- **Cause:** `.github/workflows/app-qa-nro-audit.yml` defined the candidate identity in a top-level
+  `env:` block as `${{ github.event.inputs.X || '<fa9cfcea default>' }}`. A pull_request run has no
+  inputs, so every pull_request run audited the hard-coded fa9cfcea artifact against its own
+  fa9cfcea identity and passed. A `paths:` filter could also skip the audit on heads that did not
+  touch QA files.
+- **Fix:**
+  - The identity comes from exactly one source: all-required `workflow_dispatch` inputs (now
+    including `artifact_id`, `tree_sha` and `nro_file`), or, for pull_request,
+    `docs/qa/CANDIDATE_UNDER_AUDIT.env`. There are no defaults, no `||` and no identity literal in
+    the workflow.
+  - Formats are validated: 40-hex SHAs, 64-hex SHA-256, numeric run, artifact and size.
+  - The run is bound through the GitHub API: `head_sha` == CODE_SHA, `conclusion` == success, and the
+    path is `gen15-integrated-candidate.yml`. The run must hold exactly one artifact named
+    ARTIFACT_NAME, with id == ARTIFACT_ID, not expired.
+  - pull_request staleness guard: CODE_SHA must be an ancestor of the head, and no non-QA file may
+    have changed since it was built (any changed file is listed). `CODE_SHA^{tree}` must equal
+    TREE_SHA.
+  - `BUILD_IDENTITY.txt` (APPLICATION_SHA, TREE_SHA, ARTIFACT, SIZE_BYTES, SHA256, RUN_ID,
+    DEVICE_ACCEPTED=false), `SHA256SUMS.txt` and the NRO's own sha256sum and size must all agree,
+    and only then does `nro_audit.py` run.
+  - The `paths:` filter is removed, every identity field goes to the step summary, and the record is
+    named `app-qa-nro-audit-<CODE_SHA short>`.
+- **Regression:** `tests/test_qa_nro_audit_workflow.py`, run in `make qa-tools-test` through
+  `test_qa_regressions_assets.py`. It reports 24 violations on the old workflow and passes on the new
+  one. The workflow's shell steps were also dry-run locally on the real identity file:
+  - resolution passes, and a malformed value fails;
+  - the staleness guard passes on this head and fails, listing the file, when an application file
+    changes;
+  - the cross-check passes on a matching synthetic artifact and fails on `DEVICE_ACCEPTED=true` or a
+    size mismatch.
+  GitHub's record for run 38732921202 matches the binding: head_sha a0633b6d…, success,
+  `.github/workflows/gen15-integrated-candidate.yml`.
+- **Valid evidence:** the first pull_request run of this workflow on the #307 head that carries this
+  fix, auditing a0633b6d (run 38732921202, artifact 11970313582).
+
+## QA-F8 (Low; FIXED: review half QA-F8a in c7b0f97, export-bytes half QA-F8b in f883f4d0): Gen IV no-op release
+
+- **Found by:** the Gen I–V acceptance matrix (Gen IV actions cell), 2026-10-15.
+- **Code:** `Gen4StagedPokemonEditor::stageReleaseBoxPokemon` writes an all-zero record; empty box
+  slots in a save hold an encrypted blank record (both mean empty). `describeStagedSlotChanges`
+  (`Gen4ExportTransaction.cpp`) compares records, so the slot is listed as "(empty) (edited)".
+- **Effect:** clone into an empty slot, then release that clone: the review and the export manifest
+  show "Box 2 slot 1: (empty) (edited)", and `edited.sav` differs from the source in that slot,
+  although the player changed nothing.
+- **Repro:** `tests/test_qa_known_failures.cpp` QA-F8b, regression QA-F8a in `test_qa_regressions.cpp` (synthetic D/P save from `qasynth::gen4`).
+- **Status:** the review now skips empty→empty slots (c7b0f97, regression QA-F8a). The export-bytes half
+  **QA-F8b** (126 bytes on the synthetic D/P save) is fixed in f883f4d0: release restores the source's own
+  empty record (regression QA-F8b).
+
+## QA-F6 (Low, identity; owner Thread C; FIXED in 82032a9): Gen III release hint is a substring of the whole path
 
 - **Found by:** the Gen I–V acceptance matrix (Phase 5, `tests/test_qa_matrix_gen3.cpp` identity
   cell), 2026-10-15. Confirmed with a dedicated repro.
@@ -94,7 +169,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   accepted card output", and Gen I–III also pass `false`. These are recorded for the Phase 5 matrix
   cross-generation comparison (owner C for Gen I–IV) rather than filed as defects.
 
-## QA-F2 (Medium): invalid workflow files produce a failed run on every push
+## QA-F2 (Medium; FIXED on #307 in 96a44685): invalid workflow files produced a failed run on every push
 
 - **Files:** `.github/workflows/one-time-product-direct-launch-fix.yml` (YAML error line 70),
   `one-time-product-direct-launch-fix-v2.yml` (line 67), `one-time-quick-games-freeze-fix-20261005.yml`
@@ -174,6 +249,8 @@ Local runs on the audited head (Ubuntu 24.04, GCC 13.3, Clang 18.1):
 | `make qa` under GCC and under Clang (deterministic runner plain + ASan/UBSan, all 8 targets; 17 export contracts; NRO audit regression) | pass |
 | libFuzzer 30 s/target (smoke) | clean: 59k / 37k / 1.4k / 0.9k / 0.2k / 607k / 3.8k / 69 execs |
 | libFuzzer soak 240 s/target | clean: gen1 545k, gen2 327k, gen3 13k, gen4 11k, gen5-bag 35k, gen5-sav 2.6k, source-containers 733 execs |
+| `fuzz_launch_plan` (Thread L launch/return plan, 2026-10-15): deterministic 140k execs ASan/UBSan + libFuzzer 1.75M runs / 180 s | clean: plan argv == libnx tokenisation, loader caps held, hosted argv accepted unchanged by the return host, return host never used unless enabled, return-selection round trip |
+| `fuzz_home_cache` (Home snapshot cache, Gen IV/V cards, 2026-10-15): deterministic 280k execs ASan/UBSan + libFuzzer 597k runs / 120 s | clean: unassigned/missing never parse or show an old party; reuse only for same path+binding+stamp; failed re-validation never Current, Stale only with the same assignment's data; a write during the parse forces the next re-parse |
 | libFuzzer soak 240 s, `fuzz_pk_records` | first run stopped on an all-zero PK4 record: harness gap (blank-slot convention), fixed, input kept as regression corpus; re-run clean, 4.7M execs |
 
 CI evidence for this branch is linked from the draft PR.

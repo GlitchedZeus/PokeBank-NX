@@ -1,3 +1,6 @@
+#include "UI/SharedEditorPresentation.h"
+#include "UI/Gen1ListFit.h"
+#include "UI/ClassicPokemonActionMenu.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
@@ -36,10 +39,12 @@ struct UX2State {
     TouchPickerViewport editorViewport;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
+    SharedScrollbar::State pickerScrollbar;   // R2-SCROLLBAR: draggable thumb on the Move chooser
     TouchScrollState reviewScroll;
     TouchPickerViewport reviewViewport;
 
     UX2Picker picker = UX2Picker::None;
+    SharedSpeciesPicker::Chooser speciesChooser;   // R2-SEARCH: live species filter + key grid
     int pickerValue = 0;
     uint16_t pickerCommittedSpecies = 1;
     int moveSlot = 0;
@@ -494,7 +499,7 @@ void ux2HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
             break;
         case 1: {
             const std::string initial = add
-                ? (state.draft.nickname.empty() ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname)
+                ? (state.draft.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname)
                 : pokemon->nickname;
             const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
             if (!result.accepted) break;
@@ -866,9 +871,11 @@ void ux2DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     const int listX = x + 338;
     const int listW = w - 370;
     const int listY = y + 92;
-    const int viewportH = h - 184;
     constexpr int rowH = 48;
-    const int visible = std::max(1, viewportH / rowH);
+    // Whole rows only, ending above the status divider (y + h - 76): the focused row is never
+    // drawn under it, and no "Row x/y" counter is shown (Gen1ListFit.h).
+    const int visible = PokeBank::UIModel::Gen1ListFit::wholeRows(listY, y + h - 76 - 4, rowH, 13);
+    const int viewportH = visible * rowH;
     const int start = std::clamp(state.row - visible / 2, 0, std::max(0, 13 - visible));
 
     fb.setClipRect(listX, listY, listW, viewportH);
@@ -881,43 +888,14 @@ void ux2DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     const int statusY = y + h - 66;
     fb.drawHDivider(listX, statusY - 10, listW);
-    fb.drawText(listX, statusY,
-        "Row " + std::to_string(state.row + 1) + "/13   •   " + ux2SectionForRow(state.row),
-        Colors::TextDim, TextStyle::Caption);
+    fb.drawText(listX, statusY, ux2SectionForRow(state.row), Colors::TextDim, TextStyle::Caption);
 }
 
-// Resolve each visual item to the existing Gen I action index. The older
-// narrow menu's unavailable source-transfer options stay visibly greyed out.
+// The Gen I action sheet lists only the commands the staged editor performs, each carrying its
+// native action index (ClassicPokemonActionMenu.h); shiny is edited inside the editor.
 template <typename ActionList>
-PokeBank::UIModel::NarrowPokemonMenu::Model ux2NarrowActions(
-    const ActionList& actions, bool occupied) {
-    namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
-    const auto native = [&](UX::Action command) {
-        for (int i = 0; i < static_cast<int>(actions.count); ++i)
-            if (actions[static_cast<std::size_t>(i)] == command) return i;
-        return -1;
-    };
-    Narrow::Model model{};
-    if (!occupied) {
-        model.append("Add Pokemon", native(UX::Action::AddPokemon));
-        const int review = native(UX::Action::ReviewPendingChanges);
-        if (review >= 0) model.append("Review Pending Changes", review);
-        model.append("Cancel", native(UX::Action::Cancel));
-        return model;
-    }
-    model.append("View Pokemon", native(UX::Action::View));
-    model.append("Add to Master Vault");
-    model.append("Add to Bank...");
-    model.append("Transfer to Game...");
-    model.append("Edit", native(UX::Action::Edit));
-    model.append("Clone", native(UX::Action::Clone));
-    model.append("Release", native(UX::Action::Remove));
-    model.append("Make Shiny");
-    model.append("Legality & Provenance", native(UX::Action::LegalityProvenance));
-    const int review = native(UX::Action::ReviewPendingChanges);
-    if (review >= 0) model.append("Review Pending Changes", review);
-    model.append("Cancel", native(UX::Action::Cancel));
-    return model;
+PokeBank::UIModel::NarrowPokemonMenu::Model ux2NarrowActions(const ActionList& actions, bool) {
+    return PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);
 }
 
 void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, int, int) {
@@ -1115,14 +1093,14 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto* trainer = rbyTrainer(screen);
     auto* e = editor(screen);
-    fb.drawText(x + 24, y + 18, "Generation I Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     const std::array<std::pair<const char*,std::string>,8> rows{{
         {"Source game", screen.sourceGameId},
         {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese — editing disabled" : "International — validated editor"},
         {"Source mutation", "HARD DISABLED"},
         {"Party mutation", "DEFERRED"},
         {"Format validation", "Strict reparse + checksum on export"},
-        {"Encounter legality", "Not checked yet"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked yet"},
         {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
         {"Pending semantic changes", std::to_string(pendingLines(screen).size())},
     }};

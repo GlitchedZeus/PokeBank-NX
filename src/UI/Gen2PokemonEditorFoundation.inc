@@ -1,3 +1,6 @@
+#include "UI/SharedEditorChrome.h"
+#include "UI/ClassicFieldColor.h"
+#include "UI/ClassicGameContext.h"
 // Generation II shared DETAILS | VALUES | MOVES workspace.
 // This stays layered over the accepted GSC discovery/export/action-sheet implementation.
 // Browsing edits only a local session record; StagedEditor is touched solely by Add / Keep.
@@ -12,6 +15,8 @@
 #include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/Gen2WorkspaceLayers.h"
+#include "UI/Gen12DVReroll.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -158,7 +163,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     Gen2::PokemonRecord p;
     p.species = 25;
     p.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel;
-    p.nickname = Names::getSpeciesName(p.species);
+    p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
     p.originalTrainer = editor.trainerName();
     p.trainerId = editor.trainerId();
     p.heldItem = 0;
@@ -290,7 +295,7 @@ bool stageCreate(TrainerViewScreen& screen) {
     }
 
     const std::string displayName = state.working.nickname.empty()
-        ? std::string(Names::getSpeciesName(state.working.species)) : state.working.nickname;
+        ? PokeBank::UIModel::classicDefaultNickname(state.working.species) : state.working.nickname;
     const int destinationBox = state.box;
     std::size_t slot = 0;
     std::string error;
@@ -412,8 +417,17 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
         screen.postStatus("Shiny on: " + changes + " (stats and Hidden Power follow)", 300);
 }
 
-void randomizeDVs(State& state) {
-    applyEditableDVs(state.working, Foundation::randomDVs(state.rng));
+// Y Random DVs: a new roll that keeps shiny state, Gen II gender (Attack DV vs. ratio) and the
+// Unown letter. False when no other combination keeps them (the draft is unchanged).
+bool randomizeDVs(State& state) {
+    namespace Reroll = PokeBank::UIModel::Gen12DVReroll;
+    const uint16_t species = state.working.species;
+    const auto result = Reroll::reroll(editableDVs(state.working), state.rng,
+        [species](uint8_t attack) { return static_cast<int>(Gen2::genderFromAttackDV(species, attack)); },
+        species == 201);
+    if (!result.changed) return false;
+    applyEditableDVs(state.working, result.dvs);
+    return true;
 }
 
 void openHeldItemPicker(State& state) {
@@ -436,12 +450,12 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
     switch (state.row) {
         case 0: {
             const uint16_t oldSpecies = p.species;
-            const std::string oldDefault = Names::getSpeciesName(oldSpecies);
+            const std::string oldDefault = PokeBank::UIModel::classicDefaultNickname(oldSpecies);
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
-                p.nickname = Names::getSpeciesName(p.species);
+                p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
             refreshDerived(p);
             break;
         }
@@ -621,23 +635,30 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
 }
 
 bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
+    // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
+    // One button acts per frame (Gen2WorkspaceLayers::exitConfirmStep): a Keep that fails to stage
+    // leaves the dialog open and never falls through to Discard or Back in the same frame.
+    // The local session still never mutates source bytes; only the PokeBank staged copy can change.
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
     const bool create = state.mode == Mode::Create;
-    if (down & HidNpadButton_A) {
-        if (create ? stageCreate(screen) : stageEdit(screen)) return true;
-    }
-    if (down & HidNpadButton_Y) {
-        // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
-        // The local session still never mutates source bytes; only the PokeBank staged copy can change.
-        screen.postStatus(create
-            ? "Create draft discarded; staged/source bytes unchanged"
-            : "This Edit session discarded; earlier staged work preserved", 300);
-        state.discard();
-        closeToActions(screen);
-        return true;
-    }
-    if (down & HidNpadButton_B) {
-        state.continueEditing();
-        screen.controllerNavigation.reset();
+    switch (Layers::exitConfirmStep((down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+                                    (down & HidNpadButton_Y) != 0)) {
+        case Layers::ExitChoice::Keep:
+            (void)(create ? stageCreate(screen) : stageEdit(screen));
+            return true;
+        case Layers::ExitChoice::Discard:
+            screen.postStatus(create
+                ? "Create draft discarded; staged/source bytes unchanged"
+                : "This Edit session discarded; earlier staged work preserved", 300);
+            state.discard();
+            closeToActions(screen);
+            return true;
+        case Layers::ExitChoice::Continue:
+            state.continueEditing();
+            screen.controllerNavigation.reset();
+            return true;
+        case Layers::ExitChoice::None:
+            return true;
     }
     return true;
 }
@@ -805,7 +826,7 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
     }
 
     const std::array<std::pair<std::string, std::string>, 3> extras{{
-        {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
+        {"Shiny", p.shiny ? "Yes" : "No"},
         {"Friendship", std::to_string(p.friendship)},
         {"Pokerus", pokerusText(p.pokerus)},
     }};
@@ -818,7 +839,8 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
                     state.panel == Foundation::Panel::Values && state.row == row
                         ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(i)].second,
-                    i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                    ::UI::ClassicFieldColor::shinyValueColor(state.panel == Foundation::Panel::Values && state.row == row),
+                    TextStyle::Caption);
     }
     fb.drawText(x + 18, y + h - 27, "* HP DV derived; one Special DV feeds SpA + SpD",
                 Colors::TextDim, TextStyle::Caption);
@@ -911,13 +933,18 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
             gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
             Grid::rows * Grid::rowPitch);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                    {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
+    PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec footer;
+    footer.gridPaging = true;
+    footer.xLabel = "Sort";
+    UI::SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
-void drawConfirm(PKSEFramebuffer& fb, const State& state) {
+void drawConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     // Reuse PKSE's native creator/details confirmation chrome. Generation II keeps its
     // existing PokeBank staging semantics underneath; this changes presentation/input only.
+    // The dialog owns the frame's touch and draws its own footer (the shared confirm footer
+    // from Gen2WorkspaceLayers), so nothing underneath it stays tappable.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
     const bool create = state.mode == Mode::Create;
     const int w = create ? 540 : 560;
     constexpr int h = 226;
@@ -940,6 +967,13 @@ void drawConfirm(PKSEFramebuffer& fb, const State& state) {
     drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
                     create ? "Keep" : "Save", Colors::PanelAlt);
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto footer = Layers::footer(Layers::Layer::ExitConfirm,
+                                       create ? Layers::Session::Create : Layers::Session::Edit);
+    std::vector<ControllerHint> hints;
+    for (std::size_t i = 0; i < footer.count; ++i)
+        hints.push_back({footer.hints[i].glyph, footer.hints[i].label});
+    drawNavBar(fb, hints);
 }
 
 } // namespace
@@ -963,8 +997,15 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::string title = state.mode == Mode::Create ? "Create Pokemon — GEN II DRAFT"
                                                          : "Edit Pokemon — GEN II STAGED";
     fb.drawText(workspaceX + 24, workspaceY + 14, title, Colors::Text, TextStyle::Heading);
+    // Shared source-game context line (Gen III-V shape): Box / Slot • <Game> • Source save immutable • mode.
+    // A Create draft has no slot until it is added (the staged box assigns the next one).
+    namespace GameContext = PokeBank::UIModel::ClassicGameContext;
+    std::string record = "Box " + std::to_string(state.box + 1);
+    if (state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
     fb.drawText(workspaceX + 24, workspaceY + 50,
-                "DETAILS | VALUES | MOVES  •  Source save immutable  •  Party mutation deferred",
+                GameContext::contextLine(record, screen.sourceGameId,
+                                         state.mode == Mode::Create ? GameContext::SurfaceMode::CreateDraft
+                                                                    : GameContext::SurfaceMode::EditStaged),
                 Colors::TextDim, TextStyle::Caption);
 
     constexpr int contentY = workspaceY + 78, contentH = 520;
@@ -984,7 +1025,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
     if (state.itemPicker) drawHeldItemPicker(screen, fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
 }
 
 } // namespace UI::Gen2PokemonEditor

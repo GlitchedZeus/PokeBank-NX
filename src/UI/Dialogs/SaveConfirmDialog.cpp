@@ -4,6 +4,8 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorChrome.h"
 #include "Globals.h"
 
 namespace UI {
@@ -15,10 +17,59 @@ namespace Dialogs {
             const size_t slash = path.find_last_of('/');
             return (slash == std::string::npos) ? path : path.substr(slash + 1);
         }
+
+        // The ONE SaveDiscard menu rule (UI/SharedMenuGeometry.h): the accepted 560 px dialog,
+        // 24 px side padding, two equal glyph buttons 16 px apart (Geo::buttonRect).
+        namespace Geo = PokeBank::UIModel::SharedMenuGeometry;
+        constexpr auto kSaveDiscard = Geo::rule(Geo::MenuType::SaveDiscard);
+        static_assert(kSaveDiscard.width == 560 && kSaveDiscard.padX == 24,
+                      "the accepted save / discard dialog geometry");
+        Geo::Rect saveDiscardButton(int x, int y, int w, int h, int index) {
+            Geo::Layout row;
+            row.buttons = {x + kSaveDiscard.padX, y, w - 2 * kSaveDiscard.padX, h};
+            return Geo::buttonRect(row, index, 2);
+        }
+
+        void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+
+        // Gen I-V footer: names exactly what each visible button does (same ids and semantics).
+        PokeBank::UIModel::SharedEditorPresentation::Footer classicSaveConfirmFooter(
+            const TrainerViewScreen& screen) {
+            PokeBank::UIModel::SharedEditorPresentation::Footer footer;
+            if (screen.exitingWithUnsavedChanges && screen.itemsShortcutActive) {
+                footer.push("B", "Keep Editing");
+                if (!screen.sourceReadOnly()) {
+                    footer.push("Y", "Discard & Home");
+                    footer.push("A", "Save Working Copy & Home");
+                } else {
+                    footer.push("A", "Discard & Home");
+                }
+            } else if (screen.exitingWithUnsavedChanges) {
+                footer.push("B", "Keep Editing");
+                footer.push("A", "Discard & Exit");
+            } else {
+                footer.push("B", "Cancel");
+                footer.push("A", "Save Changes");
+            }
+            return footer;
+        }
     }
 
+    // Gen I-V: the dialog owns the frame (the covered screen footer stops being tappable,
+    // the Gen2WorkspaceLayers rule) and draws its own footer. Gen VI+ keeps its original
+    // presentation: the body below is unchanged and draws no footer for them.
     void drawSaveConfirmDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-        constexpr int w = 560;
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
+        paintSaveConfirmContents(screen, fb);
+        if (classicSessionDialog)
+            SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));
+    }
+
+    namespace {
+    void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+        constexpr int w = kSaveDiscard.width;
 
         // Exiting with unsaved changes is a different question ("throw these away?"), not a
         // destination choice, so it keeps the plain two-button form. Any nonzero titleId is a native
@@ -85,10 +136,12 @@ namespace Dialogs {
             // existing lock. It does not add an Apply/Save-to-installed-game path.
             screen.touchButtons.clear();
             const int cbh = TouchTargetMin, cby = y + h - cbh - 16;
-            const int cbw = (w - 48 - 16) / 2;
-            drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B",
+            const auto back = saveDiscardButton(x, cby, w, cbh, 0);
+            const auto confirm = saveDiscardButton(x, cby, w, cbh, 1);
+            const int cbw = back.w;
+            drawEditChoiceButton(screen, fb, back.x, cby, cbw, cbh, "B",
                                  nativeTitlePreview ? "Return to Editor" : "Cancel", 0);
-            drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+            drawEditChoiceButton(screen, fb, confirm.x, cby, cbw, cbh, "A",
                                  nativeTitlePreview ? "Discard Changes" : "Discard & Exit", 1);
             return;
         }
@@ -145,10 +198,12 @@ namespace Dialogs {
 
         const int cbh = TouchTargetMin;
         const int cby = y + h - cbh - 16;
-        const int cbw = (w - 48 - 16) / 2;
-        drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B", "Cancel", 90);
-        drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", 91);
+        const auto cancel = saveDiscardButton(x, cby, w, cbh, 0);
+        const auto save = saveDiscardButton(x, cby, w, cbh, 1);
+        drawEditChoiceButton(screen, fb, cancel.x, cby, cancel.w, cbh, "B", "Cancel", 90);
+        drawEditChoiceButton(screen, fb, save.x, cby, save.w, cbh, "A", "Save", 91);
     }
+    } // namespace
 
 }
 }

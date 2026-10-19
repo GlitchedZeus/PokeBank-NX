@@ -24,6 +24,13 @@ struct WorkingCopyExportRequest {
     std::string sourcePath;      // evidence only; never opened or written here
     std::string applicationSha = "unknown";
     std::span<const uint8_t> observedSourceBytes;
+    // The complete source file as found (readSourceFileReadOnly) and its
+    // container ("raw-nds-battery" / "dsv-footer"). When given, the backup is
+    // that file verbatim (a .dsv keeps its metadata and DeSmuME footer) and it
+    // must wrap exactly observedSourceBytes; edited.sav stays the raw 0x80000
+    // SAV5 and the manifest states both. Empty: the backup is the payload.
+    std::span<const uint8_t> observedSourceFile;
+    std::string sourceContainer;
 
     // Host fixture root. On Switch, nonempty overrides MUST equal the
     // fixed PokeBank-owned exports/gen5 path or the operation fails closed.
@@ -35,6 +42,8 @@ struct WorkingCopyExportResult {
     std::string directory;
     std::string sourceSha256;
     std::string editedSha256;
+    std::string backupName;   // original_backup.sav, or original_backup.dsv for a .dsv
+    std::string backupSha256; // SHA-256 of the backup file (the verbatim source file)
     std::string error;
     size_t changedRecords = 0;
 };
@@ -42,8 +51,9 @@ struct WorkingCopyExportResult {
 // Source bytes must already have been freshly read/physically revalidated by
 // the calling source provider. Rechecks their complete byte equivalence and
 // exact game/copy against the app-owned staged workspace BEFORE file I/O.
-// Creates original_backup.sav + edited.sav + EXPORT_MANIFEST.txt and checks
-// both on-disk SAV5 copies and SHA-256 before publishing the directory.
+// Creates original_backup.sav (.dsv for a DeSmuME container, verbatim) +
+// edited.sav + EXPORT_MANIFEST.txt and checks every on-disk byte and SHA-256
+// before publishing the directory.
 [[nodiscard]] WorkingCopyExportResult publishGen5WorkingCopy(
     const Gen5StagedPokemonWorkspace& workspace,
     const WorkingCopyExportRequest& request);

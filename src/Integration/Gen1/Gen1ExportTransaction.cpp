@@ -7,7 +7,8 @@
 namespace PokeVault::Integration::Gen1 {
 
 std::vector<std::string> gen1ExportChangeLines(
-    const StagedPokemonEditor& editor, const StagedInventoryEditor* inventory) {
+    const StagedPokemonEditor& editor, const StagedInventoryEditor* inventory,
+    const StagedTrainerEditor* trainer) {
     std::vector<std::string> out;
     for (const auto& change : editor.pendingChanges())
         out.push_back(change.label + ": " + change.beforeValue + " -> " + change.afterValue);
@@ -16,15 +17,20 @@ std::vector<std::string> gen1ExportChangeLines(
             out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
                           std::to_string(change.before) + " -> " + std::to_string(change.after));
     }
+    if (trainer) {
+        for (const auto& change : trainer->pendingChanges())
+            out.push_back(change.label + ": " + change.beforeValue + " -> " + change.afterValue);
+    }
     return out;
 }
 
 Common::VerifiedExportResult publishVerifiedGen1Export(
     const StagedPokemonEditor& editor, const Gen1ExportRequest& request,
-    const StagedInventoryEditor* inventory) {
+    const StagedInventoryEditor* inventory, const StagedTrainerEditor* trainer) {
     Common::VerifiedExportResult result;
     const bool inventoryPending = inventory && inventory->hasPendingChanges();
-    if (!editor.hasPendingChanges() && !inventoryPending) {
+    const bool trainerPending = trainer && trainer->hasPendingChanges();
+    if (!editor.hasPendingChanges() && !inventoryPending && !trainerPending) {
         result.error = "No pending Generation I changes to export";
         return result;
     }
@@ -48,7 +54,24 @@ Common::VerifiedExportResult publishVerifiedGen1Export(
             return result;
         }
     }
-    const auto edited = editor.finalizedBytes(error, inventoryCandidate);
+    std::vector<uint8_t> trainerCandidate;
+    if (trainerPending) {
+        // Same rule as the Bag/PC workspace: a Trainer workspace from another copy is refused.
+        const auto pokemonOriginal = editor.originalBytes();
+        const auto trainerOriginal = trainer->originalBytes();
+        if (trainer->sourceGame() != game ||
+            !std::equal(pokemonOriginal.begin(), pokemonOriginal.end(),
+                        trainerOriginal.begin(), trainerOriginal.end())) {
+            result.error = "Trainer and Pokemon workspaces were opened from different saves";
+            return result;
+        }
+        trainerCandidate = trainer->finalize(error);
+        if (trainerCandidate.empty()) {
+            result.error = error.empty() ? "Staged Generation I Trainer finalization failed" : error;
+            return result;
+        }
+    }
+    const auto edited = editor.finalizedBytes(error, inventoryCandidate, trainerCandidate);
     if (edited.empty()) {
         result.error = error.empty() ? "Generation I staged export finalization failed" : error;
         return result;
@@ -66,7 +89,7 @@ Common::VerifiedExportResult publishVerifiedGen1Export(
     transaction.applicationSha = request.applicationSha;
     transaction.originalBytes = editor.originalBytes();
     transaction.editedBytes = edited;
-    transaction.changeLines = gen1ExportChangeLines(editor, inventory);
+    transaction.changeLines = gen1ExportChangeLines(editor, inventory, trainer);
     transaction.validator = Common::gen1StrictValidator(game);
     transaction.failurePoint = request.failurePoint;
     return Common::publishVerifiedStagedExport(transaction);

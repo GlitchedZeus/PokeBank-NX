@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 #include <sys/stat.h>
@@ -12,6 +13,7 @@
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/GameLauncher.h"
+#include "UI/InputTrace.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/HelperUtilities.h"
@@ -27,6 +29,8 @@
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 
@@ -35,6 +39,18 @@ using namespace Trainer;
 
 namespace UI {
     namespace {
+        // Opt-in input trace (P0 #320): enabled only by config/input_trace.enable; bounded log
+        // logs/input-trace.log; buttons, screen tags and decision origins only.
+        PokeBank::Diagnostics::InputTrace::Recorder& inputTrace() {
+            return PokeBank::Diagnostics::InputTrace::recorder();
+        }
+        void traceScreenFrame(const char* screen, const PadState& pad, const std::string& state) {
+            auto& trace = inputTrace();
+            trace.tick();
+            if (trace.enabled())
+                trace.frame(screen, padGetButtonsDown(&pad), padGetButtons(&pad), 0, state);
+        }
+
         // Launch/return: Product Home focus survives the emulator round trip (a new process).
         SaveSelectScreen::SelectedSourceKind returnSourceKind(int value) {
             using Kind = SaveSelectScreen::SelectedSourceKind;
@@ -103,6 +119,12 @@ namespace UI {
         std::string pathError;
         if (!PokeBank::Paths::ensureConfigRoot(&pathError))
             logErrorToFile("Could not initialize PokeBank NX runtime root", pathError.c_str());
+        inputTrace().configure(PokeBank::Paths::configRoot() + "/input_trace.enable",
+                               PokeBank::Paths::logsRoot() + "/input-trace.log");
+        if (inputTrace().enabled()) {
+            PokeBank::Diagnostics::InputTrace::installTerminateRecorder();
+            logInfoToFile("Input trace enabled", "logs/input-trace.log");
+        }
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
@@ -157,6 +179,7 @@ namespace UI {
         while (!keyboard.finished && appletMainLoop()) {
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("keyboard", pad, "open");
             keyboard.update(pad, touch);
             if (keyboard.finished) break;
             drawKeyboardBackdrop();
@@ -175,6 +198,7 @@ namespace UI {
             fb.flush();
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("keyboard-release", pad, "wait");
             const bool buttonStillMoving = ((padGetButtons(&pad) | padGetButtonsUp(&pad)) & answeringButtons) != 0;
             if (!buttonStillMoving && !touch.isDown() && !touch.justReleased()) break;
         }
@@ -208,6 +232,7 @@ namespace UI {
             while (appletMainLoop() && running && shell.hasOverlay()) {
                 padUpdate(&pad);
                 touch.update();
+                traceScreenFrame("shell", pad, "section=" + std::to_string(static_cast<int>(destination)));
                 shell.update(pad, touch);
                 if (!shell.hasOverlay()) break;
                 shell.draw(fb);
@@ -244,7 +269,16 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 keyboardBackdrop = &selectScreen;
+                inputTrace().tick();
                 selectScreen.update(pad, touch);
+                if (selectScreen.hasSelectedTitle())
+                    inputTrace().event("home", "open-title",
+                        "kind=" + std::to_string(static_cast<int>(selectScreen.getSelectedSourceKind())) +
+                        ",intent=" + std::to_string(static_cast<int>(selectScreen.getOpenIntent())));
+                else if (selectScreen.shouldExit())
+                    inputTrace().event("home", selectScreen.hasRequestedAppExit() ? "app-exit" : "destination",
+                        "dest=" + std::to_string(static_cast<int>(selectScreen.getRequestedMainMenuDestination())) +
+                        ",launch=" + std::to_string(gameLaunchHandoffRequested() ? 1 : 0));
 
                 // A screen that selected a destination or requested exit is already retired.
                 // Never paint one more stale frame after update() changes its terminal state.
@@ -386,6 +420,7 @@ namespace UI {
         while (appletMainLoop() && running && !backupScreen.shouldExit()) {
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("backup", pad, "intent=" + std::to_string(static_cast<int>(intent)));
             backupScreen.update(pad, touch);
 
             // Selection/exit retires this chooser immediately; do not flash it again.
@@ -468,6 +503,7 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 keyboardBackdrop = &trainerScreen;
+                traceScreenFrame("trainer", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
                 trainerScreen.update(pad, touch);
                 if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
                 trainerScreen.draw(fb);
@@ -476,7 +512,12 @@ namespace UI {
             }
             keyboardBackdrop = nullptr;
 
-            if (trainerScreen.hasRequestedExit()) running = false;
+            if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer", "app-exit", "origin=trainer-requested-exit");
+            running = false;
+        } else {
+            inputTrace().event("trainer", "back-to-home");
+        }
         }, trainerVariant);
         return true;
     }
@@ -551,6 +592,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             keyboardBackdrop = &trainerScreen;
+            traceScreenFrame("trainer", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
             trainerScreen.update(pad, touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
@@ -558,7 +600,12 @@ namespace UI {
             fb.flush();
         }
         keyboardBackdrop = nullptr;
-        if (trainerScreen.hasRequestedExit()) running = false;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer", "app-exit", "origin=trainer-requested-exit");
+            running = false;
+        } else {
+            inputTrace().event("trainer", "back-to-home");
+        }
         return true;
     }
     bool UIManager::handleGen5View(
@@ -620,6 +667,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             keyboardBackdrop=&trainerScreen;
+            traceScreenFrame("trainer:gen5", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
             trainerScreen.update(pad,touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit())break;
             trainerScreen.draw(fb);
@@ -627,7 +675,12 @@ namespace UI {
             fb.flush();
         }
         keyboardBackdrop=nullptr;
-        if (trainerScreen.hasRequestedExit())running=false;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer:gen5", "app-exit", "origin=trainer-requested-exit");
+            running=false;
+        } else {
+            inputTrace().event("trainer:gen5", "back-to-home");
+        }
         return true;
     }
 
@@ -660,11 +713,33 @@ namespace UI {
         }
 
         const std::string sourcePath = opened.source.binding.sourcePath;
+        // Snapshot the exact source FILE at Open from the same payload the staged editor holds.
+        // The container comes from the read-only adapter, never from a guess; a file that
+        // changed since the validated read is refused here, and export later refuses one that
+        // changed after this snapshot.
+        namespace G4 = PokeVault::Integration::Gen4;
+        const auto openedBytes = opened.save->sourceBytes();
+        const auto payload = G4::readSourcePayloadReadOnly(sourcePath);
+        if (!payload.ready() || payload.bytes.size() != openedBytes.size() ||
+            !std::equal(openedBytes.begin(), openedBytes.end(), payload.bytes.begin())) {
+            error = "Generation IV source changed while it was opened; reopen it";
+            return false;
+        }
+        auto snapshot = G4::snapshotGen4Source(
+            sourcePath,
+            payload.kind == G4::SourceContainerKind::DsvFooter ? G4::Gen4SourceContainer::Dsv
+                                                               : G4::Gen4SourceContainer::Raw,
+            openedBytes, &error);
+        if (!snapshot) {
+            if (error.empty()) error = "Generation IV source snapshot failed";
+            return false;
+        }
         logInfoToFile("Opening assigned Generation IV source read-only", sourcePath.c_str());
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
             PokeVault::Safety::SourceKind::ExternalLegacy, gameId,
             opened.source.binding.sourceType);
+        trainerScreen.gen4SourceSnapshot = std::move(snapshot);
         if (intent == SaveSelectScreen::OpenIntent::Items)
             trainerScreen.openItemsShortcut();
         fb.startFade();
@@ -673,6 +748,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             keyboardBackdrop = &trainerScreen;
+            traceScreenFrame("trainer", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
             trainerScreen.update(pad, touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
@@ -680,7 +756,12 @@ namespace UI {
             fb.flush();
         }
         keyboardBackdrop = nullptr;
-        if (trainerScreen.hasRequestedExit()) running = false;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer", "app-exit", "origin=trainer-requested-exit");
+            running = false;
+        } else {
+            inputTrace().event("trainer", "back-to-home");
+        }
         return true;
     }
 

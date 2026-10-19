@@ -1,8 +1,9 @@
 // PokeBank NX application QA: Gen I-V acceptance matrix runner (Thread 4, QA-owned).
 //   test_qa_matrix [--markdown <path>]
 // Exit status is non-zero when any cell is Fail, when a version/cell is missing, or when a cell is
-// recorded twice. Known defects (status Known) do not fail the run; their strict repro is in
-// test_qa_known_failures. Cross-generation fact differences are reported, not failed.
+// recorded twice or outside its scope (cellApplies; out-of-scope cells print "-"). Known defects
+// (status Known) do not fail the run; their strict repro is in test_qa_known_failures.
+// Cross-generation fact differences are reported, not failed.
 #include "test_qa_matrix.h"
 
 #include <algorithm>
@@ -63,6 +64,11 @@ int main(int argc, char** argv) {
             ++problems;
             continue;
         }
+        if (!qamatrix::cellApplies(e.cell, e.version)) {
+            std::cerr << "OUT-OF-SCOPE " << e.version << " / " << e.cell << " recorded\n";
+            ++problems;
+            continue;
+        }
         if (!grid.emplace(std::make_pair(e.version, e.cell), &e).second) {
             std::cerr << "DUPLICATE " << e.version << " / " << e.cell << "\n";
             ++problems;
@@ -75,6 +81,7 @@ int main(int argc, char** argv) {
     std::map<qamatrix::Status, int> totals;
     for (auto version : qamatrix::kVersions)
         for (auto cell : qamatrix::kCells) {
+            if (!qamatrix::cellApplies(cell, version)) continue;
             const auto it = grid.find({std::string(version), std::string(cell)});
             if (it == grid.end()) {
                 std::cerr << "MISSING " << version << " / " << cell << "\n";
@@ -93,6 +100,10 @@ int main(int argc, char** argv) {
     for (auto version : qamatrix::kVersions) {
         md << "| " << version << " |";
         for (auto cell : qamatrix::kCells) {
+            if (!qamatrix::cellApplies(cell, version)) {
+                md << " - |";
+                continue;
+            }
             const auto it = grid.find({std::string(version), std::string(cell)});
             md << ' ' << (it == grid.end() ? "MISSING" : symbol(it->second->status)) << " |";
         }
@@ -129,7 +140,10 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < versions.size(); ++i) values << (i ? ", " : "") << versions[i];
             values << ')';
         }
-        const bool same = groups.size() <= 1;
+        // "n/a" = the format has no such data (e.g. Gen I shiny): not an inconsistency.
+        size_t applicable = 0;
+        for (const auto& group : groups) applicable += group.first == "n/a" ? 0 : 1;
+        const bool same = applicable <= 1;
         if (!same) ++inconsistent;
         md << "| `" << key << "` | " << escapeCell(values.str()) << " | " << (same ? "yes" : "**NO**") << " |\n";
     }

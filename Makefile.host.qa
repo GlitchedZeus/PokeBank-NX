@@ -7,7 +7,7 @@
 #   make -f Makefile.host qa-contracts         export-safety / source-immutability contracts (+ ASan/UBSan)
 #   make -f Makefile.host qa-libfuzzer         clang libFuzzer binaries (CXX=clang++)
 #   make -f Makefile.host qa-libfuzzer-run     time-boxed libFuzzer run (QA_FUZZ_SECONDS per target)
-#   make -f Makefile.host qa-tools-test        tools/qa NRO audit regression
+#   make -f Makefile.host qa-tools-test        tools/qa NRO audit regression + hardware round 1 gate
 #   make -f Makefile.host qa-known-failures    reproductions of OPEN defects (expected to fail until fixed)
 #   make -f Makefile.host qa                   fuzz smoke + contracts + tools (what CI gates on)
 #
@@ -51,7 +51,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Pokemon/PersonalInfo4HGSS.cpp src/Pokemon/Pokemon4Mutable.cpp \
 	src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
 	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
-	src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
 	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/ItemPresence.cpp \
 	src/Names/MovePresence.cpp \
@@ -59,8 +59,8 @@ QA_CORE_SOURCES := $(sort \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp)
 
 QA_FUZZ_TARGETS := fuzz_gen1_sav fuzz_gen2_sav fuzz_gen3_sav fuzz_gen4_sav fuzz_gen5_sav \
-	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers fuzz_gen5_edits
-QA_HEADERS := tests/fuzz_support.h tests/fuzz_synthetic_saves.h tests/test_qa_support.h \
+	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers fuzz_gen5_edits fuzz_launch_plan fuzz_home_cache
+QA_HEADERS := tests/fuzz_support.h tests/fuzz_synthetic_saves.h tests/test_qa_support.h include/UI/GameLaunchModel.h runtime/return_host/source/return_host_policy.h \
 	$(wildcard include/Integration/*/*.h include/Pokemon/*.h include/Encryption/*.h include/Utils/*.h include/Source/*.h)
 
 # variant -> extra compile flags
@@ -147,16 +147,17 @@ qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $
 		ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 $(QA_BUILD)/san/$$t; \
 	done
 
-# Gen I-V acceptance matrix: 20 versions x 21 cells on real production paths (docs/qa/GEN1_5_MATRIX.md).
+# Gen I-V acceptance matrix: 20 versions x 26 cells (5 round 2 cells, some per-generation) on real
+# production paths (docs/qa/GEN1_5_MATRIX.md).
 # Fails on any FAIL / MISSING / DUPLICATE cell; Known defects are reproduced in qa-known-failures.
 QA_MATRIX_SOURCES := tests/test_qa_matrix.cpp tests/test_qa_matrix_gen12.cpp tests/test_qa_matrix_gen3.cpp \
 	tests/test_qa_matrix_gen4.cpp tests/test_qa_matrix_gen5.cpp
-QA_MATRIX_EXTRA_SOURCES :=
-$(QA_BUILD)/plain/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h \
+QA_MATRIX_EXTRA_SOURCES := src/Legacy/RBYReadOnlyTrainer.cpp src/UI/ClassicInventoryUIModel.cpp
+$(QA_BUILD)/plain/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h tests/test_qa_matrix_round2.h \
 		$(QA_BUILD)/plain/libqacore.a $(QA_HEADERS)
 	$(CXX) $(QA_VARIANT_FLAGS_plain) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \
 		$(QA_BUILD)/plain/libqacore.a -o $@
-$(QA_BUILD)/san/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h \
+$(QA_BUILD)/san/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h tests/test_qa_matrix_round2.h \
 		$(QA_BUILD)/san/libqacore.a $(QA_HEADERS)
 	$(CXX) $(QA_VARIANT_FLAGS_san) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \
 		$(QA_BUILD)/san/libqacore.a -o $@
@@ -176,6 +177,10 @@ qa-known-failures: $(QA_BUILD)/san/test_qa_known_failures
 qa-tools-test:
 	python3 tests/test_qa_nro_audit.py
 	python3 tests/test_qa_regressions_assets.py
+	python3 tests/test_hw_round1_regression_gate.py
+	python3 tests/test_qa_hw_round1_gate_mutations.py
+	python3 tests/test_qa_manual_workflow_staleness.py
+	python3 tools/qa/manual_workflow_staleness.py
 
 qa: qa-fuzz-smoke qa-contracts qa-matrix qa-tools-test
 

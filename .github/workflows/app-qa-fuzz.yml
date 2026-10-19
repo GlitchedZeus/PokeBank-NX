@@ -16,6 +16,7 @@ on:
       - 'src/Names/**'
       - 'src/Inventory/**'
       - 'src/Utils/**'
+      - 'runtime/return_host/source/**'
       - 'tests/fuzz_*'
       - 'tests/fixtures/**'
       - 'Makefile.host'

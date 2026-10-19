@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <vector>
+#include "UI/SourceBackupClassification.h"
 #include <string>
 
 #include <switch.h>
@@ -13,6 +14,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/TouchScroll.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/QuickGamesDrawerMotion.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/GameLaunchModel.h"
@@ -203,7 +205,17 @@ namespace UI {
 
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
-        bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
+        bool appExitRequested = false;  // set only by an explicit Y in the leave decision
+        // P0 #320: every way out of PokeBank NX (quit, or a launch handoff that closes the app)
+        // first opens one visible leave decision; only an explicit Y there commits it.
+        enum class LeaveKind : uint8_t { Quit, LaunchTitle, LaunchLegacyInstance };
+        LeaveKind leaveKind = LeaveKind::Quit;
+        GameLaunchDescriptor pendingLaunch;
+        std::string pendingLaunchName;
+        std::string pendingLaunchNotice;
+        void openLeaveDecision(LeaveKind kind, const char* origin);
+        void openLaunchDecision(LeaveKind kind, const GameLaunchDescriptor& descriptor,
+                                const std::string& gameName, const char* origin);
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
         int headerActionIndex = -1; // -1 = none, 0 = profile, 1 = settings
@@ -211,6 +223,16 @@ namespace UI {
         int gamesDrawerIndex = 0;
         int gamesDrawerScroll = 0;
         TouchScrollState gamesDrawerTouchScroll;
+        SharedScrollbar::State gamesDrawerScrollbar;   // draggable thumb beside the Quick Games grid
+        // One shared draggable scrollbar per scrolling list on this screen (R2-SCROLLBAR).
+        SharedScrollbar::State profileScrollbar;
+        SharedScrollbar::State launchFileScrollbar;
+        SharedScrollbar::State legacyInstanceScrollbar;
+        SharedScrollbar::State legacyAssignmentScrollbar;
+        SharedScrollbar::State gen4CandidateScrollbar;
+        SharedScrollbar::State gen5CandidateScrollbar;
+        SharedScrollbar::State classicGamesScrollbar;
+        SharedScrollbar::State emuBackupScrollbar;
         PokeBank::UIModel::QuickGamesDrawerMotion quickDrawerMotion;
         int profilePickerIndex = 0;
         int profilePickerScroll = 0; // independent visible first row; never scroll the focus index
@@ -221,9 +243,19 @@ namespace UI {
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
                              Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
-                             Gen5Candidates, GameFilePicker };
+                             Gen5Candidates, GameFilePicker, QuitConfirm,
+                             EmulatorBackups, EmulatorBackupDeleteConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
+        Overlay leaveReturnOverlay = Overlay::None; // where A/B "Stay" returns from the leave decision
+        // + -> Backups for an emulator game (round 2 phase 7): one listing per exact source file.
+        std::vector<PokeBank::UIModel::SourceBackups::Listing> emuBackupListings;
+        struct EmuBackupRow { int listing = 0; int entry = 0; };
+        std::vector<EmuBackupRow> emuBackupRows;
+        int emuBackupIndex = 0;
+        int emuBackupScroll = 0;
+        std::string emuBackupNotice;
+        void openEmulatorBackups(const std::string& notice = {});
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;

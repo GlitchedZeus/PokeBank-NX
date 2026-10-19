@@ -117,6 +117,18 @@ std::optional<Gen4ReadOnlySave> Gen4StagedPokemonEditor::reparse(
     return parsed;
 }
 
+bool Gen4StagedPokemonEditor::originalEmptyRecordAt(
+    const Gen4ReadOnlySave& stagedParse, size_t box, size_t slot, size_t offset) const {
+    if (original_.size() != staged_.size()) return false;
+    const auto original = Gen4ReadOnlySave::parse(original_, layout_, exactGameId_);
+    if (!original) return false;
+    if (original->storageSelection().offset != stagedParse.storageSelection().offset) return false;
+    const auto originalOffset = boxRecordOffset(*original, box, slot);
+    if (!originalOffset || *originalOffset != offset) return false;
+    const auto& record = original->box(box, slot);
+    return record.valid() && record.empty();
+}
+
 std::optional<size_t> Gen4StagedPokemonEditor::boxRecordOffset(
     const Gen4ReadOnlySave& parsed, size_t box, size_t slot) const noexcept {
     if (box >= 18 || slot >= 30) return std::nullopt;
@@ -555,9 +567,19 @@ bool Gen4StagedPokemonEditor::stageReleaseBoxPokemon(
         return false;
     }
 
+    // A slot that started empty gets its original empty record back (retail empty box slots
+    // hold an encrypted blank, not zeros), so clone + release of the clone is byte-identical to
+    // the source. A slot that held a Pokemon in the source is zero-filled, which reparses as
+    // empty. The original slot only counts when the source selected the same Storage copy.
     const auto backup = staged_;
-    std::fill_n(staged_.begin() + static_cast<std::ptrdiff_t>(*offset),
-                Encryption::SIZE_STORED4, uint8_t{0});
+    const auto restore = originalEmptyRecordAt(*parsedBefore, box, slot, *offset);
+    if (restore)
+        std::copy_n(original_.begin() + static_cast<std::ptrdiff_t>(*offset),
+                    Encryption::SIZE_STORED4,
+                    staged_.begin() + static_cast<std::ptrdiff_t>(*offset));
+    else
+        std::fill_n(staged_.begin() + static_cast<std::ptrdiff_t>(*offset),
+                    Encryption::SIZE_STORED4, uint8_t{0});
 
     if (!refreshStorageCrc(*parsedBefore, error)) {
         staged_ = backup;

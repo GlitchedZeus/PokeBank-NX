@@ -3,12 +3,14 @@
 
 #include <cstddef>   // std::byte (details.editSnapshot)
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <switch.h>
 
 #include "Globals.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
 #include "UI/MutationTargetPolicy.h"
@@ -18,6 +20,7 @@
 #include "UI/InventoryUIContract.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedScrollbar.h"
 #include "Trainer/Bank.h"
 #include "Panels/PartyPokemonPanel.h"
 #include "Panels/ItemsPanel.h"
@@ -145,6 +148,9 @@ namespace UI {
         Trainer::Trainer& trainer;
         std::string titleName;
         std::string backupDir;  // working-backup path or read-only source location
+        // Gen IV only: the exact source FILE (raw or .dsv) at Open. Export refuses a file
+        // that changed since (Gen4ExportRequest::sourceSnapshot).
+        std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;
@@ -427,6 +433,9 @@ namespace UI {
             bool leftScrollManual = false;               // finger drag owns scroll until direct/controller selection resumes
             int legalityScroll = 0;                      // first visible legality-report row
             int ribbonScroll = 0;                        // first visible ribbon/mark row
+            SharedScrollbar::State leftScrollbar;        // draggable thumb: info / native-data pane
+            SharedScrollbar::State legalityScrollbar;    // draggable thumb: legality report overlay
+            SharedScrollbar::State ribbonScrollbar;      // draggable thumb: ribbon / mark overlay
             std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)
             std::vector<std::byte> editSnapshot;         // baseline bytes for the "Unsaved changes" marker + revert
         };
@@ -466,6 +475,8 @@ namespace UI {
         Dialogs::PickerKind pickerKind = Dialogs::PickerKind::Nature;
         int pickerSlot = 0;   // which of the 4 move slots (when pickerKind == Move)
         int pickerSel = 0;    // highlighted option index
+        SharedScrollbar::State pickerScrollbar;   // draggable thumb on the picker list
+        SharedScrollbar::State itemsScrollbar;    // draggable thumb on the paged Items panel list
         int pickerCount = 0;  // number of options in the list
         // A pouch-item picker opened to CHANGE an existing item's type (Potion -> Super Potion),
         // not to add a new one. Changes the confirm behavior + the picker title; reuses PouchItem.
