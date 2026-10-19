@@ -141,3 +141,20 @@ $(EMU_BACKUP_LAYOUT_TEST): $(EMU_BACKUP_LAYOUT_INPUTS)
 $(EMU_BACKUP_LAYOUT_SANITIZE): $(EMU_BACKUP_LAYOUT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# R2-BUG-013: help rows and modal instructions name every controller button as a coloured badge.
+GLYPH_INSTRUCTION_TEST := $(HOST_BUILD)/test_glyph_instruction
+GLYPH_INSTRUCTION_SANITIZE := $(HOST_BUILD)/test_glyph_instruction_sanitize
+GLYPH_INSTRUCTION_INPUTS := tests/test_glyph_instruction.cpp include/UI/GlyphInstruction.h
+HOST_TESTS += $(GLYPH_INSTRUCTION_TEST)
+HOST_SANITIZE_TESTS += $(GLYPH_INSTRUCTION_SANITIZE)
+host-test: $(GLYPH_INSTRUCTION_TEST)
+host-sanitize: $(GLYPH_INSTRUCTION_SANITIZE)
+
+$(GLYPH_INSTRUCTION_TEST): $(GLYPH_INSTRUCTION_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(GLYPH_INSTRUCTION_SANITIZE): $(GLYPH_INSTRUCTION_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
