@@ -27,6 +27,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
+    "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED. Every contract is enforced.
@@ -681,6 +682,31 @@ def contracts(sources: list[Source]) -> list[Result]:
                                          blocks[0]) or "A: Edit" in blocks[0]:
         r.violations.append("src/UI/TrainerViewScreenBase.inc: the Trainer page footer is not "
                             "trainerPageInstructions(trainerFieldsEditable(...))")
+    res.append(r)
+
+    r = Result("CG18b-trainer-footer-not-overridden",
+               "Once the Trainer page offers \"A: Edit\", no later footer rule on the same frame replaces it "
+               "(R2-BUG-001: Gen I staged Trainer showed no A: Edit)")
+    # CG18 checked only the Trainer branch's own assignment. In TrainerViewScreenBase.inc the
+    # read-only footer override (useReadOnlyInventoryFooterOverride) runs after it and, for a read-only
+    # source with a staged Trainer editor (Gen I), replaced the footer with "Arrows: Navigate | B: Back".
+    # Every later override must exclude an editable Trainer page.
+    if base:
+        assign = re.search(r"trainerPageInstructions\s*\(", base.code)
+        for m in re.finditer(r"\buseReadOnlyInventoryFooterOverride\s*\(", base.code):
+            if assign is None or m.start() < assign.start():
+                continue
+            ln = base.code.count("\n", 0, m.start()) + 1
+            depth, j = 0, m.end() - 1
+            while j < len(base.code):
+                depth += (base.code[j] == "(") - (base.code[j] == ")")
+                if depth == 0:
+                    break
+                j += 1
+            args = base.code[m.end():j]
+            if not re.search(r"\btrainerFieldsEditable\s*\(|ViewMode::Trainer\b", args):
+                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{ln}: the read-only footer override can "
+                                    "replace the Trainer page's A: Edit footer (no editable-Trainer exclusion)")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
