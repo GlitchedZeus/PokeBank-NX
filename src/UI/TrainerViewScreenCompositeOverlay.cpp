@@ -313,7 +313,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const bool stagedStorageSave = detailViewActive && selectedMode == ViewMode::Storage &&
         !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
         !saveConfirmActive && !pickerActive && !itemEditDialogActive &&
-        !carrying() && !currentlySelecting && !releaseConfirmActive &&
+        !carrying() && !currentlySelecting && !swapActive && !releaseConfirmActive &&
         !groupMenuActive && !editorOverlayState(*this).active &&
         !Gen3SharedEditorSurface::ownsFrame(*this) &&
         !Gen4SharedEditorSurface::ownsFrame(*this) &&
