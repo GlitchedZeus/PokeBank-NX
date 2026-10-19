@@ -1,6 +1,6 @@
 // R2-BUG-004: a species change resets all four moves to the new species' native moves.
 // Part 1 of the host coverage (data, algorithm, all 20 Gen I-V games, apply-path contracts).
-// The per-generation record round trips live in tests/test_species_change_moves_records.cpp.
+// The per-generation record round trips are tests/test_species_change_moves_gen1.cpp ... _gen5.cpp.
 //
 // Sources behind the data (tools/gen_levelup_learnsets15.py, cross-checked at generation):
 // pret pokered / pokeyellow / pokegold / pokecrystal / pokeruby / pokeemerald / pokefirered and
