@@ -27,7 +27,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
-    "CG19-species-change-resets-moves": "R (R2-BUG-004 SpeciesMoveDefaults)",
     "CG22-move-chooser-type-badges": "P (R2-BUG-007)",
     "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
     "CG23-bag-add-grid-picker": "P (R2-BUG-006)",

@@ -148,6 +148,10 @@ GUARDS: dict[str, tuple[str, G]] = {
     ]),
     'E02': ('Actions menu order consistent', [
         ('host', 'test_classic_pokemon_action_menu', 'tests/test_classic_pokemon_action_menu.cpp', '"View", "Edit", "Clone", "Release", "Origin & Legality"'),
+        # Round 3 (R2-CHECK-009): the Gen I Boxes-view sheet adds Move in the accepted E02 slot; the
+        # read-only Storage pane above keeps its list. Lane C's test pins both box sheets exactly.
+        ('host', 'test_gen12_packed_move', 'tests/test_gen12_packed_move.cpp', 'std::vector<std::string>{"View", "Edit", "Clone", "Move", "Release", legality, "Cancel"}'),
+        ('host', 'test_gen12_packed_move', 'tests/test_gen12_packed_move.cpp', '"Review Pending Changes", "Cancel"}));'),
         ('host', 'test_shared_editor_contract', 'tests/test_shared_editor_contract.cpp', 'void actionMenuContract()'),
         ('host', 'test_gen4_hardware_surface_contract', 'tests/test_gen4_hardware_surface_contract.cpp', '== "Origin & Legality"'),
         ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', '{A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Close}'),
