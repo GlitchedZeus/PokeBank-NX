@@ -955,7 +955,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             drawNavBar(fb, {{"Y", "Remove"}, {"B", "Cancel"}});
         } else {
             UI::SharedBagAddPicker::drawKeyItemWarning(fb, screen.touchButtons, group, state.pendingItem,
-                                                       name, state.pendingQuantity == 0);
+                                                       name, PokeVault::Inventory::pocketName(state.pendingPocket),
+                                                       state.pendingQuantity == 0);
             drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
         }
         return;

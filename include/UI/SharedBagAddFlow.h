@@ -142,6 +142,14 @@ struct RowDecision {
     return rule.valid && rule.kind == QP::ItemKind::KeyItem;
 }
 
+// The warning names the exact destination pocket (R2-CHECK-010: a Key Item added to the R/S PC
+// must say "Add Super Rod to PC Items?", not leave the player guessing where it goes).
+[[nodiscard]] inline std::string keyItemWarningQuestion(const std::string& itemName,
+                                                        std::string_view pocketName, bool removing) {
+    return removing ? "Remove " + itemName + " from " + std::string(pocketName) + "?"
+                    : "Add " + itemName + " to " + std::string(pocketName) + "?";
+}
+
 // The picker phase as a tiny state machine. Each event is consumed once; nothing here mutates
 // the bag. The surface performs the staging the returned decision names.
 class Flow {

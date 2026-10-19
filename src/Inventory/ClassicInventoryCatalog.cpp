@@ -157,11 +157,25 @@ std::span<const uint16_t> gen2Pc(bool crystal) noexcept {
     return crystal ? asSpan(c) : asSpan(gs);
 }
 
+// What the game itself lets the player deposit into PC Items (R2-CHECK-010):
+//  * R/S: pret pokeruby 5784633c src/item_menu.c sub_80A6B64 refuses a deposit only when
+//    ItemId_GetImportance(item) == 2. src/data/items_en.h gives importance 2 to Devon Goods
+//    (269), Letter (274), Red Orb (276) and Blue Orb (277); every other Key Item (importance 1,
+//    e.g. the bikes and rods) and HM (importance 1) may be stored in the R/S PC.
+//  * Emerald: pret pokeemerald 731ad5bf src/item_menu.c TryDepositItem refuses ANY item with
+//    GetItemImportance != 0 ("Can't store important items"): no Key Item and no HM (339-346,
+//    importance 1 in src/data/items.h); TMs (importance 0) may be stored.
+//  * FR/LG: PKHeX ItemStorage3FRLG PCItems = General items only (unchanged).
+constexpr std::array<uint16_t, 4> kG3RSUndepositableKeys{{269, 274, 276, 277}};
+
 std::span<const uint16_t> gen3Pc(ClassicGame game) noexcept {
     static const std::vector<uint16_t> rs = [] {
         std::vector<uint16_t> out;
         append(out, kG3Items);
-        append(out, kG3KeysRS);
+        for (const uint16_t key : kG3KeysRS)
+            if (std::find(kG3RSUndepositableKeys.begin(), kG3RSUndepositableKeys.end(), key) ==
+                kG3RSUndepositableKeys.end())
+                out.push_back(key);
         append(out, kG3Berries);
         append(out, kG3Balls);
         append(out, kG3Machines);
@@ -172,7 +186,8 @@ std::span<const uint16_t> gen3Pc(ClassicGame game) noexcept {
         append(out, kG3Items);
         append(out, kG3Berries);
         append(out, kG3Balls);
-        append(out, kG3Machines);
+        for (const uint16_t machine : kG3Machines)
+            if (machine < 339) out.push_back(machine);  // TMs only; HM01-08 are important
         return out;
     }();
     static const std::vector<uint16_t> frlg = [] {

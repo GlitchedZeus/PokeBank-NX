@@ -193,7 +193,9 @@ static void testGen3() {
         expectStack(g, Pocket::Berries, 133, 999, ItemKind::Regular);
         expectStack(g, Pocket::PCItems, 13, 999, ItemKind::Regular);
         expectStack(g, Pocket::PCItems, 289, 999, ItemKind::TM);
-        expectUnique(g, Pocket::PCItems, 339, ItemKind::HM);
+        // R2-CHECK-010 (pret): R/S may store HMs in the PC; Emerald refuses every important item.
+        if (g == Game::Emerald) expectRejected(g, Pocket::PCItems, 339);
+        else expectUnique(g, Pocket::PCItems, 339, ItemKind::HM);
         expectRejected(g, Pocket::KeyItems, 360);  // FR/LG Bicycle
         // Mach / Acro Bike and Root / Claw Fossil are story-exclusive pairs.
         CHECK(exclusiveWith(g, 259).size() == 2 && exclusiveWith(g, 272).size() == 2);
@@ -204,6 +206,13 @@ static void testGen3() {
     // R/S PC can hold key items; Emerald's PC list cannot (PKHeX ItemStorage3RS/3E).
     expectUnique(Game::Ruby, Pocket::PCItems, 259, ItemKind::KeyItem);
     expectRejected(Game::Emerald, Pocket::PCItems, 259);
+    // pokeruby sub_80A6B64 refuses importance-2 Key Items: Devon Goods, Letter, Red/Blue Orb.
+    expectUnique(Game::Sapphire, Pocket::PCItems, 264, ItemKind::KeyItem);  // Super Rod (importance 1)
+    for (uint16_t id : {269, 274, 276, 277}) {
+        expectRejected(Game::Ruby, Pocket::PCItems, id);
+        expectRejected(Game::Sapphire, Pocket::PCItems, id);
+        expectUnique(Game::Ruby, Pocket::KeyItems, id, ItemKind::KeyItem);  // still valid in the bag
+    }
     expectRejected(Game::Emerald, Pocket::KeyItems, 276);  // Red Orb: R/S key only
     expectUnique(Game::Ruby, Pocket::KeyItems, 276, ItemKind::KeyItem);
 
