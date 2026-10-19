@@ -23,6 +23,7 @@
 #include "UI/InputTrace.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/LeaveDecisionLayout.h"
+#include "UI/ProfileTitleFocus.h"
 #include "UI/EmulatorBackupLayout.h"
 #include "Enums/GameVersion.h"
 #include "Save/GetSaveFileContents.h"
@@ -351,7 +352,7 @@ namespace UI {
 
         void drawProductHelpOverlay(
             PKSEFramebuffer& fb, const std::string& title,
-            std::initializer_list<ControllerHint> rows,
+            const std::vector<ControllerHint>& rows,
             const std::string& note = {}) {
             constexpr int w = 850;
             constexpr int rowH = 48;
@@ -375,17 +376,17 @@ namespace UI {
                     fb.drawText(x + 34 + glyphW + 18, rowY + 12, row.label,
                                 Colors::TextPrimary, TextStyle::Body);
                 } else {
-                    fb.drawText(x + 34, rowY + 12,
-                                row.button.empty() ? row.label : row.button + "   " + row.label,
-                                Colors::TextSecondary, TextStyle::Body);
+                    drawGlyphSentence(fb, x + 34, rowY + 12,
+                                      row.button.empty() ? row.label : row.button + "   " + row.label,
+                                      Colors::TextSecondary, TextStyle::Body);
                 }
                 rowY += rowH;
             }
 
             if (!note.empty())
-                fb.drawText(x + 34, y + h - 38, note,
-                            Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"B", "Close"}});
+                drawGlyphSentence(fb, x + 34, y + h - 38, note, Colors::TextMuted, TextStyle::Caption);
+            // B and - both close help (update: Overlay::Help); rows describe the screen underneath.
+            drawNavBar(fb, {{"-", "Close Help"}, {"B", "Close Help"}});
         }
     }
 
@@ -1612,12 +1613,23 @@ namespace UI {
 
     void SaveSelectScreen::setUser(int idx) {
         if (users.empty()) return;
+        // One focus key per Product Home card: game id, title id and source kind together, so a
+        // Switch title and an emulator card of the same game are different cards.
+        const auto profileTitleFocusKey = [](const TitleEntry& title) {
+            return title.gameId + '|' + std::to_string(title.titleId) + '|' +
+                   std::to_string(static_cast<int>(title.sourceKind));
+        };
         if(const auto* previous=currentUser()) {
             const bool valid=titleIndex>=0 && titleIndex<static_cast<int>(previous->titles.size());
             gen5ProfileFocus.remember(profileIdentity(previous->uid),valid?
                 previous->titles[static_cast<size_t>(titleIndex)].gameId:std::string());
+            profileTitleFocus.remember(profileIdentity(previous->uid), valid
+                ? profileTitleFocusKey(previous->titles[static_cast<size_t>(titleIndex)]) : std::string());
         }
-        userIndex = (idx % (int)users.size() + (int)users.size()) % (int)users.size();
+        const int target = (idx % (int)users.size() + (int)users.size()) % (int)users.size();
+        // Re-selecting the active profile changes nothing: the focused game stays (Part 9).
+        if (target == userIndex) return;
+        userIndex = target;
         titleIndex = 0;
         scrollRow  = 0;
         if(const auto* selected=currentUser()) {
@@ -1630,6 +1642,17 @@ namespace UI {
                     if(classicGamesActive)scrollClassicSelectionIntoView();
                     break;
                 }
+            // Every other card kind: return to the card this profile had focused.
+            if (titleIndex == 0) {
+                std::vector<std::string> keys;
+                keys.reserve(selected->titles.size());
+                for (const auto& title : selected->titles) keys.push_back(profileTitleFocusKey(title));
+                if (const auto restored = profileTitleFocus.indexFor(profileIdentity(selected->uid), keys)) {
+                    titleIndex = static_cast<int>(*restored);
+                    scrollSelectionIntoView();
+                    if (classicGamesActive) scrollClassicSelectionIntoView();
+                }
+            }
         }
         hubDockFocused = false;
         headerActionIndex = -1;
@@ -2118,6 +2141,10 @@ namespace UI {
         pendingLaunch = descriptor;
         pendingLaunchName = gameName;
         pendingLaunchNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(descriptor));
+        pendingLaunchStarter = PokeBank::UIModel::LeaveDecisionLayout::launchStarter(
+            descriptor.backend == GameLaunchBackend::SwitchTitle,
+            PokeVault::Source::providerDisplayName(
+                PokeVault::Source::identifyProviderId(descriptor.providerId)));
         openLeaveDecision(kind, origin);
     }
 
@@ -3081,9 +3108,11 @@ namespace UI {
         emuBackupListings.clear();
         emuBackupRows.clear();
         emuBackupNotice = notice;
+        emuBackupProvider.clear();
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
         const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        emuBackupProvider = PokeVault::Source::cardProviderDisplay(title.providerLabel);
         // Exact source files only: the validated instances, or the remembered assigned file.
         std::vector<std::string> sources;
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
@@ -3259,9 +3288,9 @@ namespace UI {
                 const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
                 const SB::Refusal result = SB::deleteRecord(emuBackupListings[static_cast<size_t>(row.listing)],
                                                             static_cast<size_t>(row.entry));
-                openEmulatorBackups(result == SB::Refusal::None
-                    ? "Export record deleted. The original emulator save was not touched."
-                    : SB::refusalReason(result));
+                namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+                openEmulatorBackups(result == SB::Refusal::None ? EB::deletedNotice(emuBackupProvider)
+                                                                : EB::refusalText(result, emuBackupProvider));
             }
             return;
         }
@@ -3550,7 +3579,7 @@ namespace UI {
                 }
                 if (kDown & HidNpadButton_A) {
                     profileTouchScroll.stop();
-                    setUser(profilePickerIndex);
+                    setUser(profilePickerIndex);   // re-confirming the active profile is a no-op
                     gamesDrawerIndex = titleIndex;
                     overlay = Overlay::None;
                     headerActionIndex = -1;
@@ -3918,11 +3947,11 @@ namespace UI {
             const auto row = emuBackupRows[static_cast<size_t>(emuBackupIndex)];
             const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
             const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
-            if (kDown & HidNpadButton_A) emuBackupNotice = SB::policyFor(entry.kind).reason;
+            if (kDown & HidNpadButton_A) emuBackupNotice = EB::kindReason(entry.kind, emuBackupProvider);
             if (kDown & HidNpadButton_Y) {
                 const SB::Refusal refusal = SB::canDelete(listing, static_cast<size_t>(row.entry));
                 if (refusal == SB::Refusal::None) overlay = Overlay::EmulatorBackupDeleteConfirm;
-                else emuBackupNotice = SB::refusalReason(refusal);
+                else emuBackupNotice = EB::refusalText(refusal, emuBackupProvider);
             }
             return;
         }
@@ -4046,6 +4075,25 @@ namespace UI {
             if (kDown & HidNpadButton_Plus) {
                 toggleCurrentFavorite();
                 return;
+            }
+            // The Profile avatar is a touch target in the Games browser too (the Product Home touch
+            // handlers below are never reached from here): contact focuses it, a stationary release
+            // opens the Profile picker, exactly as on Product Home.
+            if (touch.justTouchedDown()) {
+                for (const auto& r : headerRects)
+                    if (r.idx == 0 && touch.x() >= r.x && touch.x() < r.x + r.w &&
+                        touch.y() >= r.y && touch.y() < r.y + r.h) { headerActionIndex = 0; break; }
+            }
+            if (touch.justTapped()) {
+                for (const auto& r : headerRects) {
+                    if (r.idx == 0 && tappedHit(r)) {
+                        classicGamesTouchScroll.stop();
+                        headerActionIndex = 0;
+                        profilePickerIndex = userIndex;
+                        overlay = Overlay::ProfilePicker;
+                        return;
+                    }
+                }
             }
             if (headerActionIndex == 0) {
                 if (kDown & HidNpadButton_Down) {
@@ -4499,17 +4547,20 @@ namespace UI {
             scrollClassicSelectionIntoView();
             drawClassicGameSources(fb);
             if (overlay == Overlay::Help) {
-                drawProductHelpOverlay(fb, "Pokémon Games", {
+                std::vector<ControllerHint> rows = {
                     {"D-pad/Stick", "Choose a game"},
                     {"A", "Open the selected game"},
                     {"X", "Assign / change save source"},
                     {"Y", "Cycle game sort"},
                     {"+", "Toggle favorite"},
-                    {"L/R", "Switch profile"},
-                    {"ZR", "Launch the selected game or emulator"},
-                    {"-", "Close Help / Controls"},
-                    {"B", "Back to Product Home"}
-                }, "This is the full artwork game browser. Press Y on Product Home for the quick drawer.");
+                };
+                // L/R switches profile only when there is another profile to switch to.
+                if (users.size() > 1) rows.push_back({"L/R", "Switch profile"});
+                rows.insert(rows.end(), {{"ZR", "Launch the selected game or emulator"},
+                                         {"-", "Close Help / Controls"},
+                                         {"B", "Back to Product Home"}});
+                drawProductHelpOverlay(fb, "Pokémon Games", rows,
+                    "This is the full artwork game browser. Press Y on Product Home for the quick drawer.");
                 return;
             }
         } else {
@@ -4805,7 +4856,7 @@ namespace UI {
             if (!hubNotice.empty()) {
                 std::string notice = hubNotice;
                 if (notice.size() > 92) notice = notice.substr(0, 91) + "…";
-                fb.drawText(DETAIL_X + 24, HUB_Y + 505, notice, Colors::Info, TextStyle::Caption);
+                drawGlyphSentence(fb, DETAIL_X + 24, HUB_Y + 505, notice, Colors::Info, TextStyle::Caption);
                 if (!quitNotice.empty())
                     fb.drawText(DETAIL_X + 24, HUB_Y + 525, fitCaption(quitNotice),
                                 Colors::TextMuted, TextStyle::Caption);
@@ -4956,7 +5007,7 @@ namespace UI {
             namespace G = PokeBank::UIModel::SharedMenuGeometry;
             const bool quitting = leaveKind == LeaveKind::Quit;
             const auto text = PokeBank::UIModel::LeaveDecisionLayout::build(
-                quitting, pendingLaunchName, pendingLaunchNotice);
+                quitting, pendingLaunchName, pendingLaunchNotice, pendingLaunchStarter);
             const G::Layout layout = G::layout(G::MenuType::LaunchConfirm, 0, fb.getWidth(), fb.getHeight());
             const G::Rect frame = layout.frame;
             fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
@@ -5314,7 +5365,7 @@ namespace UI {
             if (!hubNotice.empty()) {
                 std::string notice = hubNotice;
                 if (notice.size() > 104) notice = notice.substr(0, 103) + "…";
-                fb.drawText(gridX, y + h - 42, notice, Colors::Info, TextStyle::Caption);
+                drawGlyphSentence(fb, gridX, y + h - 42, notice, Colors::Info, TextStyle::Caption);
             }
             drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Open"},
                             {"ZR", "Launch"}, {"+", "Close Menu"}, {"B", "Home"}});
@@ -5395,8 +5446,8 @@ namespace UI {
                                 LEGACY_INSTANCE_VISIBLE_ROWS * rowH);
             }
             if (!legacyNotice.empty())
-                fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
-                            TextStyle::Caption);
+                drawGlyphSentence(fb, x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
+                                  TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"},
                             {"A", launchLegacyMode ? "Launch / Link" : "Open Read Only"},
                             {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"B", "Back"}});
@@ -5440,8 +5491,8 @@ namespace UI {
             drawScrollbar(fb, legacyAssignmentScrollbar, x + w - 14, listTop, visibleRows * rowH,
                           count * rowH, first * rowH - liveOffset);
             if (!legacyNotice.empty())
-                fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
-                            TextStyle::Caption);
+                drawGlyphSentence(fb, x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
+                                  TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Assign to This Profile"},
                             {"X", "Refresh"}, {"B", "Cancel"}});
         } else if (overlay == Overlay::LegacyDetails) {
@@ -5518,9 +5569,9 @@ namespace UI {
                         Colors::TextSecondary,TextStyle::Body);
             fb.drawText(x+28,y+124,"Original save files remain untouched.",
                         Colors::Accent,TextStyle::Body);
-            fb.drawText(x+28,y+165,
-                        "Y: Confirm forgetting link     B: Keep assignment",
-                        Colors::TextPrimary,TextStyle::Body);
+            drawGlyphSentence(fb,x+28,y+165,
+                              "Y: Confirm forgetting link     B: Keep assignment",
+                              Colors::TextPrimary,TextStyle::Body);
             drawNavBar(fb,{{"Y","Confirm Forget"},{"B","Keep Assignment"}});
         } else if (overlay == Overlay::Gen5Candidates && u) {
             constexpr int w=900,h=540,rowH=76,visibleRows=5;
@@ -5657,7 +5708,7 @@ namespace UI {
             const int textX = frame.x + layout.rule.padX;
             fb.drawText(textX, frame.y + EB::kHeadingTop, game + " — Backups", Colors::TextPrimary,
                         TextStyle::Heading);
-            fb.drawText(textX, frame.y + EB::kExplainerTop, std::string(EB::kExplainer),
+            fb.drawText(textX, frame.y + EB::kExplainerTop, EB::explainer(emuBackupProvider),
                         Colors::TextSecondary, TextStyle::Caption);
             const auto stamp = [](const std::string& t) {
                 return t.size() == 15 ? t.substr(0, 4) + "-" + t.substr(4, 2) + "-" + t.substr(6, 2) + " " +
@@ -5677,7 +5728,7 @@ namespace UI {
                 const G::Rect label = EB::labelRect(layout, cell);
                 const bool focused = i == emuBackupIndex;
                 if (focused) fb.drawFilledRoundedRect(cell.x, cell.y, cell.w, cell.h, 10, Colors::PanelAlt);
-                std::string title = policy.label;
+                std::string title = EB::rowLabel(entry.kind, emuBackupProvider);
                 std::string detail;
                 Color badge = Colors::TextMuted;
                 const char* tag = "";
@@ -5734,9 +5785,10 @@ namespace UI {
             fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 132));
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 30, y + 30, "Delete this export record?", Colors::TextPrimary, TextStyle::Heading);
-            fb.drawText(x + 30, y + 92, "Removes its app backup and exported copy. Press Y to delete; A or B keeps it.",
-                        Colors::TextSecondary, TextStyle::Body);
-            fb.drawText(x + 30, y + 136, "The original emulator save is never touched.",
+            drawGlyphSentence(fb, x + 30, y + 92,
+                              "Removes its app backup and exported copy. Press Y to delete; A or B keeps it.",
+                              Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 30, y + 136, PokeBank::UIModel::EmulatorBackupLayout::untouchedLine(emuBackupProvider),
                         Colors::TextMuted, TextStyle::Caption);
             SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
                                                    "Y", "Delete", "A", "Cancel"));

@@ -65,11 +65,24 @@ inline int wrap(std::string_view text, G::Text style, int width, std::string* ou
     return used;
 }
 
-[[nodiscard]] inline Text build(bool quitting, std::string_view gameName, std::string_view notice) {
+// Who takes over after a launch, as the consequence line names it: an installed Switch title is
+// "the game"; an emulator is named by its provider (Product Home's name); only a launch whose
+// provider discovery did not identify says "the emulator".
+[[nodiscard]] inline std::string launchStarter(bool switchTitle, std::string_view providerDisplay) {
+    if (switchTitle) return "the game";
+    if (providerDisplay.empty() || providerDisplay == "Unknown provider" ||
+        providerDisplay == "Multiple providers")
+        return "the emulator";
+    return std::string(providerDisplay);
+}
+
+[[nodiscard]] inline Text build(bool quitting, std::string_view gameName, std::string_view notice,
+                                std::string_view starter = "the emulator") {
     Text t;
     const int width = textColumnWidth();
     t.heading = quitting ? std::string("Quit PokeBank NX?") : "Launch " + std::string(gameName) + "?";
-    t.lines[0] = quitting ? "PokeBank NX will close." : "PokeBank NX closes and the emulator starts.";
+    t.lines[0] = quitting ? std::string("PokeBank NX will close.")
+                          : "PokeBank NX closes and " + std::string(starter) + " starts.";
     const std::string_view rest = quitting
         ? std::string_view("Source saves are never written; staged copies stay on the SD card.")
         : notice;

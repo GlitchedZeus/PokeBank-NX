@@ -1575,7 +1575,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
                 changed ? "Strict PK4 serialize + Storage CRC + full save reparse: PASS"
                         : "Original source remains the current baseline",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
+    fb.drawText(44, 270, "Original " + screen.legacyProviderLabel() + " source: HARD READ ONLY", Colors::Accent);
     fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
                 Colors::TextDim, TextStyle::Caption);
     if (changed) {
@@ -1681,7 +1681,7 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
                 Colors::TextDim, TextStyle::Body);
     fb.drawText(x + 34, y + 130, "This removes it only from the app-owned staged copy.",
                 Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 166, "The original DraStic/emulator save is never written.",
+    fb.drawText(x + 34, y + 166, "The original " + screen.legacyProviderLabel() + " save is never written.",
                 Colors::TextDim, TextStyle::Caption);
     // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y releases).
     SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
