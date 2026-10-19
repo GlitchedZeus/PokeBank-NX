@@ -1,3 +1,4 @@
+#include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/Gen1ListFit.h"
@@ -372,7 +373,13 @@ bool applyPicker(TrainerViewScreen& screen) {
     if (state.pickerForDraft) {
         if (state.picker == PickerKind::Species) {
             // Preview-only identity change. The draft lives solely in overlay memory until Stage Add.
-            state.draft.species = static_cast<uint16_t>(state.pickerValue);
+            // R2-BUG-004: a real species change brings the new species' native moves.
+            const auto species = static_cast<uint16_t>(state.pickerValue);
+            if (species != state.draft.species)
+                PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(
+                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.level),
+                    state.draft.moves, state.draft.pp, state.draft.ppUps);
+            state.draft.species = species;
         } else if (state.picker == PickerKind::Move) {
             const int slot = state.pickerMoveSlot;
             state.draft.moves[slot] = static_cast<uint8_t>(state.pickerValue);
@@ -393,6 +400,9 @@ bool applyPicker(TrainerViewScreen& screen) {
     BoxPokemonEdit edit;
     if (state.picker == PickerKind::Species) {
         edit.species = static_cast<uint16_t>(state.pickerValue);
+        if (*edit.species != pokemon->species)
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
+                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->level), edit);
     } else if (state.picker == PickerKind::Move) {
         auto moves = pokemon->moves;
         moves[state.pickerMoveSlot] = static_cast<uint8_t>(state.pickerValue);

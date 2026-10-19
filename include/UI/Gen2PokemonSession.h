@@ -75,7 +75,7 @@ struct Session {
         const auto game = exactGameFromSourceId(sourceGameId);
         const auto table = !game ? ::PokeBank::Moves::LevelUpTable15::Count
                                  : ::PokeBank::Moves::levelUpTableGen2(*game == Gen2::SourceGame::Crystal);
-        SpeciesChangeMoves::refreshArrays(table, species, 0, working.level,
+        SpeciesMoveDefaults::refreshArrays(table, species, 0, working.level,
             [](uint16_t move) { return Gen2::StagedEditor::gen2MoveBasePP(move); },
             working.moves, working.pp, working.ppUps);
         return true;

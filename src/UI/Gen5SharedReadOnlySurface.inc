@@ -691,9 +691,8 @@ struct Gen5Editor {
             // R2-BUG-004: the new species' native default moveset at this level from the BW or
             // B2W2 table (PKHeX lvlmove_bw / _b2w2), base PP, no PP Ups; staged in Keep/Review's
             // replay order (Move, PP Ups, PP) so the replay reproduces these bytes exactly.
-            namespace MoveReset = PokeBank::UIModel::SpeciesChangeMoves;
-            if (!MoveReset::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,
-                    MoveReset::forSpecies(MoveReset::gen5Table(b2w2(screen)), species, 0,
+            if (!PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,
+                    PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(PokeBank::UIModel::SpeciesMoveDefaults::gen5Table(b2w2(screen)), species, 0,
                         static_cast<uint8_t>(Fields::level(p, b2w2(screen))),
                         [](uint16_t move) { return PokeVault::Integration::Gen5::basePP5(move); }),
                     error)) {

@@ -753,10 +753,9 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
         if (ok && value != previousSpecies) {
             // R2-BUG-004: the new species' native default moveset at its level for this game's
             // DP / Pt / HGSS table (PKHeX lvlmove_*), base PP, no PP Ups (setMove writes both).
-            namespace MoveReset = PokeBank::UIModel::SpeciesChangeMoves;
             const auto group = bridge(screen).sourceSave().rawFamily();
-            ok = MoveReset::setMoves(*state.session.working, MoveReset::forSpecies(
-                MoveReset::gen4TableForGroup(group), value, state.session.working->form(),
+            ok = PokeBank::UIModel::SpeciesMoveDefaults::setMoves(*state.session.working, PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(
+                PokeBank::UIModel::SpeciesMoveDefaults::gen4TableForGroup(group), value, state.session.working->form(),
                 state.session.working->level(),
                 [group](uint16_t move) { return Names::getMoveBasePP(move, group); }));
         }

@@ -22,7 +22,7 @@
 #include <string_view>
 #include <type_traits>
 
-namespace PokeBank::UIModel::SpeciesChangeMoves {
+namespace PokeBank::UIModel::SpeciesMoveDefaults {
 
 struct Slots {
     std::array<uint16_t, 4> moves{};
@@ -118,4 +118,4 @@ template <auto MoveField, auto UpsField, auto PPField, class Draft>
 
 inline constexpr const char* kMovesRefreshedStatus = "Moves reset to the new species' level-up moves";
 
-} // namespace PokeBank::UIModel::SpeciesChangeMoves
+} // namespace PokeBank::UIModel::SpeciesMoveDefaults

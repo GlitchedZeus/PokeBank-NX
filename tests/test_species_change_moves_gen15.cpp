@@ -24,7 +24,7 @@
 namespace {
 
 namespace M = PokeBank::Moves;
-namespace R = PokeBank::UIModel::SpeciesChangeMoves;
+namespace R = PokeBank::UIModel::SpeciesMoveDefaults;
 using T = M::LevelUpTable15;
 
 int failures = 0;
@@ -273,23 +273,41 @@ void applyPathContracts() {
             "Gen I Add draft refreshes moves");
     require(g1.find("writeEdit(\n                ux3SpeciesChangeMoves(screen, species, *edit.level), edit)") != std::string::npos,
             "Gen I Edit refreshes moves");
-    const auto g1Helper = functionBody(gen1, "PokeBank::UIModel::SpeciesChangeMoves::Slots ux3SpeciesChangeMoves(");
-    require(g1Helper.find("SourceGame::Yellow") != std::string::npos && g1Helper.find("levelUpTableGen1(yellow)") != std::string::npos &&
-            g1Helper.find("Editor::moveBasePP(move)") != std::string::npos, "Gen I: Yellow vs Red/Blue table, Gen I base PP");
+    const auto g1Helper = functionBody(gen1, "PokeBank::UIModel::SpeciesMoveDefaults::Slots ux3SpeciesChangeMoves(");
+    require(g1Helper.find("SpeciesMoveDefaults::gen1(editor(screen), species, level)") != std::string::npos,
+            "Gen I ux3 uses the one Gen I binding");
+    const auto gen1Binding = read("include/UI/Gen1SpeciesChangeMoves.h");
+    require(gen1Binding.find("SourceGame::Yellow") != std::string::npos &&
+            gen1Binding.find("levelUpTableGen1(yellow)") != std::string::npos &&
+            gen1Binding.find("StagedPokemonEditor::moveBasePP(move)") != std::string::npos,
+            "Gen I binding: Yellow vs Red/Blue table, Gen I base PP");
+    // Every other Gen I species-apply path (QA CG19) goes through the same binding, only on a real change.
+    const auto cleanup2 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc");
+    const auto ux2 = functionBody(cleanup2, "bool ux2ApplySpeciesPicker(TrainerViewScreen& screen)");
+    require(ux2.find("if (selected != state.draft.species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.level)") != std::string::npos &&
+            ux2.find("if (pokemon && selected != pokemon->species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->level), edit);") != std::string::npos,
+            "Gen I ux2ApplySpeciesPicker refreshes moves (Add and Edit)");
+    for (const char* path : {"src/UI/Gen1PokemonEditorOverlayUX.inc", "src/UI/Gen1PokemonEditorOverlay.cpp"}) {
+        const auto text = read(path);
+        const auto apply = functionBody(text, "bool applyPicker(TrainerViewScreen& screen)");
+        require(apply.find("if (species != state.draft.species)\n                PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(\n                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.level),") != std::string::npos &&
+                apply.find("if (*edit.species != pokemon->species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(\n                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->level), edit);") != std::string::npos,
+                std::string(path) + " applyPicker refreshes moves (Add and Edit)");
+    }
     // Both Gen I refreshes sit inside the species-changed branches.
     require(g1.find("if (species != state.draft.species) {") < g1.find("writeArrays(") &&
             g1.find("if (species != pokemon->species) {") < g1.find("writeEdit("), "Gen I: same species changes nothing");
 
     const auto gen2 = read("include/UI/Gen2PokemonSession.h");
     const auto g2 = functionBody(gen2, "bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept");
-    require(g2.find("if (species == working.species) return true;") < g2.find("SpeciesChangeMoves::refreshArrays("),
+    require(g2.find("if (species == working.species) return true;") < g2.find("SpeciesMoveDefaults::refreshArrays("),
             "Gen II: same species returns before the refresh");
     require(g2.find("gen2MoveBasePP(move)") != std::string::npos && g2.find("levelUpTableGen2(") != std::string::npos,
             "Gen II: Gold/Silver vs Crystal table, Gen II base PP");
 
     const auto gen3 = read("include/UI/Gen3SharedPokemonSession.h");
     const auto g3 = functionBody(gen3, "bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept");
-    require(g3.find("if (species == working.species) return true;") < g3.find("SpeciesChangeMoves::refreshArrays("),
+    require(g3.find("if (species == working.species) return true;") < g3.find("SpeciesMoveDefaults::refreshArrays("),
             "Gen III: same species returns before the refresh");
     require(g3.find("gen3VersionForSourceId(sourceGameId, working.originGame)") != std::string::npos,
             "Gen III: exact game (FireRed / LeafGreen / Emerald / Ruby / Sapphire)");
@@ -299,16 +317,16 @@ void applyPathContracts() {
 
     const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
     const auto g4 = functionBody(gen4, "bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget target,");
-    require(g4.find("if (ok && value != previousSpecies) {") < g4.find("MoveReset::setMoves(*state.session.working"),
+    require(g4.find("if (ok && value != previousSpecies) {") < g4.find("PokeBank::UIModel::SpeciesMoveDefaults::setMoves(*state.session.working"),
             "Gen IV: refresh only on a real species change");
-    require(g4.find("MoveReset::setMoves(") < g4.find("if (!ok) {\n            auto restored"),
+    require(g4.find("PokeBank::UIModel::SpeciesMoveDefaults::setMoves(") < g4.find("if (!ok) {\n            auto restored"),
             "Gen IV: a refused move write rolls the whole draft back");
     require(g4.find("Could not reconcile Species/Shiny while preserving PID-linked traits") != std::string::npos,
             "Gen IV rollback message kept");
 
     const auto gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
     const auto g5 = functionBody(gen5, "static bool applySpecies(TrainerViewScreen& screen, EditorSurface::EditorState& state,");
-    require(g5.find("MoveReset::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,") != std::string::npos,
+    require(g5.find("PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,") != std::string::npos,
             "Gen V edit stages the new moves on the probe in replay order");
     require(g5.find("if (species != p.species()) {\n            // R2-BUG-004") != std::string::npos,
             "Gen V: refresh only on a real species change");

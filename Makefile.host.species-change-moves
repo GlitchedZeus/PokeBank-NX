@@ -1,7 +1,7 @@
 # Thread R, round 3 (R2-BUG-004): a species change resets all four moves to the new species'
 # native level-up moves, Gen I-V (20 games). Data + algorithm + apply-path contracts, then one
 # real record round trip per generation (reusing each generation's existing source list).
-SPECIES_MOVES_DEPS := include/Pokemon/SpeciesMoveDefaults.h include/Pokemon/LevelUpLearnsets15Data.inc \
+SPECIES_MOVES_DEPS := include/Pokemon/SpeciesMoveDefaults.h include/Pokemon/LevelUpLearnsets15Data.inc include/UI/Gen1SpeciesChangeMoves.h \
 	include/UI/SpeciesChangeMoves.h
 
 SPECIES_MOVES_DATA_SOURCES := tests/test_species_change_moves_gen15.cpp

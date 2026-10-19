@@ -1,6 +1,6 @@
 // R2-BUG-004, Generation V: Black, White, Black 2, White 2, the Edit path. An existing Pokemon's
 // species change goes through exactly what applySpecies stages on its probe: Field::Species, then
-// SpeciesChangeMoves::stageMoves (Move, PP Ups, PP per slot) with the BW / B2W2 table (test_species_
+// SpeciesMoveDefaults::stageMoves (Move, PP Ups, PP per slot) with the BW / B2W2 table (test_species_
 // change_moves_gen15 pins that the UI function calls it); the probe replaces the draft, Keep stages
 // it, every Review row verifies by independent replay, and the export strictly reparses with the
 // new species' native moves (PKHeX lvlmove_bw / _b2w2), base PP, no PP Ups. Only species, ability,
@@ -28,7 +28,7 @@ namespace G = PokeVault::Integration::Gen5;
 namespace C = PokeVault::Integration::Gen5::Crypto;
 namespace L = PokeVault::Integration::Gen5::LayoutInfo;
 namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
-namespace Reset = PokeBank::UIModel::SpeciesChangeMoves;
+namespace Reset = PokeBank::UIModel::SpeciesMoveDefaults;
 namespace Moves = PokeBank::Moves;
 using Action = Shared::Action;
 using Slot = G::Gen5StagedPokemonWorkspace::Slot;

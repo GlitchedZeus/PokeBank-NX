@@ -1,14 +1,15 @@
 // R2-BUG-004, Generation I: Red, Blue, Yellow. The owner's hardware case (Yellow Create Pikachu
 // Lv5 -> Fearow kept Thunder Shock / Growl, Thunder Shock flagged Invalid) through the real Gen I
-// staged editor, with the request built by the same shared helpers ux3ApplySpeciesPicker uses
-// (SpeciesChangeMoves::writeArrays / writeEdit, Gen I base PP). test_species_change_moves_gen15
-// pins that the UI function calls them. Add and Edit, Review rows, Discard, export -> reparse,
+// staged editor, with the request built by the one Gen I binding every Gen I species-apply path
+// calls (Gen1SpeciesChangeMoves.h gen1: Yellow vs Red/Blue table from the editor's own source
+// game, Gen I base PP, then writeArrays / writeEdit). test_species_change_moves_gen15 pins that
+// ux3 / ux2 ApplySpeciesPicker and both older applyPicker overlays call it. Add and Edit, Review rows, Discard, export -> reparse,
 // byte scope, the Create default, and Gen I move compatibility after the change.
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Pokemon/SpeciesMoveDefaults.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
-#include "UI/SpeciesChangeMoves.h"
+#include "UI/Gen1SpeciesChangeMoves.h"
 
 #include <algorithm>
 #include <cassert>
@@ -18,7 +19,7 @@
 
 using namespace PokeVault::Integration::Gen1;
 namespace Moves = PokeBank::Moves;
-namespace Reset = PokeBank::UIModel::SpeciesChangeMoves;
+namespace Reset = PokeBank::UIModel::SpeciesMoveDefaults;
 
 namespace {
 
@@ -67,11 +68,6 @@ const char* sourceId(SourceGame game) {
     return game == SourceGame::Yellow ? "yellow_gb" : game == SourceGame::Red ? "red_gb" : "blue_gb";
 }
 
-// The request ux3ApplySpeciesPicker builds for an Edit species change.
-Reset::Slots slotsFor(SourceGame game, uint16_t species, uint8_t level) {
-    return Reset::forSpecies(Moves::levelUpTableGen1(game == SourceGame::Yellow), species, 0, level,
-                             [](uint16_t move) { return StagedPokemonEditor::moveBasePP(move); });
-}
 
 bool inAllowedRange(size_t i) {
     const auto in = [&](size_t a, size_t n) { return i >= a && i < a + n; };
@@ -96,13 +92,13 @@ void run(SourceGame game) {
     require(createDefault.species == 25 && createDefault.level == 5 &&
             createDefault.moves == (std::array<uint8_t, 4>{84, 45, 0, 0}) &&
             createDefault.pp == (std::array<uint8_t, 4>{30, 40, 0, 0}), "Create default unchanged");
-    const auto pikachu = slotsFor(game, 25, 5);
+    const auto pikachu = Reset::gen1(editor.get(), 25, 5);
     require(pikachu.moves == (std::array<uint16_t, 4>{84, 45, 0, 0}), "native Pikachu Lv5 = Create default");
 
     // Add draft: Pikachu Lv5 -> Fearow, as the Add branch does (level policy, then moves).
     BoxPokemonCreate draft;
     draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), 22);
-    Reset::writeArrays(slotsFor(game, 22, draft.level), draft.moves, draft.pp, draft.ppUps);
+    Reset::writeArrays(Reset::gen1(editor.get(), 22, draft.level), draft.moves, draft.pp, draft.ppUps);
     draft.species = 22;
     draft.nickname = "FEAROW";
     require(std::find(draft.moves.begin(), draft.moves.end(), 84) == draft.moves.end(),
@@ -126,7 +122,7 @@ void run(SourceGame game) {
         BoxPokemonEdit edit;
         edit.species = species;
         edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), species);
-        Reset::writeEdit(slotsFor(game, species, *edit.level), edit);
+        Reset::writeEdit(Reset::gen1(editor.get(), species, *edit.level), edit);
         require(editor->stageEdit(2, 0, edit, error), "stage Edit " + std::to_string(species) + ": " + error);
         const auto now = *editor->boxedPokemon(2, 0, error);
         require(now.species == species && now.moves == *edit.moves && now.pp == *edit.pp &&
@@ -140,7 +136,7 @@ void run(SourceGame game) {
     BoxPokemonEdit edit;
     edit.species = 22;
     edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), 22);
-    Reset::writeEdit(slotsFor(game, 22, *edit.level), edit);
+    Reset::writeEdit(Reset::gen1(editor.get(), 22, *edit.level), edit);
     require(editor->stageEdit(2, 0, edit, error), "stage Fearow: " + error);
     bool moveRow = false, ppRow = false;
     for (const auto& c : editor->pendingChanges()) {

@@ -1,7 +1,7 @@
 // R2-BUG-004, Generation IV: Diamond, Pearl, Platinum, HeartGold, SoulSilver through the real
 // Pokemon4Mutable draft and Gen4StagedPokemonEditor, ending in a strict export -> reparse. The
 // draft goes through exactly what applyGen4Picker's species branch runs: setSpecies, the shiny
-// preview, then SpeciesChangeMoves::setMoves with the DP / Pt / HGSS table (test_species_change_
+// preview, then SpeciesMoveDefaults::setMoves with the DP / Pt / HGSS table (test_species_change_
 // moves_gen15 pins that the UI function calls it). New species' native moves (PKHeX lvlmove_*),
 // base PP, no PP Ups; the same species changes nothing; only the edited slot record and the
 // storage footer change; Review describes the slot; an uncommitted draft changes nothing.
@@ -30,7 +30,7 @@ using PokeVault::Integration::Gen4::Gen4ReadOnlySave;
 using PokeVault::Integration::Gen4::Gen4StagedPokemonEditor;
 using PokeVault::Integration::Gen4::Layout;
 namespace Moves = PokeBank::Moves;
-namespace Reset = PokeBank::UIModel::SpeciesChangeMoves;
+namespace Reset = PokeBank::UIModel::SpeciesMoveDefaults;
 
 namespace {
 
