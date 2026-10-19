@@ -67,7 +67,38 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
   - Test: `tests/test_shared_menu_geometry.cpp`. It covers every type at sizes 0–120, hit == highlight, and every real Gen I–V species, item and met-location name fitting its column with no wide empty band.
 - **Fixed on the way:** the Gen V met-location id 3 was PKHeX's raw text-variable escapes and now reads "Unknown location". Id 0 reads "None" in every generation.
 
+## Round 3 (plan `ROUND3_LANE_PLAN.md` @ 6e4ba8cb)
+
+- **R2-BUG-012, one boxed-row style for every interactive Gen I–V modal.**
+  - `include/UI/SharedBoxedRows.h` holds the reference style of the Pokémon Actions popup, read from ScreenChrome `drawNarrowPokemonActions`: `Colors::Surface` rows, radius 10, a 1 px `Divider` border, a 2 px yellow `PartyNumber` focus or pressed outline, pressed tint alpha 112, label inset 18. The box rect is the touch rect.
+  - API: `drawBox`, `publish`, `drawRow`, and `drawGlyphChoices` (confirm choices use 2R's `buttonGlyph` and the shared glyph-hit path, so a tap presses exactly that button).
+  - Applied to the Gen III–V lists and grids (move chooser, value lists, move editor, held-item grid, Pokédex list) and to the Release / Discard All / Gen V decision confirms.
+  - Applied as a one-round foreign-file pass to the Gen I/II modals (value and move pickers, actions popup, clone grids, review lists, the Crystal Met Location picker, the selector, the move and progression editors) and to the classic Add Item picker. That pass is one commit per file, 22fa9ab–11fe866, and is draw-only.
+  - Editor field rows are not modals and keep their own focus treatment.
+  - Test: `tests/test_shared_boxed_rows.cpp`.
+- **R2-BUG-003, Gen V Trainer screen.** Name, Money, Play Time and Pokédex are cards. Gender, TID, SID and Badges are info rows below a divider. The game language is a caption. All IDs are kept, and TID and SID stay separate.
+- **R2-CHECK-011, Gen V location names.** No defect. The names equal PKHeX `text_bw2_40000_en.txt` at the same indices, and PKHeX `Locations5.cs` offers the whole event bank 40001–40109. Pinned in `test_gen5_create_edit_parity.cpp`.
+- **S04.** The Gen V Review / Discard / Export trace now includes Trainer edits.
+- **Part 9 item 1, Gen V parity (QA `ROUND3_PART9_REPRO_0faf7e9c.md`).**
+  - Clone, Move and Release follow the staged slot, so a Pokémon created, cloned or edited this session keeps them.
+  - Untouched originals keep the strict primitives. Staged slots use `stagedOperand`, `cloneStagedToEmptyBox`, `releaseStagedBox` and `moveStagedToEmptyBox`, which reuse the existing certificates (clone-source snapshot or Create request, with fields replayed), so review and export are unchanged.
+  - Move uses the shared ClassicPackedMove carry (`CarryGeneration::Gen5`), dropping through `Gen5SharedScreenState::dropCarriedPokemon`.
+  - Origin & Legality is a neutral panel: Encounter check Unknown, Legality Incomplete, no verdicts.
+  - Test: `tests/test_gen5_staged_slot_actions.cpp`, 218 checks over B/W/B2/W2.
+- **Part 9 item 8, Gen IV Storage view Move/Y.** The save pane uses the shared Y carry, with the pure rules in `include/UI/ClassicCarryGrid.h`.
+  - It applies only with a staged Gen IV editor, on the game-save pane, with no modal open.
+  - Pickup, drop (placeGen4 at stSaveBox/stSaveSlot), B restore, the multi-select rectangle and the carried sprite all stay in that pane. StoragePanel hides the carried source cell.
+  - The Bank pane is unchanged, and so is a save with no staged editor: Y is still stripped there, keeping it read-only.
+  - Test: `tests/test_gen4_storage_carry.cpp`.
+- **QA pins**, folded into the feature commits with the coordinator's and QA's approval:
+  - `test_reachable_ui_consistency.py:26` (d9924fe)
+  - `test_gen5_readonly_ui_contract.py:1130-1131` (67269c5)
+  - `test_gen5_readonly_save.cpp:1641` (fce339f)
+- **CG13 (ItemPicker becomes the item grid).** I gave P the exact SharedMenuGeometry patch: ItemPicker gets the grid rule and HeldItemPicker becomes `return rule(MenuType::ItemPicker);`. P lands it with its Bag Add switch, because on this branch ItemPicker's only consumer is still the list-style Add picker.
+- **devkitA64:** built in Docker (`devkitpro/devkita64`) on a copy of the branch head.
+
 ## Not done / blocked
+
 
 - **Gen III bag** lives in `src/UI/ClassicInventoryOverlay.cpp` (Thread C's Classic* scope). Non-key items are removed with no confirmation, and `ClassicInventoryCatalog::quantityRule` caps at 99, which is wrong for FRLG / RSE PC and Berries at 999. This was reported to the coordinator.
 - `include/UI/ActionSheetModel.h` still says "Make Shiny" / "Legality & Provenance". It is the generic Gen VI+ action sheet, unreachable from Gen I–V (CG11), so QA was asked to scope it out.
@@ -78,7 +109,7 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
 
 ## How to verify
 
-- `make -f Makefile.host host-test` — GCC, 151 tests.
+- `make -f Makefile.host host-test` — GCC, 171 tests.
 - `make -f Makefile.host host-sanitize`
 - `make -f Makefile.host qa` (Gen I–V acceptance matrix, fuzz smoke, QA contracts)
 - `for f in tests/*.py; do python3 $f; done`

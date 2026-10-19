@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,7 +31,9 @@ public:
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
         Browse, Actions, View, Edit, CloneDestination, ConfirmRemoveBox, ConfirmCreateBox, ConfirmDraft, Review,
-        ConfirmDiscardAll, ConfirmExport, ConfirmExit
+        ConfirmDiscardAll, ConfirmExport, ConfirmExit,
+        // Neutral Origin & Legality panel (Round 3 Part 9): read-only, no verdict.
+        Legality
     };
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
     [[nodiscard]] const Slot& target() const noexcept { return target_; }
@@ -132,9 +135,14 @@ public:
             error.clear();
             return true;
         }
+        if(action==Action::LegalityProvenance) {
+            surface_=Surface::Legality;
+            error.clear();
+            return true;
+        }
         if(action==Action::Remove) {
             if(target_.region!=Workspace::Region::Box ||
-               !workspace.originalOccupied(target_)) {
+               !(workspace.originalOccupied(target_) || workspace.stagedOperand(target_))) {
                 error="Gen V removal requires an occupied original box slot";
                 return false;
             }
@@ -176,11 +184,15 @@ public:
             return false;
         }
         Workspace snapshot=workspace;
+        // Untouched originals use the strict primitives; a Pokemon staged in
+        // this session uses the certificate-preserving companions.
+        const bool original=workspace.originalOccupied(target_);
+        const size_t box=cloneDestinationIndex_/30,slot=cloneDestinationIndex_%30;
         const bool staged=moveDestination_
-            ? workspace.moveToEmptyBox(target_,cloneDestinationIndex_/30,
-                                       cloneDestinationIndex_%30,&error)
-            : workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
-                                        cloneDestinationIndex_%30,&error);
+            ? (original ? workspace.moveToEmptyBox(target_,box,slot,&error)
+                        : workspace.moveStagedToEmptyBox(target_,box,slot,&error))
+            : (original ? workspace.cloneToEmptyBox(target_,box,slot,&error)
+                        : workspace.cloneStagedToEmptyBox(target_,box,slot,&error));
         if(!staged)return false;
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
@@ -200,13 +212,66 @@ public:
             return false;
         }
         Workspace snapshot=workspace;
-        if(!workspace.removeBox(target_.box,target_.slot,&error))return false;
+        const bool released=workspace.originalOccupied(target_)
+            ? workspace.removeBox(target_.box,target_.slot,&error)
+            : workspace.releaseStagedBox(target_.box,target_.slot,&error);
+        if(!released)return false;
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V remove presentation rejected; stage rolled back";
             return false;
         }
         surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    // Move Pokemon uses the SHARED Gen I-IV carry (ClassicPackedMoveOverlay):
+    // Actions -> Move closes the menu and the overlay picks the Pokemon up;
+    // nothing is staged until Y drops it on a verified empty box slot. B
+    // cancels with nothing to restore. The carry remembers the exact staged
+    // record it picked up and refuses a drop if that record has changed.
+    [[nodiscard]] bool beginMoveCarry(const Workspace& workspace,std::string& error) {
+        const auto allowed=availableActions(workspace);
+        bool listed=false;
+        for(size_t i=0;i<allowed.count;++i)if(allowed[i]==Action::Move)listed=true;
+        if(surface_!=Surface::Actions || !listed ||
+           target_.region!=Workspace::Region::Box) {
+            error="Gen V Move is available for occupied box slots only";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool dropCarriedPokemon(Workspace& workspace,const Slot& from,
+                                          std::span<const uint8_t> pickedUp,
+                                          size_t box,size_t slot,
+                                          Refresh&& refresh,std::string& error) {
+        const auto current=from.region==Workspace::Region::Box
+            ? workspace.viewBox(from.box,from.slot) : std::nullopt;
+        if(surface_!=Surface::Browse || !current || !current->valid() || current->empty() ||
+           !std::equal(current->originalEncryptedBytes().begin(),
+                       current->originalEncryptedBytes().end(),
+                       pickedUp.begin(),pickedUp.end())) {
+            error="Gen V carried Pokemon changed; no move staged";
+            return false;
+        }
+        if(!workspace.emptyCloneDestination(box,slot)) {
+            error="Box "+std::to_string(box+1)+" / Slot "+std::to_string(slot+1)+
+                  " is not an empty verified Gen V box slot";
+            return false;
+        }
+        Workspace snapshot=workspace;
+        const bool staged=workspace.originalOccupied(from)
+            ? workspace.moveToEmptyBox(from,box,slot,&error)
+            : workspace.moveStagedToEmptyBox(from,box,slot,&error);
+        if(!staged)return false;
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V move presentation rejected; stage rolled back";
+            return false;
+        }
         error.clear();
         return true;
     }
@@ -598,6 +663,7 @@ public:
         }
         if(surface_==Surface::Actions || surface_==Surface::Review)
             surface_=Surface::Browse;
+        else if(surface_==Surface::Legality)surface_=Surface::Actions;
         else if(surface_==Surface::ConfirmDraft)continueEditing();
         else if(surface_==Surface::ConfirmDiscardAll)surface_=Surface::Review;
         else if(surface_==Surface::ConfirmExport)surface_=Surface::Review;

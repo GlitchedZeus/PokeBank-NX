@@ -23,7 +23,7 @@ held = read("include/UI/Gen2HeldItemPicker.h")
 shared_held = read("include/UI/SharedHeldItemPickerPresentation.h")
 # Gen II, III and IV must use the same accepted Gen III grid/highlight.
 assert "SharedHeldItemPickerPresentation::drawGrid(" in held
-assert "fb.drawSelectionHighlight(cellX, cellY - 3" in shared_held
+assert "SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4)," in shared_held
 assert "Colors::Text, TextStyle::Caption" in shared_held
 assert "ItemPickerArtwork::draw(" in shared_held
 for picker_path in ("src/UI/Gen3SharedPokemonSurface.inc",
