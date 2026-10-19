@@ -748,7 +748,13 @@ void keyItemWarningRule() {
                             MG::Text::Caption, l.frame.w - 2 * l.rule.padX));
         CHECK(MG::fitsWidth("Staged copy only; the original source save stays unchanged.",
                             MG::Text::Caption, l.frame.w - 2 * l.rule.padX));
-        CHECK(MG::fitsWidth("Silph Scope: remove this Key Item?", MG::Text::Body, textW));
+        // R2-CHECK-010: the warning names the destination pocket and still fits the frame.
+        CHECK(BagAdd::keyItemWarningQuestion("Super Rod", "PC Items", false) == "Add Super Rod to PC Items?");
+        CHECK(BagAdd::keyItemWarningQuestion("Super Rod", "PC Items", true) == "Remove Super Rod from PC Items?");
+        CHECK(MG::fitsWidth(BagAdd::keyItemWarningQuestion("{POKEBLOCK} CASE", "Key Items", true),
+                            MG::Text::Body, textW));
+        CHECK(MG::fitsWidth(BagAdd::keyItemWarningQuestion("Wailmer Pail", "PC Items", true),
+                            MG::Text::Body, textW));
         CHECK(MG::buttonRect(l, 0, 2).inside(l.frame) && MG::buttonRect(l, 1, 2).inside(l.frame));
         CHECK(!MG::buttonRect(l, 0, 2).overlaps(MG::buttonRect(l, 1, 2)));
     }
