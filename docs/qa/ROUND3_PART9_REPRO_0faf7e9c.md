@@ -6,14 +6,43 @@ This is a read-only audit. `git diff 0faf7e9c -- src include` is empty, so the f
 |---|---|---|---|
 | 1 | Gen V Create/Edit/Clone/Move/Release parity | **REPRODUCES (partial)** | S |
 | 2 | Gen V species picker sprites, shiny preview, restrictions | Does not reproduce in source; sprites for 494-649 need a device check | — |
-| 3 | Generic emulator labels | Does not reproduce | — |
-| 4 | RetroArch/DraStic launch and exit | **REPRODUCES as designed**: return-to-app is opt-in; launch needs a device | 2R |
+| 3 | Generic emulator labels | **REPRODUCES on the Trainer / Game Browser** (corrected) | 2R |
+| 4 | RetroArch/DraStic launch and exit | **REPRODUCES**: the return-to-app opt-in is by design, but there is also a source defect in core choice (corrected) | 2R / L |
 | 5 | Touch Quick View drag / modal isolation | Does not reproduce on host; drag feel needs a device | P (test gap) |
 | 6 | TM/HM/Mail/Ball/item sprites | **REPRODUCES (Gen V only)** | I |
 | 7 | Gen V save-instance profile assignment | Does not reproduce on host; profile UID needs a device | — |
 | 8 | Gen IV multi-select Move / Y | **REPRODUCES in the Storage view** | S |
-| 9 | Home / Profile navigation | Not a defect; one help-text nit | 2R (nit) |
+| 9 | Home / Profile navigation | **REPRODUCES**: two bugs plus the help-text nit (corrected) | 2R |
 | 10 | Region backgrounds / RomFS | Does not reproduce for Gen I-V; the packaged NRO needs CI | — |
+
+## Corrections after 2R's audit (coordinator, round 3)
+
+The first pass under-reported reports 3, 4 and 9, because the host tests it relied on do not cover those
+surfaces. QA checked each correction in the source on 0faf7e9c and added an XFAIL contract that would have caught it.
+
+- **Report 3: REPRODUCES.**
+  - `TrainerViewScreenBase.h:323-328` `legacyProviderLabel()` returns `sourceProviderLabel` raw. So the
+    Trainer / Game Browser header shows "RetroArch/DeSmuME", "Source", "Remembered", or a hard-coded
+    "RETROARCH" / "EXTERNAL", including "RETROARCH" for mGBA.
+  - `test_home_card_providers` covers only Home cards and Save Instance rows.
+  - New contract **CG26** (XFAIL, 2R): the label must come from `providerDisplayName()`.
+- **Report 4: REPRODUCES in source.**
+  - `GameLauncher.cpp:512-523` `defaultRetroArchCore(gameId)` has no access to the provider. NDS saves always
+    try `desmume_libretro` before `melonds_libretro`, so a melonDS save launches DeSmuME.
+  - 2R also reports that the route preview promises a return the launcher can silently skip. Lane L owns this.
+  - New contract **CG27** (XFAIL, L): the NDS core choice must see the provider.
+  - The return-host opt-in described below is still intended behaviour.
+- **Report 9: REPRODUCES.**
+  - `SaveSelectScreen.cpp:1613-1621` `setUser()` sets `titleIndex = 0` even when the profile has not changed. It
+    restores focus only for Gen V assigned files, so re-confirming the same profile loses the focused game. QA
+    verified this. New contract **CG28** (XFAIL, 2R).
+  - 2R also reports that the Games-browser profile avatar touch rect (pushed at :4395) is never hit-tested
+    (input at :4181-4199). The coordinator assigned this to 2R. QA has not added a static contract for it,
+    because a touch-routing test belongs with 2R's fix.
+  - The "L/R Switch profile" help nit (:4508) still applies.
+
+Part 9 report 6 is now covered by **CG25** (XFAIL, I): Gen V machines must resolve through the one machine
+table, and the seven Feathers must map to `*-wing` art. CG25 passes on lane I's `c3b12d2`.
 
 ## Details
 
@@ -24,7 +53,7 @@ This is a read-only audit. `git diff 0faf7e9c -- src include` is empty, so the f
    Gen IV works from the reparsed staged buffer (`Gen4StagedPokemonEditor.cpp:421-438, 551-560`). Gen V Move also uses Box/Slot number prompts (`Gen5SharedReadOnlySurface.inc:1216-1238`), where Gen IV uses the shared ClassicPackedMove carry. Gen V has no Origin & Legality row (Gen IV: `Gen4SharedPokemonSurface.inc:954`).
    **Fix:** base eligibility on the staged view, and route Move through ClassicPackedMove.
 2. **Species picker.** It is the shared picker, species 1-649, with a Y toggle for Normal/Shiny (`SharedSpeciesPicker.h:389-430`). Ineligible picks are refused after the choice (`Gen5SharedScreenState.h:399-419`), the same as Gen III/IV. `tools/check_device_assets.py` checks shiny sprites only for Gen I (lines 178-179), so the Gen V shiny art is unchecked.
-3. **Emulator labels.** Home cards show the provider name: DraStic, melonDS, RetroArch, or "RetroArch (DeSmuME)" (`SaveProviderIdentity.h:66-142`). `test_home_card_providers` passes. Minor: `legacyProviderLabel` shows the raw label "RetroArch/DeSmuME".
+3. **Emulator labels.** Home cards show the provider name: DraStic, melonDS, RetroArch, or "RetroArch (DeSmuME)" (`SaveProviderIdentity.h:66-142`). `test_home_card_providers` passes. The Trainer / Game Browser header does **not** (see Corrections).
 4. **Launch/exit.** The return host runs only when `<configRoot>/experimental_return_host.enable` exists (`GameLauncher.cpp:38-41, 1258-1268`). By default the Home confirm says that quitting the emulator returns to the Homebrew Menu, or to DraStic's own launcher. With the marker present, the plan returns to PokeBank NX. This is intended until the return host is validated on device.
 5. **Touch.** No "Quick View" surface exists. View/Edit drag, panel swipe and modal layering are wired (`SharedPokemonEditorSurface.inc:533-617`; `ScreenChrome.h:306, 408-418`). Gen V Review draws without `beginModal` (`Gen5SharedReadOnlySurface.inc:1673-1676`), but it only accepts keys. **Gap:** `tests/test_touch_scroll_state.cpp` is in no `Makefile.host*`. It passes when built by hand.
 6. **Item sprites.** `test_item_sprite_coverage.py` passes for Gen I-IV: 124/221/307/514 eligible, 0 missing. Gen V is not covered by that test. Findings for Gen V:
