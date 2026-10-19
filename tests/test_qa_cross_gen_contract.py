@@ -29,7 +29,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     "CG19-species-change-resets-moves": "R (R2-BUG-004 SpeciesMoveDefaults)",
     "CG22-move-chooser-type-badges": "P (R2-BUG-007)",
-    "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
     "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
     "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
     "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
@@ -826,6 +825,17 @@ def contracts(sources: list[Source]) -> list[Result]:
         f = src(rel)
         return [b for _, _, b in function_bodies(f.code, re.compile("^" + name + "$"))] if f else []
 
+    # Coordinator ruling (round 3): an editor's FIELD focus on its own work surface stays unboxed; only
+    # interactive modal rows use SharedBoxedRows. Exempt exactly these Gen I/II field-focus painters (lane S
+    # list, checked against 7ed1cc16); any other drawSelectionHighlight in the files still fails.
+    FIELD_FOCUS_EXEMPT = {
+        "src/UI/Gen1PokemonEditorOverlayFoundation.inc": ("foundationDrawIdentityRow", "foundationDrawWorkspace"),
+        "src/UI/Gen1PokemonEditorOverlayUX.inc": ("drawRow",),
+        "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc": ("ux2DrawLogicalRow",),
+        "src/UI/Gen2SharedPokemonSurface.inc": ("drawSharedDetails", "drawSharedMoves"),
+    }
+    # Files with no modal rows at all (Foundation's only modal, the exit confirm, is drawGlyphButton choices).
+    NO_MODAL_ROWS = {"src/UI/Gen1PokemonEditorOverlayFoundation.inc"}
     # R2-BUG-012 (lane S): one shared boxed-row style for every focused modal row / cell.
     boxed_api = r"\bSharedBoxedRows::(?:drawBox|drawRow|drawGlyphChoices)\s*\(|\bdrawMenuCell\s*\("
     for cid, title, files in (
@@ -856,10 +866,15 @@ def contracts(sources: list[Source]) -> list[Result]:
             f = src(rel)
             if not f:
                 continue  # removed / renamed files are CG11's concern
+            spans = [(n, ln, ln + b.count("\n")) for n, ln, b in function_bodies(f.code, re.compile(r"."))]
+            exempt = FIELD_FOCUS_EXEMPT.get(rel, ())
             for i, line in enumerate(f.code.splitlines(), 1):
                 if re.search(r"\bdrawSelectionHighlight\s*\(", line):
+                    inner = [n for n, a, b in spans if a <= i <= b]
+                    if inner and inner[-1] in exempt:
+                        continue  # the editor's own field focus, not a modal row
                     r.violations.append(f"{rel}:{i}: drawSelectionHighlight() instead of SharedBoxedRows")
-            if not re.search(boxed_api, f.code):
+            if rel not in NO_MODAL_ROWS and not re.search(boxed_api, f.code):
                 r.violations.append(f"{rel}: no SharedBoxedRows::drawBox / drawRow / drawMenuCell call")
         res.append(r)
 
