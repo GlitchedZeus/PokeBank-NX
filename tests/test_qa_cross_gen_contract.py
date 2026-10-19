@@ -32,6 +32,9 @@ XFAIL: dict[str, str] = {
     "CG24-gen34-trainer-staged-export": "C (R2-BUG-002)",
     "CG20-shared-boxed-modal-rows": "S (R2-BUG-012)",
     "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
+    "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
+    "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
+    "CG21-help-lines-use-button-glyphs": "2R (R2-BUG-013)",
     "CG25-gen5-machine-and-feather-art": "I (Part 9 report 6)",
     "CG26-trainer-provider-display-name": "2R (Part 9 report 3)",
     "CG27-retroarch-nds-core-follows-provider": "L (Part 9 report 4)",
@@ -796,9 +799,13 @@ def contracts(sources: list[Source]) -> list[Result]:
              "Gen III-V editor pickers (value lists, Move chooser / editor, Held Item grid, species picker, Gen V "
              "Pokedex) draw focused rows through SharedBoxedRows, never drawSelectionHighlight (R2-BUG-012)",
              ("src/UI/SharedPokemonEditorSurface.inc", "src/UI/Gen3SharedPokemonSurface.inc",
-              "src/UI/Gen5SharedReadOnlySurface.inc", "include/UI/SharedSpeciesPicker.h",
+              "src/UI/Gen5SharedReadOnlySurface.inc",
               "include/UI/SharedHeldItemPickerPresentation.h",
               "include/UI/SharedEditorChrome.h")),
+            ("CG20c-shared-boxed-species-picker",
+             "The shared species picker draws its focused row through SharedBoxedRows / drawMenuCell, never "
+             "drawSelectionHighlight (R2-BUG-012, owner P)",
+             ("include/UI/SharedSpeciesPicker.h",)),
             ("CG20b-shared-boxed-modal-rows-gen12-classic",
              "Gen I/II editor overlays and the Classic inventory draw focused rows through SharedBoxedRows, never "
              "drawSelectionHighlight (R2-BUG-012, second batch)",
@@ -821,6 +828,47 @@ def contracts(sources: list[Source]) -> list[Result]:
             if not re.search(boxed_api, f.code):
                 r.violations.append(f"{rel}: no SharedBoxedRows::drawBox / drawRow / drawMenuCell call")
         res.append(r)
+
+    # R2-BUG-013 (2R): button letters in help / instruction prose become controller glyphs.
+    r = Result("CG21-help-lines-use-button-glyphs",
+               "Help overlays draw every line through the shared glyph renderer (drawGlyphHelpLine over "
+               "GlyphInstruction), so no plain-text button letters remain where glyphs apply (R2-BUG-013)")
+    if not src("include/UI/GlyphInstruction.h"):
+        r.violations.append("include/UI/GlyphInstruction.h (PokeBank::UIModel::GlyphInstruction) does not exist")
+    chrome = src("include/UI/ScreenChrome.h")
+    for fn in ("drawGlyphText", "drawGlyphSentence", "drawGlyphHelpLine"):
+        if not chrome or not list(function_bodies(chrome.code, re.compile("^" + fn + "$"))):
+            r.violations.append(f"include/UI/ScreenChrome.h: {fn}() missing")
+    overlay = bodies("include/UI/ScreenChrome.h", "drawInfoOverlay")
+    if not overlay:
+        r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() missing")
+    for b in overlay:
+        if re.search(r"\bdrawText\s*\([^;]*\bline\b", b):
+            r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() draws help lines with plain drawText")
+        if not re.search(r"\bdrawGlyphHelpLine\s*\(", b):
+            r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() does not call drawGlyphHelpLine")
+    res.append(r)
+
+    # R2-BUG-006 (lane P): long item catalogs open the shared grid picker.
+    r = Result("CG23-bag-add-grid-picker",
+               "Every Bag Add surface (Gen I-III Classic inventory, Gen IV, Gen V) opens the shared item grid "
+               "(UI::SharedItemGridPicker), whose cells are SharedEditorChrome::drawMenuCell boxes (R2-BUG-006)")
+    grid = src("include/UI/SharedItemGridPicker.h")
+    if not grid:
+        r.violations.append("include/UI/SharedItemGridPicker.h (UI::SharedItemGridPicker) does not exist")
+    else:
+        # The generic grid hands each cell to a caller-supplied painter; the Bag Add adapter passes drawMenuCell.
+        adapter = src("include/UI/SharedBagAddPicker.h")
+        if not any(f and re.search(r"\bdrawMenuCell\s*\(", f.code) for f in (grid, adapter)):
+            r.violations.append("include/UI/SharedItemGridPicker.h / SharedBagAddPicker.h: grid cells are not "
+                                "drawn with SharedEditorChrome::drawMenuCell")
+    for rel in ("src/UI/ClassicInventoryOverlay.cpp", "src/UI/Gen4SharedPokemonSurface.inc",
+                "src/UI/Gen5SharedReadOnlySurface.inc"):
+        f = src(rel)
+        if f and not re.search(r"\bSharedItemGridPicker::|\bSharedBagAddPicker::pickerGrid\s*\(|\bAddGrid::navigate\s*\(",
+                               f.code):
+            r.violations.append(f"{rel}: Bag Add still opens the single-column item list, not the shared grid")
+    res.append(r)
 
     # Part 9 report 6 (lane I): Gen V machines and Feathers have labels and art.
     r = Result("CG25-gen5-machine-and-feather-art",
