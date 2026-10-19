@@ -64,6 +64,11 @@ struct ClassicItemQuantity {
 [[nodiscard]] PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
     ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
 
+// The Gen I-III "Inventory Help" rows, in order. Key rows are "KEYS   description" (several
+// groups per row separated by 5+ spaces) so ScreenChrome::drawGlyphHelpLine draws each button as a
+// glyph badge (R2-BUG-013); the trailing notes are plain banner text.
+[[nodiscard]] std::span<const std::string_view> classicInventoryHelpLines() noexcept;
+
 } // namespace PokeBank::UIModel
 
 #endif
