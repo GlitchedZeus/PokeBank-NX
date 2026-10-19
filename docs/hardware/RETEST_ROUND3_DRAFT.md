@@ -90,7 +90,9 @@ These 48 items were owner PASS on hardware: 42 on `7fea1797` and 6 on `e10f307f`
 
 | Result | ID | What should happen now | Host evidence (contract / test) | On #307 |
 | --- | --- | --- | --- | --- |
-| [ ] | E02 (re-check) | Actions menu order. The accepted order already names Origin & Legality (View, Edit, Clone, Move where supported, Release, Origin & Legality, Review, Cancel). Gen V now shows that row too, including on created, cloned and edited slots. | Hardware gate E02 (pins the new Gen V list), matrix `actions` (exact lists for original, cloned, moved and party-after-staging slots) | 7ed1cc16 |
+| [ ] | E02 (re-check) | Actions menu order. The accepted order already names Origin & Legality: View, Edit, Clone, Move where supported, Release, Origin & Legality, Review, Cancel.<br>**Gen V** now shows Origin & Legality too, including on created, cloned and edited slots.<br>**Gen I** Box Actions now offer **Move**, which starts the Boxes carry, for parity with Gen II–V (R2-CHECK-009). | Hardware gate E02: pins the new Gen V list; the Gen I guard is pending C's literal. Matrix `actions`: exact lists | 7ed1cc16 (Gen V); batch 4 (Gen I, C) |
+| [ ] | R2-CHECK-009 | Gen I Box Actions → **Move** picks the Pokémon up in the shared Boxes carry. Y / A drops it, B cancels. Review still lists the staged move. Finding: Gen I was missing the Move route that Gen II–V have, so this is a routing repair, not a new mechanic. | `test_classic_pokemon_action_menu` (E02 Gen I guard) | batch 4 (C) |
+| [ ] | R2-BUG-008 | Gen III: editing a Pokémon's Level keeps its stored **Met Location**. A met location is never rewritten or derived from the level. | lane C test (named when it lands) | batch 4 (C) |
 | [ ] | R2-BUG-001 | The Trainer page shows **A: Edit** whenever Name / Money are editable, including Gen I on a read-only source. | CG18 + CG18b | batch 4 (C `cccec27b`) |
 | [ ] | R2-BUG-002 | Gen III and Gen IV Trainer Name / Money edits stage, show in Review, and appear in the exported copy. The source is unchanged. | CG24, `tests/test_gen3_trainer_edit.cpp`, Gen IV staged Trainer editor | 7ed1cc16 |
 | [ ] | R2-BUG-003 | Gen V Trainer page uses the Gen I–IV layout: selectable cards (Name, Money, Play Time, Pokédex), a divider, then compact read-only rows. No scrolling. | `tests/test_gen5_create_edit_parity.cpp`, `tests/test_gen5_readonly_ui_contract.py` | 7ed1cc16 |
@@ -107,7 +109,7 @@ These 48 items were owner PASS on hardware: 42 on `7fea1797` and 6 on `e10f307f`
 | [ ] | Part 9 #9 | Re-confirming the same profile keeps the focused game. The Games-browser profile avatar is tappable. "L/R Switch profile" help shows only with 2+ profiles. | CG28, `tests/test_session_provider_names.cpp` | aeccd13 |
 | [ ] | S06 host probe | (Host only: an exported `edited.*` copy with one corrupted checksummed byte is rejected by the strict reparse, in all 20 games.) No device step; see Group C S06. | matrix `export.checksum` | audit branch |
 
-Investigations (R2-BUG-008, R2-CHECK-009/010/011) are listed once their lanes report a code change.
+Investigations R2-CHECK-010/011 are listed once their lanes report a code change.
 R2-CHECK-010 already changes PC Items catalogs: R/S no longer offer Devon Goods / Letter / Orbs, and Emerald no longer offers HMs.
 
 ## Group C: still NOT VERIFIED (not failures)
