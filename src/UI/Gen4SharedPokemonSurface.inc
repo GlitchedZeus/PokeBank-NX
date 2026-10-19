@@ -753,16 +753,12 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
         if (ok && value != previousSpecies) {
             // R2-BUG-004: the new species' native default moveset at its level for this game's
             // DP / Pt / HGSS table (PKHeX lvlmove_*), base PP, no PP Ups (setMove writes both).
+            namespace MoveReset = PokeBank::UIModel::SpeciesChangeMoves;
             const auto group = bridge(screen).sourceSave().rawFamily();
-            const auto table = group == Enums::GameVersion::DP ? PokeBank::Moves::LevelUpTable15::DiamondPearl
-                             : group == Enums::GameVersion::PT ? PokeBank::Moves::LevelUpTable15::Platinum
-                             : group == Enums::GameVersion::HGSS ? PokeBank::Moves::LevelUpTable15::HeartGoldSoulSilver
-                             : PokeBank::Moves::LevelUpTable15::Count;
-            const auto slots = PokeBank::UIModel::SpeciesChangeMoves::forSpecies(
-                table, value, state.session.working->form(), state.session.working->level(),
-                [group](uint16_t move) { return Names::getMoveBasePP(move, group); });
-            for (size_t slot = 0; ok && slot < 4; ++slot)
-                ok = state.session.working->setMove(slot, slots.moves[slot]);
+            ok = MoveReset::setMoves(*state.session.working, MoveReset::forSpecies(
+                MoveReset::gen4TableForGroup(group), value, state.session.working->form(),
+                state.session.working->level(),
+                [group](uint16_t move) { return Names::getMoveBasePP(move, group); }));
         }
         if (!ok) {
             auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(

@@ -12,11 +12,14 @@
 //
 // Only the staged draft is touched; nothing here reads or writes a save.
 
+#include "Enums/GameVersion.h"
 #include "Pokemon/SpeciesMoveDefaults.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace PokeBank::UIModel::SpeciesChangeMoves {
@@ -61,6 +64,56 @@ bool refreshArrays(::PokeBank::Moves::LevelUpTable15 table, uint16_t species, ui
     const Slots slots = forSpecies(table, species, form, level, basePP);
     writeArrays(slots, moves, pp, ppUps);
     return slots.known;
+}
+
+// Gen I/II edit requests carry optional arrays: fill all three from the slots.
+template <class Edit>
+void writeEdit(const Slots& slots, Edit& edit) {
+    typename std::decay_t<decltype(edit.moves)>::value_type moves{};
+    typename std::decay_t<decltype(edit.pp)>::value_type pp{};
+    typename std::decay_t<decltype(edit.ppUps)>::value_type ppUps{};
+    writeArrays(slots, moves, pp, ppUps);
+    edit.moves = moves;
+    edit.pp = pp;
+    edit.ppUps = ppUps;
+}
+
+// Gen IV Pokemon4Mutable-style records: setMove(slot, id) writes the move with base PP and no
+// PP Ups. Stops at the first refusal so the caller can roll the whole draft back.
+template <class Record>
+[[nodiscard]] bool setMoves(Record& record, const Slots& slots) {
+    for (std::size_t slot = 0; slot < 4; ++slot)
+        if (!record.setMove(slot, slots.moves[slot])) return false;
+    return true;
+}
+
+// Gen V StagedPokemon5Record / Gen5SharedPokemonSession: Move, then PP Ups 0, then PP, per slot
+// -- the order Keep and Review replay, so the replay reproduces the staged bytes exactly.
+template <auto MoveField, auto UpsField, auto PPField, class Draft>
+[[nodiscard]] bool stageMoves(Draft& draft, const Slots& slots, std::string& error) {
+    for (std::size_t slot = 0; slot < 4; ++slot) {
+        if (!draft.stage(MoveField, slot, slots.moves[slot], error) ||
+            !draft.stage(UpsField, slot, 0u, error) ||
+            !draft.stage(PPField, slot, slots.pp[slot], error))
+            return false;
+    }
+    return true;
+}
+
+// Exact-game table selection from what each editor knows.
+[[nodiscard]] constexpr uint8_t gen3VersionForSourceId(std::string_view id, uint8_t originFallback) noexcept {
+    return id == "sapphire_gba" ? 1 : id == "ruby_gba" ? 2 : id == "emerald_gba" ? 3
+         : id == "firered_gba" ? 4 : id == "leafgreen_gba" ? 5 : originFallback;
+}
+[[nodiscard]] constexpr ::PokeBank::Moves::LevelUpTable15 gen4TableForGroup(::Enums::GameVersion group) noexcept {
+    using T = ::PokeBank::Moves::LevelUpTable15;
+    return group == ::Enums::GameVersion::DP ? T::DiamondPearl
+         : group == ::Enums::GameVersion::PT ? T::Platinum
+         : group == ::Enums::GameVersion::HGSS ? T::HeartGoldSoulSilver : T::Count;
+}
+[[nodiscard]] constexpr ::PokeBank::Moves::LevelUpTable15 gen5Table(bool black2White2) noexcept {
+    return black2White2 ? ::PokeBank::Moves::LevelUpTable15::Black2White2
+                        : ::PokeBank::Moves::LevelUpTable15::BlackWhite;
 }
 
 inline constexpr const char* kMovesRefreshedStatus = "Moves reset to the new species' level-up moves";

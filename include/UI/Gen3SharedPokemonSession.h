@@ -129,10 +129,8 @@ struct Session {
         // game (pret pokeruby / pokeemerald / pokefirered GiveMonInitialMoveset; FireRed and
         // LeafGreen differ), base PP, no PP Ups. The editing game comes from the source id; a
         // draft with none uses its own origin game. No game: the slots are cleared.
-        const uint8_t version = sourceGameId == "sapphire_gba" ? 1 : sourceGameId == "ruby_gba" ? 2
-                              : sourceGameId == "emerald_gba" ? 3 : sourceGameId == "firered_gba" ? 4
-                              : sourceGameId == "leafgreen_gba" ? 5 : working.originGame;
-        SpeciesChangeMoves::refreshArrays(::PokeBank::Moves::levelUpTableForGen3Version(version),
+        SpeciesChangeMoves::refreshArrays(::PokeBank::Moves::levelUpTableForGen3Version(
+                SpeciesChangeMoves::gen3VersionForSourceId(sourceGameId, working.originGame)),
             species, 0, working.level,
             [](uint16_t move) { return ::Names::getMoveBasePP(move, ::Enums::GameVersion::FRLG); },
             working.moves, working.pp, working.ppUps);

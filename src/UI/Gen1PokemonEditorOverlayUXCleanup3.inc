@@ -221,12 +221,8 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         if (species != pokemon->species) {
             edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
-            std::array<uint8_t, 4> moves{}, pp{}, ppUps{};
-            PokeBank::UIModel::SpeciesChangeMoves::writeArrays(
-                ux3SpeciesChangeMoves(screen, species, *edit.level), moves, pp, ppUps);
-            edit.moves = moves;
-            edit.pp = pp;
-            edit.ppUps = ppUps;
+            PokeBank::UIModel::SpeciesChangeMoves::writeEdit(
+                ux3SpeciesChangeMoves(screen, species, *edit.level), edit);
         }
         const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
         if (nickname != pokemon->nickname) edit.nickname = nickname;
