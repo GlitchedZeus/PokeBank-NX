@@ -1148,14 +1148,14 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                         e.caught?Colors::Accent:Colors::TextDim,TextStyle::Caption);
         }
         std::vector<ControllerHint> hints;
-        for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+        for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
         drawNavBar(fb,hints);
         return;
     }
     // The shared Trainer panel: drawn in the same content rect and HOME-style
-    // card as the base Trainer view (no modal). Editable rows carry a value
-    // pill; read-only rows are labelled "Read-only"; the list scrolls so the
-    // focused row is always visible.
+    // card as the base Trainer view (no modal). Name / Money / Play Time /
+    // Pokedex are cards with a value pill; the read-only identity rows sit
+    // below a divider (R2-BUG-003). The page always draws its own footer.
     screen.drawGSCOverlay(fb);
     const int x=LEFT_PANEL_X,y=CONTENT_PANEL_Y;
     const int w=fb.getWidth()-x,h=CONTENT_PANEL_HEIGHT;
@@ -1219,7 +1219,7 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
                     "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
     std::vector<ControllerHint> hints;
-    for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+    for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);
 }
 } // namespace
