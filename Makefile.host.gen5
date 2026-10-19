@@ -162,6 +162,28 @@ $(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp -o $@
 
+# Round 3 Part 9: Gen V Clone / Move / Release on slots staged this session
+# (Create, Clone, field edit), the shared Move carry, neutral Origin & Legality.
+GEN5_STAGED_ACTIONS_TEST := $(HOST_BUILD)/test_gen5_staged_slot_actions
+GEN5_STAGED_ACTIONS_SANITIZE := $(HOST_BUILD)/test_gen5_staged_slot_actions_sanitize
+GEN5_STAGED_ACTIONS_INPUTS := tests/test_gen5_staged_slot_actions.cpp \
+    include/Integration/Gen5/Gen5StagedPokemonWorkspace.h include/Integration/Gen5/Gen5SharedScreenState.h \
+    include/Integration/Gen5/Gen5SharedEditorBridge.h src/UI/Gen5SharedReadOnlySurface.inc \
+    src/UI/ClassicPackedMoveOverlay.inc $(GEN5_EXPORT_INPUTS)
+
+HOST_TESTS += $(GEN5_STAGED_ACTIONS_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_STAGED_ACTIONS_SANITIZE)
+host-test: $(GEN5_STAGED_ACTIONS_TEST)
+host-sanitize: $(GEN5_STAGED_ACTIONS_SANITIZE)
+
+$(GEN5_STAGED_ACTIONS_TEST): $(GEN5_STAGED_ACTIONS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_staged_slot_actions.cpp -o $@
+
+$(GEN5_STAGED_ACTIONS_SANITIZE): $(GEN5_STAGED_ACTIONS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_staged_slot_actions.cpp -o $@
+
 # Gen V native Trainer (PlayerData 27 / Misc 52): staged Name/Money/Play
 # Time, read-only ownership rows, Review and verified export whitelist.
 GEN5_TRAINER_TEST := $(HOST_BUILD)/test_gen5_trainer
