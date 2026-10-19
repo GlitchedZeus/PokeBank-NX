@@ -1072,19 +1072,13 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (state.helpActive) {
         fb.drawText(x + 30, y + 20, "Inventory Help", Colors::Text, TextStyle::Heading);
-        const std::vector<std::string> lines{
-            "A   Edit amount (only when this item has an editable quantity)",
-            "X   Add item from the exact-game, exact-category catalog",
-            "Y   Remove the highlighted item",
-            "L / R   Previous / next supported inventory category",
-            "D-pad / Left Stick   Navigate (hold to repeat)",
-            "+   Inventory Options     -   Help     B   Back / Cancel",
-            "Empty valid categories show (None); X Add remains available.",
-            "Key Items may depend on story flags; warnings do not alter unrelated flags.",
-            "All edits are staged. Export creates an edited copy; the source save is not overwritten.",
-        };
+        // R2-BUG-013: key rows draw their buttons as glyph badges (ScreenChrome::drawGlyphHelpLine);
+        // the notes stay plain text. Rows: ClassicInventoryUIModel classicInventoryHelpLines().
         int rowY = y + 78;
-        for (const auto& line : lines) { fb.drawText(x + 34, rowY, line, Colors::TextDim, TextStyle::Body); rowY += 48; }
+        for (const auto line : PokeBank::UIModel::classicInventoryHelpLines()) {
+            drawGlyphHelpLine(fb, x + 34, rowY, std::string(line), Colors::TextDim, TextStyle::Body);
+            rowY += 48;
+        }
         drawNavBar(fb, {{"B", "Close Help"}});
         return;
     }

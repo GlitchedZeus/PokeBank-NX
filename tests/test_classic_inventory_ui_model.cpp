@@ -1,5 +1,6 @@
 #include "Inventory/ItemQuantityPolicy.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/GlyphInstruction.h"
 #include "UI/InventoryUIContract.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 
@@ -189,6 +190,38 @@ int main() {
         assert(overlay.find("drawNavBar(fb, {{\"Y\", \"Remove\"}, {\"B\", \"Cancel\"}});") != std::string::npos);
         // The add and edit quantity editors ask the one per-item query.
         assert(overlay.find("PokeVault::Inventory::quantityRule(") == std::string::npos);
+    }
+
+    {
+        // R2-BUG-013: every Inventory Help key row names real buttons, so drawGlyphHelpLine draws
+        // them as glyph badges; the three notes stay plain text. The overlay draws only through it.
+        namespace GI = PokeBank::UIModel::GlyphInstruction;
+        const auto glyphs = [](std::string_view line) {
+            std::string out;
+            for (const auto& seg : GI::helpLine(line)) {
+                if (seg.kind != GI::Kind::Glyph) continue;
+                if (!out.empty()) out += ",";
+                out += seg.text;
+            }
+            return out;
+        };
+        const auto lines = classicInventoryHelpLines();
+        assert(lines.size() == 9);
+        const char* expected[] = {"A", "X", "Y", "L/R", "D-pad/Stick", "+,-,B", "", "", ""};
+        for (std::size_t i = 0; i < lines.size(); ++i) {
+            if (glyphs(lines[i]) != expected[i])
+                std::cerr << "help row " << i << ": got {" << glyphs(lines[i]) << "} want {" << expected[i] << "}\n";
+            assert(glyphs(lines[i]) == expected[i]);
+        }
+        std::ifstream in("src/UI/ClassicInventoryOverlay.cpp", std::ios::binary);
+        const std::string overlay((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        const auto help = overlay.find("\"Inventory Help\"");
+        const auto helpEnd = overlay.find("if (state.optionsActive) {", help);
+        assert(help != std::string::npos && helpEnd != std::string::npos);
+        const auto body = overlay.substr(help, helpEnd - help);
+        assert(body.find("drawGlyphHelpLine(fb, x + 34, rowY, std::string(line)") != std::string::npos);
+        assert(body.find("PokeBank::UIModel::classicInventoryHelpLines()") != std::string::npos);
+        assert(body.find("fb.drawText(x + 34, rowY") == std::string::npos);
     }
 
     std::cout << "classic inventory UI model + polished Gen II display: PASS\n";
