@@ -27,12 +27,12 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
-    "CG22-move-chooser-type-badges": "P (R2-BUG-007)",
-    "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
-    "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
-    # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED. Every contract is enforced.
+    # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
+    # Round 3: CG21/CG26/CG28 on #307 aeccd13, CG20/CG24/CG25/CG27 on 7ed1cc16, CG20b on 7ed1cc16,
+    # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
+    # Every contract is enforced.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
 }
 
