@@ -19,3 +19,6 @@ include Makefile.host.pickers
 include Makefile.host.reroll-mechanics
 
 include Makefile.host.machine
+
+# Must stay last: wraps $(CXX) for header dependency tracking (Makefile.host.deps).
+include Makefile.host.deps
