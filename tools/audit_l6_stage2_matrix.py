@@ -109,7 +109,7 @@ LANES: dict[str, Lane] = {
 # partial green before the L5 command reports source drift.
 SOURCE_PINS: dict[str, dict[str, str]] = {
     "l5": {
-        "src/Encryption/Encryption3FRLG.cpp": "eec27b73a15d6652371ed2e066690ef0fa9fb7ef",
+        "src/Encryption/Encryption3FRLG.cpp": "133efded16f335220238d465d618c61ed57b2a9f",
         "src/Encryption/Encryption4.cpp": "406935761713db95ae738398b65ba0a37d4cf97b",
         "include/Encryption/Encryption.h": "9eab685b76511d5ea08e0fffdff63529a5824fe6",
         "include/Pokemon/Pokemon3FRLG.h": "9f0e1ede52d338e90a969dba8ecd0f081e3a88ea",
