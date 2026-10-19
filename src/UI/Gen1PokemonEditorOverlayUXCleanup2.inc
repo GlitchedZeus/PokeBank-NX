@@ -1,3 +1,4 @@
+#include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
 #include "UI/ClassicPokemonActionMenu.h"
@@ -248,6 +249,10 @@ bool ux2ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     const auto selected = static_cast<uint16_t>(state.pickerValue);
     if (state.mode == UX2Mode::AddDraft) {
+        // R2-BUG-004: a real species change brings the new species' native moves (Gen1SpeciesChangeMoves.h).
+        if (selected != state.draft.species)
+            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.level),
+                                   state.draft.moves, state.draft.pp, state.draft.ppUps);
         state.draft.species = selected;
         state.picker = UX2Picker::None;
         return true;
@@ -255,6 +260,10 @@ bool ux2ApplySpeciesPicker(TrainerViewScreen& screen) {
     if (state.mode == UX2Mode::Edit) {
         BoxPokemonEdit edit;
         edit.species = selected;
+        std::string error;
+        const auto pokemon = ux2SelectedPokemon(screen, error);
+        if (pokemon && selected != pokemon->species)
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->level), edit);
         const bool ok = ux2CommitEdit(screen, edit, "Species change staged; source .srm unchanged");
         state.picker = UX2Picker::None;
         return ok;

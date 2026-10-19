@@ -116,3 +116,46 @@ Coordinator: C FINAL head goes into the candidate NRO; add nothing after it unle
 Party check (S 647917e): Gen I/II staged editors are box-only, so Party → View loses nothing.
 
 Continue the Gen I–IV audit; Gen IV `.dsv` container once the owner decides; watch PR #318 CI.
+
+## Round 3 (Lane C) — checkpoint
+
+Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
+
+| Item | Commit | State |
+| --- | --- | --- |
+| R2-BUG-002 Gen IV Trainer Name / Money (D, P, Pt, HG, SS) | e5dec3a2, 8dca7d07 | gated green |
+| R2-BUG-002 Gen III Trainer Name / Money (R, S, E, FR, LG) | 02cf6d1a, ea1a7a4a | gated green |
+| R2-BUG-001 Trainer footer on a read-only source (Gen I-IV) | cccec27b | gated green |
+| QA Part 9 Gen IV Storage save-pane Move / Y | c6f9011c, reverted | moved to Lane S (83e3d00, integrated); C copy reverted to avoid a ClassicPackedMoveOverlay conflict |
+| R2-CHECK-009 Yellow Box Actions (no Move / Review) | — | investigated: by design, no change |
+| R2-BUG-008 Ruby Pikachu Lv. 5 Met Location | this unit | see below |
+
+### R2-CHECK-009 — findings
+
+- Gen I's action sheet (Gen1Editor::actionsForSlot, shared NarrowPokemonMenu::gen1) has no
+  Move command by design: a Gen I Pokemon is moved with the Boxes-view hold-Y carry
+  (ClassicPackedMove beginGen1 / placeSparse), which the Boxes footer advertises as
+  "Y: Move / Hold Multi". Move is supported AND reachable, so no menu entry was added (an
+  Actions "Move" would duplicate the carry; adding it is an owner decision, not a defect).
+- "Review Pending Changes" appears only while staged changes exist (same rule as Gen II-IV).
+  The hardware screenshot had nothing staged, so its absence there is expected.
+- Not reachable in Gen I: Move from the Storage screen's save pane (the Gen I Storage pane is
+  read-only and the carry is a Boxes-view facility). Gen IV has it through Lane S (83e3d00);
+  extending the Storage carry to Gen I-III would be a new feature, not a fix.
+
+### R2-BUG-008 — findings
+
+- Data is correct: in Ruby / Sapphire / Emerald, Pikachu's only exact-game template is the Hoenn
+  Safari Zone (location 57), Wild Lv. 25-27 (EncounterGuardrailsData). So a Lv. 5 / Met Lv. 5
+  Pikachu did not come from a wild Hoenn encounter: it was traded in, hatched and evolved,
+  received from an event, or has another origin the template data does not model. The repo
+  cannot tell which, so it must not claim one.
+- Demonstrated defects: (1) the picker listed only the Safari template and focused it as if it
+  were the record's origin (selectedRow falls back to row 0 when the stored location is not a
+  template); (2) choosing it silently rewrote Met Lv. 5 to 25 and raised the Pokemon to Lv. 25
+  (setEncounterMetLevel), with nothing saying the template does not match the record.
+- Fix: the stored location is offered first as "Keep stored: <location>, Met Lv. N as stored";
+  choosing it changes nothing, and the picker opens on it. A template whose range excludes the
+  stored met level is labelled "not stored Met Lv. N". Templates stay choosable (a deliberate
+  re-origin is still an edit the user can make); no origin is judged legal or illegal here.
+- Test: test_gen3_encounter_keep_stored (real R / S / E template data).

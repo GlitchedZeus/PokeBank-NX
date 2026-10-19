@@ -6,6 +6,7 @@
 #include "Integration/Gen5/Gen5CreateInputRules.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Integration/Gen5/Gen5ReviewRows.h"
+#include "Pokemon/SpeciesMoveDefaults.h"
 
 #include <algorithm>
 #include <array>
@@ -487,8 +488,11 @@ public:
     }
     // A pending Create has no history to preserve, so a species choice rebuilds
     // the created PK5 natively (validateCreate5) with the draft's own values:
-    // PID (shiny state as requested), nature, level, IVs, EVs, item, met data,
-    // moves and nickname (a default nickname follows the new species).
+    // PID (shiny state as requested), nature, level, IVs, EVs, item, met data
+    // and nickname (a default nickname follows the new species). Moves: a real
+    // species change gets the new species' native default moveset at this level
+    // (R2-BUG-004; PKHeX lvlmove_bw / _b2w2, full PP, no PP Ups); the same
+    // species (a shiny-only rebuild) keeps the draft's own moves.
     template<class Refresh>
     [[nodiscard]] bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,
                                              std::string_view newDefaultName,
@@ -536,9 +540,16 @@ public:
                      p->ball(),met.year,met.month,met.day};
         const auto ivs=p->ivs(); const auto evs=p->evs();
         for(size_t i=0;i<6;++i){r.ivs[i]=ivs[i];r.evs[i]=evs[i];}
-        const auto moves=p->moves(); const auto ups=p->ppUps(); const auto pp=p->pp();
-        for(size_t i=0;i<4;++i)r.moves[i]={moves[i],moves[i]?ups[i]:0u,
-                                           moves[i]?std::optional<uint32_t>(pp[i]):std::nullopt};
+        if(species!=p->species()) {
+            const auto defaults=PokeBank::Moves::defaultMoves(
+                PokeBank::Moves::levelUpTableForGen45Version(trainer.gameVersion),
+                static_cast<uint16_t>(species),0,static_cast<uint8_t>(r.level));
+            for(size_t i=0;i<4;++i)r.moves[i]={defaults.moves[i],0u,std::nullopt};
+        } else {
+            const auto moves=p->moves(); const auto ups=p->ppUps(); const auto pp=p->pp();
+            for(size_t i=0;i<4;++i)r.moves[i]={moves[i],moves[i]?ups[i]:0u,
+                                               moves[i]?std::optional<uint32_t>(pp[i]):std::nullopt};
+        }
         if(const auto checked=validateCreate5(r);!checked) {
             error=std::string(checked.message);
             return false;

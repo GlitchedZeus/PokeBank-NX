@@ -31,6 +31,7 @@
 #include "Names/MachineDisplay.h"
 #include "Names/FormNames.h"
 #include "Names/MoveBattleStats5.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/ClassicMachineArtwork.h"
 #include "UI/NarrowPokemonActionMenu.h"
 #include "SharedPokemonEditorSurface.inc"
@@ -686,6 +687,19 @@ struct Gen5Editor {
             screen.postStatus(error, 360);
             return false;
         }
+        if (species != p.species()) {
+            // R2-BUG-004: the new species' native default moveset at this level from the BW or
+            // B2W2 table (PKHeX lvlmove_bw / _b2w2), base PP, no PP Ups; staged in Keep/Review's
+            // replay order (Move, PP Ups, PP) so the replay reproduces these bytes exactly.
+            if (!PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,
+                    PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(PokeBank::UIModel::SpeciesMoveDefaults::gen5Table(b2w2(screen)), species, 0,
+                        static_cast<uint8_t>(Fields::level(p, b2w2(screen))),
+                        [](uint16_t move) { return PokeVault::Integration::Gen5::basePP5(move); }),
+                    error)) {
+                screen.postStatus("Could not reset moves for the new species: " + error, 360);
+                return false;
+            }
+        }
         if (probe.current()->shiny() != state.speciesPreviewShiny &&
             !probe.stage(Field::Shiny, 0, state.speciesPreviewShiny ? 1u : 0u, error)) {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
@@ -1148,14 +1162,14 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                         e.caught?Colors::Accent:Colors::TextDim,TextStyle::Caption);
         }
         std::vector<ControllerHint> hints;
-        for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+        for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
         drawNavBar(fb,hints);
         return;
     }
     // The shared Trainer panel: drawn in the same content rect and HOME-style
-    // card as the base Trainer view (no modal). Editable rows carry a value
-    // pill; read-only rows are labelled "Read-only"; the list scrolls so the
-    // focused row is always visible.
+    // card as the base Trainer view (no modal). Name / Money / Play Time /
+    // Pokedex are cards with a value pill; the read-only identity rows sit
+    // below a divider (R2-BUG-003). The page always draws its own footer.
     screen.drawGSCOverlay(fb);
     const int x=LEFT_PANEL_X,y=CONTENT_PANEL_Y;
     const int w=fb.getWidth()-x,h=CONTENT_PANEL_HEIGHT;
@@ -1219,7 +1233,7 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
                     "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
     std::vector<ControllerHint> hints;
-    for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+    for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);
 }
 } // namespace

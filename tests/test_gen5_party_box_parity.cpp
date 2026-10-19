@@ -5,6 +5,7 @@
 // - Party Level edits regenerate stored party data (level byte and stats).
 // - Read-only origin fields (met/egg date, egg location) from the cited PK5
 //   layout, shown like Gen IV's read-only rows and never editable.
+#include "Pokemon/SpeciesMoveDefaults.h"
 #include "Integration/Gen5/Gen5BlankSlot.h"
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
@@ -331,15 +332,39 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
 
     // A pending Create has no history: any BW/B2W2 species rebuilds it natively,
     // even across EXP growth groups (Bulbasaur), and a default nickname follows.
+    // R2-BUG-004: each real species change brings that species' own native level-up moves
+    // (PKHeX lvlmove_bw / _b2w2 at the draft level, full PP, no PP Ups); Pikachu's Thunder
+    // Shock never survives into Bulbasaur or Eevee. A same-species (shiny) rebuild keeps them.
+    const auto table = PokeBank::Moves::levelUpTableForGen45Version(ws.sourceSave().trainer().gameVersion);
+    const auto nativeMoves = [&](uint16_t species) {
+        const auto level = static_cast<uint8_t>(ui.draft().current()->partyRecord()
+            ? ui.draft().current()->partyLevel() : 5);
+        const auto d = PokeBank::Moves::defaultMoves(table, species, 0, level);
+        assert(d.known && d.count > 0);
+        return d.moves;
+    };
+    const auto movesNow = [&]() {
+        const auto m = ui.draft().current()->moves();
+        return std::array<uint16_t, 4>{m[0], m[1], m[2], m[3]};
+    };
     assert(ui.recreateCreateSpecies(ws, 1, false, "Bulbasaur", "Pikachu", ok, error));
     assert(ui.draft().current()->species() == 1 && ui.createPending());
     assert(G::asciiName5(ui.draft().current()->decodedBytes(), true) == "Bulbasaur");
+    assert(movesNow() == nativeMoves(1));
+    for (size_t i = 0; i < 4; ++i) {
+        assert(ui.draft().current()->ppUps()[i] == 0);
+        assert(ui.draft().current()->pp()[i] == G::basePP5(movesNow()[i]));
+    }
     assert(!ui.recreateCreateSpecies(ws, 650, false, "X", "Bulbasaur", ok, error));
+    assert(movesNow() == nativeMoves(1));  // a refused rebuild changes nothing
     assert(ui.recreateCreateSpecies(ws, 133, true, "Eevee", "Bulbasaur", ok, error));
     assert(ui.draft().current()->species() == 133 && ui.draft().current()->shiny());
     assert(G::asciiName5(ui.draft().current()->decodedBytes(), true) == "Eevee");
+    const auto eeveeMoves = nativeMoves(133);
+    assert(movesNow() == eeveeMoves);
     assert(ui.recreateCreateSpecies(ws, 133, false, "Eevee", "Eevee", ok, error));
     assert(!ui.draft().current()->shiny());
+    assert(movesNow() == eeveeMoves);  // same species: moves untouched
 
     // Edit every owner-listed field through the same native draft the shared
     // editor workspace stages into.
@@ -392,7 +417,7 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
     const auto made = reopened->boxPokemon(0, 5);
     assert(made && made->valid() && made->species() == 133 && made->nature() == 10);
     assert(made->ivs()[1] == 31 && made->evs()[3] == 252 && made->heldItem() == 1);
-    assert(made->moves()[0] == 84 && made->moves()[1] == 98 && made->tid() == 12345);
+    assert(made->moves()[0] == eeveeMoves[0] && made->moves()[1] == 98 && made->tid() == 12345);
     assert(G::asciiName5(made->decodedBytes(), true).value_or("") == "SPARKY");
     assert(reopened->boxPokemon(0, 7)->species() == 25);
     const auto vacated = reopened->boxPokemon(0, 6);
