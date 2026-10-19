@@ -60,6 +60,12 @@ std::vector<std::string> labelsAfter(const std::string& text, const std::string&
     return out;
 }
 
+std::size_t count(const std::string& text, const std::string& needle) {
+    std::size_t n = 0;
+    for (auto at = text.find(needle); at != std::string::npos; at = text.find(needle, at + 1)) ++n;
+    return n;
+}
+
 } // namespace
 
 int main() {
@@ -136,6 +142,25 @@ int main() {
         require(golds >= 2, "Phase 4: stat column and PID value use the gold ReadOnly token");
         require(text->find("if (i == 4) valueColor = SharedFieldStateColors::color(") != std::string::npos,
                 "Phase 4: PID value is gold");
+    }
+
+    // R2-BUG-003: the Gen V Trainer page uses the Gen I-IV hierarchy: selectable cards first (the
+    // staged Name / Money / Play Time and the Pokedex view), a divider, then compact read-only
+    // identity rows (Gender, Trainer ID and Secret ID as separate native numbers, Badges); the raw
+    // language id is one secondary detail line. No row is merged or recomputed.
+    {
+        const auto at = gen5.find("void drawTrainerEditor(");
+        const std::string trainer = gen5.substr(at, gen5.find("\n}\n", at) - at);
+        const auto cards = trainer.find("for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex})");
+        const auto divider = trainer.find("fb.drawHDivider(cardX+20,cy,cardW-40);");
+        const auto info = trainer.find("for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges})");
+        const auto language = trainer.find("\"Game language: \"");
+        require(cards != std::string::npos && divider != std::string::npos && info != std::string::npos &&
+                language != std::string::npos && cards < divider && divider < info && info < language,
+                "R2-BUG-003 Trainer page: editable cards, divider, identity rows, language detail");
+        require(trainer.find("TRow::Language}") == std::string::npos, "R2-BUG-003 language is not a main-view card");
+        require(count(trainer.substr(cards == std::string::npos ? 0 : cards), "screen.touchButtons.push_back(") == 1,
+                "R2-BUG-003 only the selectable cards publish touch targets");
     }
 
     // R2-CHECK-011 (owner: Black 2 offers "VGE 2018/2019/2020"): the Gen V met-location picker
