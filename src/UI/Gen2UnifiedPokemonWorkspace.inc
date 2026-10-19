@@ -341,7 +341,7 @@ void drawFieldSelector(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     for (int i = 0; i < selector.count; ++i) {
         const auto& choice = selector.choices[static_cast<std::size_t>(i)];
         const int rowY = cy + i * rowH;
-        if (i == selector.row) fb.drawSelectionHighlight(x + 20, rowY, w - 40, rowH - 6);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 20, rowY, w - 40, rowH - 6), {i == selector.row});  // R2-BUG-012 boxed row
         fb.drawText(x + 36, rowY + 12, choice.label,
                     !choice.enabled ? Colors::TextDim
                                     : i == selector.row ? Colors::SelectedText : Colors::Text,
@@ -826,7 +826,7 @@ void drawUnifiedMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     int rowY = y + 88;
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         const bool selected = i == unified.moveEditorRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, rowY, w - 44, 42), {selected});  // R2-BUG-012 boxed row
         fb.drawText(x + 38, rowY + 10, rows[static_cast<std::size_t>(i)].first,
                     selected ? Colors::Text : Colors::TextDim);
         int valueW = 0, valueH = 0;
@@ -966,7 +966,7 @@ void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const Unifie
     }};
     for (int i = 0; i < 4; ++i) {
         const int yy = y + 96 + i * 48;
-        if (unified.progressionRow == i) fb.drawSelectionHighlight(x + 22, yy - 5, w - 44, 40);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 5, w - 44, 40), {unified.progressionRow == i});  // R2-BUG-012 boxed row
         fb.drawText(x + 38, yy + 5, rows[static_cast<std::size_t>(i)].first,
                     unified.progressionRow == i ? Colors::Text : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 250, yy + 5, rows[static_cast<std::size_t>(i)].second, Colors::Text, TextStyle::Caption);
