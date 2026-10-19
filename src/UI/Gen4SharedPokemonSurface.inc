@@ -2153,7 +2153,8 @@ void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const Stat
     const uint16_t id=state.itemKeyWarningId;
     SharedEditorChrome::beginModal(screen.touchButtons);
     UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
-        Names::machineDisplayLabel(game,id,Names::getItemName(id)),false);
+        Names::machineDisplayLabel(game,id,Names::getItemName(id)),
+        Gen4::bagPocketName(static_cast<size_t>(state.itemKeyWarningPocket)),false);
     drawNavBar(fb,{{"A","Confirm"},{"B","Cancel"}});
 }
 
