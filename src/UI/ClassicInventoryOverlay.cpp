@@ -736,8 +736,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
         if (gridKeys.any()) {
             // Grid navigation: D-pad cell to cell, L/R one screen of rows, ZL/ZR five.
+            // Use the visible touchscreen viewport for controller page steps.
+            const int page = visibleRows;
             state.pickerScroll.stop();
-            state.pickerRow = AddGrid::navigate(geometry, state.pickerRow, gridKeys);
+            state.pickerRow = AddGrid::navigate(geometry, state.pickerRow, gridKeys, page);
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         }
         if (down & HidNpadButton_B) { state.pickerScroll.stop(); state.pickerActive = false; return true; }
@@ -1028,7 +1030,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
         const int visibleRows = std::max(1, g.visibleRows);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows, g.columns);
-        const int start = AddGrid::clampFirstRow(g, state.pickerViewport.firstRow);
+        const int start = state.pickerViewport.firstRow;   // ensure() above clamps it to the grid
         const auto label = [&](int i) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);

@@ -133,6 +133,7 @@ void testNavigation() {
     require(Grid::navigate(Grid::grid(400, 4), 2, zr) == 202 && Grid::navigate(Grid::grid(400, 4), 202, zl) == 2,
             "ZL/ZR jump five pages");
     require(Grid::navigate(Grid::grid(0, 4), 5, down) == 0, "empty list is safe");
+    require(Grid::navigate(Grid::grid(400, 4), 2, r, 3) == 14, "an explicit page step is honoured");
     // Every reachable index stays in range from every start.
     for (int count : {1, 2, 5, 13, 42}) {
         const auto gg = Grid::grid(count, 4);

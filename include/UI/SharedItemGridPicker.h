@@ -177,7 +177,8 @@ struct Keys {
     [[nodiscard]] constexpr bool any() const noexcept { return up || down || left || right || l || r || zl || zr; }
 };
 
-constexpr int navigate(const Grid& g, int index, const Keys& k) noexcept {
+// pageRows: rows one L/R press moves (default: one screen of grid rows, g.visibleRows).
+constexpr int navigate(const Grid& g, int index, const Keys& k, int pageRows = -1) noexcept {
     if (g.count <= 0) return 0;
     index = std::clamp(index, 0, g.count - 1);
     const int cols = g.columns;
@@ -195,7 +196,8 @@ constexpr int navigate(const Grid& g, int index, const Keys& k) noexcept {
     }
     const auto page = [&](int pages) {
         const int column = index % cols;
-        const int row = std::clamp(index / cols + pages * g.visibleRows, 0, lastRow);
+        const int step = pageRows > 0 ? pageRows : g.visibleRows;
+        const int row = std::clamp(index / cols + pages * step, 0, lastRow);
         return std::min(g.count - 1, row * cols + column);
     };
     if (k.l) index = page(-1);
