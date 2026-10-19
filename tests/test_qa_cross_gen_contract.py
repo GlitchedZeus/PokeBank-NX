@@ -34,11 +34,8 @@ XFAIL: dict[str, str] = {
     "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
     "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
     "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
-    "CG21-help-lines-use-button-glyphs": "2R (R2-BUG-013)",
     "CG25-gen5-machine-and-feather-art": "I (Part 9 report 6)",
-    "CG26-trainer-provider-display-name": "2R (Part 9 report 3)",
     "CG27-retroarch-nds-core-follows-provider": "L (Part 9 report 4)",
-    "CG28-same-profile-keeps-game-focus": "2R (Part 9 report 9)",
     "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
@@ -726,6 +723,39 @@ def contracts(sources: list[Source]) -> list[Result]:
                "shared SpeciesMoveDefaults policy (R2-BUG-004)")
     # Lane R (round 3): one shared species-change policy, called once from every species apply path.
     change_rx = re.compile(r"(?<![\w.>])(?:[\w.>-]*(?:\.|->))?(?:setSpecies|applySpecies)\s*\(")
+    # A reference alone (e.g. SpeciesMoveDefaults::forSpecies or a version lookup) is not enough: the
+    # body must call one of the policy's move WRITERS, so dropping the write itself fails here.
+    MOVE_WRITE_RX = re.compile(r"\bSpeciesMoveDefaults::(?:writeArrays|writeEdit|refreshArrays|setMoves|stageMoves)\s*[<(]")
+    # The Gen II / Gen III draft sessions own the species change itself: every UI path (Gen II picker
+    # and number entry, Gen III picker) calls Session::setSpecies, which applies the policy. A call to
+    # `session.setSpecies(` / `state.setSpecies(` counts when every setSpecies() defined in those
+    # session headers applies SpeciesMoveDefaults (so removing it from a session fails here).
+    session_headers = ("include/UI/Gen2PokemonSession.h", "include/UI/Gen3SharedPokemonSession.h")
+
+    def defined_bodies(code: str, name: str) -> list[str]:
+        # Member definitions with default arguments (`= {}`) defeat function_bodies(); match the
+        # parameter list by parenthesis depth and the body by brace depth instead.
+        out = []
+        for m in re.finditer(rf"\b{name}\s*\(", code):
+            depth, i = 1, m.end()
+            while i < len(code) and depth:
+                depth += (code[i] == "(") - (code[i] == ")")
+                i += 1
+            head = re.match(r"\s*(?:const\s*)?(?:noexcept\s*)?\{", code[i:])
+            if not head:
+                continue  # a call or a declaration
+            j = i + head.end() - 1
+            start, depth = j, 0
+            while j < len(code):
+                depth += (code[j] == "{") - (code[j] == "}")
+                if depth == 0:
+                    break
+                j += 1
+            out.append(code[start:j])
+        return out
+
+    session_set = [b for x in sources if x.rel in session_headers for b in defined_bodies(x.code, "setSpecies")]
+    session_resets = bool(session_set) and all(re.search(MOVE_WRITE_RX, b) for b in session_set)
     seen_fn = set()
     for s in U:
         if not EDITOR_FILE_RX.search(s.rel):
@@ -737,9 +767,11 @@ def contracts(sources: list[Source]) -> list[Result]:
 
         def resets(body: str) -> bool:
             # Satisfied by the body itself or by a same-file helper it calls (applyPicker -> applySpecies).
-            if re.search(r"\bSpeciesMoveDefaults::", body):
+            if re.search(MOVE_WRITE_RX, body):
                 return True
-            return any(re.search(r"\bSpeciesMoveDefaults::", b)
+            if session_resets and re.search(r"\b(?:session|state)\s*\.\s*setSpecies\s*\(", body):
+                return True
+            return any(re.search(MOVE_WRITE_RX, b)
                        for callee in re.findall(r"\b(\w+)\s*\(", body) if callee in by_name
                        for b in by_name[callee] if b is not body)
 
@@ -751,7 +783,7 @@ def contracts(sources: list[Source]) -> list[Result]:
             seen_fn.add((s.rel, name))
             if not resets(body):
                 r.violations.append(f"{s.rel}:{ln}: {name}() changes the species but keeps the old moves "
-                                    "(no SpeciesMoveDefaults call)")
+                                    "(no SpeciesMoveDefaults move-writer call)")
     res.append(r)
 
     r = Result("CG22-move-chooser-type-badges",

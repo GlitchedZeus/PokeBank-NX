@@ -80,3 +80,36 @@ table, and the seven Feathers must map to `*-wing` art. CG25 passes on lane I's 
 - A second Switch profile sees "belongs to another Switch profile".
 
 All of these are NOT DEVICE TESTED.
+
+## Fix re-checks (lane branches, not yet on #307)
+
+| # | Lane head | Re-check | Result |
+| --- | --- | --- | --- |
+| 1 | S `06a7dce` (claude/shared-editor-gen35-20261016) | QA's action-list probe from the first pass, rebuilt against that tree | **Fixed on the lane branch** (see below) |
+
+The same probe now prints these action lists:
+- `box3/7 cloned copy: [View] [Edit] [Clone] [Move Pokemon] [Remove] [Origin & Legality] [Review Pending Changes] [Cancel]`
+- `box0/5 created`: the same list.
+- `party0 original: [View] [Edit] [Clone] [Origin & Legality] [Cancel]`
+
+Item 1 still needs:
+- the re-check repeated on the round-3 candidate once it is on #307;
+- a device check.
+
+| 8 | S `60243fc` (code identical to `83e3d00`) | Source re-check of the three findings from the first pass | **Fixed on the lane branch (source)** |
+
+Item 8 re-check details:
+- **Y no longer stripped.** With a staged Gen IV editor, an open Storage view and the save pane focused, Y is
+  handled by the shared carry: `storageGridOwnsInput`, ClassicPackedMoveOverlay.inc:133-147. The base handler's
+  read-only Y strip (TrainerViewScreenBase.inc:2369) still applies to the Bank pane and to legacy sources.
+- **Drop at the visible cursor.** `placeGen4` drops at `cursorBox` / `cursorSlot`. In Storage mode those resolve to
+  `stSaveBox` / `stSaveSlot` (:160-164, :700). Before the fix it dropped at the Boxes-tab cursor.
+- **Carry is drawn.** `StoragePanel.cpp:205` now calls `hidesGen4CarriedSource` and draws the carried sprite and
+  the multi-carry count.
+- **Test coverage.** The routing rules are covered by lane S's new `tests/test_gen4_storage_carry.cpp`
+  (Makefile.host.shared-editor). QA did not build or run it, so this re-check is source-level only.
+
+Device checks needed: in a Gen IV Storage view's save pane:
+- tap and hold Y;
+- carry a Pokemon to another slot and box;
+- confirm it drops where the cursor is.

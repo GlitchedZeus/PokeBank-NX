@@ -180,7 +180,7 @@ namespace Panels {
                         Colors::TextDim, TextStyle::Caption);
             fb.drawText(x + 24, y + hH + 82, "Trainer and Pokemon remain available; invalid bag entries are quarantined.",
                         Colors::TextDim, TextStyle::Caption);
-            fb.drawText(x + 24, y + hH + 106, "External emulator source remains read-only.",
+            fb.drawText(x + 24, y + hH + 106, screen.legacyProviderLabel() + " source remains read-only.",
                         Colors::TextDim, TextStyle::Caption);
             return;
         }
@@ -191,7 +191,7 @@ namespace Panels {
                         Colors::TextDim, TextStyle::Caption);
             fb.drawText(x + 24, y + hH + 82, "Trainer, Party and Boxes remain available; no item is guessed.",
                         Colors::TextDim, TextStyle::Caption);
-            fb.drawText(x + 24, y + hH + 106, "External emulator source remains read-only.",
+            fb.drawText(x + 24, y + hH + 106, screen.legacyProviderLabel() + " source remains read-only.",
                         Colors::TextDim, TextStyle::Caption);
             return;
         }

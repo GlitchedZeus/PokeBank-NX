@@ -56,14 +56,26 @@ require('"sdmc:/switch/PokeBank-NX/runtime/return-host.log"' in host_source and
 game_launcher = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
 request = game_launcher[game_launcher.index("bool requestGameLaunch("):]
 request = request[:request.index("\n}\n")]
-require("buildGameLaunchChainPlan(descriptor, options)" in request and
+require("planGameLaunchHandoff(descriptor, plan, error)" in request and
         "envSetNextLoad(plan.nroPath.c_str(), plan.argv.c_str())" in request,
         "every homebrew handoff must go through the bounded, host-tested chain plan")
-gate = request.index("if (returnHostOptedIn())")
-require(request.index("prepareReturnHost(hostPath, hostError)") > gate and
-        request.count("prepareReturnHost(") == 1 and
-        request.count("options.returnHostEnabled = true;") == 1,
+plan_fn = game_launcher[game_launcher.index("bool planGameLaunchHandoff("):]
+plan_fn = plan_fn[:plan_fn.index("\n}\n")]
+preview_fn = game_launcher[game_launcher.index("GameLaunchQuitRoute previewGameLaunchQuitRoute("):]
+preview_fn = preview_fn[:preview_fn.index("\n}\n")]
+shared = "buildGameLaunchChainPlan(descriptor, returnOptionsFor(returnHostReadiness()))"
+require(shared in plan_fn and shared in preview_fn,
+        "the launch dialog preview and the real handoff must decide the route the same way")
+require("g_previewRoute != plan.quitRoute" in plan_fn and "return false;" in plan_fn,
+        "a launch whose route changed since it was previewed must be refused, never silently rerouted")
+readiness = game_launcher[game_launcher.index("const ReturnHostReadiness& returnHostReadiness()"):]
+readiness = readiness[:readiness.index("\n}\n")]
+require(readiness.index("if (!optedIn) return g_returnHost;") < readiness.index("g_returnHost.ready = true;"),
         "the return host must stay behind the explicit owner opt-in; the default stays direct")
+options_fn = game_launcher[game_launcher.index("GameLaunchReturnOptions returnOptionsFor("):]
+options_fn = options_fn[:options_fn.index("\n}\n")]
+require("if (readiness.ready)" in options_fn and options_fn.count("options.returnHostEnabled = true;") == 1,
+        "return-host options exist only for a host that is opted in and installed")
 require("std::string quoted(" not in game_launcher,
         "the escaping quoted() helper produced argv libnx cannot parse; use gameLaunchAppendArg")
 

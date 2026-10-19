@@ -185,6 +185,9 @@ struct GameLaunchDescriptor {
     std::string contentPath;
     std::string corePath;
     mutable std::string detail;
+    // Something the user must know before confirming this launch (for example that the
+    // RetroArch core could not be proven from the save). Shown with the quit-route notice.
+    std::string launchNotice;
 
     [[nodiscard]] bool ready() const {
         const bool nominallyReady = state == GameLaunchState::Ready ||
@@ -552,6 +555,123 @@ inline bool gameLaunchArgvFitsLoader(std::string_view argv) noexcept {
     return !argv.empty() && argv.size() < RH_LOADER_ARGV_CAP;
 }
 
+// ---------------------------------------------------------------------------------------------
+// RetroArch core evidence from the save itself.
+//
+// A Nintendo DS save only loads in the core that wrote it, so the core is chosen from what the
+// discovered save proves, and the game-ID default is used only when it proves nothing.
+// Pinned references:
+//  - RetroArch b2538f1249e81d687dbcaece491674713a38ae68 runloop.c: with "sort saves by core"
+//    the save directory is <savefile_dir>[/<content dir>]/<library_name>/, so a save's parent
+//    folder is the writing core's library_name.
+//  - library_name: DeSmuME (libretro/desmume 95b4d798 frontend/libretro/libretro.cpp:517),
+//    melonDS (libretro/melonDS 66b5d263 src/libretro/libretro.cpp:114),
+//    Gambatte (libretro/gambatte-libretro d9d6cd06 libretro.cpp:1655),
+//    mGBA (libretro/mgba 7a12d6d4: library_name = projectName = CMake project "mGBA").
+//  - Battery file names: DeSmuME writes "<game>.dsv" (desmume mc.cpp:235); the melonDS core
+//    writes "<save dir>/<game>.sav" (melonDS libretro.cpp:895).
+// melonDS DS has no Nintendo Switch build (its README), so its folder is not mapped to a core.
+// ---------------------------------------------------------------------------------------------
+
+enum class RetroArchSaveCore : uint8_t { Unknown, DeSmuME, MelonDS, Gambatte, MGBA, Ambiguous };
+
+struct RetroArchSaveCoreEvidence {
+    RetroArchSaveCore core = RetroArchSaveCore::Unknown;
+    std::string reason; // why; empty for Unknown
+};
+
+inline const char* retroArchSaveCoreLabel(RetroArchSaveCore core) noexcept {
+    switch (core) {
+        case RetroArchSaveCore::DeSmuME:   return "DeSmuME";
+        case RetroArchSaveCore::MelonDS:   return "melonDS";
+        case RetroArchSaveCore::Gambatte:  return "Gambatte";
+        case RetroArchSaveCore::MGBA:      return "mGBA";
+        case RetroArchSaveCore::Unknown:
+        case RetroArchSaveCore::Ambiguous: break;
+    }
+    return "";
+}
+
+// Switch core NRO file name under sdmc:/retroarch/cores/ (libretro buildbot libnx naming, as
+// already used by defaultRetroArchCore()).
+inline const char* retroArchSaveCoreNroName(RetroArchSaveCore core) noexcept {
+    switch (core) {
+        case RetroArchSaveCore::DeSmuME:   return "desmume_libretro_libnx.nro";
+        case RetroArchSaveCore::MelonDS:   return "melonds_libretro_libnx.nro";
+        case RetroArchSaveCore::Gambatte:  return "gambatte_libretro_libnx.nro";
+        case RetroArchSaveCore::MGBA:      return "mgba_libretro_libnx.nro";
+        case RetroArchSaveCore::Unknown:
+        case RetroArchSaveCore::Ambiguous: break;
+    }
+    return "";
+}
+
+inline bool retroArchSaveCoreRunsGame(RetroArchSaveCore core, std::string_view gameId) noexcept {
+    const auto ends = [&](std::string_view suffix) {
+        return gameId.size() >= suffix.size() &&
+               gameId.substr(gameId.size() - suffix.size()) == suffix;
+    };
+    const bool gb = ends("_gb") || ends("_gbc");
+    switch (core) {
+        case RetroArchSaveCore::DeSmuME:
+        case RetroArchSaveCore::MelonDS:  return ends("_nds");
+        case RetroArchSaveCore::Gambatte: return gb;
+        case RetroArchSaveCore::MGBA:     return gb || ends("_gba");
+        case RetroArchSaveCore::Unknown:
+        case RetroArchSaveCore::Ambiguous: break;
+    }
+    return false;
+}
+
+inline RetroArchSaveCoreEvidence retroArchSaveCoreEvidence(std::string_view gameId,
+                                                           std::string_view savePath) {
+    RetroArchSaveCoreEvidence out;
+    const size_t slash = savePath.find_last_of("/\\");
+    if (slash == std::string_view::npos || slash == 0) return out;
+    const std::string_view file = savePath.substr(slash + 1);
+    const std::string_view parentPath = savePath.substr(0, slash);
+    const size_t parentSlash = parentPath.find_last_of("/\\:");
+    const std::string parent = compactLaunchProvider(
+        parentSlash == std::string_view::npos ? parentPath : parentPath.substr(parentSlash + 1));
+    const std::string ext = lowerLaunchExtension(file);
+    const bool nds = gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_nds";
+
+    RetroArchSaveCore byFolder = RetroArchSaveCore::Unknown;
+    if (parent == "desmume") byFolder = RetroArchSaveCore::DeSmuME;
+    else if (parent == "melonds") byFolder = RetroArchSaveCore::MelonDS;
+    else if (parent == "melondsds") {
+        out.core = RetroArchSaveCore::Ambiguous;
+        out.reason = "melonDS DS has no Switch core";
+        return out;
+    } else if (parent == "gambatte") byFolder = RetroArchSaveCore::Gambatte;
+    else if (parent == "mgba") byFolder = RetroArchSaveCore::MGBA;
+
+    RetroArchSaveCore byFile = RetroArchSaveCore::Unknown;
+    if (nds && ext == ".dsv") byFile = RetroArchSaveCore::DeSmuME;
+    else if (nds && ext == ".sav") byFile = RetroArchSaveCore::MelonDS;
+
+    if (byFolder != RetroArchSaveCore::Unknown && !retroArchSaveCoreRunsGame(byFolder, gameId)) {
+        out.core = RetroArchSaveCore::Ambiguous;
+        out.reason = std::string(retroArchSaveCoreLabel(byFolder)) + " folder can't run this game";
+        return out;
+    }
+    if (byFolder != RetroArchSaveCore::Unknown && byFile != RetroArchSaveCore::Unknown &&
+        byFolder != byFile) {
+        out.core = RetroArchSaveCore::Ambiguous;
+        out.reason = std::string(retroArchSaveCoreLabel(byFolder)) + " folder, " +
+                     retroArchSaveCoreLabel(byFile) + " " + ext;
+        return out;
+    }
+    if (byFolder != RetroArchSaveCore::Unknown) {
+        out.core = byFolder;
+        out.reason = std::string("RetroArch per-core save folder ") + retroArchSaveCoreLabel(byFolder);
+    } else if (byFile != RetroArchSaveCore::Unknown) {
+        out.core = byFile;
+        out.reason = std::string(ext) + " save written by the " + retroArchSaveCoreLabel(byFile) + " core";
+    }
+    return out;
+}
+
 inline GameLaunchProviderKind gameLaunchDescriptorKind(const GameLaunchDescriptor& d) {
     if (d.backend == GameLaunchBackend::RetroArch) return GameLaunchProviderKind::RetroArch;
     return gameLaunchProviderKind(d.providerId);
@@ -627,9 +747,9 @@ inline const char* gameLaunchQuitRouteNotice(GameLaunchQuitRoute route) noexcept
         case GameLaunchQuitRoute::ReturnsToPokeBank:
             return "Quitting the emulator returns to PokeBank NX.";
         case GameLaunchQuitRoute::EmulatorLauncher:
-            return "DraStic's Quit to launcher opens DraStic's own launcher; reopen PokeBank NX from the Homebrew Menu.";
+            return "DraStic's Quit to launcher opens DraStic's launcher, not PokeBank NX.";
         case GameLaunchQuitRoute::LoaderDefault:
-            return "Quitting the emulator returns to the Homebrew Menu (or HOME when PokeBank NX was started from a forwarder).";
+            return "Quitting returns to the Homebrew Menu (or HOME via a forwarder).";
         case GameLaunchQuitRoute::None:
             break;
     }

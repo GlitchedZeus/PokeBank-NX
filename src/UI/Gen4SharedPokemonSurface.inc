@@ -8,6 +8,8 @@
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Integration/Gen4/Gen4StagedTrainerEditor.h"
+#include "UI/ClassicTrainerSessionInput.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
@@ -1575,7 +1577,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
                 changed ? "Strict PK4 serialize + Storage CRC + full save reparse: PASS"
                         : "Original source remains the current baseline",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
+    fb.drawText(44, 270, "Original " + screen.legacyProviderLabel() + " source: HARD READ ONLY", Colors::Accent);
     fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
                 Colors::TextDim, TextStyle::Caption);
     if (changed) {
@@ -1681,7 +1683,7 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
                 Colors::TextDim, TextStyle::Body);
     fb.drawText(x + 34, y + 130, "This removes it only from the app-owned staged copy.",
                 Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 166, "The original DraStic/emulator save is never written.",
+    fb.drawText(x + 34, y + 166, "The original " + screen.legacyProviderLabel() + " save is never written.",
                 Colors::TextDim, TextStyle::Caption);
     // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y releases).
     SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
@@ -2173,9 +2175,43 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
     return ownsFrameImpl(screen);
 }
 
+// R2-BUG-002: the HOME Trainer page stages Name / Money in the Gen IV staged workspace through
+// the one classic Trainer session flow (UI/ClassicTrainerSessionInput.h, shared with Gen I / II).
+// Review lists the change, Discard restores it, Export writes it; the source is never touched.
+bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexcept {
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Trainer &&
+        !state.actions && !state.review && !state.legality && !state.confirmRelease &&
+        !state.valuePicker && !state.moveEditor && !workspaceActive(state) &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
+bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+                          int stickX, int stickY, const TouchInput& touch) {
+    if (!trainerMainPage(screen, state)) return false;
+    auto* staged = editor(screen);
+    if (!staged) return false;
+    Gen4::Gen4StagedTrainerEditor trainer(*staged);
+    if (!trainer.available()) return false;
+    UI::ClassicTrainerSession::Fields fields;
+    fields.name = trainer.trainerName();
+    fields.money = trainer.money();
+    fields.nameMax = Gen4::Gen4StagedTrainerEditor::kNameMax;
+    fields.moneyMax = Gen4::Gen4StagedTrainerEditor::kMaxMoney;
+    fields.nameGuide = "1-7 characters the game can store";
+    fields.nameEditable = trainer.nameEditable();
+    fields.nameReadOnlyReason = "This save's trainer name language is read-only here";
+    return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
+        [&](const std::string& name, uint32_t money, std::string& error) {
+            return trainer.stage(name, money, error) && refreshPresentation(screen);
+        });
+}
+
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
     if (!isGen4Nds(screen)) return false;
+    if (handleTrainerSession(screen, stateFor(screen), down, held, stickX, stickY, touch)) return true;
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);

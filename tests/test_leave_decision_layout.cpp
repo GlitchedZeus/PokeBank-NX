@@ -52,6 +52,17 @@ int main() {
     // A notice that cannot fit three lines is reported, never silently clipped.
     const L::Text overflow = L::build(false, "Pokemon Red", std::string(400, 'W'));
     assert(!overflow.fits);
+    // A long real notice (Lane L's unproven-core warning + the quit route) keeps its start and
+    // ends the second notice line with an ellipsis that still fits the column.
+    const std::string longNotice =
+        "The RetroArch core could not be proven from this save (per-core folder and file name disagree); "
+        "PokeBank NX keeps its usual core choice, which may not load this save. Quitting the emulator "
+        "returns to the Homebrew Menu; PokeBank NX does not reopen by itself.";
+    const L::Text cut = L::build(false, "Pokemon SoulSilver", longNotice, "RetroArch");
+    assert(!cut.fits);
+    assert(cut.lines[1].rfind("The RetroArch core could not be proven", 0) == 0);
+    assert(cut.lines[2].size() >= 3 && cut.lines[2].compare(cut.lines[2].size() - 3, 3, "\xE2\x80\xA6") == 0);
+    assert(G::fitsWidth(cut.lines[2], G::Text::Caption, L::textColumnWidth()));
 
     // Frozen semantics: only Y commits; A and B stay; a mashed A+Y / B+Y stays.
     assert(Q::decide(Q::kButtonY) == Q::Decision::Quit);
