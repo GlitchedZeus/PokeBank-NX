@@ -945,7 +945,7 @@ void drawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int outerX, int 
         if (value > maxValue) break;
         const int rowY = y + 72 + i * 42;
         const bool selected = value == state.pickerValue;
-        if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, rowY, w - 48, 38), {selected});  // R2-BUG-012 boxed row
         std::string text;
         if (state.picker == PickerKind::Species) {
             text = UX::speciesPickerRow(static_cast<uint16_t>(value), Names::getSpeciesName(value));
@@ -980,7 +980,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     for (std::size_t i = 0; i < actions.count; ++i) {
         const auto action = actions[i];
         const int idx = static_cast<int>(action);
-        if (static_cast<int>(i) == state.row) fb.drawSelectionHighlight(x + 30, rowY, w - 60, 44);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 30, rowY, w - 60, 44), {static_cast<int>(i) == state.row});  // R2-BUG-012 boxed row
         fb.drawText(x + 48, rowY + 11, names[idx], static_cast<int>(i) == state.row ? Colors::SelectedText : Colors::Text);
         rowY += 50;
     }
