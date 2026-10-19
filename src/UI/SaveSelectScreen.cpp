@@ -1626,7 +1626,10 @@ namespace UI {
             profileTitleFocus.remember(profileIdentity(previous->uid), valid
                 ? profileTitleFocusKey(previous->titles[static_cast<size_t>(titleIndex)]) : std::string());
         }
-        userIndex = (idx % (int)users.size() + (int)users.size()) % (int)users.size();
+        const int target = (idx % (int)users.size() + (int)users.size()) % (int)users.size();
+        // Re-selecting the active profile changes nothing: the focused game stays (Part 9).
+        if (target == userIndex) return;
+        userIndex = target;
         titleIndex = 0;
         scrollRow  = 0;
         if(const auto* selected=currentUser()) {
@@ -3576,9 +3579,7 @@ namespace UI {
                 }
                 if (kDown & HidNpadButton_A) {
                     profileTouchScroll.stop();
-                    // Re-confirming the active profile keeps the focused game.
-                    if (PokeBank::UIModel::profileChoiceChangesUser(profilePickerIndex, userIndex))
-                        setUser(profilePickerIndex);
+                    setUser(profilePickerIndex);   // re-confirming the active profile is a no-op
                     gamesDrawerIndex = titleIndex;
                     overlay = Overlay::None;
                     headerActionIndex = -1;

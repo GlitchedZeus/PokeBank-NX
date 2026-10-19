@@ -3,7 +3,7 @@
 // Product Home keeps the focused game per profile. Switching to another profile and back (Profile
 // picker, Games-browser L/R) returns to the game that was focused there, for every card kind
 // (Switch title, Gen I-III RetroArch / mGBA card, Gen IV / V assigned file), not only Gen V.
-// Re-confirming the profile that is already active changes nothing.
+// Re-confirming the profile that is already active changes nothing (SaveSelectScreen::setUser).
 //
 // Keys are opaque per-card identities built by the caller (game id + title id + source kind);
 // a key that is no longer on the profile's list (card removed, source unassigned) restores
@@ -40,10 +40,5 @@ public:
 private:
     std::unordered_map<std::string, std::string> focus_;
 };
-
-// A profile choice changes the active profile only when it names a different one.
-[[nodiscard]] constexpr bool profileChoiceChangesUser(int chosen, int current) noexcept {
-    return chosen != current;
-}
 
 } // namespace PokeBank::UIModel

@@ -323,7 +323,7 @@ namespace UI {
         }
         // The source's own provider name, exactly as Product Home shows it (never a generic word).
         std::string legacyProviderLabel() const {
-            return PokeVault::Source::sessionSourceName(sourceProviderLabel, false);
+            return PokeVault::Source::providerDisplayName(sourceProviderLabel);
         }
         bool requireMutationKind(PokeVault::Safety::SourceKind targetKind,
                                  PokeVault::Safety::SourceMutation mutation) {

@@ -119,20 +119,23 @@ void profileFocus() {
     assert(!focus.indexFor("A", a));
     focus.remember("", "x");                         // no profile identity: ignored
     assert(!focus.indexFor("", {"x"}));
-    assert(!PokeBank::UIModel::profileChoiceChangesUser(2, 2));
-    assert(PokeBank::UIModel::profileChoiceChangesUser(1, 2));
 }
 
 void callSites() {
     const std::string trainer = slurp("include/UI/TrainerViewScreenBase.h");
     const std::string label = body(trainer, "std::string legacyProviderLabel() const");
-    assert(label.find("PokeVault::Source::sessionSourceName(sourceProviderLabel, false)") != std::string::npos);
+    assert(label.find("PokeVault::Source::providerDisplayName(sourceProviderLabel)") != std::string::npos);
+    // sessionSourceName(raw, false) is exactly that display name (the shared helper for other surfaces).
+    for (const char* raw : {"mGBA", "RetroArch/DeSmuME", "melonDS", "DraStic", "Source", ""})
+        assert(S::sessionSourceName(raw, false) == S::providerDisplayName(raw));
     assert(label.find("EXTERNAL") == std::string::npos && label.find("RETROARCH") == std::string::npos);
     assert(trainer.find("\"External source is read-only.") == std::string::npos);
 
     const std::string home = slurp("src/UI/SaveSelectScreen.cpp");
-    assert(home.find("profileChoiceChangesUser(profilePickerIndex, userIndex)") != std::string::npos);
     const std::string setUser = body(home, "void SaveSelectScreen::setUser(int idx)");
+    // Re-selecting the active profile returns before the focus reset (titleIndex = 0).
+    const std::size_t guard = setUser.find("if (target == userIndex) return;");
+    assert(guard != std::string::npos && guard < setUser.find("titleIndex = 0;"));
     assert(setUser.find("profileTitleFocus.remember(") != std::string::npos);
     assert(setUser.find("profileTitleFocus.indexFor(") != std::string::npos);
     // Games browser: the avatar's headerRects are hit-tested inside the classic block, before L/R.
