@@ -887,7 +887,8 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
     } else if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
-        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
+        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen),
+                                                boxMoveAvailable(screen));
         // A finger-down may become a swipe; only its completed tap can
         // change the active command or synthesize A.
         const int row = selectedId(1000, static_cast<int>(actions.count), tapped);
