@@ -182,7 +182,7 @@ $(SHARED_MENU_GEOMETRY_SANITIZE): $(SHARED_MENU_GEOMETRY_INPUTS)
 
 # S03: Gen V Create/Edit parity -- one DETAILS label/value column for Gen III-V, no clipped
 # species values, same rows as Gen III/IV, exact game in the header, per-row field state.
-GEN5_PARITY_SOURCES := tests/test_gen5_create_edit_parity.cpp src/Names/SpeciesNames.cpp
+GEN5_PARITY_SOURCES := tests/test_gen5_create_edit_parity.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp
 GEN5_PARITY_INPUTS := $(GEN5_PARITY_SOURCES) include/UI/SharedEditorPresentation.h \
 	include/UI/SharedMenuGeometry.h include/UI/ClassicGameContext.h include/UI/SharedPokemonShell.h \
 	include/Integration/Gen5/Gen5EditorFields.h src/UI/Gen3SharedPokemonSurface.inc \

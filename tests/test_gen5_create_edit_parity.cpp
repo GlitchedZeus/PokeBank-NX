@@ -9,6 +9,8 @@
 //   * each Gen III-V surface passes its per-row field state to the shared DETAILS drawer.
 // Labels are read from the real sources, so a renamed label is checked as it ships.
 
+#include "Integration/Gen5/Gen5EncounterLocations.h"
+#include "Names/LocationDisplayNames.h"
 #include "Names/SpeciesNames.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/SharedEditorPresentation.h"
@@ -135,6 +137,23 @@ int main() {
         require(text->find("if (i == 4) valueColor = SharedFieldStateColors::color(") != std::string::npos,
                 "Phase 4: PID value is gold");
     }
+
+    // R2-CHECK-011 (owner: Black 2 offers "VGE 2018/2019/2020"): the Gen V met-location picker
+    // offers PKHeX Locations5.cs's native PK5 ids, which include the event bank 40001-40109; their
+    // names are PKHeX 6501f0ab text_bw2_40000_en.txt (the game's own text) at the same index. No
+    // mapping defect: the year names belong to those native ids.
+    for (const auto& [id, name] : {std::pair<uint16_t, const char*>{40001, "Lovely place"}, {40047, "VGE"},
+                                   {40048, "VGE 2010"}, {40056, "VGE 2018"}, {40057, "VGE 2019"},
+                                   {40058, "VGE 2020"}, {40059, "Pok\xC3\xA9mon Event"}, {4, "Nuvema Town"}})
+        for (uint8_t origin : {uint8_t{20}, uint8_t{21}, uint8_t{22}, uint8_t{23}})
+            require(Names::getMetLocationDisplayName(origin, id) == name,
+                    "R2-CHECK-011 Gen V location " + std::to_string(id) + " is PKHeX's \"" + name + "\"");
+    for (const uint16_t id : PokeVault::Integration::Gen5::NativeMetLocations5)
+        for (uint8_t origin : {uint8_t{20}, uint8_t{22}}) {
+            const std::string label = Names::getMetLocationDisplayName(origin, id);
+            require(!label.empty() && (id == 0 ? label == "None" : true),
+                    "R2-CHECK-011 every offered Gen V id has a name: " + std::to_string(id));
+        }
 
     if (failures) {
         std::cerr << failures << " failure(s)\n";
