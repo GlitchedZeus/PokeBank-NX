@@ -27,6 +27,19 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
+    "CG19-species-change-resets-moves": "R (R2-BUG-004 SpeciesMoveDefaults)",
+    "CG22-move-chooser-type-badges": "P (R2-BUG-007)",
+    "CG24-gen34-trainer-staged-export": "C (R2-BUG-002)",
+    "CG20-shared-boxed-modal-rows": "S (R2-BUG-012)",
+    "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
+    "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
+    "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
+    "CG21-help-lines-use-button-glyphs": "2R (R2-BUG-013)",
+    "CG25-gen5-machine-and-feather-art": "I (Part 9 report 6)",
+    "CG26-trainer-provider-display-name": "2R (Part 9 report 3)",
+    "CG27-retroarch-nds-core-follows-provider": "L (Part 9 report 4)",
+    "CG28-same-profile-keeps-game-focus": "2R (Part 9 report 9)",
+    "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED. Every contract is enforced.
@@ -681,6 +694,247 @@ def contracts(sources: list[Source]) -> list[Result]:
                                          blocks[0]) or "A: Edit" in blocks[0]:
         r.violations.append("src/UI/TrainerViewScreenBase.inc: the Trainer page footer is not "
                             "trainerPageInstructions(trainerFieldsEditable(...))")
+    res.append(r)
+
+    r = Result("CG18b-trainer-footer-not-overridden",
+               "Once the Trainer page offers \"A: Edit\", no later footer rule on the same frame replaces it "
+               "(R2-BUG-001: Gen I staged Trainer showed no A: Edit)")
+    # CG18 checked only the Trainer branch's own assignment. In TrainerViewScreenBase.inc the
+    # read-only footer override (useReadOnlyInventoryFooterOverride) runs after it and, for a read-only
+    # source with a staged Trainer editor (Gen I), replaced the footer with "Arrows: Navigate | B: Back".
+    # Every later override must exclude an editable Trainer page.
+    if base:
+        assign = re.search(r"trainerPageInstructions\s*\(", base.code)
+        for m in re.finditer(r"\buseReadOnlyInventoryFooterOverride\s*\(", base.code):
+            if assign is None or m.start() < assign.start():
+                continue
+            ln = base.code.count("\n", 0, m.start()) + 1
+            depth, j = 0, m.end() - 1
+            while j < len(base.code):
+                depth += (base.code[j] == "(") - (base.code[j] == ")")
+                if depth == 0:
+                    break
+                j += 1
+            args = base.code[m.end():j]
+            if not re.search(r"\btrainerFieldsEditable\s*\(|ViewMode::Trainer\b", args):
+                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{ln}: the read-only footer override can "
+                                    "replace the Trainer page's A: Edit footer (no editable-Trainer exclusion)")
+    res.append(r)
+
+    r = Result("CG19-species-change-resets-moves",
+               "Every Gen I-V editor path that changes a Pokemon's species also resets its moves through the "
+               "shared SpeciesMoveDefaults policy (R2-BUG-004)")
+    # Lane R (round 3): one shared species-change policy, called once from every species apply path.
+    change_rx = re.compile(r"(?<![\w.>])(?:[\w.>-]*(?:\.|->))?(?:setSpecies|applySpecies)\s*\(")
+    seen_fn = set()
+    for s in U:
+        if not EDITOR_FILE_RX.search(s.rel):
+            continue
+        fns = list(function_bodies(s.code, re.compile(r".")))
+        by_name = {}
+        for name, _, body in fns:
+            by_name.setdefault(name, []).append(body)
+
+        def resets(body: str) -> bool:
+            # Satisfied by the body itself or by a same-file helper it calls (applyPicker -> applySpecies).
+            if re.search(r"\bSpeciesMoveDefaults::", body):
+                return True
+            return any(re.search(r"\bSpeciesMoveDefaults::", b)
+                       for callee in re.findall(r"\b(\w+)\s*\(", body) if callee in by_name
+                       for b in by_name[callee] if b is not body)
+
+        for name, ln, body in fns:
+            if not (change_rx.search(body) or re.search(r"(?i)applyspecies", name)):
+                continue
+            if (s.rel, name) in seen_fn:
+                continue
+            seen_fn.add((s.rel, name))
+            if not resets(body):
+                r.violations.append(f"{s.rel}:{ln}: {name}() changes the species but keeps the old moves "
+                                    "(no SpeciesMoveDefaults call)")
+    res.append(r)
+
+    r = Result("CG22-move-chooser-type-badges",
+               "The Move chooser draws each move's type with the shared summary type-badge renderer, not plain "
+               "text (R2-BUG-007)")
+    panel = next((x for x in sources if x.rel == "include/UI/SharedMovesPanel.h"), None)
+    rows = [b for _, _, b in function_bodies(panel.code, re.compile(r"^drawChooserRow$"))] if panel else []
+    if not rows:
+        r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() missing")
+    for b in rows:
+        if not re.search(r"\bClassicTypeBadges::\w+\s*\(|\bdrawTypeBadge\s*\(", b):
+            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() draws the move type as text, "
+                                "not with the shared type badge")
+        # Text is allowed only as the fallback of a badge draw that could not render (Hidden Power, Curse,
+        # missing art): `if (!badgeable || ClassicTypeBadges::drawCanonical(...) == 0) fb.drawText(...typeLabel...)`.
+        text = len(re.findall(r"drawText\s*\([^;]*typeLabel\s*\(", b))
+        fallback = len(re.findall(r"if\s*\([^;{}]*(?:\bClassicTypeBadges::\w+|\bdrawTypeBadge)\s*\([^;{}]*\)\s*\{?\s*"
+                                  r"fb\.drawText\s*\([^;]*typeLabel\s*\(", b))
+        if text > fallback:
+            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() prints typeLabel() as text outside "
+                                "the badge fallback")
+    res.append(r)
+
+    r = Result("CG24-gen34-trainer-staged-export",
+               "Gen III and Gen IV Trainer Name / Money edits go through staged Trainer editors (exportable), "
+               "never the mutable-workspace fallback (R2-BUG-002)")
+    ed = next((x for x in sources if x.rel == TRAINER_EDITABILITY_HEADER), None)
+    body = [b for _, _, b in function_bodies(ed.code, re.compile(r"^trainerFieldsEditable$"))] if ed else []
+    for group, games in (("Gen III", ("RS", "E", "FRLG")), ("Gen IV", ("DP", "PT", "HGSS"))):
+        covered = body and any(re.search(r"GameVersion::" + g + r"\b", body[0]) for g in games)
+        if not covered:
+            r.violations.append(f"{TRAINER_EDITABILITY_HEADER}: trainerFieldsEditable() has no {group} staged "
+                                "Trainer case (falls back to mutableWorkspace)")
+    for gen in ("Gen3", "Gen4"):
+        if not any(re.search(r"\bclass\s+\w*" + gen + r"\w*StagedTrainer\w*|\bstruct\s+\w*" + gen + r"\w*StagedTrainer\w*",
+                             x.code) for x in sources):
+            r.violations.append(f"no {gen} staged Trainer editor (Name / Money edits have no export path)")
+    res.append(r)
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def bodies(rel, name):
+        f = src(rel)
+        return [b for _, _, b in function_bodies(f.code, re.compile("^" + name + "$"))] if f else []
+
+    # R2-BUG-012 (lane S): one shared boxed-row style for every focused modal row / cell.
+    boxed_api = r"\bSharedBoxedRows::(?:drawBox|drawRow|drawGlyphChoices)\s*\(|\bdrawMenuCell\s*\("
+    for cid, title, files in (
+            ("CG20-shared-boxed-modal-rows",
+             "Gen III-V editor pickers (value lists, Move chooser / editor, Held Item grid, species picker, Gen V "
+             "Pokedex) draw focused rows through SharedBoxedRows, never drawSelectionHighlight (R2-BUG-012)",
+             ("src/UI/SharedPokemonEditorSurface.inc", "src/UI/Gen3SharedPokemonSurface.inc",
+              "src/UI/Gen5SharedReadOnlySurface.inc",
+              "include/UI/SharedHeldItemPickerPresentation.h",
+              "include/UI/SharedEditorChrome.h")),
+            ("CG20c-shared-boxed-species-picker",
+             "The shared species picker draws its focused row through SharedBoxedRows / drawMenuCell, never "
+             "drawSelectionHighlight (R2-BUG-012, owner P)",
+             ("include/UI/SharedSpeciesPicker.h",)),
+            ("CG20b-shared-boxed-modal-rows-gen12-classic",
+             "Gen I/II editor overlays and the Classic inventory draw focused rows through SharedBoxedRows, never "
+             "drawSelectionHighlight (R2-BUG-012, second batch)",
+             ("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen1PokemonEditorOverlayUX.inc",
+              "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+              "src/UI/Gen2SharedPokemonSurface.inc", "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+              "src/UI/Gen2SharedSurfaceParity.inc", "src/UI/Gen2PokemonPickerOverlay.inc",
+              "src/UI/Gen2HardwarePickerFix.inc", "src/UI/TrainerViewScreenGSCOverlay.inc",
+              "src/UI/ClassicInventoryOverlay.cpp"))):
+        r = Result(cid, title)
+        if not src("include/UI/SharedBoxedRows.h"):
+            r.violations.append("include/UI/SharedBoxedRows.h (UI::SharedBoxedRows::drawBox) does not exist")
+        for rel in files:
+            f = src(rel)
+            if not f:
+                continue  # removed / renamed files are CG11's concern
+            for i, line in enumerate(f.code.splitlines(), 1):
+                if re.search(r"\bdrawSelectionHighlight\s*\(", line):
+                    r.violations.append(f"{rel}:{i}: drawSelectionHighlight() instead of SharedBoxedRows")
+            if not re.search(boxed_api, f.code):
+                r.violations.append(f"{rel}: no SharedBoxedRows::drawBox / drawRow / drawMenuCell call")
+        res.append(r)
+
+    # R2-BUG-013 (2R): button letters in help / instruction prose become controller glyphs.
+    r = Result("CG21-help-lines-use-button-glyphs",
+               "Help overlays draw every line through the shared glyph renderer (drawGlyphHelpLine over "
+               "GlyphInstruction), so no plain-text button letters remain where glyphs apply (R2-BUG-013)")
+    if not src("include/UI/GlyphInstruction.h"):
+        r.violations.append("include/UI/GlyphInstruction.h (PokeBank::UIModel::GlyphInstruction) does not exist")
+    chrome = src("include/UI/ScreenChrome.h")
+    for fn in ("drawGlyphText", "drawGlyphSentence", "drawGlyphHelpLine"):
+        if not chrome or not list(function_bodies(chrome.code, re.compile("^" + fn + "$"))):
+            r.violations.append(f"include/UI/ScreenChrome.h: {fn}() missing")
+    overlay = bodies("include/UI/ScreenChrome.h", "drawInfoOverlay")
+    if not overlay:
+        r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() missing")
+    for b in overlay:
+        if re.search(r"\bdrawText\s*\([^;]*\bline\b", b):
+            r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() draws help lines with plain drawText")
+        if not re.search(r"\bdrawGlyphHelpLine\s*\(", b):
+            r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() does not call drawGlyphHelpLine")
+    res.append(r)
+
+    # R2-BUG-006 (lane P): long item catalogs open the shared grid picker.
+    r = Result("CG23-bag-add-grid-picker",
+               "Every Bag Add surface (Gen I-III Classic inventory, Gen IV, Gen V) opens the shared item grid "
+               "(UI::SharedItemGridPicker), whose cells are SharedEditorChrome::drawMenuCell boxes (R2-BUG-006)")
+    grid = src("include/UI/SharedItemGridPicker.h")
+    if not grid:
+        r.violations.append("include/UI/SharedItemGridPicker.h (UI::SharedItemGridPicker) does not exist")
+    else:
+        # The generic grid hands each cell to a caller-supplied painter; the Bag Add adapter passes drawMenuCell.
+        adapter = src("include/UI/SharedBagAddPicker.h")
+        if not any(f and re.search(r"\bdrawMenuCell\s*\(", f.code) for f in (grid, adapter)):
+            r.violations.append("include/UI/SharedItemGridPicker.h / SharedBagAddPicker.h: grid cells are not "
+                                "drawn with SharedEditorChrome::drawMenuCell")
+    for rel in ("src/UI/ClassicInventoryOverlay.cpp", "src/UI/Gen4SharedPokemonSurface.inc",
+                "src/UI/Gen5SharedReadOnlySurface.inc"):
+        f = src(rel)
+        if f and not re.search(r"\bSharedItemGridPicker::|\bSharedBagAddPicker::pickerGrid\s*\(|\bAddGrid::navigate\s*\(",
+                               f.code):
+            r.violations.append(f"{rel}: Bag Add still opens the single-column item list, not the shared grid")
+    res.append(r)
+
+    # Part 9 report 6 (lane I): Gen V machines and Feathers have labels and art.
+    r = Result("CG25-gen5-machine-and-feather-art",
+               "Black/White and Black 2/White 2 TM/HM items resolve through the one machine table (label + type "
+               "art), and the seven Gen V Feathers map to the pinned *-wing art (Part 9 report 6)")
+    md = src("src/Names/MachineDisplay.cpp")
+    if not md or not re.search(r"\bGameVersion::(?:B|W|B2|W2|BW|B2W2)\b", md.code):
+        r.violations.append("src/Names/MachineDisplay.cpp: getMachineDescriptor has no Black/White or "
+                            "Black 2/White 2 case (all 101 Gen V TMs/HMs have no icon; HM01-06 read TM93-98)")
+    key = src("include/UI/ItemSpriteKey.h")
+    lits = {lit for _, lit in key.literals} if key else set()
+    for feather in ("health", "muscle", "resist", "genius", "clever", "swift", "pretty"):
+        if f"{feather}-wing" not in lits:
+            r.violations.append(f"include/UI/ItemSpriteKey.h: no {feather}-feather -> {feather}-wing alias")
+    res.append(r)
+
+    # Part 9 report 3 (2R): provider names on the Trainer / Game Browser surfaces.
+    r = Result("CG26-trainer-provider-display-name",
+               "The Trainer / Game Browser source header names the provider through providerDisplayName(), never a "
+               "raw label or a generic RETROARCH / EXTERNAL placeholder (Part 9 report 3)")
+    body = bodies("include/UI/TrainerViewScreenBase.h", "legacyProviderLabel")
+    if not body:
+        r.violations.append("include/UI/TrainerViewScreenBase.h: legacyProviderLabel() missing")
+    for b in body:
+        if not re.search(r"\bproviderDisplayName\s*\(", b):
+            r.violations.append("include/UI/TrainerViewScreenBase.h: legacyProviderLabel() returns the raw "
+                                "provider label instead of providerDisplayName()")
+        if re.search(r"\breturn\s+sourceProviderLabel\b|\?\s*\"?RETROARCH|\"EXTERNAL\"", b) or \
+                re.search(r"return\s+[^;]*\bsourceProviderLabel\s*;", b):
+            r.violations.append("include/UI/TrainerViewScreenBase.h: legacyProviderLabel() passes "
+                                "sourceProviderLabel / RETROARCH / EXTERNAL through")
+    res.append(r)
+
+    # Part 9 report 4 (lane L): the RetroArch core follows the save's emulator.
+    r = Result("CG27-retroarch-nds-core-follows-provider",
+               "The RetroArch NDS core is chosen from the save's provider (melonDS saves launch melonDS), not a fixed "
+               "DeSmuME-first order (Part 9 report 4)")
+    body = bodies("src/UI/GameLauncher.cpp", "defaultRetroArchCore")
+    gl = src("src/UI/GameLauncher.cpp")
+    sig = re.search(r"defaultRetroArchCore\s*\(([^)]*)\)\s*\{", gl.code) if gl else None
+    if not body or not sig:
+        r.violations.append("src/UI/GameLauncher.cpp: defaultRetroArchCore() missing")
+    elif not re.search(r"provider|core|source", sig.group(1), re.I):
+        r.violations.append("src/UI/GameLauncher.cpp: defaultRetroArchCore(" + sig.group(1).strip() +
+                            ") cannot see the provider; NDS saves always prefer desmume_libretro")
+    res.append(r)
+
+    # Part 9 report 9 (2R): re-confirming the current profile keeps the focused game.
+    r = Result("CG28-same-profile-keeps-game-focus",
+               "Re-confirming the already selected Switch profile does not reset the focused game (Part 9 report 9)")
+    body = bodies("src/UI/SaveSelectScreen.cpp", "setUser")
+    if not body:
+        r.violations.append("src/UI/SaveSelectScreen.cpp: SaveSelectScreen::setUser() missing")
+    for b in body:
+        reset = re.search(r"\btitleIndex\s*=\s*0\s*;", b)
+        guard = re.search(r"if\s*\([^)]*==\s*userIndex[^)]*\)\s*(?:\{[^}]*)?return\b|"
+                          r"if\s*\([^)]*userIndex\s*==[^)]*\)\s*(?:\{[^}]*)?return\b", b)
+        if reset and (not guard or guard.start() > reset.start()):
+            r.violations.append("src/UI/SaveSelectScreen.cpp: setUser() sets titleIndex = 0 even when the "
+                                "profile is unchanged")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",

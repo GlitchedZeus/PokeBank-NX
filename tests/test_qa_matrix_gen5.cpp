@@ -924,6 +924,18 @@ Outcome exportCell(Ctx& c, Matrix& m) {
     size_t offender = 0, changed = 0;
     need(qacontract::onlyWhitelistedChanges(c.original, edited, allowed, &offender, &changed),
          "edited.sav changed non-whitelisted byte " + qacontract::hex(offender));
+    // S06: corrupt the first byte of the money field (inside the Misc block, which its block
+    // checksum covers); the primary copy must stop reparsing with the Trainer edits.
+    const size_t moneyAt = G5::trainerBlock5(fam, T::MiscBlockIndex).offset + T::MoneyOffset;
+    const auto s06 = qamatrix::exportCorruptionProbe(edited, moneyAt + 3, [&](const auto& bytes) {
+        std::string why;
+        const auto r = G5::Gen5ReadOnlySave::parse(bytes, c.spec.game, &why, G5::SaveCopySelection::Primary);
+        if (!r || r->selectedCopyOffset() != 0 || r->exactGameId() != c.spec.game) return false;
+        const auto tr = G5::decodeTrainer5(*r);
+        return tr && tr->rawName == u"QAEXP";
+    });
+    need(s06.empty(), s06);
+    m.fact(c.spec.row, std::string(qamatrix::kExportChecksumFact), std::string(qamatrix::kExportChecksumDetected));
     need(c.sourceUntouched(), "export touched the source file");
     m.fact(c.spec.row, "export.output", "new-file-only");
     m.fact(c.spec.row, "export.reparse", "strict");

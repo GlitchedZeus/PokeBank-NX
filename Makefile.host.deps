@@ -1,0 +1,18 @@
+# Header dependencies for every host build output (round 3 follow-up to the CI-only stale-binary red).
+#
+# Host rules list only their .cpp prerequisites, so a header-only change used to reuse a stale binary
+# locally while CI's clean build failed. Every $(CXX) call now goes through tools/qa/cxx_with_deps.sh,
+# which records the headers each output was built from, and tools/qa/host_header_sweep.py deletes any
+# output older than one of them when this Makefile is parsed, before make decides what to rebuild.
+# Recipes and their $^ are unchanged. Must be included last (after every rule that captured $(CXX)).
+HOST_DEPS_WRAPPER := $(CURDIR)/tools/qa/cxx_with_deps.sh
+ifeq ($(filter $(HOST_DEPS_WRAPPER),$(CXX)),)
+override CXX := $(HOST_DEPS_WRAPPER) $(CXX)
+endif
+export POKEBANK_HOST_BUILD := $(HOST_BUILD)
+ifneq ($(wildcard $(HOST_BUILD)/.hdrdeps),)
+HOST_HEADER_SWEEP := $(shell python3 $(CURDIR)/tools/qa/host_header_sweep.py $(HOST_BUILD))
+ifneq ($(HOST_HEADER_SWEEP),)
+$(info $(HOST_HEADER_SWEEP))
+endif
+endif
