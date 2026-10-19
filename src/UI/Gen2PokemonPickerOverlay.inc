@@ -196,7 +196,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             const bool selected = i == model.index;
             appendClippedTouchButton(screen.touchButtons, 2000 + i, g.listX, yy, g.listWidth, g.rowHeight,
                                      g.listX, g.listY, g.listWidth, viewportH);
-            if (selected) fb.drawSelectionHighlight(g.listX, yy, g.listWidth, g.rowHeight);
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(g.listX, yy, g.listWidth, g.rowHeight), {selected});  // R2-BUG-012 boxed row
             const auto text = Gen2Picker::locationRowText(model.encounterChoices[static_cast<std::size_t>(i)]);
             fb.drawText(g.listX + 14, yy + 9, text.place, selected ? Colors::SelectedText : Colors::Text);
             int dw = 0, dh = 0;

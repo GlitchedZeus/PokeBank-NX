@@ -17,6 +17,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedSpeciesPicker.h"
+#include "UI/SharedBoxedRows.h"   // R2-BUG-012: the one boxed-row modal style (Gen I/II modals)
 
 // Species changes use the shared exact-game level/EXP initialization policy; overlays must not reintroduce inherited level semantics.
 #include "UI/TouchInput.h"

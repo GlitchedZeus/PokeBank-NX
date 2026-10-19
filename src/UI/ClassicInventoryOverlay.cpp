@@ -1,4 +1,5 @@
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/SharedBoxedRows.h"   // R2-BUG-012: Add Item picker rows use the shared boxed style
 
 #include "Integration/Common/ClassicStrictValidators.h"
 #include "Integration/Common/VerifiedStagedExport.h"

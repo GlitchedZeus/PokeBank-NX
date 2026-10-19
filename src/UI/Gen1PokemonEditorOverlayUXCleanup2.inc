@@ -1009,7 +1009,7 @@ void ux2DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         if (value > maxValue) break;
         const int rowY = y + 86 + i * 42;
         const bool selected = value == state.pickerValue;
-        if (selected) fb.drawSelectionHighlight(x + 24, rowY, listW - 24, 38);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, rowY, listW - 24, 38), {selected});  // R2-BUG-012 boxed row
         std::string text;
         if (species) text = UX::speciesPickerRow(static_cast<uint16_t>(value), Names::getSpeciesName(value));
         else if (value == 0) text = "000 - Empty move slot";
@@ -1051,7 +1051,7 @@ void ux2DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
         const int cy = y + 118 + row * cellH;
         const auto p = e->boxedPokemon(static_cast<size_t>(state.cloneBox), static_cast<size_t>(i), error);
         const bool selected = i == state.cloneSlot;
-        if (selected) fb.drawSelectionHighlight(cx, cy, cellW - 8, cellH - 8);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cx, cy, cellW - 8, cellH - 8), {selected});  // R2-BUG-012 boxed row
         fb.drawRoundedRect(cx, cy, cellW - 8, cellH - 8, 8, i == writable ? Colors::Accent : Colors::Divider, 1);
         screen.touchButtons.push_back({1200 + i, cx, cy, cellW - 8, cellH - 8});
         fb.drawText(cx + 8, cy + 8, (i < 9 ? "0" : "") + std::to_string(i + 1), Colors::TextDim, TextStyle::Caption);
