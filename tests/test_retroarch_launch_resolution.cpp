@@ -224,8 +224,8 @@ int main() {
     d = resolveGameLaunch(0, "platinum_nds", "retroarch",
                           "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.dsv", "");
     assert(d.state == GameLaunchState::Ready && d.corePath == desmume);
-    assert(d.launchNotice.find("could not be proven") != std::string::npos);
-    assert(gameLaunchDialogNotice(d).find("could not be proven") != std::string::npos);
+    assert(d.launchNotice.find("Core unproven") != std::string::npos);
+    assert(gameLaunchDialogNotice(d).find("Core unproven") != std::string::npos);
     assert(gameLaunchDialogNotice(d).find("Homebrew Menu") != std::string::npos);
 
     // A remembered game-file link recomputes the core from the same evidence.

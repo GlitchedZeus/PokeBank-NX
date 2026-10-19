@@ -614,9 +614,8 @@ RetroArchCoreChoice retroArchCoreForSave(std::string_view gameId, std::string_vi
     }
     if (evidence.core == RetroArchSaveCore::Ambiguous) {
         choice.corePath = defaultRetroArchCore(gameId);
-        choice.notice = "The RetroArch core could not be proven from this save (" +
-                        evidence.reason + "); PokeBank NX keeps its usual core choice, "
-                        "which may not load this save.";
+        // Short enough to share the launch dialog's two notice lines with the quit route.
+        choice.notice = "Core unproven (" + evidence.reason + "); it may not load this save.";
         return choice;
     }
     choice.corePath = std::string("sdmc:/retroarch/cores/") + retroArchSaveCoreNroName(evidence.core);

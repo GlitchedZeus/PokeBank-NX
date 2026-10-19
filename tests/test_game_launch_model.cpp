@@ -1,9 +1,11 @@
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <vector>
 
 #include "UI/GameLaunchModel.h"
+#include "UI/LeaveDecisionLayout.h"
 
 namespace {
 
@@ -295,6 +297,43 @@ void testRetroArchSaveCoreEvidence() {
     assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::Ambiguous)).empty());
 }
 
+// The launch dialog has two caption lines for "what you must know" (LeaveDecisionLayout over the
+// SharedMenuGeometry LaunchConfirm frame, measured with the bundled font). Every core notice the
+// evidence can produce must fit there together with every quit-route sentence, as composed by
+// gameLaunchDialogNotice() (notice, space, route), so the route is never cut off.
+void testLaunchDialogNoticesFit() {
+    using namespace UI;
+    namespace L = PokeBank::UIModel::LeaveDecisionLayout;
+    const char* ambiguousSaves[][2] = {
+        {"platinum_nds", "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.dsv"},
+        {"platinum_nds", "sdmc:/retroarch/saves/DeSmuME/Pokemon Platinum.sav"},
+        {"platinum_nds", "sdmc:/retroarch/saves/Gambatte/Pokemon Platinum.sav"},
+        {"platinum_nds", "sdmc:/retroarch/saves/melonDS DS/Pokemon Platinum.sav"},
+        {"emerald_gba", "sdmc:/retroarch/saves/Gambatte/Pokemon Emerald.srm"},
+        {"crystal_gbc", "sdmc:/retroarch/saves/DeSmuME/Pokemon Crystal.srm"},
+        {"heartgold_nds", "sdmc:/retroarch/saves/mGBA/Pokemon HeartGold.sav"},
+    };
+    const GameLaunchQuitRoute routes[] = {GameLaunchQuitRoute::LoaderDefault,
+                                          GameLaunchQuitRoute::EmulatorLauncher,
+                                          GameLaunchQuitRoute::ReturnsToPokeBank};
+    for (const auto& save : ambiguousSaves) {
+        const auto evidence = retroArchSaveCoreEvidence(save[0], save[1]);
+        assert(evidence.core == RetroArchSaveCore::Ambiguous);
+        // Exactly the text GameLauncher.cpp retroArchCoreForSave() produces.
+        const std::string notice = "Core unproven (" + evidence.reason + "); it may not load this save.";
+        for (const auto route : routes) {
+            const std::string text = notice + " " + gameLaunchQuitRouteNotice(route);
+            const L::Text t = L::build(false, "Pokemon SoulSilver Version", text);
+            if (!t.fits) std::cerr << "does not fit: " << text << "\n";
+            assert(t.fits);
+            assert(t.lines[1] + (t.lines[2].empty() ? "" : " " + t.lines[2]) == text);
+        }
+    }
+    // A route on its own (no notice) still fits, as before.
+    for (const auto route : routes)
+        assert(L::build(false, "Pokemon SoulSilver Version", gameLaunchQuitRouteNotice(route)).fits);
+}
+
 } // namespace
 
 int main() {
@@ -303,6 +342,7 @@ int main() {
     testChainPlans();
     testReturnSelection();
     testRetroArchSaveCoreEvidence();
+    testLaunchDialogNoticesFit();
 
     assert(normalizedLaunchStem("sdmc:/retroarch/cores/savefiles/Pokemon Yellow.srm") == "pokemonyellow");
     assert(normalizedLaunchStem("/roms/gba/Pokemon - Emerald Version (USA).gba") ==

@@ -641,7 +641,7 @@ inline RetroArchSaveCoreEvidence retroArchSaveCoreEvidence(std::string_view game
     else if (parent == "melonds") byFolder = RetroArchSaveCore::MelonDS;
     else if (parent == "melondsds") {
         out.core = RetroArchSaveCore::Ambiguous;
-        out.reason = "saved by melonDS DS, which has no Nintendo Switch core";
+        out.reason = "melonDS DS has no Switch core";
         return out;
     } else if (parent == "gambatte") byFolder = RetroArchSaveCore::Gambatte;
     else if (parent == "mgba") byFolder = RetroArchSaveCore::MGBA;
@@ -652,15 +652,14 @@ inline RetroArchSaveCoreEvidence retroArchSaveCoreEvidence(std::string_view game
 
     if (byFolder != RetroArchSaveCore::Unknown && !retroArchSaveCoreRunsGame(byFolder, gameId)) {
         out.core = RetroArchSaveCore::Ambiguous;
-        out.reason = std::string("save folder names the ") + retroArchSaveCoreLabel(byFolder) +
-                     " core, which cannot run this game";
+        out.reason = std::string(retroArchSaveCoreLabel(byFolder)) + " folder can't run this game";
         return out;
     }
     if (byFolder != RetroArchSaveCore::Unknown && byFile != RetroArchSaveCore::Unknown &&
         byFolder != byFile) {
         out.core = RetroArchSaveCore::Ambiguous;
-        out.reason = std::string("save folder names ") + retroArchSaveCoreLabel(byFolder) +
-                     " but the " + ext + " file was written by " + retroArchSaveCoreLabel(byFile);
+        out.reason = std::string(retroArchSaveCoreLabel(byFolder)) + " folder, " +
+                     retroArchSaveCoreLabel(byFile) + " " + ext;
         return out;
     }
     if (byFolder != RetroArchSaveCore::Unknown) {
@@ -748,9 +747,9 @@ inline const char* gameLaunchQuitRouteNotice(GameLaunchQuitRoute route) noexcept
         case GameLaunchQuitRoute::ReturnsToPokeBank:
             return "Quitting the emulator returns to PokeBank NX.";
         case GameLaunchQuitRoute::EmulatorLauncher:
-            return "DraStic's Quit to launcher opens DraStic's own launcher; reopen PokeBank NX from the Homebrew Menu.";
+            return "DraStic's Quit to launcher opens DraStic's launcher, not PokeBank NX.";
         case GameLaunchQuitRoute::LoaderDefault:
-            return "Quitting the emulator returns to the Homebrew Menu (or HOME when PokeBank NX was started from a forwarder).";
+            return "Quitting returns to the Homebrew Menu (or HOME via a forwarder).";
         case GameLaunchQuitRoute::None:
             break;
     }
