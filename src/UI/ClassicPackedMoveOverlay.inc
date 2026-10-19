@@ -3,6 +3,7 @@
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/SpriteManager.h"
@@ -16,7 +17,7 @@ namespace UI::ClassicPackedMove {
 namespace {
 
 namespace Multi = PokeBank::UIModel::ClassicPackedMove;
-enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3, Gen4 };
+enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3, Gen4, Gen5 };
 
 struct CarriedVisual {
     uint16_t species = 0;
@@ -39,6 +40,10 @@ struct CarryState {
     // after the selected PK4 source records have changed in the workspace.
     const void* gen4StagedOwner = nullptr;
     std::vector<std::vector<std::byte>> gen4PickupRecords;
+    // Gen V (Round 3 Part 9): the same deferred carry. The exact staged PK5 the
+    // player picked up is remembered; nothing is staged until the Y drop.
+    const void* gen5StagedOwner = nullptr;
+    std::vector<uint8_t> gen5PickupRecord;
 
     bool yPending = false;
     int yFrames = 0;
@@ -91,6 +96,11 @@ bool isGen4(const TrainerViewScreen& screen) noexcept {
     return id == "diamond_nds" || id == "pearl_nds" ||
            id == "platinum_nds" || id == "heartgold_nds" ||
            id == "soulsilver_nds";
+}
+
+bool isGen5(const TrainerViewScreen& screen) noexcept {
+    const auto& id = screen.sourceGameId;
+    return id == "black_nds" || id == "white_nds" || id == "black2_nds" || id == "white2_nds";
 }
 
 bool classicSource(const TrainerViewScreen& screen) noexcept {
@@ -391,6 +401,31 @@ bool beginGen4(TrainerViewScreen& screen, CarryState& state, int box, int anchor
     return true;
 }
 
+// Gen V single-Pokemon carry, started from Actions -> Move (the Gen V box grid
+// keeps its own isolated input; see Gen5SharedReadOnlySurface handleInput).
+bool beginGen5(TrainerViewScreen& screen, CarryState& state, int box, int slot) {
+    auto& trainer = static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
+    auto& workspace = trainer.stagedPokemon();
+    const auto pokemon = workspace.viewBox(static_cast<std::size_t>(box), static_cast<std::size_t>(slot));
+    if (!pokemon || !pokemon->valid() || pokemon->empty()) {
+        screen.postStatus("Gen V Move needs an occupied box slot", 260);
+        clearTransientSelection(screen, state);
+        return true;
+    }
+    state.active = true;
+    state.generation = CarryGeneration::Gen5;
+    state.sourceBox = box;
+    state.sourceSlot = slot;
+    state.gen5StagedOwner = &workspace;
+    state.gen5PickupRecord.assign(pokemon->originalEncryptedBytes().begin(),
+                                  pokemon->originalEncryptedBytes().end());
+    state.visuals = {{pokemon->species(), pokemon->form(), pokemon->shiny()}};
+    clearTransientSelection(screen, state);
+    setLegacyHoldingPresentation(screen, true);
+    screen.postStatus("Gen V Pokemon picked up - Y places in an empty slot, B cancels", 240);
+    return true;
+}
+
 bool beginSelectedGroup(TrainerViewScreen& screen, CarryState& state) {
     const int capacity = classicCapacity(screen);
     const auto rectangle = Multi::rectangleSlots(state.selectionAnchor, state.selectionCursor, capacity);
@@ -553,6 +588,7 @@ bool cancel(TrainerViewScreen& screen, CarryState& state) {
     // Gen IV pickup is a visual/deferred transaction: no PK4 was changed
     // before placement. A B cancel therefore restores without any write.
     if (state.generation == CarryGeneration::Gen4) ok = true;
+    if (state.generation == CarryGeneration::Gen5) ok = true;  // same deferred carry
     if (ok) {
         screen.selectedBoxIndex = state.sourceBox;
         screen.selectedItemIndex = state.sourceSlot;
@@ -690,8 +726,51 @@ bool placeGen4(TrainerViewScreen& screen, CarryState& state) {
     return true;
 }
 
+// Gen V drop: one atomic staged Move (exact clone into a verified empty box
+// slot + release of the source) through Gen5SharedScreenState, which refuses
+// a drop if the carried staged record changed and rolls back on a failed
+// presentation refresh. An occupied target keeps the carry (choose another).
+bool placeGen5(TrainerViewScreen& screen, CarryState& state) {
+    auto& trainer = static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
+    auto& workspace = trainer.stagedPokemon();
+    if (&workspace != state.gen5StagedOwner || state.gen5PickupRecord.empty()) {
+        clearState(screen, state);
+        screen.postStatus("Gen V source workspace changed; pickup cancelled safely", 340);
+        return true;
+    }
+    const int box = screen.selectedBoxIndex;
+    const int slot = screen.selectedItemIndex;
+    if (box == state.sourceBox && slot == state.sourceSlot) {
+        screen.postStatus("Pokemon returned to its original position", 200);
+        clearState(screen, state);
+        return true;
+    }
+    if (box < 0 || box >= 24 || slot < 0 || slot >= 30 ||
+        !workspace.emptyCloneDestination(static_cast<std::size_t>(box), static_cast<std::size_t>(slot))) {
+        screen.postStatus("Choose an empty verified Gen V box slot, or B cancels", 280);
+        return true;
+    }
+    using Workspace = PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace;
+    const Workspace::Slot from{Workspace::Region::Box, static_cast<std::size_t>(state.sourceBox),
+                               static_cast<std::size_t>(state.sourceSlot)};
+    std::string error;
+    if (!trainer.sharedScreen().dropCarriedPokemon(
+            workspace, from, state.gen5PickupRecord,
+            static_cast<std::size_t>(box), static_cast<std::size_t>(slot),
+            [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); }, error)) {
+        clearState(screen, state);
+        screen.postStatus(error.empty() ? "Gen V staged Move failed; nothing staged" : error, 340);
+        return true;
+    }
+    screen.selectedItemIndex = slot;
+    screen.postStatus("Gen V Pokemon moved in the staged copy; source SAV5 unchanged", 260);
+    clearState(screen, state);
+    return true;
+}
+
 bool place(TrainerViewScreen& screen, CarryState& state) {
     if (state.generation == CarryGeneration::Gen4) return placeGen4(screen, state);
+    if (state.generation == CarryGeneration::Gen5) return placeGen5(screen, state);
     if (screen.selectedItemIndex < 0) {
         screen.postStatus("Choose a box slot before placing the carried Pokemon", 220);
         return true;
@@ -789,9 +868,16 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
 } // namespace
 
 bool hidesGen4CarriedSource(const TrainerViewScreen& screen, int box, int slot) {
-    if (!isGen4(screen) || slot < 0 || box < 0) return false;
+    if (slot < 0 || box < 0) return false;
     // Shared carry state is owned by this overlay. Query it strictly for
     // presentation: never mutate the PK4 records on pickup/cursor navigation.
+    // Gen V's deferred carry hides its source cell the same way.
+    if (isGen5(screen)) {
+        const auto& state = stateFor(const_cast<TrainerViewScreen&>(screen));
+        return state.active && state.generation == CarryGeneration::Gen5 &&
+               state.sourceBox == box && state.sourceSlot == slot;
+    }
+    if (!isGen4(screen)) return false;
     const auto& state = stateFor(const_cast<TrainerViewScreen&>(screen));
     return state.active && state.generation == CarryGeneration::Gen4 &&
            state.sourceBox == box &&
@@ -805,6 +891,43 @@ bool beginGen4FromAction(TrainerViewScreen& screen, int box, int slot) {
     auto& state = stateFor(screen);
     if (state.active || state.selecting || state.yPending) return false;
     return beginGen4(screen, state, box, slot, {static_cast<std::size_t>(slot)});
+}
+
+bool beginGen5FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen5(screen) || box < 0 || box >= 24 || slot < 0 || slot >= 30) return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    return beginGen5(screen, state, box, slot);
+}
+
+bool gen5CarryActive(TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    return isGen5(screen) && state.active && state.generation == CarryGeneration::Gen5;
+}
+
+// The Gen V box grid's carry keys, with the same meaning as Gen I-IV: Y drops,
+// B cancels, A / X are refused while carrying, a tapped cell only moves the
+// cursor. D-pad / stick / L/R / ZL/ZR return false so the Gen V grid moves.
+bool handleGen5CarryInput(TrainerViewScreen& screen, uint64_t down, int tap) {
+    auto& state = stateFor(screen);
+    if (!gen5CarryActive(screen)) return false;
+    setLegacyHoldingPresentation(screen, true);
+    if (down & HidNpadButton_B) return cancel(screen, state);
+    if (down & HidNpadButton_Y) return place(screen, state);
+    if (down & HidNpadButton_Plus) {
+        cancel(screen, state);
+        return false;
+    }
+    if (down & (HidNpadButton_A | HidNpadButton_X)) {
+        screen.postStatus("Place with Y or cancel with B first", 180);
+        return true;
+    }
+    if (tap >= 0 && tap < 30) {
+        screen.selectedItemIndex = tap;
+        return true;
+    }
+    if (tap == 1002 || tap == 2000) return true;
+    return false;
 }
 
 bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
