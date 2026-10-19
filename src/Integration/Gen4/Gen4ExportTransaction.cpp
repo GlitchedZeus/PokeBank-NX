@@ -2,6 +2,7 @@
 
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Names/SpeciesNames.h"
+#include "Utils/StringHelpers.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -62,6 +63,14 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
     const auto before = strictParse(editor.originalBytes(), editor, error);
     const auto after = strictParse(editor.stagedBytes(), editor, error);
     if (!before || !after) return lines;
+
+    // R2-BUG-002: staged Trainer Name / Money are review changes too.
+    if (before->trainer().name != after->trainer().name)
+        lines.push_back("Trainer name: " + Utils::utf16ToUtf8(before->trainer().name) + " -> " +
+                        Utils::utf16ToUtf8(after->trainer().name));
+    if (before->trainer().money != after->trainer().money)
+        lines.push_back("Money: " + std::to_string(before->trainer().money) + " -> " +
+                        std::to_string(after->trainer().money));
 
     if (before->partyCount() != after->partyCount())
         lines.push_back("Party size: " + std::to_string(before->partyCount()) + " -> " +
