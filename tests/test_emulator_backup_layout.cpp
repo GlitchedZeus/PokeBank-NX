@@ -54,7 +54,10 @@ int main() {
         // Header text inside the header band.
         assert(E::kHeadingTop + E::lineH(Text::Heading) <= E::kExplainerTop);
         assert(E::kExplainerTop + E::lineH(Text::Caption) <= l.rule.headerH);
-        assert(G::fitsWidth(E::kExplainer, Text::Caption, l.frame.w - 2 * l.rule.padX));
+        // The explainer names the card's provider and still fits its line for every provider.
+        for (const char* provider : {"", "Unknown provider", "Multiple providers", "DraStic", "DraStic (savestate)",
+                                     "melonDS", "RetroArch", "RetroArch (DeSmuME)", "mGBA", "Manual file"})
+            assert(G::fitsWidth(E::explainer(provider), Text::Caption, l.frame.w - 2 * l.rule.padX));
         for (int v = 0; v < l.visibleRows; ++v) {
             const G::Rect cell = G::cellRect(l, v);
             assert(cell.inside(l.list) && cell.inside(l.frame));
@@ -97,6 +100,24 @@ int main() {
         const G::Rect toast = E::noticeRect(G::textWidth(SB::refusalReason(r), Text::Caption));
         assert(toast.x >= G::kMargin && toast.right() <= G::kScreenW - G::kMargin);
     }
+    // Provider wording (Part 9): the source save is named by its provider, generic only when unknown.
+    assert(E::sourceSaveName("DraStic") == "DraStic save");
+    assert(E::originalSaveLabel("RetroArch (DeSmuME)") == "Original RetroArch (DeSmuME) save");
+    assert(E::sourceSaveName("Unknown provider") == "emulator save" && E::sourceSaveName("") == "emulator save");
+    assert(E::sourceSaveName("Multiple providers") == "emulator save");
+    assert(E::rowLabel(SB::Kind::OriginalSource, "melonDS") == "Original melonDS save");
+    assert(E::rowLabel(SB::Kind::ExportedCopy, "melonDS") == SB::policyFor(SB::Kind::ExportedCopy).label);
+    assert(E::kindReason(SB::Kind::OriginalSource, "mGBA").find("the mGBA save") != std::string::npos);
+    assert(E::refusalText(SB::Refusal::OnlyRemainingCopy, "DraStic").find("original DraStic save") != std::string::npos);
+    assert(E::refusalText(SB::Refusal::Missing, "DraStic") == SB::refusalReason(SB::Refusal::Missing));
+    assert(E::untouchedLine("DraStic") == "The original DraStic save is never touched.");
+    assert(E::deletedNotice("melonDS").find("original melonDS save was not touched") != std::string::npos);
+    for (const SB::Refusal r : {SB::Refusal::OriginalSource, SB::Refusal::OnlyRemainingCopy})
+        for (const char* provider : {"DraStic (savestate)", "RetroArch (DeSmuME)"}) {
+            const G::Rect toast = E::noticeRect(G::textWidth(E::refusalText(r, provider), Text::Caption));
+            assert(toast.x >= G::kMargin && toast.right() <= G::kScreenW - G::kMargin);
+        }
+
     std::cout << "CG13 emulator backups: SharedMenuGeometry BackupMenu frame / rows / hit targets, "
                  "header + rows + notice fit, scroll reveals focus PASS\n";
 }

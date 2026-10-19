@@ -15,6 +15,7 @@
 #include "UI/ActionSheetModel.h"
 #include "UI/MutationTargetPolicy.h"
 #include "Safety/SourceMutationPolicy.h"
+#include "Source/SaveProviderIdentity.h"
 #include "UI/NavigationRepeat.h"
 #include "Utils/MoveTransactionProduction.h"
 #include "UI/InventoryUIContract.h"
@@ -320,11 +321,9 @@ namespace UI {
             return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
                    sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy;
         }
+        // The source's own provider name, exactly as Product Home shows it (never a generic word).
         std::string legacyProviderLabel() const {
-            if (!sourceProviderLabel.empty())
-                return sourceProviderLabel == "RetroArch" ? "RETROARCH" : sourceProviderLabel;
-            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
-                ? "RETROARCH" : "EXTERNAL";
+            return PokeVault::Source::providerDisplayName(sourceProviderLabel);
         }
         bool requireMutationKind(PokeVault::Safety::SourceKind targetKind,
                                  PokeVault::Safety::SourceMutation mutation) {
@@ -336,7 +335,7 @@ namespace UI {
             }
             if (PokeVault::Safety::canPerform(targetKind, mutation)) return true;
             postStatus(legacyReadOnlySource()
-                ? "External source is read-only. Editing this file is disabled."
+                ? legacyProviderLabel() + " source is read-only. Editing this file is disabled."
                 : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
         }

@@ -23,6 +23,13 @@ make -f Makefile.host qa-known-failures        # open-defect repros; exits non-z
 
 `qa*` targets are opt-in; the default `host-test` / `host-sanitize` graph is unchanged.
 
+Header dependencies: host rules list only their `.cpp` prerequisites, so `Makefile.host.deps` (included
+last by `Makefile.host`) wraps every `$(CXX)` call in `tools/qa/cxx_with_deps.sh`, which records the
+headers each output was built from in `build-host/.hdrdeps/`. `tools/qa/host_header_sweep.py` runs when
+the Makefile is parsed and deletes any output older than one of its headers, so a header-only change
+rebuilds every dependent test locally the way CI's clean build does. Regression:
+`tests/test_qa_host_header_deps.py` (in `qa-tools-test`).
+
 ## 1. Parser robustness fuzzing
 
 One driver, [`tests/fuzz_support.h`](../../tests/fuzz_support.h), runs each target two ways:

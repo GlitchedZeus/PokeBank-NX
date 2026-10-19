@@ -13,6 +13,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <initializer_list>
 #include <map>
 #include <string>
@@ -120,6 +121,29 @@ inline constexpr std::array<std::string_view, 20> kVersions = {
     "diamond", "pearl", "platinum", "heartgold", "soulsilver",
     "black", "white", "black2", "white2",
 };
+
+// S06 (round 3) host evidence for "the exported edited save loads in an emulator". Host tests
+// cannot run an emulator; what they can show is that the published edited save is checksum-
+// consistent, and that the strict reparse used as that evidence really checks the bytes an
+// emulator checks. `stillEdited(bytes)` must return true only when `bytes` strictly reparse as
+// the exact game with the export's edit visible (no fallback copy, no recovery). The probe
+// requires it to hold for the export as written and to stop holding once the single byte `at`
+// (inside a checksummed region) is changed. Returns the empty string on success, else why.
+// The matrix records fact "export.checksum" = "detects-corruption" for every version that passes.
+template <class Buffer, class StillEdited>
+std::string exportCorruptionProbe(Buffer exported, size_t at, StillEdited&& stillEdited) {
+    if (at >= exported.size()) return "S06 probe offset " + std::to_string(at) + " is outside the export";
+    if (!stillEdited(exported)) return "S06: the unmodified export does not reparse as the edited save";
+    exported[at] = static_cast<typename Buffer::value_type>(exported[at] ^ 0x01);
+    if (stillEdited(exported))
+        return "S06: byte " + std::to_string(at) + " changed, yet the copy still reparses as the edited save "
+               "(the reparse does not check that byte)";
+    return {};
+}
+
+// Name of the S06 fact and the value every version must record.
+inline constexpr std::string_view kExportChecksumFact = "export.checksum";
+inline constexpr std::string_view kExportChecksumDetected = "detects-corruption";
 
 void runGen12(Matrix& m);
 void runGen3(Matrix& m);

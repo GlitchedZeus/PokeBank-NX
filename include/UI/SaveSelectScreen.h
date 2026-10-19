@@ -24,6 +24,7 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
+#include "UI/ProfileTitleFocus.h"
 #include "Source/HomeCardSnapshot.h"
 
 namespace UI {
@@ -213,6 +214,7 @@ namespace UI {
         GameLaunchDescriptor pendingLaunch;
         std::string pendingLaunchName;
         std::string pendingLaunchNotice;
+        std::string pendingLaunchStarter = "the emulator"; // LeaveDecisionLayout::launchStarter
         void openLeaveDecision(LeaveKind kind, const char* origin);
         void openLaunchDecision(LeaveKind kind, const GameLaunchDescriptor& descriptor,
                                 const std::string& gameName, const char* origin);
@@ -255,6 +257,7 @@ namespace UI {
         int emuBackupIndex = 0;
         int emuBackupScroll = 0;
         std::string emuBackupNotice;
+        std::string emuBackupProvider; // provider display name of the card the Backups list belongs to
         void openEmulatorBackups(const std::string& notice = {});
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
@@ -320,6 +323,7 @@ namespace UI {
         int gen5CandidateScroll = 0;
         TouchScrollState gen5CandidateTouchScroll;
         PokeVault::Integration::Gen5::ProfileGameFocus gen5ProfileFocus;
+        PokeBank::UIModel::ProfileTitleFocus profileTitleFocus; // every card kind (Gen V above stays)
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;

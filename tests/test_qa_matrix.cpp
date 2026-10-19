@@ -91,6 +91,22 @@ int main(int argc, char** argv) {
             }
         }
 
+    // S06: every version's export cell must have proven that its strict reparse detects a corrupted
+    // checksummed byte in the published edited save (exportCorruptionProbe in test_qa_matrix.h).
+    {
+        const auto& facts = m.facts();
+        const auto it = facts.find(std::string(qamatrix::kExportChecksumFact));
+        for (auto version : qamatrix::kVersions) {
+            const bool ok = it != facts.end() && it->second.count(std::string(version)) &&
+                            it->second.at(std::string(version)) == qamatrix::kExportChecksumDetected;
+            if (!ok) {
+                std::cerr << "S06 " << version << ": no " << qamatrix::kExportChecksumFact << "="
+                          << qamatrix::kExportChecksumDetected << " fact from the export cell\n";
+                ++problems;
+            }
+        }
+    }
+
     std::ostringstream md;
     md << "| Version |";
     for (auto cell : qamatrix::kCells) md << ' ' << cell << " |";

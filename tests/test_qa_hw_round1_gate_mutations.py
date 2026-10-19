@@ -23,7 +23,7 @@ def shadow_tree(dst: Path) -> None:
     for entry in ROOT.iterdir():
         if entry.name in (".git", "build-host") or entry.name.startswith("build"):
             continue
-        if entry.is_dir() and entry.name in ("src", "include", "tests"):
+        if entry.is_dir() and entry.name in ("src", "include", "tests", "docs"):
             # Real copies (~15 MB): the contract loader resolves paths, so symlinks would escape the copy.
             shutil.copytree(entry, dst / entry.name, symlinks=True,
                             ignore=shutil.ignore_patterns("__pycache__"))
@@ -54,6 +54,13 @@ MUTATIONS = [
      "def require(cond: bool, message: str) -> None:\n    if not cond:",
      "def require(cond: bool, message: str) -> None:\n    raise SystemExit('forced')\n    if not cond:",
      "tests/test_game_hub_contract.py fails"),
+    ("round 2 accepted guard literal deleted (S01)", "tests/test_shared_editor_unit.cpp",
+     "S01: PP and PP Ups captions are at least 20 px apart", "PP captions",
+     "S01: tests/test_shared_editor_unit.cpp no longer contains"),
+    ("round 2 record changed (S03 no longer PASS)", "docs/hardware/ROUND2_RESULTS_e10f307f.md",
+     "| S03 | Gen V Create, Clone, Move and Release work (left-panel clipping, parity) | PASS |",
+     "| S03 | Gen V Create, Clone, Move and Release work (left-panel clipping, parity) | FAIL |",
+     "docs/hardware/ROUND2_RESULTS_e10f307f.md: PASS"),
 ]
 
 

@@ -331,12 +331,13 @@ namespace UI {
         // Transient failure notice, centred just above the nav bar (same treatment as the editor's).
         if (statusFrames > 0 && !statusMessage.empty()) {
             int tw, th; fb.measureText(statusMessage, tw, th);
+            tw = drawGlyphSentence(fb, 0, 0, statusMessage, Colors::Text, TextStyle::Body, true);
             const int padX = 18, bw = tw + padX * 2, bh = th + 14;
             const int bx = (fb.getWidth() - bw) / 2, by = fb.getHeight() - kNavBarH - bh - 12;
             fb.drawSoftShadow(bx, by, bw, bh, 8);
             fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
             fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Warning, 2);
-            fb.drawText(bx + padX, by + 7, statusMessage, Colors::Text);
+            drawGlyphSentence(fb, bx + padX, by + 7, statusMessage, Colors::Text);   // "press A or X" as badges
         }
 
         if (showDeleteConfirmation) {
