@@ -96,6 +96,14 @@ const PokeVault::Legacy::RBYReadOnlyTrainer* rbyTrainer(const TrainerViewScreen&
     return static_cast<const PokeVault::Legacy::RBYReadOnlyTrainer*>(&screen.trainer);
 }
 
+// R2-CHECK-009: Box Actions lists Move only where the staged packed-move carry exists (the Boxes
+// view of a Gen I source with a staged Pokemon editor); never in the read-only Storage pane.
+bool boxMoveAvailable(const TrainerViewScreen& screen) noexcept {
+    const auto* trainer = rbyTrainer(screen);
+    return trainer && trainer->stagedPokemon() && screen.detailViewActive &&
+           screen.selectedMode == TrainerViewScreen::ViewMode::Boxes;
+}
+
 // Working-copy draft for one Gen I Edit session (as in the Gen III-V shared editor). While it
 // exists, every editor() caller - field edits, pickers, sub-editors, Random DVs, the workspace
 // display - reads and writes the draft; the real staged copy changes only when the session is
@@ -764,6 +772,7 @@ void handleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             case UX::Action::AddPokemon: beginAddDraft(screen); break;
             case UX::Action::ReviewPendingChanges: state.mode = Mode::Review; state.reviewRow = 0; break;
             case UX::Action::Cancel: closeOverlay(state); break;
+            case UX::Action::Move: break; // not offered by this legacy sheet (boxMove = false)
         }
         return;
     }
@@ -974,7 +983,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         Colors::TextDim);
     static constexpr const char* names[] = {
         "View", "Edit", "Clone", "Remove", PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
-        "Add Pokemon", "Review Pending Changes", "Cancel",
+        "Add Pokemon", "Review Pending Changes", "Cancel", "Move",
     };
     int rowY = y + 104;
     for (std::size_t i = 0; i < actions.count; ++i) {

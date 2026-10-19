@@ -807,6 +807,18 @@ bool beginGen4FromAction(TrainerViewScreen& screen, int box, int slot) {
     return beginGen4(screen, state, box, slot, {static_cast<std::size_t>(slot)});
 }
 
+bool beginGen1FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen1(screen) || screen.selectedMode != TrainerViewScreen::ViewMode::Boxes ||
+        box < 0 || slot < 0 || slot >= classicCapacity(screen))
+        return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    screen.selectedBoxIndex = box;
+    screen.selectedItemIndex = slot;
+    beginGen1(screen, state, box, slot);
+    return state.active;
+}
+
 bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                  int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);

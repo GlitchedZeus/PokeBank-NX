@@ -1,6 +1,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
 #include "UI/ClassicPokemonActionMenu.h"
+#include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
@@ -634,7 +635,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
-        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
+        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen), boxMoveAvailable(screen));
         const int rows = static_cast<int>(actions.count);
         if (down & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;
         if (down & HidNpadButton_Down) state.row = (state.row + 1) % rows;
@@ -649,6 +650,13 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
                 state.row = 0;
                 break;
             case UX::Action::Clone: ux2OpenClone(screen); break;
+            case UX::Action::Move: {
+                const int box = state.box, slot = state.slot;
+                ux2Close(state);
+                if (!ClassicPackedMove::beginGen1FromAction(screen, box, slot))
+                    screen.postStatus("Move could not start from here", 240);
+                break;
+            }
             case UX::Action::Remove: state.mode = UX2Mode::RemoveConfirm; break;
             case UX::Action::LegalityProvenance: state.mode = UX2Mode::Provenance; break;
             case UX::Action::AddPokemon: ux2BeginAdd(screen); break;
@@ -902,7 +910,7 @@ void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, in
     auto& state = ux2StateFor(screen);
     std::string error;
     const auto pokemon = ux2SelectedPokemon(screen, error);
-    const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
+    const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen), boxMoveAvailable(screen));
     const auto model = ux2NarrowActions(actions, static_cast<bool>(pokemon));
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row,
                             pokemon ? "Pokemon Actions" : "Empty Slot",
@@ -1154,7 +1162,7 @@ void ux2DialogGeometry(TrainerViewScreen& screen, int& x, int& y, int& w, int& h
         case UX2Mode::Actions: {
             std::string error;
             const auto p = ux2SelectedPokemon(screen, error);
-            const auto actions = UX::actionsForSlot(static_cast<bool>(p), hasPending(screen));
+            const auto actions = UX::actionsForSlot(static_cast<bool>(p), hasPending(screen), boxMoveAvailable(screen));
             const auto model = ux2NarrowActions(actions, static_cast<bool>(p));
             const auto geometry = PokeBank::UIModel::NarrowPokemonMenu::geometry(model.count);
             w = geometry.width;
