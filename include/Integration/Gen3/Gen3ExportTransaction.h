@@ -3,6 +3,7 @@
 #include "Integration/Common/VerifiedStagedExport.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "Integration/Gen3/Gen3StagedTrainerEditor.h"
 
 #include <string>
 
@@ -21,8 +22,11 @@ struct Gen3ExportRequest {
 // reparse (rotating sectors, signatures, checksums, exact family) before and after writing.
 // When a staged Bag workspace with pending changes is supplied, its changed sectors are merged in
 // (sector-disjoint only; both workspaces must share the exact original) so one export carries both.
+// Pending Trainer Name / Money edits (R2-BUG-002) are applied last, on top of the merged image
+// (Gen3StagedTrainerEditor::applyTo), so they never collide with the Bag's section 1.
 [[nodiscard]] Common::VerifiedExportResult publishVerifiedGen3Export(
     const StagedPokemonEditor& editor, const Gen3ExportRequest& request,
-    const StagedInventoryEditor* inventory = nullptr);
+    const StagedInventoryEditor* inventory = nullptr,
+    const Gen3StagedTrainerEditor* trainer = nullptr);
 
 } // namespace PokeVault::Integration::Gen3

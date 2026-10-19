@@ -5265,7 +5265,8 @@ namespace UI {
                 // a mutable workspace or a classic staged Trainer editor (Gen I / Gen II).
                 instructions = PokeBank::UIModel::ClassicTrainerSession::trainerPageInstructions(
                     PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(
-                        trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit)));
+                        trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit),
+                        sourceGameId));
             }
         } else {
             // HOME main menu.
