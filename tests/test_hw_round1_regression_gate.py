@@ -150,7 +150,7 @@ GUARDS: dict[str, tuple[str, G]] = {
         ('host', 'test_classic_pokemon_action_menu', 'tests/test_classic_pokemon_action_menu.cpp', '"View", "Edit", "Clone", "Release", "Origin & Legality"'),
         ('host', 'test_shared_editor_contract', 'tests/test_shared_editor_contract.cpp', 'void actionMenuContract()'),
         ('host', 'test_gen4_hardware_surface_contract', 'tests/test_gen4_hardware_surface_contract.cpp', '== "Origin & Legality"'),
-        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', '{A::View, A::Edit, A::Clone, A::Move, A::Remove, A::Close}'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', '{A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Close}'),
     ]),
     'E04': ('Rows 1/15 counters removed', [
         ('cg', 'CG02-no-row-counters'),

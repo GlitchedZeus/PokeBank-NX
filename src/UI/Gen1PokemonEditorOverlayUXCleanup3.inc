@@ -592,7 +592,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         const int move = choices[static_cast<size_t>(idx)];
         const int rowY = listTop + (idx - start) * rowStep + liveOffset;
         const bool selected = idx == selectedIndex;
-        if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, rowY, w - 48, 38), {selected});  // R2-BUG-012 boxed row
         appendClippedTouchButton(screen.touchButtons, 4000 + idx,
             x + 24, rowY, w - 48, 38,
             x + 24, listTop, w - 48, visible * rowStep);
@@ -626,7 +626,7 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
         const int cy = y + 84 + row * cellH;
         const auto pokemon = e->boxedPokemon(static_cast<size_t>(state.cloneBox), static_cast<size_t>(i), error);
         const bool selected = i == state.cloneSlot;
-        if (selected) fb.drawSelectionHighlight(cx, cy, cellW - 8, cellH - 8);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cx, cy, cellW - 8, cellH - 8), {selected});  // R2-BUG-012 boxed row
         fb.drawRoundedRect(cx, cy, cellW - 8, cellH - 8, 8, i == writable ? Colors::Accent : Colors::Divider, 1);
         screen.touchButtons.push_back({1200 + i, cx, cy, cellW - 8, cellH - 8});
         fb.drawText(cx + 7, cy + 6, (i < 9 ? "0" : "") + std::to_string(i + 1), Colors::TextDim, TextStyle::Caption);

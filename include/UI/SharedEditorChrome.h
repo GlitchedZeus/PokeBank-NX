@@ -12,6 +12,7 @@
 #include "UI/SharedFieldState.h"
 #include "UI/SharedFieldStateColors.h"
 #include "UI/SharedMenuGeometry.h"
+#include "UI/SharedBoxedRows.h"
 
 #include <string>
 #include <vector>
@@ -80,11 +81,14 @@ static_assert(MenuGeometry::kFooterH == kNavBarH, "menu geometry keeps the scree
 
 // A cell of a shared menu: focus highlight on the SAME rectangle that is published as its touch
 // target, so what is highlighted is exactly what a tap selects.
+// R2-BUG-012: drawn in the ONE boxed-row style (UI/SharedBoxedRows.h): every cell is a dark
+// rounded box, the focused one has the yellow outline, and the box is exactly the touch target.
 template <class Buttons>
 inline void drawMenuCell(PKSEFramebuffer& fb, Buttons& touchButtons, int touchId,
-                         const MenuGeometry::Rect& cell, bool focused) {
-    if (focused) fb.drawSelectionHighlight(cell.x, cell.y, cell.w, cell.h);
-    touchButtons.push_back({touchId, cell.x, cell.y, cell.w, cell.h});
+                         const MenuGeometry::Rect& cell, bool focused, bool enabled = true) {
+    const SharedBoxedRows::State state{focused, enabled};
+    SharedBoxedRows::drawBox(fb, cell, state);
+    SharedBoxedRows::publish(touchButtons, touchId, cell, state);
 }
 
 // ---- Origin & Legality ------------------------------------------------------------------------

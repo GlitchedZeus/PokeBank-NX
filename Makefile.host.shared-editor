@@ -182,7 +182,7 @@ $(SHARED_MENU_GEOMETRY_SANITIZE): $(SHARED_MENU_GEOMETRY_INPUTS)
 
 # S03: Gen V Create/Edit parity -- one DETAILS label/value column for Gen III-V, no clipped
 # species values, same rows as Gen III/IV, exact game in the header, per-row field state.
-GEN5_PARITY_SOURCES := tests/test_gen5_create_edit_parity.cpp src/Names/SpeciesNames.cpp
+GEN5_PARITY_SOURCES := tests/test_gen5_create_edit_parity.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp
 GEN5_PARITY_INPUTS := $(GEN5_PARITY_SOURCES) include/UI/SharedEditorPresentation.h \
 	include/UI/SharedMenuGeometry.h include/UI/ClassicGameContext.h include/UI/SharedPokemonShell.h \
 	include/Integration/Gen5/Gen5EditorFields.h src/UI/Gen3SharedPokemonSurface.inc \
@@ -202,6 +202,26 @@ $(GEN5_PARITY_TEST): $(GEN5_PARITY_INPUTS)
 $(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_PARITY_SOURCES) -o $@
+
+# R2-BUG-012: one boxed-row style for every interactive Gen I-V modal (SharedBoxedRows.h).
+SHARED_BOXED_ROWS_INPUTS := tests/test_shared_boxed_rows.cpp include/UI/SharedBoxedRows.h include/UI/ScreenChrome.h \
+	src/UI/SharedPokemonEditorSurface.inc src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc \
+	include/UI/SharedHeldItemPickerPresentation.h
+SHARED_BOXED_ROWS_TEST := $(HOST_BUILD)/test_shared_boxed_rows
+SHARED_BOXED_ROWS_SANITIZE := $(HOST_BUILD)/test_shared_boxed_rows_sanitize
+
+HOST_TESTS += $(SHARED_BOXED_ROWS_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_BOXED_ROWS_SANITIZE)
+host-test: $(SHARED_BOXED_ROWS_TEST)
+host-sanitize: $(SHARED_BOXED_ROWS_SANITIZE)
+
+$(SHARED_BOXED_ROWS_TEST): $(SHARED_BOXED_ROWS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_boxed_rows.cpp -o $@
+
+$(SHARED_BOXED_ROWS_SANITIZE): $(SHARED_BOXED_ROWS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_boxed_rows.cpp -o $@
 
 # Phase 6: Y re-rolls IVs/EVs through the real PK3 / PK4 / PK5 record code; Shiny, Gender,
 # Nature and Ability never change (shiny/non-shiny drafts, gender-ratio edge cases).
@@ -264,3 +284,24 @@ $(SHARED_BAG_QUANTITY_SANITIZE): $(SHARED_BAG_QUANTITY_SOURCES) include/Inventor
 	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_BAG_QUANTITY_SOURCES) -o $@
+
+# QA Round 3 Part 9 item 8: the Gen IV Storage save pane uses the shared Y carry (pickup,
+# drop and drawn carry stay in that pane; Y tap / hold multi-select as in Boxes).
+GEN4_STORAGE_CARRY_INPUTS := tests/test_gen4_storage_carry.cpp include/UI/ClassicCarryGrid.h \
+	include/UI/ClassicPackedMultiSelect.h src/UI/ClassicPackedMoveOverlay.inc src/UI/Panels/StoragePanel.cpp \
+	src/UI/TrainerViewScreenCompositeOverlay.cpp
+GEN4_STORAGE_CARRY_TEST := $(HOST_BUILD)/test_gen4_storage_carry
+GEN4_STORAGE_CARRY_SANITIZE := $(HOST_BUILD)/test_gen4_storage_carry_sanitize
+
+HOST_TESTS += $(GEN4_STORAGE_CARRY_TEST)
+HOST_SANITIZE_TESTS += $(GEN4_STORAGE_CARRY_SANITIZE)
+host-test: $(GEN4_STORAGE_CARRY_TEST)
+host-sanitize: $(GEN4_STORAGE_CARRY_SANITIZE)
+
+$(GEN4_STORAGE_CARRY_TEST): $(GEN4_STORAGE_CARRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@
+
+$(GEN4_STORAGE_CARRY_SANITIZE): $(GEN4_STORAGE_CARRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@

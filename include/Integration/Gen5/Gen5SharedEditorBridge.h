@@ -54,18 +54,25 @@ struct SharedEditorSlot {
         // Only app-owned PK5 fields can be staged, never source-save writes.
         append(Shared::Action::Edit);
         // Move Pokemon matches Gen IV's box action: an exact clone into a
-        // verified empty box slot plus removal of the original source slot.
-        // Shared order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move, Release.
-        if(workspace.originalOccupied(slot.location) &&
-           workspace.firstEmptyCloneDestination()<720)
+        // verified empty box slot plus removal of the source slot.
+        // Shared order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move,
+        // Release, Origin & Legality. Round 3 Part 9: like Gen IV (which works
+        // from its reparsed staged buffer) these follow the STAGED slot, so a
+        // Pokemon created, cloned or edited this session keeps them. Untouched
+        // originals use the strict primitives; staged slots use the
+        // certificate-preserving companions (Gen5StagedPokemonWorkspace.h).
+        const bool operand=workspace.originalOccupied(slot.location) ||
+                           workspace.stagedOperand(slot.location);
+        const bool box=slot.location.region==Gen5StagedPokemonWorkspace::Region::Box;
+        if(operand && workspace.firstEmptyCloneDestination()<720)
             append(Shared::Action::Clone);
-        if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-           workspace.originalOccupied(slot.location) &&
-           workspace.firstEmptyCloneDestination()<720)
+        if(box && operand && workspace.firstEmptyCloneDestination()<720)
             append(Shared::Action::Move);
-        if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-           workspace.originalOccupied(slot.location))
+        if(box && operand)
             append(Shared::Action::Remove);
+        // Neutral Origin & Legality (Gen I-IV row): structure and origin only,
+        // never a legality verdict.
+        append(Shared::Action::LegalityProvenance);
     }
     if(workspace.hasChanges())append(Shared::Action::Review);
     append(Shared::Action::Close);

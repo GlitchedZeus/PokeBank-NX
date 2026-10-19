@@ -1554,6 +1554,9 @@ void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
                 Colors::TextDim, TextStyle::Caption);
+    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
+    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
+        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Keep Changes"}, {"Y", "Discard All"}}});
     drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
 }
 
@@ -1680,6 +1683,9 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 34, y + 166, "The original " + screen.legacyProviderLabel() + " save is never written.",
                 Colors::TextDim, TextStyle::Caption);
+    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y releases).
+    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
+        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Cancel"}, {"Y", "Confirm Release"}}});
     drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
 }
 

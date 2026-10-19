@@ -1,4 +1,5 @@
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/SharedBoxedRows.h"   // R2-BUG-012: Add Item picker rows use the shared boxed style
 
 #include "Integration/Common/ClassicStrictValidators.h"
 #include "Integration/Common/VerifiedStagedExport.h"
@@ -1023,7 +1024,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             std::string label = artName;
-            if (i == state.pickerRow) fb.drawSelectionHighlight(cell.x, cell.y, cell.w, cell.h);
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cell.x, cell.y, cell.w, cell.h), {i == state.pickerRow});  // R2-BUG-012 boxed row
             // Native IDs are never interchangeable across generations.
             // A label like TM43 cannot select art without its actual GBA/GBC
             // taught move. PC Items uses the same discs as the TM/HM pocket.

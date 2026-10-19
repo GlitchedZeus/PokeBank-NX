@@ -381,7 +381,7 @@ void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(shared.cloneBox),
                                                   static_cast<std::size_t>(slot), error);
         const bool target = slot == destination;
-        if (target) fb.drawSelectionHighlight(xx, yy, cellW - 10, cellH - 10);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(xx, yy, cellW - 10, cellH - 10), {target});  // R2-BUG-012 boxed row
         fb.drawRoundedRect(xx, yy, cellW - 10, cellH - 10, 8, target ? Colors::Accent : Colors::Divider, 1);
         fb.drawText(xx + 10, yy + 8, "Slot " + std::to_string(slot + 1), Colors::TextDim, TextStyle::Caption);
         fb.drawText(xx + 10, yy + 34,
@@ -413,7 +413,7 @@ void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         for (int i = first; i < last; ++i) {
             const int yy = y + 96 + (i - first) * 44;
             const bool selected = i == legacy.reviewRow;
-            if (selected) fb.drawSelectionHighlight(x + 24, yy - 5, w - 48, 39);
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, yy - 5, w - 48, 39), {selected});  // R2-BUG-012 boxed row
             const auto& change = changes[static_cast<std::size_t>(i)];
             fb.drawText(x + 36, yy, change.label, selected ? Colors::Text : Colors::Text, TextStyle::Caption);
             fb.drawText(x + 350, yy, change.beforeValue + "  ->  " + change.afterValue,

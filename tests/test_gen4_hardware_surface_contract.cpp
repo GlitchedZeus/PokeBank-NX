@@ -607,7 +607,7 @@ int main() {
     // Phase 2: the sprite leads each cell and the name follows at the HeldItemPicker rule's gap.
     contains(sharedHeld, "const int spriteRight = cellX + rule.cellPadX + rule.spriteSize;");
     contains(sharedHeld, "ItemPickerArtwork::draw(fb, spriteRight, cellY + 2, rule.spriteSize");
-    contains(sharedHeld, "fb.drawSelectionHighlight(cellX, cellY - 3");
+    contains(sharedHeld, "SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cellX, cellY - 3"); // R2-BUG-012
     contains(sharedHeld, "fb.drawText(spriteRight + rule.spriteGap, cellY + 7");
     contains(gen2Held, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(gen2Editor, "SharedHeldItemPickerPresentation::drawHeading(");

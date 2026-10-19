@@ -32,10 +32,10 @@ XFAIL: dict[str, str] = {
     "CG24-gen34-trainer-staged-export": "C (R2-BUG-002)",
     "CG20-shared-boxed-modal-rows": "S (R2-BUG-012)",
     "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
+    "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
+    "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
     "CG25-gen5-machine-and-feather-art": "I (Part 9 report 6)",
-    "CG26-trainer-provider-display-name": "2R (Part 9 report 3)",
     "CG27-retroarch-nds-core-follows-provider": "L (Part 9 report 4)",
-    "CG28-same-profile-keeps-game-focus": "2R (Part 9 report 9)",
     "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
@@ -723,6 +723,39 @@ def contracts(sources: list[Source]) -> list[Result]:
                "shared SpeciesMoveDefaults policy (R2-BUG-004)")
     # Lane R (round 3): one shared species-change policy, called once from every species apply path.
     change_rx = re.compile(r"(?<![\w.>])(?:[\w.>-]*(?:\.|->))?(?:setSpecies|applySpecies)\s*\(")
+    # A reference alone (e.g. SpeciesMoveDefaults::forSpecies or a version lookup) is not enough: the
+    # body must call one of the policy's move WRITERS, so dropping the write itself fails here.
+    MOVE_WRITE_RX = re.compile(r"\bSpeciesMoveDefaults::(?:writeArrays|writeEdit|refreshArrays|setMoves|stageMoves)\s*[<(]")
+    # The Gen II / Gen III draft sessions own the species change itself: every UI path (Gen II picker
+    # and number entry, Gen III picker) calls Session::setSpecies, which applies the policy. A call to
+    # `session.setSpecies(` / `state.setSpecies(` counts when every setSpecies() defined in those
+    # session headers applies SpeciesMoveDefaults (so removing it from a session fails here).
+    session_headers = ("include/UI/Gen2PokemonSession.h", "include/UI/Gen3SharedPokemonSession.h")
+
+    def defined_bodies(code: str, name: str) -> list[str]:
+        # Member definitions with default arguments (`= {}`) defeat function_bodies(); match the
+        # parameter list by parenthesis depth and the body by brace depth instead.
+        out = []
+        for m in re.finditer(rf"\b{name}\s*\(", code):
+            depth, i = 1, m.end()
+            while i < len(code) and depth:
+                depth += (code[i] == "(") - (code[i] == ")")
+                i += 1
+            head = re.match(r"\s*(?:const\s*)?(?:noexcept\s*)?\{", code[i:])
+            if not head:
+                continue  # a call or a declaration
+            j = i + head.end() - 1
+            start, depth = j, 0
+            while j < len(code):
+                depth += (code[j] == "{") - (code[j] == "}")
+                if depth == 0:
+                    break
+                j += 1
+            out.append(code[start:j])
+        return out
+
+    session_set = [b for x in sources if x.rel in session_headers for b in defined_bodies(x.code, "setSpecies")]
+    session_resets = bool(session_set) and all(re.search(MOVE_WRITE_RX, b) for b in session_set)
     seen_fn = set()
     for s in U:
         if not EDITOR_FILE_RX.search(s.rel):
@@ -734,9 +767,11 @@ def contracts(sources: list[Source]) -> list[Result]:
 
         def resets(body: str) -> bool:
             # Satisfied by the body itself or by a same-file helper it calls (applyPicker -> applySpecies).
-            if re.search(r"\bSpeciesMoveDefaults::", body):
+            if re.search(MOVE_WRITE_RX, body):
                 return True
-            return any(re.search(r"\bSpeciesMoveDefaults::", b)
+            if session_resets and re.search(r"\b(?:session|state)\s*\.\s*setSpecies\s*\(", body):
+                return True
+            return any(re.search(MOVE_WRITE_RX, b)
                        for callee in re.findall(r"\b(\w+)\s*\(", body) if callee in by_name
                        for b in by_name[callee] if b is not body)
 
@@ -748,7 +783,7 @@ def contracts(sources: list[Source]) -> list[Result]:
             seen_fn.add((s.rel, name))
             if not resets(body):
                 r.violations.append(f"{s.rel}:{ln}: {name}() changes the species but keeps the old moves "
-                                    "(no SpeciesMoveDefaults call)")
+                                    "(no SpeciesMoveDefaults move-writer call)")
     res.append(r)
 
     r = Result("CG22-move-chooser-type-badges",
@@ -762,8 +797,14 @@ def contracts(sources: list[Source]) -> list[Result]:
         if not re.search(r"\bClassicTypeBadges::\w+\s*\(|\bdrawTypeBadge\s*\(", b):
             r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() draws the move type as text, "
                                 "not with the shared type badge")
-        if re.search(r"drawText\s*\([^;]*typeLabel\s*\(", b):
-            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() still prints typeLabel() as text")
+        # Text is allowed only as the fallback of a badge draw that could not render (Hidden Power, Curse,
+        # missing art): `if (!badgeable || ClassicTypeBadges::drawCanonical(...) == 0) fb.drawText(...typeLabel...)`.
+        text = len(re.findall(r"drawText\s*\([^;]*typeLabel\s*\(", b))
+        fallback = len(re.findall(r"if\s*\([^;{}]*(?:\bClassicTypeBadges::\w+|\bdrawTypeBadge)\s*\([^;{}]*\)\s*\{?\s*"
+                                  r"fb\.drawText\s*\([^;]*typeLabel\s*\(", b))
+        if text > fallback:
+            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() prints typeLabel() as text outside "
+                                "the badge fallback")
     res.append(r)
 
     r = Result("CG24-gen34-trainer-staged-export",
@@ -796,9 +837,13 @@ def contracts(sources: list[Source]) -> list[Result]:
              "Gen III-V editor pickers (value lists, Move chooser / editor, Held Item grid, species picker, Gen V "
              "Pokedex) draw focused rows through SharedBoxedRows, never drawSelectionHighlight (R2-BUG-012)",
              ("src/UI/SharedPokemonEditorSurface.inc", "src/UI/Gen3SharedPokemonSurface.inc",
-              "src/UI/Gen5SharedReadOnlySurface.inc", "include/UI/SharedSpeciesPicker.h",
+              "src/UI/Gen5SharedReadOnlySurface.inc",
               "include/UI/SharedHeldItemPickerPresentation.h",
               "include/UI/SharedEditorChrome.h")),
+            ("CG20c-shared-boxed-species-picker",
+             "The shared species picker draws its focused row through SharedBoxedRows / drawMenuCell, never "
+             "drawSelectionHighlight (R2-BUG-012, owner P)",
+             ("include/UI/SharedSpeciesPicker.h",)),
             ("CG20b-shared-boxed-modal-rows-gen12-classic",
              "Gen I/II editor overlays and the Classic inventory draw focused rows through SharedBoxedRows, never "
              "drawSelectionHighlight (R2-BUG-012, second batch)",
@@ -821,6 +866,47 @@ def contracts(sources: list[Source]) -> list[Result]:
             if not re.search(boxed_api, f.code):
                 r.violations.append(f"{rel}: no SharedBoxedRows::drawBox / drawRow / drawMenuCell call")
         res.append(r)
+
+    # R2-BUG-013 (2R): button letters in help / instruction prose become controller glyphs.
+    r = Result("CG21-help-lines-use-button-glyphs",
+               "Help overlays draw every line through the shared glyph renderer (drawGlyphHelpLine over "
+               "GlyphInstruction), so no plain-text button letters remain where glyphs apply (R2-BUG-013)")
+    if not src("include/UI/GlyphInstruction.h"):
+        r.violations.append("include/UI/GlyphInstruction.h (PokeBank::UIModel::GlyphInstruction) does not exist")
+    chrome = src("include/UI/ScreenChrome.h")
+    for fn in ("drawGlyphText", "drawGlyphSentence", "drawGlyphHelpLine"):
+        if not chrome or not list(function_bodies(chrome.code, re.compile("^" + fn + "$"))):
+            r.violations.append(f"include/UI/ScreenChrome.h: {fn}() missing")
+    overlay = bodies("include/UI/ScreenChrome.h", "drawInfoOverlay")
+    if not overlay:
+        r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() missing")
+    for b in overlay:
+        if re.search(r"\bdrawText\s*\([^;]*\bline\b", b):
+            r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() draws help lines with plain drawText")
+        if not re.search(r"\bdrawGlyphHelpLine\s*\(", b):
+            r.violations.append("include/UI/ScreenChrome.h: drawInfoOverlay() does not call drawGlyphHelpLine")
+    res.append(r)
+
+    # R2-BUG-006 (lane P): long item catalogs open the shared grid picker.
+    r = Result("CG23-bag-add-grid-picker",
+               "Every Bag Add surface (Gen I-III Classic inventory, Gen IV, Gen V) opens the shared item grid "
+               "(UI::SharedItemGridPicker), whose cells are SharedEditorChrome::drawMenuCell boxes (R2-BUG-006)")
+    grid = src("include/UI/SharedItemGridPicker.h")
+    if not grid:
+        r.violations.append("include/UI/SharedItemGridPicker.h (UI::SharedItemGridPicker) does not exist")
+    else:
+        # The generic grid hands each cell to a caller-supplied painter; the Bag Add adapter passes drawMenuCell.
+        adapter = src("include/UI/SharedBagAddPicker.h")
+        if not any(f and re.search(r"\bdrawMenuCell\s*\(", f.code) for f in (grid, adapter)):
+            r.violations.append("include/UI/SharedItemGridPicker.h / SharedBagAddPicker.h: grid cells are not "
+                                "drawn with SharedEditorChrome::drawMenuCell")
+    for rel in ("src/UI/ClassicInventoryOverlay.cpp", "src/UI/Gen4SharedPokemonSurface.inc",
+                "src/UI/Gen5SharedReadOnlySurface.inc"):
+        f = src(rel)
+        if f and not re.search(r"\bSharedItemGridPicker::|\bSharedBagAddPicker::pickerGrid\s*\(|\bAddGrid::navigate\s*\(",
+                               f.code):
+            r.violations.append(f"{rel}: Bag Add still opens the single-column item list, not the shared grid")
+    res.append(r)
 
     # Part 9 report 6 (lane I): Gen V machines and Feathers have labels and art.
     r = Result("CG25-gen5-machine-and-feather-art",
