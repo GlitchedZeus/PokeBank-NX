@@ -10,6 +10,7 @@
 // (a short pocket draws a short box) and never cover the screen footer.
 
 #include "UI/ItemPickerArtwork.h"
+#include "UI/SharedBagAddFlow.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedMenuGeometry.h"
 
@@ -150,9 +151,10 @@ inline void drawRemoveConfirm(PKSEFramebuffer& fb, Buttons& touchButtons, Enums:
 // to or removed from the staged bag; A confirms, B cancels with nothing staged.
 template <class Buttons>
 inline void drawKeyItemWarning(PKSEFramebuffer& fb, Buttons& touchButtons, Enums::GameVersion game,
-                               uint16_t itemId, const std::string& itemName, bool removing) {
+                               uint16_t itemId, const std::string& itemName,
+                               std::string_view pocketName, bool removing) {
     drawConfirm(fb, touchButtons, MG::MenuType::KeyItemWarning, "Key Item Warning",
-                itemName + (removing ? ": remove this Key Item?" : ": add this Key Item?"),
+                PokeBank::UIModel::BagAdd::keyItemWarningQuestion(itemName, pocketName, removing),
                 "Story/event state is not replayed or undone; no event flags change.",
                 {"A", "Confirm", true}, {"B", "Cancel", false}, game, itemId, itemName);
 }

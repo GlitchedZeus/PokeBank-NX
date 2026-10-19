@@ -586,7 +586,7 @@ namespace UI {
             "pokebank=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
             " src=" + std::string(legacyReadOnlySource()
-                                      ? legacyProviderLabel() + "_READ_ONLY"
+                                      ? PokeVault::Source::providerIdFor(sourceProviderLabel) + "_READ_ONLY"
                                       : this->sourceKind == PokeVault::Safety::SourceKind::InstalledGame
                                           ? "INSTALLED_READ_ONLY" : "BACKUP") +
             " gameid=" + (this->sourceGameId.empty() ? "?" : this->sourceGameId) +
@@ -5265,7 +5265,8 @@ namespace UI {
                 // a mutable workspace or a classic staged Trainer editor (Gen I / Gen II).
                 instructions = PokeBank::UIModel::ClassicTrainerSession::trainerPageInstructions(
                     PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(
-                        trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit)));
+                        trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit),
+                        sourceGameId));
             }
         } else {
             // HOME main menu.

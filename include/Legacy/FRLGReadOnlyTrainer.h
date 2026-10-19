@@ -3,6 +3,7 @@
 
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "Integration/Gen3/Gen3StagedTrainerEditor.h"
 #include "Integration/Gen3/PKSMGen3Adapter.h"
 #include "Trainer/Trainer.h"
 
@@ -24,7 +25,8 @@ public:
     size_t getPartySize() const noexcept override { return party.size(); }
     bool hasStagedChanges() const noexcept override {
         return (stagedPokemon_ && stagedPokemon_->hasPendingChanges()) ||
-               (stagedInventory_ && stagedInventory_->hasPendingChanges());
+               (stagedInventory_ && stagedInventory_->hasPendingChanges()) ||
+               (stagedTrainer_ && stagedTrainer_->hasPendingChanges());
     }
     Enums::GameVersion getGameGroup() const noexcept override { return Enums::GameVersion::FRLG; }
     const std::string& sourceGameId() const noexcept { return sourceGameId_; }
@@ -32,6 +34,17 @@ public:
     Integration::Gen3::StagedInventoryEditor* stagedInventory() noexcept { return stagedInventory_.get(); }
     const Integration::Gen3::StagedInventoryEditor* stagedInventory() const noexcept { return stagedInventory_.get(); }
     const std::string& stagedInventoryUnavailableReason() const noexcept { return stagedInventoryUnavailableReason_; }
+    // R2-BUG-002: staged Trainer Name / Money. Editable only when the Pokemon workspace exists too,
+    // because the verified Gen III export is built from that workspace.
+    bool stagedTrainerAvailable() const noexcept { return stagedTrainer_ != nullptr && stagedPokemon_ != nullptr; }
+    Integration::Gen3::Gen3StagedTrainerEditor* stagedTrainer() noexcept { return stagedTrainer_.get(); }
+    const Integration::Gen3::Gen3StagedTrainerEditor* stagedTrainer() const noexcept { return stagedTrainer_.get(); }
+    // Mirrors the staged Name / Money into the presentation the Trainer page draws.
+    void refreshStagedTrainerPresentation() {
+        if (!stagedTrainer_) return;
+        trainerName = stagedTrainer_->trainerName();
+        money = stagedTrainer_->money();
+    }
     bool stagedPokemonAvailable() const noexcept { return stagedPokemon_ != nullptr; }
     Integration::Gen3::StagedPokemonEditor* stagedPokemon() noexcept { return stagedPokemon_.get(); }
     const Integration::Gen3::StagedPokemonEditor* stagedPokemon() const noexcept { return stagedPokemon_.get(); }
@@ -46,6 +59,7 @@ private:
     std::unique_ptr<Integration::Gen3::StagedInventoryEditor> stagedInventory_;
     std::string stagedInventoryUnavailableReason_;
     std::unique_ptr<Integration::Gen3::StagedPokemonEditor> stagedPokemon_;
+    std::unique_ptr<Integration::Gen3::Gen3StagedTrainerEditor> stagedTrainer_;
     std::string stagedPokemonUnavailableReason_;
 };
 }

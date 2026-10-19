@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Hardware round 1 regression gate: the owner's 42 PASS items on 7fea1797 are frozen behaviour.
+"""Hardware-accepted regression gate: the owner's 42 round 1 PASS items on 7fea1797 and the 6 round 2
+PASS items on e10f307f (B01, B02, B03, B06, S01, S03; docs/hardware/ROUND2_RESULTS_e10f307f.md) are
+frozen behaviour.
 
 docs/hardware/ROUND1_RESULTS_7fea1797.md records the owner's sheet (54 items; 42 PASS). Every PASS ID
 (C01-C09, M01-M08, B05/B07/B08, E01/E02/E04-E10/E12/E13, L01-L05, N01-N04, S02/S05) is mapped below
@@ -148,7 +150,7 @@ GUARDS: dict[str, tuple[str, G]] = {
         ('host', 'test_classic_pokemon_action_menu', 'tests/test_classic_pokemon_action_menu.cpp', '"View", "Edit", "Clone", "Release", "Origin & Legality"'),
         ('host', 'test_shared_editor_contract', 'tests/test_shared_editor_contract.cpp', 'void actionMenuContract()'),
         ('host', 'test_gen4_hardware_surface_contract', 'tests/test_gen4_hardware_surface_contract.cpp', '== "Origin & Legality"'),
-        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', '{A::View, A::Edit, A::Clone, A::Move, A::Remove, A::Close}'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', '{A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Close}'),
     ]),
     'E04': ('Rows 1/15 counters removed', [
         ('cg', 'CG02-no-row-counters'),
@@ -248,6 +250,45 @@ OWNER_PASS = ['C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'M0
 OWNER_NOT_PASS = ['B01', 'B02', 'B03', 'B04', 'B06', 'E03', 'E11', 'L06', 'S01', 'S03', 'S04', 'S06']
 
 
+# Round 2 (owner on e10f307f, docs/hardware/ROUND2_RESULTS_e10f307f.md): the six round 1 FAILs that the
+# owner retested and passed are now hardware-accepted and frozen like the 42 above.
+ROUND2_DOC = "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+GUARDS_ROUND2: dict[str, tuple[str, G]] = {
+    'B01': ('Gen I Add Item workflow improved (round 2 PASS)', [
+        ('cg', 'CG12-single-bag-add-flow'),
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'CHECK(pick.outcome == BagAdd::PickOutcome::StageNew && pick.quantity == 1);'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen12.cpp', 'r2cell(row, "bag-add",'),
+    ]),
+    'B02': ('Gen II Add Item workflow improved (round 2 PASS)', [
+        ('cg', 'CG12-single-bag-add-flow'),
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'CHECK(pick.outcome == BagAdd::PickOutcome::StageNew && pick.quantity == 1);'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen12.cpp', 'r2cell(row, "bag-add",'),
+    ]),
+    'B03': ('Gen III item editing still works correctly (round 2 PASS)', [
+        ('cg', 'CG12-single-bag-add-flow'),
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'CHECK(pick.outcome == BagAdd::PickOutcome::StageNew && pick.quantity == 1);'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen3.cpp', 'guarded("bag-add",'),
+    ]),
+    'B06': ('Stackable item quantity editing works (round 2 PASS)', [
+        ('cg', 'CG09-item-quantity-policy'),
+        ('cg', 'CG12-single-bag-add-flow'),
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'BagAdd::RowOutcome::FixedQuantity : BagAdd::RowOutcome::EditQuantity));'),
+        ('host', 'test_item_quantity_policy', 'tests/test_item_quantity_policy.cpp', 'CHECK(r.maximum == 1);'),
+    ]),
+    'S01': ('Gen V matches the shared Gen I-IV editor: PP / PP Ups captions (round 2 PASS)', [
+        ('host', 'test_shared_editor_unit', 'tests/test_shared_editor_unit.cpp', 'S01: PP and PP Ups captions are at least 20 px apart'),
+        ('host', 'test_shared_editor_unit', 'tests/test_shared_editor_unit.cpp', 'S01: PP values never reach the move name column'),
+    ]),
+    'S03': ('Gen V Create / Clone / Move / Release: left panel, parity (round 2 PASS)', [
+        ('cg', 'CG16-shared-field-state'),
+        ('cg', 'CG17-exact-source-game-header'),
+        ('host', 'test_gen5_create_edit_parity', 'tests/test_gen5_create_edit_parity.cpp', 'S03 label fits the column: '),
+        ('host', 'test_gen5_create_edit_parity', 'tests/test_gen5_create_edit_parity.cpp', 'S03 Gen V row '),
+    ]),
+}
+ROUND2_PASS = list(GUARDS_ROUND2)
+ROUND2_NOT_VERIFIED = ['B04', 'E03', 'E11', 'L06', 'S04', 'S06']
+
 PR_GATING_KINDS = {"host", "qa", "cg", "py"}  # "pin" alone is not a behavioural guard (except P09)
 PIN_ONLY_ALLOWED = {"C09": "no host seam: libnx pad input does not run on the host"}
 
@@ -295,7 +336,21 @@ def check(root: Path, run_python: bool = True) -> list[str]:
         if len(rows) != 54 or sheet_pass != OWNER_PASS:
             errors.append(f"{RESULTS_DOC}: owner sheet has {len(rows)} rows / PASS {sheet_pass}, "
                           f"gate maps {OWNER_PASS}")
-    for pid, (title, guards) in GUARDS.items():
+    # Round 2: the owner's six retested passes, exactly as recorded, never overlapping round 1 or the
+    # items still unverified.
+    r2 = text(ROUND2_DOC)
+    if r2 is None:
+        errors.append(f"{ROUND2_DOC} is missing")
+    else:
+        rows2 = re.findall(r"^\| ([CMBELNS]\d\d) \|.*\| ([^|]+?) \|\s*$", r2, re.M)
+        r2_pass = [i for i, res in rows2 if res.strip() == "PASS"]
+        r2_nv = [i for i, res in rows2 if res.strip() == "NOT VERIFIED"]
+        if r2_pass != ROUND2_PASS or r2_nv != ROUND2_NOT_VERIFIED:
+            errors.append(f"{ROUND2_DOC}: PASS {r2_pass} / NOT VERIFIED {r2_nv}, gate maps {ROUND2_PASS}")
+    if set(ROUND2_PASS) & (set(OWNER_PASS) | set(ROUND2_NOT_VERIFIED)) or \
+            not set(ROUND2_PASS) <= set(OWNER_NOT_PASS):
+        errors.append("round 2 accepted IDs must be round 1 non-PASS items, disjoint from the unverified ones")
+    for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2}.items():
         kinds = {g[0] for g in guards}
         if not kinds & PR_GATING_KINDS and pid not in PIN_ONLY_ALLOWED:
             errors.append(f"{pid} {title}: no guard that runs on every PR")
@@ -346,18 +401,19 @@ def main(argv: list[str]) -> int:
     args = ap.parse_args(argv[1:])
     errors = check(args.root.resolve())
     if args.list:
-        for pid, (title, guards) in GUARDS.items():
+        for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2}.items():
             print(f"{pid} {title}")
             for g in guards:
                 print(f"      {g[0]:4} {' | '.join(str(x) for x in g[1:3])}")
-    n = sum(len(g) for _, g in GUARDS.values())
+    every = {**GUARDS, **GUARDS_ROUND2}
+    n = sum(len(g) for _, g in every.values())
+    label = f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 owner PASS items"
     if errors:
-        print(f"Hardware round 1 regression gate: FAIL ({len(errors)} problem(s), {len(GUARDS)} items, {n} guards)")
+        print(f"Hardware-accepted regression gate: FAIL ({len(errors)} problem(s), {label}, {n} guards)")
         for e in errors:
             print(f"  {e}")
         return 1
-    print(f"Hardware round 1 regression gate: PASS ({len(GUARDS)} owner PASS items, {n} guards, "
-          "every item guarded on every PR)")
+    print(f"Hardware-accepted regression gate: PASS ({label}, {n} guards, every item guarded on every PR)")
     return 0
 
 

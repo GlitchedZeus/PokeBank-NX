@@ -775,9 +775,10 @@ Outcome actions(Ctx& c) {
         need(same, std::string(what) + " actions [" + actionList(got) + "]");
         (void)ui.back();
     };
-    expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::Close}, "party");
-    // The one shared action order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move, Release.
-    expect(Slot{Region::Box, 0, 0}, {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::Close}, "box");
+    // The one shared action order (NarrowPokemonActionMenu.h; owner-accepted E02): View, Edit, Clone,
+    // Move (where supported), Release, Origin & Legality, Review Pending Changes, Cancel.
+    expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::LegalityProvenance, A::Close}, "party");
+    expect(Slot{Region::Box, 0, 0}, {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Close}, "box");
     expect(Slot{Region::Box, 0, 1}, {A::Add, A::Close}, "empty box");
     // Cursor wraps; Cancel (Close) returns to Browse without staging.
     need(ui.openActions(ws, Slot{Region::Box, 0, 0}, error), "openActions: " + error);
@@ -803,13 +804,18 @@ Outcome actions(Ctx& c) {
     need(ui.confirmClone(ws, refresher(*t), error), "Move confirm: " + error);
     need(ws.viewBox(0, 2)->empty() && ws.viewBox(dest / 30, dest % 30)->species() == kDeerling,
          "Move result differs");
-    need(ui.openActions(ws, Slot{Region::Party, 0, 0}, error) &&
-             hasAction(ui.availableActions(ws), A::Review),
-         "Review not offered after staging");
-    (void)ui.back();
+    // Part 9 item 1: a staged slot (the Clone copy in box 0/1, the Move result) keeps the full shared
+    // list, with Review before Cancel; the party keeps Clone and Origin & Legality as well.
+    expect(Slot{Region::Box, 0, 1},
+           {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Review, A::Close}, "cloned copy");
+    expect(Slot{Region::Box, dest / 30, dest % 30},
+           {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Review, A::Close}, "moved Pokemon");
+    expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::LegalityProvenance, A::Review, A::Close},
+           "party after staging");
     need(c.sourceUntouched(), "actions touched the source file");
-    return passed("party [View,Edit,Clone,Cancel], box [View,Edit,Clone,Move,Release,Cancel] (shared order), empty [Add,Cancel]; "
-                  "wrap, Release+Undo, Clone, Move, Review after staging");
+    return passed("party [View,Edit,Clone,Origin & Legality,Cancel], box [View,Edit,Clone,Move,Release,Origin & Legality,"
+                  "Cancel] (shared order), empty [Add,Cancel]; wrap, Release+Undo, Clone, Move; staged clone / moved "
+                  "slot keep the full list + Review");
 }
 
 Outcome workingCopy(Ctx& c) {
@@ -924,6 +930,18 @@ Outcome exportCell(Ctx& c, Matrix& m) {
     size_t offender = 0, changed = 0;
     need(qacontract::onlyWhitelistedChanges(c.original, edited, allowed, &offender, &changed),
          "edited.sav changed non-whitelisted byte " + qacontract::hex(offender));
+    // S06: corrupt the first byte of the money field (inside the Misc block, which its block
+    // checksum covers); the primary copy must stop reparsing with the Trainer edits.
+    const size_t moneyAt = G5::trainerBlock5(fam, T::MiscBlockIndex).offset + T::MoneyOffset;
+    const auto s06 = qamatrix::exportCorruptionProbe(edited, moneyAt + 3, [&](const auto& bytes) {
+        std::string why;
+        const auto r = G5::Gen5ReadOnlySave::parse(bytes, c.spec.game, &why, G5::SaveCopySelection::Primary);
+        if (!r || r->selectedCopyOffset() != 0 || r->exactGameId() != c.spec.game) return false;
+        const auto tr = G5::decodeTrainer5(*r);
+        return tr && tr->rawName == u"QAEXP";
+    });
+    need(s06.empty(), s06);
+    m.fact(c.spec.row, std::string(qamatrix::kExportChecksumFact), std::string(qamatrix::kExportChecksumDetected));
     need(c.sourceUntouched(), "export touched the source file");
     m.fact(c.spec.row, "export.output", "new-file-only");
     m.fact(c.spec.row, "export.reparse", "strict");

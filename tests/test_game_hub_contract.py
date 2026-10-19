@@ -184,7 +184,8 @@ require("The fifth field must consume the rest of the row" in launcher,
         "launch binding parser must reject extra fields")
 require("result.launcherPath = defaultLauncherPath" in launcher,
         "stored launch metadata must not choose an arbitrary launcher NRO")
-require("result.corePath = defaultRetroArchCore" in launcher,
+require("result.corePath = coreChoice.corePath" in launcher and "stored.corePath" not in launcher and
+        "retroArchCoreForSave(gameId, sourcePath)" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
 
 # Hardware safety: normal RetroArch startup must use the direct core + ROM handoff that was
@@ -197,10 +198,9 @@ require("setGameLaunchReturnPath(std::string_view path)" in launcher_header and
         "dormant return-host research must retain the exact PokeBank NRO return target")
 launch_request = launcher_source[launcher_source.index("bool requestGameLaunch("):]
 launch_request = launch_request[:launch_request.index("\n}\n")]
-require("buildGameLaunchChainPlan(descriptor, options)" in launch_request and
+require("planGameLaunchHandoff(descriptor, plan, error)" in launch_request and
         "envSetNextLoad(plan.nroPath.c_str(), plan.argv.c_str())" in launch_request and
-        launch_request.index("if (returnHostOptedIn())") <
-        launch_request.index("options.returnHostEnabled = true;"),
+        "if (!optedIn) return g_returnHost;" in launcher_source,
         "hardware-critical RetroArch startup must chain directly to the resolved core + ROM "
         "unless the owner explicitly opts in to the return host")
 require("RETURN_HOST_DIR := $(CURDIR)/runtime/return_host" in root_makefile and
@@ -658,7 +658,8 @@ require("return beginLaunchLinkForCurrentTitle();" not in source and
 launch_plan_model = (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8")
 require("const std::string& target = descriptor.backend == GameLaunchBackend::RetroArch &&" in launch_plan_model and
         "? descriptor.corePath" in launch_plan_model and
-        "result.corePath = defaultRetroArchCore" in launcher and
+        "result.corePath = coreChoice.corePath;" in launcher and
+        "defaultRetroArchCore(gameId)" in launcher and
         "result.launcherPath = result.corePath;" in launcher and
         '" -L "' not in launcher and '" -L "' not in launch_plan_model,
         "RetroArch games must preserve exact direct-core identity without frontend fallback")
@@ -723,7 +724,7 @@ require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrai
 # (never recomputed per frame) and drawn only inside the detail panel's two caption rows.
 quit_notice = source[source.index("const std::string& SaveSelectScreen::currentLaunchQuitNotice()"):
                      source.index("bool SaveSelectScreen::launchCurrentTitle()")]
-require("gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(d))" in quit_notice and
+require("gameLaunchDialogNotice(d)" in quit_notice and
         "if (key != launchQuitNoticeKey)" in quit_notice,
         "Launch notice must show the cached quit-route notice from the launcher's chain plan")
 hub_caption = source[source.index("// Caption rows under the buttons (inside the panel)"):
@@ -769,7 +770,7 @@ leave_draw = source[source.index("        if (overlay == Overlay::QuitConfirm) {
 leave_draw = leave_draw[:leave_draw.index("        } else if (overlay == Overlay::OpenFailure) {")]
 require('"Quit PokeBank NX?"' in layout_header and '"Launch " + std::string(gameName) + "?"' in layout_header and
         "G::layout(G::MenuType::LaunchConfirm" in leave_draw and
-        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice)" in leave_draw and
+        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice, pendingLaunchStarter)" in leave_draw and
         'drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");' in leave_draw and
         'drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");' in leave_draw and
         'quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);' in leave_draw and

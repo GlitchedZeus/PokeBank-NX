@@ -268,3 +268,29 @@ $(HOST_BUILD)/test_classic_stat_field_state: $(CLASSIC_STAT_FIELD_SOURCES) $(CLA
 $(HOST_BUILD)/test_classic_stat_field_state_sanitize: $(CLASSIC_STAT_FIELD_SOURCES) $(CLASSIC_STAT_FIELD_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_STAT_FIELD_SOURCES) -o $@
+
+# R2-BUG-002: Gen III staged Trainer Name / Money (Ruby / Sapphire / Emerald / FireRed / LeafGreen)
+# through the real verified Gen III export and strict reparse.
+GEN3_TRAINER_EDIT_SOURCES := tests/test_gen3_trainer_edit.cpp \
+	src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
+	src/Integration/Gen3/Gen3ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp \
+	src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
+	src/Integration/Gen3/FRLGReadModel.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp \
+	src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp \
+	src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GEN3_TRAINER_EDIT_DEPS := include/Integration/Gen3/Gen3StagedTrainerEditor.h include/Integration/Gen3/Gen3ExportTransaction.h \
+	include/UI/ClassicTrainerEditability.h
+HOST_TESTS += $(HOST_BUILD)/test_gen3_trainer_edit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_trainer_edit_sanitize
+host-test: $(HOST_BUILD)/test_gen3_trainer_edit
+host-sanitize: $(HOST_BUILD)/test_gen3_trainer_edit_sanitize
+$(HOST_BUILD)/test_gen3_trainer_edit: $(GEN3_TRAINER_EDIT_SOURCES) $(GEN3_TRAINER_EDIT_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN3_TRAINER_EDIT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_trainer_edit_sanitize: $(GEN3_TRAINER_EDIT_SOURCES) $(GEN3_TRAINER_EDIT_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN3_TRAINER_EDIT_SOURCES) -o $@

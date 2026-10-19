@@ -86,6 +86,23 @@ namespace ProviderDetail {
     return std::string(providerDisplayName(identifyProvider(raw)));
 }
 
+// The provider a launch descriptor names: GameLaunchDescriptor::providerId is providerIdFor()
+// of the discovery label ("RetroArch/DeSmuME" -> "retroarch-desmume"), so match it the same way.
+[[nodiscard]] inline ProviderIdentity identifyProviderId(std::string_view id) {
+    for (const std::string_view label : {"DraStic", "DraStic Savestate", "melonDS", "RetroArch",
+                                         "RetroArch/DeSmuME", "mGBA", "Tico", "Dekopon", "Azahar", "Manual"})
+        if (!id.empty() && providerIdFor(label) == id) return identifyProvider(label);
+    return ProviderIdentity::Unknown;
+}
+
+// Session surfaces (Trainer / Game Browser header, read-only notices, leave dialog): the source's
+// own provider name, the same one Product Home shows. An installed Switch title has no emulator
+// provider: it is "Nintendo Switch". Never a generic "EXTERNAL" / "emulator" word.
+[[nodiscard]] inline std::string sessionSourceName(std::string_view rawLabel, bool installedSwitchTitle) {
+    if (installedSwitchTitle) return "Nintendo Switch";
+    return providerDisplayName(rawLabel);
+}
+
 // One provider for a card that owns several validated instances (Gen I-III
 // classic cards). Different providers are reported as such, never collapsed
 // to whichever row happened to sort first.

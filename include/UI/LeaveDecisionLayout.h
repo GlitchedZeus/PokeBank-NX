@@ -65,15 +65,38 @@ inline int wrap(std::string_view text, G::Text style, int width, std::string* ou
     return used;
 }
 
-[[nodiscard]] inline Text build(bool quitting, std::string_view gameName, std::string_view notice) {
+// Who takes over after a launch, as the consequence line names it: an installed Switch title is
+// "the game"; an emulator is named by its provider (Product Home's name); only a launch whose
+// provider discovery did not identify says "the emulator".
+[[nodiscard]] inline std::string launchStarter(bool switchTitle, std::string_view providerDisplay) {
+    if (switchTitle) return "the game";
+    if (providerDisplay.empty() || providerDisplay == "Unknown provider" ||
+        providerDisplay == "Multiple providers")
+        return "the emulator";
+    return std::string(providerDisplay);
+}
+
+[[nodiscard]] inline Text build(bool quitting, std::string_view gameName, std::string_view notice,
+                                std::string_view starter = "the emulator") {
     Text t;
     const int width = textColumnWidth();
     t.heading = quitting ? std::string("Quit PokeBank NX?") : "Launch " + std::string(gameName) + "?";
-    t.lines[0] = quitting ? "PokeBank NX will close." : "PokeBank NX closes and the emulator starts.";
+    t.lines[0] = quitting ? std::string("PokeBank NX will close.")
+                          : "PokeBank NX closes and " + std::string(starter) + " starts.";
     const std::string_view rest = quitting
         ? std::string_view("Source saves are never written; staged copies stay on the SD card.")
         : notice;
     const int used = wrap(rest, G::Text::Caption, width, t.lines.data() + 1, kLines - 1);
+    if (used > kLines - 1) {
+        // Too long for the two notice lines: the cut is visible ("…"), never a silent drop.
+        std::string& last = t.lines[kLines - 1];
+        static constexpr std::string_view kEllipsis = "\xE2\x80\xA6";
+        while (!last.empty() && !G::fitsWidth(last + std::string(kEllipsis), G::Text::Caption, width)) {
+            const std::size_t space = last.find_last_of(' ');
+            last.erase(space == std::string::npos ? 0 : space);
+        }
+        last += kEllipsis;
+    }
     t.fits = used <= kLines - 1 && G::fitsWidth(t.heading, G::Text::Heading, width) &&
              G::fitsWidth(t.lines[0], G::Text::Body, width);
     return t;
