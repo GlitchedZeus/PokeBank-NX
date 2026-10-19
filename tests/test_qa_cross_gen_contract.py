@@ -765,8 +765,14 @@ def contracts(sources: list[Source]) -> list[Result]:
         if not re.search(r"\bClassicTypeBadges::\w+\s*\(|\bdrawTypeBadge\s*\(", b):
             r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() draws the move type as text, "
                                 "not with the shared type badge")
-        if re.search(r"drawText\s*\([^;]*typeLabel\s*\(", b):
-            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() still prints typeLabel() as text")
+        # Text is allowed only as the fallback of a badge draw that could not render (Hidden Power, Curse,
+        # missing art): `if (!badgeable || ClassicTypeBadges::drawCanonical(...) == 0) fb.drawText(...typeLabel...)`.
+        text = len(re.findall(r"drawText\s*\([^;]*typeLabel\s*\(", b))
+        fallback = len(re.findall(r"if\s*\([^;{}]*(?:\bClassicTypeBadges::\w+|\bdrawTypeBadge)\s*\([^;{}]*\)\s*\{?\s*"
+                                  r"fb\.drawText\s*\([^;]*typeLabel\s*\(", b))
+        if text > fallback:
+            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() prints typeLabel() as text outside "
+                                "the badge fallback")
     res.append(r)
 
     r = Result("CG24-gen34-trainer-staged-export",
