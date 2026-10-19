@@ -1,0 +1,117 @@
+{
+  "implementation_commit": "d2253f8a36314216010c873039314a0dbcc92bfb",
+  "retrieved_for": "2026-10-19 session, before evidence commit",
+  "first_page_only": true,
+  "workflow_runs": [
+    {
+      "id": 39220966862,
+      "name": "Gen I RBY Coordinator Exact-Head Native Checks",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 54,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966862/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966862/logs",
+      "workflow_id": 382825077,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966862"
+    },
+    {
+      "id": 39220966865,
+      "name": "Gen III/IV legality vs PKHeX",
+      "status": "in_progress",
+      "conclusion": null,
+      "run_number": 32,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966865/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966865/logs",
+      "workflow_id": 385282243,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966865"
+    },
+    {
+      "id": 39220966971,
+      "name": "Gen V legality vs PKHeX",
+      "status": "in_progress",
+      "conclusion": null,
+      "run_number": 34,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966971/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966971/logs",
+      "workflow_id": 385225059,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966971"
+    },
+    {
+      "id": 39220966864,
+      "name": "Gen I/II legality vs PKHeX",
+      "status": "in_progress",
+      "conclusion": null,
+      "run_number": 40,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966864/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966864/logs",
+      "workflow_id": 383133784,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966864"
+    },
+    {
+      "id": 39220966964,
+      "name": "Gen I Original RBY TM/HM Source Parity",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 63,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966964/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966964/logs",
+      "workflow_id": 382835053,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966964"
+    },
+    {
+      "id": 39220967051,
+      "name": "Gen I Coordinator Exact-Head Original PKHeX Differential",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_number": 51,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220967051/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220967051/logs",
+      "workflow_id": 382835727,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220967051"
+    },
+    {
+      "id": 39220966887,
+      "name": "PokeBank NX Host Tests",
+      "status": "in_progress",
+      "conclusion": null,
+      "run_number": 5224,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966887/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966887/logs",
+      "workflow_id": 347320391,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966887"
+    },
+    {
+      "id": 39220966850,
+      "name": "Legality L3 exact-head native validation",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 165,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966850/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966850/logs",
+      "workflow_id": 382572107,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966850"
+    },
+    {
+      "id": 39220966969,
+      "name": "L4 Event Metadata Exact-Head Verification",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 165,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966969/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966969/logs",
+      "workflow_id": 382572192,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966969"
+    },
+    {
+      "id": 39220966893,
+      "name": "Legality L6 Stage 5 cross-lane audit",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 46,
+      "jobs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966893/jobs",
+      "logs_url": "https://api.github.com/repos/GlitchedZeus/PokeBank-NX/actions/runs/39220966893/logs",
+      "workflow_id": 382591170,
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39220966893"
+    }
+  ]
+}

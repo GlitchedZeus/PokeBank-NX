@@ -1,0 +1,109 @@
+{
+  "archive": {
+    "path": "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/gen15-completion-20261019/corpora.tar.gz",
+    "bytes": 16075926,
+    "sha256": "4881de29091c31641be0b540588f21a339aca2b626174dfcd0e616f94d2d7bb1"
+  },
+  "corpora": {
+    "gen1-development": {
+      "corpus.txt": {
+        "bytes": 7410135,
+        "sha256": "d597250e6ab6957036b07badfa8db37eb3b15598436520c69f4cb49a26c77ad3"
+      },
+      "pkhex.txt": {
+        "bytes": 2439463,
+        "sha256": "4582e98eba14106f9c00224b022cc555b497e5dcc562316bcb06a0acbad9ed7b"
+      },
+      "pokebank.txt": {
+        "bytes": 3835479,
+        "sha256": "84cd6d43c00834f57e564a616b093a39e9c42aa3cf114a82abc88f8b118e5777"
+      }
+    },
+    "gen2-holdout": {
+      "corpus.txt": {
+        "bytes": 8002027,
+        "sha256": "cc90e3b1ef349da269ee720a5b8359d5d4a84d1b28f3d4299b6ad8f467440be1"
+      },
+      "pkhex.txt": {
+        "bytes": 2681416,
+        "sha256": "fadc0414c5992924b9593942b3be9a326080caa9f3e8f7ea701a16917bbcae28"
+      },
+      "pokebank.txt": {
+        "bytes": 4246570,
+        "sha256": "4a171ef25a046dd9aafe17f216b77b6ad46650e4151886a9c6122ccbe6b08f5e"
+      }
+    },
+    "gen3-holdout": {
+      "pkhex.txt": {
+        "bytes": 7483771,
+        "sha256": "c2546ad695a9ee300f344f79f0ca86e557fa8b65da0d5e3d30e804e9be6dcd5a"
+      },
+      "pokebank.txt": {
+        "bytes": 4250159,
+        "sha256": "2feeda33ff161ad3b04d81838dc12c1864e8f0d7ed60b7a6c49b70f6ec3111c4"
+      }
+    },
+    "gen4-holdout": {
+      "pkhex.txt": {
+        "bytes": 17541640,
+        "sha256": "135ea52c0ba6ae383f6825d85ff540d9c99505c16c0866ecf149f5034e5c4e6a"
+      },
+      "pokebank.txt": {
+        "bytes": 7710834,
+        "sha256": "8e2a4dcf7cf2cb7bacb97d3a55c0d187fe6b8d5bcd1d246db6ce2b830a060099"
+      }
+    },
+    "gen5-holdout": {
+      "METADATA.json": {
+        "bytes": 143,
+        "sha256": "21f4c08eebb19496a75494a0c28aefe13fb84feaaf304091fee501cdf7a10e7d"
+      },
+      "pkhex.txt": {
+        "bytes": 48864908,
+        "sha256": "225b59713defbbb21c9f9393882f5c6e414428fa7760f672ae0e531986d9c7e9"
+      },
+      "pokebank.txt": {
+        "bytes": 10680161,
+        "sha256": "c1823e5785b54ca34dc241aec8a7131808bd3c1b62f59eb09cc4562fb668f1bf"
+      },
+      "generation-audit.jsonl": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "gen5-adversarial": {
+      "METADATA.json": {
+        "bytes": 158,
+        "sha256": "00ab5a4814413ec84d272300ad6b7abed1f9e3de55f068a6529c958a4e8f9d7e"
+      },
+      "pkhex.txt": {
+        "bytes": 11836698,
+        "sha256": "e0744eddde6e0efe074d8324eaf98b002a3e37c1a7c3f810c16ed72c4ec37209"
+      },
+      "pokebank.txt": {
+        "bytes": 5219841,
+        "sha256": "382789f11214cc24d75cd4f59aa7258f04e411b0db893dd58e5cba20f59f1f1b"
+      },
+      "generation-audit.jsonl": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "gen2-upstream-drift": {
+      "corpus.txt": {
+        "bytes": 1595200,
+        "sha256": "37785ec31c7abdf44943016337a335392583843cae2beefb326c8197d8d41f85"
+      },
+      "pkhex.txt": {
+        "bytes": 415178,
+        "sha256": "99d520852e4c83c2c2179bdc85cfcdae516f7907822e01c61c806ec5801150fc"
+      },
+      "pokebank.txt": {
+        "bytes": 712629,
+        "sha256": "5a53ea6c21558f676e112b02eb31ad8febd63968d75a99e60dcc8a8cfce18eeb"
+      }
+    }
+  },
+  "policy": "Full text streams retained, no disagreements removed. Archive contains synthetic records and verdicts, not original ROMs, personal saves, SDKs or copyrighted artwork. Gen I/II source-title identity is not encoded. Gen V game field is origin, not current save identity.",
+  "authentic_historical_specimens": 0
+}

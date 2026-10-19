@@ -1,0 +1,102 @@
+{
+  "policy": "Narrow implementation evidence; not an exhaustive semantic-rule denominator. Counts identify test loops/records, never authenticated historical specimens.",
+  "rules": [
+    {
+      "id": "gen2-korean-native-reader",
+      "generation": 2,
+      "games": [
+        "gold",
+        "silver"
+      ],
+      "nx": [
+        "src/Integration/Gen2/Gen2ReadOnlySave.cpp:parse",
+        "src/Integration/Gen2/Gen2ReadOnlyInventory.cpp:decodeInventory",
+        "src/Legality/Legality.cpp:analyzeNativeGen2"
+      ],
+      "production_connected": "Native parser and PK2 analyzer; UI region acceptance/hardware not certified",
+      "completeness": "Partial",
+      "tests": [
+        "test_gen2_korean_save:2816 character pairs and structural controls",
+        "test_gb_legality_names:172 checks",
+        "gen2-holdout:4006 Korean production records, zero skipped"
+      ],
+      "limits": [
+        "secondary mirrored checksum not newly authenticated",
+        "link/trade/breeding/event semantics unresolved",
+        "synthetic save fixtures only"
+      ]
+    },
+    {
+      "id": "gen3-save-local-berry-item",
+      "generation": 3,
+      "games": [
+        "ruby",
+        "sapphire",
+        "emerald",
+        "firered",
+        "leafgreen"
+      ],
+      "nx": [
+        "include/Legality/Gen3BerryContext.h:fromSave",
+        "src/Legality/Gen3Legality.cpp:analyzeDetailed",
+        "src/Legality/Legality.cpp:Gen3Pk3::verify context"
+      ],
+      "production_connected": "Explicit Context API tested; actual app provider does not yet construct it",
+      "completeness": "Partial",
+      "tests": [
+        "test_gen3_berry_context:actual production verdict with/without/no-data context",
+        "test_gen3_berry_source:70 title/rotation combinations and charset/checksum/backup controls"
+      ],
+      "limits": [
+        "historical full-payload authenticity not proven",
+        "app provider plumbing pending"
+      ]
+    },
+    {
+      "id": "shared-visible-verdict",
+      "generation": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "games": "all supported titles",
+      "nx": [
+        "include/Legality/ReportPresentation.h:headline/lines",
+        "src/Legality/Gen5AppAdapter.cpp"
+      ],
+      "production_connected": "Adapter connected; current-app render caller patch proposed separately",
+      "completeness": "Partial app rollout",
+      "tests": [
+        "test_legality_report_presentation:59049 state/severity combinations",
+        "test_legality_gen5_adapter:5069 cases"
+      ],
+      "limits": [
+        "native renderer and Switch acceptance pending"
+      ]
+    },
+    {
+      "id": "gen5-staged-workspace-bridge",
+      "generation": 5,
+      "games": [
+        "black",
+        "white",
+        "black2",
+        "white2"
+      ],
+      "nx": [
+        "include/Legality/Gen5WorkspaceAdapter.h:analyzeWorkspace"
+      ],
+      "production_connected": "Actual current #307 workspace calls engine in host test; UI patch separate",
+      "completeness": "Partial app rollout",
+      "tests": [
+        "tests/app/test_gen5_workspace_legality.cpp:4 titles, staged Invalid, identity, bounds, unchanged original"
+      ],
+      "limits": [
+        "selective engine/dependency import must be reviewed",
+        "no whole-branch app merge performed"
+      ]
+    }
+  ]
+}

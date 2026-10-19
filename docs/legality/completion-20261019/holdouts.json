@@ -1,0 +1,15 @@
+{
+  "declared_before_holdout_execution": true,
+  "development": {
+    "1": 39173,
+    "2": 42813
+  },
+  "holdout": {
+    "2": 731921,
+    "3": 892771,
+    "4": 892779,
+    "5": 892783
+  },
+  "authentic_personal_saves_imported": false,
+  "policy": "Preserve all results and denominators. A repaired holdout becomes a development regression; choose a new declared holdout."
+}

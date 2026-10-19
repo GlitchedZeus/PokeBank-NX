@@ -1,0 +1,55 @@
+name: Legality completion focused evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'include/Legality/**'
+      - 'src/Legality/**'
+      - 'include/Integration/Gen2/**'
+      - 'src/Integration/Gen2/**'
+      - 'include/Utils/Gen2KoreanTable.h'
+      - 'tests/test_gen2_korean_save.cpp'
+      - 'tests/test_gen3_berry_*.cpp'
+      - 'tests/test_legality_report_presentation.cpp'
+      - 'tests/app/**'
+      - 'tools/legality_completion/**'
+      - '.github/workflows/legality-completion.yml'
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++, clang++]
+    env:
+      CXX: ${{ matrix.cxx }}
+      ASAN_OPTIONS: detect_leaks=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: recursive
+      - name: Build and execute focused normal and sanitizer regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names)
+          targets=()
+          for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
+          make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
+          for name in "${names[@]}"; do "build-completion/$name"; "build-completion/${name}_sanitize"; done
+  app-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: engine
+      - uses: actions/checkout@v4
+        with:
+          ref: 9d4b8b71befea78c76802c15f1911a0ca24e775c
+          path: app
+      - name: Verify current app patch and actual staged workspace boundary
+        run: |
+          git -C app apply --check "$PWD/engine/docs/legality/completion-20261019/app-integration.patch"
+          bash engine/tools/legality_completion/test_app_bridge.sh app
