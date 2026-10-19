@@ -1,17 +1,30 @@
-# Hardware retest (round 3), DRAFT: PokeBank-NX-Gen1-5-Candidate-<sha>
+# Hardware retest (round 3): PokeBank-NX-Gen1-5-Candidate-62a2f8c3
 
-**Status: DRAFT, no candidate bound yet. NOT DEVICE TESTED.**
-- This file becomes `RETEST_<sha>.md` once 2R binds the round-3 candidate in `docs/qa/CANDIDATE_UNDER_AUDIT.env` and the QA-F9 exact-binary audit passes. At that point QA fills in the identity and moves every host-evidence row to the candidate commit.
-- Nothing is hardware accepted until the owner tests that exact file on a Switch. Only the owner records acceptance.
+**Status: NOT DEVICE TESTED.**
+- This build is not hardware accepted until the owner tests this exact file on a Switch.
+- Only the owner records acceptance.
+- The identity values below come from the QA-F9 exact-binary audit.
 
 | Identity | Value |
 | --- | --- |
-| NRO file | _pending candidate binding_ |
-| Code SHA | _pending_ |
-| Tree SHA | _pending_ |
-| Build run / artifact | _pending_ |
-| NRO SHA-256 / size | _pending_ |
-| QA-F9 audit run / job | _pending_ |
+| NRO file | `PokeBank-NX-Gen1-5-Candidate-62a2f8c3.nro` |
+| Code SHA | `62a2f8c34476062ece344ef2188ab6b385369a7d` |
+| Tree SHA | `8459b9a1b5c12666170c772c3ad2a17d7703f23f` |
+| Build run | https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39227970775 (run `39227970775`, success) |
+| Artifact | `PokeBank-NX-Gen1-5-Candidate-62a2f8c3` (id `12175187129`) |
+| NRO SHA-256 | `0c7a6fb01af2a1356676beedf3aec9da79842a499c7c63833fb683f42f332078` |
+| NRO size | 176029361 bytes |
+| QA-F9 audit run / job | https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39233872565 (job `117998117020`): `NRO AUDIT: PASS` |
+
+QA-F9 checked the following, on the binding commit `887552e` (docs only) of #307:
+- `BUILD_IDENTITY.txt`, `SHA256SUMS.txt` and the NRO bytes all agree: `APPLICATION_SHA=62a2f8c3…`, `SIZE_BYTES=176029361`, `DEVICE_ACCEPTED=false`, `STATUS=NOT DEVICE TESTED`.
+- The embedded commit is `62a2f8c3` (POKEVAULT_GIT_COMMIT).
+- The NACP is `PokeBank NX 0.1.0-alpha`.
+- The packaged RomFS has 4267 files (digest `bc09c152ac4232a2`).
+- The cross-generation contracts in **candidate mode** report `0 contract(s) failing` across all 32 contracts, with no XFAIL left.
+
+Only this artifact is the candidate. Later docs-only commits on #307 (such as this file) also trigger the
+candidate workflow. Those artifacts are **not** the candidate.
 
 **Before testing**
 1. Check that the downloaded file's SHA-256 matches the value above.
@@ -22,13 +35,15 @@
 
 **How to record results**
 - Mark each box PASS / FAIL / NOT VERIFIED, and add notes for anything that is not PASS.
-- "Host evidence" means automated host testing on the candidate only. It is never device acceptance.
+- "Host evidence" means automated host testing of this candidate's source only. It is never device acceptance.
 
 Baselines:
 - [ROUND1_RESULTS_7fea1797.md](ROUND1_RESULTS_7fea1797.md), 42 PASS.
 - [ROUND2_RESULTS_e10f307f.md](ROUND2_RESULTS_e10f307f.md), 6 more PASS.
 
 ## Group A: previously accepted owner passes (regression check)
+
+Host status on this candidate: `tests/test_hw_round1_regression_gate.py` PASS (138 guards), with all gate mutations PASS.
 
 These 48 items were owner PASS on hardware: 42 on `7fea1797` and 6 on `e10f307f`.
 - `tests/test_hw_round1_regression_gate.py` guards every one of them on every PR. Its mutation test is `tests/test_qa_hw_round1_gate_mutations.py`.
@@ -88,26 +103,26 @@ These 48 items were owner PASS on hardware: 42 on `7fea1797` and 6 on `e10f307f`
 
 ## Group B: new in round 3 (check on device)
 
-| Result | ID | What should happen now | Host evidence (contract / test) | On #307 |
+| Result | ID | What should happen now | Host evidence (contract / test) | Landed on #307 at |
 | --- | --- | --- | --- | --- |
-| [ ] | E02 (re-check) | Actions menu order. The accepted order already names Origin & Legality: View, Edit, Clone, Move where supported, Release, Origin & Legality, Review, Cancel.<br>**Gen V** now shows Origin & Legality too, including on created, cloned and edited slots.<br>**Gen I** Box Actions now offer **Move**, which starts the Boxes carry, for parity with Gen II–V (R2-CHECK-009). | Hardware gate E02: pins the new Gen V list, plus the Gen I box sheet once C lands (`test_gen12_packed_move.cpp:470-474`). Matrix `actions`: exact lists | 7ed1cc16 (Gen V); batch 4 (Gen I, C) |
-| [ ] | R2-CHECK-009 | In the **Boxes view**, Gen I Box Actions → **Move** picks the Pokémon up in the shared Boxes carry. Y / A drops it, B cancels. Review still lists the staged move. Finding: Gen I was missing the Move route that Gen II–V have, so this is a routing repair, not a new mechanic. The read-only Storage pane does not offer Move. | `test_gen12_packed_move` (C `1dcf2cc3`): sheet order with and without Move; Move → Y drop stages one verified move; B leaves the box byte-identical; both live dispatchers route through `beginGen1FromAction`. The Storage pane keeps the old list (`test_classic_pokemon_action_menu`). | batch 4 (C) |
-| [ ] | R2-BUG-008 | Gen III: editing a Pokémon's Level keeps its stored **Met Location**. A met location is never rewritten or derived from the level. | lane C test (named when it lands) | batch 4 (C) |
-| [ ] | R2-BUG-001 | The Trainer page shows **A: Edit** whenever Name / Money are editable, including Gen I on a read-only source. | CG18 + CG18b | batch 4 (C `cccec27b`) |
+| [ ] | E02 (re-check) | Actions menu order. The accepted order already names Origin & Legality: View, Edit, Clone, Move where supported, Release, Origin & Legality, Review, Cancel.<br>**Gen V** now shows Origin & Legality too, including on created, cloned and edited slots.<br>**Gen I** Box Actions now offer **Move**, which starts the Boxes carry, for parity with Gen II–V (R2-CHECK-009). | Hardware gate E02: pins the new Gen V list, plus the Gen I box sheet (`test_gen12_packed_move.cpp:470-474`; gate mutation `round 3 E02 Gen I box sheet loses Move`). Matrix `actions`: exact lists | 7ed1cc16 (Gen V); 9d4b8b7 (Gen I, C) |
+| [ ] | R2-CHECK-009 | In the **Boxes view**, Gen I Box Actions → **Move** picks the Pokémon up in the shared Boxes carry. Y / A drops it, B cancels. Review still lists the staged move. Finding: Gen I was missing the Move route that Gen II–V have, so this is a routing repair, not a new mechanic. The read-only Storage pane does not offer Move. | `test_gen12_packed_move` (C `1dcf2cc3`): sheet order with and without Move; Move → Y drop stages one verified move; B leaves the box byte-identical; both live dispatchers route through `beginGen1FromAction`. The Storage pane keeps the old list (`test_classic_pokemon_action_menu`). | 11940524 / 9d4b8b7 (C) |
+| [ ] | R2-BUG-008 | Gen III Met Location picker. For a Ruby / Sapphire / Emerald Pikachu Lv. 5 met at Lv. 5, the picker first offers **"keep stored"**, which keeps the record's own location and changes nothing. The Safari Zone template (Lv. 25–27) is still offered, labelled as not matching the stored met level, and it is not focused as if it were the origin. | `tests/test_gen3_encounter_keep_stored.cpp` (Makefile.host.gen14) | 5949b15 (C `479170d`) |
+| [ ] | R2-BUG-001 | The Trainer page shows **A: Edit** whenever Name / Money are editable, including Gen I on a read-only source. | CG18 + CG18b | 11940524 (C `cccec27b`) |
 | [ ] | R2-BUG-002 | Gen III and Gen IV Trainer Name / Money edits stage, show in Review, and appear in the exported copy. The source is unchanged. | CG24, `tests/test_gen3_trainer_edit.cpp`, Gen IV staged Trainer editor | 7ed1cc16 |
 | [ ] | R2-BUG-003 | Gen V Trainer page uses the Gen I–IV layout: selectable cards (Name, Money, Play Time, Pokédex), a divider, then compact read-only rows. No scrolling. | `tests/test_gen5_create_edit_parity.cpp`, `tests/test_gen5_readonly_ui_contract.py` | 7ed1cc16 |
-| [ ] | R2-BUG-004 | Changing a Pokémon's species replaces its moves with the new species' level-up moves for that game and level, in every generation. | CG19, `tests/test_species_change_moves_gen15.cpp` | batch 4 (R) |
-| [ ] | R2-BUG-005 / Part 9 #6 | TM/HM rows show the machine's move, with type, power, accuracy and PP. Gen V HM01–06 read **HM**, not TM93–98. Gen V Feathers have icons. | CG25, `tests/test_machine_moves_gen15.cpp` | 7ed1cc16 (data); batch 4 (P render) |
-| [ ] | R2-BUG-006 | Bag Add opens a compact ~4-column item grid that fits the screen, in every generation. | CG23, `tests/test_item_grid_picker.cpp` | batch 4 (P) |
-| [ ] | R2-BUG-007 | The move chooser shows coloured type badges, like the summary page. Hidden Power and Curse may show text. | CG22, `tests/test_move_type_badges.cpp` | batch 4 (P) |
-| [ ] | R2-BUG-012 | Interactive popups (value lists, Move chooser, Held Item grid, species picker, confirmations) use the same boxed rows as Pokémon Actions. | CG20 (Gen III–V), CG20b (Gen I/II + Classic inventory), CG20c (species picker), `tests/test_shared_boxed_rows.cpp` | 7ed1cc16 (CG20); rest pending |
-| [ ] | R2-BUG-013 | Help windows and instructions show coloured controller glyphs, not plain "A:" letters. | CG21, `tests/test_glyph_instruction.cpp` | aeccd13 |
+| [ ] | R2-BUG-004 | Changing a Pokémon's species replaces its moves with the new species' level-up moves for that game and level, in every generation. | CG19, `tests/test_species_change_moves_gen15.cpp` | 8a84128e (R) |
+| [ ] | R2-BUG-005 / Part 9 #6 | TM/HM rows show the machine's move, with type, power, accuracy and PP. Gen V HM01–06 read **HM**, not TM93–98. Gen V Feathers have icons. | CG25, `tests/test_machine_moves_gen15.cpp` | 7ed1cc16 (I data); 9d4b8b7 (P render) |
+| [ ] | R2-BUG-006 | Bag Add opens a compact ~4-column item grid that fits the screen, in every generation. | CG23, `tests/test_item_grid_picker.cpp` | 9d4b8b7 (P) |
+| [ ] | R2-BUG-007 | The move chooser shows coloured type badges, like the summary page. Hidden Power and Curse may show text. | CG22, `tests/test_move_type_badges.cpp` | 9d4b8b7 (P) |
+| [ ] | R2-BUG-012 | Interactive popups (value lists, Move chooser, Held Item grid, species picker, confirmations) use the same boxed rows as Pokémon Actions. | CG20 (Gen III–V), CG20b (Gen I/II + Classic inventory), CG20c (species picker), `tests/test_shared_boxed_rows.cpp` | 7ed1cc16 (S); 9d4b8b7 (P species picker) |
+| [ ] | R2-BUG-013 | Help windows and instructions show coloured controller glyphs, not plain "A:" letters. This includes the Gen I–III Inventory Help. | CG21, `tests/test_glyph_instruction.cpp`, `tests/test_classic_inventory_ui_model.cpp` | aeccd13; 678627f (I, inventory help) |
 | [ ] | Part 9 #1 | Gen V Clone / Move / Release stay available on created, cloned and edited Pokémon. Move uses the shared carry (Y). | `tests/test_gen5_staged_slot_actions.cpp`, matrix `actions` | 7ed1cc16 |
 | [ ] | Part 9 #3 | Trainer / Game Browser header names the real emulator (DraStic, melonDS, RetroArch, mGBA…), never "EXTERNAL" / "RETROARCH" / a raw label. | CG26, `tests/test_session_provider_names.cpp` | aeccd13 |
 | [ ] | Part 9 #4 | A melonDS / DeSmuME save launches the matching RetroArch core. When the core can't be proven, the dialog says so. | CG27 | 7ed1cc16 |
 | [ ] | Part 9 #8 | Gen IV Storage view, save pane: Y tap / hold carries Pokémon, the drop lands at the visible cursor, and the carried Pokémon is drawn. | `tests/test_gen4_storage_carry.cpp` | 7ed1cc16 |
 | [ ] | Part 9 #9 | Re-confirming the same profile keeps the focused game. The Games-browser profile avatar is tappable. "L/R Switch profile" help shows only with 2+ profiles. | CG28, `tests/test_session_provider_names.cpp` | aeccd13 |
-| [ ] | S06 host probe | (Host only: an exported `edited.*` copy with one corrupted checksummed byte is rejected by the strict reparse, in all 20 games.) No device step; see Group C S06. | matrix `export.checksum` | audit branch |
+| [ ] | S06 host probe | (Host only: an exported `edited.*` copy with one corrupted checksummed byte is rejected by the strict reparse, in all 20 games.) No device step; see Group C S06. | matrix `export.checksum` | 9d4b8b7 (QA matrix) |
 
 Investigations R2-CHECK-010/011 are listed once their lanes report a code change.
 R2-CHECK-010 already changes PC Items catalogs: R/S no longer offer Devon Goods / Letter / Orbs, and Emerald no longer offers HMs.

@@ -3,7 +3,7 @@
 Round 2 on `e10f307f` left six items NOT VERIFIED: B04, E03, E11, L06, S04 and S06. They are **not
 failures** (see [ROUND2_RESULTS_e10f307f.md](ROUND2_RESULTS_e10f307f.md)).
 
-This page is for the round-3 candidate NRO, the one named in `docs/qa/CANDIDATE_UNDER_AUDIT.env` once 2R sets it.
+This page is for the round-3 candidate NRO `PokeBank-NX-Gen1-5-Candidate-62a2f8c3.nro` (SHA-256 `0c7a6fb0…2078`); see [RETEST_62a2f8c3.md](RETEST_62a2f8c3.md).
 
 - Every check under **Host evidence** passes on the host and in CI. That makes it **host-verified**, NOT device-verified.
 - Only the owner's run of that exact NRO counts as device evidence.
