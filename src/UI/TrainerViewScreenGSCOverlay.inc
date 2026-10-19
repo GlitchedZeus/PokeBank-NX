@@ -857,8 +857,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];
                 const int rowTop = viewportTop + (i - start) * rowStep + visual.offset;
                 const int textY = rowTop + 10;
-                if (i == visual.index)
-                    fb.drawSelectionHighlight(x + 22, rowTop, w - 44, 48);
+                SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, rowTop, w - 44, 48), {i == visual.index});  // R2-BUG-012 boxed row
                 fb.drawText(x + 32, textY, change.label + ":",
                             i == visual.index ? Colors::Accent : Colors::TextDim,
                             TextStyle::Body);
