@@ -11,15 +11,59 @@
 // Pure and host-tested (tests/test_emulator_backup_layout.cpp).
 
 #include "UI/SharedMenuGeometry.h"
+#include "UI/SourceBackupClassification.h"
 
+#include <string>
 #include <string_view>
 
 namespace PokeBank::UIModel::EmulatorBackupLayout {
 
 namespace G = SharedMenuGeometry;
 
-inline constexpr std::string_view kExplainer =
-    "The emulator's save is read only; only PokeBank NX export records can be deleted.";
+// The source save named by its provider ("DraStic save", "RetroArch (DeSmuME) save"), exactly as
+// Product Home names the provider. Only when discovery recorded no single known provider (an
+// unknown label, or a classic card holding several providers) does it fall back to "emulator save".
+[[nodiscard]] inline std::string sourceSaveName(std::string_view providerDisplay) {
+    if (providerDisplay.empty() || providerDisplay == "Unknown provider" ||
+        providerDisplay == "Multiple providers")
+        return "emulator save";
+    return std::string(providerDisplay) + " save";
+}
+[[nodiscard]] inline std::string originalSaveLabel(std::string_view providerDisplay) {
+    return "Original " + sourceSaveName(providerDisplay);
+}
+[[nodiscard]] inline std::string explainer(std::string_view providerDisplay) {
+    return "The " + sourceSaveName(providerDisplay) +
+           " is read only; only PokeBank NX export records can be deleted.";
+}
+[[nodiscard]] inline std::string originalSaveReason(std::string_view providerDisplay) {
+    return "Read only: PokeBank NX never changes, moves or deletes the " + sourceSaveName(providerDisplay) + ".";
+}
+[[nodiscard]] inline std::string onlyRemainingCopyReason(std::string_view providerDisplay) {
+    return "Kept: the original " + sourceSaveName(providerDisplay) +
+           " was not found, so this backup is the only remaining copy.";
+}
+[[nodiscard]] inline std::string untouchedLine(std::string_view providerDisplay) {
+    return "The original " + sourceSaveName(providerDisplay) + " is never touched.";
+}
+
+// SourceBackupClassification's generic policy / refusal wording with the provider filled in.
+[[nodiscard]] inline std::string rowLabel(SourceBackups::Kind kind, std::string_view providerDisplay) {
+    return kind == SourceBackups::Kind::OriginalSource ? originalSaveLabel(providerDisplay)
+                                                       : std::string(SourceBackups::policyFor(kind).label);
+}
+[[nodiscard]] inline std::string kindReason(SourceBackups::Kind kind, std::string_view providerDisplay) {
+    return kind == SourceBackups::Kind::OriginalSource ? originalSaveReason(providerDisplay)
+                                                       : std::string(SourceBackups::policyFor(kind).reason);
+}
+[[nodiscard]] inline std::string refusalText(SourceBackups::Refusal refusal, std::string_view providerDisplay) {
+    if (refusal == SourceBackups::Refusal::OriginalSource) return originalSaveReason(providerDisplay);
+    if (refusal == SourceBackups::Refusal::OnlyRemainingCopy) return onlyRemainingCopyReason(providerDisplay);
+    return SourceBackups::refusalReason(refusal);
+}
+[[nodiscard]] inline std::string deletedNotice(std::string_view providerDisplay) {
+    return "Export record deleted. The original " + sourceSaveName(providerDisplay) + " was not touched.";
+}
 
 inline constexpr int kHeadingTop = 4;     // from frame.y (Heading, 28 px)
 inline constexpr int kExplainerTop = 40;  // from frame.y (Caption, 17 px)
