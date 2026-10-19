@@ -1,9 +1,11 @@
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <vector>
 
 #include "UI/GameLaunchModel.h"
+#include "UI/LeaveDecisionLayout.h"
 
 namespace {
 
@@ -263,6 +265,75 @@ void testReturnSelection() {
     assert(!parseGameLaunchReturnSelection(hugeIndex, selection.savedAt, parsed));
 }
 
+void testRetroArchSaveCoreEvidence() {
+    using namespace UI;
+    auto core = [](std::string_view game, std::string_view path) {
+        return retroArchSaveCoreEvidence(game, path).core;
+    };
+    // RetroArch per-core folders (library_name), case-insensitive, with or without a content
+    // sub-folder in front (sort by content directory + sort by core).
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.sav") == RetroArchSaveCore::MelonDS);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/nds/MELONDS/Pokemon Platinum.sav") == RetroArchSaveCore::MelonDS);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/DeSmuME/Pokemon Platinum.dsv") == RetroArchSaveCore::DeSmuME);
+    assert(core("crystal_gbc", "sdmc:/retroarch/saves/Gambatte/Pokemon Crystal.srm") == RetroArchSaveCore::Gambatte);
+    assert(core("emerald_gba", "sdmc:/retroarch/saves/mGBA/Pokemon Emerald.srm") == RetroArchSaveCore::MGBA);
+    assert(core("red_gb", "C:\\saves\\mGBA\\Pokemon Red.srm") == RetroArchSaveCore::MGBA);
+    // File naming when saves are not sorted by core.
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/Pokemon Platinum.dsv") == RetroArchSaveCore::DeSmuME);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/Pokemon Platinum.sav") == RetroArchSaveCore::MelonDS);
+    // No evidence: the game-ID default stays in charge.
+    assert(core("emerald_gba", "sdmc:/retroarch/saves/Pokemon Emerald.srm") == RetroArchSaveCore::Unknown);
+    assert(core("platinum_nds", "Pokemon Platinum.sav") == RetroArchSaveCore::Unknown);
+    assert(core("platinum_nds", "") == RetroArchSaveCore::Unknown);
+    // Contradictions and impossible cores are ambiguous, never a guess.
+    auto ambiguous = retroArchSaveCoreEvidence("platinum_nds", "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.dsv");
+    assert(ambiguous.core == RetroArchSaveCore::Ambiguous && !ambiguous.reason.empty());
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/Gambatte/Pokemon Platinum.sav") == RetroArchSaveCore::Ambiguous);
+    assert(core("emerald_gba", "sdmc:/retroarch/saves/Gambatte/Pokemon Emerald.srm") == RetroArchSaveCore::Ambiguous);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/melonDS DS/Pokemon Platinum.sav") == RetroArchSaveCore::Ambiguous);
+    // Core NRO names match the libretro libnx builds PokeBank already launches.
+    assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::MelonDS)) == "melonds_libretro_libnx.nro");
+    assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::DeSmuME)) == "desmume_libretro_libnx.nro");
+    assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::Ambiguous)).empty());
+}
+
+// The launch dialog has two caption lines for "what you must know" (LeaveDecisionLayout over the
+// SharedMenuGeometry LaunchConfirm frame, measured with the bundled font). Every core notice the
+// evidence can produce must fit there together with every quit-route sentence, as composed by
+// gameLaunchDialogNotice() (notice, space, route), so the route is never cut off.
+void testLaunchDialogNoticesFit() {
+    using namespace UI;
+    namespace L = PokeBank::UIModel::LeaveDecisionLayout;
+    const char* ambiguousSaves[][2] = {
+        {"platinum_nds", "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.dsv"},
+        {"platinum_nds", "sdmc:/retroarch/saves/DeSmuME/Pokemon Platinum.sav"},
+        {"platinum_nds", "sdmc:/retroarch/saves/Gambatte/Pokemon Platinum.sav"},
+        {"platinum_nds", "sdmc:/retroarch/saves/melonDS DS/Pokemon Platinum.sav"},
+        {"emerald_gba", "sdmc:/retroarch/saves/Gambatte/Pokemon Emerald.srm"},
+        {"crystal_gbc", "sdmc:/retroarch/saves/DeSmuME/Pokemon Crystal.srm"},
+        {"heartgold_nds", "sdmc:/retroarch/saves/mGBA/Pokemon HeartGold.sav"},
+    };
+    const GameLaunchQuitRoute routes[] = {GameLaunchQuitRoute::LoaderDefault,
+                                          GameLaunchQuitRoute::EmulatorLauncher,
+                                          GameLaunchQuitRoute::ReturnsToPokeBank};
+    for (const auto& save : ambiguousSaves) {
+        const auto evidence = retroArchSaveCoreEvidence(save[0], save[1]);
+        assert(evidence.core == RetroArchSaveCore::Ambiguous);
+        // Exactly the text GameLauncher.cpp retroArchCoreForSave() produces.
+        const std::string notice = "Core unproven (" + evidence.reason + "); it may not load this save.";
+        for (const auto route : routes) {
+            const std::string text = notice + " " + gameLaunchQuitRouteNotice(route);
+            const L::Text t = L::build(false, "Pokemon SoulSilver Version", text);
+            if (!t.fits) std::cerr << "does not fit: " << text << "\n";
+            assert(t.fits);
+            assert(t.lines[1] + (t.lines[2].empty() ? "" : " " + t.lines[2]) == text);
+        }
+    }
+    // A route on its own (no notice) still fits, as before.
+    for (const auto route : routes)
+        assert(L::build(false, "Pokemon SoulSilver Version", gameLaunchQuitRouteNotice(route)).fits);
+}
+
 } // namespace
 
 int main() {
@@ -270,6 +341,8 @@ int main() {
     testReturnHostPolicy();
     testChainPlans();
     testReturnSelection();
+    testRetroArchSaveCoreEvidence();
+    testLaunchDialogNoticesFit();
 
     assert(normalizedLaunchStem("sdmc:/retroarch/cores/savefiles/Pokemon Yellow.srm") == "pokemonyellow");
     assert(normalizedLaunchStem("/roms/gba/Pokemon - Emerald Version (USA).gba") ==

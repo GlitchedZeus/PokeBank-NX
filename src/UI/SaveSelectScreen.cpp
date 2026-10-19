@@ -2140,7 +2140,7 @@ namespace UI {
                                               const std::string& gameName, const char* origin) {
         pendingLaunch = descriptor;
         pendingLaunchName = gameName;
-        pendingLaunchNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(descriptor));
+        pendingLaunchNotice = gameLaunchDialogNotice(descriptor);   // route + core-evidence notice (L)
         pendingLaunchStarter = PokeBank::UIModel::LeaveDecisionLayout::launchStarter(
             descriptor.backend == GameLaunchBackend::SwitchTitle,
             PokeVault::Source::providerDisplayName(
@@ -2155,7 +2155,7 @@ namespace UI {
             d.providerId + '|' + d.launcherPath + '|' + d.contentPath + '|' + d.corePath;
         if (key != launchQuitNoticeKey) {
             launchQuitNoticeKey = std::move(key);
-            launchQuitNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(d));
+            launchQuitNotice = gameLaunchDialogNotice(d);
         }
         return launchQuitNotice;
     }

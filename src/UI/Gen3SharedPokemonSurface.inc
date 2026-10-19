@@ -1,4 +1,5 @@
 #include "UI/SharedPokemonShell.h"
+#include "UI/ClassicTrainerSessionInput.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
@@ -159,6 +160,26 @@ const PokeVault::Legacy::FRLGReadOnlyTrainer& bridge(const TrainerViewScreen& sc
 Gen3::StagedPokemonEditor* editor(TrainerViewScreen& screen) noexcept {
     return isGen3Gba(screen) ? bridge(screen).stagedPokemon() : nullptr;
 }
+
+// One Review row: a staged Pokemon change, or a staged Trainer Name / Money change (R2-BUG-002).
+struct ReviewRow {
+    std::string label;
+    std::string beforeValue;
+    std::string afterValue;
+};
+
+std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
+    std::vector<ReviewRow> rows;
+    if (!isGen3Gba(screen)) return rows;
+    if (const auto* trainer = bridge(screen).stagedTrainer())
+        for (const auto& change : trainer->pendingChanges())
+            rows.push_back({change.label, change.before, change.after});
+    if (const auto* staged = editor(screen))
+        for (const auto& change : staged->pendingChanges())
+            rows.push_back({change.label, change.beforeValue, change.afterValue});
+    return rows;
+}
+
 
 bool workspaceActive(const State& state) noexcept {
     return state.session.mode != SessionModel::Mode::None;
@@ -1507,7 +1528,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
                                                 static_cast<std::size_t>(state.slot), error).has_value();
     const auto actions = Shared::actionsForSlot(
         occupied, {/*clone*/true, /*remove*/true, /*legality*/true},
-        !staged->pendingChanges().empty());
+        !reviewRows(screen).empty());
     if (actions.count == 0) return true;
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
@@ -1570,13 +1591,15 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     return true;
 }
 
-// Verified export of the staged Pokemon copy (plus any pending Bag edits) into the app-owned
-// exports/gen3 root. The emulator source is never written.
+// Verified export of the staged Pokemon copy (plus any pending Bag and Trainer edits) into the
+// app-owned exports/gen3 root. The emulator source is never written.
 void exportStagedGen3Copy(TrainerViewScreen& screen) {
     auto* staged = editor(screen);
     const auto* inventory = bridge(screen).stagedInventory();
+    const auto* trainer = bridge(screen).stagedTrainer();
     if (!staged || (!staged->hasPendingChanges() &&
-                    !(inventory && inventory->hasPendingChanges()))) {
+                    !(inventory && inventory->hasPendingChanges()) &&
+                    !(trainer && trainer->hasPendingChanges()))) {
         screen.postStatus("No staged Generation III changes to export", 240);
         return;
     }
@@ -1597,8 +1620,9 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
 #ifdef POKEVAULT_GIT_COMMIT
     request.applicationSha = POKEVAULT_GIT_COMMIT;
 #endif
-    // Pending Bag edits are merged in by sector so one exported save carries both workspaces.
-    const auto result = Gen3::publishVerifiedGen3Export(*staged, request, inventory);
+    // Pending Bag edits are merged in by sector and Trainer edits applied last, so one exported
+    // save carries every workspace.
+    const auto result = Gen3::publishVerifiedGen3Export(*staged, request, inventory, trainer);
     if (!result.success) {
         screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
         return;
@@ -1625,7 +1649,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         }
         return true;
     }
-    const int reviewCount = static_cast<int>(staged->pendingChanges().size());
+    const auto rows = reviewRows(screen);
+    const int reviewCount = static_cast<int>(rows.size());
     const int reviewMax = std::max(0, reviewCount - 7);
     // Pending Changes is a real touch scroll view: the cards follow the finger on every frame,
     // cross row boundaries while the finger is still down, and retain a small controlled coast.
@@ -1653,20 +1678,24 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         screen.controllerNavigation.reset();
         return true;
     }
-    if ((down & HidNpadButton_X) && !staged->pendingChanges().empty()) {
+    if ((down & HidNpadButton_X) && !rows.empty()) {
         exportStagedGen3Copy(screen);
         return true;
     }
     if (down & HidNpadButton_Y) {
         if (!state.confirmDiscardAll) {
             // First Y only asks; an explicit second Y discards every staged edit.
-            if (!staged->pendingChanges().empty()) state.confirmDiscardAll = true;
+            if (!rows.empty()) state.confirmDiscardAll = true;
             screen.controllerNavigation.reset();
             return true;
         }
         state.confirmDiscardAll = false;
         state.reviewTouchScroll.reset();
         staged->discard();
+        if (auto* trainer = bridge(screen).stagedTrainer()) {
+            trainer->discard();
+            bridge(screen).refreshStagedTrainerPresentation();
+        }
         refreshPresentation(screen);
         state.review = false;
         state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
@@ -2263,7 +2292,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                                                static_cast<std::size_t>(state.slot), error);
     const bool occupied = pokemon.has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {true, true, true}, !staged->pendingChanges().empty());
+        occupied, {true, true, true}, !reviewRows(screen).empty());
     screen.drawGSCOverlay(fb);
     // One narrow, greyed-out menu for touch and A. Underlying box hitboxes
     // are replaced by enabled native command IDs only.
@@ -2311,7 +2340,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     constexpr int viewportY = 112;
     constexpr int viewportH = 482;
     constexpr int rowStep = 72;
-    const auto& changes = staged->pendingChanges();
+    const auto changes = reviewRows(screen);
     if (changes.empty()) {
         state.reviewScroll = 0;
         state.reviewTouchScroll.reset();
@@ -2401,9 +2430,44 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
     return ownsFrameImpl(screen);
 }
 
+// R2-BUG-002: the HOME Trainer page stages Name / Money through Gen3StagedTrainerEditor with the
+// one classic Trainer session flow (UI/ClassicTrainerSessionInput.h, shared with Gen I / II / IV).
+// Review lists the change, Discard restores it, Export applies it to the verified copy.
+bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexcept {
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Trainer &&
+        !state.legality && !state.confirmRelease && !state.review && !state.actions &&
+        !state.speciesPicker && !state.valuePicker && !workspaceActive(state) &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
+bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+                          int stickX, int stickY, const TouchInput& touch) {
+    if (!trainerMainPage(screen, state)) return false;
+    auto& trainerBridge = bridge(screen);
+    if (!trainerBridge.stagedTrainerAvailable()) return false;
+    auto* trainer = trainerBridge.stagedTrainer();
+    UI::ClassicTrainerSession::Fields fields;
+    fields.name = trainer->trainerName();
+    fields.money = trainer->money();
+    fields.nameMax = Gen3::Gen3StagedTrainerEditor::kNameMax;
+    fields.moneyMax = Gen3::Gen3StagedTrainerEditor::kMaxMoney;
+    fields.nameGuide = "1-7 characters the game can store";
+    fields.nameEditable = trainer->nameEditable();
+    fields.nameReadOnlyReason = "Japanese Gen III trainer names are read-only here";
+    return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
+        [&](const std::string& name, uint32_t money, std::string& error) {
+            if (!trainer->stage(name, money, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        });
+}
+
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
     if (!isGen3Gba(screen)) return false;
+    if (handleTrainerSession(screen, stateFor(screen), down, held, stickX, stickY, touch)) return true;
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);

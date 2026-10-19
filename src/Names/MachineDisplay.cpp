@@ -60,6 +60,26 @@ MachineDescriptor getMachineDescriptor(Enums::GameVersion game, uint16_t itemId)
                 return make(game, itemId, MachineKind::HM, itemId - 419, 2);
             return {};
 
+        // Red/Blue/Yellow: pret pokered item order - HM01-05 = 196-200, TM01-50 = 201-250.
+        case GameVersion::RBY:
+            if (itemId >= 201 && itemId <= 250) return make(game, itemId, MachineKind::TM, itemId - 200, 2);
+            if (itemId >= 196 && itemId <= 200) return make(game, itemId, MachineKind::HM, itemId - 195, 2);
+            return {};
+
+        // Black/White, Black 2/White 2: TM01-92 = 328-419, TM93-95 = 618-620, HM01-06 = 420-425
+        // (PKHeX 6501f0ab PersonalInfo5BW.MachineMoves order; Gen5Bag BagCatalog5::kMachine ids).
+        // Unlike BD/SP, ids 420-425 are HMs here.
+        case GameVersion::B:
+        case GameVersion::W:
+        case GameVersion::BW:
+        case GameVersion::B2:
+        case GameVersion::W2:
+        case GameVersion::B2W2:
+            if (itemId >= 328 && itemId <= 419) return make(game, itemId, MachineKind::TM, itemId - 327, 2);
+            if (itemId >= 618 && itemId <= 620) return make(game, itemId, MachineKind::TM, 93 + (itemId - 618), 2);
+            if (itemId >= 420 && itemId <= 425) return make(game, itemId, MachineKind::HM, itemId - 419, 2);
+            return {};
+
         case GameVersion::FR:
         case GameVersion::LG:
         case GameVersion::FRLG:
@@ -109,7 +129,6 @@ MachineDescriptor getMachineDescriptor(Enums::GameVersion game, uint16_t itemId)
             return {};
 
         case GameVersion::PLA:
-        case GameVersion::RBY:
         default:
             return {};
     }

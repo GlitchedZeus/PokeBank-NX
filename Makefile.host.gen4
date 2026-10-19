@@ -110,7 +110,8 @@ host-sanitize: $(GEN4_STAGED_EDITOR_SANITIZE)
 
 $(GEN4_STAGED_EDITOR_TEST): $(GEN4_STAGED_EDITOR_SOURCES) \
 	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/Pokemon/Pokemon4Mutable.h \
-	include/Integration/Gen4/Gen4ExportTransaction.h include/Integration/Common/VerifiedStagedExport.h
+	include/Integration/Gen4/Gen4ExportTransaction.h include/Integration/Common/VerifiedStagedExport.h \
+	include/Integration/Gen4/Gen4StagedTrainerEditor.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN4_STAGED_EDITOR_SOURCES) -o $@
 
