@@ -586,7 +586,7 @@ namespace UI {
             "pokebank=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
             " src=" + std::string(legacyReadOnlySource()
-                                      ? legacyProviderLabel() + "_READ_ONLY"
+                                      ? PokeVault::Source::providerIdFor(sourceProviderLabel) + "_READ_ONLY"
                                       : this->sourceKind == PokeVault::Safety::SourceKind::InstalledGame
                                           ? "INSTALLED_READ_ONLY" : "BACKUP") +
             " gameid=" + (this->sourceGameId.empty() ? "?" : this->sourceGameId) +

@@ -1583,7 +1583,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
                 changed ? "Strict PK4 serialize + Storage CRC + full save reparse: PASS"
                         : "Original source remains the current baseline",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
+    fb.drawText(44, 270, "Original " + screen.legacyProviderLabel() + " source: HARD READ ONLY", Colors::Accent);
     fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
                 Colors::TextDim, TextStyle::Caption);
     if (changed) {
@@ -1689,7 +1689,7 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
                 Colors::TextDim, TextStyle::Body);
     fb.drawText(x + 34, y + 130, "This removes it only from the app-owned staged copy.",
                 Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 166, "The original DraStic/emulator save is never written.",
+    fb.drawText(x + 34, y + 166, "The original " + screen.legacyProviderLabel() + " save is never written.",
                 Colors::TextDim, TextStyle::Caption);
     drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
 }
@@ -2158,7 +2158,8 @@ void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const Stat
     const uint16_t id=state.itemKeyWarningId;
     SharedEditorChrome::beginModal(screen.touchButtons);
     UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
-        Names::machineDisplayLabel(game,id,Names::getItemName(id)),false);
+        Names::machineDisplayLabel(game,id,Names::getItemName(id)),
+        Gen4::bagPocketName(static_cast<size_t>(state.itemKeyWarningPocket)),false);
     drawNavBar(fb,{{"A","Confirm"},{"B","Cancel"}});
 }
 

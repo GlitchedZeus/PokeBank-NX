@@ -944,6 +944,29 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
                 auto reopened = G3::StagedPokemonEditor::create(exported, spec.game, err);
                 const auto mon = reopened ? reopened->boxedPokemon(0, 0, err) : std::nullopt;
                 e.expect(mon && mon->nickname == "QAMON" && mon->shiny, "exported Box 1/1 lacks the edit");
+                // S06: corrupt byte 0 (player name) of logical section 0 in the active slot. The sector
+                // checksum covers it and the edit check does not read it.
+                size_t section0 = exported.size();
+                for (size_t sct = 0; sct < D::kSectorCount; ++sct) {
+                    const size_t off = D::kSlotBases[editor.activeSlot()] + sct * D::kSectorSize;
+                    if (off + 0xFF6 <= exported.size() && (exported[off + 0xFF4] | exported[off + 0xFF5] << 8) == 0)
+                        section0 = off;
+                }
+                const auto s06 = qamatrix::exportCorruptionProbe(exported, section0, [&](const auto& bytes) {
+                    auto p = G3::parse(bytes, spec.game);
+                    if (!p) return false;
+                    bool potion = false;
+                    for (const auto& pouch : p.save->inventory())
+                        for (const auto& item : pouch.items)
+                            potion |= pouch.pouch == G3::InventoryPouch::Items && item.itemId == 13 && item.count == 7;
+                    std::string why;
+                    auto again = G3::StagedPokemonEditor::create(bytes, spec.game, why);
+                    const auto boxed = again ? again->boxedPokemon(0, 0, why) : std::nullopt;
+                    return potion && boxed && boxed->nickname == "QAMON";
+                });
+                e.expect(s06.empty(), s06);
+                if (s06.empty()) row.fact(std::string(qamatrix::kExportChecksumFact),
+                                          std::string(qamatrix::kExportChecksumDetected));
                 std::ifstream manifestIn(dir / "EDIT_MANIFEST.txt");
                 const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
                 e.expect(manifest.find("GAME_ID=" + game) != std::string::npos, "manifest GAME_ID");

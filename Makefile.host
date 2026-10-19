@@ -20,3 +20,6 @@ include Makefile.host.reroll-mechanics
 include Makefile.host.species-change-moves
 
 include Makefile.host.machine
+
+# Must stay last: wraps $(CXX) for header dependency tracking (Makefile.host.deps).
+include Makefile.host.deps

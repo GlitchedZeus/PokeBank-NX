@@ -80,6 +80,50 @@ Neither is proven to be the cause. That is why the host stays opt-in, and it now
 | `src/UI/UI.cpp` (launch/return path only) | `handleSaveSelection()`: restores the recorded focus on the first Home of the process and records it on a launch exit. Helpers live in the file-local namespace. |
 | Tests | `test_game_launch_model` (libnx argv tokenizer port, host policy, plans, return selection), `test_retroarch_launch_resolution` (production-path file record, quit-route preview), `test_return_host_packaging_contract.py`, and the launch block of `test_game_hub_contract.py`. |
 
+## Round 3 (2026-10-19): RetroArch core evidence and an honest quit preview
+
+Base: forward-merged #307 `0faf7e9c` (merge `2e32b775`). Fix commit `07478b48`. Both defects come from 2R's source audit of `0faf7e9c`.
+
+### 1. A melonDS save launched in DeSmuME
+
+`defaultRetroArchCore()` chose DeSmuME first from the game ID alone. Stored game-file links recomputed that default, and a playlist core overrode it only when present. The emulator therefore opened without the user's save.
+
+The fix is `retroArchSaveCoreEvidence()` in `GameLaunchModel.h`. It proves the core from the discovered save itself:
+
+| Evidence | Core | Pinned reference |
+|---|---|---|
+| Save's parent folder is a core `library_name` (RetroArch "sort saves by core" puts saves in `<dir>[/<content dir>]/<library_name>/`) | that core | RetroArch `b2538f12` `runloop.c` |
+| `library_name` values | `DeSmuME`, `melonDS`, `Gambatte`, `mGBA` | desmume `95b4d798` `libretro.cpp:517`; melonDS `66b5d263` `libretro.cpp:114`; gambatte `d9d6cd06` `libretro.cpp:1655`; mgba `7a12d6d4` (`projectName` = CMake project `mGBA`) |
+| `<game>.dsv` for a DS game | DeSmuME | desmume `mc.cpp:235` |
+| `<game>.sav` for a DS game | melonDS | melonDS `libretro.cpp:895` |
+| Folder `melonDS DS` | ambiguous (no Switch build, per its README) | — |
+
+Rules, applied in every RetroArch path (playlist match, loose ROM roots, stored links):
+
+- **Proven evidence wins** over the playlist core and the game-ID default.
+- **Proven but not installed:** `LauncherMissing`, with a message naming the core. It never silently launches a different core.
+- **Contradictory or impossible evidence** (folder versus file, or a core that cannot run the game family): the previous choice is kept and `descriptor.launchNotice` explains why. `gameLaunchDialogNotice()` puts it in front of the quit-route notice.
+- **No evidence:** the game-ID default, unchanged.
+
+### 2. The quit preview could promise a return that the launch then skipped
+
+`previewGameLaunchQuitRoute()` promised a return whenever the opt-in marker existed. `prepareReturnHost()` could still fail at launch time and silently fall back to the direct chain.
+
+The fix is a single `returnHostReadiness()` check: opted in, own NRO known, and the bundled host installed through a verified temporary copy. It is cached and re-validated on every query. Both the preview and `planGameLaunchHandoff()` (which `requestGameLaunch()` calls) build the plan from it. If a launch's route differs from the one last previewed for the same descriptor, for example because the host vanished and could not be reinstalled, the launch is refused once and the message names the new route. The next preview shows it. While opted in, previewing now installs the host on the SD card, the same as the launch already did.
+
+### Owner device checks for round 3 (add to procedure A)
+
+- **R3-1:** a DS game saved with RetroArch's melonDS core (`.sav`, or saves sorted into a `melonDS` folder). Launch it from PokeBank: melonDS must open **with that save**, even when DeSmuME is installed and listed in the playlist.
+- **R3-2:** a DeSmuME `.dsv` save must still launch in DeSmuME.
+- **R3-3:** uninstall the melonDS core and repeat R3-1. PokeBank must say the melonDS core is missing instead of opening DeSmuME.
+- **R3-4:** with the return-host marker present, note what the launch dialog says Quit will do, then quit. The outcome must match the promise: "returns to PokeBank NX" means PokeBank reopens; any other text means Homebrew Menu/HOME (or DraStic's launcher).
+
+Host tests cover all four decisions. Only the device can prove the emulator actually loads the save.
+
+### Request for 2R (SaveSelectScreen, not this lane's file)
+
+So the launch dialog shows the core notice, replace the two `gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(...))` calls (`openLaunchDecision` and `currentLaunchQuitNotice`) with `gameLaunchDialogNotice(...)`. Its quit-route text is identical when there is no notice.
+
 ## Opt-in for the device test
 
 The default remains the hardware-accepted direct handoff. To test the return host, create an empty file:
