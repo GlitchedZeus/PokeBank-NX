@@ -122,6 +122,9 @@ struct Result {
     std::vector<std::array<uint16_t, 4>> alternativeMoves;
     bool shadow = false;                ///< a shadow Pokemon: purified, so it carries the National Ribbon
     bool xd = false;                    ///< an XD template: the fateful (obedience) flag is set
+    /// IFixedNickname (Hordel's Elekid "ZAPRONG"): the judge checked the nickname against the
+    /// trade, so the player-nickname rules (the nicknamed flag included) do not apply.
+    bool fixedNickname = false;
     /// Every GameCube template compatible with the known species, level and location,
     /// before the RNG, lock, ball and fateful rules (PKHeX enumerator order).
     std::vector<std::string> candidates;

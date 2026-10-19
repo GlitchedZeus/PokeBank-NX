@@ -640,7 +640,8 @@ void Analyzer::findCxdEncounter() {
         t.version = kVerCXD; t.location = 0;
         t.fixedBall = j->fixedBall; t.fateful = j->fateful; t.shiny = j->shiny;
         t.gender = j->gender; t.ability = j->ability; t.moves = j->moves;
-        t.fixedTrainer = j->fixedTrainer; t.shadow = j->shadow; t.name = j->templateName;
+        t.fixedTrainer = j->fixedTrainer; t.fixedNickname = j->fixedNickname;
+        t.shadow = j->shadow; t.name = j->templateName;
         search_.list.push_back(Candidate{EncKind::Cxd3, -1, -1, j->species, kVerCXD, Lead::Invalid});
         enc_ = t;
         info_ = encInfo(t);
@@ -858,6 +859,8 @@ void Analyzer::verifyNickname() {
             return;
         }
     }
+    // A Colosseum/XD IFixedNickname trade (Hordel's Elekid): the GameCube judge checked the nickname.
+    if (enc_.kind == EncKind::Cxd3 && enc_.fixedNickname) return;
     if (pk_.isEgg) { verifyNicknameEgg(nickname); return; }
     if (pk_.isNicknamed) {
         uint16_t species = 0;
@@ -1764,7 +1767,8 @@ Origin5 Analyzer::run5(uint8_t currentLevel) {
     o.encContextGeneration = encContextGeneration();
     o.encIsEgg = enc_.isEgg;
     o.playerOT = isPlayerOT();
-    o.fixedNickname = enc_.kind == EncKind::Trade || enc_.kind == EncKind::Trade3;
+    o.fixedNickname = enc_.kind == EncKind::Trade || enc_.kind == EncKind::Trade3 ||
+                      (enc_.kind == EncKind::Cxd3 && enc_.fixedNickname);
     o.gtsSanitized = gtsSanitized_;
     o.wasTradedEgg = wasTradedEgg();
     for (std::size_t i = 0; i < 4; ++i) o.moveSource[i] = moves_[i].valid() ? learnMethodText(moves_[i].method) : nullptr;

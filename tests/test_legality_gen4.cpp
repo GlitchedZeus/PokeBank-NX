@@ -795,6 +795,20 @@ int main() {
         if (und.verdict() != Verdict::Incomplete || has(und, Severity::Invalid) || !hasText(und, Severity::Warning, kCxdWarning) ||
             !hasText(und, Severity::Warning, "fake: shadow tables incomplete") || !hasText(und, Severity::Info, "fake: note"))
             fail("Colosseum/XD origin undecided: expected the Warnings and the note", und);
+        // Hordel's Elekid (EncounterTrade3XD, IFixedNickname "ZAPRONG") through Pal Park
+        // (PK3.ConvertToPK4) with the nicknamed flag cleared: PKHeX VALID. NicknameVerifier.VerifyTrade
+        // checks only the trade's name and returns, so the flag is never compared; a renamed one is Invalid.
+        {
+            auto elekid = fromHex("E42163BD000026DCEF000000B8A1BEF9401F00004609000200000000000000000000000000000000080007000900EE000F0F0F050000000082E14D2B00000000010000000000000044012B013A013C01390138013101FFFF48A10C02E0FF000F0000000000000000320139013C012E012F013601FFFFFFFF0000001A0A1300003700000414000000");
+            const Report unflagged = Legality::analyzePk4(elekid, game);
+            if (unflagged.verdict() != Verdict::NoProblemsFound) fail("XD trade Elekid, nicknamed flag clear: expected No problems found", unflagged);
+            elekid[0x48] = 0x42;  // ZAPRONG -> XAPRONG (Gen IV character table)
+            refreshChecksum(elekid);
+            const Report renamed = Legality::analyzePk4(elekid, game);
+            if (renamed.verdict() != Verdict::Invalid || !hasText(renamed, Severity::Invalid, "Nickname does not match the XD in-game trade"))
+                fail("XD trade Elekid renamed: expected Invalid", renamed);
+            checked += 2;
+        }
         // Ability of a Colosseum/XD origin (AbilityVerifier.cs:237-295): the Orre games store the
         // ability bit apart from the PID and Pal Park reads that bit (pokeplatinum
         // src/main_menu/gba_pokemon.c:759-783), so a species with two Gen III abilities (Doduo) may

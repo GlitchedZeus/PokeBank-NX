@@ -305,6 +305,7 @@ struct Template {
     int index = -1;
     Gift gift{};                  // PCD / Ranger Manaphy
     bool fixedTrainer = false;    // Cxd3: IFixedTrainer (the judge checked the OT)
+    bool fixedNickname = false;   // Cxd3: IFixedNickname (the judge checked the nickname)
     bool shadow = false;          // Cxd3: IShadow3 (National Ribbon required once purified)
     const char* name = nullptr;   // Cxd3: template name from the judge
 };

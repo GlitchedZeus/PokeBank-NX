@@ -1127,6 +1127,7 @@ CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input) {
     j.fateful = input.fateful;
     j.shiny = 0;
     j.fixedTrainer = r.matched == C::Template::XdTrade || r.matched == C::Template::ColoGift;
+    j.fixedNickname = r.fixedNickname;
     j.shadow = r.shadow;
     j.moves = r.encounterMoves;
     j.alternativeMoves = r.alternativeMoves;

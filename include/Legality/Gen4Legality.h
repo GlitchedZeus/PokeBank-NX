@@ -167,6 +167,7 @@ struct CxdOriginJudgement {
     bool fateful = false;              // IFatefulEncounterReadOnly (XD templates set it, Colosseum does not)
     uint8_t shiny = 0;                 // PKHeX Shiny: 0 Random, 1 Never
     bool fixedTrainer = false;         // IFixedTrainer (Duking's trades, bonus-disc gifts): the judge checked the OT
+    bool fixedNickname = false;        // IFixedNickname (Hordel's Elekid): the judge checked the nickname
     bool shadow = false;               // IShadow3: the National Ribbon is awarded on purification (required)
     std::array<uint16_t, 4> moves{};   // IMoveset moves the Pokemon had at the encounter (zero when none)
     // Movesets of later templates that differ only in the met location the transfer lost; the

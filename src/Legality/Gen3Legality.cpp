@@ -4533,6 +4533,7 @@ Result judge(const Input& in) {
         }
         out.shadow = isShadowKind(a.enc.kind);
         out.xd = isXdFatefulKind(a.enc.kind);
+        out.fixedNickname = a.enc.kind == Kind::XdTrade && X::kXdTrades[a.enc.index].nicknames != nullptr;
     }
     if (a.capped || a.unsupported) out.verdict = Verdict::Undecided;
     else if (!out.invalid.empty()) out.verdict = Verdict::Invalid;
