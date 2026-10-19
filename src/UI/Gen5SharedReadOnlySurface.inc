@@ -31,6 +31,7 @@
 #include "Names/MachineDisplay.h"
 #include "Names/FormNames.h"
 #include "Names/MoveBattleStats5.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/ClassicMachineArtwork.h"
 #include "UI/NarrowPokemonActionMenu.h"
 #include "SharedPokemonEditorSurface.inc"
@@ -685,6 +686,19 @@ struct Gen5Editor {
         if (species != p.species() && !probe.stage(Field::Species, 0, species, error)) {
             screen.postStatus(error, 360);
             return false;
+        }
+        if (species != p.species()) {
+            // R2-BUG-004: the new species' native default moveset at this level from the BW or
+            // B2W2 table (PKHeX lvlmove_bw / _b2w2), base PP, no PP Ups; staged in Keep/Review's
+            // replay order (Move, PP Ups, PP) so the replay reproduces these bytes exactly.
+            if (!PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,
+                    PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(PokeBank::UIModel::SpeciesMoveDefaults::gen5Table(b2w2(screen)), species, 0,
+                        static_cast<uint8_t>(Fields::level(p, b2w2(screen))),
+                        [](uint16_t move) { return PokeVault::Integration::Gen5::basePP5(move); }),
+                    error)) {
+                screen.postStatus("Could not reset moves for the new species: " + error, 360);
+                return false;
+            }
         }
         if (probe.current()->shiny() != state.speciesPreviewShiny &&
             !probe.stage(Field::Shiny, 0, state.speciesPreviewShiny ? 1u : 0u, error)) {

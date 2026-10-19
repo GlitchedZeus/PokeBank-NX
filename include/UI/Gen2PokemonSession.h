@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
@@ -67,7 +68,17 @@ struct Session {
         working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
         working.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
-        return setLevel(nextLevel);
+        if (!setLevel(nextLevel)) return false;
+        // R2-BUG-004: the new species' native Gen II default moveset at the new level
+        // (pret pokegold / pokecrystal FillMoves over evos_attacks), base PP, no PP Ups.
+        // An unknown game selects no table, so the slots are cleared, never carried over.
+        const auto game = exactGameFromSourceId(sourceGameId);
+        const auto table = !game ? ::PokeBank::Moves::LevelUpTable15::Count
+                                 : ::PokeBank::Moves::levelUpTableGen2(*game == Gen2::SourceGame::Crystal);
+        SpeciesMoveDefaults::refreshArrays(table, species, 0, working.level,
+            [](uint16_t move) { return Gen2::StagedEditor::gen2MoveBasePP(move); },
+            working.moves, working.pp, working.ppUps);
+        return true;
     }
     uint8_t maximumPP(size_t slot) const noexcept {
         return slot < 4 ? Gen2::StagedEditor::gen2MoveMaxPP(working.moves[slot],working.ppUps[slot]) : 0;

@@ -7,6 +7,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/Gen1SpeciesChangeMoves.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
@@ -175,6 +176,14 @@ void ux3OpenSpeciesPicker(TrainerViewScreen& screen, uint16_t current, bool shin
 constexpr auto ux3SpeciesAvailable = [](uint16_t) { return true; };
 constexpr auto ux3SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
+// R2-BUG-004: a real species change replaces all four moves with the new species' native
+// Gen I default moveset at the draft level (base moves + evos_moves, pret WriteMonMoves; Yellow
+// has its own table), base PP and no PP Ups. The old species' moves are never kept.
+PokeBank::UIModel::SpeciesMoveDefaults::Slots ux3SpeciesChangeMoves(TrainerViewScreen& screen,
+                                                                   uint16_t species, uint8_t level) {
+    return PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), species, level);
+}
+
 bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
@@ -185,9 +194,12 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
             state.draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
             state.draft.experience.reset();
+            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(
+                ux3SpeciesChangeMoves(screen, species, state.draft.level),
+                state.draft.moves, state.draft.pp, state.draft.ppUps);
         }
         state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
-        state.draft.species = species; // Moves stay intact and are revalidated visibly below.
+        state.draft.species = species;
         if (beforeShiny != ux3.pickerPreviewShiny)
             ux3SetDraftShiny(screen, ux3.pickerPreviewShiny);
         state.picker = UX2Picker::None;
@@ -202,9 +214,12 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         const bool beforeShiny = ShinyDVs::isShiny(oldDVs);
         BoxPokemonEdit edit;
         edit.species = species;
-        if (species != pokemon->species)
+        if (species != pokemon->species) {
             edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
+                ux3SpeciesChangeMoves(screen, species, *edit.level), edit);
+        }
         const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
         if (nickname != pokemon->nickname) edit.nickname = nickname;
         if (beforeShiny != ux3.pickerPreviewShiny) {
