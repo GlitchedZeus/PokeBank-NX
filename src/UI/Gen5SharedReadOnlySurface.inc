@@ -899,24 +899,32 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
             const int count=static_cast<int>(bag.addChoices().size());
             // Shared scrollbar first: the window is centred on the cursor, so the thumb moves the
             // cursor to the row that puts the window where the finger put it; touch is then owned.
+            // R2-BUG-006: the shared compact grid (UI/SharedItemGridPicker.h); input builds it from
+            // the same labels the draw uses, so taps, scrollbar and D-pad agree with what is shown.
+            namespace AddGrid=UI::SharedItemGridPicker;
+            const auto& addChoices=bag.addChoices();
+            const auto addGrid=UI::SharedBagAddPicker::pickerGrid(count,[&](int index) {
+                return bagItemLabel(screen,addChoices[static_cast<size_t>(index)]);
+            });
             const int addSelected=static_cast<int>(bag.addIndex());
-            const int addRows=UI::SharedBagAddPicker::visibleRows(count);
             const auto addBar=SharedScrollbar::handleTouch(editorStateFor(screen).bagAddScrollbar,
                 SharedScrollbar::sample(touch),
-                SharedScrollbar::rows(count,addRows,UI::SharedBagAddPicker::firstVisible(addSelected,count)));
+                AddGrid::scrollModel(addGrid,AddGrid::firstRowFor(addGrid,addSelected)));
             if(addBar.changed && count>0)
-                bag.moveAddCursor(std::clamp(addBar.scroll+addRows/2,0,count-1)-addSelected);
+                bag.moveAddCursor(AddGrid::indexForFirstRow(addGrid,addSelected,addBar.scroll)-addSelected);
             if(!addBar.consumed && tap>=kGen5BagAddTouchBase && tap<kGen5BagAddTouchBase+count &&
                bag.tapAddChoice(static_cast<size_t>(tap-kGen5BagAddTouchBase)))
                 keys|=HidNpadButton_A;
-            // Page size = the rows the shared picker shows (UI/SharedBagAddPicker.h).
-            const int pageRows=UI::SharedBagAddPicker::visibleRows(count);
-            if(keys&HidNpadButton_Up)bag.moveAddCursor(-1);
-            if(keys&HidNpadButton_Down)bag.moveAddCursor(1);
-            if(keys&(HidNpadButton_L|HidNpadButton_Left))bag.moveAddCursor(-pageRows);
-            if(keys&(HidNpadButton_R|HidNpadButton_Right))bag.moveAddCursor(pageRows);
-            if(keys&HidNpadButton_ZL)bag.moveAddCursor(-5*pageRows);
-            if(keys&HidNpadButton_ZR)bag.moveAddCursor(5*pageRows);
+            // Grid navigation: D-pad / stick cell to cell, L/R one screen of rows, ZL/ZR five.
+            {
+                const int from=static_cast<int>(bag.addIndex());
+                const int to=AddGrid::navigate(addGrid,from,AddGrid::Keys{
+                    (keys&HidNpadButton_Up)!=0,(keys&HidNpadButton_Down)!=0,
+                    (keys&HidNpadButton_Left)!=0,(keys&HidNpadButton_Right)!=0,
+                    (keys&HidNpadButton_L)!=0,(keys&HidNpadButton_R)!=0,
+                    (keys&HidNpadButton_ZL)!=0,(keys&HidNpadButton_ZR)!=0});
+                if(to!=from)bag.moveAddCursor(to-from);
+            }
             if(keys&HidNpadButton_B) {
                 bag.cancel();
             } else if(keys&HidNpadButton_A) {
@@ -1833,12 +1841,11 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 if(!rows || bag.pocket()>=rows->size())return uint16_t{0};
                 for(const auto& stack:(*rows)[bag.pocket()])if(stack.itemId==id)return stack.count;
                 return uint16_t{0};
-            });
-        const auto track=UI::SharedBagAddPicker::scrollbarTrack(count,SharedScrollbar::kTrackWidth);
-        SharedScrollbar::drawAndPublish(fb,editorStateFor(screen).bagAddScrollbar,track.x,track.y,
-            SharedScrollbar::kTrackWidth,track.h,
-            SharedScrollbar::rows(count,UI::SharedBagAddPicker::visibleRows(count),
-                                  UI::SharedBagAddPicker::firstVisible(selected,count)));
+            },
+            // R2-BUG-005: the move a focused Gen V TM/HM teaches, from the machine table
+            // (Names::getMachineDescriptor; Lane I fills BW/B2W2 there).
+            [&](int index){return Names::getMachineDescriptor(game,choices[static_cast<size_t>(index)]).moveId;},
+            editorStateFor(screen).bagAddScrollbar);
     } else {
         const auto& item=bag.pendingRemove();
         UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,game,"Remove Gen V Item?",
