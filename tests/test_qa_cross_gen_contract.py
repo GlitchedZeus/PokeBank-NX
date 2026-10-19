@@ -34,11 +34,8 @@ XFAIL: dict[str, str] = {
     "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
     "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
     "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
-    "CG21-help-lines-use-button-glyphs": "2R (R2-BUG-013)",
     "CG25-gen5-machine-and-feather-art": "I (Part 9 report 6)",
-    "CG26-trainer-provider-display-name": "2R (Part 9 report 3)",
     "CG27-retroarch-nds-core-follows-provider": "L (Part 9 report 4)",
-    "CG28-same-profile-keeps-game-focus": "2R (Part 9 report 9)",
     "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
