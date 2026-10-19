@@ -25,7 +25,9 @@
 #include <array>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <functional>
+#include <iterator>
 #include <span>
 #include <string>
 #include <string_view>
@@ -760,10 +762,43 @@ void keyItemWarningRule() {
     }
 }
 
+// B04 (Gen IV/V Add, NOT VERIFIED on hardware): the production Add branches of both surfaces route
+// through the shared x1-first flow and never open a numpad before the item is in the bag.
+std::string readSource(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+void b04SourceGuards() {
+    const auto gen4 = readSource("src/UI/Gen4SharedPokemonSurface.inc");
+    const auto g4a = gen4.find("if(state.itemAddPickerActive) {");
+    const auto g4b = gen4.find("if(state.itemRemoveConfirmActive) {", g4a);
+    CHECK(g4a != std::string::npos && g4b != std::string::npos && g4b > g4a);
+    if (g4a != std::string::npos && g4b != std::string::npos) {
+        const auto add = gen4.substr(g4a, g4b - g4a);
+        CHECK(add.find("promptNumber") == std::string::npos);
+        CHECK(add.find("BagAdd::decidePick(") != std::string::npos);
+        CHECK(add.find("stageGen4BagAdd(screen,state,addPocket,id,decision.quantity)") != std::string::npos);
+    }
+    const auto gen5 = readSource("src/UI/Gen5SharedReadOnlySurface.inc");
+    const auto g5a = gen5.find("case BagSurface::AddPicker: {");
+    const auto g5b = gen5.find("case BagSurface::ConfirmRemove:", g5a);
+    CHECK(g5a != std::string::npos && g5b != std::string::npos && g5b > g5a);
+    if (g5a != std::string::npos && g5b != std::string::npos) {
+        const auto add = gen5.substr(g5a, g5b - g5a);
+        CHECK(add.find("promptNumber") == std::string::npos);
+        CHECK(add.find("bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),id),") != std::string::npos);
+    }
+    // The only Gen V numpad left in handleBag is the row quantity editor, behind decideRow.
+    const auto row = gen5.find("BagAdd::decideRow(", g5b);
+    const auto prompt = gen5.find("Utils::promptNumber(\"Edit \"+bagItemLabel(", g5b);
+    CHECK(row != std::string::npos && prompt != std::string::npos && row < prompt);
+}
+
 } // namespace
 
 int main() {
     keyItemWarningRule();
+    b04SourceGuards();
     namespace G1 = PokeVault::Integration::Gen1;
     gen1::run(G1::SourceGame::Red, QP::Game::Red);
     gen1::run(G1::SourceGame::Blue, QP::Game::Blue);
