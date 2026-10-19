@@ -1078,7 +1078,108 @@ void testExportRefusesStaleSource() {
     fs::remove_all(root);
 }
 
+// R2-BUG-002: Trainer Name / Money staged in the selected General block of every Gen IV game.
+// Edit -> verified export -> strict reparse: the fields come back as entered, every byte outside
+// the trainer name / money fields and the selected General CRC is identical (the other General
+// copy and both Storage copies included), Review lists both changes, Discard restores the source
+// image, and the source buffer itself never changes.
+void testTrainerNameMoneyRoundTrip() {
+    namespace fs = std::filesystem;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g4-trainer-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    struct Case { Layout layout; uint8_t rom; const char* id; int newerGeneral; };
+    const Case cases[] = {
+        {Layout::DiamondPearl, 10, "diamond_nds", 0}, {Layout::DiamondPearl, 11, "pearl_nds", 1},
+        {Layout::Platinum, 12, "platinum_nds", 1},
+        {Layout::HeartGoldSoulSilver, 7, "heartgold_nds", 0},
+        {Layout::HeartGoldSoulSilver, 8, "soulsilver_nds", 1},
+    };
+    for (const auto& c : cases) {
+        auto source = makeSave(c.layout, c.rom, c.newerGeneral);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, c.layout, c.id, &error);
+        assert(editor && error.empty());
+        assert(editor->trainerNameEditable());
+        const auto before = editor->stagedTrainer(&error);
+        assert(before && before->name == u"Kylie" && before->money == 0);
+
+        // Refusals change nothing.
+        assert(!editor->stageTrainerMoney(1000000, &error) && !error.empty());
+        assert(!editor->stageTrainerName(u"", &error));
+        assert(!editor->stageTrainerName(u"Eightchr", &error));
+        assert(!editor->stageTrainerName(u"A\U0001F600", &error));
+        assert(editor->stagedBytes() == original && !editor->hasChanges());
+
+        assert(editor->stageTrainerName(u"Ash", &error) && error.empty());
+        assert(editor->stageTrainerMoney(123456, &error) && error.empty());
+        const auto after = editor->stagedTrainer(&error);
+        assert(after && after->name == u"Ash" && after->money == 123456);
+        assert(after->tid == before->tid && after->sid == before->sid && after->language == before->language);
+
+        // Footprint: only the trainer name (16 bytes) and money (4 bytes) fields and the selected
+        // General block's CRC differ.
+        const auto sp = spec(c.layout);
+        const size_t general = static_cast<size_t>(c.newerGeneral) * PARTITION;
+        const size_t trainer = general + sp.trainer;
+        const size_t crc = general + sp.generalSize - 2;
+        const auto& staged = editor->stagedBytes();
+        for (size_t i = 0; i < staged.size(); ++i) {
+            if (staged[i] == original[i]) continue;
+            const bool allowed = (i >= trainer && i < trainer + 16) ||
+                                 (i >= trainer + 0x14 && i < trainer + 0x18) || i == crc || i == crc + 1;
+            assert(allowed);
+        }
+        const size_t otherGeneral = static_cast<size_t>(1 - c.newerGeneral) * PARTITION;
+        assert(std::equal(staged.begin() + static_cast<std::ptrdiff_t>(otherGeneral),
+                          staged.begin() + static_cast<std::ptrdiff_t>(otherGeneral + sp.generalSize),
+                          original.begin() + static_cast<std::ptrdiff_t>(otherGeneral)));
+        // Name written PKHeX ClearZero style: "Ash", one terminator, the rest zero.
+        assert(staged[trainer + 6] == 0xFF && staged[trainer + 7] == 0xFF);
+        for (size_t i = trainer + 8; i < trainer + 16; ++i) assert(staged[i] == 0);
+
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(std::find(lines.begin(), lines.end(), "Trainer name: Kylie -> Ash") != lines.end());
+        assert(std::find(lines.begin(), lines.end(), "Money: 0 -> 123456") != lines.end());
+
+        PokeVault::Integration::Gen4::Gen4ExportRequest request;
+        request.rootDirectory = root.string();
+        request.directoryStem = std::string(c.id) + "_20261019-120000";
+        request.sourcePath = "sdmc:/retroarch/saves/fixture.sav";
+        request.timestamp = "20261019-120000";
+        auto exported = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+        assert(exported.success && exported.error.empty());
+        const auto edited = slurp(fs::path(exported.directory) / "edited.sav");
+        assert(edited == staged);
+        const auto reparsed = Gen4ReadOnlySave::parse(edited, c.layout, c.id, &error);
+        assert(reparsed && !reparsed->recovered());
+        assert(reparsed->trainer().name == u"Ash" && reparsed->trainer().money == 123456);
+        assert(slurp(fs::path(exported.directory) / "original_backup.sav") == original);
+        assert(source == original);
+
+        editor->discard();
+        assert(editor->stagedBytes() == original);
+    }
+
+    // Japanese (language 1): the name stays read-only; money still stages.
+    auto japanese = makeSave(Layout::Platinum, 12);
+    for (int partition = 0; partition < 2; ++partition) {
+        const size_t base = static_cast<size_t>(partition) * PARTITION;
+        japanese[base + spec(Layout::Platinum).trainer + 0x19] = 1;
+        stamp(japanese, base, spec(Layout::Platinum).generalSize, spec(Layout::Platinum).footerSize,
+              partition == 0 ? 20 : 10);
+    }
+    std::string error;
+    auto editor = Gen4StagedPokemonEditor::create(japanese, Layout::Platinum, "platinum_nds", &error);
+    assert(editor && !editor->trainerNameEditable());
+    assert(!editor->stageTrainerName(u"Ash", &error) && editor->stagedBytes() == japanese);
+    assert(editor->stageTrainerMoney(999999, &error) && editor->stagedTrainer()->money == 999999);
+    fs::remove_all(root);
+}
+
 int main() {
+    testTrainerNameMoneyRoundTrip();
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
     testLayout(Layout::HeartGoldSoulSilver, 7, false);

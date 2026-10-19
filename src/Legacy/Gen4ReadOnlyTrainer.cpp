@@ -98,6 +98,9 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
     party.swap(displayParty);
     boxes.swap(displayBoxes);
     items.swap(displayItems);
+    // The Trainer page shows the staged Name / Money (R2-BUG-002).
+    trainerName = Utils::utf16ToUtf8(parsed->trainer().name);
+    money = parsed->trainer().money;
     return true;
 }
 
