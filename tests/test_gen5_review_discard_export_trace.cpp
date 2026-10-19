@@ -236,6 +236,8 @@ G::CreateRequest5 createRequest(uint8_t version) {
 constexpr uint16_t kHeldItem = 234;   // Leftovers (Gen V range <= 638)
 constexpr uint16_t kPotions = 3;
 constexpr uint16_t kNewPotions = 42;
+constexpr uint32_t kFirstMoney = 4321;   // staged, then discarded
+constexpr uint32_t kRedoMoney = 98765;   // staged after Discard All and exported
 constexpr uint32_t kEditLevel = 30;
 
 void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8_t version, bool backup) {
@@ -329,6 +331,19 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
         require(ok, T + "Bag Medicine/Potion quantity -> " + std::to_string(value) + ": " + e);
     };
 
+    // Trainer page (R2-BUG-003 layout): Money through a tap on its row, then Name.
+    const auto trainerEdit = [&](uint32_t money, const char* name) {
+        std::string e;
+        auto& page = trainer->trainerScreen();
+        using TRow = G::Gen5TrainerScreen::Row;
+        bool ok = page.openEditor(ws, e) && page.tapRow(1) && page.selectedRow() == TRow::Money &&
+                  page.beginEdit(ws, e) && page.applyMoney(ws, money, refresh, e);
+        page.moveRow(-1);
+        ok = ok && page.selectedRow() == TRow::Name && page.applyName(ws, name, refresh, e);
+        page.close();
+        require(ok, T + "Trainer Name + Money staged: " + e);
+    };
+
     // ---- 1. Full staged sequence ------------------------------------------
     createAt(0, 3);
     editLevelNick();
@@ -350,6 +365,7 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
     release(0, 2);
     editHeld();
     bagQuantity(kNewPotions);
+    trainerEdit(kFirstMoney, "FIRST");
 
     // Presentation followed the staged workspace, source did not move.
     require(ws.viewBox(0, 1)->empty() && ws.viewBox(1, 0)->species() == 25 &&
@@ -385,7 +401,8 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
         }
         require(moves == 1, T + "exactly one Move row (the Clone from Party 1 stays a Clone)");
     }
-    require(G::Gen5SharedScreenState::reviewRowCount(ws) == 7, T + "Review row count = 6 Pokemon rows + 1 Bag");
+    require(G::Gen5SharedScreenState::reviewRowCount(ws) == 9,
+            T + "Review row count = 6 Pokemon rows + 1 Bag + 2 Trainer");
     require(std::all_of(rows.begin(), rows.end(), [](const ReviewRow& x) { return x.verified; }),
             T + "every Review PK5 row independently verifies");
     {
@@ -416,16 +433,23 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
         require(!bagRows.empty() && bagRows[0].pocket == 3 && bagRows[0].itemId == 17 &&
                 bagRows[0].before == kPotions && bagRows[0].after == kNewPotions,
                 T + "Review names Bag Medicine Potion 3->42");
-        require(ws.trainerReviewChanges().empty(), T + "Review lists no Trainer change");
+        const auto trainerRows = ws.trainerReviewChanges();
+        using TField = G::TrainerChange5::Field;
+        require(trainerRows.size() == 2 &&
+                std::any_of(trainerRows.begin(), trainerRows.end(), [](const auto& c) { return c.field == TField::Name; }) &&
+                std::any_of(trainerRows.begin(), trainerRows.end(), [](const auto& c) { return c.field == TField::Money; }),
+                T + "Review lists exactly the Trainer Name and Money changes");
     }
     // Paging is presentation only.
     const auto staged1 = stagedFingerprint(ws);
     const auto candidate1 = G::buildStagedSaveCandidate(ws, &error);
     require(candidate1.has_value(), T + "staged candidate builds: " + error);
     ui.moveReviewPage(1, ws);
-    require(ui.reviewPage() == 1, T + "Review page 2 of 2");
+    require(ui.reviewPage() == 1, T + "Review page 2 of 3");
     ui.moveReviewPage(1, ws);
-    require(ui.reviewPage() == 1, T + "Review paging clamps");
+    require(ui.reviewPage() == 2, T + "Review page 3 of 3 (9 rows, 4 per page)");
+    ui.moveReviewPage(1, ws);
+    require(ui.reviewPage() == 2, T + "Review paging clamps");
     ui.moveReviewPage(-1, ws);
 
     // ---- 3. Cancel paths: nothing changes -----------------------------------
@@ -494,6 +518,9 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
                 trainer->items[3].size() == 1 && trainer->items[3][0].count == kPotions,
                 T + "Discard All: shared presentation shows the source again");
         require(sameSpan(ws.sourceSave().sourceBytes(), payload), T + "Discard All: source image intact");
+        const auto shownTrainer = ws.trainerPresentation();
+        require(!ws.trainerDirty() && shownTrainer && shownTrainer->money == 1000 && trainer->money == 1000,
+                T + "Discard All: Trainer Money back to the source value");
     }
     require(diskBytes(sourcePath) == sourceBefore && tree(dir) == treeBefore, T + "Discard All writes no file");
 
@@ -503,8 +530,9 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
     release(0, 2);
     editHeld();
     bagQuantity(kNewPotions);
-    require(ui.openReviewFromBrowse(ws) && G::Gen5SharedScreenState::reviewRowCount(ws) == 5,
-            T + "redo: Review lists 4 PK5 + 1 Bag");
+    trainerEdit(kRedoMoney, "REDO");
+    require(ui.openReviewFromBrowse(ws) && G::Gen5SharedScreenState::reviewRowCount(ws) == 7,
+            T + "redo: Review lists 4 PK5 + 1 Bag + 2 Trainer");
     require(ui.requestExport(ws) && ui.surface() == Surface::ConfirmExport, T + "redo: Export confirmation");
     // Exactly the production ConfirmExport (Y) path.
     Bytes observed, observedFile;
@@ -564,8 +592,10 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
         require(sameSpan(reopened->boxPokemon(0, 1)->originalEncryptedBytes(), save->boxPokemon(0, 1)->originalEncryptedBytes()) &&
                 reopened->boxPokemon(0, 4)->empty() && reopened->boxPokemon(1, 0)->empty(),
                 T + "export has no discarded change (no Clone/Move residue)");
-        require(G::decodeTrainer5(*reopened) && G::decodeTrainer5(*reopened)->money == 1000,
-                T + "export trainer unchanged");
+        const auto exportedTrainer = G::decodeTrainer5(*reopened);
+        require(exportedTrainer && exportedTrainer->money == kRedoMoney &&
+                G::asciiTrainerName5(exportedTrainer->rawName) == std::string("REDO"),
+                T + "export has the redone Trainer Name REDO and Money (not the discarded ones)");
         require(std::equal(edited.begin() + static_cast<std::ptrdiff_t>(otherBase),
                            edited.begin() + static_cast<std::ptrdiff_t>(otherBase + copySize),
                            sourceBefore.begin() + static_cast<std::ptrdiff_t>(otherBase)),
