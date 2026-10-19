@@ -263,6 +263,38 @@ void testReturnSelection() {
     assert(!parseGameLaunchReturnSelection(hugeIndex, selection.savedAt, parsed));
 }
 
+void testRetroArchSaveCoreEvidence() {
+    using namespace UI;
+    auto core = [](std::string_view game, std::string_view path) {
+        return retroArchSaveCoreEvidence(game, path).core;
+    };
+    // RetroArch per-core folders (library_name), case-insensitive, with or without a content
+    // sub-folder in front (sort by content directory + sort by core).
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.sav") == RetroArchSaveCore::MelonDS);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/nds/MELONDS/Pokemon Platinum.sav") == RetroArchSaveCore::MelonDS);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/DeSmuME/Pokemon Platinum.dsv") == RetroArchSaveCore::DeSmuME);
+    assert(core("crystal_gbc", "sdmc:/retroarch/saves/Gambatte/Pokemon Crystal.srm") == RetroArchSaveCore::Gambatte);
+    assert(core("emerald_gba", "sdmc:/retroarch/saves/mGBA/Pokemon Emerald.srm") == RetroArchSaveCore::MGBA);
+    assert(core("red_gb", "C:\\saves\\mGBA\\Pokemon Red.srm") == RetroArchSaveCore::MGBA);
+    // File naming when saves are not sorted by core.
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/Pokemon Platinum.dsv") == RetroArchSaveCore::DeSmuME);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/Pokemon Platinum.sav") == RetroArchSaveCore::MelonDS);
+    // No evidence: the game-ID default stays in charge.
+    assert(core("emerald_gba", "sdmc:/retroarch/saves/Pokemon Emerald.srm") == RetroArchSaveCore::Unknown);
+    assert(core("platinum_nds", "Pokemon Platinum.sav") == RetroArchSaveCore::Unknown);
+    assert(core("platinum_nds", "") == RetroArchSaveCore::Unknown);
+    // Contradictions and impossible cores are ambiguous, never a guess.
+    auto ambiguous = retroArchSaveCoreEvidence("platinum_nds", "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.dsv");
+    assert(ambiguous.core == RetroArchSaveCore::Ambiguous && !ambiguous.reason.empty());
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/Gambatte/Pokemon Platinum.sav") == RetroArchSaveCore::Ambiguous);
+    assert(core("emerald_gba", "sdmc:/retroarch/saves/Gambatte/Pokemon Emerald.srm") == RetroArchSaveCore::Ambiguous);
+    assert(core("platinum_nds", "sdmc:/retroarch/saves/melonDS DS/Pokemon Platinum.sav") == RetroArchSaveCore::Ambiguous);
+    // Core NRO names match the libretro libnx builds PokeBank already launches.
+    assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::MelonDS)) == "melonds_libretro_libnx.nro");
+    assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::DeSmuME)) == "desmume_libretro_libnx.nro");
+    assert(std::string(retroArchSaveCoreNroName(RetroArchSaveCore::Ambiguous)).empty());
+}
+
 } // namespace
 
 int main() {
@@ -270,6 +302,7 @@ int main() {
     testReturnHostPolicy();
     testChainPlans();
     testReturnSelection();
+    testRetroArchSaveCoreEvidence();
 
     assert(normalizedLaunchStem("sdmc:/retroarch/cores/savefiles/Pokemon Yellow.srm") == "pokemonyellow");
     assert(normalizedLaunchStem("/roms/gba/Pokemon - Emerald Version (USA).gba") ==
