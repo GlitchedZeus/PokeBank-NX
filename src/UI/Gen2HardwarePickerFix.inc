@@ -97,9 +97,7 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
             screen.touchButtons, 2100 + i, x + 24, yy,
             panelW - 48, kHardwareMovePickerLayout.highlightHeight,
             x + 24, viewportTop, panelW - 48, viewportH);
-        if (selected)
-            fb.drawSelectionHighlight(x + 24, yy, panelW - 48,
-                                      kHardwareMovePickerLayout.highlightHeight);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, yy, panelW - 48, kHardwareMovePickerLayout.highlightHeight), {selected});  // R2-BUG-012 boxed row
         UI::SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, move, Enums::GameVersion::GSC, selected);
     }
     fb.clearClip();
