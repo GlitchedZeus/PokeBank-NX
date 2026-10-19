@@ -3,7 +3,9 @@
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Names/MoveInfo.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 
 #include <algorithm>
@@ -122,7 +124,19 @@ struct Session {
             requestedAbilityNumber.reset();
         if (species != 201) requestedForm.reset();
         normalizeRequests();
-        return setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species));
+        if (!setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species))) return false;
+        // R2-BUG-004: the new species' native default moveset at the new level for this exact
+        // game (pret pokeruby / pokeemerald / pokefirered GiveMonInitialMoveset; FireRed and
+        // LeafGreen differ), base PP, no PP Ups. The editing game comes from the source id; a
+        // draft with none uses its own origin game. No game: the slots are cleared.
+        const uint8_t version = sourceGameId == "sapphire_gba" ? 1 : sourceGameId == "ruby_gba" ? 2
+                              : sourceGameId == "emerald_gba" ? 3 : sourceGameId == "firered_gba" ? 4
+                              : sourceGameId == "leafgreen_gba" ? 5 : working.originGame;
+        SpeciesChangeMoves::refreshArrays(::PokeBank::Moves::levelUpTableForGen3Version(version),
+            species, 0, working.level,
+            [](uint16_t move) { return ::Names::getMoveBasePP(move, ::Enums::GameVersion::FRLG); },
+            working.moves, working.pp, working.ppUps);
+        return true;
     }
 
     // Trainer ID is part of the Gen III shiny check. Changing it alone must not silently flip

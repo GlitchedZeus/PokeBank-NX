@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate src/Pokemon/LevelUpLearnsets15Data.inc: native level-up learnsets for the
+"""Generate include/Pokemon/LevelUpLearnsets15Data.inc: native level-up learnsets for the
 20 Generation I-V games, as used by SpeciesMoveDefaults (R2-BUG-004).
 
 This is a data-generation tool, not a build step. The generated .inc is committed so
@@ -39,7 +39,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from pkhex_source import pkhex_path, _REF as PKHEX_REF  # noqa: E402
 
-OUT = ROOT / "src" / "Pokemon" / "LevelUpLearnsets15Data.inc"
+OUT = ROOT / "include" / "Pokemon" / "LevelUpLearnsets15Data.inc"
 PRET_CACHE = ROOT / "tools" / ".pret_cache"
 
 PRET = {

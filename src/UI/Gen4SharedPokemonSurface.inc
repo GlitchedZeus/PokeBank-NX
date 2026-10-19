@@ -38,6 +38,7 @@
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "SharedPokemonEditorSurface.inc"
@@ -745,9 +746,24 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
     bool ok = false;
     if (target == PickerTarget::Species) {
         const auto before = state.session.working->encryptedBytes();
+        const uint16_t previousSpecies = state.session.working->species();
         ok = state.session.working->setSpecies(value);
         if (ok && state.session.working->shiny() != state.speciesPreviewShiny)
             ok = state.session.working->setShiny(state.speciesPreviewShiny);
+        if (ok && value != previousSpecies) {
+            // R2-BUG-004: the new species' native default moveset at its level for this game's
+            // DP / Pt / HGSS table (PKHeX lvlmove_*), base PP, no PP Ups (setMove writes both).
+            const auto group = bridge(screen).sourceSave().rawFamily();
+            const auto table = group == Enums::GameVersion::DP ? PokeBank::Moves::LevelUpTable15::DiamondPearl
+                             : group == Enums::GameVersion::PT ? PokeBank::Moves::LevelUpTable15::Platinum
+                             : group == Enums::GameVersion::HGSS ? PokeBank::Moves::LevelUpTable15::HeartGoldSoulSilver
+                             : PokeBank::Moves::LevelUpTable15::Count;
+            const auto slots = PokeBank::UIModel::SpeciesChangeMoves::forSpecies(
+                table, value, state.session.working->form(), state.session.working->level(),
+                [group](uint16_t move) { return Names::getMoveBasePP(move, group); });
+            for (size_t slot = 0; ok && slot < 4; ++slot)
+                ok = state.session.working->setMove(slot, slots.moves[slot]);
+        }
         if (!ok) {
             auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(
                 before, bridge(screen).sourceSave().rawFamily());
