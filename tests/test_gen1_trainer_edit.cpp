@@ -6,6 +6,7 @@
 #include "Integration/Gen1/Gen1ExportTransaction.h"
 #include "Integration/Gen1/Gen1StagedTrainerEditor.h"
 #include "UI/ClassicTrainerSession.h"
+#include "UI/InventoryUIContract.h"
 
 #include <cassert>
 #include <array>
@@ -189,7 +190,39 @@ void trainerPage() {
     static_assert(std::string_view(T::trainerPageInstructions(true)).find("A: Edit") != std::string_view::npos);
     static_assert(std::string_view(T::trainerPageInstructions(false)).find("A: Edit") == std::string_view::npos);
     const auto base = readText("src/UI/TrainerViewScreenBase.inc");
-    assert(base.find("ClassicTrainerSession::trainerPageInstructions(") != std::string::npos);
+    assert(base.find("TrainerSession::focusedRowEditable(TrainerSession::trainerNameEditable(trainer, sourceGameId),") != std::string::npos);
+
+    // R2-BUG-001: on hardware the Gen I Trainer page showed no "A: Edit". An emulator Gen I source
+    // is read-only (RetroArch legacy), so the generic read-only footer override replaced the page's
+    // footer on the same frame. The final footer rule now keeps an editable Trainer page's footer.
+    const auto overrideFor = [](bool trainerPage, bool editable) {
+        return PokeBank::UIModel::useReadOnlyInventoryFooterOverride(
+            T::readOnlyForFooterOverride(/*sourceReadOnly*/ true, trainerPage, editable),
+            /*detailsActive*/ false, /*settings*/ false, /*stagedInventory*/ false);
+    };
+    // The condition that hid the Gen I footer, before the fix:
+    assert(PokeBank::UIModel::useReadOnlyInventoryFooterOverride(true, false, false, false));
+    assert(!overrideFor(/*trainerPage*/ true, /*editable*/ true));   // editable Trainer page keeps A: Edit
+    assert(overrideFor(/*trainerPage*/ true, /*editable*/ false));   // read-only Trainer page: no A
+    assert(overrideFor(/*trainerPage*/ false, /*editable*/ true));   // other read-only pages unchanged
+    // ...and the base routes the override through that rule.
+    assert(base.find("ClassicTrainerSession::readOnlyForFooterOverride(") != std::string::npos);
+    assert(base.find("sourceReadOnly(), detailViewActive && selectedMode == ViewMode::Trainer,") != std::string::npos);
+    // A: Edit for the FOCUSED row only: Money always on an editable page; Name only when the
+    // save's name can be staged (international Gen I yes, Japanese Gen I no).
+    for (auto game : {SourceGame::Red, SourceGame::Yellow}) {
+        std::string error;
+        auto intl = parse(international(game), game);
+        auto jp = parse(japanese(game), game);
+        assert(intl && jp);
+        auto intlEditor = StagedTrainerEditor::create(*intl.save, error);
+        auto jpEditor = StagedTrainerEditor::create(*jp.save, error);
+        assert(intlEditor && jpEditor);
+        assert(T::focusedRowEditable(intlEditor->nameEditable(), 0));
+        assert(T::focusedRowEditable(intlEditor->nameEditable(), 1));
+        assert(!T::focusedRowEditable(jpEditor->nameEditable(), 0));
+        assert(T::focusedRowEditable(jpEditor->nameEditable(), 1));
+    }
     assert(base.find("instructions = \"Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App\";") == std::string::npos);
     // Gen I and Gen II stage through the one shared Trainer session flow.
     const auto gen1 = readText("src/UI/Gen1PokemonEditorOverlayFoundation.inc");

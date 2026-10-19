@@ -207,6 +207,26 @@ $(GEN5_TRAINER_SANITIZE): $(GEN5_TRAINER_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_TRAINER_SOURCES) -o $@
 
+# R2-BUG-001 parity: the Gen V Trainer page footer follows the Gen I-IV rules (A: Edit only on an
+# editable focused row, never on a new-game save; B Back; no read-only override).
+GEN5_TRAINER_FOOTER_TEST := $(HOST_BUILD)/test_gen5_trainer_footer
+GEN5_TRAINER_FOOTER_SANITIZE := $(HOST_BUILD)/test_gen5_trainer_footer_sanitize
+GEN5_TRAINER_FOOTER_INPUTS := tests/test_gen5_trainer_footer.cpp include/Integration/Gen5/Gen5TrainerScreen.h \
+    include/Integration/Gen5/Gen5Trainer.h src/UI/Gen5SharedReadOnlySurface.inc
+
+HOST_TESTS += $(GEN5_TRAINER_FOOTER_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_TRAINER_FOOTER_SANITIZE)
+host-test: $(GEN5_TRAINER_FOOTER_TEST)
+host-sanitize: $(GEN5_TRAINER_FOOTER_SANITIZE)
+
+$(GEN5_TRAINER_FOOTER_TEST): $(GEN5_TRAINER_FOOTER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_trainer_footer.cpp -o $@
+
+$(GEN5_TRAINER_FOOTER_SANITIZE): $(GEN5_TRAINER_FOOTER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_trainer_footer.cpp -o $@
+
 # Gen V end-to-end source flow: copy choice -> assign -> reopen -> stage ->
 # verified working-copy export; source immutable, stale source refused.
 GEN5_E2E_TEST := $(HOST_BUILD)/test_gen5_source_e2e

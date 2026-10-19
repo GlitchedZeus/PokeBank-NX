@@ -237,7 +237,7 @@ $(HOST_BUILD)/test_crystal_met_time_inline_sanitize: $(CRYSTAL_MET_TIME_SOURCES)
 GEN1_TRAINER_EDIT_SOURCES := tests/test_gen1_trainer_edit.cpp $(GEN1_POKEMON_COMMON) \
 	src/Integration/Gen1/Gen1ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
 	src/Integration/Gen1/Gen1PackedMove.cpp src/Utils/SHA256.cpp
-GEN1_TRAINER_EDIT_DEPS := include/Integration/Gen1/Gen1StagedTrainerEditor.h include/UI/ClassicTrainerSession.h include/UI/ClassicTrainerEditability.h \
+GEN1_TRAINER_EDIT_DEPS := include/Integration/Gen1/Gen1StagedTrainerEditor.h include/UI/ClassicTrainerSession.h include/UI/ClassicTrainerEditability.h include/UI/InventoryUIContract.h \
 	include/Integration/Gen1/Gen1ExportTransaction.h src/UI/TrainerViewScreenBase.inc \
 	src/UI/Gen1PokemonEditorOverlayFoundation.inc src/UI/Gen2TrainerSessionOverlay.inc src/UI/Gen1PokemonEditorOverlayUX.inc
 HOST_TESTS += $(HOST_BUILD)/test_gen1_trainer_edit
@@ -294,3 +294,17 @@ $(HOST_BUILD)/test_gen3_trainer_edit: $(GEN3_TRAINER_EDIT_SOURCES) $(GEN3_TRAINE
 $(HOST_BUILD)/test_gen3_trainer_edit_sanitize: $(GEN3_TRAINER_EDIT_SOURCES) $(GEN3_TRAINER_EDIT_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN3_TRAINER_EDIT_SOURCES) -o $@
+
+# R2-BUG-008: Gen III Met Location picker keeps a stored origin the encounter templates do not cover.
+GEN3_ENCOUNTER_KEEP_DEPS := include/UI/Gen3EncounterPickerModel.h include/Integration/Encounter/EncounterGuardrails.h \
+	include/Integration/Encounter/EncounterGuardrailsData.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen3_encounter_keep_stored
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_encounter_keep_stored_sanitize
+host-test: $(HOST_BUILD)/test_gen3_encounter_keep_stored
+host-sanitize: $(HOST_BUILD)/test_gen3_encounter_keep_stored_sanitize
+$(HOST_BUILD)/test_gen3_encounter_keep_stored: tests/test_gen3_encounter_keep_stored.cpp $(GEN3_ENCOUNTER_KEEP_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_encounter_keep_stored.cpp -o $@
+$(HOST_BUILD)/test_gen3_encounter_keep_stored_sanitize: tests/test_gen3_encounter_keep_stored.cpp $(GEN3_ENCOUNTER_KEEP_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_encounter_keep_stored.cpp -o $@

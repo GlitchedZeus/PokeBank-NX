@@ -543,6 +543,12 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
 
 // One encounter choice as {place, "method · level [· origin species]"} for the picker row.
 std::pair<std::string, std::string> metLocationChoiceText(const State& state, uint16_t value) {
+    const auto& stored = state.session.working;
+    if (value == EncounterPicker::kKeepStoredRow) {
+        // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
+        return {"Keep stored: " + Names::getMetLocationDisplayName(stored.originGame, stored.metLocation),
+                "Met Lv. " + std::to_string(stored.metLevel) + " \xE2\x80\xA2 as stored"};
+    }
     const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
     if (!selected) return {"Unknown location", {}};
     const auto& encounter = selected->encounter;
@@ -556,6 +562,9 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
         if (selected->minimumEvolutionLevel != 0)
             detail += " (evolves Lv. " + std::to_string(selected->minimumEvolutionLevel) + ")";
     }
+    // R2-BUG-008: never read as this record's acquisition when the stored met level is outside it.
+    if (!EncounterPicker::matchesStoredMetLevel(encounter, stored.metLevel))
+        detail += " \xE2\x80\xA2 not stored Met Lv. " + std::to_string(stored.metLevel);
     return {std::move(place), std::move(detail)};
 }
 
@@ -658,9 +667,12 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
             screen.postStatus("No supported exact-game encounter templates for this Pokemon", 300);
             return;
         }
-        state.pickerValues = EncounterPicker::rowValues(state.encounterChoices.size());
-        state.pickerRow = EncounterPicker::selectedRow(
-            state.encounterChoices, state.session.working.metLocation, state.session.working.metLevel);
+        // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
+        state.pickerValues = EncounterPicker::rowValuesWithStored(
+            state.encounterChoices, state.session.working.metLocation);
+        state.pickerRow = EncounterPicker::selectedRowWithStored(
+            state.encounterChoices, state.pickerValues, state.session.working.metLocation,
+            state.session.working.metLevel);
         state.valuePicker = true;
         screen.controllerNavigation.reset();
         return;

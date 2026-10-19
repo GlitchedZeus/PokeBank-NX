@@ -29,13 +29,8 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     "CG19-species-change-resets-moves": "R (R2-BUG-004 SpeciesMoveDefaults)",
     "CG22-move-chooser-type-badges": "P (R2-BUG-007)",
-    "CG24-gen34-trainer-staged-export": "C (R2-BUG-002)",
-    "CG20-shared-boxed-modal-rows": "S (R2-BUG-012)",
-    "CG20b-shared-boxed-modal-rows-gen12-classic": "S (R2-BUG-012 batch 2)",
     "CG20c-shared-boxed-species-picker": "P (R2-BUG-012 species picker)",
     "CG23-bag-add-grid-picker": "P (R2-BUG-006)",
-    "CG25-gen5-machine-and-feather-art": "I (Part 9 report 6)",
-    "CG27-retroarch-nds-core-follows-provider": "L (Part 9 report 4)",
     "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
@@ -830,6 +825,17 @@ def contracts(sources: list[Source]) -> list[Result]:
         f = src(rel)
         return [b for _, _, b in function_bodies(f.code, re.compile("^" + name + "$"))] if f else []
 
+    # Coordinator ruling (round 3): an editor's FIELD focus on its own work surface stays unboxed; only
+    # interactive modal rows use SharedBoxedRows. Exempt exactly these Gen I/II field-focus painters (lane S
+    # list, checked against 7ed1cc16); any other drawSelectionHighlight in the files still fails.
+    FIELD_FOCUS_EXEMPT = {
+        "src/UI/Gen1PokemonEditorOverlayFoundation.inc": ("foundationDrawIdentityRow", "foundationDrawWorkspace"),
+        "src/UI/Gen1PokemonEditorOverlayUX.inc": ("drawRow",),
+        "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc": ("ux2DrawLogicalRow",),
+        "src/UI/Gen2SharedPokemonSurface.inc": ("drawSharedDetails", "drawSharedMoves"),
+    }
+    # Files with no modal rows at all (Foundation's only modal, the exit confirm, is drawGlyphButton choices).
+    NO_MODAL_ROWS = {"src/UI/Gen1PokemonEditorOverlayFoundation.inc"}
     # R2-BUG-012 (lane S): one shared boxed-row style for every focused modal row / cell.
     boxed_api = r"\bSharedBoxedRows::(?:drawBox|drawRow|drawGlyphChoices)\s*\(|\bdrawMenuCell\s*\("
     for cid, title, files in (
@@ -860,10 +866,15 @@ def contracts(sources: list[Source]) -> list[Result]:
             f = src(rel)
             if not f:
                 continue  # removed / renamed files are CG11's concern
+            spans = [(n, ln, ln + b.count("\n")) for n, ln, b in function_bodies(f.code, re.compile(r"."))]
+            exempt = FIELD_FOCUS_EXEMPT.get(rel, ())
             for i, line in enumerate(f.code.splitlines(), 1):
                 if re.search(r"\bdrawSelectionHighlight\s*\(", line):
+                    inner = [n for n, a, b in spans if a <= i <= b]
+                    if inner and inner[-1] in exempt:
+                        continue  # the editor's own field focus, not a modal row
                     r.violations.append(f"{rel}:{i}: drawSelectionHighlight() instead of SharedBoxedRows")
-            if not re.search(boxed_api, f.code):
+            if rel not in NO_MODAL_ROWS and not re.search(boxed_api, f.code):
                 r.violations.append(f"{rel}: no SharedBoxedRows::drawBox / drawRow / drawMenuCell call")
         res.append(r)
 
@@ -940,18 +951,48 @@ def contracts(sources: list[Source]) -> list[Result]:
                                 "sourceProviderLabel / RETROARCH / EXTERNAL through")
     res.append(r)
 
-    # Part 9 report 4 (lane L): the RetroArch core follows the save's emulator.
-    r = Result("CG27-retroarch-nds-core-follows-provider",
-               "The RetroArch NDS core is chosen from the save's provider (melonDS saves launch melonDS), not a fixed "
-               "DeSmuME-first order (Part 9 report 4)")
-    body = bodies("src/UI/GameLauncher.cpp", "defaultRetroArchCore")
+    # Part 9 report 4 (lane L): the RetroArch core follows the save's own evidence. Lane L's fix:
+    # retroArchCoreForSave(gameId, sourcePath) reads the save's evidence and falls back to the old
+    # game-id default only when there is none; both launch paths take their core from it.
+    r = Result("CG27-retroarch-core-from-save-evidence",
+               "Every RetroArch launch path takes its core from retroArchCoreForSave(gameId, sourcePath); the "
+               "game-id default (defaultRetroArchCore) is only its no-evidence fallback, the descriptor's "
+               "empty-core fallback, or link-time validation (Part 9 report 4)")
     gl = src("src/UI/GameLauncher.cpp")
-    sig = re.search(r"defaultRetroArchCore\s*\(([^)]*)\)\s*\{", gl.code) if gl else None
-    if not body or not sig:
-        r.violations.append("src/UI/GameLauncher.cpp: defaultRetroArchCore() missing")
-    elif not re.search(r"provider|core|source", sig.group(1), re.I):
-        r.violations.append("src/UI/GameLauncher.cpp: defaultRetroArchCore(" + sig.group(1).strip() +
-                            ") cannot see the provider; NDS saves always prefer desmume_libretro")
+    fns = {}
+    for name, ln, body in (function_bodies(gl.code, re.compile(r".")) if gl else []):
+        fns.setdefault(name, []).append((ln, body))
+    sig = re.search(r"\bretroArchCoreForSave\s*\(([^)]*)\)\s*\{", gl.code) if gl else None
+    if not sig:
+        r.violations.append("src/UI/GameLauncher.cpp: retroArchCoreForSave() is not defined")
+    elif not re.search(r"\bsourcePath\b", sig.group(1)):
+        r.violations.append("src/UI/GameLauncher.cpp: retroArchCoreForSave(" + sig.group(1).strip() +
+                            ") does not take the save's path")
+    for launch in ("descriptorFromStored", "resolveRetroArch"):
+        bodies_ = fns.get(launch, [])
+        if not bodies_:
+            r.violations.append(f"src/UI/GameLauncher.cpp: RetroArch launch path {launch}() missing")
+        for ln, body in bodies_:
+            if not re.search(r"\bretroArchCoreForSave\s*\(", body):
+                r.violations.append(f"src/UI/GameLauncher.cpp:{ln}: {launch}() does not take its core from "
+                                    "retroArchCoreForSave()")
+    allowed = {
+        "retroArchCoreForSave": None,                     # its own no-evidence / ambiguous fallback
+        "saveGameLaunchBinding": None,                    # link-time validation that a core is installed
+        # descriptor builder: only when the caller passed no core
+        "directDescriptor": re.compile(r"\.empty\(\)\s*\?\s*defaultRetroArchCore\s*\("),
+    }
+    for name, entries in fns.items():
+        for ln, body in entries:
+            calls = len(re.findall(r"\bdefaultRetroArchCore\s*\(", body))
+            if not calls or name == "defaultRetroArchCore":
+                continue
+            if name not in allowed:
+                r.violations.append(f"src/UI/GameLauncher.cpp:{ln}: {name}() picks the core from the game id "
+                                    "(defaultRetroArchCore) instead of the save's evidence")
+            elif allowed[name] is not None and len(allowed[name].findall(body)) != calls:
+                r.violations.append(f"src/UI/GameLauncher.cpp:{ln}: {name}() calls defaultRetroArchCore() outside "
+                                    "its empty-core fallback")
     res.append(r)
 
     # Part 9 report 9 (2R): re-confirming the current profile keeps the focused game.

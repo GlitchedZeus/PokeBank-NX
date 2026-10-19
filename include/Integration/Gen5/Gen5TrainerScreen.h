@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -177,6 +178,17 @@ public:
         if (editable(selectedRow()))
             return {{"D-pad/Stick", "Choose"}, {"A", "Edit"}, {"+", "Review"}, {"B", "Back"}};
         return {{"D-pad/Stick", "Choose"}, {"+", "Review"}, {"B", "Back"}};
+    }
+    // R2-BUG-001 parity (Gen I-IV Trainer footer, Lane C cccec27b): "A: Edit" appears only
+    // when the FOCUSED row can really be edited in this session. A new-game save has no
+    // trainer to edit yet (beginEdit refuses), so it never advertises A there. The page
+    // always draws this footer itself; no read-only override replaces it.
+    [[nodiscard]] std::vector<FooterEntry> footer(const Workspace& ws) const {
+        auto entries = footer();
+        const auto t = ws.trainerPresentation();
+        if (open_ && !dex_.open() && editable(selectedRow()) && (!t || newGame(*t)))
+            std::erase_if(entries, [](const FooterEntry& e) { return std::string_view(e.glyph) == "A"; });
+        return entries;
     }
 
     template <class Refresh>

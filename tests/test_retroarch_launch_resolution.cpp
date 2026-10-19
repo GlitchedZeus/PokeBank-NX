@@ -257,6 +257,42 @@ int main() {
     d = resolveGameLaunch(0, "red_gb", "retroarch", "sdmc:/retroarch/saves/Pokemon Red.srm", "");
     assert(d.state == GameLaunchState::Ready && d.corePath == gambatte && d.launchNotice.empty());
 
+    // Link-time core check (saveGameLaunchBinding) accepts whichever compatible core is installed:
+    // defaultRetroArchCore() returns the first core that exists, so a melonDS-only install is
+    // never refused, and the launch then uses the save's evidence.
+    ndsFixture();
+    fs::remove(desmume);
+    {
+        std::string bindError;
+        assert(saveGameLaunchBinding("profile|platinum_nds|only-melonds", "platinum_nds", "retroarch",
+                                     "sdmc:/roms/nds/Pokemon Platinum.nds", bindError));
+        d = resolveGameLaunch(0, "platinum_nds", "retroarch",
+                              "sdmc:/retroarch/saves/melonDS/Pokemon Platinum.sav",
+                              "profile|platinum_nds|only-melonds");
+        assert(d.state == GameLaunchState::Ready && d.corePath == melonds);
+        d = resolveGameLaunch(0, "platinum_nds", "retroarch",
+                              "sdmc:/retroarch/saves/Pokemon Platinum.srm",
+                              "profile|platinum_nds|only-melonds");
+        assert(d.state == GameLaunchState::Ready && d.corePath == melonds);
+        // No compatible core at all is still refused at link time.
+        fs::remove(melonds);
+        assert(!saveGameLaunchBinding("profile|platinum_nds|no-core", "platinum_nds", "retroarch",
+                                      "sdmc:/roms/nds/Pokemon Platinum.nds", bindError));
+        assert(bindError.find("No compatible RetroArch core") != std::string::npos);
+    }
+    // Game Boy with only mGBA installed links and launches with mGBA.
+    resetTree();
+    writeRom("sdmc:/roms/gb/Pokemon Red.gb", ".gb", "POKEMON RED");
+    {
+        std::string bindError;
+        assert(!fs::exists(gambatte));
+        assert(saveGameLaunchBinding("profile|red_gb|only-mgba", "red_gb", "retroarch",
+                                     "sdmc:/roms/gb/Pokemon Red.gb", bindError));
+        d = resolveGameLaunch(0, "red_gb", "retroarch", "sdmc:/retroarch/saves/Pokemon Red.srm",
+                              "profile|red_gb|only-mgba");
+        assert(d.state == GameLaunchState::Ready && d.corePath == mgba);
+    }
+
     // ---- Quit-route preview always matches the real handoff (round 3 defect 2) ----
     resetTree();
     fs::remove_all("romfs:");
