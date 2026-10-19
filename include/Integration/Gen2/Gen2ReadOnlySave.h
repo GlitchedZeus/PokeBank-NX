@@ -15,7 +15,7 @@ namespace PokeVault::Integration::Gen2 {
 constexpr std::size_t kRawSaveSize32K = 0x8000;
 constexpr std::size_t kRawSaveSize64K = 0x10000;
 
-enum class RegionLayout : uint8_t { International, Japanese };
+enum class RegionLayout : uint8_t { International, Japanese, Korean };
 enum class VersionFamily : uint8_t { GoldSilver, Crystal };
 enum class SourceGame : uint8_t { Gold, Silver, Crystal };
 enum class SaveError : uint8_t {
@@ -60,6 +60,9 @@ struct PokemonRecord {
     // cannot show: the in-game-trade marker, bytes with no glyph, Hangul page bytes.
     std::vector<uint8_t> originalTrainerRaw;
     std::vector<uint8_t> nicknameRaw;
+    // Encoding belongs to this native record, independently of the containing save.
+    // Imported/manual wrappers without it retain conservative language inference.
+    std::optional<RegionLayout> nameEncoding;
     bool partyRecord = false;
     bool isEgg = false;
     bool shiny = false;

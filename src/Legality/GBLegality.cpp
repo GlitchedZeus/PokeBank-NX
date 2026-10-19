@@ -1542,10 +1542,13 @@ bool hangulLead(const std::vector<uint8_t>& raw) {
 /// Characters in a Korean Gold/Silver name: a Hangul page byte and its index make one
 /// character, anything else one byte (StringConverter2KOR.LoadString).
 std::size_t koreanLength(const std::vector<uint8_t>& raw, bool* oneBytePage) {
-    const std::size_t end = nameEnd(raw);
     std::size_t chars = 0;
-    for (std::size_t i = 0; i < end; ++chars) {
+    for (std::size_t i = 0; i < raw.size(); ++chars) {
+        if (raw[i] == kNameTerminator || raw[i] == 0) break;
         if (raw[i] >= 1 && raw[i] <= kHangulPageMax) {
+            // Even a dangling lead occupies a name slot. Do not let a malformed
+            // sixth character evade the five-character bound (never read past it).
+            if (i + 1 == raw.size()) return chars + 1;
             i += 2;
         } else {
             if (oneBytePage)

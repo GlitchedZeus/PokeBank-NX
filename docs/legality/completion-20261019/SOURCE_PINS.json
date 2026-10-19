@@ -1,0 +1,79 @@
+{
+  "PKHeX": {
+    "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "files": {
+      "PKHeX.Core/PKM/Strings/StringConverter2KOR.cs": {
+        "sha256": "b00f556c7644ee3bd70f268ce10e28615feb22f85a9fa20f5fd1d50151adee01",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/PKM/Strings/StringConverter2KOR.cs"
+      },
+      "PKHeX.Core/Saves/Substructures/Gen3/EReaderBerrySettings.cs": {
+        "sha256": "4aef91fcc2969447320f704bbe95ab00626f72a614a71abae49b106ac3c4cbab",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Saves/Substructures/Gen3/EReaderBerrySettings.cs"
+      },
+      "PKHeX.Core/Legality/Verifiers/ItemVerifier.cs": {
+        "sha256": "bfdc452df2114f9d0face16cdac08674cc0cf56c589b9544ac807eddd06b6d2e",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Verifiers/ItemVerifier.cs"
+      },
+      "PKHeX.Core/Saves/Substructures/Gen12/SAV2Offsets.cs": {
+        "sha256": "ac9f19861aa9959bdd359b76c6c5ba46965f00f2d4563d7b00595ed324b73953",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Saves/Substructures/Gen12/SAV2Offsets.cs"
+      },
+      "PKHeX.Core/Saves/SAV2.cs": {
+        "sha256": "14fbaf8ab28ce1ea82d1a258ed62694cdc20689877d3af23f8c8f05da018f054",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Saves/SAV2.cs"
+      },
+      "PKHeX.Core/Saves/Blocks/Gen3/SaveBlock3LargeRS.cs": {
+        "sha256": "f75a662ebddecafeea8951ef87eeab79c00f923e09d3b52898e1727ea06b8b5c",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Saves/Blocks/Gen3/SaveBlock3LargeRS.cs"
+      },
+      "PKHeX.Core/Saves/Blocks/Gen3/SaveBlock3LargeE.cs": {
+        "sha256": "443298f3517777d484bb91d6518667894a4fe91e523b91f80656f54db9330905",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Saves/Blocks/Gen3/SaveBlock3LargeE.cs"
+      },
+      "PKHeX.Core/Saves/Blocks/Gen3/SaveBlock3LargeFRLG.cs": {
+        "sha256": "c6ca3a7edfd5e353ecd1aa82d2cb0487624211c470e9b207602ed236a2d9ddcf",
+        "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Saves/Blocks/Gen3/SaveBlock3LargeFRLG.cs"
+      }
+    }
+  },
+  "pokeruby": {
+    "commit": "5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f",
+    "files": {
+      "src/berry.c": {
+        "sha256": "20430f4501e04622b06d5dfae05c8e0faac5bc8d584f947255a09e645498c807",
+        "url": "https://github.com/pret/pokeruby/blob/5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f/src/berry.c"
+      }
+    }
+  },
+  "pokeemerald": {
+    "commit": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "files": {
+      "src/berry.c": {
+        "sha256": "b89d2f83737be8953575e8dadb48cf4df360a2af8333695e2c633c59b90d2292",
+        "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/berry.c"
+      }
+    }
+  },
+  "pokefirered": {
+    "commit": "037335f4c725d7c9aecdac87066f2002b4bd7e14",
+    "files": {
+      "src/berry.c": {
+        "sha256": "f6e5a34f74c12ec4a0d0b65ad1e499c5732715b1b90a655b200b04cb029b278d",
+        "url": "https://github.com/pret/pokefirered/blob/037335f4c725d7c9aecdac87066f2002b4bd7e14/src/berry.c"
+      }
+    }
+  },
+  "pokered": {
+    "commit": "af519899719f0754965776faac0e836a3b906e6d",
+    "files": {}
+  },
+  "pokecrystal": {
+    "commit": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+    "files": {
+      "maps/IlexForest.asm": {
+        "sha256": "c18d2e3db31a1cea2ac0780c1ef746f1eebff27e7eeb577e147a30022efd9f26",
+        "url": "https://github.com/pret/pokecrystal/blob/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/maps/IlexForest.asm"
+      }
+    }
+  }
+}

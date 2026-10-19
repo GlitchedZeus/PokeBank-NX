@@ -320,3 +320,16 @@ $(HOST_BUILD)/test_gen1_catch_rate_native: $(GSC_GEN1_RATE_NATIVE_SOURCES)
 $(HOST_BUILD)/test_gen1_catch_rate_native_sanitize: $(GSC_GEN1_RATE_NATIVE_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Korean read-only save/text path; existing Japanese/international staging gates unchanged.
+GSC_KOREAN_SOURCES := tests/test_gen2_korean_save.cpp $(filter-out tests/test_gsc_export_transaction.cpp src/Integration/Gen2/Gen2ExportTransaction.cpp,$(GSC_EXPORT_TRANSACTION_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen2_korean_save
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_korean_save_sanitize
+host-test: $(HOST_BUILD)/test_gen2_korean_save
+host-sanitize: $(HOST_BUILD)/test_gen2_korean_save_sanitize
+$(HOST_BUILD)/test_gen2_korean_save: $(GSC_KOREAN_SOURCES) include/Utils/Gen2KoreanTable.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_KOREAN_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_korean_save_sanitize: $(GSC_KOREAN_SOURCES) include/Utils/Gen2KoreanTable.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_KOREAN_SOURCES) -o $@

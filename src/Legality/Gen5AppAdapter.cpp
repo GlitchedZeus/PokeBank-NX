@@ -1,5 +1,6 @@
 // Gen5AppAdapter.cpp - see include/Legality/Gen5AppAdapter.h.
 #include "Legality/Gen5AppAdapter.h"
+#include "Legality/ReportPresentation.h"
 
 #include <utility>
 
@@ -13,26 +14,6 @@ uint8_t versionFromSourceGameId(std::string_view id) noexcept {
     return 0;
 }
 
-namespace {
-
-const char* levelName(CoverageLevel level) {
-    switch (level) {
-        case CoverageLevel::Complete: return "Complete";
-        case CoverageLevel::Partial: return "Partial";
-        case CoverageLevel::None: return "None";
-    }
-    return "None";
-}
-
-int countSeverity(const Report& report, Severity severity) {
-    int n = 0;
-    for (const auto& issue : report.issues)
-        if (issue.severity == severity) ++n;
-    return n;
-}
-
-} // namespace
-
 bool isEmptySlot(const Report& report) {
     // analyzePk5 returns a default Report for an all-zero or species-0 record; every other
     // path sets the source game coverage or adds an issue.
@@ -43,36 +24,17 @@ bool isEmptySlot(const Report& report) {
 
 std::string verdictLine(const Report& report) {
     if (isEmptySlot(report)) return "Empty slot.";
-    switch (report.verdict()) {
-        case Verdict::NoProblemsFound:
-            return "No problems found by complete checks.";
-        case Verdict::Invalid:
-            return "Invalid: " + std::to_string(countSeverity(report, Severity::Invalid)) + " issue(s).";
-        case Verdict::Incomplete:
-            break;
-    }
-    const int warnings = countSeverity(report, Severity::Warning);
-    if (warnings == 0) return "No problems found by the checks that ran. Coverage is incomplete.";
-    return "Checks incomplete: " + std::to_string(warnings) + " warning(s).";
+    return Presentation::headline(report);
 }
 
 std::vector<std::string> coverageLines(const Report& report) {
-    const auto& c = report.coverage;
-    const std::pair<const char*, CoverageLevel> areas[] = {
-        {"structure", c.structure}, {"source game", c.sourceGame}, {"internal", c.internal},
-        {"moves", c.moves},         {"encounter", c.encounter},    {"event/gift", c.eventGift},
-        {"PID/RNG", c.pidRng},      {"egg/breeding", c.eggBreeding}, {"transfer", c.transfer},
-    };
-    std::vector<std::string> out;
-    out.reserve(sizeof(areas) / sizeof(areas[0]));
-    for (const auto& [name, level] : areas) out.push_back(std::string(name) + ": " + levelName(level));
-    return out;
+    return Presentation::coverageRows(report);
 }
 
 std::vector<std::string> Result::lines() const {
     std::vector<std::string> out;
     out.push_back(verdictLine);
-    if (verdict == Verdict::Incomplete && issueLines.empty() && !emptySlot)
+    if (verdict == Verdict::Incomplete && !emptySlot)
         out.insert(out.end(), coverageLines.begin(), coverageLines.end());
     out.insert(out.end(), issueLines.begin(), issueLines.end());
     return out;

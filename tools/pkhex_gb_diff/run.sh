@@ -6,10 +6,12 @@
 set -euo pipefail
 pkhex=$(cd "$1" && pwd); pokered=$(cd "$2" && pwd); count=${3:-20000}; seed=${4:-1}; gen=${5:-1}
 here=$(cd "$(dirname "$0")" && pwd); repo=$(cd "$here/../.." && pwd)
-work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+# WORK retains the exact corpus and both verdict streams, including disagreements.
+if [ -n "${WORK:-}" ]; then work=$WORK; mkdir -p "$work"; else work=$(mktemp -d); trap 'rm -rf "$work"' EXIT; fi
 corpus=gen_corpus.py; [ "$gen" = 2 ] && corpus=gen_corpus2.py
 python3 -I "$here/$corpus" --pkhex "$pkhex" --pokered "$pokered" --count "$count" --seed "$seed" > "$work/corpus.txt"
-dotnet build "$here/oracle/PKHeXGBOracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" -o "$work/oracle" > "$work/build.log" \
+dotnet build "$here/oracle/PKHeXGBOracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" \
+    -p:UseArtifactsOutput=true -p:ArtifactsPath="$work/artifacts" -o "$work/oracle" > "$work/build.log" \
     || { cat "$work/build.log"; exit 1; }
 dotnet "$work/oracle/PKHeXGBOracle.dll" < "$work/corpus.txt" > "$work/pkhex.txt"
 python3 -I "$here/gb_text.py" korean-table "$pkhex" > "$work/gb_korean_table.inc"

@@ -269,6 +269,10 @@ void koreanPk1() {
     r = GB::checkGen1(longName);
     check(r.status == GB::Status::Illegal && has(r.problems, "longer than 5", true),
           "Korean-named PK1 with a six-character trainer name: Illegal");
+    longName.otRaw = {0x01, 0x50, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x80};
+    r = GB::checkGen1(longName);
+    check(r.status == GB::Status::Illegal && has(r.problems, "longer than 5", true),
+          "Korean page index 0x50 must not hide an overlong trainer name");
     // A Japanese record's first byte is kana, never a Hangul page.
     GB::Entity1 jp = rattata("ガ", "モン", false);
     jp.language = GB::Language::Japanese;

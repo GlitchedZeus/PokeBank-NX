@@ -30,11 +30,12 @@ set -euo pipefail
 pkhex=$(cd "$1" && pwd); seed=${2:-1}; mutations=${3:-4}
 here=$(cd "$(dirname "$0")" && pwd); repo=$(cd "$here/../.." && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
-dotnet build "$here/oracle/PKHeXGen5Oracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" -o "$work/oracle" > "$work/build.log" || { cat "$work/build.log"; exit 1; }
+dotnet build "$here/oracle/PKHeXGen5Oracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" \
+    -p:UseArtifactsOutput=true -p:ArtifactsPath="$work/artifacts" -o "$work/oracle" > "$work/build.log" || { cat "$work/build.log"; exit 1; }
 if [ -n "${GEN5_DIFF_CORPUS:-}" ]; then
     cp "$GEN5_DIFF_CORPUS" "$work/pkhex.txt"
 else
-    dotnet "$work/oracle/PKHeXGen5Oracle.dll" generate "$seed" "$mutations" > "$work/pkhex.txt"
+    dotnet "$work/oracle/PKHeXGen5Oracle.dll" generate "$seed" "$mutations" > "$work/pkhex.txt" 2> "$work/generation-audit.jsonl"
 fi
 # Gen III/IV-origin records are checked by the Gen IV analyzer's origin analysis
 # (Gen4::analyzeOrigin5), so its sources are part of the Gen V analyzer.
@@ -67,6 +68,7 @@ paste -d'\t' "$work/pkhex.txt" "$work/pokebank.txt" > "$work/joined.txt"
 if [ -n "${GEN5_DIFF_KEEP:-}" ]; then
     mkdir -p "$GEN5_DIFF_KEEP"
     cp "$work/pkhex.txt" "$work/pokebank.txt" "$work/joined.txt" "$GEN5_DIFF_KEEP/"
+    if [ -f "$work/generation-audit.jsonl" ]; then cp "$work/generation-audit.jsonl" "$GEN5_DIFF_KEEP/"; fi
 fi
 echo "seed $seed, $mutations mutations per record: PKHeX verdict / PokeBank NX verdict"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[1]!=b[1]) {print "id mismatch " a[1]; exit 1} c[a[3]"/"b[2]]++}

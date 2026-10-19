@@ -5,7 +5,7 @@
 // Pokemon1ReadOnly/Pokemon2ReadOnly and calls Legality::analyze. This driver runs the same
 // corpus through that production path and compares its verdict with the origin search's:
 //   Legal -> No problems found, Illegal -> Invalid, Uncertain -> Incomplete.
-// Korean PK2 records are skipped (PokeBank NX does not read Korean saves). The app tells
+// Korean PK2 records use the production decoder and are never skipped. The app tells
 // Japanese from international records by their decoded names; when the names show neither,
 // the language is unknown and the search accepts both, so a production verdict that is
 // only more lenient than the search is counted, not failed.
@@ -55,7 +55,7 @@ const char* word(Legality::Verdict v) {
 bool namesShowLanguage(const std::string& ot, const std::string& nick) {
     for (const std::string* s : {&ot, &nick})
         for (unsigned char c : *s)
-            if (c == 0xE3 || (c >= 'A' && c <= 'Z'))
+            if (c == 0xE3 || c == 0xEA || c == 0xEB || c == 0xEC || c == 0xED || (c >= 'A' && c <= 'Z'))
                 return true;
     return false;
 }
@@ -63,7 +63,7 @@ bool namesShowLanguage(const std::string& ot, const std::string& nick) {
 
 int main() {
     std::map<std::string, std::size_t> table;
-    std::size_t total = 0, skippedKorean = 0, lenientUnknownLanguage = 0, failures = 0, needsRawNames = 0;
+    std::size_t total = 0, koreanCompared = 0, lenientUnknownLanguage = 0, failures = 0, needsRawNames = 0;
     std::string line;
     while (std::getline(std::cin, line)) {
         std::istringstream in(line);
@@ -83,10 +83,8 @@ int main() {
         Legality::Report report;
         std::string otName, nickname;
         if (body.size() == 48) {
-            if (!japanese && !ot.empty() && ot[0] <= 11) {
-                ++skippedKorean;
-                continue;
-            }
+            const bool korean = !japanese && !ot.empty() && ot[0] <= 11;
+            if (korean) ++koreanCompared;
             const bool egg = eggFlag == "1";
             // The save parsers keep the stored name bytes (Gen2ReadOnlySave.cpp parsePokemon),
             // so production is held to the search with the byte rules; the records whose
@@ -94,7 +92,8 @@ int main() {
             search = checkPk2(body, ot, nick, japanese, egg, true).status;
             if (checkPk2(body, ot, nick, japanese, egg, false).status != search)
                 ++needsRawNames;
-            const auto region = japanese ? Gen2::RegionLayout::Japanese : Gen2::RegionLayout::International;
+            const auto region = japanese ? Gen2::RegionLayout::Japanese
+                : korean ? Gen2::RegionLayout::Korean : Gen2::RegionLayout::International;
             // Field for field what Gen2ReadOnlySave.cpp parsePokemon stores.
             Gen2::PokemonRecord rec;
             rec.species = body[0];
@@ -119,6 +118,7 @@ int main() {
             rec.caughtData = static_cast<uint16_t>((body[29] << 8) | body[30]);
             rec.level = body[31];
             rec.isEgg = egg;
+            rec.nameEncoding = region;
             rec.originalTrainer = Gen2::decodeGen2String(ot, region);
             rec.nickname = Gen2::decodeGen2String(nick, region);
             rec.originalTrainerRaw = ot;
@@ -220,7 +220,7 @@ int main() {
         }
     }
     std::cout << "production parity: " << total << " records through Legality::analyze, "
-              << skippedKorean << " Korean skipped, " << lenientUnknownLanguage
+              << koreanCompared << " Korean compared (zero skipped), " << lenientUnknownLanguage
               << " lenient because the names hide the language, " << needsRawNames
               << " whose verdict depends on the stored name bytes (passed to production as the parsers keep them)\n";
     for (const auto& [k, v] : table)

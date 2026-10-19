@@ -1040,9 +1040,15 @@ namespace Legality {
                 e.friendship = rec.friendship;
                 e.caughtData = rec.caughtData;
                 e.tradeTrainer = rec.originalTrainer == "*";
-                // PokeBank NX reads Japanese and international Gold/Silver/Crystal saves, not
-                // Korean ones; the decoded names tell the first two apart.
+                // The strict parser carries record encoding. Do not infer Korean Hangul
+                // as unknown/Western from UTF-8, or mistake low Japanese glyph bytes for pages.
                 e.language = gen1Language(rec.originalTrainer, rec.nickname);
+                if (rec.nameEncoding == PokeVault::Integration::Gen2::RegionLayout::Japanese)
+                    e.language = GB::Language::Japanese;
+                else if (rec.nameEncoding == PokeVault::Integration::Gen2::RegionLayout::Korean ||
+                         (!rec.nameEncoding && e.language != GB::Language::Japanese &&
+                          !rec.originalTrainerRaw.empty() && rec.originalTrainerRaw[0] <= 11))
+                    e.language = GB::Language::Korean;
                 const GB::Result origin = GB::checkGen2(e);
                 if (origin.status == GB::Status::Legal) {
                     add(r, Severity::Info, "Possible origin: " + GB::describe(origin.origin),
@@ -1130,7 +1136,7 @@ namespace Legality {
         // Gen III PK3 (R/S/E/FR/LG): the PKHeX-order analyzer (Gen3Legality.cpp) runs once
         // here. The older Gen III checks below judge their own audited tables and yield to
         // it only where it certified this exact record; its findings merge at the end.
-        const Gen3Pk3::Verification gen3Verified = Gen3Pk3::verify(pk, exactSourceGameId);
+        const Gen3Pk3::Verification gen3Verified = Gen3Pk3::verify(pk, exactSourceGameId, context.gen3Berry);
         const uint16_t species = pk.speciesID();
         if (species == 0) {
             // Empty slot: nothing to validate. A PK3 whose internal species index has no

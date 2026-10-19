@@ -13,6 +13,7 @@
  *
  * The analyzer only reads its input and returns a Legality::Report.
  */
+#include "Legality/Gen3BerryContext.h"
 #include "Legality/Gen3Legality.h"
 
 #include "Legality/Gen3Cxd.h"
@@ -4248,7 +4249,7 @@ std::string describeEncounter(const Pk3& pk, const Enc& e) {
 
 bool isCertified(const Report& r) noexcept { return allCoverageComplete(r.coverage) && r.problemCount() == 0; }
 
-Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out);
+Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out, const Gen3BerryContext* berryContext);
 
 } // namespace
 
@@ -4265,7 +4266,7 @@ std::vector<uint16_t> lineage(uint16_t species) {
     return out;
 }
 
-Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
+Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGameId, const Gen3BerryContext* berryContext) {
     Verification v;
     if (pk.getGameGroup() != Enums::GameVersion::FRLG) return v;
     const size_t size = pk.getDataSize();
@@ -4281,14 +4282,14 @@ Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGame
         v.emptySlot = true;
         return v;
     }
-    v.report = analyzeDetailed(raw, exactSourceGameId, &v);
+    v.report = analyzeDetailed(raw, exactSourceGameId, &v, berryContext);
     v.certified = isCertified(v.report);
     return v;
 }
 
 namespace {
 
-Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out) {
+Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out, const Gen3BerryContext* berryContext) {
     Report r;
     setAllCoverage(r.coverage, CoverageLevel::Partial);
     auto add = [&r](Severity sev, CheckIdentifier id, std::string text) {
@@ -4334,9 +4335,18 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
         add(sev, f.id, std::move(f.text));
     }
     if (enigma) {
-        problem = true;
-        add(Severity::Warning, CheckIdentifier::Items,
-            "Enigma Berry: legality depends on the e-Reader berry stored in the original save");
+        const auto match = berryContext ? berryContext->match(exactSourceGameId) : Gen3BerryContext::Match::Unknown;
+        if (match != Gen3BerryContext::Match::Recognized) {
+            problem = true;
+            if (match == Gen3BerryContext::Match::Unknown)
+                add(Severity::Warning, CheckIdentifier::Items,
+                    "Enigma Berry: legality depends on the e-Reader berry stored in the original save");
+            else
+                add(Severity::Invalid, CheckIdentifier::Items,
+                    match == Gen3BerryContext::Match::NoData ? "Enigma Berry: validated source save has no e-Reader berry data" :
+                    match == Gen3BerryContext::Match::WrongRegion ? "Enigma Berry: source-save berry distribution does not match its language" :
+                    "Enigma Berry: source-save berry name matches no supported e-Reader distribution");
+        }
     }
     if (a.capped) {
         problem = true;
@@ -4361,8 +4371,8 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
 
 } // namespace Gen3Pk3
 
-Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
-    return Gen3Pk3::analyzeDetailed(decrypted, exactSourceGameId, nullptr);
+Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, const Gen3BerryContext* berryContext) {
+    return Gen3Pk3::analyzeDetailed(decrypted, exactSourceGameId, nullptr, berryContext);
 }
 
 void applyGen3Analyzer(Report& r, const Gen3Pk3::Verification& verified, std::string_view exactSourceGameId) {

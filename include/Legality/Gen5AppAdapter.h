@@ -15,10 +15,10 @@
  * verdictLine() comes from Report::verdict():
  *   Verdict::NoProblemsFound  "No problems found by complete checks."
  *   Verdict::Incomplete, no problems
- *                             "No problems found by the checks that ran. Coverage is incomplete."
+ *                             "Incomplete / Unknown: required checks or evidence are unresolved."
  *                             followed by one coverage row per area (coverageLines)
  *   Verdict::Incomplete, Warnings
- *                             "Checks incomplete: N warning(s)." then the issues
+ *                             "Incomplete / Unknown: N warning(s)." then the issues
  *   Verdict::Invalid          "Invalid: N issue(s)." then the issues
  *   empty slot                "Empty slot." (an all-zero or species-0 record has no verdict)
  * Info issues are never rendered as problems.
@@ -59,8 +59,8 @@ struct Result {
     std::vector<std::string> coverageLines;   // "<area>: Complete|Partial|None", every area
     std::vector<std::string> issueLines;      // "Invalid: ..." / "Warning: ...", in report order
 
-    /// The overlay lines in order: verdictLine, then the coverage rows when the report is
-    /// Incomplete without problems, then the issue lines.
+    /// The overlay lines in order: verdictLine, then the coverage rows whenever the report is
+    /// Incomplete, then the issue lines.
     std::vector<std::string> lines() const;
 };
 

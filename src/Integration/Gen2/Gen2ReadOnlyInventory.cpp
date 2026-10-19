@@ -16,6 +16,8 @@ struct InventoryLayout {
 };
 
 constexpr InventoryLayout layoutFor(RegionLayout region, VersionFamily family) noexcept {
+    // PKHeX@6501f0ab SAV2Offsets.LoadOffsetsKorean.
+    if (region == RegionLayout::Korean) return {0x23DE, 0x2417, 0x2441, 0x245C, 0x2476};
     if (region == RegionLayout::International) {
         return family == VersionFamily::Crystal
             ? InventoryLayout{0x23E7, 0x2420, 0x244A, 0x2465, 0x247F}
@@ -200,6 +202,10 @@ std::string gen2ItemDisplayName(uint8_t itemId) {
 InventoryRecord decodeInventory(
     std::span<const uint8_t> payload, RegionLayout region, VersionFamily family) {
     InventoryRecord result;
+    if (region == RegionLayout::Korean && family != VersionFamily::GoldSilver) {
+        result.detail = "Korean Crystal is not a supported native layout";
+        return result;
+    }
     const auto l = layoutFor(region, family);
     if (l.tmhm + kMachineIds.size() > payload.size()) {
         result.detail = "TM/HM pouch extends beyond payload";

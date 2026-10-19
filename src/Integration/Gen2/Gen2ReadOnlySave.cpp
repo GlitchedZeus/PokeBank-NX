@@ -1,6 +1,7 @@
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Save/RtcFooter.h"
 #include "Utils/Gen2Text.h"
+#include "Utils/Gen2KoreanTable.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -55,7 +56,14 @@ constexpr Layout kJpnC{
     0x23BE, 0x2009, 0x26E2, 0x26E5, 0x281A, 0x2D10, 0x2AE2, 0x2D0D, 0x8000,
     30, 9, 6, 9, 6,
 };
-constexpr std::array<Layout, 4> kLayouts{kIntlGS, kIntlC, kJpnGS, kJpnC};
+// PKHeX@6501f0ab SAV2Offsets.LoadOffsetsKorean; no Korean Crystal.
+// Independent of Japanese geometry: 14 boxes x20, 11-byte names, 17-byte box names.
+constexpr Layout kKorGS{
+    RegionLayout::Korean, VersionFamily::GoldSilver,
+    0x23D3, 0x2009, 0x26FC, 0x26FF, 0x28CC, 0x2DAE, 0x2DAA, 0x2DAB, kNoOffset,
+    20, 14, 11, 17, 7,
+};
+constexpr std::array<Layout, 5> kLayouts{kIntlGS, kIntlC, kJpnGS, kJpnC, kKorGS};
 
 uint16_t readBE16(std::span<const uint8_t> bytes, std::size_t o) noexcept {
     return static_cast<uint16_t>((static_cast<uint16_t>(bytes[o]) << 8) | bytes[o + 1]);
@@ -160,6 +168,26 @@ std::string decodeGen2Bytes(std::span<const uint8_t> bytes, bool japanese) {
     return Utils::utf16ToUtf8(decoded);
 }
 
+// Independent bounded decoder; mapping data is generated from the pinned PKHeX table.
+// A second byte 0x50/0x00 belongs to its page; only standalone control bytes terminate.
+std::string decodeKoreanBytes(std::span<const uint8_t> bytes) {
+    if (!bytes.empty() && bytes[0] == Utils::GEN2_TRADE_OT) return "*";
+    std::u16string decoded;
+    for (size_t i = 0; i < bytes.size(); ++i) {
+        uint8_t value = bytes[i], page = 0;
+        if (value == 0) break;
+        if (value <= 11) {
+            page = value;
+            if (++i == bytes.size()) break; // dangling page is never read past the field
+            value = bytes[i];
+        }
+        const char16_t c = Utils::Gen2KoreanTable[page][value];
+        if (c == 0) break;
+        decoded.push_back(c);
+    }
+    return Utils::utf16ToUtf8(decoded);
+}
+
 bool parsePokemon(
     std::span<const uint8_t> body,
     std::span<const uint8_t> ot,
@@ -219,8 +247,12 @@ bool parsePokemon(
         out.specialAttack = readBE16(body, 44);
         out.specialDefense = readBE16(body, 46);
     }
-    out.originalTrainer = decodeGen2String(ot, region);
-    out.nickname = decodeGen2String(nick, region);
+    // PK2.Korean is determined from OT bytes, not the folder/save language alone.
+    const auto encoding = region == RegionLayout::Japanese ? RegionLayout::Japanese
+        : (!ot.empty() && ot[0] <= 11 ? RegionLayout::Korean : RegionLayout::International);
+    out.nameEncoding = encoding;
+    out.originalTrainer = decodeGen2String(ot, encoding);
+    out.nickname = decodeGen2String(nick, encoding);
     out.originalTrainerRaw.assign(ot.begin(), ot.end());
     out.nicknameRaw.assign(nick.begin(), nick.end());
     out.partyRecord = party;
@@ -279,14 +311,18 @@ uint16_t calculateChecksum(
 }
 
 std::string decodeGen2String(std::span<const uint8_t> bytes, RegionLayout region) {
-    return decodeGen2Bytes(bytes, region == RegionLayout::Japanese);
+    return region == RegionLayout::Korean ? decodeKoreanBytes(bytes)
+        : decodeGen2Bytes(bytes, region == RegionLayout::Japanese);
 }
 
 
 DexProgress ReadOnlySave::dexProgress() const noexcept {
     std::size_t caughtOffset = 0;
     std::size_t seenOffset = 0;
-    if (metadata_.region == RegionLayout::Japanese) {
+    if (metadata_.region == RegionLayout::Korean) {
+        caughtOffset = 0x2A8E;
+        seenOffset = 0x2AAE;
+    } else if (metadata_.region == RegionLayout::Japanese) {
         if (metadata_.family == VersionFamily::Crystal) {
             caughtOffset = 0x29AA;
             seenOffset = 0x29CA;
@@ -328,7 +364,8 @@ const char* sourceGameId(SourceGame game) noexcept {
     return "unknown_gbc";
 }
 const char* regionName(RegionLayout region) noexcept {
-    return region == RegionLayout::Japanese ? "Japanese" : "International";
+    return region == RegionLayout::Japanese ? "Japanese"
+        : region == RegionLayout::Korean ? "Korean" : "International";
 }
 const char* familyName(VersionFamily family) noexcept {
     return family == VersionFamily::Crystal ? "Crystal" : "Gold/Silver";
@@ -373,7 +410,7 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
         result.error = anyChecksum ? SaveError::InvalidStructure : SaveError::ChecksumMismatch;
         result.detail = anyChecksum
             ? "A supported Gen II checksum matched but strict party/current-box structure did not"
-            : "No supported International/Japanese Gen II layout passed its primary checksum";
+            : "No supported International/Japanese/Korean Gen II layout passed its primary checksum";
         return result;
     }
     if (candidates.size() != 1) {

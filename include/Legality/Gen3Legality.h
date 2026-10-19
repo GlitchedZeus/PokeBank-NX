@@ -116,14 +116,16 @@ struct Verification {
 };
 
 /// Runs the analyzer on pk's stored bytes. Not a PK3 (or not decryptable): ran == false.
-Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGameId);
+Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGameId,
+                    const Gen3BerryContext* berryContext = nullptr);
 
 } // namespace Gen3Pk3
 
 /// Analyzes a decrypted PK3 record. exactSourceGameId names the save the record
 /// was read from (ruby_gba, sapphire_gba, emerald_gba, firered_gba or
 /// leafgreen_gba); without one the report can never reach No problems found.
-Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId);
+Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
+                  const Gen3BerryContext* berryContext = nullptr);
 
 /// Production hook for Legality::analyze: merges the PK3 analysis into r.
 /// Adds the analyzer's Invalid and Warning issues (deduplicated by text) and

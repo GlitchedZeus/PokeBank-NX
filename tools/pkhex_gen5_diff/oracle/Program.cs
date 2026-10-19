@@ -82,6 +82,18 @@ if (args.Length == 1 && args[0] == "fixednames")
     Generator.FixedNames();
     return 0;
 }
+// Re-evaluate a fixed corpus or apply three simultaneous mutations to every base.
+// No record in the input is silently removed; adversarial output is an additional set.
+if (args.Length == 2 && args[0] == "replay")
+{
+    Generator.Replay(args[1]);
+    return 0;
+}
+if (args.Length == 3 && args[0] == "adversarial")
+{
+    new Generator(new Random(int.Parse(args[2])), 0).Adversarial(args[1]);
+    return 0;
+}
 if (args.Length != 3 || args[0] != "generate")
 {
     Console.Error.WriteLine("usage: generate SEED MUTATIONS | probe HEX | casemap | patterns | wordfilter SEED | fixednames");
@@ -249,6 +261,29 @@ static class Text
 sealed class Generator(Random rng, int mutations)
 {
     private int count;
+    public static void Replay(string file)
+    {
+        foreach (var line in File.ReadLines(file))
+        {
+            var words = line.Split(' ');
+            if (words.Length < 7) throw new FormatException("Malformed corpus line");
+            Print(words[0], new PK5(Convert.FromHexString(words[1])), words[4], words[5]);
+        }
+    }
+    public void Adversarial(string file)
+    {
+        foreach (var line in File.ReadLines(file))
+        {
+            var words = line.Split(' ');
+            if (words.Length < 7) throw new FormatException("Malformed corpus line");
+            if (!words[0].StartsWith('b')) continue; // declared additional base-only set
+            var pk = new PK5(Convert.FromHexString(words[1]));
+            var names = new[] { Mutate(pk), Mutate(pk), Mutate(pk) };
+            pk.RefreshChecksum();
+            Print($"a{words[0]}-{string.Join('+', names)}", pk, words[4], "adversarial");
+        }
+    }
+
     private readonly List<(PK5 pk, string origin)> grownSeeds = [];
     private static readonly GameVersion[] Versions5 = [GameVersion.B, GameVersion.W, GameVersion.B2, GameVersion.W2];
     private static readonly string[] OtByLanguage = ["", "テスト", "Tester", "Testeur", "Prova", "Tester", "", "Probador", "테스트"];
@@ -288,7 +323,7 @@ sealed class Generator(Random rng, int mutations)
                     var blank = new PK5 { Species = species, Form = form, Version = version };
                     List<IEncounterable> encounters;
                     try { encounters = EncounterMovesetGenerator.GenerateEncounters(blank, tr, ReadOnlyMemory<ushort>.Empty, version).ToList(); }
-                    catch (Exception) { continue; }
+                    catch (Exception ex) { Audit.Exception("Program.cs:326", ex); continue; }
                     foreach (var enc in encounters)
                     {
                         if (enc.Context != EntityContext.Gen5)
@@ -387,7 +422,7 @@ sealed class Generator(Random rng, int mutations)
                 if (!f.FieldType.IsArray || f.FieldType.GetElementType() is not { } et || !typeof(IEncounterable).IsAssignableFrom(et))
                     continue;
                 object? value;
-                try { value = f.GetValue(null); } catch (Exception) { continue; }
+                try { value = f.GetValue(null); } catch (Exception ex) { Audit.Exception("Program.cs:425", ex); continue; }
                 if (value is Array arr)
                     all.AddRange(arr.OfType<IEncounterable>().Where(e => e.Generation is 3 or 4));
             }
@@ -407,7 +442,7 @@ sealed class Generator(Random rng, int mutations)
                     var tr = new SimpleTrainerInfo(version) { OT = OtByLanguage[lang], TID16 = 12345, SID16 = 54321, Language = lang };
                     PKM made;
                     try { made = enc.ConvertToPKM(tr); }
-                    catch (Exception) { continue; }
+                    catch (Exception ex) { Audit.Exception("Program.cs:445", ex); continue; }
                     if (ToPK5(made) is not { } pk5)
                         continue;
                     var line = $"{enc.Generation} {(fixedNick ? 1 : 0)} {(fixedOT ? 1 : 0)} {(pk5.FatefulEncounter ? 1 : 0)} {pk5.Language} " +
@@ -442,7 +477,7 @@ sealed class Generator(Random rng, int mutations)
                     PKM blank = isGen3 ? new PK3 { Species = species, Form = form, Version = version } : new PK4 { Species = species, Form = form, Version = version };
                     List<IEncounterable> encounters;
                     try { encounters = EncounterMovesetGenerator.GenerateEncounters(blank, tr, ReadOnlyMemory<ushort>.Empty, version).ToList(); }
-                    catch (Exception) { continue; }
+                    catch (Exception ex) { Audit.Exception("Program.cs:480", ex); continue; }
                     // Bound the corpus: a few templates per species, form and game.
                     var picked = encounters.Where(e => e.Context is EntityContext.Gen3 or EntityContext.Gen4)
                         .OrderBy(_ => rng.Next()).Take(3);
@@ -466,7 +501,7 @@ sealed class Generator(Random rng, int mutations)
                         Trace($"convert {key} lang {trEnc.Language} tid {trEnc.TID16} sid {trEnc.SID16}");
                         PKM made;
                         try { made = enc.ConvertToPKM(trEnc); }
-                        catch (Exception) { continue; }
+                        catch (Exception ex) { Audit.Exception("Program.cs:504", ex); continue; }
                         var pk5 = ToPK5(made);
                         if (pk5 is null || pk5.IsEgg)
                             continue;
@@ -509,8 +544,9 @@ sealed class Generator(Random rng, int mutations)
                 return pk4.ConvertToPK5();
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Audit.Exception("Program.cs:547", ex);
         }
         return null;
     }
@@ -716,7 +752,7 @@ sealed class Generator(Random rng, int mutations)
     private static PK5? TryConvert(IEncounterable enc, ITrainerInfo tr)
     {
         try { return enc.ConvertToPKM(tr) as PK5; }
-        catch (Exception) { return null; }
+        catch (Exception ex) { Audit.Exception("Program.cs:754", ex); return null; }
     }
 
     private void EmitWithMutations(PK5 pk, string origin, string group) => Emit(pk, origin, group, withMutations: true);
@@ -743,7 +779,7 @@ sealed class Generator(Random rng, int mutations)
         Trace($"analyse {id}");
         var la = new LegalityAnalysis(pk);
         var enc = la.EncounterMatch;
-        var invalid = la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}:{r.Result}")
+        var invalid = la.Results.Where(r => !r.Valid || r.Judgement == Severity.Fishy).Select(r => $"{(r.Judgement == Severity.Fishy ? "~" : "")}{r.Identifier}:{r.Result}")
             .Concat(la.Info.Moves.Select((m, i) => (m, i)).Where(x => !x.m.Valid)
                 .Select(x => $"Move{x.i + 1}:{x.m.Info.Method}"));
         var hex = Convert.ToHexString(pk.Data[..136]);
@@ -794,4 +830,12 @@ sealed class Generator(Random rng, int mutations)
             default: pk.OriginalTrainerGender = (byte)(pk.OriginalTrainerGender ^ 1); return "otgender";
         }
     }
+}
+
+// stderr is retained by run.sh; exceptions are evidence gaps, never passing verdicts.
+static class Audit
+{
+    public static void Exception(string site, Exception ex) => Console.Error.WriteLine(
+        System.Text.Json.JsonSerializer.Serialize(new { kind="generation-exception", site,
+            type=ex.GetType().FullName, message=ex.Message }));
 }

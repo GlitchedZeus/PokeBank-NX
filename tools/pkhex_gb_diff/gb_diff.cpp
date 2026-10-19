@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
-// PokeBank NX has no Korean Gold/Silver save support, so this harness decodes Korean names
-// itself, with a table run.sh generates from the pinned PKHeX source (gb_text.py).
+// Keep a decoder independently generated from the chosen oracle snapshot here;
+// production_parity.cpp separately exercises the native Korean save decoder.
 #include "gb_korean_table.inc"
 
 namespace {

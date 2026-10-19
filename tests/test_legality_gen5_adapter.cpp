@@ -35,10 +35,10 @@ bool anyLine(const std::vector<std::string>& lines, const std::string& text) {
 }
 
 const char* kComplete = "No problems found by complete checks.";
-const char* kIncomplete = "No problems found by the checks that ran. Coverage is incomplete.";
+const char* kIncomplete = "Incomplete / Unknown: required checks or evidence are unresolved.";
 
 // The verdict line and the lines agree with the Report's verdict: "complete" only for
-// NoProblemsFound, coverage rows for an Incomplete report without problems, issues otherwise.
+// NoProblemsFound, coverage rows for every Incomplete report, then its actual issues.
 void checkRendering(const std::string& what, const App::Result& r) {
     const auto lines = r.lines();
     if (lines.empty() || lines[0] != r.verdictLine) fail(what + ": first line is not the verdict line", r);
@@ -53,6 +53,11 @@ void checkRendering(const std::string& what, const App::Result& r) {
         if (std::none_of(r.coverageLines.begin(), r.coverageLines.end(),
                          [](const std::string& l) { return l.find("Partial") != std::string::npos || l.find("None") != std::string::npos; }))
             fail(what + ": an Incomplete report has no Partial / None area", r);
+    }
+    if (r.verdict == Verdict::Incomplete && !r.emptySlot) {
+        if (r.verdictLine.rfind("Incomplete / Unknown:", 0) != 0) fail(what + ": missing explicit incomplete headline", r);
+        if (anyLine(lines, "No problems found")) fail(what + ": incomplete report rendered as clean", r);
+        if (lines.size() != 1 + r.coverageLines.size() + r.issueLines.size()) fail(what + ": incomplete coverage/issues dropped", r);
     }
     if (r.verdict == Verdict::Invalid && !anyLine(r.issueLines, "Invalid: ")) fail(what + ": Invalid without an Invalid line", r);
     for (const auto& line : r.issueLines)
