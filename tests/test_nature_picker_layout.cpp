@@ -57,7 +57,7 @@ int main() {
         assert(source.find("naturePicker ? natureLayout.height")!=std::string::npos);
         assert(source.find("naturePicker ? natureLayout.rowStep : 42")!=std::string::npos);
         assert(source.find("naturePicker ? natureLayout.highlightHeight : 38")!=std::string::npos);
-        assert(source.find("if (selected) fb.drawSelectionHighlight")!=std::string::npos);
+        assert(source.find("SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38), {selected});")!=std::string::npos); // R2-BUG-012
     }
     return 0;
 }

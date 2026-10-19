@@ -1638,9 +1638,12 @@ int main() {
             {G::Gen5StagedPokemonWorkspace::Region::Party,0,0});
         assert(nativeParty.validated && nativeParty.occupied);
         const auto nativeActions=G::actions(workspace,nativeParty);
-        assert(nativeActions.count==4);
+        // Round 3 Part 9: an edited party slot keeps Clone and lists the
+        // neutral Origin & Legality row (Gen I-IV action order).
+        assert(nativeActions.count==6);
         assert(nativeActions[0]==GA::View && nativeActions[1]==GA::Edit);
-        assert(nativeActions[2]==GA::Review && nativeActions[3]==GA::Close);
+        assert(nativeActions[2]==GA::Clone && nativeActions[3]==GA::LegalityProvenance);
+        assert(nativeActions[4]==GA::Review && nativeActions[5]==GA::Close);
         // A stale/forged slot flag must never surface the Edit action on
         // an actually empty native box cell, even with pending changes.
         auto staleSlot=nativeParty;

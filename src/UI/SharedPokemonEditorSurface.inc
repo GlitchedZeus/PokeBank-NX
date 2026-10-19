@@ -27,6 +27,7 @@
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorChrome.h"
+#include "UI/SharedBoxedRows.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
@@ -740,8 +741,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                 x + 24, yy, w - 48, moveLayout.highlightHeight,
                 x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
             const bool selected = i == state.pickerRow;
-            if (selected)
-                fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, yy, w - 48, moveLayout.highlightHeight), {selected});  // R2-BUG-012 boxed row
             const auto value = state.pickerValues[static_cast<size_t>(i)];
             SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, value, A::moveGame(screen), selected);
         }
@@ -811,8 +811,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38,
             x + 22, viewportTop - 4, w - 44, visible * rowStep);
         const bool selected = i == state.pickerRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44,
-            naturePicker ? natureLayout.highlightHeight : 38);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         const std::string label = A::pickerLabel(screen, state, state.pickerTarget, value);
         const auto split = label.find("  |  ");
@@ -878,7 +877,7 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
         const int yy = y + 88 + i * 48;
         const bool selected = i == state.moveEditorRow;
         screen.touchButtons.push_back({41400 + i, x + 22, yy, w - 44, 42});
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 42);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy, w - 44, 42), {selected});  // R2-BUG-012 boxed row
         fb.drawText(x + 38, yy + 10, rows[static_cast<size_t>(i)].first,
                     selected ? Colors::Text : Colors::TextDim);
         int vw=0,vh=0;
