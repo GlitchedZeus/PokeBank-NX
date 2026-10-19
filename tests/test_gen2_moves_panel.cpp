@@ -44,6 +44,10 @@ void PKSEFramebuffer::drawFilledRect(int x, int y, int w, int h, Color) { rects.
 void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int, Color, int) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::setClipRect(int, int, int, int) {}
+// R2-BUG-007: the chooser's Type cell asks for the type badge sprite; with no artwork on the host
+// the shared badge draws nothing and the row falls back to the type name this test checks.
+void PKSEFramebuffer::drawImageScaled(int, int, int, int, int, int, const uint8_t*, int) {}
+Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 void PKSEFramebuffer::clearClip() {}
 } // namespace UI
 
