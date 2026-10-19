@@ -1289,6 +1289,18 @@ void runGen1Version(Matrix& m, const Spec& spec) {
                     &offender, &changed);
                 c.expect(white && changed > 0, "byte " + qacontract::hex(offender) +
                                                    " changed outside box 0, bank checksums, Bag and main checksum");
+                // S06: corrupt the first byte of the main checksum range (player name; kMainStart 0x2598
+                // in Gen1ReadOnlySave.cpp), which the edit check below does not read.
+                const auto s06 = qamatrix::exportCorruptionProbe(out, 0x2598, [&](const auto& bytes) {
+                    auto p = G1::parse(bytes, spec.g1);
+                    if (!p || !p.save->boxes()[0].slots.at(0) || p.save->boxes()[0].slots[0]->nickname != "QA")
+                        return false;
+                    const auto inv = G1::decodeInventory(bytes, p.save->metadata().region);
+                    return inv.bag.size() == 1 && inv.bag[0].quantity == 9;
+                });
+                c.expect(s06.empty(), s06);
+                if (s06.empty()) row.fact(std::string(qamatrix::kExportChecksumFact),
+                                          std::string(qamatrix::kExportChecksumDetected));
                 const auto second = G1::publishVerifiedGen1Export(*editor, request, bag.get());
                 c.expect(second.success && second.directory != first.directory, "second export reused the first directory");
             }
@@ -1664,6 +1676,16 @@ void runGen2Version(Matrix& m, const Spec& spec) {
                                     {layout.sum, layout.sum + 2}, {layout.sum2, layout.sum2 + 2}},
                     &offender, &changed);
                 c.expect(white && changed > 0, "byte " + qacontract::hex(offender) + " changed outside box 1 + checksums");
+                // S06: box 1 is outside the checksummed range, so corrupt the first byte the primary
+                // checksum covers instead (Trainer ID; kChecksumStart 0x2009 in Gen2ReadOnlySave.cpp),
+                // which the edit check below does not read.
+                const auto s06 = qamatrix::exportCorruptionProbe(out, 0x2009, [&](const auto& bytes) {
+                    auto p = G2::parse(bytes, spec.g2);
+                    return p && p.save->boxes()[1].slots.at(0) && p.save->boxes()[1].slots[0]->nickname == "QA";
+                });
+                c.expect(s06.empty(), s06);
+                if (s06.empty()) row.fact(std::string(qamatrix::kExportChecksumFact),
+                                          std::string(qamatrix::kExportChecksumDetected));
                 const auto second = G2::publishVerifiedStagedEditorExport(*editor, request);
                 c.expect(second.success && second.directory != first.directory, "second export reused the first directory");
             }

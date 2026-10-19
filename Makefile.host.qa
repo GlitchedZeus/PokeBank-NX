@@ -180,6 +180,7 @@ qa-tools-test:
 	python3 tests/test_hw_round1_regression_gate.py
 	python3 tests/test_qa_hw_round1_gate_mutations.py
 	python3 tests/test_qa_manual_workflow_staleness.py
+	python3 tests/test_qa_host_header_deps.py
 	python3 tools/qa/manual_workflow_staleness.py
 
 qa: qa-fuzz-smoke qa-contracts qa-matrix qa-tools-test

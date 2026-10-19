@@ -1138,7 +1138,7 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         for(int r=0;decoded && r<rows;++r) {
             const int i=first+r;
             const int yy=y+92+r*rowH;
-            if(i==cursor)fb.drawSelectionHighlight(x+16,yy,w-32,rowH-6);
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x+16,yy,w-32,rowH-6), {i==cursor});  // R2-BUG-012 boxed row
             screen.touchButtons.push_back({kGen5DexRowTouchBase+i,x+16,yy,w-32,rowH-6});
             const auto& e=decoded->entries[static_cast<size_t>(i)];
             fb.drawText(x+32,yy+9,"#"+std::to_string(i+1)+"  "+
@@ -1169,44 +1169,55 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     fb.drawText(x+170,y+(hH-fb.lineHeight(TextStyle::Caption))/2,
                 "Name, Money and Play Time are staged in app memory; the source save is unchanged",
                 Colors::TextDim,TextStyle::Caption);
-    constexpr int cardW=680,rowH=52,rowGap=8,top=hH+18;
+    // R2-BUG-003: the Gen I-IV Trainer hierarchy. Selectable rows first (the staged Name / Money /
+    // Play Time edits, and the Pokedex view) as cards with a value pill; a divider; then the
+    // read-only identity rows, compact and unselectable, as Gen IV shows them (Gender, Trainer ID,
+    // Secret ID as two separate native 16-bit numbers, plus Gen V's Badges). The raw language id is
+    // secondary information: one unboxed detail line, by name. Every value is still read from the
+    // save; nothing is merged or recomputed. Touch ids stay kGen5TrainerRowTouchBase + kRows index.
+    using TRow=G::Gen5TrainerScreen::Row;
+    constexpr int cardW=680,rowH=52,rowGap=8,infoH=42,infoGap=6,top=hH+18;
     const int cardX=x+(w-cardW)/2;
-    const size_t visible=static_cast<size_t>((h-top-12)/(rowH+rowGap));
-    const size_t first=editor.firstVisible(visible);
-    const size_t last=std::min(G::Gen5TrainerScreen::kRows.size(),first+visible);
-    for(size_t i=first;i<last;++i) {
-        const auto row=G::Gen5TrainerScreen::kRows[i];
-        const int yy=y+top+static_cast<int>(i-first)*(rowH+rowGap);
+    const auto indexOf=[](TRow row) {
+        for(size_t i=0;i<G::Gen5TrainerScreen::kRows.size();++i)
+            if(G::Gen5TrainerScreen::kRows[i]==row)return i;
+        return G::Gen5TrainerScreen::kRows.size();
+    };
+    int cy=y+top;
+    for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex}) {
+        const size_t i=indexOf(row);
         const bool sel=editor.open() && i==editor.row();
-        const bool editable=G::Gen5TrainerScreen::editable(row);
-        fb.drawSoftShadow(cardX,yy,cardW,rowH,14);
-        fb.drawFilledRoundedRect(cardX,yy,cardW,rowH,14,Colors::PanelAlt);
-        if(sel)fb.drawRoundedRect(cardX,yy,cardW,rowH,14,Colors::FocusBorder,2);
-        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),
-                                       cardX,yy,cardW,rowH});
-        fb.drawText(cardX+24,yy+(rowH-fb.lineHeight(TextStyle::Body))/2,
-                    G::Gen5TrainerScreen::label(row),
+        fb.drawSoftShadow(cardX,cy,cardW,rowH,14);
+        fb.drawFilledRoundedRect(cardX,cy,cardW,rowH,14,Colors::PanelAlt);
+        if(sel)fb.drawRoundedRect(cardX,cy,cardW,rowH,14,Colors::FocusBorder,2);
+        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),cardX,cy,cardW,rowH});
+        fb.drawText(cardX+24,cy+(rowH-fb.lineHeight(TextStyle::Body))/2,G::Gen5TrainerScreen::label(row),
                     sel?Colors::SelectedText:Colors::TextDim,TextStyle::Body);
         const std::string value=G::Gen5TrainerScreen::value(ws,row);
         int vw=0,vh=0;
         fb.measureText(value,vw,vh,TextStyle::Body);
-        if(editable) {
-            const int pillW=vw+44,pillH=36;
-            const int px=cardX+cardW-pillW-20,py=yy+(rowH-pillH)/2;
-            fb.drawPill(px,py,pillW,pillH,Colors::Background);
-            fb.drawText(px+(pillW-vw)/2,py+(pillH-vh)/2,value,Colors::Text,TextStyle::Body);
-        } else {
-            const char* tag=row==G::Gen5TrainerScreen::Row::Pokedex?"View only":"Read-only";
-            int tw=0,th=0;
-            fb.measureText(tag,tw,th,TextStyle::Caption);
-            fb.drawText(cardX+cardW-24-tw,yy+(rowH-th)/2,tag,Colors::TextDim,TextStyle::Caption);
-            fb.drawText(cardX+cardW-48-tw-vw,yy+(rowH-vh)/2,value,Colors::Text,TextStyle::Body);
-        }
+        const int pillW=vw+44,pillH=36;
+        const int px=cardX+cardW-pillW-20,py=cy+(rowH-pillH)/2;
+        fb.drawPill(px,py,pillW,pillH,Colors::Background);
+        fb.drawText(px+(pillW-vw)/2,py+(pillH-vh)/2,value,Colors::Text,TextStyle::Body);
+        cy+=rowH+rowGap;
     }
-    if(first>0)
-        fb.drawText(cardX+cardW+12,y+top,"^",Colors::TextDim,TextStyle::Body);
-    if(last<G::Gen5TrainerScreen::kRows.size())
-        fb.drawText(cardX+cardW+12,y+h-40,"v",Colors::TextDim,TextStyle::Body);
+    cy+=4;
+    fb.drawHDivider(cardX+20,cy,cardW-40);
+    cy+=14;
+    for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges}) {
+        fb.drawFilledRoundedRect(cardX,cy,cardW,infoH,12,Colors::PanelAlt);
+        fb.drawText(cardX+24,cy+(infoH-fb.lineHeight(TextStyle::Body))/2,G::Gen5TrainerScreen::label(row),
+                    Colors::TextDim,TextStyle::Body);
+        const std::string value=G::Gen5TrainerScreen::value(ws,row);
+        int vw=0,vh=0;
+        fb.measureText(value,vw,vh,TextStyle::Body);
+        fb.drawText(cardX+cardW-24-vw,cy+(infoH-vh)/2,value,Colors::Text,TextStyle::Body);
+        cy+=infoH+infoGap;
+    }
+    if(const auto t=ws.trainerPresentation())
+        fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
+                    "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
     std::vector<ControllerHint> hints;
     for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);
@@ -1337,6 +1348,13 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             HidNpadButton_Left,HidNpadButton_Right);
         return handleSharedWorkspace(screen,workspaceKeys,touch);
     }
+    // A Move carry (shared ClassicPackedMove overlay) owns Y / B / A / X and
+    // cell taps; navigation keys fall through to the box grid below.
+    if(state.surface()==Surface::Browse && screen.detailViewActive &&
+       screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
+       ClassicPackedMove::gen5CarryActive(screen)) {
+        if(ClassicPackedMove::handleGen5CarryInput(screen,down,tap))return true;
+    }
     if(state.surface()==Surface::Actions) {
         const auto actions=state.availableActions(staged);
         if(tap>=kGen5ActionTouchBase &&
@@ -1406,7 +1424,19 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 screen.controllerNavigation.reset();
             } else if(keys&HidNpadButton_A) {
                 std::string error;
-                if(!state.activateSelected(staged,error))
+                const auto allowed=state.availableActions(staged);
+                const bool move=state.actionRow()>=0 &&
+                    static_cast<size_t>(state.actionRow())<allowed.count &&
+                    allowed[static_cast<size_t>(state.actionRow())]==
+                        PokeBank::UIModel::SharedPokemonEditor::Action::Move;
+                if(move) {
+                    // Move Pokemon: the SHARED Gen I-IV carry (Round 3 Part 9),
+                    // not Box / Slot number keypads. Nothing is staged until Y.
+                    const auto from=state.target();
+                    if(!state.beginMoveCarry(staged,error))screen.postStatus(error,300);
+                    else (void)ClassicPackedMove::beginGen5FromAction(
+                        screen,static_cast<int>(from.box),static_cast<int>(from.slot));
+                } else if(!state.activateSelected(staged,error))
                     screen.postStatus(error,300);
                 else if(state.surface()==Surface::ConfirmCreateBox &&
                         !beginSharedCreate(screen,error)) {
@@ -1518,6 +1548,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         case Surface::CloneDestination:
             state.cancelBoxAction(); // only transient while the keypads are open
             return true;
+        case Surface::Legality:
+            if(keys&HidNpadButton_B)(void)state.back();
+            return true;
         case Surface::View:
         case Surface::Edit:
         case Surface::ConfirmDraft:
@@ -1602,6 +1635,7 @@ const char* narrowActionLabel5(PokeBank::UIModel::SharedPokemonEditor::Action ac
         case A::Move:return "Move";
         case A::Clone:return "Clone";
         case A::Remove:return "Release";
+        case A::LegalityProvenance:return PokeBank::UIModel::NarrowPokemonMenu::kOriginLegalityLabel;
         case A::Add:return "Add Pokemon";
         case A::Review:return "Review Pending Changes";
         case A::Close:return "Cancel";
@@ -1776,13 +1810,62 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
                    {"Y","Discard All..."},{"B","Back"}});
 }
+// Origin & Legality (Round 3 Part 9): the neutral Gen I-IV panel. It reports the
+// PK5 structure and the record's stored origin only, and never a legality
+// verdict: Gen V has no legality checker here, so Legality is "Incomplete"
+// and the encounter check is "Unknown".
+void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenState& state,
+                   const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& workspace) {
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    dimShared(screen,fb);
+    SharedEditorChrome::beginModal(screen.touchButtons);
+    constexpr int x=210,y=82,w=860,h=500;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+24,y+18,P::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",
+                Colors::TextDim,TextStyle::Caption);
+    const auto& slot=state.target();
+    const auto pk=slot.region==Region::Party?workspace.viewParty(slot.slot):
+        workspace.viewBox(slot.box,slot.slot);
+    if(!pk || !pk->valid() || pk->empty()) {
+        fb.drawText(x+34,y+110,"No valid Pokemon selected",Colors::Warning,TextStyle::Body);
+        drawNavBar(fb,{{"B","Back"}});
+        return;
+    }
+    const uint8_t origin=pk->originVersion();
+    const std::string originName=origin==20?"White":origin==21?"Black":
+        origin==22?"White 2":origin==23?"Black 2":"Other (version id "+std::to_string(origin)+")";
+    const auto date=pk->metDate();
+    const std::pair<std::string,std::string> rows[]={
+        {"Exact source",gen5GameName(screen.sourceGameId)},
+        {"PK5 structure","PASS"},
+        {"Source mutation","HARD DISABLED"},
+        {"Origin game",originName},
+        {"Met location",metLocationText5(origin,pk->metLocation())},
+        {"Met level / date",std::to_string(pk->metLevel())+"  /  "+std::to_string(date.year)+"-"+
+            std::to_string(date.month)+"-"+std::to_string(date.day)},
+        {"Fateful encounter",pk->fatefulEncounter()?"Yes":"No"},
+        {"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},
+        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},
+    };
+    int rowY=y+96;
+    for(const auto& [label,value]:rows) {
+        fb.drawText(x+34,rowY,label,Colors::TextDim);
+        const bool flag=label=="Encounter check" || label=="Legality";
+        fb.drawText(x+290,rowY,value,label=="PK5 structure"?Colors::Success:
+                    label=="Source mutation"?Colors::Accent:flag?Colors::Warning:Colors::Text);
+        rowY+=40;
+    }
+    drawNavBar(fb,{{"B","Back"}});
+}
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
                   const std::vector<ControllerHint>& keys) {
     dimShared(screen,fb);
     // The decision owns the frame's touch; the covered hub's footer is never tappable.
     SharedEditorChrome::beginModal(screen.touchButtons);
-    const int w=870,h=230,x=(fb.getWidth()-w)/2;
+    const int w=870,h=250,x=(fb.getWidth()-w)/2;
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
     fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
@@ -1790,6 +1873,10 @@ void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     fb.drawText(x+26,y+93,message,Colors::TextSecondary,TextStyle::Body);
     fb.drawText(x+26,y+142,"Source SAV5 is never modified.",
                 Colors::Accent,TextStyle::Caption);
+    // R2-BUG-012: each choice is its own boxed row; a tap presses exactly that button.
+    std::vector<SharedBoxedRows::GlyphChoice> choices;
+    for(const auto& key:keys)choices.push_back({key.button,key.label});
+    SharedBoxedRows::drawGlyphChoices(fb,x+26,y+h-SharedBoxedRows::kChoiceHeight-18,w-52,choices);
     if(!keys.empty())drawNavBar(fb,keys);
 }
 void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
@@ -1862,6 +1949,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             // Transient while the Gen IV box / slot keypads are open.
             dimShared(screen,fb);return true;
         case Surface::Review:drawReview(screen,fb,state,staged);return true;
+        case Surface::Legality:drawLegality5(screen,fb,state,staged);return true;
         case Surface::Edit:
         case Surface::View:
         case Surface::ConfirmDraft:
@@ -1930,7 +2018,10 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 top+row*(slotH+slotGap),colW,slotH});
         }
     }
-    if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
+    if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
+       ClassicPackedMove::gen5CarryActive(screen))
+        ClassicPackedMove::draw(screen,fb); // carried sprite + "Y Drop / L/R Box / B Cancel"
+    else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
         drawNavBar(fb,{{"D-pad","Navigate"},{"L/R","Box"},
                        {"ZL/ZR","Jump 5"},{"A","Actions"},{"+","Review"},{"B","Back"}});
     else
