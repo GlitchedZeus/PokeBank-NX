@@ -1039,7 +1039,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         };
         AddGrid::drawCells(fb, g, state.pickerRow, start, state.pickerScroll.offset(),
             [&](const PokeBank::UIModel::SharedMenuGeometry::Rect& cell, int i, bool focused) {
-                SharedEditorChrome::drawMenuCell(fb, screen.touchButtons, i, cell, focused);
+                // R2-BUG-012 boxed cell (the box IS the published touch rect), as drawMenuCell does.
+                SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cell.x, cell.y, cell.w, cell.h), {focused});
+                SharedBoxedRows::publish(screen.touchButtons, i, cell, {focused});
             },
             label,
             [&](PKSEFramebuffer& fb, const PokeBank::UIModel::SharedMenuGeometry::Rect& sprite, int i) {
