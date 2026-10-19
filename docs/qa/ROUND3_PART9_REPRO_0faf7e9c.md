@@ -96,4 +96,4 @@ Item 1 still needs:
 - the re-check repeated on the round-3 candidate once it is on #307;
 - a device check.
 
-Item 8 (the Gen IV Storage view) is not fixed. The coordinator has to assign it.
+Item 8 (the Gen IV Storage view) is not fixed yet. The coordinator has assigned it to S.
