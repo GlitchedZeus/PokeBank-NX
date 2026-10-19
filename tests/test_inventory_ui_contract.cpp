@@ -90,15 +90,18 @@ int main() {
     static_assert(InventoryPickerLayout::viewport(1280, 720).visibleRows == 9);
     static_assert(InventoryPickerLayout::viewport(1280, 720).h == 504);
 
-    // Gen I-V Add Item share ONE geometry (SharedMenuGeometry ItemPicker): content-driven
-    // height, never over the footer, one rectangle per row for highlight and touch.
+    // Gen I-V Add Item share ONE geometry (SharedMenuGeometry ItemPicker, the R2-BUG-006 4-column
+    // item grid): content-driven height, never over the footer, one rectangle per cell for
+    // highlight and touch.
     {
         namespace MG = PokeBank::UIModel::SharedMenuGeometry;
         constexpr auto shortList = MG::layout(MG::MenuType::ItemPicker, 3);
         constexpr auto longList = MG::layout(MG::MenuType::ItemPicker, 200);
+        static_assert(MG::rule(MG::MenuType::ItemPicker).kind == MG::Kind::Grid &&
+                      MG::rule(MG::MenuType::ItemPicker).columns == 4);
         static_assert(shortList.frame.h < longList.frame.h);
-        static_assert(shortList.visibleRows == 3 && !shortList.scrolls());
-        static_assert(longList.scrolls() && longList.visibleRows >= 9);
+        static_assert(shortList.visibleRows == 1 && shortList.totalRows == 1 && !shortList.scrolls());
+        static_assert(longList.totalRows == 50 && longList.scrolls() && longList.visibleRows == 10);
         static_assert(MG::wellFormed(shortList) && MG::wellFormed(longList));
         static_assert(!longList.frame.overlaps(MG::kFooterBand));
         static_assert(MG::hitCell(longList, MG::cellRect(longList, 4).x + 5, MG::cellRect(longList, 4).y + 5) == 4);

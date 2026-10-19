@@ -3,7 +3,7 @@
 // Item" today; any long item list that wants it). Replaces the single-column lists that needed a
 // screen-height of scrolling per pocket.
 //
-//  * Geometry: the accepted Held Item grid rule (SharedMenuGeometry MenuType::HeldItemPicker:
+//  * Geometry: the item grid rule (SharedMenuGeometry MenuType::ItemPicker, = the accepted Held Item grid:
 //    1040 px frame, 40 px row pitch, 30 px leading sprite, Caption labels), up to 4 columns x 10
 //    rows, height content-driven so a short pocket draws a short frame and the footer stays free.
 //  * Names are never clipped to reach 40 cells: the column count drops 4 -> 3 -> 2 until the
@@ -41,7 +41,7 @@ namespace UI::SharedItemGridPicker {
 namespace MG = PokeBank::UIModel::SharedMenuGeometry;
 namespace Facts = PokeBank::UIModel::SharedMoveFacts;
 
-inline constexpr MG::Rule kRule = MG::rule(MG::MenuType::HeldItemPicker);
+inline constexpr MG::Rule kRule = MG::rule(MG::MenuType::ItemPicker);   // the item grid rule (CG13)
 inline constexpr int kMaxColumns = kRule.columns;   // 4
 inline constexpr int kMinColumns = 2;
 inline constexpr int kMaxRows = kRule.maxVisibleRows;   // 10
