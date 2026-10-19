@@ -127,21 +127,25 @@ Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
 | R2-BUG-002 Gen III Trainer Name / Money (R, S, E, FR, LG) | 02cf6d1a, ea1a7a4a | gated green |
 | R2-BUG-001 Trainer footer on a read-only source (Gen I-IV) | cccec27b | gated green |
 | QA Part 9 Gen IV Storage save-pane Move / Y | c6f9011c, reverted | moved to Lane S (83e3d00, integrated); C copy reverted to avoid a ClassicPackedMoveOverlay conflict |
-| R2-CHECK-009 Yellow Box Actions (no Move / Review) | — | investigated: by design, no change |
+| R2-CHECK-009 Yellow Box Actions (no Move / Review) | this unit | coordinator ruling 2026-10-19: Move added to Gen I Box Actions |
 | R2-BUG-008 Ruby Pikachu Lv. 5 Met Location | this unit | see below |
 
-### R2-CHECK-009 — findings
+### R2-CHECK-009 — findings and fix
 
-- Gen I's action sheet (Gen1Editor::actionsForSlot, shared NarrowPokemonMenu::gen1) has no
-  Move command by design: a Gen I Pokemon is moved with the Boxes-view hold-Y carry
-  (ClassicPackedMove beginGen1 / placeSparse), which the Boxes footer advertises as
-  "Y: Move / Hold Multi". Move is supported AND reachable, so no menu entry was added (an
-  Actions "Move" would duplicate the carry; adding it is an owner decision, not a defect).
-- "Review Pending Changes" appears only while staged changes exist (same rule as Gen II-IV).
-  The hardware screenshot had nothing staged, so its absence there is expected.
-- Not reachable in Gen I: Move from the Storage screen's save pane (the Gen I Storage pane is
-  read-only and the carry is a Boxes-view facility). Gen IV has it through Lane S (83e3d00);
-  extending the Storage carry to Gen I-III would be a new feature, not a fix.
+- Gen I Move was supported (the Boxes-view hold-Y carry, ClassicPackedMove beginGen1) but absent
+  from Box Actions, while Gen II-V list it in the shared E02 order. Per the owner directive
+  ("repair the actual action routing" when supported but absent), Gen I Box Actions now lists
+  View, Edit, Clone, Move, Release, Origin & Legality (+ Review while staged changes exist),
+  Cancel. Move starts the SAME Boxes carry with the Pokemon picked up
+  (ClassicPackedMove::beginGen1FromAction): Y drops, B cancels.
+- No Move in the read-only Storage pane or on an empty slot (actionsForSlot boxMove = false);
+  every sheet / hit-test / dispatch uses the same flag, so rows, touch ids and actions line up.
+- "Review Pending Changes" appears only while staged changes exist (same rule as Gen II-IV); the
+  hardware screenshot had nothing staged.
+- Test: test_gen12_packed_move (now in host-test): the sheet order with / without Move, Move ->
+  drop stages one verified move of the same record, B leaves the staged box byte-identical, and
+  the production routing. QA owns the E02 Gen I literal (test_classic_pokemon_action_menu); its
+  default (Storage / boxMove false) sheet is unchanged.
 
 ### R2-BUG-008 — findings
 
