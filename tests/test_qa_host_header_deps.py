@@ -32,8 +32,14 @@ include Makefile.host.deps
 """
 
 
+# Run under `make qa`, the sub-make would inherit the parent's MAKEFLAGS: its command-line overrides
+# (HOST_BUILD=..., CXX=...) and jobserver. The fixture must see only its own variables.
+MAKE_ENV_DROP = ("MAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEOVERRIDES", "GNUMAKEFLAGS")
+
+
 def make(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["make", "-f", "Makefile", *args], cwd=root, capture_output=True, text=True)
+    env = {k: v for k, v in os.environ.items() if k not in MAKE_ENV_DROP}
+    return subprocess.run(["make", "-f", "Makefile", *args], cwd=root, capture_output=True, text=True, env=env)
 
 
 def bump(path: Path) -> None:

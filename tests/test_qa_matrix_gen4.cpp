@@ -939,6 +939,20 @@ void runVersion(Matrix& m, const VersionSpec& v) {
                      "byte outside the selected blocks changed at " + qacontract::hex(offender));
             p.expect(changed > 0, "no byte changed");
         }
+        // S06: corrupt the first byte of the selected General block (its CRC covers the block body);
+        // the reparse must stop reporting an exact, unrecovered match.
+        if (parsed) {
+            const size_t g = parsed->generalSelection().offset;
+            const auto s06 = qamatrix::exportCorruptionProbe(edited, g, [&](const auto& bytes) {
+                std::string why;
+                const auto r = G4::Gen4ReadOnlySave::parse(bytes, v.layout, v.gameId, &why);
+                return r && r->assignmentStatus() == G4::AssignmentStatus::Match && !r->recovered() &&
+                       r->generalSelection().offset == g;
+            });
+            p.expect(s06.empty(), s06);
+            if (s06.empty()) m.fact(ver, std::string(qamatrix::kExportChecksumFact),
+                                    std::string(qamatrix::kExportChecksumDetected));
+        }
         p.expect(sourceUnchanged("export"), "export changed the source");
         auto untouched = G4::Gen4StagedPokemonEditor::create(original, v.layout, v.gameId, &err);
         if (untouched) {

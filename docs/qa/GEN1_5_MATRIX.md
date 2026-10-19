@@ -57,8 +57,31 @@ Gen IV/V home cells. They are never hard-coded, so they cannot drift.
 | `trainer.gender` | not stored in RBY and Gold/Silver | Inherent to the format (N/A cells) | — |
 | `create.default.species` | #1 Bulbasaur (Gen I, Gen IV) vs #25 Pikachu (Gen II, III, V) | Create defaults are not format rules; consistency item | C (Gen I–IV) / 2R (Gen V) |
 
-Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.output=new-file-only`,
-`export.reparse=strict`, `nav.mutates=no`, and all four `home.party.*` facts.
+Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.checksum=detects-corruption`,
+`export.output=new-file-only`, `export.reparse=strict`, `nav.mutates=no`, and all four `home.party.*` facts.
+
+## Round 3: S06 export checksum evidence
+
+Each of the 20 export cells now runs `exportCorruptionProbe` (`tests/test_qa_matrix.h`) on the published
+`edited.*` file:
+
+1. The file must strictly reparse as the exact game with the edit visible.
+2. One byte inside a checksummed region, which the edit check does not read, is then changed.
+3. The copy must then stop reparsing as the edited save.
+
+The bytes changed per generation:
+
+| Generation | Byte changed | Checksum that covers it |
+| --- | --- | --- |
+| Gen I | 0x2598 (player name) | main checksum |
+| Gen II | 0x2009 (Trainer ID) | primary checksum |
+| Gen III | Section 0 byte 0 in the active slot | sector checksum |
+| Gen IV | First byte of the selected General block | General block CRC |
+| Gen V | Money high byte, primary copy | Misc block checksum |
+
+The runner fails unless every version records `export.checksum=detects-corruption`. This is host evidence
+for S06. It is **not** emulator evidence: no emulator runs in CI, and S06 stays NOT VERIFIED until the
+owner loads an exported copy.
 
 ## Round 2 cells
 
@@ -591,6 +614,7 @@ Totals: PASS=462 KNOWN=0 HW=0 N/A=7 FAIL=0
 | `bag.read` | `yes` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `create.default.level` | `5` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `create.default.species` | `25` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
+| `export.checksum` | `detects-corruption` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `export.output` | `new-file-only` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `export.reparse` | `strict` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `home.party.form` | `kept` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2); `n/a` (red, blue, yellow) | yes |
