@@ -85,15 +85,20 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
   - Move uses the shared ClassicPackedMove carry (`CarryGeneration::Gen5`), dropping through `Gen5SharedScreenState::dropCarriedPokemon`.
   - Origin & Legality is a neutral panel: Encounter check Unknown, Legality Incomplete, no verdicts.
   - Test: `tests/test_gen5_staged_slot_actions.cpp`, 218 checks over B/W/B2/W2.
-- **QA pins awaiting QA:**
-  - `test_reachable_ui_consistency.py:26`: the held-item drawBox string.
-  - `test_gen5_readonly_ui_contract.py:1130-1131`: the Trainer row loops.
-  - `test_gen5_readonly_save.cpp:1641`: the edited party slot now lists Clone and Origin & Legality.
+- **Part 9 item 8, Gen IV Storage view Move/Y.** The save pane uses the shared Y carry, with the pure rules in `include/UI/ClassicCarryGrid.h`.
+  - It applies only with a staged Gen IV editor, on the game-save pane, with no modal open.
+  - Pickup, drop (placeGen4 at stSaveBox/stSaveSlot), B restore, the multi-select rectangle and the carried sprite all stay in that pane. StoragePanel hides the carried source cell.
+  - The Bank pane is unchanged, and so is a save with no staged editor: Y is still stripped there, keeping it read-only.
+  - Test: `tests/test_gen4_storage_carry.cpp`.
+- **QA pins**, folded into the feature commits with the coordinator's and QA's approval:
+  - `test_reachable_ui_consistency.py:26` (d9924fe)
+  - `test_gen5_readonly_ui_contract.py:1130-1131` (67269c5)
+  - `test_gen5_readonly_save.cpp:1641` (fce339f)
+- **CG13 (ItemPicker becomes the item grid).** I gave P the exact SharedMenuGeometry patch: ItemPicker gets the grid rule and HeldItemPicker becomes `return rule(MenuType::ItemPicker);`. P lands it with its Bag Add switch, because on this branch ItemPicker's only consumer is still the list-style Add picker.
 - **devkitA64:** built in Docker (`devkitpro/devkita64`) on a copy of the branch head.
 
 ## Not done / blocked
 
-- **Part 9 item 8 (Gen IV Storage view Move/Y)** is tagged lane S, but the coordinator has not assigned it yet. I asked.
 
 - **Gen III bag** lives in `src/UI/ClassicInventoryOverlay.cpp` (Thread C's Classic* scope). Non-key items are removed with no confirmation, and `ClassicInventoryCatalog::quantityRule` caps at 99, which is wrong for FRLG / RSE PC and Berries at 999. This was reported to the coordinator.
 - `include/UI/ActionSheetModel.h` still says "Make Shiny" / "Legality & Provenance". It is the generic Gen VI+ action sheet, unreachable from Gen I–V (CG11), so QA was asked to scope it out.
