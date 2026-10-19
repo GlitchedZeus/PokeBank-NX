@@ -27,6 +27,9 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
+    "CG19-species-change-resets-moves": "R (R2-BUG-004 SpeciesMoveDefaults)",
+    "CG22-move-chooser-type-badges": "P (R2-BUG-007)",
+    "CG24-gen34-trainer-staged-export": "C (R2-BUG-002)",
     "CG18b-trainer-footer-not-overridden": "C (R2-BUG-001 Trainer A: Edit footer, Gen I gap)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
@@ -707,6 +710,70 @@ def contracts(sources: list[Source]) -> list[Result]:
             if not re.search(r"\btrainerFieldsEditable\s*\(|ViewMode::Trainer\b", args):
                 r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{ln}: the read-only footer override can "
                                     "replace the Trainer page's A: Edit footer (no editable-Trainer exclusion)")
+    res.append(r)
+
+    r = Result("CG19-species-change-resets-moves",
+               "Every Gen I-V editor path that changes a Pokemon's species also resets its moves through the "
+               "shared SpeciesMoveDefaults policy (R2-BUG-004)")
+    # Lane R (round 3): one shared species-change policy, called once from every species apply path.
+    change_rx = re.compile(r"(?<![\w.>])(?:[\w.>-]*(?:\.|->))?(?:setSpecies|applySpecies)\s*\(")
+    seen_fn = set()
+    for s in U:
+        if not EDITOR_FILE_RX.search(s.rel):
+            continue
+        fns = list(function_bodies(s.code, re.compile(r".")))
+        by_name = {}
+        for name, _, body in fns:
+            by_name.setdefault(name, []).append(body)
+
+        def resets(body: str) -> bool:
+            # Satisfied by the body itself or by a same-file helper it calls (applyPicker -> applySpecies).
+            if re.search(r"\bSpeciesMoveDefaults::", body):
+                return True
+            return any(re.search(r"\bSpeciesMoveDefaults::", b)
+                       for callee in re.findall(r"\b(\w+)\s*\(", body) if callee in by_name
+                       for b in by_name[callee] if b is not body)
+
+        for name, ln, body in fns:
+            if not (change_rx.search(body) or re.search(r"(?i)applyspecies", name)):
+                continue
+            if (s.rel, name) in seen_fn:
+                continue
+            seen_fn.add((s.rel, name))
+            if not resets(body):
+                r.violations.append(f"{s.rel}:{ln}: {name}() changes the species but keeps the old moves "
+                                    "(no SpeciesMoveDefaults call)")
+    res.append(r)
+
+    r = Result("CG22-move-chooser-type-badges",
+               "The Move chooser draws each move's type with the shared summary type-badge renderer, not plain "
+               "text (R2-BUG-007)")
+    panel = next((x for x in sources if x.rel == "include/UI/SharedMovesPanel.h"), None)
+    rows = [b for _, _, b in function_bodies(panel.code, re.compile(r"^drawChooserRow$"))] if panel else []
+    if not rows:
+        r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() missing")
+    for b in rows:
+        if not re.search(r"\bClassicTypeBadges::\w+\s*\(|\bdrawTypeBadge\s*\(", b):
+            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() draws the move type as text, "
+                                "not with the shared type badge")
+        if re.search(r"drawText\s*\([^;]*typeLabel\s*\(", b):
+            r.violations.append("include/UI/SharedMovesPanel.h: drawChooserRow() still prints typeLabel() as text")
+    res.append(r)
+
+    r = Result("CG24-gen34-trainer-staged-export",
+               "Gen III and Gen IV Trainer Name / Money edits go through staged Trainer editors (exportable), "
+               "never the mutable-workspace fallback (R2-BUG-002)")
+    ed = next((x for x in sources if x.rel == TRAINER_EDITABILITY_HEADER), None)
+    body = [b for _, _, b in function_bodies(ed.code, re.compile(r"^trainerFieldsEditable$"))] if ed else []
+    for group, games in (("Gen III", ("RS", "E", "FRLG")), ("Gen IV", ("DP", "PT", "HGSS"))):
+        covered = body and any(re.search(r"GameVersion::" + g + r"\b", body[0]) for g in games)
+        if not covered:
+            r.violations.append(f"{TRAINER_EDITABILITY_HEADER}: trainerFieldsEditable() has no {group} staged "
+                                "Trainer case (falls back to mutableWorkspace)")
+    for gen in ("Gen3", "Gen4"):
+        if not any(re.search(r"\bclass\s+\w*" + gen + r"\w*StagedTrainer\w*|\bstruct\s+\w*" + gen + r"\w*StagedTrainer\w*",
+                             x.code) for x in sources):
+            r.violations.append(f"no {gen} staged Trainer editor (Name / Money edits have no export path)")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
