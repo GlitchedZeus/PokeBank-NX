@@ -1138,7 +1138,7 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         for(int r=0;decoded && r<rows;++r) {
             const int i=first+r;
             const int yy=y+92+r*rowH;
-            if(i==cursor)fb.drawSelectionHighlight(x+16,yy,w-32,rowH-6);
+            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x+16,yy,w-32,rowH-6), {i==cursor});  // R2-BUG-012 boxed row
             screen.touchButtons.push_back({kGen5DexRowTouchBase+i,x+16,yy,w-32,rowH-6});
             const auto& e=decoded->entries[static_cast<size_t>(i)];
             fb.drawText(x+32,yy+9,"#"+std::to_string(i+1)+"  "+

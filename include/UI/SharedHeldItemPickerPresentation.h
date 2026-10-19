@@ -3,6 +3,7 @@
 #include "UI/Common.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedBoxedRows.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedMenuGeometry.h"
 
@@ -49,8 +50,9 @@ inline void drawGrid(PKSEFramebuffer& fb, int x, int y,
         const int offset = i - first;
         const int cellX = gridX + (offset % Grid::columns) * cellWidth;
         const int cellY = gridY + (offset / Grid::columns) * Grid::rowPitch + scrollOffset;
-        if (i == focused)
-            fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4);
+        // R2-BUG-012: every cell is its own boxed row; the focused one has the yellow outline.
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4),
+                                 {i == focused});
         const Item value = items[static_cast<std::size_t>(i)];
         // Phase 2 (owner round 1: "the held item menu just needs a smidge the text and sprites
         // closer"): the sprite leads the cell and the name follows it at the one fixed gap of the

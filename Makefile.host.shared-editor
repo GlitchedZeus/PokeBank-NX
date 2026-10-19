@@ -203,6 +203,26 @@ $(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_PARITY_SOURCES) -o $@
 
+# R2-BUG-012: one boxed-row style for every interactive Gen I-V modal (SharedBoxedRows.h).
+SHARED_BOXED_ROWS_INPUTS := tests/test_shared_boxed_rows.cpp include/UI/SharedBoxedRows.h include/UI/ScreenChrome.h \
+	src/UI/SharedPokemonEditorSurface.inc src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc \
+	include/UI/SharedHeldItemPickerPresentation.h
+SHARED_BOXED_ROWS_TEST := $(HOST_BUILD)/test_shared_boxed_rows
+SHARED_BOXED_ROWS_SANITIZE := $(HOST_BUILD)/test_shared_boxed_rows_sanitize
+
+HOST_TESTS += $(SHARED_BOXED_ROWS_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_BOXED_ROWS_SANITIZE)
+host-test: $(SHARED_BOXED_ROWS_TEST)
+host-sanitize: $(SHARED_BOXED_ROWS_SANITIZE)
+
+$(SHARED_BOXED_ROWS_TEST): $(SHARED_BOXED_ROWS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_boxed_rows.cpp -o $@
+
+$(SHARED_BOXED_ROWS_SANITIZE): $(SHARED_BOXED_ROWS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_boxed_rows.cpp -o $@
+
 # Phase 6: Y re-rolls IVs/EVs through the real PK3 / PK4 / PK5 record code; Shiny, Gender,
 # Nature and Ability never change (shiny/non-shiny drafts, gender-ratio edge cases).
 SHARED_REROLL_SOURCES := tests/test_shared_stat_reroll.cpp \
