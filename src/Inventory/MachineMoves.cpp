@@ -6,7 +6,7 @@
 #include "Names/MoveBattleStats5.h"
 #include "Names/MoveNames.h"
 #include "Names/MoveTypes34.h"
-#include "Names/TMMoves.h"
+#include "Names/MachineDisplay.h"
 
 #include <algorithm>
 #include <array>
@@ -16,22 +16,6 @@ namespace {
 
 namespace QP = QuantityPolicy;
 using Enums::GameVersion;
-
-// Gen V TM01-95 then HM01-06: PKHeX 6501f0ab PKHeX.Core/PersonalInfo/Info/PersonalInfo5BW.cs
-// MachineMoves (PersonalInfo5B2W2 has no list of its own; B2W2 TMs/HMs are the BW ones).
-constexpr std::array<uint16_t, 95> kGen5TMMoves{{
-    468, 337, 473, 347, 46,  92,  258, 339, 474, 237,
-    241, 269, 58,  59,  63,  113, 182, 240, 477, 219,
-    218, 76,  479, 85,  87,  89,  216, 91,  94,  247,
-    280, 104, 115, 482, 53,  188, 201, 126, 317, 332,
-    259, 263, 488, 156, 213, 168, 490, 496, 497, 315,
-    502, 411, 412, 206, 503, 374, 451, 507, 510, 511,
-    261, 512, 373, 153, 421, 371, 514, 416, 397, 148,
-    444, 521, 86,  360, 14,  522, 244, 523, 524, 157,
-    404, 525, 526, 398, 138, 447, 207, 365, 369, 164,
-    430, 433, 528, 249, 555,
-}};
-constexpr std::array<uint16_t, 6> kGen5HMMoves{{15, 19, 57, 70, 127, 291}};
 
 // Display order of each family's machine items (TMs, then HMs). Item ids are the native ids the
 // repo's catalogs use: ClassicInventoryCatalog kG1Machines / kG2Machines / kG3Machines,
@@ -95,48 +79,16 @@ constexpr uint16_t kHiddenPower = 237;
 
 } // namespace
 
+// ONE machine table for the whole app: Names::getMachineDescriptor / Names::getTMMove (the same
+// data the bag labels and machine-disc art use). R/S/E resolve through the shared Gen III (FRLG)
+// group. An id counts only when it is a native TM/HM of this exact game (ItemQuantityPolicy).
 Machine machine(Game game, uint16_t itemId) noexcept {
-    Machine m;
-    if (static_cast<std::size_t>(game) >= QP::kGameCount || itemId == 0) return m;
-    switch (QP::generation(game)) {
-        case 1:
-            if (itemId >= 201 && itemId <= 250) m = {Kind::TM, static_cast<uint16_t>(itemId - 200), 0};
-            else if (itemId >= 196 && itemId <= 200) m = {Kind::HM, static_cast<uint16_t>(itemId - 195), 0};
-            else return {};
-            m.moveId = classicMachineMove(classic(game), itemId);
-            break;
-        case 2: {
-            const auto items = addableItems(classic(game), ClassicPocket::TMHM);
-            const auto it = std::find(items.begin(), items.end(), itemId);
-            if (it == items.end()) return {};
-            const auto index = static_cast<uint16_t>(it - items.begin());
-            m = index < 50 ? Machine{Kind::TM, static_cast<uint16_t>(index + 1), 0}
-                           : Machine{Kind::HM, static_cast<uint16_t>(index - 49), 0};
-            m.moveId = classicMachineMove(classic(game), itemId);
-            break;
-        }
-        case 3:
-            if (itemId >= 289 && itemId <= 338) m = {Kind::TM, static_cast<uint16_t>(itemId - 288), 0};
-            else if (itemId >= 339 && itemId <= 346) m = {Kind::HM, static_cast<uint16_t>(itemId - 338), 0};
-            else return {};
-            m.moveId = classicMachineMove(classic(game), itemId);
-            break;
-        case 4:
-            if (itemId >= 328 && itemId <= 419) m = {Kind::TM, static_cast<uint16_t>(itemId - 327), 0};
-            else if (itemId >= 420 && itemId <= 427) m = {Kind::HM, static_cast<uint16_t>(itemId - 419), 0};
-            else return {};
-            m.moveId = Names::getTMMove(group(game), itemId);
-            break;
-        default: {
-            if (itemId >= 328 && itemId <= 419) m = {Kind::TM, static_cast<uint16_t>(itemId - 327), 0};
-            else if (itemId >= 618 && itemId <= 620) m = {Kind::TM, static_cast<uint16_t>(itemId - 618 + 93), 0};
-            else if (itemId >= 420 && itemId <= 425) m = {Kind::HM, static_cast<uint16_t>(itemId - 419), 0};
-            else return {};
-            m.moveId = m.kind == Kind::TM ? kGen5TMMoves[m.number - 1u] : kGen5HMMoves[m.number - 1u];
-            break;
-        }
-    }
-    return m.moveId != 0 ? m : Machine{};
+    if (static_cast<std::size_t>(game) >= QP::kGameCount || itemId == 0) return {};
+    const auto kind = QP::itemKind(game, itemId);
+    if (kind != QP::ItemKind::TM && kind != QP::ItemKind::HM) return {};
+    const auto d = Names::getMachineDescriptor(group(game), itemId);
+    if (!d || (d.kind != Names::MachineKind::TM && d.kind != Names::MachineKind::HM)) return {};
+    return {d.kind == Names::MachineKind::TM ? Kind::TM : Kind::HM, d.number, d.moveId};
 }
 
 std::span<const uint16_t> machineItems(Game game) noexcept {

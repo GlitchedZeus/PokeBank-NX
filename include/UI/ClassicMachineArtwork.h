@@ -10,6 +10,7 @@
 #include <string>
 #include "Enums/GameVersion.h"
 #include "Names/MachineDisplay.h"
+#include "Names/MoveBattleStats5.h"
 namespace UI::ClassicMachineArtwork {
 inline constexpr std::array<std::uint8_t, 166> Gen1Types = {{
     0, 1, 1, 1, 1, 1, 1, 10, 15, 13, 1, 1, 1, 1, 1, 1, 1, 3, 1, 3,
@@ -106,6 +107,11 @@ inline constexpr std::uint8_t moveType(Enums::GameVersion game, std::uint16_t mo
         case G::D: case G::P: case G::DP: case G::Pt: case G::PT:
         case G::HG: case G::SS: case G::HGSS:
             return move < Gen4Types.size() ? Gen4Types[move] : 0;
+        // Gen V: Names/MoveBattleStats5 (PKHeX 6501f0ab MoveInfo5 types, PKHeX order) shifted to
+        // this table's 1-based disc numbering (0 = none).
+        case G::B: case G::W: case G::BW: case G::B2: case G::W2: case G::B2W2:
+            return move > 0 && move < Names::kMoveBattleStats5.size()
+                ? static_cast<std::uint8_t>(Names::kMoveBattleStats5[move].type + 1) : 0;
         default: return 0;
     }
 }

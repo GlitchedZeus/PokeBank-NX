@@ -2,7 +2,17 @@
 // Expected values are the pinned sources cited in include/Inventory/MachineMoves.h.
 #include "Inventory/MachineMoves.h"
 
+#include "Inventory/ClassicInventoryCatalog.h"
+#include "Names/ItemNames.h"
+#include "Names/MoveNames.h"
+#include "Names/MachineDisplay.h"
+#include "UI/ClassicMachineArtwork.h"
+#include "UI/ItemSpriteKey.h"
+
 #include <cstdio>
+#include <fstream>
+#include <set>
+#include <string>
 #include <initializer_list>
 #include <string_view>
 
@@ -176,10 +186,72 @@ static void generationFacts() {
         CHECK(machine(G::Black, item).moveId == machine(G::White2, item).moveId);
 }
 
+// The app has ONE machine table (Names::getMachineDescriptor / getTMMove); the classic bag's own
+// copy (ClassicInventoryCatalog classicMachineMove) must agree with it for every Gen I-III machine.
+static void oneMachineTable() {
+    for (std::size_t i = 0; i <= static_cast<std::size_t>(G::LeafGreen); ++i) {
+        const auto g = static_cast<G>(i);
+        for (const auto item : machineItems(g))
+            CHECK(machine(g, item).moveId ==
+                  PokeVault::Inventory::classicMachineMove(static_cast<PokeVault::Inventory::ClassicGame>(i), item));
+    }
+}
+
+static std::set<std::string> pinnedArt() {
+    std::ifstream in("tools/pinned_item_sprite_names.txt");
+    std::set<std::string> out;
+    for (std::string line; std::getline(in, line);) if (!line.empty()) out.insert(line);
+    return out;
+}
+
+// QA Part 9 (0faf7e9c): every Gen V TM/HM has its exact label and a real disc icon; ids 420-425 are
+// HM01-06 in Gen V while BD/SP keeps TM93-98; the seven Gen V feathers resolve to pinned art.
+static void gen5LabelsAndIcons() {
+    const auto art = pinnedArt();
+    CHECK(art.size() > 500);
+    using Enums::GameVersion;
+    for (const auto version : {GameVersion::BW, GameVersion::B2W2, GameVersion::B, GameVersion::W,
+                               GameVersion::B2, GameVersion::W2}) {
+        const G game = version == GameVersion::B || version == GameVersion::BW ? G::Black
+                     : version == GameVersion::W ? G::White
+                     : version == GameVersion::B2 || version == GameVersion::B2W2 ? G::Black2 : G::White2;
+        for (const auto item : machineItems(game)) {
+            const auto m = machine(game, item);
+            char expected[8];
+            std::snprintf(expected, sizeof expected, "%s%02u", m.kind == Kind::HM ? "HM" : "TM", m.number);
+            const std::string label = Names::machineDisplayLabel(version, item, Names::getItemName(item));
+            CHECK(label.rfind(expected, 0) == 0);
+            CHECK(label.find(Names::getMoveName(m.moveId)) != std::string::npos);
+            const std::string key = UI::ClassicMachineArtwork::artKey(version, item);
+            CHECK(!key.empty() && art.count(key) == 1);
+            CHECK(key.rfind(m.kind == Kind::HM ? "hm-" : "tm-", 0) == 0);
+            if (key.empty() || art.count(key) != 1 || label.rfind(expected, 0) != 0)
+                std::fprintf(stderr, "  ^ item=%u label='%s' art='%s'\n", item, label.c_str(), key.c_str());
+        }
+    }
+    // Same native id 420, different games: HM01 in Gen V, TM93 in BD/SP (unchanged).
+    CHECK(Names::machineDisplayLabel(GameVersion::B2W2, 420, Names::getItemName(420)).rfind("HM01", 0) == 0);
+    CHECK(Names::machineDisplayLabel(GameVersion::BW, 425, Names::getItemName(425)).rfind("HM06", 0) == 0);
+    CHECK(Names::machineDisplayLabel(GameVersion::BDSP, 420, Names::getItemName(420)).rfind("TM093", 0) == 0 ||
+          Names::machineDisplayLabel(GameVersion::BDSP, 420, Names::getItemName(420)).rfind("TM93", 0) == 0);
+    CHECK(std::string(Names::getItemName(420)) == "TM93");  // shared BD/SP row text untouched
+    // Gen V TM93-95 are 618-620, the same disc art rule as every other TM.
+    CHECK(UI::ClassicMachineArtwork::artKey(GameVersion::BW, 618) == "tm-electric");  // Wild Charge
+    CHECK(UI::ClassicMachineArtwork::artKey(GameVersion::B2W2, 620) == "tm-dark");    // Snarl
+    // Gen V feathers 565-571 resolve to the pinned *-wing art.
+    for (uint16_t id = 565; id <= 571; ++id) {
+        const auto slug = UI::ItemSpriteKey::slug(Names::getItemName(id));
+        CHECK(art.count(slug) == 1);
+        CHECK(slug.size() > 5 && slug.compare(slug.size() - 5, 5, "-wing") == 0);
+    }
+}
+
 int main() {
     sameNumberDifferentMoves();
     everyGameEveryMachine();
     generationFacts();
+    oneMachineTable();
+    gen5LabelsAndIcons();
     if (failures != 0) {
         std::fprintf(stderr, "test_machine_moves_gen15: %d failure(s)\n", failures);
         return 1;

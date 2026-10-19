@@ -66,11 +66,12 @@ MACHINE_MOVES_TEST := $(HOST_BUILD)/test_machine_moves_gen15
 MACHINE_MOVES_SANITIZE := $(HOST_BUILD)/test_machine_moves_gen15_sanitize
 MACHINE_MOVES_SOURCES := tests/test_machine_moves_gen15.cpp src/Inventory/MachineMoves.cpp \
     src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp \
-    src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/TMMoves.cpp \
+    src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/TMMoves.cpp src/Names/MachineDisplay.cpp \
     src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 MACHINE_MOVES_INPUTS := $(MACHINE_MOVES_SOURCES) include/Inventory/MachineMoves.h \
     include/Names/MoveBattleStats.h include/Names/MoveBattleStats5.h include/Names/MoveTypes34.h \
-    include/Names/TMMoves.h include/Integration/Gen5/Gen5Bag.h
+    include/Names/TMMoves.h include/Names/MachineDisplay.h include/UI/ClassicMachineArtwork.h \
+    include/UI/ItemSpriteKey.h tools/pinned_item_sprite_names.txt
 
 HOST_TESTS += $(MACHINE_MOVES_TEST)
 HOST_SANITIZE_TESTS += $(MACHINE_MOVES_SANITIZE)
