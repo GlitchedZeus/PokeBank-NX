@@ -80,3 +80,20 @@ table, and the seven Feathers must map to `*-wing` art. CG25 passes on lane I's 
 - A second Switch profile sees "belongs to another Switch profile".
 
 All of these are NOT DEVICE TESTED.
+
+## Fix re-checks (lane branches, not yet on #307)
+
+| # | Lane head | Re-check | Result |
+| --- | --- | --- | --- |
+| 1 | S `06a7dce` (claude/shared-editor-gen35-20261016) | QA's action-list probe from the first pass, rebuilt against that tree | **Fixed on the lane branch** (see below) |
+
+The same probe now prints these action lists:
+- `box3/7 cloned copy: [View] [Edit] [Clone] [Move Pokemon] [Remove] [Origin & Legality] [Review Pending Changes] [Cancel]`
+- `box0/5 created`: the same list.
+- `party0 original: [View] [Edit] [Clone] [Origin & Legality] [Cancel]`
+
+Item 1 still needs:
+- the re-check repeated on the round-3 candidate once it is on #307;
+- a device check.
+
+Item 8 (the Gen IV Storage view) is not fixed. The coordinator has to assign it.
