@@ -429,6 +429,19 @@ require("takeCreateBackupRequest()" in backup_flow and
         "backupSaveData(userUid, titleId, titleName, true)" in backup_flow and
         ui_manager.count("backupSaveData(userUid, titleId, titleName, true)") == 1,
         "a timestamped Switch backup is made only by the explicit Create backup now row")
+# The Auto-Backup setting is retired with the automatic backup it used to control: a toggle that
+# does nothing would mislead. Old settings.cfg files may still carry autoBackup=; it is ignored.
+settings_source = (ROOT / "src/Utils/Settings.cpp").read_text(encoding="utf-8")
+trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
+globals_header = (ROOT / "include/Globals.h").read_text(encoding="utf-8")
+require(all("g_autoBackupEnabled" not in text
+            for text in (shell_source, settings_source, trainer_base, globals_header, ui_manager)) and
+        '"Auto-Backup"' not in shell_source and '"Auto-backup"' not in shell_source and
+        '"Auto-Backup on Load"' not in trainer_base and
+        "case 1: return 2;" in shell_source and "constexpr int kSettingsRows = 5;" in trainer_base and
+        "constexpr int kRows = 5;" in trainer_base and
+        '"\\nautoBackup="' not in settings_source,
+        "the retired Auto-Backup setting must not be shown, toggled, persisted or kept as a global")
 require("reportOpenFailure" in header and
         "selectScreen.reportOpenFailure(error);" in ui_manager and
         "bool UIManager::handleDefaultQuickOpen" in ui_manager,

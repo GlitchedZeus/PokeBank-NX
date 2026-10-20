@@ -5,8 +5,8 @@ namespace Utils {
     // Persisted app settings live in sdmc:/switch/PokeBank-NX/settings.cfg (simple key=value text).
     // Currently: theme (OLED Black/Dark/Light) and app safety/preferences.
 
-    // Load settings into the runtime globals (UI::g_themeMode via applyTheme,
-    // ::g_autoBackupEnabled). Safe when the file is missing — defaults are kept.
+    // Load settings into the runtime globals (UI::g_themeMode via applyTheme, ::g_moveWarn, ...).
+    // Safe when the file is missing — defaults are kept.
     // Call once at startup, before any screen draws.
     void loadSettings();
 

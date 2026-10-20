@@ -34,11 +34,6 @@ inline const std::string BASE_SAVE_DIRECTORY = PokeBank::Paths::root();
 
 inline constexpr uint32_t SIZE_HASH_IN_BYTES = 32;
 
-/// Runtime setting (toggled in the in-app Settings screen, persisted to settings.cfg): when true,
-/// "Load from Title" creates a new timestamped backup each time (kept indefinitely — backups are
-/// never auto-pruned; deleting them is the user's decision). When false, it reuses a single
-/// "Working" copy so backups don't pile up.
-inline bool g_autoBackupEnabled = true;
 inline bool g_allowIllegalEdits = false;  // Settings toggle: lift the legal EV/AV caps (0-252 / 0-200 -> 0-255) so illegal values can be set (e.g. to test the legality checker).
 inline bool g_moveWarn = true;            // Settings toggle ("Move warning"): confirm before a bank move that loses data. Covers the Let's Go transfer (AV/EV training resets to 0); the Gen 3 down-convert warns regardless, since it rebuilds the PID and cannot be undone.
 

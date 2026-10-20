@@ -146,15 +146,12 @@ So the launch dialog shows the core notice, replace the two `gameLaunchQuitRoute
 - `test_emulator_backup_layout`: Create, Browse and Details actions; all copy fits the BackupMenu rows and toast.
 - `test_game_hub_contract`: create-only-on-action and browse-is-read-only.
 
-**Not changed, needs an owner decision: installed Switch titles (SwSh/BDSP/LA/SV).**
-- Every open (`UI.cpp` `handleDefaultQuickOpen`, `handleItemsQuickOpen` and the Backups row 0) calls `backupSaveData(..., g_autoBackupEnabled)`. With the default **Auto-Backup: On** setting, that creates a new timestamped folder per open.
-- That folder is also the editing workspace: PKSE writes edits into it (`FileUtilities.cpp`, `restoreBackupToTitle` notes).
-- Routing opens to the single reusable "Working" copy would overwrite a previous session's saved workspace on the next open.
-- Options for the owner:
-  - (a) default Auto-Backup to Off (a single Working copy, as the toggle already does);
-  - (b) reuse the latest workspace when the installed save is unchanged;
-  - (c) keep the current behaviour.
-- The Switch "Save Backups" screen already has open, create and delete (X, then Y confirmation).
+**Installed Switch titles (SwSh/BDSP/LA/SV): no automatic backup on open (coordinator-confirmed).**
+- `handleDefaultQuickOpen`, `handleItemsQuickOpen` and the Backups "Browse current save" row now call `openWorkingCopy`. It reads the installed save into the single reusable "Working" copy through `WorkingCopyRefresh::refresh`.
+- If an earlier Working copy is byte-identical to the fresh one, it is deleted and no backup appears. If it differs, it holds PKSE edits, so it is kept as a dated backup folder and never discarded. If the fresh copy fails, the earlier one is put back.
+- A timestamped backup is made only by Save Backups → "Create backup now" (`backupSaveData(..., true)`, called exactly once in `UI.cpp`). Delete stays X, then Y confirmation.
+- The Settings **Auto-Backup** toggle is retired, in both the Product Home settings and the in-editor settings panel, along with the `g_autoBackupEnabled` global. A toggle that did nothing would mislead. An old `autoBackup=` line in `settings.cfg` is read and ignored, and no longer written.
+- Tests: `test_emulator_backup_access` `workingCopyRefresh` (fresh / unchanged dropped / edits preserved / failure restores); `test_game_hub_contract` pins the open paths, the single create call and the retired setting.
 
 **Device checks for round 4 (add to the checklist):**
 - **R4-1:** Black (DraStic): + → Backups shows "Create backup now", the original DraStic save and the staged-edits note.
@@ -162,6 +159,8 @@ So the launch dialog shows the core notice, replace the two `gameLaunchQuitRoute
 - **R4-3:** Y on that backup, then Y: deleted. Y, then A or B: kept.
 - **R4-4:** A on the original save opens the game read-only. Back in Backups, no new backup appeared.
 - **R4-5:** Repeat with a RetroArch Gen I–III save and a melonDS save.
+- **R4-6:** Switch title (e.g. SwSh): open, close, open again. No new dated backup appears in Save Backups. "Create backup now" adds exactly one.
+- **R4-7:** Settings (Product Home → System, and the in-editor panel) shows no Auto-Backup row. The other toggles still work by controller and touch.
 
 ## Opt-in for the device test
 
