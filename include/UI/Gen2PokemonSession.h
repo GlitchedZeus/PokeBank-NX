@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/Gen12DVReroll.h"
 #include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
@@ -68,6 +69,8 @@ struct Session {
         working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
         working.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
+        // Unown's letter comes from the same DVs (pokecrystal GetUnownLetter); any other species has form 0.
+        working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
         if (!setLevel(nextLevel)) return false;
         // R2-BUG-004: the new species' native Gen II default moveset at the new level
         // (pret pokegold / pokecrystal FillMoves over evos_attacks), base PP, no PP Ups.

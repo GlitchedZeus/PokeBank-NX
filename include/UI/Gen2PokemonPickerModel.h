@@ -1,5 +1,6 @@
 #pragma once
 
+#include "UI/Gen12DVReroll.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
@@ -118,6 +119,7 @@ inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t
         session.working.dvs[0] = G::StagedEditor::derivedHPDV(dvs);
         session.working.shiny = G::StagedEditor::isShinyDVs(dvs);
         session.working.gender = static_cast<uint8_t>(G::genderFromAttackDV(species, dvs[0]));
+        session.working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
     }
     return true;
 }
