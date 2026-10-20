@@ -22,6 +22,8 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
+#include "UI/ItemPickerSearch.h"
+#include "UI/AbilityEffects.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
@@ -81,6 +83,7 @@ struct EditorState {
     std::vector<uint16_t> pickerValues;
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
+    std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
 
     bool moveEditor = false;
     int moveEditorSlot = 0;
@@ -177,6 +180,7 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
     state.pickerValues = std::move(values);
     state.pickerNativeValues = state.pickerValues;
     state.pickerSort = ItemPickerSort::Mode::Native;
+    state.pickerQuery.clear();
     if (target == PickerTarget::Species) state.speciesChooser.reset();   // R2-SEARCH: full native list
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end() ? 0 :
@@ -194,9 +198,11 @@ static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 inline PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    // NEW-13: Ability rows carry name + effect, so they use the wide two-column value list.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation ? G::MenuType::LocationPicker
-                                                           : G::MenuType::ChoicePicker, count);
+                     : target == PickerTarget::MetLocation || target == PickerTarget::Ability
+                         ? G::MenuType::LocationPicker
+                         : G::MenuType::ChoicePicker, count);
 }
 
 inline bool compactPicker(PickerTarget target) noexcept {
@@ -328,6 +334,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         state.valuePicker = false;
         return true;
     }
+    const auto heldItemName = [&](uint16_t id) { return A::pickerLabel(screen, state, PickerTarget::HeldItem, id); };
     if ((gridPicker || state.pickerTarget == PickerTarget::Move) && (down & HidNpadButton_X)) {
         state.pickerSort = ItemPickerSort::next(state.pickerSort);
         state.pickerRow = ItemPickerSort::reorder(
@@ -338,9 +345,32 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                     return id == 0 ? std::string() : std::string(Names::getMoveName(id));
                 return A::pickerLabel(screen, state, PickerTarget::HeldItem, id);
             });
+        if (gridPicker)   // NEW-06: a re-sort keeps the active search
+            state.pickerRow = std::max(0, ItemPickerSearch::narrow(state.pickerValues, state.pickerQuery,
+                                                                   state.pickerRow, heldItemName));
         state.pickerScroll.stop();
         state.pickerViewport.reset();
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        return true;
+    }
+    if (gridPicker && (down & HidNpadButton_Minus)) {
+        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
+        // and the current sort still applies. Cancel restores the previous search; a query with
+        // no match keeps the previous list (never an empty picker).
+        const std::string previous = state.pickerQuery;
+        const auto refilter = [&](const std::string& query) {
+            const int row = ItemPickerSearch::apply(state.pickerValues, state.pickerNativeValues,
+                                                    state.pickerSort, query, state.pickerRow, heldItemName);
+            if (row >= 0) { state.pickerQuery = query; state.pickerRow = row; }
+            state.pickerViewport.reset();
+            state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
+        };
+        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.pickerQuery, 20, refilter);
+        refilter(result.accepted ? result.text : previous);
+        if (result.accepted && state.pickerQuery != result.text)
+            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
+        state.pickerScroll.stop();
+        screen.controllerNavigation.reset();
         return true;
     }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
@@ -765,6 +795,12 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
+        if (const std::string tag = ItemPickerSearch::tag(state.pickerQuery); !tag.empty()) {
+            // NEW-06: the active search, top right on the title line.
+            int tw = 0, th = 0;
+            fb.measureText(tag, tw, th, TextStyle::Caption);
+            fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+        }
         // R2-BUG-005: a focused Gen IV / V TM/HM shows its move from this game's machine table.
         if (state.pickerRow >= 0 && state.pickerRow < count)
             UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, A::moveGame(screen),
@@ -796,6 +832,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;
         footer.xLabel = "Sort";
+        footer.minusLabel = "Search";   // NEW-06
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
@@ -835,6 +872,21 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                         rowW - 32 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
             fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+        } else if (state.pickerTarget == PickerTarget::Ability) {
+            // NEW-13: ability name left, its short effect right (red only for a drawback).
+            const std::string name = UI::AbilityEffects::nameOf(label);
+            const std::string effect = label.size() > name.size() ? label.substr(name.size() + UI::AbilityEffects::kSplit.size()) : std::string();
+            int nw = 0, nh = 0;
+            fb.measureText(name, nw, nh, TextStyle::Body);
+            fb.drawText(x + 38, yy + 7, name, Colors::Text, TextStyle::Body);
+            if (!effect.empty()) {
+                const std::string shown = SharedMovesPanel::fit(fb, effect, std::max(0, rowW - 32 - nw - 24));
+                int dw = 0, dh = 0;
+                fb.measureText(shown, dw, dh, TextStyle::Caption);
+                fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, shown,
+                            UI::AbilityEffects::isDrawbackEffect(effect) ? Colors::Error
+                                : selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+            }
         } else if (state.pickerTarget == PickerTarget::Ball) {
             // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
             const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, rowW, 38};

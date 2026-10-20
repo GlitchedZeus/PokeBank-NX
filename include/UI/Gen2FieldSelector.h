@@ -104,6 +104,20 @@ constexpr Selector otGender(Gen2Native::CrystalOtGenderChoice current, bool reco
     return s;
 }
 
+// NEW-07 (Round 3): inline Crystal OT gender. A advances to the next choice otGender() offers
+// (wrapping), with no popup: recorded caught history toggles Male / Female; an unrecorded pending
+// value cycles Unknown -> Male -> Female (editor-only until a legitimate encounter records it).
+constexpr Gen2Native::CrystalOtGenderChoice nextOtGender(Gen2Native::CrystalOtGenderChoice current,
+                                                         bool recorded) noexcept {
+    const Selector s = otGender(current, recorded);
+    int start = -1;
+    for (int i = 0; i < s.count; ++i)
+        if (s.choices[static_cast<std::size_t>(i)].value == static_cast<uint8_t>(current)) { start = i; break; }
+    const int next = start < 0 ? 0 : (start + 1) % s.count;
+    return static_cast<Gen2Native::CrystalOtGenderChoice>(
+        static_cast<int8_t>(s.choices[static_cast<std::size_t>(next)].value));
+}
+
 // One input frame. tappedRow >= 0 is a completed tap on that row (select + apply when enabled).
 constexpr Result step(Selector& s, bool up, bool down, bool a, bool b, int tappedRow = -1) noexcept {
     if (!s.open()) return {Outcome::NotOpen, 0};

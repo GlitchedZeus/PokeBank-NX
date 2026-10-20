@@ -22,6 +22,21 @@ ITEM_GRID_SOURCES := tests/test_item_grid_picker.cpp src/Names/MoveNames.cpp
 ITEM_GRID_INPUTS := $(ITEM_GRID_SOURCES) include/UI/SharedItemGridPicker.h include/UI/ClassicTypeBadges.h \
     include/UI/SharedMenuGeometry.h include/UI/SharedMoveFacts.h include/UI/SharedScrollbar.h
 
+# NEW-06: Held Item search (ItemPickerSearch.h) and its Gen II / III / IV-V wiring.
+ITEM_SEARCH_TEST := $(HOST_BUILD)/test_item_picker_search
+ITEM_SEARCH_SANITIZE := $(HOST_BUILD)/test_item_picker_search_sanitize
+ITEM_SEARCH_INPUTS := tests/test_item_picker_search.cpp include/UI/ItemPickerSearch.h include/UI/ItemPickerSort.h \
+    src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+    src/UI/SharedPokemonEditorSurface.inc include/UI/SharedEditorPresentation.h
+
+# NEW-13: Ability names + short effects (AbilityEffects.h) and the Gen III / IV / V wiring.
+ABILITY_EFFECTS_TEST := $(HOST_BUILD)/test_ability_effects
+ABILITY_EFFECTS_SANITIZE := $(HOST_BUILD)/test_ability_effects_sanitize
+ABILITY_EFFECTS_SOURCES := tests/test_ability_effects.cpp src/Names/AbilityNames.cpp
+ABILITY_EFFECTS_INPUTS := $(ABILITY_EFFECTS_SOURCES) include/UI/AbilityEffects.h include/UI/SharedMenuGeometry.h \
+    src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc \
+    src/UI/Gen5SharedReadOnlySurface.inc src/UI/SharedPokemonEditorSurface.inc
+
 # tests/test_touch_scroll_state.cpp (TouchScroll.h, Lane P) was only built by the touch-input
 # workflow; QA Part 9 found no host Makefile ran it. It runs in host-test / host-sanitize here.
 TOUCH_SCROLL_STATE_TEST := $(HOST_BUILD)/test_touch_scroll_state
@@ -29,10 +44,26 @@ TOUCH_SCROLL_STATE_SANITIZE := $(HOST_BUILD)/test_touch_scroll_state_sanitize
 TOUCH_SCROLL_STATE_INPUTS := tests/test_touch_scroll_state.cpp include/UI/TouchScroll.h \
     include/UI/TouchGesture.h tests/touch_fakes/UI/TouchInput.h
 
-HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE)
-host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST)
-host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE)
+HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE)
+host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST)
+host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE)
+
+$(ITEM_SEARCH_TEST): $(ITEM_SEARCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_item_picker_search.cpp -o $@
+
+$(ITEM_SEARCH_SANITIZE): $(ITEM_SEARCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_item_picker_search.cpp -o $@
+
+$(ABILITY_EFFECTS_TEST): $(ABILITY_EFFECTS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(ABILITY_EFFECTS_SOURCES) -o $@
+
+$(ABILITY_EFFECTS_SANITIZE): $(ABILITY_EFFECTS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ABILITY_EFFECTS_SOURCES) -o $@
 
 $(TOUCH_SCROLL_STATE_TEST): $(TOUCH_SCROLL_STATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
@@ -65,6 +96,8 @@ host-pickers: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST)
 	./$(MOVE_TYPE_BADGES_TEST)
 	./$(ITEM_GRID_TEST)
 	./$(TOUCH_SCROLL_STATE_TEST)
+	./$(ITEM_SEARCH_TEST)
+	./$(ABILITY_EFFECTS_TEST)
 
 $(SPECIES_SEARCH_TEST): $(SPECIES_SEARCH_INPUTS)
 	@mkdir -p $(HOST_BUILD)

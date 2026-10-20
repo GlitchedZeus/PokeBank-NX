@@ -93,6 +93,7 @@ struct PickerFooterSpec {
     bool jump = false;           // ZL/ZR: Jump
     const char* xLabel = nullptr; // e.g. "Search" or "Sort"
     const char* yLabel = nullptr; // e.g. "Normal/Shiny"
+    const char* minusLabel = nullptr; // NEW-06: e.g. "Search" (Held Item pickers, where X is Sort)
 };
 
 // Every picker (species, move, held item, location, ability, ball, nature, form, language)
@@ -104,6 +105,7 @@ constexpr Footer pickerFooter(const PickerFooterSpec& spec = {}) noexcept {
     if (spec.jump) f.push("ZL/ZR", "Jump");
     if (spec.xLabel) f.push("X", spec.xLabel);
     if (spec.yLabel) f.push("Y", spec.yLabel);
+    if (spec.minusLabel) f.push("-", spec.minusLabel);
     f.push("A", kSelectLabel);
     f.push("B", kCancelLabel);
     return f;
