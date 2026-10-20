@@ -184,9 +184,18 @@ require(discovery, 'row.diagnostic.find("two valid but different")',
         'selected.sourceVariant=="gen5-copy-1-backup"',
         "Gen V copy choice conflicts with validated Save Instance")
 require(games, "gen5Instances=catalog.rows;",
-        'chosen.sourceVariant=="gen5-copy-0-primary"',
-        'chosen.sourceVariant=="gen5-copy-1-backup"',
+        "selectedGen5Copy=gen5CopyForVariant(chosen.sourceVariant);",
         "selectedGen5Copy=", "gen5CandidateScroll=0;")
+# The copy mapping lives in one helper shared by the picker and the direct
+# assigned open (NEW-16); it must still map both exact variants.
+require(selector_header, 'variant == "gen5-copy-0-primary") return SaveCopySelection::Primary;',
+        'variant == "gen5-copy-1-backup") return SaveCopySelection::Backup;')
+# NEW-16 / C01: Home A (and Items) open the validated assigned save directly;
+# anything not ready falls back to the explicit Save Instances picker.
+require(games, "if (openAssignedGen5Directly(*user, selected, selectedGameId)) return;",
+        "if (openAssignedGen5Directly(*user, title, title.gameId)) return;",
+        "if (!opened.ready()) {",
+        "selectedGen5Fingerprint = opened.instance.contentFingerprint;")
 require(selector_header, "getSelectedGen5Copy() const",
         "SaveCopySelection selectedGen5Copy")
 require(ui_header, "SaveCopySelection selectedCopy")

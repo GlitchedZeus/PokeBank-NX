@@ -1,4 +1,5 @@
 #include "UI/SharedEditorPresentation.h"
+#include "UI/Gen12DVReroll.h"
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
@@ -434,7 +435,12 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
                 !passive && state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text,
                 TextStyle::Caption);
     const auto& p = state.working;
-    if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data)
+    // Unown's letter is the form computed from the DVs (pokecrystal GetUnownLetter, Gen12DVReroll::unownLetter); the
+    // sprite follows the draft's own DVs so a shiny / Random DVs / typed-DV change shows the new letter.
+    const uint8_t spriteForm = p.species == 201
+        ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]}))
+        : uint8_t{0};
+    if (auto* sprite = SpriteManager::getSprite(p.species, spriteForm, p.shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(x + 63, y + 34, 174, 146,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
     else

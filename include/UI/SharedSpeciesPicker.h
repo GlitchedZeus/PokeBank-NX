@@ -69,6 +69,12 @@ inline ModalGeometry drawModalChrome(
 
 // Convert canonical type ids to the classic badge-table numbering used by the
 // Gen I-IV shared picker previews.
+// NEW-11: the selected-species panel reads "Pikachu #25" (name first, then the dex number);
+// the list rows keep their leading dex numbers.
+inline std::string selectedTitle(uint16_t species, std::string_view name) {
+    return std::string(name) + " #" + std::to_string(species);
+}
+
 inline uint8_t canonicalToClassicType(uint8_t normalized) noexcept {
     if (normalized <= 5) return normalized;
     if (normalized == 6) return 7;
@@ -119,16 +125,21 @@ inline bool touchStartedInside(const TouchGestureSnapshot& touch,
 // Geometry: the accepted 1080x520 modal and its 560px list are kept (gestureStartedInList above
 // pins them); the row cell follows Lane S's SharedMenuGeometry SpeciesPicker rule (leading
 // 34 px icon, 8 px sprite gap, 12 px cell padding, Body label) so every generation's chooser
-// looks the same. While the key grid is open the list shows kSearchVisibleRows and the grid sits
-// under it, in the list column; the sprite / shiny preview on the right is untouched.
+// looks the same. NEW-05: while the key grid is open the list keeps all kSearchVisibleRows
+// (== kVisibleRows) rows and the grid sits in the preview column, under the artwork, which
+// shrinks and moves up (kSearchArt*); the keyboard never covers the list.
 inline constexpr int kVisibleRows = 9;
-inline constexpr int kSearchVisibleRows = 5;
+inline constexpr int kSearchVisibleRows = kVisibleRows;   // NEW-05: the list stays whole
 inline constexpr int kRowStep = 43;
 inline constexpr int kRowHeight = 39;
 inline constexpr int kListX = 20;
 inline constexpr int kListY = 84;
 inline constexpr int kListW = 560;
 inline constexpr int kKeyGridH = 176;
+inline constexpr int kPreviewX = 610;                       // preview column, relative to the modal
+inline constexpr int kPreviewW = ModalWidth - kPreviewX - 24;   // 446: up to the modal's right padding
+inline constexpr int kKeyGridY = ModalHeight - 24 - kKeyGridH;  // 320: grid bottom-aligned in the column
+inline constexpr int kSearchArtY = 140, kSearchArtW = 150, kSearchArtH = 120;   // artwork while searching
 
 namespace MenuGeometry = PokeBank::UIModel::SharedMenuGeometry;
 inline constexpr MenuGeometry::Rule kRowRule = MenuGeometry::rule(MenuGeometry::MenuType::SpeciesPicker);
@@ -215,7 +226,7 @@ inline int firstVisible(const Chooser& c, uint16_t species) noexcept {
 }
 
 inline SharedSearchInput::Rect keyGridRect(int modalX, int modalY) noexcept {
-    return {modalX + kListX, modalY + kListY + kSearchVisibleRows * kRowStep + 8, kListW, kKeyGridH};
+    return {modalX + kPreviewX, modalY + kKeyGridY, kPreviewW, kKeyGridH};
 }
 
 struct Input {
@@ -421,11 +432,26 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         }
 
         const uint16_t preview = speciesAt(visualSpecies);
-        const int previewX = x + 610;
+        const int previewX = x + kPreviewX;
         constexpr int previewW = 353;
         fb.drawText(previewX, y + 86, titleText(preview), Colors::Text, TextStyle::Heading);
         fb.drawText(previewX, y + 122, "NORMAL", !previewShiny ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
         fb.drawText(previewX + 190, y + 122, "SHINY", previewShiny ? Colors::ShinyStar : Colors::TextDim, TextStyle::Caption);
+        if (searching) {
+            // NEW-05: compact artwork above the key grid (drawn earlier in this column).
+            if (auto* normal = SpriteManager::getSprite(preview, false); normal && normal->data)
+                fb.drawSpriteStaticContained(previewX, y + kSearchArtY, kSearchArtW, kSearchArtH,
+                                             normal->width, normal->height, normal->data, normal->channels);
+            if (auto* shiny = SpriteManager::getSprite(preview, true); shiny && shiny->data)
+                fb.drawSpriteStaticContained(previewX + 190, y + kSearchArtY, kSearchArtW, kSearchArtH,
+                                             shiny->width, shiny->height, shiny->data, shiny->channels);
+            const auto types = (previewTypes[0] == 0xFF && previewTypes[1] == 0xFF)
+                ? classicPickerTypes(preview, speciesCount)
+                : previewTypes;
+            ClassicTypeBadges::drawPairCentered(fb, previewX, previewW, y + kSearchArtY + kSearchArtH + 10,
+                                                types[0], types[1], 20);
+            return;
+        }
         if (auto* normal = SpriteManager::getSprite(preview, false); normal && normal->data)
             fb.drawSpriteStaticContained(previewX, y + 152, 165, 190, normal->width, normal->height, normal->data, normal->channels);
         else fb.drawText(previewX + 20, y + 235, "No sprite", Colors::TextDim, TextStyle::Caption);
