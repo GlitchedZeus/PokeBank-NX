@@ -258,7 +258,9 @@ namespace UI {
         int emuBackupScroll = 0;
         std::string emuBackupNotice;
         std::string emuBackupProvider; // provider display name of the card the Backups list belongs to
+        std::string emuBackupGameId;   // exact game of the card (names the backup folder)
         void openEmulatorBackups(const std::string& notice = {});
+        void createEmulatorBackup(int listing);
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;

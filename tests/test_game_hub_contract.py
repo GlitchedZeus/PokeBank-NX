@@ -827,9 +827,18 @@ workspace = body("void SaveSelectScreen::activateGameWorkspace()")
 require("openEmulatorBackups();" in workspace and "External emulator sources stay read-only" not in source,
         "+ -> Backups opens the emulator backups list instead of a dead-end notice")
 opener = body("void SaveSelectScreen::openEmulatorBackups(")
-require("SB::list(PokeBank::Paths::exportsRoot(), source)" in opener and "instance.path()" in opener and
+require("SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot)" in opener and "instance.path()" in opener and
         "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener,
         "Emulator backups come only from exact validated / assigned source paths")
+# Round 4 (R2-EMUBACKUP / C07 / S05): a backup is made only by the deliberate "Create backup now" row,
+# never by opening a save; browsing the save is the normal read-only open.
+creator = body("void SaveSelectScreen::createEmulatorBackup(")
+require("SB::createBackup(" in creator and source.count("SB::createBackup(") == 1,
+        "emulator save backups are created only by the explicit Create backup action")
+require("createEmulatorBackup(row.listing)" in source and "kCreateRowEntry" in opener,
+        "the Backups list offers Create backup now for each existing save")
+require("selectCurrentTitle();" in source[source.index("RowAction::BrowseSave"):source.index("RowAction::BrowseSave") + 400],
+        "A on the original save browses it through the normal read-only open")
 delete_block = source[source.index("if (overlay == Overlay::EmulatorBackupDeleteConfirm) {"):]
 delete_block = delete_block[:delete_block.index("            return;\n        }\n")]
 require("PokeBank::UIModel::HomeQuit::decide(kDown)" in delete_block and "Decision::Quit" in delete_block and
