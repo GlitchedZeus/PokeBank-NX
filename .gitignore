@@ -61,3 +61,4 @@ tools/.pret_cache/
 /runtime/return_host/*.nro
 /romfs/runtime/
 /romfs/game_cards/
+__pycache__/

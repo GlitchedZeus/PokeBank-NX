@@ -1165,6 +1165,13 @@ void StagedEditor::discard() noexcept {
     pokemonExpectations_.clear();
 }
 
+std::vector<uint8_t> StagedEditor::presentationBytes(std::string& error) const {
+    error.clear();
+    std::vector<uint8_t> result = staged_;
+    if (!repairForStrictReload(result, metadata_, error)) return {};
+    return result;
+}
+
 std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
     error.clear();
     if (packedMove_.active) {

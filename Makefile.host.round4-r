@@ -1,0 +1,21 @@
+# Lane R, round 4 (owner Round 3 hardware results 62a2f8c3): R2-REROLL Gen II Unown letter / sprite,
+# NEW-15 Create IV/DV defaults, R2-SPECIAL Gen II Special layout, NEW-09 nature +/- stats,
+# NEW-14 Gen V Language. One host binary per repair; each is also built by host-sanitize.
+R4R_GEN2_SOURCES := $(GEN2_STAGED_EDITOR_COMMON) src/Integration/Gen2/Gen2MoveCompatibility.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+R4R_TESTS := $(HOST_BUILD)/test_gen2_unown_letter
+R4R_SANITIZE := $(addsuffix _sanitize,$(R4R_TESTS))
+HOST_TESTS += $(R4R_TESTS)
+HOST_SANITIZE_TESTS += $(R4R_SANITIZE)
+host-test: $(R4R_TESTS)
+host-sanitize: $(R4R_SANITIZE)
+
+$(HOST_BUILD)/test_gen2_unown_letter: tests/test_gen2_unown_letter.cpp $(R4R_GEN2_SOURCES) include/UI/Gen12DVReroll.h \
+	include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests tests/test_gen2_unown_letter.cpp $(R4R_GEN2_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_unown_letter_sanitize: tests/test_gen2_unown_letter.cpp $(R4R_GEN2_SOURCES) include/UI/Gen12DVReroll.h \
+	include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests tests/test_gen2_unown_letter.cpp $(R4R_GEN2_SOURCES) -o $@

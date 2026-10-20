@@ -609,8 +609,9 @@ struct Gen5Editor {
                 const auto personal = PokeVault::Integration::Gen5::personal5(p->species(), p->form(), b2w2(screen));
                 const uint8_t ability = personal
                     ? PokeVault::Integration::Gen5::abilityForSlot5(*personal.info, value) : 0;
-                const char* slot = value == 2 ? " (Hidden)" : value == 1 ? " (Slot 2)" : " (Slot 1)";
-                return std::string(Trainer::getAbilityName(ability)) + slot;
+                // NEW-13: name and short effect; only the Hidden slot keeps a note.
+                const std::string name = std::string(Trainer::getAbilityName(ability)) + (value == 2 ? " (Hidden)" : "");
+                return UI::AbilityEffects::row(name, ability, 5);
             }
             default: return {};
         }
@@ -637,7 +638,7 @@ struct Gen5Editor {
                     return false;
                 }
                 return offer(screen, state, std::move(probe),
-                             "Ability -> " + pickerLabel(screen, state, PickerTarget::Ability, value));
+                             "Ability -> " + UI::AbilityEffects::nameOf(pickerLabel(screen, state, PickerTarget::Ability, value)));
             }
             default: return false;
         }

@@ -1231,10 +1231,10 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
     if (state.session.working) {
         const uint16_t abilityId =
             state.session.working->abilityForSlot(static_cast<uint8_t>(value));
+        // NEW-13: the ability's name and short effect, not "Slot 1 / Slot 2".
         return abilityId == 0
             ? "Ability Slot " + std::to_string(value + 1)
-            : std::string(Trainer::getAbilityName(abilityId)) +
-                " (Slot " + std::to_string(value + 1) + ")";
+            : UI::AbilityEffects::row(Trainer::getAbilityName(abilityId), abilityId, 4);
     }
     return {};
 }

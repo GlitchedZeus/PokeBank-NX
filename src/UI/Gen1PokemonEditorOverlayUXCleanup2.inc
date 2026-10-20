@@ -807,7 +807,7 @@ void ux2DrawPreview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
             fb.drawSpriteStaticContained(x, y + 22, w, 142, sprite->width, sprite->height, sprite->data, sprite->channels);
         else fb.drawText(x + 28, y + 86, "Sprite unavailable", Colors::TextDim);
     }
-    fb.drawText(x, y + 168, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(x, y + 168, speciesHeading(species), Colors::Text, TextStyle::Heading);
     fb.drawText(x, y + 200, nickname, Colors::Text);
     fb.drawText(x, y + 228, "Lv " + std::to_string(level) + "   EXP " + std::to_string(exp), Colors::TextDim, TextStyle::Caption);
     fb.drawText(x, y + 260, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
@@ -945,7 +945,7 @@ void ux2DrawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     const int lx = x + 36;
     if (auto* sprite = SpriteManager::getSprite(p->species, false); sprite && sprite->data)
         fb.drawSpriteStaticContained(lx, y + 90, 270, 230, sprite->width, sprite->height, sprite->data, sprite->channels);
-    fb.drawText(lx, y + 324, speciesCompact(p->species), Colors::Text, TextStyle::Heading);
+    fb.drawText(lx, y + 324, speciesHeading(p->species), Colors::Text, TextStyle::Heading);
     fb.drawText(lx, y + 362, p->nickname + "   Lv " + std::to_string(p->level), Colors::Text);
     fb.drawText(lx, y + 396, "OT " + p->originalTrainer + "   TID " + std::to_string(p->trainerId), Colors::TextDim);
 

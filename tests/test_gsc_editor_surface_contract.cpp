@@ -231,9 +231,9 @@ int main() {
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
     assert(unified.find("focus.row == 10 && !caught.present") != std::string::npos);
-    // OT gender / Met Time use the shared selector (owner directive); the pending/recorded split
-    // and the encounter's allowed-time mask are unchanged.
-    assert(unified.find("Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)") != std::string::npos);
+    // OT gender / Met Time cycle inline over the shared selector's choices (Round 3 NEW-07);
+    // the pending/recorded split and the encounter's allowed-time mask are unchanged.
+    assert(unified.find("Selector::nextOtGender(state.crystalOtGender, caught.present)") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
     assert(unified.find("Pending Met Time is") != std::string::npos);
     assert(unified.find("crystalAllowedTimeMask") != std::string::npos);

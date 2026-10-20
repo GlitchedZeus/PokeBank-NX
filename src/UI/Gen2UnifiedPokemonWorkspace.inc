@@ -490,9 +490,12 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 return true;
             }
             if (focus.row == 12) {
-                unifiedStateFor(screen).selector =
-                    PokeBank::UIModel::Gen2FieldSelector::otGender(state.crystalOtGender, caught.present);
-                screen.controllerNavigation.reset();
+                // NEW-07: A cycles OT Gender in place (like Met Time), no popup. Recorded caught
+                // history toggles Male / Female and keeps every other caught bit; a pending value
+                // stays editor-only (applyFieldSelector never fabricates caught history).
+                namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
+                applyFieldSelector(screen, state, Selector::Field::OtGender,
+                    static_cast<uint8_t>(Selector::nextOtGender(state.crystalOtGender, caught.present)));
                 return true;
             }
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);

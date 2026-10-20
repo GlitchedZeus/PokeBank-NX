@@ -293,6 +293,134 @@ GUARDS_ROUND2: dict[str, tuple[str, G]] = {
 ROUND2_PASS = list(GUARDS_ROUND2)
 ROUND2_NOT_VERIFIED = ['B04', 'E03', 'E11', 'L06', 'S04', 'S06']
 
+# Round 3 (owner on 62a2f8c3, docs/hardware/ROUND3_RESULTS_62a2f8c3.md): 70 PASS. The 48 above that the owner
+# passed again stay guarded as they are; these are the round 3 PASS items that had no guard yet. Each pins
+# behaviour that is in the code today (a test that runs on every PR, or an enforced cross-gen contract).
+# Round 1 items the owner FAILED in round 3 (C01, C07, M04, M05, B08, E02, E05, S05) keep their round 1
+# guards: those pin what was accepted; the new failures are round 3 contracts (XFAIL until fixed).
+ROUND3_DOC = "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+GUARDS_ROUND3: dict[str, tuple[str, G]] = {
+    'B04': ('Gen IV/V Add Item (round 3 PASS)', [
+        ('cg', 'CG12-single-bag-add-flow'),
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'CHECK(G4::gen4BagItemAllowed(layout, pocket, c.id));'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen4.cpp', 'cell(m, ver, "bag-add",'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', 'runCell(m, v, "bag-add", [&] { return bagAdd(c); });'),
+    ]),
+    'S04': ('Gen V Review / Discard / Export (round 3 PASS)', [
+        ('host', 'test_gen5_review_discard_export_trace', 'tests/test_gen5_review_discard_export_trace.cpp', 'T + "Export asks for confirmation");'),
+        ('host', 'test_gen5_review_discard_export_trace', 'tests/test_gen5_review_discard_export_trace.cpp', 'T + "Discard All asks for confirmation");'),
+        ('host', 'test_gen5_review_discard_export_trace', 'tests/test_gen5_review_discard_export_trace.cpp', 'T + "cancel Review/Export/Discard keeps every staged byte");'),
+    ]),
+    'R2-MENUS': ('Compact selection windows (round 3 PASS)', [
+        ('cg', 'CG13-shared-menu-geometry'),
+        ('host', 'test_shared_menu_geometry', 'tests/test_shared_menu_geometry.cpp', '"SaveDiscard rule = the accepted 560 px dialog and its two buttons");'),
+    ]),
+    'R2-SEARCH': ('Species live search (round 3 PASS)', [
+        ('cg', 'CG15-shared-species-search'),
+        ('host', 'test_species_search_gen15', 'tests/test_species_search_gen15.cpp', 'assert(Search::searchKey("Mr. Mime") == "MRMIME");'),
+    ]),
+    'R2-GOLD': ('Read-only field colours (round 3 PASS)', [
+        ('cg', 'CG16-shared-field-state'),
+    ]),
+    'R2-LAUNCH': ('Game launch confirmation (round 3 PASS)', [
+        ('cg', 'CG07-single-exit-and-launch-site'),
+        ('py', 'tests/test_game_hub_contract.py', 'def require(cond: bool, message: str) -> None:'),
+    ]),
+    'R2-SCROLLBAR': ('Touch scrollbar dragging (round 3 PASS)', [
+        ('cg', 'CG14-shared-draggable-scrollbar'),
+        ('host', 'test_shared_scrollbar', 'tests/test_shared_scrollbar.cpp', 'assert(r.consumed && !r.changed && o.bar.dragging);'),
+    ]),
+    'R2-MOVECHOOSER': ('Extra rows in the Move list (round 3 PASS)', [
+        ('host', 'test_shared_menu_geometry', 'tests/test_shared_menu_geometry.cpp', 'move.frame.w == 760 && move.frame.h == 520 && move.visibleRows == 10'),
+    ]),
+    'R2-CRYSTAL': ('Crystal Met Time (round 3 PASS)', [
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen12.cpp', 'r2cell(row, "met-time",'),
+    ]),
+    'R2-GEN5HEADER': ('Gen V exact-game title (round 3 PASS)', [
+        ('cg', 'CG17-exact-source-game-header'),
+        ('host', 'test_gen5_create_edit_parity', 'tests/test_gen5_create_edit_parity.cpp', 'std::string("S03 Create header names the game: ") + id);'),
+    ]),
+    'R2-BUG-001': ('Trainer Edit button (round 3 PASS)', [
+        ('cg', 'CG18-trainer-edit-footer'),
+        ('cg', 'CG18b-trainer-footer-not-overridden'),
+    ]),
+    'R2-BUG-003': ('Gen V Trainer clutter (round 3 PASS)', [
+        ('host', 'test_gen5_create_edit_parity', 'tests/test_gen5_create_edit_parity.cpp', '"R2-BUG-003 Trainer page: editable cards, divider, identity rows, language detail");'),
+    ]),
+    'R2-BUG-004': ('Species change resets moves (round 3 PASS)', [
+        ('cg', 'CG19-species-change-resets-moves'),
+        ('host', 'test_species_change_moves_gen15', 'tests/test_species_change_moves_gen15.cpp', 'require(moves(t, 25, 5) == (std::array<uint16_t, 4>{84, 45, 0, 0}), "Gen I Pikachu Lv5 = Create default");'),
+    ]),
+    'R2-BUG-005': ('TM/HM move information (round 3 PASS)', [
+        ('cg', 'CG25-gen5-machine-and-feather-art'),
+        ('host', 'test_machine_moves_gen15', 'tests/test_machine_moves_gen15.cpp', 'CHECK(Names::machineDisplayLabel(GameVersion::B2W2, 420, Names::getItemName(420)).rfind("HM01", 0) == 0);'),
+    ]),
+    'R2-BUG-006': ('Compact item grid (round 3 PASS)', [
+        ('cg', 'CG23-bag-add-grid-picker'),
+        ('host', 'test_item_grid_picker', 'tests/test_item_grid_picker.cpp', 'require(g.visibleRows >= 1 && g.visibleRows <= Grid::kMaxRows, "1..10 visible rows");'),
+    ]),
+    'R2-BUG-007': ('Coloured Move types (round 3 PASS)', [
+        ('cg', 'CG22-move-chooser-type-badges'),
+        ('host', 'test_move_type_badges', 'tests/test_move_type_badges.cpp', 'require(b.typeId == f.type, "badge is the move\'s own type sprite");'),
+    ]),
+    'R2-BUG-012': ('All clickable popup rows boxed (round 3 PASS)', [
+        ('cg', 'CG20-shared-boxed-modal-rows'),
+        ('cg', 'CG20b-shared-boxed-modal-rows-gen12-classic'),
+        ('cg', 'CG20c-shared-boxed-species-picker'),
+        ('host', 'test_shared_boxed_rows', 'tests/test_shared_boxed_rows.cpp', '"reference focus colour is the yellow PartyNumber");'),
+    ]),
+    'R2-BUG-013': ('Coloured controller buttons in Help (round 3 PASS)', [
+        ('cg', 'CG21-help-lines-use-button-glyphs'),
+        ('host', 'test_glyph_instruction', 'tests/test_glyph_instruction.cpp', 'assert(text(GI::helpLine("A   Open or show Pokémon actions")) == "[A]  Open or show Pokémon actions");'),
+    ]),
+    'R2-BUG-008': ('Ruby Pikachu location investigation (round 3 PASS)', [
+        ('host', 'test_gen3_encounter_keep_stored', 'tests/test_gen3_encounter_keep_stored.cpp', 'assert(rows.size() == 2 && rows[0] == Picker::kKeepStoredRow && rows[1] == 0);'),
+    ]),
+    'R2-CHECK-009': ('Yellow Move Pokemon reachable (round 3 PASS)', [
+        ('host', 'test_gen12_packed_move', 'tests/test_gen12_packed_move.cpp', 'std::vector<std::string>{"View", "Edit", "Clone", "Move", "Release", legality, "Cancel"}'),
+    ]),
+    'R2-CHECK-010': ('Sapphire Super Rod pocket warning (round 3 PASS)', [
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'CHECK(BagAdd::needsKeyItemWarning(QP::quantityRule(c.game, c.pocket, c.id)) == c.warns);'),
+        ('host', 'test_bag_add_flow_gen15', 'tests/test_bag_add_flow_gen15.cpp', 'cases.push_back({{"PC Super Rod", QP::Pocket::PCItems, 264, true, 1}, InventoryPouch::PCItems});'),
+    ]),
+    'NEW-01': ('Help closes with B (round 3 PASS)', [
+        ('cg', 'CG29-help-closes-with-b'),
+    ]),
+    'AUD-02': ('Species sprites and restrictions (round 3 PASS)', [
+        ('cg', 'CG15-shared-species-search'),
+        ('host', 'test_shared_species_picker_surface_contract', 'tests/test_shared_species_picker_surface_contract.cpp', '"Shared Gen I/II/III species-picker modal chrome contract: PASS\\n"'),
+    ]),
+    'AUD-03': ('Emulator names (round 3 PASS)', [
+        ('cg', 'CG26-trainer-provider-display-name'),
+        ('host', 'test_home_card_providers', 'tests/test_home_card_providers.cpp', '"Home cards: real providers Gen I-V, measured labels, fingerprinted snapshot "'),
+        ('host', 'test_session_provider_names', 'tests/test_session_provider_names.cpp', '"Part 9: each provider (mGBA, RetroArch + DeSmuME core, melonDS, DraStic, Switch title) named "'),
+    ]),
+    'AUD-05': ('Quick View touch (round 3 PASS)', [
+        ('host', 'test_touch_scroll_state', 'tests/test_touch_scroll_state.cpp', '"touch-scroll runtime geometry: PASS\\n"'),
+        ('py', 'tests/test_touch_appwide_surface_contract.py', 'print(f"touch app-wide surface inventory: PASS ({len(SURFACES)} surface families)")'),
+    ]),
+    'AUD-06': ('Item sprites (round 3 PASS)', [
+        ('cg', 'CG25-gen5-machine-and-feather-art'),
+        ('py', 'tests/test_item_sprite_coverage.py', 'print("Generation I-IV item catalog sprite resolution: PASS (zero unresolved native item labels)")'),
+    ]),
+    'AUD-07': ('Gen V assigned to profile (round 3 PASS)', [
+        ('host', 'test_gen5_source_e2e', 'tests/test_gen5_source_e2e.cpp', '"original immutable, stale refused, .dsv backed up verbatim PASS\\n"'),
+        ('host', 'test_gen5_readonly_save', 'tests/test_gen5_readonly_save.cpp', '"Gen V persistent copies: 4 titles x 2 profiles, rollback, relink, isolation and immutability PASS\\n"'),
+    ]),
+    'AUD-08': ('Gen IV Y multi-move (round 3 PASS)', [
+        ('host', 'test_gen4_hardware_surface_contract', 'tests/test_gen4_hardware_surface_contract.cpp', '"Gen IV shared editor hardware surface contract PASS\\n"'),
+        ('host', 'test_gen4_storage_carry', 'tests/test_gen4_storage_carry.cpp', '"Gen IV Storage save-pane Move / Y carry (Part 9 item 8, "'),
+    ]),
+    'AUD-09': ('Home Profile navigation (round 3 PASS)', [
+        ('cg', 'CG28-same-profile-keeps-game-focus'),
+        ('py', 'tests/test_game_hub_contract.py', 'require(\'drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"}\' in source,'),
+    ]),
+    'AUD-10': ('Region backgrounds included (round 3 PASS)', [
+        ('py', 'tests/test_qa_regressions_assets.py', 'print(f"PASS  QA-F1: all {len(referenced)} source-referenced RomFS assets are in the packaged manifest")'),
+    ]),
+}
+ROUND3_PASS_COUNT = 70
+
 PR_GATING_KINDS = {"host", "qa", "cg", "py"}  # "pin" alone is not a behavioural guard (except P09)
 PIN_ONLY_ALLOWED = {"C09": "no host seam: libnx pad input does not run on the host"}
 
@@ -354,7 +482,24 @@ def check(root: Path, run_python: bool = True) -> list[str]:
     if set(ROUND2_PASS) & (set(OWNER_PASS) | set(ROUND2_NOT_VERIFIED)) or \
             not set(ROUND2_PASS) <= set(OWNER_NOT_PASS):
         errors.append("round 2 accepted IDs must be round 1 non-PASS items, disjoint from the unverified ones")
-    for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2}.items():
+    # Round 3: every owner PASS on the round 3 sheet is guarded (round 1 / round 2 mapping or GUARDS_ROUND3),
+    # and GUARDS_ROUND3 holds only round 3 PASS items not already guarded.
+    r3 = text(ROUND3_DOC)
+    if r3 is None:
+        errors.append(f"{ROUND3_DOC} is missing")
+    else:
+        rows3 = re.findall(r"^- \*\*([A-Z0-9-]+) — (PASS|FAIL|NOT TESTED) — ", r3, re.M)
+        r3_pass = [i for i, res in rows3 if res == "PASS"]
+        guarded = set(GUARDS) | set(GUARDS_ROUND2) | set(GUARDS_ROUND3)
+        if len(rows3) != 110 or len(r3_pass) != ROUND3_PASS_COUNT:
+            errors.append(f"{ROUND3_DOC}: {len(rows3)} rows / {len(r3_pass)} PASS, gate expects 110 / {ROUND3_PASS_COUNT}")
+        unguarded = [i for i in r3_pass if i not in guarded]
+        if unguarded:
+            errors.append(f"{ROUND3_DOC}: owner PASS item(s) with no guard: {unguarded}")
+        stray = [i for i in GUARDS_ROUND3 if i not in r3_pass or i in GUARDS or i in GUARDS_ROUND2]
+        if stray:
+            errors.append(f"GUARDS_ROUND3 holds item(s) that are not new round 3 PASS: {stray}")
+    for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2, **GUARDS_ROUND3}.items():
         kinds = {g[0] for g in guards}
         if not kinds & PR_GATING_KINDS and pid not in PIN_ONLY_ALLOWED:
             errors.append(f"{pid} {title}: no guard that runs on every PR")
@@ -405,13 +550,14 @@ def main(argv: list[str]) -> int:
     args = ap.parse_args(argv[1:])
     errors = check(args.root.resolve())
     if args.list:
-        for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2}.items():
+        for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2, **GUARDS_ROUND3}.items():
             print(f"{pid} {title}")
             for g in guards:
                 print(f"      {g[0]:4} {' | '.join(str(x) for x in g[1:3])}")
-    every = {**GUARDS, **GUARDS_ROUND2}
+    every = {**GUARDS, **GUARDS_ROUND2, **GUARDS_ROUND3}
     n = sum(len(g) for _, g in every.values())
-    label = f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 owner PASS items"
+    label = (f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 + {len(GUARDS_ROUND3)} round 3 owner PASS items; "
+             f"all {ROUND3_PASS_COUNT} round 3 PASS guarded")
     if errors:
         print(f"Hardware-accepted regression gate: FAIL ({len(errors)} problem(s), {label}, {n} guards)")
         for e in errors:

@@ -296,6 +296,13 @@ bool handleBasePartyTouch(TrainerViewScreen& screen, const TouchInput& touch) {
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
+    // B08: the Gen II-V surfaces return before the base update, which owns the status
+    // countdown. Expire it exactly once per frame on every path (a path that already
+    // counted down, or posted a new message, changes the value and is left alone).
+    struct StatusExpiry {
+        int& frames; const int atStart;
+        ~StatusExpiry() { if (frames > 0 && frames == atStart) --frames; }
+    } statusExpiry{storageStatusFrames, storageStatusFrames};
     u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
@@ -382,6 +389,12 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    // B08: the status line (export result, refusals) is painted LAST on every path,
+    // including the Gen II-V surfaces below that own the frame and return early.
+    struct StatusOnTop {
+        TrainerViewScreen& screen; PKSEFramebuffer& fb;
+        ~StatusOnTop() { screen.drawTransientStatus(fb); }
+    } statusOnTop{*this, fb};
     // Touch input is consumed before draw, so each rendered frame must publish fresh geometry.
     // Clear both screen-owned targets and visible controller-glyph buttons here because the
     // Gen I-IV editor frames do not all pass through drawAppBackdrop().

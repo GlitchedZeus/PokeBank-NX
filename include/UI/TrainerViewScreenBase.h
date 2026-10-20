@@ -221,6 +221,8 @@ namespace UI {
             storageStatus = msg;
             storageStatusFrames = frames;
         }
+        // Paints the postStatus line on top of whatever owns the frame (see draw()).
+        void drawTransientStatus(PKSEFramebuffer& fb);
         // --- The carried block ---
         // Cells of the rectangle currently in hand, row-major over selectDimensions (w x h). A null
         // cell is a hole -- the source slot was empty, or it was locked and deliberately left behind.
