@@ -2600,6 +2600,32 @@ namespace UI {
             gen5Instances,previousFocus,gen5CandidateIndex,gen5CandidateScroll);
     }
 
+    bool SaveSelectScreen::openAssignedGen5Directly(
+        const UserEntry& user, const TitleEntry& title, const std::string& gameId) {
+        gen5DirectOpenNotice.clear();
+        if (!legacyBindings) return false;
+        // Re-reads and strictly validates the exact assigned bytes. Automatic
+        // copy selection never guesses between differing Primary/Backup copies.
+        const auto opened = PokeVault::Integration::Gen5::openAssignedSource(
+            *legacyBindings, currentProfileIdentity(), gameId);
+        if (!opened.ready()) {
+            if (opened.status != PokeVault::Integration::Gen5::AssignedOpenStatus::Unassigned)
+                gen5DirectOpenNotice = opened.diagnostic.empty()
+                    ? "The assigned Gen V save no longer validates; choose a Save Instance."
+                    : opened.diagnostic;
+            return false;
+        }
+        selectedUserUid = user.uid;
+        selectedTitleId = 0;
+        selectedTitleName = title.name;
+        selectedGameId = gameId;
+        selectedSourceKind = SelectedSourceKind::Gen5AssignedFile;
+        selectedGen5Fingerprint = opened.instance.contentFingerprint;
+        selectedGen5Copy = gen5CopyForVariant(opened.instance.sourceVariant);
+        titleSelected = true;
+        return true;
+    }
+
     bool SaveSelectScreen::assignGen5Candidate(
         const PokeVault::Source::SaveInstance& chosen) {
         if(!legacyBindings)return false;
@@ -2661,11 +2687,7 @@ namespace UI {
         selectedGameId=cardId;
         selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;
         selectedGen5Fingerprint=assigned.instance.contentFingerprint;
-        selectedGen5Copy=chosen.sourceVariant=="gen5-copy-0-primary"
-            ? PokeVault::Integration::Gen5::SaveCopySelection::Primary
-            : chosen.sourceVariant=="gen5-copy-1-backup"
-                ? PokeVault::Integration::Gen5::SaveCopySelection::Backup
-                : PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+        selectedGen5Copy=gen5CopyForVariant(chosen.sourceVariant);
         titleSelected=true;
         gen5SetupFromGamesDrawer=false;
         overlay=Overlay::None;
@@ -2827,11 +2849,14 @@ namespace UI {
         }
 
         if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            // A always presents the exact-game Save Instances picker. An
-            // assigned path is a remembered suggestion, NOT permission to
-            // bypass explicit source choice for this edit/view session.
-            openGen5Setup(selectedGameId,
-                "Choose a validated Gen V Save Instance; source stays read-only.");
+            // NEW-16 / C01: A opens the save already assigned to this card,
+            // like Gen IV. Changing the save stays on Game Card + -> Source /
+            // Game File. A missing, ambiguous or invalid assignment falls back
+            // to the explicit Save Instances picker with the real reason.
+            if (openAssignedGen5Directly(*user, selected, selectedGameId)) return;
+            openGen5Setup(selectedGameId, gen5DirectOpenNotice.empty()
+                ? "Choose a validated Gen V Save Instance; source stays read-only."
+                : gen5DirectOpenNotice);
             gen5AssignOnly=false; // Explicit A on a game requests the shared editor.
             discoverGen5Candidates();
             return;
@@ -2899,10 +2924,12 @@ namespace UI {
         }
 
         if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            // Same explicit Save Instance choice as Open; the shared editor
-            // then starts on its native Bag. openIntent stays Items.
-            openGen5Setup(title.gameId,
-                "Choose a validated Gen V Save Instance to open its Bag; source stays read-only.");
+            // Same rule as Open: the assigned save opens directly; the shared
+            // editor then starts on its native Bag. openIntent stays Items.
+            if (openAssignedGen5Directly(*user, title, title.gameId)) return;
+            openGen5Setup(title.gameId, gen5DirectOpenNotice.empty()
+                ? "Choose a validated Gen V Save Instance to open its Bag; source stays read-only."
+                : gen5DirectOpenNotice);
             gen5AssignOnly=false;
             discoverGen5Candidates();
             return;

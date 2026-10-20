@@ -85,7 +85,12 @@ std::unique_ptr<GSCReadOnlyTrainer> GSCReadOnlyTrainer::create(
 
 bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
     if (!stagedEditor_) { error = "Staged editing unavailable"; return false; }
-    const auto bytes = stagedEditor_->finalizedBytes(error);
+    // NEW-04: while a packed Y move carries Pokemon, finalizedBytes() deliberately refuses (a carry
+    // is not an exportable save). The grid is then drawn from presentationBytes(): the same strict
+    // reload repair on a copy, never exportable. Without this every Gen II pickup failed its first
+    // refresh with "Place or cancel carried Pokemon before finalizing the Gen II staged save".
+    const auto bytes = stagedEditor_->packedMoveActive() ? stagedEditor_->presentationBytes(error)
+                                                         : stagedEditor_->finalizedBytes(error);
     if (bytes.empty()) return false;
     const auto parsed = Integration::Gen2::parse(bytes, stagedEditor_->metadata().sourceGame);
     if (!parsed) { error = parsed.detail; return false; }

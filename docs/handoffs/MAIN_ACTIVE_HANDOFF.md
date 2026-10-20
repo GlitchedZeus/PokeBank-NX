@@ -4,7 +4,7 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-20, by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
+Last updated: 2026-10-20 (round 4 checkpoint 4), by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
 
 ## 1. Where to start
 
@@ -32,18 +32,11 @@ git log --oneline -1 62a2f8c34476062ece344ef2188ab6b385369a7d   # must exist: th
 | --- | --- | --- | --- |
 | 1 | `7fea1797` | 42 PASS | `docs/hardware/ROUND1_RESULTS_7fea1797.md` |
 | 2 | `e10f307f` | 6 more PASS (B01, B02, B03, B06, S01, S03) | `docs/hardware/ROUND2_RESULTS_e10f307f.md` |
-| 3 | `62a2f8c3` (sha256 `0c7a6fb01af2a1356676beedf3aec9da79842a499c7c63833fb683f42f332078`) | **Owner reports 70 PASS / 37 FAIL in total. The per-item results are NOT yet on GitHub.** | **missing:** create `docs/hardware/ROUND3_RESULTS_62a2f8c3.md` from the owner's sheet |
+| 3 | `62a2f8c3` (sha256 `0c7a6fb0…2078`) | **110 checks: 70 PASS, 37 FAIL, 3 NOT TESTED** | [`docs/hardware/ROUND3_RESULTS_62a2f8c3.md`](../hardware/ROUND3_RESULTS_62a2f8c3.md) (owner, `c2287f50`) |
 
-**What to do with the round-3 results:**
-- **First task: get them in.** Before repairing anything, get the owner's round-3 sheet (PASS / FAIL / NOT VERIFIED
-  per row of [`docs/hardware/RETEST_62a2f8c3.md`](../hardware/RETEST_62a2f8c3.md)) and commit it as
-  `ROUND3_RESULTS_62a2f8c3.md`.
-- **Do not guess them.** Never infer which items failed.
-- **Protect the passes.** Add every new round-3 PASS to the hardware gate
-  (`tests/test_hw_round1_regression_gate.py`, mutation test `tests/test_qa_hw_round1_gate_mutations.py`), the
-  same way B01/B02/B03/B06/S01/S03 were added in round 3.
-- **The 48 passes already guarded:** the gate protects the 42 round-1 passes plus the 6 round-2 passes today
-  (138 guards). They are listed in Group A of `RETEST_62a2f8c3.md`.
+**Round-3 results are on GitHub.** Read `ROUND3_RESULTS_62a2f8c3.md` §9 for the owner's priority order (P0–P3).
+Protect all 70 PASS items. The hardware gate guards the 48 round-1/2 passes today; QA was asked (2026-10-20) to
+add the remaining round-3 passes to `tests/test_hw_round1_regression_gate.py`.
 
 ## 3. Round-3 state of each repair
 
@@ -68,7 +61,7 @@ round-3 results file says so.
 Investigated, not defects:
 - **R2-CHECK-010:** the Super Rod in the R/S PC is native behaviour. The R/S Devon Goods / Letter / Orb and
   Emerald HM PC offers were removed.
-- **R2-CHECK-011:** the Gen V "VGE" names match PKHeX.
+- **R2-CHECK-011:** the names match PKHeX, but the **owner FAILED it in round 3** (location lists too broad); QA CG53 covers it and lane P owns it with NEW-12.
 
 Never device-verified: B04, E03, E11, L06, S04, S06, C09, M08, and the real RetroArch/DraStic launch and return.
 
@@ -136,6 +129,40 @@ check, so their local state is unconfirmed; their remote tips are S `3ff061bf` a
 - `claude/gen6/7/8-native-*`.
 
 **Git conflicts:** none open on #307.
+
+## 6b. Round 4 (2026-10-20): live repair status
+
+States: Implemented → Tested (host) → Pushed → Integrated (#307) → Hardware verified (owner only).
+
+| Owner IDs | Repair | State | Branch @ SHA |
+| --- | --- | --- | --- |
+| NEW-16, C01 | Gen V Home A / Items open the validated assigned save directly; anything not ready falls back to Save Instances with the reason (`SaveSelectScreen::openAssignedGen5Directly`) | **Integrated** (Native PR Gate 39511458784 green) | #307 `c59ac178` (from `wip/coord-gen5-direct-open-20261020` @ `61491b53`) |
+| B08 | Export result / status messages painted on every surface (`TrainerViewScreen::drawTransientStatus`, scope guards in the composite `draw`/`update`); root cause: Gen II–V surfaces return before the only status painter | **Integrated**; `tests/test_status_toast_contract.py` | #307 `c59ac178` |
+| R2-BUG-006 | Short item grids use balanced rows and a narrower frame (lane P) | **Integrated**; host test `test_item_grid_picker` | #307 `5887c56c` (P `e3c81745`) |
+| R2-REROLL | Gen II Unown letter recomputed from DVs and the editor sprite follows it; DV and shiny rules audited correct against pret (lane R) | **Integrated**; host test `test_gen2_unown_letter` | #307 `aea3730e` (R `fd30e0fc`) |
+| NEW-11, NEW-05, NEW-08, NEW-10 | "Pikachu #25" label; search keyboard no longer covers the species list; scrollbar gutter in value lists; compact Met Location popups (lane P) | **Integrated** | #307 `1d803f01` (P `9573e8e8`) |
+| QA gate | All 70 round-3 PASS items guarded (196 guards); CG29; CG30–CG35 XFAIL contracts reproduce R2-TRAINER/R2-BUG-002, NEW-19, R2-REVIEWMOVE, L06/E02/NEW-20, NEW-17, AUD-01 | **Integrated** | #307 `847fe390`, `0d810f7a` |
+| NEW-04 | Gen II PC box Move: the grid refresh used `finalizedBytes()`, which refuses mid-carry, so every pickup cancelled. Added display-only `StagedEditor::presentationBytes()`; finalize still refuses mid-carry (lane C) | **Integrated**; host test `test_gen2_box_move_presentation` (G/S/C pickup, same/other-box drop, cancel, finalize + export) | #307 `131fb23f` (C `c3807c63`) |
+| NEW-07, NEW-06, NEW-13 | Crystal OT Gender cycles inline; Held Item search; Ability names + short effects (lane P). **Caveat:** the ability effect lines in `include/UI/AbilityEffects.h` are P's own summaries; no source in the repo. Owner or I to spot-check | **Integrated**; `test_gen2_field_selector`, `test_item_picker_search`, `test_ability_effects` | #307 `75546e44` (P `77576217`) |
+| QA contracts | CG30–CG60: all 37 owner FAILs as XFAIL, with owners; CG39/57/58 enforced | **Integrated** | #307 `c80a86c5` |
+| R2-EMUBACKUP, C07, S05 | PKSE-style emulator backup browser: create, browse, list, delete with Y; no automatic backup (lane L) | Pushed (WIP), not integrated yet | `wip/l-backup-browser-20261020` @ `6cb161c4` |
+
+**XFAIL contracts:** CG30–CG35 fail in `--candidate` mode until their lanes land. Normal mode reports 0 failing. A round-4 candidate needs all of them fixed (or the owner's decision).
+
+**Lane assignments sent 2026-10-20.** Each lane works from #307 `c2287f50` and pushes to its own branch or `wip/<lane>-<topic>-20261020`:
+
+| Lane | Owner IDs |
+| --- | --- |
+| L | R2-EMUBACKUP, C07, S05: PKSE-style backup browser |
+| C | NEW-04: Gen II PC Move; then NEW-19, R2-TRAINER, R2-BUG-002: Gen I–IV staged exit menu; then R2-REVIEWMOVE and NEW-18 |
+| S | L06, E02, NEW-20: Party Actions; E03: legality layout; M04/M05; AUD-01; NEW-01/NEW-02 |
+| I | NEW-17: Gen V Key Items / TM / HM editing; NEW-03; R2-CHECK-010 glyphs |
+| R | R2-REROLL / Unown audit; NEW-15; R2-SPECIAL; NEW-09; NEW-14 |
+| P | NEW-12 / R2-CHECK-011; NEW-10; NEW-05; NEW-06; NEW-07; NEW-08; NEW-11; NEW-13; R2-BUG-006 |
+| QA | Gate the 70 PASS items; contracts for the 37 FAIL items |
+
+The 2R integrator lane was not reached (permission check), so the coordinator is integrating. Before resuming, check each lane
+branch and every `wip/*` branch with `git ls-remote origin`.
 
 ## 7. Next development tasks (in order)
 

@@ -102,6 +102,8 @@ void applyEditableDVs(Gen2::PokemonRecord& p, const std::array<uint8_t, 4>& dvs)
     p.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
     p.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
     p.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(p.species, dvs[0]));
+    // The Unown letter also comes from these DVs (pokecrystal GetUnownLetter); keep the draft's form in step.
+    p.form = p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs)) : 0;
 }
 
 void refreshDerived(Gen2::PokemonRecord& p) noexcept {

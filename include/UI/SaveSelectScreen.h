@@ -280,6 +280,18 @@ namespace UI {
         // Only the normalized exact source bytes selected for THIS editor
         // open, never a permission token or a remembered game preference.
         std::string selectedGen5Fingerprint;
+        // Why the last direct open of an assigned Gen V save fell back to the
+        // Save Instances picker (empty when nothing was assigned).
+        std::string gen5DirectOpenNotice;
+        bool openAssignedGen5Directly(const UserEntry& user, const TitleEntry& title,
+                                      const std::string& gameId);
+        static PokeVault::Integration::Gen5::SaveCopySelection gen5CopyForVariant(
+            const std::string& variant) {
+            using PokeVault::Integration::Gen5::SaveCopySelection;
+            if (variant == "gen5-copy-0-primary") return SaveCopySelection::Primary;
+            if (variant == "gen5-copy-1-backup") return SaveCopySelection::Backup;
+            return SaveCopySelection::Automatic;
+        }
         size_t selectedLegacySourceIndex = 0;
         PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
         PokeVault::Legacy::LegacySourceBindings* legacyBindings = nullptr;

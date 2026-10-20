@@ -18,6 +18,7 @@ include Makefile.host.item-quantity-policy
 include Makefile.host.pickers
 include Makefile.host.reroll-mechanics
 include Makefile.host.species-change-moves
+include Makefile.host.round4-r
 
 include Makefile.host.machine
 
