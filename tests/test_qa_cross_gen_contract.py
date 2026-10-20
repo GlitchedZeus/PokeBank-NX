@@ -54,6 +54,11 @@ XFAIL: dict[str, str] = {
     "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
     "CG54-gen5-language-editable": "R (NEW-14)",
     "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
+    "CG56-gen2-carry-refresh-without-finalize": "C (NEW-04)",
+    "CG57-gen5-home-a-opens-assigned-save": "coordinator wip/coord-gen5-direct-open-20261020 (C01, NEW-16)",
+    "CG58-export-outcome-visible": "coordinator wip/coord-gen5-direct-open-20261020 (B08)",
+    "CG59-backup-browser-actions": "L (R2-EMUBACKUP, C07)",
+    "CG60-no-backup-on-unchanged-open": "L (S05 / R2-EMUBACKUP; reverses the pinned auto-backup-on-open design, owner directive)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -573,6 +578,223 @@ def round4_p2_contracts(sources):
             if nonzero(fm.group(1)):
                 r.violations.append(f"{f.rel}:{ln + body.count(chr(10), 0, fm.start())}: Gen V Create IVs "
                                     f"{{{fm.group(1)}}}")
+    res.append(r)
+    return res
+
+
+def round4_p0_contracts(sources):
+    """Round 4 P0: owner round 3 FAIL items NEW-04, C01/NEW-16, B08, R2-EMUBACKUP/C07, S05. Called from
+    contracts()."""
+    res = []
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def defs(rel, name):
+        """[(start_line, body, body_offset)] for definitions of `name` in rel."""
+        f = src(rel)
+        if not f:
+            return []
+        out = []
+        for m in re.finditer(r"\b" + re.escape(name) + r"\s*\([^;{}()]*(?:\([^;{}()]*\)[^;{}()]*)*\)\s*(?:const\s*)?(?:noexcept\s*)?\{", f.code):
+            depth, j = 0, m.end() - 1
+            while j < len(f.code):
+                if f.code[j] == "{": depth += 1
+                elif f.code[j] == "}":
+                    depth -= 1
+                    if depth == 0: break
+                j += 1
+            out.append((f.code.count("\n", 0, m.start()) + 1, f.code[m.end():j], m.end()))
+        return out
+
+    def line_of(rel, offset):
+        return src(rel).code.count("\n", 0, offset) + 1
+
+    def block_after(code, start):
+        """Body of the brace block whose '{' is the first one at/after `start` -> (open_index, body)."""
+        i = code.index("{", start)
+        depth, j = 0, i
+        while j < len(code):
+            if code[j] == "{": depth += 1
+            elif code[j] == "}":
+                depth -= 1
+                if depth == 0: break
+            j += 1
+        return i, code[i + 1:j]
+
+    def callees(body):
+        return set(re.findall(r"\b([A-Za-z_]\w{4,})\s*\(", body)) - {"if", "for", "while", "switch", "return"}
+
+    def reaches(body, pattern, depth=2, seen=None):
+        """True if body, or a function it calls (by name, any source file), matches pattern within depth."""
+        rx = re.compile(pattern)
+        if rx.search(body):
+            return True
+        if depth == 0:
+            return False
+        seen = set() if seen is None else seen
+        for name in callees(body) - seen:
+            seen.add(name)
+            for b in fn_index().get(name, ()):
+                if reaches(b, pattern, depth - 1, seen):
+                    return True
+        return False
+
+    index_cache: dict[str, list[str]] = {}
+
+    def fn_index():
+        # One pass over every source: function name -> bodies (scanning all files per callee is too slow).
+        if not index_cache:
+            for s in sources:
+                for n, _, b in function_bodies(s.code, re.compile(r".")):
+                    index_cache.setdefault(n, []).append(b)
+        return index_cache
+
+    # ------------------------------------------------------------------ NEW-04
+    r = Result("CG56-gen2-carry-refresh-without-finalize",
+               "Gen II PC Move: the carry refresh never routes through finalizedBytes(), which refuses while a carry is active")
+    OV, GSC, ED = "src/UI/ClassicPackedMoveOverlay.inc", "src/Legacy/GSCReadOnlyTrainer.cpp", "src/Integration/Gen2/Gen2StagedEditor.cpp"
+    fin = defs(ED, "finalizedBytes")
+    if not any(re.search(r"\bpackedMove_\s*\.\s*active\b", b) for _, b, _ in fin):
+        r.violations.append(f"{ED}: StagedEditor::finalizedBytes() no longer refuses while a carry is active "
+                            "(an export must never publish a save with the carried Pokemon removed)")
+    begin = defs(OV, "beginGen2")
+    if not begin or not re.search(r"beginPackedMove\s*\([\s\S]*\brefreshGen2\s*\(", begin[0][1]):
+        r.violations.append(f"{OV}: beginGen2() must still refresh the staged box presentation after beginPackedMove()")
+    methods = set()
+    for _, b, _ in defs(OV, "refreshGen2"):
+        methods |= set(re.findall(r"\btrainer\s*\.\s*(\w+)\s*\(", b))
+    if not methods:
+        r.violations.append(f"{OV}: refreshGen2() calls no GSCReadOnlyTrainer presentation method")
+    for name in sorted(methods):
+        found = defs(GSC, name)
+        if not found:
+            r.violations.append(f"{GSC}: {name}() (called by refreshGen2) is not defined here")
+        for ln, body, off in found:
+            reach = [(body, off)] + [(b2, o2) for c in callees(body) for _, b2, o2 in defs(GSC, c)]
+            for b, o in reach:
+                m = re.search(r"\bfinalizedBytes\s*\(", b)
+                if m:
+                    r.violations.append(f"{GSC}:{line_of(GSC, o + m.start())}: {name}() rebuilds the box view from "
+                                        "StagedEditor::finalizedBytes(), which refuses while packedMove_.active, so "
+                                        "beginGen2() cancels every pickup (\"Place or cancel carried Pokemon before "
+                                        "finalizing the Gen II staged save\")")
+    res.append(r)
+
+    # ------------------------------------------------------------------ C01 / NEW-16
+    r = Result("CG57-gen5-home-a-opens-assigned-save",
+               "Gen V Home A opens the currently assigned save directly; Choose Save only on failure")
+    SS = "src/UI/SaveSelectScreen.cpp"
+    sel = defs(SS, "selectCurrentTitle")
+    if not sel:
+        r.violations.append(f"{SS}: selectCurrentTitle() is missing")
+    for ln, body, off in sel:
+        m = re.search(r"if\s*\(\s*selected\.sourceKind\s*==\s*SelectedSourceKind::Gen5AssignedFile\s*\)", body)
+        if not m:
+            r.violations.append(f"{SS}:{ln}: selectCurrentTitle() has no Gen5AssignedFile branch")
+            continue
+        bo, blk = block_after(body, m.end())
+        bl = line_of(SS, off + m.start())
+
+        def in_branch(pattern):
+            # The branch itself or a function it calls (e.g. the coordinator's openAssignedGen5Directly()).
+            return bool(re.search(pattern, blk)) or any(
+                re.search(pattern, b) for name in callees(blk) for b in fn_index().get(name, ()))
+
+        opener_rx = r"\bGen5::openAssignedSource\s*\("
+        if not in_branch(opener_rx):
+            r.violations.append(f"{SS}:{bl}: Home A on a Gen V card never opens the assigned source "
+                                "(no Gen5::openAssignedSource in the branch or a function it calls)")
+        if not in_branch(r"\bselectedGen5Fingerprint\s*=") or not in_branch(r"\btitleSelected\s*=\s*true\b"):
+            r.violations.append(f"{SS}:{bl}: the Gen V A branch never selects the assigned save "
+                                "(selectedGen5Fingerprint / titleSelected=true not set)")
+        # The chooser is only a fallback: allowed after `if (opener(...)) return;` whose callee really opens
+        # the assigned source, or nested under a failure condition.
+        guard_end = -1
+        for g in re.finditer(r"if\s*\(\s*(\w+)\s*\([^;{}]*\)\s*\)\s*return\s*;", blk):
+            if blk[:g.start()].count("{") == blk[:g.start()].count("}") and \
+                    any(re.search(opener_rx, b) for b in fn_index().get(g.group(1), ())):
+                guard_end = g.end()
+                break
+        for c in re.finditer(r"\b(openGen5Setup|discoverGen5Candidates)\s*\(", blk):
+            depth = blk[:c.start()].count("{") - blk[:c.start()].count("}")
+            if depth == 0 and not (0 <= guard_end <= c.start()):
+                r.violations.append(f"{SS}:{line_of(SS, off + bo + 1 + c.start())}: unconditional {c.group(1)}() "
+                                    "on Home A opens the Choose Save popup instead of the assigned save")
+    res.append(r)
+
+    # ------------------------------------------------------------------ B08
+    r = Result("CG58-export-outcome-visible",
+               "Every Gen I-V surface that offers Export shows the export result/error while it stays open")
+    STATUS = r"drawText\s*\([^;]*\bstorageStatus\b|\bdrawGSCOverlay\s*\(|\bdrawLegacyBase\s*\("
+    CI = "src/UI/ClassicInventoryOverlay.cpp"
+    # A frame-wide guarantee also satisfies every surface: the top-level TrainerViewScreen::draw holds a
+    # scope guard whose destructor (run after every return path, i.e. LAST) calls a painter that draws
+    # storageStatus (coordinator's B08 design, drawTransientStatus).
+    painter_ok = lambda name: any(re.search(r"drawText\s*\([^;]*\bstorageStatus\b", b) for b in fn_index().get(name, ()))
+    frame_wide = False
+    for _, body, _ in defs("src/UI/TrainerViewScreenCompositeOverlay.cpp", "draw"):
+        for d in re.finditer(r"~\w+\s*\(\s*\)\s*\{([^{}]*)\}", body):
+            frame_wide |= any(painter_ok(n) for n in re.findall(r"\b(\w+)\s*\(", d.group(1)))
+    for ln, body, off in ([] if frame_wide else defs(CI, "drawOverlay")):
+        m = re.search(r"if\s*\(\s*state\.optionsActive\s*\)", body)
+        if not m:
+            continue
+        _, blk = block_after(body, m.end())
+        closes = False
+        for h_ln, h_body, _ in defs(CI, "handleInput"):
+            e = re.search(r"\bexportStagedCopy\s*\(", h_body)
+            if e:
+                seg = h_body[e.start():h_body.find("break;", e.start())]
+                closes = bool(re.search(r"\boptionsActive\s*=\s*false\b", seg))
+        if not reaches(blk, STATUS, depth=1) and not closes:
+            r.violations.append(f"{CI}:{line_of(CI, off + m.start())}: Inventory Options (Gen I-III Bag) stays open "
+                                "over the status toast after Export Staged Save and never draws the result/error")
+    for rel, exporter in (("src/UI/Gen3SharedPokemonSurface.inc", "exportStagedGen3Copy"),
+                          ("src/UI/Gen4SharedPokemonSurface.inc", "exportStagedGen4Copy"),
+                          ("src/UI/Gen5SharedReadOnlySurface.inc", None)):
+        found = [] if frame_wide else defs(rel, "drawReview")
+        if not found and not frame_wide:
+            r.violations.append(f"{rel}: drawReview() is missing")
+        for ln, body, off in found:
+            fills = [x.end() for x in re.finditer(r"drawFilledRect\s*\(\s*0\s*,\s*0\s*,\s*fb\.getWidth\(\)\s*,\s*fb\.getHeight\(\)\s*,", body)]
+            tail = body[fills[-1]:] if fills else body
+            if not reaches(tail, STATUS, depth=1):
+                r.violations.append(f"{rel}:{ln}: drawReview() owns the frame (Export Copy on X) but never draws the "
+                                    f"status line that {exporter or 'the exporter'}() reports success/failure on")
+    res.append(r)
+
+    # ------------------------------------------------------------------ R2-EMUBACKUP / C07
+    r = Result("CG59-backup-browser-actions",
+               "Emulator Backups browser can open the current save and deliberately create a backup (not notice-only)")
+    WRITE = r"\bcopyFile\s*\(|\bcopyDirectory\w*\s*\(|\bpublishVerified\w*\s*\(|AtomicTextFile::replace\s*\(|\bfwrite\s*\(|\bbackupSaveData\s*\("
+    ups = defs(SS, "update")
+    blk = None
+    for ln, body, off in ups:
+        m = re.search(r"if\s*\(\s*overlay\s*==\s*Overlay::EmulatorBackups\s*\)", body)
+        if m:
+            bo, blk = block_after(body, m.end())
+            bl = line_of(SS, off + m.start())
+    if blk is None:
+        r.violations.append(f"{SS}: no Overlay::EmulatorBackups input handler")
+    else:
+        if not reaches(blk, r"\bselectCurrentTitle\s*\(|\btitleSelected\s*=\s*true\b", depth=2):
+            r.violations.append(f"{SS}:{bl}: Backups browser cannot open/browse the current save (A only sets a notice)")
+        if not reaches(blk, WRITE, depth=2):
+            r.violations.append(f"{SS}:{bl}: Backups browser has no deliberate Create Backup action "
+                                "(no path reaches a file write; rows are only listed export records)")
+    res.append(r)
+
+    # ------------------------------------------------------------------ S05 / R2-EMUBACKUP
+    r = Result("CG60-no-backup-on-unchanged-open",
+               "Opening a save (Home A / Items) never creates a backup before any change is made")
+    UI_ = "src/UI/UI.cpp"
+    for name in ("handleDefaultQuickOpen", "handleItemsQuickOpen", "handleLegacyFRLGView", "handleGen4View", "handleGen5View"):
+        for ln, body, off in defs(UI_, name):
+            m = re.search(r"\bbackupSaveData\s*\(|\bcopyFile\s*\(|\bcopyDirectory\w*\s*\(", body)
+            if m:
+                r.violations.append(f"{UI_}:{line_of(UI_, off + m.start())}: {name}() creates a backup on every open, "
+                                    "before the user changed anything")
     res.append(r)
     return res
 
@@ -1908,6 +2130,7 @@ def contracts(sources: list[Source]) -> list[Result]:
         r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in scope]
         r.violations = [v for v in r.violations if v.split(":", 1)[0] not in scope]
     res.extend(round4_p2_contracts(sources))
+    res.extend(round4_p0_contracts(sources))
     return res
 
 
