@@ -2572,6 +2572,22 @@ namespace UI {
         }
     }
 
+    // The one painter for the transient status line (postStatus): centered above the footer.
+    // Every TrainerViewScreen::draw path calls it LAST (B08): the Gen II-V shared surfaces own
+    // their frames and return before the base draw, so an export result posted from their
+    // Review was never painted -- "Export does nothing".
+    void TrainerViewScreen::drawTransientStatus(PKSEFramebuffer& fb) {
+        if (storageStatusFrames <= 0 || storageStatus.empty() || helpOverlayActive) return;
+        const int footerY = fb.getHeight() - kNavBarH;
+        int tw, th; fb.measureText(storageStatus, tw, th);
+        const int padX = 18;
+        const int bw = std::min(tw + padX * 2, fb.getWidth() - 40), bh = th + 14;
+        const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
+        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
+        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
+        fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
+    }
+
     void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
         u64 kDown = controllerNavigation.apply(
@@ -5418,14 +5434,8 @@ namespace UI {
         // Transient status line (a refused cross-game drop, a rejected name), centered above the footer.
         // Drawn LAST so it is not painted over: a message can be raised from inside the details modal
         // (a nickname Gen 3 can't store), and the modal is drawn after the main body.
-        if (storageStatusFrames > 0 && !storageStatus.empty()) {
-            int tw, th; fb.measureText(storageStatus, tw, th);
-            const int padX = 18, bw = tw + padX * 2, bh = th + 14;
-            const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
-            fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
-            fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
-            fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
-        }
+        (void)footerY;
+        drawTransientStatus(fb);
 
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
