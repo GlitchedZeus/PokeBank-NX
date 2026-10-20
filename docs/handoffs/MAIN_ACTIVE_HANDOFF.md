@@ -124,12 +124,11 @@ Later docs-only commits on #307 also trigger a candidate build. Those artifacts 
 | QA | `audit/app-qa-20261014` | `5c965cb3` |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | `docs/handoffs/MAIN_DEV_CHECKPOINT.md`, `ROUND3_LANE_PLAN.md` |
 
-**WIP checkpoint branches.**
-- On 2026-10-20 every lane session was asked to push any unpushed work to `wip/<lane>-checkpoint-20261020`. The
-  requests to lanes S and P were blocked by a permission check and never delivered.
-- Run `git ls-remote origin 'refs/heads/wip/*'` to see which branches exist. Each one is unfinished work. Review it
-  before integrating anything from it.
-- If none exist, no lane reported unpushed work.
+**WIP checkpoint branches: none.** On 2026-10-20 every lane session was asked to push any unpushed work. Six lanes replied
+"clean, nothing unpushed", each with an `ls-remote`-verified tip matching the table above: 2R `c3b0ac48`, QA `5c965cb3`,
+C `114a22f3`, P `8d533b52`, R `a1c96ed6`, L `4f57bde4`. The messages to **S** and **I** were blocked by a permission
+check, so their local state is unconfirmed; their remote tips are S `3ff061bf` and I `18ffcc76`.
+`git ls-remote origin 'refs/heads/wip/*'` returned nothing.
 
 **Other lanes, separate and not to be mixed in:**
 - `claude/gen1-5-legality-campaign-w9mkom` (legality, active 2026-10-20);
