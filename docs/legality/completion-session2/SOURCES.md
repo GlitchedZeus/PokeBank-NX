@@ -1,5 +1,7 @@
 # Native reasoning and evidence limits
 
+The additional production correction in `TUTOR_INHERITANCE.md` follows Crystal's complete TMHMMoves table, including its three tutor entries, which GetEggMove scans before the sentinel. The selection menu separately rejects Eggs. The ancestry adapter now includes these entries under the same donor proof. Three both-oracle-valid regressions and incompatible-donor/source-domain controls bind the correction; no differential exception was added for these positives.
+
 `SOURCE_PINS.json` records the exact input revisions and file SHA-256 values. Existing Gen III berry layout/checksum evidence remains in ../completion-20261019/SOURCES.md.
 
 - Original breeding implementation: [pret/pokecrystal breeding.asm](https://github.com/pret/pokecrystal/blob/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/engine/pokemon/breeding.asm). `CheckBreedmonCompatibility` excludes Undiscovered and incompatible sexes/groups; Ditto uses its partner. `GetHeritableMoves` selects one donor's four moves. `GetEggMove` permits the species' egg list, both-parent level moves, and compatible TMs. Neither script unions several fathers into one individual.

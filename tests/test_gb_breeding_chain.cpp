@@ -31,6 +31,22 @@ int main() {
         assert(r.report.verdict()==(count==0?V::Invalid:V::NoProblemsFound));++count;
     }
     assert(count==3);
+    std::ifstream tutors("tests/fixtures/gen15_session2/crystal_parent_tutors.txt");assert(tutors);count=0;
+    while(std::getline(tutors,line)) {
+        const auto r=GBFixture::analyze(line);assert(r.report.verdict()==V::NoProblemsFound);++count;
+    }
+    assert(count==3);
+    // All three Crystal tutor moves participate in joint inheritance. The
+    // father must actually know the move; simply dropping it is unsound.
+    for(const auto& item:std::array<std::pair<uint8_t,std::array<uint8_t,4>>,3>{{
+        {7,{243,58,0,0}},{77,{95,53,0,0}},{172,{227,85,0,0}}
+    }}) {
+        const auto p=proveBreeding2(item.first,item.second,true,false,Language::International);
+        assert(p.possible&&p.father!=0);
+        assert(!proveBreeding2(item.first,item.second,false,false,Language::International).possible);
+        assert(!proveBreeding2(item.first,item.second,true,true,Language::Korean).possible);
+    }
+    assert(!proveBreeding2(238,{96,58,0,0},true,false,Language::International).possible);
     // Cartridge-backed alternate ancestry: Gen I TM first, Gen II level move
     // afterwards, then one compatible father passes BOTH moves in one egg.
     auto proof=proveBreeding2(1,{130,219,0,0},false,false,Language::International);

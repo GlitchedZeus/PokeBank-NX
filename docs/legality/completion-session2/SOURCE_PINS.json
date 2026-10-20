@@ -20,7 +20,19 @@
       "engine/pokemon/mon_stats.asm": "f1895fa46f9cf4ca2a11bb5bc9d7561ef1c7416e7dc72cabba0ff0a5f244d413",
       "data/pokemon/base_stats/jynx.asm": "a35642d43cf2662a2b850583d1c4cd500627aa21a7fea8465efb664c42f53f75",
       "data/pokemon/base_stats/smoochum.asm": "7d59c05887ffa4dfeb9bc6a01c39a9f49d91a7c6a435082ec4b89fbf3d9dc616",
-      "data/pokemon/base_stats/ditto.asm": "36fb75b851b364161650c02e9e549b7649a0d35fe28c29e5306e93350bd9fc86"
+      "data/pokemon/base_stats/ditto.asm": "36fb75b851b364161650c02e9e549b7649a0d35fe28c29e5306e93350bd9fc86",
+      "data/moves/tmhm_moves.asm": "11949f625d3870e64b47898827b99c8d3c16626ee850f59a3574d2609fe400ab",
+      "constants/item_constants.asm": "bb870ffb3448845aa886ede0030a114a7773d7cb6924d2c59acdca0c53a02e58",
+      "engine/items/tmhm.asm": "4d401324ffe6647b613f5751bd455a89d3d4160ffc0867840c982b7614b4f0b0",
+      "engine/items/tmhm2.asm": "2b8c15f7f3548d7902f9d9c08fe5fb5c83de140b34072992352883f7af11d1b0",
+      "engine/events/move_tutor.asm": "ac51e876cca6590763d907a486791d0b15e3cc035e5e641f96c239695dbccc6c",
+      "data/pokemon/base_stats/corsola.asm": "7fb74bc7559657692b9d3780f8f9f8357c8b959c5a0c1a9a8f6dc52a1facfd7c",
+      "data/pokemon/base_stats/squirtle.asm": "554061d339cf219ee6856127921521b7b6e3445044307ad7fe81177a93294edd",
+      "data/pokemon/base_stats/ponyta.asm": "cbebdaf2fa5686ebc31e652728262996f54f09aed38f44441659ea340ab59a36",
+      "data/pokemon/base_stats/pichu.asm": "24946c2609c285711981179e57fa225ec77236450bb855049e9edf5979c869a8",
+      "data/pokemon/base_stats/clefairy.asm": "f4b58c174dd9bae590527bcebd55d6f7b2fae04553b8d2dc578d28bfd26d981a",
+      "data/pokemon/base_stats/vulpix.asm": "7920200827881d43c53afb59bd7b30444b4d0b622f56de1002e63f5a413bf71e",
+      "data/pokemon/base_stats/smeargle.asm": "c9461ea0f7a27ebb0b5d5b8d82bf112bb04ac6110095d5672f86d17df4cb535c"
     }
   },
   "PKHeX-current": {
@@ -31,7 +43,9 @@
       "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedLegality.cs": "92a436286d6fc3d6323b8b7d5c19fde237becf13ebdfe1e250ce7839443e7493",
       "PKHeX.Core/Resources/legality/mgdb/event1.pkl": "b558d18bcd1df5a230695913c7b9f7012770632a59f7794aa9e5e603a769619a",
       "PKHeX.Core/Resources/legality/mgdb/event2.pkl": "4878f3de2206f392e978547f26c1cd5e1031b0a11c2977ab6bbc52cf4ab7eb8f",
-      "PKHeX.Core/Legality/Verifiers/Egg/EggVerifier.cs": "2bd18fba59df6310feb66bce7b03bf2c4b63c283dd82e7f40ac12739fdc2d38a"
+      "PKHeX.Core/Legality/Verifiers/Egg/EggVerifier.cs": "2bd18fba59df6310feb66bce7b03bf2c4b63c283dd82e7f40ac12739fdc2d38a",
+      "PKHeX.Core/Legality/Moves/Breeding/MoveBreed2.cs": "60bfb5ddba75b4a7613e5ce7c534c479516008d8c95a297ba954c8e6d7ac0379",
+      "PKHeX.Core/Legality/Moves/Breeding/EggSource.cs": "1d1b16b2affd122173aeb0a0ac735a4e35ede7ee7785423005512c63ffd78e64"
     }
   },
   "Japanese-Crystal-disassembly-lead": {
@@ -61,7 +75,8 @@
       "data/pokemon/base_stats/jynx.asm": "1ce145c3d98bcd647520259779a1d5a3912ef8f19ad7c1f153c8ade0995a8362",
       "data/pokemon/base_stats/smoochum.asm": "df8ce24cc941034d1b27ed14d139ccd568ebfd22fb91dad08262469cac358d82",
       "data/pokemon/evos_attacks.asm": "4f8120f6b263c69e0dbf1790915bd21424960cf0a5721130e8153c839b5601cd",
-      "data/pokemon/egg_moves.asm": "a90b751675beae6b7b5846d071b4d6a8cc9f0aee7f03c9c6073a0fe700e9355e"
+      "data/pokemon/egg_moves.asm": "a90b751675beae6b7b5846d071b4d6a8cc9f0aee7f03c9c6073a0fe700e9355e",
+      "data/moves/tmhm_moves.asm": "52d95def2c1877d91f54b1dc484d3bec0dcd27ce59e45eadd84d5b1b55150c7e"
     }
   },
   "PKHeX-baseline": {

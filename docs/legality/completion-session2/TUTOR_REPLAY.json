@@ -1,0 +1,42 @@
+[
+  {
+    "dataset": "gen1",
+    "records": 50000,
+    "input_sha256": "d597250e6ab6957036b07badfa8db37eb3b15598436520c69f4cb49a26c77ad3",
+    "output_sha256": "43be8f96d76718d4a23365ba235569d875efa1aca05e2d2e1b266536f0f826c6",
+    "byte_identical": true,
+    "changed_verdicts": []
+  },
+  {
+    "dataset": "gen1-fresh",
+    "records": 20000,
+    "input_sha256": "17c8e0ca87fc2830ad0e87d2f0cf91770bcc38616db8350a51772d696fd981a6",
+    "output_sha256": "346f16d7ee3bfab0df24bef6806558aaa5847daa4d709c7cc7dc64c6de863306",
+    "byte_identical": true,
+    "changed_verdicts": []
+  },
+  {
+    "dataset": "gen2",
+    "records": 50000,
+    "input_sha256": "cc90e3b1ef349da269ee720a5b8359d5d4a84d1b28f3d4299b6ad8f467440be1",
+    "output_sha256": "999b32af793ca056abdf927d1375c7a87a242869fb6a2c2fef57b95b1f0f9298",
+    "byte_identical": true,
+    "changed_verdicts": []
+  },
+  {
+    "dataset": "gen2-fresh",
+    "records": 20000,
+    "input_sha256": "bdc54c6f38359fc06604bfb3fc87c2decc0e73b2cc6abb1f56bf36cd71d9b578",
+    "output_sha256": "bd28e488d76d9fbd5fd826aac487087debaa3e10ec2329ccc0b8239a96840170",
+    "byte_identical": true,
+    "changed_verdicts": []
+  },
+  {
+    "dataset": "original-current-probe",
+    "records": 10000,
+    "input_sha256": "37785ec31c7abdf44943016337a335392583843cae2beefb326c8197d8d41f85",
+    "output_sha256": "c6bae3b3449611c1780103100048cc52cd4e1fa41ff273e644b694e130bd87a2",
+    "byte_identical": true,
+    "changed_verdicts": []
+  }
+]

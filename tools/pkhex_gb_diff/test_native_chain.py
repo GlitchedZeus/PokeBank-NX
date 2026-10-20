@@ -41,6 +41,8 @@ assert classify(ci["37954"], old, bad, old, ctx, native, "") == ("deliberate", "
 for rid in ("37955", "37956"):
     assert classify(ci[rid], old, bad, old, ctx, native, "")[0] == "differing"
 assert classify(ci["37954"], old, ("INVALID", "egg ; | unrelated complaint"), old, ctx, native, "")[0] == "differing"
+for record in compare.load_corpus(fixture.with_name("crystal_parent_tutors.txt"), ctx).values():
+    assert native.certifies(record, ctx), record.id
 # A future catalogued Blizzard parent must disable the reviewed invariant.
 native.catalog.append((native.dex["MR__MIME"], {native.moves["BLIZZARD"]}))
 assert not native.smoochum_egg_blizzard_conflict(ci["37954"])

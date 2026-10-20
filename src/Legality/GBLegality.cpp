@@ -1521,7 +1521,7 @@ bool breedingChain2(uint8_t child, const std::array<uint8_t,4>& requested,
         if(!koreanOnly&&s<=151&&m<=165&&(learnLevel(Env::RB,s,m)||learnLevel(Env::Y,s,m)||tm1(s,false,m)||tm1(s,true,m)))
             rules[s].previousEra|=flag;
         if(eggMove(false,s,m)||tm2(s,false,m)||learnLevel(Env::GS,s,m)||
-           (!koreanOnly&&(eggMove(true,s,m)||tm2(s,true,m)||learnLevel(Env::C,s,m))))rules[s].inherited|=flag;
+           (!koreanOnly&&(eggMove(true,s,m)||tm2(s,true,m)||tutorC(s,m)||learnLevel(Env::C,s,m))))rules[s].inherited|=flag;
     }
     for(size_t i=0;i<kEvolutions2Count;++i)rules[kEvolutions2[i].from].evolvesTo.push_back(kEvolutions2[i].to);
     // An event is a joint seed. A second event's exclusive moves are not added
@@ -1538,7 +1538,11 @@ bool breedingChain2(uint8_t child, const std::array<uint8_t,4>& requested,
     }
     // The queried child's egg version is exact; ancestors may have bred on
     // either compatible same-language release and subsequently traded.
-    for(auto move:requested)if(move&&!eggMove(crystal,child,move)&&!tm2(child,crystal,move)&&!learnLevel(crystal?Env::C:Env::GS,child,move))return false;
+    // Crystal GetEggMove scans TMHMMoves through its tutor entries as well as
+    // TMs/HMs. These moves still require the same compatible donor; they are
+    // not moves taught directly to an unhatched egg.
+    for(auto move:requested)if(move&&!eggMove(crystal,child,move)&&!tm2(child,crystal,move)&&
+        !(crystal&&!koreanOnly&&tutorC(child,move))&&!learnLevel(crystal?Env::C:Env::GS,child,move))return false;
     // Prefer a cartridge-native witness. A catalogued event must not hide an
     // independently constructible ancestry, or certify unverified history.
     auto nativeRules=rules;

@@ -1,5 +1,7 @@
 # Remaining engineering work
 
+`TUTOR_INHERITANCE.md` records the subsequent production correction for Crystal's three inherited tutor moves. The same-donor requirement remains strict. Three valid combinations now pass; GS-birth, Korean-only source and incompatible-donor controls remain covered. Existing150000 GB outputs are byte-identical and an additional declared30000-record holdout has zero unexplained outcomes. Frozen metrics and historical evidence claims are unchanged.
+
 This is a tested forward engineering checkpoint, not a 100% legality certificate. The existing680 title/area inventory is not an independently audited semantic denominator. Historical-distribution and production-deployment percentages remain unmeasured.
 
 `CI_SMOOCHUM.md` records the additional first-push CI finding and source adjudication: an unhatched Smoochum cannot receive Blizzard from the represented native/known-gift donors. The exact raw disagreement and positive controls are retained. The follow-up preserves production's stricter verdict and adds a narrowly guarded source predicate; it does not certify an exhaustive historical event catalog. Final CI results are captured outside the frozen evidence archive after publication.
