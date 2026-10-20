@@ -161,7 +161,9 @@ int main() {
     const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
     assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
-    assert(shared.find("kOriginLegalityHeading, \"Not checked") != std::string::npos);
+    // E03: Gen II draws the one shared Origin & Legality panel (Legality "Not checked").
+    assert(shared.find("SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),") !=
+           std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
     // The established inline page owns rendering and exactly two cursor rows.

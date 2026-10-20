@@ -321,11 +321,12 @@ void sourceWiring() {
     const auto panel = surface.substr(surface.find("void drawLegality5("));
     const auto end = panel.find("\nvoid drawDecision(");
     const auto body = panel.substr(0, end);
-    check(body.find("LegalityState::Incomplete") != std::string::npos &&
-              body.find("LegalityState::Unknown") != std::string::npos &&
+    // E03: the panel is the ONE shared Gen I-V Origin & Legality panel (no verdict; see
+    // tests/test_shared_origin_legality.cpp for its rows and wording).
+    check(body.find("SharedOriginLegalityPanel::draw(") != std::string::npos &&
               body.find("LegalityState::Verified") == std::string::npos &&
               body.find("ProblemsFound") == std::string::npos,
-          "Origin & Legality is neutral: Unknown / Incomplete, never a verdict");
+          "Origin & Legality is the shared neutral panel, never a verdict");
 }
 
 } // namespace

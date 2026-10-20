@@ -305,3 +305,24 @@ $(GEN4_STORAGE_CARRY_TEST): $(GEN4_STORAGE_CARRY_INPUTS)
 $(GEN4_STORAGE_CARRY_SANITIZE): $(GEN4_STORAGE_CARRY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@
+
+# E03 (Round 3 hardware): one shared, honest Origin & Legality layout for every Gen I-V game.
+SHARED_ORIGIN_LEGALITY_INPUTS := tests/test_shared_origin_legality.cpp include/UI/SharedOriginLegality.h \
+	include/UI/SharedOriginLegalityPanel.h include/UI/SharedEditorPresentation.h \
+	src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc src/UI/Gen2SharedPokemonSurface.inc \
+	src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+SHARED_ORIGIN_LEGALITY_TEST := $(HOST_BUILD)/test_shared_origin_legality
+SHARED_ORIGIN_LEGALITY_SANITIZE := $(HOST_BUILD)/test_shared_origin_legality_sanitize
+
+HOST_TESTS += $(SHARED_ORIGIN_LEGALITY_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_ORIGIN_LEGALITY_SANITIZE)
+host-test: $(SHARED_ORIGIN_LEGALITY_TEST)
+host-sanitize: $(SHARED_ORIGIN_LEGALITY_SANITIZE)
+
+$(SHARED_ORIGIN_LEGALITY_TEST): $(SHARED_ORIGIN_LEGALITY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_origin_legality.cpp -o $@
+
+$(SHARED_ORIGIN_LEGALITY_SANITIZE): $(SHARED_ORIGIN_LEGALITY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_origin_legality.cpp -o $@
