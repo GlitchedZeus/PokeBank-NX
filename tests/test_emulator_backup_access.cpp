@@ -167,6 +167,94 @@ void forgedRecordsAreRefused(const fs::path& root) {
         assert(std::string(B::refusalReason(r)).size() > 20);
 }
 
+// Round 4 (R2-EMUBACKUP / C07 / S05): deliberate, copy-only backups made from the Backups screen.
+void deliberateBackups(const fs::path& root, const Emulator& emu) {
+    const fs::path exportsRoot = root / "exports";
+    const std::string manualRoot = B::emulatorBackupsRoot((root / "backups").string());
+    const fs::path source = root / ("deliberate-" + std::string(emu.name)) / emu.sourceFile;
+    std::vector<uint8_t> bytes(0x80000 + 0x7A);
+    for (std::size_t i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<uint8_t>(i * 31 + 7);
+    write(source, bytes);
+    const auto sourceTime = fs::last_write_time(source);
+
+    // Opening / listing never creates a backup: nothing appears until the user asks.
+    B::Listing l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(countKind(l, B::Kind::ManualBackup) == 0);
+    assert(!fs::exists(fs::path(manualRoot) / emu.gameId));
+
+    // Create: an exact copy in <backups>/emulator-saves/<gameId>/<timestamp>/save<ext> + manifest.
+    const B::CreateResult first = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_101500");
+    if (!first.ok) std::cerr << first.error << "\n";
+    assert(first.ok && first.error.empty());
+    assert(fs::path(first.recordDir) == fs::path(manualRoot) / emu.gameId / "20261020_101500");
+    assert(fs::path(first.backupPath).filename() == std::string("save") + emu.ext);
+    assert(slurp(first.backupPath) == bytes);
+    assert(fs::exists(fs::path(first.recordDir) / "BACKUP_MANIFEST.txt"));
+    // Same second: a distinct record, never an overwrite.
+    const B::CreateResult second = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_101500");
+    assert(second.ok && second.recordDir != first.recordDir && slurp(first.backupPath) == bytes);
+    const B::CreateResult newest = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_111500");
+    assert(newest.ok);
+
+    // The original emulator file is byte-identical and was never rewritten.
+    assert(slurp(source) == bytes && fs::last_write_time(source) == sourceTime);
+
+    // List: source first, then this save's backups newest first; staged last.
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(countKind(l, B::Kind::ManualBackup) == 3);
+    assert(l.entries.front().kind == B::Kind::OriginalSource);
+    assert(l.entries[1].kind == B::Kind::ManualBackup && l.entries[1].recordDir == newest.recordDir);
+    assert(l.entries.back().kind == B::Kind::StagedWorkingCopy);
+    assert(B::policyFor(B::Kind::ManualBackup).deletable && !B::policyFor(B::Kind::ManualBackup).readOnly);
+    // Without manualRoot (older callers) manual backups are simply not listed.
+    assert(countKind(B::list(exportsRoot.string(), source.string()), B::Kind::ManualBackup) == 0);
+    // Another save's backup is never listed here.
+    const fs::path other = root / ("deliberate-" + std::string(emu.name)) / "other.sav";
+    write(other, std::vector<uint8_t>(0x200, 0x44));
+    assert(B::createBackup(manualRoot, emu.gameId, other.string(), "20261020_121500").ok);
+    assert(countKind(B::list(exportsRoot.string(), source.string(), manualRoot), B::Kind::ManualBackup) == 3);
+
+    // Delete (after Y): exactly that record; the others and the source stay.
+    assert(B::canDelete(l, 1) == B::Refusal::None);
+    assert(B::deleteRecord(l, 1) == B::Refusal::None);
+    assert(!fs::exists(newest.recordDir) && fs::exists(first.recordDir) && fs::exists(second.recordDir));
+    assert(slurp(source) == bytes && fs::last_write_time(source) == sourceTime);
+
+    // A file PokeBank NX did not write: refused, untouched.
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    write(fs::path(l.entries[1].recordDir) / "notes.txt", {'x'});
+    assert(B::canDelete(l, 1) == B::Refusal::UnexpectedFiles);
+    assert(B::deleteRecord(l, 1) == B::Refusal::UnexpectedFiles && fs::exists(l.entries[1].recordDir));
+    fs::remove(fs::path(l.entries[1].recordDir) / "notes.txt");
+
+    // A forged entry outside <backups>/emulator-saves/<game>/<record> is never deletable.
+    B::Listing forged = l;
+    forged.entries[1].recordDir = (root / "elsewhere").string();
+    assert(B::canDelete(forged, 1) == B::Refusal::NotAnExportRecord);
+    forged.entries[1].recordDir = manualRoot + "/" + emu.gameId;   // the game folder itself
+    assert(B::canDelete(forged, 1) == B::Refusal::NotAnExportRecord);
+
+    // Emulator file gone: the last remaining copy is kept.
+    fs::remove(source);
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(countKind(l, B::Kind::ManualBackup) == 2);
+    assert(B::deleteRecord(l, 1) == B::Refusal::None);
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(B::canDelete(l, 1) == B::Refusal::OnlyRemainingCopy);
+    assert(B::deleteRecord(l, 1) == B::Refusal::OnlyRemainingCopy && fs::exists(l.entries[1].recordDir));
+
+    // Creating from a missing source, or with an unsafe game id, makes nothing.
+    const auto before = std::distance(fs::recursive_directory_iterator(manualRoot), {});
+    const B::CreateResult missing = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_131500");
+    assert(!missing.ok && !missing.error.empty());
+    write(source, bytes);
+    assert(!B::createBackup(manualRoot, "../escape", source.string(), "20261020_131500").ok);
+    assert(!B::createBackup(manualRoot, emu.gameId, source.string(), "../x").ok);
+    assert(!B::createBackup("", emu.gameId, source.string(), "20261020_131500").ok);
+    assert(std::distance(fs::recursive_directory_iterator(manualRoot), {}) == before);
+    assert(slurp(source) == bytes);
+}
+
 } // namespace
 
 int main() {
@@ -177,7 +265,11 @@ int main() {
     perEmulator(root, {"drastic", "backup/POKEMON PL.dsv", 4, "platinum_nds", ".dsv"});
     perEmulator(root, {"melonds", "saves/Pokemon White 2.sav", 5, "white2_nds", ".sav"});
     forgedRecordsAreRefused(root);
+    deliberateBackups(root, {"retroarch", "saves/Pokemon - FireRed Version (USA).srm", 3, "firered_gba", ".srm"});
+    deliberateBackups(root, {"drastic", "backup/POKEMON B.dsv", 5, "black_nds", ".dsv"});
+    deliberateBackups(root, {"melonds", "saves/Pokemon White 2.sav", 5, "white2_nds", ".sav"});
     fs::remove_all(root);
     std::cout << "Emulator backups: RetroArch / DraStic / melonDS sources read-only and unchanged, records by "
-                 "exact SOURCE_PATH, whole-record deletion only, foreign files / escapes / last copy refused PASS\n";
+                 "exact SOURCE_PATH, whole-record deletion only, foreign files / escapes / last copy refused; deliberate "
+                 "copy-only backups created / listed / deleted, none on open, source byte- and time-identical PASS\n";
 }
