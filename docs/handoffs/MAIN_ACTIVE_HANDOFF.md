@@ -4,7 +4,7 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-20 (round 4 checkpoint 2), by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
+Last updated: 2026-10-20 (round 4 checkpoint 3), by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
 
 ## 1. Where to start
 
@@ -136,12 +136,15 @@ States: Implemented → Tested (host) → Pushed → Integrated (#307) → Hardw
 
 | Owner IDs | Repair | State | Branch @ SHA |
 | --- | --- | --- | --- |
-| NEW-16, C01 | Gen V Home A / Items open the validated assigned save directly; anything not ready falls back to Save Instances with the reason (`SaveSelectScreen::openAssignedGen5Directly`) | Implemented, Python contracts PASS, **Pushed**; native compile run in CI (Native PR Gate, workflow_dispatch) | `wip/coord-gen5-direct-open-20261020` @ `bfb2ebcf` |
-| B08 | Export result / status messages painted on every surface (`TrainerViewScreen::drawTransientStatus`, scope guards in the composite `draw`/`update`); root cause: Gen II–V surfaces return before the only status painter | Implemented, all 30 Python tests PASS, **Pushed**; native compile in CI | `wip/coord-gen5-direct-open-20261020` @ `61491b53` |
+| NEW-16, C01 | Gen V Home A / Items open the validated assigned save directly; anything not ready falls back to Save Instances with the reason (`SaveSelectScreen::openAssignedGen5Directly`) | **Integrated** (Native PR Gate 39511458784 green) | #307 `c59ac178` (from `wip/coord-gen5-direct-open-20261020` @ `61491b53`) |
+| B08 | Export result / status messages painted on every surface (`TrainerViewScreen::drawTransientStatus`, scope guards in the composite `draw`/`update`); root cause: Gen II–V surfaces return before the only status painter | **Integrated**; `tests/test_status_toast_contract.py` | #307 `c59ac178` |
+| R2-BUG-006 | Short item grids use balanced rows and a narrower frame (lane P) | **Integrated**; host test `test_item_grid_picker` | #307 `5887c56c` (P `e3c81745`) |
+| R2-REROLL | Gen II Unown letter recomputed from DVs and the editor sprite follows it; DV and shiny rules audited correct against pret (lane R) | **Integrated**; host test `test_gen2_unown_letter` | #307 `aea3730e` (R `fd30e0fc`) |
+| NEW-11, NEW-05, NEW-08, NEW-10 | "Pikachu #25" label; search keyboard no longer covers the species list; scrollbar gutter in value lists; compact Met Location popups (lane P) | **Integrated** | #307 `1d803f01` (P `9573e8e8`) |
+| QA gate | All 70 round-3 PASS items guarded (196 guards); CG29; CG30–CG35 XFAIL contracts reproduce R2-TRAINER/R2-BUG-002, NEW-19, R2-REVIEWMOVE, L06/E02/NEW-20, NEW-17, AUD-01 | **Integrated** | #307 `847fe390`, `0d810f7a` |
+| R2-EMUBACKUP, C07, S05 | PKSE-style emulator backup browser: create, browse, list, delete with Y; no automatic backup (lane L) | Pushed (WIP), not integrated yet | `wip/l-backup-browser-20261020` @ `6cb161c4` |
 
-**Not yet integrated into #307.** Merge `wip/coord-gen5-direct-open-20261020` into #307 once the Native PR Gate passes on its
-head (the coordinator does this; if Claude stops first, Codex: check the Native PR Gate run on that branch, then merge
-forward with `--no-ff`).
+**XFAIL contracts:** CG30–CG35 fail in `--candidate` mode until their lanes land. Normal mode reports 0 failing. A round-4 candidate needs all of them fixed (or the owner's decision).
 
 **Lane assignments sent 2026-10-20.** Each lane works from #307 `c2287f50` and pushes to its own branch or `wip/<lane>-<topic>-20261020`:
 
