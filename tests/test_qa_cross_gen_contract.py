@@ -1008,6 +1008,30 @@ def contracts(sources: list[Source]) -> list[Result]:
                                 "profile is unchanged")
     res.append(r)
 
+    # Owner round 3 NEW-01 PASS (B closes Help): every Help overlay's input handler closes on B.
+    r = Result("CG29-help-closes-with-b",
+               "Every Help overlay input handler (Trainer view, Home / Save Select, app shell) closes on B "
+               "(owner round 3 NEW-01 PASS)")
+    sites = 0
+    for rel in ("src/UI/TrainerViewScreenBase.inc", "src/UI/SaveSelectScreen.cpp", "src/UI/AppShellScreen.cpp"):
+        f = src(rel)
+        if not f:
+            r.violations.append(f"{rel}: missing")
+            continue
+        found = 0
+        for m in re.finditer(r"if \((?:helpOverlayActive|overlay == Overlay::Help[^)]*)\)\s*\{", f.code):
+            block = f.code[m.end():m.end() + 260]
+            if "kDown" not in block.split("return")[0]:
+                continue  # a draw site, not input
+            found += 1
+            if "HidNpadButton_B" not in block.split("return")[0]:
+                ln = f.code.count("\n", 0, m.start()) + 1
+                r.violations.append(f"{rel}:{ln}: the Help input handler does not close on B")
+        if not found:
+            r.violations.append(f"{rel}: no Help input handler found")
+        sites += found
+    res.append(r)
+
     r = Result("CG14-shared-draggable-scrollbar",
                "Every scrollbar is the one SharedScrollbar: drawn through it, never privately, and draggable "
                "(its State is hit-tested with handleTouch)")
