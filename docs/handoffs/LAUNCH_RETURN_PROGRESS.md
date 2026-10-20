@@ -124,6 +124,45 @@ Host tests cover all four decisions. Only the device can prove the emulator actu
 
 So the launch dialog shows the core notice, replace the two `gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(...))` calls (`openLaunchDecision` and `currentLaunchQuitNotice`) with `gameLaunchDialogNotice(...)`. Its quit-route text is identical when there is no notice.
 
+## Round 4 (2026-10-20): Save / Backup browser (R2-EMUBACKUP, C07, S05)
+
+**Base:** #307 `c2287f50`. Owner results are in `docs/hardware/ROUND3_RESULTS_62a2f8c3.md`.
+
+**Owner finding (screenshot 1):** Pokémon Black's "+ → Backups" showed only "Original DraStic save — READ ONLY" and "Staged edits — IN EDITOR", with no usable action. The list was built only from export records, and export (B08) has not produced any yet.
+
+**Repair (emulator saves: RetroArch, DraStic and melonDS):**
+
+| Owner flow | Now |
+|---|---|
+| Pick a game | Home card → + → Backups. One section per exact assigned or validated save. |
+| List saves and existing backups | The original save, then this save's backups (deliberate copies and export records), newest first, matched by exact `SOURCE_PATH`. |
+| Browse the current save | A on the original save runs the normal read-only open (`selectCurrentTitle`). It never makes a backup. |
+| Deliberately create a backup | A on "Create backup now" (`SourceBackups::createBackup`) copies the save byte for byte into `backups/emulator-saves/<game>/<timestamp>/save<ext>`. It reads the copy back and compares, then writes `BACKUP_MANIFEST.txt` last. This is the only place an emulator backup is made. |
+| Delete a backup | Y opens the confirmation. Only an explicit Y deletes that one backup. It is refused for foreign files or a forged path, and the last remaining copy is kept when the emulator file is gone. |
+| Never write the emulator's save | The source is only ever opened `"rb"`. Tests check that it stays byte- and mtime-identical. |
+
+**Tests:**
+- `test_emulator_backup_access`: create, list and delete for RetroArch `.srm`, DraStic `.dsv` and melonDS `.sav`; nothing is made on list or open; same-second backups get distinct records; other saves are excluded; foreign, forged and last-copy cases are refused; refusals create nothing.
+- `test_emulator_backup_layout`: Create, Browse and Details actions; all copy fits the BackupMenu rows and toast.
+- `test_game_hub_contract`: create-only-on-action and browse-is-read-only.
+
+**Not changed, needs an owner decision: installed Switch titles (SwSh/BDSP/LA/SV).**
+- Every open (`UI.cpp` `handleDefaultQuickOpen`, `handleItemsQuickOpen` and the Backups row 0) calls `backupSaveData(..., g_autoBackupEnabled)`. With the default **Auto-Backup: On** setting, that creates a new timestamped folder per open.
+- That folder is also the editing workspace: PKSE writes edits into it (`FileUtilities.cpp`, `restoreBackupToTitle` notes).
+- Routing opens to the single reusable "Working" copy would overwrite a previous session's saved workspace on the next open.
+- Options for the owner:
+  - (a) default Auto-Backup to Off (a single Working copy, as the toggle already does);
+  - (b) reuse the latest workspace when the installed save is unchanged;
+  - (c) keep the current behaviour.
+- The Switch "Save Backups" screen already has open, create and delete (X, then Y confirmation).
+
+**Device checks for round 4 (add to the checklist):**
+- **R4-1:** Black (DraStic): + → Backups shows "Create backup now", the original DraStic save and the staged-edits note.
+- **R4-2:** A on "Create backup now": a "Backup created" notice; a new "Backup · <date>" row is focused; the `.dsv` on the SD card is unchanged (SHA-256 before and after).
+- **R4-3:** Y on that backup, then Y: deleted. Y, then A or B: kept.
+- **R4-4:** A on the original save opens the game read-only. Back in Backups, no new backup appeared.
+- **R4-5:** Repeat with a RetroArch Gen I–III save and a melonDS save.
+
 ## Opt-in for the device test
 
 The default remains the hardware-accepted direct handoff. To test the return host, create an empty file:
