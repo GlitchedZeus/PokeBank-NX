@@ -28,6 +28,24 @@
 // 136-byte decrypted box record in canonical A/B/C/D order. Records are synthetic.
 using PKHeX.Core;
 
+// Re-evaluate exact retained bytes against another pinned oracle. No filtering,
+// mutation, renumbering, or caught analysis errors can silently shrink the corpus.
+if (args.Length == 2 && args[0] == "replay")
+{
+    var replayIds = new HashSet<string>();
+    foreach (var line in File.ReadLines(args[1]))
+    {
+        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 4 || !replayIds.Add(parts[0]))
+            throw new InvalidDataException("Malformed or duplicate replay record");
+        var cart = Enum.Parse<GameVersion>(parts[1]);
+        var bytes = Convert.FromHexString(parts[2]);
+        PKM pk = bytes.Length switch { 80 => new PK3(bytes), 136 => new PK4(bytes), _ => throw new InvalidDataException("Invalid replay format") };
+        Emit(parts[0], cart, pk, false);
+    }
+    return 0;
+}
+
 if (args.Length >= 2 && args[0] == "probe")
 {
     // probe HEX, or probe ORACLE_OUTPUT_FILE ID... (records by id from a generate run)
@@ -441,9 +459,9 @@ static void SetLevel(PK4 pk, int level, Random rng)
     pk.EXP = exp;
 }
 
-static void Emit(string id, GameVersion cart, PKM pk)
+static void Emit(string id, GameVersion cart, PKM pk, bool refreshChecksum = true)
 {
-    pk.RefreshChecksum();
+    if(refreshChecksum)pk.RefreshChecksum();
     var la = Analyze(pk, cart);
     var enc = la.EncounterMatch;
     var invalid = la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}:{r.Result}")

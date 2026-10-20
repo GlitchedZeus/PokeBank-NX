@@ -12,6 +12,15 @@ on:
       - 'tests/test_gen3_berry_*.cpp'
       - 'tests/test_legality_report_presentation.cpp'
       - 'tests/app/**'
+      - 'tests/test_gb_breeding_chain.cpp'
+      - 'tests/test_finite_breeding_chain.cpp'
+      - 'tests/test_gen3_workspace_legality.cpp'
+      - 'tests/test_gen5_gift_receivability.cpp'
+      - 'tests/fixtures/gen15_session2/**'
+      - 'tests/fixtures/gen3_berry_save.h'
+      - 'Makefile.host.gb-legality'
+      - 'Makefile.host.gen5-legality'
+      - 'docs/legality/completion-session2/app-integration.*'
       - 'tools/legality_completion/**'
       - '.github/workflows/legality-completion.yml'
 jobs:
@@ -33,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -47,9 +56,9 @@ jobs:
           path: engine
       - uses: actions/checkout@v4
         with:
-          ref: 9d4b8b71befea78c76802c15f1911a0ca24e775c
+          ref: c3b0ac4812ef9d584de5d74109189c3ac897fe24
           path: app
       - name: Verify current app patch and actual staged workspace boundary
         run: |
-          git -C app apply --check "$PWD/engine/docs/legality/completion-20261019/app-integration.patch"
+          git -C app apply --check "$PWD/engine/docs/legality/completion-session2/app-integration.patch"
           bash engine/tools/legality_completion/test_app_bridge.sh app

@@ -7,18 +7,21 @@
 // Original source pins and limits are in docs/legality/completion-20261019/SOURCES.md.
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Utils/Gen3Text.h"
+#include "Save/RtcFooter.h"
 #include <optional>
 #include <string>
 #include <string_view>
 namespace Legality {
 class Gen3BerryContext {
 public:
- enum class Match : uint8_t { Unknown, NoData, Recognized, Unrecognized, WrongRegion };
+ enum class Match : uint8_t { Unknown, NoData, Recognized, Unrecognized, WrongRegion, Malformed };
  static std::optional<Gen3BerryContext> fromSave(std::span<const uint8_t> bytes,
                                                std::string_view exactGame, uint8_t language) {
   namespace G=PokeVault::Integration::Gen3;
   namespace D=G::Detail;
-  if(bytes.size()!=D::kSaveSize) return std::nullopt;
+  size_t footer=0;
+  if(!PokeVault::Save::splitRtcPayloadSize(bytes.size(),D::kSaveSize,footer))return std::nullopt;
+  bytes=bytes.first(D::kSaveSize);
   G::SourceGame game;
   if(exactGame=="ruby_gba")game=G::SourceGame::RubyGBA;
   else if(exactGame=="sapphire_gba")game=G::SourceGame::SapphireGBA;
@@ -45,7 +48,7 @@ public:
   for(size_t i=0;i<length-4;++i)if(!rs||i<0xC||i>=0x14)calculated+=at(offset+i);
   for(size_t i=0;i<4;++i)stored|=uint32_t{at(offset+length-4+i)}<<(8*i);
   // Bad source substructure is missing evidence, not a violation by the Pokemon.
-  if(calculated!=stored||at(offset+0x14)==0||at(offset+0xA)==0)return result;
+  if(calculated!=stored||at(offset+0x14)==0||at(offset+0xA)==0){result.match_=Match::Malformed;return result;}
   std::u16string name;
   for(size_t i=0;i<7;++i){const uint8_t b=at(offset+i);if(b==0xFF)break;name+=Utils::gen3ToChar(b,language);}
   const auto usa=name==u"PUMKIN"||name==u"DRASH"||name==u"EGGANT"||name==u"STRIB"||name==u"CHILAN"||name==u"NUTPEA";

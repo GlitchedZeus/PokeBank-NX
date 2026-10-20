@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "Legality/FiniteBreedingChain.h"
 
 namespace Legality::GB {
 
@@ -105,12 +106,24 @@ namespace Legality::GB {
         bool definitive = true;             // false: not enough on its own to call the Pokemon illegal
     };
 
+    // A necessary, jointly satisfiable parent ancestry for one Gen II egg.
+    // Native egg slot order / encounter / level / DVs are still checked separately.
+    struct BreedingProof2 {
+        bool supported = false, possible = false;
+        uint16_t father = 0;
+        std::vector<Breeding::Step> steps;
+    };
+
     struct Result {
         Status status = Status::Illegal;
+        BreedingProof2 breedingProof;       // witness for the selected egg candidate
         Origin origin;                      // the explanation, or the closest candidate when Illegal
         bool timeCapsule = false;           // origin needs a Gen I <-> II Time Capsule trip
         std::vector<Problem> problems;      // empty when Legal
     };
+
+    BreedingProof2 proveBreeding2(uint8_t species, const std::array<uint8_t,4>& moves,
+                                bool crystal, bool koreanOnly, Language language);
 
     Result checkGen1(const Entity1& pk);
     Result checkGen2(const Entity2& pk);

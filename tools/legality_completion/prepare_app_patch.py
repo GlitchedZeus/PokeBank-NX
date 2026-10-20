@@ -2,7 +2,7 @@
 """Prepare a narrow UI patch from a verified #307 snapshot, never modify that checkout."""
 import argparse, difflib, hashlib, json, pathlib, subprocess
 PIN = '9d4b8b71befea78c76802c15f1911a0ca24e775c'
-p = argparse.ArgumentParser(); p.add_argument('app', type=pathlib.Path); p.add_argument('output', type=pathlib.Path); a=p.parse_args()
+p = argparse.ArgumentParser(); p.add_argument('app', type=pathlib.Path); p.add_argument('output', type=pathlib.Path); p.add_argument('--head', default=PIN); p.add_argument('--gen3-provider', action='store_true'); a=p.parse_args(); PIN=a.head
 assert subprocess.check_output(['git','-C',str(a.app),'rev-parse','HEAD'], text=True).strip()==PIN
 changes={}
 def read(path):
@@ -77,6 +77,39 @@ s=s[:start]+'''    for(const auto& line:result->coverageLines)rows.emplace_back(
     screen.touchButtons.push_back({78103,x+w-170,y+h-56,146,40});
     drawNavBar(fb,{{"Up/Down","Scroll"},{"B","Back"}});'''+s[end:]
 changes[path][1]=s
+if a.gen3_provider:
+    path='include/Legacy/FRLGReadOnlyTrainer.h'; v=read(path)
+    v=replace(v,'#include "Trainer/Trainer.h"','#include "Trainer/Trainer.h"\n#include "Legality/Gen3BerryContext.h"\n#include "Legality/Legality.h"')
+    v=replace(v,'    bool refreshStagedPokemonPresentation(std::string& error);','    bool refreshStagedPokemonPresentation(std::string& error);\n    Legality::Report analyzeLegality(const Pokemon::Pokemon& pokemon) const;')
+    v=replace(v,'    std::string sourceGameId_;','    std::string sourceGameId_;\n    std::optional<Legality::Gen3BerryContext> legalityBerry_;')
+    changes[path][1]=v
+    path='src/Legacy/FRLGReadOnlyTrainer.cpp'; v=read(path)
+    v=replace(v,'        if (!trainer->populate(save, error)) return nullptr;','        if (!trainer->populate(save, error)) return nullptr;\n        trainer->legalityBerry_ = Legality::Gen3BerryContext::fromSave(\n            save.sourceBytes(), metadata.sourceGameId, save.trainer().language);')
+    marker='    bool FRLGReadOnlyTrainer::refreshStagedPokemonPresentation'
+    position=v.index(marker)
+    v=v[:position]+'''    Legality::Report FRLGReadOnlyTrainer::analyzeLegality(const Pokemon::Pokemon& pokemon) const {
+        bool owned=false;
+        for(const auto& mon:party)owned|=mon.get()==&pokemon;
+        for(const auto& box:boxes)for(const auto& mon:box)owned|=mon.get()==&pokemon;
+        if(!owned)return Legality::analyze(pokemon,pokemon.getGameGroup());
+        return Legality::analyze(pokemon,Legality::Context{pokemon.getGameGroup(),
+            sourceGameId_,legalityBerry_?&*legalityBerry_:nullptr});
+    }
+
+'''+v[position:]
+    changes[path][1]=v
+    condition='(legalitySource=="ruby_gba" || legalitySource=="sapphire_gba" || legalitySource=="emerald_gba" || legalitySource=="firered_gba" || legalitySource=="leafgreen_gba")'
+    path='src/UI/Modals/PokemonDetailsModal.cpp'; v=changes[path][1]
+    v=replace(v,'#include "Legality/Legality.h"','#include "Legality/Legality.h"\n#include "Legacy/FRLGReadOnlyTrainer.h"')
+    v=replace(v,'const Legality::Report legalityRep =','Legality::Report legalityRep =')
+    anchor='            Legality::analyze(*p, p->getGameGroup(), legalitySource);'
+    v=replace(v,anchor,anchor+'\n        if '+condition+'\n            legalityRep=static_cast<const PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer).analyzeLegality(*p);')
+    changes[path][1]=v
+    path='src/UI/TrainerViewScreenBase.inc'; v=changes[path][1]
+    v='#include "Legacy/FRLGReadOnlyTrainer.h"\n'+v
+    before='if (pokemon && Legality::analyze(*pokemon, pokemon->getGameGroup(), legalitySource)\n                        .verdict() != Legality::Verdict::NoProblemsFound) {'
+    after='if (pokemon && [&] {\n                    const auto report='+condition+'\n                        ? static_cast<const PokeVault::Legacy::FRLGReadOnlyTrainer&>(trainer).analyzeLegality(*pokemon)\n                        : Legality::analyze(*pokemon,pokemon->getGameGroup(),legalitySource);\n                    return report.verdict()!=Legality::Verdict::NoProblemsFound;\n                }()) {'
+    v=replace(v,before,after); changes[path][1]=v
 out=''.join(''.join(difflib.unified_diff(old.splitlines(True),new.splitlines(True),fromfile='a/'+path,tofile='b/'+path)) for path,(old,new) in changes.items())
 # Git accepts an empty context line without the optional leading space.
 out=''.join('\n' if line==' \n' else line for line in out.splitlines(True))

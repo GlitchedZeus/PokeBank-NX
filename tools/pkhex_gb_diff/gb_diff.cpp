@@ -104,7 +104,15 @@ Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vecto
     return GB::checkGen2(e);
 }
 
-int main() {
+int main(int argc, char** argv) {
+    const bool proofs = argc == 2 && std::string(argv[1]) == "--proof";
+    const auto evidence = [proofs](const std::string& id, const Legality::GB::Result& r) {
+        if (!proofs || !r.breedingProof.supported) return;
+        std::cerr << id << " father=" << r.breedingProof.father;
+        for (const auto& s : r.breedingProof.steps)
+            std::cerr << " " << static_cast<int>(s.kind) << ":" << s.species << ":" << static_cast<int>(s.mask) << "<-" << s.parentSpecies << ":" << static_cast<int>(s.parentMask);
+        std::cerr << "\n";
+    };
     using namespace PokeVault::Integration::Gen1;
     namespace GB = Legality::GB;
     std::string line;
@@ -132,6 +140,7 @@ int main() {
             return reject("body length does not fit the field count");
         if (body.size() == 48) {
             const GB::Result r = checkPk2(body, ot, nick, jp == "1", eggFlag == "1");
+            evidence(id,r);
             std::cout << id << verdict(r.status) << GB::describe(r.origin)
                       << (r.timeCapsule ? " [time capsule]" : "") << " ;";
             for (const auto& p : r.problems)
@@ -164,6 +173,7 @@ int main() {
         e.otRaw = ot;
         e.nickRaw = nick;
         const GB::Result r = GB::checkGen1(e);
+        evidence(id,r);
         std::cout << id << verdict(r.status) << GB::describe(r.origin)
                   << (r.timeCapsule ? " [time capsule]" : "") << " ;";
         for (const auto& p : r.problems)

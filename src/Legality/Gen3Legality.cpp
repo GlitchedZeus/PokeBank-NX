@@ -4338,8 +4338,9 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
         const auto match = berryContext ? berryContext->match(exactSourceGameId) : Gen3BerryContext::Match::Unknown;
         if (match != Gen3BerryContext::Match::Recognized) {
             problem = true;
-            if (match == Gen3BerryContext::Match::Unknown)
+            if (match == Gen3BerryContext::Match::Unknown || match == Gen3BerryContext::Match::Malformed)
                 add(Severity::Warning, CheckIdentifier::Items,
+                    match == Gen3BerryContext::Match::Malformed ? "Enigma Berry: source-save berry data fails its native integrity checks" :
                     "Enigma Berry: legality depends on the e-Reader berry stored in the original save");
             else
                 add(Severity::Invalid, CheckIdentifier::Items,

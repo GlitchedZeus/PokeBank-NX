@@ -19,6 +19,7 @@
 // moves from the Gen V / IV / III learnsets (format5Data() hands it this
 // file's Gen V tables).
 #include "Legality/Gen5Legality.h"
+#include "Legality/Gen5GiftReceivability.h"
 
 #include <algorithm>
 #include <array>
@@ -587,6 +588,7 @@ struct Template {
     bool correlation = false, fixedGenderPid = false, grotto = false;
     bool egg = false;      // PKHeX IEncounterTemplate.IsEgg
     std::array<uint16_t, 4> moves{};
+    bool receivingUnverified = false;
     const uint8_t* card = nullptr; // PGF
     int trade = -1;        // row of Gen5Data::kTrades
 };
@@ -1409,6 +1411,12 @@ void Gen5Analyzer::giftCandidates(std::vector<Candidate>& out) {
         c.t.egg = g.isEgg();
         c.t.species = g.species();
         c.t.card = g.c;
+        static_assert(Gen5Gift::kReceiving.size()==D::kPgfCount);
+        // Newer catalog metadata constrains receipt, even when the card's own
+        // Language/OriginGame fields are zero. A traded egg may change language
+        // when hatching, so do not impose its receiving language on that hatch.
+        const bool tradedEgg=g.isEgg()&&!p_.isEgg&&(p_.eggLocation==kLinkTrade5||p_.eggLocation==kLinkTrade5NPC);
+        c.t.receivingUnverified=!tradedEgg&&!Gen5Gift::permits(i,p_.version,p_.language);
         c.t.fixedBall = g.ball();
         for (int m = 0; m < 4; ++m) c.t.moves[m] = g.move(m);
         const bool shiny = Gen5::isShiny(p_.pid, p_.tid, p_.sid);
@@ -1521,12 +1529,15 @@ void Gen5Analyzer::encounterGen5() {
         if (c.fails.empty()) { best = &c; break; }
         if (!best || c.fails.size() < best->fails.size()) best = &c;
     }
+    // Prefer a fully supported alternative over a template whose receipt
+    // constraints cannot certify this record. Do not stop at the first PGF.
+    for(const auto& c:all)if(c.fails.empty()&&!c.t.receivingUnverified){best=&c;break;}
     if (best && best->fails.empty()) {
         matched_ = true;
         match_ = best->t;
         // Dream World entries repeat per special move; any matching one may be the source.
         for (const auto& c : all)
-            if (c.fails.empty()) matchAll_.push_back(c.t);
+            if (c.fails.empty() && (match_.receivingUnverified || !c.t.receivingUnverified)) matchAll_.push_back(c.t);
         // PKHeX EncounterSlot5.GetMatchRating: a Combee slot for a Vespiquen whose PID made the
         // Combee male is DeferredErrors, so any other matching template is preferred; it is
         // kept only when nothing else matches (genderFromDual then reports it).
@@ -1542,6 +1553,12 @@ void Gen5Analyzer::encounterGen5() {
         cov.encounter = CoverageLevel::Complete;
         cov.pidRng = CoverageLevel::Complete;
         cov.eventGift = CoverageLevel::Complete;
+        if(match_.receivingUnverified) {
+            // Catalog metadata alone is not an exhaustive authenticated event
+            // history. Missing receipt proof cannot establish an impossible origin.
+            cov.eventGift=CoverageLevel::Partial;
+            a_.warn(CheckIdentifier::EventGift,"PGF receiving language/game is unsupported by the newer event catalog; original distribution evidence is required");
+        }
         a_.info(CheckIdentifier::Encounter, std::string("Matches a Gen V ") + kindName(match_.kind) +
                 " (" + speciesName(match_.species) + ")");
         if (p_.fateful && match_.kind != Kind::Gift)

@@ -16,6 +16,7 @@
 
 #include "Legality/GBLegality.h"
 #include "Legality/GBLegalityData.h"
+#include "Legality/FiniteBreedingChain.h"
 
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
@@ -24,6 +25,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+
 
 namespace Legality::GB {
 
@@ -1472,6 +1474,88 @@ bool isSketchable2(uint8_t move) {
     }
 }
 
+// Source-local adapter over existing audited Gen I/II tables. Native semantics:
+// pokecrystal engine/pokemon/breeding.asm CheckBreedmonCompatibility,
+// GetHeritableMoves, GetEggMove; no independent-source unions across fathers.
+bool breedingChain2(uint8_t child, const std::array<uint8_t,4>& requested,
+                    bool crystal, bool koreanOnly, Language language, BreedingProof2* evidence=nullptr) {
+    using Rule=Legality::Breeding::Species;
+    uint8_t wanted=0,gen1Domain=0;
+    for(size_t i=0;i<4;++i)if(requested[i]) {
+        wanted|=uint8_t{1}<<i;
+        if(requested[i]<=kMaxMove1)gen1Domain|=uint8_t{1}<<i;
+    }
+    if(evidence){evidence->supported=true;evidence->possible=false;}
+    if(!wanted){if(evidence)evidence->possible=true;return true;}
+    std::array<Rule,252> rules;
+    const auto root=[](uint16_t s) {
+        while(const auto* p=preEvolution(true,static_cast<uint8_t>(s)))s=p->from;
+        return s;
+    };
+    const auto groups=[](uint16_t s){return kPersonalC[s].eggGroups;};
+    const auto breedable=[&](uint16_t s){return s!=kSpeciesDitto&&groups(s)!=0xFF;};
+    const auto shares=[&](uint16_t a,uint16_t b){
+        const auto x=groups(a),y=groups(b);
+        return (x&15)==(y&15)||(x&15)==(y>>4)||(x>>4)==(y&15)||(x>>4)==(y>>4);
+    };
+    // Build actual maternal/father relations, including baby evolutions, Ditto
+    // with male/genderless non-Ditto, and Nidoran's split offspring species.
+    for(uint16_t baby=1;baby<=251;++baby)if(canHatch(baby)&&!preEvolution(true,baby)) {
+        const uint16_t maternalRoot=baby==32?29:baby;
+        for(uint16_t mother=1;mother<=251;++mother)if(root(mother)==maternalRoot&&breedable(mother)) {
+            const auto gender=kPersonalC[mother].genderRatio;
+            if(gender!=254)rules[baby].fathers.push_back(mother); // Ditto + male/genderless
+            if(gender==0||gender==255)continue;
+            for(uint16_t father=1;father<=251;++father)
+                if(breedable(father)&&kPersonalC[father].genderRatio<254&&shares(mother,father))
+                    rules[baby].fathers.push_back(father);
+        }
+        auto& fathers=rules[baby].fathers;
+        std::sort(fathers.begin(),fathers.end());fathers.erase(std::unique(fathers.begin(),fathers.end()),fathers.end());
+    }
+    for(uint16_t s=1;s<=251;++s)for(size_t i=0;i<4;++i)if(const uint8_t m=requested[i]) {
+        const auto flag=static_cast<uint8_t>(1u<<i);
+        if((s==kSpeciesSmeargle&&isSketchable2(m))||learnLevel(Env::GS,s,m)||tm2(s,false,m)||
+            (!koreanOnly&&(learnLevel(Env::C,s,m)||tm2(s,true,m)||tutorC(s,m)||stadiumRelearnLevel(s,m,100))))
+            rules[s].ordinary|=flag;
+        if(!koreanOnly&&s<=151&&m<=165&&(learnLevel(Env::RB,s,m)||learnLevel(Env::Y,s,m)||tm1(s,false,m)||tm1(s,true,m)))
+            rules[s].previousEra|=flag;
+        if(eggMove(false,s,m)||tm2(s,false,m)||learnLevel(Env::GS,s,m)||
+           (!koreanOnly&&(eggMove(true,s,m)||tm2(s,true,m)||learnLevel(Env::C,s,m))))rules[s].inherited|=flag;
+    }
+    for(size_t i=0;i<kEvolutions2Count;++i)rules[kEvolutions2[i].from].evolvesTo.push_back(kEvolutions2[i].to);
+    // An event is a joint seed. A second event's exclusive moves are not added
+    // to that individual. Region filters preserve supported native link domains.
+    const auto gift=[&](uint8_t s,const uint8_t* moves) {
+        uint8_t mask=0;for(size_t i=0;i<4;++i)if(requested[i]&&std::find(moves,moves+4,requested[i])!=moves+4)mask|=1u<<i;
+        if(mask)rules[s].gifts.push_back(mask);
+    };
+    if(!koreanOnly) {
+        const bool jp=language==Language::Japanese,unknown=language==Language::Unknown;
+        for(size_t i=0;i<kGifts1Count;++i){const auto& g=kGifts1[i];if(unknown||g.language==0||(jp?g.language==1:g.language!=1))gift(g.species,g.moves);}
+        for(size_t i=0;i<kGifts2Count;++i){const auto& g=kGifts2[i];if(unknown||(jp?g.language==1:g.language!=1))gift(g.species,g.moves);}
+        for(size_t i=0;i<kStatics2Count;++i){const auto& g=kStatics2[i];if(g.gender!=1)gift(g.species,g.moves);}
+    }
+    // The queried child's egg version is exact; ancestors may have bred on
+    // either compatible same-language release and subsequently traded.
+    for(auto move:requested)if(move&&!eggMove(crystal,child,move)&&!tm2(child,crystal,move)&&!learnLevel(crystal?Env::C:Env::GS,child,move))return false;
+    // Prefer a cartridge-native witness. A catalogued event must not hide an
+    // independently constructible ancestry, or certify unverified history.
+    auto nativeRules=rules;
+    for(auto& rule:nativeRules)rule.gifts.clear();
+    Legality::Breeding::FiniteChain nativeProof(nativeRules,gen1Domain);nativeProof.solve();
+    Legality::Breeding::FiniteChain catalogProof(rules,gen1Domain);
+    const bool native=nativeProof.hasFather(child,wanted);
+    if(!native)catalogProof.solve();
+    const auto& proof=native?nativeProof:catalogProof;
+    if(evidence)for(auto father:rules[child].fathers)if(proof.canKnow(father,wanted)) {
+        evidence->father=father;evidence->steps=proof.witness(father,wanted);break;
+    }
+    const bool possible=proof.hasFather(child,wanted);
+    if(evidence)evidence->possible=possible;
+    return possible;
+}
+
 // ---------------------------------------------------------------- stat experience, Pokerus, names
 
 constexpr uint16_t kVitaminBoost = 2560;          // EffortValues.VitaminBoost12
@@ -1766,6 +1850,7 @@ std::string ppProblem(uint8_t format, const std::array<uint8_t, 4>& moves, const
 // ---------------------------------------------------------------- evaluation
 
 struct Evaluation {
+    BreedingProof2 breedingProof;
     Candidate enc;
     std::vector<Problem> problems;
     bool timeCapsule = false;
@@ -1811,6 +1896,28 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
                                                                          : MoveResult{};
     } else {
         mc = checkMoves(pk, enc, hist1, hist2, reachable);
+    }
+    if(enc.bred) {
+        std::array<uint8_t,4> inherited{};
+        if(pk.egg) {
+            const auto base=initialMoves(enc);
+            for(size_t i=0;i<4;++i)if(pk.moves[i]&&std::find(base.begin(),base.end(),pk.moves[i])==base.end())inherited[i]=pk.moves[i];
+        } else for(size_t i=0;i<4;++i)
+            if(mc.result[i].source==Source::Egg||mc.result[i].source==Source::Inherit)inherited[i]=pk.moves[i];
+        const bool blockedCapsule=std::any_of(inherited.begin(),inherited.end(),[](uint8_t m){return m>kMaxMove1;});
+        if(blockedCapsule)for(size_t i=0;i<4;++i)if(mc.result[i].generation==1&&pk.moves[i]) {
+            bool native=false;
+            for(size_t j=0;j<hist2.count;++j) {
+                const auto& stage=hist2.stage[j];
+                native|=canLearn2(stage.species,pk.moves[i],stage,false,j+1<hist2.count).source!=Source::None;
+                if(!koreanCartOnly(pk))native|=canLearn2(stage.species,pk.moves[i],stage,true,j+1<hist2.count).source!=Source::None || stadiumRelearnLevel(stage.species,pk.moves[i],stage.max)!=0;
+            }
+            if(!native)inherited[i]=pk.moves[i];
+        }
+        if(!breedingChain2(enc.species,inherited,(enc.versions&Crystal)!=0,koreanCartOnly(pk),pk.language,&ev.breedingProof))
+            ev.problems.push_back({Area::Egg,"No single compatible father ancestry supplies the inherited move combination"});
+        else if(std::any_of(ev.breedingProof.steps.begin(),ev.breedingProof.steps.end(),[](const auto& step){return step.kind==Legality::Breeding::StepKind::Gift;}))
+            ev.problems.push_back({Area::Egg,"The compatible father ancestry requires a catalogued fixed-move gift whose historical distribution is not authenticated",false});
     }
     ev.timeCapsule = enc.generation != pk.format || (pk.format == 1 ? mc.anyGen2 : mc.anyGen1);
 
@@ -1996,6 +2103,7 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
         if (ev.problems.empty()) {
             res.status = extraDefinitive ? Status::Illegal : extra.empty() ? Status::Legal : Status::Uncertain;
             res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType, c.gsBall};
+            res.breedingProof = std::move(ev.breedingProof);
             res.timeCapsule = ev.timeCapsule;
             res.problems = extra;
             return res;
@@ -2060,6 +2168,7 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
     } else {
         const Candidate& c = best.enc;
         res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType, c.gsBall};
+        res.breedingProof = std::move(best.breedingProof);
         res.timeCapsule = best.timeCapsule;
         res.problems = std::move(best.problems);
     }
@@ -2210,6 +2319,19 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         std::none_of(std::begin(kEggNames), std::end(kEggNames), [&](const char* n) { return e.nickname == n; }))
         out.push_back({Area::Egg, "An unhatched egg keeps the name the game gave it (EGG, or its translation)"});
     return out;
+}
+
+BreedingProof2 proveBreeding2(uint8_t species, const std::array<uint8_t,4>& moves,
+                              bool crystal, bool koreanOnly, Language language) {
+    BreedingProof2 result;
+    if(!species||species>kMaxSpecies2||!canHatch(species)||preEvolution(true,species))return result;
+    for(size_t i=0;i<4;++i) {
+        if(moves[i]>kMaxMove2)return result;
+        for(size_t j=0;j<i;++j)if(moves[i]&&moves[i]==moves[j])return result;
+    }
+    result.supported=true;
+    result.possible=breedingChain2(species,moves,crystal,koreanOnly,language,&result);
+    return result;
 }
 
 Result checkGen1(const Entity1& e) {

@@ -12,6 +12,9 @@ on:
     paths:
       - 'src/Legality/**'
       - 'include/Legality/GB*'
+      - 'include/Legality/FiniteBreedingChain.h'
+      - 'include/Legality/Gen5GiftReceivability.h'
+      - 'tools/gen_gen5_gift_receivability.py'
       - 'src/Integration/Gen1/**'
       - 'src/Integration/Gen2/Gen2ReadOnlySave.cpp'
       - 'tools/gen_gb_legality_data.py'
@@ -29,6 +32,8 @@ permissions:
 
 env:
   PKHEX_SHA: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+  GB_CURRENT_PKHEX: ${{ github.workspace }}/_ref/PKHeX-current
+  GB_POKECRYSTAL: ${{ github.workspace }}/_ref/pokecrystal
   POKERED_SHA: af519899719f0754965776faac0e836a3b906e6d
   POKEYELLOW_SHA: e89ead154b9968aa50eed9328ff2b38b6c194382
 
@@ -65,6 +70,18 @@ jobs:
           ref: ${{ env.POKEYELLOW_SHA }}
           path: _ref/pokeyellow
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: 6042efa241a9925ce57e645329ea7f976deabdd3
+          path: _ref/PKHeX-current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pret/pokecrystal
+          ref: 3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6
+          path: _ref/pokecrystal
+          persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -74,17 +91,39 @@ jobs:
           python3 -I tools/gen_gb_legality_data.py --pkhex _ref/PKHeX
           git diff --exit-code -- src/Legality/GBLegalityData.cpp
 
+      - name: Receiving metadata is bound to identical PGF payloads
+        run: python3 tools/gen_gen5_gift_receivability.py --baseline _ref/PKHeX --current _ref/PKHeX-current --check
+
       - name: Tables agree with the pret disassemblies
         run: python3 -I tools/verify_gb_legality_data.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokeyellow _ref/pokeyellow
+
+      - name: Independent native ancestry and rejection controls
+        run: python3 tools/pkhex_gb_diff/test_native_chain.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokecrystal _ref/pokecrystal
 
       - name: PK1 verdicts agree with PKHeX (3 x 50,000 Pokemon)
         run: |
           for seed in 1 2 3; do
-            tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 1
+            WORK="$PWD/_evidence/pk1-$seed" tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 1
           done
 
       - name: PK2 verdicts agree with PKHeX (3 x 50,000 Pokemon)
         run: |
           for seed in 1 2 3; do
-            tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 2
+            WORK="$PWD/_evidence/pk2-$seed" tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 2
           done
+
+      - name: Retain exact corpora, both references and selected ancestry witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gen12-dual-oracle-evidence
+          retention-days: 30
+          path: |
+            _evidence/**/corpus.txt
+            _evidence/**/pkhex.txt
+            _evidence/**/current.txt
+            _evidence/**/pokebank.txt
+            _evidence/**/proofs.txt
+            _evidence/**/selftest.txt
+            _evidence/**/build.log
+            _evidence/**/current-build.log

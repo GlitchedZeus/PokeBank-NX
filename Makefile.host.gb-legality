@@ -91,3 +91,34 @@ $(HOST_BUILD)/test_gb_legality_fuzz: $(GB_LEGALITY_FUZZ_SOURCES)
 $(HOST_BUILD)/test_gb_legality_fuzz_sanitize: $(GB_LEGALITY_FUZZ_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+GB_BREEDING_CHAIN_SOURCES := tests/test_gb_breeding_chain.cpp $(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_breeding_chain $(HOST_BUILD)/test_finite_breeding_chain
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_breeding_chain_sanitize $(HOST_BUILD)/test_finite_breeding_chain_sanitize
+host-test: $(HOST_BUILD)/test_gb_breeding_chain $(HOST_BUILD)/test_finite_breeding_chain
+host-sanitize: $(HOST_BUILD)/test_gb_breeding_chain_sanitize $(HOST_BUILD)/test_finite_breeding_chain_sanitize
+$(HOST_BUILD)/test_gb_breeding_chain: $(GB_BREEDING_CHAIN_SOURCES) include/Legality/FiniteBreedingChain.h tests/gb_native_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GB_BREEDING_CHAIN_SOURCES) -o $@
+$(HOST_BUILD)/test_gb_breeding_chain_sanitize: $(GB_BREEDING_CHAIN_SOURCES) include/Legality/FiniteBreedingChain.h tests/gb_native_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GB_BREEDING_CHAIN_SOURCES) -o $@
+$(HOST_BUILD)/test_finite_breeding_chain: tests/test_finite_breeding_chain.cpp include/Legality/FiniteBreedingChain.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_finite_breeding_chain_sanitize: tests/test_finite_breeding_chain.cpp include/Legality/FiniteBreedingChain.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+GEN3_WORKSPACE_LEGALITY_SOURCES = tests/test_gen3_workspace_legality.cpp $(sort $(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) $(filter-out tests/test_gen3_staged_pokemon_editor.cpp,$(GEN3_POKEMON_EDITOR_SOURCES)))
+HOST_TESTS += $(HOST_BUILD)/test_gen3_workspace_legality
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_workspace_legality_sanitize
+host-test: $(HOST_BUILD)/test_gen3_workspace_legality
+host-sanitize: $(HOST_BUILD)/test_gen3_workspace_legality_sanitize
+.SECONDEXPANSION:
+$(HOST_BUILD)/test_gen3_workspace_legality: $$(GEN3_WORKSPACE_LEGALITY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN3_WORKSPACE_LEGALITY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_workspace_legality_sanitize: $$(GEN3_WORKSPACE_LEGALITY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN3_WORKSPACE_LEGALITY_SOURCES) -o $@

@@ -1,0 +1,50 @@
+{
+  "pokered": {
+    "commit": "af519899719f0754965776faac0e836a3b906e6d",
+    "files": {
+      "data/pokemon/base_stats/lapras.asm": "eca0e9600e96abdb13835dc797c8d4a83541008aff6751a7ffdf62a6387f5d4f",
+      "data/pokemon/base_stats/oddish.asm": "47ac089cdda1e23218f5e8276ecf4f6cf8f846b704e0b0ded51892d1432e436e"
+    }
+  },
+  "pokecrystal": {
+    "commit": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+    "files": {
+      "engine/pokemon/breeding.asm": "6a4a2537eab3aa245abbc04e3809ab8804b6f1b91a3b2a23c2acad6b918f7e29",
+      "engine/battle/move_effects/sketch.asm": "6434db484d2fa2fee910ed44ea71e4f5701e8a35e2317a39515b58f1c89ce2a6",
+      "data/pokemon/evos_attacks.asm": "ace4251417a9260c5b898e3fadcdb785cd994f0ac6966767cd8f09f1fecfbfe6",
+      "data/pokemon/egg_moves.asm": "b2fbc6c37b6119b392a83ae542da4f83478976f1973ee5eda60092c2c22ef5b7",
+      "data/pokemon/base_stats/lapras.asm": "d38acc80e4a4e1a4898853f7559d7e49a24342777708dc8e7d02ba84bde89d3c",
+      "data/pokemon/base_stats/oddish.asm": "0c2eff4f590408b690bba83f9ff4f2caececc45d781064b1d3eaf9ea3ead1fd0",
+      "data/pokemon/base_stats/bulbasaur.asm": "fe81c8886367ed1c6fd87f4f75bb9b33757dc13f087942928a4b1f72069ce868",
+      "data/pokemon/base_stats/exeggcute.asm": "5039b91306e5306db832357340a010077d29ee1ae28de0c1acc0189034ecdcdd"
+    }
+  },
+  "PKHeX-current": {
+    "commit": "6042efa241a9925ce57e645329ea7f976deabdd3",
+    "files": {
+      "PKHeX.Core/MysteryGifts/PGF.cs": "4f0e644e8149c5a1102c93297efaa28bc2c09d04e6079670f63f705f7afcd608",
+      "PKHeX.Core/Resources/legality/mgdb/pgf.pkl": "c22fee868cf6a39dacb3aeec8cd8b8d906f3370f34f9d1a8071d8372fae14e9b",
+      "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedLegality.cs": "92a436286d6fc3d6323b8b7d5c19fde237becf13ebdfe1e250ce7839443e7493"
+    }
+  },
+  "Japanese-Crystal-disassembly-lead": {
+    "commit": "2fb3ee8f8c06aeaa89c37defbea8b85466f61260",
+    "files": {
+      "maps/IlexForest.asm": "8342bbf4c925397a87b8fd780347a88147266d5f9057edcd4bb2e52833640e28"
+    }
+  },
+  "official_evidence": [
+    {
+      "url": "https://www.pokemon.co.jp/ex/VCCR/171214_02/",
+      "supports": "explicit historical original-GBC Crystal Mobile Adapter news -> Celebi availability; does not authenticate a specimen or exact news payload"
+    },
+    {
+      "url": "https://www.nintendo.co.jp/data/software/manual/304177.pdf#page=8",
+      "supports": "Japanese trainer naming screen punctuation; VC manual, not an independently rebuilt retail Japanese ROM"
+    },
+    {
+      "url": "https://www.nintendo.co.jp/n02/dmg/kingin/index.html",
+      "supports": "original Gen I/II communication; overseas-language incompatibility warning"
+    }
+  ]
+}

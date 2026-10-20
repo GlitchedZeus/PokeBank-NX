@@ -19,10 +19,18 @@ g++ -std=c++20 -O2 -I"$repo/include" -I"$work" "$here/gb_diff.cpp" "$repo/src/Le
     "$repo/src/Legality/GBLegalityData.cpp" "$repo/src/Names/SpeciesNames.cpp" "$repo/src/Names/MoveNames.cpp" \
     "$repo/src/Integration/Gen1/Gen1ReadOnlySave.cpp" "$repo/src/Integration/Gen2/Gen2ReadOnlySave.cpp" \
     "$repo/src/Utils/StringHelpers.cpp" "$repo/src/Utils/HelperUtilities.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gb_diff"
-"$work/gb_diff" < "$work/corpus.txt" > "$work/pokebank.txt"
+"$work/gb_diff" --proof < "$work/corpus.txt" > "$work/pokebank.txt" 2> "$work/proofs.txt"
 python3 -I "$here/compare.py" --self-test > "$work/selftest.txt" || { cat "$work/selftest.txt"; exit 1; }
-python3 -I "$here/compare.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/pokebank.txt" \
-    --pkhex "$pkhex" --pokered "$pokered" --show "${SHOW:-8}"
+if [ -n "${GB_CURRENT_PKHEX:-}" ]; then
+    dotnet build "$here/oracle/PKHeXGBOracle.csproj" -c Release -p:PKHEX_ROOT="$GB_CURRENT_PKHEX" \
+        -p:UseArtifactsOutput=true -p:ArtifactsPath="$work/current-artifacts" -o "$work/current-oracle" > "$work/current-build.log"
+    dotnet "$work/current-oracle/PKHeXGBOracle.dll" < "$work/corpus.txt" > "$work/current.txt"
+    python3 "$here/compare_dual.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/current.txt" "$work/pokebank.txt" "$work/proofs.txt" \
+        --pkhex "$pkhex" --pokered "$pokered" --pokecrystal "$GB_POKECRYSTAL"
+else
+    python3 -I "$here/compare.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/pokebank.txt" \
+        --pkhex "$pkhex" --pokered "$pokered" --show "${SHOW:-8}"
+fi
 # The same corpus through the app's path (PokemonRecord -> Pokemon1/2ReadOnly -> Legality::analyze)
 # must give the origin search's verdict; see production_parity.cpp.
 srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp
