@@ -34,6 +34,18 @@ XFAIL: dict[str, str] = {
     "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
     "CG34-gen5-key-tm-pockets-editable": "I (NEW-17)",
     "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
+    "CG36-footer-hints-have-glyphs": "S (E05, NEW-01 remaining Close/Help footer)",
+    "CG37-no-touch-back-footer": "S (NEW-02)",
+    "CG38-bag-confirm-glyphs-a-commits": "I (NEW-03; B07 gate pin changes with it, owner-directed)",
+    "CG39-species-search-keyboard-beside-list": "P (NEW-05)",
+    "CG40-held-item-picker-search": "P (NEW-06)",
+    "CG41-gen2-ot-gender-inline": "P (NEW-07)",
+    "CG42-ball-picker-scrollbar-gutter": "P (NEW-08)",
+    "CG43-nature-stat-colours": "R (NEW-09)",
+    "CG44-met-location-compact": "P (NEW-10)",
+    "CG45-selected-species-name-first": "P (NEW-11)",
+    "CG46-ability-names-not-slots": "P (NEW-13)",
+    "CG47-classic-trainer-playtime-pokedex": "C (NEW-18)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -1198,6 +1210,368 @@ def contracts(sources: list[Source]) -> list[Result]:
     if c4 != c5:
         fmt = lambda c: [(t, sorted(p)) for t, p in c]
         r.violations.append(f"Discard-all confirmation: Gen IV {fmt(c4)} vs Gen V {fmt(c5)}")
+    res.append(r)
+
+    # Round 4 P3 (owner round 3 FAIL, UI polish): CG36-CG47.
+    def bodies_ln(rel, name):
+        f = src(rel)
+        return [(ln, b) for _, ln, b in function_bodies(f.code, re.compile("^" + name + "$"))] if f else []
+
+
+    def ln_of(code, pos):
+        return code.count("\n", 0, pos) + 1
+
+
+    def call_args(code, name_rx):
+        """Yield (pos, argtext) for every call matching name_rx (balanced parentheses)."""
+        for m in re.finditer(name_rx + r"\s*\(", code):
+            d, j = 0, m.end() - 1
+            while j < len(code):
+                if code[j] == "(":
+                    d += 1
+                elif code[j] == ")":
+                    d -= 1
+                    if d == 0:
+                        break
+                j += 1
+            yield m.start(), code[m.end():j]
+
+
+    def block_after(code, pos):
+        """Text from pos to the end of the enclosing { } block."""
+        d, j = 0, pos
+        while j < len(code):
+            if code[j] == "{":
+                d += 1
+            elif code[j] == "}":
+                d -= 1
+                if d < 0:
+                    break
+            j += 1
+        return code[pos:j]
+
+
+
+
+    # ---------------------------------------------------------------- E05 / NEW-02 shared footer parse
+    chrome = src("include/UI/ScreenChrome.h")
+    glyph_body = next((b for _, _, b in function_bodies(chrome.code, re.compile(r"^buttonGlyph$"))), "")
+    KNOWN = set(re.findall(r'btn\s*==\s*"([^"]+)"', glyph_body))
+    if re.search(r"btn\[0\]\s*==\s*'A'", glyph_body):
+        KNOWN |= {"A", "B", "X", "Y"}
+
+
+    def footer_tokens(s):
+        """(line, button, label) for every footer hint: drawNavBar {"btn","label"} pairs, and every
+        'Btn: Label  |  Btn: Label' hint string (the drawNavHints grammar)."""
+        out = []
+        for pos, args in call_args(s.code, r"\bdrawNavBar"):
+            for m in re.finditer(r'\{\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\}', args):
+                out.append((ln_of(s.code, pos), m.group(1), m.group(2)))
+        for ln, lit in s.literals:
+            segs = [t.strip() for t in lit.split("|")]
+            if "|" not in lit or not all(segs):
+                continue
+            pairs = [t.split(":", 1) for t in segs if ":" in t]
+            if pairs and any(b.strip() in KNOWN for b, _ in pairs):
+                out += [(ln, b.strip(), l.strip()) for b, l in pairs]
+        return out
+
+
+    r = Result("CG36-footer-hints-have-glyphs",
+               "Every footer hint names a button ScreenChrome::buttonGlyph draws as a badge (no plain-text "
+               "'Touch: Back', 'A / B: Return', 'A/B: Cancel'), and no footer repeats Close Help on '-' "
+               "(owner round 3 E05 / NEW-01 note)")
+    if not KNOWN:
+        r.violations.append("include/UI/ScreenChrome.h: buttonGlyph() button set not found")
+    for s in U:
+        for ln, b, l in footer_tokens(s):
+            if b not in KNOWN and not re.fullmatch(r"(?i)touch|tap", b):   # Touch: CG31 (NEW-02)
+                r.violations.append(f"{s.rel}:{ln}: footer hint '{b}: {l}' has no controller glyph (drawn as plain text)")
+            if b in ("-", "Minus") and re.match(r"(?i)close help", l):
+                r.violations.append(f"{s.rel}:{ln}: footer repeats '- {l}' (B already closes Help)")
+    r.violations = dedupe(r.violations)
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-02
+    r = Result("CG37-no-touch-back-footer",
+               "No footer carries the obsolete 'Touch: Back' hint; passive View keeps its touch Back target "
+               "(owner round 3 NEW-02)")
+    for s in U:
+        for ln, b, l in footer_tokens(s):
+            if re.fullmatch(r"(?i)touch|tap", b):
+                r.violations.append(f"{s.rel}:{ln}: footer hint '{b}: {l}'")
+        for ln, lit in s.literals:
+            if re.search(r"(?i)\b(touch|tap)\s*:\s*back\b", lit):
+                r.violations.append(f"{s.rel}:{ln}: \"{lit}\"")
+    # keep touch: every view surface that publishes passiveBackTarget today still does
+    for rel in ("src/UI/Gen2SharedPokemonSurface.inc", "src/UI/Gen2HardwareFinalFix.inc",
+                "src/UI/Gen2SharedSurfaceParity.inc", "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+                "src/UI/Gen1PokemonEditorPassiveView.inc"):
+        f = src(rel)
+        if f and not re.search(r"touchButtons\s*\.\s*push_back\s*\(\s*\{\s*PokeBank::UIModel::passiveBackTarget", f.code):
+            r.violations.append(f"{rel}: passive View no longer publishes its touch Back target (passiveBackTarget)")
+    r.violations = dedupe(r.violations)
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-03
+    r = Result("CG38-bag-confirm-glyphs-a-commits",
+               "Bag Remove / Key Item Warning: in-dialog choices are coloured glyph buttons, Remove commits on A "
+               "(B cancels), and the dialog's choices are not repeated in the screen footer (owner round 3 NEW-03)")
+    BAG = "include/UI/SharedBagAddPicker.h"
+    for ln, b in bodies_ln(BAG, "drawConfirm"):
+        if re.search(r"\bdrawText\s*\([^;]*glyphs\s*\[\s*i\s*\]\s*\.\s*glyph", b):
+            r.violations.append(f"{BAG}:{ln}: drawConfirm() draws the choice glyph letter as plain text")
+        if not re.search(r"\b(buttonGlyph|drawGlyphButton|SharedBoxedRows::drawGlyphChoices)\s*\(", b):
+            r.violations.append(f"{BAG}:{ln}: drawConfirm() draws no controller badge (buttonGlyph / drawGlyphButton / drawGlyphChoices)")
+        for pos, args in call_args(b, r"\bdrawNavBar"):
+            if re.search(r"\b(commit|cancel)\s*\.\s*(glyph|label)", args):
+                r.violations.append(f"{BAG}:{ln + b.count(chr(10), 0, pos)}: drawConfirm() repeats its choices in the footer")
+    for ln, b in bodies_ln(BAG, "drawRemoveConfirm"):
+        if re.search(r'\{\s*"Y"\s*,\s*"Remove"', b):
+            r.violations.append(f"{BAG}:{ln}: drawRemoveConfirm() commits on Y (owner: A confirms, B cancels)")
+    # callers must not draw a second footer naming the modal's own choices
+    for s in U:
+        for pos, _ in call_args(s.code, r"\bSharedBagAddPicker::(?:drawRemoveConfirm|drawKeyItemWarning)"):
+            tail = block_after(s.code, pos)
+            for p2, args in call_args(tail, r"\bdrawNavBar"):
+                if re.search(r'"(?:Confirm Remove|Remove|Confirm|Cancel)"', args):
+                    r.violations.append(f"{s.rel}:{ln_of(s.code, pos + p2)}: footer repeats the bag dialog's choices")
+    # input: Remove commits on A
+    classic = src("src/UI/ClassicInventoryOverlay.cpp")
+    for m in re.finditer(r"classicRemoveConfirmStep\s*\(\s*\(down\s*&\s*HidNpadButton_(\w+)\)", classic.code):
+        if m.group(1) != "A":
+            r.violations.append(f"{classic.rel}:{ln_of(classic.code, m.start())}: Gen I-III bag Remove commits on {m.group(1)}")
+    g4_r4d = src("src/UI/Gen4SharedPokemonSurface.inc")
+    m = re.search(r"if\s*\(\s*state\.itemRemoveConfirmActive\s*\)\s*\{", g4_r4d.code)
+    if m and re.search(r"if\s*\(\s*!\s*\(\s*down\s*&\s*HidNpadButton_Y\s*\)\s*\)\s*return", block_after(g4_r4d.code, m.end())):
+        r.violations.append(f"{g4_r4d.rel}:{ln_of(g4_r4d.code, m.start())}: Gen IV bag Remove commits on Y")
+    g5_r4d = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    m = re.search(r"case\s+BagSurface::ConfirmRemove\s*:", g5_r4d.code)
+    if m and re.search(r"HidNpadButton_Y\s*\)\s*\{?\s*\n?\s*if\s*\(\s*!\s*bag\.confirmRemove|keys\s*&\s*HidNpadButton_Y", g5_r4d.code[m.end():m.end() + 400]):
+        r.violations.append(f"{g5_r4d.rel}:{ln_of(g5_r4d.code, m.start())}: Gen V bag Remove commits on Y")
+    base_r4d = src("src/UI/TrainerViewScreenBase.inc")
+    for m in re.finditer(r"if\s*\(\s*itemRemoveConfirmActive\s*\)\s*\{", base_r4d.code):
+        blk = block_after(base_r4d.code, m.end())
+        y = re.search(r"const bool yCommits\s*=\s*PokeBank::UIModel::ClassicGenericUi::classicSession", blk)
+        if y and "kDown" in blk:   # the input handler, not a draw site; Release (releaseConfirmActive) stays Y
+            r.violations.append(f"{base_r4d.rel}:{ln_of(base_r4d.code, m.end() + y.start())}: Gen I-V item Remove confirm commits on Y (yCommits)")
+    ied = "src/UI/Dialogs/ItemEditDialog.cpp"
+    for ln, b in bodies_ln(ied, "drawItemRemoveConfirm"):
+        if re.search(r'classicSessionDialog\s*\?\s*"Y"', b):
+            r.violations.append(f"{ied}:{ln}: Gen I-V item Remove dialog button is Y (owner: A confirms)")
+        if re.search(r'confirmFooter\s*\(\s*"[AY]"\s*,\s*"Remove"', b) or re.search(r'drawNavBar\s*\([^;]*"Remove"', b):
+            r.violations.append(f"{ied}:{ln}: Gen I-V item Remove dialog repeats its choices in the footer")
+    r.violations = dedupe(r.violations)
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-05
+    r = Result("CG39-species-search-keyboard-beside-list",
+               "The species search key grid sits outside the list column (under the species art), so the full "
+               "list stays visible while searching (owner round 3 NEW-05)")
+    SP = "include/UI/SharedSpeciesPicker.h"
+    sp = src(SP)
+    consts = {k: int(v) for k, v in re.findall(r"inline constexpr int (k\w+)\s*=\s*(-?\d+)\s*;", sp.code)}
+    kg = [b for _, b in bodies_ln(SP, "keyGridRect")]
+    rect = None
+    if kg:
+        m = re.search(r"return\s*\{(.*)\}\s*;", kg[0], re.S)
+        try:
+            parts = [p.strip() for p in m.group(1).split(",")]
+            rect = [eval(p, {}, dict(consts, modalX=0, modalY=0)) for p in parts]
+        except Exception as e:  # noqa: BLE001
+            r.violations.append(f"{SP}: keyGridRect() is not a constexpr rectangle this check can evaluate ({e})")
+    else:
+        r.violations.append(f"{SP}: keyGridRect() missing")
+    if rect:
+        gx, gy, gw, gh = rect
+        lx, ly, lw = consts["kListX"], consts["kListY"], consts["kListW"]
+        lh = consts["kVisibleRows"] * consts["kRowStep"]
+        if gx < lx + lw and lx < gx + gw and gy < ly + lh and ly < gy + gh:
+            r.violations.append(f"{SP}: key grid ({gx},{gy},{gw}x{gh}) overlaps the species list column "
+                                f"({lx},{ly},{lw}x{lh})")
+    if consts.get("kSearchVisibleRows", 0) < consts.get("kVisibleRows", 0):
+        r.violations.append(f"{SP}: the list shrinks from {consts['kVisibleRows']} to "
+                            f"{consts['kSearchVisibleRows']} rows while searching")
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-06
+    r = Result("CG40-held-item-picker-search",
+               "Every Gen II-V Held Item picker offers live search (SharedSearchInput) alongside Sort "
+               "(owner round 3 NEW-06)")
+    HELD_SHARED = ("include/UI/SharedHeldItemPickerPresentation.h", "include/UI/Gen2HeldItemPicker.h",
+                   "include/UI/SharedHeldItemPicker.h")
+    shared_search = any(src(h) and re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", src(h).code)
+                        for h in HELD_SHARED)
+    for s in U:
+        if s.rel in HELD_SHARED or not re.search(r"\bSharedHeldItemPickerPresentation::draw(?:Heading|Grid)\s*\(", s.code):
+            continue
+        if not (shared_search or re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", s.code)):
+            r.violations.append(f"{s.rel}: Held Item picker has Sort but no search (no SharedSearchInput field / input)")
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-07
+    r = Result("CG41-gen2-ot-gender-inline",
+               "Crystal OT Gender: A cycles the native values inline; no 3-option selector popup "
+               "(owner round 3 NEW-07)")
+    for v in code_hits(U, r"\bGen2FieldSelector::otGender\s*\("):
+        r.violations.append(v + "  <- opens the OT Gender popup")
+    if not code_hits(U, r"\bcrystalOtGender\s*=\s*[^;]*\b(?:cycle\w*|next\w*)\s*\("):
+        r.violations.append("no Gen II UI code cycles state.crystalOtGender inline (cycle*/next* helper)")
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-08
+    r = Result("CG42-ball-picker-scrollbar-gutter",
+               "Ball picker rows stop before the scrollbar's touch band (track x - SharedScrollbar::kTouchSlop), "
+               "so the bar has its own gutter (owner round 3 NEW-08)")
+    sb = src("include/UI/SharedScrollbar.h")
+    slop = int(re.search(r"kTouchSlop\s*=\s*(\d+)", sb.code).group(1))
+    for rel in ("src/UI/SharedPokemonEditorSurface.inc", "src/UI/Gen3SharedPokemonSurface.inc"):
+        f = src(rel)
+        for name, ln, b in function_bodies(f.code, re.compile(r"^drawValuePicker$")):
+            ball = re.search(r"PickerTarget::Ball\)\s*\{(.*?)\n\s*\}", b, re.S)
+            row = re.search(r"Rect\{\s*x\s*\+\s*(\d+)\s*,[^,]+,\s*w\s*-\s*(\d+)\s*,", ball.group(1)) if ball else None
+            bar = re.search(r"drawAndPublish\s*\(\s*fb\s*,\s*state\.pickerScrollbar\s*,\s*x\s*\+\s*w\s*-\s*(\d+)\s*,\s*viewportTop",
+                            b)
+            if not (row and bar):
+                r.violations.append(f"{rel}:{ln}: Ball row / scrollbar geometry not found (update this check)")
+                continue
+            inset = int(row.group(2)) - int(row.group(1))   # row right edge = x + w - inset
+            track = int(bar.group(1))                        # track left edge = x + w - track
+            if inset < track + slop:
+                r.violations.append(f"{rel}:{ln}: Ball rows end {inset - track} px left of the track "
+                                    f"(needs >= kTouchSlop {slop}; rows x+w-{inset}, track x+w-{track})")
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-09
+    r = Result("CG43-nature-stat-colours",
+               "Gen III-V stat rows show the Nature's effect (raised stat green, lowered red) "
+               "(owner round 3 NEW-09)")
+    for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc"):
+        f = src(rel)
+        m = re.search(r'statLabels\{\{"HP"', f.code)
+        loop = re.search(r"for\s*\(\s*int\s+row\s*=\s*0\s*;\s*row\s*<\s*6\s*;\s*\+\+row\s*\)\s*\{", f.code[m.end():]) if m else None
+        if not loop:
+            r.violations.append(f"{rel}: stat row loop not found (update this check)")
+            continue
+        start = m.end() + loop.end()
+        body = block_after(f.code, start)
+        if not re.search(r"(?i)nature", body):
+            r.violations.append(f"{rel}:{ln_of(f.code, start)}: stat rows ignore the Nature (no +/- stat colouring)")
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-10
+    r = Result("CG44-met-location-compact",
+               "The Met Location window leaves no more space under its last row than the accepted Move chooser "
+               "(SharedMenuGeometry padBottom + rowGap), Crystal included (owner round 3 NEW-10)")
+    G = src("include/UI/SharedMenuGeometry.h")
+    def rule_of(t):
+        m = re.search(r"case MenuType::" + t + r":.*?return\s*\{([^}]*)\}", G.code, re.S)
+        f = [x.strip() for x in m.group(1).split(",")]
+        return dict(rowH=int(f[3]), gap=int(f[4]), header=int(f[6]), padBottom=int(f[8]))
+    mv, loc = rule_of("MovePicker"), rule_of("LocationPicker")
+    ref = mv["padBottom"] + mv["gap"]
+    if loc["padBottom"] + loc["gap"] > ref:
+        r.violations.append(f"include/UI/SharedMenuGeometry.h: LocationPicker leaves {loc['padBottom'] + loc['gap']} px "
+                            f"under its last row (MovePicker: {ref})")
+    gm = src("include/UI/Gen2PokemonPickerModel.h")
+    b = [x for _, x in bodies_ln("include/UI/Gen2PokemonPickerModel.h", "locationPickerGeometry")]
+    mh = re.search(r"g\.height\s*=\s*(\d+)\s*\+\s*g\.visible\s*\*\s*LocationPickerGeometry::rowStep\s*\+\s*(\d+)", b[0]) if b else None
+    step = re.search(r"rowStep\s*=\s*(\d+)", gm.code); hgt = re.search(r"rowHeight\s*=\s*(\d+)", gm.code)
+    if mh and step and hgt:
+        slack = int(mh.group(2)) + int(step.group(1)) - int(hgt.group(1))
+        if slack > ref:
+            r.violations.append(f"include/UI/Gen2PokemonPickerModel.h: Crystal Met Location leaves {slack} px under its "
+                                f"last row (MovePicker: {ref})")
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-11
+    r = Result("CG45-selected-species-name-first",
+               "The selected species (DETAILS 'Species' value, species-picker heading) reads 'Pikachu' or "
+               "'Pikachu #25', never a leading Dex number; list rows keep their numbers (owner round 3 NEW-11)")
+    defs = {}
+    for s in U:
+        for name, ln, body in function_bodies(s.code, re.compile(r".")):
+            defs.setdefault(name, []).append(body)
+    STRUCT_LAMBDA = re.compile(r"\[[^\]]*\]\s*\([^)]*\)\s*\{(.*?)\}\s*$", re.S)
+
+    def leads_with_number(expr, depth=0):
+        e = expr.strip()
+        e = re.sub(r"^return\s+", "", e)
+        if re.match(r"(?:std::)?to_string\s*\(", e):
+            return True
+        if re.match(r'"#?\d', e):
+            return True
+        m = re.match(r"(?:\w+::)*(\w+)\s*\(", e)
+        if not m or depth > 3 or m.group(1) in ("string", "getSpeciesName"):
+            return False
+        for body in defs.get(m.group(1), []):
+            if re.search(r'snprintf\s*\([^;]*"%0?\d*u\s', body) or re.search(r'return\s+"#"\s*\+', body):
+                return True
+            for ret in re.findall(r"return\s+([^;]+);", body):
+                if leads_with_number(ret, depth + 1):
+                    return True
+        return False
+
+    for s in U:
+        # DETAILS rows: {"Species", value} pairs, and detail/value functions' case 0 / case Species
+        for m in re.finditer(r'\{\s*"Species"\s*,\s*([^}]+)\}', s.code):
+            if leads_with_number(m.group(1)):
+                r.violations.append(f"{s.rel}:{ln_of(s.code, m.start())}: Species value '{m.group(1).strip()[:60]}' leads with the Dex number")
+        for name, ln, body in function_bodies(s.code, re.compile(r"(?i)(detail|main)\w*value$")):
+            for m in re.finditer(r"(?:case\s+(?:0|Species)\s*:|if\s*\(\s*row\s*==\s*0\s*\))\s*return\s+([^;]+);", body):
+                if leads_with_number(m.group(1)):
+                    r.violations.append(f"{s.rel}:{ln + body.count(chr(10), 0, m.start())}: {name}() Species value leads with the Dex number")
+        # Gen I left panel arrays: leftLabels{"Species", ...} with leftValues{first, ...}
+        for m in re.finditer(r'leftLabels\{\s*"Species".*?leftValues\{\s*([^,]+),', s.code, re.S):
+            if leads_with_number(m.group(1)):
+                r.violations.append(f"{s.rel}:{ln_of(s.code, m.start(1))}: Species value '{m.group(1).strip()}' leads with the Dex number")
+        # species-picker heading: the 2nd lambda (titleText) of SharedSpeciesPicker::drawContent
+        for pos, args in call_args(s.code, r"\bSharedSpeciesPicker::drawContent"):
+            lambdas = re.findall(r"\[[^\]]*\]\s*\([^)]*\)\s*\{((?:[^{}]|\{[^{}]*\})*)\}", args)
+            if len(lambdas) >= 2:
+                rets = re.findall(r"return\s+([^;]+);", lambdas[1])
+                if any(leads_with_number(x) for x in rets):
+                    r.violations.append(f"{s.rel}:{ln_of(s.code, pos)}: species-picker heading leads with the Dex number "
+                                        f"('{rets[0].strip()[:60]}')")
+    r.violations = dedupe(r.violations)
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-13
+    r = Result("CG46-ability-names-not-slots",
+               "Gen III-V Ability picker rows show the ability name (+ short effect), never 'Slot 1/2' "
+               "(owner round 3 NEW-13)")
+    for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc",
+                "src/UI/Gen5SharedReadOnlySurface.inc"):
+        f = src(rel)
+        for name, ln, body in function_bodies(f.code, re.compile(r"^picker(?:Value)?Label$")):
+            for a in list(re.finditer(r"PickerTarget::Ability|abilityForSlot\w*\s*\(", body))[:1]:
+                seg = body[a.start():]
+                end = re.search(r"getAbilityName[^;]*;", seg)
+                seg = seg[:end.end()] if end else seg[:600]
+                for lit in re.findall(r'"([^"]*\bSlot\b[^"]*)"', seg):
+                    r.violations.append(f"{rel}:{ln + body.count(chr(10), 0, a.start())}: Ability row label \"{lit}\"")
+    if not code_hits(U, r"(?i)\b\w*ability\w*(?:desc|effect|summary)\w*\s*\("):
+        r.violations.append("no ability effect-description source is used by any Gen III-V UI")
+    r.violations = dedupe(r.violations)
+    res.append(r)
+
+    # ---------------------------------------------------------------- NEW-18
+    r = Result("CG47-classic-trainer-playtime-pokedex",
+               "The Gen I-IV Trainer card shows native Play Time and Pokedex seen/caught, like Gen V "
+               "(owner round 3 NEW-18)")
+    g5t = [b for _, b in bodies_ln("src/UI/Gen5SharedReadOnlySurface.inc", "drawTrainerEditor")]
+    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawTrainerView"),):
+        bs = bodies_ln(rel, fn)
+        if not bs:
+            r.violations.append(f"{rel}: {fn}() missing")
+        for ln, b in bs:
+            lits = [l for l in re.findall(r'"([^"]*)"', b)]
+            if not any(re.search(r"(?i)play\s*time", l) for l in lits):
+                r.violations.append(f"{rel}:{ln}: {fn}() shows no Play Time row")
+            if not (any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
+                    re.search(r"\bdexProgress\s*\(|\bseen\b", b)):
+                r.violations.append(f"{rel}:{ln}: {fn}() shows no Pokedex seen / caught row")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
