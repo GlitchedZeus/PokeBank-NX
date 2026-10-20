@@ -46,6 +46,14 @@ XFAIL: dict[str, str] = {
     "CG45-selected-species-name-first": "P (NEW-11)",
     "CG46-ability-names-not-slots": "P (NEW-13)",
     "CG47-classic-trainer-playtime-pokedex": "C (NEW-18)",
+    "CG48-origin-legality-truthful-state": "S (E03: no clean verdicts; one LegalityState per generation)",
+    "CG49-one-origin-legality-panel": "S (E03: one shared Origin & Legality panel)",
+    "CG50-gen2-unown-portrait-follows-dvs": "R (R2-REROLL audit: Gen II Unown portrait ignores the DV letter)",
+    "CG51-gen2-special-not-slashed": "R (R2-SPECIAL)",
+    "CG52-gen45-move-category-spacing": "S (M04/M05; tripwire: 10 px badge-to-category gap, confirm against the owner screenshot)",
+    "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
+    "CG54-gen5-language-editable": "R (NEW-14)",
+    "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -302,6 +310,271 @@ class Result:
     title: str
     violations: list[str] = field(default_factory=list)
     out_of_scope: list[str] = field(default_factory=list)
+
+
+def round4_p2_contracts(sources):
+    """Round 4 P2: owner round 3 FAIL items E03, R2-REROLL (Gen II Unown portrait), R2-SPECIAL, M04/M05,
+    NEW-12 / R2-CHECK-011, NEW-14, NEW-15. Called from contracts()."""
+    res = []
+    U = ui(sources)
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def line_of(code, pos):
+        return code.count("\n", 0, pos) + 1
+
+    # Gen I-V UI only: Gen VI+ generic surfaces (PokemonDetailsModal.cpp) are CG11's out-of-scope list.
+    GEN15_UI = [s for s in U if s.rel not in OUT_OF_SCOPE_WHEN_CG11_HOLDS]
+
+    def gen_of(rel):
+        name = Path(rel).name
+        if name in ("SharedPokemonEditorSurface.inc",):
+            return "IV/V"
+        for g in (1, 2, 3, 4, 5):
+            if GEN_FILE[g].search(name):
+                return {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}[g] if not (g == 1 and "Gen12" in name) else "I/II"
+        return None
+
+    # ------------------------------------------------------------------------------------------
+    # E03a: Origin & Legality never shows a clean verdict, and every Legality value is the ONE
+    # SharedEditorPresentation::legalityLabel(LegalityState) (one state per generation).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG48-origin-legality-truthful-state",
+               "Every Gen I-V Origin & Legality / Legality value comes from SharedEditorPresentation::"
+               "legalityLabel(); no clean verdict (\"... OK\" / PASS / Valid) under a Legality label; one "
+               "LegalityState per generation (E03)")
+    row_rx = re.compile(r'(?:"Legality"|[\w:]*kOriginLegalityHeading)\s*,\s*')
+    label_rx = re.compile(r'(?:[\w:]*::)?legalityLabel\s*\(\s*(?:[\w:]*::)?LegalityState::(\w+)')
+    claim_rx = re.compile(r"check|claim|legal|\bOK\b|PASS|valid|incomplete|verified", re.I)
+    scope_extra = {"include/UI/Gen2WorkspacePresentation.h", "include/UI/Gen2NativePresentation.h",
+                   "src/UI/TrainerViewScreenGSCOverlay.inc"}
+    E03_FILES = [s for s in GEN15_UI if EDITOR_FILE_RX.search(s.rel) or s.rel in scope_extra]
+    states: dict[str, set] = {}
+    for s in E03_FILES:
+        for m in row_rx.finditer(s.code):
+            tail = s.code[m.end():m.end() + 300]
+            if re.match(r"(?:Colors::|Color\(|TextStyle::|[\w:]*kOriginLegality|\w+\s*,)", tail):
+                continue  # heading / caption drawText, not a value
+            lm = label_rx.match(tail)
+            ln = line_of(s.code, m.start())
+            lit = re.match(r'"([^"]*)"', tail)
+            if lm:
+                g = gen_of(s.rel)
+                if g:
+                    states.setdefault(g, set()).add((lm.group(1), f"{s.rel}:{ln}"))
+            elif (lit and claim_rx.search(lit.group(1))) or (not lit):
+                r.violations.append(f"{s.rel}:{ln}: Legality value not from legalityLabel(): "
+                                    f"{' '.join(tail.split())[:80]}")
+        # hand-drawn Legality status next to the heading / a "Legality" caption
+        for m in re.finditer(r'drawText\([^;]*?(?:kOriginLegalityHeading|"Legality")[^;]*;\s*\n\s*fb\.drawText\('
+                             r'[^;]*?"(Not checked[^"]*|NOT CLAIMED[^"]*|Incomplete|OK|PASS|Valid)"', s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: hand-written Legality status "
+                                f"\"{m.group(1)}\" instead of legalityLabel()")
+    for ln, lit in [x for s in GEN15_UI for x in []]:
+        pass
+    r.violations += [v + "  (free-text legality status)" for v in
+                     lit_hits(GEN15_UI, r"^Origin & Legality:\s")]
+    # Any *Legality*Text() helper that returns a positive verdict word.
+    for s in sources:
+        if not s.rel.startswith(("include/UI/", "src/UI/")):
+            continue
+        for name, ln, body in function_bodies(s.code, re.compile(r"[Ll]egality\w*Text$")):
+            for lm in re.finditer(r'return\s+"([^"]*)"', body):
+                if re.search(r"\bOK\b|PASS|\bValid\b|\bLegal\b|No problems", lm.group(1)):
+                    r.violations.append(f"{s.rel}:{ln + body.count(chr(10), 0, lm.start())}: {name}() "
+                                        f"returns clean verdict \"{lm.group(1)}\"")
+    for g, st in sorted(states.items()):
+        if len({x[0] for x in st}) > 1:
+            r.violations.append(f"Gen {g}: Legality rows use different states "
+                                f"{sorted(f'{a}@{b}' for a, b in st)}")
+    res.append(r)
+
+    # E03b: one shared Origin & Legality panel. Every generation's modal draws its heading and rows
+    # through ONE shared drawer instead of a per-generation hand layout (proposed name:
+    # UI::SharedEditorChrome::drawOriginLegalityPanel, include/UI/SharedEditorChrome.h).
+    r = Result("CG49-one-origin-legality-panel",
+               "Gen I-V Origin & Legality modals are drawn by ONE shared panel (SharedEditorChrome::"
+               "drawOriginLegalityPanel), not per-generation hand layouts (E03 'unify layout')")
+    chrome = src("include/UI/SharedEditorChrome.h")
+    if not chrome or not re.search(r"\bdrawOriginLegalityPanel\s*\(", chrome.code):
+        r.violations.append("include/UI/SharedEditorChrome.h: no shared drawOriginLegalityPanel()")
+    for s in GEN15_UI:
+        if s.rel == "include/UI/SharedEditorChrome.h":
+            continue
+        for m in re.finditer(r"drawText\([^;]*kOriginLegalityHeading[^;]*TextStyle::Heading\s*\)", s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: per-generation Origin & Legality "
+                                "panel (hand-drawn heading + rows)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # R2-REROLL / Unown: the Gen II editor portrait shows the DV-derived Unown letter.
+    # pret pokecrystal GetUnownLetter (engine/pokemon/unown? -> docs/REROLL_MECHANICS.md): letter =
+    # ((Atk&6)<<5 | (Def&6)<<3 | (Spd&6)<<1 | (Spc&6)>>1) / 10. 14/10/10/10 -> V, 15/8/8/3 -> 
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG50-gen2-unown-portrait-follows-dvs",
+               "Gen II editor portraits pass the DV-derived Unown letter to SpriteManager::getSprite"
+               "(species, form, shiny); no species-only portrait in Gen II surfaces (R2-REROLL)")
+    gen2_ui = [s for s in U if GEN_FILE[2].search(Path(s.rel).name) and "Gen12" not in s.rel]
+    shell = src("include/UI/SharedPokemonShell.h")
+    for s in gen2_ui:
+        for m in re.finditer(r"SpriteManager::getSprite\(\s*([^,()]+(?:\([^()]*\))?)\s*,\s*([^,()]+(?:\([^()]*\))?)\s*\)",
+                             s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: getSprite({m.group(1).strip()}, "
+                                f"{m.group(2).strip()}) draws form 0 (Unown A) whatever the DVs")
+        for m in re.finditer(r"SharedPokemonShell::drawPortrait\(([^;]*)\);", s.code):
+            if len([a for a in re.split(r",(?![^()]*\))", m.group(1))]) < 6:
+                r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: drawPortrait(...) without a form "
+                                    "argument (SharedPokemonShell::drawPortrait uses getSprite(species, shiny))")
+    if shell:
+        for name, ln, body in function_bodies(shell.code, re.compile(r"^drawPortrait$")):
+            if re.search(r"getSprite\(\s*species\s*,\s*shiny\s*\)", body):
+                r.violations.append(f"{shell.rel}:{ln}: drawPortrait() has no form parameter")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # R2-SPECIAL: the Calculated column shows one number per row; Sp. Atk / Sp. Def are their own
+    # labelled cells (pret pokecrystal CalcMonStats: one Special DV / Stat Exp, two stats).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG51-gen2-special-not-slashed",
+               'Gen II never prints Sp. Atk and Sp. Def as one "a/b" Calculated cell (R2-SPECIAL)')
+    gen2_files = gen2_ui + [x for x in [src("include/UI/Gen2WorkspacePresentation.h")] if x]
+    seen = set()
+    for s in gen2_files:
+        if s.rel in seen:
+            continue
+        seen.add(s.rel)
+        for m in re.finditer(r'\[\s*4\s*\][^;\n]*"\s*/\s*"[^;\n]*\[\s*5\s*\]|specialAttack[^;\n]*"\s*/\s*"[^;\n]*specialDefense',
+                             s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: {s.code.splitlines()[line_of(s.code, m.start()) - 1].strip()}")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # M04/M05 (candidate geometry tripwire, see report): the Gen IV/V Category cell keeps at least
+    # Layout::kGap clear of the type badge to its left in the chooser row.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG52-gen45-move-category-spacing",
+               "Gen IV/V move Category element keeps >= SharedMovesPanel::Layout::kGap from the type badge "
+               "and the Pwr/Acc cells (M04/M05)")
+    mp = src("include/UI/SharedMovesPanel.h")
+    if mp:
+        def off(fn):
+            m = re.search(r"int\s+" + fn + r"\(\)\s*const\s*noexcept\s*\{\s*return\s+x\s*\+\s*w\s*-\s*(\d+)\s*;", mp.code)
+            return int(m.group(1)) if m else None
+        type_off, cat_off, pwr_off = off("typeX"), off("categoryX"), off("powerRight")
+        badge_h = re.search(r"kChooserBadgeHeight\s*=\s*(\d+)", mp.code)
+        gap = re.search(r"kGap\s*=\s*(\d+)", mp.code)
+        adv_src = src("include/UI/NunitoMetrics.h")
+        adv = [int(x) for x in re.search(r"kAsciiAdvance\[95\]\s*=\s*\{([^}]*)\}", adv_src.code).group(1).split(",")
+               if x.strip()]
+
+        def width(text, px=17):
+            u = sum(adv[ord(c) - 32] if 32 <= ord(c) < 127 else 1091 for c in text)
+            return -(-u * px // 1000)
+        if None not in (type_off, cat_off, pwr_off) and badge_h and gap:
+            badge_w, g = 5 * int(badge_h.group(1)), int(gap.group(1))  # 5:1 artwork (ClassicTypeBadges)
+            left = (type_off - cat_off) - badge_w
+            widest_cat = max(width(c) for c in ("Physical", "Special", "Status", "Category"))
+            right = (cat_off - pwr_off) - widest_cat - max(width(v) for v in ("120", "250", "Pwr", "—"))
+            if left < g:
+                r.violations.append(f"include/UI/SharedMovesPanel.h: chooser Category starts {left} px after "
+                                    f"the {badge_w} px type badge (< kGap {g})")
+            if right < g:
+                r.violations.append(f"include/UI/SharedMovesPanel.h: Category to Pwr gap {right} px (< kGap {g})")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # NEW-12 / R2-CHECK-011: Gen IV/V Met Location picker. Native ids stay offered (no false
+    # rejection) but rows are not all stamped with the record's own Met Lv., and an encounter source
+    # for the Gen IV/V games exists to distinguish encounter-backed rows (PKHeX Encounters4*/5*).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG53-gen45-met-location-context",
+               "Gen IV/V Met Location rows are not all labelled with the record's own Met Lv.; Gen IV/V "
+               "encounter templates exist to mark encounter-backed rows; native ids remain offered (NEW-12)")
+    g45 = [x for x in (src("src/UI/Gen4SharedPokemonSurface.inc"), src("src/UI/Gen5SharedReadOnlySurface.inc")) if x]
+    for s in g45:
+        for m in re.finditer(r'"\s*\|\s*Met Lv\.\s*"\s*\+\s*std::to_string\(\s*\w+\s*->\s*metLevel\(\)\s*\)', s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: every location row shows the record's "
+                                "current Met Lv. (not an encounter level)")
+    data = src("include/Integration/Encounter/EncounterGuardrailsData.inc")
+    games = {"Gen IV": ("diamond_nds", "pearl_nds", "platinum_nds", "heartgold_nds", "soulsilver_nds"),
+             "Gen V": ("black_nds", "white_nds", "black2_nds", "white2_nds")}
+    have = {lit for _, lit in data.literals} if data else set()
+    for g, ids in games.items():
+        missing = [i for i in ids if i not in have]
+        if missing:
+            r.violations.append(f"{g}: no encounter templates for {', '.join(missing)} "
+                                "(EncounterGuardrailsData.inc), so no Met Location row can be marked encounter-backed")
+    g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
+    body4 = "".join(b for _, _, b in function_bodies(g4.code, re.compile(r"^openMetLocationPicker$"))) if g4 else ""
+    if "isGen4NativeMetLocation" not in body4:
+        r.violations.append("Gen IV: openMetLocationPicker no longer offers every native location (false rejection)")
+    g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    if g5 and "metLocationChoices()" not in g5.code:
+        r.violations.append("Gen V: Met Location picker no longer offers every native location (false rejection)")
+    if not any(re.search(r"EncounterGuardrails", s.code) for s in g45):
+        r.violations.append("Gen IV/V Met Location picker never consults EncounterGuardrails")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # NEW-14: Gen V Language is a native staged edit (PK5 byte 0x17, PKHeX PK5.Language).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG54-gen5-language-editable",
+               "Gen V Language is a staged native edit: Field::Language exists, detailEditable() allows it, "
+               "detailLocked() does not lock it (NEW-14)")
+    rec = src("include/Integration/Gen5/Gen5StagedPokemonRecord.h")
+    m = re.search(r"enum\s+class\s+Field\s*:\s*uint8_t\s*\{([^}]*)\}", rec.code) if rec else None
+    if not m or not re.search(r"\bLanguage\b", m.group(1)):
+        r.violations.append("include/Integration/Gen5/Gen5StagedPokemonRecord.h: StagedPokemon5Record::Field has no Language")
+    fields = src("include/Integration/Gen5/Gen5EditorFields.h")
+    for name, ln, body in function_bodies(fields.code, re.compile(r"^detailEditable$")):
+        cm = re.search(r"case\s+Language\b", body)
+        if not cm:
+            r.violations.append(f"{fields.rel}:{ln}: detailEditable() leaves Language in default: return false")
+    for name, ln, body in function_bodies(fields.code, re.compile(r"^detailLocked$")):
+        if re.search(r"case\s+Language\b[^;]*return\s+true", body):
+            r.violations.append(f"{fields.rel}:{ln}: detailLocked() locks Language")
+    r.violations += [v for v in lit_hits(U, r"Language and Origin are read-only") if "Gen5" in v]
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # NEW-15: Create defaults are IVs 0 (Gen III-V) and DVs 0 (Gen I-II). Create paths only.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG55-create-defaults-zero-ivs-dvs",
+               "New Pokemon start with IVs 0 (Gen III-V) and DVs 0 (Gen I-II); existing records untouched (NEW-15)")
+
+    def nonzero(lst):
+        return any(int(x) != 0 for x in re.findall(r"\d+", lst))
+    for rel, struct in (("include/Integration/Gen1/Gen1StagedPokemonEditor.h", "BoxPokemonCreate"),
+                        ("include/Integration/Gen2/Gen2StagedEditor.h", "BoxPokemonCreate"),
+                        ("include/Integration/Gen3/Gen3StagedPokemonEditor.h", "BoxPokemonCreate")):
+        f = src(rel)
+        sm = re.search(r"struct\s+" + struct + r"\s*\{(.*?)\n\};", f.code, re.S) if f else None
+        if not sm:
+            continue
+        for fm in re.finditer(r"\b(dvs|ivs)\s*\{([^}]*)\}", sm.group(1)):
+            if nonzero(fm.group(2)):
+                r.violations.append(f"{rel}:{line_of(f.code, sm.start(1) + fm.start())}: {struct}::{fm.group(1)}"
+                                    f"{{{fm.group(2)}}} default is not 0")
+    f = src("src/UI/Gen2PokemonEditorFoundation.inc")
+    for name, ln, body in function_bodies(f.code, re.compile(r"^defaultCreateRecord$")):
+        for fm in re.finditer(r"applyEditableDVs\(\s*\w+\s*,\s*\{([^}]*)\}", body):
+            if nonzero(fm.group(1)):
+                r.violations.append(f"{f.rel}:{ln + body.count(chr(10), 0, fm.start())}: Gen II Create DVs "
+                                    f"{{{fm.group(1)}}}")
+    f = src("src/UI/TrainerViewScreenGSCOverlay.inc")
+    if f:
+        for fm in re.finditer(r'promptNumber\(\s*"Add Gen II Pokemon - "[^;]*?"\s*DV"\s*,\s*(\d+)', f.code):
+            if int(fm.group(1)) != 0:
+                r.violations.append(f"{f.rel}:{line_of(f.code, fm.start())}: Add Gen II DV prompt defaults to {fm.group(1)}")
+    f = src("include/Integration/Gen5/Gen5SharedScreenState.h")
+    for name, ln, body in function_bodies(f.code, re.compile(r"^sharedCreateDefaults$")):
+        for fm in re.finditer(r"\.ivs\s*=\s*\{([^}]*)\}", body):
+            if nonzero(fm.group(1)):
+                r.violations.append(f"{f.rel}:{ln + body.count(chr(10), 0, fm.start())}: Gen V Create IVs "
+                                    f"{{{fm.group(1)}}}")
+    res.append(r)
+    return res
 
 
 def contracts(sources: list[Source]) -> list[Result]:
@@ -1634,6 +1907,7 @@ def contracts(sources: list[Source]) -> list[Result]:
     for r in res:
         r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in scope]
         r.violations = [v for v in r.violations if v.split(":", 1)[0] not in scope]
+    res.extend(round4_p2_contracts(sources))
     return res
 
 
