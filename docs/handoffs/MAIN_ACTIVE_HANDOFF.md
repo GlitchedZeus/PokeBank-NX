@@ -4,7 +4,7 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-20 (round 4 checkpoint 3), by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
+Last updated: 2026-10-20 (round 4 checkpoint 4), by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
 
 ## 1. Where to start
 
@@ -61,7 +61,7 @@ round-3 results file says so.
 Investigated, not defects:
 - **R2-CHECK-010:** the Super Rod in the R/S PC is native behaviour. The R/S Devon Goods / Letter / Orb and
   Emerald HM PC offers were removed.
-- **R2-CHECK-011:** the Gen V "VGE" names match PKHeX.
+- **R2-CHECK-011:** the names match PKHeX, but the **owner FAILED it in round 3** (location lists too broad); QA CG53 covers it and lane P owns it with NEW-12.
 
 Never device-verified: B04, E03, E11, L06, S04, S06, C09, M08, and the real RetroArch/DraStic launch and return.
 
@@ -142,6 +142,9 @@ States: Implemented → Tested (host) → Pushed → Integrated (#307) → Hardw
 | R2-REROLL | Gen II Unown letter recomputed from DVs and the editor sprite follows it; DV and shiny rules audited correct against pret (lane R) | **Integrated**; host test `test_gen2_unown_letter` | #307 `aea3730e` (R `fd30e0fc`) |
 | NEW-11, NEW-05, NEW-08, NEW-10 | "Pikachu #25" label; search keyboard no longer covers the species list; scrollbar gutter in value lists; compact Met Location popups (lane P) | **Integrated** | #307 `1d803f01` (P `9573e8e8`) |
 | QA gate | All 70 round-3 PASS items guarded (196 guards); CG29; CG30–CG35 XFAIL contracts reproduce R2-TRAINER/R2-BUG-002, NEW-19, R2-REVIEWMOVE, L06/E02/NEW-20, NEW-17, AUD-01 | **Integrated** | #307 `847fe390`, `0d810f7a` |
+| NEW-04 | Gen II PC box Move: the grid refresh used `finalizedBytes()`, which refuses mid-carry, so every pickup cancelled. Added display-only `StagedEditor::presentationBytes()`; finalize still refuses mid-carry (lane C) | **Integrated**; host test `test_gen2_box_move_presentation` (G/S/C pickup, same/other-box drop, cancel, finalize + export) | #307 `131fb23f` (C `c3807c63`) |
+| NEW-07, NEW-06, NEW-13 | Crystal OT Gender cycles inline; Held Item search; Ability names + short effects (lane P). **Caveat:** the ability effect lines in `include/UI/AbilityEffects.h` are P's own summaries; no source in the repo. Owner or I to spot-check | **Integrated**; `test_gen2_field_selector`, `test_item_picker_search`, `test_ability_effects` | #307 `75546e44` (P `77576217`) |
+| QA contracts | CG30–CG60: all 37 owner FAILs as XFAIL, with owners; CG39/57/58 enforced | **Integrated** | #307 `c80a86c5` |
 | R2-EMUBACKUP, C07, S05 | PKSE-style emulator backup browser: create, browse, list, delete with Y; no automatic backup (lane L) | Pushed (WIP), not integrated yet | `wip/l-backup-browser-20261020` @ `6cb161c4` |
 
 **XFAIL contracts:** CG30–CG35 fail in `--candidate` mode until their lanes land. Normal mode reports 0 failing. A round-4 candidate needs all of them fixed (or the owner's decision).
