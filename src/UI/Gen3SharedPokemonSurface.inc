@@ -2184,7 +2184,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Ball", Enums::getBallName(p.ball)},
         {"Met Location", metLocationText(p)},
         {"Encounter origin", encounterOriginText(screen, p)},
-        {"Legality", Presentation::legalityLabel(Presentation::LegalityState::NotChecked)}
+        // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
+        {"Legality", Presentation::legalityLabel(PokeBank::UIModel::OriginLegality::kLegality)}
     };
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
         Presentation::kOriginLegalityHeading, rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
@@ -2262,27 +2263,57 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
+// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h). Gen III fills it
+// from the staged PK3 record (decoded only when its checksum validates), its stored origin (PK3
+// stores no met date) and the same move guardrail the Moves panel uses. No verdict.
+PokeBank::UIModel::OriginLegality::Report legalityReport(TrainerViewScreen& screen,
+                                                         const Gen3::StagedPokemonRecord& p) {
+    namespace OL = PokeBank::UIModel::OriginLegality;
+    OL::Report report;
+    report.exactGame = std::string(Context::exactGameName(screen.sourceGameId));
+    report.format = "PK3";
+    report.structure = OL::Structure::Valid;
+    report.originGame = OL::value(Enums::getOriginGameName(p.originGame));
+    report.metLocation = OL::value(metLocationText(p));
+    report.metLevel = OL::value(p.metLevel == 0 ? std::string("Hatched (level 0)") : std::to_string(p.metLevel));
+    report.metDate = OL::notStored();
+    const auto descriptor =
+        PokeVault::Integration::Gen3EditorProvider::descriptorForSource(screen.sourceGameId, true);
+    using MoveResult = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult;
+    for (const uint16_t move : p.moves) {
+        if (move == 0) {
+            report.moves.push_back({"Empty", "Empty", OL::Tone::Dim});
+            continue;
+        }
+        auto result = MoveResult::Invalid;
+        if (descriptor)
+            result = descriptor->moves.evaluate({screen.sourceGameId, p.species, 0, move, true});
+        OL::MoveCheck check{std::string(Names::getMoveName(move)), "Invalid", OL::Tone::Caution};
+        if (result == MoveResult::Compatible) { check.status = "OK"; check.tone = OL::Tone::Good; }
+        else if (result == MoveResult::PreserveExisting) check.status = "Preserved";
+        else if (result == MoveResult::Unsupported) check.status = "Transfer";
+        report.moves.push_back(std::move(check));
+    }
+    return report;
+}
+
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.drawGSCOverlay(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 120));
-    constexpr int x = 220, y = 92, w = 840, h = 480;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, Presentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
-                Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
-    fb.drawText(x + 270, y + 112, std::string(Context::exactGameName(screen.sourceGameId)), Colors::Text);
-    fb.drawText(x + 34, y + 158, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
-    fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
-    fb.drawText(x + 34, y + 250, "PID", Colors::TextDim);
-    fb.drawText(x + 270, y + 250, "Derived from Nature / Gender / Shiny / Ability", Colors::Text);
-    fb.drawText(x + 34, y + 296, "Legality", Colors::TextDim);
-    fb.drawText(x + 270, y + 296, Presentation::legalityLabel(Presentation::LegalityState::NotChecked),
-                Colors::Warning);
-    drawNavBar(fb, {{"B", "Back"}});
+    std::string error;
+    auto* staged = editor(screen);
+    const auto record = staged ? staged->boxedPokemon(static_cast<std::size_t>(state.box),
+                                                      static_cast<std::size_t>(state.slot), error)
+                               : std::nullopt;
+    if (!record) {
+        PokeBank::UIModel::OriginLegality::Report missing;
+        missing.exactGame = std::string(Context::exactGameName(screen.sourceGameId));
+        missing.format = "PK3";
+        SharedOriginLegalityPanel::draw(fb, screen.touchButtons,
+                                        error.empty() ? "No valid Pokemon selected" : error, missing);
+        return;
+    }
+    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(record->species),
+                                    legalityReport(screen, *record));
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {

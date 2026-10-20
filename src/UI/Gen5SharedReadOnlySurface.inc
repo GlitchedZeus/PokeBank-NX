@@ -763,8 +763,9 @@ struct Gen5Editor {
             {"Egg status", p.egg() ? "Unhatched" : "Not egg"},
             {"OT gender", p.originalTrainerGender() == 0 ? "Male" : "Female"},
             // Only format validity is checked for Gen V; no legality conclusion is drawn.
+            // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
+                PokeBank::UIModel::OriginLegality::kLegality)},
         };
         return rows;
     }
@@ -1832,54 +1833,39 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
                    {"Y","Discard All..."},{"B","Back"}});
 }
-// Origin & Legality (Round 3 Part 9): the neutral Gen I-IV panel. It reports the
-// PK5 structure and the record's stored origin only, and never a legality
-// verdict: Gen V has no legality checker here, so Legality is "Incomplete"
-// and the encounter check is "Unknown".
+// Origin & Legality (E03): the ONE shared Gen I-V panel (UI/SharedOriginLegalityPanel.h), filled
+// from the PK5 record's structure and stored origin. Gen V runs no move guardrail here, so the
+// state is never a verdict and the encounter check stays "Unknown".
+PokeBank::UIModel::OriginLegality::Report legalityReport5(const TrainerViewScreen& screen,const PokeVault::Integration::Gen5::Pokemon5ReadOnly& pk) {
+    namespace OL=PokeBank::UIModel::OriginLegality;
+    OL::Report report;
+    report.exactGame=std::string("Pok\xC3\xA9mon ")+gen5GameName(screen.sourceGameId);
+    report.format="PK5";
+    report.structure=pk.valid()?OL::Structure::Valid:OL::Structure::Invalid;
+    report.originGame=OL::value(Enums::getOriginGameName(pk.originVersion()));
+    report.metLocation=OL::value(metLocationText5(pk.originVersion(),pk.metLocation()));
+    report.metLevel=OL::value(std::to_string(pk.metLevel()));
+    const auto date=pk.metDate();
+    const auto two=[](unsigned v){return (v<10?"0":"")+std::to_string(v);};
+    report.metDate=date.month==0||date.day==0?OL::value("None recorded")
+        :OL::value(std::to_string(date.year)+"-"+two(date.month)+"-"+two(date.day));
+    return report;
+}
 void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenState& state,
                    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& workspace) {
-    namespace P=PokeBank::UIModel::SharedEditorPresentation;
     dimShared(screen,fb);
-    SharedEditorChrome::beginModal(screen.touchButtons);
-    constexpr int x=210,y=82,w=860,h=500;
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-    fb.drawText(x+24,y+18,P::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",
-                Colors::TextDim,TextStyle::Caption);
     const auto& slot=state.target();
     const auto pk=slot.region==Region::Party?workspace.viewParty(slot.slot):
         workspace.viewBox(slot.box,slot.slot);
     if(!pk || !pk->valid() || pk->empty()) {
-        fb.drawText(x+34,y+110,"No valid Pokemon selected",Colors::Warning,TextStyle::Body);
-        drawNavBar(fb,{{"B","Back"}});
+        PokeBank::UIModel::OriginLegality::Report missing;
+        missing.exactGame=std::string("Pok\xC3\xA9mon ")+gen5GameName(screen.sourceGameId);
+        missing.format="PK5";
+        SharedOriginLegalityPanel::draw(fb,screen.touchButtons,"No valid Pokemon selected",missing);
         return;
     }
-    const uint8_t origin=pk->originVersion();
-    const std::string originName=origin==20?"White":origin==21?"Black":
-        origin==22?"White 2":origin==23?"Black 2":"Other (version id "+std::to_string(origin)+")";
-    const auto date=pk->metDate();
-    const std::pair<std::string,std::string> rows[]={
-        {"Exact source",gen5GameName(screen.sourceGameId)},
-        {"PK5 structure","PASS"},
-        {"Source mutation","HARD DISABLED"},
-        {"Origin game",originName},
-        {"Met location",metLocationText5(origin,pk->metLocation())},
-        {"Met level / date",std::to_string(pk->metLevel())+"  /  "+std::to_string(date.year)+"-"+
-            std::to_string(date.month)+"-"+std::to_string(date.day)},
-        {"Fateful encounter",pk->fatefulEncounter()?"Yes":"No"},
-        {"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},
-        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},
-    };
-    int rowY=y+96;
-    for(const auto& [label,value]:rows) {
-        fb.drawText(x+34,rowY,label,Colors::TextDim);
-        const bool flag=label=="Encounter check" || label=="Legality";
-        fb.drawText(x+290,rowY,value,label=="PK5 structure"?Colors::Success:
-                    label=="Source mutation"?Colors::Accent:flag?Colors::Warning:Colors::Text);
-        rowY+=40;
-    }
-    drawNavBar(fb,{{"B","Back"}});
+    SharedOriginLegalityPanel::draw(fb,screen.touchButtons,Names::getSpeciesName(pk->species()),
+                                    legalityReport5(screen,*pk));
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,

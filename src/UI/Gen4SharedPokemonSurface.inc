@@ -1256,7 +1256,7 @@ struct Gen4Editor {
     static constexpr const char* kMovePickerSubtitle =
         "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP";
     static constexpr const char* kMoveEditorSubtitle =
-        "Gen IV move compatibility checked • Origin & Legality: incomplete";
+        "Gen IV move compatibility checked • Origin & Legality: not checked";
     static constexpr const char* kDataTitle = "Origin & Legality";
 
     static State& gen4(Surface::EditorState& state) { return static_cast<State&>(state); }
@@ -1503,8 +1503,9 @@ struct Gen4Editor {
             {"OT gender", raw->originalTrainerGender() == 0 ? "Male" : "Female"},
             {"PC markings", PokeBank::UIModel::Gen4DataPresentation::markings(raw->markings())},
             // Structure + move guardrails run; no full encounter/event legality checker exists.
+            // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete)}
+                PokeBank::UIModel::OriginLegality::kLegality)}
         };
     }
 };
@@ -1613,69 +1614,52 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
     }
 }
 
-void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.drawGSCOverlay(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
-    constexpr int x = 210, y = 82, w = 860, h = 500;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
-                Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-                "PK4 structure and move guardrails checked • no full legality checker",
-                Colors::TextDim, TextStyle::Caption);
-
-    std::string error;
-    auto record = selectedRecord(screen, state, error);
-    if (!record) {
-        fb.drawText(x + 34, y + 110, error.empty() ? "No valid Pokemon selected" : error,
-                    Colors::Warning, TextStyle::Body);
-        drawNavBar(fb, {{"B", "Back"}});
-        return;
-    }
-
-    fb.drawText(x + 34, y + 104, "Exact source", Colors::TextDim);
-    fb.drawText(x + 250, y + 104, gameName(screen.sourceGameId), Colors::Text);
-    fb.drawText(x + 34, y + 142, "PK4 structure", Colors::TextDim);
-    fb.drawText(x + 250, y + 142, record->valid() ? "PASS" : "INVALID",
-                record->valid() ? Colors::Success : Colors::Error);
-    fb.drawText(x + 34, y + 180, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 250, y + 180, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 218, "Legality", Colors::TextDim);
-    fb.drawText(x + 250, y + 218, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                    PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete),
-                Colors::Warning);
-
-    int rowY = y + 270;
-    const auto moves = record->moves();
+// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h). Gen IV fills it
+// from the PK4 record: structure, stored origin and its real per-move guardrail. No verdict.
+PokeBank::UIModel::OriginLegality::Report legalityReport(TrainerViewScreen& screen, const Pokemon::Pokemon4ReadOnly& record) {
+    namespace OL = PokeBank::UIModel::OriginLegality;
+    OL::Report report;
+    report.exactGame = gameName(screen.sourceGameId);
+    report.format = "PK4";
+    report.structure = record.valid() ? OL::Structure::Valid : OL::Structure::Invalid;
+    Pokemon::Pokemon4ReadOnlyView view(record);
+    report.originGame = OL::value(Enums::getOriginGameName(record.originVersion()));
+    const uint16_t location = view.metLocation();
+    report.metLocation = location == 0 ? OL::value("None recorded")
+        : OL::value(Names::getMetLocationDisplayName(record.originVersion(), location));
+    report.metLevel = OL::value(std::to_string(record.metLevel()));
+    report.metDate = OL::notRead();  // PK4 stores a met date; this editor does not decode it yet
+    const auto moves = record.moves();
     for (size_t i = 0; i < moves.size(); ++i) {
         const uint16_t move = moves[i];
         const auto availability = PokeVault::Integration::Gen4MoveCompatibility::classify(
-            screen.sourceGameId, record->species(), record->form(), move, true);
-        const char* status = "Invalid";
-        Color color = Colors::Error;
+            screen.sourceGameId, record.species(), record.form(), move, true);
         using A = PokeVault::Integration::Gen4MoveCompatibility::Availability;
-        if (move == 0) {
-            status = "Empty";
-            color = Colors::TextDim;
-        } else if (availability == A::Direct) {
-            status = "OK";
-            color = Colors::Success;
-        } else if (availability == A::Transfer) {
-            status = "Transfer";
-            color = Colors::Warning;
-        } else if (availability == A::Preserved) {
-            status = "Preserved";
-            color = Colors::Warning;
-        }
-        const std::string moveName = move == 0 ? "Empty" : Names::getMoveName(move);
-        fb.drawText(x + 34, rowY, "Move " + std::to_string(i + 1), Colors::TextDim,
-                    TextStyle::Caption);
-        fb.drawText(x + 150, rowY, moveName, Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 650, rowY, status, color, TextStyle::Caption);
-        rowY += 36;
+        OL::MoveCheck check{move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move)),
+                            "Invalid", OL::Tone::Caution};
+        if (move == 0) check = {"Empty", "Empty", OL::Tone::Dim};
+        else if (availability == A::Direct) { check.status = "OK"; check.tone = OL::Tone::Good; }
+        else if (availability == A::Transfer) check.status = "Transfer";
+        else if (availability == A::Preserved) check.status = "Preserved";
+        report.moves.push_back(std::move(check));
     }
-    drawNavBar(fb, {{"B", "Back"}});
+    return report;
+}
+
+void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.drawGSCOverlay(fb);
+    std::string error;
+    auto record = selectedRecord(screen, state, error);
+    if (!record) {
+        PokeBank::UIModel::OriginLegality::Report missing;
+        missing.exactGame = gameName(screen.sourceGameId);
+        missing.format = "PK4";
+        SharedOriginLegalityPanel::draw(fb, screen.touchButtons,
+                                        error.empty() ? "No valid Pokemon selected" : error, missing);
+        return;
+    }
+    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(record->species()),
+                                    legalityReport(screen, *record));
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
