@@ -27,14 +27,13 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
-    # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md). Owners are proposed from the round 3
-    # lane areas until the coordinator's round 4 lane map lands.
-    "CG30-trainer-page-opens-review": "C proposed (R2-TRAINER, R2-BUG-002)",
-    "CG31-classic-exit-offers-review": "C proposed (NEW-19, R2-BUG-002)",
-    "CG32-review-rows-readable-names": "C + S proposed (R2-REVIEWMOVE)",
-    "CG33-party-opens-actions": "C proposed (L06, E02, NEW-20)",
-    "CG34-gen5-key-tm-pockets-editable": "S / I proposed (NEW-17)",
-    "CG35-gen5-review-matches-gen4": "S proposed (AUD-01)",
+    # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
+    "CG30-trainer-page-opens-review": "C (R2-TRAINER, R2-BUG-002)",
+    "CG31-classic-exit-offers-review": "C (NEW-19, R2-BUG-002)",
+    "CG32-review-rows-readable-names": "C (R2-REVIEWMOVE)",
+    "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
+    "CG34-gen5-key-tm-pockets-editable": "I (NEW-17)",
+    "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
