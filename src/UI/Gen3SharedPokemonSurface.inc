@@ -562,9 +562,8 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
         if (selected->minimumEvolutionLevel != 0)
             detail += " (evolves Lv. " + std::to_string(selected->minimumEvolutionLevel) + ")";
     }
-    // R2-BUG-008: never read as this record's acquisition when the stored met level is outside it.
-    if (!EncounterPicker::matchesStoredMetLevel(encounter, stored.metLevel))
-        detail += " \xE2\x80\xA2 not stored Met Lv. " + std::to_string(stored.metLevel);
+    // R2-BUG-008: the save's own met data is the "Keep stored" row; candidate rows show only the
+    // encounter itself (NEW-10 / Round 3 L03: no "not stored" filler on every other row).
     return {std::move(place), std::move(detail)};
 }
 
