@@ -37,7 +37,6 @@ XFAIL: dict[str, str] = {
     "CG36-footer-hints-have-glyphs": "S (E05, NEW-01 remaining Close/Help footer)",
     "CG37-no-touch-back-footer": "S (NEW-02)",
     "CG38-bag-confirm-glyphs-a-commits": "I (NEW-03; B07 gate pin changes with it, owner-directed)",
-    "CG39-species-search-keyboard-beside-list": "P (NEW-05)",
     "CG40-held-item-picker-search": "P (NEW-06)",
     "CG41-gen2-ot-gender-inline": "P (NEW-07)",
     "CG42-ball-picker-scrollbar-gutter": "P (NEW-08)",
@@ -55,8 +54,6 @@ XFAIL: dict[str, str] = {
     "CG54-gen5-language-editable": "R (NEW-14)",
     "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
     "CG56-gen2-carry-refresh-without-finalize": "C (NEW-04)",
-    "CG57-gen5-home-a-opens-assigned-save": "coordinator wip/coord-gen5-direct-open-20261020 (C01, NEW-16)",
-    "CG58-export-outcome-visible": "coordinator wip/coord-gen5-direct-open-20261020 (B08)",
     "CG59-backup-browser-actions": "L (R2-EMUBACKUP, C07)",
     "CG60-no-backup-on-unchanged-open": "L (S05 / R2-EMUBACKUP; reverses the pinned auto-backup-on-open design, owner directive)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
@@ -64,7 +61,7 @@ XFAIL: dict[str, str] = {
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
     # Round 3: CG21/CG26/CG28 on #307 aeccd13, CG20/CG24/CG25/CG27 on 7ed1cc16, CG20b on 7ed1cc16,
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
-    # Every contract is enforced.
+    # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
 }
 
@@ -1866,7 +1863,15 @@ def contracts(sources: list[Source]) -> list[Result]:
                "list stays visible while searching (owner round 3 NEW-05)")
     SP = "include/UI/SharedSpeciesPicker.h"
     sp = src(SP)
-    consts = {k: int(v) for k, v in re.findall(r"inline constexpr int (k\w+)\s*=\s*(-?\d+)\s*;", sp.code)}
+    consts = {}
+    for k, expr in re.findall(r"inline constexpr int (\w+)\s*=\s*([^;]+);", sp.code):
+        try:  # integer or an expression over earlier constants (kSearchVisibleRows = kVisibleRows)
+            consts[k] = int(eval(expr, {"__builtins__": {}}, dict(consts)))
+        except Exception:  # noqa: BLE001
+            pass
+    for need in ("kListX", "kListY", "kListW", "kVisibleRows", "kRowStep", "kSearchVisibleRows"):
+        if need not in consts:
+            r.violations.append(f"{SP}: constant {need} not found / not evaluable (update this contract)")
     kg = [b for _, b in bodies_ln(SP, "keyGridRect")]
     rect = None
     if kg:
@@ -1878,14 +1883,15 @@ def contracts(sources: list[Source]) -> list[Result]:
             r.violations.append(f"{SP}: keyGridRect() is not a constexpr rectangle this check can evaluate ({e})")
     else:
         r.violations.append(f"{SP}: keyGridRect() missing")
-    if rect:
+    if rect and all(k in consts for k in ("kListX", "kListY", "kListW", "kVisibleRows", "kRowStep")):
         gx, gy, gw, gh = rect
         lx, ly, lw = consts["kListX"], consts["kListY"], consts["kListW"]
         lh = consts["kVisibleRows"] * consts["kRowStep"]
         if gx < lx + lw and lx < gx + gw and gy < ly + lh and ly < gy + gh:
             r.violations.append(f"{SP}: key grid ({gx},{gy},{gw}x{gh}) overlaps the species list column "
                                 f"({lx},{ly},{lw}x{lh})")
-    if consts.get("kSearchVisibleRows", 0) < consts.get("kVisibleRows", 0):
+    if "kSearchVisibleRows" in consts and "kVisibleRows" in consts and \
+            consts["kSearchVisibleRows"] < consts["kVisibleRows"]:
         r.violations.append(f"{SP}: the list shrinks from {consts['kVisibleRows']} to "
                             f"{consts['kSearchVisibleRows']} rows while searching")
     res.append(r)
