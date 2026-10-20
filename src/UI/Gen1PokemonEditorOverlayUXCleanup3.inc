@@ -495,7 +495,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawSpriteStaticContained(leftX + 45, contentY + 18, 210, 190,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(leftX + 80, contentY + 105, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftX + 18, contentY + 220, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(leftX + 18, contentY + 220, speciesHeading(species), Colors::Text, TextStyle::Heading);
     const std::string nickname = add
         ? (state.draft.nickname.empty() ? std::string(Names::getSpeciesName(species)) : state.draft.nickname)
         : pokemon->nickname;
@@ -566,7 +566,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
-            [](uint16_t species) { return speciesCompact(species); },
+            [](uint16_t species) { return SharedSpeciesPicker::selectedTitle(species, Names::getSpeciesName(species)); },
             &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
         // Touch ids stay 3000 + species; the chooser publishes the rows it actually drew.
         for (int i = 0; i < state.speciesChooser.rowCount; ++i) {

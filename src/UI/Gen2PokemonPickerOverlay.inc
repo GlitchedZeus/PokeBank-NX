@@ -164,7 +164,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
                 return std::string(prefix) + Names::getSpeciesName(species);
             },
-            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
+            [](uint16_t species) { return SharedSpeciesPicker::selectedTitle(species, Names::getSpeciesName(species)); },
             &latestTouchGesture(), true, {0xFF, 0xFF}, &overlay.speciesChooser);
         // Touch ids stay 2000 + species; the chooser publishes the rows it actually drew.
         for (int i = 0; i < overlay.speciesChooser.rowCount; ++i) {
