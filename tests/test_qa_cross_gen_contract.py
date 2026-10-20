@@ -27,6 +27,14 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
+    # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md). Owners are proposed from the round 3
+    # lane areas until the coordinator's round 4 lane map lands.
+    "CG30-trainer-page-opens-review": "C proposed (R2-TRAINER, R2-BUG-002)",
+    "CG31-classic-exit-offers-review": "C proposed (NEW-19, R2-BUG-002)",
+    "CG32-review-rows-readable-names": "C + S proposed (R2-REVIEWMOVE)",
+    "CG33-party-opens-actions": "C proposed (L06, E02, NEW-20)",
+    "CG34-gen5-key-tm-pockets-editable": "S / I proposed (NEW-17)",
+    "CG35-gen5-review-matches-gen4": "S proposed (AUD-01)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -1030,6 +1038,167 @@ def contracts(sources: list[Source]) -> list[Result]:
         if not found:
             r.violations.append(f"{rel}: no Help input handler found")
         sites += found
+    res.append(r)
+
+    # Round 4 (owner round 3 FAIL items): helpers for the CG30+ contracts.
+    def gen_files(g):
+        return [s for s in U if GEN_FILE[g].search(Path(s.rel).name)]
+
+    def lineof(s, idx):
+        return s.code.count("\n", 0, idx) + 1
+
+    # ---------- CG30: R2-TRAINER / R2-BUG-002 -- Trainer page reaches Review in Gen I-IV ----------
+    r = Result("CG30-trainer-page-opens-review",
+               "Gen I-IV Trainer page (Name / Money) opens the generation's own Review, as Gen II (Y) and Gen V (+) do")
+    TRAINER_PAGE = re.compile(r"\btrainerMainPage\s*\(|\bgen1TrainerMainPage\s*\(|ViewMode::Trainer\b|Surface::Trainer\b")
+    REVIEW_OPEN = {1: r"\bmode\s*=\s*(?:UX2Mode|Mode)::Review\b",
+                   2: r"\breview\s*=\s*true\b",
+                   3: r"\breview\s*=\s*true\b",
+                   4: r"\breview\s*=\s*true\b"}
+    shared_handle = src("include/UI/ClassicTrainerSessionInput.h")
+    for g, rx in REVIEW_OPEN.items():
+        ok = False
+        for s in gen_files(g):
+            for name, ln, body in function_bodies(s.code, re.compile(r".")):
+                if TRAINER_PAGE.search(body) and re.search(rx, body):
+                    ok = True; break
+            if ok: break
+        if not ok:
+            r.violations.append(f"Gen {['','I','II','III','IV'][g]}: no Trainer-page input path opens its Review "
+                                f"(no function both guarded by the Trainer page and setting {rx})")
+    for name, ln, body in function_bodies(shared_handle.code, re.compile(r"^handle$")):
+        if not re.search(r"HidNpadButton_(?:Plus|Y|X)\b", body):
+            r.violations.append(f"{shared_handle.rel}:{ln}: ClassicTrainerSession::handle (Gen I/II/III/IV Trainer page) "
+                                "handles only Up/Down/A; no Review input")
+    ts = src("include/UI/ClassicTrainerSession.h")
+    for name, ln, body in function_bodies(ts.code, re.compile(r"^trainerPageInstructions$")):
+        if "Review" not in body:
+            r.violations.append(f"{ts.rel}:{ln}: trainerPageInstructions() footer offers no Review")
+    res.append(r)
+
+    # ---------- CG31: NEW-19 / R2-BUG-002 -- Gen I-IV staged exit menu offers Review ----------
+    r = Result("CG31-classic-exit-offers-review",
+               "Leaving a Gen I-IV session with staged changes offers Review / Continue / Discard (Gen V ConfirmExit parity), not only Cancel / Discard & Exit")
+    dlg = src("src/UI/Dialogs/SaveConfirmDialog.cpp")
+    for fn in ("classicSaveConfirmFooter", "paintSaveConfirmContents"):
+        for name, ln, body in function_bodies(dlg.code, re.compile("^" + fn + "$")):
+            m = re.search(r"if\s*\(\s*screen\.exitingWithUnsavedChanges\s*(?:\)|&&)", body)
+            exit_part = body
+            if not re.search(r'"[^"\n]*\bReview\b[^"\n]*"', exit_part):
+                r.violations.append(f"{dlg.rel}:{ln}: {fn}() exit-with-staged-changes choices have no Review "
+                                    "(only Keep Editing/Cancel and Discard & Exit)")
+    base = src("src/UI/TrainerViewScreenBase.inc")
+    m = re.search(r"if\s*\(\s*saveConfirmActive\s*\)\s*\{\s*if\s*\(\s*exitingWithUnsavedChanges\s*\)\s*\{", base.code)
+    if not m:
+        r.violations.append(f"{base.rel}: classic exit handler not found (update this contract)")
+    else:
+        depth, j = 1, m.end()
+        while depth and j < len(base.code):
+            depth += {"{": 1, "}": -1}.get(base.code[j], 0); j += 1
+        block = base.code[m.end():j]
+        im = re.search(r"if\s*\(\s*itemsShortcutActive\s*\)\s*\{", block)
+        if im:  # drop the Product Home -> Items shortcut prompt; the session exit is what follows it
+            d, k = 1, im.end()
+            while d and k < len(block):
+                d += {"{": 1, "}": -1}.get(block[k], 0); k += 1
+            block = block[k:]
+        if not re.search(r"HidNpadButton_(?:X|Plus)\b|[Rr]eview\w*\s*\(|[Rr]eview\w*\s*=\s*true", block):
+            r.violations.append(f"{base.rel}:{lineof(base, m.start())}: exit-with-unsaved-changes input handles only "
+                                "A (Discard & Exit) and B (Cancel); no Review route")
+    res.append(r)
+
+    # ---------- CG32: R2-REVIEWMOVE -- Review rows name moves / species / items ----------
+    r = Result("CG32-review-rows-readable-names",
+               "Review rows show move / species / item NAMES, never raw numeric IDs (owner R2-REVIEWMOVE)")
+    g1 = src("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp")
+    for mm in re.finditer(r'\bnumber\s*\(\s*"move"', g1.code):
+        r.violations.append(f"{g1.rel}:{lineof(g1, mm.start())}: Gen I Review 'Move n' row formats the move ID with number()/to_string")
+    g1ui = src("src/UI/Gen1PokemonEditorOverlay.cpp")
+    for name, ln, body in function_bodies(g1ui.code, re.compile(r"^pendingLines$")):
+        if re.search(r"std::to_string\s*\(\s*change\.itemId\s*\)", body):
+            r.violations.append(f"{g1ui.rel}:{ln}: Gen I Review inventory row prints 'Inventory item <id>' (numeric item ID)")
+    g2 = src("src/Integration/Gen2/Gen2StagedEditor.cpp")
+    for mm in re.finditer(r'setChange\s*\([^;]*"(Moves|Species)"[^;]*;', g2.code):
+        stmt = mm.group(0)
+        if re.search(r"\barray4\s*\(\s*\w+\.moves\b|std::to_string\s*\(\s*[\w>.\-]*species\s*\)", stmt):
+            r.violations.append(f"{g2.rel}:{lineof(g2, mm.start())}: Gen II Review '{mm.group(1)}' row prints numeric IDs")
+    g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    for name, ln, body in function_bodies(g5.code, re.compile(r"^reviewedFieldLabel$")):
+        generic = re.search(r"std::to_string\s*\(\s*c\.before\s*\)", body)
+        for field, lookup in (("Move", r"\bgetMoveName\s*\(|\bmove\w*(?:Name|Label|Display)\w*\s*\("),
+                              ("HeldItem", r"\bgetItemName\w*\s*\(|\b\w*[iI]temLabel\w*\s*\(|\bmachineDisplayLabel\s*\("),
+                              ("Species", r"\bgetSpeciesName\s*\(")):
+            if generic and not re.search(lookup, body):
+                r.violations.append(f"{g5.rel}:{ln}: Gen V reviewedFieldLabel prints Field::{field} as raw "
+                                    "'before -> after' numbers (no name lookup)")
+    res.append(r)
+
+    # ---------- CG33: L06 / E02 / NEW-20 -- Gen I-III Party A / tap opens Actions ----------
+    r = Result("CG33-party-opens-actions",
+               "Gen I-III Party A / tap opens the Pokemon Actions popup (View / Edit / Origin & Legality / Cancel), never straight to View")
+    for name, ln, body in function_bodies(base.code, re.compile(r"^openPokemonActionSheet$")):
+        cut = body.find("openActionSheetTargetDetails")
+        prefix = body if cut < 0 else body[:cut]
+        if cut >= 0 and not re.search(r"PokemonLocation::Party\b[\s\S]*?\breturn\b", prefix):
+            r.violations.append(f"{base.rel}:{ln}: openPokemonActionSheet() sends a Gen I-V Party target straight to "
+                                "openActionSheetTargetDetails(true) (read-only View)")
+    r.violations += [v + "  <- Gen III Party opens View" for v in lit_hits(sources, r"open in View")]
+    PARTY = re.compile(r"ViewMode::Party\b|PokemonLocation::Party\b|TargetKind::Party\b|\bpartyEntry\w*")
+    ACTIONS_OPEN = {1: r"\bmode\s*=\s*(?:UX2Mode|Mode)::Actions\b|\bopenActions\s*\(",
+                    2: r"\bpokemonActions\s*=\s*true\b",
+                    3: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b",
+                    4: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b"}
+    for g, rx in ACTIONS_OPEN.items():
+        if not any(PARTY.search(b) and re.search(rx, b)
+                   for s in gen_files(g) for _, _, b in function_bodies(s.code, re.compile(r"."))):
+            r.violations.append(f"Gen {['','I','II','III','IV'][g]}: no Party input path opens its Pokemon Actions ({rx})")
+    res.append(r)
+
+    # ---------- CG34: NEW-17 -- Gen V Key Items / TMs & HMs are editable ----------
+    r = Result("CG34-gen5-key-tm-pockets-editable",
+               "Gen V Bag Key Items and TMs & HMs offer staged Add / Remove (with the shared Key Item warning), no blanket view-only")
+    bag = src("include/Integration/Gen5/Gen5Bag.h")
+    scr = src("include/Integration/Gen5/Gen5BagScreen.h")
+    POCKET_BAN = re.compile(r"BagPocket5::KeyItems\)[\s\S]{0,80}BagPocket5::Machines\)")
+    for f, fn in ((scr, "mutablePocket"), (bag, "gen5BagItemAddable"), (bag, "remove")):
+        for name, ln, body in function_bodies(f.code, re.compile("^" + fn + "$")):
+            if POCKET_BAN.search(body):
+                r.violations.append(f"{f.rel}:{ln}: {fn}() refuses the whole Key Items / TMs & HMs pocket")
+    r.violations += lit_hits([s for s in sources if "Gen5" in s.rel], r"(Key Items?|TMs?)[^\n]*view only|story progress", re.I)
+    g5files = [s for s in sources if re.search(r"Gen5", s.rel)]
+    if not any(re.search(r"\bneedsKeyItemWarning\s*\(|\bdrawKeyItemWarning\s*\(", s.code) for s in g5files):
+        r.violations.append("Gen V Bag never asks the shared Key Item warning (UI/SharedBagAddFlow.h needsKeyItemWarning)")
+    res.append(r)
+
+    # ---------- CG35: AUD-01 -- Gen V Review matches Gen IV Review ----------
+    r = Result("CG35-gen5-review-matches-gen4",
+               "Gen IV and Gen V Review show the same heading, footer actions and Discard-all confirmation")
+    g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
+    def review_text(f, fns):
+        heading, footer, confirm = set(), set(), set()
+        for fn in fns:
+            for name, ln, body in function_bodies(f.code, re.compile("^" + fn + "$")):
+                for lit in re.findall(r'"([^"\n]*Review Pending Changes[^"\n]*)"', body): heading.add(lit)
+                for nb in re.finditer(r"drawNavBar\s*\(\s*fb\s*,\s*\{([\s\S]*?)\}\s*\)\s*;", body):
+                    footer |= set(re.findall(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', nb.group(1)))
+                for lit in re.findall(r'"([^"\n]*[Dd]iscard [Aa]ll[^"\n]*\?)"', body): confirm.add(lit.lower() and lit)
+        return heading, footer, confirm
+    h4, f4, _ = review_text(g4, ("drawReview",))
+    h5, f5, _ = review_text(g5, ("drawReview",))
+    def pairs(text): return set(re.findall(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', text))
+    c4 = set()
+    for _, _, b in function_bodies(g4.code, re.compile(r"^drawDiscardAllConfirm$")):
+        c4 = {(t.lower(), frozenset(pairs(nb))) for t in re.findall(r'"(Discard all[^"]*\?)"', b, re.I)
+              for nb in re.findall(r"drawNavBar\s*\(\s*fb\s*,\s*\{([\s\S]*?)\}\s*\)\s*;", b)}
+    c5 = {(m.group(1).lower(), frozenset(pairs(m.group(2)))) for m in re.finditer(
+          r'drawDecision\s*\(\s*screen\s*,\s*fb\s*,\s*"(Discard All[^"]*\?)"[\s\S]*?(\{\{[\s\S]*?\}\})\s*\)\s*;', g5.code, re.I)}
+    if h4 != h5: r.violations.append(f"Review heading: Gen IV {sorted(h4)} vs Gen V {sorted(h5)}")
+    act = lambda f: {(g, l) for g, l in f if g in ("A", "B", "X", "Y", "+")}  # actions, not paging hints
+    f4, f5 = act(f4), act(f5)
+    if f4 != f5: r.violations.append(f"Review footer: Gen IV {sorted(f4)} vs Gen V {sorted(f5)}")
+    if c4 != c5:
+        fmt = lambda c: [(t, sorted(p)) for t, p in c]
+        r.violations.append(f"Discard-all confirmation: Gen IV {fmt(c4)} vs Gen V {fmt(c5)}")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
