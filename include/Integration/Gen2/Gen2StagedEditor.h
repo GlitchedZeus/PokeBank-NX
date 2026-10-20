@@ -134,6 +134,9 @@ public:
     void discard() noexcept;
 
     std::vector<uint8_t> finalizedBytes(std::string& error) const;
+    // Display-only bytes: the staged image repaired for a strict reload, also while a packed move
+    // is carrying Pokemon (finalizedBytes refuses then). Never exported or written anywhere.
+    std::vector<uint8_t> presentationBytes(std::string& error) const;
 
 private:
     struct PokemonExpectation {

@@ -331,3 +331,25 @@ $(HOST_BUILD)/test_gen12_packed_move: $(GEN12_PACKED_MOVE_SOURCES) $(GEN12_PACKE
 $(HOST_BUILD)/test_gen12_packed_move_sanitize: $(GEN12_PACKED_MOVE_SOURCES) $(GEN12_PACKED_MOVE_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(GEN12_PACKED_MOVE_SOURCES) -o $@
+
+# NEW-04: Gen II PC box Move through the real GSCReadOnlyTrainer presentation, finalize and export.
+GEN2_BOX_MOVE_SOURCES := tests/test_gen2_box_move_presentation.cpp \
+	src/Legacy/GSCReadOnlyTrainer.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2PackedMove.cpp \
+	src/Integration/Gen2/Gen2ExportTransaction.cpp src/Utils/SHA256.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp src/Pokemon/BaseStatsGen89.cpp \
+	src/Pokemon/PersonalInfoTable.cpp src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp \
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GEN2_BOX_MOVE_DEPS := include/Legacy/GSCReadOnlyTrainer.h include/Integration/Gen2/Gen2StagedEditor.h \
+	tests/fixtures/gsc_pokemon_fixture.h
+HOST_TESTS += $(HOST_BUILD)/test_gen2_box_move_presentation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_box_move_presentation_sanitize
+host-test: $(HOST_BUILD)/test_gen2_box_move_presentation
+host-sanitize: $(HOST_BUILD)/test_gen2_box_move_presentation_sanitize
+$(HOST_BUILD)/test_gen2_box_move_presentation: $(GEN2_BOX_MOVE_SOURCES) $(GEN2_BOX_MOVE_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -I. -Iinclude $(GEN2_BOX_MOVE_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_box_move_presentation_sanitize: $(GEN2_BOX_MOVE_SOURCES) $(GEN2_BOX_MOVE_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(GEN2_BOX_MOVE_SOURCES) -o $@
