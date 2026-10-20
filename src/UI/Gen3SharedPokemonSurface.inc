@@ -35,6 +35,7 @@
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
+#include "UI/AbilityEffects.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedBoxedRows.h"
@@ -582,7 +583,8 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         case PickerTarget::Ability: {
             const auto& personal = Pokemon::getPersonalInfoG3(state.session.working.species);
             const uint16_t ability = value == 2 ? personal.ability2 : personal.ability1;
-            return "Slot " + std::to_string(value) + " - " + Trainer::getAbilityName(ability);
+            // NEW-13: the ability's name and short effect, not "Slot 1 / Slot 2".
+            return UI::AbilityEffects::row(Trainer::getAbilityName(ability), ability, 3);
         }
         case PickerTarget::MetLocation: {
             const auto row = metLocationChoiceText(state, value);
@@ -601,9 +603,11 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    // NEW-13: Ability rows carry name + effect, so they use the wide two-column value list.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation ? G::MenuType::LocationPicker
-                                                           : G::MenuType::ChoicePicker, count);
+                     : target == PickerTarget::MetLocation || target == PickerTarget::Ability
+                         ? G::MenuType::LocationPicker
+                         : G::MenuType::ChoicePicker, count);
 }
 
 const char* pickerTitle(PickerTarget target) noexcept {
@@ -1952,6 +1956,24 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                         Colors::Text, TextStyle::Body);
             fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+            continue;
+        }
+        if (state.pickerTarget == PickerTarget::Ability) {
+            // NEW-13: ability name left, its short effect right (red only for a drawback).
+            const std::string label = pickerValueLabel(state, value);
+            const std::string name = UI::AbilityEffects::nameOf(label);
+            const std::string effect = label.size() > name.size() ? label.substr(name.size() + UI::AbilityEffects::kSplit.size()) : std::string();
+            int nw = 0, nh = 0;
+            fb.measureText(name, nw, nh, TextStyle::Body);
+            fb.drawText(x + 38, yy + 7, name, Colors::Text, TextStyle::Body);
+            if (!effect.empty()) {
+                const std::string shown = SharedMovesPanel::fit(fb, effect, std::max(0, rowW - 32 - nw - 24));
+                int dw = 0, dh = 0;
+                fb.measureText(shown, dw, dh, TextStyle::Caption);
+                fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, shown,
+                            UI::AbilityEffects::isDrawbackEffect(effect) ? Colors::Error
+                                : selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+            }
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ball) {

@@ -23,6 +23,7 @@
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
+#include "UI/AbilityEffects.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
@@ -197,9 +198,11 @@ static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 inline PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    // NEW-13: Ability rows carry name + effect, so they use the wide two-column value list.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation ? G::MenuType::LocationPicker
-                                                           : G::MenuType::ChoicePicker, count);
+                     : target == PickerTarget::MetLocation || target == PickerTarget::Ability
+                         ? G::MenuType::LocationPicker
+                         : G::MenuType::ChoicePicker, count);
 }
 
 inline bool compactPicker(PickerTarget target) noexcept {
@@ -869,6 +872,21 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                         rowW - 32 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
             fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+        } else if (state.pickerTarget == PickerTarget::Ability) {
+            // NEW-13: ability name left, its short effect right (red only for a drawback).
+            const std::string name = UI::AbilityEffects::nameOf(label);
+            const std::string effect = label.size() > name.size() ? label.substr(name.size() + UI::AbilityEffects::kSplit.size()) : std::string();
+            int nw = 0, nh = 0;
+            fb.measureText(name, nw, nh, TextStyle::Body);
+            fb.drawText(x + 38, yy + 7, name, Colors::Text, TextStyle::Body);
+            if (!effect.empty()) {
+                const std::string shown = SharedMovesPanel::fit(fb, effect, std::max(0, rowW - 32 - nw - 24));
+                int dw = 0, dh = 0;
+                fb.measureText(shown, dw, dh, TextStyle::Caption);
+                fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, shown,
+                            UI::AbilityEffects::isDrawbackEffect(effect) ? Colors::Error
+                                : selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+            }
         } else if (state.pickerTarget == PickerTarget::Ball) {
             // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
             const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, rowW, 38};
