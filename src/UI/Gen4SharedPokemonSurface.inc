@@ -675,6 +675,7 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
             Names::isGen4NativeMetLocation(
                 record.originVersion(), static_cast<uint16_t>(id)))
             state.pickerValues.push_back(static_cast<uint16_t>(id));
+    Surface::prepareMetLocations(state, state.pickerValues, record.originVersion(), record.species());   // NEW-12
     Pokemon::Pokemon4ReadOnlyView view(record);
     const uint16_t current = view.metLocation();
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
@@ -1214,8 +1215,10 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         std::string label = preview
             ? Names::getMetLocationDisplayName(preview->originVersion(), value)
             : std::string("Unknown location");
+        // NEW-12: the encounter at this location (or an egg / trade / event origin), not the
+        // stored Met Lv. repeated on every row.
         if (preview)
-            label += "  |  Met Lv. " + std::to_string(preview->metLevel());
+            label += "  |  " + Surface::metLocationDetail(state, value, preview->species());
         return label;
     }
     if (target == PickerTarget::Pokerus)

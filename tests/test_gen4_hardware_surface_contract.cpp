@@ -596,7 +596,9 @@ int main() {
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");
     assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
-    contains(surface, "  |  Met Lv. ");
+    // NEW-12: Met Location rows show the encounter there (or an egg / trade / event origin), not the
+    // stored Met Lv. repeated on every row.
+    contains(surface, "label += \"  |  \" + Surface::metLocationDetail(state, value, preview->species());");
     assert(surface.find(" (current)") == std::string::npos);
     contains(surface, "const bool compactChoices=");
     contains(surface, "visibleChoices");

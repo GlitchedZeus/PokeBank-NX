@@ -24,6 +24,7 @@
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
 #include "UI/AbilityEffects.h"
+#include "Integration/Encounter/Gen45Encounters.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
@@ -84,6 +85,10 @@ struct EditorState {
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    // NEW-12: where this species (or a pre-evolution) is met in its origin game; the Met Location
+    // picker lists those locations first (metSpotCount rows) with method and level.
+    std::vector<PokeVault::Integration::Gen45Encounters::Spot> metSpots;
+    int metSpotCount = 0;
 
     bool moveEditor = false;
     int moveEditorSlot = 0;
@@ -203,6 +208,25 @@ inline PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarge
                      : target == PickerTarget::MetLocation || target == PickerTarget::Ability
                          ? G::MenuType::LocationPicker
                          : G::MenuType::ChoicePicker, count);
+}
+
+// NEW-12 / R2-CHECK-011: compute the species' encounter spots for its Gen IV / V origin game and
+// order the native met locations with those spots first (each once, in spot order), every other
+// native location after them in native order. Nothing is removed: a location without an
+// encounter is still a valid met location (egg hatch, trade, event, transfer).
+inline void prepareMetLocations(EditorState& state, std::vector<uint16_t>& values, uint8_t originVersion,
+                                uint16_t species) {
+    namespace E = PokeVault::Integration::Gen45Encounters;
+    state.metSpots = E::spotsFor(E::gameForVersion(originVersion), species);
+    state.metSpotCount = E::orderBySpots(values, state.metSpots);
+}
+
+// The right-hand detail of one Met Location row: the encounter there ("Grass Lv. 10-12",
+// "as Spheal: Safari Grass Lv. 44-45") or, for any other native location, an egg / trade /
+// event origin (never a rejection).
+inline std::string metLocationDetail(const EditorState& state, uint16_t location, uint16_t species) {
+    return PokeVault::Integration::Gen45Encounters::detailFor(state.metSpots, location, species,
+        [](uint16_t s) { return std::string(Names::getSpeciesName(s)); });
 }
 
 inline bool compactPicker(PickerTarget target) noexcept {
@@ -841,7 +865,12 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
 
     fb.drawText(x + 28, y + 55,
                 std::to_string(state.pickerRow + 1) + " / " +
-                    std::to_string(state.pickerValues.size()),
+                    std::to_string(state.pickerValues.size()) +
+                    (state.pickerTarget == PickerTarget::MetLocation
+                         ? (state.metSpotCount > 0
+                                ? "  |  first " + std::to_string(state.metSpotCount) + " are where this species is met"
+                                : std::string("  |  no wild or gift spot in this game: egg / trade / event origins"))
+                         : std::string()),
                 Colors::TextDim, TextStyle::Caption);
     const int visible = compactChoices ? visibleChoices : 10;
     const int first = state.pickerViewport.firstRow;

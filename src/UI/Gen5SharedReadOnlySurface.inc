@@ -444,9 +444,12 @@ struct Gen5Editor {
                     screen.postStatus("Met Location editing is read-only for transferred non-Gen-V origins", 300);
                     return true;
                 }
-                EditorSurface::openPicker(screen, state, PickerTarget::MetLocation,
-                                          Fields::metLocationChoices(), p.metLocation());
+            {
+                auto values = Fields::metLocationChoices();
+                EditorSurface::prepareMetLocations(state, values, p.originVersion(), p.species());   // NEW-12
+                EditorSurface::openPicker(screen, state, PickerTarget::MetLocation, std::move(values), p.metLocation());
                 return true;
+            }
             case Pokerus: {
                 // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
                 // The native record restores the source byte when the original mode returns.
@@ -586,7 +589,7 @@ struct Gen5Editor {
     static Enums::GameVersion moveGame(const TrainerViewScreen& screen) {
         return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;
     }
-    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState&,
+    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState& state,
                                    PickerTarget target, uint16_t value) {
         const auto p = draft(screen).current();
         switch (target) {
@@ -597,7 +600,8 @@ struct Gen5Editor {
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
                 std::string label = metLocationText5(p ? p->originVersion() : 20, value);
-                if (p) label += "  |  Met Lv. " + std::to_string(p->metLevel());
+                // NEW-12: the encounter here (or an egg / trade / event origin), not Met Lv. on every row.
+                if (p) label += "  |  " + EditorSurface::metLocationDetail(state, value, p->species());
                 return label;
             }
             case PickerTarget::Pokerus: return Fields::pokerusLabel(value);
