@@ -10,6 +10,7 @@
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4StagedTrainerEditor.h"
 #include "UI/ClassicTrainerSessionInput.h"
+#include "UI/ClassicStagedExitMenu.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
@@ -66,6 +67,7 @@ namespace SessionModel = PokeBank::UIModel::Gen4SharedEditor;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
+namespace ClassicExit = PokeBank::UIModel::ClassicStagedExit;
 namespace Surface = UI::SharedPokemonEditorSurface;
 
 using PickerTarget = Surface::PickerTarget;
@@ -1116,11 +1118,11 @@ bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
 
 // Verified export of the staged copy into the app-owned exports/gen4 root. Never writes the
 // emulator source; the staged workspace is kept so the user can continue editing.
-void exportStagedGen4Copy(TrainerViewScreen& screen) {
+bool exportStagedGen4Copy(TrainerViewScreen& screen) {
     auto* staged = editor(screen);
     if (!staged || !staged->hasChanges()) {
         screen.postStatus("No staged Generation IV changes to export", 240);
-        return;
+        return false;
     }
     std::string error;
     const std::string root = PokeBank::Paths::gen4ExportsRoot();
@@ -1128,7 +1130,7 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
         !PokeBank::Paths::isSafeTimestamp(timestamp)) {
         screen.postStatus(error.empty() ? "Could not prepare the Generation IV export folder" : error, 420);
-        return;
+        return false;
     }
     PokeVault::Integration::Gen4::Gen4ExportRequest request;
     request.rootDirectory = root;
@@ -1143,9 +1145,10 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
     const auto result = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*staged, request);
     if (!result.success) {
         screen.postStatus(result.error.empty() ? "Verified Generation IV export failed" : result.error, 480);
-        return;
+        return false;
     }
     screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+    return true;
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
@@ -1168,7 +1171,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
                 screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
         }
         state.review = false;
-        state.actions = true;
+        // NEW-19: opened from the exit menu, Review closes to the hub, not a stale Actions sheet.
+        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1178,7 +1182,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     }
     if (down & HidNpadButton_B) {
         state.review = false;
-        state.actions = true;
+        // NEW-19: a Review opened from the exit menu returns there.
+        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
         screen.controllerNavigation.reset();
         return true;
     }
@@ -2181,6 +2186,21 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
 }
 
 } // namespace
+
+// NEW-19: the classic exit menu's Review opens THIS Review page (rows, Export Copy, Discard All);
+// its B returns to the menu. Export Copy is the same verified export as Review's X.
+bool openReviewFromExit(TrainerViewScreen& screen) {
+    if (!isGen4Nds(screen) || !editor(screen)) return false;
+    auto& state = stateFor(screen);
+    state.actions = state.legality = state.confirmRelease = state.confirmDiscardAll = false;
+    state.review = true;
+    screen.controllerNavigation.reset();
+    return true;
+}
+
+bool exportFromExit(TrainerViewScreen& screen) {
+    return isGen4Nds(screen) && exportStagedGen4Copy(screen);
+}
 
 bool ownsFrame(const TrainerViewScreen& screen) noexcept {
     return ownsFrameImpl(screen);

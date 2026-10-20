@@ -169,6 +169,7 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 
 #include "Gen3SharedPokemonSurface.inc"
 #include "Gen4SharedPokemonSurface.inc"
+#include "ClassicStagedExitOverlay.inc"
 #include "Gen5SharedReadOnlySurface.inc"
 
 namespace UI {
@@ -304,6 +305,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // Gen V source isolation precedes all inherited touch and save handlers.
     if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
         return;
+    // NEW-19: the Gen I-IV staged exit menu owns the frame while it is open.
+    if (ClassicStagedExitOverlay::handleInput(*this, down)) return;
 
     // Storage's legacy touch path fires A on first contact. For the GAME SAVE
     // pane in Gen I-IV, wait for the completed same-cell tap and route A
@@ -384,6 +387,7 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     g_touchGlyphHits.clear();
 
     if (Gen5SharedReadOnlySurface::draw(*this, fb)) return;
+    if (ClassicStagedExitOverlay::draw(*this, fb)) return;
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 

@@ -353,3 +353,18 @@ $(HOST_BUILD)/test_gen2_box_move_presentation: $(GEN2_BOX_MOVE_SOURCES) $(GEN2_B
 $(HOST_BUILD)/test_gen2_box_move_presentation_sanitize: $(GEN2_BOX_MOVE_SOURCES) $(GEN2_BOX_MOVE_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(GEN2_BOX_MOVE_SOURCES) -o $@
+
+# NEW-19: Gen I-IV staged exit menu model, a Trainer-only Gen II session through it, and routing.
+CLASSIC_EXIT_SOURCES := tests/test_classic_staged_exit_menu.cpp $(filter-out tests/test_gen2_box_move_presentation.cpp,$(GEN2_BOX_MOVE_SOURCES))
+CLASSIC_EXIT_DEPS := include/UI/ClassicStagedExitMenu.h src/UI/ClassicStagedExitOverlay.inc \
+	src/UI/TrainerViewScreenCompositeOverlay.cpp $(GEN2_BOX_MOVE_DEPS)
+HOST_TESTS += $(HOST_BUILD)/test_classic_staged_exit_menu
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_staged_exit_menu_sanitize
+host-test: $(HOST_BUILD)/test_classic_staged_exit_menu
+host-sanitize: $(HOST_BUILD)/test_classic_staged_exit_menu_sanitize
+$(HOST_BUILD)/test_classic_staged_exit_menu: $(CLASSIC_EXIT_SOURCES) $(CLASSIC_EXIT_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -I. -Iinclude $(CLASSIC_EXIT_SOURCES) -o $@
+$(HOST_BUILD)/test_classic_staged_exit_menu_sanitize: $(CLASSIC_EXIT_SOURCES) $(CLASSIC_EXIT_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(CLASSIC_EXIT_SOURCES) -o $@

@@ -4,6 +4,7 @@
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
+#include "UI/ClassicStagedExitMenu.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
 
@@ -740,13 +741,24 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
                 discardAll(screen);
                 screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
                 state.reviewRow = 0;
+                // NEW-19: opened from the exit menu, Review closes to the hub once nothing is staged.
+                if (PokeBank::UIModel::ClassicStagedExit::returnFromReview(
+                        PokeBank::UIModel::ClassicStagedExit::sessionFor(screen), screen.trainer.hasStagedChanges()))
+                    state.mode = UX2Mode::Closed;
                 return;
         }
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return; }
+        if (down & HidNpadButton_B) {
+            // NEW-19: a Review opened from the exit menu returns there, not to a stale Actions sheet.
+            state.mode = PokeBank::UIModel::ClassicStagedExit::returnFromReview(
+                             PokeBank::UIModel::ClassicStagedExit::sessionFor(screen), screen.trainer.hasStagedChanges())
+                ? UX2Mode::Closed : UX2Mode::Actions;
+            state.row = 0;
+            return;
+        }
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
@@ -1199,6 +1211,31 @@ void ux2DialogGeometry(TrainerViewScreen& screen, int& x, int& y, int& w, int& h
 
 bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
     return isGen1SourceUXBase(screen);
+}
+
+// NEW-19: the classic exit menu's Review opens THIS Review page (rows, Export Copy, Discard
+// Staged); its B returns to the menu. Export Copy is the same verified export as Review's A.
+bool openReviewFromExit(TrainerViewScreen& screen) {
+    if (!isGen1SourceUX(screen) || !editorAvailable(screen)) return false;
+    auto& state = ux2StateFor(screen);
+    state.mode = UX2Mode::Review;
+    state.picker = UX2Picker::None;
+    state.reviewRow = 0;
+    state.reviewDiscard = {};
+    return true;
+}
+
+bool exportFromExit(TrainerViewScreen& screen) {
+    if (!isGen1SourceUX(screen) || !editorAvailable(screen)) return false;
+    std::string error;
+    const auto path = exportStagedCopy(screen, error);
+    if (path.empty()) {
+        screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);
+        return false;
+    }
+    ux2StateFor(screen).lastExportDirectory = path;
+    screen.postStatus("Edited copy exported; original .srm unchanged", 360);
+    return true;
 }
 
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {

@@ -3,12 +3,14 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
+#include "UI/ClassicStagedExitMenu.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
 
 namespace SharedEditor = PokeBank::UIModel::SharedPokemonEditor;
 namespace Gen2Native = PokeBank::UIModel::Gen2Native;
+namespace ClassicExit = PokeBank::UIModel::ClassicStagedExit;
 
 struct SharedSurfaceState {
     const TrainerViewScreen* owner = nullptr;
@@ -270,7 +272,9 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             std::string refreshError;
             gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
             legacy.review = false;
-            legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+            // NEW-19: opened from the exit menu, Review closes to the hub, not a stale Actions sheet.
+            legacy.pokemonActions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges()) &&
+                screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
             legacy.active = legacy.pokemonActions;
             legacy.pokemonRow = 0;
             screen.controllerNavigation.reset();
@@ -287,7 +291,9 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (nav & HidNpadButton_Down) legacy.reviewRow = (legacy.reviewRow + 1) % count;
     if (down & HidNpadButton_B) {
         legacy.review = false;
-        legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        // NEW-19: a Review opened from the exit menu returns there.
+        legacy.pokemonActions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges()) &&
+            screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();
@@ -306,6 +312,37 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
     return true;
 }
+
+} // namespace
+
+// NEW-19: the classic exit menu's Review opens THIS Review page (rows, Export, Discard Staged);
+// its B returns to the menu. Export Copy is the same verified export as Review's A.
+bool openReviewFromExit(TrainerViewScreen& screen) {
+    if (!isGSC(screen) || !stagedEditor(screen)) return false;
+    auto& legacy = editorOverlayState(screen);
+    legacy.active = legacy.review = true;
+    legacy.pokemonActions = false;
+    legacy.reviewRow = 0;
+    sharedSurfaceStateFor(screen).reviewDiscard = {};
+    screen.controllerNavigation.reset();
+    return true;
+}
+
+bool exportFromExit(TrainerViewScreen& screen) {
+    auto* editor = isGSC(screen) ? stagedEditor(screen) : nullptr;
+    if (!editor) return false;
+    std::string error;
+    const std::string directory = exportStagedCopy(screen, *editor, error);
+    if (directory.empty()) {
+        screen.postStatus(error.empty() ? "Verified staged export failed" : error, 360);
+        return false;
+    }
+    editorOverlayState(screen).lastExportDirectory = directory;
+    screen.postStatus("Verified staged copy exported: " + directory, 360);
+    return true;
+}
+
+namespace {
 
 void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& legacy = editorOverlayState(screen);

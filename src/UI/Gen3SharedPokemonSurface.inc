@@ -2,6 +2,7 @@
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/ClassicTrainerSessionInput.h"
+#include "UI/ClassicStagedExitMenu.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
@@ -68,6 +69,7 @@ namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
+namespace ClassicExit = PokeBank::UIModel::ClassicStagedExit;
 namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
 // Gen III move facts (RSE and FRLG share one move table and the FRLG group key here).
 constexpr Enums::GameVersion kGen3MoveGame = Enums::GameVersion::FRLG;
@@ -1607,7 +1609,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
 
 // Verified export of the staged Pokemon copy (plus any pending Bag and Trainer edits) into the
 // app-owned exports/gen3 root. The emulator source is never written.
-void exportStagedGen3Copy(TrainerViewScreen& screen) {
+bool exportStagedGen3Copy(TrainerViewScreen& screen) {
     auto* staged = editor(screen);
     const auto* inventory = bridge(screen).stagedInventory();
     const auto* trainer = bridge(screen).stagedTrainer();
@@ -1615,7 +1617,7 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
                     !(inventory && inventory->hasPendingChanges()) &&
                     !(trainer && trainer->hasPendingChanges()))) {
         screen.postStatus("No staged Generation III changes to export", 240);
-        return;
+        return false;
     }
     std::string error;
     const std::string root = PokeBank::Paths::gen3ExportsRoot();
@@ -1623,7 +1625,7 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
         !PokeBank::Paths::isSafeTimestamp(timestamp)) {
         screen.postStatus(error.empty() ? "Could not prepare the Generation III export folder" : error, 420);
-        return;
+        return false;
     }
     Gen3::Gen3ExportRequest request;
     request.rootDirectory = root;
@@ -1639,9 +1641,10 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     const auto result = Gen3::publishVerifiedGen3Export(*staged, request, inventory, trainer);
     if (!result.success) {
         screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
-        return;
+        return false;
     }
     screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+    return true;
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
@@ -1688,7 +1691,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
-        state.actions = true; // Restore the same popup and focused Review command.
+        // NEW-19: a Review opened from the exit menu returns there, not to a stale Actions sheet.
+        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1712,7 +1716,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         }
         refreshPresentation(screen);
         state.review = false;
-        state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
+        // Match Gen IV: Review exits back to Actions, not the box (the hub when opened from exit).
+        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
         screen.controllerNavigation.reset();
         screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
         return true;
@@ -2449,6 +2454,23 @@ bool beginPassiveView(TrainerViewScreen& screen) {
 
 bool ownsFrame(const TrainerViewScreen& screen) noexcept {
     return ownsFrameImpl(screen);
+}
+
+// NEW-19: the classic exit menu's Review opens THIS Review page (rows, Export Copy, Discard All);
+// its B returns to the menu. Export Copy is the same verified export as Review's X.
+bool openReviewFromExit(TrainerViewScreen& screen) {
+    if (!isGen3Gba(screen) || !editor(screen)) return false;
+    auto& state = stateFor(screen);
+    state.actions = state.legality = state.confirmRelease = state.confirmDiscardAll = false;
+    state.review = true;
+    state.reviewScroll = 0;
+    state.reviewTouchScroll.reset();
+    screen.controllerNavigation.reset();
+    return true;
+}
+
+bool exportFromExit(TrainerViewScreen& screen) {
+    return isGen3Gba(screen) && exportStagedGen3Copy(screen);
 }
 
 // R2-BUG-002: the HOME Trainer page stages Name / Money through Gen3StagedTrainerEditor with the
