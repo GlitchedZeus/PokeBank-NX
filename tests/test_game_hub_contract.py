@@ -408,9 +408,27 @@ require('"Source Save Protection", "LOCKED"' in shell_source and
 require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
         "More screen must reserve truthful future-feature modules")
 
-require("handleDefaultQuickOpen" in ui_manager and "backupSaveData" in ui_manager and
+# Round 4 (R2-EMUBACKUP / S05): opening an unchanged installed save makes no backup. Open reads the
+# save into the single Working copy (WorkingCopyRefresh keeps an earlier copy only if it differs);
+# timestamped backups come only from Save Backups -> "Create backup now".
+def ui_fn(name):
+    start = ui_manager.index(name)
+    end = ui_manager.find("\n    }\n", start)
+    return ui_manager[start:end]
+quick_open = ui_fn("bool UIManager::handleDefaultQuickOpen")
+items_open = ui_fn("void UIManager::handleItemsQuickOpen")
+backup_flow = ui_fn("void UIManager::handleBackupSelection")
+require("openWorkingCopy(userUid, titleId, titleName)" in quick_open and "backupSaveData" not in quick_open and
         "SaveSelectScreen::OpenIntent::Backups" in ui_manager,
-        "normal Switch Open must auto-create a protected backup/working copy while Backups stays explicit")
+        "normal Switch Open must read the save into the Working copy without making a backup, while Backups stays explicit")
+require("g_autoBackupEnabled" not in ui_manager and
+        "W::refresh(working, getTimestamp()" in ui_manager and
+        "backupSaveData(userUid, titleId, titleName, false)" in ui_manager,
+        "no Switch open path may create a timestamped backup automatically")
+require("takeCreateBackupRequest()" in backup_flow and
+        "backupSaveData(userUid, titleId, titleName, true)" in backup_flow and
+        ui_manager.count("backupSaveData(userUid, titleId, titleName, true)") == 1,
+        "a timestamped Switch backup is made only by the explicit Create backup now row")
 require("reportOpenFailure" in header and
         "selectScreen.reportOpenFailure(error);" in ui_manager and
         "bool UIManager::handleDefaultQuickOpen" in ui_manager,
@@ -423,8 +441,8 @@ require("Overlay::OpenFailure" in source and
         "failed native Open must show an explicit safe modal while SC details stay in diagnostics")
 require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
         "Current Game -> Backups must be the only normal route into backup history")
-require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
-        "Switch Backpack quick-open must create the normal protected backup before Items")
+require("openWorkingCopy(userUid, titleId, titleName)" in items_open and "backupSaveData" not in items_open,
+        "Switch Backpack quick-open reads the save through the Working copy, never a new backup")
 require("if (kDown & HidNpadButton_Plus) {\n        overlay = Overlay::Settings;" not in shell_source,
         "secondary menus must not expose a Plus-to-Settings shortcut")
 home_menu = (ROOT / "src/UI/Panels/HomeMenuPanel.cpp").read_text(encoding="utf-8")

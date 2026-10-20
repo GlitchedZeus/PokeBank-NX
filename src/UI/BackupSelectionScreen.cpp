@@ -62,12 +62,18 @@ namespace UI {
 
         BackupInfo newBackupOption;
         newBackupOption.timestamp = "";
+        // Round 4: browsing never makes a backup (single Working copy); backups are made only by
+        // the explicit "Create backup now" row below.
         newBackupOption.displayName = namespaceReady
-            ? (g_autoBackupEnabled
-                ? "Browse installed source (read-only / new backup)"
-                : "Browse installed source (read-only / working copy)")
+            ? "Browse current save (read-only working copy)"
             : "Backup namespace unavailable (profile/game identity required)";
         backups.push_back(std::move(newBackupOption));
+        if (namespaceReady) {
+            BackupInfo create;
+            create.displayName = "Create backup now (copy of the installed save)";
+            create.createAction = true;
+            backups.push_back(std::move(create));
+        }
 
         if (namespaceReady) {
             for (const auto& name : listBackupDirectories(gameDirectory.c_str())) {
@@ -254,7 +260,7 @@ namespace UI {
             // Modal entry freezes the underlying list. Never suspend a coasting scroll and then
             // resume that stale momentum after the confirmation closes.
             if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
-                !backups[selectedIndex].legacyUnscoped) {
+                !backups[selectedIndex].legacyUnscoped && !backups[selectedIndex].createAction) {
                 backupScroll.stop();
                 showDeleteConfirmation = true;
                 deleteConfirmationIndex = selectedIndex;
@@ -287,6 +293,8 @@ namespace UI {
                 }
                 createNewBackup = true;
                 backupSelected = true;
+            } else if (backups[selectedIndex].createAction) {
+                createBackupRequested = true;
             } else {
                 const auto& chosen = backups[selectedIndex];
                 if (chosen.legacyUnscoped) {
@@ -321,6 +329,9 @@ namespace UI {
         if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
             backups[selectedIndex].legacyUnscoped) {
             drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Ownership Info"}, {"B", "Back"}});
+        } else if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
+                   backups[selectedIndex].createAction) {
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Create backup"}, {"B", "Back"}});
         } else if (selectedIndex > 0) {
             // The shared green-A Select / red-B Cancel picker footer (SharedEditorChrome).
             SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false, .xLabel = "Delete"});
@@ -358,7 +369,7 @@ namespace UI {
             const bool selected = (i == selectedIndex);
             // The first row is the "create new backup" action — accent it to stand out.
             drawHomeTile(fb, LIST_X, itemY, LIST_W, LIST_ROW_H - 10,
-                         backups[i].displayName, selected, (i == 0));
+                         backups[i].displayName, selected, (i == 0 || backups[i].createAction));
         }
         fb.clearClip();
         // Shared draggable scrollbar; follows the exact residual pixel offset, not whole rows.
@@ -393,7 +404,8 @@ namespace UI {
     }
 
     void BackupSelectionScreen::deleteBackup(int index) {
-        if (index <= 0 || index >= (int)backups.size() || backups[index].legacyUnscoped) {
+        if (index <= 0 || index >= (int)backups.size() || backups[index].legacyUnscoped ||
+            backups[index].createAction) {
             return;  // Action row, invalid entry, or ownership-unknown legacy evidence.
         }
 
