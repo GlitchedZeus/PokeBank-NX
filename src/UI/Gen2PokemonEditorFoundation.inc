@@ -14,6 +14,7 @@
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/Gen2HeldItemPicker.h"
 #include "UI/ItemPickerSort.h"
+#include "UI/ItemPickerSearch.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -65,6 +66,7 @@ struct State : Rules::Session {
     std::vector<uint8_t> itemChoices;
     std::vector<uint8_t> itemNativeChoices;
     ItemPickerSort::Mode itemSort = ItemPickerSort::Mode::Native;
+    std::string itemQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
     int itemChoiceIndex = 0;
     TouchScrollState itemScroll;
     TouchPickerViewport itemViewport;
@@ -436,6 +438,7 @@ void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
     state.itemNativeChoices = state.itemChoices;
     state.itemSort = ItemPickerSort::Mode::Native;
+    state.itemQuery.clear();
     state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemScroll.reset();
     state.itemViewport.reset();
@@ -589,6 +592,7 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         state.itemChoiceIndex = touchTap - 3000;
         down |= HidNpadButton_A;
     }
+    const auto heldItemName = [](uint8_t id) { return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id); };
     if (down & HidNpadButton_X) {
         state.itemSort = ItemPickerSort::next(state.itemSort);
         state.itemChoiceIndex = ItemPickerSort::reorder(
@@ -596,9 +600,33 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
             state.itemChoiceIndex, [](uint8_t id) {
                 return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id);
             });
+        // NEW-06: a re-sort keeps the active search.
+        state.itemChoiceIndex = std::max(0, ItemPickerSearch::narrow(state.itemChoices, state.itemQuery,
+                                                                     state.itemChoiceIndex, heldItemName));
         state.itemScroll.stop();
         state.itemViewport.reset();
-        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+        state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()), Model::rows, Model::columns);
+        return true;
+    }
+    if (down & HidNpadButton_Minus) {
+        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
+        // and the current sort still applies. Cancel restores the previous search; a query with
+        // no match keeps the previous list (never an empty picker).
+        const std::string previous = state.itemQuery;
+        const auto refilter = [&](const std::string& query) {
+            const int index = ItemPickerSearch::apply(state.itemChoices, state.itemNativeChoices,
+                                                      state.itemSort, query, state.itemChoiceIndex, heldItemName);
+            if (index >= 0) { state.itemQuery = query; state.itemChoiceIndex = index; }
+            state.itemViewport.reset();
+            state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()),
+                                      Model::rows, Model::columns);
+        };
+        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.itemQuery, 20, refilter);
+        refilter(result.accepted ? result.text : previous);
+        if (result.accepted && state.itemQuery != result.text)
+            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
+        state.itemScroll.stop();
+        screen.controllerNavigation.reset();
         return true;
     }
     if (nav & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right) ||
@@ -918,6 +946,12 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     fb.drawText(x + w - 250, y + 55,
                 std::string("Sort: ") + ItemPickerSort::label(state.itemSort),
                 Colors::TextDim, TextStyle::Caption);
+    if (const std::string tag = ItemPickerSearch::tag(state.itemQuery); !tag.empty()) {
+        // NEW-06: the active search, top right on the title line.
+        int tw = 0, th = 0;
+        fb.measureText(tag, tw, th, TextStyle::Caption);
+        fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+    }
     // R2-BUG-005: a focused Gen II TM/HM shows its move (the GSC machine table is shared by
     // Gold, Silver and Crystal; ClassicInventoryCatalog, pret/pokecrystal).
     if (state.itemChoiceIndex >= 0 && state.itemChoiceIndex < static_cast<int>(state.itemChoices.size()))
@@ -944,6 +978,7 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec footer;
     footer.gridPaging = true;
     footer.xLabel = "Sort";
+    footer.minusLabel = "Search";   // NEW-06
     UI::SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 

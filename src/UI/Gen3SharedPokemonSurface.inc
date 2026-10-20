@@ -34,6 +34,7 @@
 #include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
+#include "UI/ItemPickerSearch.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedBoxedRows.h"
@@ -123,6 +124,7 @@ struct State {
     std::vector<uint16_t> pickerValues;
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
+    std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
     std::vector<Encounter::EncounterProvenanceChoice> encounterChoices;
     std::optional<Encounter::EncounterProvenanceChoice> selectedEncounter;
     int actionRow = 0;
@@ -720,6 +722,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     if (target == PickerTarget::HeldItem || target == PickerTarget::Move) {
         state.pickerNativeValues = state.pickerValues;
         state.pickerSort = ItemPickerSort::Mode::Native;
+        state.pickerQuery.clear();
     }
     state.pickerRow = 0;
     for (int i = 0; i < static_cast<int>(state.pickerValues.size()); ++i) {
@@ -1099,6 +1102,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         return true;
     }
 
+    const auto heldItemName = [&](uint16_t id) { return pickerValueLabel(state, id); };
     if ((gridPicker || state.pickerTarget == PickerTarget::Move) && (down & HidNpadButton_X)) {
         state.pickerSort = ItemPickerSort::next(state.pickerSort);
         state.pickerRow = ItemPickerSort::reorder(
@@ -1109,9 +1113,32 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
                     return id == 0 ? std::string() : std::string(Names::getMoveName(id));
                 return pickerValueLabel(state, id);
             });
+        if (gridPicker)   // NEW-06: a re-sort keeps the active search
+            state.pickerRow = std::max(0, ItemPickerSearch::narrow(state.pickerValues, state.pickerQuery,
+                                                                   state.pickerRow, heldItemName));
         state.pickerScroll.stop();
         state.pickerViewport.reset();
-        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
+        return true;
+    }
+    if (gridPicker && (down & HidNpadButton_Minus)) {
+        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
+        // and the current sort still applies. Cancel restores the previous search; a query with
+        // no match keeps the previous list (never an empty picker).
+        const std::string previous = state.pickerQuery;
+        const auto refilter = [&](const std::string& query) {
+            const int row = ItemPickerSearch::apply(state.pickerValues, state.pickerNativeValues,
+                                                    state.pickerSort, query, state.pickerRow, heldItemName);
+            if (row >= 0) { state.pickerQuery = query; state.pickerRow = row; }
+            state.pickerViewport.reset();
+            state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
+        };
+        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.pickerQuery, 20, refilter);
+        refilter(result.accepted ? result.text : previous);
+        if (result.accepted && state.pickerQuery != result.text)
+            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
+        state.pickerScroll.stop();
+        screen.controllerNavigation.reset();
         return true;
     }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
@@ -1842,6 +1869,12 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
+        if (const std::string tag = ItemPickerSearch::tag(state.pickerQuery); !tag.empty()) {
+            // NEW-06: the active search, top right on the title line.
+            int tw = 0, th = 0;
+            fb.measureText(tag, tw, th, TextStyle::Caption);
+            fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+        }
         // R2-BUG-005: a focused Gen III TM/HM shows its move. TM01-50 / HM01-08 teach the same
         // moves in Ruby/Sapphire/Emerald and FireRed/LeafGreen (pret pokeemerald / pokefirered),
         // so the FireRed catalog row is exact for every Gen III game.
@@ -1879,6 +1912,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;
         footer.xLabel = "Sort";
+        footer.minusLabel = "Search";   // NEW-06
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
