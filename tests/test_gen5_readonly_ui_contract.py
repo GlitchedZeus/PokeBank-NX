@@ -882,8 +882,15 @@ require(surface, "state.requestExport(staged)",
         "accountUidHex(screen.userUid)",
         "request.observedSourceBytes=observed;",
         "Export Verified Generation V Working Copy?",
-        "Export Working Copy",
+        "drawNavBar(fb,SharedReviewChrome::footer(true));",
         "original SAV5 unchanged")
+# AUD-01: the Gen V Review footer is the shared Review footer; its exact words stay pinned here.
+require(read("include/UI/SharedReviewChrome.h"),
+        'kExportLabel = "Export Copy"', 'kDiscardLabel = "Discard All Staged"',
+        'if (paged) hints.push_back({"L/R", "Review Pages"});',
+        'hints.push_back({"X", kExportLabel});',
+        'hints.push_back({"Y", kDiscardLabel});',
+        'hints.push_back({"B", "Back"});')
 # Prohibit accidental write routing through the unguarded Trainer surface.
 assert "saveChanges(" not in surface and "saveToSource(" not in surface
 assert "injectSave(" not in surface and "openItemsShortcut(" not in surface

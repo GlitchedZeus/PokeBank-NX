@@ -49,6 +49,8 @@ int main() {
     check(chrome.find("\"Original \" + provider + \" source: HARD READ ONLY\"") != std::string::npos,
           "one source-protection line");
     check(chrome.find("if (paged) hints.push_back({\"L/R\", \"Review Pages\"});") != std::string::npos &&
+              chrome.find("hints.push_back({\"X\", kExportLabel});") != std::string::npos &&
+              chrome.find("hints.push_back({\"Y\", kDiscardLabel});") != std::string::npos &&
               chrome.find("hints.push_back({\"B\", \"Back\"});") != std::string::npos,
           "footer: [L/R Review Pages] X Export Copy / Y Discard All Staged / B Back");
 
