@@ -4,7 +4,9 @@
 Raw verdicts are never rewritten. Newly added upstream egg-chain rejections need
 the newer oracle's exact complaint AND no independent native witness. Clean
 differences against the newer oracle require a constructive pret-only witness.
-Unverified gift ancestry stays separately counted as UNCERTAIN.
+Unverified gift ancestry stays separately counted as UNCERTAIN. The separately
+reviewed unhatched Smoochum TM donor invariant is documented in CI_SMOOCHUM.md;
+it is not a generic negative-search exception.
 """
 import argparse
 import collections
@@ -32,6 +34,11 @@ def classify(record, oracle, nx, current, context, native, proof):
         if not native.certifies(record, context):
             return "uncertain", "unauthenticated-parent-gift"
     if (oracle[0], nx[0]) == ("VALID", "INVALID"):
+        # Reviewed source invariant; a generic negative search is insufficient.
+        # Keep every disagreement in the raw counts before this adjudication.
+        if (compare.pokebank_problems(nx[1]) == [CHAIN] and
+                native.smoochum_egg_blizzard_conflict(record)):
+            return "deliberate", "native-unhatched-smoochum-blizzard-donor"
         if (current[0] == "INVALID" and
                 all(re.fullmatch(r"Egg:EggMoveCombination|Move[1-4]:(?:Unobtainable(?:Expect)?|None)", issue) for issue in current[1].split(";",1)[-1].split() if not issue.startswith("~")) and
                 current[1].split(";",1)[-1].strip() and
@@ -63,7 +70,7 @@ def main():
         if rid in proof or rid not in records:
             raise compare.ProtocolError("duplicate or unknown proof id " + rid)
         proof[rid] = line
-    native = NativeChain(args.pokered, args.pokecrystal)
+    native = NativeChain(args.pokered, args.pokecrystal, args.pkhex)
     failures = []
     for label, oracle in (("pinned", pinned), ("current", current)):
         raw, audited = collections.Counter(), collections.Counter()

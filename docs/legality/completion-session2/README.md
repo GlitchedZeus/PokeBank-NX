@@ -40,6 +40,8 @@ The newer reference still has92 Gen IV and53 Gen V raw clean disagreements, incl
 
 The38 original GB differences remain in all raw denominators. The GB dual-reference audit accounts for every discrepancy on the retained/final fresh sets, using unchanged old predicates plus narrowly checked newer inherited-move rules or a constructive pret-only witness. It rejects unrelated complaints and rejects a new Invalid when an independent native construction exists. It never rewrites either oracle’s verdict.
 
+The first published-head GB CI also found one additional raw Valid→Invalid result: an unhatched Smoochum with Meditate and Blizzard. The native single-donor/sex/TM invariant supports the stricter result; the newer oracle omits inherited TM moves from its joint check. `CI_SMOOCHUM.md` retains the exact artifact hash, source review, two clean positive controls and guarded differential adjudication. It is additional CI evidence and does not change these frozen retained-corpus rates. Production's constraint is preserved.
+
 ## Evidence and remaining scope
 
 `OBSERVED_METRICS.json` contains exact numerators, denominators, file hashes, per-title/origin rows and fresh-set measurements. `DATASETS.json` identifies every retained/fresh input. All355997 original record evaluations were replayed; final declared seeds add163176 records, including correlated adversarial mutations. The development50k seed8174003 was retired before final817500x seeds were declared. Full byte streams, warning streams, proofs, mismatches and logs are packaged in the workspace evidence archive; no record is silently excluded. Gen I/II source-save title identity is unavailable in these corpora, so per-title accuracy is unmeasured.

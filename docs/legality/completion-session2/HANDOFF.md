@@ -2,6 +2,8 @@
 
 This is a tested forward engineering checkpoint, not a 100% legality certificate. The existing680 title/area inventory is not an independently audited semantic denominator. Historical-distribution and production-deployment percentages remain unmeasured.
 
+`CI_SMOOCHUM.md` records the additional first-push CI finding and source adjudication: an unhatched Smoochum cannot receive Blizzard from the represented native/known-gift donors. The exact raw disagreement and positive controls are retained. The follow-up preserves production's stricter verdict and adds a narrowly guarded source predicate; it does not certify an exhaustive historical event catalog. Final CI results are captured outside the frozen evidence archive after publication.
+
 | Category / current implementation | Exact missing condition and evidence | Code to extend | Reproduction / next action |
 |---|---|---|---|
 | Gen II joint ancestry: finite complete saturation of the currently represented sources; no ancestry-depth cutoff | Full integration of fixed-event parent DV/gender correlations and authenticated event availability; native slot order and child encounter/DVs are separate existing checks | `FiniteBreedingChain.h`, `GBLegality.cpp::breedingChain2/evaluate`, `GBLegalityData.h` gift records | `BREEDING12.json`:8 Invalid,2 native constructions,2 Korean/event histories Incomplete. Authenticate PCNY Chikorita Petal Dance and Lapras Future Sight, plus the actual Korean-Western transfer route. Do not convert unsupported history to Invalid. |

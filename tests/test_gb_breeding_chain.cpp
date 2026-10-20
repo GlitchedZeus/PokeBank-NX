@@ -22,6 +22,15 @@ int main() {
     assert(count==12);
     std::ifstream p0("tests/fixtures/gen15_session2/false_clean38.txt");assert(p0);count=0;
     while(std::getline(p0,line)){const auto r=GBFixture::analyze(line);assert(r.report.verdict()==V::NoProblemsFound);++count;}assert(count==38);
+    // CI seed 2: a still-unhatched Smoochum cannot receive Blizzard from any
+    // native compatible father. Hatched TM use and an obtainable inherited TM
+    // are valid alternatives; do not reject those with the egg constraint.
+    std::ifstream ci("tests/fixtures/gen15_session2/ci_smoochum.txt");assert(ci);count=0;
+    while(std::getline(ci,line)) {
+        const auto r=GBFixture::analyze(line);
+        assert(r.report.verdict()==(count==0?V::Invalid:V::NoProblemsFound));++count;
+    }
+    assert(count==3);
     // Cartridge-backed alternate ancestry: Gen I TM first, Gen II level move
     // afterwards, then one compatible father passes BOTH moves in one egg.
     auto proof=proveBreeding2(1,{130,219,0,0},false,false,Language::International);

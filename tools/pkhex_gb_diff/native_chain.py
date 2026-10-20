@@ -14,7 +14,13 @@ from verify_gb_legality_data import Pret, consts
 
 
 class NativeChain:
-    def __init__(self, red, crystal):
+    def __init__(self, red, crystal, pkhex=None):
+        self.catalog = []
+        if pkhex is not None:
+            for name, stride in (("event1.pkl", 8), ("event2.pkl", 12)):
+                data = (pkhex / "PKHeX.Core/Resources/legality/mgdb" / name).read_bytes()
+                assert len(data) % stride == 0
+                self.catalog.extend((data[i], set(data[i + 2:i + 6])) for i in range(0, len(data), stride))
         self.dex = consts(crystal / "constants/pokemon_constants.asm")
         self.moves = consts(crystal / "constants/move_constants.asm")
         self.base, self.level, self.egg, self.evos = {}, {}, {}, {}
@@ -105,6 +111,41 @@ class NativeChain:
         moves = {normalized(name): move for name, move in self.moves.items()}
         stored = record.body[2:6] if record.format == 2 else record.body[8:12]
         return species.get(normalized(match[1])) == record.species and moves.get(normalized(match[2])) in stored
+
+    def smoochum_egg_blizzard_conflict(self, record):
+        """A reviewed native no-entry invariant, not a generic failed search.
+
+        See completion-session2/CI_SMOOCHUM.md for the game script, Ditto/sex
+        rule, positive controls and catalog/authenticity limits. No male
+        HumanShape donor or its pre-evolutions can acquire Blizzard natively,
+        by an old machine, or by inheritance. Known gift seeds are checked
+        separately; a newly catalogued exception disables this audit.
+        Hatched Smoochum can receive the TM itself and never uses this rule.
+        """
+        if record.format != 2 or not record.egg or record.species != self.dex["SMOOCHUM"] or record.korean or not self.catalog:
+            return False
+        blizzard = self.moves["BLIZZARD"]
+        if blizzard not in record.body[2:6]:
+            return False
+        child = record.species
+        if any(move == blizzard and level <= 5 for level, move in self.level[child]):
+            return False
+        # A female Jynx paired with Ditto takes the Ditto moves, not her moves
+        # (GetHeritableMoves); this maternal route cannot supply Blizzard.
+        if self.base[self.dex["JYNX"]][0] != "GENDER_F100" or self.dex["JYNX"] in self.fathers[child]:
+            return False
+        guarded = {child, self.dex["JYNX"], self.dex["DITTO"]}
+        for father in self.fathers[child]:
+            species = father
+            while True:
+                guarded.add(species)
+                if blizzard in (self.base[species][2] | {m for _, m in self.level[species]} |
+                                self.old.get(species, set()) | self.egg.get(species, set())):
+                    return False
+                if species not in self.previous:
+                    break
+                species = self.previous[species]
+        return not any(species in guarded and blizzard in moves for species, moves in self.catalog)
 
     def certifies(self, record, ctx):
         if record.format != 2 or record.korean:
