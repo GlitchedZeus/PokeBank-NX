@@ -811,9 +811,9 @@ namespace UI {
             drawGlyphHelpLine(fb, x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
             ly += 38;
         }
-        // Both close every help window (TrainerView, AppShell); the footer says so, matching rows
-        // like "-   Close help" (R2-BUG-013: modal text and footer agree).
-        drawNavBar(fb, {{"-", "Close Help"}, {"B", "Close Help"}});
+        // B and - both close every help window (TrainerView, AppShell). NEW-01: the footer names
+        // B once; the redundant "- Close Help" badge is gone (- still closes it).
+        drawNavBar(fb, {{"B", "Close Help"}});
     }
 
     // A HOME-style selectable list tile. Selection never tints the tile: the normal dark surface

@@ -386,7 +386,8 @@ namespace UI {
             if (!note.empty())
                 drawGlyphSentence(fb, x + 34, y + h - 38, note, Colors::TextMuted, TextStyle::Caption);
             // B and - both close help (update: Overlay::Help); rows describe the screen underneath.
-            drawNavBar(fb, {{"-", "Close Help"}, {"B", "Close Help"}});
+            // NEW-01: the footer names B once (the redundant "- Close Help" badge is gone).
+            drawNavBar(fb, {{"B", "Close Help"}});
         }
     }
 
