@@ -1675,33 +1675,37 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     # ---------- CG35: AUD-01 -- Gen V Review matches Gen IV Review ----------
     r = Result("CG35-gen5-review-matches-gen4",
-               "Gen IV and Gen V Review show the same heading, footer actions and Discard-all confirmation")
-    g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
-    def review_text(f, fns):
-        heading, footer, confirm = set(), set(), set()
-        for fn in fns:
-            for name, ln, body in function_bodies(f.code, re.compile("^" + fn + "$")):
-                for lit in re.findall(r'"([^"\n]*Review Pending Changes[^"\n]*)"', body): heading.add(lit)
-                for nb in re.finditer(r"drawNavBar\s*\(\s*fb\s*,\s*\{([\s\S]*?)\}\s*\)\s*;", body):
-                    footer |= set(re.findall(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', nb.group(1)))
-                for lit in re.findall(r'"([^"\n]*[Dd]iscard [Aa]ll[^"\n]*\?)"', body): confirm.add(lit.lower() and lit)
-        return heading, footer, confirm
-    h4, f4, _ = review_text(g4, ("drawReview",))
-    h5, f5, _ = review_text(g5, ("drawReview",))
-    def pairs(text): return set(re.findall(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', text))
-    c4 = set()
-    for _, _, b in function_bodies(g4.code, re.compile(r"^drawDiscardAllConfirm$")):
-        c4 = {(t.lower(), frozenset(pairs(nb))) for t in re.findall(r'"(Discard all[^"]*\?)"', b, re.I)
-              for nb in re.findall(r"drawNavBar\s*\(\s*fb\s*,\s*\{([\s\S]*?)\}\s*\)\s*;", b)}
-    c5 = {(m.group(1).lower(), frozenset(pairs(m.group(2)))) for m in re.finditer(
-          r'drawDecision\s*\(\s*screen\s*,\s*fb\s*,\s*"(Discard All[^"]*\?)"[\s\S]*?(\{\{[\s\S]*?\}\})\s*\)\s*;', g5.code, re.I)}
-    if h4 != h5: r.violations.append(f"Review heading: Gen IV {sorted(h4)} vs Gen V {sorted(h5)}")
-    act = lambda f: {(g, l) for g, l in f if g in ("A", "B", "X", "Y", "+")}  # actions, not paging hints
-    f4, f5 = act(f4), act(f5)
-    if f4 != f5: r.violations.append(f"Review footer: Gen IV {sorted(f4)} vs Gen V {sorted(f5)}")
-    if c4 != c5:
-        fmt = lambda c: [(t, sorted(p)) for t, p in c]
-        r.violations.append(f"Discard-all confirmation: Gen IV {fmt(c4)} vs Gen V {fmt(c5)}")
+               "Gen IV and Gen V Review show the same heading, footer actions and Discard-all confirmation "
+               "(AUD-01: converged through the shared review chrome, Gen V's S04 workflow kept)")
+    TITLE = r'SharedReviewChrome::kTitle\b|"Review Pending Changes"'
+    DISCARD_TITLE = r'SharedReviewChrome::kDiscardTitle\b|"Discard all staged changes\?"'
+    discard_choices = {}
+    for gname, rel in (("IV", "src/UI/Gen4SharedPokemonSurface.inc"), ("V", "src/UI/Gen5SharedReadOnlySurface.inc")):
+        f = src(rel)
+        if not f:
+            r.violations.append(f"{rel}: missing")
+            continue
+        rev = [b for _, _, b in function_bodies(f.code, re.compile(r"^drawReview$"))]
+        if not rev:
+            r.violations.append(f"{rel}: drawReview() missing")
+        for body in rev:
+            heads = re.findall(r'drawText\s*\([^;]*?(' + TITLE + r'|"Review Pending Changes[^"]*")', body)
+            if not any(re.fullmatch(TITLE, h) for h in heads):
+                r.violations.append(f"Gen {gname} Review heading is not the shared 'Review Pending Changes' "
+                                    f"({heads or 'none'})")
+            if not re.search(r"\bSharedReviewChrome::footer\s*\(", body):
+                r.violations.append(f"Gen {gname} Review footer is not SharedReviewChrome::footer() "
+                                    "(L/R Review Pages, X Export Copy, Y Discard All Staged, B Back)")
+        m = re.search(DISCARD_TITLE, f.code)
+        if not m:
+            r.violations.append(f"Gen {gname}: Discard-all confirmation does not use the shared title "
+                                "'Discard all staged changes?'")
+            continue
+        window = f.code[m.start():m.start() + 900]
+        discard_choices[gname] = frozenset(re.findall(r'\{\s*"([ABXY+])"\s*,\s*"([^"]+)"\s*\}', window))
+    if len(discard_choices) == 2 and discard_choices["IV"] != discard_choices["V"]:
+        r.violations.append(f"Discard-all choices differ: Gen IV {sorted(discard_choices['IV'])} vs "
+                            f"Gen V {sorted(discard_choices['V'])}")
     res.append(r)
 
     # Round 4 P3 (owner round 3 FAIL, UI polish): CG36-CG47.
