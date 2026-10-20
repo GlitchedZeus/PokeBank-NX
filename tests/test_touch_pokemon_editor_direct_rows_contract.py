@@ -233,7 +233,7 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     for expected in (
         "x + 24, viewportTop, w - 48, visible * moveLayout.rowStep",
         "gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight",
-        "x + 22, viewportTop - 4, rowW, visible * rowStep",   # NEW-08: rowW = w - 44 minus the scrollbar gutter
+        "x + 22, viewportTop - 4, rowW, visible * rowStep",   # NEW-08: rowW = w - 72 (scrollbar gutter)
     ):
         assert expected in src, f"{rel}: picker hitbox viewport mismatch: {expected}"
 

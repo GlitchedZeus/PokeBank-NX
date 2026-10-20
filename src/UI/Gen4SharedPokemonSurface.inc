@@ -517,7 +517,7 @@ bool pidLinkedRowEditable(const State& state, int row,
 std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
                         const Pokemon::Pokemon4ReadOnlyView& view, int row) {
     switch (row) {
-        case 0: return std::to_string(p.species()) + " - " + Names::getSpeciesName(p.species());
+        case 0: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());   // NEW-11: name first
         case 1: {
             const auto value = Utils::utf16ToUtf8(p.nickname());
             return value.empty() ? "(none)" : value;
@@ -1236,8 +1236,8 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
             state.session.working->abilityForSlot(static_cast<uint8_t>(value));
         // NEW-13: the ability's name and short effect, not "Slot 1 / Slot 2".
         return abilityId == 0
-            ? "Ability Slot " + std::to_string(value + 1)
-            : UI::AbilityEffects::row(Trainer::getAbilityName(abilityId), abilityId, 4);
+            ? std::string("Unknown ability")
+            : UI::AbilityEffects::abilityEffectRow(Trainer::getAbilityName(abilityId), abilityId, 4);
     }
     return {};
 }

@@ -227,7 +227,7 @@ constexpr bool drawback(uint16_t ability) noexcept {
 // The picker row: "<name>  |  <effect>" (the shared value list draws the effect on the right,
 // as Met Location draws method / level). `name` may carry a slot note such as " (Hidden)".
 inline constexpr std::string_view kSplit = "  |  ";
-inline std::string row(std::string_view name, uint16_t ability, int generation) {
+inline std::string abilityEffectRow(std::string_view name, uint16_t ability, int generation) {
     std::string out(name);
     const auto text = effect(ability, generation);
     if (!text.empty()) out.append(kSplit).append(text);

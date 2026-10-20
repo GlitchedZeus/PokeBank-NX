@@ -458,7 +458,7 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
     }
 
     const std::array<std::pair<std::string, std::string>, 5> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},   // NEW-11: name first
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
         {"OT", p.originalTrainer},

@@ -494,8 +494,9 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 // history toggles Male / Female and keeps every other caught bit; a pending value
                 // stays editor-only (applyFieldSelector never fabricates caught history).
                 namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
+                state.crystalOtGender = Selector::nextOtGender(state.crystalOtGender, caught.present);
                 applyFieldSelector(screen, state, Selector::Field::OtGender,
-                    static_cast<uint8_t>(Selector::nextOtGender(state.crystalOtGender, caught.present)));
+                                   static_cast<uint8_t>(state.crystalOtGender));
                 return true;
             }
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
@@ -861,7 +862,7 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         }
     }
     std::vector<std::pair<std::string, std::string>> rows{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},   // NEW-11: name first
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"Experience", std::to_string(p.experience)},

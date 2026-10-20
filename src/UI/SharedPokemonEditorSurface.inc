@@ -23,6 +23,7 @@
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
+#include "UI/SharedSearchInput.h"
 #include "UI/AbilityEffects.h"
 #include "Integration/Encounter/Gen45Encounters.h"
 #include "UI/MovePickerPresentation.h"
@@ -819,11 +820,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
-        if (const std::string tag = ItemPickerSearch::tag(state.pickerQuery); !tag.empty()) {
-            // NEW-06: the active search, top right on the title line.
-            int tw = 0, th = 0;
-            fb.measureText(tag, tw, th, TextStyle::Caption);
-            fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+        if (!state.pickerQuery.empty()) {
+            // NEW-06: the active search on the title line, drawn by the shared search field.
+            SharedSearchInput::State field;
+            field.query = state.pickerQuery;
+            SharedSearchInput::drawField(fb, x + w / 2, y + 26, field, "Search:", "- to change");
         }
         // R2-BUG-005: a focused Gen IV / V TM/HM shows its move from this game's machine table.
         if (state.pickerRow >= 0 && state.pickerRow < count)
@@ -877,10 +878,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
     const int last = std::min(count, first + visible);
     const int rowStep = naturePicker ? natureLayout.rowStep : 42;
     const int viewportTop = y + 90;
-    // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
-    // (rows, clip, touch boxes and the boxed highlight all use rowW).
-    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + 10 : 0;
-    const int rowW = w - 44 - barGutter;
+    // NEW-08: the rows stop a full touch slop short of the scrollbar, so the bar has its own gutter
+    // (rows end at x + w - 50, the track starts at x + w - 32; rows, clip, touch boxes and the boxed
+    // highlight all use rowW).
+    const int rowW = w - 72;
+    static_assert(72 - 22 >= 32 + SharedScrollbar::kTouchSlop, "value-list rows clear the scrollbar's touch band");
     fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
         const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
@@ -918,7 +920,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             }
         } else if (state.pickerTarget == PickerTarget::Ball) {
             // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
-            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, rowW, 38};
+            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, w - 72, 38};
             const auto sprite = PokeBank::UIModel::SharedMenuGeometry::spriteRect(valueList, cell);
             ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,
                                     Enums::getBallName(static_cast<uint8_t>(value)));
@@ -929,7 +931,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         }
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + 10, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 32, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;

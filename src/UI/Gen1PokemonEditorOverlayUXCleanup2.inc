@@ -844,7 +844,7 @@ std::string ux2MainRowValue(TrainerViewScreen& screen, int row, bool add, const 
     auto* e = editor(screen);
     if (!e) return {};
     const auto& d = state.draft;
-    if (row == 0) return speciesCompact(add ? d.species : p->species);
+    if (row == 0) return speciesHeading(add ? d.species : p->species);   // NEW-11: name first
     if (row == 1) return add ? (d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname) : p->nickname;
     if (row == 2) return add ? ("Lv " + std::to_string(d.level) + "  •  EXP " + std::to_string(draftExperience(d)))
                               : ("Lv " + std::to_string(p->level) + "  •  EXP " + std::to_string(p->experience));

@@ -332,7 +332,7 @@ struct Gen5Editor {
                                    const Record& p, int row) {
         using namespace Fields;
         switch (row) {
-            case Species: return std::to_string(p.species()) + " - " + Names::getSpeciesName(p.species());
+            case Species: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());   // NEW-11: name first
             case Nickname: case OriginalTrainer: {
                 const auto name = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), row == Nickname);
                 return name ? *name : std::string("(native glyphs)");
@@ -615,7 +615,7 @@ struct Gen5Editor {
                     ? PokeVault::Integration::Gen5::abilityForSlot5(*personal.info, value) : 0;
                 // NEW-13: name and short effect; only the Hidden slot keeps a note.
                 const std::string name = std::string(Trainer::getAbilityName(ability)) + (value == 2 ? " (Hidden)" : "");
-                return UI::AbilityEffects::row(name, ability, 5);
+                return UI::AbilityEffects::abilityEffectRow(name, ability, 5);
             }
             default: return {};
         }

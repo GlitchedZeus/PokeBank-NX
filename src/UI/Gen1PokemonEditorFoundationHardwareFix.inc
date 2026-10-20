@@ -210,7 +210,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     const std::array<std::string, 6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
     const std::array<std::string, 6> leftValues{
-        speciesCompact(species),
+        speciesHeading(species),   // NEW-11: name first
         name,
         std::to_string(level),
         std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),

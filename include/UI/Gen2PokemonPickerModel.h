@@ -142,17 +142,18 @@ struct LocationPickerGeometry {
     int visible = 1;
     static constexpr int rowStep = 44;
     static constexpr int rowHeight = 40;
-    // NEW-10 (Round 3 L02 note): title + caption end at 72 px, rows start at 80; 16 px under them.
+    // NEW-10 (Round 3 L02 note): title + caption end at 72 px, rows start at 80; the last row
+    // (40 px in its 44 px step) ends 18 px above the frame edge, the Move chooser's margin.
     static constexpr int headerH = 80;
-    static constexpr int padBottom = 16;
+    static constexpr int padBottom = 14;
 };
 
 constexpr LocationPickerGeometry locationPickerGeometry(int count, int screenW = 1280, int screenH = 720,
                                                         int footerH = 56) noexcept {
     LocationPickerGeometry g{};
     g.visible = std::clamp(count, 1, 9);
-    g.height = LocationPickerGeometry::headerH + g.visible * LocationPickerGeometry::rowStep +
-               LocationPickerGeometry::padBottom;
+    g.height = 80 + g.visible * LocationPickerGeometry::rowStep + 14;   // headerH + rows + padBottom
+    static_assert(LocationPickerGeometry::headerH == 80 && LocationPickerGeometry::padBottom == 14);
     g.x = (screenW - g.width) / 2;
     g.y = (screenH - footerH - g.height) / 2;
     g.listX = g.x + 20;

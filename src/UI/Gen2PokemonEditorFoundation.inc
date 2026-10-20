@@ -15,6 +15,7 @@
 #include "UI/Gen2HeldItemPicker.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
+#include "UI/SharedSearchInput.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -803,7 +804,7 @@ void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, 
                 TextStyle::Heading);
     const auto& p = state.working;
     const std::array<std::pair<std::string, std::string>, 8> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},   // NEW-11: name first
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"EXP", std::to_string(p.experience)},
@@ -948,11 +949,11 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     fb.drawText(x + w - 250, y + 55,
                 std::string("Sort: ") + ItemPickerSort::label(state.itemSort),
                 Colors::TextDim, TextStyle::Caption);
-    if (const std::string tag = ItemPickerSearch::tag(state.itemQuery); !tag.empty()) {
-        // NEW-06: the active search, top right on the title line.
-        int tw = 0, th = 0;
-        fb.measureText(tag, tw, th, TextStyle::Caption);
-        fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+    if (!state.itemQuery.empty()) {
+        // NEW-06: the active search on the title line, drawn by the shared search field.
+        SharedSearchInput::State field;
+        field.query = state.itemQuery;
+        SharedSearchInput::drawField(fb, x + w / 2, y + 26, field, "Search:", "- to change");
     }
     // R2-BUG-005: a focused Gen II TM/HM shows its move (the GSC machine table is shared by
     // Gold, Silver and Crystal; ClassicInventoryCatalog, pret/pokecrystal).

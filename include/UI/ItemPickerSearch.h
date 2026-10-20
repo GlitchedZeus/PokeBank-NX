@@ -62,11 +62,6 @@ int apply(std::vector<T>& displayed, const std::vector<T>& original, ItemPickerS
     return index;
 }
 
-// The header tag a narrowed picker shows (top right, on the title line); empty with no query.
-inline std::string tag(const std::string& query) {
-    return query.empty() ? std::string() : "Search: " + query;
-}
-
 } // namespace UI::ItemPickerSearch
 
 #endif

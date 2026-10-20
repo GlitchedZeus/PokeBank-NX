@@ -177,10 +177,10 @@ void editorValueLists() {
         for (int n = 1; n <= 30; ++n) {
             const auto l = G::layout(type, n);
             const int visible = std::min(8, n);
-            // NEW-10: Met Location drops the unused 23 px band under its last row (16 px, not 39).
-            const int pad = type == G::MenuType::LocationPicker ? 86 + 16 : 125;
+            // NEW-10: Met Location drops the unused band under its last row (14 px, the Move chooser's).
+            const int pad = type == G::MenuType::LocationPicker ? 86 + 14 : 125;
             require(l.frame.h == pad + visible * 42, "value list keeps the accepted height");
-            require(l.frame.bottom() - (l.frame.y + 86 + (visible - 1) * 42 + 38) >= 16, "last row clear of the frame edge");
+            require(l.frame.bottom() - (l.frame.y + 86 + (visible - 1) * 42 + 38) >= 14, "last row clear of the frame edge");
             for (int i = 0; i < visible; ++i) {
                 const auto c = G::cellRect(l, i);
                 require(c.x == l.frame.x + 22 && c.w == l.frame.w - 44 && c.y == l.frame.y + 86 + i * 42 &&
