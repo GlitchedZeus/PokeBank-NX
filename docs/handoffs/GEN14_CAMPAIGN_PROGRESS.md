@@ -163,3 +163,28 @@ Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
   stored met level is labelled "not stored Met Lv. N". Templates stay choosable (a deliberate
   re-origin is still an edit the user can make); no origin is judged legal or illegal here.
 - Test: test_gen3_encounter_keep_stored (real R / S / E template data).
+
+## Round 4 (Lane C) — checkpoint
+
+Base: #307 `c2287f50` (fast-forward). Branch `claude/gen14-campaign-20261015`.
+
+| Item | Commit | State |
+| --- | --- | --- |
+| NEW-04 (P0) Gen II PC box Move fails at pickup | c3807c63 | gated green (GCC / Clang host-test + sanitize, qa x2, qa-tools, py contracts, CG 0 failing, native) |
+| NEW-19 + R2-TRAINER + R2-BUG-002 staged exit menu (Gen I-IV) | — | next |
+| R2-REVIEWMOVE readable Review rows | — | pending |
+| NEW-18 Play Time / Pokedex seen-caught | — | pending |
+
+### NEW-04 — root cause and fix
+
+- Pickup: ClassicPackedMove beginGen2 -> StagedEditor::beginPackedMove -> refreshGen2 ->
+  GSCReadOnlyTrainer::refreshStagedBoxPresentation, which rebuilt the grid from finalizedBytes().
+  finalizedBytes() refuses while a carry is active ("Place or cancel carried Pokemon before
+  finalizing"), so every pickup failed its refresh and the carry was cancelled. The editor-level
+  move was already correct (test_gen12_packed_move).
+- Fix: StagedEditor::presentationBytes() (staged image repaired for a strict reload, display
+  only, never exported); the grid uses it while a carry is active. finalizedBytes() still refuses
+  mid-carry, so nothing can be exported with Pokemon in hand.
+- Test: test_gen2_box_move_presentation (Gold, Silver, Crystal; real GSCReadOnlyTrainer): pickup,
+  same-box drop, other-box drop, cancel, finalize + verified export, source unchanged. Fails
+  without the fix.
