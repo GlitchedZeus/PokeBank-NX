@@ -102,9 +102,38 @@ inline int columnsFor(int count, LabelAt&& labelAt, bool heldColumn) {
     }
     return kMinColumns;
 }
+// R2-BUG-006 (Round 3 note): a short list (under kBalancedBelow items) is laid out as a balanced
+// block instead of one long sparse row: the fewest rows the fitted columns allow, spread evenly
+// (5 items are 3+2, not 4+1; 9 are 3x3), never more columns than the names fit. Cells keep the width the
+// names were fitted at, and the frame narrows to the cells (not below kMinBalancedW, which keeps
+// the title, position and TM/HM detail line readable; the cells are centred in it).
+inline constexpr int kBalancedBelow = 20;
+inline constexpr int kMinBalancedW = 640;
+
+constexpr int balancedColumns(int count, int fitColumns) noexcept {
+    fitColumns = std::clamp(fitColumns, 1, kMaxColumns);
+    if (count <= 0) return fitColumns;
+    const int rows = ceilDiv(count, fitColumns);   // as few rows as the fitted columns allow ...
+    return ceilDiv(count, rows);                   // ... then the fewest columns that fill them evenly
+}
+
+constexpr Grid balancedGrid(int count, int fitColumns, int screenW = MG::kScreenW,
+                            int screenH = MG::kScreenH) noexcept {
+    const Grid fitted = grid(count, fitColumns, screenW, screenH);
+    if (count <= 0 || count >= kBalancedBelow) return fitted;
+    Grid g = grid(count, balancedColumns(count, fitted.columns), screenW, screenH);
+    const int w = std::clamp(g.columns * fitted.cellWidth + 2 * kRule.padX, std::min(kMinBalancedW, fitted.frame.w),
+                             fitted.frame.w);
+    g.frame = {(screenW - w) / 2, g.frame.y, w, g.frame.h};
+    g.cellWidth = fitted.cellWidth;   // the width every name was fitted at
+    const int listW = g.columns * g.cellWidth;
+    g.list = {g.frame.x + (w - listW) / 2, g.list.y, listW, g.list.h};   // centred when the frame is wider
+    return g;
+}
+
 template <class LabelAt>
 inline Grid gridFor(int count, LabelAt&& labelAt, bool heldColumn = true) {
-    return grid(count, columnsFor(count, labelAt, heldColumn));
+    return balancedGrid(count, columnsFor(count, labelAt, heldColumn));
 }
 
 // ---- Window / mapping ------------------------------------------------------------------------

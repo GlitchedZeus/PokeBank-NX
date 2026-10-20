@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -95,6 +96,42 @@ void testLayoutFitsScreen() {
     const auto last = Grid::cellRect(g5, 4, 0);
     require(Grid::hitIndex(g5, 0, last.right() + Grid::kCellGapX + 5, last.y + 5) == -1, "empty cell after the last item misses");
     std::cout << "layout fits 1280x720 ok\n";
+}
+
+void testShortListsAreBalanced() {
+    // R2-BUG-006 Round 3 note: under ~20 items, balanced rows/columns instead of long sparse rows.
+    auto names = labels(19, "Potion ");
+    auto at = [&names](int i) { return names[static_cast<std::size_t>(i)]; };
+    require(Grid::balancedColumns(1, 4) == 1 && Grid::balancedColumns(2, 4) == 2 && Grid::balancedColumns(3, 4) == 3,
+            "1-3 items: one row");
+    require(Grid::balancedColumns(5, 4) == 3, "5 items: 3+2, not 4+1");
+    require(Grid::balancedColumns(6, 4) == 3 && Grid::balancedColumns(9, 4) == 3, "6 and 9 items: 3 columns");
+    require(Grid::balancedColumns(7, 4) == 4 && Grid::balancedColumns(16, 4) == 4, "7 and 16 items: 4 columns");
+    require(Grid::gridFor(3, at).frame.w < Grid::grid(3, 4).frame.w, "a 3-item pocket gets a narrower frame");
+    require(Grid::balancedColumns(5, 2) <= 2, "never more columns than the names fit");
+    for (int count = 1; count < Grid::kBalancedBelow; ++count) {
+        const auto g = Grid::gridFor(count, at);
+        const auto full = Grid::grid(count, 4);
+        const int empty = g.totalRows * g.columns - count;
+        require(empty < g.columns, "no fully empty row");
+        require(g.totalRows == Grid::grid(count, 4).totalRows, "no extra rows: as few rows as 4 columns allow");
+        require(g.frame.w <= full.frame.w && g.frame.w >= std::min(Grid::kMinBalancedW, full.frame.w), "frame narrows, not below the minimum");
+        require(g.frame.x >= MG::kMargin && g.frame.right() <= MG::kScreenW - MG::kMargin, "balanced frame on screen");
+        require(std::abs((g.frame.x + g.frame.w / 2) - (full.frame.x + full.frame.w / 2)) <= 1, "frame stays centred");
+        require(g.list.x >= g.frame.x + Grid::kRule.padX && g.list.right() <= g.frame.right() - Grid::kRule.padX, "cells inside the frame");
+        require(g.cellWidth == full.cellWidth, "cells keep the width the names were fitted at");
+        for (int i = 0; i < count; ++i) {
+            const auto c = Grid::cellRect(g, i, 0);
+            require(c.inside(g.list), "balanced cell inside the list");
+            require(Grid::hitIndex(g, 0, c.x + c.w / 2, c.y + c.h / 2) == i, "balanced touch centre == drawn cell");
+            require(MG::fitsWidth(names[static_cast<std::size_t>(i)], MG::Text::Caption, Grid::labelWidth(g, true)), "name fits");
+        }
+    }
+    // 20 or more items keep the full 4-column grid.
+    const auto big = labels(20, "Potion ");
+    const auto g20 = Grid::gridFor(20, [&big](int i) { return big[static_cast<std::size_t>(i)]; });
+    require(g20.columns == 4 && g20.frame.w == Grid::grid(20, 4).frame.w, "20+ items: full grid");
+    std::cout << "short lists balanced ok\n";
 }
 
 void testNamesNeverClipped() {
@@ -236,6 +273,7 @@ void testMachineDetail() {
 
 int main() {
     testLayoutFitsScreen();
+    testShortListsAreBalanced();
     testNamesNeverClipped();
     testNavigation();
     testWindowScrollAndReflow();
