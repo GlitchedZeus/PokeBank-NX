@@ -787,7 +787,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         rows = {
             {"Add Pokemon", "Draft first; no mutation until explicit Stage Add"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
-            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "International R/B/Y editor capability"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},  // E03 one wording
             {"Cancel", "No mutation"},
         };
     }
@@ -981,7 +981,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     fb.drawText(x + 32, y + 252, "Format validation", Colors::TextDim);
     fb.drawText(x + 300, y + 252, "Strict reparse + R/B/Y identity + checksum on export", Colors::Text);
     fb.drawText(x + 32, y + 292, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim);
-    fb.drawText(x + 300, y + 292, "NOT CLAIMED by this editor", Colors::Accent);
+    fb.drawText(x + 300, y + 292, "Not checked", Colors::Warning);  // E03 one wording
     fb.drawText(x + 32, y + 332, "Original bytes", Colors::TextDim);
     fb.drawText(x + 300, y + 332, e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable", Colors::Text);
     fb.drawText(x + 32, y + 372, "Pending semantic changes", Colors::TextDim);

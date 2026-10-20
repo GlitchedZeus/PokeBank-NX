@@ -1066,7 +1066,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
         {"Source mutation", "HARD DISABLED"},
         {"Party mutation", "DEFERRED"},
         {"Format validation", "Strict reparse + checksum on export"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "NOT CLAIMED by this editor"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},  // E03 one wording
         {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
     }};
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {

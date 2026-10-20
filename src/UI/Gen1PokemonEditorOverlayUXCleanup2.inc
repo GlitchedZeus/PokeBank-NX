@@ -1,3 +1,4 @@
+#include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
@@ -1107,27 +1108,47 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawText(x + 28, y + h - 42, "Last export: " + state.lastExportDirectory, Colors::TextDim, TextStyle::Caption);
 }
 
-void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    const std::array<std::pair<const char*,std::string>,8> rows{{
-        {"Source game", screen.sourceGameId},
-        {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese — editing disabled" : "International — validated editor"},
-        {"Source mutation", "HARD DISABLED"},
-        {"Party mutation", "DEFERRED"},
-        {"Format validation", "Strict reparse + checksum on export"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked yet"},
-        {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
-        {"Pending semantic changes", std::to_string(pendingLines(screen).size())},
-    }};
-    const int lx = x + 34, vx = x + 300;
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        fb.drawText(lx, y + 82 + i * 46, rows[static_cast<size_t>(i)].first, Colors::TextDim);
-        fb.drawText(vx, y + 82 + i * 46, rows[static_cast<size_t>(i)].second,
-                    i == 2 || i == 5 ? Colors::Accent : Colors::Text);
+// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h), drawn over this
+// modal's frame. A Gen I record stores no origin game, met location, level or date and has no
+// per-record checksum; the one guardrail is the exact-game move compatibility check. No verdict.
+PokeBank::UIModel::OriginLegality::Report gen1LegalityReport(TrainerViewScreen& screen, const PokemonRecord& p) {
+    namespace OL = PokeBank::UIModel::OriginLegality;
+    OL::Report report;
+    report.exactGame = std::string(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
+    report.format = "Gen I record";
+    report.structure = OL::Structure::NotChecked;
+    report.originGame = OL::notStored();
+    report.metLocation = OL::notStored();
+    report.metLevel = OL::notStored();
+    report.metDate = OL::notStored();
+    if (auto* e = editor(screen)) {
+        for (const auto move : p.moves) {
+            if (move == 0) {
+                report.moves.push_back({"Empty", "Empty", OL::Tone::Dim});
+                continue;
+            }
+            const bool ok = PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                e->metadata().sourceGame, p.species, move);
+            report.moves.push_back({std::string(Names::getMoveName(move)), ok ? "OK" : "Unusual (preserved)",
+                                    ok ? OL::Tone::Good : OL::Tone::Caution});
+        }
     }
-    fb.drawText(lx, y + h - 42, "Structural validity is not encounter-legality proof.", Colors::TextDim, TextStyle::Caption);
+    return report;
+}
+
+void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
+    (void)x; (void)y; (void)w; (void)h;
+    std::string error;
+    const auto pokemon = ux2SelectedPokemon(screen, error);
+    if (!pokemon) {
+        PokeBank::UIModel::OriginLegality::Report missing;
+        missing.exactGame = std::string(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
+        missing.format = "Gen I record";
+        SharedOriginLegalityPanel::draw(fb, screen.touchButtons, error.empty() ? "Empty slot" : error, missing);
+        return;
+    }
+    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
+                                    gen1LegalityReport(screen, *pokemon));
 }
 
 void ux2DrawRemoveConfirm(PKSEFramebuffer& fb, int x, int y, int w, int h) {
