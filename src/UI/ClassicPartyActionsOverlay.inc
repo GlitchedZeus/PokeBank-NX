@@ -9,7 +9,6 @@
 
 #include "UI/ClassicPartyActions.h"
 #include "UI/ClassicGenericUiGuard.h"
-#include "UI/SharedOriginLegalityPanel.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 
@@ -201,7 +200,7 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     screen.drawGSCOverlay(fb);
     const std::string title = Names::getSpeciesName(pokemon->speciesID());
     if (state.legality) {
-        SharedOriginLegalityPanel::draw(fb, screen.touchButtons,
+        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
                                         title + "  \xE2\x80\xA2  Party " + std::to_string(state.slot + 1),
                                         partyReport(screen, *pokemon));
         return true;

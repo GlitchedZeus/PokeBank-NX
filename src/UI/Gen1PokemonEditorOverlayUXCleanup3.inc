@@ -539,7 +539,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(rightX + rightW - 96, contentY + 54, badMove ? "Needs attention" : "OK",
                 badMove ? Colors::Warning : Colors::Accent, TextStyle::Caption);
     fb.drawText(rightX + 18, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 108, contentY + 80, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(rightX + rightW - 108, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
     fb.drawHDivider(rightX + 16, contentY + 116, rightW - 32);
     fb.drawText(rightX + 18, contentY + 132, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
     ux2DrawRadar(fb, rightX + rightW / 2, contentY + 250, 88, stats);

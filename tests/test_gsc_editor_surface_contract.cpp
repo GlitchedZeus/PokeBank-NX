@@ -162,7 +162,7 @@ int main() {
     assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
     // E03: Gen II draws the one shared Origin & Legality panel (Legality "Not checked").
-    assert(shared.find("SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),") !=
+    assert(shared.find("SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),") !=
            std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 

@@ -1,3 +1,4 @@
+#include "UI/Gen1OriginLegality.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedEditorChrome.h"
@@ -1062,26 +1063,14 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 26, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    const int lx = x + 40, vx = x + 330;
-    const std::array<std::pair<const char*, std::string>, 7> rows{{
-        {"Source game", screen.sourceGameId},
-        {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese (EDIT DISABLED)" : "International (validated editor)"},
-        {"Source mutation", "HARD DISABLED"},
-        {"Party mutation", "DEFERRED"},
-        {"Format validation", "Strict reparse + checksum on export"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},  // E03 one wording
-        {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
-    }};
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        fb.drawText(lx, y + 100 + i * 52, rows[i].first, Colors::TextDim);
-        fb.drawText(vx, y + 100 + i * 52, rows[i].second,
-            i == 2 || i == 5 ? Colors::Accent : Colors::Text);
-    }
-    fb.drawText(lx, y + h - 62,
-        "Pending semantic changes: " + std::to_string(pendingLines(screen).size()), Colors::Text);
+    // E03: the ONE shared Origin & Legality panel, drawn over this overlay's frame.
+    (void)x; (void)y; (void)w; (void)h;
+    std::string error;
+    const auto pokemon = selectedPokemon(screen, error);
+    namespace G1 = PokeBank::UIModel::Gen1OriginLegality;
+    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
+        pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (error.empty() ? std::string("Empty slot") : error),
+        pokemon ? G1::report(screen.sourceGameId, *pokemon) : G1::emptyReport(screen.sourceGameId));
 }
 
 void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {

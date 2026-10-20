@@ -61,7 +61,8 @@ int main() {
     assert(gen2Modal.find("Move compatibility") != std::string::npos);
     assert(gen2Modal.find("Unusual preserved") != std::string::npos);
     assert(gen2Modal.find("kOriginLegalityHeading") != std::string::npos);
-    assert(gen2Modal.find("Not checked") != std::string::npos);
+    // E03: the one shared legality state (Not checked).
+    assert(gen2Modal.find("LegalityState::NotChecked") != std::string::npos);
     assert(gen2Modal.find("Needs correction") == std::string::npos);
     assert(gen2Modal.find("{\"B\", \"Back\"}") != std::string::npos);
     assert(gen2Modal.find("drawSelectionHighlight(") == std::string::npos);

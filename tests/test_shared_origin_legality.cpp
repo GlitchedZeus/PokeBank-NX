@@ -132,7 +132,7 @@ int main() {
         const auto text = read(site.path);
         const auto fn = body(text, site.function, site.until);
         check(!fn.empty(), std::string(site.path) + ": Origin & Legality drawer exists");
-        check(fn.find("SharedOriginLegalityPanel::draw(") != std::string::npos && fn.find(site.report) != std::string::npos,
+        check(fn.find("SharedEditorChrome::drawOriginLegalityPanel(") != std::string::npos && fn.find(site.report) != std::string::npos,
               std::string(site.path) + ": draws the shared panel from its native report");
         check(fn.find("LegalityState::Verified") == std::string::npos && fn.find("ProblemsFound") == std::string::npos &&
                   fn.find("\"PASS\"") == std::string::npos,
@@ -142,14 +142,18 @@ int main() {
     for (const char* path : {"src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc",
                              "src/UI/Gen5SharedReadOnlySurface.inc"}) {
         const auto text = read(path);
-        check(text.find("OriginLegality::kLegality") != std::string::npos &&
-                  text.find("LegalityState::Incomplete") == std::string::npos,
+        check(text.find("legalityLabel(\n                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)") !=
+                      std::string::npos ||
+                  text.find("legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)") !=
+                      std::string::npos,
               std::string(path) + ": data pane Legality row uses the one shared state");
+        check(text.find("LegalityState::Incomplete") == std::string::npos, std::string(path) + ": no Incomplete state");
     }
     for (const char* path : {"src/UI/Gen1PokemonEditorOverlayUX.inc", "src/UI/Gen1PokemonEditorOverlay.cpp"})
         check(read(path).find("NOT CLAIMED") == std::string::npos, std::string(path) + ": one Not checked wording");
-    const auto panel = read("include/UI/SharedOriginLegalityPanel.h");
-    check(panel.find("SharedEditorChrome::beginModal(touchButtons);") != std::string::npos &&
+    const auto chrome = read("include/UI/SharedEditorChrome.h");
+    const auto panel = chrome.substr(chrome.find("inline void drawOriginLegalityPanel("));
+    check(panel.find("beginModal(touchButtons);") != std::string::npos &&
               panel.find("drawNavBar(fb, {{\"B\", \"Back\"}});") != std::string::npos,
           "the panel owns the frame's touch layer and draws its own B Back footer");
 

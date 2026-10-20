@@ -9,6 +9,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedEditorPresentation.h"
+#include "UI/SharedOriginLegality.h"
 #include "UI/SharedFieldState.h"
 #include "UI/SharedFieldStateColors.h"
 #include "UI/SharedMenuGeometry.h"
@@ -110,6 +111,78 @@ inline Color legalityColor(Presentation::LegalityState state) {
         case Presentation::LegalityState::NotChecked: return Colors::Warning;
         default: return Colors::TextDim;
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// E03: the ONE Origin & Legality panel of every Gen I-V surface (box Actions, the Gen I-III Party
+// popup). Content: UI/SharedOriginLegality.h's fixed rows from the generation's native record. The
+// panel is read-only, owns the frame's touch layer and its only control is B (Back).
+// ---------------------------------------------------------------------------------------------
+namespace OriginLegalityModel = PokeBank::UIModel::OriginLegality;
+
+inline Color originLegalityToneColor(OriginLegalityModel::Tone tone) {
+    switch (tone) {
+        case OriginLegalityModel::Tone::Good: return Colors::Success;
+        case OriginLegalityModel::Tone::Caution: return Colors::Warning;
+        case OriginLegalityModel::Tone::Locked: return Colors::Accent;
+        case OriginLegalityModel::Tone::Dim: return Colors::TextDim;
+        case OriginLegalityModel::Tone::Plain: break;
+    }
+    return Colors::Text;
+}
+
+inline constexpr int kOriginLegalityWidth = 860;
+inline constexpr int kOriginLegalityHeaderH = 92;
+inline constexpr int kOriginLegalityRowStep = 36;
+inline constexpr int kOriginLegalityMoveRowStep = 30;
+inline constexpr int kOriginLegalityBottomPad = 22;
+inline constexpr int kOriginLegalityValueX = 290;
+
+// Content-driven height: the fixed rows, plus a compact move block when the generation ran its
+// move guardrail for this record.
+constexpr int originLegalityPanelHeight(int moveRows) noexcept {
+    return kOriginLegalityHeaderH + OriginLegalityModel::kFixedRows * kOriginLegalityRowStep + (moveRows > 0 ? 34 + moveRows * kOriginLegalityMoveRowStep : 0) + kOriginLegalityBottomPad;
+}
+static_assert(originLegalityPanelHeight(4) <= 720 - 56 - 16, "the panel fits above the footer with four move rows");
+
+// `subject` names the Pokemon (species, or species + slot); the panel title is the shared heading.
+template <class Buttons>
+inline void drawOriginLegalityPanel(PKSEFramebuffer& fb, Buttons& touchButtons, const std::string& subject, const OriginLegalityModel::Report& report) {
+    beginModal(touchButtons);
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
+    const int moveRows = static_cast<int>(std::min<std::size_t>(report.moves.size(), 4));
+    const int h = originLegalityPanelHeight(moveRows);
+    const int x = (fb.getWidth() - kOriginLegalityWidth) / 2;
+    const int y = std::max(16, (fb.getHeight() - kNavBarH - h) / 2);
+    fb.drawFilledRoundedRect(x, y, kOriginLegalityWidth, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, kOriginLegalityWidth, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
+                Colors::Text, TextStyle::Heading);
+    if (!subject.empty()) {
+        int sw = 0, sh = 0;
+        fb.measureText(subject, sw, sh, TextStyle::Body);
+        fb.drawText(x + kOriginLegalityWidth - 24 - sw, y + 22, subject, Colors::TextSecondary, TextStyle::Body);
+    }
+    fb.drawText(x + 24, y + 54, OriginLegalityModel::kSubtitle, Colors::TextDim, TextStyle::Caption);
+    int rowY = y + kOriginLegalityHeaderH;
+    for (const auto& row : OriginLegalityModel::rows(report)) {
+        fb.drawText(x + 34, rowY, row.label, Colors::TextDim, TextStyle::Body);
+        fb.drawText(x + kOriginLegalityValueX, rowY, row.value, originLegalityToneColor(row.tone), TextStyle::Body);
+        rowY += kOriginLegalityRowStep;
+    }
+    if (moveRows > 0) {
+        fb.drawHDivider(x + 24, rowY + 4, kOriginLegalityWidth - 48);
+        fb.drawText(x + 34, rowY + 12, "Move guardrail", Colors::TextDim, TextStyle::Caption);
+        rowY += 34;
+        for (int i = 0; i < moveRows; ++i) {
+            const auto& m = report.moves[static_cast<std::size_t>(i)];
+            fb.drawText(x + 34, rowY, "Move " + std::to_string(i + 1), Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 150, rowY, m.move, Colors::Text, TextStyle::Caption);
+            fb.drawText(x + kOriginLegalityValueX + 260, rowY, m.status, originLegalityToneColor(m.tone), TextStyle::Caption);
+            rowY += kOriginLegalityMoveRowStep;
+        }
+    }
+    drawNavBar(fb, {{"B", "Back"}});
 }
 
 } // namespace UI::SharedEditorChrome

@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
 #include "Enums/GameVersion.h"
@@ -827,7 +828,8 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    "Origin & Legality: not checked",
+                    std::string(PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading) + ": " +
+                        PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked),
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

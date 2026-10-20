@@ -1505,7 +1505,7 @@ struct Gen4Editor {
             // Structure + move guardrails run; no full encounter/event legality checker exists.
             // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::OriginLegality::kLegality)}
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)}
         };
     }
 };
@@ -1614,7 +1614,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
     }
 }
 
-// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h). Gen IV fills it
+// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel). Gen IV fills it
 // from the PK4 record: structure, stored origin and its real per-move guardrail. No verdict.
 PokeBank::UIModel::OriginLegality::Report legalityReport(TrainerViewScreen& screen, const Pokemon::Pokemon4ReadOnly& record) {
     namespace OL = PokeBank::UIModel::OriginLegality;
@@ -1654,11 +1654,11 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
         PokeBank::UIModel::OriginLegality::Report missing;
         missing.exactGame = gameName(screen.sourceGameId);
         missing.format = "PK4";
-        SharedOriginLegalityPanel::draw(fb, screen.touchButtons,
+        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
                                         error.empty() ? "No valid Pokemon selected" : error, missing);
         return;
     }
-    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(record->species()),
+    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(record->species()),
                                     legalityReport(screen, *record));
 }
 

@@ -279,7 +279,7 @@ int main() {
     contains(surface, "screen.drawGSCOverlay(fb)");
     // E03: Origin & Legality is the one shared panel filled from the PK3 record (the old fixed
     // "Game/species/location/level constrained" claim was printed without reading the record).
-    contains(surface, "SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(record->species),");
+    contains(surface, "SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(record->species),");
     const auto actionsBegin = surface.find("void drawActions(");
     const auto actionsEnd = surface.find("void drawReview(", actionsBegin);
     assert(actionsBegin != std::string::npos && actionsEnd != std::string::npos && actionsEnd > actionsBegin);

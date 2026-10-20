@@ -1,5 +1,6 @@
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
+#include "UI/Gen1OriginLegality.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
@@ -779,7 +780,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
             {"Edit", "Summary / Moves / DVs / Stat Exp / Trainer"},
             {"Clone", "Choose a destination box; uses its first empty slot"},
             {"Remove", "Stages synchronized Gen I box compaction"},
-            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
             {"Cancel", "No mutation"},
         };
@@ -787,7 +788,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         rows = {
             {"Add Pokemon", "Draft first; no mutation until explicit Stage Add"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
-            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},  // E03 one wording
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},  // E03 one wording
             {"Cancel", "No mutation"},
         };
     }
@@ -967,26 +968,14 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 28, y + 20, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 32, y + 92, "Source game", Colors::TextDim);
-    fb.drawText(x + 300, y + 92, screen.sourceGameId, Colors::Text);
-    fb.drawText(x + 32, y + 132, "Region/layout", Colors::TextDim);
-    fb.drawText(x + 300, y + 132, trainer && trainer->japaneseLayout() ? "Japanese (EDIT DISABLED)" : "International (validated editor)", Colors::Text);
-    fb.drawText(x + 32, y + 172, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 300, y + 172, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 32, y + 212, "Party mutation", Colors::TextDim);
-    fb.drawText(x + 300, y + 212, "DEFERRED", Colors::Text);
-    fb.drawText(x + 32, y + 252, "Format validation", Colors::TextDim);
-    fb.drawText(x + 300, y + 252, "Strict reparse + R/B/Y identity + checksum on export", Colors::Text);
-    fb.drawText(x + 32, y + 292, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim);
-    fb.drawText(x + 300, y + 292, "Not checked", Colors::Warning);  // E03 one wording
-    fb.drawText(x + 32, y + 332, "Original bytes", Colors::TextDim);
-    fb.drawText(x + 300, y + 332, e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable", Colors::Text);
-    fb.drawText(x + 32, y + 372, "Pending semantic changes", Colors::TextDim);
-    fb.drawText(x + 300, y + 372, std::to_string(pendingLines(screen).size()), Colors::Text);
-    drawNavBar(fb, {{"B", "Back to Actions"}});
+    // E03: the ONE shared Origin & Legality panel, drawn over this overlay's frame.
+    (void)x; (void)y; (void)w; (void)h;
+    std::string error;
+    const auto pokemon = selectedPokemon(screen, error);
+    namespace G1 = PokeBank::UIModel::Gen1OriginLegality;
+    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
+        pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (error.empty() ? std::string("Empty slot") : error),
+        pokemon ? G1::report(screen.sourceGameId, *pokemon) : G1::emptyReport(screen.sourceGameId));
 }
 
 } // namespace

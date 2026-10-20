@@ -326,7 +326,7 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
-// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h). Gen II records carry
+// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel). Gen II records carry
 // no per-record checksum, so structure is "Not checked"; Crystal alone stores caught data (time,
 // level, landmark -- pret pokecrystal SetCaughtData / PKHeX PK2), Gold and Silver store none. The
 // one guardrail is the exact-game move compatibility check. No verdict.
@@ -373,10 +373,10 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         PokeBank::UIModel::OriginLegality::Report missing;
         missing.exactGame = std::string("Pok\xC3\xA9mon ") + sharedGameName(screen);
         missing.format = "Gen II record";
-        SharedOriginLegalityPanel::draw(fb, screen.touchButtons, "Empty slot", missing);
+        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, "Empty slot", missing);
         return;
     }
-    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
+    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
                                     gen2LegalityReport(screen, *pokemon));
 }
 
@@ -520,7 +520,7 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
     const int statusY = y + 246;
     fb.drawHDivider(x + 14, statusY - 12, w - 28);
     fb.drawText(x + 18, statusY, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 152, statusY, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 152, statusY, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
     fb.drawText(x + 18, statusY + 28, "GEN II DATA", Colors::Accent, TextStyle::Caption);
 
     const auto& p = state.working;

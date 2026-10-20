@@ -1,4 +1,4 @@
-#include "Integration/Gen1/Gen1MoveCompatibility.h"
+#include "UI/Gen1OriginLegality.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
@@ -1108,32 +1108,11 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawText(x + 28, y + h - 42, "Last export: " + state.lastExportDirectory, Colors::TextDim, TextStyle::Caption);
 }
 
-// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h), drawn over this
+// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel), drawn over this
 // modal's frame. A Gen I record stores no origin game, met location, level or date and has no
 // per-record checksum; the one guardrail is the exact-game move compatibility check. No verdict.
 PokeBank::UIModel::OriginLegality::Report gen1LegalityReport(TrainerViewScreen& screen, const PokemonRecord& p) {
-    namespace OL = PokeBank::UIModel::OriginLegality;
-    OL::Report report;
-    report.exactGame = std::string(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
-    report.format = "Gen I record";
-    report.structure = OL::Structure::NotChecked;
-    report.originGame = OL::notStored();
-    report.metLocation = OL::notStored();
-    report.metLevel = OL::notStored();
-    report.metDate = OL::notStored();
-    if (auto* e = editor(screen)) {
-        for (const auto move : p.moves) {
-            if (move == 0) {
-                report.moves.push_back({"Empty", "Empty", OL::Tone::Dim});
-                continue;
-            }
-            const bool ok = PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
-                e->metadata().sourceGame, p.species, move);
-            report.moves.push_back({std::string(Names::getMoveName(move)), ok ? "OK" : "Unusual (preserved)",
-                                    ok ? OL::Tone::Good : OL::Tone::Caution});
-        }
-    }
-    return report;
+    return PokeBank::UIModel::Gen1OriginLegality::report(screen.sourceGameId, p);
 }
 
 void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -1141,13 +1120,11 @@ void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, in
     std::string error;
     const auto pokemon = ux2SelectedPokemon(screen, error);
     if (!pokemon) {
-        PokeBank::UIModel::OriginLegality::Report missing;
-        missing.exactGame = std::string(PokeBank::UIModel::ClassicGameContext::exactGameName(screen.sourceGameId));
-        missing.format = "Gen I record";
-        SharedOriginLegalityPanel::draw(fb, screen.touchButtons, error.empty() ? "Empty slot" : error, missing);
+        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, error.empty() ? "Empty slot" : error,
+            PokeBank::UIModel::Gen1OriginLegality::emptyReport(screen.sourceGameId));
         return;
     }
-    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
+    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
                                     gen1LegalityReport(screen, *pokemon));
 }
 

@@ -308,7 +308,7 @@ $(GEN4_STORAGE_CARRY_SANITIZE): $(GEN4_STORAGE_CARRY_INPUTS)
 
 # E03 (Round 3 hardware): one shared, honest Origin & Legality layout for every Gen I-V game.
 SHARED_ORIGIN_LEGALITY_INPUTS := tests/test_shared_origin_legality.cpp include/UI/SharedOriginLegality.h \
-	include/UI/SharedOriginLegalityPanel.h include/UI/SharedEditorPresentation.h \
+	include/UI/SharedEditorChrome.h include/UI/SharedEditorPresentation.h include/UI/Gen1OriginLegality.h \
 	src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc src/UI/Gen2SharedPokemonSurface.inc \
 	src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 SHARED_ORIGIN_LEGALITY_TEST := $(HOST_BUILD)/test_shared_origin_legality

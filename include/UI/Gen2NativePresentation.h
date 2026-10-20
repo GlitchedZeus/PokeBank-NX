@@ -119,7 +119,8 @@ constexpr const char* caughtLevelLegalityText(CaughtLevelLegality status) noexce
         case CaughtLevelLegality::NotRecorded: return "Not recorded";
         case CaughtLevelLegality::UnknownMetLevel: return "Met level unknown";
         case CaughtLevelLegality::EggMarker: return "Egg marker";
-        case CaughtLevelLegality::Valid: return "Level history OK";
+        // E03: a factual guardrail result, never a legality verdict.
+        case CaughtLevelLegality::Valid: return "Current level at or above met level";
         case CaughtLevelLegality::CurrentBelowMet: return "Current level below met level";
     }
     return "Not checked";

@@ -766,7 +766,7 @@ struct Gen5Editor {
             // Only format validity is checked for Gen V; no legality conclusion is drawn.
             // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::OriginLegality::kLegality)},
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
         };
         return rows;
     }
@@ -831,8 +831,9 @@ void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const G
                 Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(x + 28, cy + 62, pidHex5(pending.before) + "  ->  " + pidHex5(pending.after),
                 Colors::Text, TextStyle::Body);
-    fb.drawText(x + 28, cy + 98, "Gender, ability and shininess stay linked to the new PID. "
-                "Origin & Legality: not checked.", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, cy + 98, std::string("Gender, ability and shininess stay linked to the new PID. ") +
+                PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading + ": " +
+                PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked) + ".", Colors::TextDim, TextStyle::Caption);
     const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;
     drawGlyphButton(fb, x + 24, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - bw, by, bw, bh, "A", "Change PID", Colors::PanelAlt);
@@ -1836,7 +1837,7 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 Colors::TextDim,TextStyle::Caption);
     drawNavBar(fb,SharedReviewChrome::footer(true));
 }
-// Origin & Legality (E03): the ONE shared Gen I-V panel (UI/SharedOriginLegalityPanel.h), filled
+// Origin & Legality (E03): the ONE shared Gen I-V panel (SharedEditorChrome::drawOriginLegalityPanel), filled
 // from the PK5 record's structure and stored origin. Gen V runs no move guardrail here, so the
 // state is never a verdict and the encounter check stays "Unknown".
 PokeBank::UIModel::OriginLegality::Report legalityReport5(const TrainerViewScreen& screen,const PokeVault::Integration::Gen5::Pokemon5ReadOnly& pk) {
@@ -1864,10 +1865,10 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
         PokeBank::UIModel::OriginLegality::Report missing;
         missing.exactGame=std::string("Pok\xC3\xA9mon ")+gen5GameName(screen.sourceGameId);
         missing.format="PK5";
-        SharedOriginLegalityPanel::draw(fb,screen.touchButtons,"No valid Pokemon selected",missing);
+        SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,"No valid Pokemon selected",missing);
         return;
     }
-    SharedOriginLegalityPanel::draw(fb,screen.touchButtons,Names::getSpeciesName(pk->species()),
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,Names::getSpeciesName(pk->species()),
                                     legalityReport5(screen,*pk));
 }
 // AUD-01: the Gen IV Discard All confirmation (UI/SharedReviewChrome.h words), drawn over the

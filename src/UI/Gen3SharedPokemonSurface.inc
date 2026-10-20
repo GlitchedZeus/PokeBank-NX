@@ -2244,7 +2244,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Met Location", metLocationText(p)},
         {"Encounter origin", encounterOriginText(screen, p)},
         // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
-        {"Legality", Presentation::legalityLabel(PokeBank::UIModel::OriginLegality::kLegality)}
+        {"Legality", Presentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)}
     };
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
         Presentation::kOriginLegalityHeading, rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
@@ -2322,7 +2322,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
-// E03: the ONE shared Origin & Legality panel (UI/SharedOriginLegalityPanel.h). Gen III fills it
+// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel). Gen III fills it
 // from the staged PK3 record (decoded only when its checksum validates), its stored origin (PK3
 // stores no met date) and the same move guardrail the Moves panel uses. No verdict.
 PokeBank::UIModel::OriginLegality::Report legalityReport(TrainerViewScreen& screen,
@@ -2367,11 +2367,11 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
         PokeBank::UIModel::OriginLegality::Report missing;
         missing.exactGame = std::string(Context::exactGameName(screen.sourceGameId));
         missing.format = "PK3";
-        SharedOriginLegalityPanel::draw(fb, screen.touchButtons,
+        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
                                         error.empty() ? "No valid Pokemon selected" : error, missing);
         return;
     }
-    SharedOriginLegalityPanel::draw(fb, screen.touchButtons, Names::getSpeciesName(record->species),
+    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(record->species),
                                     legalityReport(screen, *record));
 }
 

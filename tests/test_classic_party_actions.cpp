@@ -83,7 +83,7 @@ int main() {
     check(overlay.find("screen.openPokemonActionSheet({PokeVault::UIModel::PokemonLocation::Party, 0, slot});") !=
               std::string::npos,
           "View keeps the existing read-only View route");
-    check(overlay.find("SharedOriginLegalityPanel::draw(fb, screen.touchButtons,") != std::string::npos &&
+    check(overlay.find("SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,") != std::string::npos &&
               overlay.find("partyReport(screen, *pokemon)") != std::string::npos &&
               overlay.find("Gen1PokemonEditor::gen1LegalityReport(") != std::string::npos &&
               overlay.find("Gen2PokemonEditor::gen2LegalityReport(") != std::string::npos,
