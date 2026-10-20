@@ -498,15 +498,22 @@ def round4_p2_contracts(sources):
         for m in re.finditer(r'"\s*\|\s*Met Lv\.\s*"\s*\+\s*std::to_string\(\s*\w+\s*->\s*metLevel\(\)\s*\)', s.code):
             r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: every location row shows the record's "
                                 "current Met Lv. (not an encounter level)")
+    # Encounter data: the Crystal / Gen III guardrails table (string game ids), or lane P's separate Gen IV / V
+    # table include/Integration/Encounter/Gen45EncounterData.inc ({game, species, location, ...}, game 1 D,
+    # 2 P, 3 Pt, 4 HG, 5 SS, 6 B, 7 W, 8 B2, 9 W2; generated from PKHeX 6501f0ab).
     data = src("include/Integration/Encounter/EncounterGuardrailsData.inc")
-    games = {"Gen IV": ("diamond_nds", "pearl_nds", "platinum_nds", "heartgold_nds", "soulsilver_nds"),
-             "Gen V": ("black_nds", "white_nds", "black2_nds", "white2_nds")}
     have = {lit for _, lit in data.literals} if data else set()
+    g45data = src("include/Integration/Encounter/Gen45EncounterData.inc")
+    g45games = set(int(x) for x in re.findall(r"^\s*\{\s*([1-9])\s*,", g45data.code, re.M)) if g45data else set()
+    games = {"Gen IV": (("diamond_nds", 1), ("pearl_nds", 2), ("platinum_nds", 3), ("heartgold_nds", 4),
+                        ("soulsilver_nds", 5)),
+             "Gen V": (("black_nds", 6), ("white_nds", 7), ("black2_nds", 8), ("white2_nds", 9))}
     for g, ids in games.items():
-        missing = [i for i in ids if i not in have]
+        missing = [name for name, num in ids if name not in have and num not in g45games]
         if missing:
             r.violations.append(f"{g}: no encounter templates for {', '.join(missing)} "
-                                "(EncounterGuardrailsData.inc), so no Met Location row can be marked encounter-backed")
+                                "(EncounterGuardrailsData.inc / Gen45EncounterData.inc), so no Met Location row "
+                                "can be marked encounter-backed")
     g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
     body4 = "".join(b for _, _, b in function_bodies(g4.code, re.compile(r"^openMetLocationPicker$"))) if g4 else ""
     if "isGen4NativeMetLocation" not in body4:
@@ -514,8 +521,10 @@ def round4_p2_contracts(sources):
     g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
     if g5 and "metLocationChoices()" not in g5.code:
         r.violations.append("Gen V: Met Location picker no longer offers every native location (false rejection)")
-    if not any(re.search(r"EncounterGuardrails", s.code) for s in g45):
-        r.violations.append("Gen IV/V Met Location picker never consults EncounterGuardrails")
+    pickers = g45 + [x for x in (src("src/UI/SharedPokemonEditorSurface.inc"),) if x]
+    if not any(re.search(r"\bEncounterGuardrails\b|\bGen45Encounters::", s.code) for s in pickers):
+        r.violations.append("Gen IV/V Met Location picker never consults the encounter data "
+                            "(EncounterGuardrails / Gen45Encounters)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
