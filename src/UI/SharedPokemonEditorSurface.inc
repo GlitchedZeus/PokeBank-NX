@@ -811,14 +811,18 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
     const int last = std::min(count, first + visible);
     const int rowStep = naturePicker ? natureLayout.rowStep : 42;
     const int viewportTop = y + 90;
-    fb.setClipRect(x + 22, viewportTop - 4, w - 44, visible * rowStep);
+    // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
+    // (rows, clip, touch boxes and the boxed highlight all use rowW).
+    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + 10 : 0;
+    const int rowW = w - 44 - barGutter;
+    fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
         const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
         appendClippedTouchButton(screen.touchButtons, 6000 + i,
-            x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38,
-            x + 22, viewportTop - 4, w - 44, visible * rowStep);
+            x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38,
+            x + 22, viewportTop - 4, rowW, visible * rowStep);
         const bool selected = i == state.pickerRow;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         const std::string label = A::pickerLabel(screen, state, state.pickerTarget, value);
         const auto split = label.find("  |  ");
@@ -828,12 +832,12 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             int dw = 0, dh = 0;
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7, SharedMovesPanel::fit(fb, label.substr(0, split),
-                        w - 76 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
-            fb.drawText(x + w - 38 - dw, yy + 10, detail,
+                        rowW - 32 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
+            fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
         } else if (state.pickerTarget == PickerTarget::Ball) {
             // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
-            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, w - 44, 38};
+            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, rowW, 38};
             const auto sprite = PokeBank::UIModel::SharedMenuGeometry::spriteRect(valueList, cell);
             ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,
                                     Enums::getBallName(static_cast<uint8_t>(value)));
@@ -844,7 +848,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         }
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 14, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + 10, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
