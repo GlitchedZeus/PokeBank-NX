@@ -412,7 +412,7 @@ def round4_p2_contracts(sources):
     # ------------------------------------------------------------------------------------------
     # R2-REROLL / Unown: the Gen II editor portrait shows the DV-derived Unown letter.
     # pret pokecrystal GetUnownLetter (engine/pokemon/unown? -> docs/REROLL_MECHANICS.md): letter =
-    # ((Atk&6)<<5 | (Def&6)<<3 | (Spd&6)<<1 | (Spc&6)>>1) / 10. 14/10/10/10 -> V, 15/8/8/3 -> 
+    # ((Atk&6)<<5 | (Def&6)<<3 | (Spd&6)<<1 | (Spc&6)>>1) / 10. 14/10/10/10 -> V, 15/8/8/3 ->
     # ------------------------------------------------------------------------------------------
     r = Result("CG50-gen2-unown-portrait-follows-dvs",
                "Gen II editor portraits pass the DV-derived Unown letter to SpriteManager::getSprite"
