@@ -1577,7 +1577,7 @@ void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     auto* staged = editor(screen);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
+    fb.drawText(32, 24, SharedReviewChrome::kTitle, Colors::Text, TextStyle::Heading);
     fb.drawText(32, 62,
                 "Generation IV app-owned staged workspace • external source bytes unchanged",
                 Colors::TextDim, TextStyle::Caption);
@@ -1589,7 +1589,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
                 changed ? "Strict PK4 serialize + Storage CRC + full save reparse: PASS"
                         : "Original source remains the current baseline",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(44, 270, "Original " + screen.legacyProviderLabel() + " source: HARD READ ONLY", Colors::Accent);
+    fb.drawText(44, 270, SharedReviewChrome::sourceLine(screen.legacyProviderLabel()), Colors::Accent);
     fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
                 Colors::TextDim, TextStyle::Caption);
     if (changed) {
@@ -1607,7 +1607,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
         if (state.confirmDiscardAll) {
             drawDiscardAllConfirm(screen, fb, "Generation IV");
         } else {
-            drawNavBar(fb, {{"X", "Export Copy"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
+            drawNavBar(fb, SharedReviewChrome::footer(false));
         }
     } else {
         drawNavBar(fb, {{"B", "Back"}});

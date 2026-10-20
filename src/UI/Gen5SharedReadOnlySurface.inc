@@ -1731,11 +1731,12 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 const ScreenState& state,
                 const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
     dimShared(screen,fb);
-    constexpr int x=150,y=59,w=980,h=534;
+    // AUD-01: the Gen IV Review chrome (UI/SharedReviewChrome.h): same title, source line, footer
+    // words and Discard All confirm; Gen V keeps its owner-accepted (S04) verified change rows.
+    constexpr int x=150,y=59,w=980,h=566;
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
     fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
-    fb.drawText(x+24,y+18,"Review Pending Changes - Generation V",
-                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+18,SharedReviewChrome::kTitle,Colors::Text,TextStyle::Heading);
     fb.drawText(x+24,y+57,
         "Verified app-memory PK5 fields and native Bag slots; original SAV5 unchanged",
         Colors::Accent,TextStyle::Caption);
@@ -1828,10 +1829,11 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             line+="  |  +"+std::to_string(verified->fields.size()-3)+" more";
         fb.drawText(x+32,yy+43,line,Colors::TextSecondary,TextStyle::Caption);
     }
+    fb.drawText(x+24,y+h-60,SharedReviewChrome::sourceLine(screen.legacyProviderLabel()),
+                Colors::Accent,TextStyle::Caption);
     fb.drawText(x+24,y+h-31,"Box clone/remove staged only; no source writes or inferred legality",
                 Colors::TextDim,TextStyle::Caption);
-    drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
-                   {"Y","Discard All..."},{"B","Back"}});
+    drawNavBar(fb,SharedReviewChrome::footer(true));
 }
 // Origin & Legality (E03): the ONE shared Gen I-V panel (UI/SharedOriginLegalityPanel.h), filled
 // from the PK5 record's structure and stored origin. Gen V runs no move guardrail here, so the
@@ -1866,6 +1868,24 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
     }
     SharedOriginLegalityPanel::draw(fb,screen.touchButtons,Names::getSpeciesName(pk->species()),
                                     legalityReport5(screen,*pk));
+}
+// AUD-01: the Gen IV Discard All confirmation (UI/SharedReviewChrome.h words), drawn over the
+// Review. It owns the frame's touch layer and its footer; only Y discards, B keeps the changes.
+void drawDiscardAllConfirm5(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
+    SharedEditorChrome::beginModal(screen.touchButtons);
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,150));
+    constexpr int w=760,h=240;
+    const int x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+34,y+30,SharedReviewChrome::kDiscardTitle,Colors::Text,TextStyle::Heading);
+    fb.drawText(x+34,y+96,SharedReviewChrome::discardBody("Generation V"),Colors::Text,TextStyle::Body);
+    fb.drawText(x+34,y+140,SharedReviewChrome::kDiscardKeepNote,Colors::TextDim,TextStyle::Caption);
+    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
+    SharedBoxedRows::drawGlyphChoices(fb,x+34,y+h-SharedBoxedRows::kChoiceHeight-18,w-68,
+        std::array<SharedBoxedRows::GlyphChoice,2>{{{"B","Keep Changes"},{"Y","Discard All"}}});
+    drawNavBar(fb,{{"Y","Discard All"},{"B","Keep Changes"}});
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
@@ -1981,9 +2001,9 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 {{"Y","Export Copy"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmDiscardAll:
-            drawDecision(screen,fb,"Discard All Staged Changes?",
-                "Y permanently clears app-memory edits; SAV5 stays unchanged.",
-                {{"Y","Confirm Discard"},{"B","Cancel"}});
+            // AUD-01: the Gen IV Discard All confirm, over this Review (Y discards, B keeps).
+            drawReview(screen,fb,state,staged);
+            drawDiscardAllConfirm5(screen,fb);
             return true;
         case Surface::ConfirmExit:
             drawDecision(screen,fb,"Staged Changes Remain In Memory",

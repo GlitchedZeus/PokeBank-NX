@@ -19,6 +19,7 @@
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/SharedBoxedRows.h"   // R2-BUG-012: the one boxed-row modal style (Gen I/II modals)
 #include "UI/SharedOriginLegalityPanel.h"   // E03: the one Origin & Legality panel (Gen I-V)
+#include "UI/SharedReviewChrome.h"   // AUD-01: one Review chrome (Gen III-V)
 
 // Species changes use the shared exact-game level/EXP initialization policy; overlays must not reintroduce inherited level semantics.
 #include "UI/TouchInput.h"

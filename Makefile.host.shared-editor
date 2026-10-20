@@ -364,3 +364,23 @@ $(MOVES_PANEL_SPLIT_TEST): $(MOVES_PANEL_SPLIT_SOURCES) include/UI/SharedMovesPa
 $(MOVES_PANEL_SPLIT_SANITIZE): $(MOVES_PANEL_SPLIT_SOURCES) include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(MOVES_PANEL_SPLIT_SOURCES) -o $@
+
+# AUD-01 (Round 3 hardware): Gen V's Review matches Gen IV's chrome (title, source line, footer words,
+# Discard All confirmation); Gen V keeps its verified per-record rows.
+SHARED_REVIEW_CHROME_INPUTS := tests/test_shared_review_chrome.cpp include/UI/SharedReviewChrome.h \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+SHARED_REVIEW_CHROME_TEST := $(HOST_BUILD)/test_shared_review_chrome
+SHARED_REVIEW_CHROME_SANITIZE := $(HOST_BUILD)/test_shared_review_chrome_sanitize
+
+HOST_TESTS += $(SHARED_REVIEW_CHROME_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_REVIEW_CHROME_SANITIZE)
+host-test: $(SHARED_REVIEW_CHROME_TEST)
+host-sanitize: $(SHARED_REVIEW_CHROME_SANITIZE)
+
+$(SHARED_REVIEW_CHROME_TEST): $(SHARED_REVIEW_CHROME_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_review_chrome.cpp -o $@
+
+$(SHARED_REVIEW_CHROME_SANITIZE): $(SHARED_REVIEW_CHROME_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_review_chrome.cpp -o $@
