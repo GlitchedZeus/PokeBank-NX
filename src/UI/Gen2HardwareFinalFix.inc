@@ -251,7 +251,7 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
 
     if (passive || state.mode == Mode::View) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else {
         // The footer of the layer that owns input (exit dialog, selector, re-roll prompt or the
         // workspace), so no visible or tappable glyph means something else (Gen2WorkspaceLayers.h).
