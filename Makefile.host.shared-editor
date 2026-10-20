@@ -326,3 +326,41 @@ $(SHARED_ORIGIN_LEGALITY_TEST): $(SHARED_ORIGIN_LEGALITY_INPUTS)
 $(SHARED_ORIGIN_LEGALITY_SANITIZE): $(SHARED_ORIGIN_LEGALITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_origin_legality.cpp -o $@
+
+# L06 / E02 / NEW-20 (Round 3 hardware): Gen I-III Party A / touch opens the Pokemon Actions popup.
+CLASSIC_PARTY_ACTIONS_INPUTS := tests/test_classic_party_actions.cpp include/UI/ClassicPartyActions.h \
+	src/UI/ClassicPartyActionsOverlay.inc src/UI/TrainerViewScreenCompositeOverlay.cpp
+CLASSIC_PARTY_ACTIONS_TEST := $(HOST_BUILD)/test_classic_party_actions
+CLASSIC_PARTY_ACTIONS_SANITIZE := $(HOST_BUILD)/test_classic_party_actions_sanitize
+
+HOST_TESTS += $(CLASSIC_PARTY_ACTIONS_TEST)
+HOST_SANITIZE_TESTS += $(CLASSIC_PARTY_ACTIONS_SANITIZE)
+host-test: $(CLASSIC_PARTY_ACTIONS_TEST)
+host-sanitize: $(CLASSIC_PARTY_ACTIONS_SANITIZE)
+
+$(CLASSIC_PARTY_ACTIONS_TEST): $(CLASSIC_PARTY_ACTIONS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_party_actions.cpp -o $@
+
+$(CLASSIC_PARTY_ACTIONS_SANITIZE): $(CLASSIC_PARTY_ACTIONS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_party_actions.cpp -o $@
+
+# M04 / M05 (Round 3 hardware): Gen IV / V Moves panel keeps the category with the type and gives
+# Pwr / Acc their own right-aligned section; Gen I-III keep the accepted single detail line.
+MOVES_PANEL_SPLIT_SOURCES := tests/test_moves_panel_category_split.cpp src/Names/MoveNames.cpp
+MOVES_PANEL_SPLIT_TEST := $(HOST_BUILD)/test_moves_panel_category_split
+MOVES_PANEL_SPLIT_SANITIZE := $(HOST_BUILD)/test_moves_panel_category_split_sanitize
+
+HOST_TESTS += $(MOVES_PANEL_SPLIT_TEST)
+HOST_SANITIZE_TESTS += $(MOVES_PANEL_SPLIT_SANITIZE)
+host-test: $(MOVES_PANEL_SPLIT_TEST)
+host-sanitize: $(MOVES_PANEL_SPLIT_SANITIZE)
+
+$(MOVES_PANEL_SPLIT_TEST): $(MOVES_PANEL_SPLIT_SOURCES) include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(MOVES_PANEL_SPLIT_SOURCES) -o $@
+
+$(MOVES_PANEL_SPLIT_SANITIZE): $(MOVES_PANEL_SPLIT_SOURCES) include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(MOVES_PANEL_SPLIT_SOURCES) -o $@
