@@ -2242,7 +2242,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                 return std::to_string(species) + "  " + Names::getSpeciesName(species);
             },
             [](uint16_t species) {
-                return std::string(Names::getSpeciesName(species));
+                return SharedSpeciesPicker::selectedTitle(species, Names::getSpeciesName(species));
             },
             &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
         // Touch ids stay 31500 + species; the chooser publishes the rows it actually drew

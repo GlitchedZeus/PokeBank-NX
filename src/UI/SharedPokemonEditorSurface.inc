@@ -705,7 +705,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, species, A::kMaxSpecies, previewShiny,
             [](uint16_t value) { return A::speciesLabel(value); },
-            [](uint16_t value) { return A::speciesLabel(value); },
+            [](uint16_t value) { return SharedSpeciesPicker::selectedTitle(value, sharedSpeciesName(value)); },
             &latestTouchGesture(), true, previewTypes, &state.speciesChooser);
         // Touch ids stay 6000 + pickerValues index; the chooser publishes the rows it drew.
         for (int i = 0; i < state.speciesChooser.rowCount; ++i) {

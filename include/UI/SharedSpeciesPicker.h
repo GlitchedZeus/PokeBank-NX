@@ -69,6 +69,12 @@ inline ModalGeometry drawModalChrome(
 
 // Convert canonical type ids to the classic badge-table numbering used by the
 // Gen I-IV shared picker previews.
+// NEW-11: the selected-species panel reads "Pikachu #25" (name first, then the dex number);
+// the list rows keep their leading dex numbers.
+inline std::string selectedTitle(uint16_t species, std::string_view name) {
+    return std::string(name) + " #" + std::to_string(species);
+}
+
 inline uint8_t canonicalToClassicType(uint8_t normalized) noexcept {
     if (normalized <= 5) return normalized;
     if (normalized == 6) return 7;

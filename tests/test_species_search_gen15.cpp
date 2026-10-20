@@ -252,6 +252,13 @@ void testTouchKeysAndRows() {
     std::cout << "touch keys / rows / scrollbar ok\n";
 }
 
+void testSelectedTitle() {
+    // NEW-11: the selected-species panel reads "Pikachu #25" (name first); lists keep "025 ...".
+    assert(Picker::selectedTitle(25, "Pikachu") == "Pikachu #25");
+    assert(Picker::selectedTitle(493, "Arceus") == "Arceus #493");
+    std::cout << "selected title ok\n";
+}
+
 void testGridGeometry() {
     const Search::Rect grid{0, 0, 560, 176};
     // Every key has a cell, cells do not overlap, and hit == rect.
@@ -281,6 +288,7 @@ int main() {
     testControllerTransitions();
     testTouchKeysAndRows();
     testGridGeometry();
+    testSelectedTitle();
     std::cout << "test_species_search_gen15: all passed\n";
     return 0;
 }

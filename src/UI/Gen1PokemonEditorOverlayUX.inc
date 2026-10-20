@@ -224,6 +224,12 @@ std::string speciesCompact(uint16_t species) {
     return UX::speciesPickerRow(species, Names::getSpeciesName(species));
 }
 
+// NEW-11: identity-panel heading reads "Pikachu #25"; lists and field rows keep speciesCompact.
+std::string speciesHeading(uint16_t species) {
+    if (species < 1 || species > 151) return "Invalid";
+    return std::string(Names::getSpeciesName(species)) + " #" + std::to_string(species);
+}
+
 std::string moveDisplay(uint8_t move) {
     if (move == 0) return "Empty";
     if (move > 165) return "Invalid";
@@ -880,7 +886,7 @@ void drawPreview(PKSEFramebuffer& fb, int x, int y, int w, const PokemonRecord* 
             fb.drawText(x + 26, y + 120, "Sprite unavailable", Colors::TextDim);
         }
     }
-    fb.drawText(x, y + 254, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(x, y + 254, speciesHeading(species), Colors::Text, TextStyle::Heading);
     fb.drawText(x, y + 292, nickname, Colors::Text);
     fb.drawText(x, y + 326, "Level " + std::to_string(level), Colors::Text);
     fb.drawText(x, y + 358, "EXP " + std::to_string(exp), Colors::TextDim);
