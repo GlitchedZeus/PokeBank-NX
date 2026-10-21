@@ -16,6 +16,29 @@ PERMISSIONS = ("copy_source_code", "import_original_retail_tables",
                "redistribute_event_or_pokemon_payloads")
 DISPOSITIONS = ("third_party_code_import", "bulk_retail_table_import",
                 "distribution_ROM_or_event_payload")
+# The exact L5 Q08 baseline records 14 researched sources. Dropping one
+# row would previously pass while silently omitting its blocked permissions.
+# Changes to this frozen registry require a new source-specific audit.
+EXPECTED_SOURCES = frozenset({
+    "PKHeX", "pokered", "pokecrystal", "pokefirered", "pokeyellow",
+    "pokeplatinum", "pokeheartgold", "pokeruby", "pokegold",
+    "EventsGallery", "pokeemerald", "PokeBank-NX", "pokediamond",
+    "PokeAPI-provenance-existing"})
+ROW_FIELDS = frozenset({
+    "source", "repository", "revision", "source_license_claim",
+    "proposed_usage", "copy_source_code", "import_original_retail_tables",
+    "redistribute_event_or_pokemon_payloads", "legal_review_complete",
+    "legal_basis_or_grant"})
+# The exact L5 Q08 baseline (Git blob 7cd3d0a227dc9b008f7c304581a2d7e8d85f06e9,
+# reviewed in docs/legality/l4/STAGE6_SOURCE_RIGHTS_Q07_Q08_HANDOFF_20261012.md)
+# records two sources with a narrower, source-specific usage than the generic
+# citation-and-digest usage. Each source must match its own frozen value
+# exactly; any other value still requires a new source-specific review.
+DEFAULT_USAGE = "citation_and_digest_only"
+SOURCE_SPECIFIC_USAGE = {
+    "pokediamond": "symbol references and SHA256 only",
+    "PokeAPI-provenance-existing": "existing only; no new binary/data import",
+}
 
 
 def require(ok: bool, reason: str) -> None:
@@ -36,16 +59,25 @@ def verify_rights(text: str) -> dict:
     require(isinstance(entries, list) and len(entries) >= 1,
             "no independently recorded source permissions")
     names: set[str] = set()
+    require(len(entries)==len(EXPECTED_SOURCES),
+            "Q08 frozen source count changed; re-review required")
     for i, row in enumerate(entries):
+        require(isinstance(row, dict) and set(row)==ROW_FIELDS,
+                f"Q08 source row {i} schema/payload injection")
         name = row.get("source")
         require(isinstance(name, str) and name.strip() and name not in names,
                 f"invalid or duplicate source row {i}")
         names.add(name)
+        require(row["proposed_usage"] == SOURCE_SPECIFIC_USAGE.get(name, DEFAULT_USAGE) and
+                str(row["legal_basis_or_grant"]).startswith("not documented"),
+                f"{name}: legal basis/usage changed; independent review required")
         require(row.get("legal_review_complete") is False,
                 f"{name}: legal review changed; a new approval process is needed")
         for permission in PERMISSIONS:
             require(row.get(permission) == BLOCKED,
                     f"{name}: {permission} no longer blocked")
+    require(names == EXPECTED_SOURCES,
+            "Q08 frozen source identities changed; new rights review required")
     dispositions = source.get("dispositions")
     require(isinstance(dispositions, dict), "missing Q08 dispositions")
     for permission in DISPOSITIONS:

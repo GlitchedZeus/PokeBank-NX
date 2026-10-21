@@ -81,6 +81,33 @@ int main() {
                 assert(yes.status==J::Status::AllThreeStagesConditionallyMatched);
                 assert(yes.moveAndIV.status==MV::Status::KnownCandidateConsistent);
                 assert(yes.pid.status==P::Status::ConditionallyMatchedOriginalEggPID);
+                // A four-move/IV-positive history may not erase a verified
+                // source's contradictory original pending/collected PID.
+                auto originalArchive=x;
+                auto& transcript=originalArchive.pid.acquisitionTranscript;
+                transcript.supplied=true;
+                transcript.pendingPayloadIndependentlyVerified=true;
+                transcript.collectedPayloadIndependentlyVerified=true;
+                transcript.originalPhysicalPairIndependentlyVerified=true;
+                transcript.stageIdentityIndependentlyVerified=true;
+                transcript.originalStageIdentity=x.originalEggEventIdentity;
+                transcript.physicalSlot0Snapshot=x.pid.physicalSlots[0].snapshotIdentity;
+                transcript.physicalSlot1Snapshot=x.pid.physicalSlots[1].snapshotIdentity;
+                transcript.archivedPendingPayload=yes.pid.pendingPersonality;
+                transcript.archivedCollectedPersonality=yes.pid.finalPersonality;
+                assert(J::evaluate(originalArchive).status==J::Status::AllThreeStagesConditionallyMatched);
+                auto wrongArchive=originalArchive;
+                wrongArchive.pid.acquisitionTranscript.archivedPendingPayload^=1u;
+                assert(J::evaluate(wrongArchive).status==J::Status::OriginalPIDCandidateContradicted);
+                wrongArchive=originalArchive;
+                wrongArchive.pid.acquisitionTranscript.archivedCollectedPersonality^=1u;
+                assert(J::evaluate(wrongArchive).status==J::Status::OriginalPIDCandidateContradicted);
+                wrongArchive=originalArchive;
+                wrongArchive.pid.acquisitionTranscript.originalStageIdentity++;
+                assert(J::evaluate(wrongArchive).status==J::Status::UnknownOriginalPIDHistory);
+                wrongArchive=originalArchive;
+                wrongArchive.pid.acquisitionTranscript.stageIdentityIndependentlyVerified=false;
+                assert(J::evaluate(wrongArchive).status==J::Status::UnknownOriginalPIDHistory);
                 auto anotherDad=x;
                 anotherDad.pid.physicalSlots[fatherFirst?0:1].snapshotIdentity=303;
                 assert(J::evaluate(anotherDad).status==

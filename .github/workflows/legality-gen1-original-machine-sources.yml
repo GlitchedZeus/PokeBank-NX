@@ -7,6 +7,12 @@ on:
       - 'docs/legality/research/l3/GEN1_RBY_MACHINE_SOURCE_BLOBS.json'
       - 'tools/legality/verify_gen1_original_machines.py'
       - '.github/workflows/legality-gen1-original-machine-sources.yml'
+  # The Gen I-V integration branch (PR #314) does not change the files above
+  # relative to its base, so the pull_request filter never fires there. Run on
+  # every exact pushed head of that branch instead.
+  push:
+    branches:
+      - 'claude/gen1-5-legality-**'
   workflow_dispatch:
 permissions:
   contents: read

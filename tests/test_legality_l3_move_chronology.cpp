@@ -245,8 +245,14 @@ static_assert([]{auto a=jointFourMoves();
     a.machineCount=0;
     return L::evaluate(a.path).status==S::CandidateConsistent &&
            J::evaluate(a).status==S::Unresolved;}());
+// Eevee's original Ruby learnset is now imported (7921328a), so Bulbasaur's
+// level-up steps replayed on Eevee are a contradicted stated path. A species
+// outside the GBA source scope still has no source and stays Unresolved.
 static_assert([]{auto a=jointBulbasaur();
     a.path.origin=Game::Ruby;a.path.species=133;
+    return J::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=jointBulbasaur();
+    a.path.origin=Game::Ruby;a.path.species=387;
     return J::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=jointBulbasaur();
     a.path.samePokemonAndSpeciesVerified=false;

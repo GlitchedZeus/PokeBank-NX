@@ -1,0 +1,534 @@
+{
+  "schema": "L5_STAGE4_SYNTHETIC_RUNTIME_VECTORS_V1",
+  "provenance": "synthetic_test_vocabulary_not_retail_or_distribution_history",
+  "note": "No live PKHeX or NX adapter executable is supplied by this file. Direct run requires independently built verified adapter programs.",
+  "cases": [
+    {
+      "case_id": "pk1-empty-ev",
+      "generation": 1,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk1-vitamin-only",
+      "generation": 1,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "red_gb",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        2560,
+        2560,
+        2560,
+        2560,
+        2560
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk1-unequal-enemy-experience",
+      "generation": 1,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk2-egg-nonzero-hp",
+      "generation": 2,
+      "species": 1,
+      "is_egg": true,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "gold_gbc",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk2-egg-unchanged",
+      "generation": 2,
+      "species": 1,
+      "is_egg": true,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk2-hatched-vitamin",
+      "generation": 2,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        25600,
+        25600,
+        25600,
+        25600,
+        25600
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk2-espeon-possible-gen1",
+      "generation": 2,
+      "species": 196,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        165,
+        0,
+        0
+      ],
+      "caught_data": 0,
+      "language_region": "unknown"
+    },
+    {
+      "case_id": "pk2-espeon-current-backtrade-excluded",
+      "generation": 2,
+      "species": 196,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "crystal_gbc",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        166,
+        0,
+        0
+      ],
+      "caught_data": 0
+    },
+    {
+      "case_id": "pk2-caught-data-timecapsule",
+      "generation": 2,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        165,
+        0,
+        0
+      ],
+      "caught_data": 1
+    },
+    {
+      "case_id": "pk2-korean-source-unknown",
+      "generation": 2,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "stat_experience": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        165,
+        0,
+        0
+      ],
+      "caught_data": 0,
+      "language_region": "Korean",
+      "time_capsule_receipt": false
+    },
+    {
+      "case_id": "pk3-ev252",
+      "generation": 3,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "firered_gba",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        252,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk3-ev253",
+      "generation": 3,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        253,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk3-ev255",
+      "generation": 3,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk3-ev-total511",
+      "generation": 3,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        255,
+        255,
+        1,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk3-egg-ev10",
+      "generation": 3,
+      "species": 1,
+      "is_egg": true,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        10,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk3-level100-unknown-encounter",
+      "generation": 3,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        200,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ],
+      "encounter_at_level100": "unverified"
+    },
+    {
+      "case_id": "pk4-ev255",
+      "generation": 4,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "platinum_nds",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk4-ev255-conflicting-source",
+      "generation": 4,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "firered_gba",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk4-egg-ev1",
+      "generation": 4,
+      "species": 1,
+      "is_egg": true,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk4-vitamin-ev100",
+      "generation": 4,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "heartgold_nds",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        100,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case_id": "pk4-missing-encounter-with-ev101",
+      "generation": 4,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        101,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ],
+      "encounter_at_level100": "unknown"
+    },
+    {
+      "case_id": "pk4-sum510",
+      "generation": 4,
+      "species": 1,
+      "is_egg": false,
+      "synthetic": true,
+      "original_retail_specimen": false,
+      "source_game_label": "",
+      "original_history_authentication": "not_available",
+      "effort_values": [
+        255,
+        255,
+        0,
+        0,
+        0,
+        0
+      ],
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

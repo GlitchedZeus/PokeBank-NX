@@ -1,0 +1,53 @@
+name: L6 Codex Bounded PK4 Intake
+
+on:
+  # No paths filter: the Gen I-V integration branch (PR #314) must run this
+  # gate on every exact pushed head, not only when these four files change.
+  push:
+    branches:
+      - audit/legality-integration-hardening-20261012
+      - 'claude/gen1-5-legality-**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-pk4-intake:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        sanitize: [false, true]
+    name: ${{ matrix.compiler }} / sanitizer=${{ matrix.sanitize }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Pin exact tested code
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "HEAD=$EXPECTED_SHA"
+          echo "TREE=$(git rev-parse 'HEAD^{tree}')"
+      - name: Run bounded native PK4 intake properties
+        shell: bash
+        env:
+          CXX: ${{ matrix.compiler }}
+          SANITIZE: ${{ matrix.sanitize }}
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          set -euo pipefail
+          if [[ "$SANITIZE" == "true" ]]; then
+            python3 tools/audit_l6_stage2_pk4_intake.py --compiler "$CXX" --sanitize
+          else
+            python3 tools/audit_l6_stage2_pk4_intake.py --compiler "$CXX" --normal
+          fi

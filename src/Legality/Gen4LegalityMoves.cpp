@@ -1,0 +1,1337 @@
+/**
+ * Gen4LegalityMoves.cpp - evolution chains and move sources for PK4.
+ *
+ * Ports of PKHeX.Core (pinned in Gen4LegalityData.h): EvolutionTree.Evolves4 (reverse
+ * lineage and forward methods), EvolutionMethod.Check, EvolutionGroup4,
+ * EvolutionChain.GetEvolutionChainsAllGens, EvolutionUtil, LearnVerifier,
+ * LearnVerifierHistory, LearnVerifierEgg, LearnVerifierRelearn.VerifyEggMoveset,
+ * LearnGroup4, LearnSource4DP/Pt/HGSS, MoveBreed / MoveBreed4 and
+ * EvolutionRestrictions.IsValidEvolutionWithMove.
+ */
+#include "Gen4LegalityInternal.h"
+
+#include <algorithm>
+#include <mutex>
+
+namespace Legality::Gen4 {
+
+namespace {
+// EvolutionType values used by EvolutionMethod.Check
+enum : uint8_t {
+    kEvoTrade = 5, kEvoTradeHeldItem = 6, kEvoLevelUpBeauty = 16, kEvoUseItemMale = 17, kEvoUseItemFemale = 18,
+    kEvoLevelUpMale = 23, kEvoLevelUpFemale = 24, kEvoLevelUpFormFemale1 = 34,
+};
+enum : uint16_t {
+    kMoveWhirlpool = 250, kMoveDefog = 432, kMoveVoltTackle = 344, kMoveBlastBurn = 307, kMoveHydroCannon = 308,
+    kMoveFrenzyPlant = 338, kMoveDracoMeteor = 434, kMoveOverheat = 315, kMoveHydroPump = 56, kMoveBlizzard = 59,
+    kMoveAirSlash = 403, kMoveLeafStorm = 437, kMoveMimic = 102, kMoveDoubleHit = 458, kMoveRollout = 205,
+    kMoveAncientPower = 246, kMoveStruggle = 165, kMoveChatter = 448,
+};
+
+std::span<const D::Evolution> evolutionsOf(uint16_t species) noexcept {
+    if (species >= D::kEvolutionCount) return {};
+    return {D::kEvolutions + D::kEvolutionStart[species], D::kEvolutions + D::kEvolutionStart[species + 1]};
+}
+
+// --------------------------------------------------------------- reverse lineage (Evolves4)
+struct Link { uint16_t species = 0; uint8_t form = 0; const D::Evolution* method = nullptr; };
+struct Node { Link first, second; };
+constexpr std::size_t kMaxForms = 32;
+
+const std::vector<Node>& lineage() {
+    static const std::vector<Node> nodes = [] {
+        std::vector<Node> n(D::kEvolutionCount * kMaxForms);
+        for (uint16_t s = 1; s <= kMaxSpecies4; ++s) {
+            const uint8_t fc = personalAt(Table::DP, s).formCount();
+            for (uint8_t f = 0; f < fc; ++f) {
+                for (const auto& evo : evolutionsOf(s)) {
+                    if (evo.species == 0) break;
+                    const uint8_t dForm = evo.form == 255 ? f : evo.form;
+                    if (evo.species >= D::kEvolutionCount || dForm >= kMaxForms) continue;
+                    Node& node = n[evo.species * kMaxForms + dForm];
+                    const Link link{s, f, &evo};
+                    if (node.first.species == 0) node.first = link;
+                    else if (node.second.species == 0) node.second = link;
+                }
+            }
+        }
+        return n;
+    }();
+    return nodes;
+}
+
+const Node* nodeOf(uint16_t species, uint8_t form) noexcept {
+    if (species >= D::kEvolutionCount || form >= kMaxForms) return nullptr;
+    return &lineage()[species * kMaxForms + form];
+}
+
+enum class EvoCheck : uint8_t { Valid, Insufficient, Bad };
+
+EvoCheck checkMethod(const D::Evolution& m, const Pk4& pk, uint8_t lvl, uint8_t levelMin) noexcept {
+    if (m.levelUp == 0) {
+        // ValidNotLevelUp: PK4.IsUntraded is false, so trade evolutions always pass.
+        if (m.type == kEvoUseItemMale) return pk.gender == 0 ? EvoCheck::Valid : EvoCheck::Bad;
+        if (m.type == kEvoUseItemFemale) return pk.gender == 1 ? EvoCheck::Valid : EvoCheck::Bad;
+        return EvoCheck::Valid;
+    }
+    switch (m.type) {
+    case kEvoLevelUpMale: if (pk.gender != 0) return EvoCheck::Bad; break;
+    case kEvoLevelUpFemale: if (pk.gender != 1) return EvoCheck::Bad; break;
+    case kEvoLevelUpFormFemale1: if (pk.gender != 1 || pk.form != 1) return EvoCheck::Bad; break;
+    case kEvoLevelUpBeauty: if (pk.contest[1] < m.argument) return EvoCheck::Bad; break;
+    default: break;
+    }
+    if (lvl < m.level) return EvoCheck::Insufficient;
+    if (m.levelUp == 0) return EvoCheck::Valid;
+    if (m.level == 0 && lvl < 2) return EvoCheck::Insufficient;
+    if (lvl < levelMin + m.levelUp) return EvoCheck::Insufficient;
+    return EvoCheck::Valid;
+}
+
+bool tryDevolveNode(const Node* node, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out) noexcept {
+    if (!node) return false;
+    for (const Link* link : {&node->first, &node->second}) {
+        if (link->species == 0) return false;
+        if (checkMethod(*link->method, pk, currentMax, levelMin) != EvoCheck::Valid) continue;
+        out = Evo{link->species, link->form, link->method->levelUp, currentMax, link->method->level, link->method->type};
+        return true;
+    }
+    return false;
+}
+bool tryDevolve(const Evo& head, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out) noexcept {
+    return tryDevolveNode(nodeOf(head.species, head.form), pk, currentMax, levelMin, out);
+}
+
+bool tryEvolveWith(std::span<const D::Evolution> methods, const Evo& head, const Evo& next, const Pk4& pk,
+                   uint8_t currentMax, uint8_t levelMin, Evo& out) noexcept {
+    for (const auto& m : methods) {
+        if (m.species != next.species) continue;
+        const uint8_t expectForm = m.form == 255 ? head.form : m.form;
+        if (next.form != expectForm) continue;
+        if (checkMethod(m, pk, currentMax, levelMin) != EvoCheck::Valid) continue;
+        out = Evo{next.species, next.form, m.levelUp, currentMax,
+                  std::max(static_cast<uint8_t>(levelMin + m.levelUp), m.level), m.type};
+        return true;
+    }
+    return false;
+}
+bool tryEvolve(const Evo& head, const Evo& next, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out) noexcept {
+    return tryEvolveWith(evolutionsOf(head.species), head, next, pk, currentMax, levelMin, out);
+}
+
+bool isBetterDevolution(const Evo& a, const Evo& ref) noexcept {
+    if (ref.species == 0) return true;
+    return a.levelMin + a.levelUpRequired < ref.levelMin + ref.levelUpRequired;
+}
+bool isBetterEvolution(const Evo& a, const Evo& ref) noexcept {
+    if (ref.method == kSentinel) return true;
+    if (a.levelMin + a.levelUpRequired > ref.levelMin + ref.levelUpRequired) return false;
+    return a.levelMax > ref.levelMax;
+}
+
+void cleanDevolve(std::span<Evo> result, uint8_t levelMin) noexcept {
+    uint8_t req = 0, method = 0;
+    for (std::size_t k = result.size(); k-- > 0;) {
+        Evo& evo = result[k];
+        const uint8_t nextMin = evo.levelMin, nextReq = evo.levelUpRequired, nextMethod = evo.method;
+        evo.levelMin = std::min(evo.levelMax, levelMin);
+        evo.levelUpRequired = req;
+        evo.method = method;
+        levelMin = std::max(nextMin, levelMin);
+        req = nextReq;
+        method = nextMethod;
+    }
+}
+
+bool presentHGSS(uint16_t species, uint8_t form) noexcept { return isPresentInGame(Table::HGSS, species, form); }
+
+std::vector<Evo> setHistory(std::span<const Evo> result, bool (*present)(uint16_t, uint8_t) = presentHGSS) {
+    std::size_t start = 0, count = 0;
+    for (const auto& evo : result) {
+        if (evo.method == kSentinel) {
+            start += count + 1;
+            count = 0;
+        } else if (present(evo.species, evo.form)) {
+            count++;
+        } else if (count == 0) {
+            start++;
+        } else {
+            break;
+        }
+    }
+    if (count == 0 || start >= result.size()) return {};
+    std::vector<Evo> arr(result.begin() + static_cast<std::ptrdiff_t>(start),
+                         result.begin() + static_cast<std::ptrdiff_t>(std::min(result.size(), start + count)));
+    // CleanEvolve
+    std::size_t i = 1;
+    for (; i < arr.size(); i++) {
+        const Evo next = arr[i - 1];
+        const int newMax = next.levelMax;
+        Evo& evo = arr[i];
+        if (evo.levelMin > newMax - next.levelUpRequired) break;
+        evo.levelMax = static_cast<uint8_t>(newMax);
+    }
+    arr.resize(i);
+    return arr;
+}
+} // namespace
+
+std::vector<Evo> evolutionHistory(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel) {
+    const uint8_t min = std::max(pk.metLevel, enc.levelMin);
+    const uint8_t max = currentLevel;
+    std::array<Evo, 3> chain{};
+    std::size_t length = 0;
+    if (pk.isEgg) {
+        chain[0] = Evo{pk.species, pk.form, 0, max, max, 0};
+        length = 1;
+    } else {
+        chain[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+        for (std::size_t i = 1; i < chain.size(); ++i) {
+            const Evo prev = chain[i - 1];
+            Evo evo{};
+            if (!tryDevolve(prev, pk, prev.levelMax, min, evo)) continue;
+            if (isBetterDevolution(evo, chain[i])) chain[i] = evo;
+        }
+        // encSpecies != 0: length is IndexOf(encSpecies) + 1
+        std::size_t idx = chain.size();
+        for (std::size_t i = 0; i < chain.size(); ++i) if (chain[i].species == enc.species) { idx = i; break; }
+        length = idx == chain.size() ? 0 : idx + 1;
+        if (length == 0) return {};
+        cleanDevolve(std::span<Evo>(chain.data(), length), min);
+    }
+    // When the record is an egg, GetOriginChain returns the single entry without devolving;
+    // IndexOf(encSpecies) still bounds it.
+    if (pk.isEgg) {
+        if (chain[0].species != enc.species) return {};
+    }
+    std::span<Evo> c(chain.data(), length);
+    for (auto& evo : c) {
+        if (evo.species == enc.species) break;
+        evo.method = kSentinel;
+    }
+    for (std::size_t i = length - 1; i >= 1; --i) {
+        Evo& dest = c[i - 1];
+        const Evo devolved = c[i];
+        Evo evo{};
+        if (!tryEvolve(devolved, dest, pk, max, devolved.levelMin, evo)) {
+            if (dest.method == kSentinel) break;
+            continue;
+        }
+        if (isBetterEvolution(evo, dest)) dest = evo;
+    }
+    return setHistory(c);
+}
+
+std::vector<Evo> originChain(const Pk4& pk, uint8_t currentLevel) {
+    const uint8_t max = currentLevel;
+    const uint8_t min = (pk.isEgg || pk.eggLocation() != 0) ? 1 : pk.metLevel;
+    if (pk.isEgg) return {Evo{pk.species, pk.form, 0, max, max, 0}};
+    std::array<Evo, 3> r{};
+    r[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve(prev, pk, prev.levelMax, min, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+    // EvolutionUtil.Discard against PersonalTable.HGSS
+    for (int i = 0; i < static_cast<int>(r.size()); ++i) {
+        if (r[static_cast<std::size_t>(i)].species == 0) break;
+        if (isPresentInGame(Table::HGSS, r[static_cast<std::size_t>(i)].species, r[static_cast<std::size_t>(i)].form)) continue;
+        for (std::size_t k = static_cast<std::size_t>(i) + 1; k < r.size(); ++k) r[k - 1] = r[k];
+        r.back() = Evo{};
+        --i; // re-check this index
+    }
+    std::size_t count = 0;
+    while (count < r.size() && r[count].species != 0) ++count;
+    cleanDevolve(std::span<Evo>(r.data(), count), min);
+    return std::vector<Evo>(r.begin(), r.begin() + static_cast<std::ptrdiff_t>(count));
+}
+
+std::pair<uint16_t, uint8_t> baseSpeciesForm(uint16_t species, uint8_t form) noexcept {
+    uint16_t s = species;
+    uint8_t f = form;
+    for (int guard = 0; guard < 8; ++guard) {
+        const Node* node = nodeOf(s, f);
+        if (!node || node->first.species == 0) break;
+        s = node->first.species;
+        f = node->first.form;
+    }
+    return {s, f};
+}
+
+bool hasVisited(const std::vector<Evo>& history, uint16_t species) noexcept {
+    for (const auto& e : history) if (e.species == species) return true;
+    return false;
+}
+
+// ======================================================================= learnsets
+Learnset learnset(Table t, uint16_t species, uint8_t form) noexcept {
+    const uint16_t idx = formIndex(t, species, form);
+    const D::LevelMove* moves = t == Table::DP ? D::kLevelUpDP : (t == Table::Pt ? D::kLevelUpPt : D::kLevelUpHGSS);
+    const uint16_t* start = t == Table::DP ? D::kLevelUpDPStart : (t == Table::Pt ? D::kLevelUpPtStart : D::kLevelUpHGSSStart);
+    const std::size_t count = t == Table::DP ? D::kLevelUpDPCount : (t == Table::Pt ? D::kLevelUpPtCount : D::kLevelUpHGSSCount);
+    if (idx >= count) return {};
+    return {moves + start[idx], moves + start[idx + 1]};
+}
+
+bool canInheritMoves(uint16_t species) noexcept {
+    return species < 494 && (D::kBreed[species].flags & 4) != 0;
+}
+
+namespace {
+bool tryLevelLearn(const Learnset& ls, uint16_t move, uint8_t& level) noexcept {
+    for (auto* m = ls.begin; m != ls.end; ++m) {
+        if (m->move == move) { level = m->level; return true; }
+    }
+    level = 0;
+    return false;
+}
+bool learnsetHas(const Learnset& ls, uint16_t move) noexcept {
+    uint8_t level = 0;
+    return tryLevelLearn(ls, move, level);
+}
+/// Learnset.GetBaseEggMoves
+std::vector<uint16_t> baseEggMoves(const Learnset& ls, uint8_t level) {
+    std::size_t count = 0;
+    for (auto* m = ls.begin; m != ls.end; ++m) {
+        if (m->level > level) break;
+        count++;
+    }
+    std::vector<uint16_t> r;
+    const std::size_t start = count > 4 ? count - 4 : 0;
+    for (std::size_t i = start; i < count; ++i) r.push_back(ls.begin[i].move);
+    return r;
+}
+std::span<const uint16_t> eggMoves(bool hgss, uint16_t species) noexcept {
+    const uint16_t* data = hgss ? D::kEggMovesHGSS : D::kEggMovesDPPt;
+    const uint16_t* start = hgss ? D::kEggMovesHGSSStart : D::kEggMovesDPPtStart;
+    const std::size_t count = hgss ? D::kEggMovesHGSSCount : D::kEggMovesDPPtCount;
+    if (species >= count) return {};
+    return {data + start[species], data + start[species + 1]};
+}
+template <typename C>
+int indexIn(const C& list, uint16_t move) noexcept {
+    int i = 0;
+    for (auto m : list) {
+        if (m == move) return i;
+        ++i;
+    }
+    return -1;
+}
+bool contains(std::span<const uint16_t> list, uint16_t move) noexcept { return indexIn(list, move) >= 0; }
+
+bool isTM(const Personal& pi, uint16_t move) noexcept {
+    const int index = indexIn(std::span<const uint16_t>(D::kMachineTM, 92), move);
+    return index >= 0 && index < 92 && pi.tmhm(index);
+}
+bool isHM(const Personal& pi, uint16_t move, bool hgss) noexcept {
+    const int index = indexIn(std::span<const uint16_t>(hgss ? D::kMachineHMHGSS : D::kMachineHMDPPt, 8), move);
+    return index >= 0 && index < 8 && pi.tmhm(92 + index);
+}
+bool isTypeTutor(uint16_t species, uint16_t move) noexcept {
+    static constexpr uint16_t kBlast[] = {6, 157, 257, 392};
+    static constexpr uint16_t kHydro[] = {9, 160, 260, 395};
+    static constexpr uint16_t kFrenzy[] = {3, 154, 254, 389};
+    static constexpr uint16_t kDraco[] = {147, 148, 149, 230, 329, 330, 334, 371, 372, 373, 380, 381, 384, 443, 444, 445, 483, 484, 487};
+    switch (move) {
+    case kMoveBlastBurn: return std::find(std::begin(kBlast), std::end(kBlast), species) != std::end(kBlast);
+    case kMoveHydroCannon: return std::find(std::begin(kHydro), std::end(kHydro), species) != std::end(kHydro);
+    case kMoveFrenzyPlant: return std::find(std::begin(kFrenzy), std::end(kFrenzy), species) != std::end(kFrenzy);
+    case kMoveDracoMeteor:
+        // Lenient difference from PKHeX (SpecialTutorDracoMeteor omits Arceus): the Pt and HG/SS
+        // tutors teach any party Pokemon whose current type is Dragon, and Arceus takes the type
+        // of its held Plate (pokeplatinum res/field/scripts/scripts_route_210_grandma_wilma_house.s:79-81
+        // and src/pokemon.c:1221-1222; pokeheartgold scr_seq_0948_T30R0601.s:251-252 and
+        // src/pokemon.c:862-863). The analyzer reports such a move as a Warning, never as valid.
+        return species == kArceus || std::find(std::begin(kDraco), std::end(kDraco), species) != std::end(kDraco);
+    default: return false;
+    }
+}
+bool isSpecialTutorHGSS(uint16_t species, uint8_t form, uint16_t move) noexcept {
+    const int index = indexIn(std::span<const uint16_t>(D::kTutorMoves, 52), move);
+    if (index < 0) return false;
+    const uint16_t record = formIndex(Table::HGSS, species, form);
+    if (record >= D::kPersonalHGSSCount) return false;
+    return ((D::kTutorBitsHGSS[record * 7 + static_cast<std::size_t>(index >> 3)] >> (index & 7)) & 1) != 0;
+}
+bool isEnhancedTutor(uint16_t evoSpecies, const Pk4& pk, uint16_t move, bool past) noexcept {
+    if (evoSpecies != kRotom) return false;
+    switch (move) {
+    case kMoveOverheat: return past || pk.form == 1;
+    case kMoveHydroPump: return past || pk.form == 2;
+    case kMoveBlizzard: return past || pk.form == 3;
+    case kMoveAirSlash: return past || pk.form == 4;
+    case kMoveLeafStorm: return past || pk.form == 5;
+    default: return false;
+    }
+}
+
+/// LearnSource4HGSS.GetCanLearn (all sources) / Pt (level-up and machines) / DP (level-up).
+LearnMethod canLearnHGSS(const Pk4& pk, const Evo& evo, uint16_t move, bool past) noexcept {
+    uint8_t level = 0;
+    if (tryLevelLearn(learnset(Table::HGSS, evo.species, evo.form), move, level) && level <= evo.levelMax)
+        return LearnMethod::LevelUp;
+    const Personal pi = personal(Table::HGSS, evo.species, evo.form);
+    if (isTM(pi, move)) return LearnMethod::TMHM;
+    // Format 4: every HM counts. A PK5 cannot keep an HM move from Gen IV (Poke Transfer refuses
+    // it) except Whirlpool, which is not an HM in D/P/Pt (LearnSource4HGSS.GetCanLearn).
+    if ((pk.format == 4 || move == kMoveWhirlpool) && isHM(pi, move, true)) return LearnMethod::TMHM;
+    if (isTypeTutor(evo.species, move)) return LearnMethod::Tutor;
+    if (isSpecialTutorHGSS(evo.species, evo.form, move)) return LearnMethod::Tutor;
+    if (isEnhancedTutor(evo.species, pk, move, past)) return LearnMethod::Tutor;
+    return LearnMethod::None;
+}
+LearnMethod canLearnPt(const Pk4& pk, const Evo& evo, uint16_t move) noexcept {
+    uint8_t level = 0;
+    if (tryLevelLearn(learnset(Table::Pt, evo.species, evo.form), move, level) && level <= evo.levelMax)
+        return LearnMethod::LevelUp;
+    const Personal pi = personal(Table::Pt, evo.species, evo.form);
+    if (isTM(pi, move)) return LearnMethod::TMHM;
+    // Format 5: only Defog, which is not an HM in HG/SS (LearnSource4Pt.GetCanLearn).
+    if ((pk.format == 4 || move == kMoveDefog) && isHM(pi, move, false)) return LearnMethod::TMHM;
+    return LearnMethod::None;
+}
+LearnMethod canLearnDP(const Evo& evo, uint16_t move) noexcept {
+    uint8_t level = 0;
+    if (tryLevelLearn(learnset(Table::DP, evo.species, evo.form), move, level) && level <= evo.levelMax)
+        return LearnMethod::LevelUp;
+    return LearnMethod::None;
+}
+
+void checkInternal(MoveResults& result, const std::array<uint16_t, 4>& current, const Pk4& pk, const Evo& evo, bool past) noexcept {
+    if (evo.species > kMaxSpecies4) return;
+    for (int i = 3; i >= 0; --i) {
+        auto& r = result[static_cast<std::size_t>(i)];
+        if (r.valid()) continue;
+        const uint16_t move = current[static_cast<std::size_t>(i)];
+        LearnMethod chk = canLearnHGSS(pk, evo, move, past);
+        if (chk == LearnMethod::None) chk = canLearnPt(pk, evo, move);
+        if (chk == LearnMethod::None) chk = canLearnDP(evo, move);
+        if (chk != LearnMethod::None) r = {chk, 0};
+    }
+}
+
+bool allParsed(const MoveResults& r) noexcept {
+    for (const auto& x : r) if (!x.parsed()) return false;
+    return true;
+}
+
+/// LearnGroup4.Check
+bool learnGroup4Check(MoveResults& result, const std::array<uint16_t, 4>& current, const Pk4& pk,
+                      const std::vector<Evo>& evos, const EncInfo& enc, bool past) {
+    for (const auto& evo : evos) {
+        if (evo.species == kDeoxys || evo.species == kGiratina || evo.species == kShaymin) {
+            if (evo.species > kMaxSpecies4) continue;
+            const uint8_t fc = personal(Table::HGSS, evo.species, evo.form).formCount();
+            for (uint8_t f = 0; f < fc; ++f) {
+                Evo e = evo;
+                e.form = f;
+                checkInternal(result, current, pk, e, past);
+            }
+        } else {
+            checkInternal(result, current, pk, evo, past);
+        }
+    }
+    if (enc.kind == EncKind::Egg) {
+        // CheckEncounterMoves: HG/SS (<= SS) use HG/SS data, Pt uses Pt, D/P use DP.
+        const bool hgss = enc.version <= D::kSS;
+        const Table t = hgss ? Table::HGSS : (enc.version == D::kPt ? Table::Pt : Table::DP);
+        const auto eggs = eggMoves(hgss, enc.species);
+        const Learnset inherit = canInheritMoves(enc.species) ? learnset(t, enc.species, enc.form) : Learnset{};
+        for (int i = 3; i >= 0; --i) {
+            auto& r = result[static_cast<std::size_t>(i)];
+            if (r.valid()) continue;
+            const uint16_t move = current[static_cast<std::size_t>(i)];
+            if (contains(eggs, move)) r = {LearnMethod::EggMove, 0};
+            else if (learnsetHas(inherit, move)) r = {LearnMethod::InheritLevelUp, 0};
+            else if (move == kMoveVoltTackle && enc.species == kPichu) r = {LearnMethod::SpecialEgg, 0};
+        }
+    }
+    if (enc.species == kNincada && evos.size() == 2 && evos[0].species == kShedinja && !allParsed(result)) {
+        const Evo& nincada = evos.back();
+        const Learnset ninjask = learnset(Table::Pt, kNinjask, 0);
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (result[i].valid()) continue;
+            const uint16_t move = current[i];
+            if (move == 0) break;
+            uint8_t level = 0;
+            if (!tryLevelLearn(ninjask, move, level)) continue;
+            if (!nincada.insideLevelRange(level)) continue;
+            result[i] = {LearnMethod::ShedinjaEvo, 0};
+            break;
+        }
+    }
+    return allParsed(result);
+}
+
+/// LearnVerifierHistory.MarkAndIterate (LearnGroup4 has no previous group for a Gen IV encounter).
+void markAndIterate(MoveResults& result, const std::array<uint16_t, 4>& current, const EncInfo& enc, const Pk4& pk,
+                    const std::vector<Evo>& history, bool past) {
+    if (enc.hasMoves()) {
+        for (auto move : enc.moves) {
+            if (move == 0) break;
+            const int index = indexIn(current, move);
+            if (index != -1) result[static_cast<std::size_t>(index)] = {LearnMethod::Initial, 0};
+        }
+    }
+    if (learnGroup4Check(result, current, pk, history, enc, past)) return;
+    for (auto& r : result) if (!r.parsed()) r = {LearnMethod::Unobtainable, 0};
+}
+
+// --------------------------------------------------------------- MoveBreed4
+enum : uint8_t { kSrcNone = 0, kSrcBase = 1, kSrcFatherEgg = 2, kSrcFatherTM = 3, kSrcParentLevelUp = 4, kSrcMax = 5, kSrcVoltTackle = 6 };
+
+struct BreedInfo {
+    std::span<uint8_t> actual;
+    std::span<uint8_t> possible;
+    Learnset learn;
+    std::span<const uint16_t> moves;
+};
+
+bool verifyBaseMoves(const BreedInfo& info) {
+    int count = 0;
+    for (auto x : info.actual) {
+        if (x == kSrcBase) count++;
+        else break;
+    }
+    const auto& moves = info.moves;
+    const auto base = baseEggMoves(info.learn, 1);
+    const int baseLen = static_cast<int>(base.size());
+    if (baseLen < count) return false;
+    if (moves.back() == 0 && count != baseLen) return false;
+    for (int i = count - 1, b = baseLen - 1; i >= 0; i--, b--) {
+        if (base[static_cast<std::size_t>(b)] != moves[static_cast<std::size_t>(i)]) return false;
+    }
+    if (baseLen == count) return true;
+    for (int i = count; i < static_cast<int>(info.actual.size()); i++) {
+        // Possible holds one entry per move before the first empty slot. With a move after an
+        // empty slot PKHeX indexes past it and throws, and LegalityAnalysis reports the record
+        // Invalid; here the moveset simply fails to validate (moves must be packed anyway).
+        if (static_cast<std::size_t>(i) >= info.possible.size()) return false;
+        const bool isBase = (info.possible[static_cast<std::size_t>(i)] & (1 << kSrcBase)) != 0;
+        if (!isBase) continue;
+        const int baseIndex = indexIn(base, moves[static_cast<std::size_t>(i)]);
+        const int min = static_cast<int>(moves.size()) - baseLen + baseIndex;
+        if (i < min + count) return false;
+    }
+    return true;
+}
+
+bool recurseMovesForOrigin(const BreedInfo& info, int start, int type = kSrcMax - 1) {
+    int i = start;
+    do {
+        const int unpeel = type - 1;
+        if (unpeel != 0 && recurseMovesForOrigin(info, i, unpeel)) return true;
+        const uint8_t permit = info.possible[static_cast<std::size_t>(i)];
+        if ((permit & (1 << type)) == 0) return false;
+        info.actual[static_cast<std::size_t>(i)] = static_cast<uint8_t>(type);
+    } while (--i >= 0);
+    return verifyBaseMoves(info);
+}
+} // namespace
+
+bool moveBreed4Validate(uint16_t species, uint8_t version, std::span<const uint16_t> moves, std::span<uint8_t> origins) {
+    int count = indexIn(moves, 0);
+    if (count == 0) return false;
+    if (count == -1) count = static_cast<int>(moves.size());
+    const bool hgss = isHGSS(version);
+    const Table t = hgss ? Table::HGSS : ((version == D::kD || version == D::kP) ? Table::DP : Table::Pt);
+    const Learnset learn = learnset(t, species, 0);
+    const Personal pi = personal(t, species, 0);
+    std::fill(origins.begin(), origins.end(), static_cast<uint8_t>(0));
+    std::vector<uint8_t> possible(static_cast<std::size_t>(count), 0);
+    const BreedInfo info{origins, std::span<uint8_t>(possible), learn, moves};
+    if (species == kPichu && moves[static_cast<std::size_t>(count - 1)] == kMoveVoltTackle)
+        origins[static_cast<std::size_t>(--count)] = kSrcVoltTackle;
+    bool valid;
+    if (count == 0) {
+        valid = verifyBaseMoves(info);
+    } else {
+        const bool inherit = canInheritMoves(species);
+        const auto eggs = eggMoves(hgss, species);
+        const auto base = baseEggMoves(learn, 1);
+        for (int i = 0; i < count; i++) {
+            const uint16_t move = moves[static_cast<std::size_t>(i)];
+            uint8_t& p = possible[static_cast<std::size_t>(i)];
+            if (indexIn(base, move) >= 0) p |= 1 << kSrcBase;
+            if (inherit && learnsetHas(learn, move)) p |= 1 << kSrcParentLevelUp;
+            if (contains(eggs, move)) p |= 1 << kSrcFatherEgg;
+            if (isTM(pi, move)) p |= 1 << kSrcFatherTM;
+            if (isHM(pi, move, hgss)) p |= 1 << kSrcFatherTM;
+        }
+        valid = recurseMovesForOrigin(info, count - 1);
+    }
+    if (!valid) {
+        // CleanResult
+        for (std::size_t i = 0; i < possible.size(); i++) {
+            const uint8_t poss = possible[i];
+            if (poss == 0) continue;
+            if (origins[i] != 0) continue;
+            for (int j = 0; j < kSrcMax; j++) {
+                if ((poss & (1 << j)) == 0) continue;
+                origins[i] = static_cast<uint8_t>(j);
+                break;
+            }
+        }
+    }
+    return valid;
+}
+
+namespace {
+LearnMethod eggSourceMethod(uint8_t origin) noexcept {
+    switch (origin) {
+    case kSrcBase: return LearnMethod::Initial;
+    case kSrcFatherEgg: return LearnMethod::EggMove;
+    case kSrcFatherTM: return LearnMethod::TMHM;
+    case kSrcParentLevelUp: return LearnMethod::InheritLevelUp;
+    case kSrcVoltTackle: return LearnMethod::SpecialEgg;
+    default: return LearnMethod::None;
+    }
+}
+
+/// MoveBreed.GetExpectedMoves (generation 4).
+void expectedMoves(const std::array<uint16_t, 4>& moves, const EncInfo& e, std::array<uint16_t, 4>& result) {
+    std::array<uint8_t, 4> origins{};
+    if (moveBreed4Validate(e.species, e.version, moves, origins)) { result = moves; return; }
+    struct Order { uint16_t move = 0; uint8_t origin = 0; };
+    std::array<Order, 4> expected{};
+    int count = 0;
+    for (int i = 3; i >= 0; i--) {
+        const uint8_t origin = origins[static_cast<std::size_t>(i)];
+        if (origin == 0) continue;
+        int insert = 0;
+        for (; insert < count; insert++) if (origin < expected[static_cast<std::size_t>(insert)].origin) break;
+        if (insert < count) {
+            for (int k = 3; k > insert; k--) expected[static_cast<std::size_t>(k)] = expected[static_cast<std::size_t>(k - 1)];
+        }
+        expected[static_cast<std::size_t>(insert)] = {moves[static_cast<std::size_t>(i)], origin};
+        count++;
+    }
+    for (std::size_t i = 0; i < 4; i++) result[i] = expected[i].move;
+    std::array<uint8_t, 4> temp{};
+    if (moveBreed4Validate(e.species, e.version, result, temp)) return;
+    const Table t = isHGSS(e.version) ? Table::HGSS : (e.version == D::kPt ? Table::Pt : Table::DP);
+    const auto base = baseEggMoves(learnset(t, e.species, e.form), 1);
+    // RebuildMoves
+    std::array<uint16_t, 4> notBase{};
+    int notBaseCount = 0;
+    for (const auto& o : expected) {
+        if (o.origin == 0) continue;
+        if (indexIn(base, o.move) < 0) notBase[static_cast<std::size_t>(notBaseCount++)] = o.move;
+    }
+    int baseCount = 4 - notBaseCount;
+    if (baseCount > static_cast<int>(base.size())) baseCount = static_cast<int>(base.size());
+    int ctr = 0;
+    for (; ctr < baseCount; ctr++) result[static_cast<std::size_t>(ctr)] = base[base.size() - static_cast<std::size_t>(baseCount) + static_cast<std::size_t>(ctr)];
+    for (int i = 0; i < notBaseCount; i++) result[static_cast<std::size_t>(ctr++)] = notBase[static_cast<std::size_t>(i)];
+    for (; ctr < 4; ctr++) result[static_cast<std::size_t>(ctr)] = 0;
+    temp = {};
+    if (moveBreed4Validate(e.species, e.version, result, temp)) return;
+    for (std::size_t i = 0; i < 4; i++) result[i] = i < base.size() ? base[i] : 0;
+}
+
+/// LearnVerifierRelearn.VerifyEggMoveset (generation 4).
+void verifyEggMoveset(const EncInfo& e, MoveResults& result, const std::array<uint16_t, 4>& moves) {
+    std::array<uint8_t, 4> origins{};
+    const bool valid = moveBreed4Validate(e.species, e.version, moves, origins);
+    if (valid) {
+        for (int i = 3; i >= 0; i--) {
+            const auto k = static_cast<std::size_t>(i);
+            result[k] = moves[k] == 0 ? MoveResult{LearnMethod::Empty, 0} : MoveResult{eggSourceMethod(origins[k]), 0};
+        }
+    } else {
+        std::array<uint16_t, 4> expected{};
+        expectedMoves(moves, e, expected);
+        moveBreed4Validate(e.species, e.version, expected, origins);
+        for (int i = 3; i >= 0; i--) {
+            const auto k = static_cast<std::size_t>(i);
+            if (moves[k] != expected[k]) result[k] = {LearnMethod::UnobtainableExpect, expected[k]};
+            else if (moves[k] == 0) result[k] = {LearnMethod::Empty, 0};
+            else result[k] = {eggSourceMethod(origins[k]), 0};
+        }
+    }
+    // IsAnyMoveDuplicate
+    const uint16_t m1 = moves[0], m2 = moves[1], m3 = moves[2], m4 = moves[3];
+    int dupe = -1;
+    if (m1 != 0 && m1 == m2) dupe = 1;
+    else if (m3 != 0 && (m1 == m3 || m2 == m3)) dupe = 2;
+    else if (m4 != 0 && (m1 == m4 || m2 == m4 || m3 == m4)) dupe = 3;
+    if (dupe != -1) result[static_cast<std::size_t>(dupe)] = {LearnMethod::Duplicate, 0};
+}
+
+void finalizeMoves(MoveResults& result, const std::array<uint16_t, 4>& current) noexcept;
+
+void verifyMovesInitial(MoveResults& result, const std::array<uint16_t, 4>& current, std::span<const uint16_t> initial) {
+    for (std::size_t i = 0; i < initial.size() && i < 4; i++) {
+        if (current[i] != initial[i]) result[i] = {LearnMethod::UnobtainableExpect, initial[i]};
+        else if (current[i] == 0) result[i] = {LearnMethod::Empty, 0};
+        else result[i] = {LearnMethod::Initial, 0};
+    }
+    for (std::size_t i = initial.size(); i < 4; i++)
+        result[i] = current[i] == 0 ? MoveResult{LearnMethod::Empty, 0} : MoveResult{LearnMethod::Unobtainable, 0};
+}
+} // namespace
+
+MoveResults verifyMoves(const Pk4& pk, const EncInfo& enc, const std::vector<Evo>& history) {
+    MoveResults result{};
+    const std::array<uint16_t, 4>& current = pk.moves;
+    if (pk.isEgg) {
+        if (enc.kind == EncKind::Egg) {
+            verifyEggMoveset(enc, result, current);
+        } else if (enc.hasMoves()) {
+            verifyMovesInitial(result, current, enc.moves);
+        } else if (enc.version != 0 && enc.version < 0xFF) {
+            const Table t = learnTable(enc.version);
+            const auto initial = baseEggMoves(learnset(t, enc.species, enc.form), enc.levelMin);
+            verifyMovesInitial(result, current, initial);
+        }
+    } else if (enc.species == kSmeargle) {
+        for (int i = 3; i >= 0; --i) {
+            const auto k = static_cast<std::size_t>(i);
+            const uint16_t move = current[k];
+            if (move == 0) result[k] = {LearnMethod::Empty, 0};
+            else if (move <= 467 && move != kMoveStruggle && move != kMoveChatter) result[k] = {LearnMethod::Sketch, 0};
+            else result[k] = {LearnMethod::Unobtainable, 0};
+        }
+    } else {
+        for (int i = 3; i >= 0; --i) {
+            const auto k = static_cast<std::size_t>(i);
+            if (current[k] != 0) break;
+            result[k] = {LearnMethod::Empty, 0};
+        }
+        markAndIterate(result, current, enc, pk, history, false);
+    }
+    finalizeMoves(result, current);
+    return result;
+}
+
+namespace {
+void finalizeMoves(MoveResults& result, const std::array<uint16_t, 4>& current) noexcept {
+    bool emptySlot = false;
+    for (std::size_t i = 0; i < 4; i++) {
+        const uint16_t move = current[i];
+        if (move == 0) { emptySlot = true; continue; }
+        if (emptySlot) {
+            for (std::size_t j = i; j-- > 0;) {
+                if (current[j] != 0) break;
+                result[j] = {LearnMethod::EmptyInvalid, 0};
+            }
+            emptySlot = false;
+            continue;
+        }
+        for (std::size_t j = 3; j > i; j--) {
+            if (current[j] != move) continue;
+            result[i] = {LearnMethod::Duplicate, 0};
+            break;
+        }
+    }
+    if (current[0] == 0) result[0] = {LearnMethod::EmptyInvalid, 0};
+}
+} // namespace
+
+bool isValidEvolutionWithMove(const Pk4& pk, const EncInfo& enc, const std::vector<Evo>& history, const MoveResults& moves) {
+    const uint16_t species = pk.species;
+    if (enc.species == species) return true;
+    uint16_t move = 0;
+    switch (species) {
+    case 122: case 185: move = kMoveMimic; break;          // Mr. Mime, Sudowoodo
+    case 424: move = kMoveDoubleHit; break;                 // Ambipom
+    case 463: move = kMoveRollout; break;                   // Lickilicky
+    case 465: case 469: case 473: move = kMoveAncientPower; break; // Tangrowth, Yanmega, Mamoswine
+    default: return true;
+    }
+    bool slot = false;
+    for (const auto& m : moves) {
+        const auto method = m.method;
+        if (!(method == LearnMethod::EggMove || method == LearnMethod::InheritLevelUp || method == LearnMethod::SpecialEgg)) { slot = true; break; }
+    }
+    if (!slot) return false;
+    // PruneKeepPreEvolutions(species)
+    std::vector<Evo> pruned = history;
+    for (std::size_t i = 0; i < history.size(); ++i) {
+        if (history[i].species != species) continue;
+        pruned.assign(history.begin() + static_cast<std::ptrdiff_t>(i + 1), history.end());
+        break;
+    }
+    // MemoryPermissions.GetCanKnowMove with LearnOption.AtAnyTimeChain (IsPast).
+    MoveResults r{};
+    const std::array<uint16_t, 4> one{move, 0, 0, 0};
+    // MarkAndIterate over a single-slot span: only slot 0 is meaningful.
+    if (enc.hasMoves()) {
+        for (auto m : enc.moves) {
+            if (m == 0) break;
+            if (m == move) { r[0] = {LearnMethod::Initial, 0}; break; }
+        }
+    }
+    if (r[0].valid()) return true;
+    // Remaining slots of the 4-wide buffer are marked parsed so only slot 0 decides.
+    for (std::size_t i = 1; i < 4; ++i) r[i] = {LearnMethod::Empty, 0};
+    learnGroup4Check(r, one, pk, pruned, enc, true);
+    return r[0].valid();
+}
+
+// ======================================================================= Generation III origin (Pal Park)
+namespace {
+std::span<const D::Evolution> evolutionsOf3(uint16_t species) noexcept {
+    if (species >= D::kEvolution3Count) return {};
+    return {D::kEvolutions3 + D::kEvolution3Start[species], D::kEvolutions3 + D::kEvolution3Start[species + 1]};
+}
+
+/// EvolutionTree.Evolves3 reverse lineage. Gen III sources are form 0 (no Gen III species with forms
+/// evolves), so every node is keyed by species alone and any other form has an empty node.
+const std::vector<Node>& lineage3() {
+    static const std::vector<Node> nodes = [] {
+        std::vector<Node> n(D::kEvolution3Count);
+        for (uint16_t s = 1; s < D::kEvolution3Count; ++s) {
+            for (const auto& evo : evolutionsOf3(s)) {
+                if (evo.species == 0) break;
+                const uint8_t dForm = evo.form == 255 ? 0 : evo.form;
+                if (dForm != 0 || evo.species >= D::kEvolution3Count) continue;
+                Node& node = n[evo.species];
+                const Link link{s, 0, &evo};
+                if (node.first.species == 0) node.first = link;
+                else if (node.second.species == 0) node.second = link;
+            }
+        }
+        return n;
+    }();
+    return nodes;
+}
+const Node* nodeOf3(uint16_t species, uint8_t form) noexcept {
+    if (species >= D::kEvolution3Count || form != 0) return nullptr;
+    return &lineage3()[species];
+}
+bool tryDevolve3(const Evo& head, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out) noexcept {
+    return tryDevolveNode(nodeOf3(head.species, head.form), pk, currentMax, levelMin, out);
+}
+bool tryEvolve3(const Evo& head, const Evo& next, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out) noexcept {
+    return tryEvolveWith(evolutionsOf3(head.species), head, next, pk, currentMax, levelMin, out);
+}
+bool presentE(uint16_t species, uint8_t form) noexcept { return isPresentInGameE(species, form); }
+
+/// EvolutionUtil.UpdateCeiling
+void updateCeiling(std::span<Evo> r, uint8_t level) noexcept {
+    for (auto& e : r) {
+        if (e.species == 0) break;
+        e.levelMax = std::min(e.levelMax, level);
+    }
+}
+/// EvolutionGroup4.Devolve then EvolutionGroup3.Devolve (format 4, checks on).
+void devolve43(std::array<Evo, 3>& r, const Pk4& pk, uint8_t levelMin4) noexcept {
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve(prev, pk, prev.levelMax, levelMin4, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+    updateCeiling(r, pk.metLevel);
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve3(prev, pk, prev.levelMax, 1, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+}
+} // namespace
+
+bool isPresentInGameE(uint16_t species, uint8_t form) noexcept {
+    if (species == 0 || species > 386) return false;
+    if (form == 0) return true;
+    switch (species) {
+    case kUnown: return form < 28;
+    case kCastform: return form < 4;
+    case kDeoxys: return form < 4;
+    default: return false;
+    }
+}
+
+std::pair<uint16_t, uint8_t> baseSpeciesForm3(uint16_t species, uint8_t form) noexcept {
+    uint16_t s = species;
+    uint8_t f = form;
+    for (int guard = 0; guard < 8; ++guard) {
+        const Node* node = nodeOf3(s, f);
+        if (!node || node->first.species == 0) break;
+        s = node->first.species;
+        f = node->first.form;
+    }
+    return {s, f};
+}
+
+std::vector<Evo> originChain3(const Pk4& pk, uint8_t currentLevel) {
+    const uint8_t max = currentLevel;
+    constexpr uint8_t kMinWildLevel = 2; // EncounterOrigin.GetLevelOriginMin3 for a format other than 3
+    if (pk.isEgg) return {Evo{pk.species, pk.form, 0, max, max, 0}};
+    std::array<Evo, 3> r{};
+    r[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    devolve43(r, pk, kMinWildLevel);
+    // EvolutionUtil.Discard against PersonalTable.E (the last group devolved).
+    for (int i = 0; i < static_cast<int>(r.size()); ++i) {
+        const auto k = static_cast<std::size_t>(i);
+        if (r[k].species == 0) break;
+        if (isPresentInGameE(r[k].species, r[k].form)) continue;
+        for (std::size_t j = k + 1; j < r.size(); ++j) r[j - 1] = r[j];
+        r.back() = Evo{};
+        --i;
+    }
+    std::size_t count = 0;
+    while (count < r.size() && r[count].species != 0) ++count;
+    std::span<Evo> chain(r.data(), count);
+    cleanDevolve(chain, kMinWildLevel);
+    // EvolutionUtil.ConditionEncounterNoMet (the met level was lost on transfer).
+    for (std::size_t i = 0; i + 1 < chain.size(); ++i)
+        if (chain[i].levelUpRequired != 0)
+            chain[i].levelMin = static_cast<uint8_t>(chain[i + 1].levelMin + chain[i].levelUpRequired);
+    return std::vector<Evo>(chain.begin(), chain.end());
+}
+
+History34 evolutionHistory3(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel) {
+    History34 h;
+    const uint8_t max = currentLevel;
+    if (pk.isEgg || enc.kind == EncKind::Invalid) {
+        // GetEvolutionChainsSearch with the Gen IV context: one entry, then EvolutionGroup4.Evolve with
+        // UpdateFloor(met level, current level). Gen III is never visited.
+        Evo head{pk.species, pk.form, 0, max, 0, 0};
+        if (pk.isEgg) {
+            head.levelMin = std::max(max, pk.metLevel);
+            if (enc.kind != EncKind::Invalid && enc.species != pk.species) return h; // SentinelNotReached
+        } else {
+            head.levelMin = pk.metLevel; // CleanDevolve(min(max, met)) raised to met by UpdateFloor
+        }
+        if (isPresentInGame(Table::HGSS, head.species, head.form)) h.gen4.push_back(head);
+        return h;
+    }
+    std::array<Evo, 3> chain{};
+    chain[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    devolve43(chain, pk, enc.levelMin);
+    std::size_t idx = chain.size();
+    for (std::size_t i = 0; i < chain.size(); ++i) if (chain[i].species == enc.species) { idx = i; break; }
+    const std::size_t length = idx == chain.size() ? 0 : idx + 1;
+    if (length == 0) return h;
+    std::span<Evo> c(chain.data(), length);
+    cleanDevolve(c, enc.levelMin);
+    for (auto& evo : c) {
+        if (evo.species == enc.species) break;
+        evo.method = kSentinel;
+    }
+    // EvolutionGroup3.Evolve: the level cap is the met level (the Pal Park transfer level).
+    for (std::size_t i = length - 1; i >= 1; --i) {
+        Evo& dest = c[i - 1];
+        const Evo devolved = c[i];
+        Evo evo{};
+        if (!tryEvolve3(devolved, dest, pk, pk.metLevel, devolved.levelMin, evo)) {
+            if (dest.method == kSentinel) break;
+            continue;
+        }
+        if (isBetterEvolution(evo, dest)) dest = evo;
+    }
+    h.gen3 = setHistory(c, presentE);
+    // EvolutionGroup4.Evolve: UpdateFloor(met level, current level), then evolve up to the current level.
+    c[0].levelMax = max;
+    for (auto& evo : c) {
+        if (evo.species == 0) break;
+        evo.levelMin = std::max(evo.levelMin, pk.metLevel);
+    }
+    for (std::size_t i = length - 1; i >= 1; --i) {
+        Evo& dest = c[i - 1];
+        const Evo devolved = c[i];
+        Evo evo{};
+        if (!tryEvolve(devolved, dest, pk, max, devolved.levelMin, evo)) {
+            if (dest.method == kSentinel) break;
+            continue;
+        }
+        if (isBetterEvolution(evo, dest)) dest = evo;
+    }
+    h.gen4 = setHistory(c);
+    return h;
+}
+
+namespace {
+enum class Game3 : uint8_t { E, RS, FR, LG };
+Learnset learnset3(Game3 g, uint16_t species) noexcept {
+    if (species >= D::kLevelUpE3Count) species = 0;
+    const D::LevelMove* moves = g == Game3::E ? D::kLevelUpE3 : g == Game3::RS ? D::kLevelUpRS3
+                              : g == Game3::FR ? D::kLevelUpFR3 : D::kLevelUpLG3;
+    const uint16_t* start = g == Game3::E ? D::kLevelUpE3Start : g == Game3::RS ? D::kLevelUpRS3Start
+                          : g == Game3::FR ? D::kLevelUpFR3Start : D::kLevelUpLG3Start;
+    return {moves + start[species], moves + start[species + 1]};
+}
+std::span<const uint16_t> eggMoves3(uint16_t species) noexcept {
+    if (species >= D::kEggMovesRS3Count) return {};
+    return {D::kEggMovesRS3 + D::kEggMovesRS3Start[species], D::kEggMovesRS3 + D::kEggMovesRS3Start[species + 1]};
+}
+bool otherMove3(uint16_t species, uint16_t move) noexcept {
+    if (species > 386) return false;
+    const uint16_t* b = D::kOtherMoves3 + D::kOtherMoves3Start[species];
+    const uint16_t* e = D::kOtherMoves3 + D::kOtherMoves3Start[species + 1];
+    return std::binary_search(b, e, move);
+}
+bool levelLearn3(Game3 g, const Evo& evo, uint16_t move) noexcept {
+    uint8_t level = 0;
+    return tryLevelLearn(learnset3(g, evo.species), move, level) && level <= evo.levelMax;
+}
+
+/// LearnGroup3.Check (cartridge-era rules: Emerald, then R/S, FR and LG learnsets and tutors).
+bool learnGroup3Check(MoveResults& result, const std::array<uint16_t, 4>& current, const std::vector<Evo>& evos, const EncInfo& enc) {
+    for (const auto& evo : evos) {
+        if (evo.species > 386) continue; // TryGetPersonal fails
+        for (int i = 3; i >= 0; --i) {
+            auto& r = result[static_cast<std::size_t>(i)];
+            if (r.valid()) continue;
+            const uint16_t move = current[static_cast<std::size_t>(i)];
+            if (levelLearn3(Game3::E, evo, move)) r = {LearnMethod::LevelUp, 0};
+            else if (otherMove3(evo.species, move)) r = {LearnMethod::TMHM, 0};
+            else if (levelLearn3(Game3::RS, evo, move) || levelLearn3(Game3::FR, evo, move) || levelLearn3(Game3::LG, evo, move))
+                r = {LearnMethod::LevelUp, 0};
+        }
+    }
+    if (enc.kind == EncKind::Egg3) {
+        const Game3 g = enc.version == 3 ? Game3::E : enc.version == 4 ? Game3::FR : enc.version == 5 ? Game3::LG : Game3::RS;
+        const auto eggs = eggMoves3(enc.species);
+        const Learnset inherit = canInheritMoves(enc.species) ? learnset3(g, enc.species) : Learnset{};
+        for (int i = 3; i >= 0; --i) {
+            auto& r = result[static_cast<std::size_t>(i)];
+            if (r.valid()) continue;
+            const uint16_t move = current[static_cast<std::size_t>(i)];
+            if (contains(eggs, move)) r = {LearnMethod::EggMove, 0};
+            else if (learnsetHas(inherit, move)) r = {LearnMethod::InheritLevelUp, 0};
+            else if (move == kMoveVoltTackle && enc.species == kPichu && enc.version == 3) r = {LearnMethod::SpecialEgg, 0};
+        }
+    }
+    if (enc.species == kNincada && evos.size() == 2 && evos[0].species == kShedinja && !allParsed(result)) {
+        for (auto& r : result) {
+            if (r.method != LearnMethod::ShedinjaEvo) continue;
+            r = {};
+            break;
+        }
+        const Evo& nincada = evos.back();
+        const Learnset ninjask = learnset3(Game3::E, kNinjask);
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (result[i].valid()) continue;
+            const uint16_t move = current[i];
+            if (move == 0) break;
+            uint8_t level = 0;
+            if (!tryLevelLearn(ninjask, move, level)) continue;
+            if (!nincada.insideLevelRange(level)) continue;
+            result[i] = {LearnMethod::ShedinjaEvo, 0};
+            break;
+        }
+    }
+    return allParsed(result);
+}
+
+/// LearnVerifierHistory.MarkAndIterate for a Gen III encounter: LearnGroup4, then LearnGroup3.
+bool markAndIterate3(MoveResults& result, const std::array<uint16_t, 4>& current, const EncInfo& enc, const Pk4& pk,
+                     const History34& h, bool past) {
+    if (enc.hasMoves()) {
+        for (auto move : enc.moves) {
+            if (move == 0) break;
+            const int index = indexIn(current, move);
+            if (index != -1) result[static_cast<std::size_t>(index)] = {LearnMethod::Initial, 0};
+        }
+    }
+    if (learnGroup4Check(result, current, pk, h.gen4, enc, past)) return true;
+    if (learnGroup3Check(result, current, h.gen3, enc)) return true;
+    for (auto& r : result) if (!r.parsed()) r = {LearnMethod::Unobtainable, 0};
+    return false;
+}
+
+uint16_t evolutionMove(uint16_t species) noexcept {
+    switch (species) {
+    case 122: case 185: return kMoveMimic;                 // Mr. Mime, Sudowoodo
+    case 424: return kMoveDoubleHit;                        // Ambipom
+    case 463: return kMoveRollout;                          // Lickilicky
+    case 465: case 469: case 473: return kMoveAncientPower; // Tangrowth, Yanmega, Mamoswine
+    default: return 0;
+    }
+}
+
+std::vector<Evo> pruneKeepPreEvolutions(const std::vector<Evo>& src, uint16_t species) {
+    for (std::size_t i = 0; i < src.size(); ++i)
+        if (src[i].species == species) return std::vector<Evo>(src.begin() + static_cast<std::ptrdiff_t>(i + 1), src.end());
+    return src;
+}
+} // namespace
+
+MoveResults verifyMoves3(const Pk4& pk, const EncInfo& enc, const History34& history) {
+    // Eggs (never legal with a Gen III origin) and Smeargle take the shared paths.
+    if (pk.isEgg || enc.species == kSmeargle) return verifyMoves(pk, enc, history.gen4);
+    MoveResults result{};
+    const std::array<uint16_t, 4>& current = pk.moves;
+    for (int i = 3; i >= 0; --i) {
+        const auto k = static_cast<std::size_t>(i);
+        if (current[k] != 0) break;
+        result[k] = {LearnMethod::Empty, 0};
+    }
+    markAndIterate3(result, current, enc, pk, history, false);
+    finalizeMoves(result, current);
+    return result;
+}
+
+bool isValidEvolutionWithMove3(const Pk4& pk, const EncInfo& enc, const History34& history, const MoveResults& moves) {
+    const uint16_t species = pk.species;
+    if (enc.species == species) return true;
+    const uint16_t move = evolutionMove(species);
+    if (move == 0) return true;
+    bool slot = false;
+    for (const auto& m : moves) {
+        const auto method = m.method;
+        if (!(method == LearnMethod::EggMove || method == LearnMethod::InheritLevelUp || method == LearnMethod::SpecialEgg)) { slot = true; break; }
+    }
+    if (!slot) return false;
+    const History34 pruned{pruneKeepPreEvolutions(history.gen3, species), pruneKeepPreEvolutions(history.gen4, species)};
+    // MemoryPermissions.GetCanKnowMove over a one-move span; slots 1-3 are parsed so only slot 0 decides.
+    MoveResults r{};
+    for (std::size_t i = 1; i < 4; ++i) r[i] = {LearnMethod::Empty, 0};
+    const std::array<uint16_t, 4> one{move, 0, 0, 0};
+    markAndIterate3(r, one, enc, pk, pruned, true);
+    return r[0].valid();
+}
+
+// ======================================================================= format 5 (a PK5 of Gen III/IV origin)
+namespace {
+/// EvolutionTree.Evolves5 reverse lineage (PersonalTable.BW form counts). Only species up to 493
+/// matter here: no Generation V species evolves into or from an older one. The links point into
+/// the Gen V analyzer's static table, so the lineage is built once from the first caller's data.
+const std::vector<Node>& lineage5(const Format5Data& f5) {
+    static std::once_flag once;
+    static std::vector<Node> nodes;
+    std::call_once(once, [&f5] {
+        nodes.assign(D::kEvolutionCount * kMaxForms, Node{});
+        for (uint16_t s = 1; s <= kMaxSpecies4; ++s) {
+            const uint8_t fc = f5.formCountBW(s);
+            for (uint8_t f = 0; f < fc; ++f) {
+                for (const auto& evo : f5.evolutions(s)) {
+                    if (evo.species == 0) break;
+                    const uint8_t dForm = evo.form == 255 ? f : evo.form;
+                    if (evo.species >= D::kEvolutionCount || dForm >= kMaxForms) continue;
+                    Node& node = nodes[evo.species * kMaxForms + dForm];
+                    const Link link{s, f, &evo};
+                    if (node.first.species == 0) node.first = link;
+                    else if (node.second.species == 0) node.second = link;
+                }
+            }
+        }
+    });
+    return nodes;
+}
+bool tryDevolve5(const Evo& head, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out, const Format5Data& f5) {
+    if (head.species >= D::kEvolutionCount || head.form >= kMaxForms) return false;
+    return tryDevolveNode(&lineage5(f5)[head.species * kMaxForms + head.form], pk, currentMax, levelMin, out);
+}
+bool tryEvolve5(const Evo& head, const Evo& next, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out,
+                const Format5Data& f5) {
+    if (head.species > kMaxSpecies4) return false;
+    return tryEvolveWith(f5.evolutions(head.species), head, next, pk, currentMax, levelMin, out);
+}
+
+/// EvolutionGroup5.Devolve, EvolutionGroup4.Devolve (format 5: Arceus form 0, ceiling at the
+/// transfer level, minimum level 1) and, for a Generation III origin, EvolutionGroup3.Devolve
+/// (format 5 applies no ceiling there and keeps the caller's minimum level).
+void devolve543(std::array<Evo, 3>& r, const Pk4& pk, uint8_t levelMin, bool gen3, const Format5Data& f5) {
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve5(prev, pk, prev.levelMax, levelMin, evo, f5)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+    if (pk.species == kArceus) r[0].form = 0;
+    updateCeiling(r, pk.metLevel);
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve(prev, pk, prev.levelMax, 1, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+    if (!gen3) return;
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve3(prev, pk, prev.levelMax, levelMin, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+}
+
+/// EvolutionGroup3/4/5.Evolve over a chain from GetOriginChain (ConditionBaseChainForward applied).
+void evolveWith(std::span<Evo> c, const Pk4& pk, uint8_t levelMax, int group, const Format5Data& f5) {
+    for (std::size_t i = c.size() - 1; i >= 1; --i) {
+        Evo& dest = c[i - 1];
+        const Evo devolved = c[i];
+        Evo evo{};
+        const bool ok = group == 3 ? tryEvolve3(devolved, dest, pk, levelMax, devolved.levelMin, evo)
+                      : group == 4 ? tryEvolve(devolved, dest, pk, levelMax, devolved.levelMin, evo)
+                                   : tryEvolve5(devolved, dest, pk, levelMax, devolved.levelMin, evo, f5);
+        if (!ok) {
+            if (dest.method == kSentinel) break;
+            continue;
+        }
+        if (isBetterEvolution(evo, dest)) dest = evo;
+    }
+}
+
+/// LearnGroup5.Check over the Generation V history (no Generation V egg encounter applies here).
+bool learnGroup5Check(MoveResults& result, const std::array<uint16_t, 4>& current, const Pk4& pk,
+                      const std::vector<Evo>& evos, bool past, const Format5Data& f5) {
+    const auto check = [&](const Evo& evo) {
+        for (int i = 3; i >= 0; --i) {
+            auto& r = result[static_cast<std::size_t>(i)];
+            if (r.valid()) continue;
+            const LearnMethod chk = f5.learn(pk, evo, current[static_cast<std::size_t>(i)], past);
+            if (chk != LearnMethod::None) r = {chk, 0};
+        }
+    };
+    for (const auto& evo : evos) {
+        if (evo.species == kDeoxys || evo.species == kGiratina || evo.species == kShaymin) {
+            const Personal5 pi = f5.personalB2W2(evo.species, evo.form);
+            if (!pi.valid) continue;
+            for (uint8_t f = 0; f < pi.formCount; ++f) {
+                Evo e = evo;
+                e.form = f;
+                check(e);
+            }
+        } else {
+            check(evo);
+        }
+    }
+    return allParsed(result);
+}
+
+/// LearnVerifierHistory.MarkAndIterate for a PK5: LearnGroup5, then LearnGroup4 unless the
+/// encounter is EncounterInvalid (Gen V context), then LearnGroup3 for a Generation III encounter.
+bool markAndIterate5(MoveResults& result, const std::array<uint16_t, 4>& current, const EncInfo& enc, const Pk4& pk,
+                     const History345& h, bool past, const Format5Data& f5) {
+    if (enc.hasMoves()) {
+        for (auto move : enc.moves) {
+            if (move == 0) break;
+            const int index = indexIn(current, move);
+            if (index != -1) result[static_cast<std::size_t>(index)] = {LearnMethod::Initial, 0};
+        }
+    }
+    if (learnGroup5Check(result, current, pk, h.gen5, past, f5)) return true;
+    if (enc.kind != EncKind::Invalid) {
+        if (learnGroup4Check(result, current, pk, h.gen4, enc, past)) return true;
+        if (isGen3Kind(enc.kind) && learnGroup3Check(result, current, h.gen3, enc)) return true;
+    }
+    for (auto& r : result) if (!r.parsed()) r = {LearnMethod::Unobtainable, 0};
+    return false;
+}
+} // namespace
+
+std::vector<Evo> originChain5(const Pk4& pk, uint8_t currentLevel, bool gen3, const Format5Data& f5) {
+    const uint8_t max = currentLevel;
+    // EncounterOrigin.GetLevelOriginMin3/4 for a format other than the origin generation.
+    const uint8_t min = (!gen3 && pk.eggLocation() != 0) ? 1 : 2;
+    if (pk.isEgg) return {Evo{pk.species, pk.form, 0, max, max, 0}};
+    std::array<Evo, 3> r{};
+    r[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    devolve543(r, pk, min, gen3, f5);
+    // EvolutionUtil.Discard against the origin group's table (PersonalTable.E / HGSS).
+    for (int i = 0; i < static_cast<int>(r.size()); ++i) {
+        const auto k = static_cast<std::size_t>(i);
+        if (r[k].species == 0) break;
+        if (gen3 ? isPresentInGameE(r[k].species, r[k].form) : presentHGSS(r[k].species, r[k].form)) continue;
+        for (std::size_t j = k + 1; j < r.size(); ++j) r[j - 1] = r[j];
+        r.back() = Evo{};
+        --i;
+    }
+    std::size_t count = 0;
+    while (count < r.size() && r[count].species != 0) ++count;
+    std::span<Evo> chain(r.data(), count);
+    cleanDevolve(chain, min);
+    // EvolutionUtil.ConditionEncounterNoMet (the original met level was lost on transfer).
+    for (std::size_t i = 0; i + 1 < chain.size(); ++i)
+        if (chain[i].levelUpRequired != 0)
+            chain[i].levelMin = static_cast<uint8_t>(chain[i + 1].levelMin + chain[i].levelUpRequired);
+    return std::vector<Evo>(chain.begin(), chain.end());
+}
+
+History345 evolutionHistory5(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel, const Format5Data& f5) {
+    History345 h;
+    const uint8_t max = currentLevel;
+    if (pk.isEgg) return h; // a PK5 of Gen III/IV origin cannot be an egg (Poke Transfer refuses eggs)
+    if (enc.kind == EncKind::Invalid) {
+        // GetEvolutionChainsSearch in the Gen V context: the head only (encSpecies is the species),
+        // its form reset for Arceus by EvolutionGroup4.Devolve, then EvolutionGroup5.Evolve with
+        // UpdateFloor(met level, current level).
+        Evo head{pk.species, pk.species == kArceus ? static_cast<uint8_t>(0) : pk.form, 0, max, pk.metLevel, 0};
+        if (f5.presentB2W2(head.species, head.form)) h.gen5.push_back(head);
+        return h;
+    }
+    std::array<Evo, 3> chain{};
+    chain[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    const bool gen3 = isGen3Kind(enc.kind);
+    devolve543(chain, pk, enc.levelMin, gen3, f5);
+    std::size_t idx = chain.size();
+    for (std::size_t i = 0; i < chain.size(); ++i) if (chain[i].species == enc.species) { idx = i; break; }
+    const std::size_t length = idx == chain.size() ? 0 : idx + 1;
+    if (length == 0) return h;
+    std::span<Evo> c(chain.data(), length);
+    cleanDevolve(c, enc.levelMin);
+    for (auto& evo : c) {
+        if (evo.species == enc.species) break;
+        evo.method = kSentinel;
+    }
+    // EvolutionGroup3/4.Evolve for a format above their generation: level cap is the transfer level.
+    if (gen3) {
+        evolveWith(c, pk, pk.metLevel, 3, f5);
+        h.gen3 = setHistory(c, presentE);
+    }
+    evolveWith(c, pk, pk.metLevel, 4, f5);
+    h.gen4 = setHistory(c);
+    // EvolutionGroup5.Evolve: UpdateFloor(met level, current level), then evolve up to the current level.
+    c[0].levelMax = max;
+    for (auto& evo : c) {
+        if (evo.species == 0) break;
+        evo.levelMin = std::max(evo.levelMin, pk.metLevel);
+    }
+    evolveWith(c, pk, max, 5, f5);
+    h.gen5 = setHistory(c, f5.presentB2W2);
+    return h;
+}
+
+MoveResults verifyMoves5(const Pk4& pk, const EncInfo& enc, const History345& history, const Format5Data& f5) {
+    MoveResults result{};
+    const std::array<uint16_t, 4>& current = pk.moves;
+    if (enc.species == kSmeargle) {
+        // MoveInfo.IsSketchValid(move, Gen5)
+        for (int i = 3; i >= 0; --i) {
+            const auto k = static_cast<std::size_t>(i);
+            const uint16_t move = current[k];
+            if (move == 0) result[k] = {LearnMethod::Empty, 0};
+            else if (move <= 559 && move != kMoveStruggle && move != kMoveChatter) result[k] = {LearnMethod::Sketch, 0};
+            else result[k] = {LearnMethod::Unobtainable, 0};
+        }
+    } else {
+        for (int i = 3; i >= 0; --i) {
+            const auto k = static_cast<std::size_t>(i);
+            if (current[k] != 0) break;
+            result[k] = {LearnMethod::Empty, 0};
+        }
+        markAndIterate5(result, current, enc, pk, history, false, f5);
+    }
+    finalizeMoves(result, current);
+    return result;
+}
+
+bool isValidEvolutionWithMove5(const Pk4& pk, const EncInfo& enc, const History345& history, const MoveResults& moves,
+                               const Format5Data& f5) {
+    const uint16_t species = pk.species;
+    if (enc.species == species) return true;
+    const uint16_t move = evolutionMove(species);
+    if (move == 0) return true;
+    bool slot = false;
+    for (const auto& m : moves) {
+        const auto method = m.method;
+        if (!(method == LearnMethod::EggMove || method == LearnMethod::InheritLevelUp || method == LearnMethod::SpecialEgg)) { slot = true; break; }
+    }
+    if (!slot) return false;
+    const History345 pruned{pruneKeepPreEvolutions(history.gen3, species), pruneKeepPreEvolutions(history.gen4, species),
+                            pruneKeepPreEvolutions(history.gen5, species)};
+    MoveResults r{};
+    for (std::size_t i = 1; i < 4; ++i) r[i] = {LearnMethod::Empty, 0};
+    const std::array<uint16_t, 4> one{move, 0, 0, 0};
+    markAndIterate5(r, one, enc, pk, pruned, true, f5);
+    return r[0].valid();
+}
+
+} // namespace Legality::Gen4

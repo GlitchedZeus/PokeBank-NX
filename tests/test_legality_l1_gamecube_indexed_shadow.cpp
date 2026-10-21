@@ -38,6 +38,14 @@ int main(){
     static_assert(S::kMaximumTeamIterations==16384u);
     auto bounded=colo;bounded.teamSearchBudget=1;
     assert(S::evaluate(bounded).status==Status::BoundedTeamSearchUnknown);
+    for(uint16_t malformedSpecies:{uint16_t(0),uint16_t(387),uint16_t(65535)}) {
+        auto missing=colo;missing.originalSpecies=malformedSpecies;
+        assert(S::evaluate(missing).status==Status::UnknownOriginalStage);
+    }
+    for(uint8_t malformedLevel:{uint8_t(0),uint8_t(101),uint8_t(255)}) {
+        auto missing=colo;missing.originalLevel=malformedLevel;
+        assert(S::evaluate(missing).status==Status::UnknownOriginalStage);
+    }
     auto wrong=colo;wrong.originalFateful=true; // XD field on Colosseum
     assert(S::evaluate(wrong).status==Status::CandidateOriginalIdentityContradicted);
     wrong=colo;wrong.originalIVs[0]=31;

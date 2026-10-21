@@ -1,0 +1,20 @@
+# Gen III (Ruby/Sapphire/Emerald/FireRed/LeafGreen) PK3 legality: PKHeX-backed fixtures through
+# Legality::analyzePk3 and the production Legality::analyze hook, constructed rule cases,
+# malformed records and a deterministic fuzz pass. tools/pkhex_gen34_diff/run.sh (GENS=3,
+# and GROW=1 for the grown corpus) reproduces the verdicts at scale against PKHeX.Core.
+GEN3_LEGALITY_SOURCES := tests/test_legality_gen3.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_legality_gen3
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen3_sanitize
+# host-test/host-sanitize take their prerequisites when Makefile.host.base is read,
+# before this file appends to the lists, so name the new binaries explicitly.
+host-test: $(HOST_BUILD)/test_legality_gen3
+host-sanitize: $(HOST_BUILD)/test_legality_gen3_sanitize
+
+$(HOST_BUILD)/test_legality_gen3: $(GEN3_LEGALITY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_legality_gen3_sanitize: $(GEN3_LEGALITY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@

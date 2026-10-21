@@ -150,6 +150,50 @@ int main() {
         ++states; if (!allowed) ++forbidden;
     }
     assert(states==64009 && forbidden>0);
+    // Cross-version identity may be proven by a witnessed trade; absent
+    // that evidence, equality of species and OT is not proof of receipt.
+    unsigned versionPairs=0;
+    for(unsigned origin=1;origin<=6;++origin)
+    for(unsigned destination=1;destination<=6;++destination) {
+        auto originGame=static_cast<E::Game>(origin);
+        auto targetGame=static_cast<E::Game>(destination);
+        auto source=hypothetical(originGame,E::Kind::Gift);
+        auto native=observed(targetGame);
+        auto route=unchanged();
+        const auto before=E::evaluate(source,native,route);
+        // Red/Blue and Gold/Silver carry identical original rows, so an
+        // observation in the sibling edition matches the row directly.
+        const bool sameFamily=
+            E::editionFamily(originGame)==E::editionFamily(targetGame);
+        if(sameFamily)
+            assert(before.disposition==D::ConditionalCandidate);
+        else
+            assert(before.disposition==D::Unknown);
+        const bool gen1Origin=origin<=3;
+        const bool gen1Dest=destination<=3;
+        if(gen1Origin==gen1Dest) {
+            route.sameGenerationEditionTransferIndependentlyVerified=true;
+        } else {
+            route.timeCapsule=E::Crossing::SnapshotVerified;
+            route.crossingSpecies=known<uint16_t>(25);
+            route.crossingMoves=known(E::Moves4{1,2,165,0});
+        }
+        const auto after=E::evaluate(source,native,route);
+        assert(after.disposition==D::ConditionalCandidate);
+        assert(!after.authenticated);
+        // Even a contrary native OT may NOT yield a candidate exclusion
+        // while its intervening edition history remains unattested.
+        native.trainerId.value++;
+        if(gen1Origin==gen1Dest && !sameFamily) {
+            route.sameGenerationEditionTransferIndependentlyVerified=false;
+            const auto without=E::evaluate(source,native,route);
+            assert(without.disposition==D::Unknown);
+            assert(without.contradicted==0);
+        }
+        ++versionPairs;
+    }
+    assert(versionPairs==36u);
     std::cout << "L4 Gen I/II gift history: " << states << " crossing combinations, "
-              << forbidden << " candidate-only contradictions: PASS\n";
+              << forbidden << " candidate-only contradictions, " << versionPairs
+              << " independently witnessed edition routes: PASS\n";
 }

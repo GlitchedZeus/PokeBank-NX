@@ -30,6 +30,26 @@ $(GEN4_SANITIZE): $(GEN4_FOUNDATION_SOURCES) $(GEN4_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(GEN4_FOUNDATION_SOURCES) -o $@
 
+# The capture Ball is the Pokemon's, whichever D/P, Pt or HG/SS save holds it: records,
+# parsed saves, the mutable model and the analyzer all read max(0x83, 0x86).
+GEN4_CAPTURE_BALL_SOURCES := tests/test_gen4_capture_ball_containers.cpp \
+	$(sort $(filter-out tests/%,$(GEN4_FOUNDATION_SOURCES) $(GEN4_BCC_NATIVE_METHODK_SOURCES)))
+GEN4_CAPTURE_BALL_TEST := $(HOST_BUILD)/test_gen4_capture_ball_containers
+GEN4_CAPTURE_BALL_SANITIZE := $(HOST_BUILD)/test_gen4_capture_ball_containers_sanitize
+
+HOST_TESTS += $(GEN4_CAPTURE_BALL_TEST)
+HOST_SANITIZE_TESTS += $(GEN4_CAPTURE_BALL_SANITIZE)
+host-test: $(GEN4_CAPTURE_BALL_TEST)
+host-sanitize: $(GEN4_CAPTURE_BALL_SANITIZE)
+
+$(GEN4_CAPTURE_BALL_TEST): $(GEN4_CAPTURE_BALL_SOURCES) $(GEN4_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(GEN4_CAPTURE_BALL_SOURCES) -o $@
+
+$(GEN4_CAPTURE_BALL_SANITIZE): $(GEN4_CAPTURE_BALL_SOURCES) $(GEN4_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(GEN4_CAPTURE_BALL_SOURCES) -o $@
+
 .PHONY: gen4-safety-contract
 gen4-safety-contract:
 	python3 tests/test_gen4_safety_contract.py

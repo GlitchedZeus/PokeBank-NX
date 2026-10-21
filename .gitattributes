@@ -38,3 +38,6 @@ Makefile        text eol=lf
 *.nro           binary
 *.elf           binary
 *.nacp          binary
+# Unified-diff hand-off patches carry context lines for empty source lines (a lone space),
+# which git diff --check would otherwise flag as trailing whitespace.
+docs/legality/handoff/*.patch -whitespace

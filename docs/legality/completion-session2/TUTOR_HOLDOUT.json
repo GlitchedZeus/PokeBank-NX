@@ -1,0 +1,103 @@
+{
+  "policy": "Additional declared holdout; every raw discrepancy remains counted. No change to the frozen 355997-record campaign denominators. Synthetic/correlated test inputs, not authenticated historical specimens.",
+  "datasets": [
+    {
+      "generation": 1,
+      "seed": 8176001,
+      "records": 10000,
+      "raw_counts": {
+        "pinned": {
+          "VALID/VALID": 7338,
+          "INVALID/INVALID": 1918,
+          "VALID/INVALID": 97,
+          "VALID/UNCERTAIN": 254,
+          "INVALID/UNCERTAIN": 393
+        },
+        "current": {
+          "VALID/VALID": 7338,
+          "INVALID/INVALID": 1920,
+          "VALID/INVALID": 95,
+          "VALID/UNCERTAIN": 254,
+          "INVALID/UNCERTAIN": 393
+        }
+      },
+      "unexplained": 0,
+      "files": {
+        "tutor-holdout-gen1.txt": {
+          "sha256": "07d3dadb2bc01b02c3daae781a537cdd57c5cc85018902c9a834972c7d9bc459",
+          "bytes": 1476051
+        },
+        "tutor-holdout-gen1-pinned.txt": {
+          "sha256": "5bdf957a053fc2f4d14dc42036957162e805293166de7ee53d8add6a5db9c4a7",
+          "bytes": 468566
+        },
+        "tutor-holdout-gen1-current.txt": {
+          "sha256": "6eafb38f05805276c05e2335b495ea406226eaf2c3e6ec2096ebdbafdf7dcb7d",
+          "bytes": 464699
+        },
+        "tutor-holdout-gen1-native.txt": {
+          "sha256": "b39d79c3df4484f1c76b92417c0908dd026f6e5e7d2dd73c0b409e93a539aecd",
+          "bytes": 768112
+        },
+        "tutor-holdout-gen1-proofs.txt": {
+          "sha256": "c7b864eb41827fe9b00fcc915374546b3dda337ac88099ba74bad9c27c82c501",
+          "bytes": 7109
+        },
+        "tutor-holdout-gen1-audit.txt": {
+          "sha256": "47a5891fbd96a6ab1f48d7274da5f41508d38371e9a8e316be057a65dca8b7f5",
+          "bytes": 1174
+        }
+      }
+    },
+    {
+      "generation": 2,
+      "seed": 8176003,
+      "records": 20000,
+      "raw_counts": {
+        "pinned": {
+          "VALID/VALID": 14989,
+          "INVALID/INVALID": 3997,
+          "INVALID/VALID": 37,
+          "INVALID/UNCERTAIN": 547,
+          "VALID/INVALID": 192,
+          "VALID/UNCERTAIN": 238
+        },
+        "current": {
+          "VALID/VALID": 14986,
+          "INVALID/INVALID": 4038,
+          "INVALID/VALID": 40,
+          "INVALID/UNCERTAIN": 547,
+          "VALID/UNCERTAIN": 238,
+          "VALID/INVALID": 151
+        }
+      },
+      "unexplained": 0,
+      "files": {
+        "tutor-holdout-gen2.txt": {
+          "sha256": "b795ffc325da3ba800f4bb1c8596a96817b45ec6c64ca539100bf7e03d64d5ff",
+          "bytes": 3196409
+        },
+        "tutor-holdout-gen2-pinned.txt": {
+          "sha256": "53081a7d69cc92cd2c8955f82f5550fc41f6c8678b4de3c671dbd5ad8fd91099",
+          "bytes": 983623
+        },
+        "tutor-holdout-gen2-current.txt": {
+          "sha256": "6139cc051c5025261c2f3b22dc34786fa7eb9a32df52f3f53308db69b6574476",
+          "bytes": 959306
+        },
+        "tutor-holdout-gen2-native.txt": {
+          "sha256": "5b6ea10783b45215634b870c35d9844b62d7feaa285b460ab90c1e916073bd04",
+          "bytes": 1598777
+        },
+        "tutor-holdout-gen2-proofs.txt": {
+          "sha256": "2b384aea99a82108256fe4af664bf56390adb2088d62fff4287da9c48bbc2e01",
+          "bytes": 224773
+        },
+        "tutor-holdout-gen2-audit.txt": {
+          "sha256": "f5d30d9a4f547049d262b593d2a92cf31ca1233d9a598cb6c608169683eaf94b",
+          "bytes": 1627
+        }
+      }
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 #include "Legality/Gen4MysteryGiftContainerEvidence.h"
+#include "Legality/Gen4OriginalCardRecipientEvidence.h"
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -6,6 +7,7 @@
 #include <iostream>
 #include <vector>
 namespace C=Legality::Gen4MysteryGiftContainerEvidence;
+namespace J=Legality::Gen4OriginalCardRecipientEvidence;
 void w16(std::vector<std::byte>& x,size_t i,uint16_t v) {
     x[i]=static_cast<std::byte>(v);x[i+1]=static_cast<std::byte>(v>>8);
 }
@@ -194,6 +196,57 @@ int main() {
     auto gift=pgt;w16(gift,0,1);
     a=verified();a.grade=C::ArchiveGrade::OriginalPGT;
     assert(C::attest(C::inspect(gift),a)==C::ArchiveStatus::ConditionalOriginalSource);
+    // Original card identity is not determined by PGT gift-body equality.
+    // Independently proven source and recipient-save card links are separate.
+    auto originalCard=card;
+    w16(originalCard,C::PCDCardId,66);
+    w16(originalCard,C::PCDCompatibility,0x30);
+    auto identity=J::CardSource{};
+    identity.archive=verified();
+    identity.exactCardArchiveDigest=identity.archive.sourceDigest;
+    identity.exactCardDigestIndependentlyVerified=true;
+    identity.originalGiftTypeIndependentlyVerified=true;
+    identity.originalGiftType=C::GiftType::Pokemon;
+    identity.cardIdIndependentlyVerified=true;identity.originalCardId=66;
+    identity.compatibilityBytesIndependentlyVerified=true;
+    identity.originalCompatibility=0x30;
+    identity.giftBodyLinkedToExactCardIndependentlyVerified=true;
+    auto recipient=J::RecipientEvidence{};
+    recipient.originalRecipientSaveDigest[0]=std::byte{1};
+    recipient.originalSaveDigestIndependentlyVerified=true;
+    recipient.originalSaveIdentityIndependentlyVerified=true;
+    recipient.receiptRecordIndependentlyVerified=true;
+    recipient.receiptRecordBoundToOriginalCardIndependentlyVerified=true;
+    recipient.originalReceiptCardId=66;
+    recipient.originalTrainerIdentityIndependentlyVerified=true;
+    recipient.recipientSlotIndependentlyVerified=true;
+    recipient.individualNativePK4LinkedToReceiptIndependentlyVerified=true;
+    recipient.originalReceiptDateIndependentlyLinked=true;
+    recipient.nativeDateAvailable=true;
+    recipient.observedMet={2010,3,9};
+    recipient.clock.releaseWindowIndependentlyVerified=true;
+    recipient.clock.first={2010,3,1};recipient.clock.last={2010,3,31};
+    recipient.clock.originalReceiptField=J::Clock::Field::Met;
+    recipient.clock.originalFieldUnchangedIndependentlyVerified=true;
+    recipient.clock.clockAccurateAtOriginalReceiptIndependentlyVerified=true;
+    recipient.clock.noLaterDateRewriteIndependentlyVerified=true;
+    auto joined=J::evaluate(true,C::inspect(originalCard),identity,recipient);
+    assert(joined.status==J::Status::ConditionalCandidate);
+    assert(!joined.authenticated && !joined.globallyInvalid);
+    w16(originalCard,C::PCDCardId,67);
+    assert(J::evaluate(true,C::inspect(originalCard),identity,recipient).status==
+           J::Status::CandidateCardMismatch);
+    recipient.receiptRecordBoundToOriginalCardIndependentlyVerified=false;
+    w16(originalCard,C::PCDCardId,66);
+    assert(J::evaluate(true,C::inspect(originalCard),identity,recipient).status==
+           J::Status::UnknownReceiptCardLink);
+    // A Ranger-shaped card is NOT independently verified PID/IV and the
+    // historical recipient; these are distinct native evidence checks.
+    recipient.receiptRecordBoundToOriginalCardIndependentlyVerified=true;
+    identity.originalGiftType=C::GiftType::ManaphyEgg;
+    w16(originalCard,0,7);
+    assert(J::evaluate(true,C::inspect(originalCard),identity,recipient).status==
+           J::Status::UnknownRangerRecipient);
     std::cout<<"L4 Gen IV PCD/PGT: "<<pairs<<" delivery families, "<<mutated
              <<" bitwise pair negatives, "<<archives<<" provenance states, "
              <<conversionStates<<" conversion-proof states: PASS\n";

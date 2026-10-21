@@ -1,0 +1,108 @@
+{
+  "retained_records": 355997,
+  "fresh_records": 163176,
+  "policy": "Each raw input remains in each oracle denominator. Multiple oracle evaluations and correlated mutations are not independent historical specimens. Generation uses some unseeded PKHeX conversion randomness; file hashes, not seeds alone, identify these corpora.",
+  "datasets": [
+    {
+      "generation": 1,
+      "set": "retained",
+      "path": "/tmp/gen15-gb1-retained/corpus.txt",
+      "sha256": "d597250e6ab6957036b07badfa8db37eb3b15598436520c69f4cb49a26c77ad3",
+      "records": 50000,
+      "synthetic": true
+    },
+    {
+      "generation": 1,
+      "set": "final-fresh",
+      "path": "/tmp/gen15-session2/final-holdouts/gen1.txt",
+      "sha256": "17c8e0ca87fc2830ad0e87d2f0cf91770bcc38616db8350a51772d696fd981a6",
+      "records": 20000,
+      "synthetic": true
+    },
+    {
+      "generation": 2,
+      "set": "retained",
+      "path": "/tmp/gen15-gb2-retained/corpus.txt",
+      "sha256": "cc90e3b1ef349da269ee720a5b8359d5d4a84d1b28f3d4299b6ad8f467440be1",
+      "records": 50000,
+      "synthetic": true
+    },
+    {
+      "generation": 2,
+      "set": "final-fresh",
+      "path": "/tmp/gen15-session2/final-holdouts/gen2.txt",
+      "sha256": "bdc54c6f38359fc06604bfb3fc87c2decc0e73b2cc6abb1f56bf36cd71d9b578",
+      "records": 20000,
+      "synthetic": true
+    },
+    {
+      "generation": 3,
+      "set": "retained",
+      "path": "/tmp/gen15-gen3-holdout/pkhex.txt",
+      "sha256": "c2546ad695a9ee300f344f79f0ca86e557fa8b65da0d5e3d30e804e9be6dcd5a",
+      "records": 32756,
+      "synthetic": true
+    },
+    {
+      "generation": 3,
+      "set": "final-fresh",
+      "path": "/tmp/gen15-session2/final-holdouts/gen3-pinned.txt",
+      "sha256": "84a33c209dc776bae9339599f83034804923d05be0bea05f9f590c4b738d239c",
+      "records": 16378,
+      "synthetic": true
+    },
+    {
+      "generation": 4,
+      "set": "retained",
+      "path": "/tmp/gen15-gen4-holdout/pkhex.txt",
+      "sha256": "135ea52c0ba6ae383f6825d85ff540d9c99505c16c0866ecf149f5034e5c4e6a",
+      "records": 50995,
+      "synthetic": true
+    },
+    {
+      "generation": 4,
+      "set": "final-fresh",
+      "path": "/tmp/gen15-session2/final-holdouts/gen4-pinned.txt",
+      "sha256": "63006739a9bd99339a24227b281482500b7a9b561a6151f38158c1f157955103",
+      "records": 25999,
+      "synthetic": true
+    },
+    {
+      "generation": 5,
+      "set": "retained",
+      "path": "/tmp/gen15-gen5-holdout/pkhex.txt",
+      "sha256": "2502ee21a5e89c62da6c5efdae7b872ae207582069994c22f1f32fa96446dce1",
+      "records": 135193,
+      "synthetic": true
+    },
+    {
+      "generation": 5,
+      "set": "final-fresh",
+      "path": "/tmp/gen15-session2/final-holdouts/gen5-pinned.txt",
+      "sha256": "82df970407b49b4ec918d8c85658775bd18e3eb1811da30d7dfcce3c8a5aa4a2",
+      "records": 53860,
+      "synthetic": true
+    },
+    {
+      "set": "original-adversarial",
+      "path": "/tmp/gen15-gen5-adversarial/pkhex.txt",
+      "records": 27053,
+      "sha256": "e0744eddde6e0efe074d8324eaf98b002a3e37c1a7c3f810c16ed72c4ec37209",
+      "synthetic": true
+    },
+    {
+      "set": "original-current-probe",
+      "path": "/tmp/gen15-gb2-latest/corpus.txt",
+      "records": 10000,
+      "sha256": "37785ec31c7abdf44943016337a335392583843cae2beefb326c8197d8d41f85",
+      "synthetic": true
+    },
+    {
+      "set": "fresh-adversarial",
+      "path": "/tmp/gen15-session2/final-holdouts/gen5-adversarial.txt",
+      "records": 26939,
+      "sha256": "8651724bab37619e588d89b8a4696291cb43332038d80adeef3ff32538a87dcc",
+      "synthetic": true
+    }
+  ]
+}

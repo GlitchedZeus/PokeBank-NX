@@ -11,7 +11,7 @@
 // loop-idiom pass rewrites the fixed 48-byte substructure copies into memcpy and then can't propagate
 // the size guard to the new[] buffer -- it false-positives with bogus 2^63-byte ranges. Both warnings
 // are the same false positive (accesses are guarded above); suppress them for this file.
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #pragma GCC diagnostic ignored "-Wrestrict"
 #endif

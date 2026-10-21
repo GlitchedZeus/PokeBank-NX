@@ -30,10 +30,10 @@ jobs:
           submodules: recursive
           # Audit, umbrella legality, and isolated legality-lane PRs require evidence
           # for their exact application head, not GitHub's synthetic pull-request merge ref.
-          ref: ${{ (github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || startsWith(github.event.pull_request.head.ref, 'integration/legality-')) && github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ (github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || (startsWith(github.event.pull_request.head.ref, 'integration/legality-') || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-'))) && github.event.pull_request.head.sha || github.sha }}
 
       - name: Verify exact pull-request application identity
-        if: github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || startsWith(github.event.pull_request.head.ref, 'integration/legality-')
+        if: github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || (startsWith(github.event.pull_request.head.ref, 'integration/legality-') || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-'))
         env:
           EXPECTED_APPLICATION_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -73,7 +73,8 @@ jobs:
         run: make -f Makefile.host host-clean
 
       - name: Run host tests
-        run: make -f Makefile.host host-test
+        # Build the test binaries in parallel; the recipe still runs them one at a time.
+        run: make -f Makefile.host -j"$(nproc)" host-test
 
       - name: Focused RSE save-open bridge regression
         run: |
@@ -99,13 +100,13 @@ jobs:
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
 
       - name: Run ASan and UBSan tests
-        run: make -f Makefile.host host-sanitize
+        run: make -f Makefile.host -j"$(nproc)" host-sanitize
 
 # Coordinator-owned integration gate: ordinary host tests do not
   # automatically run standalone lane tests. Require exact PR head here.
   legality-parallel-validation:
     name: Legality lane ${{ matrix.lane }} (native + sanitizers)
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'integration/legality-') }}
+    if: ${{ github.event_name == 'pull_request' && (startsWith(github.event.pull_request.head.ref, 'integration/legality-') || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -171,8 +172,12 @@ jobs:
               python3 tools/audit_legality_l5_stage1_parity_gate.py --self-test
               python3 tools/audit_legality_l5_stage1_parity_gate.py --verify-manifests --current-integration-head "$INTEGRATION_EXACT_SHA"
               python3 tools/audit_legality_l5_invalid_site_gate.py --self-test
-              # F5 introduces one separately audited direct Invalid site.
-              python3 tools/audit_legality_l5_invalid_site_gate.py --source src/Legality/Legality.cpp --expected-invalid 38 --require-f3-f4
+              # F5 introduces one separately audited direct Invalid site. PR #303's level/EXP
+              # rule for native PK1 moved from a direct site into GBLegality's format rules,
+              # reported through the existing GB-problem site (44 -> 43). Native PK2 now has
+              # its own analyzeNativeGen2 (species, move id, duplicate move, empty OT and the
+              # GB-problem site, as analyzeNativeGen1 has): 43 -> 48.
+              python3 tools/audit_legality_l5_invalid_site_gate.py --source src/Legality/Legality.cpp --expected-invalid 48 --require-f3-f4
               python3 tools/audit_legality_l5_stage2_native.py --full --source-pin
               python3 tools/audit_legality_l5_stage4_crosslane.py --self-test
               python3 tools/audit_legality_l5_stage4_crosslane.py --l1-root . --l2-root . --l3-root . --l4-root .

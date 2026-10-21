@@ -28,7 +28,30 @@ def verify(l4_csv: str, l5_json: str, cpp_projection: bytes,
            expected_reused: int = 219) -> dict:
     l4 = list(csv.DictReader(l4_csv.splitlines()))
     l5 = json.loads(l5_json)
+    # A frozen structural/research catalog cannot change its meaning through
+    # top-level booleans that the indexed-row checks otherwise ignore.
+    require(isinstance(l5, dict) and
+            l5.get("schema") == "L5_Q07_GEN4_247_EVENT_ARCHIVE_JOIN_V1"
+            and l5.get("catalog_id") == "Q07", "Q07 schema/catalog drift")
+    require(l5.get("copying_binaries_permitted") is False and
+            l5.get("defaultGrade") == "unknown" and
+            l5.get("allowedGrades") == [
+                "original_authenticated", "converted_with_authenticated_original",
+                "reconstructed_or_placeholder", "altered", "unreleased", "unknown"],
+            "Q07 copying/archival-grade policy drift")
     rows = l5["rows"]
+    require(isinstance(rows, list), "Q07 rows must be a list")
+    permitted_row_fields = {
+        "template_index", "source_line", "identity_key", "species", "tid",
+        "sid", "card_id", "native_game_code", "native_language_code",
+        "source_projection", "archive_path", "original_archive_sha256",
+        "archive_provenance", "original_payload_moves", "original_payload_ribbons",
+        "original_raw_trainer_bytes", "distribution_language_window",
+        "original_release_receipt", "license_redistribution_clearance",
+        "verdict_policy"}
+    for i, row in enumerate(rows):
+        require(isinstance(row, dict) and set(row)==permitted_row_fields,
+                f"Q07 record #{i}: unknown/missing field or inserted payload")
     require(len(l4) == len(rows) == expected_count,
             "L4/L5 projection coverage differs")
     rev = l5["source"]["pkhex_revision"]
@@ -54,6 +77,10 @@ def verify(l4_csv: str, l5_json: str, cpp_projection: bytes,
     keys = set()
     for i, (a, b) in enumerate(zip(l4, rows)):
         where = f"projection #{i}"
+        for key in ("template_index", "species", "tid", "sid", "card_id",
+                    "native_game_code", "native_language_code"):
+            require(type(b[key]) is int and b[key] >= 0,
+                    f"{where}: invalid structured integer {key}")
         require(int(a["projection_index"]) == i and b["template_index"] == i,
                 f"{where}: changed indexed identity")
         for source, dest in (("species", "species"), ("tid", "tid"),

@@ -6,6 +6,8 @@
 // Every rejection here is candidate LOCAL, never global Pokemon Invalid.
 #include "Legality/Gen4DiamondPearlEggAlternativeHistories.h"
 #include "Legality/Gen4DiamondPearlEggMoveStage.h"
+#include "Legality/Gen34OriginalSameRouteProof.h"
+#include "Legality/Gen34OriginalParentLineage.h"
 #include <array>
 #include <cstdint>
 namespace Legality::Gen4DiamondPearlEggFullJointHistories {
@@ -24,12 +26,18 @@ struct Input {
     // daycare event and physical pair as original.alternatives[i].
     std::array<Move::Input,8> moveHistories{};
     bool allJointDaycareHistoriesIndependentlyEnumerated=false;
+    uint64_t originalEggSnapshotId=0;
+    bool originalEggSnapshotIndependentlyAttested=false;
+    std::array<Gen34OriginalSameRouteProof::Input,8> sameRouteProofs{};
+    std::array<Gen34OriginalParentLineage::Input,8> originalParentLineages{};
 };
 struct Result {
     Status status=Status::NoCandidates;
     uint8_t considered=0,matched=0,contradicted=0,unknown=0,unverified=0;
     std::array<Core::Status,8> originalChecks{};
     std::array<Move::Status,8> moveChecks{};
+    std::array<Gen34OriginalSameRouteProof::Status,8> sameRouteChecks{};
+    std::array<Gen34OriginalParentLineage::Status,8> lineageChecks{};
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -81,6 +89,17 @@ constexpr Result evaluate(const Input& in) noexcept {
            !m.physicalDepositOrderIndependentlyAttested ||
            !m.sharedOriginalEventIndependentlyAttested ||
            !m.originalUnhatchedEggIdentityIndependentlyAttested ||
+           // When a full original source witness is supplied, independently
+           // named move-parent snapshots MUST match the same ordered pair,
+           // not just species/gender and an opaque pair token.
+           (c.pid.originalParentWitness.supplied &&
+            (!c.pid.originalParentWitness.originalPhysicalPairIdentity ||
+             c.pid.originalParentWitness.originalPhysicalPairIdentity!=
+                 c.ivPhysicalParentPairIdentity ||
+             m.physicalSlots[0].snapshotIdentity!=
+                 c.pid.originalParentWitness.physicalSlots[0].snapshotIdentity ||
+             m.physicalSlots[1].snapshotIdentity!=
+                 c.pid.originalParentWitness.physicalSlots[1].snapshotIdentity)) ||
            m.physicalSlots[0].species!=c.pid.parents[0].species ||
            m.physicalSlots[1].species!=c.pid.parents[1].species ||
            m.physicalSlots[0].gender!=c.pid.parents[0].gender ||
@@ -106,6 +125,45 @@ constexpr Result evaluate(const Input& in) noexcept {
              (c.pid.parents[0].heldItem==236 ||
               c.pid.parents[1].heldItem==236)){
             ++out.unverified;continue;
+        }
+        namespace Route=Gen34OriginalSameRouteProof;
+        if(in.sameRouteProofs[i].supplied){
+            const auto& witness=c.pid.originalParentWitness;
+            if(!in.originalEggSnapshotIndependentlyAttested ||
+               !in.originalEggSnapshotId ||
+               !witness.supplied ||
+               !witness.originalParentSnapshotsIndependentlyVerified ||
+               !c.pid.creationTimeItemsIndependentlyVerified){
+                ++out.unverified;continue;
+            }
+            out.sameRouteChecks[i]=Route::evaluate(in.sameRouteProofs[i],{
+                Route::gameFor(egg.game),egg.originalEggEventIdentity,
+                in.originalEggSnapshotId,c.ivPhysicalParentPairIdentity,
+                witness.physicalSlots[0].snapshotIdentity,
+                witness.physicalSlots[1].snapshotIdentity,true,
+                c.pid.parents[0].heldItem,c.pid.parents[1].heldItem});
+            if(out.sameRouteChecks[i]!=Route::Status::ConditionallySameRoute){
+                ++out.unverified;continue;
+            }
+        }
+        // Gen III-origin parents may legally reach a DP daycare after
+        // independently documented Pal Park migration. A crossed lineage
+        // is unverified local provenance, NOT whole-egg Invalid.
+        if(in.originalParentLineages[i].supplied) {
+            namespace Lineage=Gen34OriginalParentLineage;
+            if(!c.pid.originalParentSnapshotsVerified ||
+               !m.physicalSlots[0].originalSnapshotIndependentlyAttested ||
+               !m.physicalSlots[1].originalSnapshotIndependentlyAttested){
+                ++out.unverified;continue;
+            }
+            out.lineageChecks[i]=Lineage::evaluate(in.originalParentLineages[i],{
+                Gen34OriginalSameRouteProof::gameFor(egg.game),
+                {m.physicalSlots[0].snapshotIdentity,
+                 m.physicalSlots[1].snapshotIdentity},
+                {c.pid.parents[0].species,c.pid.parents[1].species}}).status;
+            if(out.lineageChecks[i]!=Lineage::Status::ConditionallyReplayed){
+                ++out.unverified;continue;
+            }
         }
         auto one=egg;
         one.count=1;

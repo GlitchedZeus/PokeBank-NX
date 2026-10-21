@@ -38,7 +38,9 @@ constexpr bool synchronizeSuccess(Game game,uint16_t rand16) noexcept {
 constexpr Result evaluate(const Candidate& c) noexcept {
     if(!c.originalGameIndependentlyAttested || (!methodJ(c.originalGame)&&!methodK(c.originalGame)))return {};
     if(!c.originalNatureStageIndependentlyAttested)return {Status::UnknownOriginalStage};
-    if(!c.originalLeadIndependentlyAttested || c.historicalLead==Lead::Unknown)
+    if(!c.originalLeadIndependentlyAttested ||
+       (c.historicalLead!=Lead::NoLead &&
+        c.historicalLead!=Lead::SynchronizeSuccess))
         return {Status::UnknownOriginalLead};
     if(c.witnessedTargetNature>=25)return {Status::UnknownOriginalNature};
     if(!c.originalPidSnapshotIndependentlyAttested)return {Status::UnknownOriginalPid};

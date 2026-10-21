@@ -1,0 +1,9 @@
+{
+  "archive": "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/gen15-session2/gen15-session2-evidence.tar.gz",
+  "sha256": "fe7866166a37fb36989ec63d828ca057c5ea44bae285551ccb3869e1733feff6",
+  "bytes": 41865815,
+  "files": 122,
+  "retained_record_evaluations": 355997,
+  "fresh_record_evaluations": 163176,
+  "policy": "Exact raw records, both reference outputs, native outputs/proofs, warning streams and source/test hashes retained. Correlated mutations and repeated reference evaluations are not independent historical evidence."
+}

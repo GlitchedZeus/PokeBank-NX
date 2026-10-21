@@ -133,10 +133,13 @@ int main() {
         assert(duplicateWithMatch.status==A::Status::OneConditionallyConsistentHistory);
         assert(duplicateWithMatch.consistent==1 && duplicateWithMatch.unverified==1);
         // With no valid matching source route, duplicate/zero identity
-        // cannot fabricate exhaustive rejection.
+        // cannot fabricate exhaustive rejection. Both rows must contradict:
+        // contradicting only row 0 leaves row 1 an attested match, which is
+        // exactly the "reversed" case above and must stay consistent.
         x.alternatives[0].history.moveAndIV.moveHistory.father={15,0,0,0};
         x.alternatives[0].history.moveAndIV.moveHistory.verifiedMachine=
             {true,false,false,false};
+        x.alternatives[1]=x.alternatives[0];
         assert(A::evaluate(x).status==A::Status::DuplicateOrMissingRoute);
         x=fixture(game,42);x.count=2;
         x.alternatives[1]=x.alternatives[0];

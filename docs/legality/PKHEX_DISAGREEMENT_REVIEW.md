@@ -1,0 +1,861 @@
+# PKHeX disagreement review, Generations I–V
+
+The owner asked for an independent review of every place where PokeBank NX deliberately
+disagrees with PKHeX, with one rule: **a rule needs original-game evidence before
+PokeBank NX may call a Pokémon definitively Invalid.** This document reviews each
+disagreement against that rule. Where the evidence is missing, the rule is downgraded
+to a Warning (Incomplete), and the code, a test and the differential tools change with it.
+
+## What was read
+
+| | Pin |
+|---|---|
+| PokeBank NX base | `7356b3835d2d97eed270cae2d86300ece9b55f26` (branch `claude/gen1-5-legality-campaign-w9mkom`). Line numbers below are from this commit, except `Gen5Legality.cpp`, which is quoted after the change in this review. |
+| PKHeX.Core | `kwsch/PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722`, read-only at `/home/user/ext/pkhex`. History from a blobless clone of `kwsch/PKHeX` at that commit. |
+| pret pokered | `af519899719f0754965776faac0e836a3b906e6d` |
+| pret pokeyellow | `e89ead154b9968aa50eed9328ff2b38b6c194382` |
+| pret pokegold | `ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8` |
+| pret pokecrystal | `3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6` |
+| pret pokeplatinum | `1dc13dcea40c04ab53f1f607de46023dc409ef20` |
+| pret pokeheartgold | `d2355244ac42b3c6e40d8c36aa3564ee8706dea4` |
+
+Gen V has no decompilation. `pret/pokeblack`, `pret/pokeblack2` and `pret/pokewhite` do
+not exist as public repositories (`git ls-remote` asks for credentials), and a web search
+found no pret project for Black/White; pret's DS projects are Platinum and
+HeartGold/SoulSilver. Bulbapedia and Project Pokémon could not be reached
+from this environment: the proxy refused them (HTTP 403) and the fetch tool could not
+resolve them. GitHub's issue API for `kwsch/PKHeX` was also refused. The only Gen V
+sources available were PKHeX's code and its git history, and they are secondary.
+
+The disagreements were found by searching the code (`PKHeX` in comments, every
+`Severity::Invalid` site in `Legality.cpp`, every non-definitive `GB::Problem`), and by
+reading the allow-lists of the three PKHeX differentials:
+
+- `tools/pkhex_gb_diff/compare.py`: the `DELIBERATE` and `UNCERTAIN_REASONS` lists;
+- `tools/pkhex_gen5_diff/run.sh`: the `stricter` allow-list, removed in this review;
+- `tools/pkhex_gen34_diff`: no allow-list at all at the time. Item 14 (added later) gave it one
+  entry, `DELIBERATE` in `summarize.py`, checked by a predicate over the record bytes.
+
+## Summary
+
+Direction words:
+
+- **stricter**: PokeBank NX says Invalid where PKHeX says VALID.
+- **more lenient**: PokeBank NX says No problems, or only Warning/Incomplete, where
+  PKHeX says INVALID.
+- **warns more**: PokeBank NX says Incomplete where PKHeX says VALID. This is not Invalid.
+
+| # | Disagreement | PokeBank NX code | Direction | PKHeX | Original-game evidence | Recommendation | Changed |
+|---|---|---|---|---|---|---|---|
+| 1 | GB: the stored level must be the level the EXP gives (PK1, PK2) | `GBLegality.cpp:1936-1945`, `:1947-1958`, `:1960-1982` | stricter | `PKM.cs:389`, `LevelVerifier.cs:46-59` | **Found.** pokered, pokecrystal: every path that writes EXP also writes the level (§1) | Keep | No |
+| 2 | GB: GS Ball Celebi in Japanese Crystal | `GBLegality.cpp:1226-1247` | more lenient | `Encounters2.cs:120`, `EncounterEnumerator2.cs:167-178` | pokecrystal `maps/IlexForest.asm:466`. The Japanese Mobile System GB distribution is secondary | Keep | No |
+| 3 | GB: no word filter on nicknames | none (no filter) | more lenient | `NicknameVerifier.cs:68-74`, `WordFilterSettings.cs:14` | No filter in pokered or pokecrystal `engine/menus/naming_screen.asm` | Keep | No |
+| 4 | Gen I: order of moves learned across an evolution | `GBLegality.cpp:710-722`, `:1638-1643` (Warning) | warns more | `LearnGroup1.cs:15-21`, `:35-36` (never runs for PK1) | Partial: pokered has no move relearner. The Stadium 2 reminder is known only from PKHeX and Bulbapedia | Keep (Warning) | No |
+| 5 | GB: Mew or Celebi from an unrecorded distribution | `GBLegality.cpp:1815-1826` (Warning) | more lenient | `EncounterEnumerator1.cs:122-131` (`Encounters1GBEra.Gifts`), `Encounters2GBEra` | Event list completeness unproven. The Mew glitch is secondary (Bulbapedia) | Keep (Warning) | No |
+| 6 | Korean Gold/Silver: a record that only a Korean–Western trade explains | `GBLegality.cpp:2143-2166` (Warning) | more lenient (PKHeX INVALID) / warns more (PKHeX VALID) | `ParseSettings.cs:58,66` (no Crystal, no reminder for Korean), `:68` (Odd Egg allowed for Korean), `EncounterEnumerator2.cs:30,100,168`, `GBRestrictions.cs:129-130` | Secondary only (Bulbapedia, "Trade"). Hatching sets the trainer: pokegold `engine/pokemon/breeding.asm:297-310` | Keep (Warning) | No |
+| 7 | Korean Gold/Silver: met data | `GBLegality.cpp:2079-2093` (Warning) | more lenient / warns more | `EncounterEnumerator2.cs:30` (ignores met data) | pokegold `engine/pokemon/move_mon.asm:238-243,301-306` writes zero. pokecrystal `engine/pokemon/caught_data.asm:163-240` writes met data. The Korean ROM is not disassembled | Keep (Warning) | No |
+| 8 | Korean trainer name with characters outside the Hangul pages | `GBLegality.cpp:2094-2111` (Warning) | more lenient | `TrainerNameVerifier.cs:151-157` (`G1CharOT`) | None (Korean naming screen not disassembled) | Keep (Warning) | No |
+| 9 | GB: battle stat experience next to a zero stat | `GBLegality.cpp:1479-1503` (Warning) | more lenient | `EffortValueVerifier.cs:80-96`, which calls itself a "simple sanity check" | pokered `engine/battle/experience.asm:294-325` floors each base stat by the number of recipients, so a stat can gain 0 | Keep (Warning) | No |
+| 10 | Gen IV: the stored party level must be the level the EXP gives | `Legality.cpp:2760-2772`, through `Pokemon4ReadOnlyView.cpp:30-34` | stricter | `PKM.cs:389`, `LevelVerifier.cs:46-59`. No legality code in PKHeX reads `Stat_Level` | **Found.** pokeplatinum, pokeheartgold: every write of a party Pokémon's EXP is followed by a level recalculation (§10) | Keep | No |
+| 11 | Gen V: hidden-ability flag with a slot 1/2 ability on a hidden-ability-only template | `Gen5Legality.cpp:700-722` | was stricter, now warns more | `AbilityVerifier.cs:225-226` (VALID on `AbilityNumber == 4`) | **None found**, either way (§11) | **Downgrade to Warning** | **Yes** |
+| 12 | Gen V: a nickname over 10 or an OT over 7 units (no 0xFFFF terminator in the buffer) is Invalid | `Gen5Legality.cpp`, `internal()` text-buffer rule | stricter only in PKHeX's exemptions | `Legal.cs:244-261` gives the same limits for Gen <= 5 (OT 7, nickname 10) and `TrainerNameVerifier.cs:49-53` / `NicknameVerifier.cs:179-184` flag longer names; PKHeX exempts fixed-trainer templates and traded eggs (`TrainerNameVerifier.cs:80-95`) and makes a foreign species-name length Fishy | **Format only.** The PK5 layout stores the OT in 8 and the nickname in 11 UTF-16 units including the terminator (PKHeX `PK5.cs`), so an exempt name still fits the limit; no record PKHeX builds reaches the difference (Gen V differential, 4 seeds) | Keep; revisit if a real record ever reaches it | No |
+| 13 | Gen V: a capsule transfer location (30010-30013) on a non-fateful Gen IV Celebi or beast | `Gen5Legality.cpp`, transfer location rule | was stricter, now warns more | `TransferVerifier.VerifyTransferLegalityG4` accepts it; only `PK5.GetTransferMetLocation4` limits it to fateful records | **None found** (no Gen V decomp) (§13) | **Downgrade to Warning** | **Yes** |
+| 14 | Gen IV: a native non-egg record whose D/P met-location field is not what Pt/HG/SS write for its Pt/HG/SS met location | `Gen4Legality.cpp`, `Analyzer::verifyMisc` | stricter | `G4PKM.cs:229-237` reads the Pt/HG/SS field first; `MiscVerifierG4.cs:35-45` compares the two only for Pal Park | **Found.** pokeplatinum, pokeheartgold: every met-location write goes through one setter that writes both fields (§14). Not for My Pokémon Ranch (Wii, no decomp) | Keep; Warning for Ranch records | New rule |
+
+No other Invalid that PKHeX would not issue was found:
+
+- **Gen III/IV.** The differential, run during this review (seed 1, 3 mutations, 79,847
+  records, box format), has 0 records that PKHeX accepts and PokeBank NX calls Invalid.
+- **Gen V.** The differential (seed 1, 4 mutations, 40,030 records) had exactly one such
+  record, row 11. It has none after the change (§11 gives the numbers).
+- **Gen I/II.** The differentials (`run.sh … 20000 1 1` and `… 2`) have 0 differing
+  records. Their only class of records PKHeX accepts and PokeBank NX calls Invalid is
+  row 1: 230 PK1 and 198 PK2 records. The rest of their allow-lists are rows 2 and 4–9,
+  none of them Invalid.
+
+Rows 1 and 10 are the only stricter rules left. Both rest on decompiled game code.
+Row 14, added later, is a third; it rests on decompiled game code too.
+
+## 1. GB level against EXP (keep)
+
+PokeBank NX:
+
+- `levelExpProblem` (`GBLegality.cpp:1936-1945`) reports "Level N does not match EXP".
+- `formatProblems` (`:1947-1958` for PK1, `:1960-1982` for non-egg PK2) reports it as a
+  definitive problem.
+
+PKHeX derives the level from EXP (`PKM.cs:389`: `CurrentLevel => Experience.GetLevel(EXP, …)`).
+`LevelVerifier.cs:46-59` only compares that derived level with the met level and the
+level-100 EXP total. No file under `PKHeX.Core/Legality` reads `Stat_Level`, and the GB
+stat calculation does the same (`GBPKM.cs:229`: "recalculate instead of checking
+Stat_Level"). The EXP-above-total half of the rule agrees with PKHeX (`LevelEXPTooHigh`);
+only the stored-level comparison is stricter.
+
+Evidence that the cartridges keep the level and EXP in step:
+
+- **Battle, Gen I.** pokered `engine/battle/experience.asm:119-142` caps EXP at the
+  level-100 total. Lines 154-168 then set the party level from `CalcLevelFromExperience`.
+- **Battle, Gen II.** pokecrystal `engine/battle/core.asm:7161-7187` caps EXP, and line
+  7192 (`CalcLevel`) through line 7207 sets the level.
+- **Rare Candy.** pokered `engine/items/item_effects.asm:1332-1356` and pokecrystal
+  `engine/items/item_effects.asm:1277-1305` both refuse level 100. Otherwise they set the
+  level to level+1 and the EXP to that level's total.
+- **Gen I PC.**
+  - Party to box: `_MoveMon` (pokered `engine/pokemon/add_mon.asm:416-427`) copies the
+    party level into the box level byte.
+  - Box or Day Care to party: lines 496-507 recompute the level from EXP.
+  - Caught straight into a box: `SendNewMonToBox` (`engine/items/item_effects.asm:2774-2795`)
+    writes the box level and the EXP of the same level.
+- **Gen I Day Care.** pokered `scripts/Daycare.asm:62-92` computes the level from EXP,
+  caps EXP at the level-100 total and stores that level. Withdrawal (line 168,
+  `DAYCARE_TO_PARTY`) goes through the `_MoveMon` recompute.
+- **Gen II Day Care.** `RetrieveMonFromDayCareMan/Lady` (pokecrystal
+  `engine/pokemon/move_mon.asm:774-803`) take the level from `CalcLevel`
+  (`engine/pokemon/breedmon_level_growth.asm:1-27`), which stops at 100
+  (`engine/pokemon/experience.asm:1-10`). `RetrieveBreedmon` (`move_mon.asm:805-900`)
+  writes that level and resets EXP to its total, which is the documented "might lose
+  experience" bug.
+- **Time Capsule, Gen I to II.** pokecrystal `engine/link/link.asm:1119-1126` copies the
+  Gen I party level. It skips the Gen I box-level byte.
+- **Evolution** changes the species, not the level or EXP. Every evolution keeps the
+  growth rate:
+  - 122 evolution entries in pokecrystal `data/pokemon/evos_attacks.asm`;
+  - 72 entries in pokered `data/pokemon/evos_moves.asm`.
+
+  Each was checked against `data/pokemon/base_stats/*.asm`: 0 mismatches.
+- **Gen I to Gen II** keeps the growth rate too: all 151 species have the same growth rate
+  in pokered and pokecrystal `data/pokemon/base_stats/*.asm`. A Time Capsule level that
+  was right in Gen I is still right in Gen II.
+
+The one place where a level and its EXP disagree is a Pokémon still in the Day Care:
+
+- Gen I (pokered `scripts/Daycare.asm:206`, `.leaveMonInDayCare`);
+- Gen II (stale `wBreedMon*Level`).
+
+PokeBank NX never analyzes such a record:
+
+- `Pokemon1ReadOnly` and `Pokemon2ReadOnly` are only built from party and box slots
+  (`src/Legacy/RBYReadOnlyTrainer.cpp:125,145,186`, `src/Legacy/GSCReadOnlyTrainer.cpp:96,155,179`);
+- the Gen I/II save readers do not read the Day Care.
+
+Party records read level byte 0x21 and box records byte 0x03
+(`src/Integration/Gen1/Gen1ReadOnlySave.cpp:255`), matching the game's own use above.
+
+## 2. GS Ball Celebi (keep)
+
+The candidate is a Japanese PK2 Celebi with Crystal met data: Ilex Forest, level 30.
+
+- The shrine script is in the cartridge: pokecrystal `maps/IlexForest.asm:466`,
+  `loadwildmon CELEBI, 30`.
+- In the international ROM, only the Virtual Console hook sets `sGSBallFlag`
+  (`engine/menus/save.asm:164-174`). `BattleTowerAction_GSBall`
+  (`engine/events/battle_tower/battle_tower.asm:1179-1185`) reads that flag.
+- That the flag was set in Japanese Crystal through the Mobile System GB
+  (2001–2002) rests on secondary sources (Serebii, Bulbapedia). The Japanese ROM is not
+  disassembled.
+
+The difference is lenient and produces no Invalid, so the evidence rule does not apply.
+Nothing changes.
+
+## 3. Word filter (keep)
+
+PKHeX applies its word filter to GB nicknames unless a setting turns it off
+(`WordFilterSettings.cs:14`, `NicknameVerifier.cs:68-74`). The Game Boy naming screens
+contain no filter:
+
+- `grep -i "filter|profan"` finds nothing in pokered or pokecrystal
+  `engine/menus/naming_screen.asm`;
+- PKHeX's own `WordFilter` is a PKHeX setting.
+
+Lenient. No change.
+
+## 4–9. Non-definitive GB rules (keep as Warnings)
+
+Each of these rules is already a Warning (`Problem::definitive == false`). A Warning
+makes the report Incomplete with Partial encounter and event coverage
+(`Legality.cpp:244-269`), and never Invalid. None of them is an Invalid without
+evidence, so the owner's rule is already met. The evidence for each is in the summary
+table.
+
+Row 6 is worth a note: PokeBank NX "warns more" than PKHeX on Korean Odd Eggs and Korean
+met data that PKHeX accepts. This is Incomplete, not Invalid.
+
+`docs/legality/GB_LEGALITY_VERDICTS.md` lists rows 4–8 but not row 9.
+`docs/legality/GEN1_5_CAMPAIGN_CHECKPOINT.md` lists row 9 under its known gaps.
+
+## 10. Gen IV party level against EXP (keep)
+
+This is a stricter rule that the documentation does not list. It is inherited from PKSE
+(`25f248ab`, "chore: import PKSE 1.1.3 source"):
+
+```cpp
+if (pk.exp() > maxExp || (pk.level() != 0 && pk.level() != expLevel))
+    add(r, Severity::Invalid, … "Level N does not match EXP (expected M)");
+```
+
+It is in `Legality.cpp:2760-2772`.
+
+- **Gen IV.** `Pokemon4ReadOnlyView::level()` (`Pokemon4ReadOnlyView.cpp:30-34`) returns
+  the stored party level of a party record. A Gen IV party record whose level differs
+  from its EXP is therefore Invalid here, and VALID in PKHeX, which never reads
+  `Stat_Level` in its legality code.
+- **Gen III.** `Pokemon3FRLG::level()` derives the level from EXP
+  (`Pokemon3FRLG.cpp:45-48`), so the rule never fires there.
+- **The Gen III/IV differential** builds box records only (`gen34_diff.cpp:87,94`:
+  `SIZE_STORED3_FRLG`, `SIZE_STORED4`), so it never exercised this rule.
+
+Evidence that Gen IV keeps a party Pokémon's level in step with its EXP:
+
+- **The level-update functions.**
+  - pokeplatinum `src/pokemon.c:555-562` (`Pokemon_CalcLevelAndStats`) and `:3501-3525`
+    (`Pokemon_ShouldLevelUp`, which also caps EXP at the level-100 total).
+  - pokeheartgold `src/pokemon.c:2762-2776` (`Pokemon_TryLevelUp`).
+- **Box to party** recomputes the level:
+  - pokeplatinum `Pokemon_FromBoxPokemon`, `src/pokemon.c:4031-4054`;
+  - pokeheartgold `CopyBoxPokemonToPokemon`, `src/pokemon.c:3228-3245`.
+- **Every write of a party Pokémon's EXP** is followed by a level update:
+  - Rare Candy: pokeplatinum `src/item_use_pokemon.c:291-294`, pokeheartgold
+    `src/use_item_on_mon.c:296`;
+  - Day Care withdrawal: pokeplatinum `src/overlay005/daycare.c:147-187`, pokeheartgold
+    `src/get_egg.c:118-150`;
+  - battle EXP: pokeplatinum `src/battle/battle_script.c:9775`, then the
+    `Pokemon_ShouldLevelUp` loop at `:9825`; pokeheartgold
+    `src/battle/battle_command.c:6085`, then `:6136`;
+  - level caps for battle facilities and link battles. These change copies of the party
+    and recalculate the level:
+    - pokeplatinum `src/field_battle_data_transfer.c:306-309`,
+      `src/overlay104/battle_castle.c:126-130`, `src/overlay104/ov104_0223A0C4.c:911-915`,
+      `src/overlay104/frscrcmd_battle_arcade.c:145-150`,
+      `src/overlay104/battle_arcade.c:319-322` and `:1246-1249`,
+      `src/applications/frontier/battle_castle/opponent_app.c:2707-2719`;
+    - pokeheartgold `src/battle/battle_setup.c:285-288` and `:352-355`,
+      `src/overlay_25.c:234-238`, `src/frontier/frontier_cmd_arcade.c:95-105`.
+
+  These are every party-EXP write that `grep` finds in either decompilation
+  (`Pokemon_SetValue`/`SetMonData`/`AddMonData` with `MON_DATA_EXPERIENCE`); the
+  other writes are to box records, which store no level.
+
+Diamond/Pearl was not read separately; pokediamond shares this code base. This rule is
+stricter, and it rests on decompiled original code: keep.
+
+Known gap: a stored party level of 0 or above 100 falls back to the EXP level
+(`Pokemon4ReadOnlyView.cpp:31`) and is not reported.
+
+## 11. Gen V hidden-ability flag with a slot 1/2 ability (downgraded)
+
+### What PokeBank NX did
+
+`Gen5Analyzer::abilities()` (`Gen5Legality.cpp:700-722`) skips the PID check when the
+matched template has a fixed ability and is of the current species (line 704). Otherwise,
+with the hidden-ability flag set (PK5 `0x42` bit 0), it required the stored ability to be
+the species' hidden ability, and reported "Hidden ability flag is set but the ability is
+not the hidden ability" as Invalid.
+
+The matched template is the first candidate without failures, in table order
+(`encounterGen5`). The verdict on the same record therefore depended on which template
+came first.
+
+The differential (seed 1, 4 mutations) produced one such record, `m9008-ability`:
+
+- a Scizor with the flag set and Technician;
+- it fits the Entree Forest templates of both Scyther and Scizor;
+- PokeBank NX matched Scyther first (an evolved template), and so reported Invalid;
+- PKHeX matched Scizor's own template and reported VALID (`EncounterStatic5Entree:212`,
+  `Ability:AbilityFlag`, from the oracle's `probe`).
+
+Had PokeBank NX matched Scizor first, line 704 would have skipped the check, as PKHeX does.
+
+### Why PKHeX accepts it
+
+`VerifyAbility345` (`AbilityVerifier.cs:162-184`) sends a fixed-ability template to
+`VerifyFixedAbility` (`:186-235`):
+
+1. Line 199: the flag must agree with `OnlyHidden`.
+2. Lines 202-220: if the Pokémon evolved, `CheckMatch` → `GetPIDAbilityMatch`
+   (`:419-469`). That path does require the stored ability to be the hidden one.
+3. Line 222: otherwise, VALID when the stored ability is in the template's slot.
+4. **Lines 225-226: otherwise, VALID when `AbilityNumber == 1 << slot`.**
+
+   For `OnlyHidden` that is just `AbilityNumber == 4`, and `PK5.AbilityNumber` is
+   `HiddenAbility ? 4 : …` (`PK5.cs:58`). Nothing compares the stored ability with the
+   hidden slot.
+
+The history explains the shortcut:
+
+- It began as "skip the mismatch check when `AbilityNumber == EncounterAbility`" in
+  `e29cf2a903e44287b90a9289a6efd796f9f33be6` (2018-06-23, "Rework secondary check flow").
+- It became `if (pkm.AbilityNumber == EncounterAbility) return VALID;` in
+  `8e950e83b3030cd103076a370d1f65a036849c3a` (2018-07-02, "Rewrite ability verification").
+- `9cde2915959ea6b424fc520dc581590b3afec69a` (2022-01-08) rewrote it as `1 << GetSingleValue()`.
+
+No commit or comment in that history speaks of a hidden-ability flag with a slot 1/2
+ability. In this reviewer's reading, the acceptance is a side effect of a shortcut
+written for fixed slot 1/2 templates, not a claim that the games produce such a record.
+That is an inference from PKHeX's code, not a documented reason.
+
+PKHeX rejects the same fields on every other path:
+
+- evolved: lines 202-220;
+- eggs and wild slots: `VerifyAbility5`, `:360-369`, then `CheckMatch`;
+- after transfer, format 6+: lines 47-54.
+
+PKHeX's model of Poké Transporter takes the flag as authoritative and gives the hidden
+ability (`PK5.cs:552-556`). The GitHub issue tracker could not be searched from here.
+
+### Could a Gen V game produce it?
+
+| Mechanism | Finding | Kind of evidence |
+|---|---|---|
+| Ability Capsule | Does not exist before Gen VI. PKHeX models it from format 6 (`CanAbilityCapsule`, `AbilityVerifier.cs:483-488`), and never to or from the hidden slot (`:472-481`) | Secondary (PKHeX; Bulbapedia "Ability Capsule", not reachable here) |
+| Poké Transfer (Gen IV → V) | Gen IV has no flag. Gen III/IV-origin PK5 with the flag set is Invalid in both programs (`Gen5Legality.cpp:694`, `AbilityVerifier.cs:421-422`) | Secondary |
+| Entree Forest / Dream World, Dream Radar, Hidden Grotto | Give the hidden ability. No account of any of them giving the flag with a slot 1/2 ability was found | None either way |
+| Evolution in Gen V | PKHeX assumes the new hidden ability follows the flag. Not verifiable without a decompilation | Secondary |
+| Form change (Reveal Glass, DNA Splicers…) | No account found | None either way |
+| A Gen V glitch | None found | None |
+
+No original-game evidence was found that the games can produce this record, and none
+that they cannot. Under the owner's rule it cannot be definitively Invalid.
+
+### Change
+
+In `Gen5Legality.cpp:708-717`, when the flag is set, the ability is not the hidden one
+and the matched template is `OnlyHidden`, the analyzer now:
+
+- adds a Warning: "Hidden ability flag is set but the ability is not the hidden ability
+  (not shown impossible in Gen V; not treated as Invalid)";
+- marks internal coverage Partial, so the report is Incomplete.
+
+The change is local to that rule. Bred Pokémon with the same fields stay Invalid,
+because PKHeX agrees there (`VerifyAbility5` → `CheckMatch` → `GetPIDAbilityMatch`).
+That is not a disagreement.
+
+Other changes:
+
+- `tools/pkhex_gen5_diff/run.sh` drops its `stricter` allow-list. Any record PKHeX
+  accepts and PokeBank NX calls Invalid now fails the run.
+- `tests/test_legality_gen5.cpp` adds three cases:
+  1. `m9008-ability` gives a Warning with no Invalid, and the same report in encrypted
+     form.
+  2. The same Scizor with Light Metal (135), its hidden ability, has no Invalid and no
+     Warning.
+  3. `m14877-ability` (a Relicanth egg, flag set, Swift Swim; PKHeX `AbilityMismatchPID`)
+     is still Invalid with the same text.
+
+  The first case fails against the old rule; this was run, and the old rule reported
+  "Matches … (Scyther)" plus Invalid.
+
+Differential, `tools/pkhex_gen5_diff/run.sh <PKHeX> 1 4`:
+
+- **Same records, old code against new.** One oracle output (40,030 records) was judged
+  by the code at the base commit and by the changed code.
+  - Old code: 18,922 VALID/INCOMPLETE, 1 VALID/INVALID (`m9008-ability`),
+    21,080 INVALID/INVALID, 27 INVALID/INCOMPLETE.
+  - New code: 18,923 VALID/INCOMPLETE, 0 VALID/INVALID, 21,080 INVALID/INVALID,
+    27 INVALID/INCOMPLETE.
+
+  Exactly one output line changed: `m9008-ability`, from INVALID to INCOMPLETE. No
+  record PKHeX rejects lost its Invalid.
+- **The run script after the change:** 18,936 VALID/INCOMPLETE, 21,067 INVALID/INVALID,
+  27 INVALID/INCOMPLETE, then "PASS: no false Invalid".
+
+The oracle does not produce the same records on every run with the same seed. Three runs
+of seed 1 gave 18,923, 18,933 and 18,936 PKHeX-valid records. This is why the old and new
+code were compared on one saved output.
+
+Still open, for the owner to decide:
+
+- When the template is of the current species, both programs stay silent on this
+  combination (line 704; PKHeX line 225). Gen V reports are always Incomplete (internal
+  coverage is Partial), so this never reads "No problems found". Adding a Warning there
+  would raise those records' severity; this review was told not to make any rule
+  stricter, so it was not done.
+- The bred case is Invalid in both programs, but it lacks Gen V original-game evidence
+  too. It is not a PKHeX disagreement, so it was left as it is.
+
+## 12. Gen V name length (keep, found when merging the Gen V text work)
+
+The Gen V text work (merged after this review) documented one more theoretical difference:
+the analyzer reads a name only up to the 0xFFFF terminator and calls a nickname over 10 or an
+OT over 7 units Invalid. PKHeX applies the same limits to Gen <= 5 (`Legal.GetMaxLengthOT`,
+`GetMaxLengthNickname`) but skips the OT check for fixed-trainer templates and traded eggs
+and only warns (Fishy) for a foreign species name within that language's length. Every
+exempt name comes from the game's own buffer, which the PK5 format bounds at 8 OT units and
+11 nickname units including the terminator, so a game-made exempt name is still within the
+limit. No PKHeX-built record reached the difference in the Gen V differential (seeds 1, 2, 7,
+11). It stays as is; a real record that reaches it would be the evidence to revisit.
+
+## 13. Gen V capsule transfer location on a non-event Celebi or beast (downgraded)
+
+Found by the Gen V differential in CI on `2877d2a5` (record `m110571-metlocation`: a
+SoulSilver static Raikou, not fateful, transferred with met location 30012).
+
+- **PokeBank NX did:** accept 30010/30011 (Celebi) and 30012/30013 (Raikou, Entei, Suicune)
+  only on a fateful Gen IV-origin record, and call anything else "not a Poke Transfer
+  location" (Invalid).
+- **PKHeX:** `TransferVerifier.VerifyTransferLegalityG4` accepts those locations on any Gen
+  IV-origin Celebi or beast, fateful or not. Only its own PK4-to-PK5 converter
+  (`PK5.GetTransferMetLocation4`) limits them to fateful records; that models Poke Transfer
+  but is not original-game evidence, and there is no Gen V disassembly to settle it.
+- **Change:** a non-fateful Celebi or beast at its capsule location is now a Warning
+  (Incomplete). Every location PKHeX rejects stays Invalid: any other location, a capsule
+  location on another species, and any capsule location on a Gen III origin (PKHeX
+  `VerifyTransferLegalityG3` requires 30001). The CI record is now a fixture in
+  `tests/test_legality_gen5.cpp` (`transfer-crown-nonfateful`).
+
+## 14. Gen IV met-location fields that disagree (keep; re-investigated against every write path)
+
+Found by the 20-title matrix (`TITLE_TEST_MATRIX.md`, Gen IV rows): a Platinum Giratina-Origin
+with 117 in the D/P met-location field, and HeartGold and SoulSilver records with 178 there, read
+"No problems found". PKHeX calls them VALID too. Re-investigated for the Gen I-V campaign: every
+write of either field in the three Gen IV decomps, Pal Park, eggs, gifts, in-game trades, the
+Pokéwalker, external software, PKHeX's converters and PKHeX's own .pk4 fixtures. The rule is kept
+with its scope unchanged; the scope is now stated exactly and every witness is listed.
+
+- **The rule.** A native (version 10, 11, 12, 7, 8) non-egg PK4 whose Pt/HG/SS met-location field
+  (0x46) is set and whose egg-location fields (0x44, 0x7E) are both 0 must hold in the D/P
+  met-location field (0x80) exactly what Pt/HG/SS write: the same place when D/P know it (1-111,
+  2000-2010, 3000-3076), Faraway Place (3002) otherwise. Pal Park records (origin 1-5, 15) are
+  PKHeX's own rule (`MiscVerifierG4.cs:35-45`, ported). A My Pokémon Ranch gift gets a Warning
+  instead of Invalid. `Gen4Legality.cpp` `verifyMisc` (:1352-1371), oracle predicate
+  `met_location_fields` in `tools/pkhex_gen34_diff/summarize.py`.
+- **The setter.** Platinum: `src/pokemon.c:1732-1740` (`MON_DATA_MET_LOCATION` and
+  `MON_DATA_MET_LOCATION_PTHGSS` share one case: `sub_0201708C(value)` true, or value 0, writes the
+  value into both fields; otherwise 3002 into the D/P field and the value into the Pt/HG/SS field);
+  the egg-location pair has the same case at :1722-1730; `src/unk_02017038.c:38-45` is the
+  D/P-known test. HG/SS: `src/pokemon.c:1285-1294` (met pair) and :1275-1284 (egg pair) with
+  `LocationIsDiamondPearlCompatible`; `MAPSEC_MYSTERY_ZONE` (0) also goes into both. D/P:
+  `pokediamond arm9/src/pokemon.c` writes only the D/P field (the Pt/HG/SS field does not exist in
+  its data block B accessors). The games read the D/P field unless it holds 3002 (pokeplatinum
+  `src/pokemon.c:1168-1174`, pokeheartgold `src/pokemon.c:826-827`).
+- **Every write path goes through the setter.** Platinum: all met/egg location writes are
+  `UpdateBoxMonStatusAndTrainerInfo` strategies 0-6 (`src/unk_02092494.c:440-590`, calling
+  `BoxPokemon_SetValue(MON_DATA_MET_LOCATION/EGG_LOCATION)`), whose callers are the capture path
+  (`src/pokemon.c:4654`, strategy 0), in-game trades (`src/overlay006/npc_trade.c:147`, 1), Pal Park
+  catching show (`src/scrcmd_catching_show.c:69`, 2: met location 55), Day Care egg
+  (`src/overlay005/daycare.c:706`, egg strategy; :769 strategy 3 gift), Mystery Gift
+  (`src/scrcmd_mystery_gift.c:290`, 4: `SpecialMetLoc_GetId(2, x)` = 3000+x), link-traded egg
+  (`src/overlay109/ov109_021D0D80.c:3448`, 5: met 2002 into both fields), hatch
+  (`src/egg_hatch.c:198`, 6), Battle Frontier opponents (`src/overlay104/frontier_opponents.c:334`),
+  link trade (`src/applications/trade_room/application.c:2452`). Pal Park first copies the GBA met
+  location (`src/main_menu/gba_pokemon.c:1029-1030`, through the same setter) and then strategy 2
+  overwrites it with 55. HG/SS: `BoxMonSetTrainerMemo` strategies (`src/trainer_memo.c:703-840`;
+  case 2 at :744-746 is Pal Park) called from `src/pokemon.c:3722` (capture), `src/npc_trade.c:230`,
+  `src/scrcmd_12.c:67` (Pal Park), `src/get_egg.c:593` and :634 (Day Care egg and gift egg),
+  `src/hatch_egg_task.c:56` (hatch), `src/scrcmd_mystery_gift.c:300` (gift: external location
+  `sub_02017FE4(MAPSECTYPE_EXTERNAL, ...)`). The Pokéwalker returns a Pokémon whose met location is
+  written by the same setter (course location 233, D/P-known: both fields). No decomp writes
+  `MetLocation_DP`, `MetLocation_PtHGSS`, `EggLocation_DP` or `EggLocation_PtHGSS` anywhere else.
+- **Eggs are left out, with a reason.** A traded egg in Pt/HG/SS has met location 2002 in both
+  fields while an egg; hatching in D/P rewrites the D/P field alone (D/P hatch strategy), so a
+  hatched record can legitimately hold a D/P hatch place in 0x80 and 2002 (or the Pt/HG/SS hatch
+  place) in 0x46. The rule therefore applies only when both egg-location fields are 0 (never an
+  egg). PKHeX's own hatched-egg fixtures confirm the pattern (below).
+- **External software.** My Pokémon Ranch writes its gifts on the Wii (no decomp): a Ranch record
+  that fails the pair test is a Warning. Pokémon Battle Revolution copies the record back to the DS
+  verbatim and Pokémon Ranger's Manaphy arrives as a Mystery Gift egg (strategy 4 in both games);
+  neither can produce a disagreeing non-egg pair. The DS side of every Wii link runs from
+  `data/eoo.dat` (pokeplatinum `src/main_menu/main_menu.c:1317`, pokeheartgold
+  `src/application/main_menu/main_menu.c:1503`), which no decomp covers; it is why the Ranch stays a
+  Warning and why no other external path can be verified further.
+- **PKHeX.** It reads the Pt/HG/SS field first whenever it is not 0 (`G4PKM.cs:229-237`), so it
+  judges the encounter by that field alone. Its setter writes both fields the way the games do
+  (`G4PKM.cs:238-258`), so every record it builds agrees. `BK4`/`RK4` `ConvertToPK4` copy both fields
+  verbatim (a Battle Revolution or Ranch record keeps what the DS game wrote). The Ranch gift
+  templates (`Encounters4DPPt.RanchGifts`: location 3000 or Sinnoh towns, version D) are D/P-known
+  places. All 590 Gen IV event templates (`mgdb/wc4.pkl`) hold 0 in the Pt/HG/SS field, so a gift
+  received in D/P never reaches the rule. Only its single-field mutation of the Pt/HG/SS field
+  (`metlocext` in the Gen III/IV oracle) builds records this rule rejects.
+- **Real records.** All 29 PK4 files in PKHeX's test suite (`Tests/PKHeX.Core.Tests/Legality`)
+  satisfy the rule (fixture driver run of this campaign): the Platinum and HG/SS ones hold either
+  the same place in both fields or 3002 with the HG/SS place, the D/P ones hold 0 in the Pt/HG/SS
+  field; the egg-origin ones show the mixed pairs described above (Primo's Wooper egg: egg DP 3002 /
+  egg ext 2014; a Platinum traded egg: met 2002 / 2002).
+- **Change.** None to the rule. Invalid, with the fixture `met-location-dp-field` in
+  `tests/test_legality_gen4.cpp` and the three matrix rows. The Gen III/IV differential lists these
+  records as "deliberately stricter", and only when `met_location_fields` in
+  `tools/pkhex_gen34_diff/summarize.py` confirms from the record bytes that the two fields disagree;
+  any other record PKHeX accepts and PokeBank NX calls Invalid still fails the run. Seed 1 of the
+  base corpus (50999 records) after this campaign's Gen IV changes: 0 false Invalid, 0 false Valid,
+  35 records under this rule, every one a `metlocext` mutation on D, P and Pt records. The predicate
+  comment is unchanged because the scope is unchanged.
+
+## 15-B. Gen IV stored-record rules PKHeX applies only with a slot origin (more lenient, Warning)
+
+PKHeX has three rules it fires only when the analysis knows the record came from a PC box (or GTS /
+Battle Box) slot: `LegalityAnalysis.IsStoredSlot` (`LegalityAnalysis.cs:87`) is true for the asked
+type and for `SlotOrigin.Ignore`, the default. Without a slot origin (the default, and what the Gen
+III/IV oracle uses) PKHeX treats the record as if it could be a party record and never fires them.
+PokeBank NX knows the slot: the Gen IV save reader builds party entities from 236-byte slots and PC
+entities from 136-byte slots (`src/Integration/Gen4/Gen4ReadOnlySave.cpp:240`), so a 136-byte
+record is a PC record.
+
+| Rule | PKHeX with a Box slot | PokeBank NX |
+|---|---|---|
+| PP below the healed maximum (`MovePPVerifier.cs:110-143`, `GetIsStoredHealed`: PK4 OnlyHealed) | Invalid `MovePPExpectHealed` | Warning per move (`Gen4Legality.cpp:1446-1456`) |
+| Shaymin Sky Forme (`FormVerifier.cs:150-154`, format <= 6) | Invalid `FormParty` | Warning (`:1308-1321`); Platinum-specific text when the save is Platinum |
+| Walking mood not 0 on an HG/SS save (`MiscVerifierG4.cs:115-134`) | Fishy `G4PartnerMoodZero` | Warning (`:1339-1344`), only for a save known to be HG/SS |
+
+- **Why not Invalid.** The verdict policy allows Invalid only when every supported acquisition
+  history is impossible. In the decomps every PC store path behaves as PKHeX assumes: Platinum's
+  three store functions heal PP and revert Shaymin (`src/pc_boxes.c:59-110`), and every Platinum
+  insertion uses them (box UI `src/applications/pc_boxes/box_app_manager.c:3952-4017`, GTS
+  `src/gts_application/screens/network_handler.c:1284-1328`, Pal Park catching show
+  `src/scrcmd_catching_show.c:70`, battle capture overflow `src/battle/battle_script.c:10748`); the
+  Day Care (`src/overlay005/daycare.c:112`), GTS deposit (`src/gts_application/screens/deposit.c:994-998`)
+  and trade room (`src/applications/trade_room/application.c:623`) also revert Shaymin. HG/SS
+  (`src/pokemon_storage_system.c:54-100`) and D/P (`arm9/src/pokemon_storage_system.c:46-90`) heal PP
+  in every store function, called from `src/overlay_bug_contest.c:227`, `src/scrcmd_12.c:68`,
+  `src/battle/battle_command.c:7025` and `arm9/src/scrcmd_13.c:73`. But the D/P and HG/SS PC box
+  applications are not in their decomps, HG/SS storage code never reverts Shaymin (only the party
+  routines do: `src/pokemon.c:3574-3610`, `src/get_egg.c:93`, `src/field/scrcmd_pokemon_misc.c:469-470`),
+  and the Wii link (My Pokémon Ranch, Battle Revolution) runs from `data/eoo.dat`, a module outside
+  every decomp. A record returned by that module could in principle hold unhealed PP or a Sky Forme.
+  So the rules mark the record as suspicious (Warning: Incomplete, never certified) and never
+  invalidate.
+- **Walking mood.** HG/SS zero it when a Pokémon becomes the walking lead (`src/follow_mon.c:1946-1992`)
+  and on Day Care entry (`src/get_egg.c:91`). D/P/Pt never write the byte and trades copy it, so the
+  check applies only when the save is known to be HeartGold or SoulSilver; with no exact source game
+  it is not applied (PKHeX likewise needs `ActiveTrainer is SAV4HGSS`).
+- **Party records.** A 236-byte record of the same bytes gets none of these; `tests/test_legality_gen4.cpp`
+  section 4c checks both sizes directly and through `Legality::analyze` for all three rules, with
+  positive and negative cases (healed PP, PP Ups raising the maximum, empty move slot, egg, Land
+  Forme, D/P form out of range, Pt vs SS vs unknown save, mood on a D/P/Pt save).
+- **Differential.** The oracle emits every PK4 as its 136 stored bytes without a slot origin
+  (`tools/pkhex_gen34_diff/oracle/Program.cs:416-430`), so these Warnings turn PKHeX-VALID records
+  with PP mutated below the maximum into "PKHeX VALID, ours Incomplete" (seed 1 base: 642 records,
+  617 `pp` and 25 `move` mutations), never into false Invalid; certification on the base corpus moved
+  from 22992/23027 (99.85%) to 22338/23015 (97.06%) with 0 false Invalid and 0 false Valid. No
+  `summarize.py` change is needed because nothing new is Invalid.
+
+## 15-A. Colosseum/XD team lock search: the CPU-shiny reroll frame (more lenient, Gen III GameCube lane)
+
+Found while porting `TeamLockResult.GetSingleLock` (`TeamLockResult.cs:86-129`) for the
+shadow team locks of `Gen3Legality.cpp` (`TeamLockSearch::singleLock`).
+
+- **PKHeX.** In the reroll loop, a frame whose shiny value equals the forced CPU shiny value
+  (`sv == RCSV`, `:118-123`) sets `forcedOT = true` and `continue`s without advancing the frame
+  counter, so the same frame is re-tested forever: PKHeX would never return from that branch.
+  In practice the branch is unreachable for the published templates (RCSV is only forced by
+  a prior `GetAllLocks` lock, and the differential corpora never enter it), which is why PKHeX
+  does not hang on real records.
+- **The games.** Colosseum and XD have no decompilation; the only source for the lock
+  structure is PKHeX. The reroll frame itself is the CPU trainer's anti-shiny reroll, the same
+  event `GetAllLocks` (`:131-178`) handles by moving on to the next frame.
+- **Change.** The port treats the frame as `GetAllLocks` does and advances (`start += 2`). This
+  can only find a seed where PKHeX would not terminate; it never produces a new Invalid. A
+  budget (`CxdGuard`, 400000 steps per lock search) bounds the whole search; reaching it is
+  reported Unknown (16-A). Verified against the PKHeX oracle on 3914/3928/3908 GameCube records
+  (seeds 1-3) with 0 false Invalid and 0 false Valid.
+
+## 16-A. Colosseum/XD RNG searches are bounded (Unknown instead of a hang, Gen III GameCube lane)
+
+- **PKHeX.** `MethodCXD.IsValidNameScreenEndSeed` (`MethodCXD.cs:644-677`) recurses without a
+  depth limit, `TryGetSeedTrainerID` (`:680-693`) and `TryGetSeedStarterColo` (`:571-612`) loop
+  until a seed is found, and the team lock search (15-A) is unbounded.
+- **Change.** `Gen3Legality.cpp` caps them (`CxdGuard`: name-screen recursion depth 256,
+  100000 steps for the trainer-ID and Colosseum starter seeds, 400000 steps per lock search).
+  A capped search reports "RNG search reached its limit" (Warning, Unknown), and every Invalid
+  finding made under a cap is demoted to a Warning: a cap can never add an Invalid. No record of
+  the seed 1-3 mutation and grown corpora, the 70 constructed fixtures or the fuzz loops reached
+  a cap, so this is a guard, not a disagreement about any real record.
+
+Also checked while porting, not disagreements: `TeamLockResult.VerifyNPC` (`:180-212`)
+enumerates its team stack top first with `pos` counting down, which pairs the k-th pushed frame
+with `Locks[k]`; the port replicates that pairing exactly (`TeamLockSearch::verifyNpc`). A GBA
+wild record relabelled with version 15 is Invalid here ("Unable to match an encounter from the
+origin game") because PKHeX's `EncounterGenerator3GC` finds no template for it (EncInvalid);
+the earlier Warning was the analyzer's own scope limit, not a PKHeX verdict.
+
+## 15-D. Gen I/II EXP above the level-100 total, or a stored level below its EXP (downgraded)
+
+Lane D (Gen I/II). PKHeX rejects EXP above the level-100 total when the current level is 100
+(`LevelVerifier.Verify`, Legality/Verifiers/LevelVerifier.cs:45-51, `LevelEXPTooHigh`) and
+otherwise derives the level from EXP, so a level-5 record carrying level-30 EXP is VALID to
+it. PokeBank NX used to call every stored level that is not the level of the EXP Invalid.
+
+- **The games.** A Pokémon left in the Day Care gains EXP a step at a time while its stored
+  level stays what it was on deposit. Gen I adds one EXP per step with no level check and
+  holds the top byte at `$50` (pokered `engine/overworld/daycare_exp.asm:1-16`), so the EXP
+  can pass the level-100 total and reach `$50FFFF`. Gen II skips a Pokémon whose stored
+  level is 100 and caps the EXP at `MAX_DAY_CARE_EXP = $500000` (pokecrystal
+  `engine/events/happiness_egg.asm:142-190` `DayCareStep`, `constants/misc_constants.asm:52`).
+  Withdrawal recomputes the level from the EXP (pokered `scripts/Daycare.asm:69-83`,
+  pokecrystal `engine/pokemon/move_mon.asm:805` `RetrieveBreedmon`), so the stale state exists
+  only in the Day Care slot, which PokeBank NX's save parsers do not read today. Nothing in
+  either game writes a stored level *ahead* of the EXP (battle, Rare Candy and withdrawal
+  all keep EXP at or above the level's total), so that half stays Invalid.
+- **Left out.** The Day Care slot itself (not parsed). A record exported from it by another
+  tool is what these rules see.
+- **Real records.** None in hand; the rule follows the step counter's own bounds.
+- **PKHeX.** `LevelEXPTooHigh` only at level 100; no level-vs-EXP comparison otherwise.
+- **Change.** `GB::levelExpProblem` (src/Legality/GBLegality.cpp): level below the EXP's level
+  → Incomplete; EXP above the level-100 total → Incomplete up to `$50FFFF` on a PK1 at any
+  level and on a PK2 below level 100, Invalid past `$50FFFF` or at level 100 on a PK2; level
+  ahead of the EXP → Invalid (unchanged). Tests: tests/test_gb_legality_structural.cpp
+  `levelExpGrid`, `realRedSave`, `productionPk2`; tests/test_gb_legality_gen1.cpp
+  `level-exp-daycare-stale`, `level-100-exp-daycare`, `level-100-exp-beyond-daycare`.
+  compare.py: reasons `daycare-stale-level`, `daycare-exp-over-cap` (both predicates read the
+  record's own bytes), class `level-exp` tightened to the level-ahead case; corpus kinds
+  `exp-daycare-stale`, `exp-daycare-99`, `exp-daycare-reach`, `exp-daycare-past`.
+
+## 16-D. Gen I/II Japanese trainer-name characters (downgraded, with one origin-bound half)
+
+Lane D (Gen I/II). PKHeX requires a Japanese trainer name to be kana (U+3000–U+30FC,
+`StringConverter1.GetIsJapanese`, PKM/Strings/StringConverter1.cs:22-31) and, when the
+encounter it matched is Gen II, also allows ？ and ！ (`StringConverter2.GetIsJapanese`,
+StringConverter2.cs:25-34; `TrainerNameVerifier.VerifyGBOTWithinBounds`,
+Legality/Verifiers/TrainerNameVerifier.cs:145-150, `G1CharOT`). It judges the name by the
+first encounter it matched and does not look for another.
+
+- **The games.** The Japanese Red/Green/Blue/Yellow and Gold/Silver/Crystal naming screens
+  are not in the disassemblies at hand (pret/pokered and pret/pokecrystal carry the English
+  screens: `data/text/alphabets.asm`, `data/text/name_input_chars.asm`). PKHeX's sets are
+  therefore not confirmed from a primary source.
+- **Left out.** Nicknames (PKHeX does not hold them to the kana either).
+- **Real records.** None in hand.
+- **PKHeX.** INVALID on any character outside its set; INVALID on ？/！ whenever the encounter
+  it happened to match first is Gen I, even when a Gen II origin (an egg, a Gen II wild slot)
+  is open for the same record.
+- **Change.** A character outside the kana and the marks → Incomplete with a Warning
+  (`GB::nameCharsetProblems`). ？/！ are judged per origin in `GB::evaluate`: a Gen II origin
+  accepts them on either format (a PK1 brings them back through the Time Capsule), a Gen I
+  origin gets a non-definitive problem, so a record with only Gen I origins (the legendary
+  birds, Mewtwo) is Incomplete and one with a Gen II origin stays No problems found. Tests:
+  tests/test_gb_legality_names.cpp `japaneseTrainerName`, `production`. compare.py: reasons
+  `jp-ot-charset`, `jp-ot-mark-gen1`; class `jp-ot-mark-gen1-pick` (ours VALID, PKHeX
+  INVALID with `Trainer:G1CharOT` alone); corpus kinds `defect-jp-ot-charset`,
+  `defect2-jp-ot-charset`, `jp-ot-mark-ok`, `jp-ot-mark-gen1`.
+
+## 17-D. A Korean Gold/Silver trainer name on a PK1 (keep as Incomplete, Invalid when no route exists)
+
+Lane D (Gen I/II). A PK1 whose trainer-name field starts with a Hangul page byte (1–11) is
+Korean to PKHeX (`PK1.Korean`, PKM/PK1.cs:15, `StringConverter2KOR.IsHangul`), yet its Gen I
+encounter search has no Korean gate (`EncounterEnumerator1`), and `LanguageVerifier` only
+objects for a stored version (Legality/Verifiers/LanguageVerifier.cs:33-35, a PK1 stores
+none). The oracle calls a Korean-named level-3 Rattata VALID as `EncounterSlot1:19:RD:3`.
+
+- **The games.** No Korean Red/Blue/Yellow exists. Korean Gold/Silver trade with Western
+  Gen I and Gen II cartridges (Bulbapedia, "Korean character encoding (Generation II)",
+  "Trade"; the Virtual Console releases refuse), so the one way a Hangul name reaches a PK1
+  is a Korean Gold/Silver Pokémon traded to a Western Gold/Silver/Crystal and then through
+  the Time Capsule. That route rests on the same secondary source as the Korean PK2 rules
+  (review item on Korean Gold/Silver in `GB_LEGALITY_VERDICTS.md`), so it is Incomplete,
+  never Valid.
+- **Left out.** The Korean ROM is not disassembled; the Korean naming screen is PKHeX's word.
+- **Real records.** None in hand.
+- **PKHeX.** VALID as a Red/Blue/Yellow native, where no Korean name can be written.
+- **Change.** `GB::checkGen1`: a Hangul lead makes the record Korean; the search runs with
+  Gen II origins only and the Korean–Western trade flag; Legal becomes Uncertain with the
+  route named; when no Gen II origin fits (the catch-rate byte is not a Gen II held item, a
+  Gen I-only move or species) the record is Invalid, since every history is closed by a
+  verified rule. Korean names are measured on their bytes (5 characters). Tests:
+  tests/test_gb_legality_names.cpp `koreanPk1`. compare.py: reason `korean-pk1`, class
+  `korean-pk1-origin` (ours INVALID, PKHeX VALID; only with the route problem present);
+  corpus kinds `kor1-tradeback`, `kor1-rby`, `kor1-ot-one-byte`, `kor1-ot-long`.
+  Reachable from `Legality::analyze` only once the save parsers carry the name bytes
+  (docs/legality/handoff/lane-d-raw-names.patch).
+
+## Not disagreements (checked)
+
+These Invalid sites match a PKHeX rule:
+
+| PokeBank NX | PKHeX |
+|---|---|
+| Colosseum/XD female OT, `Legality.cpp:325` (Pal Park PK4) and `Gen3Legality.cpp` `verifyCxd` (PK3) | `CXDVerifier.cs:20` (`G3OTGender`) |
+| Korean Shaymin, `:1335` | `EncounterVerifier.cs:33` |
+| Korean hatch at Seabreak Path / Flower Paradise, `:1585` | `EncounterVerifier.cs:211` |
+| Pal Park split-ball fields, `:1491` | `MiscVerifierG4.cs:72-94` |
+| Gen IV PID ability slot, `:2027` | `CheckMatch`. Every PKHeX Gen IV fixed-ability template (DPPt Ranch gifts, HGSS trades) has its fixed slot equal to its PID's slot |
+| Gen V hidden-ability flag on a Gen III/IV origin, `Gen5Legality.cpp:694` | `AbilityVerifier.cs:421-422` |
+| GB egg stat experience, `Legality.cpp:1140` | `EffortValueVerifier.cs:17-20` (`EffortEgg`) |
+| GB duplicate moves, empty trainer name | `LearnVerifier.cs:90` (`MoveResult.Duplicate`), `TrainerNameVerifier.cs:30` (`OTShort`) |
+
+`docs/legality/GB_LEGALITY_VERDICTS.md:14` still says `GB::checkGen2` is not wired into
+the app. At the base commit it is (`7356b383`, `Legality.cpp:1029`, `analyzeNativeGen2`).
+That text is out of date, but it is not a disagreement. It was left alone because it is
+outside this review.
+
+## 15-C. Gen V hidden-ability flag on a fateful Gen IV-origin Pokemon (Warning, kept)
+
+### What PokeBank NX does
+
+`Gen5Analyzer::abilities()` (`src/Legality/Gen5Legality.cpp:1001-1005`): on a Gen III/IV-origin
+PK5 with PK5 `0x42` bit 0 set, Invalid "Hidden ability flag is set on a Gen III/IV-origin Pokemon",
+except when the record is fateful and its version is a Gen IV game, where it is the Warning "Hidden
+ability flag is set on a Gen IV event Pokemon; PKHeX accepts it on an unevolved card". When the Gen IV
+origin analysis matched an encounter, PKHeX's `CheckMatch` rule runs there instead (`Gen4Legality.cpp`).
+
+### The games
+
+- A Gen IV record has no such flag. Block B byte 0x1A-0x1B (PK4 offset 0x42-0x43) is `u16 unused2`
+  in Platinum (pokeplatinum `include/struct_defs/pokemon.h:67`) and in HeartGold / SoulSilver
+  (pokeheartgold `include/pokemon_types_def.h:68`); no Gen IV code writes it. Every Pokemon starts
+  zeroed (`Pokemon_Init` / `BoxPokemon_Init`, pokeplatinum `src/pokemon.c:292-301`, `MI_CpuClearFast`;
+  `ZeroMonData` / `ZeroBoxMonData`, pokeheartgold `src/pokemon.c:101-108`).
+- Poke Transfer has no decompilation. PKHeX's model of it, `PK4.ConvertToPK5` (`PKM/PK4.cs:315-319`),
+  copies the 136 stored bytes and clears only the mail, so 0x42 stays 0. If the real transfer
+  software does the same, a transferred Gen IV Pokemon never has the flag.
+
+That is strong evidence for Invalid, and PokeBank NX keeps Invalid everywhere except the fateful
+Gen IV case. The exception is not a doubt about the games; it is a doubt about PKHeX's acceptance
+being reached by a real record: PKHeX's `VerifyAbilityPCD` (`Legality/Verifiers/Ability/AbilityVerifier.cs:336-347`)
+compares the ability index only when the Pokemon is still the card's species, and runs `CheckMatch`
+(which rejects the flag) only when it evolved. PokeBank NX cannot identify the card without the Gen IV
+origin analysis, and a fateful Gen IV record may be a card PKHeX accepts. Calling it Invalid while
+PKHeX accepts it would be a false Invalid in the differential, and the brief forbids an Invalid that
+one open history can still explain.
+
+### Measured
+
+Six seeds, 808,678 records: no PKHeX-valid record carries the flag with a Gen III/IV origin
+(the `hidden` mutation on a transfer is Invalid on both sides: `transfer-hidden-flag`,
+`tests/test_legality_gen5.cpp:145`, plus the three `expectEdit` rows at `:305-307`, where the PCD
+case is accepted on both sides). The Warning case is therefore exercised only by fixtures.
+
+### Decision
+
+Keep: Invalid for a non-fateful or Gen III origin; Warning for a fateful Gen IV origin without the
+origin analysis; PKHeX's own rule once the Gen IV encounter is matched. To change the Warning to
+Invalid one needs either a Gen IV card whose Pokemon PKHeX treats as an unevolved card with the
+flag (none of the 590 `wc4.pkl` templates sets 0x42, so this would be PKHeX's acceptance, not the
+game's) or the Poke Transfer software's handling of 0x42, which would prove the flag impossible
+on every transfer and let the exception go. Until then the record stays Incomplete.
+
+## 16-C. Wurmple branch on a Gen V record (Invalid only when every match is Wurmple)
+
+### What PokeBank NX does
+
+`Gen5Analyzer::wurmple()` (`src/Legality/Gen5Legality.cpp:1039-1054`): for Silcoon / Beautifly /
+Cascoon / Dustox the branch is `((PID >> 16) % 10) / 5` (0 Silcoon line, 1 Cascoon line). A Pokemon
+on the other branch is Invalid "PID evolves Wurmple into the other branch" only when the matched
+template is Wurmple and no matching template is of another species; when a non-Wurmple template
+also matches it is a Warning (encounter coverage Partial); on a Gen III/IV origin without the
+origin analysis it is the Warning "... valid only if it was caught after evolving in Gen III/IV".
+
+### The games
+
+- Gen III: `GetEvolutionTargetSpecies`, `EVO_LEVEL_SILCOON` evolves when
+  `(upperPersonality % 10) <= 4`, `EVO_LEVEL_CASCOON` when `> 4` (pokeemerald `src/pokemon.c:5568-5575`,
+  pokeruby `src/pokemon_3.c:330-337`; `upperPersonality = personality >> 16`).
+- Gen IV: the same test, `monPersonalityUpper % 10 < 5` for Silcoon and `>= 5` for Cascoon
+  (pokeplatinum `src/pokemon.c:3621-3630`).
+- Gen V has no decompilation; PKHeX's `WurmpleUtil.GetWurmpleEvoVal` uses the same formula on
+  the encryption constant, which at format 5 is the PID.
+
+So a Wurmple can only ever evolve along the branch its PID picks. Silcoon, Cascoon, Beautifly and
+Dustox are also wild encounters of their own in Gen III and IV (and Dream World / Poke Transfer
+records exist in Gen V), and a wild Silcoon's PID is unconstrained. The rule therefore proves
+impossibility only when the Pokemon was a Wurmple.
+
+### PKHeX
+
+`PIDVerifier.Verify` runs `VerifyECPIDWurmple` only when `enc.Species == Wurmple`
+(`Legality/Verifiers/PIDVerifier.cs:20-21`, `:124-137`, `PIDEncryptWurmple`), on the encounter it
+chose.
+
+### Measured and decision
+
+Fixtures `wurmple` (`tests/test_legality_gen5.cpp:114`, a Gen V Wurmple egg hatched into the wrong
+branch, Invalid on both sides) and `transfer-wurmple` (`:166`, Gen III egg, Invalid on both sides).
+On the six seeds, the 108 PKHeX-valid native records left Incomplete include the cases where a
+non-Wurmple template also matches: PKHeX picks one template, PokeBank NX warns because it does not
+model PKHeX's pick. The default stays as it is: Invalid only when every matching template is
+Wurmple, which the decompiled evolution code proves; otherwise Warning.
+
+## 17-C. Mothim keeps Burmy's cloak (forms 0-2 accepted)
+
+### What PokeBank NX does
+
+Form 1 and 2 on Mothim (414) are accepted (`src/Legality/Gen5Legality.cpp:442`, `:1102-1103`);
+form 3 and above is Invalid "Form 3 does not exist" (`tests/test_legality_gen5.cpp:329`). The gender
+rule for a two-gender pre-evolution (`:1056-1061`) treats Mothim like Wormadam.
+
+### The games
+
+Evolution writes the species only: pokeplatinum `src/evolution.c:435`
+(`Pokemon_SetValue(..., MON_DATA_SPECIES, ...)`), and the species setter writes `species` alone
+(pokeplatinum `src/pokemon.c:1378-1380`); the form bits (block B 0x18, `form : 5`,
+`include/struct_defs/pokemon.h:63-65`) are left as Burmy set them. The same holds for HG/SS
+(pokeheartgold uses the same evolution flow). Gen V has no decompilation; a Mothim transferred
+from Gen IV with form 1 or 2 is a real record, and Gen V reads the form field unchanged.
+
+### PKHeX
+
+`FormInfo.IsValidOutOfBoundsForm` (`Legality/Tables/FormInfo.cs:406-409`): `Mothim => form < 3`,
+"Burmy base form is kept"; `:442` lists Mothim among the species whose form is not cleared on
+evolution.
+
+### Measured and decision
+
+`transfer-mothim` (`tests/test_legality_gen5.cpp:121`, a Gen IV Mothim with form 1, accepted on
+both sides, PKHeX VALID) and the `form 3` edit (Invalid). Keep: forms 0-2 accepted, form 3+
+Invalid. Not a disagreement with PKHeX; it was one at the base commit (forms 1-2 were Invalid)
+and is recorded here because the brief asked for the evidence.
+
+## 18. Blue-Striped Basculin without its hidden ability from the B2/W2 Dream World (Warning, coordinator)
+
+### What PokeBank NX does
+
+A Black 2/White 2 Blue-Striped Basculin (species 550, form 1) with Rock Head, no hidden-ability
+flag, matched to the B2/W2 Dream World Basculin (an `OnlyHidden` template). Before this change
+the encounter search rejected the template on the missing flag and the record read Invalid
+("lacks the hidden ability this encounter always gives"). Now the search leaves that one case
+to the ability rule, which follows PKHeX's Basculin exception, and the record reads Incomplete
+with the Warning "Blue-Striped Basculin without its hidden ability matched a Dream World
+encounter that gives the hidden ability; PKHeX accepts it". Reckless on the same record stays
+Invalid. `src/Legality/Gen5Legality.cpp` `checkCommon` and `Gen5Analyzer::abilities`.
+
+### PKHeX
+
+`AbilityVerifier.IsEdgeCaseBasculin` (`Legality/Verifiers/Ability/AbilityVerifier.cs:100-132`)
+decides any form-1 Basculin without the flag and without Adaptability by its ability alone,
+before the template's permission is consulted, so PKHeX calls the record VALID.
+
+### The games
+
+Gen V has no decompilation. The Dream World side ran on Nintendo's servers; no original-game
+source shows what it could write. Without evidence either way the record cannot be Invalid,
+and because the matched template gives the hidden ability it cannot be certified either.
+
+### Measured
+
+Found by CI on `1ceea5634d1bfc251087727aa9444ec0a1109305` (`legality-gen5-pkhex-diff`, record
+`m46984-metlocation`). Fixed in `b2db59b3`; the four CI seeds then gave 0 false Invalid and
+0 false Valid. Test: `tests/test_legality_gen5.cpp` (the record and its Reckless edit).
+
+## 19. Colosseum/XD origins after a transfer: level bound and ability bit (parity, coordinator)
+
+Two points where the GameCube judge (`include/Legality/Gen3Cxd.h`) needs the right input from
+the Pal Park and Poke Transfer callers (`Gen4::judgeCxdOrigin`, `src/Legality/Gen4LegalityPalPark.cpp`).
+
+- **Level.** PKHeX bounds the Gen III part of a transferred record's evolution chain by the met
+  level, the level at transfer (`Legality/Evolutions/EvolutionGroup/EvolutionGroup3.cs:19-24`
+  for a PK4, `EvolutionGroup4.cs` for a PK5). The first wiring passed the current level; the
+  Gen V differential showed 35 false Valid, all `metlevel` mutations of Colosseum/XD transfers.
+  The judge now gets the lower of the two (`d113b8a9`), and all 35 read Invalid.
+- **Ability bit.** Orre stores the ability bit apart from the PID. Pal Park reads it only for a
+  species whose two Gen III abilities it keeps; a species in `sSpeciesWithNewAbilities`, or with
+  one ability, always gets ability 1 (pokeplatinum `src/main_menu/gba_pokemon.c:170-260`,
+  `:759-783`). The judge is told the bit only when the species has two Gen III abilities. A
+  matched, unevolved XD Eevee with Adaptability is therefore Invalid, as PKHeX says.
+- **Format-5 ability.** The format-5 origin check required the PID to match even for a
+  two-ability Gen III species of Colosseum/XD origin. PKHeX lets it differ
+  (`AbilityVerifier.cs:273-274`); 15 XD shadow transfers in seed 1 read Invalid until `c33cb2c9`.
+- **Transfer-only details.** The full seed-1 listing then showed nine more PKHeX-valid records
+  read Invalid. Spanish Duking's name after Pal Park is "GERMいN"
+  (`Encounters3Colo.TrainerNameDukingSpanish4`); templates that differ only in the lost met location
+  (Shadow Suicune with Surf or Hydro Pump) are now tried in order; a Pokemon that evolved after the
+  transfer is matched on its Gen III pre-evolutions. Fixed in `69624064`; seed 1 then gave 0 false
+  Invalid and 0 false Valid.
+
+## 20. A Gen III Pokemon that evolved after its transfer keeps its Gen III ability against the PID (Warning, coordinator)
+
+A Shadow Pidgeotto transferred at level 30 and later evolved into Pidgeot, holding Keen Eye with
+PID bit 0 set (seed 1, `b121630`). PKHeX accepts it because `EvolutionGroup3.Evolve` leaves the
+unreached Pidgeot stage in the Gen III history (the stage is skipped, not removed), and
+`VerifyAbilityGen3Transfer` then reads Pidgeot's single Gen III ability. The Gen IV games set the
+ability from the PID on evolution (pokeplatinum `src/evolution.c:436`, `src/pokemon.c:4746-4764`),
+so a Gen IV evolution gives Tangled Feet. Black/White have no decompilation, so an evolution in
+Gen V is not proven either way. PokeBank NX reports a Warning ("PKHeX accepts it"): Incomplete,
+never Invalid (`Gen4::Analyzer::verifyAbility5`). Listed as an Unresolved difference in
+`PKHEX_VERIFIED_IMPROVEMENTS.md`.

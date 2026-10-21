@@ -1,0 +1,184 @@
+--- a/src/UI/Modals/PokemonDetailsModal.cpp
++++ b/src/UI/Modals/PokemonDetailsModal.cpp
+@@ -29,6 +29,7 @@
+ #include "Enums/LanguageID.h"
+ #include "Enums/GameVersion.h"
+ #include "Legality/Legality.h"
++#include "Legality/ReportPresentation.h"
+
+ using namespace Trainer;
+ using namespace Utils;
+@@ -313,11 +314,12 @@
+         // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
+         {
+             const int ly = colY + colH - legalityH + 6;
+-            if (legalityRep.ok()) {
++            if (legalityRep.verdict() == Legality::Verdict::NoProblemsFound) {
+                 fb.drawText(Lx + 18, ly, "Legality: no problems found", Color(120, 205, 140), TextStyle::Caption);
+             } else {
+-                const std::string label = "Legality: " + std::to_string(legalityRep.problemCount())
+-                                        + " issue(s)  -  R / tap to view";
++                const std::string label = legalityRep.verdict() == Legality::Verdict::Invalid
++                    ? "Legality: Invalid  -  R / tap to view"
++                    : "Legality: Incomplete / Unknown  -  R / tap to view";
+                 fb.drawText(Lx + 18, ly, label, Color(235, 100, 100), TextStyle::Caption);
+                 int lw, lh; fb.measureText(label, lw, lh, TextStyle::Caption);
+                 screen.touchButtons.push_back({ 95, Lx + 14, ly - 4, lw + 8, lh + 8 });  // id 95: open legality overlay
+@@ -507,7 +509,7 @@
+             std::string navHint;
+             // Y opens ribbons; R opens the legality list -- but only when there ARE issues, so a clean
+             // mon simply omits R: Legality (the button is disabled / nothing to view).
+-            const std::string legalSeg = legalityRep.ok() ? "" : "R: Legality  |  ";
++            const std::string legalSeg = legalityRep.verdict() == Legality::Verdict::NoProblemsFound ? "" : "R: Legality  |  ";
+             // A freshly-created mon has no "save" -- every field is an unsaved edit until committed, so
+             // X reads KEEP (commit + close); Discard still lives on the B Keep/Discard prompt.
+             const std::string saveSeg = screen.creator.editing ? "X: Keep" : "X: Save";
+@@ -525,15 +527,10 @@
+         if (screen.details.legalityOverlay) {
+             struct ReportLine { std::string text; Color color; };
+             std::vector<ReportLine> lines;
+-            if (legalityRep.ok()) {
+-                lines.push_back({"No problems found.", Color(120, 205, 140)});
+-            } else {
+-                for (const auto& issue : legalityRep.issues) {
+-                    if (issue.severity == Legality::Severity::Info) continue;
+-                    const bool invalid = issue.severity == Legality::Severity::Invalid;
+-                    lines.push_back({std::string(invalid ? "[illegal]  " : "[warning]  ") + issue.text,
+-                                     invalid ? Color(235, 100, 100) : Colors::Orange});
+-                }
++            for (const auto& line : Legality::Presentation::lines(legalityRep)) {
++                lines.push_back({line.text, line.severity == Legality::Severity::Invalid
++                    ? Color(235, 100, 100) : line.severity == Legality::Severity::Warning
++                    ? Colors::Orange : Color(120, 205, 140)});
+             }
+             const int ow = 820, oh = H - 100;
+             const int ox = (W - ow) / 2, oy = 50;
+--- a/src/UI/TrainerViewScreenBase.inc
++++ b/src/UI/TrainerViewScreenBase.inc
+@@ -3467,7 +3467,10 @@
+                 return;
+             }
+             if ((kDown & HidNpadButton_R) || tb == 95) {
+-                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok()) {
++                const std::string_view legalitySource = details.source == EditSource::Bank
++                    ? std::string_view{} : std::string_view(sourceGameId);
++                if (pokemon && Legality::analyze(*pokemon, pokemon->getGameGroup(), legalitySource)
++                        .verdict() != Legality::Verdict::NoProblemsFound) {
+                     details.legalityScroll = 0;
+                     details.legalityOverlay = true;
+                 }
+--- a/src/UI/Gen5SharedReadOnlySurface.inc
++++ b/src/UI/Gen5SharedReadOnlySurface.inc
+@@ -5,6 +5,8 @@
+ // Touch targets are isolated to verified read-only and native-field staged
+ // actions; native bank, source-writing and unsupported mutation routes remain barred.
+ #include "Inventory/ItemQuantityPolicy.h"
++#include "Legality/Gen5WorkspaceAdapter.h"
++#include "Legality/ReportPresentation.h"
+ #include "UI/SharedBagAddPicker.h"
+ #include "Names/LocationDisplayNames.h"
+ #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
+@@ -1466,6 +1468,7 @@
+                     screen.postStatus(error,360);
+                 } else if(state.surface()==Surface::CloneDestination)
+                     stageCloneOrMoveByKeypad(screen);
++                if(state.surface()==Surface::Legality)screen.details.legalityScroll=0;
+                 screen.controllerNavigation.reset();
+             }
+             return true;
+@@ -1571,7 +1574,10 @@
+             state.cancelBoxAction(); // only transient while the keypads are open
+             return true;
+         case Surface::Legality:
+-            if(keys&HidNpadButton_B)(void)state.back();
++            if((keys&HidNpadButton_Up) || tap==78101)
++                screen.details.legalityScroll=std::max(0,screen.details.legalityScroll-1);
++            if((keys&HidNpadButton_Down) || tap==78102)++screen.details.legalityScroll;
++            if((keys&HidNpadButton_B) || tap==78103)(void)state.back();
+             return true;
+         case Surface::View:
+         case Surface::Edit:
+@@ -1832,10 +1838,8 @@
+     drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
+                    {"Y","Discard All..."},{"B","Back"}});
+ }
+-// Origin & Legality (Round 3 Part 9): the neutral Gen I-IV panel. It reports the
+-// PK5 structure and the record's stored origin only, and never a legality
+-// verdict: Gen V has no legality checker here, so Legality is "Incomplete"
+-// and the encounter check is "Unknown".
++// The current staged PK5 is checked through the common engine verdict model.
++// Save identity/trainer/slot context comes from the validated workspace.
+ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenState& state,
+                    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& workspace) {
+     namespace P=PokeBank::UIModel::SharedEditorPresentation;
+@@ -1845,12 +1849,15 @@
+     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+     fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+     fb.drawText(x+24,y+18,P::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
+-    fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",
+-                Colors::TextDim,TextStyle::Caption);
++    const auto result=Legality::Gen5App::analyzeWorkspace(workspace,state.target());
++    if(result)fb.drawText(x+24,y+52,result->verdictLine,
++        result->verdict==Legality::Verdict::Invalid?Colors::Warning:
++        result->verdict==Legality::Verdict::Incomplete?Colors::Orange:Colors::Success,
++        TextStyle::Caption);
+     const auto& slot=state.target();
+     const auto pk=slot.region==Region::Party?workspace.viewParty(slot.slot):
+         workspace.viewBox(slot.box,slot.slot);
+-    if(!pk || !pk->valid() || pk->empty()) {
++    if(!pk || !pk->valid() || pk->empty() || !result) {
+         fb.drawText(x+34,y+110,"No valid Pokemon selected",Colors::Warning,TextStyle::Body);
+         drawNavBar(fb,{{"B","Back"}});
+         return;
+@@ -1859,7 +1866,7 @@
+     const std::string originName=origin==20?"White":origin==21?"Black":
+         origin==22?"White 2":origin==23?"Black 2":"Other (version id "+std::to_string(origin)+")";
+     const auto date=pk->metDate();
+-    const std::pair<std::string,std::string> rows[]={
++    std::vector<std::pair<std::string,std::string>> rows={
+         {"Exact source",gen5GameName(screen.sourceGameId)},
+         {"PK5 structure","PASS"},
+         {"Source mutation","HARD DISABLED"},
+@@ -1868,18 +1875,31 @@
+         {"Met level / date",std::to_string(pk->metLevel())+"  /  "+std::to_string(date.year)+"-"+
+             std::to_string(date.month)+"-"+std::to_string(date.day)},
+         {"Fateful encounter",pk->fatefulEncounter()?"Yes":"No"},
+-        {"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},
+-        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},
++        {"Encounter check",Legality::Presentation::coverageLabel(result->report.coverage.encounter)},
++        {"Legality",result->verdict==Legality::Verdict::Invalid?"Invalid":
++            result->verdict==Legality::Verdict::Incomplete?"Incomplete / Unknown":"No problems found"},
+     };
+-    int rowY=y+96;
+-    for(const auto& [label,value]:rows) {
+-        fb.drawText(x+34,rowY,label,Colors::TextDim);
+-        const bool flag=label=="Encounter check" || label=="Legality";
+-        fb.drawText(x+290,rowY,value,label=="PK5 structure"?Colors::Success:
+-                    label=="Source mutation"?Colors::Accent:flag?Colors::Warning:Colors::Text);
+-        rowY+=40;
+-    }
+-    drawNavBar(fb,{{"B","Back"}});
++    for(const auto& line:result->coverageLines)rows.emplace_back("",line);
++    for(const auto& line:result->issueLines)rows.emplace_back("",line);
++    constexpr int visible=12,rowHeight=28;
++    const int maxScroll=std::max(0,static_cast<int>(rows.size())-visible);
++    auto& scroll=screen.details.legalityScroll;
++    scroll=std::clamp(scroll,0,maxScroll);
++    fb.setClipRect(x+24,y+92,w-48,visible*rowHeight);
++    for(int i=scroll;i<std::min(static_cast<int>(rows.size()),scroll+visible);++i) {
++        const auto& [label,value]=rows[static_cast<size_t>(i)];
++        const int rowY=y+96+(i-scroll)*rowHeight;
++        fb.drawText(x+34,rowY,label,Colors::TextDim,TextStyle::Caption);
++        fb.drawText(x+(label.empty()?34:290),rowY,value,Colors::Text,TextStyle::Caption);
++    }
++    fb.clearClip();
++    drawGlyphButton(fb,x+24,y+h-56,140,40,"Up","Previous");
++    drawGlyphButton(fb,x+180,y+h-56,140,40,"Down","Next");
++    drawGlyphButton(fb,x+w-170,y+h-56,146,40,"B","Close");
++    screen.touchButtons.push_back({78101,x+24,y+h-56,140,40});
++    screen.touchButtons.push_back({78102,x+180,y+h-56,140,40});
++    screen.touchButtons.push_back({78103,x+w-170,y+h-56,146,40});
++    drawNavBar(fb,{{"Up/Down","Scroll"},{"B","Back"}});
+ }
+ void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                   std::string title,std::string message,

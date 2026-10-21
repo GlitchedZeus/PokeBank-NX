@@ -5,6 +5,9 @@ on:
     paths:
       - 'include/Legality/Gen12CandidateMove*.h'
       - 'include/Legality/Gen3GbaJoint*.h'
+      - 'include/Legality/Gen3GbaExceptional*.h'
+      - 'include/Legality/Gen34PalParkMultiCartridge*.h'
+      - 'include/Legality/Gen4NativeOriginal*.h'
       - 'include/Legality/Gen14CandidateMove*.h'
       - 'include/Legality/Gen3GbaOriginal*.h'
       - 'include/Legality/Gen4Platinum*.h'
@@ -18,7 +21,7 @@ permissions:
 
 jobs:
   l3-original-source-regressions:
-    name: L3 23 suites / ${{ matrix.compiler }} / native + ASan/UBSan
+    name: L3 29 suites / ${{ matrix.compiler }} / native + ASan/UBSan
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -43,7 +46,7 @@ jobs:
           printf 'L3 exact application SHA: %s\n' "$EXPECTED_SHA"
           printf 'L3 tree SHA: %s\n' "$(git rev-parse 'HEAD^{tree}')"
           "$COMPILER" --version
-      - name: Compile and execute all 23 exact-source suites and sanitizers
+      - name: Compile and execute all 29 exact-source suites and sanitizers
         shell: bash
         env:
           CXX: ${{ matrix.compiler }}

@@ -37,6 +37,8 @@ int main(){
             assert(J::evaluate(bad).status==J::Status::UnknownSearchWindow);++unknown;
             bad=c;bad.originalLeadIndependentlyAttested=false;
             assert(J::evaluate(bad).status==J::Status::UnknownOriginalLead);++unknown;
+            bad=c;bad.historicalLead=static_cast<J::Lead>(255);
+            assert(J::evaluate(bad).status==J::Status::UnknownOriginalLead);++unknown;
             // Independently attested successful Synchronize can overwrite
             // the random nature, yet must still satisfy actual PID nature.
             const uint16_t rand16=static_cast<uint16_t>(J::next(c.witnessedPreNatureState)>>16);

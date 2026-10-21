@@ -55,6 +55,12 @@ int main() {
     assert(N::replay(wrongNature).status==S::AttestedStagePidContradicted);
     auto unknown=j;unknown.method=N::Method::Unknown;
     assert(N::replay(unknown).status==S::UnsupportedMethod);
+    unknown.method=static_cast<N::Method>(255u);
+    assert(N::replay(unknown).status==S::UnsupportedMethod);
+    for(unsigned method=3;method<256;++method){
+        unknown.method=static_cast<N::Method>(method);
+        assert(N::replay(unknown).status==S::UnsupportedMethod);
+    }
     // A maliciously huge caller budget is capped, while the real 129-pair
     // fixture still succeeds within the implementation resource ceiling.
     auto gigantic=hg;gigantic.maxPidPairs=UINT32_MAX;

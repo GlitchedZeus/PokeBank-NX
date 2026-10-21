@@ -50,5 +50,10 @@ debug.log
 
 # Python cache from the code-generator scripts in tools/
 tools/__pycache__/
+__pycache__/
 # PKHeX source/resource files the gen_*.py scripts fetch from GitHub (tools/pkhex_source.py)
 tools/.pkhex_cache/
+.claude/worktrees/
+
+# Completion campaign host test artifacts
+/build-completion/

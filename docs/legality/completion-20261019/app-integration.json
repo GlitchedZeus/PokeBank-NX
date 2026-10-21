@@ -1,0 +1,19 @@
+{
+  "app_head": "9d4b8b71befea78c76802c15f1911a0ca24e775c",
+  "files": {
+    "src/UI/Modals/PokemonDetailsModal.cpp": {
+      "before_sha256": "3fd67730ea5777dd6cf01940fca28533f5d13b8d851e93b4fde17bdc6a12ee65",
+      "after_sha256": "c513d5854bccb9c6f36152770234df9504576351db0116ade3f1f56cb58b7f4a"
+    },
+    "src/UI/TrainerViewScreenBase.inc": {
+      "before_sha256": "eb36ccfa3c964baa4d2edac8407eac90b0714fec901ae406a0ed4686da01a10d",
+      "after_sha256": "f2a3b1825693bb06b3964d0f56ed2a39d9e1b6dcabff258e4454a50a46007878"
+    },
+    "src/UI/Gen5SharedReadOnlySurface.inc": {
+      "before_sha256": "8b901602a8d12f7eeec0906e977162f180d47c9ca0b5da1fdffff9ed98c0c419",
+      "after_sha256": "625b14b8caec49062ee2af751dea68fba091271d324c822c3e5e347a9cb89591"
+    }
+  },
+  "requires": "Selectively import the reviewed legality engine and Gen5WorkspaceAdapter/ReportPresentation first. Never merge the whole campaign blindly.",
+  "native_build": "Not run in this environment; hardware rendering pending."
+}

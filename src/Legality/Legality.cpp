@@ -9,6 +9,9 @@
  */
 
 #include "Legality/Legality.h"
+#include "Legality/GBLegality.h"
+#include "Legality/Gen4Legality.h"
+#include "Legality/Gen3Legality.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
@@ -120,6 +123,160 @@ namespace Legality {
             static const char* const kNames[6] = { "HP", "Atk", "Def", "Spe", "SpA", "SpD" };
             return kNames[i];
         }
+        // Gen I names decode Japanese text to kana and international text to Latin letters,
+        // so the decoded bytes tell the two layouts apart; anything else stays unknown.
+        GB::Language gen1Language(const std::string& ot, const std::string& nickname) {
+            for (const std::string* text : {&ot, &nickname}) {
+                for (unsigned char c : *text) {
+                    if (c == 0xE3)
+                        return GB::Language::Japanese;   // UTF-8 lead byte of kana
+                    if (c >= 'A' && c <= 'Z')
+                        return GB::Language::International;
+                }
+            }
+            return GB::Language::Unknown;
+        }
+
+        CheckIdentifier gbIdentifier(GB::Area area) {
+            switch (area) {
+                case GB::Area::Encounter: return CheckIdentifier::Encounter;
+                case GB::Area::Moves:     return CheckIdentifier::Moves;
+                case GB::Area::CatchRate: return CheckIdentifier::Encounter;
+                case GB::Area::Types:     return CheckIdentifier::Structure;
+                case GB::Area::Trainer:   return CheckIdentifier::Trainer;
+                case GB::Area::HeldItem:  return CheckIdentifier::Misc;
+                case GB::Area::Egg:       return CheckIdentifier::Misc;
+                case GB::Area::MetData:   return CheckIdentifier::Encounter;
+                case GB::Area::Stats:     return CheckIdentifier::Stats;
+                case GB::Area::Misc:      return CheckIdentifier::Misc;
+            }
+            return CheckIdentifier::Misc;
+        }
+
+        /// Native PK1: format checks, then the Gen I/II origin search in GBLegality.
+        /// A Pokemon with a legitimate origin and no other problem reads "No problems
+        /// found"; that is evidence the Pokemon is possible, not proof of where it came
+        /// from. Invalid needs a definitive rule; when only unverified rules or an
+        /// incomplete event catalog stand against every origin, the report stays
+        /// Incomplete with warnings.
+        Report analyzeNativeGen1(const Pokemon::Pokemon& pk, const Pokemon::Pokemon1ReadOnly& gen1,
+                                 bool sourceFormatMismatch) {
+            Report r;
+            const auto& rec = gen1.strictRecord();
+            const uint16_t species = pk.speciesID();
+            if (sourceFormatMismatch) {
+                add(r, Severity::Warning,
+                    "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
+                    CheckIdentifier::SourceGame);
+            }
+
+            bool structural = true;
+            if (species < 1 || species > 151) {
+                add(r, Severity::Invalid,
+                    "Species " + std::to_string(species) +
+                    " cannot exist in a Generation 1 save (maximum species id 151)",
+                    CheckIdentifier::SourceGame);
+                structural = false;
+            }
+            for (int slot = 0; slot < 4; ++slot) {
+                const uint16_t moveId = pk.move(slot);
+                if (moveId > 165) {
+                    add(r, Severity::Invalid,
+                        "Move id " + std::to_string(moveId) +
+                        " cannot exist in a Generation 1 save (maximum move id 165)",
+                        CheckIdentifier::Moves);
+                    structural = false;
+                }
+                for (int other = slot + 1; other < 4; ++other) {
+                    if (moveId != 0 && moveId == pk.move(other)) {
+                        add(r, Severity::Invalid,
+                            "Duplicate move: " + std::string(Names::getMoveName(moveId)),
+                            CheckIdentifier::Moves);
+                        structural = false;
+                    }
+                }
+            }
+            // With the stored bytes, GB::checkGen1/checkGen2 judge the trainer name (a Hangul
+            // name decodes to nothing in a Western save's text; it is not empty).
+            if (rec.originalTrainer.empty() && rec.originalTrainerRaw.empty()) {
+                add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
+            }
+
+            bool uncertain = false;
+            GB::Entity1 e;
+            // Level against EXP, the level-100 EXP cap included, is one of GB's format rules.
+            e.species = species <= 151 ? static_cast<uint8_t>(species) : 0;
+            e.level = rec.level;
+            e.exp = rec.experience;
+            e.statExp = rec.statExperience;
+            e.otName = rec.originalTrainer;
+            e.nickname = rec.nickname;
+            e.otRaw = rec.originalTrainerRaw;
+            e.nickRaw = rec.nicknameRaw;
+            std::vector<GB::Problem> problems;
+            if (!structural) {
+                // The origin search cannot run, but the rules that hold for any origin still do.
+                problems = GB::formatProblems(e);
+            } else {
+                for (int i = 0; i < 4; ++i) {
+                    e.moves[i] = rec.moves[static_cast<std::size_t>(i)];
+                    e.pp[i] = rec.pp[static_cast<std::size_t>(i)];
+                    e.ppUps[i] = rec.ppUps[static_cast<std::size_t>(i)];
+                }
+                e.catchRate = rec.catchRate;
+                e.type1 = rec.type1;
+                e.type2 = rec.type2;
+                e.dvs = {rec.dvs[1], rec.dvs[2], rec.dvs[3], rec.dvs[4]};
+                e.tid = rec.trainerId;
+                e.tradeTrainer = rec.originalTrainer == "*";
+                e.language = gen1Language(rec.originalTrainer, rec.nickname);
+                const GB::Result origin = GB::checkGen1(e);
+                if (origin.status == GB::Status::Legal) {
+                    add(r, Severity::Info, "Possible origin: " + GB::describe(origin.origin),
+                        CheckIdentifier::Encounter);
+                    if (origin.timeCapsule) {
+                        add(r, Severity::Info,
+                            "This history needs a trip through the Gen II Time Capsule",
+                            CheckIdentifier::Transfer);
+                    }
+                    add(r, Severity::Info,
+                        "A legitimate origin exists; that does not prove where this Pokemon actually came from",
+                        CheckIdentifier::Origin);
+                }
+                problems = origin.problems;
+            }
+            for (const auto& problem : problems) {
+                bool duplicate = false;
+                for (const auto& issue : r.issues)
+                    duplicate |= issue.text == problem.text;
+                if (duplicate)
+                    continue;
+                if (problem.definitive) {
+                    add(r, Severity::Invalid, problem.text, gbIdentifier(problem.area));
+                } else {
+                    add(r, Severity::Warning, problem.text, gbIdentifier(problem.area));
+                    uncertain = true;
+                }
+            }
+
+            r.coverage.structure = CoverageLevel::Complete;
+            r.coverage.sourceGame = CoverageLevel::Complete;
+            r.coverage.internal = CoverageLevel::Complete;
+            r.coverage.moves = CoverageLevel::Complete;
+            r.coverage.encounter = CoverageLevel::Complete;
+            r.coverage.eventGift = CoverageLevel::Complete;
+            r.coverage.pidRng = CoverageLevel::Complete;     // Gen I has no PID/RNG correlation
+            r.coverage.eggBreeding = CoverageLevel::Complete; // Gen II eggs are part of the search
+            r.coverage.transfer = CoverageLevel::Complete;    // Time Capsule histories are searched
+            if (uncertain) {
+                // An unverified rule or an incomplete event list was all that excluded
+                // the origins: the origin check is not finished.
+                r.coverage.encounter = CoverageLevel::Partial;
+                r.coverage.eventGift = CoverageLevel::Partial;
+            }
+            return r;
+        }
+
         // Personal-table presence bit for a game group (0 if the group has no bit).
         uint8_t presenceBit(Enums::GameVersion g) {
             switch (g) {
@@ -165,16 +322,23 @@ namespace Legality {
             return false;
         }
 
+        // gen3Analyzed: the record is a PK3 the Gen III analyzer (Gen3Legality.cpp) judged in
+        // this same analyze() call. It judges a Colosseum/XD origin (version 15) with PKHeX's
+        // GameCube templates, team locks and RNG (one verdict path), so the older GameCube
+        // evidence below runs only for the formats it does not read (a Pal Park PK4).
         void addGen3PidEvidence(Report& r, const Pokemon::Pokemon& pk,
-                                uint16_t species) {
+                                uint16_t species, bool gen3Analyzed = false) {
             const std::array<uint8_t, 6> ivs{
                 pk.ivHP(), pk.ivATK(), pk.ivDEF(), pk.ivSPE(), pk.ivSPA(), pk.ivSPD()
             };
-            if (pk.originGame() == 15 && pk.otGender() != 0) {
+            const bool gameCubeJudged = gen3Analyzed && pk.originGame() == 15;
+            if (pk.originGame() == 15 && pk.otGender() != 0 && !gameCubeJudged) {
+                // CXDVerifier.cs G3OTGender; the Gen III analyzer reports it for a PK3.
                 add(r, Severity::Invalid,
                     "Pokemon Colosseum/XD-origin PK3 cannot have a female OT gender",
                     CheckIdentifier::Trainer);
             }
+            if (gameCubeJudged) return;
 
             const auto correlation =
                 Gen3PidIv::analyze(pk.pid(), ivs, species == 201);
@@ -442,12 +606,15 @@ namespace Legality {
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);
+                // The candidate stores a view of the OT name and outlives this
+                // statement, so the name must be owned here, not a temporary.
+                const std::u16string negaiOtName = pk.otName();
                 const Gen3NegaiBoshiEvent::Candidate negaiCandidate{
                     species, pk.tid16(), pk.sid16(), pk.originGame(),
                     pk.language(), pk.otGender(), pk.metLevel(),
                     pk.metLocation(), pk.ball(), pk.isEgg(),
                     pk.isFatefulEncounter(),
-                    pk.isShiny(pk.id32(), {}), pk.otName()
+                    pk.isShiny(pk.id32(), {}), negaiOtName
                 };
                 const bool negaiForceAnti =
                     Gen3NegaiBoshiEvent::matchesForceAntiShiny(
@@ -572,185 +739,13 @@ namespace Legality {
         }
     }
 
-    Report analyze(const Pokemon::Pokemon& pk, const Context& context) {
-        const auto originGroup = context.originGroup;
-        // A claimed save source must never override a verified native
-        // PK1/PK2/PK3/PK4 storage format. Otherwise an accidentally
-        // mislabelled bank entity can receive fabricated source-specific
-        // Invalid findings from the wrong game generation.
-        const uint8_t native12 =
-            Gen12FormatDomain::generationFromGroup(pk.getGameGroup());
-        const uint8_t nativeFormatGeneration = native12 != 0
-            ? native12
-            : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
-        const auto* suppliedSource =
-            sourceGameProfile(context.exactSourceGameId);
-        const bool sourceFormatMismatch = suppliedSource &&
-            nativeFormatGeneration != 0 &&
-            suppliedSource->generation != nativeFormatGeneration;
-        // Sanitizing here, before any exact-game helper is initialized,
-        // also prevents downstream source-only event/wild/trade templates
-        // from accidentally using the contradictory label.
-        const std::string_view exactSourceGameId = sourceFormatMismatch
-            ? std::string_view{} : context.exactSourceGameId;
-        Report r;
-        PokeVault::Integration::Gen1::SourceGame gen1Source =
-            PokeVault::Integration::Gen1::SourceGame::Red;
-        PokeVault::Integration::Gen2::SourceGame gen2Source =
-            PokeVault::Integration::Gen2::SourceGame::Gold;
-        PokeVault::Integration::Gen3::SourceGame gen3Source =
-            PokeVault::Integration::Gen3::SourceGame::FireRedGBA;
-        const bool hasExactGen1Source = exactGen1Source(exactSourceGameId, gen1Source);
-        const bool hasExactGen2Source = exactGen2Source(exactSourceGameId, gen2Source);
-        const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
-        const uint16_t species = pk.speciesID();
-        if (species == 0) return r;  // empty slot — nothing to validate
-        if (sourceFormatMismatch) {
-            add(r, Severity::Warning,
-                "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
-                CheckIdentifier::SourceGame);
-        }
-
-        // F5: Gen II native PK2 stores five 16-bit stat-experience fields,
-        // not Generation III/IV EVs. The read-only wrapper deliberately
-        // reports zero for modern EV getters. An *unhatched* original Gen II
-        // egg cannot have gained stat experience through battle or vitamins.
-        // Check the actual immutable native values, independent of provider
-        // labels; hatched Gen II Pokemon may naturally have nonzero values.
-        if (nativeFormatGeneration == 2 && pk.isEgg()) {
-            std::array<uint16_t, 5> nativeStatExperience{};
-            if (pk.gen2NativeStatExperience(nativeStatExperience)) {
-                bool nonzero = false;
-                for (const uint16_t value : nativeStatExperience)
-                    nonzero |= value != 0;
-                if (nonzero) {
-                    add(r,Severity::Invalid,
-                        "Unhatched native Generation II egg has nonzero stored stat experience",
-                        CheckIdentifier::Egg);
-                }
-            }
-            // Another Gen II Pokemon implementation without original PK2
-            // stat-experience capability is Unknown, never cast or rejected.
-        }
-
-        // MOVE-003: a Shedinja is copied from the freshly evolved
-        // Ninjask at ONE ordinary Emerald evolution level. The later
-        // existence of both moves in Ninjask's lifelong learnset does not
-        // establish a common single-evolution acquisition path.
-        // A stored Emerald-origin PK3 is necessary for this candidate-
-        // scoped INFO witness; no alternative route is globally excluded.
-        if (!sourceFormatMismatch && !pk.isEgg() &&
-            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==3 &&
-            Gen4Origin::exactGen3GameId(pk.originGame())=="emerald_gba" &&
-            species==292) {
-            const uint8_t currentLevel=Pokemon::getLevelFromExp(
-                pk.exp(),Pokemon::getGrowthRate(species));
-            const auto evolution=Gen3ShedinjaEvolutionMove::classify(
-                species,currentLevel,
-                {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
-            if (evolution.oneEvolutionCannotIntroduceBoth) {
-                add(r,Severity::Info,
-                    "Emerald Shedinja candidate move-history bound: Agility (#97) at level 38 and Baton Pass (#226) at level 45 cannot both be introduced by one ordinary Ninjask-to-Shedinja sibling-copy evolution; other move-acquisition histories remain unresolved",
-                    CheckIdentifier::Moves);
-            } else if (evolution.ordinaryAgilityCopyPossible ||
-                       evolution.ordinaryBatonCopyPossible) {
-                add(r,Severity::Info,
-                    "Emerald Shedinja candidate move-history evidence: the stored move can be copied during one eligible Ninjask evolution level; actual timing and alternative histories remain unresolved",
-                    CheckIdentifier::Moves);
-            }
-        }
-
-        const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
-        const uint8_t exactGeneration = sourceProfile ? sourceProfile->generation : 0;
-        const auto storedGen4OriginKind = exactGeneration == 4
-            ? Gen4Origin::kind(pk.originGame())
-            : Gen4Origin::Kind::Unknown;
-        const std::string_view gen4EncounterGameId = exactGeneration == 4
-            ? Gen4Origin::exactRetailGameId(pk.originGame())
-            : std::string_view{};
-        std::string_view eggEvidenceGameId = exactSourceGameId;
-        if (exactGeneration == 4) {
-            if (!gen4EncounterGameId.empty()) {
-                eggEvidenceGameId = gen4EncounterGameId;
-            } else if (storedGen4OriginKind == Gen4Origin::Kind::Gen3Handheld) {
-                eggEvidenceGameId = Gen4Origin::exactGen3GameId(pk.originGame());
-            } else {
-                eggEvidenceGameId = {};
-            }
-        } else if (!sourceProfile) {
-            // A source-free PK3/PK4 still carries its original-game byte.
-            // The immutable native format plus stored game can identify a
-            // compatible egg-move group; never infer an actual breeding
-            // encounter or classify absent evidence as Invalid.
-            const uint8_t nativeGeneration =
-                Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
-            if (nativeGeneration == 3) {
-                eggEvidenceGameId =
-                    Gen4Origin::exactGen3GameId(pk.originGame());
-            } else if (nativeGeneration == 4) {
-                eggEvidenceGameId =
-                    Gen4Origin::exactRetailGameId(pk.originGame());
-                if (eggEvidenceGameId.empty())
-                    eggEvidenceGameId =
-                        Gen4Origin::exactGen3GameId(pk.originGame());
-            }
-        }
-
-        if (sourceProfile && exactGeneration == 1 &&
-            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup &&
-            pk.nativePk1ReadOnly() != nullptr) {
-            const auto& gen1 = *pk.nativePk1ReadOnly();
-            const uint8_t catchRate = gen1.strictRecord().catchRate;
-            using Evidence = Gen1CatchRate::Evidence;
-            const auto evidence = Gen1CatchRate::classify(
-                exactSourceGameId, gen1.speciesID(), catchRate);
-            if (evidence == Evidence::NativeSpeciesRate) {
-                add(r, Severity::Info,
-                    "PK1 catch-rate byte matches the current species in this exact Generation I game",
-                    CheckIdentifier::Encounter);
-            } else if (evidence == Evidence::Gen1SpeciesOrPreEvolutionRate) {
-                add(r, Severity::Info,
-                    "PK1 catch-rate byte matches R/B/Y species or pre-evolution provenance",
-                    CheckIdentifier::Encounter);
-            } else if (evidence == Evidence::AmbiguousGen1OrTimeCapsuleHeldItem) {
-                add(r, Severity::Info,
-                    "PK1 catch-rate byte matches Gen I species/pre-evolution provenance and a valid Gen II held-item byte; Time Capsule history is indeterminate",
-                    CheckIdentifier::Transfer);
-            } else if (evidence == Evidence::PossibleTimeCapsuleHeldItem) {
-                add(r, Severity::Info,
-                    "PK1 catch-rate byte is compatible with a Generation II held item after Time Capsule tradeback",
-                    CheckIdentifier::Transfer);
-            } else {
-                add(r, Severity::Info,
-                    "PK1 catch-rate provenance is unresolved; event/Stadium evidence is not complete",
-                    CheckIdentifier::Encounter);
-            }
-
-            const bool tradeOT = gen1.strictRecord().originalTrainer == "*";
-            const auto trade = Gen1Encounter::matchTrade(
-                exactSourceGameId, gen1.speciesID(), gen1.level(), catchRate, tradeOT);
-            if (trade.matched) {
-                add(r, Severity::Info,
-                    trade.nativeToContainer
-                        ? "PK1 data is compatible with a released native in-game trade template"
-                        : "PK1 data is compatible with a released R/B/Y in-game trade template from another link-compatible version",
-                    CheckIdentifier::Encounter);
-            } else {
-                const auto fixed = Gen1Encounter::matchStatic(
-                    exactSourceGameId, gen1.speciesID(), gen1.level(), catchRate);
-                if (fixed.matched) {
-                    add(r, Severity::Info,
-                        fixed.nativeToContainer
-                            ? "PK1 data is compatible with a released native static/gift/Game Corner template"
-                            : "PK1 data is compatible with a released R/B/Y static/gift/Game Corner template from another link-compatible version",
-                        CheckIdentifier::Encounter);
-                }
-            }
-        }
-        if (sourceProfile && exactGeneration == 2 &&
-            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup &&
-            pk.nativePk2ReadOnly() != nullptr) {
-            const auto& gen2 = *pk.nativePk2ReadOnly();
+    namespace {
+        /// Provenance notes for a native PK2 (Info only). They name encounters, gifts,
+        /// trades and Time Capsule routes the record is compatible with; none of them
+        /// decides the verdict, which comes from GB::checkGen2 in analyzeNativeGen2.
+        void addNativeGen2Evidence(Report& r, const Pokemon::Pokemon2ReadOnly& gen2,
+                                   std::string_view exactSourceGameId, bool sourceKnown) {
+        if (sourceKnown) {
             const std::array<uint16_t, 4> moves{
                 gen2.move(0), gen2.move(1), gen2.move(2), gen2.move(3)
             };
@@ -899,10 +894,7 @@ namespace Legality {
         // still follows Gen II-wide species/egg/move constraints. This
         // cannot infer Crystal-only caught data, a trainer or a past
         // trade; keep those exact-source encounter checks above gated.
-        if (!sourceProfile &&
-            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup &&
-            pk.nativePk2ReadOnly() != nullptr) {
-            const auto& gen2 = *pk.nativePk2ReadOnly();
+        if (!sourceKnown) {
             const std::array<uint16_t,4> moves{
                 gen2.move(0),gen2.move(1),gen2.move(2),gen2.move(3)
             };
@@ -956,7 +948,349 @@ namespace Legality {
                         CheckIdentifier::Transfer);
                     break;
             }
-            r.coverage.transfer=CoverageLevel::Partial;
+        }
+            if (!sourceKnown) {
+                const auto bound = Gen12JointMoveEvidence::classify(
+                    2, gen2.speciesID(), {gen2.move(0), gen2.move(1), gen2.move(2), gen2.move(3)});
+                using B = Gen12JointMoveEvidence::Bound;
+                if (bound.bound == B::OneFamily) {
+                    add(r, Severity::Info,
+                        "Source-free native PK2 joint move bound: all stored moves share at least one audited Gold/Silver or Crystal/Time Capsule compatibility pool; historical timing and original game unresolved",
+                        CheckIdentifier::Moves);
+                } else if (bound.bound == B::TwoFamilies) {
+                    add(r, Severity::Info,
+                        "Source-free native PK2 joint move bound: current moves require both Gold/Silver and Crystal/Time Capsule compatibility pools in the audited tables; actual trade and acquisition histories unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+        }
+
+        /// Native PK2: format checks, then the Gen I/II origin search in GBLegality
+        /// (GB::checkGen2, measured against PKHeX by tools/pkhex_gb_diff). Same verdict
+        /// semantics as analyzeNativeGen1: a legitimate origin with nothing else wrong reads
+        /// "No problems found"; Invalid needs a definitive rule; a record that only
+        /// unverified rules or an incomplete event list stand against stays Incomplete.
+        Report analyzeNativeGen2(const Pokemon::Pokemon2ReadOnly& gen2, bool sourceFormatMismatch,
+                                 std::string_view exactSourceGameId, bool sourceKnown) {
+            Report r;
+            const auto& rec = gen2.strictRecord();
+            const uint16_t species = rec.species;
+            if (sourceFormatMismatch) {
+                add(r, Severity::Warning,
+                    "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
+                    CheckIdentifier::SourceGame);
+            }
+
+            bool structural = true;
+            if (species < 1 || species > 251) {
+                add(r, Severity::Invalid,
+                    "Species " + std::to_string(species) +
+                    " cannot exist in a Generation 2 save (maximum species id 251)",
+                    CheckIdentifier::SourceGame);
+                structural = false;
+            }
+            for (int slot = 0; slot < 4; ++slot) {
+                const uint16_t moveId = rec.moves[static_cast<std::size_t>(slot)];
+                if (moveId > 251) {
+                    add(r, Severity::Invalid,
+                        "Move id " + std::to_string(moveId) +
+                        " cannot exist in a Generation 2 save (maximum move id 251)",
+                        CheckIdentifier::Moves);
+                    structural = false;
+                }
+                for (int other = slot + 1; other < 4; ++other) {
+                    if (moveId != 0 && moveId == rec.moves[static_cast<std::size_t>(other)]) {
+                        add(r, Severity::Invalid,
+                            "Duplicate move: " + std::string(Names::getMoveName(moveId)),
+                            CheckIdentifier::Moves);
+                        structural = false;
+                    }
+                }
+            }
+            // With the stored bytes, GB::checkGen1/checkGen2 judge the trainer name (a Hangul
+            // name decodes to nothing in a Western save's text; it is not empty).
+            if (rec.originalTrainer.empty() && rec.originalTrainerRaw.empty()) {
+                add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
+            }
+
+            bool uncertain = false;
+            GB::Entity2 e;
+            e.species = species <= 251 ? static_cast<uint8_t>(species) : 0;
+            e.level = rec.level;
+            e.exp = rec.experience;
+            e.statExp = rec.statExperience;
+            e.pokerus = rec.pokerus;
+            e.isEgg = rec.isEgg;
+            e.otName = rec.originalTrainer;
+            e.nickname = rec.nickname;
+            e.otRaw = rec.originalTrainerRaw;
+            e.nickRaw = rec.nicknameRaw;
+            std::vector<GB::Problem> problems;
+            if (!structural) {
+                problems = GB::formatProblems(e);
+            } else {
+                for (int i = 0; i < 4; ++i) {
+                    e.moves[i] = rec.moves[static_cast<std::size_t>(i)];
+                    e.pp[i] = rec.pp[static_cast<std::size_t>(i)];
+                    e.ppUps[i] = rec.ppUps[static_cast<std::size_t>(i)];
+                }
+                e.heldItem = rec.heldItem;
+                e.dvs = {rec.dvs[1], rec.dvs[2], rec.dvs[3], rec.dvs[4]};
+                e.tid = rec.trainerId;
+                e.friendship = rec.friendship;
+                e.caughtData = rec.caughtData;
+                e.tradeTrainer = rec.originalTrainer == "*";
+                // The strict parser carries record encoding. Do not infer Korean Hangul
+                // as unknown/Western from UTF-8, or mistake low Japanese glyph bytes for pages.
+                e.language = gen1Language(rec.originalTrainer, rec.nickname);
+                if (rec.nameEncoding == PokeVault::Integration::Gen2::RegionLayout::Japanese)
+                    e.language = GB::Language::Japanese;
+                else if (rec.nameEncoding == PokeVault::Integration::Gen2::RegionLayout::Korean ||
+                         (!rec.nameEncoding && e.language != GB::Language::Japanese &&
+                          !rec.originalTrainerRaw.empty() && rec.originalTrainerRaw[0] <= 11))
+                    e.language = GB::Language::Korean;
+                const GB::Result origin = GB::checkGen2(e);
+                if (origin.status == GB::Status::Legal) {
+                    add(r, Severity::Info, "Possible origin: " + GB::describe(origin.origin),
+                        CheckIdentifier::Encounter);
+                    if (origin.timeCapsule) {
+                        add(r, Severity::Info,
+                            "This history needs a trip to Gen I through the Time Capsule",
+                            CheckIdentifier::Transfer);
+                    }
+                    add(r, Severity::Info,
+                        "A legitimate origin exists; that does not prove where this Pokemon actually came from",
+                        CheckIdentifier::Origin);
+                }
+                problems = origin.problems;
+            }
+            for (const auto& problem : problems) {
+                bool duplicate = false;
+                for (const auto& issue : r.issues)
+                    duplicate |= issue.text == problem.text;
+                if (duplicate)
+                    continue;
+                // An unhatched egg's stat experience is an egg rule (F5).
+                const CheckIdentifier id = rec.isEgg && problem.area == GB::Area::Stats &&
+                                                   problem.text.find("stat experience") != std::string::npos
+                                               ? CheckIdentifier::Egg
+                                               : gbIdentifier(problem.area);
+                if (problem.definitive) {
+                    add(r, Severity::Invalid, problem.text, id);
+                } else {
+                    add(r, Severity::Warning, problem.text, id);
+                    uncertain = true;
+                }
+            }
+
+            r.coverage.structure = CoverageLevel::Complete;
+            r.coverage.sourceGame = CoverageLevel::Complete;
+            r.coverage.internal = CoverageLevel::Complete;
+            r.coverage.moves = CoverageLevel::Complete;
+            r.coverage.encounter = CoverageLevel::Complete;
+            r.coverage.eventGift = CoverageLevel::Complete;
+            r.coverage.pidRng = CoverageLevel::Complete;     // Gen II has no PID/RNG correlation
+            r.coverage.eggBreeding = CoverageLevel::Complete; // eggs and the Odd Egg are searched
+            r.coverage.transfer = CoverageLevel::Complete;    // Time Capsule histories are searched
+            if (uncertain) {
+                r.coverage.encounter = CoverageLevel::Partial;
+                r.coverage.eventGift = CoverageLevel::Partial;
+            }
+            addNativeGen2Evidence(r, gen2, exactSourceGameId, sourceKnown);
+            return r;
+        }
+    }
+
+
+    Report analyze(const Pokemon::Pokemon& pk, const Context& context) {
+        const auto originGroup = context.originGroup;
+        // A claimed save source must never override a verified native
+        // PK1/PK2/PK3/PK4 storage format. Otherwise an accidentally
+        // mislabelled bank entity can receive fabricated source-specific
+        // Invalid findings from the wrong game generation.
+        const uint8_t native12 =
+            Gen12FormatDomain::generationFromGroup(pk.getGameGroup());
+        const uint8_t nativeFormatGeneration = native12 != 0
+            ? native12
+            : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+        const auto* suppliedSource =
+            sourceGameProfile(context.exactSourceGameId);
+        const bool sourceFormatMismatch = suppliedSource &&
+            nativeFormatGeneration != 0 &&
+            suppliedSource->generation != nativeFormatGeneration;
+        // Sanitizing here, before any exact-game helper is initialized,
+        // also prevents downstream source-only event/wild/trade templates
+        // from accidentally using the contradictory label.
+        const std::string_view exactSourceGameId = sourceFormatMismatch
+            ? std::string_view{} : context.exactSourceGameId;
+        Report r;
+        PokeVault::Integration::Gen1::SourceGame gen1Source =
+            PokeVault::Integration::Gen1::SourceGame::Red;
+        PokeVault::Integration::Gen2::SourceGame gen2Source =
+            PokeVault::Integration::Gen2::SourceGame::Gold;
+        PokeVault::Integration::Gen3::SourceGame gen3Source =
+            PokeVault::Integration::Gen3::SourceGame::FireRedGBA;
+        const bool hasExactGen1Source = exactGen1Source(exactSourceGameId, gen1Source);
+        const bool hasExactGen2Source = exactGen2Source(exactSourceGameId, gen2Source);
+        const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
+        // Gen III PK3 (R/S/E/FR/LG): the PKHeX-order analyzer (Gen3Legality.cpp) runs once
+        // here. The older Gen III checks below judge their own audited tables and yield to
+        // it only where it certified this exact record; its findings merge at the end.
+        const Gen3Pk3::Verification gen3Verified = Gen3Pk3::verify(pk, exactSourceGameId, context.gen3Berry);
+        const uint16_t species = pk.speciesID();
+        if (species == 0) {
+            // Empty slot: nothing to validate. A PK3 whose internal species index has no
+            // National Dex number also reads as species 0; the Gen III analyzer reports it
+            // (PKHeX EncInvalid). Other formats and empty PK3 slots are left untouched.
+            applyGen3Analyzer(r, gen3Verified, exactSourceGameId);
+            return r;
+        }
+        if (const auto* gen1 = pk.nativePk1ReadOnly())
+            return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch);
+        if (const auto* gen2 = pk.nativePk2ReadOnly())
+            return analyzeNativeGen2(*gen2, sourceFormatMismatch, exactSourceGameId,
+                                     sourceGameProfile(exactSourceGameId) != nullptr);
+        if (sourceFormatMismatch) {
+            add(r, Severity::Warning,
+                "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
+                CheckIdentifier::SourceGame);
+        }
+
+        // F5: Gen II native PK2 stores five 16-bit stat-experience fields,
+        // not Generation III/IV EVs. The read-only wrapper deliberately
+        // reports zero for modern EV getters. An *unhatched* original Gen II
+        // egg cannot have gained stat experience through battle or vitamins.
+        // Check the actual immutable native values, independent of provider
+        // labels; hatched Gen II Pokemon may naturally have nonzero values.
+        if (nativeFormatGeneration == 2 && pk.isEgg()) {
+            std::array<uint16_t, 5> nativeStatExperience{};
+            if (pk.gen2NativeStatExperience(nativeStatExperience)) {
+                bool nonzero = false;
+                for (const uint16_t value : nativeStatExperience)
+                    nonzero |= value != 0;
+                if (nonzero) {
+                    add(r,Severity::Invalid,
+                        "Unhatched native Generation II egg has nonzero stored stat experience",
+                        CheckIdentifier::Egg);
+                }
+            }
+            // Another Gen II Pokemon implementation without original PK2
+            // stat-experience capability is Unknown, never cast or rejected.
+        }
+
+        // MOVE-003: a Shedinja is copied from the freshly evolved
+        // Ninjask at ONE ordinary Emerald evolution level. The later
+        // existence of both moves in Ninjask's lifelong learnset does not
+        // establish a common single-evolution acquisition path.
+        // A stored Emerald-origin PK3 is necessary for this candidate-
+        // scoped INFO witness; no alternative route is globally excluded.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==3 &&
+            Gen4Origin::exactGen3GameId(pk.originGame())=="emerald_gba" &&
+            species==292) {
+            const uint8_t currentLevel=Pokemon::getLevelFromExp(
+                pk.exp(),Pokemon::getGrowthRate(species));
+            const auto evolution=Gen3ShedinjaEvolutionMove::classify(
+                species,currentLevel,
+                {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+            if (evolution.oneEvolutionCannotIntroduceBoth) {
+                add(r,Severity::Info,
+                    "Emerald Shedinja candidate move-history bound: Agility (#97) at level 38 and Baton Pass (#226) at level 45 cannot both be introduced by one ordinary Ninjask-to-Shedinja sibling-copy evolution; other move-acquisition histories remain unresolved",
+                    CheckIdentifier::Moves);
+            } else if (evolution.ordinaryAgilityCopyPossible ||
+                       evolution.ordinaryBatonCopyPossible) {
+                add(r,Severity::Info,
+                    "Emerald Shedinja candidate move-history evidence: the stored move can be copied during one eligible Ninjask evolution level; actual timing and alternative histories remain unresolved",
+                    CheckIdentifier::Moves);
+            }
+        }
+
+        const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
+        const uint8_t exactGeneration = sourceProfile ? sourceProfile->generation : 0;
+        const auto storedGen4OriginKind = exactGeneration == 4
+            ? Gen4Origin::kind(pk.originGame())
+            : Gen4Origin::Kind::Unknown;
+        const std::string_view gen4EncounterGameId = exactGeneration == 4
+            ? Gen4Origin::exactRetailGameId(pk.originGame())
+            : std::string_view{};
+        std::string_view eggEvidenceGameId = exactSourceGameId;
+        if (exactGeneration == 4) {
+            if (!gen4EncounterGameId.empty()) {
+                eggEvidenceGameId = gen4EncounterGameId;
+            } else if (storedGen4OriginKind == Gen4Origin::Kind::Gen3Handheld) {
+                eggEvidenceGameId = Gen4Origin::exactGen3GameId(pk.originGame());
+            } else {
+                eggEvidenceGameId = {};
+            }
+        } else if (!sourceProfile) {
+            // A source-free PK3/PK4 still carries its original-game byte.
+            // The immutable native format plus stored game can identify a
+            // compatible egg-move group; never infer an actual breeding
+            // encounter or classify absent evidence as Invalid.
+            const uint8_t nativeGeneration =
+                Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+            if (nativeGeneration == 3) {
+                eggEvidenceGameId =
+                    Gen4Origin::exactGen3GameId(pk.originGame());
+            } else if (nativeGeneration == 4) {
+                eggEvidenceGameId =
+                    Gen4Origin::exactRetailGameId(pk.originGame());
+                if (eggEvidenceGameId.empty())
+                    eggEvidenceGameId =
+                        Gen4Origin::exactGen3GameId(pk.originGame());
+            }
+        }
+
+        if (sourceProfile && exactGeneration == 1 &&
+            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk1ReadOnly() != nullptr) {
+            const auto& gen1 = *pk.nativePk1ReadOnly();
+            const uint8_t catchRate = gen1.strictRecord().catchRate;
+            using Evidence = Gen1CatchRate::Evidence;
+            const auto evidence = Gen1CatchRate::classify(
+                exactSourceGameId, gen1.speciesID(), catchRate);
+            if (evidence == Evidence::NativeSpeciesRate) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte matches the current species in this exact Generation I game",
+                    CheckIdentifier::Encounter);
+            } else if (evidence == Evidence::Gen1SpeciesOrPreEvolutionRate) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte matches R/B/Y species or pre-evolution provenance",
+                    CheckIdentifier::Encounter);
+            } else if (evidence == Evidence::AmbiguousGen1OrTimeCapsuleHeldItem) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte matches Gen I species/pre-evolution provenance and a valid Gen II held-item byte; Time Capsule history is indeterminate",
+                    CheckIdentifier::Transfer);
+            } else if (evidence == Evidence::PossibleTimeCapsuleHeldItem) {
+                add(r, Severity::Info,
+                    "PK1 catch-rate byte is compatible with a Generation II held item after Time Capsule tradeback",
+                    CheckIdentifier::Transfer);
+            } else {
+                add(r, Severity::Info,
+                    "PK1 catch-rate provenance is unresolved; event/Stadium evidence is not complete",
+                    CheckIdentifier::Encounter);
+            }
+
+            const bool tradeOT = gen1.strictRecord().originalTrainer == "*";
+            const auto trade = Gen1Encounter::matchTrade(
+                exactSourceGameId, gen1.speciesID(), gen1.level(), catchRate, tradeOT);
+            if (trade.matched) {
+                add(r, Severity::Info,
+                    trade.nativeToContainer
+                        ? "PK1 data is compatible with a released native in-game trade template"
+                        : "PK1 data is compatible with a released R/B/Y in-game trade template from another link-compatible version",
+                    CheckIdentifier::Encounter);
+            } else {
+                const auto fixed = Gen1Encounter::matchStatic(
+                    exactSourceGameId, gen1.speciesID(), gen1.level(), catchRate);
+                if (fixed.matched) {
+                    add(r, Severity::Info,
+                        fixed.nativeToContainer
+                            ? "PK1 data is compatible with a released native static/gift/Game Corner template"
+                            : "PK1 data is compatible with a released R/B/Y static/gift/Game Corner template from another link-compatible version",
+                        CheckIdentifier::Encounter);
+                }
+            }
         }
 
         if (sourceProfile) {
@@ -1221,7 +1555,8 @@ namespace Legality {
                        : 0);
         if (eggFormatGeneration == 3 || eggFormatGeneration == 4) {
             const auto eggState = Gen34EggState::analyze(
-                eggFormatGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel());
+                eggFormatGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel(),
+                pk.metLocation(), pk.id32());
             if (eggState.invalid()) {
                 add(r, Severity::Invalid,
                     std::string(Gen34EggState::evidenceName(eggState.evidence)),
@@ -1371,7 +1706,7 @@ namespace Legality {
                             CheckIdentifier::Egg);
                 }
             }
-            addGen3PidEvidence(r, pk, species);
+            addGen3PidEvidence(r, pk, species, gen3Verified.ran);
         } else if (sourceProfile && exactGeneration == 4 &&
                    storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
             const bool isHgss =
@@ -1711,7 +2046,11 @@ namespace Legality {
             if (!Pokemon::isAbilityLegal(slots, pk.ability())) {
                 add(r, Severity::Invalid, "Ability not legal for this species");
             } else if (sourceProfile && exactGeneration == 4 &&
-                       storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
+                       storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail &&
+                       !pk.isFatefulEncounter()) {
+                // Event gifts (PCD) keep the card's ability even when the PID would
+                // select the other slot (PKHeX VerifyAbilityPCD), so fateful records
+                // are left to the event checks.
                 const uint8_t slotIndex = static_cast<uint8_t>(pk.pid() & 1u);
                 uint16_t expectedAbility = slots.slot[slotIndex];
                 if (expectedAbility == 0)
@@ -1800,22 +2139,42 @@ namespace Legality {
             const std::array<uint16_t, 4> sourceMoves{
                 pk.move(0), pk.move(1), pk.move(2), pk.move(3)
             };
+            // A PK3 keeps its origin game (version byte). A move native to that game is as
+            // native to this record's history as one native to the cartridge it is stored in
+            // now: a FireRed Diglett traded to Emerald keeps its FireRed level-up moves.
+            PokeVault::Integration::Gen3::SourceGame originSource = gen3Source;
+            const bool hasOriginSource = exactGen3Source(
+                Gen4Origin::exactGen3GameId(pk.originGame()), originSource);
             for (const uint16_t moveId : sourceMoves) {
                 if (moveId == 0) continue;
-                const auto availability =
+                using Availability = PokeVault::Integration::Gen3::Learnset::Availability;
+                auto availability =
                     PokeVault::Integration::Gen3::Learnset::classify(
                         gen3Source, species, moveId, sourceMoves);
-                using Availability = PokeVault::Integration::Gen3::Learnset::Availability;
-                if (availability == Availability::Transfer) {
-                    add(r, Severity::Warning,
-                        "Move is not native to this exact Gen III game (transfer required): " +
-                        std::string(Names::getMoveName(moveId)),
-                        CheckIdentifier::Moves);
-                } else if (availability == Availability::Preserved) {
-                    add(r, Severity::Warning,
-                        "Move is preserved but not in the audited Gen III native/transfer pool: " +
-                        std::string(Names::getMoveName(moveId)),
-                        CheckIdentifier::Moves);
+                if ((availability == Availability::Transfer ||
+                     availability == Availability::Preserved) &&
+                    hasOriginSource &&
+                    PokeVault::Integration::Gen3::Learnset::directlyLearnable(
+                        originSource, species, moveId))
+                    availability = Availability::Direct;
+                if (availability == Availability::Transfer ||
+                    availability == Availability::Preserved) {
+                    std::string text =
+                        (availability == Availability::Transfer
+                             ? "Move is not native to this exact Gen III game or to this record's origin game (transfer required): "
+                             : "Move is preserved but not in the audited Gen III native/transfer pool: ") +
+                        std::string(Names::getMoveName(moveId));
+                    // The pret pools omit event-gift moves, Sketch and some tutor/egg
+                    // paths. When the PKHeX-order analyzer certified this exact record
+                    // (encounter matched, every move verified), the pool gap is a note.
+                    if (gen3Verified.certified) {
+                        add(r, Severity::Info,
+                            text + "; the Gen III analyzer verified every move for its matched " +
+                                gen3Verified.encounter,
+                            CheckIdentifier::Moves);
+                    } else {
+                        add(r, Severity::Warning, std::move(text), CheckIdentifier::Moves);
+                    }
                 } else if (availability == Availability::Invalid) {
                     add(r, Severity::Warning,
                         "Move may not be learnable: " + std::string(Names::getMoveName(moveId)),
@@ -2455,9 +2814,15 @@ namespace Legality {
         const uint8_t expLevel = Pokemon::getLevelFromExp(pk.exp(), Pokemon::getGrowthRate(species));
         if (expLevel < 1 || expLevel > 100)
             add(r, Severity::Invalid, "EXP maps to invalid level (" + std::to_string(expLevel) + ")");
-        if (pk.level() != 0 && pk.level() != expLevel)
-            add(r, Severity::Invalid, "Level " + std::to_string(pk.level()) +
-                                      " does not match EXP (expected " + std::to_string(expLevel) + ")");
+        // getLevelFromExp stops at 100, so EXP past the level-100 total would otherwise pass
+        // for a level-100 Pokemon. No game lets EXP exceed it (PKHeX LevelEXPTooHigh).
+        const uint32_t maxExp = Pokemon::getExpForLevel(100, Pokemon::getGrowthRate(species));
+        if (pk.exp() > maxExp || (pk.level() != 0 && pk.level() != expLevel))
+            add(r, Severity::Invalid,
+                pk.exp() > maxExp
+                    ? "EXP " + std::to_string(pk.exp()) + " is above the level-100 total of " + std::to_string(maxExp)
+                    : "Level " + std::to_string(pk.level()) + " does not match EXP (expected " +
+                          std::to_string(expLevel) + ")");
 
         // ---- L2: met level <= current level ----
         {
@@ -2472,19 +2837,51 @@ namespace Legality {
             (exactGeneration == 4 || (pk.metLocation() != 0 && pk.metLevel() != 0))) {
             using namespace PokeVault::Integration::EncounterGuardrails;
             if (exactGeneration == 3) {
-                const auto candidates =
-                    forGameSpeciesWithGen3Provenance(exactSourceGameId, species);
-                if (!candidates.empty()) {
-                    const bool match = std::any_of(
-                        candidates.begin(), candidates.end(), [&](const auto& choice) {
-                            return choice.encounter.location == pk.metLocation() &&
-                                   choice.encounter.containsLevel(pk.metLevel());
-                        });
-                    if (!match)
-                        add(r, Severity::Warning,
-                            "Met location/level does not match the audited encounter table for " +
-                            std::string(exactSourceGameId),
+                // Judge the record's own origin game (its stored version byte, not the
+                // cartridge it was read from) and every species of its Gen III evolution
+                // lineage: a LeafGreen Caterpie that evolved into Metapod and was traded to
+                // FireRed is checked against LeafGreen Caterpie rows. A Colosseum/XD or
+                // unknown origin has no handheld table here (the analyzer reports it).
+                const std::string_view originGameId =
+                    Gen4Origin::exactGen3GameId(pk.originGame());
+                std::vector<EncounterTemplate> candidates;
+                if (!originGameId.empty()) {
+                    for (const uint16_t lineageSpecies : Gen3Pk3::lineage(species)) {
+                        const auto rows = forGameSpecies(originGameId, lineageSpecies);
+                        candidates.insert(candidates.end(), rows.begin(), rows.end());
+                    }
+                }
+                const bool tableMatch = std::any_of(
+                    candidates.begin(), candidates.end(), [&](const auto& encounter) {
+                        return encounter.location == pk.metLocation() &&
+                               encounter.containsLevel(pk.metLevel());
+                    });
+                if (gen3Verified.inGameTrade && pk.metLocation() != 254) {
+                    // PKHeX (EncounterTrade3.IsMatchExact) matches a Gen III in-game
+                    // trade without checking the met location, but the games always
+                    // store 254 for one (pokeemerald src/trade.c:4555/4577, pokeruby
+                    // src/trade.c:4948/4970, pokefirered src/trade_scene.c:2461/2481). Kept a
+                    // Warning: PKHeX accepts the record, so it is never Invalid here.
+                    add(r, Severity::Warning,
+                        "Met location " + std::to_string(pk.metLocation()) +
+                            " does not fit the in-game trade the Gen III analyzer matched: Gen III in-game trades are always recorded at met location 254",
+                        CheckIdentifier::Encounter);
+                } else if (!candidates.empty() && !tableMatch) {
+                    std::string text =
+                        "Met location/level does not match the audited encounter table for " +
+                        std::string(originGameId);
+                    // The L1 table is a guardrail subset: it has no in-game trades, event
+                    // gifts, Game Corner prizes, roaming routes or mass outbreaks and
+                    // misses some Ruby/FireRed-only statics (decomp evidence in
+                    // docs/legality/GEN3_PKHEX_RULE_INVENTORY.md 4b). When the PKHeX-order
+                    // analyzer certified this exact record, the gap is a note.
+                    if (gen3Verified.certified) {
+                        add(r, Severity::Info,
+                            text + "; the Gen III analyzer matched " + gen3Verified.encounter,
                             CheckIdentifier::Encounter);
+                    } else {
+                        add(r, Severity::Warning, std::move(text), CheckIdentifier::Encounter);
+                    }
                 }
             } else if (exactGeneration == 4) {
                 // Encounter provenance follows the Pokemon's stored origin version, not the
@@ -2875,6 +3272,9 @@ namespace Legality {
         if (!pk.checksumValid())
             add(r, Severity::Warning, "Stored checksum is invalid");
 
+        // ---- Gen III PK3 (R/S/E/FR/LG): PKHeX-parity analyzer, see Gen3Legality.cpp ----
+        applyGen3Analyzer(r, gen3Verified, exactSourceGameId);
+        applyGen4Analyzer(r, pk, context.exactSourceGameId);
         return r;
     }
 
