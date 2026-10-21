@@ -54,3 +54,15 @@ $(HOST_BUILD)/test_gen5_gift_receivability: $(GEN5_GIFT_RECEIPT_SOURCES) include
 $(HOST_BUILD)/test_gen5_gift_receivability_sanitize: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_GIFT_RECEIPT_SOURCES) -o $@
+
+# Read-only WC5FULL evidence format parser; synthetic test records make no historical claims.
+HOST_TESTS += $(HOST_BUILD)/test_gen5_full_wonder_card
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_full_wonder_card_sanitize
+host-test: $(HOST_BUILD)/test_gen5_full_wonder_card
+host-sanitize: $(HOST_BUILD)/test_gen5_full_wonder_card_sanitize
+$(HOST_BUILD)/test_gen5_full_wonder_card: tests/test_gen5_full_wonder_card.cpp include/Legality/Gen5FullWonderCard.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_gen5_full_wonder_card_sanitize: tests/test_gen5_full_wonder_card.cpp include/Legality/Gen5FullWonderCard.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
