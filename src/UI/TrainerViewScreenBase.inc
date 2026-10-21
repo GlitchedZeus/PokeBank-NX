@@ -384,9 +384,8 @@ namespace UI {
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Settings", Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
-        constexpr int kRows = 6;
+        constexpr int kRows = 5;
         const char* labels[kRows] = {
-            "Auto-Backup on Load",
             "Theme",
             "Allow Illegal Values",
             "Bank Storage LGPE Move Warning",
@@ -394,14 +393,13 @@ namespace UI {
             "Enable Debug Logging"
         };
         std::string values[kRows] = {
-            g_autoBackupEnabled ? "On" : "Off",
             std::string(themeModeName(g_themeMode)),
             g_allowIllegalEdits ? "On" : "Off",
             g_moveWarn ? "On" : "Off",
             "Locked",
             g_debugLogging ? "On" : "Off",
         };
-        // Keep the six touch rows comfortably above the minimum target while reserving a compact,
+        // Keep the five touch rows comfortably above the minimum target while reserving a compact,
         // read-only build/safety footer. The global control legend remains the only control help.
         constexpr int rowW = 720, rowH = 62, rowGap = 9, rowsTop = 14, footerH = 48;
         static_assert(hH + rowsTop + kRows * (rowH + rowGap) + footerH <= CONTENT_PANEL_HEIGHT,
@@ -420,11 +418,10 @@ namespace UI {
             // Amber "On" for benign toggles; red for the illegal-values override. The live-write
             // row is green because this alpha's compile-time safety policy is actively locked.
             Color pillFill = Colors::Background, pillText = Colors::Text;
-            if (i == 0 && g_autoBackupEnabled)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
-            else if (i == 2 && g_allowIllegalEdits) { pillFill = Color(200, 80, 80); pillText = Colors::White; }
-            else if (i == 3 && g_moveWarn)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
-            else if (i == 4)                        { pillFill = Color(50, 125, 85);  pillText = Colors::White; }
-            else if (i == 5 && g_debugLogging)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
+            if (i == 1 && g_allowIllegalEdits)      { pillFill = Color(200, 80, 80); pillText = Colors::White; }
+            else if (i == 2 && g_moveWarn)          { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
+            else if (i == 3)                        { pillFill = Color(50, 125, 85);  pillText = Colors::White; }
+            else if (i == 4 && g_debugLogging)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             fb.drawPill(px, py, pillW, pillH, pillFill);
             fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], pillText, TextStyle::Body);
             screen.touchButtons.push_back({ i, rx, ry, rowW, rowH });
@@ -599,7 +596,6 @@ namespace UI {
             " boxes=" + std::to_string(trainer.getBoxCount()) +
             " livewrites=LOCKED" +
             " illegal=" + (g_allowIllegalEdits ? "ON" : "OFF") +
-            " autobackup=" + (g_autoBackupEnabled ? "ON" : "OFF") +
             " movewarn=" + (g_moveWarn ? "ON" : "OFF") +
             " theme=" + std::string(themeModeKey(g_themeMode));
         Utils::logTestSession(sessionInfo);
@@ -4807,21 +4803,21 @@ namespace UI {
                 }
             }
 
-            // Settings view: Up/Down select a row, A toggles it (0 = auto-backup, 1 = theme,
-            // 2 = allow illegal values, 3 = Let's Go move warning, 4 = live-write policy info,
-            // 5 = debug logging). Keep this in step with drawSettingsView's labels/values.
+            // Settings view: Up/Down select a row, A toggles it (0 = theme, 1 = allow illegal
+            // values, 2 = Let's Go move warning, 3 = live-write policy info, 4 = debug logging).
+            // Keep this in step with drawSettingsView's labels/values. There is no auto-backup
+            // row: opening a save never makes a backup; Save Backups -> "Create backup now" does.
             if (selectedMode == ViewMode::Settings) {
-                constexpr int kSettingsRows = 6;
+                constexpr int kSettingsRows = 5;
                 if (kDown & HidNpadButton_Up)   settingsSelectedRow = (settingsSelectedRow - 1 + kSettingsRows) % kSettingsRows;
                 if (kDown & HidNpadButton_Down) settingsSelectedRow = (settingsSelectedRow + 1) % kSettingsRows;
                 int st = touchedButtonId(touch);
                 if (st >= 0 && st < kSettingsRows) { settingsSelectedRow = st; kDown |= HidNpadButton_A; }
                 if (kDown & HidNpadButton_A) {
-                    if (settingsSelectedRow == 0)      g_autoBackupEnabled = !g_autoBackupEnabled;
-                    else if (settingsSelectedRow == 1) applyTheme(nextThemeMode(g_themeMode));
-                    else if (settingsSelectedRow == 2) g_allowIllegalEdits = !g_allowIllegalEdits;
-                    else if (settingsSelectedRow == 3) g_moveWarn = !g_moveWarn;
-                    else if (settingsSelectedRow == 4)
+                    if (settingsSelectedRow == 0)      applyTheme(nextThemeMode(g_themeMode));
+                    else if (settingsSelectedRow == 1) g_allowIllegalEdits = !g_allowIllegalEdits;
+                    else if (settingsSelectedRow == 2) g_moveWarn = !g_moveWarn;
+                    else if (settingsSelectedRow == 3)
                         postStatus("Locked for this alpha: installed game saves are read-only sources.", 300);
                     else {
                         // Off by default, so a normal run leaves nothing on the card. The status

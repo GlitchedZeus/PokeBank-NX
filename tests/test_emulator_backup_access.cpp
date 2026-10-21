@@ -8,6 +8,7 @@
 //   the last remaining app backup when the emulator's own file is gone.
 #include "Integration/Common/VerifiedStagedExport.h"
 #include "UI/SourceBackupClassification.h"
+#include "UI/WorkingCopyRefresh.h"
 
 #include <cassert>
 #include <cstdint>
@@ -126,7 +127,9 @@ void perEmulator(const fs::path& root, const Emulator& emu) {
 
     // Emulator file gone: the last remaining app backup of that save is never deleted.
     const std::string last = exportOnce(exportsRoot, emu, source, emu.name, "20261017_120000", 4);
+    const auto beforeRemoval = B::list(exportsRoot.string(), source.string());
     fs::remove(source);
+    assert(B::canDelete(beforeRemoval, 1) == B::Refusal::OnlyRemainingCopy); // Recheck live source at confirmation.
     l = B::list(exportsRoot.string(), source.string());
     assert(!l.sourceExists && !l.entries.front().exists);
     assert(B::canDelete(l, 1) == B::Refusal::OnlyRemainingCopy);
@@ -167,6 +170,183 @@ void forgedRecordsAreRefused(const fs::path& root) {
         assert(std::string(B::refusalReason(r)).size() > 20);
 }
 
+// Round 4 (R2-EMUBACKUP / C07 / S05): deliberate, copy-only backups made from the Backups screen.
+void deliberateBackups(const fs::path& root, const Emulator& emu) {
+    const fs::path exportsRoot = root / "exports";
+    const std::string manualRoot = B::emulatorBackupsRoot((root / "backups").string());
+    const fs::path source = root / ("deliberate-" + std::string(emu.name)) / emu.sourceFile;
+    std::vector<uint8_t> bytes(0x80000 + 0x7A);
+    for (std::size_t i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<uint8_t>(i * 31 + 7);
+    write(source, bytes);
+    const auto sourceTime = fs::last_write_time(source);
+
+    // Opening / listing never creates a backup: nothing appears until the user asks.
+    B::Listing l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(countKind(l, B::Kind::ManualBackup) == 0);
+    assert(!fs::exists(fs::path(manualRoot) / emu.gameId));
+
+    // Create: an exact copy in <backups>/emulator-saves/<gameId>/<timestamp>/save<ext> + manifest.
+    const B::CreateResult first = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_101500");
+    if (!first.ok) std::cerr << first.error << "\n";
+    assert(first.ok && first.error.empty());
+    assert(fs::path(first.recordDir) == fs::path(manualRoot) / emu.gameId / "20261020_101500");
+    assert(fs::path(first.backupPath).filename() == std::string("save") + emu.ext);
+    assert(slurp(first.backupPath) == bytes);
+    assert(fs::exists(fs::path(first.recordDir) / "BACKUP_MANIFEST.txt"));
+    // Same second: a distinct record, never an overwrite.
+    const B::CreateResult second = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_101500");
+    assert(second.ok && second.recordDir != first.recordDir && slurp(first.backupPath) == bytes);
+    const B::CreateResult newest = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_111500");
+    assert(newest.ok);
+
+    // The original emulator file is byte-identical and was never rewritten.
+    assert(slurp(source) == bytes && fs::last_write_time(source) == sourceTime);
+
+    // List: source first, then this save's backups newest first; staged last.
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(countKind(l, B::Kind::ManualBackup) == 3);
+    assert(l.entries.front().kind == B::Kind::OriginalSource);
+    assert(l.entries[1].kind == B::Kind::ManualBackup && l.entries[1].recordDir == newest.recordDir);
+    assert(l.entries.back().kind == B::Kind::StagedWorkingCopy);
+    assert(B::policyFor(B::Kind::ManualBackup).deletable && !B::policyFor(B::Kind::ManualBackup).readOnly);
+    // Without manualRoot (older callers) manual backups are simply not listed.
+    assert(countKind(B::list(exportsRoot.string(), source.string()), B::Kind::ManualBackup) == 0);
+    const std::string exported = exportOnce(exportsRoot, emu, source, emu.name, "20261020_115500", 0x99);
+    const auto mixed = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(mixed.entries[1].recordDir == exported); // Export and manual backups share newest-first order.
+    assert(mixed.entries[2].recordDir == exported);
+    assert(mixed.entries[3].recordDir == newest.recordDir);
+    assert(B::deleteRecord(mixed, 1) == B::Refusal::None);
+    // Another save's backup is never listed here.
+    const fs::path other = root / ("deliberate-" + std::string(emu.name)) / "other.sav";
+    write(other, std::vector<uint8_t>(0x200, 0x44));
+    assert(B::createBackup(manualRoot, emu.gameId, other.string(), "20261020_121500").ok);
+    assert(countKind(B::list(exportsRoot.string(), source.string(), manualRoot), B::Kind::ManualBackup) == 3);
+
+    // Delete (after Y): exactly that record; the others and the source stay.
+    assert(B::canDelete(l, 1) == B::Refusal::None);
+    assert(B::deleteRecord(l, 1) == B::Refusal::None);
+    assert(!fs::exists(newest.recordDir) && fs::exists(first.recordDir) && fs::exists(second.recordDir));
+    assert(slurp(source) == bytes && fs::last_write_time(source) == sourceTime);
+
+    // A file PokeBank NX did not write: refused, untouched.
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    write(fs::path(l.entries[1].recordDir) / "notes.txt", {'x'});
+    assert(B::canDelete(l, 1) == B::Refusal::UnexpectedFiles);
+    assert(B::deleteRecord(l, 1) == B::Refusal::UnexpectedFiles && fs::exists(l.entries[1].recordDir));
+    fs::remove(fs::path(l.entries[1].recordDir) / "notes.txt");
+
+    // A forged entry outside <backups>/emulator-saves/<game>/<record> is never deletable.
+    B::Listing forged = l;
+    forged.entries[1].recordDir = (root / "elsewhere").string();
+    assert(B::canDelete(forged, 1) == B::Refusal::NotAnExportRecord);
+    forged.entries[1].recordDir = manualRoot + "/" + emu.gameId;   // the game folder itself
+    assert(B::canDelete(forged, 1) == B::Refusal::NotAnExportRecord);
+
+    // Emulator file gone: the last remaining copy is kept.
+    fs::remove(source);
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(countKind(l, B::Kind::ManualBackup) == 2);
+    assert(B::deleteRecord(l, 1) == B::Refusal::None);
+    l = B::list(exportsRoot.string(), source.string(), manualRoot);
+    assert(B::canDelete(l, 1) == B::Refusal::OnlyRemainingCopy);
+    assert(B::deleteRecord(l, 1) == B::Refusal::OnlyRemainingCopy && fs::exists(l.entries[1].recordDir));
+
+    // Creating from a missing source, or with an unsafe game id, makes nothing.
+    const auto before = std::distance(fs::recursive_directory_iterator(manualRoot), {});
+    const B::CreateResult missing = B::createBackup(manualRoot, emu.gameId, source.string(), "20261020_131500");
+    assert(!missing.ok && !missing.error.empty());
+    write(source, bytes);
+    assert(!B::createBackup(manualRoot, "../escape", source.string(), "20261020_131500").ok);
+    assert(!B::createBackup(manualRoot, emu.gameId, source.string(), "../x").ok);
+    assert(!B::createBackup("", emu.gameId, source.string(), "20261020_131500").ok);
+    assert(std::distance(fs::recursive_directory_iterator(manualRoot), {}) == before);
+    assert(slurp(source) == bytes);
+}
+
+// Round 4 (S05 / R2-EMUBACKUP): opening an installed Switch save refreshes the single Working copy;
+// it never adds a backup unless the earlier copy held edits, and never loses those edits.
+void workingCopyRefresh(const fs::path& root) {
+    namespace W = PokeBank::UIModel::WorkingCopy;
+    const fs::path game = root / "switch-backups" / "profile" / "sword";
+    const fs::path working = game / "Working";
+    const std::vector<uint8_t> installed(0x1000, 0x21);
+    // The installed save as backupSaveData(..., false) would copy it.
+    const auto makeFresh = [&]() {
+        write(working / "main", installed);
+        write(working / "backup" / "poke_trade", {9, 9});
+        return working.string();
+    };
+    const auto visibleBackups = [&]() {
+        std::size_t n = 0;
+        for (const auto& e : fs::directory_iterator(game)) {
+            const std::string name = e.path().filename().string();
+            if (name != "Working" && name.find(".previous.") == std::string::npos) ++n;
+        }
+        return n;
+    };
+
+    // First open: a fresh Working copy, no backup.
+    W::Result r = W::refresh(working.string(), "20261020_100000", makeFresh);
+    assert(r.outcome == W::Outcome::Fresh && r.workingPath == working.string() && visibleBackups() == 0);
+
+    // Re-open with an unchanged save: still no backup, nothing left behind.
+    r = W::refresh(working.string(), "20261020_100100", makeFresh);
+    assert(r.outcome == W::Outcome::UnchangedDropped && visibleBackups() == 0);
+    assert(std::distance(fs::directory_iterator(game), {}) == 1);
+
+    // The earlier Working copy holds edits: kept as a dated backup, the fresh copy is the save.
+    write(working / "main", std::vector<uint8_t>(0x1000, 0x77));
+    r = W::refresh(working.string(), "20261020_100200", makeFresh);
+    assert(r.outcome == W::Outcome::EditsPreserved && visibleBackups() == 1);
+    assert(fs::path(r.preservedPath) == game / "20261020_100200");
+    assert(slurp(fs::path(r.preservedPath) / "main") == std::vector<uint8_t>(0x1000, 0x77));
+    assert(slurp(working / "main") == installed);
+    // Same stamp again with edits: a distinct folder, never an overwrite.
+    write(working / "main", std::vector<uint8_t>(0x1000, 0x55));
+    r = W::refresh(working.string(), "20261020_100200", makeFresh);
+    assert(r.outcome == W::Outcome::EditsPreserved && fs::path(r.preservedPath) == game / "20261020_100200-2");
+    assert(slurp(game / "20261020_100200" / "main") == std::vector<uint8_t>(0x1000, 0x77));
+
+    // A fresh copy that fails puts the earlier Working copy back exactly.
+    write(working / "main", std::vector<uint8_t>(0x1000, 0x66));
+    r = W::refresh(working.string(), "20261020_100300", [] { return std::string(); });
+    assert(r.outcome == W::Outcome::Failed && !r.error.empty());
+    assert(slurp(working / "main") == std::vector<uint8_t>(0x1000, 0x66));
+    for (const auto& e : fs::directory_iterator(game))
+        assert(e.path().filename().string().find(".previous.") == std::string::npos);
+
+    // SD-full/read failure after creating a partial destination still restores all earlier edits.
+    r = W::refresh(working.string(), "20261020_100301", [&] {
+        write(working / "main", {1, 2, 3});
+        return std::string();
+    });
+    assert(r.outcome == W::Outcome::Failed && r.workingPath.empty());
+    assert(slurp(working / "main") == std::vector<uint8_t>(0x1000, 0x66));
+    assert(slurp(working / "backup" / "poke_trade") == std::vector<uint8_t>({9, 9}));
+    // An unexpected callback destination is never opened or deleted; the old Working is restored.
+    const fs::path foreign = root / "foreign";
+    write(foreign / "main", {4, 5, 6});
+    r = W::refresh(working.string(), "20261020_100302", [&] { return foreign.string(); });
+    assert(r.outcome == W::Outcome::Failed && r.workingPath.empty());
+    assert(slurp(foreign / "main") == std::vector<uint8_t>({4, 5, 6}));
+    assert(slurp(working / "main") == std::vector<uint8_t>(0x1000, 0x66));
+
+    // Tree comparison is exact: an extra file, or one changed byte, is a difference.
+    write(root / "ta" / "x", {1, 2, 3});
+    write(root / "tb" / "x", {1, 2, 3});
+    assert(W::sameTree((root / "ta").string(), (root / "tb").string()));
+    write(root / "tb" / "y", {});
+    assert(!W::sameTree((root / "ta").string(), (root / "tb").string()));
+    fs::remove(root / "tb" / "y");
+    write(root / "tb" / "x", {1, 2, 4});
+    assert(!W::sameTree((root / "ta").string(), (root / "tb").string()));
+    // Unsafe inputs refuse without touching anything.
+    assert(W::refresh("", "20261020_100400", makeFresh).outcome == W::Outcome::Failed);
+    assert(W::refresh(working.string(), "../x", makeFresh).outcome == W::Outcome::Failed);
+    assert(W::refresh(working.string(), "..", makeFresh).outcome == W::Outcome::Failed);
+}
+
 } // namespace
 
 int main() {
@@ -177,7 +357,13 @@ int main() {
     perEmulator(root, {"drastic", "backup/POKEMON PL.dsv", 4, "platinum_nds", ".dsv"});
     perEmulator(root, {"melonds", "saves/Pokemon White 2.sav", 5, "white2_nds", ".sav"});
     forgedRecordsAreRefused(root);
+    deliberateBackups(root, {"retroarch", "saves/Pokemon - FireRed Version (USA).srm", 3, "firered_gba", ".srm"});
+    deliberateBackups(root, {"drastic", "backup/POKEMON B.dsv", 5, "black_nds", ".dsv"});
+    deliberateBackups(root, {"melonds", "saves/Pokemon White 2.sav", 5, "white2_nds", ".sav"});
+    workingCopyRefresh(root);
     fs::remove_all(root);
     std::cout << "Emulator backups: RetroArch / DraStic / melonDS sources read-only and unchanged, records by "
-                 "exact SOURCE_PATH, whole-record deletion only, foreign files / escapes / last copy refused PASS\n";
+                 "exact SOURCE_PATH, whole-record deletion only, foreign files / escapes / last copy refused; deliberate "
+                 "copy-only backups created / listed / deleted, none on open, source byte- and time-identical; Switch "
+                 "Working copy refreshed without unnecessary backups, edits preserved, failures restore PASS\n";
 }
