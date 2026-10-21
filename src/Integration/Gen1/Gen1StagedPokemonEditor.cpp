@@ -9,6 +9,8 @@ namespace {
 #include "Gen1PersonalData.inc"
 // Pinned Sav1.cpp / SAV1Offsets: international 12 x 20, PK1 stored length 33.
 constexpr size_t Capacity=20, BoxSize=0x462, Current=0x30C0, Checksum=0x3523;
+// PKHeX SAV1Offsets / PokeList1: six 44-byte bodies, separate 11-byte OT/nickname lists.
+constexpr size_t Party=0x2F2C, PartyBodies=Party+8, PartyOT=PartyBodies+6*44, PartyNick=PartyOT+6*11;
 size_t bankOffset(size_t b) { return (b<6 ? 0x4000 : 0x6000)+(b%6)*BoxSize; }
 size_t boxOffset(const Metadata& m,size_t b) { return b==m.currentBox ? Current : bankOffset(b); }
 size_t bodyOffset(size_t b,size_t s) { return b+22+s*33; }
@@ -61,20 +63,52 @@ void copySlot(const std::vector<uint8_t>& from,size_t f,size_t fs,
     std::copy_n(from.begin()+otOffset(f,fs),11,to.begin()+otOffset(t,ts));
     std::copy_n(from.begin()+nickOffset(f,fs),11,to.begin()+nickOffset(t,ts));
 }
-// Max HP with the R/B/Y Stat Exp term (same rule as Gen1BattleStats.cpp, kept local so this
-// translation unit has no extra link dependency): ((base + HP DV) * 2 + ceil(sqrt(StatExp))/4)
-// * level / 100 + level + 10.
+uint8_t statExperienceContribution(uint16_t value) noexcept {
+    // R/B/Y look up the smallest integer whose square is >= Stat Exp, clamp that
+    // root to the game's byte table range, then divide by four using integer math.
+    uint16_t root = 0;
+    while (root < 255 && static_cast<uint32_t>(root) * root < value) ++root;
+    return static_cast<uint8_t>(root / 4);
+}
+
+uint16_t calculatedStat(uint8_t base, uint8_t dv, uint16_t statExp,
+                        uint8_t level, bool hp) noexcept {
+    const uint32_t effort = statExperienceContribution(statExp);
+    const uint32_t scaled = ((static_cast<uint32_t>(base + dv) * 2U + effort) * level) / 100U;
+    return static_cast<uint16_t>(scaled + (hp ? static_cast<uint32_t>(level) + 10U : 5U));
+}
+
+
 uint16_t maxHP(uint16_t species,uint8_t level,uint8_t hpDV,uint16_t hpStatExp) noexcept {
     if(species<1 || species>151) return 0;
-    uint16_t root=0;
-    while(root<255 && static_cast<uint32_t>(root)*root<hpStatExp) ++root;
-    const uint32_t scaled=((static_cast<uint32_t>(kPersonal[species][0]+hpDV)*2U+root/4U)*level)/100U;
-    return static_cast<uint16_t>(scaled+level+10U);
+    return calculatedStat(kPersonal[species][0],hpDV,hpStatExp,level,true);
 }
 bool sameRecord(const PokemonRecord& a,const PokemonRecord& b) {
     return a.rawBody==b.rawBody && a.nickname==b.nickname && a.originalTrainer==b.originalTrainer;
 }
 }
+
+BattleStats StagedPokemonEditor::calculateBattleStats(
+    uint16_t species, uint8_t level, const std::array<uint8_t,4>& dvs,
+    const std::array<uint16_t,5>& statExperience) noexcept {
+    if (species < 1 || species > 151 || level < 1 || level > 100)
+        return {};
+    for (const auto dv : dvs)
+        if (dv > 15) return {};
+
+    const std::array<uint8_t,5> effectiveDVs{
+        derivedHPDV(dvs), dvs[0], dvs[1], dvs[2], dvs[3],
+    };
+
+    BattleStats out;
+    out.hp      = calculatedStat(kPersonal[species][0], effectiveDVs[0], statExperience[0], level, true);
+    out.attack  = calculatedStat(kPersonal[species][1], effectiveDVs[1], statExperience[1], level, false);
+    out.defense = calculatedStat(kPersonal[species][2], effectiveDVs[2], statExperience[2], level, false);
+    out.speed   = calculatedStat(kPersonal[species][3], effectiveDVs[3], statExperience[3], level, false);
+    out.special = calculatedStat(kPersonal[species][4], effectiveDVs[4], statExperience[4], level, false);
+    return out;
+}
+
 
 StagedPokemonEditor::StagedPokemonEditor(std::shared_ptr<const ReadOnlySave> s):original_(s),view_(s) {}
 std::unique_ptr<StagedPokemonEditor> StagedPokemonEditor::create(const ReadOnlySave& s,std::string& error) {
@@ -121,6 +155,11 @@ std::optional<PokemonRecord> StagedPokemonEditor::boxedPokemon(size_t b,size_t s
     error.clear(); if(b>=12 || s>=Capacity) { error="Box or slot is out of range"; return {}; }
     return view_->boxes()[b].slots[s];
 }
+std::optional<PokemonRecord> StagedPokemonEditor::partyPokemon(size_t s,std::string& error) const {
+    error.clear();
+    if(s>=view_->party().size()) {error="Party slot is empty or out of range";return {};}
+    return view_->party()[s];
+}
 std::optional<size_t> StagedPokemonEditor::appendSlot(size_t box, std::string& error) const {
     error.clear();
     if (box >= view_->boxes().size()) { error = "Generation I box is out of range"; return {}; }
@@ -138,10 +177,8 @@ bool StagedPokemonEditor::destination(size_t b,size_t s,std::string& error) cons
 }
 void StagedPokemonEditor::rebuildChanges() {
     changes_.clear();
-    for(size_t b=0;b<12;++b) for(size_t s=0;s<Capacity;++s) {
-        const auto& a=original_->boxes()[b].slots[s]; const auto& z=view_->boxes()[b].slots[s];
-        const auto prefix=std::to_string(b)+"/"+std::to_string(s)+"/";
-        const auto label="Box "+std::to_string(b+1)+" Slot "+std::to_string(s+1)+": ";
+    const auto compare = [&](const std::optional<PokemonRecord>& a,const std::optional<PokemonRecord>& z,
+                             const std::string& prefix,const std::string& label) {
         auto add=[&](std::string key,std::string title,std::string before,std::string after) {
             if(before!=after) changes_.push_back({prefix+key,label+title,before,after});
         };
@@ -149,7 +186,7 @@ void StagedPokemonEditor::rebuildChanges() {
             if(bool(a)!=bool(z)) add("presence",z?"Added Pokemon":"Removed Pokemon",
                 a?std::string(Names::getSpeciesName(a->species)):"Empty",
                 z?std::string(Names::getSpeciesName(z->species)):"Empty");
-            continue;
+            return;
         }
         add("species","Species",Names::getSpeciesName(a->species),Names::getSpeciesName(z->species));
         add("nickname","Nickname",a->nickname,z->nickname);
@@ -169,7 +206,14 @@ void StagedPokemonEditor::rebuildChanges() {
         // Includes stored type/catch-rate/HP and all raw differences after clone/compaction.
         if(a->rawBody!=z->rawBody && std::none_of(changes_.begin(),changes_.end(),[&](const auto& c){return c.key.starts_with(prefix);}))
             changes_.push_back({prefix+"raw",label+"Stored record","Original bytes","Changed bytes"});
-    }
+    };
+    for(size_t b=0;b<12;++b) for(size_t s=0;s<Capacity;++s)
+        compare(original_->boxes()[b].slots[s],view_->boxes()[b].slots[s],
+            std::to_string(b)+"/"+std::to_string(s)+"/",
+            "Box "+std::to_string(b+1)+" Slot "+std::to_string(s+1)+": ");
+    for(size_t s=0;s<original_->party().size();++s)
+        compare(original_->party()[s],view_->party()[s],"party/"+std::to_string(s)+"/",
+            "Party "+std::to_string(s+1)+": ");
 }
 bool StagedPokemonEditor::commit(std::vector<uint8_t> candidate,std::string& error) {
     repair(candidate);
@@ -197,7 +241,15 @@ bool StagedPokemonEditor::commit(std::vector<uint8_t> candidate,std::string& err
     error.clear(); return true;
 }
 bool StagedPokemonEditor::stageEdit(size_t b,size_t s,const BoxPokemonEdit& e,std::string& error) {
-    auto p=boxedPokemon(b,s,error); if(!p) {if(error.empty())error="Box slot is empty";return false;}
+    return stageRecordEdit(false,b,s,e,error);
+}
+bool StagedPokemonEditor::stagePartyPokemonEdit(size_t s,const BoxPokemonEdit& e,std::string& error) {
+    if(packedMove_.active) {error="Place or cancel carried Pokemon before editing the Party";return false;}
+    return stageRecordEdit(true,0,s,e,error);
+}
+bool StagedPokemonEditor::stageRecordEdit(bool party,size_t b,size_t s,const BoxPokemonEdit& e,std::string& error) {
+    auto p=party?partyPokemon(s,error):boxedPokemon(b,s,error);
+    if(!p) {if(error.empty())error="Pokemon slot is empty";return false;}
     auto next=*p;
     if(e.species) {if(*e.species<1 || *e.species>151){error="Gen I species must be 1..151";return false;} next.species=*e.species;}
     const auto growth=growthRate(next.species);
@@ -224,9 +276,10 @@ bool StagedPokemonEditor::stageEdit(size_t b,size_t s,const BoxPokemonEdit& e,st
     if(e.nickname && *e.nickname!=p->nickname && !encodeName(*e.nickname,10,nick,error)) return false;
     if(e.otName && *e.otName!=p->originalTrainer && !encodeName(*e.otName,7,ot,error)) return false;
     std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());
-    const auto box=boxOffset(metadata(),b),o=bodyOffset(box,s);
+    const auto box=party?Party:boxOffset(metadata(),b),o=party?PartyBodies+s*44:bodyOffset(box,s);
+    const auto nickAt=party?PartyNick+s*11:nickOffset(box,s),otAt=party?PartyOT+s*11:otOffset(box,s);
     bytes[box+1+s]=bytes[o]=internalSpecies(next.species);
-    bytes[o+3]=next.level;
+    if(!party || next.level!=p->level) bytes[o+3]=next.level;
     if(next.species!=p->species) {bytes[o+5]=kPersonal[next.species][5];bytes[o+6]=kPersonal[next.species][6];}
     be24(bytes,o+14,next.experience);be16(bytes,o+12,next.trainerId);
     for(size_t i=0;i<4;++i) {bytes[o+8+i]=next.moves[i];bytes[o+29+i]=next.pp[i]|(next.ppUps[i]<<6);}
@@ -243,18 +296,24 @@ bool StagedPokemonEditor::stageEdit(size_t b,size_t s,const BoxPokemonEdit& e,st
             next.dvs!=p->dvs || next.statExperience!=p->statExperience;
         const uint16_t hp=current>=oldMax?newMax:std::min(current,newMax);
         if(hpInputsChanged && hp!=current) be16(bytes,o+1,hp);
+        if(party && hpInputsChanged) {
+            const auto stats=calculateBattleStats(next.species,next.level,
+                {next.dvs[1],next.dvs[2],next.dvs[3],next.dvs[4]},next.statExperience).asArray();
+            bytes[o+33]=next.level;
+            for(size_t i=0;i<stats.size();++i) be16(bytes,o+34+i*2,stats[i]);
+        }
     }
     if(e.nickname && *e.nickname!=p->nickname) {
-        const auto& baseline=original_->boxes()[b].slots[s];
-        if(baseline && *e.nickname==baseline->nickname) std::copy_n(originalBytes().begin()+nickOffset(box,s),11,bytes.begin()+nickOffset(box,s));
-        else std::copy(nick.begin(),nick.end(),bytes.begin()+nickOffset(box,s));
+        const auto baseline=party?std::optional<PokemonRecord>{original_->party()[s]}:original_->boxes()[b].slots[s];
+        if(baseline && *e.nickname==baseline->nickname) std::copy_n(originalBytes().begin()+nickAt,11,bytes.begin()+nickAt);
+        else std::copy(nick.begin(),nick.end(),bytes.begin()+nickAt);
     }
     if(e.otName && *e.otName!=p->originalTrainer) {
-        const auto& baseline=original_->boxes()[b].slots[s];
-        if(baseline && *e.otName==baseline->originalTrainer) std::copy_n(originalBytes().begin()+otOffset(box,s),11,bytes.begin()+otOffset(box,s));
-        else std::copy(ot.begin(),ot.end(),bytes.begin()+otOffset(box,s));
+        const auto baseline=party?std::optional<PokemonRecord>{original_->party()[s]}:original_->boxes()[b].slots[s];
+        if(baseline && *e.otName==baseline->originalTrainer) std::copy_n(originalBytes().begin()+otAt,11,bytes.begin()+otAt);
+        else std::copy(ot.begin(),ot.end(),bytes.begin()+otAt);
     }
-    if(b==metadata().currentBox && (bytes[0x284C]&0x80)) std::copy_n(bytes.begin()+Current,BoxSize,bytes.begin()+bankOffset(b));
+    if(!party && b==metadata().currentBox && (bytes[0x284C]&0x80)) std::copy_n(bytes.begin()+Current,BoxSize,bytes.begin()+bankOffset(b));
     return commit(std::move(bytes),error);
 }
 bool StagedPokemonEditor::stageAdd(size_t b,size_t s,const BoxPokemonCreate& c,std::string& error) {
@@ -359,6 +418,9 @@ std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std:
         if(bool(p)!=bool(expected) || (p && !sameRecord(*p,*expected))) {error="Export Pokemon round trip failed";return {};}
         if(p && !validPokemon(*p,error)) return {};
     }
+    if(check.save->party().size()!=view_->party().size()) {error="Export Party count changed";return {};}
+    for(size_t s=0;s<view_->party().size();++s)
+        if(!sameRecord(check.save->party()[s],view_->party()[s])) {error="Export Party round trip failed";return {};}
     return bytes;
 }
 } // namespace PokeVault::Integration::Gen1

@@ -102,6 +102,10 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
         }
     }
     boxes.swap(displayBoxes);
+    decltype(party) displayParty;
+    for(const auto& record:parsed.save->party())
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon2ReadOnly>(record));
+    party.swap(displayParty);
     trainerName = parsed.save->trainer().name;
     money = parsed.save->trainer().money;
     return true;

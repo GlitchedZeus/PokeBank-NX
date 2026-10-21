@@ -21,7 +21,7 @@ def mutate(path,old,new):
     return result
 
 baseline={r.cid[:4]:r.violations for r in qa.contracts(sources)}
-for cid in ('CG08','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49','CG53'):
+for cid in ('CG08','CG33','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49','CG53'):
     assert not baseline[cid],(cid,baseline[cid])
 assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',', 20, refilter)',', 20, nullptr)'), 'CG40')
 assert check(mutate('src/UI/Gen2UnifiedPokemonWorkspace.inc','Selector::nextOtGender(','Selector::missingGender('),'CG41')
@@ -45,4 +45,11 @@ assert check(mutate('include/Integration/Encounter/EncounterContext45.h',
 assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',
     'state.pickerMetContext.choices(state.pickerOtherHistories)',
     'state.pickerMetContext.choices(false)'),'CG53')
-print('Round 4 shared source contracts: real paths pass; fifteen broken-path controls fail PASS')
+assert check(mutate('src/UI/TrainerViewScreenBase.inc','ClassicPartyActions::open(','ClassicPartyActions::missingOpen('),'CG33')
+assert check(mutate('src/UI/TrainerViewScreenCompositeOverlay.cpp','ClassicPartyActions::handle(*this',
+    'ClassicPartyActions::missingHandle(*this'),'CG33')
+assert check(mutate('src/UI/ClassicPartyActions.inc','actionsForSlot(true,{false,false,true},false)',
+    'actionsForSlot(false,{false,false,false},false)'),'CG33')
+assert check(mutate('include/UI/Gen2PokemonSession.h','editor.stagePartyPokemonEdit(',
+    'editor.stageBoxPokemonEdit('),'CG33')
+print('Round 4 shared source contracts: real paths pass; nineteen broken-path controls fail PASS')

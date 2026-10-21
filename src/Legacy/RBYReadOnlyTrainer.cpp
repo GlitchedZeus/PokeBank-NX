@@ -192,6 +192,10 @@ bool RBYReadOnlyTrainer::refreshBoxesFromStagedPokemon(std::string& error) {
             boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(*record);
         }
     }
+    decltype(party) displayParty;
+    for(const auto& record:stagedPokemon_->view().party())
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon1ReadOnly>(record));
+    party.swap(displayParty);
     return true;
 }
 

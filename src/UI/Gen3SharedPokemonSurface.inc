@@ -136,6 +136,7 @@ struct State {
     bool speciesPreviewShiny = false;
     Shared::Focus focus{};
     SessionModel::Session session{};
+    bool party = false;
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
@@ -292,6 +293,8 @@ void beginActions(TrainerViewScreen& screen) {
     const bool storage = storageEntrySurface(screen);
     state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    state.party = screen.selectedMode==TrainerViewScreen::ViewMode::Party;
+    if(state.party) {state.box=0;state.slot=screen.selectedPartyIndex;}
     screen.controllerNavigation.reset();
 }
 
@@ -300,7 +303,8 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     auto* staged = editor(screen);
     if (!staged) return false;
     std::string error;
-    auto pokemon = staged->boxedPokemon(static_cast<std::size_t>(state.box),
+    auto pokemon = state.party?staged->partyPokemon(static_cast<size_t>(state.slot),error):
+        staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                         static_cast<std::size_t>(state.slot), error);
     if (!pokemon) {
         screen.postStatus(error.empty() ? "Selected Generation III slot is empty" : error, 300);
@@ -339,6 +343,7 @@ bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
     auto& state = stateFor(screen);
     state.box = box;
     state.slot = slot;
+    state.party = false;
     state.actions = false;
     state.review = false;
     state.legality = false;
@@ -363,7 +368,7 @@ bool keepWorkspace(TrainerViewScreen& screen) {
     bool ok = false;
     if (state.session.mode == SessionModel::Mode::Edit) {
         ok = state.session.keep(*staged, static_cast<std::size_t>(state.box),
-                                static_cast<std::size_t>(state.slot), error);
+                                static_cast<std::size_t>(state.slot), error,state.party);
     } else if (state.session.mode == SessionModel::Mode::Create) {
         ok = state.session.add(*staged, static_cast<std::size_t>(state.box),
                                static_cast<std::size_t>(state.slot), error);
@@ -373,8 +378,8 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     refreshPresentation(screen);
-    screen.selectedBoxIndex = state.box;
-    screen.selectedItemIndex = state.slot;
+    if(state.party) screen.selectedPartyIndex=state.slot;
+    else {screen.selectedBoxIndex = state.box;screen.selectedItemIndex = state.slot;}
     screen.postStatus("Generation III Pokemon change staged; source save unchanged", 300);
     return true;
 }
@@ -1793,7 +1798,8 @@ std::string surfaceContext(const TrainerViewScreen& screen, const State& state) 
         return "Legacy Storage / Slot " + std::to_string(screen.selectedItemIndex + 1);
     }
     return Context::contextLine(
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
+        state.party?"Party "+std::to_string(state.slot+1):
+            "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         screen.sourceGameId, mode);
 }
 
@@ -2068,6 +2074,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         if (auto* staged = editor(screen)) {
             auto preview = state.session.mode == SessionModel::Mode::Create
                 ? staged->previewCreate(state.box, state.slot, state.session.createRequest(), state.previewError)
+                : state.party?staged->previewPartyEdit(state.slot,state.session.editRequest(),state.previewError)
                 : staged->previewEdit(state.box, state.slot, state.session.editRequest(), state.previewError);
             if (preview) {
                 state.previewRecord = *preview;
@@ -2087,7 +2094,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.session.mode == SessionModel::Mode::Create) mode = Context::SurfaceMode::CreateDraft;
     SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny,
         mode, state.passive ? surfaceContext(screen, state) :
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
+        state.party?"Party "+std::to_string(state.slot+1):
+            "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
     const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
     const int y = geometry.y, h = geometry.h;
     const int leftX = geometry.leftX, leftW = geometry.leftW;
@@ -2339,7 +2347,8 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     namespace P=PokeBank::UIModel::SharedEditorPresentation;
     screen.drawGSCOverlay(fb);std::string error;
     auto* staged=editor(screen);
-    const auto p=staged?staged->boxedPokemon(static_cast<size_t>(state.box),static_cast<size_t>(state.slot),error):std::nullopt;
+    const auto p=!staged?std::nullopt:state.party?staged->partyPokemon(static_cast<size_t>(state.slot),error):
+        staged->boxedPokemon(static_cast<size_t>(state.box),static_cast<size_t>(state.slot),error);
     std::vector<std::pair<std::string,std::string>> rows{
         {"Source game",std::string(Context::exactGameName(screen.sourceGameId))},
         {"Native format","PK3 checksum verified; save sections checked on export"},

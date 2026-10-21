@@ -156,12 +156,15 @@ bool foundationCommitEditDraft(TrainerViewScreen& screen) {
         screen.postStatus(error.empty() ? "Generation I edit draft is unavailable" : error, 360);
         return false;
     }
-    if (!real->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
-                         PokeBank::UIModel::Gen1EditDraft::editFromRecord(*drafted), error)) {
+    const auto request=PokeBank::UIModel::Gen1EditDraft::editFromRecord(*drafted);
+    const bool kept=state.party?real->stagePartyPokemonEdit(static_cast<size_t>(state.slot),request,error):
+        real->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),request,error);
+    if (!kept) {
         screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 360);
         return false;
     }
-    const auto staged = real->boxedPokemon(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), error);
+    const auto staged = state.party?real->partyPokemon(static_cast<size_t>(state.slot),error):
+        real->boxedPokemon(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), error);
     if (!staged || !foundationSameEditablePokemon(*staged, *drafted)) {
         screen.postStatus("Kept Pokemon did not match the edit draft; review the staged copy", 420);
         return false;
@@ -540,8 +543,8 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto surfaceMode = add ? GameContext::SurfaceMode::CreateDraft
         : state.mode == UX2Mode::Edit ? GameContext::SurfaceMode::EditStaged : GameContext::SurfaceMode::ViewReadOnly;
     fb.drawText(x + 24, y + 46,
-                GameContext::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
-                                             std::to_string(state.slot + 1),
+                GameContext::contextLine(state.party?"Party "+std::to_string(state.slot+1):
+                    "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
                                          screen.sourceGameId, surfaceMode),
                 Colors::TextDim, TextStyle::Caption);
 

@@ -1,4 +1,24 @@
 HOST_TESTS += $(HOST_BUILD)/test_classic_staged_exit
+HOST_TESTS += $(HOST_BUILD)/test_classic_party_actions
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_party_actions_sanitize
+host-test: $(HOST_BUILD)/test_classic_party_actions
+host-sanitize: $(HOST_BUILD)/test_classic_party_actions_sanitize
+$(HOST_BUILD)/test_classic_party_actions: tests/test_classic_party_actions.cpp src/UI/ClassicPartyActions.inc $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_party_actions.cpp $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp -o $@
+$(HOST_BUILD)/test_classic_party_actions_sanitize: tests/test_classic_party_actions.cpp src/UI/ClassicPartyActions.inc $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_party_actions.cpp $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp -o $@
+HOST_TESTS += $(HOST_BUILD)/test_gen2_party_edit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_party_edit_sanitize
+host-test: $(HOST_BUILD)/test_gen2_party_edit
+host-sanitize: $(HOST_BUILD)/test_gen2_party_edit_sanitize
+$(HOST_BUILD)/test_gen2_party_edit: tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) -o $@
+$(HOST_BUILD)/test_gen2_party_edit_sanitize: tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) -o $@
 HOST_TESTS += $(HOST_BUILD)/test_gen45_encounter_context
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen45_encounter_context_sanitize
 host-test: $(HOST_BUILD)/test_gen45_encounter_context

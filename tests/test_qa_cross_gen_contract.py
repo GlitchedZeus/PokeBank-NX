@@ -28,7 +28,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
     # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
-    "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -1667,7 +1666,7 @@ def contracts(sources: list[Source]) -> list[Result]:
     for name, ln, body in function_bodies(base.code, re.compile(r"^openPokemonActionSheet$")):
         cut = body.find("openActionSheetTargetDetails")
         prefix = body if cut < 0 else body[:cut]
-        if cut >= 0 and not re.search(r"PokemonLocation::Party\b[\s\S]*?\breturn\b", prefix):
+        if cut >= 0 and not ("ClassicPartyActions::open(" in prefix and "PokemonLocation::Party" in prefix):
             r.violations.append(f"{base.rel}:{ln}: openPokemonActionSheet() sends a Gen I-V Party target straight to "
                                 "openActionSheetTargetDetails(true) (read-only View)")
     r.violations += [v + "  <- Gen III Party opens View" for v in lit_hits(sources, r"open in View")]
@@ -1677,6 +1676,26 @@ def contracts(sources: list[Source]) -> list[Result]:
                     3: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b",
                     4: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b"}
     for g, rx in ACTIONS_OPEN.items():
+        if g <= 3:
+            # Party has one real popup before all older generation-specific action wrappers.
+            common=src("src/UI/ClassicPartyActions.inc")
+            composite=src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+            cases="".join(b for n, _, b in function_bodies(common.code,re.compile(r"^open$"))) if common else ""
+            action_rx=r"Gen1PokemonEditor::UX2Mode::Actions" if g==1 else rx
+            if not common or f"case {g}:" not in cases or not re.search(action_rx,cases):
+                r.violations.append(f"Gen {g}: shared Party sheet never opens its native Actions state")
+            if not composite or '#include "ClassicPartyActions.inc"' not in composite.code or "ClassicPartyActions::handle(*this" not in composite.code or "ClassicPartyActions::draw(*this" not in composite.code:
+                r.violations.append("Shared Party Actions is missing from actual frame input/draw")
+            if common and "actionsForSlot(true,{false,false,true},false)" not in common.code:
+                r.violations.append("Shared Party Actions no longer offers View/Edit/Origin/Cancel")
+            backend=src(f"src/Integration/Gen{g}/Gen{g}StagedPokemonEditor.cpp" if g!=2 else "src/Integration/Gen2/Gen2StagedEditor.cpp")
+            if not backend or "stagePartyPokemonEdit(" not in backend.code:
+                r.violations.append(f"Gen {g}: Party Edit has no native staged writer")
+            adapter=src("src/UI/Gen1PokemonEditorOverlayFoundation.inc" if g==1 else
+                f"include/UI/Gen{g}{'PokemonSession' if g==2 else 'SharedPokemonSession'}.h")
+            if not adapter or "stagePartyPokemonEdit(" not in adapter.code:
+                r.violations.append(f"Gen {g}: real Keep never invokes the native Party staged writer")
+            continue
         if not any(PARTY.search(b) and re.search(rx, b)
                    for s in gen_files(g) for _, _, b in function_bodies(s.code, re.compile(r"."))):
             r.violations.append(f"Gen {['','I','II','III','IV'][g]}: no Party input path opens its Pokemon Actions ({rx})")

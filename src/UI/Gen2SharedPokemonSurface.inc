@@ -150,6 +150,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             if (!pokemon) return true;
             state.box = legacy.pokemonBox;
             state.slot = legacy.pokemonSlot;
+            state.party = legacy.pokemonParty;
             state.begin(*pokemon, Mode::View);
             screen.controllerNavigation.reset();
             return true;
@@ -330,10 +331,12 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     namespace P=PokeBank::UIModel::SharedEditorPresentation;
     auto* editor=stagedEditor(screen);if(!editor)return;
     const auto& legacy=editorOverlayState(screen);std::string error;
-    const auto p=editor->boxedPokemon(static_cast<size_t>(legacy.pokemonBox),static_cast<size_t>(legacy.pokemonSlot),error);
+    const auto p=legacy.pokemonParty?editor->partyPokemon(static_cast<size_t>(legacy.pokemonSlot),error):
+        editor->boxedPokemon(static_cast<size_t>(legacy.pokemonBox),static_cast<size_t>(legacy.pokemonSlot),error);
     std::vector<std::pair<std::string,std::string>> rows{
         {"Source game",sharedGameName(screen)},
-        {"Location","Box "+std::to_string(legacy.pokemonBox+1)+" / Slot "+std::to_string(legacy.pokemonSlot+1)},
+        {"Location",legacy.pokemonParty?"Party "+std::to_string(legacy.pokemonSlot+1):
+            "Box "+std::to_string(legacy.pokemonBox+1)+" / Slot "+std::to_string(legacy.pokemonSlot+1)},
         {"Native format","PK2; save checksums verified on export"},
         {"Encounter / transfer rules","Not evaluated"},
         {"Rule coverage","Editor guardrails only; no complete legality check"}};

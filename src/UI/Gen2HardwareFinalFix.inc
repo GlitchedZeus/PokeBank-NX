@@ -68,9 +68,9 @@ void drawGen2Focus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selecte
 }
 
 std::string gen2RecordContext(const State& state) {
-    std::string record = "Box " + std::to_string(state.box + 1);
-    if (state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
-    else record += " / New Pokemon";
+    std::string record = state.party?"Party "+std::to_string(state.slot+1):"Box " + std::to_string(state.box + 1);
+    if (!state.party && state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
+    else if(!state.party) record += " / New Pokemon";
     return record;
 }
 
@@ -164,7 +164,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
                               const UnifiedWorkspaceState& unified,
                               int x, int y, int w, bool passive) {
     const auto& p = state.working;
-    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
+    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p,state.mode!=Mode::View);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     const int shinyY = y + 366;

@@ -34,6 +34,7 @@ struct UX2State {
     UX2Mode mode = UX2Mode::Closed;
     int box = 0;
     int slot = 0;
+    bool party = false;
     int row = 0;
     int subRow = 0;
     int reviewRow = 0;
@@ -88,6 +89,11 @@ void ux2ResetTouchMotion(UX2State& state) noexcept {
 
 std::optional<PokemonRecord> ux2SelectedPokemon(TrainerViewScreen& screen, std::string& error) {
     const auto& state = ux2StateFor(screen);
+    if(state.party) {
+        auto* staged=editor(screen);
+        if(!staged) {error="Native Party editor unavailable";return {};}
+        return staged->partyPokemon(static_cast<size_t>(state.slot),error);
+    }
     return pokemonAt(screen, state.box, state.slot, error);
 }
 
@@ -152,6 +158,7 @@ void ux2OpenActions(TrainerViewScreen& screen) {
     ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Actions;
     state.box = box;
+    state.party = false;
     state.slot = slot;
     state.row = 0;
     state.picker = UX2Picker::None;
@@ -182,7 +189,9 @@ bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const 
     auto* e = editor(screen);
     if (!e) return false;
     std::string error;
-    if (!e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error)) {
+    const bool kept=state.party?e->stagePartyPokemonEdit(static_cast<size_t>(state.slot),edit,error):
+        e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error);
+    if (!kept) {
         screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 300);
         return false;
     }
@@ -1216,6 +1225,7 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
     state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    state.party = false;
     state.row = 0;
     state.picker = UX2Picker::None;
     std::string error;

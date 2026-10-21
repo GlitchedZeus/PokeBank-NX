@@ -6,6 +6,40 @@
 
 Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Codex milestone 7 — native Gen I–III Party Actions and editing (2026-10-21)
+
+- Source baseline `c9a457a3c3df246695fc47cde18e68c43e79d236` is pushed and remote-verified.
+  Its Switch native run 39687900533 passed every build/asset/package step. #307 remains
+  `58a81207`; the backup merge and application repairs are still isolated on the Codex WIP.
+- Added ONE shared Party Actions coordinator/presenter before older frame handlers. A and
+  completed taps open the same boxed-row View / Edit / Origin & Legality / Cancel sheet.
+  Its selected native Party target is explicit in each generation's existing editor state.
+  Generic modern mutators remain barred. Unsupported source layouts retain their native
+  read-only View fallback. Party Clone/Release/PC Move are not offered by this new sheet.
+- Gen I/II share their existing boxed edit codec with explicit native Party offsets; Gen III
+  shares its PK3 edit codec with 100-byte Party records in the selected rotating save slot.
+  Stat inputs refresh native cached level/stats; damage and fainted state, status, unused/mail
+  bytes, other Party slots, PC records, inactive slots and RTC remain protected. No live save writes.
+- Keep passes the Party target into the native staged writer; Discard/Continue stay draft-only.
+  Party presentation refreshes after Keep/Discard. Gen II draft stat previews calculate the
+  new values while passive View continues to display the stored native cache. Origin uses
+  the Party record, and the context line identifies Party instead of a fake PC slot.
+- Gen I/II Party Review has named moves and native fields. Gen III Review now adds named
+  moves, PP/PP Ups, changed IV/EV cells, species/nickname/OT/IDs/experience/item fields;
+  export summaries identify Party rather than mislabelling the target as Box 1.
+- Tested so far: GCC Gen I new Party preservation/cache/Review/finalized-reparse cases and
+  existing five-stat/boxed semantics passed; Gen II Party cases passed for G/S/C with RTC;
+  Gen III Party cache/preview/rejection/immutability cases passed for all five exact games
+  alongside existing boxed/native-export tests. Expanded semantic Review checks are rerunning.
+  The actual shared Party coordinator passed all four actions by both controller and touch
+  for Gen I/II/III, unsupported/empty targets and simultaneous A+B cancellation priority.
+- Candidate source contracts now have ZERO violations; CG33's XFAIL is removed. The 70-owner-
+  PASS regression gate (196 guards) and repository safety passed during this milestone.
+  Nineteen broken-path shared controls are running; full focused GCC/Clang + sanitizers,
+  full host suites, QA matrix, final native build and exact NRO audit are still required.
+- This is a WIP checkpoint, not app integration or a hardware-verified repair. Do not bind
+  a candidate or deliver any smoke NRO. S06 remains NOT TESTED; legality #314 stays separate.
+
 ## Codex milestone 6 — honest Gen IV/V Met Location context (2026-10-21)
 
 - Baseline `e061f03c1c2b1bd4b5077eda2a2d2b2eb8234ac8` is pushed and remote-verified.
@@ -32,10 +66,10 @@ Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized appli
   Gen IV hardware surface and shared editor unit passed. An obsolete Y-only Bag Remove
   assertion now follows the owner's explicit A/B exception and retains B-first cancellation.
 - CG53 is enforced; its real production calls/data and X access have four new broken-path
-  controls. The 15-control rerun and 70-PASS gate are running. Candidate mode currently
+  controls. All 15 broken-path controls, the 70-PASS gate (196 guards), and Gen V UI guard passed. Candidate mode currently
   has one remaining actionable contract: CG33 Party Actions / native Party edit I–III.
 - Corrected the native-only Review namespace ambiguity found in run 39686906403.
-  Another native compile/link is required for this combined checkpoint. No official NRO,
+  Native run 39687900533 passed compile/link, asset preflight, packaged RomFS and smoke artifact upload on c9a457a3. No official NRO,
   app integration, hardware re-verification or candidate audit is claimed.
 
 ## Codex milestone 5 — one paged Review with every semantic field (2026-10-21)

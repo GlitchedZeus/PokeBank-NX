@@ -1939,10 +1939,19 @@ namespace UI {
             postStatus(Guard::kForeignPokemonRefusal, 260);
             return;
         }
+        if (target.location == PokemonLocation::Party && Guard::classicGeneration(sourceGameId) <= 3) {
+            const auto selected=target;
+            actionSheet.close();
+            if(!ClassicPartyActions::open(*this,selected.slot)) {
+                // Keep unsupported layouts' existing native read-only presentation accessible.
+                actionSheet.open(selected);
+                openActionSheetTargetDetails(true);
+                actionSheet.close();
+            }
+            return;
+        }
         openActionSheetTargetDetails(true);
         actionSheet.close();
-        if (target.location == PokemonLocation::Party && Guard::classicGeneration(sourceGameId) == 3)
-            postStatus(Guard::kGen3PartyViewOnly, 300);
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {

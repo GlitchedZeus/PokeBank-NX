@@ -68,6 +68,7 @@ struct Gen2EditorOverlayState {
     bool review = false;
     bool pokemonActions = false;
     bool pokemonFields = false;
+    bool pokemonParty = false;
     int selectedRow = 0;
     int reviewRow = 0;
     SharedScrollbar::State reviewScrollbar;   // draggable thumb on Review Pending Changes
@@ -197,6 +198,7 @@ bool openPokemonActions(TrainerViewScreen& screen) {
     state.pokemonActions = true;
     state.pokemonFields = false;
     state.pokemonBox = screen.selectedBoxIndex;
+    state.pokemonParty = false;
     state.pokemonSlot = screen.selectedItemIndex;
     state.pokemonRow = 0;
     state.reviewRow = 0;

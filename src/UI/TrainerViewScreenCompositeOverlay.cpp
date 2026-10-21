@@ -170,6 +170,7 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 #include "Gen3SharedPokemonSurface.inc"
 #include "Gen4SharedPokemonSurface.inc"
 #include "Gen5SharedReadOnlySurface.inc"
+#include "ClassicPartyActions.inc"
 
 namespace UI {
 
@@ -358,6 +359,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // Gen V source isolation precedes all inherited touch and save handlers.
     if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
         return;
+    if (ClassicPartyActions::handle(*this,down,held,stick.x,stick.y,touch))return;
 
     // Storage's legacy touch path fires A on first contact. For the GAME SAVE
     // pane in Gen I-IV, wait for the completed same-cell tap and route A
@@ -443,6 +445,7 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     g_touchGlyphAccum.clear();
     g_touchGlyphHits.clear();
 
+    if (ClassicPartyActions::draw(*this,fb))return;
     if (Gen5SharedReadOnlySurface::draw(*this, fb)) return;
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;

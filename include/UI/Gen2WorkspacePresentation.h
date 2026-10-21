@@ -13,8 +13,8 @@
 namespace PokeBank::UIModel::Gen2Workspace {
 namespace G = PokeVault::Integration::Gen2;
 namespace Rules = Gen2PokemonEditor;
-inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p) {
-    if (p.partyRecord) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
+inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=false) {
+    if (p.partyRecord && !draft) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
     return G::calculateBattleStats(p.species, p.level, Rules::storedDVs(p), p.statExperience).asArray();
 }
 // The Calculated cell of a VALUES row (HP, Attack, Defense, Speed, Special). Gen II stores ONE

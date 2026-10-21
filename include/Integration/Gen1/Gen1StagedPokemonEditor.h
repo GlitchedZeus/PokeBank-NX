@@ -43,7 +43,7 @@ struct BattleStats {
     }
 };
 
-// Owns boxed-Pokemon mutations only. No filesystem or source-write API.
+// Owns native party/boxed mutations in memory. No filesystem or source-write API.
 class StagedPokemonEditor final {
 public:
     static std::unique_ptr<StagedPokemonEditor> create(const ReadOnlySave&, std::string& error);
@@ -52,7 +52,9 @@ public:
     std::span<const uint8_t> originalBytes() const noexcept { return original_->sourceBytes(); }
     std::span<const uint8_t> stagedBytes() const noexcept { return view_->sourceBytes(); }
     std::optional<PokemonRecord> boxedPokemon(size_t box, size_t slot, std::string& error) const;
+    std::optional<PokemonRecord> partyPokemon(size_t slot, std::string& error) const;
     bool stageEdit(size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
+    bool stagePartyPokemonEdit(size_t slot, const BoxPokemonEdit&, std::string& error);
     // Resolve only this box: visual empty cells are not persistent sparse positions.
     std::optional<size_t> appendSlot(size_t box, std::string& error) const;
     // Explicit destination must be the first empty slot; boxes are contiguous lists.
@@ -108,6 +110,7 @@ private:
     explicit StagedPokemonEditor(std::shared_ptr<const ReadOnlySave> source);
     bool destination(size_t box, size_t slot, std::string& error) const;
     bool commit(std::vector<uint8_t> candidate, std::string& error);
+    bool stageRecordEdit(bool party, size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
     void rebuildChanges();
     std::shared_ptr<const ReadOnlySave> original_, view_;
     std::vector<PokemonChange> changes_;

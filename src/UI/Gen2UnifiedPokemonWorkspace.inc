@@ -756,7 +756,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
 
     const auto& p = state.working;
-    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
+    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p,state.mode!=Mode::View);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     for (int r = 0; r < 5; ++r) {
