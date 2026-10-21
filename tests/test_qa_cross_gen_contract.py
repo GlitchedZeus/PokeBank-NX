@@ -49,7 +49,7 @@ XFAIL: dict[str, str] = {
     "CG49-one-origin-legality-panel": "S (E03: one shared Origin & Legality panel)",
     "CG50-gen2-unown-portrait-follows-dvs": "R (R2-REROLL audit: Gen II Unown portrait ignores the DV letter)",
     "CG51-gen2-special-not-slashed": "R (R2-SPECIAL)",
-    "CG52-gen45-move-category-spacing": "S (M04/M05; tripwire: 10 px badge-to-category gap, confirm against the owner screenshot)",
+    "CG52-gen45-move-category-spacing": "S (M04/M05: Moves-panel second line, coordinator-confirmed)",
     "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
     "CG54-gen5-language-editable": "R (NEW-14)",
     "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
@@ -456,33 +456,26 @@ def round4_p2_contracts(sources):
     # Layout::kGap clear of the type badge to its left in the chooser row.
     # ------------------------------------------------------------------------------------------
     r = Result("CG52-gen45-move-category-spacing",
-               "Gen IV/V move Category element keeps >= SharedMovesPanel::Layout::kGap from the type badge "
-               "and the Pwr/Acc cells (M04/M05)")
+               "Gen IV/V Moves panel: the second line keeps type + category apart from a separate, right-aligned "
+               "Pwr / Acc section (>= SharedMovesPanel::Layout::kGap), M04/M05")
+    # Coordinator (round 4): the owner's M04/M05 crowding is the Moves-panel second line (type, category, Pwr,
+    # Acc run together as one detailLine). The Move chooser's columns are owner-accepted (M06) and not checked.
     mp = src("include/UI/SharedMovesPanel.h")
-    if mp:
-        def off(fn):
-            m = re.search(r"int\s+" + fn + r"\(\)\s*const\s*noexcept\s*\{\s*return\s+x\s*\+\s*w\s*-\s*(\d+)\s*;", mp.code)
-            return int(m.group(1)) if m else None
-        type_off, cat_off, pwr_off = off("typeX"), off("categoryX"), off("powerRight")
-        badge_h = re.search(r"kChooserBadgeHeight\s*=\s*(\d+)", mp.code)
-        gap = re.search(r"kGap\s*=\s*(\d+)", mp.code)
-        adv_src = src("include/UI/NunitoMetrics.h")
-        adv = [int(x) for x in re.search(r"kAsciiAdvance\[95\]\s*=\s*\{([^}]*)\}", adv_src.code).group(1).split(",")
-               if x.strip()]
-
-        def width(text, px=17):
-            u = sum(adv[ord(c) - 32] if 32 <= ord(c) < 127 else 1091 for c in text)
-            return -(-u * px // 1000)
-        if None not in (type_off, cat_off, pwr_off) and badge_h and gap:
-            badge_w, g = 5 * int(badge_h.group(1)), int(gap.group(1))  # 5:1 artwork (ClassicTypeBadges)
-            left = (type_off - cat_off) - badge_w
-            widest_cat = max(width(c) for c in ("Physical", "Special", "Status", "Category"))
-            right = (cat_off - pwr_off) - widest_cat - max(width(v) for v in ("120", "250", "Pwr", "—"))
-            if left < g:
-                r.violations.append(f"include/UI/SharedMovesPanel.h: chooser Category starts {left} px after "
-                                    f"the {badge_w} px type badge (< kGap {g})")
-            if right < g:
-                r.violations.append(f"include/UI/SharedMovesPanel.h: Category to Pwr gap {right} px (< kGap {g})")
+    if not mp:
+        r.violations.append("include/UI/SharedMovesPanel.h: missing")
+    else:
+        gap = re.search(r"\bkGap\s*=\s*(\d+)", mp.code)
+        sect = re.search(r"\bkDetailSectionGap\s*=\s*(\d+)", mp.code)
+        split_fn = list(function_bodies(mp.code, re.compile(r"^detailSplit$")))
+        uses_split = re.search(r"\bdetailSplit\s*\(\s*\w+\s*\)", "".join(
+            b for n, _, b in function_bodies(mp.code, re.compile(r".")) if n != "detailSplit"))
+        if not split_fn or not uses_split:
+            r.violations.append("include/UI/SharedMovesPanel.h: the Moves panel draws Type / Category / Pwr / Acc "
+                                "as one detailLine (no separate Pwr/Acc section)")
+        elif not sect or not gap or int(sect.group(1)) < int(gap.group(1)):
+            r.violations.append("include/UI/SharedMovesPanel.h: the Pwr/Acc section gap "
+                                f"({sect.group(1) if sect else '?'}) is smaller than Layout::kGap "
+                                f"({gap.group(1) if gap else '?'})")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
@@ -1646,21 +1639,42 @@ def contracts(sources: list[Source]) -> list[Result]:
     res.append(r)
 
     # ---------- CG33: L06 / E02 / NEW-20 -- Gen I-III Party A / tap opens Actions ----------
+    # One shared Gen I-III Party Actions overlay also satisfies this (lane S): ClassicPartyActions lists View /
+    # Edit / Origin & Legality / Cancel, opens on Party A or a Party tap, and TrainerViewScreen::update calls it
+    # before the base party touch and every Gen I-III handler. View inside it is the read-only View route.
+    cpa_h = src("include/UI/ClassicPartyActions.h")
+    cpa_in = [b for x in sources if x.rel.endswith("ClassicPartyActionsOverlay.inc")
+              for n, _, b in function_bodies(x.code, re.compile(r"^handleInput$"))]
+    comp = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    upd = "".join(b for _, _, b in function_bodies(comp.code, re.compile(r"^update$"))) if comp else ""
+    shared_overlay = False
+    if cpa_h and cpa_in and upd:
+        order = [m.group(0) for m in re.finditer(r'Action::(View|Edit|Legality|Cancel)\s*,', cpa_h.code)]
+        lists = [o.split("::")[1].rstrip(", ") for o in order][:4] == ["View", "Edit", "Legality", "Cancel"]
+        opens = any(re.search(r"HidNpadButton_A", b) and re.search(r"kPartyTouchBase|Party", b) for b in cpa_in)
+        call = upd.find("ClassicPartyActions::handleInput(")
+        later = [upd.find(t) for t in ("handleBasePartyTouch(", "updateGSCOverlay(", "Gen1", "Gen3SharedPokemonSurface::")
+                 if upd.find(t) >= 0]
+        shared_overlay = lists and opens and call >= 0 and all(call < x for x in later)
+
     r = Result("CG33-party-opens-actions",
                "Gen I-III Party A / tap opens the Pokemon Actions popup (View / Edit / Origin & Legality / Cancel), never straight to View")
-    for name, ln, body in function_bodies(base.code, re.compile(r"^openPokemonActionSheet$")):
+    for name, ln, body in ([] if shared_overlay else function_bodies(base.code, re.compile(r"^openPokemonActionSheet$"))):
         cut = body.find("openActionSheetTargetDetails")
         prefix = body if cut < 0 else body[:cut]
         if cut >= 0 and not re.search(r"PokemonLocation::Party\b[\s\S]*?\breturn\b", prefix):
             r.violations.append(f"{base.rel}:{ln}: openPokemonActionSheet() sends a Gen I-V Party target straight to "
                                 "openActionSheetTargetDetails(true) (read-only View)")
-    r.violations += [v + "  <- Gen III Party opens View" for v in lit_hits(sources, r"open in View")]
+    if not shared_overlay:
+        r.violations += [v + "  <- Gen III Party opens View" for v in lit_hits(sources, r"open in View")]
     PARTY = re.compile(r"ViewMode::Party\b|PokemonLocation::Party\b|TargetKind::Party\b|\bpartyEntry\w*")
     ACTIONS_OPEN = {1: r"\bmode\s*=\s*(?:UX2Mode|Mode)::Actions\b|\bopenActions\s*\(",
                     2: r"\bpokemonActions\s*=\s*true\b",
                     3: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b",
                     4: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b"}
     for g, rx in ACTIONS_OPEN.items():
+        if shared_overlay and g in (1, 2, 3):
+            continue
         if not any(PARTY.search(b) and re.search(rx, b)
                    for s in gen_files(g) for _, _, b in function_bodies(s.code, re.compile(r"."))):
             r.violations.append(f"Gen {['','I','II','III','IV'][g]}: no Party input path opens its Pokemon Actions ({rx})")
