@@ -195,6 +195,29 @@ exports are tested only on disposable host sources. The pre-takeover `wip/coord-
 tip `61491b533ffba38a03bd46639a8ac3ea2ee11d0e` is already represented in #307. The backup WIP branch
 remains preserved. Do not delete WIP refs or claim this checkpoint completes all 37 owner FAILs.
 
+### Codex milestone 2: classic Review and readable changes
+
+Code checkpoint: `29084707239d5c7bc8db9f70c2056d9e5dd27fe2`.
+Implemented: Y / touch Review on Gen I-IV Trainer cards; shared staged exit choices Review / Continue /
+Y Discard & Exit / Export Copy; verified export dispatch to each existing native publisher; returning
+from Review preserves Trainer navigation; named Gen I/II moves, Gen I Bag items and Gen V named
+moves/items/species/natures/balls. Native values are unchanged. Name-table linkage is retained in
+standalone focused graphs and workflows.
+
+Tested: five focused GCC suites passed (classic exit controls and B priority, Gen I Trainer staged
+edits, Gen I/II Pokemon native edits plus explicit named-move regressions, Gen I/II Review discard
+parity). CG30/31/32 and CG59/60 source checks pass and their XFAIL markers are removed. The CG59
+reachability check now follows the real update -> create -> copy -> write path; negative controls
+check broken create, automatic-on-open and carry-finalize paths. CG56's matcher recognizes the
+already implemented guarded presentation/finalize ternary; an inverted or unguarded finalize still
+fails. Complete GCC/Clang host + ASan/UBSan builds are running from clean directories.
+
+Phase 1 final validation: 36/36 focused executions passed (GCC/Clang normal + ASan/UBSan, leak
+checking enabled). Complete GCC export contracts and 469-cell / 20-title matrix passed in normal
+and sanitizer configurations (0 problems). These are host results, not owner hardware acceptance.
+The backup WIP and this milestone are still on the Codex WIP lane, not yet #307. Native compilation,
+remaining actionable contracts, Clang QA matrix and final source-bound NRO audit are pending.
+
 ## 7. Next development tasks (in order)
 
 1. **Record the round-3 results** (§2). Then add the round-3 PASS items to the hardware gate.
