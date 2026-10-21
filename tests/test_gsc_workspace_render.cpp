@@ -89,6 +89,21 @@ int main() {
             for(size_t j=i+1;j<texts.size();++j)assert(!intersects(t,texts[j]));
         }
     }
+    for(size_t count=0;count<=20;++count) {
+        PokeBank::UIModel::SharedReview::Rows rows;
+        for(size_t i=0;i<count;++i)rows.push_back({"Box 1 / Slot "+std::to_string(i+1),"Move 1: Thunder Shock -> Thunderbolt"});
+        for(size_t page=0;page<PokeBank::UIModel::SharedReview::pages(count);++page) {
+            std::vector<int> touchButtons{1,2};texts.clear();
+            UI::SharedEditorChrome::drawReviewPanel(fb,touchButtons,rows,page,count!=0,"Generation V");
+            assert(touchButtons.empty() && UI::g_navHits.size()==(count?3u:1u));
+            for(size_t i=0;i<texts.size();++i) {
+                const auto& t=texts[i];assert(t.x>=0 && t.y>=0 && t.x+t.w<=1280 && t.y+t.h<=720);
+                for(size_t j=i+1;j<texts.size();++j)assert(!intersects(t,texts[j]));
+            }
+            const size_t visible=std::count_if(texts.begin(),texts.end(),[](const Text& t){return t.value=="Move 1: Thunder Shock -> Thunderbolt";});
+            assert(visible==std::min(size_t{4},count-page*4));
+        }
+    }
     texts.clear();
     UI::SharedPokemonShell::drawPortrait(fb,0,0,201,true,23);
     assert(sprites.back() == std::make_pair(uint16_t{201},true) && spriteForms.back() == 23);

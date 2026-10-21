@@ -29,7 +29,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
     "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
-    "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
     "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
@@ -888,8 +887,13 @@ def contracts(sources: list[Source]) -> list[Result]:
         footer_rx.search(b) and STRICT_LAYER_RX.search(b)
         for _, _, b in function_bodies(origin_panel.code, re.compile(r"^drawOriginLegalityPanel$")))
 
+    review_owns_frame = origin_panel and any(
+        footer_rx.search(b) and STRICT_LAYER_RX.search(b)
+        for _, _, b in function_bodies(origin_panel.code, re.compile(r"^drawReviewDiscardConfirm$")))
+
     def delegated_origin_footer(body):
-        return origin_owns_frame and re.search(r"\bSharedEditorChrome::drawOriginLegalityPanel\s*\(", body)
+        return (origin_owns_frame and re.search(r"\bSharedEditorChrome::drawOriginLegalityPanel\s*\(", body)) or (
+            review_owns_frame and re.search(r"\bSharedEditorChrome::drawReviewDiscardConfirm\s*\(", body))
 
     # Strict (coordinator, 2026-10-16): clearing screen touchButtons alone leaves g_touchGlyphHits /
     # g_navHits live (the P0 #320 tap-through class), so only a real top touch layer counts.
@@ -1683,31 +1687,28 @@ def contracts(sources: list[Source]) -> list[Result]:
     r = Result("CG35-gen5-review-matches-gen4",
                "Gen IV and Gen V Review show the same heading, footer actions and Discard-all confirmation")
     g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
-    def review_text(f, fns):
-        heading, footer, confirm = set(), set(), set()
-        for fn in fns:
-            for name, ln, body in function_bodies(f.code, re.compile("^" + fn + "$")):
-                for lit in re.findall(r'"([^"\n]*Review Pending Changes[^"\n]*)"', body): heading.add(lit)
-                for nb in re.finditer(r"drawNavBar\s*\(\s*fb\s*,\s*\{([\s\S]*?)\}\s*\)\s*;", body):
-                    footer |= set(re.findall(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', nb.group(1)))
-                for lit in re.findall(r'"([^"\n]*[Dd]iscard [Aa]ll[^"\n]*\?)"', body): confirm.add(lit.lower() and lit)
-        return heading, footer, confirm
-    h4, f4, _ = review_text(g4, ("drawReview",))
-    h5, f5, _ = review_text(g5, ("drawReview",))
-    def pairs(text): return set(re.findall(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', text))
-    c4 = set()
-    for _, _, b in function_bodies(g4.code, re.compile(r"^drawDiscardAllConfirm$")):
-        c4 = {(t.lower(), frozenset(pairs(nb))) for t in re.findall(r'"(Discard all[^"]*\?)"', b, re.I)
-              for nb in re.findall(r"drawNavBar\s*\(\s*fb\s*,\s*\{([\s\S]*?)\}\s*\)\s*;", b)}
-    c5 = {(m.group(1).lower(), frozenset(pairs(m.group(2)))) for m in re.finditer(
-          r'drawDecision\s*\(\s*screen\s*,\s*fb\s*,\s*"(Discard All[^"]*\?)"[\s\S]*?(\{\{[\s\S]*?\}\})\s*\)\s*;', g5.code, re.I)}
-    if h4 != h5: r.violations.append(f"Review heading: Gen IV {sorted(h4)} vs Gen V {sorted(h5)}")
-    act = lambda f: {(g, l) for g, l in f if g in ("A", "B", "X", "Y", "+")}  # actions, not paging hints
-    f4, f5 = act(f4), act(f5)
-    if f4 != f5: r.violations.append(f"Review footer: Gen IV {sorted(f4)} vs Gen V {sorted(f5)}")
-    if c4 != c5:
-        fmt = lambda c: [(t, sorted(p)) for t, p in c]
-        r.violations.append(f"Discard-all confirmation: Gen IV {fmt(c4)} vs Gen V {fmt(c5)}")
+    shared = src("include/UI/SharedEditorChrome.h")
+    model = src("include/UI/SharedReviewPresentation.h")
+    for generation, adapter in (("IV",g4),("V",g5)):
+        review_bodies=[body for _,_,body in function_bodies(adapter.code,re.compile(r"^drawReview$"))]
+        if not review_bodies or not all(re.search(r"SharedEditorChrome::drawReviewPanel\s*\(",body) for body in review_bodies):
+            r.violations.append(f"Gen {generation}: Review does not use the common panel")
+        if not re.search(r"SharedEditorChrome::drawReviewDiscardConfirm\s*\(",adapter.code):
+            r.violations.append(f"Gen {generation}: Discard All does not use the common confirmation")
+    panels=[body for _,_,body in function_bodies(shared.code,re.compile(r"^drawReviewPanel$"))] if shared else []
+    if not panels or not all('"Review Pending Changes"' in body and
+        re.search(r"drawFooter\s*\(\s*fb\s*,\s*R::footer\s*\(",body) and
+        re.search(r"beginModal\s*\(",body) for body in panels):
+        r.violations.append("Shared Review panel must own touch and draw the shared heading/footer")
+    for glyph,label in (("X","Export Copy"),("Y","Discard All"),("B","Back")):
+        if not model or not re.search(r'push\(\s*"'+glyph+r'"\s*,\s*"'+label+r'"\s*\)',model.code):
+            r.violations.append(f"Shared Review footer is missing {glyph} {label}")
+    confirms=[body for _,_,body in function_bodies(shared.code,re.compile(r"^drawReviewDiscardConfirm$"))] if shared else []
+    if not confirms or not all('"Discard all staged changes?"' in body and
+        re.search(r'\{\s*"Y"\s*,\s*"Discard All"',body) and
+        re.search(r'\{\s*"B"\s*,\s*"Keep Changes"',body) and
+        re.search(r"beginModal\s*\(",body) for body in confirms):
+        r.violations.append("Shared Discard All question must own touch and offer Y Discard / B Keep")
     res.append(r)
 
     # Round 4 P3 (owner round 3 FAIL, UI polish): CG36-CG47.

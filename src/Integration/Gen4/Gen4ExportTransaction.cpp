@@ -2,6 +2,14 @@
 
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Names/SpeciesNames.h"
+#include "Names/ItemNames.h"
+#include "Names/MoveNames.h"
+#include "Names/MachineDisplay.h"
+#include "Names/PokemonNames.h"
+#include "Names/LocationDisplayNames.h"
+#include "Enums/LanguageID.h"
+#include "Enums/Ball.h"
+#include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -135,8 +143,8 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
             for (const auto& item : (*newBag)[pocket]) totals[item.itemId].second += item.count;
             for (const auto& [itemId, counts] : totals) {
                 if (counts.first == counts.second) continue;
-                lines.push_back(std::string("Bag ") + bagPocketName(pocket) + ": item #" +
-                                std::to_string(itemId) + " " + std::to_string(counts.first) +
+                lines.push_back(std::string("Bag ") + bagPocketName(pocket) + ": " +
+                                Names::machineDisplayLabel(before->rawFamily(),itemId,Names::getItemName(itemId)) + " " + std::to_string(counts.first) +
                                 " -> " + std::to_string(counts.second));
             }
         }
@@ -144,6 +152,63 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
         lines.push_back("Bag: native item data changed validity");
     }
     return lines;
+}
+
+std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
+    const Gen4StagedPokemonEditor& editor) {
+    std::vector<std::pair<std::string,std::string>> rows;
+    for(const auto& line:describeStagedSlotChanges(editor))rows.push_back({"Staged change",line});
+    std::string error;
+    const auto before=strictParse(editor.originalBytes(),editor,error);
+    const auto after=strictParse(editor.stagedBytes(),editor,error);
+    if(!before || !after)return {};
+    const auto compare=[&](const auto& a,const auto& b,const std::string& location) {
+        if(!a.valid() || a.empty() || !b.valid() || b.empty() || sameRecord(a,b))return;
+        const auto emit=[&](const char* field,const std::string& from,const std::string& to) {
+            if(from!=to)rows.push_back({location+" / "+field,from+" -> "+to});
+        };
+        emit("Species",Names::getSpeciesName(a.species()),Names::getSpeciesName(b.species()));
+        emit("Nickname",Utils::utf16ToUtf8(a.nickname()),Utils::utf16ToUtf8(b.nickname()));
+        emit("Original Trainer",Utils::utf16ToUtf8(a.originalTrainerName()),Utils::utf16ToUtf8(b.originalTrainerName()));
+        emit("Trainer ID",std::to_string(a.tid()),std::to_string(b.tid()));
+        emit("Secret ID",std::to_string(a.sid()),std::to_string(b.sid()));
+        emit("Held Item",Names::getItemName(a.heldItem()),Names::getItemName(b.heldItem()));
+        emit("Ability",Names::getAbilityName(a.ability()),Names::getAbilityName(b.ability()));
+        const Pokemon::Pokemon4ReadOnlyView av(a),bv(b);
+        emit("Nature",Names::getNatureName(av.nature()),Names::getNatureName(bv.nature()));
+        emit("Level",std::to_string(av.level()),std::to_string(bv.level()));
+        emit("Ball",Enums::getBallName(av.ball()),Enums::getBallName(bv.ball()));
+        emit("Met Location",Names::getMetLocationDisplayName(a.originVersion(),av.metLocation()),
+            Names::getMetLocationDisplayName(b.originVersion(),bv.metLocation()));
+        emit("Language",Enums::getLanguageName(a.language()),Enums::getLanguageName(b.language()));
+        emit("Friendship",std::to_string(a.friendship()),std::to_string(b.friendship()));
+        emit("Experience",std::to_string(a.experience()),std::to_string(b.experience()));
+        emit("PID",std::to_string(a.pid()),std::to_string(b.pid()));
+        emit("Gender",av.genderSymbol(),bv.genderSymbol());
+        emit("Shiny",av.isShiny(a.id32(),{})?"Yes":"No",bv.isShiny(b.id32(),{})?"Yes":"No");
+        emit("Pokerus",std::to_string(a.pokerusState()),std::to_string(b.pokerusState()));
+        emit("Met Level",std::to_string(a.metLevel()),std::to_string(b.metLevel()));
+        const auto am=a.moves(),bm=b.moves();
+        const auto ap=a.pp(),bp=b.pp(),au=a.ppUps(),bu=b.ppUps();
+        for(size_t i=0;i<4;++i) {
+            const auto label="Move "+std::to_string(i+1);
+            emit(label.c_str(),am[i]?Names::getMoveName(am[i]):"Empty",bm[i]?Names::getMoveName(bm[i]):"Empty");
+            emit((label+" PP").c_str(),std::to_string(ap[i]),std::to_string(bp[i]));
+            emit((label+" PP Ups").c_str(),std::to_string(au[i]),std::to_string(bu[i]));
+        }
+        const auto ai=a.ivs(),bi=b.ivs(),ae=a.evs(),be=b.evs();
+        constexpr const char* stats[]={"HP","Atk","Def","Spe","SpA","SpD"};
+        for(size_t i=0;i<6;++i) {
+            emit((std::string("IV ")+stats[i]).c_str(),std::to_string(ai[i]),std::to_string(bi[i]));
+            emit((std::string("EV ")+stats[i]).c_str(),std::to_string(ae[i]),std::to_string(be[i]));
+        }
+    };
+    const auto oldParty=before->nativePartySlots(),newParty=after->nativePartySlots();
+    for(size_t i=0;i<std::min(oldParty.size(),newParty.size());++i)
+        compare(oldParty[i],newParty[i],"Party "+std::to_string(i+1));
+    for(size_t box=0;box<kBoxCount;++box)for(size_t slot=0;slot<kBoxSlots;++slot)
+        compare(before->box(box,slot),after->box(box,slot),"Box "+std::to_string(box+1)+" / Slot "+std::to_string(slot+1));
+    return rows;
 }
 
 Common::VerifiedExportResult publishVerifiedGen4Export(

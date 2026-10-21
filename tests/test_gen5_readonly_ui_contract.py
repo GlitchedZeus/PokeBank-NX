@@ -41,9 +41,13 @@ require(
     "state.requestExit(staged)",
     "state.confirmDiscardAndExit(staged)",
     "state.discardAllWithPresentation(staged,",
-    "state.moveReviewPage(1,staged)",
-    "verifyStagedReview(change,&error)",
-    "reviewedFieldLabel(verified->fields[field])",
+    "state.moveReviewPage(1,staged,sharedReviewRows(screen,staged).size())",
+    "state.moveReviewPage(-1,staged,sharedReviewRows(screen,staged).size())",
+    "verifyStagedReview(c,&error)",
+    "for(const auto& field:verified->fields)",
+    "reviewedFieldLabel(field)",
+    "SharedEditorChrome::drawReviewPanel(",
+    "SharedEditorChrome::drawReviewDiscardConfirm(",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
     "drawSharedWorkspace(screen,fb)",
@@ -891,8 +895,9 @@ require(surface, "state.requestExport(staged)",
         "accountUidHex(screen.userUid)",
         "request.observedSourceBytes=observed;",
         "Export Verified Generation V Working Copy?",
-        "Export Working Copy",
+        "SharedEditorChrome::drawReviewPanel(",
         "original SAV5 unchanged")
+require(read("include/UI/SharedReviewPresentation.h"),'out.push("X","Export Copy")')
 # Prohibit accidental write routing through the unguarded Trainer surface.
 assert "saveChanges(" not in surface and "saveToSource(" not in surface
 assert "injectSave(" not in surface and "openItemsShortcut(" not in surface
@@ -1034,7 +1039,7 @@ require(surface,"void stageCloneOrMoveByKeypad(TrainerViewScreen& screen)",
         "!state.confirmClone(staged,",
         "state.confirmRemoveBox(staged",
         '"Release this Pokemon?"', '"Y","Confirm Release"',
-        "Box clone/remove staged only; no source writes")
+        "SharedEditorChrome::drawReviewPanel(")
 require(read("tests/test_gen5_staged_save_candidate.cpp"),
         "boxOps.cloneToEmptyBox(",
         "boxOps.removeBox(",

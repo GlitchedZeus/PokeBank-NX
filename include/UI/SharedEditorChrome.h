@@ -13,6 +13,7 @@
 #include "UI/SharedFieldStateColors.h"
 #include "UI/SharedMenuGeometry.h"
 #include "UI/SharedBoxedRows.h"
+#include "UI/SharedReviewPresentation.h"
 
 #include <string>
 #include <vector>
@@ -113,6 +114,44 @@ inline Color legalityColor(Presentation::LegalityState state) {
         case Presentation::LegalityState::NotChecked: return Colors::Warning;
         default: return Colors::TextDim;
     }
+}
+
+template<class Buttons>
+inline void drawReviewPanel(PKSEFramebuffer& fb,Buttons& buttons,
+    const PokeBank::UIModel::SharedReview::Rows& rows,size_t page,bool changed,
+    const std::string& context) {
+    namespace R=PokeBank::UIModel::SharedReview;
+    beginModal(buttons);page=R::clamp(page,rows.size());
+    const int w=1100,h=584,x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Colors::Background);
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    fb.drawText(x+24,y+18,"Review Pending Changes",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+56,context+" / original source remains unchanged",Colors::TextDim,TextStyle::Caption);
+    fb.drawText(x+24,y+90,std::to_string(rows.size())+" changes / Page "+std::to_string(page+1)+
+        " of "+std::to_string(R::pages(rows.size())),Colors::TextDim,TextStyle::Caption);
+    if(rows.empty())fb.drawText(x+32,y+145,changed?"Staged changes could not be verified":"No staged changes",changed?Colors::Warning:Colors::TextDim);
+    for(size_t row=0;row<R::kPageSize;++row) {
+        const size_t i=page*R::kPageSize+row;if(i>=rows.size())break;
+        const int yy=y+128+static_cast<int>(row)*102;
+        fb.drawFilledRoundedRect(x+18,yy,w-36,94,10,Colors::PanelAlt);
+        fb.drawText(x+32,yy+12,rows[i].first,Colors::Text,TextStyle::Body);
+        fb.drawText(x+32,yy+49,rows[i].second,Colors::TextSecondary,TextStyle::Caption);
+    }
+    drawFooter(fb,R::footer(changed,rows.size()));
+}
+
+template<class Buttons>
+inline void drawReviewDiscardConfirm(PKSEFramebuffer& fb,Buttons& buttons) {
+    beginModal(buttons);
+    const int w=900,h=250,x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,145));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawText(x+28,y+24,"Discard all staged changes?",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+28,y+82,"Export Copy first to keep them. Original saves remain unchanged.",Colors::TextDim,TextStyle::Caption);
+    SharedBoxedRows::drawGlyphChoices(fb,x+28,y+145,w-56,
+        std::array<SharedBoxedRows::GlyphChoice,2>{{{"B","Keep Changes"},{"Y","Discard All"}}});
+    drawNavBar(fb,{{"Y","Discard All"},{"B","Keep Changes"}});
 }
 
 // Generation adapters supply only stored facts. One layout and one verdict

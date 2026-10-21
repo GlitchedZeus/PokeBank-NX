@@ -303,7 +303,12 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     arm = review.index("state.confirmDiscardAll = true;")
     assert review.index("staged->discard();") < arm or "if (state.confirmDiscardAll" in review[:review.index("staged->discard();")], \
         f"{rel}: discard() must be reachable only from the confirmed state"
-    assert '{{"Y", "Discard All"}, {"B", "Keep Changes"}}' in read(rel), f"{rel}: confirm legend missing"
+    presenter=read(rel).split("void drawDiscardAllConfirm(",1)[1].split("\n}",1)[0]
+    if "SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons)" in presenter:
+        legend=read("include/UI/SharedEditorChrome.h")
+        assert '{{"Y","Discard All"},{"B","Keep Changes"}}' in legend, f"{rel}: shared confirm legend missing"
+    else:
+        assert '{{"Y", "Discard All"}, {"B", "Keep Changes"}}' in read(rel), f"{rel}: confirm legend missing"
 
 # Cancelling Release restores the original focused action in Gen I/III
 # (matching Gen II/IV); B cannot leak into the restored popup.

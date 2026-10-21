@@ -6,6 +6,40 @@
 
 Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Codex milestone 5 — one paged Review with every semantic field (2026-10-21)
+
+- Source baseline for this milestone: `7beb91e7242046a02c53f05b65dcf8431d3af2b8`
+  on the Codex WIP branch. #307 remains `58a81207`; no legality-lane code merged.
+- Gen IV and V now use the same `SharedEditorChrome::drawReviewPanel` and the same
+  Y-confirmed Discard All question, heading, X Export Copy / Y Discard All / B Back controls
+  and L/R paging. The same controller handlers still invoke the native export transactions.
+- Gen V Review expands every independently verified field instead of hiding fields after
+  the first three. Full text-name differences, named ability / location values, Bag and
+  Trainer changes are visible. A native PC Move remains one grouped movement action.
+- Gen IV now produces a separate structured semantic-field Review from strict original /
+  staged reparses. Move names, IV/EV fields, nature, names, OT/IDs and other native changes
+  are paged. Grouped manifest summaries remain stable. Bag summaries use item names and
+  game-aware TM/HM identifiers (HM01 Cut is not modern TM93).
+- Added direct tests that Recover and every changed stat remain visible, all 25 semantic
+  rows can be reached on seven pages without changing staged bytes, and a PC Move still
+  yields one grouped row. Actual shared renderer tests cover all pages for 0–20 changes,
+  bounds/non-overlap and only the visible footer's touch targets.
+- Tested: four suites × GCC/Clang × normal/ASan+UBSan = 16 PASS, leak detection enabled:
+  Gen IV staged editor / real verified exports; Gen V Review/Discard/Export trace (400
+  checks across W/B/W2/B2); actual shared renderer; shared editor unit/source contracts.
+  Gen V read-only route, touch-row and repository-safety guards passed. The 70-PASS gate
+  rerun and extended eleven-control source mutation rerun are pending.
+- CG35 is now enforced. Candidate mode has exactly two unresolved contracts: CG33
+  (native Party Actions/edit I–III) and CG53 (source-backed IV/V encounter context).
+- Native build of `20955b20518708c06f4c139ada894567b063f6c7` (run 39684964093)
+  exposed a missing shared-label include in the standalone GSC overlay. `7beb91e7`
+  fixes it; native run 39685646748 is pending. A further native build must cover this
+  Review milestone too; no final NRO or candidate binding exists yet.
+- The earlier full host invocations read code while this Review was being developed and
+  failed linking the new name/view dependencies against the old parsed build graph.
+  Dependencies are now explicit in the Gen IV and QA source lists. Final exact-head full
+  GCC/Clang, sanitizers and 20-title QA matrix remain required after the code freeze.
+
 ## Codex milestone 4 — native Trainer summaries and one Origin panel (2026-10-21)
 
 - WIP remains `wip/codex-round4-takeover-20261021`; refreshed #307 and backup heads

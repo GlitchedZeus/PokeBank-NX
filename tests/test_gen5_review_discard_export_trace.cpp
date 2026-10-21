@@ -451,6 +451,13 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
     ui.moveReviewPage(1, ws);
     require(ui.reviewPage() == 2, T + "Review paging clamps");
     ui.moveReviewPage(-1, ws);
+    // Expanded semantic-field rows may outnumber grouped records; paging uses
+    // the presented row count without changing any native or staged byte.
+    for(int i=0;i<10;++i)ui.moveReviewPage(1,ws,25);
+    require(ui.reviewPage()==6,T+"all 25 semantic rows are reachable on 7 pages");
+    for(int i=0;i<10;++i)ui.moveReviewPage(-1,ws,25);
+    require(ui.reviewPage()==0,T+"semantic Review pages clamp at the first page");
+    require(stagedFingerprint(ws)==staged1,T+"semantic paging is byte-immutable");
 
     // ---- 3. Cancel paths: nothing changes -----------------------------------
     {

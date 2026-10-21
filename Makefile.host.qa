@@ -36,7 +36,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Integration/Gen3/FRLGReadModel.cpp \
 	src/Integration/Gen4/Gen4ReadOnlySave.cpp src/Integration/Gen4/Gen4AssignedSource.cpp \
 	src/Integration/Gen4/Gen4SourceDiscovery.cpp src/Integration/Gen4/Gen4StagedPokemonEditor.cpp \
-	src/Integration/Gen4/Gen4ExportTransaction.cpp \
+	src/Integration/Gen4/Gen4ExportTransaction.cpp src/Names/MachineDisplay.cpp src/Names/TMMoves.cpp \
 	src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp \
 	src/Integration/Gen5/Gen5AssignedSource.cpp \
 	src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Legacy/Gen4ReadOnlyTrainer.cpp \

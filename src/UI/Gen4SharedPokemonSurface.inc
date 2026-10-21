@@ -92,6 +92,7 @@ struct State : Surface::EditorState {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
+    size_t reviewPage = 0;
     bool legality = false;
     bool confirmRelease = false;
     // Discard All in Review is a two-step Y -> Y confirmation; B keeps the staged edits.
@@ -1079,6 +1080,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
         case MenuAction::Review:
             state.actions = false;
             state.review = true;
+            state.reviewPage = 0;
             break;
         case MenuAction::Close:
             state.actions = false;
@@ -1170,6 +1172,14 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
+        return true;
+    }
+    if (down & (HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L|HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R)) {
+        if(const auto* staged=editor(screen)) {
+            const size_t count=PokeVault::Integration::Gen4::describeStagedReviewChanges(*staged).size();
+            const int direction=(down&(HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))?-1:1;
+            state.reviewPage=PokeBank::UIModel::SharedReview::move(state.reviewPage,direction,count);
+        }
         return true;
     }
     if (down & HidNpadButton_X) {
@@ -1556,62 +1566,15 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 // The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
 void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
     SharedEditorChrome::beginModal(screen.touchButtons);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-    constexpr int w = 760, h = 240;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 34, y + 96,
-                std::string("Every pending ") + generation + " edit in this workspace is lost.",
-                Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
-                Colors::TextDim, TextStyle::Caption);
-    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
-    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
-        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Keep Changes"}, {"Y", "Discard All"}}});
-    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+    (void)generation;
+    SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
-    auto* staged = editor(screen);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
-    fb.drawText(32, 62,
-                "Generation IV app-owned staged workspace • external source bytes unchanged",
-                Colors::TextDim, TextStyle::Caption);
-    const bool changed = staged && staged->hasChanges();
-    fb.drawFilledRoundedRect(44, 118, fb.getWidth() - 88, 110, 12, Colors::Panel);
-    fb.drawText(64, 138, changed ? "Staged PK4 edits are pending" : "No staged Gen IV changes",
-                changed ? Colors::Text : Colors::TextDim, TextStyle::Body);
-    fb.drawText(64, 178,
-                changed ? "Strict PK4 serialize + Storage CRC + full save reparse: PASS"
-                        : "Original source remains the current baseline",
-                Colors::TextDim, TextStyle::Caption);
-    fb.drawText(44, 270, "Original " + screen.legacyProviderLabel() + " source: HARD READ ONLY", Colors::Accent);
-    fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
-                Colors::TextDim, TextStyle::Caption);
-    if (changed) {
-        // Original-versus-staged comparison, from strict parses of both buffers.
-        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*staged);
-        constexpr size_t kShown = 8;
-        int y = 352;
-        fb.drawText(44, y, "Changed slots (original -> staged)", Colors::Text, TextStyle::Body);
-        y += 36;
-        for (size_t i = 0; i < lines.size() && i < kShown; ++i, y += 30)
-            fb.drawText(64, y, lines[i], Colors::TextDim, TextStyle::Caption);
-        if (lines.size() > kShown)
-            fb.drawText(64, y, "+" + std::to_string(lines.size() - kShown) + " more",
-                        Colors::TextDim, TextStyle::Caption);
-        if (state.confirmDiscardAll) {
-            drawDiscardAllConfirm(screen, fb, "Generation IV");
-        } else {
-            drawNavBar(fb, {{"X", "Export Copy"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
-        }
-    } else {
-        drawNavBar(fb, {{"B", "Back"}});
-    }
+    const auto* staged=editor(screen);
+    const auto rows=staged?PokeVault::Integration::Gen4::describeStagedReviewChanges(*staged):PokeBank::UIModel::SharedReview::Rows{};
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,state.reviewPage,staged && staged->hasChanges(),"Generation IV");
+    if (state.confirmDiscardAll) drawDiscardAllConfirm(screen,fb,"Generation IV");
 }
 
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -2182,6 +2145,7 @@ bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64
             return trainer.stage(name, money, error) && refreshPresentation(screen);
         }, [&] {
             state.review = true;
+            state.reviewPage = 0;
             state.actions = false;
         });
 }
