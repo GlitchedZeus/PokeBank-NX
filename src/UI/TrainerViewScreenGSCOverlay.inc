@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
 #include "Enums/GameVersion.h"
