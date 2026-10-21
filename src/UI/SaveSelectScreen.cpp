@@ -386,7 +386,7 @@ namespace UI {
             if (!note.empty())
                 drawGlyphSentence(fb, x + 34, y + h - 38, note, Colors::TextMuted, TextStyle::Caption);
             // B and - both close help (update: Overlay::Help); rows describe the screen underneath.
-            drawNavBar(fb, {{"-", "Close Help"}, {"B", "Close Help"}});
+            drawNavBar(fb, {{"B", "Close Help"}});
         }
     }
 
@@ -4656,7 +4656,6 @@ namespace UI {
                 // L/R switches profile only when there is another profile to switch to.
                 if (users.size() > 1) rows.push_back({"L/R", "Switch profile"});
                 rows.insert(rows.end(), {{"ZR", "Launch the selected game or emulator"},
-                                         {"-", "Close Help / Controls"},
                                          {"B", "Back to Product Home"}});
                 drawProductHelpOverlay(fb, "Pokémon Games", rows,
                     "This is the full artwork game browser. Press Y on Product Home for the quick drawer.");
@@ -5149,7 +5148,7 @@ namespace UI {
             fb.drawText(x + 30, y + 158,
                         "The source save was not modified. Technical details were written to diagnostics.",
                         Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"A / B", "Return"}});
+            drawNavBar(fb, {{"A", "Return"}, {"B", "Return"}});
         } else if (overlay == Overlay::GamesDrawer) {
             constexpr int w = 520;
             const int x = fb.getWidth() - w;
@@ -5776,7 +5775,6 @@ namespace UI {
                     {"A", "Open the focused game tool"},
                     {"ZR", "Launch the selected game"},
                     {"+", "Close the Current Game menu"},
-                    {"-", "Close Help / Controls"},
                     {"B", "Back to Product Home"}
                 }, "Backup history appears only when you explicitly choose Backups.");
             } else {

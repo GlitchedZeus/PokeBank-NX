@@ -145,7 +145,7 @@ inline constexpr uint16_t kMaxSpecies = 649;
     switch (row) {
         case Species: case Nickname: case Level: case Experience: case OriginalTrainer:
         case TrainerId: case SecretId: case HeldItem: case Friendship: case MetLevel:
-        case Pokerus: case OriginalTrainerGender: case FatefulEncounter:
+        case Pokerus: case OriginalTrainerGender: case FatefulEncounter: case Language:
             return true;
         case Ball: case MetLocation:
             // Same policy as Gen IV: encounter data of a transferred Pokemon stays read-only.
@@ -153,14 +153,14 @@ inline constexpr uint16_t kMaxSpecies = 649;
         case Form:
             return hasAlternateForm(draft, b2w2);
         default:
-            return false; // Language and Origin are shown, never edited.
+            return false; // Origin remains a historical identity, never silently rewritten.
     }
 }
 // Rows that stay locked for this record in every mode (View, Edit, Create): shown in the gold
 // ReadOnly field state (UI/SharedFieldState.h) instead of a "(read-only)" label suffix.
 [[nodiscard]] inline bool detailLocked(const Pokemon5ReadOnly& p, int row, bool singleForm) noexcept {
     switch (row) {
-        case Language: case Origin: return true;
+        case Origin: return true;
         case Ball: case MetLocation: return !gen5Origin5(p.originVersion());
         case Form: return singleForm;
         default: return false;

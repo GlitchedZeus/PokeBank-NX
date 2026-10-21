@@ -119,12 +119,10 @@ namespace Dialogs {
         const int cancelX = remX - bw - 16;    // left  = Cancel (id 0 -> B)
         drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
         screen.touchButtons.push_back({0, cancelX, by, bw, bh});
-        // Gen I-V: Y removes (A and B cancel); the button shows and taps as Y.
-        drawGlyphButton(fb, remX,    by, bw, bh, classicSessionDialog ? "Y" : "A", "Remove",
+        // The owner's explicit Bag Remove policy: A confirms, B cancels.
+        drawGlyphButton(fb, remX,    by, bw, bh, "A", "Remove",
                         Colors::Red, Colors::White);
         screen.touchButtons.push_back({1, remX, by, bw, bh});
-        if (classicSessionDialog)
-            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter("Y", "Remove"));
     }
 }
 }

@@ -849,7 +849,7 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
         TextStyle::Caption);
     const auto& p = state.working;
-    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny);
+    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny, p.form);
     if (const auto* personal = Gen2::personalRecord(p.species)) {
         int badgeX = x + 18;
         sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType1));
@@ -1004,7 +1004,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else {
         drawWorkspaceFooter(fb, screen);
     }

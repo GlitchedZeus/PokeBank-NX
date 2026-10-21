@@ -27,6 +27,7 @@
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
+#include "UI/NatureStatPresentation.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -862,6 +863,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         const std::string label = A::pickerLabel(screen, state, state.pickerTarget, value);
+        if (naturePicker) {
+            fb.drawText(x + 38, yy + 7, label, Colors::Text, TextStyle::Body);
+            NatureStats::drawEffect(fb, x + 166, yy + 10, value);
+            continue;
+        }
         const auto split = label.find("  |  ");
         if (state.pickerTarget == PickerTarget::MetLocation && split != std::string::npos) {
             // Same row style as Gen III: bright place name left, met level right.
@@ -923,10 +929,14 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     {
-        const std::string detail = PokeBank::UIModel::SharedMoveFacts::detailLine(
-            PokeBank::UIModel::SharedMoveFacts::facts(move, A::moveGame(screen)));
+        auto facts = PokeBank::UIModel::SharedMoveFacts::facts(move, A::moveGame(screen));
+        const std::string category = PokeBank::UIModel::SharedMoveFacts::categoryLabel(facts);
+        facts.category = -1;
+        const std::string detail = PokeBank::UIModel::SharedMoveFacts::detailLine(facts);
         fb.drawText(x + 24, y + 52, detail.empty() ? std::string(A::kMoveEditorSubtitle) : detail,
                     Colors::TextDim, TextStyle::Caption);
+        if (!category.empty())
+            fb.drawText(x + 24, y + 72, "Category: " + category, Colors::TextDim, TextStyle::Caption);
     }
     const std::array<std::pair<std::string,std::string>,5> rows{{
         {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move))},
@@ -937,7 +947,7 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
         {"Cancel", "Discard these move details"},
     }};
     for (int i = 0; i < 5; ++i) {
-        const int yy = y + 88 + i * 48;
+        const int yy = y + 100 + i * 48;
         const bool selected = i == state.moveEditorRow;
         screen.touchButtons.push_back({41400 + i, x + 22, yy, w - 44, 42});
         SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy, w - 44, 42), {selected});  // R2-BUG-012 boxed row
@@ -1030,7 +1040,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
             drawFocus(fb, g.midX + cell.x, yy - 5, cell.width, 30, true);
         }
         fb.drawText(g.midX + 18, yy, statLabels[static_cast<size_t>(row)],
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+                    NatureStats::statColor(raw->nature(), row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(g.midX + 126, yy, std::to_string(iv[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(g.midX + 190, yy, std::to_string(ev[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         // Phase 4: a calculated stat is derived, never edited: the gold ReadOnly field state.

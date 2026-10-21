@@ -1168,7 +1168,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
                 screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
         }
         state.review = false;
-        state.actions = true;
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1927,14 +1927,13 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         return true;
     }
     if(state.itemRemoveConfirmActive) {
-        // Deliberate Y->Y two-press removal with a separate confirmation frame.
-        // A never removes; B always cancels without touching a staged byte.
+        // Y opened this explicit Bag Remove question; A confirms it. B always cancels.
         if(down&HidNpadButton_B) {
             state.itemRemoveConfirmActive=false;
             screen.controllerNavigation.reset();
             return true;
         }
-        if(!(down&HidNpadButton_Y))return true;
+        if(!(down&HidNpadButton_A))return true;
         const int pocket=state.itemRemovePocket;
         const int index=state.itemRemoveVisibleRow;
         if(!itemsScreen || screen.selectedCategory!=pocket ||
@@ -2168,7 +2167,6 @@ void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const Stat
     UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
         Names::machineDisplayLabel(game,id,Names::getItemName(id)),
         Gen4::bagPocketName(static_cast<size_t>(state.itemKeyWarningPocket)),false);
-    drawNavBar(fb,{{"A","Confirm"},{"B","Cancel"}});
 }
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
@@ -2177,7 +2175,6 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
     UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,screen.trainer.getGameGroup(),
         "Remove Gen IV Item?",state.itemRemoveId,Names::getItemName(state.itemRemoveId),
         state.itemRemoveCount,"Staged copy only; Discard Changes restores it.");
-    drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
 }
 
 } // namespace

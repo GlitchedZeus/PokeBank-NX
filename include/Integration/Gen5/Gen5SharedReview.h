@@ -160,6 +160,7 @@ struct VerifiedSlotReview {
         return std::nullopt;
     if(!apply(Field::Nature,0,before.nature(),after.nature()) ||
        !apply(Field::Friendship,0,before.friendship(),after.friendship()) ||
+       !apply(Field::Language,0,before.language(),after.language()) ||
        !apply(Field::HeldItem,0,before.heldItem(),after.heldItem()) ||
        !apply(Field::Ball,0,before.ball(),after.ball()) ||
        !apply(Field::MetLevel,0,before.metLevel(),after.metLevel()) ||

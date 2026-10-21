@@ -130,6 +130,7 @@ void runFamily(const L& l,SourceGame game){
     }
 
     BoxPokemonEdit edit;edit.species=26;edit.nickname="SPARKY";edit.level=20;edit.heldItem=1;
+    assert((BoxPokemonCreate{}.dvs == std::array<uint8_t,4>{0,0,0,0}));
     edit.moves=std::array<uint8_t,4>{84,85,0,0};
     edit.dvs=std::array<uint8_t,4>{9,8,7,6};
     edit.statExperience=std::array<uint16_t,5>{100,200,300,400,500};

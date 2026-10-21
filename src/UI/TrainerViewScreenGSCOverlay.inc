@@ -366,7 +366,7 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     for (int i = 0; i < 4; ++i) {
         const auto dv = Utils::promptNumber("Add Gen II Pokemon - " +
             std::string(i == 0 ? "Attack" : i == 1 ? "Defense" : i == 2 ? "Speed" : "Special") + " DV",
-            8, 0, 15);
+            0, 0, 15);
         if (!dv.accepted) return false;
         create.dvs[i] = static_cast<uint8_t>(dv.value);
     }

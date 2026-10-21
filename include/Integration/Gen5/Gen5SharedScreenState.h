@@ -393,7 +393,7 @@ public:
         r.nickname=std::string(nickname);
         r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
                      kSharedCreateBall,date.year,date.month,date.day};
-        r.ivs={15,15,15,15,15,15};
+        r.ivs={};
         r.evs={};
         r.moves[0]={kSharedCreateMove,0,std::nullopt};
         if(const auto checked=validateCreate5(r);!checked) {

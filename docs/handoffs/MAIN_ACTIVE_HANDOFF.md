@@ -6,6 +6,43 @@
 
 Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Codex milestone 3 — staged native fields and shared presentation (2026-10-21)
+
+- Work remains on `wip/codex-round4-takeover-20261021`; #307 is still
+  `58a81207e3eaef6d5070a17f4db5ab4b1ed286ea`. No legality #314 merge.
+- Implemented PK5 Language at native byte 0x17 (IDs 1–5, 7, 8), independent Keep/Review
+  replay, checksum/encryption and full SAV export. OT and nickname bytes stay unchanged.
+- New Gen I/II DVs and Gen V IVs default to zero; existing records are unchanged.
+  Gen II Special shows its two calculated stats separately; the actual shared portrait
+  now receives DV-derived Unown form. Gen III–V show all 25 nature effects, five neutral,
+  green raised/red lowered stats and +10%/−10%; HP never changes with nature.
+- Gen IV/V move Category has a separate detail line and the badge has a 12 px gutter.
+- Bag Remove uses A/B glyph choices, B cancels first, no duplicated footer. Release and
+  Backup Delete remain Y-only. Redundant Close Help / Touch Back footer labels removed,
+  with touch Back preserved. The owner-directed Bag exception is explicit in the protocol.
+- Gen III Review now includes staged inventory rows and Discard restores that inventory;
+  Gen III/IV Review returns to Trainer when entered from the Trainer card.
+- Gen V Key Item and TM/HM native staged Add/Remove are implemented, cap one, duplicate
+  refusal, Key Item warning before Add/Remove, no event flags changed. An interior empty
+  native bag slot can be reused without shifting unrelated stacks.
+- Tested: eight field/default/nature/portrait suites × GCC/Clang × normal/ASan+UBSan =
+  32 successful runs (leaks enabled). The updated actual renderer also passed GCC.
+  Classic inventory UI and Gen V bag UI passed GCC. Expanded Gen V bag/native-export tests
+  passed after enabling unique pockets, across four titles and both selected save copies.
+- The two full host compiler/sanitizer runs are still in progress; changing headers makes
+  another dependency sweep necessary before claiming a final exact-head result.
+- CG36/37/38/43/50/51/52/54/55/56 now pass and are enforced. The CG08 checker follows
+  the actual shared bag presenter instead of requiring a duplicated footer at its call site.
+  The first 70-PASS gate rerun exposed that checker limitation; the corrected rerun is pending.
+- Published Review head `c2a2e5f4027ac441b53663a515c986359de4567e` passed native
+  Switch compilation, link and packaged RomFS verification: Actions run 39532522658,
+  job 119001525925. 4267 assets, 156.6 MiB, digest bc09c152ac4232a2.
+  This is a development smoke build, not the official Round 4 audited candidate.
+- Remaining: Party Actions/native Party editing I–III; shared truthful Origin & Legality;
+  encounter-backed IV/V location context; older Trainer summary; Review parity; missed
+  older picker paths reported by CG40/41/42/44/45/46; complete gates then #307 integration,
+  one final candidate and exact-binary QA-F9. S06 stays NOT TESTED.
+
 ## 1. Where to start
 
 | Item | Value |

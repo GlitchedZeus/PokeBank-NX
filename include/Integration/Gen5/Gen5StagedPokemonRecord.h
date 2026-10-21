@@ -28,7 +28,7 @@ public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
                                 Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species, CloneBox, RemoveBox, CreateBox,
-                                Shiny, Personality };
+                                Shiny, Personality, Language };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -288,6 +288,14 @@ public:
                 if (stat != 0 || value > 255)
                     return fail("Gen V friendship must be in [0,255]");
                 candidate[0x14] = static_cast<uint8_t>(value);
+                break;
+            case Field::Language:
+                // PKHeX 6501f0ab PK5.Language: byte 0x17. Gen V supports Japanese, English,
+                // French, Italian, German, Spanish and Korean; 0/6 and later IDs are not choices.
+                if (stat != 0 || !(value == 1 || value == 2 || value == 3 || value == 4 ||
+                                   value == 5 || value == 7 || value == 8))
+                    return fail("Gen V language must be a supported native language ID");
+                candidate[0x17] = static_cast<uint8_t>(value);
                 break;
             case Field::IV: {
                 if (stat >= 6 || value > 31)

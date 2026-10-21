@@ -31,26 +31,16 @@ XFAIL: dict[str, str] = {
     "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
     "CG34-gen5-key-tm-pockets-editable": "I (NEW-17)",
     "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
-    "CG36-footer-hints-have-glyphs": "S (E05, NEW-01 remaining Close/Help footer)",
-    "CG37-no-touch-back-footer": "S (NEW-02)",
-    "CG38-bag-confirm-glyphs-a-commits": "I (NEW-03; B07 gate pin changes with it, owner-directed)",
     "CG40-held-item-picker-search": "P (NEW-06)",
     "CG41-gen2-ot-gender-inline": "P (NEW-07)",
     "CG42-ball-picker-scrollbar-gutter": "P (NEW-08)",
-    "CG43-nature-stat-colours": "R (NEW-09)",
     "CG44-met-location-compact": "P (NEW-10)",
     "CG45-selected-species-name-first": "P (NEW-11)",
     "CG46-ability-names-not-slots": "P (NEW-13)",
     "CG47-classic-trainer-playtime-pokedex": "C (NEW-18)",
     "CG48-origin-legality-truthful-state": "S (E03: no clean verdicts; one LegalityState per generation)",
     "CG49-one-origin-legality-panel": "S (E03: one shared Origin & Legality panel)",
-    "CG50-gen2-unown-portrait-follows-dvs": "R (R2-REROLL audit: Gen II Unown portrait ignores the DV letter)",
-    "CG51-gen2-special-not-slashed": "R (R2-SPECIAL)",
-    "CG52-gen45-move-category-spacing": "S (M04/M05; tripwire: 10 px badge-to-category gap, confirm against the owner screenshot)",
     "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
-    "CG54-gen5-language-editable": "R (NEW-14)",
-    "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
-    "CG56-gen2-carry-refresh-without-finalize": "C (NEW-04)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -888,6 +878,21 @@ def contracts(sources: list[Source]) -> list[Result]:
                "Every modal draws its own footer, and the covered footer is not tappable while it is open")
     modal_rx = re.compile(r"^draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*$")
     footer_rx = re.compile(r"\b(drawNavBar|drawFooter\w*|drawGlyphButton|drawControllerHints|drawPickerFooter\w*)\s*\(")
+    # Bag wrappers delegate their in-dialog choices and blank covered footer
+    # to drawConfirm. Follow that real call, rather than requiring a duplicate
+    # footer at the generation-specific call site (owner NEW-03).
+    bag_confirm = next((s for s in sources if s.rel == "include/UI/SharedBagAddPicker.h"), None)
+    shared_bag_footers = set()
+    if bag_confirm:
+        confirm_bodies = [b for _, _, b in function_bodies(bag_confirm.code, re.compile(r"^drawConfirm$"))]
+        if confirm_bodies and all(footer_rx.search(b) and STRICT_LAYER_RX.search(b) for b in confirm_bodies):
+            for n, _, b in function_bodies(bag_confirm.code, re.compile(r"^draw(?:RemoveConfirm|KeyItemWarning)$")):
+                if re.search(r"\bdrawConfirm\s*\(", b):
+                    shared_bag_footers.add(n)
+
+    def delegated_bag_footer(body):
+        return any(re.search(r"\bSharedBagAddPicker::" + n + r"\s*\(", body)
+                   for n in shared_bag_footers)
     # Strict (coordinator, 2026-10-16): clearing screen touchButtons alone leaves g_touchGlyphHits /
     # g_navHits live (the P0 #320 tap-through class), so only a real top touch layer counts.
     layer_rx = STRICT_LAYER_RX
@@ -964,7 +969,7 @@ def contracts(sources: list[Source]) -> list[Result]:
                             r.violations.append(f"{s.rel}:{ln}: {name}() routes to {target}() ({drel}), which opens no "
                                                 "beginModal / beginTopTouchLayer")
                 continue
-            if not footer_rx.search(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
+            if not footer_rx.search(body) and not delegated_bag_footer(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
             if not layer_rx.search(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() leaves the covered footer's touch targets live")

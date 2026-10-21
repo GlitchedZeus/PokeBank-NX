@@ -180,7 +180,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     p.friendship = 70;
     p.pokerus = 0;
     p.caughtData = 0;
-    applyEditableDVs(p, {8, 8, 8, 8});
+    applyEditableDVs(p, {0, 0, 0, 0});
     p.experience = minimumExpFor(p);
     return p;
 }

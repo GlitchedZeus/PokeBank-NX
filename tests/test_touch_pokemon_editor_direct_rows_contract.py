@@ -291,7 +291,8 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     assert '{{"Y", "Confirm Release"}, {"B", "Cancel"}}' in relsrc
 gen3_review = read("src/UI/Gen3SharedPokemonSurface.inc").split(
     "bool handleReview(", 1)[1].split("bool handleReleaseConfirm(", 1)[0]
-assert gen3_review.count("state.actions = true;") == 2
+assert gen3_review.count("state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;") == 2
+assert "inventory->discard();" in gen3_review and "ClassicInventory::refreshPresentation(screen)" in gen3_review
 # B exit, Discard-All arm, Discard-All cancel and confirmed discard each reset repeat state.
 assert gen3_review.count("screen.controllerNavigation.reset();") == 4
 # Review -> Discard All is two-step for Gen III and IV: the first Y only arms a

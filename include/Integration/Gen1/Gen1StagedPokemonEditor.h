@@ -28,7 +28,7 @@ struct BoxPokemonCreate {
     std::optional<uint32_t> experience;
     std::string nickname, otName;
     std::optional<uint16_t> trainerId;
-    std::array<uint8_t,4> moves{84,45,0,0}, pp{30,40,0,0}, ppUps{}, dvs{8,8,8,8};
+    std::array<uint8_t,4> moves{84,45,0,0}, pp{30,40,0,0}, ppUps{}, dvs{};
     std::array<uint16_t,5> statExperience{};
 };
 struct BattleStats {

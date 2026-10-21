@@ -219,7 +219,7 @@ struct Gen5Editor {
     static constexpr int kMaxSpecies = Fields::kMaxSpecies;
     static constexpr bool kCompactForm = true;
     static constexpr const char* kDetailReadOnly =
-        "Language and Origin are read-only for a Generation V record in this editor";
+        "Origin is read-only for a Generation V record in this editor";
     static constexpr const char* kValueReadOnly = "This Generation V value is read-only";
     static constexpr const char* kHeldItemTitle = "Held Item — Generation V";
     static constexpr const char* kMovePickerTitle = "Move — Generation V";
@@ -422,6 +422,10 @@ struct Gen5Editor {
                 EditorSurface::openPicker(screen, state, PickerTarget::HeldItem,
                                           Fields::heldItemChoices(), p.heldItem());
                 return true;
+            case Language:
+                EditorSurface::openPicker(screen, state, PickerTarget::Language,
+                                          {1,2,3,4,5,7,8}, p.language());
+                return true;
             case Friendship: {
                 const auto r = Utils::promptNumber("Friendship", p.friendship(), 0, 255);
                 if (r.accepted) stage(screen, Field::Friendship, 0, static_cast<uint32_t>(r.value));
@@ -591,6 +595,7 @@ struct Gen5Editor {
         const auto p = draft(screen).current();
         switch (target) {
             case PickerTarget::Species: return EditorSurface::dexLabel(value);
+            case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
             case PickerTarget::HeldItem:
                 return value == 0 ? "(none)" :
                     Names::machineDisplayLabel(screen.trainer.getGameGroup(), value, Names::getItemName(value));
@@ -624,6 +629,7 @@ struct Gen5Editor {
         switch (target) {
             case PickerTarget::Species: return applySpecies(screen, state, *p, value);
             case PickerTarget::HeldItem: return stage(screen, Field::HeldItem, 0, value);
+            case PickerTarget::Language: return stage(screen, Field::Language, 0, value);
             case PickerTarget::Ball: return stage(screen, Field::Ball, 0, value);
             case PickerTarget::MetLocation: return stage(screen, Field::MetLocation, 0, value);
             case PickerTarget::Pokerus: return stage(screen, Field::Pokerus, 0, value);
@@ -946,6 +952,11 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
                 // Shared Gen I-V Add (UI/SharedBagAddFlow.h): stage x1 with no keypad, or
                 // focus the existing stack; A on the row edits the quantity afterwards.
                 const uint16_t id=bag.chosenAddItem();
+                const auto rule=gen5PolicyRule(screen,bag.pocket(),id);
+                if(bag.requestAddWarning(ws,rule)) {
+                    screen.controllerNavigation.reset();
+                    return true;
+                }
                 const auto decision=bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),id),
                                                 refresh,error);
                 screen.controllerNavigation.reset();
@@ -955,10 +966,21 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
             syncBagCursor(screen);
             return true;
         }
-        case BagSurface::ConfirmRemove:
-            // Deliberate Y -> Y removal; A never removes and B always cancels.
+        case BagSurface::KeyItemAddWarning:
             if(keys&HidNpadButton_B)bag.cancel();
-            else if(keys&HidNpadButton_Y) {
+            else if(keys&HidNpadButton_A) {
+                const auto decision=bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),bag.chosenAddItem()),
+                                                refresh,error);
+                if(!error.empty())screen.postStatus(error,320);
+                else screen.postStatus(decision.message+"; event flags unchanged",300);
+                screen.controllerNavigation.reset();
+            }
+            syncBagCursor(screen);
+            return true;
+        case BagSurface::ConfirmRemove:
+            // Y opened the explicit Bag Remove question; A confirms it, B always cancels.
+            if(keys&HidNpadButton_B)bag.cancel();
+            else if(keys&HidNpadButton_A) {
                 if(!bag.confirmRemove(ws,refresh,error))screen.postStatus(error,320);
                 else screen.postStatus("Gen V item removed from staged bag ONLY; SAV5 unchanged",300);
                 screen.controllerNavigation.reset();
@@ -1706,6 +1728,7 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::NicknameText:name="Nickname";break;
         case Field::OriginalTrainerText:name="OT Name";break;
         case Field::Friendship:name="Friendship";break;
+        case Field::Language:name="Language";break;
         case Field::IV:name=std::string("IV ")+reviewedStatName(c.stat);break;
         case Field::EV:name=std::string("EV ")+reviewedStatName(c.stat);break;
         case Field::HeldItem:name="Held Item";break;
@@ -1731,6 +1754,7 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
             case Field::HeldItem: return Names::getItemName(static_cast<uint16_t>(value));
             case Field::Species: return Names::getSpeciesName(static_cast<uint16_t>(value));
             case Field::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
+            case Field::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
             case Field::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             default: return std::to_string(value);
         }
@@ -1931,9 +1955,6 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             if(!serialized.empty()) serialized+="  |  ";
             serialized+=hint.button+": "+hint.label;
         }
-        if(!G::Gen5BagScreen::mutablePocket(bag.pocket()) &&
-           G::Gen5BagScreen::available(ws))
-            serialized+="  |  Key Items/TMs view only";
         drawNavBar(fb,serialized);
         return;
     }
@@ -1958,12 +1979,23 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             // (Names::getMachineDescriptor; Lane I fills BW/B2W2 there).
             [&](int index){return Names::getMachineDescriptor(game,choices[static_cast<size_t>(index)]).moveId;},
             editorStateFor(screen).bagAddScrollbar);
+    } else if(bag.surface()==BagSurface::KeyItemAddWarning) {
+        const auto id=bag.chosenAddItem();
+        UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
+            bagItemLabel(screen,id),G::bagPocketName5(bag.pocket()),false);
+        return;
     } else {
         const auto& item=bag.pendingRemove();
+        if(item && PokeBank::UIModel::BagAdd::needsKeyItemWarning(
+                gen5PolicyRule(screen,bag.pocket(),item->itemId))) {
+            UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,item->itemId,
+                bagItemLabel(screen,item->itemId),G::bagPocketName5(bag.pocket()),true);
+            return;
+        }
         UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,game,"Remove Gen V Item?",
             item?item->itemId:0,item?bagItemLabel(screen,item->itemId):std::string(),
             item?item->count:0,"Staged bag only; Discard All in Review restores it.");
-        return; // drawRemoveConfirm draws its own Y Remove / B Cancel footer.
+        return; // The modal owns its A/B choices; do not repeat them in a footer.
     }
     drawNavBar(fb,hints);
 }

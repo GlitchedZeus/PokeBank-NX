@@ -32,6 +32,7 @@
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
+#include "UI/NatureStatPresentation.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
@@ -182,6 +183,9 @@ std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
     if (const auto* staged = editor(screen))
         for (const auto& change : staged->pendingChanges())
             rows.push_back({change.label, change.beforeValue, change.afterValue});
+    if (const auto* inventory = bridge(screen).stagedInventory())
+        for (const auto& change : inventory->pendingChanges())
+            rows.push_back({change.label, std::to_string(change.before), std::to_string(change.after)});
     return rows;
 }
 
@@ -1736,13 +1740,17 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.confirmDiscardAll = false;
         state.reviewTouchScroll.reset();
         staged->discard();
+        if (auto* inventory = bridge(screen).stagedInventory()) {
+            inventory->discard();
+            (void)ClassicInventory::refreshPresentation(screen);
+        }
         if (auto* trainer = bridge(screen).stagedTrainer()) {
             trainer->discard();
             bridge(screen).refreshStagedTrainerPresentation();
         }
         refreshPresentation(screen);
         state.review = false;
-        state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
         return true;
@@ -1958,6 +1966,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
             continue;
         }
+        if (naturePicker) {
+            fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value), Colors::Text, TextStyle::Body);
+            NatureStats::drawEffect(fb, x + 166, yy + 10, value);
+            continue;
+        }
         if (state.pickerTarget == PickerTarget::Ability) {
             // NEW-13: ability name left, its short effect right (red only for a drawback).
             const std::string label = pickerValueLabel(state, value);
@@ -2141,7 +2154,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             drawFocus(fb, midX + cell.x, yy - 5, cell.width, 30, true);
         }
         fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)],
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+                    NatureStats::statColor(p.nature, row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(midX + 126, yy, std::to_string(p.ivs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—",

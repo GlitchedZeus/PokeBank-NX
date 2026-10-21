@@ -4089,18 +4089,13 @@ namespace UI {
         // Item removal confirm: X in the Items list asks before deleting. A = Remove, B = Cancel.
         // Mirrors the storage release confirm; the delete matches the Edit Item dialog's Y-remove.
         if (itemRemoveConfirmActive) {
-            // Gen I-V: only Y removes; A and B (and Y+B together) cancel. Gen VI+ keeps A = Remove.
-            namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
-            const bool yCommits = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId);
-            int tb = touchedButtonId(touch);
-            if (tb == 1) kDown |= yCommits ? HidNpadButton_Y : HidNpadButton_A;   // tap Remove
-            else if (tb == 0) kDown |= HidNpadButton_B;                          // tap Cancel
-            const auto step = Presentation::destructiveConfirmStep(
-                (kDown & HidNpadButton_Y) != 0, (kDown & HidNpadButton_A) != 0, (kDown & HidNpadButton_B) != 0);
-            const bool commit = yCommits ? step == Presentation::DestructiveConfirm::Commit
-                                         : (kDown & HidNpadButton_A) != 0;
-            const bool cancel = yCommits ? step == Presentation::DestructiveConfirm::Cancel
-                                         : (kDown & HidNpadButton_B) != 0;
+            // Owner-directed Bag policy: A confirms this explicit question; B wins.
+            // Release and Backup Delete keep their separate Y-only confirmation handlers.
+            const int tb = touchedButtonId(touch);
+            if (tb == 1) kDown |= HidNpadButton_A;
+            else if (tb == 0) kDown |= HidNpadButton_B;
+            const bool commit = (kDown & HidNpadButton_A) && !(kDown & HidNpadButton_B);
+            const bool cancel = (kDown & HidNpadButton_B) != 0;
             if (commit) {
                 if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
                     auto& pouch = trainer.items[selectedCategory];
@@ -5166,8 +5161,7 @@ namespace UI {
         } else if (itemEditDialogActive) {
             instructions = "Left/Right: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
         } else if (itemRemoveConfirmActive) {
-            instructions = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId)
-                ? "Y: Remove  |  A/B: Cancel" : "A: Remove  |  B: Cancel";
+            instructions.clear(); // The explicit Bag Remove dialog owns its A/B glyph buttons.
         } else if (saveConfirmActive) {
             if (exitingWithUnsavedChanges && itemsShortcutActive) {
                 instructions = sourceReadOnly()
@@ -5178,7 +5172,7 @@ namespace UI {
             }
         } else if (releaseConfirmActive) {
             instructions = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId)
-                ? "Y: Release  |  A/B: Cancel" : "A: Release  |  B: Cancel";
+                ? "Y: Release  |  B: Cancel" : "A: Release  |  B: Cancel";
         } else if (details.active) {
             instructions = details.readOnly
                 ? "Arrows: Browse  |  Y: Ribbons  |  R: Legality  |  B: Back  |  Read Only"
@@ -5298,7 +5292,7 @@ namespace UI {
                     instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
                 } else if (releaseConfirmActive) {
                     instructions = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId)
-                        ? "Y: Release  |  A/B: Cancel" : "A: Release  |  B: Cancel";
+                        ? "Y: Release  |  B: Cancel" : "A: Release  |  B: Cancel";
                 } else if (currentlySelecting) {
                     instructions = "Arrows: Size Selection  |  A: Grab Group  |  X: Copy Group  |  B: Cancel";
                 } else if (carrying()) {

@@ -813,7 +813,7 @@ namespace UI {
         }
         // Both close every help window (TrainerView, AppShell); the footer says so, matching rows
         // like "-   Close help" (R2-BUG-013: modal text and footer agree).
-        drawNavBar(fb, {{"-", "Close Help"}, {"B", "Close Help"}});
+        drawNavBar(fb, {{"B", "Close Help"}});
     }
 
     // A HOME-style selectable list tile. Selection never tints the tile: the normal dark surface

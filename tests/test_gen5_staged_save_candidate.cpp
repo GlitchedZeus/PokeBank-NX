@@ -1,5 +1,6 @@
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Integration/Gen5/Gen5WorkingCopyExport.h"
+#include "Integration/Gen5/Gen5SharedPokemonSession.h"
 
 #include <algorithm>
 #include <array>
@@ -80,8 +81,34 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(!G::buildStagedSaveCandidate(ws,&error) && !error.empty());
 
     using Field=G::StagedPokemon5Record::Field;
+    {
+        G::Gen5StagedPokemonWorkspace languageWs(*parsed);
+        for (auto region : {G::Gen5StagedPokemonWorkspace::Region::Party,
+                            G::Gen5StagedPokemonWorkspace::Region::Box}) {
+            const G::Gen5StagedPokemonWorkspace::Slot location{region,0,0};
+            G::Gen5SharedPokemonSession draft;
+            assert(draft.begin(languageWs,location,G::Gen5SharedPokemonSession::Mode::Edit,error));
+            assert(draft.stage(Field::Language,0,8,error));
+            assert(!draft.back() && draft.confirmExit());
+            draft.continueEditing();
+            assert(draft.keep(languageWs,error));
+        }
+        assert(languageWs.viewParty(0)->language()==8 && languageWs.viewBox(0,0)->language()==8);
+        for (const auto& change : languageWs.pendingReview()) {
+            const auto verified=G::verifyStagedReview(change,&error);
+            assert(verified && verified->fields.size()==1 && verified->fields[0].field==Field::Language);
+        }
+        const auto languageCandidate=G::buildStagedSaveCandidate(languageWs,&error);
+        assert(languageCandidate);
+        const auto languageParsed=G::Gen5ReadOnlySave::parse(languageCandidate->bytes,game,&error,selected);
+        assert(languageParsed && languageParsed->partyPokemon(0)->language()==8 && languageParsed->boxPokemon(0,0)->language()==8);
+        languageWs.discardAll();
+        assert(languageWs.pendingReview().empty());
+        assert(std::equal(input.begin(),input.end(),languageWs.sourceSave().sourceBytes().begin()));
+    }
     assert(ws.stageParty(0,Field::Nature,0,22,&error));
     assert(ws.stageParty(0,Field::Friendship,0,128,&error));
+    assert(ws.stageParty(0,Field::Language,0,8,&error));
     assert(ws.stageParty(0,Field::Ball,0,25,&error));
     assert(ws.stageParty(0,Field::MetLevel,0,72,&error));
     assert(ws.stageParty(0,Field::TrainerId,0,65535,&error));
@@ -96,6 +123,7 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(ws.stagePartyName(0,true,"PARTY",&error));
     assert(ws.stageParty(0,Field::Species,0,26,&error));
     assert(ws.stageBoxName(0,0,false,"NXT",&error));
+    assert(ws.stageBox(0,0,Field::Language,0,1,&error));
     assert(ws.stageBox(0,0,Field::Level,0,40,&error));
     assert(ws.stageBox(0,0,Field::Experience,0,75000,&error));
     assert(ws.stageBox(0,0,Field::HeldItem,0,638,&error));
@@ -175,6 +203,8 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(candidate->exactGameId()==game);
     assert(candidate->partyPokemon(0)->nature()==22);
     assert(candidate->partyPokemon(0)->friendship()==128);
+    assert(candidate->partyPokemon(0)->language()==8);
+    assert(candidate->boxPokemon(0,0)->language()==1);
     assert(candidate->partyPokemon(0)->ball()==25);
     assert(candidate->partyPokemon(0)->metLevel()==72);
     assert(candidate->partyPokemon(0)->originalTrainerGender()==0);

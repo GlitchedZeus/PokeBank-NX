@@ -1,6 +1,7 @@
 #include <iterator>
 #include <fstream>
 #include "UI/Gen2WorkspacePresentation.h"
+#include "UI/NatureStatPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
 #include <algorithm>
@@ -12,6 +13,7 @@ namespace {
 struct Text { int x, y, w, h; std::string value; UI::Color color; };
 std::vector<Text> texts;
 std::vector<std::pair<uint16_t, bool>> sprites;
+std::vector<uint8_t> spriteForms;
 // The native framebuffer clips extra rows for smooth touch scrolling. The
 // renderer test double must record only visible pixels, not every drawText call.
 bool clipActive = false;
@@ -50,6 +52,9 @@ void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
+Sprite* SpriteManager::getSprite(uint16_t species, uint8_t form, bool shiny) {
+    sprites.emplace_back(species,shiny); spriteForms.push_back(form); return nullptr;
+}
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 // Shared Gen II held-item picker optionally renders matching ROMFS artwork.
 // This isolated render host test deliberately has no image/assets backend.
@@ -60,6 +65,27 @@ Sprite* SpriteManager::getIconSprite(uint16_t, bool) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;
+    UI::SharedPokemonShell::drawPortrait(fb,0,0,201,true,23);
+    assert(sprites.back() == std::make_pair(uint16_t{201},true) && spriteForms.back() == 23);
+    UI::SharedPokemonShell::drawPortrait(fb,0,0,25,false);
+    assert(spriteForms.back() == 0);
+    sprites.clear(); spriteForms.clear(); texts.clear();
+    const auto sameColor = [](UI::Color a, UI::Color b) {
+        return a.r==b.r && a.g==b.g && a.b==b.b && a.a==b.a;
+    };
+    for (unsigned nature=0;nature<25;++nature) {
+        texts.clear();
+        UI::NatureStats::drawEffect(fb,0,0,nature);
+        if (PokeBank::UIModel::NatureStatEffect::neutral(nature)) {
+            assert(texts.size()==1 && texts[0].value.find("Neutral")!=std::string::npos);
+        } else {
+            assert(texts.size()==2 && texts[0].value.starts_with("+10%") && texts[1].value.starts_with("-10%"));
+            assert(sameColor(texts[0].color,UI::Colors::Success) && sameColor(texts[1].color,UI::Colors::Error));
+            assert(!intersects(texts[0],texts[1]));
+        }
+        assert(sameColor(UI::NatureStats::statColor(nature,0,UI::Colors::TextDim),UI::Colors::TextDim));
+    }
+    texts.clear();
     namespace G = PokeVault::Integration::Gen2;
     namespace W = PokeBank::UIModel::Gen2Workspace;
     G::PokemonRecord p{};

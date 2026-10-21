@@ -340,7 +340,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);
 
     if (view) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else if (foundationStateFor(screen).editExitConfirm) {
         // The exit dialog is modal: its footer offers exactly the dialog's own B/Y/A, so a
         // footer tap (mapped to that button) never reads as a workspace edit shortcut.

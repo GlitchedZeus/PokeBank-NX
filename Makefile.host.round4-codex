@@ -1,5 +1,15 @@
 HOST_TESTS += $(HOST_BUILD)/test_classic_staged_exit
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_staged_exit_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_nature_stat_effect
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_nature_stat_effect_sanitize
+host-test: $(HOST_BUILD)/test_nature_stat_effect
+host-sanitize: $(HOST_BUILD)/test_nature_stat_effect_sanitize
+$(HOST_BUILD)/test_nature_stat_effect: tests/test_nature_stat_effect.cpp include/UI/NatureStatEffect.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_nature_stat_effect_sanitize: tests/test_nature_stat_effect.cpp include/UI/NatureStatEffect.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
 .PHONY: round4-contract-mutations
 qa-tools-test: round4-contract-mutations
 round4-contract-mutations:

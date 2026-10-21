@@ -577,7 +577,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"B", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});

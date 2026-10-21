@@ -58,7 +58,7 @@ struct UX2State {
     uint8_t tempMove = 0;
     uint8_t tempPP = 0;
     uint8_t tempPPUps = 0;
-    std::array<uint8_t,4> tempDVs{8,8,8,8};
+    std::array<uint8_t,4> tempDVs{};
     std::array<uint16_t,5> tempStatExperience{};
 
     int cloneBox = 0;

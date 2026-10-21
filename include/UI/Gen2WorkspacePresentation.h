@@ -22,7 +22,7 @@ inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p) {
 // engine/pokemon/move_mon.asm CalcMonStats). The Special row therefore shows both real numbers.
 inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
     if (row >= 0 && row < 4) return std::to_string(battle[static_cast<std::size_t>(row)]);
-    return std::to_string(battle[4]) + "/" + std::to_string(battle[5]);
+    return {}; // Separate labelled Sp. Atk / Sp. Def cells below; one shared native Special DV.
 }
 struct DataRow { std::string label, value; };
 inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {

@@ -63,7 +63,7 @@ struct BoxPokemonCreate {
     std::array<uint8_t, 4> moves{};
     std::array<uint8_t, 4> pp{};
     std::array<uint8_t, 4> ppUps{};
-    std::array<uint8_t, 4> dvs{8, 8, 8, 8};
+    std::array<uint8_t, 4> dvs{};
     std::array<uint16_t, 5> statExperience{};
     uint8_t friendship = 70;
     uint8_t pokerus = 0;
