@@ -27,6 +27,11 @@ bool handleTrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t hel
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             return editor->stageTrainerEdit(name, money, error);
+        }, [&] {
+            auto& state = editorOverlayState(screen);
+            state.active = true;
+            state.review = true;
+            state.reviewRow = 0;
         });
 }
 } // namespace

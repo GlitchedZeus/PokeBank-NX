@@ -7,6 +7,8 @@
 
 #include "Names/ItemPouches.h"
 #include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
+#include "UI/ClassicTrainerSession.h"
+#include "UI/ClassicStagedExit.h"
 #include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
 #include "UI/ClassicTrainerEditability.h"  // Trainer page footer: A Edit only when Name / Money are editable
 #include "UI/Gen4BagQuantity.h"        // Gen IV bag footer: one per-item quantity query
@@ -517,6 +519,13 @@ namespace UI {
             infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
             infoRow("Full TID", std::to_string(t.TID));
             infoRow("Full SID", std::to_string(t.SID));
+        }
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        if (generation >= 1 && generation <= 4) {
+            const int bx = cardX + cardW - 240, by = y + h - 60;
+            drawGlyphButton(fb, bx, by, 240, 48, "Y", "Review Changes");
+            screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
+                bx, by, 240, 48});
         }
     }
 
@@ -3075,11 +3084,12 @@ namespace UI {
         // Handle save confirmation dialog
         if (saveConfirmActive) {
             if (exitingWithUnsavedChanges) {
+                const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(sourceGameId);
                 // Product Home -> Items has a dedicated escape-safe contract:
                 // mutable app-owned working copy: A saves that copy + Home, Y discards + Home,
                 // B keeps editing. Immutable external source: A discards + Home, B keeps editing.
                 // Neither discard path writes the live/source save.
-                if (itemsShortcutActive) {
+                if (itemsShortcutActive && generation > 4) {
                     const bool canSaveWorkingCopy = !sourceReadOnly();
                     const int td = touchedButtonId(touch);
                     if (td == 0) kDown |= HidNpadButton_B;
@@ -3117,6 +3127,30 @@ namespace UI {
                         exitingViaPlus = false;
                         exitAfterSave = false;
                         return;
+                    }
+                    return;
+                }
+                if (generation >= 1 && generation <= 4) {
+                    namespace Exit = PokeBank::UIModel::ClassicStagedExit;
+                    const auto action = Exit::choose(kDown & HidNpadButton_A, kDown & HidNpadButton_B,
+                        kDown & HidNpadButton_X, kDown & HidNpadButton_Y, touchedButtonId(touch));
+                    if (action == Exit::Action::Review || action == Exit::Action::ExportCopy) {
+                        if (!openStagedReview(action == Exit::Action::ExportCopy))
+                            postStatus("This source has no staged Review workspace", 300);
+                        return;
+                    }
+                    if (action == Exit::Action::ContinueEditing) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                    } else if (action == Exit::Action::DiscardExit) {
+                        // Closing disposes the app-owned staged session; no source is written.
+                        saveConfirmActive = false;
+                        goBack = true;
+                        if (exitingViaPlus) exitRequested = true;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
                     }
                     return;
                 }

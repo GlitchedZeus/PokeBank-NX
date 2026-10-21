@@ -767,6 +767,10 @@ bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t
             if (name != editor->trainerName() && !editor->stageTrainerName(name, error)) return false;
             if (money != editor->money() && !editor->stageMoney(money, error)) return false;
             return true;
+        }, [&] {
+            auto& state = ux2StateFor(screen);
+            state.mode = UX2Mode::Review;
+            state.reviewRow = 0;
         });
 }
 

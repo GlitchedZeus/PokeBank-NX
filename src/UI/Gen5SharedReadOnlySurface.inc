@@ -1725,7 +1725,17 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::MovePP:name="PP "+std::to_string(c.stat+1);break;
         default:name="Unsupported";break;
     }
-    return name+": "+std::to_string(c.before)+" -> "+std::to_string(c.after);
+    const auto display = [&](uint32_t value) -> std::string {
+        switch (c.field) {
+            case Field::Move: return Names::getMoveName(static_cast<uint16_t>(value));
+            case Field::HeldItem: return Names::getItemName(static_cast<uint16_t>(value));
+            case Field::Species: return Names::getSpeciesName(static_cast<uint16_t>(value));
+            case Field::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
+            case Field::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
+            default: return std::to_string(value);
+        }
+    };
+    return name+": "+display(c.before)+" -> "+display(c.after);
 }
 void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 const ScreenState& state,

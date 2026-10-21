@@ -1,6 +1,7 @@
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
 #include "Names/SpeciesNames.h"
+#include "Names/MoveNames.h"
 #include <algorithm>
 
 namespace PokeVault::Integration::Gen1 {
@@ -159,7 +160,7 @@ void StagedPokemonEditor::rebuildChanges() {
         const char* stats[]{"HP","Attack","Defense","Speed","Special"};
         for(size_t i=0;i<4;++i) {
             auto n=std::to_string(i+1);
-            number("move"+n,"Move "+n,a->moves[i],z->moves[i]);
+            add("move"+n,"Move "+n,Names::getMoveName(a->moves[i]),Names::getMoveName(z->moves[i]));
             number("pp"+n,"PP "+n,a->pp[i],z->pp[i]);
             number("ups"+n,"PP Ups "+n,a->ppUps[i],z->ppUps[i]);
             number("dv"+n,std::string(stats[i+1])+" DV",a->dvs[i+1],z->dvs[i+1]);

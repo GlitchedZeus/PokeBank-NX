@@ -3,6 +3,7 @@
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "Names/SpeciesNames.h"
+#include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
@@ -882,7 +883,7 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     const std::string prefix = "box:" + std::to_string(box) + ":" + std::to_string(slot) + ":";
     const std::string labelPrefix = "Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) + " ";
     if (before.species != verified->species)
-        setChange(prefix + "species", labelPrefix + "Species", std::to_string(before.species), std::to_string(verified->species));
+        setChange(prefix + "species", labelPrefix + "Species", Names::getSpeciesName(before.species), Names::getSpeciesName(verified->species));
     if (before.nickname != verified->nickname)
         setChange(prefix + "nickname", labelPrefix + "Nickname", before.nickname, verified->nickname);
     if (before.level != verified->level || before.experience != verified->experience)
@@ -892,8 +893,10 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     if (before.heldItem != verified->heldItem)
         setChange(prefix + "held", labelPrefix + "Held Item", std::string(gen2ItemName(before.heldItem)),
                   verified->heldItem == 0 ? "NONE" : std::string(gen2ItemName(verified->heldItem)));
-    if (before.moves != verified->moves)
-        setChange(prefix + "moves", labelPrefix + "Moves", array4(before.moves), array4(verified->moves));
+    for (size_t i = 0; i < before.moves.size(); ++i)
+        if (before.moves[i] != verified->moves[i])
+            setChange(prefix + "move" + std::to_string(i), labelPrefix + "Move " + std::to_string(i + 1),
+                Names::getMoveName(before.moves[i]), Names::getMoveName(verified->moves[i]));
     if (before.pp != verified->pp || before.ppUps != verified->ppUps)
         setChange(prefix + "pp", labelPrefix + "Move PP", array4(before.pp), array4(verified->pp));
     if (editableDVs(before) != editableDVs(*verified))

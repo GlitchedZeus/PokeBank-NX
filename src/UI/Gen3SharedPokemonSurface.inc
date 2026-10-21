@@ -1718,7 +1718,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
-        state.actions = true; // Restore the same popup and focused Review command.
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -2522,7 +2522,7 @@ bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexce
         !screen.carrying() && !screen.currentlySelecting;
 }
 
-bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64 held,
                           int stickX, int stickY, const TouchInput& touch) {
     if (!trainerMainPage(screen, state)) return false;
     auto& trainerBridge = bridge(screen);
@@ -2541,6 +2541,10 @@ bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 dow
             if (!trainer->stage(name, money, error)) return false;
             trainerBridge.refreshStagedTrainerPresentation();
             return true;
+        }, [&] {
+            state.review = true;
+            state.reviewScroll = 0;
+            state.reviewTouchScroll.reset();
         });
 }
 

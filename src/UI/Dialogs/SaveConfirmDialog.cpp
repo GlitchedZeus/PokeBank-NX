@@ -36,7 +36,13 @@ namespace Dialogs {
         PokeBank::UIModel::SharedEditorPresentation::Footer classicSaveConfirmFooter(
             const TrainerViewScreen& screen) {
             PokeBank::UIModel::SharedEditorPresentation::Footer footer;
-            if (screen.exitingWithUnsavedChanges && screen.itemsShortcutActive) {
+            const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+            if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+                footer.push("A", "Review Changes");
+                footer.push("B", "Continue Editing");
+                footer.push("Y", "Discard & Exit");
+                footer.push("X", "Export Copy");
+            } else if (screen.exitingWithUnsavedChanges && screen.itemsShortcutActive) {
                 footer.push("B", "Keep Editing");
                 if (!screen.sourceReadOnly()) {
                     footer.push("Y", "Discard & Home");
@@ -70,6 +76,22 @@ namespace Dialogs {
     namespace {
     void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         constexpr int w = kSaveDiscard.width;
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+            constexpr int cw = 840, ch = 330, pad = 28, gap = 16, bh = 60;
+            constexpr int bw = (cw - 2 * pad - gap) / 2;
+            const int x = (fb.getWidth() - cw) / 2, y = (fb.getHeight() - ch) / 2;
+            const int textY = drawDialogFrame(fb, x, y, cw, ch, "Unsaved Changes", Colors::Warning);
+            fb.drawText(x + pad, textY, "Your edits are staged. The original save stays unchanged.", Colors::Text);
+            fb.drawText(x + pad, textY + 32, "Review them, export a separate copy, or continue editing.", Colors::TextDim);
+            screen.touchButtons.clear();
+            const int row = y + ch - 2 * bh - gap - 20;
+            drawEditChoiceButton(screen, fb, x + pad, row, bw, bh, "A", "Review Changes", 2);
+            drawEditChoiceButton(screen, fb, x + pad + bw + gap, row, bw, bh, "B", "Continue Editing", 0);
+            drawEditChoiceButton(screen, fb, x + pad, row + bh + gap, bw, bh, "X", "Export Copy", 3);
+            drawEditChoiceButton(screen, fb, x + pad + bw + gap, row + bh + gap, bw, bh, "Y", "Discard & Exit", 1);
+            return;
+        }
 
         // Exiting with unsaved changes is a different question ("throw these away?"), not a
         // destination choice, so it keeps the plain two-button form. Any nonzero titleId is a native

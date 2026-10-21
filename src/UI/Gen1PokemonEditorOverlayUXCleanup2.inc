@@ -746,7 +746,11 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return; }
+        if (down & HidNpadButton_B) {
+            state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
+            state.row = 0;
+            return;
+        }
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);

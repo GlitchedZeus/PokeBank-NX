@@ -526,6 +526,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
             state.reviewRow = (state.reviewRow + 1) % changeCount;
         if (down & HidNpadButton_B) {
             state.review = false;
+            if (screen.selectedMode == TrainerViewScreen::ViewMode::Trainer) state.active = false;
             return;
         }
         if (down & HidNpadButton_Y) {

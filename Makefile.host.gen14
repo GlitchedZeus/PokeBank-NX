@@ -195,7 +195,7 @@ $(HOST_BUILD)/test_gen1_list_fit_sanitize: $(GEN1_LIST_FIT_SOURCES) include/UI/G
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@
 
-GEN2_MOVES_PANEL_SOURCES := tests/test_gen2_moves_panel.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Names/MoveNames.cpp src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
+GEN2_MOVES_PANEL_SOURCES := tests/test_gen2_moves_panel.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
 GEN2_MOVES_PANEL_DEPS := include/UI/Gen2MovesPanel.h include/UI/ClassicMovesPanel.h include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc
 HOST_TESTS += $(HOST_BUILD)/test_gen2_moves_panel
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_moves_panel_sanitize
@@ -317,7 +317,8 @@ GEN12_PACKED_MOVE_SOURCES := tests/test_gen12_packed_move.cpp \
 	src/Integration/Gen2/Gen2PackedMove.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
 	src/Pokemon/Experience.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
-	src/Names/SpeciesNames.cpp
+	src/Names/SpeciesNames.cpp \
+	src/Names/MoveNames.cpp
 GEN12_PACKED_MOVE_DEPS := include/UI/Gen1PokemonEditorUIContract.h include/UI/NarrowPokemonActionMenu.h \
 	src/UI/ClassicPackedMoveOverlay.inc src/UI/ClassicReleaseActionFix.inc \
 	src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc src/UI/Gen1PokemonEditorOverlayUX.inc
@@ -340,7 +341,8 @@ GEN2_BOX_MOVE_SOURCES := tests/test_gen2_box_move_presentation.cpp \
 	src/Integration/Gen2/Gen2ExportTransaction.cpp src/Utils/SHA256.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp src/Pokemon/BaseStatsGen89.cpp \
 	src/Pokemon/PersonalInfoTable.cpp src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp \
-	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Names/MoveNames.cpp
 GEN2_BOX_MOVE_DEPS := include/Legacy/GSCReadOnlyTrainer.h include/Integration/Gen2/Gen2StagedEditor.h \
 	tests/fixtures/gsc_pokemon_fixture.h
 HOST_TESTS += $(HOST_BUILD)/test_gen2_box_move_presentation

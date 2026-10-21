@@ -1178,7 +1178,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     }
     if (down & HidNpadButton_B) {
         state.review = false;
-        state.actions = true;
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -2198,7 +2198,7 @@ bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexce
         !screen.carrying() && !screen.currentlySelecting;
 }
 
-bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64 held,
                           int stickX, int stickY, const TouchInput& touch) {
     if (!trainerMainPage(screen, state)) return false;
     auto* staged = editor(screen);
@@ -2216,6 +2216,9 @@ bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 dow
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             return trainer.stage(name, money, error) && refreshPresentation(screen);
+        }, [&] {
+            state.review = true;
+            state.actions = false;
         });
 }
 

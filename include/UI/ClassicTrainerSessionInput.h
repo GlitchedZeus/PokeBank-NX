@@ -23,13 +23,19 @@ struct Fields {
 };
 
 // Returns true when it consumed the frame. stage(name, money, error) -> bool.
-template <class Stage>
+template <class Stage, class Review>
 bool handle(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
-            const TouchInput& touch, const Fields& fields, Stage&& stage) {
+            const TouchInput& touch, const Fields& fields, Stage&& stage, Review&& review) {
     using PokeBank::UIModel::ClassicTrainerSession::kRows;
     screen.trainer.trainerName = fields.name;
     screen.trainer.money = fields.money;
     const int touched = screen.touchedButtonId(touch);
+    if (!(down & HidNpadButton_B) && ((down & HidNpadButton_Y) ||
+        touched == PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId)) {
+        review();
+        screen.controllerNavigation.reset();
+        return true;
+    }
     if (touched >= 0 && touched < kRows) {
         screen.trainerSelectedRow = touched;
         down |= HidNpadButton_A;

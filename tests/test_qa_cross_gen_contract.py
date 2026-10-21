@@ -28,9 +28,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
     # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
-    "CG30-trainer-page-opens-review": "C (R2-TRAINER, R2-BUG-002)",
-    "CG31-classic-exit-offers-review": "C (NEW-19, R2-BUG-002)",
-    "CG32-review-rows-readable-names": "C (R2-REVIEWMOVE)",
     "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
     "CG34-gen5-key-tm-pockets-editable": "I (NEW-17)",
     "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
@@ -54,8 +51,6 @@ XFAIL: dict[str, str] = {
     "CG54-gen5-language-editable": "R (NEW-14)",
     "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
     "CG56-gen2-carry-refresh-without-finalize": "C (NEW-04)",
-    "CG59-backup-browser-actions": "L (R2-EMUBACKUP, C07)",
-    "CG60-no-backup-on-unchanged-open": "L (S05 / R2-EMUBACKUP; reverses the pinned auto-backup-on-open design, owner directive)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -670,6 +665,12 @@ def round4_p0_contracts(sources):
         for ln, body, off in found:
             reach = [(body, off)] + [(b2, o2) for c in callees(body) for _, b2, o2 in defs(GSC, c)]
             for b, o in reach:
+                # NEW-04's implemented ternary uses presentationBytes only while carrying;
+                # finalizedBytes remains valid on the explicitly non-carry branch. Any unguarded
+                # or inverted call still fails, as does removing finalize's carry refusal above.
+                b = re.sub(r"\b\w+\s*->\s*packedMoveActive\s*\(\s*\)\s*\?\s*"
+                           r"\w+\s*->\s*presentationBytes\s*\([^)]*\)\s*:\s*"
+                           r"\w+\s*->\s*finalizedBytes\s*\([^)]*\)", "", b)
                 m = re.search(r"\bfinalizedBytes\s*\(", b)
                 if m:
                     r.violations.append(f"{GSC}:{line_of(GSC, o + m.start())}: {name}() rebuilds the box view from "
@@ -777,7 +778,9 @@ def round4_p0_contracts(sources):
     else:
         if not reaches(blk, r"\bselectCurrentTitle\s*\(|\btitleSelected\s*=\s*true\b", depth=2):
             r.violations.append(f"{SS}:{bl}: Backups browser cannot open/browse the current save (A only sets a notice)")
-        if not reaches(blk, WRITE, depth=2):
+        # update -> createEmulatorBackup -> createBackup -> writeAll. Follow the real copy
+        # boundary, rather than requiring fopen/fwrite directly inside the screen handler.
+        if not reaches(blk, WRITE, depth=3):
             r.violations.append(f"{SS}:{bl}: Backups browser has no deliberate Create Backup action "
                                 "(no path reaches a file write; rows are only listed export records)")
     res.append(r)

@@ -1,3 +1,4 @@
+#include "Names/ItemNames.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedEditorPresentation.h"
@@ -540,7 +541,7 @@ std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     }
     if (auto* inv = trainer->stagedInventory()) {
         for (const auto& change : inv->pendingChanges()) {
-            out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
+            out.push_back(std::string(Names::getItemNameG1(change.itemId)) + ": " +
                 std::to_string(change.before) + " -> " + std::to_string(change.after));
         }
     }

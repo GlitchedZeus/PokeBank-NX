@@ -1,0 +1,14 @@
+HOST_TESTS += $(HOST_BUILD)/test_classic_staged_exit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_staged_exit_sanitize
+.PHONY: round4-contract-mutations
+qa-tools-test: round4-contract-mutations
+round4-contract-mutations:
+	python3 tests/test_round4_backup_contract_mutations.py
+host-test: $(HOST_BUILD)/test_classic_staged_exit
+host-sanitize: $(HOST_BUILD)/test_classic_staged_exit_sanitize
+$(HOST_BUILD)/test_classic_staged_exit: tests/test_classic_staged_exit.cpp include/UI/ClassicStagedExit.h include/UI/ClassicTrainerSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_classic_staged_exit_sanitize: tests/test_classic_staged_exit.cpp include/UI/ClassicStagedExit.h include/UI/ClassicTrainerSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
