@@ -171,6 +171,17 @@ void runGame(SourceGame game, Family family) {
         const auto immutable=source;
         std::string error;auto editor=StagedPokemonEditor::create(source,game,error);assert(editor);
         const auto before=editor->partyPokemon(0,error);assert(before);
+        {
+            auto unusual=source;unusual[body+0x54]=77;
+            unusual[body+0x56]=3;unusual[body+0x57]=0;
+            unusual[body+0x58]=0;unusual[body+0x59]=0;
+            write16(unusual,sector+0xFF6,Detail::sectorChecksum(std::span<const uint8_t>(unusual).subspan(sector,Detail::kChunkLengths[1])));
+            auto metadataOnly=StagedPokemonEditor::create(unusual,game,error);assert(metadataOnly);
+            BoxPokemonEdit friendship;friendship.friendship=99;
+            assert(metadataOnly->stagePartyPokemonEdit(0,friendship,error));
+            const auto bytes=metadataOnly->finalizedBytes(error);assert(!bytes.empty());
+            assert(std::equal(unusual.begin()+body+80,unusual.begin()+body+100,bytes.begin()+body+80));
+        }
         BoxPokemonEdit edit;edit.level=50;edit.nickname="PARTY";edit.ivs=std::array<uint8_t,6>{31,30,29,28,27,26};
         edit.moves=std::array<uint16_t,4>{85,0,0,0};
         edit.pp=std::array<uint8_t,4>{15,0,0,0};edit.ppUps=std::array<uint8_t,4>{0,0,0,0};

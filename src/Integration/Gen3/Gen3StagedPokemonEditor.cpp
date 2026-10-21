@@ -601,12 +601,18 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
         return false;
     }
 
-    if(party) pokemon.setStatHPCurrent(originalHP==0?0:originalHP>=originalMax?pokemon.statHPMax():
-                                       std::min(originalHP,pokemon.statHPMax()));
+    const bool partyStatsChanged=before->species!=pokemon.speciesID() || before->experience!=pokemon.exp() ||
+        before->ivs!=ivs(pokemon) || before->evs!=evs(pokemon) || before->nature!=pokemon.nature();
+    if(party && partyStatsChanged)
+        pokemon.setStatHPCurrent(originalHP==0?0:originalHP>=originalMax?pokemon.statHPMax():
+                                std::min(originalHP,pokemon.statHPMax()));
     std::vector<uint8_t> replacement(raw.size());
     auto* encrypted=Encryption::encryptArray3FRLG(pokemon.getData());
     std::memcpy(replacement.data(),encrypted,replacement.size());
     delete[] encrypted;
+    // A name, item, friendship or PID edit with unchanged stat inputs must not repair
+    // unrelated unusual cached bytes merely because a PK3 setter recalculated them.
+    if(party && !partyStatsChanged)std::copy(raw.begin()+80,raw.end(),replacement.begin()+80);
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
     bool written=false;

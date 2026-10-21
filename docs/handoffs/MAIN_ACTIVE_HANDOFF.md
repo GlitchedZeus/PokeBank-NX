@@ -33,6 +33,13 @@ Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized appli
   alongside existing boxed/native-export tests. Expanded semantic Review checks are rerunning.
   The actual shared Party coordinator passed all four actions by both controller and touch
   for Gen I/II/III, unsupported/empty targets and simultaneous A+B cancellation priority.
+- Party checkpoint `c81853da370c335c77a532a1f9bc77cf5d50ff10` is pushed and remote-verified.
+  Four focused suites × GCC/Clang × normal/ASan+UBSan = 16 PASS, leak detection enabled.
+  Native run 39689447670 is compiling this Party checkpoint.
+- Follow-up review found a preservation edge: PK3 metadata/PID setters may refresh cached
+  Party stats even when their inputs are unchanged. The new follow-up restores all 20 cached
+  bytes exactly in that case. A friendship-only edit with unusual cache bytes now has a
+  regression case; the clean full-suite runs must cover this follow-up.
 - Candidate source contracts now have ZERO violations; CG33's XFAIL is removed. The 70-owner-
   PASS regression gate (196 guards) and repository safety passed during this milestone.
   Nineteen broken-path shared controls are running; full focused GCC/Clang + sanitizers,
