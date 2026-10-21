@@ -21,7 +21,7 @@ def mutate(path,old,new):
     return result
 
 baseline={r.cid[:4]:r.violations for r in qa.contracts(sources)}
-for cid in ('CG08','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49'):
+for cid in ('CG08','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49','CG53'):
     assert not baseline[cid],(cid,baseline[cid])
 assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',', 20, refilter)',', 20, nullptr)'), 'CG40')
 assert check(mutate('src/UI/Gen2UnifiedPokemonWorkspace.inc','Selector::nextOtGender(','Selector::missingGender('),'CG41')
@@ -36,4 +36,13 @@ assert check(mutate('include/UI/SharedEditorChrome.h','drawNavBar(fb,{{"B","Back
 assert check(mutate('src/UI/Gen4SharedPokemonSurface.inc','SharedEditorChrome::drawReviewPanel(','SharedEditorChrome::missingReviewPanel('),'CG35')
 assert check(mutate('include/UI/SharedReviewPresentation.h','out.push("X","Export Copy")','out.push("X","Wrong export")'),'CG35')
 assert check(mutate('include/UI/SharedEditorChrome.h','beginModal(buttons);',';'),'CG35')
-print('Round 4 shared source contracts: real paths pass; eleven broken-path controls fail PASS')
+assert check(mutate('src/UI/Gen4SharedPokemonSurface.inc','Surface::openContextualMetLocationPicker(',
+    'Surface::missingContextualPicker('),'CG53')
+assert check(mutate('src/UI/Gen5SharedReadOnlySurface.inc','state.pickerMetContext.detail(value,',
+    'std::to_string(p->metLevel()) + ignored(value,'),'CG53')
+assert check(mutate('include/Integration/Encounter/EncounterContext45.h',
+    'for (const auto& entry : kWild45)','for (const auto& entry : missingData)'),'CG53')
+assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',
+    'state.pickerMetContext.choices(state.pickerOtherHistories)',
+    'state.pickerMetContext.choices(false)'),'CG53')
+print('Round 4 shared source contracts: real paths pass; fifteen broken-path controls fail PASS')

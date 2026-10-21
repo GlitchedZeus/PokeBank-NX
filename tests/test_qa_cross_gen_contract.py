@@ -29,7 +29,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
     "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
-    "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -472,7 +471,8 @@ def round4_p2_contracts(sources):
         for m in re.finditer(r'"\s*\|\s*Met Lv\.\s*"\s*\+\s*std::to_string\(\s*\w+\s*->\s*metLevel\(\)\s*\)', s.code):
             r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: every location row shows the record's "
                                 "current Met Lv. (not an encounter level)")
-    data = src("include/Integration/Encounter/EncounterGuardrailsData.inc")
+    # Follow the isolated IV/V context catalogue; legacy II/III guardrails stay unchanged.
+    data = src("include/Integration/Encounter/EncounterContext45Data.inc")
     games = {"Gen IV": ("diamond_nds", "pearl_nds", "platinum_nds", "heartgold_nds", "soulsilver_nds"),
              "Gen V": ("black_nds", "white_nds", "black2_nds", "white2_nds")}
     have = {lit for _, lit in data.literals} if data else set()
@@ -480,7 +480,7 @@ def round4_p2_contracts(sources):
         missing = [i for i in ids if i not in have]
         if missing:
             r.violations.append(f"{g}: no encounter templates for {', '.join(missing)} "
-                                "(EncounterGuardrailsData.inc), so no Met Location row can be marked encounter-backed")
+                                "(EncounterContext45Data.inc), so no Met Location row can be marked encounter-backed")
     g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
     body4 = "".join(b for _, _, b in function_bodies(g4.code, re.compile(r"^openMetLocationPicker$"))) if g4 else ""
     if "isGen4NativeMetLocation" not in body4:
@@ -488,8 +488,23 @@ def round4_p2_contracts(sources):
     g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
     if g5 and "metLocationChoices()" not in g5.code:
         r.violations.append("Gen V: Met Location picker no longer offers every native location (false rejection)")
-    if not any(re.search(r"EncounterGuardrails", s.code) for s in g45):
-        r.violations.append("Gen IV/V Met Location picker never consults EncounterGuardrails")
+    shared = src("src/UI/SharedPokemonEditorSurface.inc")
+    context = src("include/Integration/Encounter/EncounterContext45.h")
+    for s in g45:
+        if "openContextualMetLocationPicker(" not in s.code or "pickerMetContext.detail(value," not in s.code:
+            r.violations.append(f"{s.rel}: Met Location does not use the real contextual picker and row details")
+    for s, tokens in ((shared, ("EncounterContext45::Catalogue context(", "context.choices()",
+                        "state.pickerMetContext.choices(state.pickerOtherHistories)",
+                        "pickerMetContext.stored()", "!unchangedLocation && !A::applyPicker")),
+                      (context, ('#include "Integration/Encounter/EncounterContext45Data.inc"',
+                                 "for (const auto& entry : kWild45)", "ancestry(generation(origin), species)",
+                                 "native_.push_back(stored)", '"Gift / static / other history; unverified"'))):
+        if not s:
+            r.violations.append("Missing real Gen IV/V contextual picker/catalogue")
+        else:
+            for token in tokens:
+                if token not in s.code:
+                    r.violations.append(f"{s.rel}: missing encounter-context behavior {token}")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------

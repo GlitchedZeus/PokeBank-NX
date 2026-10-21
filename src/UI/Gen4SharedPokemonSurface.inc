@@ -665,23 +665,17 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
             "Met Location editing is read-only for transferred non-Gen-IV origins", 300);
         return;
     }
-    state.valuePicker = true;
-    state.pickerScroll.reset();
-    state.pickerViewport.reset();
-    state.pickerTarget = PickerTarget::MetLocation;
-    state.pickerValues.clear();
+    std::vector<uint16_t> native;
     const auto table = Names::getLocationTable(record.originVersion());
     for (size_t id = 0; id < table.count && id <= 0xFFFFu; ++id)
         if (table.names && table.names[id] && table.names[id][0] != '\0' &&
             Names::isGen4NativeMetLocation(
                 record.originVersion(), static_cast<uint16_t>(id)))
-            state.pickerValues.push_back(static_cast<uint16_t>(id));
+            native.push_back(static_cast<uint16_t>(id));
     Pokemon::Pokemon4ReadOnlyView view(record);
     const uint16_t current = view.metLocation();
-    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
-    state.pickerRow = it == state.pickerValues.end() ? 0 :
-        static_cast<int>(std::distance(state.pickerValues.begin(), it));
-    screen.controllerNavigation.reset();
+    Surface::openContextualMetLocationPicker(screen, state, record.originVersion(), record.species(),
+        current, std::move(native), {view.eggLocation(), view.isEgg(), record.fatefulEncounter()});
 }
 
 void openFormPicker(TrainerViewScreen& screen, State& state) {
@@ -1224,8 +1218,9 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         std::string label = preview
             ? Names::getMetLocationDisplayName(preview->originVersion(), value)
             : std::string("Unknown location");
-        if (preview)
-            label += "  |  Met Lv. " + std::to_string(preview->metLevel());
+        if (state.pickerMetContextActive)
+            label += "  |  " + state.pickerMetContext.detail(value,
+                [](uint16_t species) { return Names::getSpeciesName(species); });
         return label;
     }
     if (target == PickerTarget::Pokerus)

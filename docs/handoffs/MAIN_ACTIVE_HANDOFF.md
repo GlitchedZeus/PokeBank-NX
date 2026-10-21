@@ -6,6 +6,38 @@
 
 Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Codex milestone 6 — honest Gen IV/V Met Location context (2026-10-21)
+
+- Baseline `e061f03c1c2b1bd4b5077eda2a2d2b2eb8234ac8` is pushed and remote-verified.
+  #307 is still `58a81207`; work stays on `wip/codex-round4-takeover-20261021`.
+- Gen IV/V now share a contextual picker. Default rows contain the stored location plus
+  species / ancestor wild-source examples, with actual method and source level ranges.
+  They never repeat the record's own Met Level as an encounter claim. X switches to the
+  full native history catalogue, explicitly unverified. Every original native option and
+  unusual stored id remains available; selecting the stored value bypasses mutation.
+- Cached source context uses 16,837 deduplicated wild rows for all nine exact titles and
+  566 generation-specific evolution edges. A reproducible bounds-checked generator reads
+  unmodified PKHeX primary resources pinned to `6042efa241a9925ce57e645329ea7f976deabdd3`.
+  Input SHA-256 values and counts are committed in `docs/data/`. No dependency on a ROM,
+  save, .NET runtime, network, or the separate legality branch is added to normal builds.
+- Egg/hatch and fateful flags are reported as stored evidence; trade, egg, special/event,
+  and transfer markers have distinct unverified context. Gifts/static/other histories are
+  not rejected when absent from wild tables. Forms, conditional encounter requirements,
+  evolution eligibility and distribution validity are explicitly unchecked. Transferred
+  non-native origins keep their existing read-only field restriction. No other field changes.
+- Tests: all nine titles × Pikachu/Walrein, exact native-id retention, unusual stored ids,
+  real Spheal ancestry in Pearl, unknown eggs/gifts/static/events/trades/transfers;
+  GCC + Clang normal and ASan/UBSan with leak detection enabled all passed (4 runs).
+  Generator corruption/bounds/count/hash tests and exact-source reproduction passed.
+  Gen IV hardware surface and shared editor unit passed. An obsolete Y-only Bag Remove
+  assertion now follows the owner's explicit A/B exception and retains B-first cancellation.
+- CG53 is enforced; its real production calls/data and X access have four new broken-path
+  controls. The 15-control rerun and 70-PASS gate are running. Candidate mode currently
+  has one remaining actionable contract: CG33 Party Actions / native Party edit I–III.
+- Corrected the native-only Review namespace ambiguity found in run 39686906403.
+  Another native compile/link is required for this combined checkpoint. No official NRO,
+  app integration, hardware re-verification or candidate audit is claimed.
+
 ## Codex milestone 5 — one paged Review with every semantic field (2026-10-21)
 
 - Source baseline for this milestone: `7beb91e7242046a02c53f05b65dcf8431d3af2b8`
@@ -28,13 +60,16 @@ Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized appli
   Gen IV staged editor / real verified exports; Gen V Review/Discard/Export trace (400
   checks across W/B/W2/B2); actual shared renderer; shared editor unit/source contracts.
   Gen V read-only route, touch-row and repository-safety guards passed. The 70-PASS gate
-  rerun and extended eleven-control source mutation rerun are pending.
+  (196 guards) and all eleven broken-path source mutation controls passed.
 - CG35 is now enforced. Candidate mode has exactly two unresolved contracts: CG33
   (native Party Actions/edit I–III) and CG53 (source-backed IV/V encounter context).
 - Native build of `20955b20518708c06f4c139ada894567b063f6c7` (run 39684964093)
   exposed a missing shared-label include in the standalone GSC overlay. `7beb91e7`
-  fixes it; native run 39685646748 is pending. A further native build must cover this
-  Review milestone too; no final NRO or candidate binding exists yet.
+  fixes it; native run 39685646748 passed compile/link and packaged RomFS verification
+  (4267 files, 156.6 MiB, digest bc09c152ac4232a2). Review head e061f03c native run
+  39686906403 then exposed an ambiguous forward declaration of sharedReviewRows across
+  an anonymous namespace boundary. Milestone 6 moves that declaration to its actual
+  namespace. No final NRO or candidate binding exists yet.
 - The earlier full host invocations read code while this Review was being developed and
   failed linking the new name/view dependencies against the old parsed build graph.
   Dependencies are now explicit in the Gen IV and QA source lists. Final exact-head full

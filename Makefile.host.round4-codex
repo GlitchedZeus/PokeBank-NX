@@ -1,4 +1,14 @@
 HOST_TESTS += $(HOST_BUILD)/test_classic_staged_exit
+HOST_TESTS += $(HOST_BUILD)/test_gen45_encounter_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen45_encounter_context_sanitize
+host-test: $(HOST_BUILD)/test_gen45_encounter_context
+host-sanitize: $(HOST_BUILD)/test_gen45_encounter_context_sanitize
+$(HOST_BUILD)/test_gen45_encounter_context: tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp -o $@
+$(HOST_BUILD)/test_gen45_encounter_context_sanitize: tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp -o $@
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_staged_exit_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_nature_stat_effect
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_nature_stat_effect_sanitize
@@ -13,6 +23,7 @@ $(HOST_BUILD)/test_nature_stat_effect_sanitize: tests/test_nature_stat_effect.cp
 .PHONY: round4-contract-mutations
 qa-tools-test: round4-contract-mutations
 round4-contract-mutations:
+	python3 tests/test_gen45_encounter_generator.py
 	python3 tests/test_round4_backup_contract_mutations.py
 	python3 tests/test_round4_shared_contract_mutations.py
 host-test: $(HOST_BUILD)/test_classic_staged_exit

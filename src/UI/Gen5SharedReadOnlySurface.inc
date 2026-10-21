@@ -42,6 +42,8 @@
 #include <cstdio>
 
 namespace UI::Gen5SharedReadOnlySurface {
+PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen,
+    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws);
 namespace {
 bool isGen5Source(const TrainerViewScreen& screen) noexcept {
     // Deliberately check the exact source ID, not the Trainer's claimed game
@@ -49,8 +51,6 @@ bool isGen5Source(const TrainerViewScreen& screen) noexcept {
     return PokeVault::Integration::Gen5EditorProvider::isGen5NdsId(screen.sourceGameId);
 }
 using ScreenState=PokeVault::Integration::Gen5::Gen5SharedScreenState;
-PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen,
-    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws);
 using Surface=ScreenState::Surface;
 using Slot=ScreenState::Slot;
 using Region=PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace::Region;
@@ -450,8 +450,9 @@ struct Gen5Editor {
                     screen.postStatus("Met Location editing is read-only for transferred non-Gen-V origins", 300);
                     return true;
                 }
-                EditorSurface::openPicker(screen, state, PickerTarget::MetLocation,
-                                          Fields::metLocationChoices(), p.metLocation());
+                EditorSurface::openContextualMetLocationPicker(screen, state, p.originVersion(),
+                    p.species(), p.metLocation(), Fields::metLocationChoices(),
+                    {p.eggLocation(), p.egg(), p.fatefulEncounter()});
                 return true;
             case Pokerus: {
                 // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
@@ -592,7 +593,7 @@ struct Gen5Editor {
     static Enums::GameVersion moveGame(const TrainerViewScreen& screen) {
         return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;
     }
-    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState&,
+    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState& state,
                                    PickerTarget target, uint16_t value) {
         const auto p = draft(screen).current();
         switch (target) {
@@ -604,7 +605,9 @@ struct Gen5Editor {
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
                 std::string label = metLocationText5(p ? p->originVersion() : 20, value);
-                if (p) label += "  |  Met Lv. " + std::to_string(p->metLevel());
+                if (state.pickerMetContextActive)
+                    label += "  |  " + state.pickerMetContext.detail(value,
+                        [](uint16_t species) { return Names::getSpeciesName(species); });
                 return label;
             }
             case PickerTarget::Pokerus: return Fields::pokerusLabel(value);
