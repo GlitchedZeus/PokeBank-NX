@@ -828,7 +828,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    "Origin & Legality: not checked",
+                    std::string("Full legality analysis: ")+PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked),
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

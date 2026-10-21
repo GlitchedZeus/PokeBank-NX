@@ -851,7 +851,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
     const int viewportTop = y + 90;
     // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
     // (rows, clip, touch boxes and the boxed highlight all use rowW).
-    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + 10 : 0;
+    const int scrollbarGap = SharedScrollbar::kTouchSlop + 4;
+    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + scrollbarGap : 0;
     const int rowW = w - 44 - barGutter;
     fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
@@ -906,7 +907,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         }
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + 10, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + scrollbarGap, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
@@ -1040,7 +1041,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
             drawFocus(fb, g.midX + cell.x, yy - 5, cell.width, 30, true);
         }
         fb.drawText(g.midX + 18, yy, statLabels[static_cast<size_t>(row)],
-                    NatureStats::statColor(raw->nature(), row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
+                    NatureStats::statColor(A::nature(*raw), row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(g.midX + 126, yy, std::to_string(iv[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(g.midX + 190, yy, std::to_string(ev[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         // Phase 4: a calculated stat is derived, never edited: the gold ReadOnly field state.

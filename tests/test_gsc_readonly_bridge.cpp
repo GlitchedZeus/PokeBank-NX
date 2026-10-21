@@ -67,6 +67,9 @@ std::vector<uint8_t> fixture(const L& l,uint8_t storedSpecies=1,uint8_t currentC
     d[0x2009]=0x12;d[0x200A]=0x34;text(d,0x200B,l.str,'A');
     d[l.money]=0x01;d[l.money+1]=0xE2;d[l.money+2]=0x40;d[l.idx]=0;
     if(l.gender!=N)d[l.gender]=1;
+    const size_t clock=l.region==Integration::Gen2::RegionLayout::Japanese?0x2034:
+        l.family==Integration::Gen2::VersionFamily::Crystal?0x2052:0x2053;
+    d[clock]=0x01;d[clock+1]=0x23;d[clock+2]=45;d[clock+3]=59;
     for(std::size_t b=0;b<l.boxes;++b){
         emptyList(d,boxStart(l,b));
         text(d,l.names+b*9,9,static_cast<char>('A'+(b%26)));
@@ -98,6 +101,8 @@ int main(){
         std::string error;
         auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);
         assert(trainer&&error.empty());
+        assert(Integration::Common::playTimeText(trainer->nativePlayTime)=="291:45:59");
+        assert(trainer->pokedexProgress().total==251);
         assert(trainer->getGameGroup()==Enums::GameVersion::GSC);
         assert(trainer->sourceGameId()=="gold_gbc");
         assert(!trainer->japaneseLayout()&&!trainer->crystalFamily());
@@ -173,6 +178,8 @@ int main(){
         auto bytes=fixture(IC);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Crystal);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
+        assert(Integration::Common::playTimeText(trainer->nativePlayTime)=="291:45:59");
+        assert(trainer->pokedexProgress().total==251);
         assert(trainer->sourceGameId()=="crystal_gbc"&&trainer->crystalFamily());
         assert(trainer->hasTrainerGender()&&trainer->trainerGender==1);
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
@@ -183,6 +190,8 @@ int main(){
         checksum(bytes,IC);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Crystal);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
+        assert(Integration::Common::playTimeText(trainer->nativePlayTime)=="291:45:59");
+        assert(trainer->pokedexProgress().total==251);
         assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
     }
@@ -190,6 +199,8 @@ int main(){
         auto bytes=fixture(JGS);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Silver);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
+        assert(Integration::Common::playTimeText(trainer->nativePlayTime)=="291:45:59");
+        assert(trainer->pokedexProgress().total==251);
         assert(trainer->sourceGameId()=="silver_gbc"&&trainer->japaneseLayout());
         assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
@@ -199,6 +210,8 @@ int main(){
         auto bytes=fixture(IGS,1,25,201);
         auto parsed=Integration::Gen2::parse(bytes,Integration::Gen2::SourceGame::Gold);assert(parsed);
         std::string error;auto trainer=Legacy::GSCReadOnlyTrainer::create(*parsed.save,error);assert(trainer);
+        assert(Integration::Common::playTimeText(trainer->nativePlayTime)=="291:45:59");
+        assert(trainer->pokedexProgress().total==251);
         auto* unown=static_cast<Pokemon::Pokemon2ReadOnly*>(trainer->party[0].get());
         assert(unown->speciesID()==201&&unown->form()==21);
     }

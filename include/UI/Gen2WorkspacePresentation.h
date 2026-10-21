@@ -1,6 +1,7 @@
 #include "UI/SharedPokemonShell.h"
 #pragma once
 #include "UI/Gen2NativePresentation.h"
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen2PokemonSession.h"
 #include "UI/SharedDataPaneLayout.h"
 #include "UI/StatsRadar.h"
@@ -50,11 +51,11 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     } else {
         rows.push_back({"Caught history", "No caught data recorded"});
     }
-    // Origin & Legality (formerly under the move rows): Crystal checks the current level against
-    // the recorded met level; Gold/Silver record nothing to check.
-    rows.push_back({"Legality", game == G::SourceGame::Crystal
-        ? Gen2Native::caughtLevelLegalityText(Gen2Native::caughtLevelLegality(p.level, caught))
-        : "Not checked"});
+    // A level comparison is one native fact, not a complete legality verdict.
+    if(game==G::SourceGame::Crystal)
+        rows.push_back({"Level context",Gen2Native::caughtLevelLegalityText(
+            Gen2Native::caughtLevelLegality(p.level,caught))});
+    rows.push_back({"Legality",SharedEditorPresentation::legalityLabel(SharedEditorPresentation::LegalityState::NotChecked)});
     return rows;
 }
 

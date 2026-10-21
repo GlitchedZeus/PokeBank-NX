@@ -442,6 +442,8 @@ namespace UI {
     // re-own every Pokemon already in the save, so it is deliberately left out.
     static void drawTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
         Trainer::Trainer& t = screen.trainer;
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        const bool classic=generation>=1 && generation<=4;
         fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
         fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
         constexpr int hH = 46;
@@ -486,11 +488,12 @@ namespace UI {
 
         // --- Read-only rows (not selectable). ---
         auto infoRow = [&](const char* label, const std::string& value) {
-            fb.drawFilledRoundedRect(cardX, cy, cardW, 46, 12, Colors::PanelAlt);
-            fb.drawText(cardX + 24, cy + (46 - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
+            const int infoH=classic?36:46;
+            fb.drawFilledRoundedRect(cardX, cy, cardW, infoH, 12, Colors::PanelAlt);
+            fb.drawText(cardX + 24, cy + (infoH - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(cardX + cardW - 24 - vw, cy + (46 - vh) / 2, value, Colors::Text, TextStyle::Body);
-            cy += 54;
+            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, Colors::Text, TextStyle::Body);
+            cy += infoH+8;
         };
         const bool generationOne = screen.sourceGameId == "red_gb" ||
                                    screen.sourceGameId == "blue_gb" ||
@@ -508,7 +511,7 @@ namespace UI {
                    screen.sourceGameId == "pearl_nds" ||
                    screen.sourceGameId == "platinum_nds" ||
                    screen.sourceGameId == "heartgold_nds" ||
-                   screen.sourceGameId == "soulsilver_nds") {
+                   screen.sourceGameId == "soulsilver_nds" || generation==3) {
             // Native Gen IV IDs are two separate 16-bit numbers. Do not
             // mash them into one 'Trainer ID' row or repeat both as 'Full'.
             infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
@@ -520,8 +523,11 @@ namespace UI {
             infoRow("Full TID", std::to_string(t.TID));
             infoRow("Full SID", std::to_string(t.SID));
         }
-        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-        if (generation >= 1 && generation <= 4) {
+        if (classic) {
+            infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
+            const auto dex=t.pokedexProgress();
+            infoRow("Pokédex",dex.available()?"Seen "+std::to_string(dex.seen)+" / Caught "+
+                std::to_string(dex.caught)+" / "+std::to_string(dex.total):"Unavailable");
             const int bx = cardX + cardW - 240, by = y + h - 60;
             drawGlyphButton(fb, bx, by, 240, 48, "Y", "Review Changes");
             screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,

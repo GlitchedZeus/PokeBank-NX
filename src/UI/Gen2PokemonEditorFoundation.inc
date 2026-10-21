@@ -803,7 +803,7 @@ void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, 
                 TextStyle::Heading);
     const auto& p = state.working;
     const std::array<std::pair<std::string, std::string>, 8> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"EXP", std::to_string(p.experience)},

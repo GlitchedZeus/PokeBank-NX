@@ -332,7 +332,7 @@ struct Gen5Editor {
                                    const Record& p, int row) {
         using namespace Fields;
         switch (row) {
-            case Species: return std::to_string(p.species()) + " - " + Names::getSpeciesName(p.species());
+            case Species: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());
             case Nickname: case OriginalTrainer: {
                 const auto name = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), row == Nickname);
                 return name ? *name : std::string("(native glyphs)");
@@ -719,6 +719,7 @@ struct Gen5Editor {
     static std::array<uint8_t,2> speciesPreviewTypes(const TrainerViewScreen& screen, uint16_t species) {
         return classicTypes5(species, 0, b2w2(screen));
     }
+    static uint8_t nature(const Record& p) { return p.nature(); }
     static std::string speciesLabel(uint16_t value) { return EditorSurface::dexLabel(value); }
     // R2-SEARCH: species search is the shared in-modal chooser (SharedSpeciesPicker.h), live
     // per keystroke; the former swkbd "jump to first match" hook is retired.
@@ -771,7 +772,7 @@ struct Gen5Editor {
             {"OT gender", p.originalTrainerGender() == 0 ? "Male" : "Female"},
             // Only format validity is checked for Gen V; no legality conclusion is drawn.
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete)},
         };
         return rows;
     }
@@ -836,8 +837,8 @@ void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const G
                 Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(x + 28, cy + 62, pidHex5(pending.before) + "  ->  " + pidHex5(pending.after),
                 Colors::Text, TextStyle::Body);
-    fb.drawText(x + 28, cy + 98, "Gender, ability and shininess stay linked to the new PID. "
-                "Origin & Legality: not checked.", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, cy + 98, std::string("Gender, ability and shininess stay linked to the new PID. Origin & Legality: ")+
+                PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete), Colors::TextDim, TextStyle::Caption);
     const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;
     drawGlyphButton(fb, x + 24, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - bw, by, bw, bh, "A", "Change PID", Colors::PanelAlt);
@@ -1875,46 +1876,29 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
                    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& workspace) {
     namespace P=PokeBank::UIModel::SharedEditorPresentation;
     dimShared(screen,fb);
-    SharedEditorChrome::beginModal(screen.touchButtons);
-    constexpr int x=210,y=82,w=860,h=500;
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-    fb.drawText(x+24,y+18,P::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",
-                Colors::TextDim,TextStyle::Caption);
     const auto& slot=state.target();
-    const auto pk=slot.region==Region::Party?workspace.viewParty(slot.slot):
-        workspace.viewBox(slot.box,slot.slot);
-    if(!pk || !pk->valid() || pk->empty()) {
-        fb.drawText(x+34,y+110,"No valid Pokemon selected",Colors::Warning,TextStyle::Body);
-        drawNavBar(fb,{{"B","Back"}});
-        return;
+    const auto p=slot.region==Region::Party?workspace.viewParty(slot.slot):workspace.viewBox(slot.box,slot.slot);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",gen5GameName(screen.sourceGameId)},
+        {"Native format",p && p->valid()?"PK5 checksum and structure valid":"PK5 unavailable or invalid"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Structure and editor guardrails; full legality incomplete"}};
+    if(p && p->valid() && !p->empty()) {
+        const auto origin=p->originVersion();const auto date=p->metDate();
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species()))+" #"+std::to_string(p->species())});
+        const auto nickname=PokeVault::Integration::Gen5::asciiName5(p->decodedBytes(),true);
+        const auto ot=PokeVault::Integration::Gen5::asciiName5(p->decodedBytes(),false);
+        rows.push_back({"Nickname",nickname?*nickname:"Native glyphs"});
+        rows.push_back({"Original Trainer",ot?*ot:"Native glyphs"});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
+        rows.push_back({"Origin game",Enums::getOriginGameName(origin)});
+        rows.push_back({"Met location",metLocationText5(origin,p->metLocation())});
+        rows.push_back({"Met level",std::to_string(p->metLevel())});
+        rows.push_back({"Met date (stored)",(date.month==0 && date.day==0)?std::string("Not recorded"):std::to_string(date.year)+"-"+std::to_string(date.month)+"-"+std::to_string(date.day)});
+        rows.push_back({"Egg / fateful",std::string(p->egg()?"Unhatched":"Not egg")+" / "+(p->fatefulEncounter()?"Fateful":"Not fateful")});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves()[i]?Names::getMoveName(p->moves()[i]):"Empty"});
     }
-    const uint8_t origin=pk->originVersion();
-    const std::string originName=origin==20?"White":origin==21?"Black":
-        origin==22?"White 2":origin==23?"Black 2":"Other (version id "+std::to_string(origin)+")";
-    const auto date=pk->metDate();
-    const std::pair<std::string,std::string> rows[]={
-        {"Exact source",gen5GameName(screen.sourceGameId)},
-        {"PK5 structure","PASS"},
-        {"Source mutation","HARD DISABLED"},
-        {"Origin game",originName},
-        {"Met location",metLocationText5(origin,pk->metLocation())},
-        {"Met level / date",std::to_string(pk->metLevel())+"  /  "+std::to_string(date.year)+"-"+
-            std::to_string(date.month)+"-"+std::to_string(date.day)},
-        {"Fateful encounter",pk->fatefulEncounter()?"Yes":"No"},
-        {"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},
-        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},
-    };
-    int rowY=y+96;
-    for(const auto& [label,value]:rows) {
-        fb.drawText(x+34,rowY,label,Colors::TextDim);
-        const bool flag=label=="Encounter check" || label=="Legality";
-        fb.drawText(x+290,rowY,value,label=="PK5 structure"?Colors::Success:
-                    label=="Source mutation"?Colors::Accent:flag?Colors::Warning:Colors::Text);
-        rowY+=40;
-    }
-    drawNavBar(fb,{{"B","Back"}});
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::Incomplete);
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,

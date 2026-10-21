@@ -110,6 +110,9 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
 bool GSCReadOnlyTrainer::populate(
     const Integration::Gen2::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
+    nativePlayTime = strictTrainer.playTime;
+    const auto dex = save.dexProgress();
+    nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
     money = strictTrainer.money;
     TID16 = strictTrainer.trainerId;

@@ -28,7 +28,7 @@ host-sanitize: $(SPECIES_MOVES_SANITIZE)
 
 .PHONY: host-species-change-moves
 host-species-change-moves: $(SPECIES_MOVES_TESTS)
-	@set -e; for t in $(SPECIES_MOVES_TESTS); do ./$$t; done
+	@set -e; for t in $(SPECIES_MOVES_TESTS); do $$t; done
 
 $(HOST_BUILD)/test_species_change_moves_gen15: $(SPECIES_MOVES_DATA_SOURCES) $(SPECIES_MOVES_DEPS)
 	@mkdir -p $(HOST_BUILD)

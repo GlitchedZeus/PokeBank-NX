@@ -6,6 +6,48 @@
 
 Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Codex milestone 4 — native Trainer summaries and one Origin panel (2026-10-21)
+
+- WIP remains `wip/codex-round4-takeover-20261021`; refreshed #307 and backup heads
+  are unchanged at `58a81207` and `44fb4b7e`. No legality #314 integration.
+- Implemented native read-only Play Time and Pokédex Seen/Caught for Gen I–IV. Timers
+  come from primary PKHeX `6042efa241a9925ce57e645329ea7f976deabdd3`: SAV1/2 offsets
+  and SaveBlock3Small{RS,E,FRLG}. Gen IV already parsed its timer. Invalid minute/second
+  bytes report Unavailable, not a normalized guess. Gen I's saturation flag is retained.
+- One `SharedEditorChrome::drawOriginLegalityPanel` now draws all seven active/legacy
+  Origin modals. Generation adapters supply actual stored source, identity, checksum,
+  OT, met facts/dates where present, moves, coverage and an honest final verdict.
+  Missing history is not Invalid. No app adapter produces a clean verdict. Gen I–III
+  remain Not checked; Gen IV/V remain Incomplete. Crystal level comparison is a separate
+  Level context fact. Reserved Invalid / No problems found / Unknown states remain distinct.
+- Corrected missed Details species fields to name first; list numbering remains intact.
+  Ball row/clip/touch widths now reserve the scrollbar's full 18 px touch slop plus 4 px.
+  Met Location bottom padding matches Move's 14 px. Unavailable ability has no fake slot name.
+- Preserved the already-working held-item live keyboard callback and inline Crystal OT
+  gender implementation. Source guards now follow these actual implementations, and follow
+  shared footer/modal delegation; eight broken-path mutation controls pass.
+- Gen V Language is now editable in the shared field-access policy as well as its native
+  adapter. Its host native/Bag/inventory suites passed 12 runs: 3 × GCC/Clang × normal/sanitizers,
+  with leak detection enabled. All native-language/default/nature tests had passed 32 runs earlier.
+- Tested: four native timer/parser/bridge suites with GCC; actual Origin modal renderer
+  (1–20 rows, bounds/non-overlap, only visible B footer touch, old Gen II graph assertions);
+  shared editor, live item search and ability-effects units. Menu geometry rerun pending.
+  The 70-owner-PASS regression gate passed again (196 guards); repository safety and Gen V
+  shared UI / touch-row contracts passed.
+- Native run 39534739735 on `88f974dae2b6677eeabddd689969f8cb77966fe5` failed compilation:
+  the shared nature display called `nature()` on raw PK4. This checkpoint corrects that by
+  an adapter method using Pokemon4ReadOnlyView. A new native build is still required.
+- Full GCC/Clang runs compiled many suites but exposed the host runner's absolute-path
+  bug (`.//tmp/...`). Recipes now execute their already slash-containing paths directly,
+  retaining configured ASAN_OPTIONS. Clang also encountered the old missing host Switch stub
+  in the new renderer. That isolated renderer now has a host-only controller-mask shim;
+  native builds continue to use libnx. Full exact-head host/sanitizer reruns are required.
+- CG34/40/41/42/44/45/46/47/48/49 are now enforced, in addition to the earlier enforced repairs.
+  Remaining actionable candidate contracts: CG33 Party Actions/native Party edit I–III,
+  CG35 shared Review parity, CG53 encounter-backed IV/V location context.
+- Still no official Round 4 NRO or updated binding. #307 integration, full gates, one integrated
+  candidate and exact-file QA-F9 audit remain. Hardware checks have not changed; S06 stays NOT TESTED.
+
 ## Codex milestone 3 — staged native fields and shared presentation (2026-10-21)
 
 - Work remains on `wip/codex-round4-takeover-20261021`; #307 is still

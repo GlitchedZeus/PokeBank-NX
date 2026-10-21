@@ -142,6 +142,9 @@ namespace PokeVault::Legacy {
     bool FRLGReadOnlyTrainer::populate(
         const Integration::Gen3::ReadOnlySave& save, std::string& error) {
         const auto& strictTrainer = save.trainer();
+        nativePlayTime = strictTrainer.playTime;
+        const auto dex = save.dexProgress();
+        nativeDexProgress = {dex.seen,dex.caught,dex.total};
         trainerName = strictTrainer.name;
         trainerGender = strictTrainer.gender;
         TID16 = strictTrainer.tid16;

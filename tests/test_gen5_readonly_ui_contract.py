@@ -1115,8 +1115,12 @@ assert '{"Y","Bag"}' not in surface
 assert surface.index("return handleBag(screen,keys,tap,touch);") < surface.index("switch(state.surface()) {\n        case Surface::Actions:")
 require(items_panel, "Gen5::bagPocketName5(", "Native Generation V bag data failed validation.")
 require(bag_model, "PokeBank::UIModel::inventoryActionAvailability(", "Workspace snapshot=ws;",
-        "pocket!=static_cast<size_t>(BagPocket5::KeyItems)",
-        "pocket!=static_cast<size_t>(BagPocket5::Machines)")
+        "return pocket<BagPocket5Count;", "maxCount>1", "KeyItemAddWarning",
+        "requestAddWarning", "needsKeyItemWarning(rule)",
+        '"Confirm the Key Item warning before staging this item"')
+require(surface,"case BagSurface::KeyItemAddWarning:","bag.requestAddWarning(ws,rule)",
+        "SharedBagAddPicker::drawKeyItemWarning(")
+assert "Key Items/TMs view only" not in surface
 require(trainer, "staged_.bagPresentation()")
 assert "writeFile" not in bag_model and "fopen" not in bag_model
 require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocketRefusesAdd();")

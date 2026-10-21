@@ -96,7 +96,7 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     drawGen2TypePair(fb, x, w, y + 180, p);
 
     std::vector<std::pair<std::string, std::string>> rows{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"Experience", std::to_string(p.experience)},

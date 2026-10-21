@@ -2,6 +2,7 @@
 #include <fstream>
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/NatureStatPresentation.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
 #include <algorithm>
@@ -23,7 +24,8 @@ bool intersects(const Text& a, const Text& b) {
 }
 }
 namespace UI {
-PKSEFramebuffer::PKSEFramebuffer() = default;
+const TouchGestureSnapshot& latestTouchGesture() noexcept {static const TouchGestureSnapshot value{};return value;}
+PKSEFramebuffer::PKSEFramebuffer() : width(1280),height(720) {}
 PKSEFramebuffer::~PKSEFramebuffer() = default;
 void PKSEFramebuffer::measureText(const std::string& s, int& w, int& h, TextStyle) { w = s.size()*9; h = 18; }
 void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyle style) {
@@ -40,6 +42,11 @@ void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyl
 }
 void PKSEFramebuffer::drawText(int x,int y,const char* s,Color c,TextStyle style) { drawText(x,y,std::string(s),c,style); }
 void PKSEFramebuffer::drawFilledRect(int,int,int,int,Color) {}
+void PKSEFramebuffer::drawSoftShadow(int,int,int,int,int) {}
+void PKSEFramebuffer::drawHDivider(int,int,int) {}
+void PKSEFramebuffer::popTransform() {}
+void PKSEFramebuffer::drawSymbol(int x,int y,const std::string& s,Color c,TextStyle style) {drawText(x,y,s,c,style);}
+int PKSEFramebuffer::lineHeight(TextStyle) const {return 18;}
 void PKSEFramebuffer::drawFilledCircle(int,int,int,Color) {}
 void PKSEFramebuffer::drawFilledRoundedRect(int,int,int,int,int,Color) {}
 void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
@@ -65,6 +72,24 @@ Sprite* SpriteManager::getIconSprite(uint16_t, bool) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    for(int rowCount=1;rowCount<=20;++rowCount) {
+        std::vector<std::pair<std::string,std::string>> rows;
+        for(int i=0;i<rowCount;++i)rows.push_back({"Native field "+std::to_string(i),
+            i==0?"A deliberately long stored value that must stay inside its own column without overlapping the next column":
+            "Native value "+std::to_string(i)});
+        std::vector<int> touchButtons{1,2,3};texts.clear();
+        UI::SharedEditorChrome::drawOriginLegalityPanel(fb,touchButtons,rows,P::LegalityState::NotChecked);
+        assert(touchButtons.empty());
+        assert(UI::g_navHits.size()==1); // Only the visible B Back footer remains.
+        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value=="Not checked";}));
+        for(size_t i=0;i<texts.size();++i) {
+            const auto& t=texts[i];
+            assert(t.x>=0 && t.y>=0 && t.x+t.w<=1280 && t.y+t.h<=720);
+            for(size_t j=i+1;j<texts.size();++j)assert(!intersects(t,texts[j]));
+        }
+    }
+    texts.clear();
     UI::SharedPokemonShell::drawPortrait(fb,0,0,201,true,23);
     assert(sprites.back() == std::make_pair(uint16_t{201},true) && spriteForms.back() == 23);
     UI::SharedPokemonShell::drawPortrait(fb,0,0,25,false);

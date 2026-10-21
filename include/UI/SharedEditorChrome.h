@@ -16,6 +16,8 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <utility>
 
 namespace UI::SharedEditorChrome {
 
@@ -105,11 +107,57 @@ inline int drawOriginLegalityHeading(PKSEFramebuffer& fb, int x, int y, int w) {
 inline Color legalityColor(Presentation::LegalityState state) {
     switch (state) {
         case Presentation::LegalityState::Verified: return Colors::Success;
-        case Presentation::LegalityState::ProblemsFound: return Colors::Error;
+        case Presentation::LegalityState::ProblemsFound:
+        case Presentation::LegalityState::Invalid: return Colors::Error;
         case Presentation::LegalityState::Incomplete:
         case Presentation::LegalityState::NotChecked: return Colors::Warning;
         default: return Colors::TextDim;
     }
+}
+
+// Generation adapters supply only stored facts. One layout and one verdict
+// vocabulary serve every Origin & Legality modal; structure validity never
+// implies that an encounter or a complete legality check passed.
+template<class Buttons>
+inline void drawOriginLegalityPanel(PKSEFramebuffer& fb,Buttons& touchButtons,
+    const std::vector<std::pair<std::string,std::string>>& rows,
+    Presentation::LegalityState verdict) {
+    beginModal(touchButtons);
+    const int w=std::min(1100,fb.getWidth()-48);
+    const int columns=rows.size()>10?2:1;
+    const int perColumn=std::max(1,static_cast<int>((rows.size()+columns-1)/columns));
+    const int available=fb.getHeight()-kNavBarH-24;
+    const int rowH=std::min(46,(available-134)/perColumn);
+    const int h=134+perColumn*rowH,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,145));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+24,y+16,Presentation::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+48,"Stored origin and format checks; full legality analysis has not run",
+                Colors::TextDim,TextStyle::Caption);
+    const int cellW=(w-48)/columns;
+    const auto fit=[&](std::string value,int maxW) {
+        int tw=0,th=0;fb.measureText(value,tw,th,TextStyle::Caption);
+        if(tw<=maxW)return value;
+        while(!value.empty()) {
+            do {const auto c=static_cast<unsigned char>(value.back());value.pop_back();
+                if((c&0xC0)!=0x80)break;} while(!value.empty());
+            fb.measureText(value+"...",tw,th,TextStyle::Caption);
+            if(tw<=maxW)return value+"...";
+        }
+        return std::string();
+    };
+    for(size_t i=0;i<rows.size();++i) {
+        const int col=static_cast<int>(i)/perColumn,row=static_cast<int>(i)%perColumn;
+        const int xx=x+24+col*cellW,yy=y+78+row*rowH;
+        fb.drawText(xx,yy,fit(rows[i].first,cellW-24),Colors::TextDim,TextStyle::Caption);
+        fb.drawText(xx,yy+20,fit(rows[i].second,cellW-24),Colors::Text,TextStyle::Caption);
+    }
+    fb.drawHDivider(x+24,y+h-48,w-48);
+    fb.drawText(x+24,y+h-36,"Final verdict",Colors::TextDim,TextStyle::Caption);
+    fb.drawText(x+210,y+h-36,Presentation::legalityLabel(verdict),legalityColor(verdict),TextStyle::Caption);
+    drawNavBar(fb,{{"B","Back"}});
 }
 
 } // namespace UI::SharedEditorChrome

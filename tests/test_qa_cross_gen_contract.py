@@ -29,17 +29,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
     "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
-    "CG34-gen5-key-tm-pockets-editable": "I (NEW-17)",
     "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
-    "CG40-held-item-picker-search": "P (NEW-06)",
-    "CG41-gen2-ot-gender-inline": "P (NEW-07)",
-    "CG42-ball-picker-scrollbar-gutter": "P (NEW-08)",
-    "CG44-met-location-compact": "P (NEW-10)",
-    "CG45-selected-species-name-first": "P (NEW-11)",
-    "CG46-ability-names-not-slots": "P (NEW-13)",
-    "CG47-classic-trainer-playtime-pokedex": "C (NEW-18)",
-    "CG48-origin-legality-truthful-state": "S (E03: no clean verdicts; one LegalityState per generation)",
-    "CG49-one-origin-legality-panel": "S (E03: one shared Origin & Legality panel)",
     "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
@@ -876,7 +866,7 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     r = Result("CG08-modal-footer-and-touch-layer",
                "Every modal draws its own footer, and the covered footer is not tappable while it is open")
-    modal_rx = re.compile(r"^draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*$")
+    modal_rx = re.compile(r"^(?:drawOriginLegalityPanel|draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*)$")
     footer_rx = re.compile(r"\b(drawNavBar|drawFooter\w*|drawGlyphButton|drawControllerHints|drawPickerFooter\w*)\s*\(")
     # Bag wrappers delegate their in-dialog choices and blank covered footer
     # to drawConfirm. Follow that real call, rather than requiring a duplicate
@@ -893,6 +883,14 @@ def contracts(sources: list[Source]) -> list[Result]:
     def delegated_bag_footer(body):
         return any(re.search(r"\bSharedBagAddPicker::" + n + r"\s*\(", body)
                    for n in shared_bag_footers)
+    origin_panel = next((s for s in sources if s.rel == "include/UI/SharedEditorChrome.h"), None)
+    origin_owns_frame = origin_panel and any(
+        footer_rx.search(b) and STRICT_LAYER_RX.search(b)
+        for _, _, b in function_bodies(origin_panel.code, re.compile(r"^drawOriginLegalityPanel$")))
+
+    def delegated_origin_footer(body):
+        return origin_owns_frame and re.search(r"\bSharedEditorChrome::drawOriginLegalityPanel\s*\(", body)
+
     # Strict (coordinator, 2026-10-16): clearing screen touchButtons alone leaves g_touchGlyphHits /
     # g_navHits live (the P0 #320 tap-through class), so only a real top touch layer counts.
     layer_rx = STRICT_LAYER_RX
@@ -969,9 +967,9 @@ def contracts(sources: list[Source]) -> list[Result]:
                             r.violations.append(f"{s.rel}:{ln}: {name}() routes to {target}() ({drel}), which opens no "
                                                 "beginModal / beginTopTouchLayer")
                 continue
-            if not footer_rx.search(body) and not delegated_bag_footer(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
+            if not footer_rx.search(body) and not delegated_bag_footer(body) and not delegated_origin_footer(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
-            if not layer_rx.search(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
+            if not layer_rx.search(body) and not delegated_origin_footer(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() leaves the covered footer's touch targets live")
     res.append(r)
 
@@ -1915,7 +1913,15 @@ def contracts(sources: list[Source]) -> list[Result]:
     for s in U:
         if s.rel in HELD_SHARED or not re.search(r"\bSharedHeldItemPickerPresentation::draw(?:Heading|Grid)\s*\(", s.code):
             continue
-        if not (shared_search or re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", s.code)):
+        # The integrated Held Item path uses the live promptText callback to
+        # ItemPickerSearch, retaining Sort and restoring the old query on B.
+        # Require all of that wiring rather than a particular keyboard widget.
+        live_prompt = (re.search(r'promptText\s*\(\s*"Search Held Items"[^;]*,\s*refilter\s*\)', s.code) and
+                       re.search(r'\bItemPickerSearch::apply\s*\(', s.code) and
+                       re.search(r'refilter\s*\(\s*result\.accepted\s*\?\s*result\.text\s*:\s*previous', s.code) and
+                       re.search(r'\bItemPickerSearch::tag\s*\(', s.code) and
+                       re.search(r'minusLabel\s*=\s*"Search"', s.code))
+        if not (shared_search or live_prompt or re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", s.code)):
             r.violations.append(f"{s.rel}: Held Item picker has Sort but no search (no SharedSearchInput field / input)")
     res.append(r)
 
@@ -1925,7 +1931,8 @@ def contracts(sources: list[Source]) -> list[Result]:
                "(owner round 3 NEW-07)")
     for v in code_hits(U, r"\bGen2FieldSelector::otGender\s*\("):
         r.violations.append(v + "  <- opens the OT Gender popup")
-    if not code_hits(U, r"\bcrystalOtGender\s*=\s*[^;]*\b(?:cycle\w*|next\w*)\s*\("):
+    inline_apply = code_hits(U, r"\bapplyFieldSelector\s*\([^;]*Field::OtGender\s*,[^;]*\bnextOtGender\s*\(")
+    if not (inline_apply or code_hits(U, r"\bcrystalOtGender\s*=\s*[^;]*\b(?:cycle\w*|next\w*)\s*\(")):
         r.violations.append("no Gen II UI code cycles state.crystalOtGender inline (cycle*/next* helper)")
     res.append(r)
 
@@ -1943,6 +1950,15 @@ def contracts(sources: list[Source]) -> list[Result]:
             bar = re.search(r"drawAndPublish\s*\(\s*fb\s*,\s*state\.pickerScrollbar\s*,\s*x\s*\+\s*w\s*-\s*(\d+)\s*,\s*viewportTop",
                             b)
             if not (row and bar):
+                # Current shared value lists use one rowW for drawing, clipping
+                # and touch, with an explicit gap before the scrollbar track.
+                gap = re.search(r"const int scrollbarGap\s*=\s*SharedScrollbar::kTouchSlop\s*\+\s*(\d+)\s*;", b)
+                if (gap and int(gap.group(1)) >= 0 and
+                    re.search(r"barGutter\s*=\s*count\s*>\s*visible\s*\?\s*SharedScrollbar::kTrackWidth\s*\+\s*scrollbarGap\s*:\s*0", b) and
+                    re.search(r"rowW\s*=\s*w\s*-\s*44\s*-\s*barGutter", b) and
+                    re.search(r"Rect\{x\s*\+\s*22,\s*yy\s*-\s*4,\s*rowW,", b) and
+                    re.search(r"drawAndPublish\s*\(\s*fb\s*,\s*state\.pickerScrollbar\s*,\s*x\s*\+\s*22\s*\+\s*rowW\s*\+\s*scrollbarGap", b)):
+                    continue
                 r.violations.append(f"{rel}:{ln}: Ball row / scrollbar geometry not found (update this check)")
                 continue
             inset = int(row.group(2)) - int(row.group(1))   # row right edge = x + w - inset
@@ -2060,7 +2076,8 @@ def contracts(sources: list[Source]) -> list[Result]:
                 seg = seg[:end.end()] if end else seg[:600]
                 for lit in re.findall(r'"([^"]*\bSlot\b[^"]*)"', seg):
                     r.violations.append(f"{rel}:{ln + body.count(chr(10), 0, a.start())}: Ability row label \"{lit}\"")
-    if not code_hits(U, r"(?i)\b\w*ability\w*(?:desc|effect|summary)\w*\s*\("):
+    if not (code_hits(U, r"(?i)\b\w*ability\w*(?:desc|effect|summary)\w*\s*\(") or
+            code_hits(U, r"\bAbilityEffects::row\s*\(")):
         r.violations.append("no ability effect-description source is used by any Gen III-V UI")
     r.violations = dedupe(r.violations)
     res.append(r)

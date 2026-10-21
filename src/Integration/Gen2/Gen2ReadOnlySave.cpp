@@ -399,6 +399,11 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     save->metadata_.rtcFooterSize = footerSize;
 
     save->trainer_.trainerId = readBE16(payload, l.tid);
+    // PKHeX 6042efa241a9 SAV2Offsets / SAV2: big-endian hours, then minute/second bytes.
+    const size_t clockOffset=l.region==RegionLayout::Japanese?0x2034:
+        l.family==VersionFamily::Crystal?0x2052:0x2053;
+    save->trainer_.playTime=Common::nativePlayTime(readBE16(payload,clockOffset),
+                                                payload[clockOffset+2],payload[clockOffset+3]);
     save->trainer_.name = decodeGen2String(payload.subspan(l.tid + 2, l.stringLength), l.region);
     save->trainer_.money = readBE24(payload, l.money);
     if (save->trainer_.money > 999999) {

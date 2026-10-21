@@ -517,7 +517,7 @@ bool pidLinkedRowEditable(const State& state, int row,
 std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
                         const Pokemon::Pokemon4ReadOnlyView& view, int row) {
     switch (row) {
-        case 0: return std::to_string(p.species()) + " - " + Names::getSpeciesName(p.species());
+        case 0: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());
         case 1: {
             const auto value = Utils::utf16ToUtf8(p.nickname());
             return value.empty() ? "(none)" : value;
@@ -1233,7 +1233,7 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
             state.session.working->abilityForSlot(static_cast<uint8_t>(value));
         // NEW-13: the ability's name and short effect, not "Slot 1 / Slot 2".
         return abilityId == 0
-            ? "Ability Slot " + std::to_string(value + 1)
+            ? "Unavailable ability"
             : UI::AbilityEffects::row(Trainer::getAbilityName(abilityId), abilityId, 4);
     }
     return {};
@@ -1452,6 +1452,7 @@ struct Gen4Editor {
         return {SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type1),
                 SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
     }
+    static uint8_t nature(const Record& p) { return Pokemon::Pokemon4ReadOnlyView(p).nature(); }
     static std::string speciesLabel(uint16_t value) { return gen4DexLabel(value); }
     static std::string heldItemArtKey(TrainerViewScreen& screen, uint16_t value) {
         const auto disc = UI::ClassicMachineArtwork::artKey(screen.trainer.getGameGroup(), value);
@@ -1614,68 +1615,34 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
 }
 
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.drawGSCOverlay(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
-    constexpr int x = 210, y = 82, w = 860, h = 500;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
-                Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-                "PK4 structure and move guardrails checked • no full legality checker",
-                Colors::TextDim, TextStyle::Caption);
-
-    std::string error;
-    auto record = selectedRecord(screen, state, error);
-    if (!record) {
-        fb.drawText(x + 34, y + 110, error.empty() ? "No valid Pokemon selected" : error,
-                    Colors::Warning, TextStyle::Body);
-        drawNavBar(fb, {{"B", "Back"}});
-        return;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    screen.drawGSCOverlay(fb);std::string error;
+    const auto p=selectedRecord(screen,state,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",gameName(screen.sourceGameId)},
+        {"Native format",p && p->valid()?"PK4 checksum and structure valid":"PK4 unavailable or invalid"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Structure and editor guardrails; full legality incomplete"}};
+    if(p && p->valid()) {
+        Pokemon::Pokemon4ReadOnlyView view(*p);
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species()))+" #"+std::to_string(p->species())});
+        rows.push_back({"Nickname",Utils::utf16ToUtf8(p->nickname())});
+        rows.push_back({"Original Trainer",Utils::utf16ToUtf8(p->originalTrainerName())});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
+        rows.push_back({"Origin game",Enums::getOriginGameName(p->originVersion())});
+        rows.push_back({"Met location",Names::getMetLocationDisplayName(p->originVersion(),view.metLocation())});
+        rows.push_back({"Met level",std::to_string(p->metLevel())});
+        // PKHeX 6042efa241a9 PK4: native met Y/M/D bytes at 0x7B..0x7D.
+        const auto bytes=p->decryptedBytes();
+        const auto year=std::to_integer<unsigned>(bytes[0x7B]);
+        const auto month=std::to_integer<unsigned>(bytes[0x7C]);
+        const auto day=std::to_integer<unsigned>(bytes[0x7D]);
+        rows.push_back({"Met date (stored)",(month==0 && day==0)?std::string("Not recorded"):std::to_string(2000+year)+"-"+std::to_string(month)+"-"+std::to_string(day)});
+        rows.push_back({"Egg / fateful",std::string(p->isEgg()?"Unhatched":"Not egg")+" / "+(p->fatefulEncounter()?"Fateful":"Not fateful")});
+        const auto moves=p->moves();
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),moves[i]?Names::getMoveName(moves[i]):"Empty"});
     }
-
-    fb.drawText(x + 34, y + 104, "Exact source", Colors::TextDim);
-    fb.drawText(x + 250, y + 104, gameName(screen.sourceGameId), Colors::Text);
-    fb.drawText(x + 34, y + 142, "PK4 structure", Colors::TextDim);
-    fb.drawText(x + 250, y + 142, record->valid() ? "PASS" : "INVALID",
-                record->valid() ? Colors::Success : Colors::Error);
-    fb.drawText(x + 34, y + 180, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 250, y + 180, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 218, "Legality", Colors::TextDim);
-    fb.drawText(x + 250, y + 218, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                    PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete),
-                Colors::Warning);
-
-    int rowY = y + 270;
-    const auto moves = record->moves();
-    for (size_t i = 0; i < moves.size(); ++i) {
-        const uint16_t move = moves[i];
-        const auto availability = PokeVault::Integration::Gen4MoveCompatibility::classify(
-            screen.sourceGameId, record->species(), record->form(), move, true);
-        const char* status = "Invalid";
-        Color color = Colors::Error;
-        using A = PokeVault::Integration::Gen4MoveCompatibility::Availability;
-        if (move == 0) {
-            status = "Empty";
-            color = Colors::TextDim;
-        } else if (availability == A::Direct) {
-            status = "OK";
-            color = Colors::Success;
-        } else if (availability == A::Transfer) {
-            status = "Transfer";
-            color = Colors::Warning;
-        } else if (availability == A::Preserved) {
-            status = "Preserved";
-            color = Colors::Warning;
-        }
-        const std::string moveName = move == 0 ? "Empty" : Names::getMoveName(move);
-        fb.drawText(x + 34, rowY, "Move " + std::to_string(i + 1), Colors::TextDim,
-                    TextStyle::Caption);
-        fb.drawText(x + 150, rowY, moveName, Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 650, rowY, status, color, TextStyle::Caption);
-        rowY += 36;
-    }
-    drawNavBar(fb, {{"B", "Back"}});
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::Incomplete);
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {

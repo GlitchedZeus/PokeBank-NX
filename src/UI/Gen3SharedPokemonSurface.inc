@@ -438,7 +438,7 @@ std::string gen3FormLabel(uint16_t species, uint8_t form) {
 std::string detailsValue(const TrainerViewScreen& screen,
                          const Gen3::StagedPokemonRecord& p, int row) {
     switch (row) {
-        case 0: return std::to_string(p.species) + " - " + Names::getSpeciesName(p.species);
+        case 0: return std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species);
         case 1: return p.nickname.empty() ? "(none)" : p.nickname;
         case 2: return std::to_string(p.level);
         case 3: return std::to_string(p.experience);
@@ -1942,7 +1942,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int viewportTop = y + 90;
     // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
     // (rows, clip, touch boxes and the boxed highlight all use rowW).
-    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + 10 : 0;
+    const int scrollbarGap = SharedScrollbar::kTouchSlop + 4;
+    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + scrollbarGap : 0;
     const int rowW = w - 44 - barGutter;
     fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
@@ -2003,7 +2004,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     Colors::Text, TextStyle::Body);
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + 10, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + scrollbarGap, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
@@ -2335,26 +2336,26 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 }
 
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.drawGSCOverlay(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 120));
-    constexpr int x = 220, y = 92, w = 840, h = 480;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, Presentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
-                Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
-    fb.drawText(x + 270, y + 112, std::string(Context::exactGameName(screen.sourceGameId)), Colors::Text);
-    fb.drawText(x + 34, y + 158, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
-    fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
-    fb.drawText(x + 34, y + 250, "PID", Colors::TextDim);
-    fb.drawText(x + 270, y + 250, "Derived from Nature / Gender / Shiny / Ability", Colors::Text);
-    fb.drawText(x + 34, y + 296, "Legality", Colors::TextDim);
-    fb.drawText(x + 270, y + 296, Presentation::legalityLabel(Presentation::LegalityState::NotChecked),
-                Colors::Warning);
-    drawNavBar(fb, {{"B", "Back"}});
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    screen.drawGSCOverlay(fb);std::string error;
+    auto* staged=editor(screen);
+    const auto p=staged?staged->boxedPokemon(static_cast<size_t>(state.box),static_cast<size_t>(state.slot),error):std::nullopt;
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",std::string(Context::exactGameName(screen.sourceGameId))},
+        {"Native format","PK3 checksum verified; save sections checked on export"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->otName});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid)+" / "+std::to_string(p->sid)});
+        rows.push_back({"Origin game",Enums::getOriginGameName(p->originGame)});
+        rows.push_back({"Met location",metLocationText(*p)});
+        rows.push_back({"Met level",std::to_string(p->metLevel)});
+        rows.push_back({"PID",std::to_string(p->pid)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
+    }
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
