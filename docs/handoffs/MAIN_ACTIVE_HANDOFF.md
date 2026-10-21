@@ -4,7 +4,7 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-20 (round 4 checkpoint 4), by the Claude coordinator session (`session_01AnyHUH96AxxgM3qguezsET`).
+Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
 ## 1. Where to start
 
@@ -13,8 +13,8 @@ Last updated: 2026-10-20 (round 4 checkpoint 4), by the Claude coordinator sessi
 | Repository | `GlitchedZeus/PokeBank-NX` |
 | Integration branch | `claude/gen5-integration-20261014` (PR #307, **draft**: keep it draft) |
 | Last code commit (the round-3 NRO was built from this) | `62a2f8c34476062ece344ef2188ab6b385369a7d` |
-| Branch HEAD before this handoff commit | `c3b0ac4812ef9d584de5d74109189c3ac897fe24` (docs only after `62a2f8c3`) |
-| Branch HEAD after this handoff commit | see `git ls-remote origin claude/gen5-integration-20261014` (docs only) |
+| Verified application integration HEAD at takeover | `58a81207e3eaef6d5070a17f4db5ab4b1ed286ea` |
+| Codex working checkpoint | `wip/codex-round4-takeover-20261021`; see section 6c; not yet integrated into #307 |
 | Legality engine | PR #314: a **separate lane**. Do not merge it with #307 or `main` without the owner's authorization. |
 | `main` | Not touched by this campaign. Nothing merges to `main` without the owner. |
 
@@ -163,6 +163,37 @@ States: Implemented → Tested (host) → Pushed → Integrated (#307) → Hardw
 
 The 2R integrator lane was not reached (permission check), so the coordinator is integrating. Before resuming, check each lane
 branch and every `wip/*` branch with `git ls-remote origin`.
+
+## 6c. Codex takeover checkpoint (2026-10-21 UTC)
+
+Codex owns `wip/codex-round4-takeover-20261021`; the owner explicitly authorized taking over #307,
+reviewing/integrating the backup work and finishing the remaining Round 4 repairs. Do not write this
+branch concurrently. No messages were sent to other contributors. Legality #314 remains separate.
+
+- Integration base: `58a81207e3eaef6d5070a17f4db5ab4b1ed286ea` (all existing 12 repair entries retained).
+- Reviewed backup tip: `44fb4b7eaa58f3e627ff981d84f2caeaed293667`.
+- Working code checkpoint: `fe5c3ad76fd5b1e54d5f8e4d773986b7757405ef`, a forward merge preserving both parents.
+- Implemented: explicit emulator/installed backup creation; newest-first combined manual/export history;
+  Y-confirmed eligible deletion; original-source refusal; no automatic backup on unchanged open;
+  removal of obsolete Auto-Backup setting; exact selected legacy source routing; live last-copy
+  recheck at deletion; recovery of earlier Working bytes after a failed partial refresh, without
+  touching an unexpected callback destination.
+- Tested: nine focused suites under GCC and Clang normal builds (18 executions): emulator backup
+  access/layout, classic verified export, verbatim export, Gen I export transaction, Gen V export
+  validation, Gen V Review/Discard/Export trace, source-mutation policy and write policy. Game Hub
+  source contract and repository safety passed. All 70 owner PASS items remain guarded (196 guards).
+- ASan/UBSan focused runs and complete GCC export contracts/20-game matrix are in progress. Initial
+  sanitizer execution in the tracing sandbox hit the documented LeakSanitizer/ptrace limitation;
+  reruns preserve leak detection outside that sandbox. No sanitizer checks were disabled.
+- NOT yet integrated into #307 and NOT hardware verified. No new official candidate is ready.
+- Remaining: finish/record phase-1 tests, enforce CG59/60 after their genuine passing behavior, then
+  Trainer Review/exit/named rows, Party Actions, Gen V inventory/language/defaults, remaining UI and
+  source-backed location work, all candidate contracts, full gates, exact NRO build/binding/audit.
+
+The owner's Round 3 report is already committed. Do not request it again. S06 remains NOT TESTED;
+exports are tested only on disposable host sources. The pre-takeover `wip/coord-gen5-direct-open-20261020`
+tip `61491b533ffba38a03bd46639a8ac3ea2ee11d0e` is already represented in #307. The backup WIP branch
+remains preserved. Do not delete WIP refs or claim this checkpoint completes all 37 owner FAILs.
 
 ## 7. Next development tasks (in order)
 
