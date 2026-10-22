@@ -53,7 +53,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
 	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
-	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/ItemPresence.cpp \
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/LocationNames.cpp src/Names/ItemPresence.cpp \
 	src/Names/MovePresence.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp)

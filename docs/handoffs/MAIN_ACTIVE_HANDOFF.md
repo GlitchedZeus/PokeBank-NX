@@ -4,7 +4,44 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-21 UTC, by Codex (Round 4 takeover; owner-authorized application work).
+Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
+
+## Codex milestone 8 — complete Gen III Review and exercise repaired matrix behavior (2026-10-22)
+
+- Resume baseline is remote-verified `be3d965a42846a81b5feb3b55ec10b4e46e38574`
+  on `wip/codex-round4-takeover-20261021`. Its native run 39690466629 passed
+  compile/link, asset verification and smoke packaging. App #307 and backup were refreshed
+  and remain `58a81207e3eaef6d5070a17f4db5ab4b1ed286ea` and
+  `44fb4b7eaa58f3e627ff981d84f2caeaed293667`. No other writer has advanced them.
+- Gen III Review now names every editable scalar/native field, including Nature, Language,
+  Ball, Met Location, Friendship, PID, ability, gender, Unown form and Pokérus. Redundant
+  generic rows are removed; an unclassified raw change still gets an explicit stored-record
+  row. Duplicate/unknown location labels retain their native IDs when needed to distinguish
+  before/after. Added direct Party Review tests for all five exact Gen III games.
+- Both rebuilt GCC and Clang Gen III native editor suites passed. The focused Clang normal
+  and ASan/UBSan Review suites passed with leak detection enabled before this checkpoint.
+  Added LocationNames to every relevant host graph; the full runs had exposed this missing
+  link dependency, rather than a production Switch linking failure.
+- The 20-title matrix now exercises Language via the shared field bridge and native
+  Keep/replay/export, byte-exact OT/nickname preservation, all five Bag catalogues, unique
+  Key Item/TM/HM x1 limits, warning cancellation and strict candidate reparsing. Gen II's
+  independent six-stat formula assertions remain; the retired combined Special cell must
+  be empty, with split-stat rendering covered by its real renderer suite.
+- Expanded Language coverage exposed one missed shared bridge dispatch; it now forwards to
+  native Language. The descriptor and navigation assertions now require editable Language
+  and still refuse edits without a validated workspace. CG54 additionally guards that actual
+  dispatch and has a broken-path control. Stored Met Location acceptance remains a no-op;
+  the shared picker source test now explicitly checks that guard and the native setter path.
+- Full GCC/Clang normal + sanitizer gates and both expanded matrices are rebuilding in
+  `/tmp/round4-final-{gcc,clang}` and `/tmp/round4-final-qa-{gcc,clang}`. Logs are in the
+  project `outputs/round4-takeover/`. Do not claim final full-suite success yet.
+- Candidate source mode passed with 0 violations. The 20 broken-path controls, 70-PASS gate
+  and repository safety are rerunning. Earlier qa-tools-test finished successfully; its
+  optional manual-workflow inventory lists stale legacy checks without changing those workflows.
+- Still required: finish/fix full gates, push and remote-verify the next checkpoint, native
+  build of the new code, integrate finished work forward into #307, wait for actual-head CI,
+  build ONE official integrated candidate, docs-only exact binding and QA-F9 audit. No
+  hardware status changed. S06 remains NOT TESTED; no live emulator writes; #314/main untouched.
 
 ## Codex milestone 7 — native Gen I–III Party Actions and editing (2026-10-21)
 

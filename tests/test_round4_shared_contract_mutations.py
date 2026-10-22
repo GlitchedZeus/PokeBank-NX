@@ -21,7 +21,7 @@ def mutate(path,old,new):
     return result
 
 baseline={r.cid[:4]:r.violations for r in qa.contracts(sources)}
-for cid in ('CG08','CG33','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49','CG53'):
+for cid in ('CG08','CG33','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49','CG53','CG54'):
     assert not baseline[cid],(cid,baseline[cid])
 assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',', 20, refilter)',', 20, nullptr)'), 'CG40')
 assert check(mutate('src/UI/Gen2UnifiedPokemonWorkspace.inc','Selector::nextOtGender(','Selector::missingGender('),'CG41')
@@ -52,4 +52,7 @@ assert check(mutate('src/UI/ClassicPartyActions.inc','actionsForSlot(true,{false
     'actionsForSlot(false,{false,false,false},false)'),'CG33')
 assert check(mutate('include/UI/Gen2PokemonSession.h','editor.stagePartyPokemonEdit(',
     'editor.stageBoxPokemonEdit('),'CG33')
-print('Round 4 shared source contracts: real paths pass; nineteen broken-path controls fail PASS')
+assert check(mutate('include/Integration/Gen5/Gen5SharedEditorBridge.h',
+    'return session.stage(NativeField::Language,stat,value,error);',
+    'return session.stage(NativeField::Friendship,stat,value,error);'),'CG54')
+print('Round 4 shared source contracts: real paths pass; twenty broken-path controls fail PASS')

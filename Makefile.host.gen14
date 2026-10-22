@@ -280,7 +280,7 @@ GEN3_TRAINER_EDIT_SOURCES := tests/test_gen3_trainer_edit.cpp \
 	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp \
-	src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
+	src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/LocationNames.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
 GEN3_TRAINER_EDIT_DEPS := include/Integration/Gen3/Gen3StagedTrainerEditor.h include/Integration/Gen3/Gen3ExportTransaction.h \
 	include/UI/ClassicTrainerEditability.h

@@ -219,7 +219,10 @@ void gen5FieldContracts() {
     focus = {Panel::Details, 8, 0};
     focus = Workspace::navigate(Shared::Generation::Gen5, focus, key('D'), false, true,
                                 F::RowCount, detailEditable, pidEditable).focus;
-    assert(focus.row == F::Ball); // Language and Origin are read-only
+    assert(focus.row == F::Language);
+    focus = Workspace::navigate(Shared::Generation::Gen5, focus, key('D'), false, true,
+                                F::RowCount, detailEditable, pidEditable).focus;
+    assert(focus.row == F::Ball); // Origin stays read-only.
 
     // 2: IVs change only after the activation reaches the IV cell's keypad.
     focus = {Panel::Values, 1, 0};
@@ -374,7 +377,9 @@ void surfaceSourceContracts() {
     contains(gen5, "const u64 workspaceKeys=screen.controllerNavigation.apply(");
     // 3: the shared surface only changes values from an activation / picker A.
     contains(shared, "if (!(down & HidNpadButton_A) || !editable) return true;");
-    contains(shared, "if (!A::applyPicker(screen, state, state.pickerTarget, value)) return true;");
+    contains(shared, "const bool unchangedLocation = state.pickerTarget == PickerTarget::MetLocation &&");
+    contains(shared, "state.pickerMetContextActive && value == state.pickerMetContext.stored();");
+    contains(shared, "if (!unchangedLocation && !A::applyPicker(screen, state, state.pickerTarget, value)) return true;");
     absent(gen5, "adjustField(");
     absent(gen5, "\"Left/Right\",\"Adjust\"");
     // 10: opening / closing a picker or the move editor keeps the field focus.

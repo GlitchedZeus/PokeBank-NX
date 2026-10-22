@@ -10,6 +10,8 @@
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Names/PokemonNames.h"
+#include "Names/LocationDisplayNames.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -171,6 +173,26 @@ void runGame(SourceGame game, Family family) {
         const auto immutable=source;
         std::string error;auto editor=StagedPokemonEditor::create(source,game,error);assert(editor);
         const auto before=editor->partyPokemon(0,error);assert(before);
+        {
+            auto reviewed=StagedPokemonEditor::create(source,game,error);assert(reviewed);
+            BoxPokemonEdit request;request.nature=static_cast<uint8_t>((before->nature+1)%25);
+            request.language=3;request.ball=2;request.metLocation=2;request.metLevel=19;
+            request.friendship=99;request.pokerus=0x13;request.otName="WILL";
+            assert(reviewed->stagePartyPokemonEdit(0,request,error));
+            const auto expectedLocation=Names::getMetLocationDisplayName(before->originGame,2);
+            size_t named=0;
+            for(const auto& row:reviewed->pendingChanges()) {
+                assert(row.beforeValue!=row.afterValue && row.party);
+                assert(row.label.find("Pokemon edit")==std::string::npos);
+                if(row.label=="Party 1 Nature") {assert(row.afterValue==Names::getNatureName(*request.nature));++named;}
+                if(row.label=="Party 1 Language") {assert(row.afterValue=="French");++named;}
+                if(row.label=="Party 1 Ball") {assert(row.afterValue=="Ultra Ball");++named;}
+                if(row.label=="Party 1 Met Location") {assert(row.afterValue==expectedLocation);++named;}
+                if(row.label=="Party 1 OT Name") {assert(row.afterValue=="WILL");++named;}
+                if(row.label=="Party 1 Pokérus") {assert(row.afterValue.find("Infected")!=std::string::npos);++named;}
+            }
+            assert(named==6 && reviewed->originalBytes()==immutable && source==immutable);
+        }
         {
             auto unusual=source;unusual[body+0x54]=77;
             unusual[body+0x56]=3;unusual[body+0x57]=0;

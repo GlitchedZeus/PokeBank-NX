@@ -122,6 +122,8 @@ struct SharedEditorSlot {
             return session.stage(NativeField::Experience,stat,value,error);
         case Shared::FieldIdentity::Friendship:
             return session.stage(NativeField::Friendship,stat,value,error);
+        case Shared::FieldIdentity::Language:
+            return session.stage(NativeField::Language,stat,value,error);
         case Shared::FieldIdentity::IV:
             return session.stage(NativeField::IV,stat,value,error);
         case Shared::FieldIdentity::EV:

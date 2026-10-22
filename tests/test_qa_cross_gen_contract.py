@@ -516,6 +516,11 @@ def round4_p2_contracts(sources):
     m = re.search(r"enum\s+class\s+Field\s*:\s*uint8_t\s*\{([^}]*)\}", rec.code) if rec else None
     if not m or not re.search(r"\bLanguage\b", m.group(1)):
         r.violations.append("include/Integration/Gen5/Gen5StagedPokemonRecord.h: StagedPokemon5Record::Field has no Language")
+    bridge = src("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+    if not bridge or not re.search(
+            r"case Shared::FieldIdentity::Language:\s*return session\.stage\(NativeField::Language,stat,value,error\)",
+            bridge.code):
+        r.violations.append("Gen5SharedEditorBridge.h: shared Language field does not reach native staged Language")
     fields = src("include/Integration/Gen5/Gen5EditorFields.h")
     for name, ln, body in function_bodies(fields.code, re.compile(r"^detailEditable$")):
         cm = re.search(r"case\s+Language\b", body)
