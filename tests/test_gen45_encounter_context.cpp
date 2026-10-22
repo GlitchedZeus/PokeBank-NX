@@ -80,7 +80,7 @@ int main() {
             assert(context.detail(current,name).find("Lv.") == std::string::npos);
         }
     }
-    for (const auto [origin, marker, kind] : {
+    for (const auto& [origin, marker, kind] : {
             std::tuple<uint8_t,uint16_t,const char*>{10,55,"Transfer"}, {21,30001,"Transfer"},
             {21,30012,"Transfer"}, {10,2002,"Trade"}, {21,30003,"Trade"},
             {10,2001,"NPC"}, {21,30002,"NPC / egg"}, {10,2000,"Day-Care"},

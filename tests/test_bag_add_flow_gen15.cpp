@@ -670,7 +670,7 @@ void run(G::SaveFamily family, std::string_view gameId, uint8_t version, QP::Gam
         CHECK(bag.chosenAddItem()==wanted);
         return bag.chosenAddItem()==wanted;
     };
-    for(const auto [pocket,id]:{std::pair<size_t,uint16_t>{1,447},{2,618}}) {
+    for(const auto& [pocket,id]:{std::pair<size_t,uint16_t>{1,447},{2,618}}) {
         if(!changePocket(pocket))return;
         CHECK(bag.openAdd(ws,error) && bag.surface()==Surface::AddPicker);
         if(!choose(id))return;

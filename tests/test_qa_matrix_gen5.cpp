@@ -1167,7 +1167,7 @@ Outcome bagAdd(Ctx& c) {
     need(exported && std::any_of((*exported)[kMedicine].begin(), (*exported)[kMedicine].end(),
                                  [](const auto& s) { return s.itemId == kAntidote && s.count == 1; }),
          "re-parsed Medicine pocket lacks Antidote x1");
-    for(const auto [pocket,id]:{std::pair<size_t,uint16_t>{kKey,addedKey},{2,addedMachine}})
+    for(const auto& [pocket,id]:{std::pair<size_t,uint16_t>{kKey,addedKey},{2,addedMachine}})
         need(std::any_of((*exported)[pocket].begin(),(*exported)[pocket].end(),
             [id](const auto& slot){return slot.itemId==id && slot.count==1;}),"Unique item did not reparse at x1");
     need(c.sourceUntouched(), "bag add touched the source file");

@@ -6,6 +6,26 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## CI portability follow-up — 2026-10-22
+
+- Both app #307 and Codex WIP were pushed and remote-verified at
+  `c60d4da0abc467aedac54aa886179c89fc89bc19` (tree
+  `b646118a299bbe531f87d948d7a1d55aff4e22de`). PR #307 remains draft.
+- Official gen15 integrated candidate run 39728794477 / job 119658788437 PASSED all
+  build/asset/package/upload steps. Published artifact 12404690063 contains
+  PokeBank-NX-Gen1-5-Candidate-c60d4da0.nro, 176610993 bytes, SHA-256
+  `6a150386e48f9a8ea075032de453bde036550dca7adfdf40ee3388f83092c456`.
+  Packaged RomFS: 4267 files, 156.6 MiB, digest bc09c152ac4232a2. NOT DEVICE TESTED.
+- Exact-head CI caught GCC's -Werror=range-loop-construct in a new test's structured
+  binding. Three test loops now bind const references (matrix, Bag flow, encounter
+  contexts); no warning setting or assertion changes. Affected GCC normal and sanitizer
+  Bag/context tests passed; matrix passed 469 cells, zero problems, both variants.
+- Application files are unchanged from the official c60 candidate. The next commit
+  binds that ONE artifact via docs-only changes, retaining candidate ancestry and the
+  non-QA-file staleness guard. Original 62a2 binding correctly failed its stale-binary
+  audit; do not rerun or silence that old identity. Require a new QA-F9 PASS and final
+  exact-head CI before delivery. Source saves/main/#314 remain untouched; S06 NOT TESTED.
+
 ## All local integration gates closed — 2026-10-22
 
 - Validated and remote-verified source checkpoint:
