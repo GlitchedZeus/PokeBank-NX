@@ -6,6 +6,35 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## All local integration gates closed — 2026-10-22
+
+- Validated and remote-verified source checkpoint:
+  `2ba52983bbe663966be25f2d74c2425657e7331d` on
+  `wip/codex-round4-takeover-20261021`. Code is frozen. Codex is the sole application
+  integration writer for this owner-authorized takeover; keep #307 draft.
+- GCC AND Clang complete `host-test host-sanitize` PASSED, leak detection enabled.
+  Each normal suite ran all 197 binaries. Final sanitizer dependency sweeps rebuilt
+  every source/test changed during the long build. Logs: project outputs
+  `full-final-gcc-frozen.log` / `full-final-clang-frozen.log`.
+- Both compilers' frozen `qa-contracts qa-matrix` PASSED normal + ASan/UBSan/leaks=1:
+  469 cells, zero problems; all 18 real export paths satisfy C1–C6. Candidate source
+  contracts report zero failures; 70-owner-PASS gate (196 guards), repository safety
+  and diff checks passed after the test updates.
+- Application files exactly match native-tested code checkpoint
+  `2753e17ba677694bde809e56ddbf0b11d9fabe03`: run 39726730148, job 119652230798,
+  all compile/link/asset/package steps PASS. Later changes are tests/CI/docs only;
+  `git diff --quiet 2753e17b HEAD -- src include Makefile romfs` passed.
+- Refreshed remote integration baseline remains app58 and backup44; BOTH are ancestors
+  of this checkpoint. Backup merge fe5c3ad7 preserves both original parents. This docs
+  checkpoint is being pushed forward to #307 and the WIP together, without a merge to
+  main or legality #314. Exact-head GitHub CI still must complete before calling the
+  repair campaign Integrated. The full 37-ID record is docs/hardware/ROUND4_REPAIRS_AND_RETEST.md.
+- Next: let gen15-integrated-candidate.yml build the actual #307 head; obtain exact
+  filename/source/tree/hash/size/run/artifact identity. Bind that file in a docs-only
+  commit, keep the staleness guard, and require QA-F9 NRO AUDIT: PASS. Wait for final
+  CI conclusions, update the PR description and deliver only the bound official NRO.
+  No smoke NRO is the hardware candidate. Hardware remains 70/37/3; S06 NOT TESTED.
+
 ## Full normal suite contract follow-up — 2026-10-22
 
 - Latest remote-verified application-code checkpoint is
