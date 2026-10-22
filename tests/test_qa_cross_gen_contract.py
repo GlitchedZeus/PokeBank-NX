@@ -20,6 +20,7 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 DEFAULT_ROOT = Path(__file__).resolve().parent.parent
@@ -260,11 +261,13 @@ def code_hits(sources, pattern, flags=0, exclude=()):
     return dedupe(out)
 
 
-def function_bodies(code: str, name_rx: re.Pattern):
-    """Yield (name, start_line, body) for C++ function definitions whose name matches."""
+@lru_cache(maxsize=2048)
+def function_definitions(code: str) -> tuple[tuple[str, int, str], ...]:
+    """Parse an exact source string once; changed mutation inputs have different cache keys."""
+    definitions = []
     for m in re.finditer(r"\b([A-Za-z_]\w*)\s*\([^;{}()]*(?:\([^;{}()]*\)[^;{}()]*)*\)\s*(?:const\s*)?(?:noexcept\s*)?\{", code):
         name = m.group(1)
-        if not name_rx.search(name) or name in ("if", "for", "while", "switch", "catch"):
+        if name in ("if", "for", "while", "switch", "catch"):
             continue
         depth, j = 0, m.end() - 1
         while j < len(code):
@@ -275,7 +278,13 @@ def function_bodies(code: str, name_rx: re.Pattern):
                 if depth == 0:
                     break
             j += 1
-        yield name, code.count("\n", 0, m.start()) + 1, code[m.end():j]
+        definitions.append((name, code.count("\n", 0, m.start()) + 1, code[m.end():j]))
+    return tuple(definitions)
+
+
+def function_bodies(code: str, name_rx: re.Pattern):
+    """Yield the same definition tuples, filtered without reparsing unchanged source."""
+    return (item for item in function_definitions(code) if name_rx.search(item[0]))
 
 
 @dataclass

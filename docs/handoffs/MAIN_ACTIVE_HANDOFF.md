@@ -6,6 +6,31 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Final gate checkpoint — 2026-10-22
+
+- Latest application code is pushed and remote-verified at
+  `629d636510995a15eb6ab66181b357f25ed7efec` on the Codex WIP. The source contains
+  the complete Gen III Review follow-up and the missing shared Language bridge dispatch.
+- BOTH GCC and Clang `qa-contracts qa-matrix` passed normal + ASan/UBSan with
+  `ASAN_OPTIONS=detect_leaks=1`: 469 matrix cells, zero problems; all 18 real export
+  paths satisfy C1–C6. The three reported cross-generation fact differences are retained.
+- All twenty shared broken-path controls passed before parser optimization; the 70-owner-
+  PASS gate (196 guards) and repository safety passed. Fourteen other current PR source/UI/
+  touch/art guards passed; generated-species contract also passed with pinned network fetch.
+- The exact RSE save-open workflow compilation and regression passed normal + sanitizer
+  with leak detection after adding its LocationNames link dependency. The first local
+  wrapper's temporary output-path mapping was incorrect; its corrected complete rerun passed.
+- QA guard runtime approached the CI tools job's ten-minute budget: repeated checks parsed
+  unchanged C++ source again. Cached immutable definition tuples by EXACT source string,
+  with name filtering afterward. No assertion, source scope or mutation is removed. The
+  old/new parser outputs compared exactly on all 569 real source files, plus changed input
+  and name-filter examples. All twenty broken paths passed again with the cache, and candidate mode still reports
+  zero failures. The complete QA tools job is rerunning to verify its time budget.
+- Complete host GCC/Clang + sanitizers still running (sessions 47246 / 32982; resumed
+  with three workers each after an intentional interrupt to increase parallelism); the native
+  compile for 629d6365 is run 39725096656, job 119647073707. Do not integrate to #307 until
+  those gates finish green. App #307 remains app58; no official candidate or new binding.
+
 ## Codex milestone 8 — complete Gen III Review and exercise repaired matrix behavior (2026-10-22)
 
 - Resume baseline is remote-verified `be3d965a42846a81b5feb3b55ec10b4e46e38574`
