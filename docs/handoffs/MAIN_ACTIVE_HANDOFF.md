@@ -6,6 +6,31 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Gate follow-up — preserve unchanged Gen II Party presentation (2026-10-22)
+
+- Resume remote-verified WIP checkpoint `8658ef96d1fc1df70d6121f1eaac1449f4e4b72f`.
+  Native run 39725096656 on application-code head 629d6365 passed EVERY compile/link,
+  preflight, packaged RomFS and smoke artifact step. No official candidate is built yet.
+- The complete normal suite surfaced a real bridge regression: the new Party refresh
+  recreated untouched Gen II Party objects after a Box edit. Keep existing objects when
+  their complete native body, stored names and egg marker are unchanged. Changed Party
+  records still get a strictly reparsed presentation. The original pointer-preservation
+  assertion is retained; new tests require Party nickname/friendship edits to appear,
+  repeated unchanged refreshes to preserve identity, damage/status to remain intact, and
+  Discard to restore the original Party view and immutable source.
+- Focused Clang bridge tests passed normal + ASan/UBSan/leaks=1. Complete normal GCC and
+  Clang are rerunning; full sanitizer builds continue in the same clean directories.
+- Two pre-existing FR/LG tests hardcoded build-host/frlg_fixture.sav. They now honor the
+  already exported POKEBANK_QA_GEN3_FIXTURE, retaining the same strict content checks, so
+  relocated clean build directories are tested correctly. The complete normal rerun got
+  past both fixture consumers and then found the Gen II regression above.
+- Parser-cache equivalence and all twenty negative controls passed; candidate contracts
+  remained zero. Complete qa-tools-test is rerunning with the optimization (session 25089).
+- Still WIP: no integration to #307 until full normal/sanitizer gates and a native build
+  of this new production refresh pass. Refresh source dependencies after the long builds
+  finish; their parsed graph predates these latest source/test changes. S06 NOT TESTED;
+  original emulator saves untouched; legality #314 and main untouched.
+
 ## Final gate checkpoint — 2026-10-22
 
 - Latest application code is pushed and remote-verified at

@@ -5,6 +5,7 @@
 #include "Safety/SourceMutationPolicy.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -14,7 +15,8 @@
 
 namespace {
     std::vector<uint8_t> readFixture() {
-        std::ifstream input("build-host/frlg_fixture.sav", std::ios::binary);
+        const char* fixturePath = std::getenv("POKEBANK_QA_GEN3_FIXTURE");
+        std::ifstream input(fixturePath ? fixturePath : "build-host/frlg_fixture.sav", std::ios::binary);
         return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
     }
 
