@@ -6,6 +6,42 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Full normal suite contract follow-up — 2026-10-22
+
+- Latest remote-verified application-code checkpoint is
+  `2753e17ba677694bde809e56ddbf0b11d9fabe03`; native run 39726730148, job
+  119652230798, passed EVERY compile/link, asset preflight, packaged RomFS and smoke
+  upload step. #307 remains app58; no official candidate or binding is changed.
+- The complete Clang `host-test` run passed all 197 binaries after the fixes below.
+  Log: project `outputs/round4-takeover/full-final-clang-normal-contract-rerun.log`.
+  The equivalent GCC run also passed all 197 binaries. Both complete sanitizer builds
+  remain in progress; run a final dependency sweep after their parsed graph completes.
+- Ten old assertions expected retired implementations: duplicated literal Origin labels,
+  a supposedly constrained full legality claim, inline rather than shared Discard rows,
+  the old narrow scrollbar gutter, a Touch Back label, fake Box context for Party,
+  combined Special values and raw item IDs. They now follow the real shared helpers and
+  require honest NotChecked/Incomplete status, unevaluated history, Y/B boxed Discard,
+  the full scrollbar touch gap, Party-specific context, split Special numbers, and named
+  Potion Review. Independent Gen II arithmetic stays unchanged; the Gen I manifest test
+  additionally checks native Potion x25 after strict export reparse.
+- The dedicated Gen V Bag Add flow still expected Key Items to be view-only and could
+  loop forever when the newly supported picker opened. It now tests Key/TM native x1
+  staging, required story warning, cancellation, native cap refusal, strict export reparse
+  and Discard for all four titles. Picker/pocket loops are bounded and still report missing
+  choices as failures. Existing stackable x1/quantity/focus/source-immutability checks remain.
+- Full qa-tools-test PASSED in 635.34 seconds under simultaneous compiler load: all 20
+  broken controls, NRO audit unit checks, the 70-PASS gate/mutations, workflow parsing,
+  manual-staleness inventory and header-dependency regressions. Its CI tools job budget
+  is increased from ten to twenty minutes so the expanded checks can finish; none skipped.
+- Candidate source contracts were rerun after these test updates: ZERO failures; the
+  70-owner-PASS gate (196 guards), repository safety and diff checks passed again.
+- The normal sweep also executed the last 23 tests independently: all passed, including
+  Party Actions, native Gen II Party editing, nature effects and encounter context.
+- Keep this as WIP until complete GCC/Clang sanitizer + normal gates pass, then refresh
+  app/backup remote heads and integrate forward into #307, retaining draft. Build ONE
+  official integrated candidate, bind it in a docs-only commit and require QA-F9 PASS.
+  S06 remains NOT TESTED. No live saves, main or legality #314 changes.
+
 ## Gate follow-up — preserve unchanged Gen II Party presentation (2026-10-22)
 
 - Resume remote-verified WIP checkpoint `8658ef96d1fc1df70d6121f1eaac1449f4e4b72f`.

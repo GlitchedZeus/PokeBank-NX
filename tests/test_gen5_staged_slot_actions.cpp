@@ -322,10 +322,11 @@ void sourceWiring() {
     const auto end = panel.find("\nvoid drawDecision(");
     const auto body = panel.substr(0, end);
     check(body.find("LegalityState::Incomplete") != std::string::npos &&
-              body.find("LegalityState::Unknown") != std::string::npos &&
+              body.find("SharedEditorChrome::drawOriginLegalityPanel(") != std::string::npos &&
+              body.find("{\"Encounter / evolution / transfers\",\"Full history not evaluated\"}") != std::string::npos &&
               body.find("LegalityState::Verified") == std::string::npos &&
               body.find("ProblemsFound") == std::string::npos,
-          "Origin & Legality is neutral: Unknown / Incomplete, never a verdict");
+          "Origin & Legality uses shared Incomplete status and explicitly unevaluated history");
 }
 
 } // namespace
