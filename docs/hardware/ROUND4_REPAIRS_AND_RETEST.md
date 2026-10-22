@@ -1,9 +1,9 @@
 # Round 4 application repairs and device retest record
 
-**Host validation complete; official candidate and hardware acceptance pending.**
+**Host-tested Round 4 candidate — NOT DEVICE TESTED.**
 
-Validated source checkpoint: `2ba52983bbe663966be25f2d74c2425657e7331d`.
-Application integration target: [draft PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307).
+Candidate application source: `c60d4da0abc467aedac54aa886179c89fc89bc19`.
+Application: [draft PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307).
 Backup `44fb4b7eaa58f3e627ff981d84f2caeaed293667` is merged forward, retaining both parents.
 The original application baseline `58a81207` is preserved. Legality PR #314 and main are untouched.
 
@@ -11,7 +11,7 @@ Owner hardware baseline stays **70 PASS / 37 FAIL / 3 NOT TESTED**. Every repair
 
 ## Original 37 failures
 
-All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**; application CI and exact-binary audit are separate gates.
+All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.
 
 | ID | Repair / evidence | Current status |
 | --- | --- | --- |
@@ -53,25 +53,34 @@ All 37 entries below are implemented and host-tested in the validated applicatio
 | NEW-20 | One Party popup; native 44/48/100-byte staged Party edits; safe Keep/Discard/Continue; cache/status preservation. (`c81853da / be3d965a`) | Host-tested; hardware pending |
 | AUD-01 | IV/V use one paged Review presenter, footer and Discard confirmation; every verified V field is reachable. (`e061f03c`) | Host-tested; hardware pending |
 
-## Validation at this checkpoint
+## Validation
 
-- Focused backup/export tests: 36 executions across GCC/Clang and normal/ASan+UBSan passed; real separate outputs, reparses and unchanged source bytes/size/mtime were checked.
-- Language/defaults/natures/native editor tests: 32 focused executions passed; unique Bag/inventory tests: another 12 passed.
-- Shared Review: 16 executions passed; Gen V trace covers 400 checks across W/B/W2/B2 and all semantic Review pages.
-- Met Location: four GCC/Clang normal/sanitized executions passed; all nine exact titles, native IDs, ancestry and unknown histories; pinned-source reproduction and corrupt-offset rejection passed.
-- Party: 16 GCC/Clang normal/sanitized executions passed; real native I/II/III records and actual shared popup coordinator. The Gen III metadata-only cache-preservation follow-up passed the complete Clang normal/sanitizer suites; the GCC normal suite also passed.
-- All sanitizer executions above used leak detection. Twenty broken-path shared guard controls passed before and after exact-source parser caching. Candidate source contracts have zero violations; all actionable Round 4 XFAIL markers are removed.
-- The 70-owner-PASS gate (196 guards), repository safety and Gen V isolation guards passed at milestones. Both complete normal suites (197 binaries each), both complete ASan/UBSan suites with leak detection, and both frozen QA contract/matrix runs passed.
-- Native checkpoint `c9a457a3`: [Switch build 39687900533](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39687900533) passed compile/link, asset checks and packaged RomFS. Party checkpoint `c81853da` [native run 39689447670](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39689447670) also passed compile/link, assets and packaging. Cache-preservation head `be3d965a` also passed native run 39690466629. Review/Language follow-up `629d6365` passed native run 39725096656. The later Gen II Party refresh preservation repair at `2753e17b` has passed focused Clang normal/sanitizer tests; native run 39726730148 passed all compile/link/assets/package steps. Both full normal suites passed all 197 tests at `2ba52983`; both complete sanitizer suites passed with leak detection. Smoke artifacts are not official candidates.
+- GCC and Clang complete normal host suites: all 197 binaries PASS each. Both complete ASan/UBSan suites PASS with leak detection enabled.
+- Both frozen QA matrices: 469 cells, zero problems, normal and sanitized. The three reported cross-generation fact differences are retained. All 18 real export paths satisfy C1–C6, including strict reparsing, separate output publication, destination races, Discard refusal and original byte/size/mtime preservation.
+- Native Party tests protect 44/48/100-byte formats, stored status/damage, cached stats, inactive slots, RTC and unchanged Party view objects. Actual shared popup tests cover A/touch parity, all four actions and B priority.
+- Candidate source contracts: zero failures. Twenty shared broken-path controls PASS; the owner-PASS gate protects all 70 recorded passes with 196 guards. Repository safety, touch/artwork and source immutability checks PASS.
+- Complete QA tools job PASS, including independent NRO-audit unit tests, hardware-gate mutations, workflow parsing and header dependencies. The CI time budget accommodates every expanded check.
+- CI's compiler flagged copied structured bindings in new tests. Commit `0de3420f76c489baf25611a54dd5bfb2b9febeaf` binds three loops by reference. The affected normal/sanitized Bag and encounter tests and 469-cell GCC matrix passed again. No application file or warning setting changed.
+- Native candidate build and packaged RomFS verification PASS: 4267 files, 156.6 MiB, content digest `bc09c152ac4232a2`; app icon, region artwork, item/Pokémon sprites and source-referenced assets are included.
+- Current exact-head CI and independent QA-F9 conclusion: [PR #307 checks](https://github.com/GlitchedZeus/PokeBank-NX/pull/307/checks). Owner hardware results remain the original 70 PASS / 37 FAIL / 3 NOT TESTED.
 
-- Expanded Clang QA contracts + matrix passed normal and ASan/UBSan with leak detection: 469 matrix cells, zero problems, all 18 export paths satisfy C1–C6. The equivalent GCC run also passed all 469 cells and 18 export paths in normal and sanitized builds. Both complete normal suites passed all 197 binaries; both complete ASan/UBSan suites passed with leak detection.
-- Fourteen current PR source guards passed; the generated-species contract also passed with its pinned source fetch enabled.
+## Bound official candidate
 
-- Complete QA tools job passed (635.34 seconds under compiler load): all negative controls, NRO audit tooling, hardware-gate mutations, workflow parsing and header dependencies. Its CI time budget is twenty minutes; no check was skipped.
+[Download the official candidate artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39728794477/artifacts/12404690063) · [build run](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39728794477)
 
-## Candidate / audit
+| Identity | Value |
+| --- | --- |
+| NRO filename | `PokeBank-NX-Gen1-5-Candidate-c60d4da0.nro` |
+| Application source | `c60d4da0abc467aedac54aa886179c89fc89bc19` |
+| Source tree | `b646118a299bbe531f87d948d7a1d55aff4e22de` |
+| NRO SHA-256 | `6a150386e48f9a8ea075032de453bde036550dca7adfdf40ee3388f83092c456` |
+| NRO size (bytes) | `176610993` |
+| Build run | `39728794477` |
+| Artifact ID | `12404690063` |
 
-**Pending.** The committed audit binding still identifies the older `62a2f8c3` NRO. The staleness guard is preserved. No official Round 4 artifact, final filename/hash/size/tree or QA-F9 PASS is claimed. These must come from one final integrated Gen I–V candidate after the gates pass.
+The docs-only binding in `docs/qa/CANDIDATE_UNDER_AUDIT.env` selects this exact published file. QA-F9 downloads it from its original run without rebuilding; it checks the NRO bytes/hash/size, embedded source identity, recorded tree, packaged assets, candidate ancestry and application-file freshness. [Audit workflow records](https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/app-qa-nro-audit.yml) contain the independent result. The staleness guard remains enforced.
+
+This is the sole artifact selected for this hardware round. Other smoke or automatically produced artifacts are not the bound device candidate. No complete legality-engine or PKHeX-parity claim is made; PR #314 remains separate. S06 remains NOT TESTED; no live emulator save was overwritten.
 
 ## Device retest checklist
 

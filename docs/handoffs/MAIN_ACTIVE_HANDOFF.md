@@ -6,6 +6,32 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## Official Round 4 candidate binding — 2026-10-22
+
+- Application source `c60d4da0abc467aedac54aa886179c89fc89bc19`, tree
+  `b646118a299bbe531f87d948d7a1d55aff4e22de`, built successfully by gen15 integrated run
+  39728794477 / job 119658788437. The original app58 and backup44 histories are preserved.
+- Sole bound device candidate: `PokeBank-NX-Gen1-5-Candidate-c60d4da0.nro`,
+  176610993 bytes, SHA-256 `6a150386e48f9a8ea075032de453bde036550dca7adfdf40ee3388f83092c456`.
+  Artifact 12404690063: https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39728794477/artifacts/12404690063. Packaged RomFS PASS:
+  4267 files / 156.6 MiB / digest bc09c152ac4232a2. NOT DEVICE TESTED.
+- GCC/Clang full normal/sanitizer gates passed; both normal suites ran all 197 tests.
+  Both 469-cell QA matrices and all 18 real export paths passed with leak detection.
+  Candidate source contracts zero; all 70 owner-PASS items guarded (196 guards).
+- QA portability follow-up `0de3420f76c489baf25611a54dd5bfb2b9febeaf` changes only
+  three test loop bindings plus handoff. Its affected normal/sanitized tests passed.
+  Application files still exactly match the official candidate. This binding is a
+  separate DOCS-ONLY commit; candidate ancestry and the non-QA staleness guard remain intact.
+- Exact-file QA-F9 and final exact-head CI are the delivery gates: consult #307 checks
+  and its audit workflow record, not the superseded stale-62a2 run. The audit downloads
+  this original artifact and does not rebuild. No later automatically produced candidate
+  supersedes this explicit binding. Full 37-ID statuses/retest steps are in
+  docs/hardware/ROUND4_REPAIRS_AND_RETEST.md; PR #307 remains draft.
+- Remaining owner task is physical Switch retesting of this exact NRO. Hardware baseline
+  remains 70 PASS / 37 FAIL / 3 NOT TESTED, S06 NOT TESTED. Never write a live emulator
+  source, merge legality #314 or change main. Any new application code requires another
+  freshly built/bound/audited candidate before making hardware claims.
+
 ## CI portability follow-up — 2026-10-22
 
 - Both app #307 and Codex WIP were pushed and remote-verified at
