@@ -3,6 +3,11 @@
 #include <vector>
 namespace PokeBank::UIModel::ClassicHelp {
 enum class Page { Hub,Pokemon,Party,Items,Trainer };
+// Round 5 4D: every control named here performs that action in that generation. Plus opens Review
+// only in Gen V (Gen5SharedReadOnlySurface openReviewFromBrowse); in Gen I-III Bags it opens
+// Inventory Options (ClassicInventoryOverlay); Gen I-IV reach Review from the Trainer page (Y) or
+// the staged exit menu (B).
+inline constexpr const char* kReviewRoute = "Review   Trainer page Y, or B for the staged exit menu";
 inline std::vector<std::string> lines(Page page,int generation) {
     std::vector<std::string> out{
         "Original save unchanged; Export Copy writes a separate file",
@@ -18,8 +23,10 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back("A   Actions: View, Edit, Move, Clone, Origin or Release");
             out.push_back("A on an empty slot   Create a Pokemon draft");
             out.push_back("L / R   Previous / next box     ZL / ZR   Jump boxes");
-            out.push_back("+   Review staged changes     B   Return to the save hub");
-            out.push_back("Move   Place or cancel from the on-screen Move controls");
+            out.push_back(generation==5?"+   Review staged changes     B   Return to the save hub":
+                "B   Return to the save hub; edits stay staged");
+            if(generation!=5)out.push_back(kReviewRoute);
+            out.push_back("Moving a Pokemon   Y places it, B cancels");
             break;
         case Page::Party:
             out.push_back("A or tap   View / Edit / Origin & Legality / Cancel");
@@ -31,7 +38,12 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back("A   Edit a stack quantity; unique items stay at one");
             out.push_back("X   Add an item at one     Y   Ask to remove the selected item");
             out.push_back("Remove question: A confirms, B cancels");
-            out.push_back("+   Review staged changes     B   Return to the save hub");
+            if(generation==5)out.push_back("+   Review staged changes     B   Return to the save hub");
+            else if(generation<=3)out.push_back("+   Inventory Options: Review, Export or Discard     B   Back");
+            else {
+                out.push_back("B   Return to the save hub; edits stay staged");
+                out.push_back(kReviewRoute);
+            }
             break;
         case Page::Trainer:
             out.push_back(generation==5?"A   Edit Name, Money or Play Time; other facts are read-only":
