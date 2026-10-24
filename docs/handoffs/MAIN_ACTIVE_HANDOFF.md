@@ -677,6 +677,13 @@ Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
   older picker paths reported by CG40/41/42/44/45/46; complete gates then #307 integration,
   one final candidate and exact-binary QA-F9. S06 stays NOT TESTED.
 
+## 0. CURRENT BRANCH OWNER (read first)
+
+**2026-10-24 23:25 UTC: the owner chose Claude (coordinator session `session_01AnyHUH96AxxgM3qguezsET`) to own #307.**
+- Codex: do **not** push to `claude/gen5-integration-20261014` until the owner hands it back.
+- Codex's last commit is `7d661fa3` (Oct 24 candidate `8804f8f8`, NRO sha256 `5bbc090e…6085`, NOT DEVICE TESTED). It is kept as-is and is the base for round 5.
+- Round 5 lanes branch from `7d661fa3`. They verify Codex's Oct 24 repairs against `docs/hardware/OCT24_REPAIRS_AND_RETEST.md` and the owner's Oct 24 findings, and fix only real gaps.
+
 ## 1. Where to start
 
 | Item | Value |
