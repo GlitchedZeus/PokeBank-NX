@@ -71,7 +71,11 @@ int main() {
         assert(src.find("dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]}") != std::string::npos);
         assert(src.find("gen2StatCellColor(r, 0)") != std::string::npos);
         assert(src.find("stat, gen2StatCellColor(r, 2)") != std::string::npos);
-        assert(src.find("std::to_string(battle[4]), gen2StatCellColor(4, 2)") != std::string::npos);
+        // Owner-approved #324 layout: SpA and SpD occupy the same Calculated
+        // column. The Special DV / Stat Exp remain one editable native row.
+        assert(src.find("calculatedCell(battle, r)") != std::string::npos);
+        assert(src.find("calculatedSpecialDefenseCell(battle)") != std::string::npos);
+        assert(src.find("gen2StatCellColor(4, 2)") != std::string::npos);
     }
     const auto gen2View = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     assert(gen2View.find("CSF::derivedHpDv(") != std::string::npos);

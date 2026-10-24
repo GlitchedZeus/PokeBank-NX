@@ -68,6 +68,7 @@ struct State : Rules::Session {
     std::vector<uint8_t> itemNativeChoices;
     ItemPickerSort::Mode itemSort = ItemPickerSort::Mode::Native;
     std::string itemQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedHeldItemSearch::State heldItemSearch;
     int itemChoiceIndex = 0;
     TouchScrollState itemScroll;
     TouchPickerViewport itemViewport;
@@ -448,6 +449,7 @@ void openHeldItemPicker(State& state) {
     state.itemNativeChoices = state.itemChoices;
     state.itemSort = ItemPickerSort::Mode::Native;
     state.itemQuery.clear();
+    state.heldItemSearch={};
     state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemScroll.reset();
     state.itemViewport.reset();
@@ -580,13 +582,33 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
     constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight, rowStep = Grid::rowPitch;
     const int px = (1280 - pickerW) / 2;
     const int py = (720 - kNavBarH - pickerH) / 2;
+    const auto heldItemName=[](uint8_t id){return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id);};
+    const auto refilter=[&](const std::string& query) {
+        const int row=ItemPickerSearch::apply(state.itemChoices,state.itemNativeChoices,state.itemSort,
+            query,state.itemChoiceIndex,heldItemName,SharedSearchInput::searchKey);
+        state.itemQuery=query;
+        if(row>=0)state.itemChoiceIndex=row;
+        state.itemViewport.reset();
+        return row>=0;
+    };
+    const SharedSearchInput::Keys searchKeys{bool(nav&HidNpadButton_Up),bool(nav&HidNpadButton_Down),
+        bool(nav&HidNpadButton_Left),bool(nav&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+    if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
+        SharedSearchInput::sample(touch),px,py,refilter,
+        down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
+        state.itemScroll.stop();
+        state.itemViewport.reveal(state.itemChoiceIndex,static_cast<int>(state.itemChoices.size()),
+            Grid::rows,Grid::columnsForSearch(state.heldItemSearch.open()));
+        return true;
+    }
+    const int columns=Grid::columnsForSearch(state.heldItemSearch.open());
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, Model::columns);
-    const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, Model::columns);
+    state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, columns);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, columns);
     if (maxFirstRow > 0) {
         state.itemScroll.updateVertical(
             touch, px + Grid::gridInsetX, py + Grid::gridInsetY - 3,
-            pickerW - 2 * Grid::gridInsetX, Model::rows * rowStep,
+            Grid::gridWidth(state.heldItemSearch.open()), Model::rows * rowStep,
             rowStep, state.itemViewport.firstRow, maxFirstRow + 1);
     } else {
         state.itemScroll.stop();
@@ -601,7 +623,6 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         state.itemChoiceIndex = touchTap - 3000;
         down |= HidNpadButton_A;
     }
-    const auto heldItemName = [](uint8_t id) { return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id); };
     if (down & HidNpadButton_X) {
         state.itemSort = ItemPickerSort::next(state.itemSort);
         state.itemChoiceIndex = ItemPickerSort::reorder(
@@ -611,33 +632,13 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
             });
         // NEW-06: a re-sort keeps the active search.
         state.itemChoiceIndex = std::max(0, ItemPickerSearch::narrow(state.itemChoices, state.itemQuery,
-                                                                     state.itemChoiceIndex, heldItemName));
+                                                                     state.itemChoiceIndex, heldItemName,SharedSearchInput::searchKey));
         state.itemScroll.stop();
         state.itemViewport.reset();
-        state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()), Model::rows, Model::columns);
+        state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()), Model::rows, columns);
         return true;
     }
-    if (down & HidNpadButton_Minus) {
-        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
-        // and the current sort still applies. Cancel restores the previous search; a query with
-        // no match keeps the previous list (never an empty picker).
-        const std::string previous = state.itemQuery;
-        const auto refilter = [&](const std::string& query) {
-            const int index = ItemPickerSearch::apply(state.itemChoices, state.itemNativeChoices,
-                                                      state.itemSort, query, state.itemChoiceIndex, heldItemName);
-            if (index >= 0) { state.itemQuery = query; state.itemChoiceIndex = index; }
-            state.itemViewport.reset();
-            state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()),
-                                      Model::rows, Model::columns);
-        };
-        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.itemQuery, 20, refilter);
-        refilter(result.accepted ? result.text : previous);
-        if (result.accepted && state.itemQuery != result.text)
-            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
-        state.itemScroll.stop();
-        screen.controllerNavigation.reset();
-        return true;
-    }
+
     if (nav & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right) ||
         down & (HidNpadButton_L | HidNpadButton_R))
         state.itemScroll.stop();
@@ -650,7 +651,7 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
     if (nav & (HidNpadButton_Up | HidNpadButton_Down |
                HidNpadButton_Left | HidNpadButton_Right) ||
         down & (HidNpadButton_L | HidNpadButton_R))
-        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, columns);
     if (down & HidNpadButton_B) {
         state.itemScroll.stop();
         state.itemPicker = false;
@@ -659,9 +660,9 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
     }
     if (down & HidNpadButton_A) {
         if (!state.itemViewport.containsSelection(
-                state.itemChoiceIndex, count, Model::rows, Model::columns)) {
+                state.itemChoiceIndex, count, Model::rows, columns)) {
             state.itemScroll.stop();
-            state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+            state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, columns);
             screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
             return true;
         }
@@ -941,6 +942,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
 
 void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
+    const int heldColumns=Grid::columnsForSearch(state.heldItemSearch.open());
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int w = Grid::modalWidth, h = Grid::modalHeight;
     const int x = (W - w) / 2;
@@ -950,7 +952,7 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     SharedHeldItemPickerPresentation::drawHeading(
         fb, x, y, "Held Item — Generation II",
-        state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()));
+        state.itemChoiceIndex, state.heldItemSearch.noMatches?0:static_cast<int>(state.itemChoices.size()),state.heldItemSearch.open());
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
     fb.drawText(x + w - 250, y + 55,
                 std::string("Sort: ") + ItemPickerSort::label(state.itemSort),
@@ -971,24 +973,27 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     const int firstRow = state.itemViewport.firstRow;
     const int liveOffset = state.itemScroll.offset();
     Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex,
-                                             firstRow, liveOffset);
+                                             firstRow, liveOffset,&state.heldItemSearch);
     const int gridX = x + Grid::gridInsetX, gridY = y + Grid::gridInsetY;
-    const int cellW = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
-    for (int i = std::max(0, (firstRow - 1) * Grid::columns);
-         i < std::min(count, (firstRow + Model::rows + 1) * Grid::columns); ++i) {
-        const int off = i - firstRow * Grid::columns;
-        const int cellX = gridX + (off % Grid::columns) * cellW;
-        const int cellY = gridY + (off / Grid::columns) * Grid::rowPitch + liveOffset;
+    const int cellW = Grid::cellWidth;
+    for (int i = std::max(0, (firstRow - 1) * heldColumns);
+         !state.heldItemSearch.noMatches && i < std::min(count, (firstRow + Model::rows + 1) * heldColumns); ++i) {
+        const int off = i - firstRow * heldColumns;
+        const int cellX = gridX + (off % heldColumns) * cellW;
+        const int cellY = gridY + (off / heldColumns) * Grid::rowPitch + liveOffset;
         appendClippedTouchButton(screen.touchButtons, 3000 + i,
             cellX, cellY - 3, cellW - 10, Grid::rowPitch - 4,
-            gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
+            gridX, gridY - 3, Grid::gridWidth(state.heldItemSearch.open()),
             Grid::rows * Grid::rowPitch);
     }
     PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec footer;
     footer.gridPaging = true;
     footer.xLabel = "Sort";
     footer.minusLabel = "Search";   // NEW-06
-    UI::SharedEditorChrome::drawPickerFooter(fb, footer);
+    if(state.heldItemSearch.open() || state.heldItemSearch.noMatches)
+        SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);
+    else
+        UI::SharedEditorChrome::drawPickerFooter(fb,footer);
 }
 
 void drawConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {

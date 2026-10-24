@@ -1,3 +1,4 @@
+#include "UI/ClassicHelpPresentation.h"
 #include <cstring>
 #include <ctime>     // std::time / std::localtime -> a created mon's met date = today
 #include <algorithm>
@@ -450,6 +451,7 @@ namespace UI {
         fb.drawFilledRoundedRect(x, y, w, hH, 16, Colors::AccentDim);
         fb.drawFilledRect(x, y + hH - 16, w, 16, Colors::AccentDim);
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Trainer", Colors::Text, TextStyle::Heading);
+        if(classic)fb.drawText(x+w-264,y+15,"Gold values are read-only",Colors::TextDim,TextStyle::Caption);
 
         screen.touchButtons.clear();
 
@@ -488,12 +490,14 @@ namespace UI {
 
         // --- Read-only rows (not selectable). ---
         auto infoRow = [&](const char* label, const std::string& value) {
-            const int infoH=classic?36:46;
+            const int infoH=classic?28:46;
             fb.drawFilledRoundedRect(cardX, cy, cardW, infoH, 12, Colors::PanelAlt);
             fb.drawText(cardX + 24, cy + (infoH - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, Colors::Text, TextStyle::Body);
-            cy += infoH+8;
+            const auto valueColor=classic?SharedEditorChrome::fieldColor(
+                PokeBank::UIModel::SharedFieldState::style(PokeBank::UIModel::SharedFieldState::State::ReadOnly,false).value):Colors::Text;
+            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, valueColor, TextStyle::Body);
+            cy += infoH+(classic?6:8);
         };
         const bool generationOne = screen.sourceGameId == "red_gb" ||
                                    screen.sourceGameId == "blue_gb" ||
@@ -505,8 +509,9 @@ namespace UI {
         } else if (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
                    screen.sourceGameId == "crystal_gbc") {
             infoRow("Trainer ID", std::to_string(t.TID16));
-            if (screen.sourceGameId == "crystal_gbc")
-                infoRow("Gender", t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown");
+            if(screen.sourceGameId=="crystal_gbc")
+                infoRow("Gender",t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown");
+            else infoRow("Gender","Male (fixed by game)");
         } else if (screen.sourceGameId == "diamond_nds" ||
                    screen.sourceGameId == "pearl_nds" ||
                    screen.sourceGameId == "platinum_nds" ||
@@ -525,6 +530,7 @@ namespace UI {
         }
         if (classic) {
             infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
+            infoRow("Badges",t.nativeBadges.text());
             const auto dex=t.pokedexProgress();
             infoRow("Pokédex",dex.available()?"Seen "+std::to_string(dex.seen)+" / Caught "+
                 std::to_string(dex.caught)+" / "+std::to_string(dex.total):"Unavailable");
@@ -5110,7 +5116,8 @@ namespace UI {
         // details/logs, not beside the game title on every screen.
         std::string subtitle = legacyReadOnlySource()
             ? legacyProviderLabel() + "  •  " + titleName + "  •  Read-only source"
-            : (sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — "
+            : (sourceKind==PokeVault::Safety::SourceKind::HistoricalBackup?"HISTORICAL BACKUP / READ ONLY — ":
+               sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — "
                                 : "BACKUP WORKSPACE — ") + titleName;
         if (!gameVersion.empty()) subtitle += "  v" + gameVersion;
         if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty() &&
@@ -5477,6 +5484,16 @@ namespace UI {
         drawTransientStatus(fb);
 
         if (helpOverlayActive) {
+            const int generation=PokeBank::UIModel::ClassicGenericUi::classicGeneration(sourceGameId);
+            if(generation>=1 && generation<=5) {
+                namespace Help=PokeBank::UIModel::ClassicHelp;
+                const auto page=!detailViewActive?Help::Page::Hub:
+                    selectedMode==ViewMode::Items?Help::Page::Items:
+                    selectedMode==ViewMode::Trainer?Help::Page::Trainer:
+                    selectedMode==ViewMode::Party?Help::Page::Party:Help::Page::Pokemon;
+                drawInfoOverlay(fb,"Game Browser Controls",Help::lines(page,generation));
+                return;
+            }
             drawInfoOverlay(fb, "Game Browser Controls", {
                 legacyReadOnlySource()
                     ? legacyProviderLabel() + " SOURCE: read-only browsing"

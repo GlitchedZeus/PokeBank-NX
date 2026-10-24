@@ -30,15 +30,14 @@ namespace Dialogs {
             return Geo::buttonRect(row, index, 2);
         }
 
-        void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb, bool stagedExit = false);
+        void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 
         // Gen I-V footer: names exactly what each visible button does (same ids and semantics).
-        // stagedExit: Gen V's ConfirmExit asks for the same staged exit as Gen I-IV.
         PokeBank::UIModel::SharedEditorPresentation::Footer classicSaveConfirmFooter(
-            const TrainerViewScreen& screen, bool stagedExit = false) {
+            const TrainerViewScreen& screen) {
             PokeBank::UIModel::SharedEditorPresentation::Footer footer;
             const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-            if (stagedExit || (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4)) {
+            if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
                 footer.push("A", "Review Changes");
                 footer.push("B", "Continue Editing");
                 footer.push("Y", "Discard & Exit");
@@ -65,13 +64,6 @@ namespace Dialogs {
     // Gen I-V: the dialog owns the frame (the covered screen footer stops being tappable,
     // the Gen2WorkspaceLayers rule) and draws its own footer. Gen VI+ keeps its original
     // presentation: the body below is unchanged and draws no footer for them.
-    // Gen V's staged exit: the same Gen I-IV dialog, touch layer and footer.
-    void drawStagedExitDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-        SharedEditorChrome::beginModal(screen.touchButtons);
-        paintSaveConfirmContents(screen, fb, true);
-        SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen, true));
-    }
-
     void drawSaveConfirmDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const bool classicSessionDialog =
             PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
@@ -82,22 +74,11 @@ namespace Dialogs {
     }
 
     namespace {
-    void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb, bool stagedExit) {
+    void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         constexpr int w = kSaveDiscard.width;
         const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-        if (stagedExit || (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4)) {
-            constexpr int cw = 840, ch = 330, pad = 28, gap = 16, bh = 60;
-            constexpr int bw = (cw - 2 * pad - gap) / 2;
-            const int x = (fb.getWidth() - cw) / 2, y = (fb.getHeight() - ch) / 2;
-            const int textY = drawDialogFrame(fb, x, y, cw, ch, "Unsaved Changes", Colors::Warning);
-            fb.drawText(x + pad, textY, "Your edits are staged. The original save stays unchanged.", Colors::Text);
-            fb.drawText(x + pad, textY + 32, "Review them, export a separate copy, or continue editing.", Colors::TextDim);
-            screen.touchButtons.clear();
-            const int row = y + ch - 2 * bh - gap - 20;
-            drawEditChoiceButton(screen, fb, x + pad, row, bw, bh, "A", "Review Changes", 2);
-            drawEditChoiceButton(screen, fb, x + pad + bw + gap, row, bw, bh, "B", "Continue Editing", 0);
-            drawEditChoiceButton(screen, fb, x + pad, row + bh + gap, bw, bh, "X", "Export Copy", 3);
-            drawEditChoiceButton(screen, fb, x + pad + bw + gap, row + bh + gap, bw, bh, "Y", "Discard & Exit", 1);
+        if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+            SharedEditorChrome::drawStagedExitPanel(fb,screen.touchButtons);
             return;
         }
 

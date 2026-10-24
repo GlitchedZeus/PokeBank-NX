@@ -161,7 +161,7 @@ void namesFit() {
                     widest = std::max(widest, G::textWidth(name, l.rule.label));
                 }
             }
-        // The 900 px location window is the accepted L03/L04 layout (method / level on the right).
+        // October 24: the 620 px location window retains native names and source context.
         // PKHeX keeps BW2 id 3 as the game's text-variable escapes; id 0 is the dash sentinel.
         require(Names::getMetLocationDisplayName(22, 3) == "Unknown location", "no raw text-variable escapes");
         require(Names::getMetLocationDisplayName(20, 0) == "None" &&

@@ -71,16 +71,18 @@ namespace G = SharedMenuGeometry;
 // after the confirmation. Nothing on this screen writes the emulator's own file.
 inline constexpr int kCreateRowEntry = -1; // EmuBackupRow::entry of a "Create backup now" row
 
-enum class RowAction : unsigned char { CreateBackup, BrowseSave, Details };
+enum class RowAction : unsigned char { CreateBackup, BrowseSave, OpenBackup, Details };
 
 [[nodiscard]] constexpr RowAction rowAction(int entry, SourceBackups::Kind kind) noexcept {
     if (entry == kCreateRowEntry) return RowAction::CreateBackup;
-    return kind == SourceBackups::Kind::OriginalSource ? RowAction::BrowseSave : RowAction::Details;
+    return kind == SourceBackups::Kind::OriginalSource ? RowAction::BrowseSave :
+        kind == SourceBackups::Kind::StagedWorkingCopy ? RowAction::Details : RowAction::OpenBackup;
 }
 [[nodiscard]] constexpr const char* rowActionLabel(RowAction action) noexcept {
     switch (action) {
         case RowAction::CreateBackup: return "Create";
         case RowAction::BrowseSave:   return "Browse";
+        case RowAction::OpenBackup:   return "Open";
         case RowAction::Details:      return "Details";
     }
     return "Details";
@@ -110,7 +112,11 @@ constexpr int lineH(G::Text style) noexcept { return G::fontPx(style) * 5 / 4; }
 
 [[nodiscard]] constexpr G::Layout layout(int rows, int screenW = G::kScreenW,
                                          int screenH = G::kScreenH) noexcept {
-    return G::layout(G::MenuType::BackupMenu, rows, screenW, screenH);
+    auto page=G::layout(G::MenuType::BackupMenu,std::max(rows,8),screenW,screenH);
+    page.itemCount=std::max(0,rows);
+    page.totalRows=std::max(0,rows);
+    page.visibleRows=std::min(std::max(0,rows),8);
+    return page;
 }
 
 // First row shown for a scroll position, clamped to the rule's viewport.

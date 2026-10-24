@@ -79,15 +79,24 @@ void testWiring() {
                             Surface{"src/UI/SharedPokemonEditorSurface.inc", "state.pickerQuery", "state.pickerQuery.clear();"}}) {
         const std::string src = read(s.path);
         assert(src.find("#include \"UI/ItemPickerSearch.h\"") != std::string::npos);
-        assert(src.find("HidNpadButton_Minus)) {") != std::string::npos || src.find("HidNpadButton_Minus) {") != std::string::npos);
-        assert(src.find("Utils::promptText(\"Search Held Items\", \"Part of an item name\"") != std::string::npos);
+        assert(src.find("SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,")!=std::string::npos);
+        assert(src.find("SharedSearchInput::sample(touch),px,py,refilter,")!=std::string::npos);
+        assert(src.find("SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);")!=std::string::npos);
+        assert(src.find("Utils::promptText(\"Search Held Items\"")==std::string::npos);
         assert(src.find("ItemPickerSearch::apply(") != std::string::npos);    // live, never-empty filter
         assert(src.find("ItemPickerSearch::narrow(") != std::string::npos);   // X sort keeps the search
         assert(src.find("ItemPickerSearch::tag(") != std::string::npos);      // header shows the query
         assert(src.find("footer.minusLabel = \"Search\";") != std::string::npos);
         assert(src.find(s.open) != std::string::npos);                       // a new picker starts unfiltered
-        assert(src.find(std::string("Utils::promptText(\"Search Held Items\", \"Part of an item name\", ") + s.query) != std::string::npos);
+        assert(src.find(std::string(s.query)+"=query;")!=std::string::npos);
+        assert(src.find("state.heldItemSearch={};")!=std::string::npos);
+        assert(src.find("SharedSearchInput::searchKey")!=std::string::npos);
+        assert(src.find("&state.heldItemSearch)")!=std::string::npos);
     }
+    const auto docked=read("include/UI/SharedHeldItemSearch.h");
+    assert(docked.find("SharedSearchInput::handleKeys(")!=std::string::npos);
+    assert(docked.find("SharedSearchInput::handleTouch(")!=std::string::npos);
+    assert(docked.find("SharedSearchInput::drawGrid(")!=std::string::npos);
     const std::string footer = read("include/UI/SharedEditorPresentation.h");
     assert(footer.find("if (spec.minusLabel) f.push(\"-\", spec.minusLabel);") != std::string::npos);
     std::cout << "Gen II / III / IV-V held item search wiring ok\n";

@@ -69,6 +69,7 @@ Sprite* SpriteManager::getItemSprite(const std::string&) { return nullptr; }
 // The shared species chooser (SharedSpeciesPicker::drawContent) previews the box icon; no
 // assets backend here either, so the chooser draws its text-only fallback.
 Sprite* SpriteManager::getIconSprite(uint16_t, bool) { return nullptr; }
+Sprite* SpriteManager::getIconSprite(uint16_t, uint8_t, bool) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;

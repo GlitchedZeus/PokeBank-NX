@@ -103,6 +103,10 @@ namespace UI {
         }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
         OpenIntent getOpenIntent() const { return openIntent; }
+        const PokeVault::Source::ImmutableSnapshot::File& getSelectedBackupSnapshot() const {
+            return selectedBackupSnapshot;
+        }
+        const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
@@ -276,6 +280,8 @@ namespace UI {
         std::string selectedTitleName;
         std::string selectedGameId;
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
+        PokeVault::Source::ImmutableSnapshot::File selectedBackupSnapshot;
+        std::string selectedBackupLabel;
         // Ephemeral, exact-session selection; never guessed from file mtime
         // and never grants emulator/source write authority.
         PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =

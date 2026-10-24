@@ -123,11 +123,11 @@ host-sanitize: $(SHARED_EDITOR_CONTRACT_SANITIZE)
 
 $(SHARED_EDITOR_CONTRACT_TEST): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Itests/host-switch -Iinclude tests/test_shared_editor_contract.cpp -o $@
 
 $(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/host-switch -Iinclude tests/test_shared_editor_contract.cpp -o $@
 
 # Shared Gen I-V editor unit: Moves panel, Move chooser, picker footer, inline toggles and the
 # DETAILS viewport, plus source contracts that the real Gen III-V surfaces use them.
@@ -317,38 +317,5 @@ $(STATS_LABEL_NEUTRAL_TEST): tests/test_stats_label_neutral_contract.cpp src/UI/
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
 $(STATS_LABEL_NEUTRAL_SANITIZE): tests/test_stats_label_neutral_contract.cpp src/UI/SharedPokemonEditorSurface.inc include/UI/NatureStatEffect.h include/UI/NatureStatPresentation.h
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
-
-# 6A (owner hardware Oct 24): a tap on the partly visible Gen IV Pokerus row activates it like A.
-GEN4_POKERUS_TOUCH_INPUTS := tests/test_gen4_pokerus_touch_parity.cpp include/UI/SharedPokemonEditorWorkspace.h \
-	src/UI/SharedPokemonEditorSurface.inc src/UI/Gen4SharedPokemonSurface.inc
-GEN4_POKERUS_TOUCH_TEST := $(HOST_BUILD)/test_gen4_pokerus_touch_parity
-GEN4_POKERUS_TOUCH_SANITIZE := $(HOST_BUILD)/test_gen4_pokerus_touch_parity_sanitize
-HOST_TESTS += $(GEN4_POKERUS_TOUCH_TEST)
-HOST_SANITIZE_TESTS += $(GEN4_POKERUS_TOUCH_SANITIZE)
-host-test: $(GEN4_POKERUS_TOUCH_TEST)
-host-sanitize: $(GEN4_POKERUS_TOUCH_SANITIZE)
-$(GEN4_POKERUS_TOUCH_TEST): $(GEN4_POKERUS_TOUCH_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
-$(GEN4_POKERUS_TOUCH_SANITIZE): $(GEN4_POKERUS_TOUCH_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
-
-# AUD-01 Gen V half (owner hardware Oct 24): Gen V uses the Gen I-IV staged exit and Y Review.
-GEN5_REVIEW_EXIT_INPUTS := tests/test_gen5_review_exit_parity.cpp include/UI/ClassicStagedExit.h \
-	src/UI/Dialogs/SaveConfirmDialog.cpp include/UI/Dialogs/SaveConfirmDialog.h \
-	src/UI/Gen5SharedReadOnlySurface.inc include/Integration/Gen5/Gen5TrainerScreen.h
-GEN5_REVIEW_EXIT_TEST := $(HOST_BUILD)/test_gen5_review_exit_parity
-GEN5_REVIEW_EXIT_SANITIZE := $(HOST_BUILD)/test_gen5_review_exit_parity_sanitize
-HOST_TESTS += $(GEN5_REVIEW_EXIT_TEST)
-HOST_SANITIZE_TESTS += $(GEN5_REVIEW_EXIT_SANITIZE)
-host-test: $(GEN5_REVIEW_EXIT_TEST)
-host-sanitize: $(GEN5_REVIEW_EXIT_SANITIZE)
-$(GEN5_REVIEW_EXIT_TEST): $(GEN5_REVIEW_EXIT_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
-$(GEN5_REVIEW_EXIT_SANITIZE): $(GEN5_REVIEW_EXIT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

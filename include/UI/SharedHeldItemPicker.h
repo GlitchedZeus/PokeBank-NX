@@ -18,6 +18,9 @@ inline constexpr int gridInsetX = 22;
 inline constexpr int gridInsetY = 90;
 inline constexpr int rowPitch = 40;
 inline constexpr int cellWidth = (modalWidth - 2 * gridInsetX) / columns;
+constexpr int columnsForSearch(bool open) noexcept { return open?2:columns; }
+constexpr int gridWidth(bool open) noexcept { return cellWidth*columnsForSearch(open); }
+constexpr int pageSizeForSearch(bool open) noexcept { return rows*columnsForSearch(open); }
 static_assert(pageSize == 40 && cellWidth == 249);
 static_assert(gridInsetY + (rows - 1) * rowPitch + (rowPitch - 4) <= modalHeight);
 

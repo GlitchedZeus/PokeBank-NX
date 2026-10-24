@@ -173,8 +173,6 @@ public:
         if (!open_) return {{"A", "Open"}, {"B", "Back"}};
         if (dex_.open())
             return {{"D-pad/Stick", "Browse"}, {"L/R", "Prev/Next Registered"}, {"B", "Back"}};
-        // AUD-01 (Round 5): Y Review, the same Trainer-page Review button as Gen I-IV
-        // (ClassicTrainerSession). + stays a silent alias for players used to the old hint.
         if (selectedRow() == Row::Pokedex)
             return {{"D-pad/Stick", "Choose"}, {"A", "Open Pokedex"}, {"Y", "Review"}, {"B", "Back"}};
         if (editable(selectedRow()))

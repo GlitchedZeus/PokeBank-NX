@@ -197,6 +197,19 @@ namespace PokeVault::Integration::Gen3::Detail {
         }
     }
 
+    // Pinned PKHeX SaveBlock3LargeRS/E/FRLG: badges are eight event bits,
+    // not the first byte of the flags array. Logical reads cross 0xF80 chunks.
+    static uint8_t readBadges(std::span<const uint8_t> source,
+        const std::array<size_t,14>& sectors,size_t flags,unsigned start) noexcept {
+        uint8_t mask=0;
+        for(unsigned i=0;i<8;++i) {
+            std::array<uint8_t,1> value{};
+            if(!readLogical(source,sectors,1,flags+(start+i)/8,value))return 0;
+            mask|=static_cast<uint8_t>(((value[0]>>((start+i)%8))&1u)<<i);
+        }
+        return mask;
+    }
+
     FRLGReadModelResult readFRLGModel(
         std::span<const uint8_t> source,
         const std::array<size_t, 14>& logicalSectorOffsets) noexcept {
@@ -205,6 +218,8 @@ namespace PokeVault::Integration::Gen3::Detail {
             result.error = SaveError::CoreRejected;
             return result;
         }
+
+        result.trainer.badges=readBadges(source,logicalSectorOffsets,0xEE0,0x820);
 
         std::array<uint8_t, 4> keyBytes{};
         std::array<uint8_t, 4> moneyBytes{};
@@ -265,6 +280,8 @@ namespace PokeVault::Integration::Gen3::Detail {
             result.error = SaveError::CoreRejected;
             return result;
         }
+
+        result.trainer.badges=readBadges(source,logicalSectorOffsets,emerald?0x1270:0x1220,emerald?0x867:0x807);
 
         std::array<uint8_t, 4> moneyBytes{};
         if (!readLogical(source, logicalSectorOffsets, 1, 0x490, moneyBytes)) {

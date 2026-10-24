@@ -81,6 +81,7 @@ bool RBYReadOnlyTrainer::populate(
     const Integration::Gen1::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
     nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,8};
     const auto dex = save.dexProgress();
     nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
