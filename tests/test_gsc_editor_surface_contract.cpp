@@ -190,10 +190,16 @@ int main() {
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
-    assert(unified.find("\"SPECIAL\"") != std::string::npos);
-    assert(unified.find("\"Sp. Atk\"") != std::string::npos);
+    // Owner-approved revision: both derived Special stats stay in the same
+    // Calculated column, no detached SPECIAL block or empty Special cell.
+    assert(unified.find("Gen2Workspace::calculatedCell(battle, r)") != std::string::npos);
+    assert(unified.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
     assert(unified.find("\"Sp. Def\"") != std::string::npos);
-    assert(unified.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
+    assert(unified.find("x + 282, y + 246") != std::string::npos);
+    assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") != std::string::npos);
+    const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
+    assert(gen2Presentation.find("return \"SpA \" + std::to_string(battle[4])") != std::string::npos);
+    assert(gen2Presentation.find("std::to_string(battle[5])") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
     assert(unified.find("fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2)") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
