@@ -451,6 +451,7 @@ namespace UI {
         fb.drawFilledRoundedRect(x, y, w, hH, 16, Colors::AccentDim);
         fb.drawFilledRect(x, y + hH - 16, w, 16, Colors::AccentDim);
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Trainer", Colors::Text, TextStyle::Heading);
+        if(classic)fb.drawText(x+w-264,y+15,"Gold values are read-only",Colors::TextDim,TextStyle::Caption);
 
         screen.touchButtons.clear();
 
@@ -493,7 +494,9 @@ namespace UI {
             fb.drawFilledRoundedRect(cardX, cy, cardW, infoH, 12, Colors::PanelAlt);
             fb.drawText(cardX + 24, cy + (infoH - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, Colors::Text, TextStyle::Body);
+            const auto valueColor=classic?SharedEditorChrome::fieldColor(
+                PokeBank::UIModel::SharedFieldState::style(PokeBank::UIModel::SharedFieldState::State::ReadOnly,false).value):Colors::Text;
+            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, valueColor, TextStyle::Body);
             cy += infoH+(classic?6:8);
         };
         const bool generationOne = screen.sourceGameId == "red_gb" ||
@@ -507,7 +510,7 @@ namespace UI {
                    screen.sourceGameId == "crystal_gbc") {
             infoRow("Trainer ID", std::to_string(t.TID16));
             if(screen.sourceGameId=="crystal_gbc")
-                infoRow("Gender",std::string(t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown")+" (read-only)");
+                infoRow("Gender",t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown");
             else infoRow("Gender","Male (fixed by game)");
         } else if (screen.sourceGameId == "diamond_nds" ||
                    screen.sourceGameId == "pearl_nds" ||
@@ -516,7 +519,7 @@ namespace UI {
                    screen.sourceGameId == "soulsilver_nds" || generation==3) {
             // Native Gen IV IDs are two separate 16-bit numbers. Do not
             // mash them into one 'Trainer ID' row or repeat both as 'Full'.
-            infoRow("Gender", t.trainerGender == 0 ? "Male (read-only)" : "Female (read-only)");
+            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
             infoRow("Trainer ID", std::to_string(t.TID16));
             infoRow("Secret ID", std::to_string(t.SID16));
         } else {
@@ -526,7 +529,7 @@ namespace UI {
             infoRow("Full SID", std::to_string(t.SID));
         }
         if (classic) {
-            infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime)+" (read-only)");
+            infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
             infoRow("Badges",t.nativeBadges.text());
             const auto dex=t.pokedexProgress();
             infoRow("Pokédex",dex.available()?"Seen "+std::to_string(dex.seen)+" / Caught "+

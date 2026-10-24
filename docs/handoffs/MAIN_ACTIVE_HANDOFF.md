@@ -6,6 +6,23 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 validation checkpoint — production freeze
+
+- Remote WIP verified at `1716f7f7f0441b9e0f875046828ea88308b04ac1`.
+  Native smoke run 40073165857 is compiling it. #307 remains at92f95612.
+- Trainer informational fields now use the EXISTING shared ReadOnly gold token,
+  with an explicit card hint; no fake gender/time writer or selectable locked row.
+- Gen V UI source guard now follows classify/formAvailable/formRow/priorForm;
+  the actual new chooser covers these paths in behavioral tests. Touch viewport
+  guards now follow two-column docked search width, retaining clipped hitbox checks.
+- Source candidate guards are at0 failures. Owner regression70/196 passes;
+  native PNG and assets/workflow regressions pass. Gen II DV reroll still preserves
+  shiny/gender/Unown. Compact620 menu real-font geometry and inline Gen V Language pass.
+- Full GCC/Clang normal + fresh-directory sanitizer suites and both QA matrices
+  are running. Logs and resume state: project outputs/oct24-repairs. No hardware
+  result changed. Do not integrate until all required gates pass, then build,
+  verify, docs-bind and independently audit ONE official replacement candidate.
+
 ## October 24 form-aware compatibility and validation checkpoint
 
 - Last remote WIP `18b76be5c7393c1f963d16ef1979f4d0a2892106` PASSED native
