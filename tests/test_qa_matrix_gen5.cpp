@@ -741,9 +741,27 @@ Outcome pickers(Ctx& c) {
     auto& ui = t->sharedScreen();
     std::string error;
     need(F::kMaxSpecies == 649, "species bound");
-    const auto moves = F::moveChoices();
-    need(moves.size() == 560 && std::all_of(moves.begin() + 1, moves.end(), [](uint16_t m) {
-             return G5::validNativeMove5(m); }), "move picker list differs");
+    // The production picker must honor the exact save game, Pikachu's species
+    // and its existing source moves; it must never fall back to every native move.
+    namespace Moves = PokeVault::Integration::Gen5MoveCompatibility;
+    const auto moves = F::moveChoices(c.spec.game, 25, 0, {});
+    need(moves.size() > 40 && moves.size() < 180 && moves.front() == 0 &&
+             std::is_sorted(moves.begin(), moves.end()) &&
+             std::find(moves.begin(), moves.end(), 85) != moves.end() &&
+             std::find(moves.begin(), moves.end(), 459) == moves.end() &&
+             std::all_of(moves.begin() + 1, moves.end(), [](uint16_t m) {
+                 return G5::validNativeMove5(m);
+             }), "species/game move picker included an unsupported native move");
+    need(Moves::classify(c.spec.game, 25, 0, 459, false) == Moves::Availability::Unavailable,
+         "unsupported Pikachu move was certified selectable");
+    const auto originalOnly = F::moveChoices(c.spec.game, 25, 0, {459, 0, 0, 0});
+    need(std::find(originalOnly.begin(), originalOnly.end(), 459) != originalOnly.end() &&
+             Moves::classify(c.spec.game, 25, 0, 459, true) == Moves::Availability::Preserved,
+         "an unusual source move must survive without being certified legal");
+    size_t direct = 0;
+    for (uint16_t m = 1; m <= G5::MaxNativeMove5; ++m)
+        direct += Moves::direct(c.spec.game, 25, 0, m) ? 1u : 0u;
+    need(direct >= 40 && direct < moves.size(), "source-pinned direct learnset unexpectedly absent");
     const auto items = F::heldItemChoices();
     need(!items.empty() && items.front() == 0 &&
              std::all_of(items.begin(), items.end(), [](uint16_t i) { return i <= 638; }),

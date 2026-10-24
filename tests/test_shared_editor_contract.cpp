@@ -299,7 +299,31 @@ void nativeCatalogContracts() {
     for (const auto ball : balls)
         assert(std::string_view(Enums::getBallName(static_cast<uint8_t>(ball))).size() > 0);
     assert(F::metLocationChoices().size() == G::NativeMetLocations5.size());
-    assert(F::moveChoices().size() == 560);
+    // Gen V must choose moves for the *current species and exact game*, not the
+    // entire native MoveInfo catalog. Historical source-only moves are retained
+    // as unverified records, never offered for an unrelated Pokemon.
+    namespace Moves = PokeVault::Integration::Gen5MoveCompatibility;
+    for (const auto* game : {"black_nds", "white_nds", "black2_nds", "white2_nds"}) {
+        const auto pikachu = F::moveChoices(game, 25, 0, {});
+        assert(pikachu.size() > 40 && pikachu.size() < 180);
+        assert(pikachu.front() == 0 && std::is_sorted(pikachu.begin(), pikachu.end()));
+        assert(std::find(pikachu.begin(), pikachu.end(), 85) != pikachu.end());
+        assert(std::find(pikachu.begin(), pikachu.end(), 459) == pikachu.end());
+        assert(std::all_of(pikachu.begin() + 1, pikachu.end(), [](uint16_t move) {
+            return G::validNativeMove5(move);
+        }));
+        assert(Moves::classify(game, 25, 0, 459, false) == Moves::Availability::Unavailable);
+        const auto preserved = F::moveChoices(game, 25, 0, {459, 0, 0, 0});
+        assert(std::find(preserved.begin(), preserved.end(), 459) != preserved.end());
+        assert(Moves::classify(game, 25, 0, 459, true) == Moves::Availability::Preserved);
+    }
+    size_t bwDirect = 0, b2w2Direct = 0;
+    for (uint16_t move = 1; move <= G::MaxNativeMove5; ++move) {
+        bwDirect += Moves::direct("black_nds", 25, 0, move) ? 1u : 0u;
+        b2w2Direct += Moves::direct("black2_nds", 25, 0, move) ? 1u : 0u;
+    }
+    assert(b2w2Direct > bwDirect); // B2W2 tutors/learnsets expand direct choices
+    assert(F::moveChoices("platinum_nds", 25, 0, {}) == std::vector<uint16_t>{0});
 
     // Thunderbolt 85: Electric, Special, 95 / 100 / 15.
     const auto* thunderbolt = Names::getMoveBattleStats5(85);
