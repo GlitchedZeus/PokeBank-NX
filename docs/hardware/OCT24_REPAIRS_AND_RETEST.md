@@ -50,6 +50,7 @@ Validation commands (all run from the repository, with separate fresh compiler b
 | `python3 tests/test_ci_repository_safety_contract.py` | PASS |
 | `python3 tests/test_touch_appwide_surface_contract.py` and `python3 tests/test_touch_pokemon_editor_direct_rows_contract.py` | PASS |
 | `python3 tests/test_verify_nro_romfs.py`, `python3 tests/test_device_asset_png_validation.py`, asset regression/known-failure controls | PASS |
+| `python3 tests/test_v1_polish_contract.py` and the GCC CI pre-build recovery/species/font/authority checks | PASS; footer guard follows Y-only deletion and shared Open/Back controls |
 | `git diff --check` | PASS |
 | Native devkitA64 compile/link/packaged RomFS, workflow run 40075492367 at production checkpoint52053c3b | PASS |
 
@@ -125,7 +126,7 @@ Production and build/data-tool files changed (63, automatically enumerated again
 - `src/UI/UI.cpp`
 - `tools/gen_gen5_move_compatibility.py`
 
-Regression test/support files added or repaired (34):
+Regression test/support files added or repaired (35):
 
 - `tests/test_ability_effects.cpp`
 - `tests/test_backup_namespace_contract.cpp`
@@ -161,6 +162,7 @@ Regression test/support files added or repaired (34):
 - `tests/test_source_mutation_policy.cpp`
 - `tests/test_touch_appwide_surface_contract.py`
 - `tests/test_touch_pokemon_editor_direct_rows_contract.py`
+- `tests/test_v1_polish_contract.py`
 
 October 24 candidate — Switch retest checklist
 

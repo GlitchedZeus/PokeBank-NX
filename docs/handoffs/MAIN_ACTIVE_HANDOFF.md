@@ -6,6 +6,26 @@
 
 Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
 
+## October 24 official build and CI source-guard checkpoint
+
+- Verified BOTH application307 and WIP remotes at `8804f8f819a0da34c5d7b983a92bfb3a390eff16`;
+  tree `66c321b13ce734239271ff0b9e924ca43cdaf92f`. Existing draft/base preserved.
+- Official integrated build [40099575742](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742)
+  is compiling this exact code. Select ONLY its8804f8f8artifact after success; smoke artifacts
+  are not deliverables. Independent audit still has the old historical binding and correctly
+  rejects it until the replacement is built and verified.
+- GCC CI found an additional stale polish assertion BEFORE its build: expected X Delete
+  footer from the older browser. Source already uses the owner's Y-delete policy. Guard now
+  requires the shared current-source footer, colored owned Open/Y Delete/Back, unknown-owner
+  Open/Back with no Delete, red Y-only decision and covered-footer touch blocking. All other
+  polish assertions retained. This test and recovery/species/font/authority pre-build checks PASS.
+- This checkpoint changes tests/docs ONLY; application8804f8f8remains the candidate identity.
+  Hold application push until the official build succeeds; then verify bytes/RomFS and add
+  the required docs-only binding commit. Final CI must rerun and pass on that binding head.
+- Full qa-tools gate is running locally as additional CI parity verification. All202 normal
+  and202 sanitizer tests for EACH compiler and both489-cell matrices already PASS.
+- NOT DEVICE TESTED; historical27/6/4 unchanged; S06 NOT TESTED. PR314/main untouched.
+
 ## October 24 completed repair gate — forwarding to PR307
 
 - Final production WIP is remote-verified `52053c3b38904aac6cbaa4abe05b888fca731405`.
