@@ -4,6 +4,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
+#include "UI/ClassicReviewOrigin.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -273,6 +274,7 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
             legacy.review = false;
             legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+            if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) legacy.pokemonActions = false; // standalone Review
             legacy.active = legacy.pokemonActions;
             legacy.pokemonRow = 0;
             screen.controllerNavigation.reset();
@@ -293,6 +295,7 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (down & HidNpadButton_B) {
         legacy.review = false;
         legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) legacy.pokemonActions = false; // standalone Review
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();

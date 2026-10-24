@@ -4,6 +4,7 @@
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/ClassicTrainerSessionInput.h"
+#include "UI/ClassicReviewOrigin.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
@@ -1721,6 +1722,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.reviewTouchScroll.reset();
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1749,6 +1751,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         refreshPresentation(screen);
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
         screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
         return true;

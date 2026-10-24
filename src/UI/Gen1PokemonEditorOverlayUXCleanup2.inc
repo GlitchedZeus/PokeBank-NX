@@ -4,6 +4,7 @@
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
+#include "UI/ClassicReviewOrigin.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
 
@@ -760,6 +761,8 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             state.reviewRow=static_cast<int>(Review::move(state.reviewRow,1,count));
         if (down & HidNpadButton_B) {
             state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
+            // A standalone Review (exit menu, Bag, Trainer) returns to the screen underneath.
+            if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.mode = UX2Mode::Closed;
             state.row = 0;
             return;
         }

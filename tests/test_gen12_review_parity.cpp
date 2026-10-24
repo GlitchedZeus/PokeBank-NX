@@ -7,6 +7,7 @@
 #include "UI/Gen12ReviewDiscardConfirm.h"
 #include "UI/SharedReviewPresentation.h"
 #include "UI/ClassicStagedExit.h"
+#include "UI/ClassicReviewOrigin.h"
 
 #include <cassert>
 #include <fstream>
@@ -179,7 +180,43 @@ void lowSeverityRoutes() {
 
 } // namespace
 
+// Round 5: a Review opened outside Box Actions (staged-exit menu, Bag, Trainer card) closes back
+// to the screen underneath; only Box Actions -> Review Changes returns to an Actions sheet.
+struct FakeScreen { std::string sourceGameId; };
+void reviewOriginContract() {
+    namespace Origin = PokeBank::UIModel::ClassicReviewOrigin;
+    FakeScreen red{"red_gb"}, crystal{"crystal_gbc"};
+    assert(!Origin::takeStandalone(red));          // Box Actions -> Review: back to Actions
+    Origin::markStandalone(red);
+    assert(Origin::takeStandalone(red));           // standalone: B closes to the screen beneath
+    assert(!Origin::takeStandalone(red));          // taken once; the next Review is unmarked
+    Origin::markStandalone(red);
+    assert(!Origin::takeStandalone(crystal));      // another screen/game never inherits the mark
+    assert(!Origin::takeStandalone(red));
+
+    const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    const auto open = between(composite, "bool TrainerViewScreen::openStagedReview(", "namespace {");
+    has(open, "PokeBank::UIModel::ClassicReviewOrigin::markStandalone(*this);");
+    const std::pair<const char*, int> exits[] = {
+        {"src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", 1}, {"src/UI/Gen2SharedPokemonSurface.inc", 2},
+        {"src/UI/Gen3SharedPokemonSurface.inc", 2}, {"src/UI/Gen4SharedPokemonSurface.inc", 2}};
+    for (const auto& [file, expected] : exits) {
+        const auto text = read(file);
+        int uses = 0;
+        for (auto at = text.find("ClassicReviewOrigin::takeStandalone(screen)"); at != std::string::npos;
+             at = text.find("ClassicReviewOrigin::takeStandalone(screen)", at + 1)) ++uses;
+        if (uses != expected) std::cerr << file << ": takeStandalone uses " << uses << '\n';
+        assert(uses == expected); // every Review B / closing Discard All consults the origin
+    }
+    // Gen I / II Bag -> Options -> Review is the shared Review, not a separate list.
+    const auto bag = read("src/UI/ClassicInventoryOverlay.cpp");
+    has(bag, "if (!screen.openStagedReview(false))");
+    lacks(bag, "Pending Classic Save Changes");
+    lacks(bag, "reviewActive");
+}
+
 int main() {
+    reviewOriginContract();
     namespace Review=PokeBank::UIModel::SharedReview;
     const auto rows=Review::fromLines({"Party Slot 1: Move 1: Thunder Shock -> Thunderbolt",
         "Bag / Potion: 1 -> 2", "Trainer Name: RED -> BLUE", "Unstructured native note"});
