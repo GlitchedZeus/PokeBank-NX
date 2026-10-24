@@ -33,6 +33,8 @@ GeneralGeometry generalGeometry(Layout layout) noexcept {
 constexpr size_t kTrainerNameField = 0x00;  // 8 u16 units
 constexpr size_t kTrainerNameUnits = 8;
 constexpr size_t kTrainerMoneyField = 0x14; // u32
+constexpr size_t kTrainerGenderField = 0x18;   // u8, 0 male / 1 female (PKSM-Core Sav4::gender)
+constexpr size_t kTrainerPlayTimeField = 0x22; // u16 hours, u8 minutes, u8 seconds (Sav4::played*)
 
 struct StorageGeometry {
     size_t size = 0;
@@ -1049,6 +1051,44 @@ bool Gen4StagedPokemonEditor::stageTrainerMoney(uint32_t money, std::string* err
                                        static_cast<uint8_t>(money >> 16), static_cast<uint8_t>(money >> 24)};
     return stageTrainerBytes(kTrainerMoneyField, field,
         [&](const TrainerReadOnly& trainer) { return trainer.money == money; }, error);
+}
+
+bool Gen4StagedPokemonEditor::trainerGenderEditable() const {
+    const auto base = [&]() -> std::optional<size_t> {
+        const auto parsed = reparse();
+        return parsed ? trainerRecordOffset(*parsed) : std::nullopt;
+    }();
+    // Only a stored 0 / 1 byte is a native choice; any other value stays read-only, never rewritten.
+    return base && staged_[*base + kTrainerGenderField] <= 1;
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerGender(uint8_t gender, std::string* error) {
+    if (gender > 1) {
+        setError(error, "Gen IV trainer gender must be Male or Female");
+        return false;
+    }
+    if (!trainerGenderEditable()) {
+        setError(error, "This save's trainer gender byte is not a native Male / Female value");
+        return false;
+    }
+    const std::array<uint8_t, 1> field{gender};
+    return stageTrainerBytes(kTrainerGenderField, field,
+        [&](const TrainerReadOnly& trainer) { return trainer.gender == gender; }, error);
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerPlayTime(uint16_t hours, uint8_t minutes, uint8_t seconds,
+                                                   std::string* error) {
+    if (hours > kMaxPlayedHours || minutes > 59 || seconds > 59) {
+        setError(error, "Gen IV play time must be 0:00:00-999:59:59");
+        return false;
+    }
+    const std::array<uint8_t, 4> field{static_cast<uint8_t>(hours), static_cast<uint8_t>(hours >> 8),
+                                       minutes, seconds};
+    return stageTrainerBytes(kTrainerPlayTimeField, field,
+        [&](const TrainerReadOnly& trainer) {
+            return trainer.playedHours == hours && trainer.playedMinutes == minutes &&
+                   trainer.playedSeconds == seconds;
+        }, error);
 }
 
 std::vector<uint8_t> Gen4StagedPokemonEditor::finalizedBytes(

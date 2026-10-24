@@ -32,6 +32,11 @@ namespace PokeVault::Integration::Gen3 {
 //     (section 0 +0xAC Emerald, +0xF20 FireRed / LeafGreen); Ruby / Sapphire have no key.
 //     Cap: MAX_MONEY 999999.
 //   - the checksum of every changed section is recomputed (sectorChecksum at +0xFF6).
+//   - P3 (Round 5) gender: section 0 +0x08 (u8, 0 male / 1 female) and play time: section 0
+//     +0x0E u16 hours, +0x10 minutes, +0x11 seconds (pinned PKSM-Core aa22d7a Sav3::gender /
+//     playedHours / playedMinutes / playedSeconds; pret SaveBlock2 playerGender / playTime*).
+//     The frame counter (+0x12) is never touched. Gender is offered only when the stored byte is a
+//     native 0 / 1; hours are capped at 999 (pret PlayTimeCounter maximum 999:59:59).
 // Language: a Gen III save has no language field. The repo's (PKHeX / PKSM) rule is the name
 // shape: bytes 6-7 both zero is a Japanese 5-character save. Name editing is offered only for an
 // unambiguous international save (bytes 6-7 not both zero); a Japanese save keeps the name
@@ -41,6 +46,16 @@ public:
     static constexpr uint32_t kMaxMoney = 999999;
     static constexpr int kNameMax = 7;
     static constexpr std::size_t kNameBytes = 8;
+    static constexpr uint16_t kMaxPlayedHours = 999;
+    static constexpr std::size_t kGenderOffset = 0x08;
+    static constexpr std::size_t kPlayTimeOffset = 0x0E;
+
+    struct PlayTime {
+        uint16_t hours = 0;
+        uint8_t minutes = 0;
+        uint8_t seconds = 0;
+        friend bool operator==(const PlayTime&, const PlayTime&) = default;
+    };
 
     struct Change {
         std::string label;
@@ -77,6 +92,8 @@ public:
         }
         editor->name_ = editor->originalName_;
         editor->money_ = editor->originalMoney_;
+        editor->originalGender_ = editor->gender_ = editor->readGender(editor->original_);
+        editor->originalPlayTime_ = editor->playTime_ = editor->readPlayTime(editor->original_);
         return editor;
     }
 
@@ -85,7 +102,15 @@ public:
     [[nodiscard]] std::string trainerName() const { return Utils::utf16ToUtf8(name_); }
     [[nodiscard]] uint32_t money() const noexcept { return money_; }
     [[nodiscard]] bool hasPendingChanges() const noexcept {
-        return name_ != originalName_ || money_ != originalMoney_;
+        return name_ != originalName_ || money_ != originalMoney_ || gender_ != originalGender_ ||
+               playTime_ != originalPlayTime_;
+    }
+    [[nodiscard]] uint8_t gender() const noexcept { return gender_; }
+    [[nodiscard]] bool genderEditable() const noexcept { return originalGender_ <= 1; }
+    [[nodiscard]] PlayTime playTime() const noexcept { return playTime_; }
+    // A stored clock with minutes / seconds above 59 is not a native value; it stays read-only.
+    [[nodiscard]] bool playTimeEditable() const noexcept {
+        return originalPlayTime_.minutes <= 59 && originalPlayTime_.seconds <= 59;
     }
     [[nodiscard]] bool nameEditable() const noexcept {
         const std::size_t name = sectors_[0];
@@ -98,6 +123,10 @@ public:
             out.push_back({"Trainer name", Utils::utf16ToUtf8(originalName_), Utils::utf16ToUtf8(name_)});
         if (money_ != originalMoney_)
             out.push_back({"Money", std::to_string(originalMoney_), std::to_string(money_)});
+        if (gender_ != originalGender_)
+            out.push_back({"Trainer gender", genderText(originalGender_), genderText(gender_)});
+        if (playTime_ != originalPlayTime_)
+            out.push_back({"Play time", playTimeText(originalPlayTime_), playTimeText(playTime_)});
         return out;
     }
 
@@ -145,6 +174,30 @@ public:
         return true;
     }
 
+    bool stageGender(uint8_t gender, std::string& error) {
+        error.clear();
+        if (!genderEditable() || gender > 1) {
+            error = "This save's trainer gender byte is not a native Male / Female value";
+            return false;
+        }
+        gender_ = gender;
+        return true;
+    }
+
+    bool stagePlayTime(PlayTime time, std::string& error) {
+        error.clear();
+        if (!playTimeEditable()) {
+            error = "This save's play time clock is not a native value; it stays read-only";
+            return false;
+        }
+        if (time.hours > kMaxPlayedHours || time.minutes > 59 || time.seconds > 59) {
+            error = "Gen III play time must be 0:00:00-999:59:59";
+            return false;
+        }
+        playTime_ = time;
+        return true;
+    }
+
     // Stages only the fields that differ from what is shown.
     bool stage(const std::string& name, uint32_t money, std::string& error) {
         if (name != trainerName() && !stageTrainerName(name, error)) return false;
@@ -155,6 +208,8 @@ public:
     void discard() noexcept {
         name_ = originalName_;
         money_ = originalMoney_;
+        gender_ = originalGender_;
+        playTime_ = originalPlayTime_;
     }
 
     // Writes the pending fields into `bytes` (a finalized image of the SAME source: same active slot
@@ -177,9 +232,19 @@ public:
         const std::u16string* name = name_ != originalName_ ? &name_ : nullptr;
         const uint32_t* money = money_ != originalMoney_ ? &money_ : nullptr;
         if (!write(candidate, name, money, error)) return false;
+        if (gender_ != originalGender_ || playTime_ != originalPlayTime_) {
+            const std::size_t block = sectors_[0];
+            candidate[block + kGenderOffset] = gender_;
+            candidate[block + kPlayTimeOffset] = static_cast<uint8_t>(playTime_.hours);
+            candidate[block + kPlayTimeOffset + 1] = static_cast<uint8_t>(playTime_.hours >> 8);
+            candidate[block + kPlayTimeOffset + 2] = playTime_.minutes;
+            candidate[block + kPlayTimeOffset + 3] = playTime_.seconds;
+            repair(candidate, 0);
+        }
         std::u16string readName;
         uint32_t readMoney = 0;
-        if (!read(candidate, readName, readMoney) || readName != name_ || readMoney != money_) {
+        if (!read(candidate, readName, readMoney) || readName != name_ || readMoney != money_ ||
+            readGender(candidate) != gender_ || readPlayTime(candidate) != playTime_) {
             error = "Gen III Trainer edit did not read back as entered";
             return false;
         }
@@ -206,6 +271,18 @@ private:
         return 0;
     }
     [[nodiscard]] uint8_t language() const noexcept { return nameEditable() ? kInternational : 1; }
+    [[nodiscard]] uint8_t readGender(std::span<const uint8_t> bytes) const noexcept {
+        return bytes[sectors_[0] + kGenderOffset];
+    }
+    [[nodiscard]] PlayTime readPlayTime(std::span<const uint8_t> bytes) const noexcept {
+        const std::size_t at = sectors_[0] + kPlayTimeOffset;
+        return {static_cast<uint16_t>(bytes[at] | (bytes[at + 1] << 8)), bytes[at + 2], bytes[at + 3]};
+    }
+    static std::string genderText(uint8_t gender) { return gender == 0 ? "Male" : gender == 1 ? "Female" : "Unknown"; }
+    static std::string playTimeText(PlayTime time) {
+        const auto two = [](unsigned v) { return (v < 10 ? "0" : "") + std::to_string(v); };
+        return std::to_string(time.hours) + ":" + two(time.minutes) + ":" + two(time.seconds);
+    }
 
     bool read(std::span<const uint8_t> bytes, std::u16string& name, uint32_t& money) const {
         name.clear();
@@ -263,6 +340,10 @@ private:
     std::u16string name_;
     uint32_t originalMoney_ = 0;
     uint32_t money_ = 0;
+    uint8_t originalGender_ = 0;
+    uint8_t gender_ = 0;
+    PlayTime originalPlayTime_{};
+    PlayTime playTime_{};
 };
 
 } // namespace PokeVault::Integration::Gen3

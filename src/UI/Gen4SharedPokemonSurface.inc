@@ -2137,6 +2137,17 @@ bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64
     fields.nameGuide = "1-7 characters the game can store";
     fields.nameEditable = trainer.nameEditable();
     fields.nameReadOnlyReason = "This save's trainer name language is read-only here";
+    // P3: native Play Time (+0x22) and Trainer Gender (+0x18), staged in the same workspace.
+    fields.playTime = trainer.playTime();
+    fields.playTimeMaxHours = Gen4::Gen4StagedTrainerEditor::kMaxPlayedHours;
+    fields.stagePlayTime = [&](const PokeVault::Integration::Common::NativePlayTime& time, std::string& error) {
+        return trainer.stagePlayTime(time, error) && refreshPresentation(screen);
+    };
+    fields.gender = trainer.gender();
+    if (trainer.genderEditable())
+        fields.stageGender = [&](uint8_t gender, std::string& error) {
+            return trainer.stageGender(gender, error) && refreshPresentation(screen);
+        };
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             return trainer.stage(name, money, error) && refreshPresentation(screen);

@@ -90,7 +90,66 @@ std::size_t occupiedBoxSlots(const Legacy::GSCReadOnlyTrainer& trainer){
 }
 }
 
+// P3 (Round 5): staged Play Time (Gold / Silver / Crystal, big-endian u16 hours + minute + second at
+// 0x2053 / 0x2052) and Crystal Trainer Gender (0x3E3D). Byte-exact against the editor's own
+// synced, checksum-repaired image: only the clock bytes, their backup-mirror copy, both checksum
+// copies and (Crystal) the gender byte change; strict reparse returns the values; Review lists
+// them; Discard restores; Gold / Silver have no gender row; out-of-range input is refused.
+void stagedPlayTimeGender(const L& l,Integration::Gen2::SourceGame game,std::size_t mirrorBase){
+    auto bytes=fixture(l);
+    const std::size_t pockets=l.family==Integration::Gen2::VersionFamily::Crystal?0x2420:0x241F;
+    for(std::size_t offset:{pockets,pockets+0x2A,pockets+0x45,pockets+0x5F})emptyList(bytes,offset);
+    checksum(bytes,l);
+    const auto source=bytes;
+    auto parsed=Integration::Gen2::parse(bytes,game);assert(parsed);
+    std::string error;
+    auto editor=Integration::Gen2::StagedEditor::create(*parsed.save,error);
+    assert(editor&&error.empty());
+    const auto baseline=editor->presentationBytes(error);assert(!baseline.empty());
+    const bool crystal=l.family==Integration::Gen2::VersionFamily::Crystal;
+    using PT=Integration::Gen2::StagedEditor::PlayTime;
+    assert(editor->playTimeEditable()&&editor->playTime()==(PT{291,45,59}));
+    assert(editor->trainerGenderEditable()==crystal);
+    assert(!editor->stagePlayTime({1000,0,0},error)&&!editor->stagePlayTime({1,60,0},error)&&
+           !editor->stagePlayTime({1,0,60},error));
+    assert(!editor->stageTrainerGender(crystal?2:1,error)&&!error.empty());
+    assert(!editor->hasPendingChanges());
+
+    assert(editor->stagePlayTime({517,42,9},error)&&error.empty());
+    if(crystal)assert(editor->stageTrainerGender(0,error)&&editor->trainerGender()==0);
+    const auto& changes=editor->pendingChanges();
+    assert(changes.size()==(crystal?2u:1u));
+    assert(changes[0].label=="Play Time"&&changes[0].beforeValue=="291:45:59"&&changes[0].afterValue=="517:42:09");
+    if(crystal)assert(changes[1].label=="Trainer Gender"&&changes[1].beforeValue=="Female"&&changes[1].afterValue=="Male");
+
+    const auto edited=editor->finalizedBytes(error);
+    assert(!edited.empty()&&error.empty());
+    const std::size_t clock=crystal?0x2052:0x2053;
+    const std::size_t mirror=mirrorBase+(clock-0x2009);
+    assert(edited[clock]==0x02&&edited[clock+1]==0x05&&edited[clock+2]==42&&edited[clock+3]==9);
+    assert(std::equal(edited.begin()+static_cast<std::ptrdiff_t>(clock),edited.begin()+static_cast<std::ptrdiff_t>(clock+4),
+                      edited.begin()+static_cast<std::ptrdiff_t>(mirror)));
+    const std::size_t secondary=crystal?0x1F0D:0x7E6D;
+    for(std::size_t i=0;i<edited.size();++i){
+        if(edited[i]==baseline[i])continue;
+        const bool allowed=(i>=clock&&i<clock+4)||(i>=mirror&&i<mirror+4)||i==l.sum||i==l.sum+1||
+                           i==secondary||i==secondary+1||(crystal&&i==l.gender);
+        assert(allowed);
+    }
+    auto reparsed=Integration::Gen2::parse(edited,game);assert(reparsed);
+    assert(Integration::Common::playTimeText(reparsed.save->trainer().playTime)=="517:42:09");
+    if(crystal)assert(reparsed.save->trainer().gender&&*reparsed.save->trainer().gender==0);
+    assert(reparsed.save->trainer().name=="A"&&reparsed.save->trainer().money==123456);
+
+    editor->discard();
+    assert(!editor->hasPendingChanges()&&editor->playTime()==(PT{291,45,59}));
+    if(crystal)assert(editor->trainerGender()==1);
+    assert(bytes==source);
+}
+
 int main(){
+    stagedPlayTimeGender(IGS,Integration::Gen2::SourceGame::Gold,0x15C7);
+    stagedPlayTimeGender(IC,Integration::Gen2::SourceGame::Crystal,0x1209);
     {
         auto bytes=fixture(IGS,1,25,25);
         for (size_t offset : {0x241Fu,0x2449u,0x2464u,0x247Eu}) emptyList(bytes,offset);

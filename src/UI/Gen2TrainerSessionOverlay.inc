@@ -24,6 +24,21 @@ bool handleTrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t hel
     fields.nameMax = 7;
     fields.moneyMax = Gen2::kMaxMoney;
     fields.nameGuide = "1-7 native Gen II characters";
+    // P3: native Play Time (Gold / Silver / Crystal) and Crystal Trainer Gender, staged in the same
+    // image as Name / Money. Gold / Silver store no trainer gender, so no Gender row is offered.
+    if (editor->playTimeEditable()) {
+        const auto time = editor->playTime();
+        fields.playTime = PokeVault::Integration::Common::NativePlayTime{time.hours, time.minutes, time.seconds, false};
+        fields.playTimeMaxHours = Gen2::StagedEditor::kMaxPlayedHours;
+        fields.stagePlayTime = [&](const PokeVault::Integration::Common::NativePlayTime& next, std::string& error) {
+            return editor->stagePlayTime({next.hours, next.minutes, next.seconds}, error);
+        };
+    }
+    fields.gender = editor->trainerGender();
+    if (editor->trainerGenderEditable())
+        fields.stageGender = [&](uint8_t gender, std::string& error) {
+            return editor->stageTrainerGender(gender, error);
+        };
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             return editor->stageTrainerEdit(name, money, error);

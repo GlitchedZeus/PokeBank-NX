@@ -2493,6 +2493,24 @@ bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64
     fields.nameGuide = "1-7 characters the game can store";
     fields.nameEditable = trainer->nameEditable();
     fields.nameReadOnlyReason = "Japanese Gen III trainer names are read-only here";
+    // P3: native Play Time and Trainer Gender (SaveBlock2), applied to the verified export copy.
+    if (trainer->playTimeEditable()) {
+        const auto time = trainer->playTime();
+        fields.playTime = PokeVault::Integration::Common::NativePlayTime{time.hours, time.minutes, time.seconds, false};
+        fields.playTimeMaxHours = Gen3::Gen3StagedTrainerEditor::kMaxPlayedHours;
+        fields.stagePlayTime = [&](const PokeVault::Integration::Common::NativePlayTime& next, std::string& error) {
+            if (!trainer->stagePlayTime({next.hours, next.minutes, next.seconds}, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        };
+    }
+    fields.gender = trainer->gender();
+    if (trainer->genderEditable())
+        fields.stageGender = [&](uint8_t gender, std::string& error) {
+            if (!trainer->stageGender(gender, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        };
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             if (!trainer->stage(name, money, error)) return false;
