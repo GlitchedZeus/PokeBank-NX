@@ -6,6 +6,27 @@
 
 Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
 
+## October 24 completed repair gate — forwarding to PR307
+
+- Final production WIP is remote-verified `52053c3b38904aac6cbaa4abe05b888fca731405`.
+  Native smoke run [40075492367](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40075492367) PASS, including packaged RomFS.
+- ALL full frozen-source gates PASS: GCC and Clang each202 normal binaries and202
+  ASan/UBSan binaries with detect_leaks=1. The stale Clang Trainer binary was rebuilt
+  from the correct Y Review source; no assertion was weakened. Both compilers' QA
+  contracts/matrix plain+sanitizer PASS489cells/0problems, all18 export paths,
+  20 archived sessions plus explicit differing internal Gen V copy choices.
+- Candidate contracts0failing, owner70checks/196guards,26shared+4backup mutation
+  controls, touch, PNG/assets, repository safety and diff-check PASS.
+- Detailed file list, checklist-ID mapping, commands/results, limitations and
+  Switch retest are in `docs/hardware/OCT24_REPAIRS_AND_RETEST.md`.
+- Starting/latest application remote is still92f956120019673733bd8d65cd65ab33c46cc237;
+  this finished checkpoint will fast-forward the existing draft PR307 branch.
+  PR314 and main remain untouched. Recheck both remotes immediately before push.
+- REQUIRED NEXT: official integrated-candidate workflow on the new307head, download
+  ONE selected NRO, verify exact SHA/size/tree/RomFS, docs-only candidate binding,
+  independent QA-F9 NRO AUDIT:PASS and all final head CI green. Do not deliver smoke
+  artifacts. NOT DEVICE TESTED; historical27/6/4 and S06 NOT TESTED remain unchanged.
+
 ## October 24 compact Ability text repair — final production update
 
 - Last remote WIP `8d482845c6da778ec0d29fdd81b3599294f5daff` (native smoke40074802787).
