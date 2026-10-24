@@ -1,3 +1,6 @@
+#include "UI/BackupBrowserChrome.h"
+#include "UI/BackupHistoryPresentation.h"
+#include "UI/SourceBackupOpen.h"
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -874,6 +877,8 @@ namespace UI {
         selectedTitleName.clear();
         selectedGameId.clear();
         selectedSourceKind = SelectedSourceKind::None;
+        selectedBackupSnapshot={};
+        selectedBackupLabel.clear();
         selectedLegacySourceIndex = 0;
         openIntent = OpenIntent::Default;
         overlay = Overlay::None;
@@ -894,6 +899,8 @@ namespace UI {
         selectedTitleName.clear();
         selectedGameId.clear();
         selectedSourceKind = SelectedSourceKind::None;
+        selectedBackupSnapshot={};
+        selectedBackupLabel.clear();
         selectedLegacySourceIndex = 0;
         openIntent = OpenIntent::Default;
         overlay = Overlay::None;
@@ -3149,28 +3156,45 @@ namespace UI {
         } else if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
                     title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
             const auto assigned = legacyBindings->resolveFileForGame(currentProfileIdentity(), title.gameId);
-            if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready)
+            if (!assigned.binding.sourcePath.empty())
                 sources.push_back(assigned.binding.sourcePath);
         }
-        std::sort(sources.begin(), sources.end());
-        sources.erase(std::unique(sources.begin(), sources.end()), sources.end());
-        const std::string manualRoot = SB::emulatorBackupsRoot(PokeBank::Paths::backupsRoot());
+        const auto assignedSources=sources;
+        const std::string manualRoot=SB::emulatorBackupsRoot(PokeBank::Paths::backupsRoot());
+        const auto historical=SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId);
+        sources.insert(sources.end(),historical.begin(),historical.end());
+        std::sort(sources.begin(),sources.end());
+        sources.erase(std::unique(sources.begin(),sources.end()),sources.end());
         for (const std::string& source : sources) {
             if (source.empty()) continue;
             emuBackupListings.push_back(SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot));
             const int li = static_cast<int>(emuBackupListings.size()) - 1;
+            emuBackupListings.back().recoveryReadOnly=
+                std::find(assignedSources.begin(),assignedSources.end(),source)==assignedSources.end();
+            const bool recovery=emuBackupListings.back().recoveryReadOnly;
             const auto& entries = emuBackupListings.back().entries;
             // PKSE-style: a deliberate "Create backup now" row leads each save's history.
-            if (emuBackupListings.back().sourceExists)
+            if (emuBackupListings.back().sourceExists && !recovery)
                 emuBackupRows.push_back({li, PokeBank::UIModel::EmulatorBackupLayout::kCreateRowEntry});
             for (int ei = 0; ei < static_cast<int>(entries.size()); ++ei)
-                if (entries[static_cast<size_t>(ei)].kind != SB::Kind::StagedWorkingCopy)
+                if (entries[static_cast<size_t>(ei)].kind != SB::Kind::StagedWorkingCopy &&
+                    !(recovery && entries[static_cast<size_t>(ei)].kind==SB::Kind::OriginalSource))
                     emuBackupRows.push_back({li, ei});
         }
-        if (!emuBackupListings.empty()) // one informational row for unsaved edits
-            emuBackupRows.push_back({0, static_cast<int>(emuBackupListings[0].entries.size()) - 1});
-        else if (emuBackupNotice.empty())
-            emuBackupNotice = "This game has no assigned emulator save yet. Use Source / Game File first.";
+        if(emuBackupListings.empty() && emuBackupNotice.empty())
+            emuBackupNotice="This game has no assigned emulator save yet. Use Source / Game File first.";
+        namespace EB=PokeBank::UIModel::EmulatorBackupLayout;
+        const auto rank=[&](const EmuBackupRow& row) {
+            return row.entry==EB::kCreateRowEntry?0:
+                emuBackupListings[row.listing].entries[row.entry].kind==SB::Kind::OriginalSource?1:2;
+        };
+        std::stable_sort(emuBackupRows.begin(),emuBackupRows.end(),[&](const auto& a,const auto& b) {
+            if(rank(a)!=rank(b))return rank(a)<rank(b);
+            if(rank(a)<2)return a.listing<b.listing;
+            const auto& aa=emuBackupListings[a.listing].entries[a.entry];
+            const auto& bb=emuBackupListings[b.listing].entries[b.entry];
+            return aa.timestamp!=bb.timestamp?aa.timestamp>bb.timestamp:aa.path<bb.path;
+        });
         emuBackupIndex = std::clamp(emuBackupIndex, 0, std::max(0, static_cast<int>(emuBackupRows.size()) - 1));
         emuBackupScroll = std::clamp(emuBackupScroll, 0, std::max(0, emuBackupIndex));
         overlay = Overlay::EmulatorBackups;
@@ -4045,9 +4069,31 @@ namespace UI {
                     browseEmulatorSource(listing.sourcePath);
                     return;
                 }
+                if(EB::rowAction(row.entry,entry.kind)==EB::RowAction::OpenBackup) {
+                    const UserEntry* user=currentUser();
+                    if(!user || titleIndex<0 || titleIndex>=static_cast<int>(user->titles.size()))return;
+                    const auto& title=user->titles[static_cast<size_t>(titleIndex)];
+                    std::string error;
+                    if(!SB::openSnapshot(listing,static_cast<size_t>(row.entry),title.gameId,
+                                         selectedBackupSnapshot,error)) {
+                        emuBackupNotice=error;return;
+                    }
+                    selectedUserUid=user->uid;
+                    selectedTitleId=0;
+                    selectedTitleName=title.name;
+                    selectedGameId=title.gameId;
+                    selectedSourceKind=title.sourceKind;
+                    selectedBackupLabel=entry.timestamp;
+                    openIntent=OpenIntent::Default;
+                    titleSelected=true;
+                    return;
+                }
                 emuBackupNotice = EB::kindReason(entry.kind, emuBackupProvider);
             }
             if (kDown & HidNpadButton_Y) {
+                if(listing.recoveryReadOnly) {
+                    emuBackupNotice="Recovery history is read-only; source/profile ownership is unresolved.";return;
+                }
                 const SB::Refusal refusal = SB::canDelete(listing, static_cast<size_t>(row.entry));
                 if (refusal == SB::Refusal::None) overlay = Overlay::EmulatorBackupDeleteConfirm;
                 else emuBackupNotice = EB::refusalText(refusal, emuBackupProvider);
@@ -5799,6 +5845,8 @@ namespace UI {
             const G::Layout layout = EB::layout(rows, fb.getWidth(), fb.getHeight());
             const G::Rect frame = layout.frame;
             const int visible = layout.visibleRows;
+            beginTopTouchLayer();
+            fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight(),Colors::Background);
             drawModalSurface(fb, frame.x, frame.y, frame.w, frame.h);
             const std::string game = (u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size()))
                 ? "Pokémon " + u->titles[static_cast<size_t>(titleIndex)].label : std::string("This game");
@@ -5807,65 +5855,24 @@ namespace UI {
                         TextStyle::Heading);
             fb.drawText(textX, frame.y + EB::kExplainerTop, EB::explainerWithBackups(emuBackupProvider),
                         Colors::TextSecondary, TextStyle::Caption);
-            const auto stamp = [](const std::string& t) {
-                return t.size() == 15 ? t.substr(0, 4) + "-" + t.substr(4, 2) + "-" + t.substr(6, 2) + " " +
-                                            t.substr(9, 2) + ":" + t.substr(11, 2)
-                                      : t;
-            };
-            const auto fileName = [](const std::string& path) {
-                const auto slash = path.find_last_of('/');
-                return slash == std::string::npos ? path : path.substr(slash + 1);
-            };
-            for (int i = emuBackupScroll; i < std::min(rows, emuBackupScroll + visible); ++i) {
-                const auto row = emuBackupRows[static_cast<size_t>(i)];
-                const G::Rect cell = G::cellRect(layout, i - emuBackupScroll);
-                const G::Rect label = EB::labelRect(layout, cell);
-                const bool focused = i == emuBackupIndex;
-                if (focused) fb.drawFilledRoundedRect(cell.x, cell.y, cell.w, cell.h, 10, Colors::PanelAlt);
-                if (row.entry == EB::kCreateRowEntry) {
-                    fb.drawText(label.x, cell.y + EB::kLabelTop, EB::createRowLabel(),
-                                focused ? Colors::TextPrimary : Colors::AccentPrimary, TextStyle::Body);
-                    fb.drawText(label.x, cell.y + EB::kDetailTop, EB::createRowDetail(emuBackupProvider),
-                                Colors::TextMuted, TextStyle::Caption);
-                    int tw = 0, th = 0;
-                    fb.measureText("NEW COPY", tw, th, TextStyle::Caption);
-                    fb.drawText(cell.right() - layout.rule.cellPadX - tw, cell.y + EB::kLabelTop + 2, "NEW COPY",
-                                Colors::Success, TextStyle::Caption);
-                    overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
-                    continue;
+            for(int i=emuBackupScroll;i<std::min(rows,emuBackupScroll+visible);++i) {
+                const auto row=emuBackupRows[static_cast<size_t>(i)];
+                const G::Rect cell=G::cellRect(layout, i - emuBackupScroll);
+                const auto& listing=emuBackupListings[static_cast<size_t>(row.listing)];
+                std::string title,detail,badge;
+                if(row.entry==EB::kCreateRowEntry) {
+                    title=EB::createRowLabel();detail=EB::createRowDetail(emuBackupProvider);badge="Create";
+                } else {
+                    const auto& entry=listing.entries[static_cast<size_t>(row.entry)];
+                    const bool current=entry.kind==SB::Kind::OriginalSource;
+                    title=current?EB::rowLabel(entry.kind,emuBackupProvider):
+                        PokeBank::UIModel::BackupHistory::dateForDirectory(entry.timestamp,entry.path).label;
+                    detail=emuBackupProvider+" / "+entry.path;
+                    badge=current?(entry.exists?"Current / read-only":"Missing source"):
+                        listing.recoveryReadOnly?"Recovery / read-only":EB::rowLabel(entry.kind,emuBackupProvider);
                 }
-                const auto& listing = emuBackupListings[static_cast<size_t>(row.listing)];
-                const auto& entry = listing.entries[static_cast<size_t>(row.entry)];
-                const auto policy = SB::policyFor(entry.kind);
-                std::string title = EB::rowLabel(entry.kind, emuBackupProvider);
-                std::string detail;
-                Color badge = Colors::TextMuted;
-                const char* tag = "";
-                switch (entry.kind) {
-                    case SB::Kind::OriginalSource:
-                        detail = fileName(entry.path) + (entry.exists ? "" : "  (not found on the SD card)");
-                        tag = "READ ONLY"; badge = Colors::Warning;
-                        break;
-                    case SB::Kind::ManualBackup:
-                    case SB::Kind::AppBackup:
-                    case SB::Kind::ExportedCopy:
-                        title += "  ·  " + stamp(entry.timestamp);
-                        detail = fileName(entry.recordDir) + "/" + fileName(entry.path) +
-                                 (entry.exists ? "" : "  (missing)");
-                        tag = "APP-OWNED"; badge = Colors::Info;
-                        break;
-                    case SB::Kind::StagedWorkingCopy:
-                        detail = policy.reason;
-                        tag = "IN EDITOR";
-                        break;
-                }
-                fb.drawText(label.x, cell.y + EB::kLabelTop, title,
-                            focused ? Colors::TextPrimary : Colors::TextSecondary, TextStyle::Body);
-                fb.drawText(label.x, cell.y + EB::kDetailTop, detail, Colors::TextMuted, TextStyle::Caption);
-                int tw = 0, th = 0;
-                fb.measureText(tag, tw, th, TextStyle::Caption);
-                fb.drawText(cell.right() - layout.rule.cellPadX - tw, cell.y + EB::kLabelTop + 2, tag, badge,
-                            TextStyle::Caption);
+                BackupBrowserChrome::drawRow(fb,cell.x,cell.y,cell.w,cell.h,
+                    title,detail,badge,i==emuBackupIndex);
                 overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
             }
             SharedScrollbar::drawAndPublish(fb, emuBackupScrollbar, frame.right() - 14, layout.list.y,

@@ -951,17 +951,16 @@ void ux3HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
-    const bool reviewNavigation = state.mode == UX2Mode::Review &&
-        (down & (HidNpadButton_Up | HidNpadButton_Down));
+    const bool reviewNavigation=state.mode==UX2Mode::Review &&
+        (down&(HidNpadButton_Up|HidNpadButton_Down|HidNpadButton_Left|HidNpadButton_Right|HidNpadButton_L|HidNpadButton_R));
+    const int previousReviewPage=state.reviewRow;
     const bool manualDVApply = state.mode == UX2Mode::DVEditor && state.subRow == 5 && (down & HidNpadButton_A);
     ux2HandleActiveInput(screen, down);
-    if (reviewNavigation && state.mode == UX2Mode::Review) {
-        const auto lines = ux3PendingLines(screen);
-        const auto geometry = UX3Contract::pendingGeometry(lines.size());
-        const int count = static_cast<int>(lines.size());
-        const int visible = std::max(1, std::min(geometry.visibleRows, std::max(1, count)));
+    if(reviewNavigation && state.mode==UX2Mode::Review) {
+        const auto rows=ux3PendingLines(screen);
+        const int direction=down&(HidNpadButton_Up|HidNpadButton_Left|HidNpadButton_L)?-1:1;
+        state.reviewRow=static_cast<int>(PokeBank::UIModel::SharedReview::move(previousReviewPage,direction,rows.size()));
         state.reviewScroll.stop();
-        state.reviewViewport.reveal(state.reviewRow, count, visible);
     }
     if (manualDVApply) {
         auto& ux3 = ux3StateFor(screen);

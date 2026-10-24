@@ -1,3 +1,4 @@
+#include "test_backup_session_trace.h"
 // PokeBank NX application QA: Gen I-V acceptance matrix, Generation V rows (Thread 4, QA-owned).
 //
 // Rows black, white, black2, white2: both SAV5 layout families (BlackWhite and Black2White2, see
@@ -1257,6 +1258,9 @@ void runVersion(Matrix& m, const Spec& spec) {
     c.exportsRoot = c.root / "exports";
     c.original = buildSave(spec.family, spec.version);
     qacontract::writeSource(c.path, c.original);
+    std::string backupError;
+    const bool backupOk=verifyBackupSessionTrace(c.original,spec.game,backupError);
+    m.check(spec.row,"backup-session",backupOk,backupError,"Exact historical file -> staged edit/export/Discard");
     c.initialFile = qacontract::fileState(c.path);
     c.initialTree = qacontract::treeState(c.savesDir);
     m.fact(spec.row, "identity.source", "save-internal");

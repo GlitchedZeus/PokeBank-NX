@@ -6,6 +6,43 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 backup-browser repair checkpoint — WIP, not yet integrated
+
+- Starting #307 remains `92f956120019673733bd8d65cd65ab33c46cc237`. Review WIP
+  f0150dd6 passed unfiltered native build 40068229858 / job 120795867730,
+  including packaged RomFS. Held-item milestone 7130bff3 is pushed/verified.
+- Gen III Safari Create tests now PASS normal AND ASan/UBSan/leak detection on all
+  five titles. LeakSanitizer must run outside sandbox tracing (ptrace prevents it);
+  no sanitizer check was disabled. This is host evidence, not a hardware result.
+- New backup work: fullscreen emulator history with the same compact boxed rows as
+  native history; timestamp-first native/legacy labels, newest-first mixed copies;
+  exact selected-file opens through existing Gen I-V read-only Trainer bridges.
+  No profile/live-source binding changes and no fallback to the current original.
+  Recoverable archives remain visible when their live source/assignment is absent;
+  unassigned recovery history cannot Create/Browse/Delete or claim profile ownership.
+- Physical snapshots reject stale/replaced files, traversal, symlinks, oversized or
+  partial reads. Manifest/game/source/path are rechecked at A. Native legacy folders
+  remain ownership-unknown and non-deletable; native historical opens are validated,
+  immutable READ-ONLY previews (native Switch staged editing/export from those previews
+  is not added). Gen I-V emulator backups retain full staged Review/Discard/Export Copy.
+- Pure snapshot tests PASS normal + ASan/UBSan/leak detection: duplicate chronological
+  dates, source disappearance, stale files/manifests, directory changes, traversal/links.
+  Native backup deletion retains Y confirmation, protects legacy/unknown ownership,
+  and now keeps a final owned snapshot. Original source trees are never deletion targets.
+- Expanded QA matrix adds one real backup-session cell for EACH of all 20 game titles:
+  open exact archive -> stage native Money -> verified separate export -> strict
+  reparse -> Discard -> unchanged archive bytes/mtime. GCC build/run is in progress
+  (project output gcc-qa-matrix.log, exec session 16855); not yet claimed PASS.
+- Focused shared-editor, backup layout and namespace tests pass after updating their
+  obsolete Review/layout assertions to the newly approved shared paths. Full host
+  sweep earlier stopped on another retired Discard painter assertion; it now guards
+  the common confirmation. Full suites must rerun on the frozen final source.
+- Still pending: older Trainer badges/gender/play-time parity, compact Location/Ability
+  menus, docked Held Item search, Help audit, IV Pokérus touch, event/year context,
+  existing V compatibility/inline-Language and II Unown exhaustive verification;
+  full GCC/Clang host/sanitizers and both matrices; native build; #307 integration;
+  ONE freshly built, bound and independently audited replacement NRO. S06 NOT TESTED.
+
 ## October 24 Gen III Create repair checkpoint
 
 - Review WIP `f0150dd621086e0317de0c8de42eb64cccaecd14` is pushed/remote-verified;

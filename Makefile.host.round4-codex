@@ -54,3 +54,14 @@ $(HOST_BUILD)/test_classic_staged_exit: tests/test_classic_staged_exit.cpp inclu
 $(HOST_BUILD)/test_classic_staged_exit_sanitize: tests/test_classic_staged_exit.cpp include/UI/ClassicStagedExit.h include/UI/ClassicTrainerSession.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+# October 24 backup provenance and physical-snapshot safety (pure host POSIX).
+HOST_TESTS += $(HOST_BUILD)/test_backup_snapshot_open
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_backup_snapshot_open_sanitize
+host-test: $(HOST_BUILD)/test_backup_snapshot_open
+host-sanitize: $(HOST_BUILD)/test_backup_snapshot_open_sanitize
+$(HOST_BUILD)/test_backup_snapshot_open: tests/test_backup_snapshot_open.cpp src/Utils/SHA256.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_backup_snapshot_open_sanitize: tests/test_backup_snapshot_open.cpp src/Utils/SHA256.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

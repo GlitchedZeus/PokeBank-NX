@@ -152,7 +152,8 @@ qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $
 # Fails on any FAIL / MISSING / DUPLICATE cell; Known defects are reproduced in qa-known-failures.
 QA_MATRIX_SOURCES := tests/test_qa_matrix.cpp tests/test_qa_matrix_gen12.cpp tests/test_qa_matrix_gen3.cpp \
 	tests/test_qa_matrix_gen4.cpp tests/test_qa_matrix_gen5.cpp
-QA_MATRIX_EXTRA_SOURCES := src/Legacy/RBYReadOnlyTrainer.cpp src/UI/ClassicInventoryUIModel.cpp
+QA_MATRIX_EXTRA_SOURCES := src/Legacy/RBYReadOnlyTrainer.cpp src/UI/ClassicInventoryUIModel.cpp \
+    src/Legacy/BackupReadOnlyTrainer.cpp tests/test_backup_session_trace.cpp
 $(QA_BUILD)/plain/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h tests/test_qa_matrix_round2.h \
 		$(QA_BUILD)/plain/libqacore.a $(QA_HEADERS)
 	$(CXX) $(QA_VARIANT_FLAGS_plain) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \
