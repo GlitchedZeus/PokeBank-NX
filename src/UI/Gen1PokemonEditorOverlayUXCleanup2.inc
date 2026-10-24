@@ -753,14 +753,17 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         }
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
-        if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
-        if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
+        namespace Review=PokeBank::UIModel::SharedReview;
+        if (down & (HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))
+            state.reviewRow=static_cast<int>(Review::move(state.reviewRow,-1,count));
+        if (down & (HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R))
+            state.reviewRow=static_cast<int>(Review::move(state.reviewRow,1,count));
         if (down & HidNpadButton_B) {
             state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
             state.row = 0;
             return;
         }
-        if (down & HidNpadButton_A) {
+        if (down & HidNpadButton_X) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
             if (path.empty()) screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);

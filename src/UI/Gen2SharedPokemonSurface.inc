@@ -257,7 +257,7 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     // Discard Staged is two explicit steps: X asks, only Y in the confirmation discards.
     namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
     switch (Discard::step(sharedSurfaceStateFor(screen).reviewDiscard,
-                          (down & HidNpadButton_X) != 0, (down & HidNpadButton_Y) != 0,
+                          (down & HidNpadButton_Y) != 0, (down & HidNpadButton_Y) != 0,
                           (down & HidNpadButton_B) != 0)) {
         case Discard::Outcome::NotHandled:
             break;
@@ -285,8 +285,11 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
-    if (nav & HidNpadButton_Up) legacy.reviewRow = (legacy.reviewRow - 1 + count) % count;
-    if (nav & HidNpadButton_Down) legacy.reviewRow = (legacy.reviewRow + 1) % count;
+    namespace Review=PokeBank::UIModel::SharedReview;
+    if (nav & (HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))
+        legacy.reviewRow=static_cast<int>(Review::move(legacy.reviewRow,-1,count));
+    if (nav & (HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R))
+        legacy.reviewRow=static_cast<int>(Review::move(legacy.reviewRow,1,count));
     if (down & HidNpadButton_B) {
         legacy.review = false;
         legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
@@ -295,7 +298,7 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         screen.controllerNavigation.reset();
         return true;
     }
-    if (down & HidNpadButton_A) {
+    if (down & HidNpadButton_X) {
         std::string error;
         const std::string directory = exportStagedCopy(screen, *editor, error);
         if (directory.empty())
@@ -390,37 +393,15 @@ void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto& legacy = editorOverlayState(screen);
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const auto& changes = editor->pendingChanges();
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    constexpr int x = 150, y = 62, w = 980, h = 575;
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 28, y + 18, SharedEditor::titleFor(SharedEditor::Surface::Review), Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 52,
-                std::to_string(changes.size()) + " staged change(s)   •   original source save immutable",
-                Colors::TextDim, TextStyle::Caption);
-    if (changes.empty()) {
-        fb.drawText(x + 34, y + 112, "No pending changes", Colors::TextDim, TextStyle::Body);
-    } else {
-        const int first = std::clamp(legacy.reviewRow - 5, 0, std::max(0, static_cast<int>(changes.size()) - 10));
-        const int last = std::min(static_cast<int>(changes.size()), first + 10);
-        for (int i = first; i < last; ++i) {
-            const int yy = y + 96 + (i - first) * 44;
-            const bool selected = i == legacy.reviewRow;
-            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 24, yy - 5, w - 48, 39), {selected});  // R2-BUG-012 boxed row
-            const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawText(x + 36, yy, change.label, selected ? Colors::Text : Colors::Text, TextStyle::Caption);
-            fb.drawText(x + 350, yy, change.beforeValue + "  ->  " + change.afterValue,
-                        Colors::TextDim, TextStyle::Caption);
-        }
-    }
-    if (!legacy.lastExportDirectory.empty())
-        fb.drawText(x + 28, y + h - 64, "Last verified export: " + legacy.lastExportDirectory,
-                    Colors::Success, TextStyle::Caption);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Export staged copy"},
-                    {"X", "Discard staged"}, {"B", "Back"}});
+    auto* editor=stagedEditor(screen);
+    if(!editor)return;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    for(const auto& change:editor->pendingChanges())
+        rows.emplace_back(change.label,change.beforeValue+" -> "+change.afterValue);
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(editorOverlayState(screen).reviewRow),editor->hasPendingChanges(),"Generation II");
+    if(sharedSurfaceStateFor(screen).reviewDiscard.confirming)
+        SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h,

@@ -1,3 +1,4 @@
+#include "test_backup_session_trace.h"
 // PokeBank NX application QA: Gen I / Gen II rows of the Gen I-V acceptance matrix (Thread 4,
 // QA-owned). Versions: red, blue, yellow, gold, silver, crystal.
 //
@@ -984,6 +985,10 @@ void runGen1Version(Matrix& m, const Spec& spec) {
         const Bytes original = spec.build(15);
         qacontract::writeSource(source, original);
         const auto sourceBefore = qacontract::fileState(source);
+        std::string backupError;
+        const bool backupOk=verifyBackupSessionTrace(original,spec.gameId,backupError);
+        row.check("backup-session",backupOk,backupError,
+            "Historical copy opens, stages, separately exports, strictly reparses and Discards without source mutation");
 
         stage = "discovery";
         const auto instance = runSourceCells(row, spec, env, source);
@@ -1348,6 +1353,10 @@ void runGen2Version(Matrix& m, const Spec& spec) {
         const Bytes original = spec.build(15);
         qacontract::writeSource(source, original);
         const auto sourceBefore = qacontract::fileState(source);
+        std::string backupError;
+        const bool backupOk=verifyBackupSessionTrace(original,spec.gameId,backupError);
+        row.check("backup-session",backupOk,backupError,
+            "Historical copy opens, stages, separately exports, strictly reparses and Discards without source mutation");
 
         stage = "discovery";
         const auto instance = runSourceCells(row, spec, env, source);

@@ -34,13 +34,14 @@ inline bool matches(const std::string& name, const std::string& query) {
 // Keep only the names in `displayed` that match `query`, preserving order and the selected item.
 // Returns the selected item's new index (0 when it was filtered out); when nothing matches,
 // `displayed` is left exactly as it was and -1 is returned, so a picker never becomes empty.
-template <typename T, typename NameFor>
-int narrow(std::vector<T>& displayed, const std::string& query, int selectedIndex, NameFor nameFor) {
+template <typename T, typename NameFor, typename KeyFor>
+int narrow(std::vector<T>& displayed, const std::string& query, int selectedIndex, NameFor nameFor,KeyFor keyFor) {
     const bool valid = selectedIndex >= 0 && selectedIndex < static_cast<int>(displayed.size());
-    if (key(query).empty()) return valid ? selectedIndex : 0;
+    const auto folded=keyFor(query);
+    if (folded.empty()) return valid ? selectedIndex : 0;
     std::vector<T> kept;
     for (const T& value : displayed)
-        if (matches(nameFor(value), query)) kept.push_back(value);
+        if (keyFor(nameFor(value)).find(folded)!=std::string::npos) kept.push_back(value);
     if (kept.empty()) return -1;
     const T selected = valid ? displayed[static_cast<std::size_t>(selectedIndex)] : T{};
     displayed = std::move(kept);
@@ -48,18 +49,27 @@ int narrow(std::vector<T>& displayed, const std::string& query, int selectedInde
     const auto it = std::find(displayed.begin(), displayed.end(), selected);
     return it == displayed.end() ? 0 : static_cast<int>(it - displayed.begin());
 }
+template<typename T,typename NameFor>
+int narrow(std::vector<T>& displayed,const std::string& query,int selectedIndex,NameFor nameFor) {
+    return narrow(displayed,query,selectedIndex,nameFor,key);
+}
 
 // The whole search: `original` (native order) in `mode` order, narrowed to `query`. On no match
 // `displayed` is untouched and -1 is returned (the caller keeps the previous list).
-template <typename T, typename NameFor>
+template <typename T, typename NameFor,typename KeyFor>
 int apply(std::vector<T>& displayed, const std::vector<T>& original, ItemPickerSort::Mode mode,
-          const std::string& query, int selectedIndex, NameFor nameFor) {
+          const std::string& query, int selectedIndex, NameFor nameFor,KeyFor keyFor) {
     std::vector<T> next = displayed;
     const int sorted = ItemPickerSort::reorder(next, original, mode, selectedIndex, nameFor);
-    const int index = narrow(next, query, sorted, nameFor);
+    const int index = narrow(next, query, sorted, nameFor,keyFor);
     if (index < 0) return -1;
     displayed = std::move(next);
     return index;
+}
+template<typename T,typename NameFor>
+int apply(std::vector<T>& displayed,const std::vector<T>& original,ItemPickerSort::Mode mode,
+    const std::string& query,int selectedIndex,NameFor nameFor) {
+    return apply(displayed,original,mode,query,selectedIndex,nameFor,key);
 }
 
 // The header tag a narrowed picker shows (top right, on the title line); empty with no query.

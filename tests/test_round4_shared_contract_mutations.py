@@ -23,7 +23,12 @@ def mutate(path,old,new):
 baseline={r.cid[:4]:r.violations for r in qa.contracts(sources)}
 for cid in ('CG08','CG33','CG35','CG40','CG41','CG42','CG45','CG46','CG48','CG49','CG53','CG54'):
     assert not baseline[cid],(cid,baseline[cid])
-assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',', 20, refilter)',', 20, nullptr)'), 'CG40')
+for owner in ('src/UI/SharedPokemonEditorSurface.inc','src/UI/Gen3SharedPokemonSurface.inc',
+              'src/UI/Gen2PokemonEditorFoundation.inc'):
+    assert check(mutate(owner,'py,refilter,','py,missingRefilter,'), 'CG40')
+    assert check(mutate(owner,'SharedSearchInput::searchKey','missingFoldedFilter'), 'CG40')
+assert check(mutate('include/UI/SharedHeldItemSearch.h','SharedSearchInput::handleTouch(',
+    'SharedSearchInput::missingTouch('), 'CG40')
 assert check(mutate('src/UI/Gen2UnifiedPokemonWorkspace.inc','Selector::nextOtGender(','Selector::missingGender('),'CG41')
 assert check(mutate('src/UI/SharedPokemonEditorSurface.inc','SharedScrollbar::kTouchSlop + 4','SharedScrollbar::kTouchSlop - 1'),'CG42')
 assert check(mutate('src/UI/Gen4SharedPokemonSurface.inc',
@@ -55,4 +60,4 @@ assert check(mutate('include/UI/Gen2PokemonSession.h','editor.stagePartyPokemonE
 assert check(mutate('include/Integration/Gen5/Gen5SharedEditorBridge.h',
     'return session.stage(NativeField::Language,stat,value,error);',
     'return session.stage(NativeField::Friendship,stat,value,error);'),'CG54')
-print('Round 4 shared source contracts: real paths pass; twenty broken-path controls fail PASS')
+print('Round 4 shared source contracts: real paths pass; twenty-six broken-path controls fail PASS')

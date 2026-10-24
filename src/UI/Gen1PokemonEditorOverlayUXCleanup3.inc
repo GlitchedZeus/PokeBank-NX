@@ -659,34 +659,13 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
     }
 }
 
-void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto& state = ux2StateFor(screen);
-    const auto lines = ux3PendingLines(screen);
-    fb.drawText(x + 24, y + 18, "Generation I Pending Changes", Colors::Text, TextStyle::Heading);
-    if (lines.empty()) {
-        fb.drawText(x + 28, y + 82, "No staged changes.", Colors::TextDim);
-        return;
-    }
-    const int visible = std::max(1, std::min(UX3Contract::pendingGeometry(lines.size()).visibleRows,
-                                             static_cast<int>(lines.size())));
-    const int count = static_cast<int>(lines.size());
-    state.reviewViewport.ensure(state.reviewRow, count, visible);
-    const int start = state.reviewViewport.firstRow;
-    const int drawFirst = std::max(0, start - 1);
-    const int drawLast = std::min(count, start + visible + 1);
-    const int listTop = y + 64;
-    const int liveOffset = state.reviewScroll.offset();
-    fb.setClipRect(x + 24, listTop, w - 48, h - 108);
-    for (int row = drawFirst; row < drawLast; ++row) {
-        const int rowY = y + 70 + (row - start) * 48 + liveOffset;
-        ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
-                          lines[static_cast<size_t>(row)], row == state.reviewRow);
-        if (rowY + 44 > listTop && rowY < listTop + h - 108)
-            appendClippedTouchButton(screen.touchButtons, 1300 + row,
-                x + 24, rowY, w - 48, 44,
-                x + 24, listTop, w - 48, h - 108);
-    }
-    fb.clearClip();
+void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, int, int) {
+    auto& state=ux2StateFor(screen);
+    const auto rows=PokeBank::UIModel::SharedReview::fromLines(ux3PendingLines(screen));
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(state.reviewRow),hasPending(screen),"Generation I");
+    if(state.reviewDiscard.confirming)
+        SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -972,17 +951,16 @@ void ux3HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
-    const bool reviewNavigation = state.mode == UX2Mode::Review &&
-        (down & (HidNpadButton_Up | HidNpadButton_Down));
+    const bool reviewNavigation=state.mode==UX2Mode::Review &&
+        (down&(HidNpadButton_Up|HidNpadButton_Down|HidNpadButton_Left|HidNpadButton_Right|HidNpadButton_L|HidNpadButton_R));
+    const int previousReviewPage=state.reviewRow;
     const bool manualDVApply = state.mode == UX2Mode::DVEditor && state.subRow == 5 && (down & HidNpadButton_A);
     ux2HandleActiveInput(screen, down);
-    if (reviewNavigation && state.mode == UX2Mode::Review) {
-        const auto lines = ux3PendingLines(screen);
-        const auto geometry = UX3Contract::pendingGeometry(lines.size());
-        const int count = static_cast<int>(lines.size());
-        const int visible = std::max(1, std::min(geometry.visibleRows, std::max(1, count)));
+    if(reviewNavigation && state.mode==UX2Mode::Review) {
+        const auto rows=ux3PendingLines(screen);
+        const int direction=down&(HidNpadButton_Up|HidNpadButton_Left|HidNpadButton_L)?-1:1;
+        state.reviewRow=static_cast<int>(PokeBank::UIModel::SharedReview::move(previousReviewPage,direction,rows.size()));
         state.reviewScroll.stop();
-        state.reviewViewport.reveal(state.reviewRow, count, visible);
     }
     if (manualDVApply) {
         auto& ux3 = ux3StateFor(screen);
@@ -1051,6 +1029,10 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
+    if (state.mode == UX2Mode::Review) {
+        ux3DrawReview(screen,fb,0,0,0,0);
+        return; // Shared panel owns its footer and top touch layer.
+    }
     screen.touchButtons.clear();
     int x = 0, y = 0, w = 0, h = 0;
     ux3DialogGeometry(screen, x, y, w, h);

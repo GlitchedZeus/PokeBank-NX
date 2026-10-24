@@ -1,3 +1,5 @@
+#include "UI/SharedAbilityPicker.h"
+#include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
@@ -127,6 +129,7 @@ struct State {
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedHeldItemSearch::State heldItemSearch;
     std::vector<Encounter::EncounterProvenanceChoice> encounterChoices;
     std::optional<Encounter::EncounterProvenanceChoice> selectedEncounter;
     int actionRow = 0;
@@ -399,8 +402,8 @@ std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
 }
 
 // The Met Location picker is wider than the other compact pickers so the place name and its
-// method / level fit on one readable row (Round 5 NEW-10: 704 px, test_met_location_fit).
-constexpr int kMetLocationPickerWidth = 704;
+// method / level fit on one readable row.
+constexpr int kMetLocationPickerWidth = 620;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
@@ -612,9 +615,10 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
-    // NEW-13: Ability rows carry name + effect, so they use the wide two-column value list.
+    if(target==PickerTarget::Ability)return SharedAbilityPicker::layout(count);
+    // Met Location retains its bounded source-context columns.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation || target == PickerTarget::Ability
+                     : target == PickerTarget::MetLocation
                          ? G::MenuType::LocationPicker
                          : G::MenuType::ChoicePicker, count);
 }
@@ -656,6 +660,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     state.pickerScroll.reset();
     state.pickerViewport.reset();
     state.pickerTarget = target;
+    if(target==PickerTarget::HeldItem)state.heldItemSearch={};
     state.pickerMoveSlot = moveSlot;
     state.pickerValues.clear();
     state.encounterChoices.clear();
@@ -665,7 +670,8 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.pickerValues.reserve(count);
         for (std::size_t id = 0; id < count; ++id) {
             const char* name = Names::getItemNameG3(static_cast<uint16_t>(id));
-            if (id == 0 || (name && *name && std::string(name) != "???"))
+            if (Gen3::nativeHeldItemSupported(static_cast<uint16_t>(id)) &&
+                (id == 0 || (name && *name && std::string(name) != "???")))
                 state.pickerValues.push_back(static_cast<uint16_t>(id));
         }
     } else if (target == PickerTarget::Language) {
@@ -1038,7 +1044,29 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
-    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const auto heldItemName=[&](uint16_t id){return pickerValueLabel(state, id);};
+    if(gridPicker) {
+        const auto refilter=[&](const std::string& query) {
+            const int row=ItemPickerSearch::apply(state.pickerValues,state.pickerNativeValues,
+                state.pickerSort,query,state.pickerRow,heldItemName,SharedSearchInput::searchKey);
+            state.pickerQuery=query;
+            if(row>=0)state.pickerRow=row;
+            state.pickerViewport.reset();
+            return row>=0;
+        };
+        const int px=(1280-HeldItemGrid::modalWidth)/2,py=(720-kNavBarH-HeldItemGrid::modalHeight)/2;
+        const SharedSearchInput::Keys searchKeys{bool(down&HidNpadButton_Up),bool(down&HidNpadButton_Down),
+            bool(down&HidNpadButton_Left),bool(down&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+        if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
+            SharedSearchInput::sample(touch),px,py,refilter,
+            down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
+            state.pickerScroll.stop();
+            state.pickerViewport.reveal(state.pickerRow,static_cast<int>(state.pickerValues.size()),
+                HeldItemGrid::rows,HeldItemGrid::columnsForSearch(state.heldItemSearch.open()));
+            return true;
+        }
+    }
+    const int columns = gridPicker ? HeldItemGrid::columnsForSearch(state.heldItemSearch.open()) : 1;
     const int compactCount = std::max(0, count);
     const bool nature = state.pickerTarget == PickerTarget::Nature;
     const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
@@ -1077,7 +1105,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
   const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
       touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
-      pickerW - 2 * HeldItemGrid::gridInsetX,
+      HeldItemGrid::gridWidth(state.heldItemSearch.open()),
       HeldItemGrid::rows * rowStep, rowStep,
       state.pickerViewport.firstRow, maxFirstRow + 1);
         } else if (state.pickerTarget == PickerTarget::Move) {
@@ -1093,7 +1121,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
   const auto valueList = valueListLayout(state.pickerTarget, count);
   const int pickerW = nature ? natureLayout.width : compact ? valueList.frame.w : 680;
   const int pickerH = nature ? natureLayout.height : compact ? valueList.frame.h : 560;
-  const int rowStep = nature ? natureLayout.rowStep : 42;
+  const int rowStep = nature ? natureLayout.rowStep : compact ? valueList.rule.rowHeight : 42;
   const int px = (1280 - pickerW) / 2;
   const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
@@ -1115,7 +1143,6 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         return true;
     }
 
-    const auto heldItemName = [&](uint16_t id) { return pickerValueLabel(state, id); };
     if ((gridPicker || state.pickerTarget == PickerTarget::Move) && (down & HidNpadButton_X)) {
         state.pickerSort = ItemPickerSort::next(state.pickerSort);
         state.pickerRow = ItemPickerSort::reorder(
@@ -1128,32 +1155,13 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
             });
         if (gridPicker)   // NEW-06: a re-sort keeps the active search
             state.pickerRow = std::max(0, ItemPickerSearch::narrow(state.pickerValues, state.pickerQuery,
-                                                                   state.pickerRow, heldItemName));
+                                                                   state.pickerRow, heldItemName,SharedSearchInput::searchKey));
         state.pickerScroll.stop();
         state.pickerViewport.reset();
         state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
         return true;
     }
-    if (gridPicker && (down & HidNpadButton_Minus)) {
-        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
-        // and the current sort still applies. Cancel restores the previous search; a query with
-        // no match keeps the previous list (never an empty picker).
-        const std::string previous = state.pickerQuery;
-        const auto refilter = [&](const std::string& query) {
-            const int row = ItemPickerSearch::apply(state.pickerValues, state.pickerNativeValues,
-                                                    state.pickerSort, query, state.pickerRow, heldItemName);
-            if (row >= 0) { state.pickerQuery = query; state.pickerRow = row; }
-            state.pickerViewport.reset();
-            state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
-        };
-        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.pickerQuery, 20, refilter);
-        refilter(result.accepted ? result.text : previous);
-        if (result.accepted && state.pickerQuery != result.text)
-            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
-        state.pickerScroll.stop();
-        screen.controllerNavigation.reset();
-        return true;
-    }
+
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
         state.pickerScroll.stop();
     if (state.pickerTarget == PickerTarget::HeldItem) {
@@ -1703,27 +1711,12 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         return true;
     }
     const auto rows = reviewRows(screen);
-    const int reviewCount = static_cast<int>(rows.size());
-    const int reviewMax = std::max(0, reviewCount - 7);
-    // Pending Changes is a real touch scroll view: the cards follow the finger on every frame,
-    // cross row boundaries while the finger is still down, and retain a small controlled coast.
-    // reviewScroll remains the first visible semantic row, so controller behavior is unchanged.
-    const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar, SharedScrollbar::sample(touch),
-        SharedScrollbar::rows(reviewCount, 7, state.reviewScroll));
-    if (reviewBar.changed) {
-        state.reviewScroll = reviewBar.scroll;
-        state.reviewTouchScroll.stop();
-    }
-    if (reviewBar.consumed)
-        state.reviewTouchScroll.stop();
-    else
-        state.reviewTouchScroll.updateVertical(
-            touch, 44, 112, 1280 - 88, 482, 72,
-            state.reviewScroll, reviewMax + 1);
-    if (down & (HidNpadButton_Up | HidNpadButton_Down))
-        state.reviewTouchScroll.stop();
-    if (down & HidNpadButton_Up) state.reviewScroll = std::max(0, state.reviewScroll - 1);
-    if (down & HidNpadButton_Down) state.reviewScroll = std::min(reviewMax, state.reviewScroll + 1);
+    (void)touch;
+    namespace Review=PokeBank::UIModel::SharedReview;
+    if(down&(HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))
+        state.reviewScroll=static_cast<int>(Review::move(state.reviewScroll,-1,rows.size()));
+    if(down&(HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R))
+        state.reviewScroll=static_cast<int>(Review::move(state.reviewScroll,1,rows.size()));
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
@@ -1882,8 +1875,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
 
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
+        const int heldColumns=HeldItemGrid::columnsForSearch(state.heldItemSearch.open());
         SharedHeldItemPickerPresentation::drawHeading(
-            fb, x, y, "Held Item — Generation III", state.pickerRow, count);
+            fb, x, y, "Held Item — Generation III", state.pickerRow, state.heldItemSearch.noMatches?0:count,state.heldItemSearch.open());
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
@@ -1908,29 +1902,32 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     screen.trainer.getGameGroup(), value);
                 return disc.empty() ? Names::getItemNameG3(value) : disc;
             },
-            state.pickerViewport.firstRow, state.pickerScroll.offset());
+            state.pickerViewport.firstRow, state.pickerScroll.offset(),&state.heldItemSearch);
         const int gridX = x + HeldItemGrid::gridInsetX;
         const int gridY = y + HeldItemGrid::gridInsetY;
         const int cellHeight = HeldItemGrid::rowPitch;
-        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int cellW = HeldItemGrid::cellWidth;
         const int firstRow = state.pickerViewport.firstRow;
-        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int firstVisibleItem = state.pickerViewport.firstRow * heldColumns + 1;
         const int lastVisibleItem = std::min(count,
-            firstVisibleItem + HeldItemGrid::pageSize - 1);
+            firstVisibleItem + HeldItemGrid::pageSizeForSearch(state.heldItemSearch.open()) - 1);
         (void)lastVisibleItem;
-        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
-             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
-            const int offset = i - firstRow * HeldItemGrid::columns;
-            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
-            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+        for (int i = std::max(0, (firstRow - 1) * heldColumns);
+             !state.heldItemSearch.noMatches && i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * heldColumns); ++i) {
+            const int offset = i - firstRow * heldColumns;
+            const int cellX = gridX + offset % heldColumns * cellW;
+            const int cellY = gridY + offset / heldColumns * cellHeight + state.pickerScroll.offset();
             appendClippedTouchButton(screen.touchButtons, 4000 + i,
                 cellX, cellY - 3, cellW - 10, cellHeight - 4,
-                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+                gridX, gridY - 3, HeldItemGrid::gridWidth(state.heldItemSearch.open()), HeldItemGrid::rows * cellHeight);
         }
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;
         footer.xLabel = "Sort";
         footer.minusLabel = "Search";   // NEW-06
+        if(state.heldItemSearch.open() || state.heldItemSearch.noMatches)
+            SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);
+        else
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
@@ -1944,7 +1941,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int visible = compactChoices ? visibleChoices : 10;
     const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
-    const int rowStep = naturePicker ? natureLayout.rowStep : 42;
+    const int rowStep = naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42;
+    const int choiceHeight=naturePicker? natureLayout.highlightHeight : rowStep-4;
     const int viewportTop = y + 90;
     // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
     // (rows, clip, touch boxes and the boxed highlight all use rowW).
@@ -1955,18 +1953,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     for (int i = first; i < last; ++i) {
         const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
         appendClippedTouchButton(screen.touchButtons, 4000 + i,
-            x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38,
+            x + 22, yy - 4, rowW, choiceHeight,
             x + 22, viewportTop - 4, rowW, visible * rowStep);
         const bool selected = i == state.pickerRow;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, choiceHeight), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         if (state.pickerTarget == PickerTarget::MetLocation) {
             // Bright place name on the left, method / level on the right; nothing overlaps.
             const auto row = metLocationChoiceText(state, value);
-            int nw = 0, nh = 0, dw = 0, dh = 0;
-            fb.measureText(row.first, nw, nh, TextStyle::Body);
-            // Round 5 NEW-10: the detail gets what the name leaves (both fit at 704 px).
-            const std::string detail = SharedMovesPanel::fit(fb, row.second, std::max(0, rowW - 32 - nw - 20));
+            int dw = 0, dh = 0;
+            const std::string detail = SharedMovesPanel::fit(fb, row.second, (rowW - 32) / 2);
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7,
                         SharedMovesPanel::fit(fb, row.first, rowW - 32 - dw - 20, TextStyle::Body),
@@ -1981,21 +1977,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ability) {
-            // NEW-13: ability name left, its short effect right (red only for a drawback).
-            const std::string label = pickerValueLabel(state, value);
-            const std::string name = UI::AbilityEffects::nameOf(label);
-            const std::string effect = label.size() > name.size() ? label.substr(name.size() + UI::AbilityEffects::kSplit.size()) : std::string();
-            int nw = 0, nh = 0;
-            fb.measureText(name, nw, nh, TextStyle::Body);
-            fb.drawText(x + 38, yy + 7, name, Colors::Text, TextStyle::Body);
-            if (!effect.empty()) {
-                const std::string shown = SharedMovesPanel::fit(fb, effect, std::max(0, rowW - 32 - nw - 24));
-                int dw = 0, dh = 0;
-                fb.measureText(shown, dw, dh, TextStyle::Caption);
-                fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, shown,
-                            UI::AbilityEffects::isDrawbackEffect(effect) ? Colors::Error
-                                : selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
-            }
+            SharedAbilityPicker::drawRow(fb,x+22,yy-4,rowW,choiceHeight,
+                pickerValueLabel(state,value),selected);
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ball) {
@@ -2414,71 +2397,20 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 
 // Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
 // The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
-void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
-    SharedEditorChrome::beginModal(screen.touchButtons);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-    constexpr int w = 760, h = 240;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 34, y + 96,
-                std::string("Every pending ") + generation + " edit in this workspace is lost.",
-                Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
-                Colors::TextDim, TextStyle::Caption);
-    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
-    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
-        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Keep Changes"}, {"Y", "Discard All"}}});
-    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char*) {
+    SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.touchButtons.clear();
-    auto* staged = editor(screen);
-    if (!staged) return;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
-    fb.drawText(32, 62, "Generation III staged workspace • original source bytes unchanged",
-                Colors::TextDim, TextStyle::Caption);
-    constexpr int viewportY = 112;
-    constexpr int viewportH = 482;
-    constexpr int rowStep = 72;
-    const auto changes = reviewRows(screen);
-    if (changes.empty()) {
-        state.reviewScroll = 0;
-        state.reviewTouchScroll.reset();
-        fb.drawText(50, viewportY, "No pending changes.", Colors::TextDim, TextStyle::Body);
-    } else {
-        constexpr int visible = 7;
-        const int count = static_cast<int>(changes.size());
-        state.reviewScroll = std::clamp(state.reviewScroll, 0, std::max(0, count - visible));
-        const int first = state.reviewScroll;
-        const int drawFirst = std::max(0, first - 1);
-        const int drawLast = std::min(count, first + visible + 1);
-        const int liveOffset = state.reviewTouchScroll.offset();
-        fb.setClipRect(44, viewportY, fb.getWidth() - 88, viewportH);
-        for (int i = drawFirst; i < drawLast; ++i) {
-            const int rowY = viewportY + (i - first) * rowStep + liveOffset;
-            const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawFilledRoundedRect(44, rowY, fb.getWidth() - 88, 62, 10, Colors::Panel);
-            fb.drawText(62, rowY + 10, change.label, Colors::Text, TextStyle::Caption);
-            fb.drawText(62, rowY + 34, change.beforeValue + "  ->  " + change.afterValue,
-                        Colors::TextDim, TextStyle::Caption);
-        }
-        fb.clearClip();
-        SharedScrollbar::drawAndPublish(fb, state.reviewScrollbar, fb.getWidth() - 28, viewportY,
-            SharedScrollbar::kTrackWidth, viewportH,
-            SharedScrollbar::rows(count, visible, state.reviewScroll));
-    }
-    if (state.confirmDiscardAll && !changes.empty()) {
-        drawDiscardAllConfirm(screen, fb, "Generation III");
-    } else if (changes.empty())
-        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
-    else
-        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"X", "Export Copy"},
-                        {"Y", "Discard All Staged"}, {"B", "Back"}});
+    auto* staged=editor(screen);
+    if(!staged)return;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    for(const auto& change:reviewRows(screen))
+        rows.emplace_back(change.label,change.beforeValue+" -> "+change.afterValue);
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(state.reviewScroll),!rows.empty(),"Generation III");
+    if(state.confirmDiscardAll)
+        drawDiscardAllConfirm(screen,fb,"Generation III");
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {

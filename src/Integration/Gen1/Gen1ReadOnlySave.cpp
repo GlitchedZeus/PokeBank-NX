@@ -428,6 +428,8 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame game) {
 
     save->trainer_.name = decodeGen1String(raw.subspan(kMainStart, l.stringLength), l.region);
     save->trainer_.trainerId = readBE16(raw, l.tid);
+    // PKHeX pinned SAV1Offsets.Badges; international and Japanese layouts differ.
+    save->trainer_.badges=raw[l.region==RegionLayout::Japanese?0x25F8:0x2602];
     // PKHeX 6042efa241a9 SAV1Offsets / SAV1: hours, maximum flag, minutes, seconds.
     const size_t clockOffset=l.region==RegionLayout::Japanese?0x2CA0:0x2CED;
     save->trainer_.playTime=Common::nativePlayTime(raw[clockOffset],raw[clockOffset+2],

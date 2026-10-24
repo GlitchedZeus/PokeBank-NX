@@ -66,6 +66,7 @@ namespace PokeVault::Integration::Gen3 {
         uint32_t id32 = 0;
         uint32_t money = 0;
         uint8_t language = 2; // English represents the shared international Gen III save charset.
+        uint8_t badges = 0;
     };
 
     enum class InventoryPouch : uint8_t {

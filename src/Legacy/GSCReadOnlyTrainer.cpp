@@ -128,6 +128,7 @@ bool GSCReadOnlyTrainer::populate(
     const Integration::Gen2::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
     nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,16};
     const auto dex = save.dexProgress();
     nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;

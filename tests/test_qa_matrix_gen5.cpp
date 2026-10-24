@@ -1,3 +1,4 @@
+#include "test_backup_session_trace.h"
 // PokeBank NX application QA: Gen I-V acceptance matrix, Generation V rows (Thread 4, QA-owned).
 //
 // Rows black, white, black2, white2: both SAV5 layout families (BlackWhite and Black2White2, see
@@ -787,7 +788,8 @@ Outcome pickers(Ctx& c) {
     const uint16_t own = c.b2w2() ? G5::BagCatalog5::kKeyB2W2.back() : G5::BagCatalog5::kKeyBW.back();
     need(G5::gen5BagItemInPocket(c.spec.family, 1, own), "family key-item list not recognised");
     need(!ws.hasChanges(), "picker queries staged a change");
-    return passed("species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, " +
+    return passed("species 1-649 (650 refused), Pikachu " + std::to_string(moves.size()-1) +
+                  " compatibility-filtered moves + none (" + std::to_string(direct) + " direct in exact game), items <=638, 25 balls, " +
                   std::to_string(G5::NativeMetLocations5.size()) +
                   " native met locations (not encounter proof), Deerling 4 forms, ability slots; all five native Bag add lists, unique Key/TM/HM x1");
 }
@@ -1257,6 +1259,9 @@ void runVersion(Matrix& m, const Spec& spec) {
     c.exportsRoot = c.root / "exports";
     c.original = buildSave(spec.family, spec.version);
     qacontract::writeSource(c.path, c.original);
+    std::string backupError;
+    const bool backupOk=verifyBackupSessionTrace(c.original,spec.game,backupError);
+    m.check(spec.row,"backup-session",backupOk,backupError,"Exact historical file -> staged edit/export/Discard");
     c.initialFile = qacontract::fileState(c.path);
     c.initialTree = qacontract::treeState(c.savesDir);
     m.fact(spec.row, "identity.source", "save-internal");

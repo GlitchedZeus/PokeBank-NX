@@ -193,7 +193,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(screen.applyPlayTime(ws, 999, 59, 59, refresh, error));
     assert(Screen::value(ws, Row::PlayTime) == "999:59:59");
 
-    // Review lists the three trainer changes; + opens Review from the panel.
+    // Review lists the three Trainer changes; the discoverable Y button opens it.
     const auto changes = ws.trainerReviewChanges();
     assert(changes.size() == 3);
     assert(changes[0].field == G::TrainerChange5::Field::Name && changes[0].before == "NX" &&
@@ -201,7 +201,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(changes[1].before == "123456" && changes[1].after == "9999999");
     assert(changes[2].before == "12:34:56" && changes[2].after == "999:59:59");
     assert(G::Gen5SharedScreenState::reviewRowCount(ws) == 3);
-    assert(hasGlyph(screen.footer(), "+"));
+    assert(hasGlyph(screen.footer(), "Y"));
     assert(shared.openReviewFromBrowse(ws));
     (void)shared.back();
 

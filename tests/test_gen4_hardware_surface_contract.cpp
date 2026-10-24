@@ -624,7 +624,8 @@ int main() {
     // Phase 2: the ball sprite leads its name (BallPicker rule), in Gen III and Gen IV/V alike.
     contains(surface, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
     contains(gen3Picker, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
-    contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb, footer);"); // A Select / B Cancel
+    contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb,footer);"); // A Select / B Cancel
+    contains(gen2Editor, "SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);"); // docked keys own input while open
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
     contains(spriteRuntime, "sprites/items/");

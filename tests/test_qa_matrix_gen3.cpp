@@ -1,3 +1,4 @@
+#include "test_backup_session_trace.h"
 // PokeBank NX application QA: Gen I-V acceptance matrix, Generation III rows (Thread 4, QA-owned).
 //   ruby, sapphire, emerald, firered, leafgreen
 //
@@ -452,6 +453,10 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
         fs::create_directories(bindingsPath.parent_path());
         qacontract::writeSource(srcPath, original);
         const auto sourceBefore = qacontract::fileState(srcPath);
+        std::string backupError;
+        const bool backupOk=verifyBackupSessionTrace(original,game,backupError);
+        row.check("backup-session",backupOk?std::vector<std::string>{}:std::vector<std::string>{backupError},
+            "Historical copy stages, separately exports and Discards without source mutation");
         const auto treeBefore = qacontract::treeState(retro);
         const std::string profile = "qa-profile-a";
 

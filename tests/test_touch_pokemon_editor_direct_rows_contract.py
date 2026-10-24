@@ -117,7 +117,7 @@ require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
         "state.itemScroll.offset()",
         "TouchPickerViewport itemViewport;",
         "state.itemViewport.firstRow, maxFirstRow + 1",
-        "state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns)",
+        "state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, columns)",
         "state.itemViewport.containsSelection(",
         "const int firstRow = state.itemViewport.firstRow;",
         "appendClippedTouchButton(screen.touchButtons, 3000 + i")
@@ -144,9 +144,9 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "screen.touchButtons.push_back({31500 + speciesStart + i",
         "actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)",
         "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow",
-        "state.reviewScroll = std::clamp",
-        "state.reviewTouchScroll.updateVertical(",
-        "state.reviewTouchScroll.offset()",
+        "SharedEditorChrome::drawReviewPanel",
+        "Review::move(state.reviewScroll",
+        "drawDiscardAllConfirm(screen,fb",
         "state.detailsTouchScroll.updateVertical(",
         "appendClippedTouchButton(screen.touchButtons, 31000 + row",
         "detailPixelOffset, firstDetailRow")
@@ -232,7 +232,7 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
         raise AssertionError(f"{rel}: picker move/item/value touch targets must be clipped")
     for expected in (
         "x + 24, viewportTop, w - 48, visible * moveLayout.rowStep",
-        "gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight",
+        "gridX, gridY - 3, HeldItemGrid::gridWidth(state.heldItemSearch.open()), HeldItemGrid::rows * cellHeight",
         "x + 22, viewportTop - 4, rowW, visible * rowStep",   # NEW-08: rowW = w - 44 minus the scrollbar gutter
     ):
         assert expected in src, f"{rel}: picker hitbox viewport mismatch: {expected}"

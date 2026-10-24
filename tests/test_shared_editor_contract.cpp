@@ -20,6 +20,7 @@
 #include "UI/NarrowPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedPokemonEditorWorkspace.h"
+#include "UI/TouchScroll.h"
 
 #include <algorithm>
 #include <array>
@@ -113,6 +114,20 @@ void navigationContract(Shared::Generation generation) {
 
 // 11: a completed tap selects exactly the focus the controller reaches.
 void touchParityContract(int detailRows) {
+    // L06 follow-up: touch the partially visible Gen IV Pokérus row after
+    // scrolling. The production input boundary reveals it BEFORE the same
+    // activation gate as A; no second tap or keypad is needed.
+    UI::TouchPickerViewport viewport;
+    viewport.firstRow=4;
+    int detailsFocus=0;
+    PokeBank::UIModel::SharedPokemonEditor::Focus pokerus{};
+    if(detailRows>14) {
+        assert(Workspace::focusCompletedTap(Workspace::kDetailTouchBase+14,detailRows,
+            pokerus,detailsFocus,viewport,Workspace::kVisibleDetailRows));
+        assert(detailsFocus==14 && viewport.containsSelection(14,detailRows,Workspace::kVisibleDetailRows));
+        const auto activation=Workspace::activationFor(pokerus);
+        assert(activation.kind==Workspace::ActivationKind::DetailField && activation.row==14);
+    }
     Shared::Focus focus{};
     assert(Workspace::focusForTouch(Workspace::kDetailTouchBase + detailRows - 1, detailRows, focus));
     assert(focus.panel == Panel::Details && focus.row == detailRows - 1);

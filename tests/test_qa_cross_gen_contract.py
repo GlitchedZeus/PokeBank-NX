@@ -1625,6 +1625,16 @@ def contracts(sources: list[Source]) -> list[Result]:
         for name, ln, body in function_bodies(dlg.code, re.compile("^" + fn + "$")):
             m = re.search(r"if\s*\(\s*screen\.exitingWithUnsavedChanges\s*(?:\)|&&)", body)
             exit_part = body
+            if fn == "paintSaveConfirmContents" and re.search(r"SharedEditorChrome::drawStagedExitPanel\s*\(", body):
+                shared_exit = src("include/UI/SharedEditorChrome.h")
+                panels = [b for _, _, b in function_bodies(shared_exit.code, re.compile(r"^drawStagedExitPanel$"))]
+                if len(panels) != 1:
+                    r.violations.append("The shared staged-exit presenter is missing or ambiguous")
+                exit_part = "\n".join(panels)
+                for glyph, label, touch_id in (("A", "Review Changes", 2), ("B", "Continue Editing", 0),
+                                               ("X", "Export Copy", 3), ("Y", "Discard & Exit", 1)):
+                    if not re.search(r'choice\([^;]*"'+glyph+r'"\s*,\s*"'+re.escape(label)+r'"\s*,\s*'+str(touch_id)+r'\s*\)', exit_part):
+                        r.violations.append(f"Shared staged exit is missing {glyph} {label} / touch {touch_id}")
             if not re.search(r'"[^"\n]*\bReview\b[^"\n]*"', exit_part):
                 r.violations.append(f"{dlg.rel}:{ln}: {fn}() exit-with-staged-changes choices have no Review "
                                     "(only Keep Editing/Cancel and Discard & Exit)")
@@ -1955,23 +1965,23 @@ def contracts(sources: list[Source]) -> list[Result]:
     r = Result("CG40-held-item-picker-search",
                "Every Gen II-V Held Item picker offers live search (SharedSearchInput) alongside Sort "
                "(owner round 3 NEW-06)")
-    HELD_SHARED = ("include/UI/SharedHeldItemPickerPresentation.h", "include/UI/Gen2HeldItemPicker.h",
-                   "include/UI/SharedHeldItemPicker.h")
-    shared_search = any(src(h) and re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", src(h).code)
-                        for h in HELD_SHARED)
-    for s in U:
-        if s.rel in HELD_SHARED or not re.search(r"\bSharedHeldItemPickerPresentation::draw(?:Heading|Grid)\s*\(", s.code):
-            continue
-        # The integrated Held Item path uses the live promptText callback to
-        # ItemPickerSearch, retaining Sort and restoring the old query on B.
-        # Require all of that wiring rather than a particular keyboard widget.
-        live_prompt = (re.search(r'promptText\s*\(\s*"Search Held Items"[^;]*,\s*refilter\s*\)', s.code) and
-                       re.search(r'\bItemPickerSearch::apply\s*\(', s.code) and
-                       re.search(r'refilter\s*\(\s*result\.accepted\s*\?\s*result\.text\s*:\s*previous', s.code) and
-                       re.search(r'\bItemPickerSearch::tag\s*\(', s.code) and
-                       re.search(r'minusLabel\s*=\s*"Search"', s.code))
-        if not (shared_search or live_prompt or re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", s.code)):
-            r.violations.append(f"{s.rel}: Held Item picker has Sort but no search (no SharedSearchInput field / input)")
+    helper = src("include/UI/SharedHeldItemSearch.h")
+    helper_ok = helper and all(re.search(pattern, helper.code) for pattern in (
+        r"SharedSearchInput::handleKeys\s*\(", r"SharedSearchInput::handleTouch\s*\(",
+        r"SharedSearchInput::drawGrid\s*\(", r"!refilter\s*\(\s*state\.input\.query\s*\)"))
+    # Require the actual compiled per-generation owners, not just an unused
+    # shared keyboard existing somewhere in the repository.
+    for path in ("src/UI/SharedPokemonEditorSurface.inc", "src/UI/Gen3SharedPokemonSurface.inc",
+                 "src/UI/Gen2PokemonEditorFoundation.inc"):
+        owner = src(path)
+        wired = owner and all(re.search(pattern, owner.code) for pattern in (
+            r"SharedHeldItemSearch::handle\s*\([^;]*\brefilter\s*,",
+            r"ItemPickerSearch::apply\s*\([^;]*SharedSearchInput::searchKey\s*\)",
+            r"&state\.heldItemSearch\s*\)",
+            r"columnsForSearch\s*\(state\.heldItemSearch\.open\(\)\)",
+            r"ItemPickerSort::next\s*\("))
+        if not helper_ok or not wired:
+            r.violations.append(f"{path}: Held Item docked keyboard, live folded filter, result geometry or Sort disconnected")
     res.append(r)
 
     # ---------------------------------------------------------------- NEW-07
