@@ -6,6 +6,39 @@
 
 Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
 
+## October 24 COMPLETE — application integrated, one audited hardware candidate
+
+- RESUME APPLICATION at remote-verified `7d661fa33689681a0cb741dbaa3407ca79990960`
+  on `claude/gen5-integration-20261014` / existing draft PR307. Base remains
+  `claude/gen14-final-20261014`. All13 workflows /17 checks PASS on that head.
+- Starting application SHA92f956120019673733bd8d65cd65ab33c46cc237 was preserved forward.
+  This final WIP checkpoint changes DOCUMENTATION ONLY; do not push it to307 just
+  to restate the passing CI result or trigger another hardware round.
+- Official selected file `PokeBank-NX-Gen1-5-Candidate-8804f8f8.nro`,176783025bytes;
+  SHA256 `5bbc090e186b624dcad8a9fcbc6c87a087254b6e737d157c3616309878536085`.
+  Code8804f8f819a0da34c5d7b983a92bfb3a390eff16; tree66c321b13ce734239271ff0b9e924ca43cdaf92f.
+  Build40099575742 PASS; artifact12562103597. Deliver ONLY this bound artifact:
+  https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742/artifacts/12562103597
+- Independent QA-F9 run40100073045 NRO AUDIT:PASS on binding7d661fa3. It downloaded
+  the original artifact without rebuilding; GitHub records, exact bytes/hash/size,
+  BUILD_IDENTITY/SHA256SUMS, embedded commit, source tree, staleness and packaged
+  assets all match. RomFS4267files/156.6MiB/digestbc09c152ac4232a2.
+- GCC and Clang each202 normal+202 sanitizer binaries PASS with leak detection1;
+  both489-cell matrices plain+san PASS/0problems; all18 C1-C6 exports,20 exact
+  backup sessions, native-copy choice, owner70/196,26+4 mutation controls,
+  qa-tools, touch, PNG/assets, source immutability and native builds PASS.
+  Completed final GCC40100073074 and Clang40100073020 logs have no sanitizer or
+  runtime-error diagnostics. All other11 workflows PASS as recorded in the report.
+- All63 production/build/tool files and35 test/support files, checklist-ID mapping,
+  exact commands/results, CI links and Switch retest are in
+  docs/hardware/OCT24_REPAIRS_AND_RETEST.md. Project outputs/oct24-repairs holds
+  the original NRO, exact identity, full logs, FINAL_CI.json and FINAL_CHECKS.json.
+- Limits remain explicit: older Trainer Gender/Time read-only without validated
+  writers; native Switch historical copies read-only previews; compatibility is
+  not full encounter/event legality. PR314 and main untouched. No engineering
+  gate remains; next action is OWNER hardware retest of this exact selected file.
+- NOT DEVICE TESTED. Historical27PASS/6FAIL/4unmarked unchanged. S06 NOT TESTED.
+
 ## October 24 exact candidate binding — final CI required
 
 - Application code `8804f8f819a0da34c5d7b983a92bfb3a390eff16`, tree

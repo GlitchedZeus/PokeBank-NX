@@ -1,7 +1,8 @@
 October 24 repair session — detailed engineering record
 
 Starting application SHA: `92f956120019673733bd8d65cd65ab33c46cc237`.
-Validated production checkpoint: `52053c3b38904aac6cbaa4abe05b888fca731405`. Integration and official artifact identities are recorded below after completion.
+Final application SHA: `7d661fa33689681a0cb741dbaa3407ca79990960` (docs-only candidate binding).
+Validated production checkpoint: `52053c3b38904aac6cbaa4abe05b888fca731405`. Application and binding identities are recorded below.
 Implementation and host validation record. The official candidate identity below was recorded only after the build succeeded and its exact downloaded bytes passed local audit.
 
 
@@ -15,7 +16,7 @@ Official October 24 hardware candidate (one selected deliverable):
 - [Official build 40099575742](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742) PASS.
 - [Download the selected official artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742/artifacts/12562103597).
 - Local exact-file audit PASS: single NRO, GitHub run/artifact records, BUILD_IDENTITY/SHA256SUMS, embedded `8804f8f8`, NACP, source tree and bytes agree. Packaged RomFS PASS: 4,267 files,156.6 MiB, content digest `bc09c152ac4232a2`.
-- `docs/qa/CANDIDATE_UNDER_AUDIT.env` is bound in a docs-only commit after the test-only polish guard correction. No application file changed after the selected code SHA. Independent QA-F9 and final-head workflow results must be checked at [PR307 checks](https://github.com/GlitchedZeus/PokeBank-NX/pull/307/checks) before delivery.
+- `docs/qa/CANDIDATE_UNDER_AUDIT.env` is bound in a docs-only commit after the test-only polish guard correction. No application file changed after the selected code SHA. Independent [QA-F9 audit40100073045](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073045) reports NRO AUDIT:PASS on docs-only binding `7d661fa33689681a0cb741dbaa3407ca79990960`. All 13 final-head workflows /17 checks PASS; exact run links are recorded below.
 - **NOT DEVICE TESTED**. The build and audit do not change the historical hardware result mapping.
 
 Original hardware evidence remains 27 PASS / 6 FAIL / 4 unmarked. No new code or host result is a hardware PASS. S06 NOT TESTED.
@@ -65,6 +66,7 @@ Validation commands (all run from the repository, with separate fresh compiler b
 | `python3 tests/test_touch_appwide_surface_contract.py` and `python3 tests/test_touch_pokemon_editor_direct_rows_contract.py` | PASS |
 | `python3 tests/test_verify_nro_romfs.py`, `python3 tests/test_device_asset_png_validation.py`, asset regression/known-failure controls | PASS |
 | `python3 tests/test_v1_polish_contract.py` and the GCC CI pre-build recovery/species/font/authority checks | PASS; footer guard follows Y-only deletion and shared Open/Back controls |
+| `make -f Makefile.host HOST_BUILD=/tmp/oct24-gcc qa-tools-test` | PASS, complete audit/mutations/header-dependency/tooling suite |
 | `git diff --check` | PASS |
 | Native devkitA64 compile/link/packaged RomFS, workflow run 40075492367 at production checkpoint52053c3b | PASS |
 
@@ -180,7 +182,7 @@ Regression test/support files added or repaired (35):
 
 October 24 candidate — Switch retest checklist
 
-NOT DEVICE TESTED. Fill in the exact candidate filename / displayed build SHA after installation.
+NOT DEVICE TESTED. Install `PokeBank-NX-Gen1-5-Candidate-8804f8f8.nro` and confirm Settings shows build `8804f8f8`; compare the full hash and size in the identity record above.
 Historical results remain 27 PASS, 6 FAIL and 4 unmarked. S06 NOT TESTED.
 
 1. Review / exit (B08, R2-BUG-002, NEW-19, AUD-01): on each generation stage a named move/item or Money change. Open Review from Pokémon/Bag/Trainer and Actions. Check the same four-row pages, names and before/after values. Leave: A Review, B Continue, Y Discard & Exit, X Export Copy. Review Y asks before Discard All; B cancels. Include empty Review and enough changes for a second page.
@@ -195,3 +197,25 @@ Historical results remain 27 PASS, 6 FAIL and 4 unmarked. S06 NOT TESTED.
 10. Regression: retain Actions order, Bag Add/Remove confirmations, Party actions, Gen II Move, assigned Gen V Home opening, zero Create IV/DV defaults, species label/search, ball gutter, Origin & Legality wording and green/red Nature effects. C01 stays historically unmarked; record its new result separately.
 
 Report PASS / FAIL / NOT TESTED by checklist ID with exact NRO SHA and any reproduction steps. Host/CI results never fill in a hardware PASS.
+
+Final integration and CI record:
+
+Final PR307 application head / docs-only binding: `7d661fa33689681a0cb741dbaa3407ca79990960`. All **13 workflows /17 checks PASS** on this exact head. Completed GCC and Clang full-job logs reach the final tests and contain no ASan/UBSan/leak or runtime-error diagnostics.
+
+| Workflow | Result |
+| --- | --- |
+| [Gen I/II Packed Move Focused](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073017) | PASS |
+| [Gen I/II Packed Multi-Move Focused](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100072948) | PASS |
+| [PokeBank NX App QA Contracts](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073031) | PASS |
+| [PokeBank NX App QA Fuzz](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073129) | PASS |
+| [PokeBank NX App QA NRO Audit](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073045) | PASS |
+| [PokeBank NX App QA Workflow Hygiene](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073109) | PASS |
+| [PokeBank NX Gen I-IV Hardware Candidate](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073057) | PASS |
+| [PokeBank NX Gen I-V Integrated Candidate](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100072981) | PASS |
+| [PokeBank NX Gen V Focused Host](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100072951) | PASS |
+| [PokeBank NX Host Tests](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073074) | PASS |
+| [PokeBank NX Host Tests (Clang)](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100073020) | PASS |
+| [PokeBank NX Native PR Gate](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100072950) | PASS |
+| [Touch Input Gating](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40100072953) | PASS |
+
+The selected hardware file is the original bound8804f8f8artifact. Later automatic CI builds are not additional hardware deliverables. No application file changed between that candidate and the final binding head. PR307 remains draft on `claude/gen14-final-20261014`; main and PR314 were not modified. The final handoff is checkpointed separately on WIP as documentation only so the passing application head remains frozen.
