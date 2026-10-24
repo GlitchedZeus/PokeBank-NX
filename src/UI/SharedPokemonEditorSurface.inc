@@ -667,9 +667,13 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
     // dragging through DETAILS/STATS/MOVES. Only a completed tap can select.
     const int pressedRow = screen.touchedButtonId(touch);
     Shared::Focus tapped{};
+    bool tappedDetail = false;
     if (!detailsBar.consumed && Workspace::focusForTouch(pressedRow, rows, tapped)) {
         state.focus = tapped;
-        if (tapped.panel == Shared::Panel::Details) state.detailsFocus = tapped.row;
+        if (tapped.panel == Shared::Panel::Details) {
+            state.detailsFocus = tapped.row;
+            tappedDetail = true;
+        }
         if (editable) down |= HidNpadButton_A;
         else if (passive && tapped.panel == Shared::Panel::Details)
             A::passiveActivate(screen, state, tapped.row);
@@ -713,8 +717,13 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         !state.detailsViewport.containsSelection(state.focus.row, rows, visibleDetailRows)) {
         state.detailsTouchScroll.stop();
         state.detailsViewport.reveal(state.focus.row, rows, visibleDetailRows);
-        screen.postStatus("Focused field brought into view; press A again", 200);
-        return true;
+        // 6A: a completed tap on a partly visible row (e.g. Pokerus under the 8-row window) is
+        // the user pointing at that field, so it reveals AND activates, exactly like A on a
+        // visible row. Only a controller A on a field scrolled out of sight stops to reveal it.
+        if (!tappedDetail) {
+            screen.postStatus("Focused field brought into view; press A again", 200);
+            return true;
+        }
     }
 
     const auto activation = Workspace::activationFor(state.focus);
