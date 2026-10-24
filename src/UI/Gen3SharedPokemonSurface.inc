@@ -661,13 +661,18 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     state.encounterChoices.clear();
 
     if (target == PickerTarget::HeldItem) {
-        const auto count = Names::getItemCountG3();
-        state.pickerValues.reserve(count);
-        for (std::size_t id = 0; id < count; ++id) {
-            const char* name = Names::getItemNameG3(static_cast<uint16_t>(id));
-            if (id == 0 || (name && *name && std::string(name) != "???"))
-                state.pickerValues.push_back(static_cast<uint16_t>(id));
-        }
+        // 5B: offer exactly what Keep accepts (PKHeX ReleasedHeldItems_3). The old list offered
+        // every named item, so Safari Ball / Key Items failed at Keep. A held item already stored
+        // in the record stays selectable so an unchanged Pokemon is never forced to change.
+        const auto game = PokeVault::Inventory::classicGameFromId(screen.sourceGameId);
+        const auto choices = game ? PokeVault::Inventory::gen3HeldItemChoices(*game)
+                                  : std::span<const uint16_t>{};
+        state.pickerValues.assign(choices.begin(), choices.end());
+        const uint16_t stored = state.session.working.heldItem;
+        if (stored != 0 && std::find(state.pickerValues.begin(), state.pickerValues.end(), stored) ==
+                               state.pickerValues.end())
+            state.pickerValues.insert(std::upper_bound(state.pickerValues.begin(),
+                                                       state.pickerValues.end(), stored), stored);
     } else if (target == PickerTarget::Language) {
         state.pickerValues = {1, 2, 3, 4, 5, 7};
     } else if (target == PickerTarget::Ball) {

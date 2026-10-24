@@ -156,13 +156,8 @@ bool validLanguage(uint8_t language) noexcept {
 }
 
 bool validHeldItem(SourceGame game, uint16_t item) noexcept {
-    if (item == 0) return true;
-    const auto g = classicGame(game);
-    using Inventory::ClassicPocket;
-    return Inventory::isAddableItem(g, ClassicPocket::Items, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::Balls, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::TMHM, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::Berries, item);
+    // The same rule the Held Item picker offers (Inventory::gen3HeldItemChoices).
+    return item == 0 || Inventory::isGen3HeldItem(classicGame(game), item);
 }
 
 std::array<uint8_t, 6> ivs(const Pokemon::Pokemon3FRLG& p) noexcept {

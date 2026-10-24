@@ -304,6 +304,31 @@ bool isAddableItem(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noex
     return itemId != 0 && supportsPocket(game, pocket) && contains<uint16_t>(addableItems(game, pocket), itemId);
 }
 
+bool isGen3HeldItem(ClassicGame game, uint16_t itemId) noexcept {
+    switch (game) {
+        case ClassicGame::Ruby: case ClassicGame::Sapphire: case ClassicGame::Emerald:
+        case ClassicGame::FireRed: case ClassicGame::LeafGreen: break;
+        default: return false;
+    }
+    // kG3Items is PKHeX General minus Berry Juice; kG3Balls is 1-12 minus Safari Ball; the
+    // machine table's first 50 entries (289-338) are TM01-TM50.
+    return contains<uint16_t>(asSpan(kG3Items), itemId) || contains<uint16_t>(asSpan(kG3Balls), itemId) ||
+           contains<uint16_t>(asSpan(kG3Berries), itemId) ||
+           (itemId < 339 && contains<uint16_t>(asSpan(kG3Machines), itemId));
+}
+
+std::span<const uint16_t> gen3HeldItemChoices(ClassicGame game) noexcept {
+    static const std::vector<uint16_t> choices = [] {
+        std::vector<uint16_t> out{0};
+        for (uint16_t id = 1; id < 400; ++id)
+            if (isGen3HeldItem(ClassicGame::Ruby, id)) out.push_back(id);
+        return out;
+    }();
+    // The held rule is identical in R/S/E/FR/LG (PKHeX E and FR/LG reuse ItemStorage3RS's
+    // General, Balls, Berry and Machine spans and the same Unreleased list).
+    return isGen3HeldItem(game, 1) ? asSpan(choices) : std::span<const uint16_t>{};
+}
+
 // The one per-item quantity rule (Inventory/ItemQuantityPolicy.h): native pocket caps (Gen III
 // FRLG bag and RSE Berries/PC to 999), unique key items / HMs. This entry point keeps the classic
 // catalog's addable-item gate and maps the shared rule onto the classic shape.

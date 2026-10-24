@@ -7,6 +7,7 @@
 #include "Encryption/Encryption3FRLG.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -27,6 +28,7 @@
 #include <vector>
 
 using namespace PokeVault::Integration::Gen3;
+namespace Inventory = PokeVault::Inventory;
 
 namespace {
 
@@ -291,6 +293,43 @@ void runGame(SourceGame game, Family family) {
         pokerus.pokerus = 0x21;
         assert(identity->stageBoxPokemonEdit(0, 0, pokerus, error));
         identity->discard();
+        // Round 5 / 5B (owner hardware): Create Pikachu, Safari Ball, Keep failed with "unsupported
+        // field value". The Ball field accepts Safari Ball (native ball 5); the Held Item picker must
+        // offer exactly what Keep accepts (PKHeX 6501f0ab ReleasedHeldItems_3).
+        {
+            BoxPokemonCreate safari; safari.species = 25; safari.level = 5; safari.language = 2;
+            safari.otName = "BLUE"; safari.ball = 5;
+            assert(identity->stageAddBoxPokemon(0, 1, safari, error));
+            assert(identity->boxedPokemon(0, 1, error)->ball == 5);
+            identity->discard();
+            const auto choices = Inventory::gen3HeldItemChoices(Inventory::ClassicGame::Ruby);
+            assert(!choices.empty() && choices.front() == 0);
+            for (const auto g : {Inventory::ClassicGame::Ruby, Inventory::ClassicGame::Sapphire,
+                                 Inventory::ClassicGame::Emerald, Inventory::ClassicGame::FireRed,
+                                 Inventory::ClassicGame::LeafGreen}) {
+                const auto same = Inventory::gen3HeldItemChoices(g);
+                assert(std::equal(same.begin(), same.end(), choices.begin(), choices.end()));
+            }
+            const auto offered = [&](uint16_t id) {
+                return std::find(choices.begin(), choices.end(), id) != choices.end();
+            };
+            // Not released as held items in Gen III: Safari Ball, Berry Juice, Key Items, HMs.
+            for (const uint16_t refused : {uint16_t{5}, uint16_t{44}, uint16_t{259}, uint16_t{339}, uint16_t{346}}) {
+                assert(!offered(refused));
+                BoxPokemonCreate held = safari; held.ball = 4; held.heldItem = refused;
+                assert(!identity->stageAddBoxPokemon(0, 1, held, error));
+                assert(identity->stagedBytes() == immutableSource);
+            }
+            assert(offered(1) && offered(12) && offered(21) && offered(133) && offered(289) && offered(338));
+            // Everything the picker offers is accepted by Keep and stored as chosen.
+            for (const uint16_t id : choices) {
+                BoxPokemonCreate held = safari; held.ball = 4; held.heldItem = id;
+                assert(identity->stageAddBoxPokemon(0, 1, held, error));
+                assert(identity->boxedPokemon(0, 1, error)->heldItem == id);
+                identity->discard();
+            }
+            assert(identity->stagedBytes() == immutableSource);
+        }
         error.clear();
         create.otName = "TOOLONGOT";
         assert(!identity->stageAddBoxPokemon(0, 1, create, error));

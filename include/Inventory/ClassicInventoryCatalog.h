@@ -41,6 +41,13 @@ std::span<const ClassicPocket> supportedPockets(ClassicGame game) noexcept;
 std::span<const uint16_t> addableItems(ClassicGame game, ClassicPocket pocket) noexcept;
 bool supportsPocket(ClassicGame game, ClassicPocket pocket) noexcept;
 bool isAddableItem(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
+// Generation III held items: exactly PKHeX 6501f0ab ReleasedHeldItems_3 (ItemStorage3RS
+// GetAllHeld = General + Balls + Berry + MachineOnlyTM, minus Unreleased Safari Ball / Berry
+// Juice). No Key Items and no HMs. The Gen III Held Item picker and the staged Create/Edit
+// validator both use this one rule (round 5, 5B: the picker offered Safari Ball, Keep refused it).
+bool isGen3HeldItem(ClassicGame game, uint16_t itemId) noexcept;
+// Picker order for that rule: None (0) first, then ascending native item id.
+std::span<const uint16_t> gen3HeldItemChoices(ClassicGame game) noexcept;
 QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
 // The classic game / pocket as the shared item quantity policy (Inventory/ItemQuantityPolicy.h) names it.
 QuantityPolicy::Game quantityPolicyGame(ClassicGame game) noexcept;
