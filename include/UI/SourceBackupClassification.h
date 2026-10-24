@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+#include "Source/ImmutableSourceSnapshot.h"
 
 namespace PokeBank::UIModel::SourceBackups {
 
@@ -73,6 +74,7 @@ struct Entry {
     std::string timestamp;  // export TIMESTAMP (yyyymmdd_hhmmss), empty for the source
     std::string gameId;
     bool exists = false;
+    std::string physicalStamp{};
 };
 
 struct Listing {
@@ -81,6 +83,7 @@ struct Listing {
     std::string sourcePath;
     bool sourceExists = false;
     std::vector<Entry> entries; // [0] is the original source, then records newest first, then staged
+    bool recoveryReadOnly=false; // history found without a current exact-source/profile assignment
 };
 
 enum class Refusal : unsigned char {
@@ -303,16 +306,30 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
     std::stable_sort(out.entries.begin() + 1, out.entries.end(), [](const Entry& a, const Entry& b) {
         return a.timestamp != b.timestamp ? a.timestamp > b.timestamp : a.recordDir > b.recordDir;
     });
+    for(auto& entry:out.entries)
+        if(entry.exists)entry.physicalStamp=PokeVault::Source::ImmutableSnapshot::fileStamp(entry.path);
     out.entries.push_back({Kind::StagedWorkingCopy, {}, {}, {}, {}, false});
     return out;
 }
 
 // Why entry `index` cannot be deleted right now (Refusal::None when it may be, after Y).
 [[nodiscard]] inline Refusal canDelete(const Listing& listing, std::size_t index) {
+    if(listing.recoveryReadOnly)return Refusal::NotAnExportRecord;
     if (index >= listing.entries.size()) return Refusal::NotAnExportRecord;
     const Entry& e = listing.entries[index];
     if (e.kind == Kind::OriginalSource) return Refusal::OriginalSource;
     if (e.kind == Kind::StagedWorkingCopy) return Refusal::StagedWorkingCopy;
+    const auto root=e.kind==Kind::ManualBackup?listing.manualRoot:listing.exportsRoot;
+    if(!PokeVault::Source::ImmutableSnapshot::safePath(e.recordDir,root,true) ||
+       !PokeVault::Source::ImmutableSnapshot::safePath(e.path,root) ||
+       listing.sourcePath.starts_with(e.recordDir+"/"))return Refusal::NotAnExportRecord;
+    const auto safeChildren=[&](const std::string& dir) {
+        for(const auto& name:detail::children(dir))
+            if(!PokeVault::Source::ImmutableSnapshot::safePath(dir+"/"+name,root))return false;
+        return true;
+    };
+    if(!e.physicalStamp.empty() && e.physicalStamp!=PokeVault::Source::ImmutableSnapshot::fileStamp(e.path))
+        return Refusal::Missing;
     const auto lastCopyGuard = [&](const std::string& dir) {
         if (detail::isFile(listing.sourcePath)) return Refusal::None;
         // Without the emulator's own file, never delete the last remaining copy of this save.
@@ -336,6 +353,9 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
             !detail::plainName(rest.substr(slash + 1)))
             return Refusal::NotAnExportRecord;
         if (!detail::isDir(dir)) return Refusal::Missing;
+        // Validate exact record scope BEFORE enumerating a protected game/root
+        // folder. Every child must still be safe before reading the manifest.
+        if(!safeChildren(dir))return Refusal::UnexpectedFiles;
         const detail::BackupManifest m = detail::readBackupManifest(dir + "/" + detail::kBackupManifestName);
         if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;
         for (const std::string& name : detail::children(dir))
@@ -354,6 +374,7 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
     if (!underGen || dir == listing.sourcePath) return Refusal::NotAnExportRecord;
     if (listing.sourcePath.compare(0, dir.size() + 1, dir + "/") == 0) return Refusal::NotAnExportRecord;
     if (!detail::isDir(dir)) return Refusal::Missing;
+    if(!safeChildren(dir))return Refusal::UnexpectedFiles;
     const detail::Manifest m = detail::readManifest(dir + "/" + detail::kManifestName);
     if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;
     for (const std::string& name : detail::children(dir))

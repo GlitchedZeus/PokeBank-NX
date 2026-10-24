@@ -154,6 +154,31 @@ inline void drawReviewDiscardConfirm(PKSEFramebuffer& fb,Buttons& buttons) {
     drawNavBar(fb,{{"Y","Discard All"},{"B","Keep Changes"}});
 }
 
+// The accepted four-choice staged exit, including identical touch IDs and glyphs
+// for every generation. Generation adapters supply actions, never source writers.
+template<class Buttons>
+inline void drawStagedExitPanel(PKSEFramebuffer& fb, Buttons& buttons) {
+    beginModal(buttons);
+    constexpr int w=840,h=330,pad=28,gap=16,bh=60,bw=(w-2*pad-gap)/2;
+    const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,145));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawText(x+pad,y+24,"Unsaved Changes",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+pad,y+76,"Your edits are staged. The original save stays unchanged.",Colors::Text);
+    fb.drawText(x+pad,y+108,"Review them, export a separate copy, or continue editing.",Colors::TextDim);
+    const int row=y+h-2*bh-gap-20;
+    const auto choice=[&](int bx,int by,const char* glyph,const char* label,int id) {
+        drawGlyphButton(fb,bx,by,bw,bh,glyph,label);
+        buttons.push_back({id,bx,by,bw,bh});
+    };
+    choice(x+pad,row,"A","Review Changes",2);
+    choice(x+pad+bw+gap,row,"B","Continue Editing",0);
+    choice(x+pad,row+bh+gap,"X","Export Copy",3);
+    choice(x+pad+bw+gap,row+bh+gap,"Y","Discard & Exit",1);
+    drawNavBar(fb,{{"A","Review Changes"},{"B","Continue Editing"},
+                  {"Y","Discard & Exit"},{"X","Export Copy"}});
+}
+
 // Generation adapters supply only stored facts. One layout and one verdict
 // vocabulary serve every Origin & Legality modal; structure validity never
 // implies that an encounter or a complete legality check passed.

@@ -54,3 +54,24 @@ $(HOST_BUILD)/test_classic_staged_exit: tests/test_classic_staged_exit.cpp inclu
 $(HOST_BUILD)/test_classic_staged_exit_sanitize: tests/test_classic_staged_exit.cpp include/UI/ClassicStagedExit.h include/UI/ClassicTrainerSession.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+# October 24 backup provenance and physical-snapshot safety (pure host POSIX).
+HOST_TESTS += $(HOST_BUILD)/test_oct24_picker_help_events
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_oct24_picker_help_events_sanitize
+host-test: $(HOST_BUILD)/test_oct24_picker_help_events
+host-sanitize: $(HOST_BUILD)/test_oct24_picker_help_events_sanitize
+$(HOST_BUILD)/test_oct24_picker_help_events: tests/test_oct24_picker_help_events.cpp src/Names/LocationNames.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/host-switch -Iinclude $^ -o $@
+$(HOST_BUILD)/test_oct24_picker_help_events_sanitize: tests/test_oct24_picker_help_events.cpp src/Names/LocationNames.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/host-switch -Iinclude $^ -o $@
+HOST_TESTS += $(HOST_BUILD)/test_backup_snapshot_open
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_backup_snapshot_open_sanitize
+host-test: $(HOST_BUILD)/test_backup_snapshot_open
+host-sanitize: $(HOST_BUILD)/test_backup_snapshot_open_sanitize
+$(HOST_BUILD)/test_backup_snapshot_open: tests/test_backup_snapshot_open.cpp src/Utils/SHA256.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_backup_snapshot_open_sanitize: tests/test_backup_snapshot_open.cpp src/Utils/SHA256.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

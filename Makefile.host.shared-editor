@@ -123,11 +123,11 @@ host-sanitize: $(SHARED_EDITOR_CONTRACT_SANITIZE)
 
 $(SHARED_EDITOR_CONTRACT_TEST): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Itests/host-switch -Iinclude tests/test_shared_editor_contract.cpp -o $@
 
 $(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/host-switch -Iinclude tests/test_shared_editor_contract.cpp -o $@
 
 # Shared Gen I-V editor unit: Moves panel, Move chooser, picker footer, inline toggles and the
 # DETAILS viewport, plus source contracts that the real Gen III-V surfaces use them.

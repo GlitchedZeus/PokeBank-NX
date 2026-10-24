@@ -35,6 +35,9 @@ namespace UI {
         }
         bool shouldCreateNewBackup() const { return createNewBackup; }
         const std::string& getSelectedBackupPath() const { return selectedBackupPath; }
+        bool selectedBackupIsLegacy() const { return selectedLegacy; }
+        const std::string& getSelectedBackupRoot() const { return selectedBackupRoot; }
+        const std::string& getSelectedBackupStamp() const { return selectedBackupStamp; }
 
         /**
          * Report that acting on the selection failed, so the screen can say so and take the choice
@@ -57,6 +60,9 @@ namespace UI {
             std::string timestamp;
             std::string displayName;
             std::string path;
+            std::string detail;
+            std::string badge;
+            std::string physicalStamp;
             bool legacyUnscoped = false;
             bool createAction = false;   // the "Create backup now" row
         };
@@ -76,6 +82,9 @@ namespace UI {
         bool createBackupRequested = false;
         bool goBack;
         std::string selectedBackupPath;
+        std::string selectedBackupRoot;
+        std::string selectedBackupStamp;
+        bool selectedLegacy=false;
         bool showDeleteConfirmation;
         int deleteConfirmationIndex;
         // Delete-confirm button rects, captured during draw and hit-tested next frame (this screen

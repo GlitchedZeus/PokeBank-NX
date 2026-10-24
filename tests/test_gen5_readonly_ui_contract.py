@@ -1186,7 +1186,10 @@ compatibility = read("include/Integration/Gen5/Gen5MoveCompatibility.h")
 require(compatibility, 'game=="black_nds"||game=="white_nds"',
         'game=="black2_nds"||game=="white2_nds"',
         "if(inSource)return Availability::Preserved;",
-        "if(direct(game,species,form,move)||transferable(species,form,move))",
+        "if(classify(game,species,form,move,false)!=Availability::Unavailable)",
+        "if(formAvailable(game,species,form))",
+        "if(const auto* row=formRow(species,form))",
+        "if(priorForm(game,species,move))return Availability::FormHistory;",
         "std::sort(moves.begin()+1,moves.end());")
 require(read("tests/test_gen5_move_compatibility.cpp"),
         "assert(!C::direct(game,25,0,459))",

@@ -78,18 +78,7 @@ namespace Dialogs {
         constexpr int w = kSaveDiscard.width;
         const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
         if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
-            constexpr int cw = 840, ch = 330, pad = 28, gap = 16, bh = 60;
-            constexpr int bw = (cw - 2 * pad - gap) / 2;
-            const int x = (fb.getWidth() - cw) / 2, y = (fb.getHeight() - ch) / 2;
-            const int textY = drawDialogFrame(fb, x, y, cw, ch, "Unsaved Changes", Colors::Warning);
-            fb.drawText(x + pad, textY, "Your edits are staged. The original save stays unchanged.", Colors::Text);
-            fb.drawText(x + pad, textY + 32, "Review them, export a separate copy, or continue editing.", Colors::TextDim);
-            screen.touchButtons.clear();
-            const int row = y + ch - 2 * bh - gap - 20;
-            drawEditChoiceButton(screen, fb, x + pad, row, bw, bh, "A", "Review Changes", 2);
-            drawEditChoiceButton(screen, fb, x + pad + bw + gap, row, bw, bh, "B", "Continue Editing", 0);
-            drawEditChoiceButton(screen, fb, x + pad, row + bh + gap, bw, bh, "X", "Export Copy", 3);
-            drawEditChoiceButton(screen, fb, x + pad + bw + gap, row + bh + gap, bw, bh, "Y", "Discard & Exit", 1);
+            SharedEditorChrome::drawStagedExitPanel(fb,screen.touchButtons);
             return;
         }
 

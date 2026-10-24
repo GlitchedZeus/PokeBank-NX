@@ -119,8 +119,8 @@ SURFACES = {
     "Gen III editor": (
         "src/UI/Gen3SharedPokemonSurface.inc",
         ("handleWorkspace", "touchedButtonId(touch)", "pickerScroll.updateVertical(",
-         "pickerScroll.offset()", "reviewTouchScroll.updateVertical(",
-         "reviewTouchScroll.offset()"),
+         "pickerScroll.offset()", "SharedEditorChrome::drawReviewPanel",
+         "Review::move(state.reviewScroll"),
     ),
     "Gen IV editor / party & storage views": (
         "src/UI/Gen4SharedPokemonSurface.inc",
@@ -328,7 +328,7 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.reviewScroll.updateVertical(",
             "state.pickerScroll.offset()",
             "state.editorScroll.offset()",
-            "state.reviewScroll.offset()")
+            "SharedEditorChrome::drawReviewPanel")
 # Gen I's three moving vertical surfaces share the same clipped-hitbox contract as
 # later generations. A row outside a framebuffer clip must not remain tappable.
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
@@ -336,8 +336,8 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "centerX + 8, listY, centerW - 16, viewportH",
             "appendClippedTouchButton(screen.touchButtons, 4000 + idx,",
             "x + 24, listTop, w - 48, visible * rowStep",
-            "appendClippedTouchButton(screen.touchButtons, 1300 + row,",
-            "x + 24, listTop, w - 48, h - 108")
+            "SharedEditorChrome::drawReviewPanel",
+            "SharedEditorChrome::drawReviewDiscardConfirm")
 
 # Long Gen I Species and Move pickers must not recenter on the contact edge.
 # Scrolling and tapping are separate gestures; only a clean release may select.
@@ -368,17 +368,15 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "TouchPickerViewport reviewViewport;",
             "state.reviewViewport.reset();")
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
-            "state.reviewViewport.ensure(state.reviewRow, count, visible);",
-            "const int start = state.reviewViewport.firstRow;",
-            "state.reviewViewport.firstRow,",
-            "maxFirst + 1);",
-            "state.reviewViewport.reveal(state.reviewRow, count, visible);")
-review_input = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
-    "} else if (state.mode == UX2Mode::Review) {", 1)[1].split(
-    "    return down;", 1)[0]
-assert "selectedId(1300, count, tapped)" in review_input
-assert "selectedId(1300, count, pressed)" not in review_input
-assert "touch, rx + 24, ry + 64, geometry.width - 48," in review_input
+            "SharedEditorChrome::drawReviewPanel",
+            "SharedEditorChrome::drawReviewDiscardConfirm",
+            "SharedReview::move(previousReviewPage,direction,rows.size())")
+# The shared page owns only its visible footer hitboxes. X exports, Y asks,
+# and B cancels; tapping semantic change cards cannot mutate a native record.
+shared_review = read("include/UI/SharedEditorChrome.h").split("inline void drawReviewPanel(",1)[1].split("inline void drawReviewDiscardConfirm",1)[0]
+assert "beginModal(buttons)" in shared_review and "R::footer(changed,rows.size())" in shared_review
+
+assert "SharedEditorChrome::drawReviewPanel" in read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
 
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.editorViewport.ensure(state.row, 14, visible);",
@@ -514,7 +512,7 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc",
         "state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);",
         "const int first = state.pickerViewport.firstRow;",
         "const int firstRow = state.pickerViewport.firstRow;",
-        "const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;",
+        "const int firstVisibleItem = state.pickerViewport.firstRow * heldColumns + 1;",
         "const int lastVisibleItem = std::min(",
         "if (maxFirstRow == 0)",
         "state.pickerViewport.containsSelection(",
