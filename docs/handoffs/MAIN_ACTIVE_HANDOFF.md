@@ -6,6 +6,27 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 Gen III Create repair checkpoint
+
+- Review WIP `f0150dd621086e0317de0c8de42eb64cccaecd14` is pushed/remote-verified;
+  native compile run 40068229858 is in progress (not a hardware candidate).
+- R2-REVIEWMOVE Safari reproduction: caught-Ball IDs 1–12 were supported; the
+  Held Item chooser also offered Safari Ball but native validation incorrectly used
+  Bag availability. Use PKHeX's separate GetAllHeld set (244 IDs), pinned to
+  6042efa241a9925ce57e645329ea7f976deabdd3 / ItemStorage3RS.cs
+  SHA256 3c6d50c6a6775a9d61d6dced2e1b60366789bddefb7c6f60e8cb1ba045438646.
+  Picker and serializer now share native held-item support. Bag policy is unchanged;
+  unknown encounter/obtainability evidence is not a clean legality verdict.
+- GCC native staged-Pokémon regression PASS: all 12 caught Balls crossed with None,
+  Safari Ball, Hyper Potion and Berry Juice as Held Item, across all 5 Gen III games;
+  encrypted native Create/reparse/checksums/Discard/source immutability verified.
+  Key Items, HMs, out-of-range held IDs and unsupported caught Balls still refuse
+  without staging bytes. Full sanitizer and integration gates remain pending.
+- Existing touch source guards now follow the owner-requested shared Review pages,
+  including touchable shared navigation, instead of the retired Gen III scroll list.
+- Backup-session source changes remain local WIP under active development; not yet
+  integrated or claimed tested. No #307/main/#314 movement from this checkpoint.
+
 ## October 24 repair campaign — active Codex writer
 
 - Fetched and resumed actual application #307 head `92f956120019673733bd8d65cd65ab33c46cc237`.

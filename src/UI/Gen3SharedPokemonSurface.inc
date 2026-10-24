@@ -1,3 +1,4 @@
+#include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
@@ -665,7 +666,8 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.pickerValues.reserve(count);
         for (std::size_t id = 0; id < count; ++id) {
             const char* name = Names::getItemNameG3(static_cast<uint16_t>(id));
-            if (id == 0 || (name && *name && std::string(name) != "???"))
+            if (Gen3::nativeHeldItemSupported(static_cast<uint16_t>(id)) &&
+                (id == 0 || (name && *name && std::string(name) != "???")))
                 state.pickerValues.push_back(static_cast<uint16_t>(id));
         }
     } else if (target == PickerTarget::Language) {

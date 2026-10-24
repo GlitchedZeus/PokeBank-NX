@@ -119,8 +119,8 @@ SURFACES = {
     "Gen III editor": (
         "src/UI/Gen3SharedPokemonSurface.inc",
         ("handleWorkspace", "touchedButtonId(touch)", "pickerScroll.updateVertical(",
-         "pickerScroll.offset()", "reviewTouchScroll.updateVertical(",
-         "reviewTouchScroll.offset()"),
+         "pickerScroll.offset()", "SharedEditorChrome::drawReviewPanel",
+         "Review::move(state.reviewScroll"),
     ),
     "Gen IV editor / party & storage views": (
         "src/UI/Gen4SharedPokemonSurface.inc",

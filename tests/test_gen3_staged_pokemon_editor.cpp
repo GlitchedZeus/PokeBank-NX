@@ -1,3 +1,5 @@
+#include "Integration/Gen3/Gen3HeldItems.h"
+#include "UI/Gen3SharedPokemonSession.h"
 #include "Integration/Gen3/Gen3ExportTransaction.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
 #include <filesystem>
@@ -244,6 +246,39 @@ void runGame(SourceGame game, Family family) {
     assert(StagedPokemonEditor::pidCorrelatedEditingEnabled());
     assert(!StagedPokemonEditor::moveSelectionEditingEnabled());
 
+    // October 24 R2-REVIEWMOVE: actual Create -> Pikachu -> Safari Ball -> Keep.
+    // Exercise BOTH caught-Ball and Held Item choices; their numeric IDs must
+    // never be confused. Reparse the native encrypted record and sector checksums.
+    for(const uint16_t held : {uint16_t{0},uint16_t{5},uint16_t{14},uint16_t{44}}) {
+        for(uint8_t ball=1;ball<=12;++ball) {
+            auto createEditor=StagedPokemonEditor::create(source,game,error); assert(createEditor);
+            PokeBank::UIModel::Gen3SharedEditor::Session draft;
+            draft.beginCreate(createEditor->trainer(),createEditor->originGame());
+            assert(draft.working.species==25);
+            draft.working.heldItem=held;draft.working.ball=ball;
+            if(!draft.add(*createEditor,0,1,error)) { std::cerr<<"Create ball="<<int(ball)<<" held="<<held<<": "<<error<<"\n";assert(false); }
+            const auto created=createEditor->boxedPokemon(0,1,error);
+            assert(created && created->heldItem==held && created->ball==ball);
+            const auto bytes=createEditor->finalizedBytes(error);assert(!bytes.empty());
+            const auto reopened=StagedPokemonEditor::create(bytes,game,error);assert(reopened);
+            const auto persisted=reopened->boxedPokemon(0,1,error);
+            assert(persisted && persisted->heldItem==held && persisted->ball==ball);
+            assert(createEditor->originalBytes()==immutableSource && source==immutableSource);
+            createEditor->discard();assert(createEditor->stagedBytes()==immutableSource);
+        }
+    }
+    for(uint16_t invalid : {uint16_t{259},uint16_t{339},uint16_t{377},uint16_t{65535}}) {
+        auto rejected=StagedPokemonEditor::create(source,game,error);assert(rejected);
+        BoxPokemonCreate bad;bad.heldItem=invalid;
+        assert(!rejected->stageAddBoxPokemon(0,1,bad,error));
+        assert(rejected->stagedBytes()==immutableSource && rejected->pendingChanges().empty());
+    }
+    for(uint8_t invalid : {uint8_t{0},uint8_t{13},uint8_t{255}}) {
+        auto rejected=StagedPokemonEditor::create(source,game,error);assert(rejected);
+        BoxPokemonCreate bad;bad.ball=invalid;
+        assert(!rejected->stageAddBoxPokemon(0,1,bad,error));
+        assert(rejected->stagedBytes()==immutableSource && rejected->pendingChanges().empty());
+    }
     auto before = editor->boxedPokemon(0, 0, error);
     assert(before && error.empty());
     // Left-panel edits round-trip for every exact Gen III game without source writes.
