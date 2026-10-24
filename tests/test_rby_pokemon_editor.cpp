@@ -120,6 +120,10 @@ void run(SourceGame game) {
     edit.level=27;auto before=bytes(*e);assert(!e->stageEdit(2,0,edit,error));assert(bytes(*e)==before);
     edit={};edit.moves=std::array<uint8_t,4>{1,14,74,165};edit.ppUps=std::array<uint8_t,4>{1,2,3,0};edit.pp=std::array<uint8_t,4>{42,42,61,10};
     assert(e->stageEdit(2,0,edit,error));assert(p().moves==*edit.moves && p().pp==*edit.pp && p().ppUps==*edit.ppUps);
+    bool readableMove = false;
+    for (const auto& change : e->pendingChanges())
+        if (change.label.find("Move 1") != std::string::npos && change.afterValue == "Pound") readableMove = true;
+    assert(readableMove);
     edit.pp=std::array<uint8_t,4>{42,42,62,10};before=bytes(*e);assert(!e->stageEdit(2,0,edit,error));assert(bytes(*e)==before);
     edit={};edit.moves=std::array<uint8_t,4>{166,0,0,0};assert(!e->stageEdit(2,0,edit,error));
     edit={};edit.dvs=std::array<uint8_t,4>{15,2,3,4};assert(e->stageEdit(2,0,edit,error));assert((p().dvs==std::array<uint8_t,5>{10,15,2,3,4}));

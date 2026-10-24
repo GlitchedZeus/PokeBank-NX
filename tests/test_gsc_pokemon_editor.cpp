@@ -130,6 +130,7 @@ void runFamily(const L& l,SourceGame game){
     }
 
     BoxPokemonEdit edit;edit.species=26;edit.nickname="SPARKY";edit.level=20;edit.heldItem=1;
+    assert((BoxPokemonCreate{}.dvs == std::array<uint8_t,4>{0,0,0,0}));
     edit.moves=std::array<uint8_t,4>{84,85,0,0};
     edit.dvs=std::array<uint8_t,4>{9,8,7,6};
     edit.statExperience=std::array<uint16_t,5>{100,200,300,400,500};
@@ -138,6 +139,10 @@ void runFamily(const L& l,SourceGame game){
     auto changed=editor->boxedPokemon(0,0,error);assert(changed);
     assert(changed->species==26&&changed->nickname=="SPARKY"&&changed->level==20&&changed->heldItem==1);
     assert((changed->moves==std::array<uint8_t,4>{84,85,0,0}));
+    bool reviewedMove = false;
+    for (const auto& change : editor->pendingChanges())
+        if (change.label.find("Move 2") != std::string::npos && change.afterValue == "Thunderbolt") reviewedMove = true;
+    assert(reviewedMove);
     assert(changed->pp[0]==StagedEditor::gen2MoveBasePP(84));
     assert(changed->pp[1]==StagedEditor::gen2MoveBasePP(85));
     assert(changed->dvs[0]==StagedEditor::derivedHPDV({9,8,7,6}));

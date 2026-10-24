@@ -1,16 +1,15 @@
 #include "UI/SharedEditorPresentation.h"
+#include "UI/Gen12DVReroll.h"
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
-#include "UI/ClassicStagedExitMenu.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
 
 namespace SharedEditor = PokeBank::UIModel::SharedPokemonEditor;
 namespace Gen2Native = PokeBank::UIModel::Gen2Native;
-namespace ClassicExit = PokeBank::UIModel::ClassicStagedExit;
 
 struct SharedSurfaceState {
     const TrainerViewScreen* owner = nullptr;
@@ -74,7 +73,7 @@ SharedEditor::ActionCapabilities gen2ActionCapabilities() noexcept {
     SharedEditor::ActionCapabilities caps;
     caps.canClone = true;
     caps.canRemove = false; // Gen2 StagedEditor has no proven remove/compaction adapter yet.
-    // This is an informational shell: encounter legality remains explicitly "Not checked".
+    // This is an informational shell: encounter legality remains explicitly PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked).
     caps.hasLegalityProvenance = true;
     return caps;
 }
@@ -151,6 +150,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             if (!pokemon) return true;
             state.box = legacy.pokemonBox;
             state.slot = legacy.pokemonSlot;
+            state.party = legacy.pokemonParty;
             state.begin(*pokemon, Mode::View);
             screen.controllerNavigation.reset();
             return true;
@@ -273,8 +273,6 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
             legacy.review = false;
             legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
-            // NEW-19: opened from the exit menu, Review closes to the hub, not a stale Actions sheet.
-            if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges())) legacy.pokemonActions = false;
             legacy.active = legacy.pokemonActions;
             legacy.pokemonRow = 0;
             screen.controllerNavigation.reset();
@@ -292,8 +290,6 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (down & HidNpadButton_B) {
         legacy.review = false;
         legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
-        // NEW-19: a Review opened from the exit menu returns there.
-        if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges())) legacy.pokemonActions = false;
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();
@@ -312,37 +308,6 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
     return true;
 }
-
-} // namespace
-
-// NEW-19: the classic exit menu's Review opens THIS Review page (rows, Export, Discard Staged);
-// its B returns to the menu. Export Copy is the same verified export as Review's A.
-bool openReviewFromExit(TrainerViewScreen& screen) {
-    if (!isGSC(screen) || !stagedEditor(screen)) return false;
-    auto& legacy = editorOverlayState(screen);
-    legacy.active = legacy.review = true;
-    legacy.pokemonActions = false;
-    legacy.reviewRow = 0;
-    sharedSurfaceStateFor(screen).reviewDiscard = {};
-    screen.controllerNavigation.reset();
-    return true;
-}
-
-bool exportFromExit(TrainerViewScreen& screen) {
-    auto* editor = isGSC(screen) ? stagedEditor(screen) : nullptr;
-    if (!editor) return false;
-    std::string error;
-    const std::string directory = exportStagedCopy(screen, *editor, error);
-    if (directory.empty()) {
-        screen.postStatus(error.empty() ? "Verified staged export failed" : error, 360);
-        return false;
-    }
-    editorOverlayState(screen).lastExportDirectory = directory;
-    screen.postStatus("Verified staged copy exported: " + directory, 360);
-    return true;
-}
-
-namespace {
 
 void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& legacy = editorOverlayState(screen);
@@ -363,36 +328,30 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const auto& legacy = editorOverlayState(screen);
-    std::string error;
-    const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
-                                               static_cast<std::size_t>(legacy.pokemonSlot), error);
-    constexpr int x = 220, y = 92, w = 840, h = 480;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Origin & Legality: not checked", Colors::TextDim, TextStyle::Caption);
-    const std::array<std::pair<std::string, std::string>, 7> rows{{
-        {"Source game", sharedGameName(screen)},
-        {"Location", "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " + std::to_string(legacy.pokemonSlot + 1)},
-        {"Record", pokemon ? pokemon->nickname : std::string("Empty slot")},
-        {"Source mutation", "HARD DISABLED"},
-        {"Staged validation", "Strict serialize + reparse"},
-        {"Move compatibility", pokemon ? "Checked by exact-game Gen II rules" : "No Pokemon selected"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
-    }};
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        const int yy = y + 92 + i * 46;
-        fb.drawText(x + 34, yy, rows[static_cast<std::size_t>(i)].first, Colors::TextDim);
-        fb.drawText(x + 270, yy, rows[static_cast<std::size_t>(i)].second,
-                    i == 3 || i == 6 ? Colors::Accent : Colors::Text);
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* editor=stagedEditor(screen);if(!editor)return;
+    const auto& legacy=editorOverlayState(screen);std::string error;
+    const auto p=legacy.pokemonParty?editor->partyPokemon(static_cast<size_t>(legacy.pokemonSlot),error):
+        editor->boxedPokemon(static_cast<size_t>(legacy.pokemonBox),static_cast<size_t>(legacy.pokemonSlot),error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",sharedGameName(screen)},
+        {"Location",legacy.pokemonParty?"Party "+std::to_string(legacy.pokemonSlot+1):
+            "Box "+std::to_string(legacy.pokemonBox+1)+" / Slot "+std::to_string(legacy.pokemonSlot+1)},
+        {"Native format","PK2; save checksums verified on export"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        if(screen.sourceGameId=="crystal_gbc") {
+            const auto caught=Gen2Native::decodeCrystalCaughtData(p->caughtData);
+            rows.push_back({"Met level",Gen2Native::crystalCaughtLevelText(caught)});
+            rows.push_back({"Met location",Gen2Native::crystalCaughtLocationName(caught.location)});
+        }
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    fb.drawText(x + 34, y + h - 48,
-                std::to_string(editor->pendingChanges().size()) + " staged semantic change(s) • source bytes remain immutable",
-                Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"B", "Back"}});
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -471,7 +430,12 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
                 !passive && state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text,
                 TextStyle::Caption);
     const auto& p = state.working;
-    if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data)
+    // Unown's letter is the form computed from the DVs (pokecrystal GetUnownLetter, Gen12DVReroll::unownLetter); the
+    // sprite follows the draft's own DVs so a shiny / Random DVs / typed-DV change shows the new letter.
+    const uint8_t spriteForm = p.species == 201
+        ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]}))
+        : uint8_t{0};
+    if (auto* sprite = SpriteManager::getSprite(p.species, spriteForm, p.shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(x + 63, y + 34, 174, 146,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
     else
@@ -489,7 +453,7 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
     }
 
     const std::array<std::pair<std::string, std::string>, 5> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
         {"OT", p.originalTrainer},
@@ -530,7 +494,7 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
     const int statusY = y + 246;
     fb.drawHDivider(x + 14, statusY - 12, w - 28);
     fb.drawText(x + 18, statusY, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 152, statusY, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(x + 152, statusY, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
     fb.drawText(x + 18, statusY + 28, "GEN II DATA", Colors::Accent, TextStyle::Caption);
 
     const auto& p = state.working;
@@ -608,7 +572,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"B", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});

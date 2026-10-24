@@ -1,4 +1,5 @@
 #include <cstdint>
+#include "Names/PokemonNames.h"
 #include <cstddef>
 
 namespace Names {

@@ -169,10 +169,57 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 
 #include "Gen3SharedPokemonSurface.inc"
 #include "Gen4SharedPokemonSurface.inc"
-#include "ClassicStagedExitOverlay.inc"
 #include "Gen5SharedReadOnlySurface.inc"
+#include "ClassicPartyActions.inc"
 
 namespace UI {
+
+bool TrainerViewScreen::openStagedReview(bool exportCopy) {
+    std::string error, exported;
+    if (Gen1PokemonEditor::isGen1SourceUX(*this)) {
+        if (!Gen1PokemonEditor::editorAvailable(*this)) return false;
+        auto& state = Gen1PokemonEditor::ux2StateFor(*this);
+        state.mode = Gen1PokemonEditor::UX2Mode::Review;
+        state.reviewRow = 0;
+        state.reviewDiscard = {};
+        if (exportCopy) exported = Gen1PokemonEditor::exportStagedCopy(*this, error);
+    } else if (Gen2PokemonEditor::isGSC(*this)) {
+        auto* editor = stagedEditor(*this);
+        if (!editor) return false;
+        auto& state = editorOverlayState(*this);
+        state.active = true;
+        state.review = true;
+        state.pokemonActions = false;
+        state.pokemonFields = false;
+        state.reviewRow = 0;
+        if (exportCopy) exported = exportStagedCopy(*this, *editor, error);
+    } else if (Gen3SharedEditorSurface::isGen3Gba(*this)) {
+        if (!Gen3SharedEditorSurface::editor(*this)) return false;
+        auto& state = Gen3SharedEditorSurface::stateFor(*this);
+        state.review = true;
+        state.actions = false;
+        state.confirmDiscardAll = false;
+        state.reviewScroll = 0;
+        state.reviewTouchScroll.reset();
+        if (exportCopy) Gen3SharedEditorSurface::exportStagedGen3Copy(*this);
+    } else if (Gen4SharedEditorSurface::isGen4Nds(*this)) {
+        if (!Gen4SharedEditorSurface::editor(*this)) return false;
+        auto& state = Gen4SharedEditorSurface::stateFor(*this);
+        state.review = true;
+        state.actions = false;
+        state.confirmDiscardAll = false;
+        if (exportCopy) Gen4SharedEditorSurface::exportStagedGen4Copy(*this);
+    } else return false;
+    if (exportCopy && !exported.empty()) postStatus("Verified copy exported: " + exported, 600);
+    else if (!error.empty()) postStatus(error, 480);
+    saveConfirmActive = false;
+    exitingWithUnsavedChanges = false;
+    exitingViaPlus = false;
+    exitAfterSave = false;
+    controllerNavigation.reset();
+    return true;
+}
+
 namespace {
 
 void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
@@ -294,6 +341,13 @@ bool handleBasePartyTouch(TrainerViewScreen& screen, const TouchInput& touch) {
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
+    // B08: the Gen II-V surfaces return before the base update, which owns the status
+    // countdown. Expire it exactly once per frame on every path (a path that already
+    // counted down, or posted a new message, changes the value and is left alone).
+    struct StatusExpiry {
+        int& frames; const int atStart;
+        ~StatusExpiry() { if (frames > 0 && frames == atStart) --frames; }
+    } statusExpiry{storageStatusFrames, storageStatusFrames};
     u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
@@ -305,8 +359,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // Gen V source isolation precedes all inherited touch and save handlers.
     if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
         return;
-    // NEW-19: the Gen I-IV staged exit menu owns the frame while it is open.
-    if (ClassicStagedExitOverlay::handleInput(*this, down)) return;
+    if (ClassicPartyActions::handle(*this,down,held,stick.x,stick.y,touch))return;
 
     // Storage's legacy touch path fires A on first contact. For the GAME SAVE
     // pane in Gen I-IV, wait for the completed same-cell tap and route A
@@ -379,6 +432,12 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    // B08: the status line (export result, refusals) is painted LAST on every path,
+    // including the Gen II-V surfaces below that own the frame and return early.
+    struct StatusOnTop {
+        TrainerViewScreen& screen; PKSEFramebuffer& fb;
+        ~StatusOnTop() { screen.drawTransientStatus(fb); }
+    } statusOnTop{*this, fb};
     // Touch input is consumed before draw, so each rendered frame must publish fresh geometry.
     // Clear both screen-owned targets and visible controller-glyph buttons here because the
     // Gen I-IV editor frames do not all pass through drawAppBackdrop().
@@ -386,8 +445,8 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     g_touchGlyphAccum.clear();
     g_touchGlyphHits.clear();
 
+    if (ClassicPartyActions::draw(*this,fb))return;
     if (Gen5SharedReadOnlySurface::draw(*this, fb)) return;
-    if (ClassicStagedExitOverlay::draw(*this, fb)) return;
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 

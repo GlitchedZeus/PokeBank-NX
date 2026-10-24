@@ -433,7 +433,7 @@ std::string ux3MainRowValue(TrainerViewScreen& screen, int row, bool add, const 
     auto* e = editor(screen);
     if (!e) return {};
     const auto& d = state.draft;
-    if (row == 0) return speciesCompact(add ? d.species : p->species);
+    if (row == 0) return speciesHeading(add ? d.species : p->species);
     if (row == 1) return add ? (d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname) : p->nickname;
     if (row == 2) return add ? ("Lv " + std::to_string(d.level) + " • EXP " + std::to_string(draftExperience(d)))
                               : ("Lv " + std::to_string(p->level) + " • EXP " + std::to_string(p->experience));
@@ -495,7 +495,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawSpriteStaticContained(leftX + 45, contentY + 18, 210, 190,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(leftX + 80, contentY + 105, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftX + 18, contentY + 220, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(leftX + 18, contentY + 220, speciesHeading(species), Colors::Text, TextStyle::Heading);
     const std::string nickname = add
         ? (state.draft.nickname.empty() ? std::string(Names::getSpeciesName(species)) : state.draft.nickname)
         : pokemon->nickname;
@@ -539,7 +539,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(rightX + rightW - 96, contentY + 54, badMove ? "Needs attention" : "OK",
                 badMove ? Colors::Warning : Colors::Accent, TextStyle::Caption);
     fb.drawText(rightX + 18, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 108, contentY + 80, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(rightX + rightW - 108, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
     fb.drawHDivider(rightX + 16, contentY + 116, rightW - 32);
     fb.drawText(rightX + 18, contentY + 132, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
     ux2DrawRadar(fb, rightX + rightW / 2, contentY + 250, 88, stats);
@@ -566,7 +566,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
-            [](uint16_t species) { return speciesCompact(species); },
+            [](uint16_t species) { return SharedSpeciesPicker::selectedTitle(species, Names::getSpeciesName(species)); },
             &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
         // Touch ids stay 3000 + species; the chooser publishes the rows it actually drew.
         for (int i = 0; i < state.speciesChooser.rowCount; ++i) {

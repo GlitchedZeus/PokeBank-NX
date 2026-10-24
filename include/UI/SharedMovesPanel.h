@@ -173,7 +173,7 @@ struct ChooserColumns {
     int nameX() const noexcept { return x + 50; }
     int nameMaxW() const noexcept { return typeX() - 12 - nameX(); }
     int typeX() const noexcept { return x + w - 380; }
-    int categoryX() const noexcept { return x + w - 290; }
+    int categoryX() const noexcept { return x + w - 288; }
     int powerRight() const noexcept { return x + w - 132; }
     int accuracyRight() const noexcept { return x + w - 66; }
     int ppRight() const noexcept { return x + w; }

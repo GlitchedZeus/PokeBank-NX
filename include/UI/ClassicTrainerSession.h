@@ -11,9 +11,10 @@
 namespace PokeBank::UIModel::ClassicTrainerSession {
 
 inline constexpr int kRows = 2; // 0 Name, 1 Money
+inline constexpr int kReviewTouchId = 61240;
 
 constexpr const char* trainerPageInstructions(bool editable) noexcept {
-    return editable ? "Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App"
+    return editable ? "Up/Down: Select  |  A: Edit  |  Y: Review  |  B: Back  |  +: Exit App"
                     : "Up/Down: Select  |  B: Back  |  +: Exit App";
 }
 

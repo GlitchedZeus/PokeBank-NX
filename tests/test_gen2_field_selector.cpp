@@ -86,15 +86,23 @@ int main() {
         r = S::step(s, false, false, false, false, 2);
         assert(r.outcome == S::Outcome::Apply && r.value == static_cast<uint8_t>(C::Female));
     }
+    // NEW-07: A cycles OT Gender inline over exactly the selector's native choices.
+    {
+        assert(S::nextOtGender(C::Male, true) == C::Female && S::nextOtGender(C::Female, true) == C::Male);
+        assert(S::nextOtGender(C::Unknown, true) == C::Male);          // recorded history never offers Unknown
+        assert(S::nextOtGender(C::Unknown, false) == C::Male && S::nextOtGender(C::Male, false) == C::Female &&
+               S::nextOtGender(C::Female, false) == C::Unknown);
+    }
 
-    // Live route: OT Gender activation opens the selector; Pokerus (owner campaign phase 10,
-    // test_gen2_inline_fields) and Crystal Met Time (round 2 phase 11,
-    // test_crystal_met_time_inline) are cycled in place by A. The selector owns input ahead
+    // Live route: Pokerus (owner campaign phase 10, test_gen2_inline_fields), Crystal Met Time
+    // (round 2 phase 11, test_crystal_met_time_inline) and Crystal OT Gender (Round 3 NEW-07)
+    // are cycled in place by A. The selector owns input ahead
     // of Y, field taps and B exit; apply re-encodes caught data only when history is recorded.
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     has(unified, "SharedEditorPresentation::nextPokerusByte(");
     has(unified, "Selector::nextMetTime(state.crystalMetTime, false, 0)");
-    has(unified, "PokeBank::UIModel::Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)");
+    has(unified, "Selector::nextOtGender(state.crystalOtGender, caught.present)");
+    lacks(unified, "PokeBank::UIModel::Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)");
     lacks(unified, "cyclePokerusState(p.pokerus)");
     lacks(unified, "cycleUnrecordedCrystalOtGender(");
     lacks(unified, "cycleRecordedCrystalOtGender(");

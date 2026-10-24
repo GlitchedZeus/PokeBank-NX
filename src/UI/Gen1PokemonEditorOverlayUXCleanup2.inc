@@ -4,7 +4,6 @@
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
-#include "UI/ClassicStagedExitMenu.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
 
@@ -35,6 +34,7 @@ struct UX2State {
     UX2Mode mode = UX2Mode::Closed;
     int box = 0;
     int slot = 0;
+    bool party = false;
     int row = 0;
     int subRow = 0;
     int reviewRow = 0;
@@ -59,7 +59,7 @@ struct UX2State {
     uint8_t tempMove = 0;
     uint8_t tempPP = 0;
     uint8_t tempPPUps = 0;
-    std::array<uint8_t,4> tempDVs{8,8,8,8};
+    std::array<uint8_t,4> tempDVs{};
     std::array<uint16_t,5> tempStatExperience{};
 
     int cloneBox = 0;
@@ -89,6 +89,11 @@ void ux2ResetTouchMotion(UX2State& state) noexcept {
 
 std::optional<PokemonRecord> ux2SelectedPokemon(TrainerViewScreen& screen, std::string& error) {
     const auto& state = ux2StateFor(screen);
+    if(state.party) {
+        auto* staged=editor(screen);
+        if(!staged) {error="Native Party editor unavailable";return {};}
+        return staged->partyPokemon(static_cast<size_t>(state.slot),error);
+    }
     return pokemonAt(screen, state.box, state.slot, error);
 }
 
@@ -153,6 +158,7 @@ void ux2OpenActions(TrainerViewScreen& screen) {
     ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Actions;
     state.box = box;
+    state.party = false;
     state.slot = slot;
     state.row = 0;
     state.picker = UX2Picker::None;
@@ -183,7 +189,9 @@ bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const 
     auto* e = editor(screen);
     if (!e) return false;
     std::string error;
-    if (!e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error)) {
+    const bool kept=state.party?e->stagePartyPokemonEdit(static_cast<size_t>(state.slot),edit,error):
+        e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error);
+    if (!kept) {
         screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 300);
         return false;
     }
@@ -741,22 +749,17 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
                 discardAll(screen);
                 screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
                 state.reviewRow = 0;
-                // NEW-19: opened from the exit menu, Review closes to the hub once nothing is staged.
-                if (PokeBank::UIModel::ClassicStagedExit::returnFromReview(
-                        PokeBank::UIModel::ClassicStagedExit::sessionFor(screen), screen.trainer.hasStagedChanges()))
-                    state.mode = UX2Mode::Closed;
                 return;
         }
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0;
-            // NEW-19: a Review opened from the exit menu returns there, not to a stale Actions sheet.
-            if (PokeBank::UIModel::ClassicStagedExit::returnFromReview(
-                    PokeBank::UIModel::ClassicStagedExit::sessionFor(screen), screen.trainer.hasStagedChanges()))
-                state.mode = UX2Mode::Closed;
-            return; }
+        if (down & HidNpadButton_B) {
+            state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
+            state.row = 0;
+            return;
+        }
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
@@ -816,7 +819,7 @@ void ux2DrawPreview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
             fb.drawSpriteStaticContained(x, y + 22, w, 142, sprite->width, sprite->height, sprite->data, sprite->channels);
         else fb.drawText(x + 28, y + 86, "Sprite unavailable", Colors::TextDim);
     }
-    fb.drawText(x, y + 168, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(x, y + 168, speciesHeading(species), Colors::Text, TextStyle::Heading);
     fb.drawText(x, y + 200, nickname, Colors::Text);
     fb.drawText(x, y + 228, "Lv " + std::to_string(level) + "   EXP " + std::to_string(exp), Colors::TextDim, TextStyle::Caption);
     fb.drawText(x, y + 260, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
@@ -854,7 +857,7 @@ std::string ux2MainRowValue(TrainerViewScreen& screen, int row, bool add, const 
     auto* e = editor(screen);
     if (!e) return {};
     const auto& d = state.draft;
-    if (row == 0) return speciesCompact(add ? d.species : p->species);
+    if (row == 0) return speciesHeading(add ? d.species : p->species);
     if (row == 1) return add ? (d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname) : p->nickname;
     if (row == 2) return add ? ("Lv " + std::to_string(d.level) + "  •  EXP " + std::to_string(draftExperience(d)))
                               : ("Lv " + std::to_string(p->level) + "  •  EXP " + std::to_string(p->experience));
@@ -954,7 +957,7 @@ void ux2DrawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     const int lx = x + 36;
     if (auto* sprite = SpriteManager::getSprite(p->species, false); sprite && sprite->data)
         fb.drawSpriteStaticContained(lx, y + 90, 270, 230, sprite->width, sprite->height, sprite->data, sprite->channels);
-    fb.drawText(lx, y + 324, speciesCompact(p->species), Colors::Text, TextStyle::Heading);
+    fb.drawText(lx, y + 324, speciesHeading(p->species), Colors::Text, TextStyle::Heading);
     fb.drawText(lx, y + 362, p->nickname + "   Lv " + std::to_string(p->level), Colors::Text);
     fb.drawText(lx, y + 396, "OT " + p->originalTrainer + "   TID " + std::to_string(p->trainerId), Colors::TextDim);
 
@@ -1118,26 +1121,24 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 }
 
 void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    const std::array<std::pair<const char*,std::string>,8> rows{{
-        {"Source game", screen.sourceGameId},
-        {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese — editing disabled" : "International — validated editor"},
-        {"Source mutation", "HARD DISABLED"},
-        {"Party mutation", "DEFERRED"},
-        {"Format validation", "Strict reparse + checksum on export"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked yet"},
-        {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
-        {"Pending semantic changes", std::to_string(pendingLines(screen).size())},
-    }};
-    const int lx = x + 34, vx = x + 300;
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        fb.drawText(lx, y + 82 + i * 46, rows[static_cast<size_t>(i)].first, Colors::TextDim);
-        fb.drawText(vx, y + 82 + i * 46, rows[static_cast<size_t>(i)].second,
-                    i == 2 || i == 5 ? Colors::Accent : Colors::Text);
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=ux2SelectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    fb.drawText(lx, y + h - 42, "Structural validity is not encounter-legality proof.", Colors::TextDim, TextStyle::Caption);
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void ux2DrawRemoveConfirm(PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -1211,31 +1212,6 @@ bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
     return isGen1SourceUXBase(screen);
 }
 
-// NEW-19: the classic exit menu's Review opens THIS Review page (rows, Export Copy, Discard
-// Staged); its B returns to the menu. Export Copy is the same verified export as Review's A.
-bool openReviewFromExit(TrainerViewScreen& screen) {
-    if (!isGen1SourceUX(screen) || !editorAvailable(screen)) return false;
-    auto& state = ux2StateFor(screen);
-    state.mode = UX2Mode::Review;
-    state.picker = UX2Picker::None;
-    state.reviewRow = 0;
-    state.reviewDiscard = {};
-    return true;
-}
-
-bool exportFromExit(TrainerViewScreen& screen) {
-    if (!isGen1SourceUX(screen) || !editorAvailable(screen)) return false;
-    std::string error;
-    const auto path = exportStagedCopy(screen, error);
-    if (path.empty()) {
-        screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);
-        return false;
-    }
-    ux2StateFor(screen).lastExportDirectory = path;
-    screen.postStatus("Edited copy exported; original .srm unchanged", 360);
-    return true;
-}
-
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     if (!isGen1SourceUX(screen)) return false;
     auto& state = ux2StateFor(screen);
@@ -1249,6 +1225,7 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
     state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    state.party = false;
     state.row = 0;
     state.picker = UX2Picker::None;
     std::string error;

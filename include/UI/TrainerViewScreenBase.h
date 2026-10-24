@@ -90,6 +90,7 @@ namespace UI {
         bool genderEditable(const Pokemon::Pokemon& p) const;  // false -> the Gender row is read-only (nothing to change it TO)
         void openStorageEditor(int pane, int box, int slot);   // open the details modal on a storage slot
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
+        bool openStagedReview(bool exportCopy = false);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
         void openItemsShortcut() {
@@ -221,6 +222,8 @@ namespace UI {
             storageStatus = msg;
             storageStatusFrames = frames;
         }
+        // Paints the postStatus line on top of whatever owns the frame (see draw()).
+        void drawTransientStatus(PKSEFramebuffer& fb);
         // --- The carried block ---
         // Cells of the rectangle currently in hand, row-major over selectDimensions (w x h). A null
         // cell is a hole -- the source slot was empty, or it was locked and deliberately left behind.

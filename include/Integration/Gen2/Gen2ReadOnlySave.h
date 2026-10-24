@@ -1,6 +1,8 @@
 #ifndef POKEBANK_GEN2_READ_ONLY_SAVE_H
 #define POKEBANK_GEN2_READ_ONLY_SAVE_H
 
+#include "Integration/Common/NativePlayTime.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -71,6 +73,7 @@ struct DexProgress {
 };
 
 struct TrainerRecord {
+    std::optional<Common::NativePlayTime> playTime;
     std::string name;
     uint16_t trainerId = 0;
     uint32_t money = 0;

@@ -102,6 +102,23 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
         }
     }
     boxes.swap(displayBoxes);
+    decltype(party) displayParty;
+    for(const auto& record:parsed.save->party()) {
+        const size_t slot=displayParty.size();
+        // Box/Trainer refreshes must retain the existing Party object when its native
+        // body and separately stored names/egg marker are unchanged. Party edits still
+        // replace that one view from the strictly reparsed staged record.
+        const auto* previous=slot<party.size() && party[slot]
+            ? static_cast<const Pokemon::Pokemon2ReadOnly*>(party[slot].get()):nullptr;
+        const auto* old=previous?&previous->strictRecord():nullptr;
+        if(old && old->rawBodySize==record.rawBodySize && old->rawBody==record.rawBody &&
+           old->originalTrainer==record.originalTrainer && old->nickname==record.nickname &&
+           old->isEgg==record.isEgg)
+            displayParty.push_back(std::move(party[slot]));
+        else
+            displayParty.push_back(std::make_unique<Pokemon::Pokemon2ReadOnly>(record));
+    }
+    party.swap(displayParty);
     trainerName = parsed.save->trainer().name;
     money = parsed.save->trainer().money;
     return true;
@@ -110,6 +127,9 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
 bool GSCReadOnlyTrainer::populate(
     const Integration::Gen2::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
+    nativePlayTime = strictTrainer.playTime;
+    const auto dex = save.dexProgress();
+    nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
     money = strictTrainer.money;
     TID16 = strictTrainer.trainerId;

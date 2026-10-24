@@ -46,7 +46,7 @@ This one protocol applies to every agent (Claude, Codex) and every human contrib
   - Export writes a separate copy only.
 - **No automatic legality edits.** Never modify a Pokémon automatically because of a legality finding.
 - **Missing evidence is not a verdict.** Missing legality evidence means Unknown / Incomplete, never Invalid.
-- **Confirm destructive actions with Y,** never with A.
+- **Confirm destructive actions with Y.** The owner-directed Round 4 exception is Bag Remove: Y opens its explicit question, A confirms there, and B cancels. Pokémon Release and Backup Delete remain Y-only.
 - **Every format rule must be source-backed.** That covers format rules, encryption schemes, checksums and
   structures; sources are pret disassemblies and PKHeX. Never invent one.
 - **Never weaken a test to get CI green.** Do not hide, delete, skip or weaken failing assertions.

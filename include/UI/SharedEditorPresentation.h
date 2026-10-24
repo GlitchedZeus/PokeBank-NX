@@ -37,6 +37,7 @@ enum class LegalityState : uint8_t {
     NotChecked,    // a specific check exists but was not run for this record
     Verified,      // a full checker ran and found nothing (reserved; never fabricated)
     ProblemsFound, // a check ran and found an issue
+    Invalid,       // proven invalid native data; never inferred from missing coverage
 };
 
 constexpr const char* legalityLabel(LegalityState state) noexcept {
@@ -44,8 +45,9 @@ constexpr const char* legalityLabel(LegalityState state) noexcept {
         case LegalityState::Unknown: return "Unknown";
         case LegalityState::Incomplete: return "Incomplete";
         case LegalityState::NotChecked: return "Not checked";
-        case LegalityState::Verified: return "Verified";
+        case LegalityState::Verified: return "No problems found";
         case LegalityState::ProblemsFound: return "Problems found";
+        case LegalityState::Invalid: return "Invalid";
     }
     return "Unknown";
 }
@@ -93,6 +95,7 @@ struct PickerFooterSpec {
     bool jump = false;           // ZL/ZR: Jump
     const char* xLabel = nullptr; // e.g. "Search" or "Sort"
     const char* yLabel = nullptr; // e.g. "Normal/Shiny"
+    const char* minusLabel = nullptr; // NEW-06: e.g. "Search" (Held Item pickers, where X is Sort)
 };
 
 // Every picker (species, move, held item, location, ability, ball, nature, form, language)
@@ -104,6 +107,7 @@ constexpr Footer pickerFooter(const PickerFooterSpec& spec = {}) noexcept {
     if (spec.jump) f.push("ZL/ZR", "Jump");
     if (spec.xLabel) f.push("X", spec.xLabel);
     if (spec.yLabel) f.push("Y", spec.yLabel);
+    if (spec.minusLabel) f.push("-", spec.minusLabel);
     f.push("A", kSelectLabel);
     f.push("B", kCancelLabel);
     return f;

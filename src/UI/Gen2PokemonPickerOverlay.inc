@@ -157,6 +157,8 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
         SharedSpeciesPicker::refilter(overlay.speciesChooser, 251, gen2SpeciesAvailable, gen2SpeciesName);
+        const int unownForm = Gen2Picker::previewUnownForm(
+            state, model.previewShiny, screen.sourceGameId);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
@@ -164,8 +166,13 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
                 return std::string(prefix) + Names::getSpeciesName(species);
             },
-            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
-            &latestTouchGesture(), true, {0xFF, 0xFF}, &overlay.speciesChooser);
+            [unownForm](uint16_t species) {
+                std::string name = Names::getSpeciesName(species);
+                if (species == 201 && unownForm >= 0 && unownForm < 26)
+                    name += " " + std::string(1, static_cast<char>('A' + unownForm));
+                return SharedSpeciesPicker::selectedTitle(species, name);
+            },
+            &latestTouchGesture(), true, {0xFF, 0xFF}, &overlay.speciesChooser, unownForm);
         // Touch ids stay 2000 + species; the chooser publishes the rows it actually drew.
         for (int i = 0; i < overlay.speciesChooser.rowCount; ++i) {
             const auto& row = overlay.speciesChooser.rows[static_cast<std::size_t>(i)];

@@ -13,9 +13,12 @@
 #include "UI/SharedFieldStateColors.h"
 #include "UI/SharedMenuGeometry.h"
 #include "UI/SharedBoxedRows.h"
+#include "UI/SharedReviewPresentation.h"
 
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <utility>
 
 namespace UI::SharedEditorChrome {
 
@@ -105,11 +108,95 @@ inline int drawOriginLegalityHeading(PKSEFramebuffer& fb, int x, int y, int w) {
 inline Color legalityColor(Presentation::LegalityState state) {
     switch (state) {
         case Presentation::LegalityState::Verified: return Colors::Success;
-        case Presentation::LegalityState::ProblemsFound: return Colors::Error;
+        case Presentation::LegalityState::ProblemsFound:
+        case Presentation::LegalityState::Invalid: return Colors::Error;
         case Presentation::LegalityState::Incomplete:
         case Presentation::LegalityState::NotChecked: return Colors::Warning;
         default: return Colors::TextDim;
     }
+}
+
+template<class Buttons>
+inline void drawReviewPanel(PKSEFramebuffer& fb,Buttons& buttons,
+    const PokeBank::UIModel::SharedReview::Rows& rows,size_t page,bool changed,
+    const std::string& context) {
+    namespace R=PokeBank::UIModel::SharedReview;
+    beginModal(buttons);page=R::clamp(page,rows.size());
+    const int w=1100,h=584,x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Colors::Background);
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    fb.drawText(x+24,y+18,"Review Pending Changes",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+56,context+" / original source remains unchanged",Colors::TextDim,TextStyle::Caption);
+    fb.drawText(x+24,y+90,std::to_string(rows.size())+" changes / Page "+std::to_string(page+1)+
+        " of "+std::to_string(R::pages(rows.size())),Colors::TextDim,TextStyle::Caption);
+    if(rows.empty())fb.drawText(x+32,y+145,changed?"Staged changes could not be verified":"No staged changes",changed?Colors::Warning:Colors::TextDim);
+    for(size_t row=0;row<R::kPageSize;++row) {
+        const size_t i=page*R::kPageSize+row;if(i>=rows.size())break;
+        const int yy=y+128+static_cast<int>(row)*102;
+        fb.drawFilledRoundedRect(x+18,yy,w-36,94,10,Colors::PanelAlt);
+        fb.drawText(x+32,yy+12,rows[i].first,Colors::Text,TextStyle::Body);
+        fb.drawText(x+32,yy+49,rows[i].second,Colors::TextSecondary,TextStyle::Caption);
+    }
+    drawFooter(fb,R::footer(changed,rows.size()));
+}
+
+template<class Buttons>
+inline void drawReviewDiscardConfirm(PKSEFramebuffer& fb,Buttons& buttons) {
+    beginModal(buttons);
+    const int w=900,h=250,x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,145));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawText(x+28,y+24,"Discard all staged changes?",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+28,y+82,"Export Copy first to keep them. Original saves remain unchanged.",Colors::TextDim,TextStyle::Caption);
+    SharedBoxedRows::drawGlyphChoices(fb,x+28,y+145,w-56,
+        std::array<SharedBoxedRows::GlyphChoice,2>{{{"B","Keep Changes"},{"Y","Discard All"}}});
+    drawNavBar(fb,{{"Y","Discard All"},{"B","Keep Changes"}});
+}
+
+// Generation adapters supply only stored facts. One layout and one verdict
+// vocabulary serve every Origin & Legality modal; structure validity never
+// implies that an encounter or a complete legality check passed.
+template<class Buttons>
+inline void drawOriginLegalityPanel(PKSEFramebuffer& fb,Buttons& touchButtons,
+    const std::vector<std::pair<std::string,std::string>>& rows,
+    Presentation::LegalityState verdict) {
+    beginModal(touchButtons);
+    const int w=std::min(1100,fb.getWidth()-48);
+    const int columns=rows.size()>10?2:1;
+    const int perColumn=std::max(1,static_cast<int>((rows.size()+columns-1)/columns));
+    const int available=fb.getHeight()-kNavBarH-24;
+    const int rowH=std::min(46,(available-134)/perColumn);
+    const int h=134+perColumn*rowH,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,145));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+24,y+16,Presentation::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+48,"Stored origin and format checks; full legality analysis has not run",
+                Colors::TextDim,TextStyle::Caption);
+    const int cellW=(w-48)/columns;
+    const auto fit=[&](std::string value,int maxW) {
+        int tw=0,th=0;fb.measureText(value,tw,th,TextStyle::Caption);
+        if(tw<=maxW)return value;
+        while(!value.empty()) {
+            do {const auto c=static_cast<unsigned char>(value.back());value.pop_back();
+                if((c&0xC0)!=0x80)break;} while(!value.empty());
+            fb.measureText(value+"...",tw,th,TextStyle::Caption);
+            if(tw<=maxW)return value+"...";
+        }
+        return std::string();
+    };
+    for(size_t i=0;i<rows.size();++i) {
+        const int col=static_cast<int>(i)/perColumn,row=static_cast<int>(i)%perColumn;
+        const int xx=x+24+col*cellW,yy=y+78+row*rowH;
+        fb.drawText(xx,yy,fit(rows[i].first,cellW-24),Colors::TextDim,TextStyle::Caption);
+        fb.drawText(xx,yy+20,fit(rows[i].second,cellW-24),Colors::Text,TextStyle::Caption);
+    }
+    fb.drawHDivider(x+24,y+h-48,w-48);
+    fb.drawText(x+24,y+h-36,"Final verdict",Colors::TextDim,TextStyle::Caption);
+    fb.drawText(x+210,y+h-36,Presentation::legalityLabel(verdict),legalityColor(verdict),TextStyle::Caption);
+    drawNavBar(fb,{{"B","Back"}});
 }
 
 } // namespace UI::SharedEditorChrome

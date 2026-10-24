@@ -170,6 +170,29 @@ int main() {
         std::string error;
         auto staged=G5::StagedPokemon5Record::create(source,&error);
         assert(staged && !staged->dirty());
+        // Native language is a byte-only edit plus PK5 checksum/encryption. Names, PID,
+        // ribbons, party cache and all other decoded bytes remain exactly as supplied.
+        for (uint32_t language : {1u,2u,3u,4u,5u,7u,8u}) {
+            for (bool b2w2 : {false,true}) {
+                auto languageEdit = G5::StagedPokemon5Record::create(source,&error,b2w2);
+                assert(languageEdit && languageEdit->stage(G5::StagedPokemon5Record::Field::Language,0,language,&error));
+                auto expected=C::decrypt(source);
+                expected[0x17]=static_cast<uint8_t>(language);
+                C::write16(expected,6,C::checksum(expected));
+                assert(languageEdit->current().valid() && languageEdit->current().language()==language);
+                const auto actual=languageEdit->current();
+                assert(std::equal(actual.decodedBytes().begin(),actual.decodedBytes().end(),expected.begin(),expected.end()));
+                assert(std::equal(source.begin(),source.end(),languageEdit->originalBytes().begin()));
+                const auto snapshot=std::vector<uint8_t>(languageEdit->stagedBytes().begin(),languageEdit->stagedBytes().end());
+                for (uint32_t invalid : {0u,6u,9u,255u,256u}) {
+                    assert(!languageEdit->stage(G5::StagedPokemon5Record::Field::Language,0,invalid,&error));
+                    assert(std::equal(snapshot.begin(),snapshot.end(),languageEdit->stagedBytes().begin()));
+                }
+                assert(!languageEdit->stage(G5::StagedPokemon5Record::Field::Language,1,language,&error));
+                languageEdit->rollback();
+                assert(!languageEdit->dirty() && std::equal(source.begin(),source.end(),languageEdit->stagedBytes().begin()));
+            }
+        }
         assert(staged->stageName(true,"PIKA NX",&error));
         assert(staged->stageName(false,"ASH",&error));
         const auto names=staged->current();

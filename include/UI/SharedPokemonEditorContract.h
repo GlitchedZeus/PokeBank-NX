@@ -401,14 +401,12 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Pokerus:
             case FieldIdentity::MetLocation:
             case FieldIdentity::FatefulEncounter:
+            // Native PK5 byte 0x17; independent replay preserves OT/nickname text.
+            case FieldIdentity::Language:
             // PID shiny rule (Gen5PidCoordination withShiny5): keeps the low PID half, the
             // ability bit, the hidden-ability flag (0x42) and N's flag untouched.
             case FieldIdentity::Shiny:
                 return FieldAccess::Editable;
-            // Language (0x17) stays read-only: there is no verified native PK5 language
-            // mutation (default-name and trade/ID implications are not modelled), so the
-            // editor shows it and explains, rather than inventing a rule.
-            case FieldIdentity::Language:
             case FieldIdentity::CalculatedStats:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:

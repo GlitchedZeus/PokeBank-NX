@@ -311,6 +311,7 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
     // Defaults copy the save's own trainer; nothing is invented from a filename.
     const auto defaults = G::Gen5SharedScreenState::sharedCreateDefaults(ws, 0x00340000u, "Pikachu", date, error);
     assert(defaults && defaults->trainer && defaults->trainer->name == "NX");
+    assert(std::all_of(defaults->ivs.begin(), defaults->ivs.end(), [](auto value) { return value == 0; }));
     assert(defaults->trainer->tid == 12345 && defaults->trainer->sid == 54321);
     assert(defaults->trainer->gender == 1 && defaults->trainer->language == 2);
     assert(static_cast<uint32_t>(defaults->game) == version && defaults->gender == 1);

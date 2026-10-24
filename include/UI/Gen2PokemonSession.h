@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/Gen12DVReroll.h"
 #include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
@@ -68,6 +69,8 @@ struct Session {
         working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
         working.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
+        // Unown's letter comes from the same DVs (pokecrystal GetUnownLetter); any other species has form 0.
+        working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
         if (!setLevel(nextLevel)) return false;
         // R2-BUG-004: the new species' native Gen II default moveset at the new level
         // (pret pokegold / pokecrystal FillMoves over evos_attacks), base PP, no PP Ups.
@@ -171,11 +174,12 @@ struct Session {
         if (progression == ProgressionSource::Experience) create.experience = working.experience;
         return create;
     }
-    bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error) {
+    bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error,bool party=false) {
         if (mode != SessionMode::Edit || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Keep unavailable or incompatible new move"; return false;
         }
-        if (!editor.stageBoxPokemonEdit(box,slot,editRequest(),error)) return false;
+        if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
+                    editor.stageBoxPokemonEdit(box,slot,editRequest(),error))) return false;
         mode = SessionMode::None; confirmExit = false; return true;
     }
     bool add(Gen2::StagedEditor& editor,size_t box,size_t& slot,std::string& error) {
