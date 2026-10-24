@@ -6,6 +6,29 @@
 
 Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
 
+## October 24 exact candidate binding — final CI required
+
+- Application code `8804f8f819a0da34c5d7b983a92bfb3a390eff16`, tree
+  `66c321b13ce734239271ff0b9e924ca43cdaf92f`. Official build40099575742 PASS.
+- Selected artifact12562103597 / `PokeBank-NX-Gen1-5-Candidate-8804f8f8.nro`:
+  176783025bytes, SHA256 `5bbc090e186b624dcad8a9fcbc6c87a087254b6e737d157c3616309878536085`.
+  Downloaded original artifact, validated GitHub run/path/head/success/artifact records,
+  single NRO, BUILD_IDENTITY, SHA256SUMS, embedded commit and exact source tree.
+  Local NRO AUDIT:PASS. RomFS PASS4267files/156.6MiB/digestbc09c152ac4232a2.
+- Last remote WIP `f3bbd43f4cbcc57a64b181e813e1163b6c312af9` is ONLY tests/docs
+  after the candidate. It corrects the stale X Delete polish assertion without
+  weakening protections. This new commit is DOCS ONLY and binds all8 exact fields
+  in CANDIDATE_UNDER_AUDIT.env. Application code is unchanged after8804f8f8.
+- Push this binding forward to307/WIP after checking both remote heads. Require
+  independent QA-F9 NRO AUDIT:PASS and ALL final-head CI green before reporting
+  Integrated or delivering. Select ONLY the bound8804f8f8artifact; automatic later
+  builds are CI outputs, not an additional hardware candidate.
+- Full local GCC/Clang suites202 normal+202 sanitizer each, both489-cell QA matrices,
+  owner/candidate/touch/assets/safety and native smoke all PASS. Additional local
+  qa-tools and GitHub gates are finishing; see project outputs/oct24-repairs.
+- Exact file list/checklist mapping/limits/retest: docs/hardware/OCT24_REPAIRS_AND_RETEST.md.
+  NOT DEVICE TESTED. Historical27PASS/6FAIL/4unmarked; S06 NOT TESTED. PR314/main untouched.
+
 ## October 24 official build and CI source-guard checkpoint
 
 - Verified BOTH application307 and WIP remotes at `8804f8f819a0da34c5d7b983a92bfb3a390eff16`;
