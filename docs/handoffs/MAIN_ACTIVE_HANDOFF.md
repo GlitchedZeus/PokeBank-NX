@@ -6,6 +6,30 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 full-gate repair checkpoint
+
+- Remote WIP `ba7e9df3cacfae67125d0dee31a9bc5a2d15764a` PASSED native
+  compile/link/packaged RomFS run40073455301. Production is frozen since that SHA.
+- GCC and Clang QA contracts +489-cell matrix passed (18 C1-C6 export paths,
+  20 exact archived sessions and explicit differing internal Gen V copy choices).
+  GCC final leak checks1 passed; Clang direct confirmation reruns both variants
+  with the required POKEBANK_QA_GEN3_FIXTURE environment to record both summaries.
+- Full normal gates found stale source assertions: old Trainer-card touch count
+  rejected the new Review button; Gen II/III old local Review painter counts no
+  longer followed shared Review/Discard. Updated to require the real shared paths,
+  retain boxed Clone cells, locked-row no-touch and Y/B confirmation protections.
+- Fresh sanitizer builds exposed a missing 3-argument getIconSprite overload in
+  the ISOLATED host renderer mock. Added its no-assets backend stub; production
+  SpriteManager is unchanged. Both full sanitizer gates resumed with leaks1.
+- Safari Create cross-product now explicitly includes native Hyper Potion21,
+  asserting its native label as well as Safari5. All5 held choices x12 balls x5
+  Gen III titles are covered. This is a test extension, not another production change.
+- Shared Gen IV hardware surface guard now follows both normal and docked search
+  footers; targeted run passes. Full normal suites rerun; sanitizer suites compile.
+- Do not integrate until ALL full gates finish green. Then preserve remote updates,
+  push #307, build ONE official exact-head NRO, verify/bind/audit it, finish all CI.
+  Report remains NOT DEVICE TESTED; historical27/6/4 and S06 NOT TESTED unchanged.
+
 ## October 24 validation checkpoint — production freeze
 
 - Remote WIP verified at `1716f7f7f0441b9e0f875046828ea88308b04ac1`.

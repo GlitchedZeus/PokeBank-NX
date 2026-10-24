@@ -13,6 +13,7 @@
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Names/PokemonNames.h"
+#include "Names/ItemNames.h"
 #include "Names/LocationDisplayNames.h"
 #include "Utils/StringHelpers.h"
 
@@ -260,7 +261,8 @@ void runGame(SourceGame game, Family family) {
     // October 24 R2-REVIEWMOVE: actual Create -> Pikachu -> Safari Ball -> Keep.
     // Exercise BOTH caught-Ball and Held Item choices; their numeric IDs must
     // never be confused. Reparse the native encrypted record and sector checksums.
-    for(const uint16_t held : {uint16_t{0},uint16_t{5},uint16_t{14},uint16_t{44}}) {
+    assert(std::string(Names::getItemNameG3(21))=="Hyper Potion");
+    for(const uint16_t held : {uint16_t{0},uint16_t{5},uint16_t{14},uint16_t{21},uint16_t{44}}) {
         for(uint8_t ball=1;ball<=12;++ball) {
             auto createEditor=StagedPokemonEditor::create(source,game,error); assert(createEditor);
             PokeBank::UIModel::Gen3SharedEditor::Session draft;
