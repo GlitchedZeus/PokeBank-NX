@@ -1082,10 +1082,10 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
             const auto cell = Shared::cellFocusFor(A::generation, state.focus);
             drawFocus(fb, g.midX + cell.x, yy - 5, cell.width, 30, true);
         }
-        // Plain STATS values stay neutral on View/Edit; nature modifiers are explained
-        // with green/red ONLY in the Nature chooser, never scattered on stat labels.
+        // Keep the owner's preferred at-a-glance Nature tint: raised stat green,
+        // lowered stat red, unaffected stat neutral. This is informative, not random.
         fb.drawText(g.midX + 18, yy, statLabels[static_cast<size_t>(row)],
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+                    NatureStats::statColor(A::nature(*raw), row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(g.midX + 126, yy, std::to_string(iv[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(g.midX + 190, yy, std::to_string(ev[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         // Phase 4: a calculated stat is derived, never edited: the gold ReadOnly field state.

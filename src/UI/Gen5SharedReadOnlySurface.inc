@@ -16,6 +16,7 @@
 #include "Integration/Gen5/Gen5PersonalTypes.h"
 #include "Integration/Gen5/Gen5Progression.h"
 #include "UI/SharedPokemonShell.h"
+#include "UI/Gen5LanguageCycle.h"
 #include <ctime>
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5WorkingCopyExport.h"
@@ -424,10 +425,15 @@ struct Gen5Editor {
                 EditorSurface::openPicker(screen, state, PickerTarget::HeldItem,
                                           Fields::heldItemChoices(), p.heldItem());
                 return true;
-            case Language:
-                EditorSurface::openPicker(screen, state, PickerTarget::Language,
-                                          {1,2,3,4,5,7,8}, p.language());
+            case Language: {
+                // A/touch cycles native PK5 language IDs inline, without a modal.
+                // The existing guarded staging path maintains encryption/checksum,
+                // Review/Discard and source-save immutability.
+                const uint8_t nextLanguage = PokeBank::UIModel::Gen5LanguageCycle::next(p.language());
+                if (stage(screen, Field::Language, 0, nextLanguage))
+                    screen.postStatus(std::string("Language: ") + Enums::getLanguageName(nextLanguage), 145);
                 return true;
+            }
             case Friendship: {
                 const auto r = Utils::promptNumber("Friendship", p.friendship(), 0, 255);
                 if (r.accepted) stage(screen, Field::Friendship, 0, static_cast<uint32_t>(r.value));

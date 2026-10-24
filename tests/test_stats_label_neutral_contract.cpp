@@ -1,6 +1,6 @@
-// Owner Round 4: native Gen IV View/Edit STATS use neutral text. Nature coloring belongs
-// to the nature-picker itself, never to normal stat labels. Source UI contract plus
-// independent Gen III-V nature effect arithmetic. Run from the repository root.
+// Owner correction (Round 4): Gen IV/V View/Edit STATS should keep green/red
+// Nature effects for instant understanding of raised/lowered stats. Source UI
+// contract and independent native nature arithmetic. Run from repository root.
 #include "UI/NatureStatEffect.h"
 #include <cassert>
 #include <fstream>
@@ -20,7 +20,7 @@ int main() {
     const auto end = src.find("fb.drawHDivider(g.midX + 14, g.y + 310", begin);
     assert(end != std::string::npos && end > begin);
     const auto stats = src.substr(begin, end - begin);
-    assert(stats.find("NatureStats::statColor") == std::string::npos);
+    assert(stats.find("NatureStats::statColor(A::nature(*raw), row") != std::string::npos);
     assert(stats.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
     // Preserve distinct nature-picker feedback instead of hiding real modifiers.
     assert(src.find("NatureStats::drawEffect") != std::string::npos);
@@ -35,5 +35,5 @@ int main() {
             assert(m>=-1 && m<=1);
         }
     }
-    std::cout << "Shared STATS labels neutral; Nature picker retains correct colored effect semantics PASS\n";
+    std::cout << "Shared STATS preserve Nature green/red effects, Nature picker also explains them PASS\n";
 }

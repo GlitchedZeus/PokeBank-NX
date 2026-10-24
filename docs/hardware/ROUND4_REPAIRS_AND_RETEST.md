@@ -31,6 +31,12 @@ Narrow source repair: Gen II helper + both VALUES painters now put `SpA <number>
 
 The actual Unown form in Gen II derives from its four DVs; legitimate shiny Unown forms are I/V. The editor already renders a DV-derived letter, but the Species chooser drew form A for every Unown because it did not accept a form argument. The chooser now receives the exact Unown form computed on a **copy** of the current editor session using the same species+shiny routine as selecting A. Preview thumbnails and large artwork match the DV-derived form, and the title identifies the letter. Source DVs are unchanged. Unit/source regressions added to existing `test_gen2_unown_letter.cpp`. **Needs CI and new NRO physical retest; current c60d4da0 NRO still shows this bug.**
 
+## Owner correction — October 23, 2026: Keep Nature-based stat colors; Gen V inline Language
+
+**Owner accepts green/red stat-label colors in Gen IV View/Edit** as useful Nature information: raised stat green, lowered red. The earlier color complaint in #324 is **withdrawn**. Reversed only the neutralization part of `0ab0656b` while **retaining the Gen II Special Calculated-column improvement**. Nature popup coloring stays intact. Existing nature effect arithmetic unchanged.
+
+**Gen V NEW-14 UI follow-up: owner wants A on Pokémon Language to cycle** Japanese → English → French → Italian → German → Spanish → Korean → Japanese, rather than open the language chooser. Recorded in [#325](https://github.com/GlitchedZeus/PokeBank-NX/issues/325). Implemented read-only `Gen5LanguageCycle::next` helper and directly stage the next native PK5 language on A/touch with named status; source bytes are still protected, Review/Discard/Export remain the only commit routes. Added a focused seven-language cycle and UI-contract test; native PK5 serialization tests already verify accepted IDs and checksums. **Needs final CI and a new audited NRO/hardware retest; not included in candidate c60d4da0.**
+
 ## Original 37 failures
 
 All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.
