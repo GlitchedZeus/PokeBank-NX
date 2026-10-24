@@ -27,6 +27,10 @@ On the audited `c60d4da0` NRO: **Gen II (Gold/Silver/Crystal) Special Calculated
 
 Narrow source repair: Gen II helper + both VALUES painters now put `SpA <number>` in the Special Calculated cell and SpD on a second aligned Calculated-column line, without changing native DV/Stat Exp math. Shared STATS painter now uses neutral/selected theme text rather than `NatureStats::statColor`; original Nature picker retains +10%/−10% red/green. Updated Gen II numerical/layout contract and added neutral-label test. **Host CI and owner hardware retest still required; do not mark PASS on current NRO.**
 
+## Owner hardware retest — October 23, 2026: Gen II Unown chooser sprites
+
+The actual Unown form in Gen II derives from its four DVs; legitimate shiny Unown forms are I/V. The editor already renders a DV-derived letter, but the Species chooser drew form A for every Unown because it did not accept a form argument. The chooser now receives the exact Unown form computed on a **copy** of the current editor session using the same species+shiny routine as selecting A. Preview thumbnails and large artwork match the DV-derived form, and the title identifies the letter. Source DVs are unchanged. Unit/source regressions added to existing `test_gen2_unown_letter.cpp`. **Needs CI and new NRO physical retest; current c60d4da0 NRO still shows this bug.**
+
 ## Original 37 failures
 
 All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.
