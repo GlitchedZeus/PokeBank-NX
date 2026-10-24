@@ -922,12 +922,25 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         const auto split = label.find("  |  ");
         if (state.pickerTarget == PickerTarget::MetLocation && split != std::string::npos) {
             // Keep the source example in its own bounded column. It is not the stored Met Lv.
-            const std::string detail = SharedMovesPanel::fit(fb, label.substr(split + 5),
-                std::max(0, rowW - 260), TextStyle::Caption);
+            // Round 5 NEW-10: the detail gets what the measured name leaves, so at 620 px every
+            // real row shows both in full (tests/test_met_location_fit.cpp).
+            int nw = 0, nh = 0;
+            fb.measureText(label.substr(0, split), nw, nh, TextStyle::Body);
+            // The stored location (row 1, header "row 1 = stored") is drawn in the accent colour;
+            // its "Stored: " prefix gives way only where the full example would not fit.
+            const bool storedRow = state.pickerMetContextActive && value == state.pickerMetContext.stored();
+            std::string example = label.substr(split + 5);
+            int ew = 0, eh = 0;
+            fb.measureText(example, ew, eh, TextStyle::Caption);
+            if (storedRow && example.rfind("Stored: ", 0) == 0 && ew > rowW - 32 - nw - 20)
+                example.erase(0, 8);
+            const std::string detail = SharedMovesPanel::fit(fb, example,
+                std::max(0, rowW - 32 - nw - 20), TextStyle::Caption);
             int dw = 0, dh = 0;
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7, SharedMovesPanel::fit(fb, label.substr(0, split),
-                        rowW - 32 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
+                        rowW - 32 - dw - 20, TextStyle::Body), storedRow ? Colors::Accent : Colors::Text,
+                        TextStyle::Body);
             fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
         } else if (state.pickerTarget == PickerTarget::Ability) {
