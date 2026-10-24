@@ -353,6 +353,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             if (!pokemon) return true;
             editState.box = legacy.pokemonBox;
             editState.slot = legacy.pokemonSlot;
+            editState.party = legacy.pokemonParty;
             editState.begin(*pokemon, PokeBank::UIModel::Gen2PokemonEditor::SessionMode::View);
             dismissActionSheetForWorkspace(screen);
             screen.controllerNavigation.reset();

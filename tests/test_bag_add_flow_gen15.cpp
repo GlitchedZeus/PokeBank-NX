@@ -653,16 +653,55 @@ void run(G::SaveFamily family, std::string_view gameId, uint8_t version, QP::Gam
         return QP::quantityRule(game, kPockets[pocket], id);
     };
 
-    // Key Items, bikes, rods, TMs and HMs: unique by policy, and the native pockets are view-only.
+    // Key Items, bikes, rods, TMs and HMs remain native unique x1 items.
     for (const auto& [pocket, id] : {std::pair<std::size_t, uint16_t>{1, 450}, {1, 447}, {2, 328}, {2, 618}, {2, 420}}) {
         const auto rule = pocketRule(pocket, id);
         CHECK(rule.valid && rule.unique && rule.maximum == 1);
         CHECK(BagAdd::decideRow(rule, 1, G::bagPocketLayout5(family, pocket).maxCount).outcome ==
               BagAdd::RowOutcome::FixedQuantity);
     }
-    while (bag.pocket() != 1) bag.changePocket(1);
-    CHECK(!bag.openAdd(ws, error) && bag.surface() == Surface::Browse);
-    while (bag.pocket() != 3) bag.changePocket(1);
+    const auto changePocket = [&](size_t wanted) {
+        for(size_t n=0;n<G::BagPocket5Count && bag.pocket()!=wanted;++n)bag.changePocket(1);
+        CHECK(bag.pocket()==wanted);
+        return bag.pocket()==wanted;
+    };
+    const auto choose = [&](uint16_t wanted) {
+        for(size_t n=0;n<bag.addChoices().size() && bag.chosenAddItem()!=wanted;++n)bag.moveAddCursor(1);
+        CHECK(bag.chosenAddItem()==wanted);
+        return bag.chosenAddItem()==wanted;
+    };
+    for(const auto& [pocket,id]:{std::pair<size_t,uint16_t>{1,447},{2,618}}) {
+        if(!changePocket(pocket))return;
+        CHECK(bag.openAdd(ws,error) && bag.surface()==Surface::AddPicker);
+        if(!choose(id))return;
+        const auto rule=pocketRule(pocket,id);
+        if(pocket==1) {
+            CHECK(!bag.confirmAdd(ws,id,1,refresh,error));
+            CHECK(bag.requestAddWarning(ws,rule) && bag.surface()==Surface::KeyItemAddWarning);
+            bag.cancel();
+            CHECK(!ws.hasChanges());
+            CHECK(bag.openAdd(ws,error));
+            if(!choose(id))return;
+            CHECK(bag.requestAddWarning(ws,rule));
+        } else CHECK(!bag.requestAddWarning(ws,rule));
+        CHECK(!bag.confirmAdd(ws,id,2,refresh,error));
+        CHECK(bag.pickAdd(ws,rule,refresh,error).outcome==BagAdd::PickOutcome::StageNew);
+        CHECK(heldIn(ws,pocket,id)==1 && !bag.beginQuantity(ws,error));
+        const auto candidate=G::buildStagedSaveCandidate(ws,&error);
+        CHECK(candidate.has_value());
+        if(candidate) {
+            const auto reparse=G::Gen5ReadOnlySave::parse(candidate->bytes,gameId,&error,G::SaveCopySelection::Primary);
+            CHECK(reparse.has_value());
+            if(reparse) {
+                const auto nativeBag=G::decodeBag5(*reparse);
+                CHECK(nativeBag && std::any_of((*nativeBag)[pocket].begin(),(*nativeBag)[pocket].end(),
+                    [id](const auto& item){return item.itemId==id && item.count==1;}));
+            }
+        }
+        ws.discardAll();
+        CHECK(refresh(error) && !ws.hasChanges() && heldIn(ws,pocket,id)==0);
+    }
+    if(!changePocket(3))return;
 
     // B cancels with no mutation.
     CHECK(bag.openAdd(ws, error) && bag.surface() == Surface::AddPicker);
@@ -671,7 +710,7 @@ void run(G::SaveFamily family, std::string_view gameId, uint8_t version, QP::Gam
 
     // A on a new item (Antidote): staged at x1, no keypad.
     CHECK(bag.openAdd(ws, error));
-    while (bag.chosenAddItem() != 18) bag.moveAddCursor(1);
+    if(!choose(18))return;
     const auto pick = bag.pickAdd(ws, pocketRule(3, 18), refresh, error);
     CHECK(pick.outcome == BagAdd::PickOutcome::StageNew && pick.quantity == 1 && error.empty());
     CHECK(bag.surface() == Surface::Browse && heldIn(ws, 3, 18) == 1);
@@ -688,7 +727,7 @@ void run(G::SaveFamily family, std::string_view gameId, uint8_t version, QP::Gam
     // A on the held Potion: focuses the existing stack, nothing staged, no duplicate.
     const auto stagedBefore = ws.bagReviewChanges().size();
     CHECK(bag.openAdd(ws, error));
-    while (bag.chosenAddItem() != 17) bag.moveAddCursor(1);
+    if(!choose(17))return;
     const auto held = bag.pickAdd(ws, pocketRule(3, 17), refresh, error);
     CHECK(held.outcome == BagAdd::PickOutcome::FocusExisting && error.empty());
     CHECK(bag.surface() == Surface::Browse && heldIn(ws, 3, 17) == 12);

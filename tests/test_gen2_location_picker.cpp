@@ -27,16 +27,15 @@ int main() {
     for (int count = 0; count <= 40; ++count) {
         const auto g = P::locationPickerGeometry(count);
         assert(g.visible == std::clamp(count, 1, 9));
-        assert(g.height == 80 + g.visible * g.rowStep + 14);           // NEW-10: compact header / bottom
+        assert(g.height == 80 + g.visible * g.rowStep + 16);           // NEW-10: compact header / bottom
         assert(g.listY == g.y + 80 && g.listY >= g.y + 52 + 20);       // rows clear the caption line
         assert(g.height >= previous);
         previous = g.height;
         assert(g.x >= 0 && g.x + g.width <= 1280 && g.y >= 0 && g.y + g.height <= 720 - 56);
-        // every visible row fully inside, its box ending 18 px above the frame edge (NEW-10)
-        assert(g.listY + (g.visible - 1) * g.rowStep + g.rowHeight <= g.y + g.height - 18);
+        assert(g.listY + g.visible * g.rowStep <= g.y + g.height - 16); // every visible row fully inside
     }
     // Three choices is a small window, not the old fixed 568 px one.
-    assert(P::locationPickerGeometry(3).height == 80 + 3 * 44 + 14 && P::locationPickerGeometry(3).height < 244);
+    assert(P::locationPickerGeometry(3).height == 80 + 3 * 44 + 16 && P::locationPickerGeometry(3).height < 244);
 
     // Every Crystal encounter template: a real place name and a method/level detail.
     int rows = 0;

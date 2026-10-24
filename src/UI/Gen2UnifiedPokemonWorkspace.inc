@@ -494,9 +494,8 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 // history toggles Male / Female and keeps every other caught bit; a pending value
                 // stays editor-only (applyFieldSelector never fabricates caught history).
                 namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
-                state.crystalOtGender = Selector::nextOtGender(state.crystalOtGender, caught.present);
                 applyFieldSelector(screen, state, Selector::Field::OtGender,
-                                   static_cast<uint8_t>(state.crystalOtGender));
+                    static_cast<uint8_t>(Selector::nextOtGender(state.crystalOtGender, caught.present)));
                 return true;
             }
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
@@ -757,7 +756,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
 
     const auto& p = state.working;
-    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
+    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p,state.mode!=Mode::View);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     for (int r = 0; r < 5; ++r) {
@@ -775,12 +774,15 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
         fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2), TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), gen2StatCellColor(4, 2), TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), gen2StatCellColor(4, 2), TextStyle::Caption);
-    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    // One real editable Special DV/Stat Exp row. Both computed Special stats remain
+    // in the Calculated column, stacked cleanly without a fake second DV row.
+    // The Special row above already shows SpA via calculatedCell(battle, 4).
+    fb.drawText(x + 18, y + 246, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 282, y + 246,
+                PokeBank::UIModel::Gen2Workspace::calculatedSpecialDefenseCell(battle),
+                gen2StatCellColor(4, 2), TextStyle::Caption);
+    fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
+                Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
@@ -850,7 +852,7 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
         TextStyle::Caption);
     const auto& p = state.working;
-    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny);
+    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny, p.form);
     if (const auto* personal = Gen2::personalRecord(p.species)) {
         int badgeX = x + 18;
         sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType1));
@@ -862,7 +864,7 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         }
     }
     std::vector<std::pair<std::string, std::string>> rows{
-        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},   // NEW-11: name first
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"Experience", std::to_string(p.experience)},
@@ -1005,7 +1007,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else {
         drawWorkspaceFooter(fb, screen);
     }

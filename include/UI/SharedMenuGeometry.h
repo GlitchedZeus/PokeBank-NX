@@ -133,7 +133,7 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::LocationPicker:
             // The accepted Met Location window (owner round 1 L03/L04 PASS): 900 px, name left,
             // method / level right, editor value-list rows. NEW-10 (Round 3 L03/L04 notes): 14 px
-            // under the last row instead of 39 (the Move chooser's margin), no unused band.
+            // under the last row instead of 39, so the window carries no unused band.
             return {Kind::List, 900, 1, 42, 4, 8, 86, 22, 14, 16, 0, 8, Text::Body};
         case MenuType::ChoicePicker:
             // Editor value lists: 86 px title + counter, 42 px rows (38 px cells), 8 visible.

@@ -104,6 +104,7 @@ struct StagedPokemonChange {
     std::string label;
     std::string beforeValue;
     std::string afterValue;
+    bool party = false;
 };
 
 class StagedPokemonEditor {
@@ -127,6 +128,9 @@ public:
 
     [[nodiscard]] std::optional<StagedPokemonRecord> boxedPokemon(
         std::size_t box, std::size_t slot, std::string& error) const;
+    [[nodiscard]] std::optional<StagedPokemonRecord> partyPokemon(std::size_t slot,std::string& error) const;
+    bool stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit&,std::string& error);
+    std::optional<StagedPokemonRecord> previewPartyEdit(std::size_t slot,const BoxPokemonEdit&,std::string& error) const;
 
     static std::optional<StagedPokemonRecord> decodeRecord(
         const std::array<uint8_t,80>& raw, std::string& error);
@@ -162,6 +166,8 @@ private:
                         TrainerRecord trainer);
 
     bool validateStaged(std::string& error) const;
+    std::vector<uint8_t> readPartyRaw(std::size_t slot,std::string& error) const;
+    bool stageRecordEdit(bool party,std::size_t box,std::size_t slot,const BoxPokemonEdit&,std::string& error);
     bool writeBoxRaw(std::size_t box, std::size_t slot, std::span<const uint8_t> raw,
                      std::string& error);
     [[nodiscard]] std::array<uint8_t, 80> readBoxRaw(

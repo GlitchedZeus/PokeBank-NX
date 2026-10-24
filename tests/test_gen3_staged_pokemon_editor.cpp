@@ -10,6 +10,8 @@
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Names/PokemonNames.h"
+#include "Names/LocationDisplayNames.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -153,6 +155,80 @@ std::vector<uint8_t> fixture(Family family, SourceGame game) {
 }
 
 void runGame(SourceGame game, Family family) {
+    { // Real 100-byte Party records in the selected rotating slot, for all five titles.
+        auto source=fixture(family,game);
+        const auto selected=Detail::validateSlot(source,1);assert(selected.valid);
+        const auto sector=selected.logicalSectorOffsets[1];
+        const auto body=sector+Detail::partyDataOffset(game);
+        source[sector+Detail::partyCountOffset(game)]=1;
+        const auto boxed=samplePokemon(game);
+        std::copy(boxed.begin(),boxed.end(),source.begin()+body);
+        Pokemon::Pokemon3FRLG native(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(source.data()+body),100));
+        native.recalculateStats();native.setStatHPCurrent(native.statHPMax()-7);
+        auto* encoded=Encryption::encryptArray3FRLG(native.getData());
+        std::memcpy(source.data()+body,encoded,100);delete[] encoded;
+        source[body+0x50]=8;source[body+0x55]=0xA5; // status and mail id
+        write16(source,sector+0xFF6,Detail::sectorChecksum(std::span<const uint8_t>(source).subspan(sector,Detail::kChunkLengths[1])));
+        const auto immutable=source;
+        std::string error;auto editor=StagedPokemonEditor::create(source,game,error);assert(editor);
+        const auto before=editor->partyPokemon(0,error);assert(before);
+        {
+            auto reviewed=StagedPokemonEditor::create(source,game,error);assert(reviewed);
+            BoxPokemonEdit request;request.nature=static_cast<uint8_t>((before->nature+1)%25);
+            request.language=3;request.ball=2;request.metLocation=2;request.metLevel=19;
+            request.friendship=99;request.pokerus=0x13;request.otName="WILL";
+            assert(reviewed->stagePartyPokemonEdit(0,request,error));
+            const auto expectedLocation=Names::getMetLocationDisplayName(before->originGame,2);
+            size_t named=0;
+            for(const auto& row:reviewed->pendingChanges()) {
+                assert(row.beforeValue!=row.afterValue && row.party);
+                assert(row.label.find("Pokemon edit")==std::string::npos);
+                if(row.label=="Party 1 Nature") {assert(row.afterValue==Names::getNatureName(*request.nature));++named;}
+                if(row.label=="Party 1 Language") {assert(row.afterValue=="French");++named;}
+                if(row.label=="Party 1 Ball") {assert(row.afterValue=="Ultra Ball");++named;}
+                if(row.label=="Party 1 Met Location") {assert(row.afterValue==expectedLocation);++named;}
+                if(row.label=="Party 1 OT Name") {assert(row.afterValue=="WILL");++named;}
+                if(row.label=="Party 1 Pokérus") {assert(row.afterValue.find("Infected")!=std::string::npos);++named;}
+            }
+            assert(named==6 && reviewed->originalBytes()==immutable && source==immutable);
+        }
+        {
+            auto unusual=source;unusual[body+0x54]=77;
+            unusual[body+0x56]=3;unusual[body+0x57]=0;
+            unusual[body+0x58]=0;unusual[body+0x59]=0;
+            write16(unusual,sector+0xFF6,Detail::sectorChecksum(std::span<const uint8_t>(unusual).subspan(sector,Detail::kChunkLengths[1])));
+            auto metadataOnly=StagedPokemonEditor::create(unusual,game,error);assert(metadataOnly);
+            BoxPokemonEdit friendship;friendship.friendship=99;
+            assert(metadataOnly->stagePartyPokemonEdit(0,friendship,error));
+            const auto bytes=metadataOnly->finalizedBytes(error);assert(!bytes.empty());
+            assert(std::equal(unusual.begin()+body+80,unusual.begin()+body+100,bytes.begin()+body+80));
+        }
+        BoxPokemonEdit edit;edit.level=50;edit.nickname="PARTY";edit.ivs=std::array<uint8_t,6>{31,30,29,28,27,26};
+        edit.moves=std::array<uint16_t,4>{85,0,0,0};
+        edit.pp=std::array<uint8_t,4>{15,0,0,0};edit.ppUps=std::array<uint8_t,4>{0,0,0,0};
+        const auto preview=editor->previewPartyEdit(0,edit,error);assert(preview && editor->stagedBytes()==immutable);
+        assert(editor->stagePartyPokemonEdit(0,edit,error));
+        bool reviewedMove=false;
+        for(const auto& row:editor->pendingChanges())if(row.party && row.label=="Party 1 Move 1") {
+            assert(row.afterValue=="Thunderbolt");reviewedMove=true;
+        }
+        assert(reviewedMove);
+        const auto after=editor->partyPokemon(0,error);assert(after && after->level==50 && after->nickname=="PARTY");
+        const auto candidate=editor->finalizedBytes(error);assert(!candidate.empty());
+        Pokemon::Pokemon3FRLG reload(std::span<const std::byte>(reinterpret_cast<const std::byte*>(candidate.data()+body),100));
+        assert(reload.checksumValid() && reload.getData()[0x54]==std::byte{50});
+        assert(reload.getData()[0x50]==std::byte{8} && reload.getData()[0x55]==std::byte{0xA5});
+        assert(reload.statHPCurrent()==native.statHPCurrent());
+        assert((std::array<uint16_t,6>{reload.statHPMax(),reload.statATK(),reload.statDEF(),reload.statSPE(),reload.statSPA(),reload.statSPD()})==after->calculatedStats);
+        for(size_t i=0;i<source.size();++i)
+            if(source[i]!=candidate[i])assert((i>=body && i<body+100) || i==sector+0xFF6 || i==sector+0xFF7);
+        edit.level=0;const auto staged=editor->stagedBytes();
+        assert(!editor->stagePartyPokemonEdit(0,edit,error) && editor->stagedBytes()==staged);
+        assert(!editor->stagePartyPokemonEdit(1,{},error) && editor->stagedBytes()==staged);
+        assert(source==immutable && editor->originalBytes()==immutable);
+        editor->discard();assert(editor->stagedBytes()==immutable && !editor->hasPendingChanges());
+    }
     auto source = fixture(family, game);
     const auto immutableSource = source;
     std::string error;

@@ -279,7 +279,7 @@ const char* fieldLabel(int row) noexcept {
 }
 
 std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
-    if (row == 0) return speciesCompact(d.species);
+    if (row == 0) return speciesHeading(d.species);
     if (row == 1) return d.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(d.species) + " (default)" : d.nickname;
     if (row == 2) return std::to_string(d.level);
     if (row == 3) return std::to_string(draftExperience(d)) + " (derived)";
@@ -301,7 +301,7 @@ std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
 }
 
 std::string existingValue(const PokemonRecord& p, int row) {
-    if (row == 0) return speciesCompact(p.species);
+    if (row == 0) return speciesHeading(p.species);
     if (row == 1) return p.nickname;
     if (row == 2) return std::to_string(p.level);
     if (row == 3) return std::to_string(p.experience);
@@ -1062,26 +1062,24 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 26, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    const int lx = x + 40, vx = x + 330;
-    const std::array<std::pair<const char*, std::string>, 7> rows{{
-        {"Source game", screen.sourceGameId},
-        {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese (EDIT DISABLED)" : "International (validated editor)"},
-        {"Source mutation", "HARD DISABLED"},
-        {"Party mutation", "DEFERRED"},
-        {"Format validation", "Strict reparse + checksum on export"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "NOT CLAIMED by this editor"},
-        {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
-    }};
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        fb.drawText(lx, y + 100 + i * 52, rows[i].first, Colors::TextDim);
-        fb.drawText(vx, y + 100 + i * 52, rows[i].second,
-            i == 2 || i == 5 ? Colors::Accent : Colors::Text);
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=selectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    fb.drawText(lx, y + h - 62,
-        "Pending semantic changes: " + std::to_string(pendingLines(screen).size()), Colors::Text);
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {

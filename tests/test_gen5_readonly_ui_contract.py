@@ -41,9 +41,13 @@ require(
     "state.requestExit(staged)",
     "state.confirmDiscardAndExit(staged)",
     "state.discardAllWithPresentation(staged,",
-    "state.moveReviewPage(1,staged)",
-    "verifyStagedReview(change,&error)",
-    "reviewedFieldLabel(verified->fields[field])",
+    "state.moveReviewPage(1,staged,sharedReviewRows(screen,staged).size())",
+    "state.moveReviewPage(-1,staged,sharedReviewRows(screen,staged).size())",
+    "verifyStagedReview(c,&error)",
+    "for(const auto& field:verified->fields)",
+    "reviewedFieldLabel(field)",
+    "SharedEditorChrome::drawReviewPanel(",
+    "SharedEditorChrome::drawReviewDiscardConfirm(",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
     "drawSharedWorkspace(screen,fb)",
@@ -795,7 +799,8 @@ require(read("tests/test_gen5_pk5_readonly.cpp"),
 
 # Native Gen V move data is pinned to PKHeX MoveInfo5 (560 PP values).
 # The controller/touch picker is a sub-surface of the same guarded Edit draft,
-# never a generic source write or an inferred species learnability checker.
+# using pinned species/game learnsets. It is NOT a full legality verdict and
+# never performs a generic source-save write.
 move_pp = read("include/Integration/Gen5/Gen5MovePP.h")
 require(move_pp, "std::array<uint8_t,560>",
         "MaxNativeMove5 = 559", "basePP5(", "maxPP5(",
@@ -891,8 +896,9 @@ require(surface, "state.requestExport(staged)",
         "accountUidHex(screen.userUid)",
         "request.observedSourceBytes=observed;",
         "Export Verified Generation V Working Copy?",
-        "Export Working Copy",
+        "SharedEditorChrome::drawReviewPanel(",
         "original SAV5 unchanged")
+require(read("include/UI/SharedReviewPresentation.h"),'out.push("X","Export Copy")')
 # Prohibit accidental write routing through the unguarded Trainer surface.
 assert "saveChanges(" not in surface and "saveToSource(" not in surface
 assert "injectSave(" not in surface and "openItemsShortcut(" not in surface
@@ -1034,7 +1040,7 @@ require(surface,"void stageCloneOrMoveByKeypad(TrainerViewScreen& screen)",
         "!state.confirmClone(staged,",
         "state.confirmRemoveBox(staged",
         '"Release this Pokemon?"', '"Y","Confirm Release"',
-        "Box clone/remove staged only; no source writes")
+        "SharedEditorChrome::drawReviewPanel(")
 require(read("tests/test_gen5_staged_save_candidate.cpp"),
         "boxOps.cloneToEmptyBox(",
         "boxOps.removeBox(",
@@ -1115,8 +1121,12 @@ assert '{"Y","Bag"}' not in surface
 assert surface.index("return handleBag(screen,keys,tap,touch);") < surface.index("switch(state.surface()) {\n        case Surface::Actions:")
 require(items_panel, "Gen5::bagPocketName5(", "Native Generation V bag data failed validation.")
 require(bag_model, "PokeBank::UIModel::inventoryActionAvailability(", "Workspace snapshot=ws;",
-        "pocket!=static_cast<size_t>(BagPocket5::KeyItems)",
-        "pocket!=static_cast<size_t>(BagPocket5::Machines)")
+        "return pocket<BagPocket5Count;", "maxCount>1", "KeyItemAddWarning",
+        "requestAddWarning", "needsKeyItemWarning(rule)",
+        '"Confirm the Key Item warning before staging this item"')
+require(surface,"case BagSurface::KeyItemAddWarning:","bag.requestAddWarning(ws,rule)",
+        "SharedBagAddPicker::drawKeyItemWarning(")
+assert "Key Items/TMs view only" not in surface
 require(trainer, "staged_.bagPresentation()")
 assert "writeFile" not in bag_model and "fopen" not in bag_model
 require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocketRefusesAdd();")
@@ -1166,15 +1176,32 @@ require(fields, '"Species", "Nickname", "Level", "Experience", "OT", "Trainer ID
         '"Held Item", "Friendship", "Language", "Origin", "Ball",',
         '"Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful"',
         "ItemStorage5.GetAllHeld()", "BagCatalog5::kUnreleased", "Master (1) .. Dream (25)",
-        "NativeMetLocations5.begin()", "move <= MaxNativeMove5", "kMaxSpecies = 649",
+        "NativeMetLocations5.begin()", "Gen5MoveCompatibility::selectableMoves(", "kMaxSpecies = 649",
         "probe.stage(Field::Form, 0, form, error)", "info.ability2 != info.ability1",
         "keepShinyForIds5(", "Field::Shiny", "earlierGenerationOrigin5(")
+# Pin compatibility to actual Black/White and Black 2/White 2 tables and the
+# guarded existing-source preservation path. An arbitrary move cannot be added
+# merely because its ID is within the native 1..559 range.
+compatibility = read("include/Integration/Gen5/Gen5MoveCompatibility.h")
+require(compatibility, 'game=="black_nds"||game=="white_nds"',
+        'game=="black2_nds"||game=="white2_nds"',
+        "if(inSource)return Availability::Preserved;",
+        "if(direct(game,species,form,move)||transferable(species,form,move))",
+        "std::sort(moves.begin()+1,moves.end());")
+require(read("tests/test_gen5_move_compatibility.cpp"),
+        "assert(!C::direct(game,25,0,459))",
+        "assert(std::find(list.begin(),list.end(),459)==list.end())",
+        "assert(C::classify(game,25,0,459,false)==C::Availability::Unavailable)")
+assert "for (uint16_t move = 0; move <= MaxNativeMove5; ++move)" not in fields
+require(surface, "status = \"Transfer\";", "status = \"Preserved\";")
+
 require(surface, "Fields::detailEditable(draft(screen), row, b2w2(screen))",
         "Fields::pidRowEditable(draft(screen), row, b2w2(screen))",
         "PickerTarget::Species", "PickerTarget::HeldItem", "PickerTarget::Ball",
         "PickerTarget::MetLocation", "PickerTarget::Pokerus", "PickerTarget::Form",
         "PickerTarget::Nature", "PickerTarget::Ability", "Fields::heldItemChoices()",
-        "Fields::metLocationChoices()", "Fields::ballChoices()", "Fields::moveChoices()",
+        "Fields::metLocationChoices()", "Fields::ballChoices()",
+        "Fields::moveChoices(screen.sourceGameId,p->species(),p->form(),p->moves())",
         'Utils::promptNumber("Level"', 'Utils::promptNumber("Experience"',
         'Utils::promptNumber("Friendship"', 'Utils::promptNumber("Met Level"',
         "d.stageName(nickname ? Field::NicknameText : Field::OriginalTrainerText",

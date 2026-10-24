@@ -73,7 +73,8 @@ jobs:
   tools:
     name: NRO audit tooling regression
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Round 4 includes all 20 broken-path controls and the 70-PASS gate mutations.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:

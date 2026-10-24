@@ -111,7 +111,21 @@ int main() {
     for (const auto& [path, sites] : {std::pair{"src/UI/Gen3SharedPokemonSurface.inc", std::size_t{2}},
                                       std::pair{"src/UI/Gen4SharedPokemonSurface.inc", std::size_t{2}},
                                       std::pair{"src/UI/Gen5SharedReadOnlySurface.inc", std::size_t{1}}}) {
-        const std::string text = read(path);
+        std::string text = read(path);
+        if (std::string(path)=="src/UI/Gen4SharedPokemonSurface.inc") {
+            require(text.find("SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons)")!=std::string::npos,
+                    "Gen IV Discard delegates to the actual shared confirmation");
+            const auto sharedChrome=read("include/UI/SharedEditorChrome.h");
+            const auto begin=sharedChrome.find("inline void drawReviewDiscardConfirm(");
+            const auto end=sharedChrome.find("// Generation adapters",begin);
+            require(begin!=std::string::npos && end>begin,"shared Discard confirmation exists");
+            if(begin!=std::string::npos && end>begin) {
+                const auto helper=sharedChrome.substr(begin,end-begin);
+                require(helper.find("{\"B\",\"Keep Changes\"},{\"Y\",\"Discard All\"}")!=std::string::npos,
+                        "shared Discard keeps B cancellation and Y confirmation");
+                text+=helper;
+            }
+        }
         require(count(text, "SharedBoxedRows::drawGlyphChoices(") >= sites,
                 std::string("R2-BUG-012 Release / Discard / decision choices boxed in ") + path);
     }

@@ -350,8 +350,8 @@ int main() {
     contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
     contains(surface, "screen.sourceGameId, state.session.working->species()");
     contains(surface, "state.session.working->form(), state.session.working->moves()");
-    // Gen IV native Inventory removal is APP-MEMORY staged only and always
-    // uses an explicit Y confirmation; A must never remove an item.
+    // Owner-directed Round 4 Bag policy: A confirms inside the explicit remove
+    // question; B cancels first. Pokémon Release remains independently Y-only.
     contains(surface, "state.itemRemoveConfirmActive");
     contains(surface, "stageBagRemove(");
     contains(surface, "Gen IV item removed from staged workspace ONLY");
@@ -367,8 +367,9 @@ int main() {
     assert(removeGuardAt!=std::string::npos && quantityEntryAt>removeGuardAt);
     const auto confirmControls=surface.substr(removeGuardAt,quantityEntryAt-removeGuardAt);
     assert(confirmControls.find("down&HidNpadButton_B")!=std::string::npos);
-    assert(confirmControls.find("down&HidNpadButton_Y")!=std::string::npos);
-    assert(confirmControls.find("down&HidNpadButton_A")==std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_A")!=std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_Y")==std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_B")<confirmControls.find("down&HidNpadButton_A"));
     contains(surface, "state.itemRemoveConfirmActive=false;");
     // Both Gen IV inventory mutations must use the exact same native Switch
     // number keyboard as Gen I-III. A picker cancellation cannot stage bytes.
@@ -596,9 +597,10 @@ int main() {
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");
     assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
-    // NEW-12: Met Location rows show the encounter there (or an egg / trade / event origin), not the
-    // stored Met Lv. repeated on every row.
-    contains(surface, "label += \"  |  \" + Surface::metLocationDetail(state, value, preview->species());");
+    contains(surface, "pickerMetContext.detail(value,");
+    contains(surface, "openContextualMetLocationPicker(");
+    contains(surface, "pickerMetContext.scope(");
+    assert(surface.find("  |  Met Lv. ") == std::string::npos);
     assert(surface.find(" (current)") == std::string::npos);
     contains(surface, "const bool compactChoices=");
     contains(surface, "visibleChoices");

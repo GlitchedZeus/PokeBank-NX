@@ -322,12 +322,13 @@ struct Session {
     }
 
     bool keep(Gen3::StagedPokemonEditor& editor, std::size_t box, std::size_t slot,
-              std::string& error) {
+              std::string& error,bool party=false) {
         if (mode != Mode::Edit) {
             error = "Generation III Keep is only available for an edit draft";
             return false;
         }
-        if (!editor.stageBoxPokemonEdit(box, slot, editRequest(), error)) return false;
+        if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
+                    editor.stageBoxPokemonEdit(box, slot, editRequest(), error))) return false;
         mode = Mode::None;
         confirmExit = false;
         return true;

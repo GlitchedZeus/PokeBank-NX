@@ -35,8 +35,6 @@ inline int classicGeneration(std::string_view sourceGameId) noexcept {
 constexpr bool genericUiAllowed(bool classic, GenericUi) noexcept { return !classic; }
 
 inline constexpr const char* kForeignPokemonRefusal = "Edit this Pok\xC3\xA9mon from its own game";
-inline constexpr const char* kGen3PartyViewOnly =
-    "Party Pok\xC3\xA9mon open in View; move it to a box to edit (Gen III edits are staged per box)";
 
 enum class TargetRoute : uint8_t { NativeView, Refuse };
 

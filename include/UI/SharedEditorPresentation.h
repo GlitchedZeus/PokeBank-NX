@@ -37,6 +37,7 @@ enum class LegalityState : uint8_t {
     NotChecked,    // a specific check exists but was not run for this record
     Verified,      // a full checker ran and found nothing (reserved; never fabricated)
     ProblemsFound, // a check ran and found an issue
+    Invalid,       // proven invalid native data; never inferred from missing coverage
 };
 
 constexpr const char* legalityLabel(LegalityState state) noexcept {
@@ -44,8 +45,9 @@ constexpr const char* legalityLabel(LegalityState state) noexcept {
         case LegalityState::Unknown: return "Unknown";
         case LegalityState::Incomplete: return "Incomplete";
         case LegalityState::NotChecked: return "Not checked";
-        case LegalityState::Verified: return "Verified";
+        case LegalityState::Verified: return "No problems found";
         case LegalityState::ProblemsFound: return "Problems found";
+        case LegalityState::Invalid: return "Invalid";
     }
     return "Unknown";
 }

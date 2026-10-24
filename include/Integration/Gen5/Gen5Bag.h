@@ -153,11 +153,9 @@ template<size_t N>
     return false;
 }
 
-// Add choices: native pocket member, released in Gen V, and never a Key Item or
-// TM/HM (those come from story progress; adding them can break game flags).
+// Structural Add choices. Story/event flags are never edited here; the UI
+// warns before changing a Key Item. Reusable machines and Key Items cap at 1.
 [[nodiscard]] constexpr bool gen5BagItemAddable(SaveFamily family,size_t pocket,uint16_t id) noexcept {
-    if(pocket==static_cast<size_t>(BagPocket5::KeyItems) ||
-       pocket==static_cast<size_t>(BagPocket5::Machines))return false;
     return gen5BagItemInPocket(family,pocket,id) &&
            !detail5::contains(BagCatalog5::kUnreleased,id);
 }
@@ -181,6 +179,7 @@ using ValidatedBag5=std::array<std::vector<Trainer::InventoryItem>,BagPocket5Cou
     ValidatedBag5 bag{};
     for(size_t pocket=0;pocket<BagPocket5Count;++pocket) {
         const auto spec=bagPocketLayout5(family,pocket);
+        std::vector<uint16_t> uniqueIds;
         if(spec.offset+spec.slots*4>block.size())return std::nullopt;
         for(size_t slot=0;slot<spec.slots;++slot) {
             const size_t at=spec.offset+slot*4;
@@ -189,6 +188,10 @@ using ValidatedBag5=std::array<std::vector<Trainer::InventoryItem>,BagPocket5Cou
             if(id==0 || count==0)continue;
             if(!gen5BagItemInPocket(family,pocket,id) || count>spec.maxCount)
                 return std::nullopt;
+            if(spec.maxCount==1) {
+                if(std::find(uniqueIds.begin(),uniqueIds.end(),id)!=uniqueIds.end())return std::nullopt;
+                uniqueIds.push_back(id);
+            }
             bag[pocket].push_back(Trainer::InventoryItem{id,count,false,false});
         }
     }
@@ -273,9 +276,6 @@ public:
 
     // Removal is a separate, explicitly confirmed UI action; never count 0.
     [[nodiscard]] bool remove(size_t pocket,size_t visibleIndex,std::string* error=nullptr) {
-        if(pocket==static_cast<size_t>(BagPocket5::KeyItems) ||
-           pocket==static_cast<size_t>(BagPocket5::Machines))
-            return fail(error,"Gen V Key Items and TMs/HMs are story items; removal is disabled");
         size_t at=0;
         Trainer::InventoryItem expected{};
         if(!locate(pocket,visibleIndex,at,expected,error))return false;
@@ -298,6 +298,13 @@ public:
             if(read16(at)!=0 && read16(at+2)!=0)afterLast=slot+1;
         }
         for(size_t slot=afterLast;slot<spec.slots;++slot) {
+            const size_t at=spec.offset+slot*4;
+            if(read16(at)==0 && read16(at+2)==0)
+                return commit(at,itemId,quantity,pocket,error);
+        }
+        // A removed interior stack leaves a native empty slot. Reuse it when
+        // appending is impossible, without shifting any unrelated stack.
+        for(size_t slot=0;slot<afterLast;++slot) {
             const size_t at=spec.offset+slot*4;
             if(read16(at)==0 && read16(at+2)==0)
                 return commit(at,itemId,quantity,pocket,error);

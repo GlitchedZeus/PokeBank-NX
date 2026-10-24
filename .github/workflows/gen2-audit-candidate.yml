@@ -156,7 +156,7 @@ jobs:
             src/Encryption/Encryption3FRLG.cpp src/Names/ItemNames.cpp src/Names/SpeciesNames.cpp \
             src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
             src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
-            src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
+            src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Integration/Gen3/Gen3StagedPokemonEditor.cpp src/Names/LocationNames.cpp \
             src/Inventory/ClassicInventoryCatalog.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp \
             src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Inventory/ItemQuantityPolicy.cpp"
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \

@@ -67,8 +67,8 @@ inline void drawChrome(PKSEFramebuffer& fb, uint16_t species, const std::string&
                 Colors::TextDim, TextStyle::Caption);
 
 }
-inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bool shiny) {
-    if (auto* sprite = SpriteManager::getSprite(species, shiny); sprite && sprite->data)
+inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bool shiny, uint8_t form = 0) {
+    if (auto* sprite = SpriteManager::getSprite(species, form, shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(x + 63, y + 34, 174, 146,
             sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);

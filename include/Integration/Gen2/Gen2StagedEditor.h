@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 
 namespace PokeVault::Integration::Gen2 {
 
@@ -63,7 +64,7 @@ struct BoxPokemonCreate {
     std::array<uint8_t, 4> moves{};
     std::array<uint8_t, 4> pp{};
     std::array<uint8_t, 4> ppUps{};
-    std::array<uint8_t, 4> dvs{8, 8, 8, 8};
+    std::array<uint8_t, 4> dvs{};
     std::array<uint16_t, 5> statExperience{};
     uint8_t friendship = 70;
     uint8_t pokerus = 0;
@@ -100,6 +101,8 @@ public:
 
     std::optional<PokemonRecord> boxedPokemon(std::size_t box, std::size_t slot,
                                                std::string& error) const;
+    std::optional<PokemonRecord> partyPokemon(std::size_t slot, std::string& error) const;
+    bool stagePartyPokemonEdit(std::size_t slot, const BoxPokemonEdit& edit, std::string& error);
     bool stageBoxPokemonEdit(std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
                              std::string& error);
     bool stageBoxPokemonShiny(std::size_t box, std::size_t slot, bool shiny,
@@ -164,6 +167,8 @@ private:
     bool encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
                       std::string& error) const;
     bool syncCurrentBoxCopy(std::size_t box, std::string& error);
+    bool stageRecordEdit(bool party, std::size_t box, std::size_t slot,
+                         const BoxPokemonEdit&, std::string& error);
     void rememberPokemonExpectation(std::size_t box, std::size_t slot,
                                     const PokemonRecord& expected);
     void setChange(std::string key, std::string label,
@@ -182,6 +187,7 @@ private:
     uint32_t money_ = 0;
     std::vector<StagedChange> changes_;
     std::vector<PokemonExpectation> pokemonExpectations_;
+    std::vector<std::pair<std::size_t, PokemonRecord>> partyExpectations_;
     PackedMoveState packedMove_;
 };
 

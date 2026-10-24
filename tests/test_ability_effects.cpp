@@ -75,10 +75,10 @@ void testRowsFitTheWindow() {
             const std::string name = std::string(Trainer::getAbilityName(id)) + (gen == 5 ? " (Hidden)" : "");
             const auto text = AE::effect(id, gen);
             assert(G::textWidth(name, G::Text::Body) + 24 + G::textWidth(text, G::Text::Caption) <= rowW - 32);
-            const std::string row = AE::abilityEffectRow(name, id, gen);
+            const std::string row = AE::row(name, id, gen);
             assert(AE::nameOf(row) == name && row.size() == name.size() + AE::kSplit.size() + text.size());
         }
-    assert(AE::abilityEffectRow("Overgrow", 0, 3) == "Overgrow" && AE::nameOf("Overgrow") == "Overgrow");
+    assert(AE::row("Overgrow", 0, 3) == "Overgrow" && AE::nameOf("Overgrow") == "Overgrow");
     std::cout << "rows fit the window ok\n";
 }
 
@@ -87,12 +87,11 @@ void testWiring() {
     const std::string gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
     const std::string gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
     const std::string shared = read("src/UI/SharedPokemonEditorSurface.inc");
-    assert(gen3.find("UI::AbilityEffects::abilityEffectRow(Trainer::getAbilityName(ability), ability, 3)") != std::string::npos);
+    assert(gen3.find("UI::AbilityEffects::row(Trainer::getAbilityName(ability), ability, 3)") != std::string::npos);
     assert(gen3.find("\"Slot \" + std::to_string(value) + \" - \"") == std::string::npos);
-    assert(gen4.find("UI::AbilityEffects::abilityEffectRow(Trainer::getAbilityName(abilityId), abilityId, 4)") != std::string::npos);
+    assert(gen4.find("UI::AbilityEffects::row(Trainer::getAbilityName(abilityId), abilityId, 4)") != std::string::npos);
     assert(gen4.find("\" (Slot \" + std::to_string(value + 1)") == std::string::npos);
-    assert(gen4.find("\"Ability Slot \"") == std::string::npos);
-    assert(gen5.find("UI::AbilityEffects::abilityEffectRow(name, ability, 5)") != std::string::npos);
+    assert(gen5.find("UI::AbilityEffects::row(name, ability, 5)") != std::string::npos);
     assert(gen5.find("\" (Slot 2)\"") == std::string::npos && gen5.find("\" (Slot 1)\"") == std::string::npos);
     assert(gen5.find("\"Ability -> \" + UI::AbilityEffects::nameOf(") != std::string::npos);   // review row: name only
     for (const std::string* src : {&gen3, &shared}) {

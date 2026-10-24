@@ -124,6 +124,15 @@ inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t
     return true;
 }
 
+// Preview exactly what the real A action would create, on a COPY of the
+// editor session. Never change working DVs or source saves while browsing.
+[[nodiscard]] inline int previewUnownForm(const Gen2PokemonEditor::Session& session,
+                                          bool shiny, std::string_view sourceGameId = {}) noexcept {
+    Gen2PokemonEditor::Session hypothetical = session;
+    if (!applySpeciesAppearance(hypothetical, 201, shiny, sourceGameId)) return -1;
+    return static_cast<int>(hypothetical.working.form);
+}
+
 // Re-selecting the already stored move is intentionally a no-op. This preserves unusual existing
 // PP / PP-Up bytes rather than normalizing them just because the user opened and accepted a picker.
 inline bool applyMoveChoice(Gen2PokemonEditor::Session& session, std::size_t slot,
@@ -142,18 +151,17 @@ struct LocationPickerGeometry {
     int visible = 1;
     static constexpr int rowStep = 44;
     static constexpr int rowHeight = 40;
-    // NEW-10 (Round 3 L02 note): title + caption end at 72 px, rows start at 80; the last row
-    // (40 px in its 44 px step) ends 18 px above the frame edge, the Move chooser's margin.
+    // NEW-10 (Round 3 L02 note): title + caption end at 72 px, rows start at 80; 16 px under them.
     static constexpr int headerH = 80;
-    static constexpr int padBottom = 14;
+    static constexpr int padBottom = 16;
 };
 
 constexpr LocationPickerGeometry locationPickerGeometry(int count, int screenW = 1280, int screenH = 720,
                                                         int footerH = 56) noexcept {
     LocationPickerGeometry g{};
     g.visible = std::clamp(count, 1, 9);
-    g.height = 80 + g.visible * LocationPickerGeometry::rowStep + 14;   // headerH + rows + padBottom
-    static_assert(LocationPickerGeometry::headerH == 80 && LocationPickerGeometry::padBottom == 14);
+    g.height = LocationPickerGeometry::headerH + g.visible * LocationPickerGeometry::rowStep +
+               LocationPickerGeometry::padBottom;
     g.x = (screenW - g.width) / 2;
     g.y = (screenH - footerH - g.height) / 2;
     g.listX = g.x + 20;

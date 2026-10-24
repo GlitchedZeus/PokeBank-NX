@@ -68,6 +68,7 @@ void testSortKeepsSearch() {
     row = Search::narrow(shown, "berry", row, nameFor);
     assert((shown == std::vector<uint16_t>{139, 149}) && shown[static_cast<std::size_t>(row)] == 149);
     assert(Search::narrow(shown, "", 1, nameFor) == 1 && shown.size() == 2);   // no query: unchanged
+    assert(Search::tag("") .empty() && Search::tag("berry") == "Search: berry");
     std::cout << "sort keeps search ok\n";
 }
 
@@ -82,7 +83,7 @@ void testWiring() {
         assert(src.find("Utils::promptText(\"Search Held Items\", \"Part of an item name\"") != std::string::npos);
         assert(src.find("ItemPickerSearch::apply(") != std::string::npos);    // live, never-empty filter
         assert(src.find("ItemPickerSearch::narrow(") != std::string::npos);   // X sort keeps the search
-        assert(src.find("SharedSearchInput::drawField(fb, x + w / 2, y + 26, field, \"Search:\"") != std::string::npos);   // shared query field
+        assert(src.find("ItemPickerSearch::tag(") != std::string::npos);      // header shows the query
         assert(src.find("footer.minusLabel = \"Search\";") != std::string::npos);
         assert(src.find(s.open) != std::string::npos);                       // a new picker starts unfiltered
         assert(src.find(std::string("Utils::promptText(\"Search Held Items\", \"Part of an item name\", ") + s.query) != std::string::npos);
