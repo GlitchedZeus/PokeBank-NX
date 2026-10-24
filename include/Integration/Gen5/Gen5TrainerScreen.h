@@ -174,10 +174,10 @@ public:
         if (dex_.open())
             return {{"D-pad/Stick", "Browse"}, {"L/R", "Prev/Next Registered"}, {"B", "Back"}};
         if (selectedRow() == Row::Pokedex)
-            return {{"D-pad/Stick", "Choose"}, {"A", "Open Pokedex"}, {"+", "Review"}, {"B", "Back"}};
+            return {{"D-pad/Stick", "Choose"}, {"A", "Open Pokedex"}, {"Y", "Review"}, {"B", "Back"}};
         if (editable(selectedRow()))
-            return {{"D-pad/Stick", "Choose"}, {"A", "Edit"}, {"+", "Review"}, {"B", "Back"}};
-        return {{"D-pad/Stick", "Choose"}, {"+", "Review"}, {"B", "Back"}};
+            return {{"D-pad/Stick", "Choose"}, {"A", "Edit"}, {"Y", "Review"}, {"B", "Back"}};
+        return {{"D-pad/Stick", "Choose"}, {"Y", "Review"}, {"B", "Back"}};
     }
     // R2-BUG-001 parity (Gen I-IV Trainer footer, Lane C cccec27b): "A: Edit" appears only
     // when the FOCUSED row can really be edited in this session. A new-game save has no

@@ -1625,6 +1625,16 @@ def contracts(sources: list[Source]) -> list[Result]:
         for name, ln, body in function_bodies(dlg.code, re.compile("^" + fn + "$")):
             m = re.search(r"if\s*\(\s*screen\.exitingWithUnsavedChanges\s*(?:\)|&&)", body)
             exit_part = body
+            if fn == "paintSaveConfirmContents" and re.search(r"SharedEditorChrome::drawStagedExitPanel\s*\(", body):
+                shared_exit = src("include/UI/SharedEditorChrome.h")
+                panels = [b for _, _, b in function_bodies(shared_exit.code, re.compile(r"^drawStagedExitPanel$"))]
+                if len(panels) != 1:
+                    r.violations.append("The shared staged-exit presenter is missing or ambiguous")
+                exit_part = "\n".join(panels)
+                for glyph, label, touch_id in (("A", "Review Changes", 2), ("B", "Continue Editing", 0),
+                                               ("X", "Export Copy", 3), ("Y", "Discard & Exit", 1)):
+                    if not re.search(r'choice\([^;]*"'+glyph+r'"\s*,\s*"'+re.escape(label)+r'"\s*,\s*'+str(touch_id)+r'\s*\)', exit_part):
+                        r.violations.append(f"Shared staged exit is missing {glyph} {label} / touch {touch_id}")
             if not re.search(r'"[^"\n]*\bReview\b[^"\n]*"', exit_part):
                 r.violations.append(f"{dlg.rel}:{ln}: {fn}() exit-with-staged-changes choices have no Review "
                                     "(only Keep Editing/Cancel and Discard & Exit)")

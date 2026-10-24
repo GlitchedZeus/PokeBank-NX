@@ -6,6 +6,32 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 repair campaign — active Codex writer
+
+- Fetched and resumed actual application #307 head `92f956120019673733bd8d65cd65ab33c46cc237`.
+  All ten newer commits preserved by fast-forward. Codex is the active application writer.
+- The owner supplied a new 27 PASS / 6 FAIL / 4 unmarked checklist, including requested
+  changes under PASS entries. Historical results are not rewritten by host tests.
+  Main and legality #314 remain separate; original sources/backups remain immutable.
+- First repair package routes Gen I–III Review through the accepted shared IV/V panel,
+  pages, X Export / Y Discard / B Back and shared two-step Discard. Gen V now uses
+  the same four-choice exit presenter/decision as I–IV. Trainer V exposes Y Review
+  and a visible touch control, retaining its existing + shortcut.
+- Focused GCC Review/discard/page/exit model tests, all-title Gen V Trainer footer
+  (196 checks), and classic stat-state/derived HP-DV test PASS. Candidate source
+  contracts report zero failures. Full normal/sanitizer/native gates still required.
+- Starting-head GCC/Clang CI both failed an obsolete assertion expecting the old
+  Special-stat drawing expression. It now guards both native calculated-column
+  values and their read-only styling, matching the approved #324 layout.
+- Work is temporarily on `wip/codex-oct24-repairs` until all integration gates pass;
+  then merge/push forward to the SAME application #307 branch. No repairs are lost.
+- Remaining packages: validated fullscreen backup open (including protected legacy
+  native backups), older Trainer parity, compact pickers/search/help, Gen III Safari
+  Create reproduction and validated held-item rules, existing V move/language and II
+  Unown verification, IV Pokérus touch, documented event labels. Build and audit ONE
+  replacement NRO after final application integration. The previous c60 binding is
+  historical and must not be reused for this changed application code. S06 NOT TESTED.
+
 ## Official Round 4 candidate binding — 2026-10-22
 
 - Application source `c60d4da0abc467aedac54aa886179c89fc89bc19`, tree

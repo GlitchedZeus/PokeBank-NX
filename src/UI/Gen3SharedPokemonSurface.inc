@@ -1703,27 +1703,12 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         return true;
     }
     const auto rows = reviewRows(screen);
-    const int reviewCount = static_cast<int>(rows.size());
-    const int reviewMax = std::max(0, reviewCount - 7);
-    // Pending Changes is a real touch scroll view: the cards follow the finger on every frame,
-    // cross row boundaries while the finger is still down, and retain a small controlled coast.
-    // reviewScroll remains the first visible semantic row, so controller behavior is unchanged.
-    const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar, SharedScrollbar::sample(touch),
-        SharedScrollbar::rows(reviewCount, 7, state.reviewScroll));
-    if (reviewBar.changed) {
-        state.reviewScroll = reviewBar.scroll;
-        state.reviewTouchScroll.stop();
-    }
-    if (reviewBar.consumed)
-        state.reviewTouchScroll.stop();
-    else
-        state.reviewTouchScroll.updateVertical(
-            touch, 44, 112, 1280 - 88, 482, 72,
-            state.reviewScroll, reviewMax + 1);
-    if (down & (HidNpadButton_Up | HidNpadButton_Down))
-        state.reviewTouchScroll.stop();
-    if (down & HidNpadButton_Up) state.reviewScroll = std::max(0, state.reviewScroll - 1);
-    if (down & HidNpadButton_Down) state.reviewScroll = std::min(reviewMax, state.reviewScroll + 1);
+    (void)touch;
+    namespace Review=PokeBank::UIModel::SharedReview;
+    if(down&(HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))
+        state.reviewScroll=static_cast<int>(Review::move(state.reviewScroll,-1,rows.size()));
+    if(down&(HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R))
+        state.reviewScroll=static_cast<int>(Review::move(state.reviewScroll,1,rows.size()));
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
@@ -2412,71 +2397,20 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 
 // Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
 // The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
-void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
-    SharedEditorChrome::beginModal(screen.touchButtons);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-    constexpr int w = 760, h = 240;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 34, y + 96,
-                std::string("Every pending ") + generation + " edit in this workspace is lost.",
-                Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
-                Colors::TextDim, TextStyle::Caption);
-    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
-    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
-        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Keep Changes"}, {"Y", "Discard All"}}});
-    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char*) {
+    SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.touchButtons.clear();
-    auto* staged = editor(screen);
-    if (!staged) return;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
-    fb.drawText(32, 62, "Generation III staged workspace • original source bytes unchanged",
-                Colors::TextDim, TextStyle::Caption);
-    constexpr int viewportY = 112;
-    constexpr int viewportH = 482;
-    constexpr int rowStep = 72;
-    const auto changes = reviewRows(screen);
-    if (changes.empty()) {
-        state.reviewScroll = 0;
-        state.reviewTouchScroll.reset();
-        fb.drawText(50, viewportY, "No pending changes.", Colors::TextDim, TextStyle::Body);
-    } else {
-        constexpr int visible = 7;
-        const int count = static_cast<int>(changes.size());
-        state.reviewScroll = std::clamp(state.reviewScroll, 0, std::max(0, count - visible));
-        const int first = state.reviewScroll;
-        const int drawFirst = std::max(0, first - 1);
-        const int drawLast = std::min(count, first + visible + 1);
-        const int liveOffset = state.reviewTouchScroll.offset();
-        fb.setClipRect(44, viewportY, fb.getWidth() - 88, viewportH);
-        for (int i = drawFirst; i < drawLast; ++i) {
-            const int rowY = viewportY + (i - first) * rowStep + liveOffset;
-            const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawFilledRoundedRect(44, rowY, fb.getWidth() - 88, 62, 10, Colors::Panel);
-            fb.drawText(62, rowY + 10, change.label, Colors::Text, TextStyle::Caption);
-            fb.drawText(62, rowY + 34, change.beforeValue + "  ->  " + change.afterValue,
-                        Colors::TextDim, TextStyle::Caption);
-        }
-        fb.clearClip();
-        SharedScrollbar::drawAndPublish(fb, state.reviewScrollbar, fb.getWidth() - 28, viewportY,
-            SharedScrollbar::kTrackWidth, viewportH,
-            SharedScrollbar::rows(count, visible, state.reviewScroll));
-    }
-    if (state.confirmDiscardAll && !changes.empty()) {
-        drawDiscardAllConfirm(screen, fb, "Generation III");
-    } else if (changes.empty())
-        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
-    else
-        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"X", "Export Copy"},
-                        {"Y", "Discard All Staged"}, {"B", "Back"}});
+    auto* staged=editor(screen);
+    if(!staged)return;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    for(const auto& change:reviewRows(screen))
+        rows.emplace_back(change.label,change.beforeValue+" -> "+change.afterValue);
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(state.reviewScroll),!rows.empty(),"Generation III");
+    if(state.confirmDiscardAll)
+        drawDiscardAllConfirm(screen,fb,"Generation III");
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
