@@ -715,7 +715,7 @@ std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state
         case UX2Mode::StatExpEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
         case UX2Mode::CloneDestination: return "D-pad/Stick: Slot | L/R: Box | A: Stage Clone | B: Cancel";
         case UX2Mode::RemoveConfirm: return "A: Confirm Remove | B: Cancel";
-        case UX2Mode::Review: return "D-pad/Stick: Navigate | A: Export Copy | Y: Discard Staged | B: Back";
+        case UX2Mode::Review: return "L/R: Review Pages | X: Export Copy | Y: Discard All | B: Back";
         case UX2Mode::Provenance: return "B: Back";
         case UX2Mode::Closed: break;
     }
@@ -753,10 +753,10 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::RemoveConfirm:
             drawNavBar(fb, {{"A", "Confirm Remove"}, {"B", "Cancel"}}); return;
         case UX2Mode::Review:
-            if (state.reviewDiscard.confirming) {
-                drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Discard"}}); return;
-            }
-            drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Copy"}, {"Y", "Discard Staged"}, {"B", "Back"}}); return;
+            // The shared Review panel and its Discard All confirmation draw their own footers
+            // (L/R pages, X Export Copy, Y Discard All, B Back / Y Discard All, B Keep Changes).
+            // Painting a second, older footer over them would show A as Export Copy.
+            return;
         case UX2Mode::Closed: return;
     }
 }
@@ -1059,25 +1059,6 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         case UX2Mode::View:
         case UX2Mode::Closed: break;
     }
-    if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
-        // Second step of Discard Staged, drawn over the review list; nothing changes until Y.
-        screen.touchButtons.clear();
-        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-        constexpr int cw = 760, ch = 240;
-        constexpr int cx = (1280 - cw) / 2;
-        constexpr int cy = (672 - ch) / 2;
-        ux2DrawPanel(fb, cx, cy, cw, ch);
-        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(cx + 34, cy + 96,
-                    std::to_string(ux3PendingLines(screen).size()) +
-                        " pending Generation I change(s), Pokemon and Bag, are lost.",
-                    Colors::Text, TextStyle::Body);
-        fb.drawText(cx + 34, cy + 140,
-                    "Export Copy first to keep them. The original .srm is never written.",
-                    Colors::TextDim, TextStyle::Caption);
-    }
-
     if (state.picker != UX2Picker::None) {
         const int pw = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
         const int ph = 520;

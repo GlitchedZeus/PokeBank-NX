@@ -258,38 +258,24 @@ void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint6
         return;
     }
 
-    // Review rows are informational. Touch changes/browses the highlighted row only; it never
-    // aliases A because A exports the complete staged copy rather than acting on one row.
+    // The shared paged Review (round 5): rows are informational, so a tap never selects or acts.
+    // A completed vertical swipe that starts and ends on the panel turns one page, the touch
+    // counterpart of L/R. reviewRow is the page index the shared presenter draws.
     if (legacy.active && legacy.review) {
         auto* editor = stagedEditor(screen);
         if (!editor) return;
-        const int changeCount = static_cast<int>(editor->pendingChanges().size());
-        if (changeCount <= 0) return;
-        constexpr int w = 980, h = 540;
+        const size_t changeCount = editor->pendingChanges().size();
+        constexpr int w = 1100, h = 584; // SharedEditorChrome::drawReviewPanel
         constexpr int x = (1280 - w) / 2;
-        constexpr int y = (672 - h) / 2;
-        const int first = std::clamp(legacy.reviewRow - 4, 0, std::max(0, changeCount - 9));
-        const int last = std::min(changeCount, first + 9);
-        if (touch.justTapped()) {
-            for (int i = first; i < last; ++i) {
-                const int rowY = y + 88 + (i - first) * 45;
-                // Same-target requirement: even a sub-threshold wobble must
-                // not select the neighbouring pending change.
-                if (!pointInRect(touch.startX(), touch.startY(),
-                                 x + 22, rowY, w - 44, 42) ||
-                    !pointInRect(touch.x(), touch.y(),
-                                 x + 22, rowY, w - 44, 42)) continue;
-                legacy.reviewRow = i;
-                break;
-            }
-        }
-        if (touch.justReleased() && touch.dragged() &&
+        constexpr int y = (720 - kNavBarH - h) / 2;
+        if (!sharedSurfaceStateFor(screen).reviewDiscard.confirming && // the confirm is modal
+            touch.justReleased() && touch.dragged() &&
             pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
+            pointInRect(touch.x(), touch.y(), x, y, w, h) &&
             std::abs(touch.deltaY()) >= 24 &&
             std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 45);
-            legacy.reviewRow = std::clamp(
-                legacy.reviewRow + (touch.deltaY() < 0 ? steps : -steps), 0, changeCount - 1);
+            legacy.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(
+                static_cast<size_t>(std::max(0, legacy.reviewRow)), touch.deltaY() < 0 ? 1 : -1, changeCount));
         }
     }
 }

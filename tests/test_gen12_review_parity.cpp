@@ -85,6 +85,13 @@ void gen2Routes() {
     has(sharedDraw,"reviewDiscard.confirming");
     has(sharedDraw,"SharedEditorChrome::drawReviewPanel");
     has(sharedDraw,"SharedEditorChrome::drawReviewDiscardConfirm");
+    // Gen II Review touch: reviewRow is the shared presenter's PAGE. A swipe turns one page; a tap
+    // never writes a row index into it (that jumped pages on hardware).
+    const auto touch = read("src/UI/Gen2HardwareWorkspaceFix.inc");
+    const auto reviewTouch = between(touch, "    // The shared paged Review (round 5)", "\n}\n");
+    has(reviewTouch, "PokeBank::UIModel::SharedReview::move(");
+    has(reviewTouch, "!sharedSurfaceStateFor(screen).reviewDiscard.confirming");
+    lacks(touch, "legacy.reviewRow = i;");
 
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     // The editable (Edit/Create) route, after the item/confirm/move-editor modals.
@@ -112,9 +119,15 @@ void gen1Routes() {
     const auto sharedDraw=between(ux3,"void ux3DrawReview(","void ux3DrawStagedView(");
     has(sharedDraw,"SharedEditorChrome::drawReviewPanel");
     has(sharedDraw,"SharedEditorChrome::drawReviewDiscardConfirm");
+    // The confirmation stays modal on touch (only its own B / Y act) ...
     has(ux3, "} else if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {");
-    has(ux3, "if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {");
-    has(ux3, "drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"Y\", \"Discard\"}}); return;");
+    // ... and only the shared presenter paints Review: no older confirm panel or footer is drawn
+    // over drawReviewPanel / drawReviewDiscardConfirm (round 5, owner Oct 24 "Gen I/II use
+    // outdated, different Review screens").
+    lacks(ux3, "Gen12ReviewDiscard::kTitle");
+    lacks(ux3, "{\"A\", \"Export Copy\"}");
+    const auto navBar = between(ux3, "        case UX2Mode::Review:\n            // The shared Review panel", "case UX2Mode::Closed: return;");
+    lacks(navBar, "drawNavBar(");
 
     // Exit dialog footer: only the dialog's actions while it is open.
     const auto fix = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
