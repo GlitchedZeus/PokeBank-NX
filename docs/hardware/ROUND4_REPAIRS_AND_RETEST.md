@@ -37,6 +37,10 @@ The actual Unown form in Gen II derives from its four DVs; legitimate shiny Unow
 
 **Gen V NEW-14 UI follow-up: owner wants A on Pokémon Language to cycle** Japanese → English → French → Italian → German → Spanish → Korean → Japanese, rather than open the language chooser. Recorded in [#325](https://github.com/GlitchedZeus/PokeBank-NX/issues/325). Implemented read-only `Gen5LanguageCycle::next` helper and directly stage the next native PK5 language on A/touch with named status; source bytes are still protected, Review/Discard/Export remain the only commit routes. Added a focused seven-language cycle and UI-contract test; native PK5 serialization tests already verify accepted IDs and checksums. **Needs final CI and a new audited NRO/hardware retest; not included in candidate c60d4da0.**
 
+## Owner hardware retest — October 23, 2026: Gen V Move picker FAIL (#326)
+
+Pikachu in Black/White/Black 2/White 2 showed all 559 native move IDs rather than legitimate species-specific standard learnsets. Source bug: `Gen5EditorFields::moveChoices()` enumerated 0..559. Now uses the pinned PokeAPI standard BW/B2W2 level, egg, tutor, TM and pre-evolution move bitsets, plus older Gen IV transfer-retained moves and same-generation trade alternatives. Existing unusual event/source moves remain selectable as `Preserved`, not implicitly certified legal; nonlearnable new moves absent. Source data includes 55 Pikachu direct learnset moves for BW and 64 for B2W2 (before transfers). UI status differentiates Learnable/Transfer/Preserved. A focused GCC/Clang host and ASan/UBSan contract is wired to the host test target. **Needs CI and new audited NRO hardware verification. No changes to separate legality PR #314.**
+
 ## Original 37 failures
 
 All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.

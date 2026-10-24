@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5Bag.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Integration/Gen5/Gen5MovePP.h"
+#include "Integration/Gen5/Gen5MoveCompatibility.h"
 #include "Integration/Gen5/Gen5PersonalData.h"
 #include "Integration/Gen5/Gen5PidCoordination.h"
 #include "Integration/Gen5/Gen5Progression.h"
@@ -85,12 +86,14 @@ enum PidRow : int { NatureRow = 6, GenderRow = 7, ShinyRow = 8, AbilityRow = 9, 
 [[nodiscard]] inline std::vector<uint16_t> metLocationChoices() {
     return {NativeMetLocations5.begin(), NativeMetLocations5.end()};
 }
-// Every native BW/B2W2 move ID 0..559 (0 = empty). Valid native moves only:
-// species learnability is NOT evaluated.
-[[nodiscard]] inline std::vector<uint16_t> moveChoices() {
-    std::vector<uint16_t> moves;
-    for (uint16_t move = 0; move <= MaxNativeMove5; ++move) moves.push_back(move);
-    return moves;
+// Species-specific level/egg/tutor/TM and pre-evolution moves for the actual
+// Black/White/B2W2 game, plus valid earlier-generation transfers. Do not
+// silently erase unusual source event moves or certify them as clean.
+[[nodiscard]] inline std::vector<uint16_t> moveChoices(
+    std::string_view exactGameId, uint16_t species, uint8_t form,
+    const std::array<uint16_t,4>& existingSourceMoves) {
+    return Gen5MoveCompatibility::selectableMoves(
+        exactGameId,species,form,existingSourceMoves);
 }
 // National Dex 1..649: every species that exists in BW/B2W2, including the
 // Gen I-IV species that transfer in. No later-generation species.

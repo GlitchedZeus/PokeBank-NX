@@ -424,3 +424,18 @@ $(GEN5_LANGUAGE_CYCLE_TEST): $(GEN5_LANGUAGE_CYCLE_INPUTS)
 $(GEN5_LANGUAGE_CYCLE_SANITIZE): $(GEN5_LANGUAGE_CYCLE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Hardware Round 4: Gen V species-correct Pokémon Move chooser (not all 559).
+GEN5_MOVE_COMPAT_TEST := $(HOST_BUILD)/test_gen5_move_compatibility
+GEN5_MOVE_COMPAT_SANITIZE := $(HOST_BUILD)/test_gen5_move_compatibility_sanitize
+GEN5_MOVE_COMPAT_INPUTS := tests/test_gen5_move_compatibility.cpp include/Integration/Gen5/Gen5MoveCompatibility.h include/Integration/Gen4/Gen4MoveCompatibility.h
+HOST_TESTS += $(GEN5_MOVE_COMPAT_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_MOVE_COMPAT_SANITIZE)
+host-test: $(GEN5_MOVE_COMPAT_TEST)
+host-sanitize: $(GEN5_MOVE_COMPAT_SANITIZE)
+$(GEN5_MOVE_COMPAT_TEST): $(GEN5_MOVE_COMPAT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(GEN5_MOVE_COMPAT_SANITIZE): $(GEN5_MOVE_COMPAT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

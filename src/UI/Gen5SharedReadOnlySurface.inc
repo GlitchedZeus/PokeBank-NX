@@ -587,13 +587,30 @@ struct Gen5Editor {
     static int maxPP(const TrainerViewScreen&, uint16_t move, uint8_t ppUps) {
         return PokeVault::Integration::Gen5::maxPP5(move, ppUps);
     }
-    static std::vector<uint16_t> moveChoices(TrainerViewScreen&, EditorSurface::EditorState&) {
-        return Fields::moveChoices();
+    static std::vector<uint16_t> moveChoices(TrainerViewScreen& screen, EditorSurface::EditorState&) {
+        const auto p = draft(screen).current();
+        return p ? Fields::moveChoices(screen.sourceGameId,p->species(),p->form(),p->moves())
+                 : std::vector<uint16_t>{0};
     }
-    static void moveStatus(TrainerViewScreen&, const EditorSurface::EditorState&, const Record&,
-                           uint16_t move, const char*& status, Color& color) {
-        status = move == 0 ? "-" : "Native";
-        color = move == 0 ? Colors::TextDim : Colors::TextSecondary;
+    static void moveStatus(TrainerViewScreen& screen, const EditorSurface::EditorState&,
+                           const Record& raw, uint16_t move, const char*& status, Color& color) {
+        namespace C = PokeVault::Integration::Gen5MoveCompatibility;
+        const auto current = draft(screen).current();
+        const auto currentMoves = current ? current->moves() : std::array<uint16_t,4>{};
+        const bool existing = std::find(currentMoves.begin(),currentMoves.end(),move) != currentMoves.end();
+        const auto availability = C::classify(screen.sourceGameId,raw.species(),raw.form(),move,existing);
+        status = move==0 ? "-" : "Unknown";
+        color = move==0 ? Colors::TextDim : Colors::Error;
+        if(availability==C::Availability::Direct) {
+            status = move==0 ? "-" : "Learnable";
+            color = move==0 ? Colors::TextDim : Colors::Success;
+        } else if(availability==C::Availability::Transfer) {
+            status = "Transfer";
+            color = Colors::Warning;
+        } else if(availability==C::Availability::Preserved) {
+            status = "Preserved";
+            color = Colors::Warning;
+        }
     }
     // Black/White or Black 2/White 2 for the shared Moves panel and chooser facts.
     static Enums::GameVersion moveGame(const TrainerViewScreen& screen) {
