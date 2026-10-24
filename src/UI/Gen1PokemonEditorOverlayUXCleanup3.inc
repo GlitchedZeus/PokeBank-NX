@@ -10,6 +10,8 @@
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
+#include "Names/ItemNames.h"
+#include "UI/ClassicReviewRows.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen13PickerPaging.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
@@ -418,6 +420,38 @@ std::vector<std::string> ux3PendingLines(TrainerViewScreen& screen) {
     return lines;
 }
 
+// Round 5: the shared Review rows for Gen I, built from the staged editors' own named changes
+// (species / move / item names, Trainer fields, Bag counts) plus the derived shiny appearance,
+// in the shape every generation's shared paged Review uses.
+PokeBank::UIModel::SharedReview::Rows ux3ReviewRows(TrainerViewScreen& screen) {
+    namespace Review = PokeBank::UIModel::ClassicReview;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    auto* trainer = rbyTrainer(screen);
+    auto* e = editor(screen);
+    if (!trainer || !e) return rows;
+    if (const auto original = parse(e->originalBytes(), e->metadata().sourceGame); original && original.save) {
+        const auto& beforeBoxes = original.save->boxes();
+        const auto& afterBoxes = e->view().boxes();
+        for (size_t box = 0; box < std::min(beforeBoxes.size(), afterBoxes.size()); ++box)
+            for (size_t slot = 0; slot < std::min(beforeBoxes[box].slots.size(), afterBoxes[box].slots.size()); ++slot) {
+                const auto& before = beforeBoxes[box].slots[slot];
+                const auto& after = afterBoxes[box].slots[slot];
+                if (!before || !after || ux3IsShiny(*before) == ux3IsShiny(*after)) continue;
+                rows.push_back(Review::row("Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) +
+                                           ": Appearance", ux3IsShiny(*before) ? "Shiny" : "Normal",
+                                           ux3IsShiny(*after) ? "Shiny" : "Normal"));
+            }
+    }
+    for (auto& row : Review::rows(e->pendingChanges())) rows.push_back(std::move(row));
+    if (const auto* inventory = trainer->stagedInventory())
+        for (const auto& change : inventory->pendingChanges())
+            rows.push_back(Review::row(std::string("Bag: ") + ::Names::getItemNameG1(change.itemId),
+                                       std::to_string(change.before), std::to_string(change.after)));
+    if (const auto* fields = trainer->stagedTrainer())
+        for (auto& row : Review::rows(fields->pendingChanges())) rows.push_back(std::move(row));
+    return rows;
+}
+
 std::string ux3MainRowLabel(int row) {
     static constexpr const char* labels[] = {
         "Species", "Nickname", "Level / EXP", "Shiny",
@@ -657,36 +691,6 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
             fb.drawText(cx + 7, cy + 56, "Empty", Colors::TextDim, TextStyle::Caption);
         }
     }
-}
-
-void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto& state = ux2StateFor(screen);
-    const auto lines = ux3PendingLines(screen);
-    fb.drawText(x + 24, y + 18, "Generation I Pending Changes", Colors::Text, TextStyle::Heading);
-    if (lines.empty()) {
-        fb.drawText(x + 28, y + 82, "No staged changes.", Colors::TextDim);
-        return;
-    }
-    const int visible = std::max(1, std::min(UX3Contract::pendingGeometry(lines.size()).visibleRows,
-                                             static_cast<int>(lines.size())));
-    const int count = static_cast<int>(lines.size());
-    state.reviewViewport.ensure(state.reviewRow, count, visible);
-    const int start = state.reviewViewport.firstRow;
-    const int drawFirst = std::max(0, start - 1);
-    const int drawLast = std::min(count, start + visible + 1);
-    const int listTop = y + 64;
-    const int liveOffset = state.reviewScroll.offset();
-    fb.setClipRect(x + 24, listTop, w - 48, h - 108);
-    for (int row = drawFirst; row < drawLast; ++row) {
-        const int rowY = y + 70 + (row - start) * 48 + liveOffset;
-        ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
-                          lines[static_cast<size_t>(row)], row == state.reviewRow);
-        if (rowY + 44 > listTop && rowY < listTop + h - 108)
-            appendClippedTouchButton(screen.touchButtons, 1300 + row,
-                x + 24, rowY, w - 48, 44,
-                x + 24, listTop, w - 48, h - 108);
-    }
-    fb.clearClip();
 }
 
 void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -1051,6 +1055,17 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
+    if (state.mode == UX2Mode::Review) {
+        // Round 5: the ONE shared paged Review presenter (Gen IV Bag Review is the reference),
+        // with its own footer (L/R pages, X Export Copy, Y Discard All, B Back) and the shared
+        // Discard All confirmation over it.
+        SharedEditorChrome::drawReviewPanel(fb, screen.touchButtons, ux3ReviewRows(screen),
+                                            state.reviewPage, hasPending(screen), "Generation I");
+        if (state.reviewDiscard.confirming)
+            SharedEditorChrome::drawReviewDiscardConfirm(fb, screen.touchButtons);
+        return;
+    }
+
     screen.touchButtons.clear();
     int x = 0, y = 0, w = 0, h = 0;
     ux3DialogGeometry(screen, x, y, w, h);
@@ -1072,30 +1087,11 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         case UX2Mode::StatExpEditor: ux2DrawSubEditor(screen, fb, x, y, w, h); break;
         case UX2Mode::CloneDestination: ux3DrawClone(screen, fb, x, y, w, h); break;
         case UX2Mode::RemoveConfirm: ux2DrawRemoveConfirm(fb, x, y, w, h); break;
-        case UX2Mode::Review: ux3DrawReview(screen, fb, x, y, w, h); break;
+        case UX2Mode::Review: break; // drawn by the shared Review presenter above
         case UX2Mode::Provenance: ux2DrawProvenance(screen, fb, x, y, w, h); break;
         case UX2Mode::View:
         case UX2Mode::Closed: break;
     }
-    if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
-        // Second step of Discard Staged, drawn over the review list; nothing changes until Y.
-        screen.touchButtons.clear();
-        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-        constexpr int cw = 760, ch = 240;
-        constexpr int cx = (1280 - cw) / 2;
-        constexpr int cy = (672 - ch) / 2;
-        ux2DrawPanel(fb, cx, cy, cw, ch);
-        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(cx + 34, cy + 96,
-                    std::to_string(ux3PendingLines(screen).size()) +
-                        " pending Generation I change(s), Pokemon and Bag, are lost.",
-                    Colors::Text, TextStyle::Body);
-        fb.drawText(cx + 34, cy + 140,
-                    "Export Copy first to keep them. The original .srm is never written.",
-                    Colors::TextDim, TextStyle::Caption);
-    }
-
     if (state.picker != UX2Picker::None) {
         const int pw = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
         const int ph = 520;

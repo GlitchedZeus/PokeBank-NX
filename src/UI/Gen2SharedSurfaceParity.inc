@@ -131,58 +131,7 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto& legacy = editorOverlayState(screen);
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const auto& changes = editor->pendingChanges();
-    constexpr int w = 980, h = 540;
-    constexpr int x = (1280 - w) / 2;
-    constexpr int y = (672 - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Review Pending Changes", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        std::to_string(changes.size()) + " staged change(s)  •  original source is immutable",
-        Colors::TextDim, TextStyle::Caption);
-    if (changes.empty()) {
-        fb.drawText(x + 30, y + 100, "No pending changes", Colors::TextDim, TextStyle::Body);
-    } else {
-        const int first = std::clamp(legacy.reviewRow - 4, 0, std::max(0, static_cast<int>(changes.size()) - 9));
-        const int last = std::min(static_cast<int>(changes.size()), first + 9);
-        for (int i = first; i < last; ++i) {
-            const int rowY = y + 88 + (i - first) * 45;
-            const bool selected = i == legacy.reviewRow;
-            SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, rowY, w - 44, 42), {selected});  // R2-BUG-012 boxed row
-            const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawText(x + 38, rowY + 10, change.label, selected ? Colors::Text : Colors::TextDim);
-            fb.drawText(x + 350, rowY + 10, change.beforeValue + "  ->  " + change.afterValue,
-                        Colors::Text, TextStyle::Caption);
-        }
-    }
-    if (!legacy.lastExportDirectory.empty())
-        fb.drawText(x + 24, y + h - 44, "Last verified export: " + legacy.lastExportDirectory,
-                    Colors::Success, TextStyle::Caption);
-    if (sharedSurfaceStateFor(screen).reviewDiscard.confirming) {
-        // Second step of Discard Staged; nothing changes until Y. The nav bar is the only touch
-        // target, so a tap maps to exactly the same B/Y as the controller.
-        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 150));
-        constexpr int cw = 760, ch = 240;
-        constexpr int cx = (1280 - cw) / 2;
-        constexpr int cy = (672 - ch) / 2;
-        drawPanelSurface(fb, cx, cy, cw, ch, false, 18);
-        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(cx + 34, cy + 96,
-                    std::to_string(changes.size()) + " pending Gen II edit(s) in this workspace are lost.",
-                    Colors::Text, TextStyle::Body);
-        fb.drawText(cx + 34, cy + 140,
-                    "Export Copy first to keep them. The original save is never written.",
-                    Colors::TextDim, TextStyle::Caption);
-        drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Discard"}});
-        return;
-    }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Export Copy"},
-                    {"X", "Discard Staged"}, {"B", "Back"}});
+    drawSharedReviewSurface(screen, fb); // the shared paged Review presenter (round 5)
 }
 
 void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {

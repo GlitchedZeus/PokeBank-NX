@@ -4,6 +4,7 @@
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
+#include "UI/ClassicReviewRows.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
 
@@ -66,6 +67,7 @@ struct UX2State {
     int cloneSlot = 0;
     std::string lastExportDirectory;
     PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
+    size_t reviewPage = 0; // shared paged Review (SharedReview::kPageSize rows per page)
 };
 
 UX2State& ux2StateFor(const TrainerViewScreen& screen) {
@@ -644,6 +646,10 @@ void ux2HandleSubEditor(TrainerViewScreen& screen, uint64_t down) {
     }
 }
 
+// The Gen I Review rows, defined with the Gen I Review presenter (UX Cleanup3, same TU).
+PokeBank::UIModel::SharedReview::Rows ux3ReviewRows(TrainerViewScreen& screen);
+size_t ux2ReviewRowCount(TrainerViewScreen& screen) { return ux3ReviewRows(screen).size(); }
+
 void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     auto& state = ux2StateFor(screen);
     auto* e = editor(screen);
@@ -735,36 +741,49 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     }
 
     if (state.mode == UX2Mode::Review) {
-        // Discard Staged discards the whole workspace (Pokemon and Bag): Y asks first and only
-        // a second Y in the confirmation discards; B cancels; A cannot export meanwhile.
-        namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
-        const bool y = (down & HidNpadButton_Y) != 0;
-        switch (Discard::step(state.reviewDiscard, y, y, (down & HidNpadButton_B) != 0)) {
-            case Discard::Outcome::NotHandled: break;
-            case Discard::Outcome::AskConfirm:
-            case Discard::Outcome::Swallowed:
-            case Discard::Outcome::Cancelled:
+        // Round 5: the ONE shared paged Review (Gen IV / V). L/R or the D-pad pages, X Export
+        // Copy, Y asks and only a second Y discards the whole workspace (Pokemon, Bag, Trainer),
+        // B keeps the edits / leaves Review. A is inert, as in Gen IV.
+        namespace Review = PokeBank::UIModel::ClassicReview;
+        const size_t count = ux2ReviewRowCount(screen);
+        switch (Review::input(state.reviewDiscard.confirming,
+                              (down & (HidNpadButton_Up | HidNpadButton_Left | HidNpadButton_L)) != 0,
+                              (down & (HidNpadButton_Down | HidNpadButton_Right | HidNpadButton_R)) != 0,
+                              (down & HidNpadButton_X) != 0, (down & HidNpadButton_Y) != 0,
+                              (down & HidNpadButton_B) != 0)) {
+            case Review::Input::None: return;
+            case Review::Input::PagePrevious:
+                state.reviewPage = PokeBank::UIModel::SharedReview::move(state.reviewPage, -1, count);
                 return;
-            case Discard::Outcome::Discard:
+            case Review::Input::PageNext:
+                state.reviewPage = PokeBank::UIModel::SharedReview::move(state.reviewPage, 1, count);
+                return;
+            case Review::Input::AskDiscard:
+                if (hasPending(screen)) state.reviewDiscard.confirming = true;
+                return;
+            case Review::Input::CancelDiscard:
+                state.reviewDiscard.confirming = false;
+                return;
+            case Review::Input::Discard:
+                state.reviewDiscard.confirming = false;
                 discardAll(screen);
                 screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
                 state.reviewRow = 0;
+                state.reviewPage = 0;
                 return;
-        }
-        const auto lines = pendingLines(screen);
-        const int count = static_cast<int>(lines.size());
-        if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
-        if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) {
-            state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
-            state.row = 0;
-            return;
-        }
-        if (down & HidNpadButton_A) {
-            std::string error;
-            const auto path = exportStagedCopy(screen, error);
-            if (path.empty()) screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);
-            else { state.lastExportDirectory = path; screen.postStatus("Edited copy exported; original .srm unchanged", 360); }
+            case Review::Input::Back:
+                state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
+                state.row = 0;
+                state.reviewPage = 0;
+                return;
+            case Review::Input::Export: {
+                if (!hasPending(screen)) return;
+                std::string error;
+                const auto path = exportStagedCopy(screen, error);
+                if (path.empty()) screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);
+                else { state.lastExportDirectory = path; screen.postStatus("Edited copy exported; original .srm unchanged", 360); }
+                return;
+            }
         }
     }
 }
