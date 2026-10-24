@@ -323,9 +323,11 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
     if(!PokeVault::Source::ImmutableSnapshot::safePath(e.recordDir,root,true) ||
        !PokeVault::Source::ImmutableSnapshot::safePath(e.path,root) ||
        listing.sourcePath.starts_with(e.recordDir+"/"))return Refusal::NotAnExportRecord;
-    for(const auto& name:detail::children(e.recordDir))
-        if(!PokeVault::Source::ImmutableSnapshot::safePath(e.recordDir+"/"+name,root))
-            return Refusal::UnexpectedFiles;
+    const auto safeChildren=[&](const std::string& dir) {
+        for(const auto& name:detail::children(dir))
+            if(!PokeVault::Source::ImmutableSnapshot::safePath(dir+"/"+name,root))return false;
+        return true;
+    };
     if(!e.physicalStamp.empty() && e.physicalStamp!=PokeVault::Source::ImmutableSnapshot::fileStamp(e.path))
         return Refusal::Missing;
     const auto lastCopyGuard = [&](const std::string& dir) {
@@ -351,6 +353,9 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
             !detail::plainName(rest.substr(slash + 1)))
             return Refusal::NotAnExportRecord;
         if (!detail::isDir(dir)) return Refusal::Missing;
+        // Validate exact record scope BEFORE enumerating a protected game/root
+        // folder. Every child must still be safe before reading the manifest.
+        if(!safeChildren(dir))return Refusal::UnexpectedFiles;
         const detail::BackupManifest m = detail::readBackupManifest(dir + "/" + detail::kBackupManifestName);
         if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;
         for (const std::string& name : detail::children(dir))
@@ -369,6 +374,7 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
     if (!underGen || dir == listing.sourcePath) return Refusal::NotAnExportRecord;
     if (listing.sourcePath.compare(0, dir.size() + 1, dir + "/") == 0) return Refusal::NotAnExportRecord;
     if (!detail::isDir(dir)) return Refusal::Missing;
+    if(!safeChildren(dir))return Refusal::UnexpectedFiles;
     const detail::Manifest m = detail::readManifest(dir + "/" + detail::kManifestName);
     if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;
     for (const std::string& name : detail::children(dir))

@@ -4,7 +4,28 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
+Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
+
+## October 24 backup deletion boundary checkpoint
+
+- Last remote-verified WIP `55208f4f89f91b928af3e0d3d653bf6d95afb81b`.
+  Clang matrix direct confirmation now explicitly records plain AND sanitizer
+  exits0 with POKEBANK_QA_GEN3_FIXTURE set and detect_leaks=1, all489 cells.
+- Full normal suites progressed through Gen V exports, Language and move forms.
+  Updated Trainer test's old + footer assertion to the newly requested visible
+  Y Review (the old + UI shortcut still works; Hub + remains unchanged).
+- A forged game-directory deletion fixture exposed validation-order drift:
+  now exact record scope is checked before scanning children; child/symlink and
+  manifest protections still run before deletion. ORIGINAL safety assertions were
+  retained. test_emulator_backup_access PASSES including foreign/escape/final-copy
+  refusals, no backup on unchanged open, source bytes and timestamps unchanged.
+  Four backup/carry broken-path controls and repository safety PASS.
+- This header is the only production change since native ba7e9df3's PASS; another
+  WIP native build is requested for it. Full normal/sanitized suites still finish
+  on the frozen source; test-only source guard corrections are ongoing as needed.
+- Do not integrate, bind an old NRO or deliver smoke artifacts. Final #307 push,
+  ONE official candidate, full RomFS/provenance verification and independent audit
+  remain required. No new hardware PASS; historical27/6/4 and S06 NOT TESTED.
 
 ## October 24 full-gate repair checkpoint
 
