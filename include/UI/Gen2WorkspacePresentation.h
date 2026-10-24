@@ -17,13 +17,17 @@ inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=
     if (p.partyRecord && !draft) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
     return G::calculateBattleStats(p.species, p.level, Rules::storedDVs(p), p.statExperience).asArray();
 }
-// The Calculated cell of a VALUES row (HP, Attack, Defense, Speed, Special). Gen II stores ONE
-// Special DV and ONE Special Stat Exp, but its battle stats are separate Special Attack and Special
-// Defense, each calculated from that same pair with its own base stat (pret/pokecrystal
-// engine/pokemon/move_mon.asm CalcMonStats). The Special row therefore shows both real numbers.
+// The Calculated column has a real value for every displayed DV/Stat Exp row.
+// Gen II has one stored Special DV and Stat Exp but TWO derived Special stats:
+// primary Special row = SpA, continuation in the SAME Calculated column = SpD.
+// Neither derived value is a second editable DV or Stat Exp (pret/pokecrystal CalcMonStats).
 inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
     if (row >= 0 && row < 4) return std::to_string(battle[static_cast<std::size_t>(row)]);
-    return {}; // Separate labelled Sp. Atk / Sp. Def cells below; one shared native Special DV.
+    if (row == 4) return "SpA " + std::to_string(battle[4]);
+    return {};
+}
+inline std::string calculatedSpecialDefenseCell(const std::array<uint16_t, 6>& battle) {
+    return std::to_string(battle[5]);
 }
 struct DataRow { std::string label, value; };
 inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {

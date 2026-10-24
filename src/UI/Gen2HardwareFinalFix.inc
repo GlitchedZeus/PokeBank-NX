@@ -197,15 +197,15 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
         const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
         fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2), TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), gen2StatCellColor(4, 2), TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), gen2StatCellColor(4, 2), TextStyle::Caption);
-
-    // Generation II stores exactly one Special DV and one Special Stat Exp value.
-    // Both split battle stats are calculated from that same authentic pair.
-    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    // One real editable Special DV/Stat Exp row. Both computed Special stats remain
+    // in the Calculated column, stacked cleanly without a fake second DV row.
+    // The Special row above already shows SpA via calculatedCell(battle, 4).
+    fb.drawText(x + 18, y + 246, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 282, y + 246,
+                PokeBank::UIModel::Gen2Workspace::calculatedSpecialDefenseCell(battle),
+                gen2StatCellColor(4, 2), TextStyle::Caption);
+    fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
+                Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const bool shinySelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;

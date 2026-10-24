@@ -50,7 +50,8 @@ int main() {
         const uint16_t spd = expectedStat(personal->specialDefense, c.specialDV, c.specialExp, c.level);
         assert(battle[4] == spa && battle[5] == spd && spa != spd);
         const std::string cell = W::calculatedCell(battle, 4);
-        assert(cell.empty()); // independent Sp. Atk / Sp. Def rows replace the cramped combined cell
+        assert(cell == "SpA " + std::to_string(spa)); // Special's Calculated cell is NOT blank.
+        assert(W::calculatedSpecialDefenseCell(battle) == std::to_string(spd));
         for (int row = 0; row < 4; ++row)
             assert(W::calculatedCell(battle, row) == std::to_string(battle[static_cast<std::size_t>(row)]));
         (void)c.game; // the stat formula is the same in Gold, Silver and Crystal
@@ -59,9 +60,10 @@ int main() {
     for (const char* path : {"src/UI/Gen2UnifiedPokemonWorkspace.inc", "src/UI/Gen2HardwareFinalFix.inc"}) {
         const auto src = read(path);
         assert(src.find("Gen2Workspace::calculatedCell(battle, r)") != std::string::npos);
-        assert(src.find("\"Sp. Atk\"") != std::string::npos && src.find("\"Sp. Def\"") != std::string::npos);
-        assert(src.find("std::to_string(battle[4])") != std::string::npos);
-        assert(src.find("std::to_string(battle[5])") != std::string::npos);
+        assert(src.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
+        assert(src.find("\"Sp. Def\"") != std::string::npos);
+        assert(src.find("x + 282, y + 246") != std::string::npos); // same Calculated column
+        assert(src.find("\"Sp. Atk\"") == std::string::npos); // no detached duplicate readout
         assert(src.find(": \"\xE2\x80\x94\";") == std::string::npos);
     }
     std::cout << "Gen II Special: real Special Attack / Special Defense in the Calculated column PASS\n";

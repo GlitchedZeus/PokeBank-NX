@@ -21,6 +21,12 @@ Do **not** promote R2-EMUBACKUP to PASS based on the previous host test; the 37/
 
 **Hardware status:** shared Review parity `AUD-01` **FAIL**; Gen V Review accessibility **FAIL**; expanded Trainer Info feature **NOT IMPLEMENTED/UNVERIFIED**. Prior host tests do not overrule owner's physical test. Preserve all other records and source immutability.
 
+## Owner hardware retest — October 23, 2026: Gen II Special column / Gen IV stat-color FAIL
+
+On the audited `c60d4da0` NRO: **Gen II (Gold/Silver/Crystal) Special Calculated cell was left blank** and SpA/SpD rendered detached below the grid, visually awkward. Owner requests SpA back in the Calculated column, SpD aligned immediately under it, while keeping one true Special DV and Stat Exp. **Gen IV View/Edit STATS labels are arbitrarily green/red according to nature**; user wants neutral stat labels there and colored stat effects only in the Nature picker (Move type/Ability colors retained). Track **[#324](https://github.com/GlitchedZeus/PokeBank-NX/issues/324)**.
+
+Narrow source repair: Gen II helper + both VALUES painters now put `SpA <number>` in the Special Calculated cell and SpD on a second aligned Calculated-column line, without changing native DV/Stat Exp math. Shared STATS painter now uses neutral/selected theme text rather than `NatureStats::statColor`; original Nature picker retains +10%/−10% red/green. Updated Gen II numerical/layout contract and added neutral-label test. **Host CI and owner hardware retest still required; do not mark PASS on current NRO.**
+
 ## Original 37 failures
 
 All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.
