@@ -9,6 +9,12 @@ The original application baseline `58a81207` is preserved. Legality PR #314 and 
 
 Owner hardware baseline stays **70 PASS / 37 FAIL / 3 NOT TESTED**. Every repair below needs the owner to retest the final audited NRO. S06 remains NOT TESTED; no live emulator save was overwritten.
 
+## Owner hardware retest — October 23, 2026: Backup UI FAIL
+
+**Candidate:** audited `c60d4da0` NRO. Owner-provided Switch screenshots confirm manual backup **creation succeeds** for emulator saves, including a timestamped app-owned copy. **R2-EMUBACKUP remains FAIL on real hardware**: emulator Backups uses a hybrid overlay instead of the full-screen PKSE backup picker; pressing A on created backups shows Details instead of opening the selected copy. Native Switch backups use the full-screen picker but show opaque `Edit backup workspace` / `LEGACY UNSCOPED / OWNERSHIP UNKNOWN` labels that obscure date order, and original historical PKSE backups cannot be opened. Track and fix all variants in **[#322](https://github.com/GlitchedZeus/PokeBank-NX/issues/322)**.
+
+Do **not** promote R2-EMUBACKUP to PASS based on the previous host test; the 37/37 code-implemented count is a *prior candidate engineering statement*, not 37 hardware passes. C07 backup deletion and S05 original immutability remain **hardware unverified** until explicitly tested. Keep all previous owner PASS records, and S06 stays NOT TESTED. Historical unscoped backups must stay immutable and undeletable; safe validated browsing must not silently assign profile ownership or overwrite originals.
+
 ## Original 37 failures
 
 All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.
