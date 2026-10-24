@@ -161,7 +161,11 @@ int main() {
     assert(gen1Passive.find("* HP DV derived / read-only") != std::string::npos);
     assert(gen1Passive.find("* one stored Gen I Special stat; split display only") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only") != std::string::npos);
-    assert(gen2Final.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
+    // Owner-approved Gen II Special layout: one DV/Stat Exp, distinct
+    // calculated SpA and SpD in the SAME calculated column.
+    assert(gen2Final.find("Special DV / Stat Exp shared by SpA and SpD") != std::string::npos);
+    assert(gen2Final.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
+    assert(gen2Final.find("x + 282, y + 246") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
     assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
     assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);

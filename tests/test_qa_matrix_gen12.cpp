@@ -831,8 +831,16 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
             c.expect(battle[4] == spa && battle[5] == spd,
                      "SpA/SpD " + std::to_string(battle[4]) + "/" + std::to_string(battle[5]) + " != formula " +
                          std::to_string(spa) + "/" + std::to_string(spd));
+            // The approved hardware layout shows SpA in the normal calculated
+            // Special cell and SpD immediately below in that SAME column.
+            // Neither value is a second DV or Stat Exp input.
             const auto cell = W::calculatedCell(battle, 4);
-            c.expect(cell.empty(), "Special cell still combines split stats: '" + cell + "'");
+            c.expect(cell == "SpA " + std::to_string(spa),
+                     "Calculated Special Attack does not match its own formula: '" + cell + "'");
+            c.expect(W::calculatedSpecialDefenseCell(battle) == std::to_string(spd),
+                     "Calculated Special Defense does not match its own formula");
+            c.expect(cell.find('/') == std::string::npos,
+                     "Calculated Special must not combine SpA/SpD into a cramped slash label");
             for (int r = 0; r < 4; ++r)
                 c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
                          "calculated row " + std::to_string(r));
