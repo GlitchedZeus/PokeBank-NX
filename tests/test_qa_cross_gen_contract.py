@@ -36,6 +36,8 @@ XFAIL: dict[str, str] = {
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
+    # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
+    "CG61-switch-backup-opens-staged-copy": "lane L (P2, #322: wip/l-r5-backup-copy-20261024 767fd4b0)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -2247,6 +2249,73 @@ def contracts(sources: list[Source]) -> list[Result]:
         r.violations = [v for v in r.violations if v.split(":", 1)[0] not in scope]
     res.extend(round4_p2_contracts(sources))
     res.extend(round4_p0_contracts(sources))
+    res.extend(round5_contracts(sources))
+    return res
+
+
+def round5_contracts(sources):
+    """Round 5: gaps in the owner's Oct 24 FAIL items and requests that the lanes confirmed
+    (docs/hardware/OCT24_REPAIRS_AND_RETEST.md). Called from contracts()."""
+    res = []
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def body_of(f, name):
+        return "\n".join(b for _, _, b in function_bodies(f.code, re.compile("^" + re.escape(name) + "$"))) if f else ""
+
+    # ------------------------------------------------------------------------------------------
+    # P2 / #322 (lane L): A on a native Switch backup opens THAT copy in an isolated staged session
+    # (owner: "A opens that specific copy in an isolated staged session"), not a read-only preview and
+    # never the backup folder itself. The backup stays byte-identical: the session is a copy in the exact
+    # profile/game folder, and the listed snapshot must still match after copying.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG61-switch-backup-opens-staged-copy",
+               "Switch Save Backups: A opens a copy of the selected backup in an isolated staged session "
+               "(never a read-only preview, never the backup folder itself) (owner Oct 24 P2, #322)")
+    uic = src("src/UI/UI.cpp")
+    m = re.search(r'"Loading existing backup"', uic.code) if uic else None
+    if not m:
+        r.violations.append("src/UI/UI.cpp: Save Backups open path ('Loading existing backup') not found (update this check)")
+    else:
+        region = uic.code[m.start():m.start() + 6000]
+        nxt = re.search(r"\n\s*bool\s+UIManager::", region)
+        region = region[:nxt.start()] if nxt else region
+        at = uic.code.count("\n", 0, m.start()) + 1
+        if re.search(r"handleTrainerView\s*\([^;]*getSelectedBackupPath\s*\(\s*\)", region):
+            r.violations.append(f"src/UI/UI.cpp:{at}: A on a backup opens the backup folder itself in the editor")
+        if re.search(r"handleTrainerView\s*\([^;]*&\s*historical\b", region) or re.search(r"\bread-only\b", region):
+            r.violations.append(f"src/UI/UI.cpp:{at}: A on a backup opens a read-only historical preview, "
+                                "not an isolated staged session")
+        # The session comes from a helper that copies via WorkingCopy::openBackupSession and re-checks the
+        # listed snapshot; its result (not the backup path) is what the editor opens.
+        helpers = [n for n, _, b in function_definitions(uic.code)
+                   if re.search(r"\bopenBackupSession\s*\(", b) and re.search(r"ImmutableSnapshot::unchanged\s*\(", b)]
+        call = next((re.search(r"(?:const\s+)?(?:std::string|auto)\s+(\w+)\s*=\s*" + re.escape(h) + r"\s*\(", region)
+                     for h in helpers if re.search(r"\b" + re.escape(h) + r"\s*\(", region)), None)
+        if not call:
+            r.violations.append(f"src/UI/UI.cpp:{at}: no copy-into-session step (a helper calling "
+                                "WorkingCopy::openBackupSession and re-checking ImmutableSnapshot::unchanged)")
+        elif not re.search(r"handleTrainerView\s*\([^;]*\b" + re.escape(call.group(1)) + r"\b", region):
+            r.violations.append(f"src/UI/UI.cpp:{at}: the editor is not opened on the copied session")
+    wc = src("include/UI/WorkingCopyRefresh.h")
+    ob = body_of(wc, "openBackupSession")
+    if not ob:
+        r.violations.append("include/UI/WorkingCopyRefresh.h: no openBackupSession")
+    else:
+        for rx, why in ((r"gameDir\s*\+\s*\"/\"\s*\+\s*kBackupSessionName", "the session lives in the exact game folder"),
+                        (r"copyTree\s*\(\s*backupDir\s*,\s*session\s*\)", "the backup is copied INTO the session"),
+                        (r"backupDir\s*==\s*session", "the session itself is never opened as a backup")):
+            if not re.search(rx, ob):
+                r.violations.append(f"include/UI/WorkingCopyRefresh.h: openBackupSession: {why} (missing)")
+    bss = src("src/UI/BackupSelectionScreen.cpp")
+    if bss:
+        for line, lit in bss.literals:
+            if lit == "Open read-only":
+                r.violations.append(f"src/UI/BackupSelectionScreen.cpp:{line}: footer still says A 'Open read-only'")
+        if not re.search(r"\bkBackupSessionName\b", bss.code):
+            r.violations.append("src/UI/BackupSelectionScreen.cpp: the open-backup session folder is listed as a backup")
+    res.append(r)
     return res
 
 
