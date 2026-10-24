@@ -25,7 +25,8 @@ namespace qamatrix {
 enum class Status { Pass, Fail, Known, HardwareOnly, Unsupported };
 
 // Column order of docs/qa/GEN1_5_MATRIX.md.
-inline constexpr std::array<std::string_view, 26> kCells = {
+inline constexpr std::array<std::string_view, 27> kCells = {
+    "backup-session", // exact historical file -> staged edit -> verified separate export -> Discard
     "discovery",      // the version's production discovery / inspection accepts the synthetic save
     "linking",        // LegacySourceBindings assignment round-trips and resolves to the same file
     "provider",       // SaveProviderIdentity / provider label for the source

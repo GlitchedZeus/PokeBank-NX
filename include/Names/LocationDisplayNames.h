@@ -16,8 +16,27 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <optional>
 
 namespace Names {
+
+// Pinned PKHeX 6042efa241a9925ce57e645329ea7f976deabdd3:
+// text_hgss_03000_en.txt entries 61..71 and text_bw2_40000_en.txt 74..84.
+// These are native year markers, never proof of a particular distribution.
+inline std::optional<unsigned> metLocationEventYear(uint8_t origin,uint16_t location) {
+    const bool gen4=origin==7 || origin==8 || origin==10 || origin==11 || origin==12;
+    if(gen4 && location>=3061 && location<=3071)return 2006u+location-3061u;
+    if(origin>=20 && origin<=23 && location>=40074 && location<=40084)return 2010u+location-40074u;
+    return std::nullopt;
+}
+inline std::string metLocationEventEvidence(uint8_t origin,uint16_t location) {
+    if(const auto year=metLocationEventYear(origin,location))
+        return std::to_string(*year)+" native event marker; distribution and exact dates unverified";
+    const auto* raw=getMetLocationName(origin,location);
+    if(raw && std::string_view(raw).find("Event")!=std::string_view::npos)
+        return "Event-named native location; distribution and period unknown";
+    return {};
+}
 
 inline std::string stripLocationSourceTags(std::string_view raw) {
     std::string name(raw);
@@ -46,6 +65,8 @@ inline std::string getMetLocationDisplayName(uint8_t originVersion, uint16_t loc
     if (locationId == 0) return "None";   // every generation's "no location" (PKHeX dash sentinel)
     const char* raw = getMetLocationName(originVersion, locationId);
     if (!raw || !*raw) return "Unknown location";
+    if(const auto year=metLocationEventYear(originVersion,locationId))
+        return "Pokémon Event "+std::to_string(*year);
     // Gen V's table carries placeholder glyphs (U+EFxx) for some special entries, and PKHeX keeps
     // the game's text-variable escapes ("\xf000...'s ...", a name the game builds from save data)
     // verbatim. Neither is a place name the player would recognise, so neither is shown.

@@ -399,6 +399,12 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     save->metadata_.rtcFooterSize = footerSize;
 
     save->trainer_.trainerId = readBE16(payload, l.tid);
+    // PKHeX SAV2Offsets.JohtoBadges: little-endian Johto + Kanto masks.
+    const size_t badgesOffset=l.region==RegionLayout::Japanese?
+        (l.family==VersionFamily::Crystal?0x23C7:0x23C5):
+        (l.family==VersionFamily::Crystal?0x23E5:0x23E4);
+    save->trainer_.badges=static_cast<uint16_t>(payload[badgesOffset]|
+        (static_cast<uint16_t>(payload[badgesOffset+1])<<8));
     // PKHeX 6042efa241a9 SAV2Offsets / SAV2: big-endian hours, then minute/second bytes.
     const size_t clockOffset=l.region==RegionLayout::Japanese?0x2034:
         l.family==VersionFamily::Crystal?0x2052:0x2053;

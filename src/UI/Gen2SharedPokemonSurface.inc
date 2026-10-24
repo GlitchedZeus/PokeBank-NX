@@ -4,8 +4,6 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
-#include "UI/ClassicReviewRows.h"
-#include "UI/SharedEditorChrome.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -20,7 +18,6 @@ struct SharedSurfaceState {
     bool provenanceActive = false;
     int cloneBox = 0;
     PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
-    size_t reviewPage = 0; // shared paged Review (SharedReview::kPageSize rows per page)
 };
 
 SharedSurfaceState& sharedSurfaceStateFor(const TrainerViewScreen& screen) {
@@ -257,67 +254,60 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (!legacy.active || !legacy.review) return false;
     auto* editor = stagedEditor(screen);
     if (!editor) return true;
-    // Round 5: the ONE shared paged Review (Gen IV / V): L/R or the D-pad pages, X Export Copy,
-    // Y asks and only a second Y discards (B keeps the edits), B Back.
-    auto& shared = sharedSurfaceStateFor(screen);
+    // Discard Staged is two explicit steps: X asks, only Y in the confirmation discards.
+    namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
+    switch (Discard::step(sharedSurfaceStateFor(screen).reviewDiscard,
+                          (down & HidNpadButton_Y) != 0, (down & HidNpadButton_Y) != 0,
+                          (down & HidNpadButton_B) != 0)) {
+        case Discard::Outcome::NotHandled:
+            break;
+        case Discard::Outcome::AskConfirm:
+        case Discard::Outcome::Cancelled:
+            screen.controllerNavigation.reset();
+            return true;
+        case Discard::Outcome::Swallowed:
+            return true;
+        case Discard::Outcome::Discard: {
+            editor->discard();
+            std::string refreshError;
+            gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
+            legacy.review = false;
+            legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+            legacy.active = legacy.pokemonActions;
+            legacy.pokemonRow = 0;
+            screen.controllerNavigation.reset();
+            screen.postStatus("All staged Gen II changes discarded", 300);
+            return true;
+        }
+    }
+    const auto& changes = editor->pendingChanges();
+    const int count = std::max(1, static_cast<int>(changes.size()));
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
-    const auto closeReview = [&] {
+    namespace Review=PokeBank::UIModel::SharedReview;
+    if (nav & (HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))
+        legacy.reviewRow=static_cast<int>(Review::move(legacy.reviewRow,-1,count));
+    if (nav & (HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R))
+        legacy.reviewRow=static_cast<int>(Review::move(legacy.reviewRow,1,count));
+    if (down & HidNpadButton_B) {
         legacy.review = false;
         legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
-        shared.reviewPage = 0;
         screen.controllerNavigation.reset();
-    };
-    namespace Review = PokeBank::UIModel::ClassicReview;
-    const size_t count = editor->pendingChanges().size();
-    switch (Review::input(shared.reviewDiscard.confirming,
-                          (nav & (HidNpadButton_Up | HidNpadButton_Left)) || (down & HidNpadButton_L),
-                          (nav & (HidNpadButton_Down | HidNpadButton_Right)) || (down & HidNpadButton_R),
-                          (down & HidNpadButton_X) != 0, (down & HidNpadButton_Y) != 0,
-                          (down & HidNpadButton_B) != 0)) {
-        case Review::Input::None:
-            return true;
-        case Review::Input::PagePrevious:
-            shared.reviewPage = PokeBank::UIModel::SharedReview::move(shared.reviewPage, -1, count);
-            return true;
-        case Review::Input::PageNext:
-            shared.reviewPage = PokeBank::UIModel::SharedReview::move(shared.reviewPage, 1, count);
-            return true;
-        case Review::Input::AskDiscard:
-            if (editor->hasPendingChanges()) shared.reviewDiscard.confirming = true;
-            screen.controllerNavigation.reset();
-            return true;
-        case Review::Input::CancelDiscard:
-            shared.reviewDiscard.confirming = false;
-            screen.controllerNavigation.reset();
-            return true;
-        case Review::Input::Discard: {
-            shared.reviewDiscard.confirming = false;
-            editor->discard();
-            std::string refreshError;
-            gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
-            closeReview();
-            screen.postStatus("All staged Gen II changes discarded", 300);
-            return true;
+        return true;
+    }
+    if (down & HidNpadButton_X) {
+        std::string error;
+        const std::string directory = exportStagedCopy(screen, *editor, error);
+        if (directory.empty())
+            screen.postStatus(error.empty() ? "Verified staged export failed" : error, 360);
+        else {
+            legacy.lastExportDirectory = directory;
+            screen.postStatus("Verified staged copy exported: " + directory, 360);
         }
-        case Review::Input::Back:
-            closeReview();
-            return true;
-        case Review::Input::Export: {
-            if (!editor->hasPendingChanges()) return true;
-            std::string error;
-            const std::string directory = exportStagedCopy(screen, *editor, error);
-            if (directory.empty())
-                screen.postStatus(error.empty() ? "Verified staged export failed" : error, 360);
-            else {
-                legacy.lastExportDirectory = directory;
-                screen.postStatus("Verified staged copy exported: " + directory, 360);
-            }
-            return true;
-        }
+        return true;
     }
     return true;
 }
@@ -402,18 +392,16 @@ void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawNavBar(fb, {{"L/R", "Box"}, {"A", "Stage Clone"}, {"B", "Cancel"}});
 }
 
-// Round 5: the ONE shared paged Review presenter (Gen IV Bag Review is the reference): same
-// panel, 4 rows per page, L/R pages, X Export Copy, Y Discard All with the shared confirmation.
-// Rows are the staged editor's own named changes (species, moves, items, Trainer, Bag).
 void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const auto& shared = sharedSurfaceStateFor(screen);
-    SharedEditorChrome::drawReviewPanel(fb, screen.touchButtons,
-        PokeBank::UIModel::ClassicReview::rows(editor->pendingChanges()), shared.reviewPage,
-        editor->hasPendingChanges(), "Generation II");
-    if (shared.reviewDiscard.confirming)
-        SharedEditorChrome::drawReviewDiscardConfirm(fb, screen.touchButtons);
+    auto* editor=stagedEditor(screen);
+    if(!editor)return;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    for(const auto& change:editor->pendingChanges())
+        rows.emplace_back(change.label,change.beforeValue+" -> "+change.afterValue);
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(editorOverlayState(screen).reviewRow),editor->hasPendingChanges(),"Generation II");
+    if(sharedSurfaceStateFor(screen).reviewDiscard.confirming)
+        SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h,

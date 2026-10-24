@@ -10,6 +10,8 @@
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
+#include "UI/ClassicStagedExit.h"
+#include "UI/ClassicTrainerSession.h"
 #include "Integration/Gen5/Gen5HubRouting.h"
 #include "Integration/Gen5/Gen5DisplayStats.h"
 #include "Integration/Gen5/Gen5EditorFields.h"
@@ -607,6 +609,9 @@ struct Gen5Editor {
         } else if(availability==C::Availability::Transfer) {
             status = "Transfer";
             color = Colors::Warning;
+        } else if(availability==C::Availability::FormHistory) {
+            status = "Prior form";
+            color = Colors::Warning;
         } else if(availability==C::Availability::Preserved) {
             status = "Preserved";
             color = Colors::Warning;
@@ -1133,7 +1138,8 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     }
     if(keys&HidNpadButton_Up)editor.moveRow(-1);
     if(keys&HidNpadButton_Down)editor.moveRow(1);
-    if(keys&HidNpadButton_Plus) {
+    if(keys&(HidNpadButton_Plus|HidNpadButton_Y) ||
+       tap==PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId) {
         if(!state.openReviewFromBrowse(ws))
             screen.postStatus("No staged Gen V changes to review",220);
         screen.controllerNavigation.reset();
@@ -1292,6 +1298,10 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(const auto t=ws.trainerPresentation())
         fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
                     "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
+    const int reviewX=cardX+cardW-240,reviewY=y+h-54;
+    drawGlyphButton(fb,reviewX,reviewY,240,44,"Y","Review Changes");
+    screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
+        reviewX,reviewY,240,44});
     std::vector<ControllerHint> hints;
     for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);
@@ -1354,6 +1364,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     // Loaded-game hub (same as Gen I-IV). The base hub keeps cursor/focus and
     // help; Gen V intercepts only activation, Exit and Review so that the
     // inherited Bank/Storage and source writers stay unreachable.
+    if(state.surface()==Surface::Browse && (screen.helpOverlayActive || (down&HidNpadButton_Minus)))
+        return false;
     if(state.surface()==Surface::Browse && !screen.detailViewActive) {
         if(screen.helpOverlayActive)return false;
         namespace G=PokeVault::Integration::Gen5;
@@ -1612,13 +1624,19 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 }
             }
             return true;
-        case Surface::ConfirmExit:
-            if(keys&HidNpadButton_B)(void)state.back();
-            else if(keys&HidNpadButton_X)state.reviewFromExit(staged);
-            else if(keys&HidNpadButton_Y) {
-                if(state.confirmDiscardAndExit(staged))screen.goBack=true;
-            }
+        case Surface::ConfirmExit: {
+            namespace Exit=PokeBank::UIModel::ClassicStagedExit;
+            const auto action=Exit::choose(keys&HidNpadButton_A,keys&HidNpadButton_B,
+                keys&HidNpadButton_X,keys&HidNpadButton_Y,tap);
+            if(action==Exit::Action::ContinueEditing)(void)state.back();
+            else if(action==Exit::Action::Review)state.reviewFromExit(staged);
+            else if(action==Exit::Action::ExportCopy) {
+                state.reviewFromExit(staged);
+                (void)state.requestExport(staged);
+            } else if(action==Exit::Action::DiscardExit && state.confirmDiscardAndExit(staged))
+                screen.goBack=true;
             return true;
+        }
         case Surface::CloneDestination:
             state.cancelBoxAction(); // only transient while the keypads are open
             return true;
@@ -1874,6 +1892,8 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
         rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
         rows.push_back({"Origin game",Enums::getOriginGameName(origin)});
         rows.push_back({"Met location",metLocationText5(origin,p->metLocation())});
+        if(const auto event=Names::metLocationEventEvidence(origin,p->metLocation());!event.empty())
+            rows.push_back({"Event provenance",event});
         rows.push_back({"Met level",std::to_string(p->metLevel())});
         rows.push_back({"Met date (stored)",(date.month==0 && date.day==0)?std::string("Not recorded"):std::to_string(date.year)+"-"+std::to_string(date.month)+"-"+std::to_string(date.day)});
         rows.push_back({"Egg / fateful",std::string(p->egg()?"Unhatched":"Not egg")+" / "+(p->fatefulEncounter()?"Fateful":"Not fateful")});
@@ -1969,6 +1989,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     auto& trainer=nativeTrainer(screen);
     auto& state=trainer.sharedScreen();
     const auto& staged=trainer.stagedPokemon();
+    if(screen.helpOverlayActive){screen.drawGSCOverlay(fb);return true;}
     // The inherited modal unconditionally invokes an unsupported Gen V
     // legality analyzer; the shared Gen V adapter never opens that modal.
     screen.details.active=false;
@@ -2006,9 +2027,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
             return true;
         case Surface::ConfirmExit:
-            drawDecision(screen,fb,"Staged Changes Remain In Memory",
-                "Exit discards in-memory edits. Exported working copies remain safe.",
-                {{"Y","Discard & Exit"},{"X","Review"},{"B","Continue"}});
+            SharedEditorChrome::drawStagedExitPanel(fb,screen.touchButtons);
             return true;
         case Surface::Browse:break;
     }

@@ -4,7 +4,291 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
+Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
+
+## October 24 exact candidate binding — final CI required
+
+- Application code `8804f8f819a0da34c5d7b983a92bfb3a390eff16`, tree
+  `66c321b13ce734239271ff0b9e924ca43cdaf92f`. Official build40099575742 PASS.
+- Selected artifact12562103597 / `PokeBank-NX-Gen1-5-Candidate-8804f8f8.nro`:
+  176783025bytes, SHA256 `5bbc090e186b624dcad8a9fcbc6c87a087254b6e737d157c3616309878536085`.
+  Downloaded original artifact, validated GitHub run/path/head/success/artifact records,
+  single NRO, BUILD_IDENTITY, SHA256SUMS, embedded commit and exact source tree.
+  Local NRO AUDIT:PASS. RomFS PASS4267files/156.6MiB/digestbc09c152ac4232a2.
+- Last remote WIP `f3bbd43f4cbcc57a64b181e813e1163b6c312af9` is ONLY tests/docs
+  after the candidate. It corrects the stale X Delete polish assertion without
+  weakening protections. This new commit is DOCS ONLY and binds all8 exact fields
+  in CANDIDATE_UNDER_AUDIT.env. Application code is unchanged after8804f8f8.
+- Push this binding forward to307/WIP after checking both remote heads. Require
+  independent QA-F9 NRO AUDIT:PASS and ALL final-head CI green before reporting
+  Integrated or delivering. Select ONLY the bound8804f8f8artifact; automatic later
+  builds are CI outputs, not an additional hardware candidate.
+- Full local GCC/Clang suites202 normal+202 sanitizer each, both489-cell QA matrices,
+  owner/candidate/touch/assets/safety and native smoke all PASS. Additional local
+  qa-tools and GitHub gates are finishing; see project outputs/oct24-repairs.
+- Exact file list/checklist mapping/limits/retest: docs/hardware/OCT24_REPAIRS_AND_RETEST.md.
+  NOT DEVICE TESTED. Historical27PASS/6FAIL/4unmarked; S06 NOT TESTED. PR314/main untouched.
+
+## October 24 official build and CI source-guard checkpoint
+
+- Verified BOTH application307 and WIP remotes at `8804f8f819a0da34c5d7b983a92bfb3a390eff16`;
+  tree `66c321b13ce734239271ff0b9e924ca43cdaf92f`. Existing draft/base preserved.
+- Official integrated build [40099575742](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742)
+  is compiling this exact code. Select ONLY its8804f8f8artifact after success; smoke artifacts
+  are not deliverables. Independent audit still has the old historical binding and correctly
+  rejects it until the replacement is built and verified.
+- GCC CI found an additional stale polish assertion BEFORE its build: expected X Delete
+  footer from the older browser. Source already uses the owner's Y-delete policy. Guard now
+  requires the shared current-source footer, colored owned Open/Y Delete/Back, unknown-owner
+  Open/Back with no Delete, red Y-only decision and covered-footer touch blocking. All other
+  polish assertions retained. This test and recovery/species/font/authority pre-build checks PASS.
+- This checkpoint changes tests/docs ONLY; application8804f8f8remains the candidate identity.
+  Hold application push until the official build succeeds; then verify bytes/RomFS and add
+  the required docs-only binding commit. Final CI must rerun and pass on that binding head.
+- Full qa-tools gate is running locally as additional CI parity verification. All202 normal
+  and202 sanitizer tests for EACH compiler and both489-cell matrices already PASS.
+- NOT DEVICE TESTED; historical27/6/4 unchanged; S06 NOT TESTED. PR314/main untouched.
+
+## October 24 completed repair gate — forwarding to PR307
+
+- Final production WIP is remote-verified `52053c3b38904aac6cbaa4abe05b888fca731405`.
+  Native smoke run [40075492367](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40075492367) PASS, including packaged RomFS.
+- ALL full frozen-source gates PASS: GCC and Clang each202 normal binaries and202
+  ASan/UBSan binaries with detect_leaks=1. The stale Clang Trainer binary was rebuilt
+  from the correct Y Review source; no assertion was weakened. Both compilers' QA
+  contracts/matrix plain+sanitizer PASS489cells/0problems, all18 export paths,
+  20 archived sessions plus explicit differing internal Gen V copy choices.
+- Candidate contracts0failing, owner70checks/196guards,26shared+4backup mutation
+  controls, touch, PNG/assets, repository safety and diff-check PASS.
+- Detailed file list, checklist-ID mapping, commands/results, limitations and
+  Switch retest are in `docs/hardware/OCT24_REPAIRS_AND_RETEST.md`.
+- Starting/latest application remote is still92f956120019673733bd8d65cd65ab33c46cc237;
+  this finished checkpoint will fast-forward the existing draft PR307 branch.
+  PR314 and main remain untouched. Recheck both remotes immediately before push.
+- REQUIRED NEXT: official integrated-candidate workflow on the new307head, download
+  ONE selected NRO, verify exact SHA/size/tree/RomFS, docs-only candidate binding,
+  independent QA-F9 NRO AUDIT:PASS and all final head CI green. Do not deliver smoke
+  artifacts. NOT DEVICE TESTED; historical27/6/4 and S06 NOT TESTED remain unchanged.
+
+## October 24 compact Ability text repair — final production update
+
+- Last remote WIP `8d482845c6da778ec0d29fdd81b3599294f5daff` (native smoke40074802787).
+- Full native-name geometry found REAL long-effect pressure in the narrowed
+  Ability window. New SharedAbilityPicker uses the same620px frame with60px rows:
+  name above FULL short effect, content-driven height (3 choices280px). Both
+  Gen III and the shared IV/V surface read the SAME geometry for draw/touch/scroll.
+- Actual renderer regression now checks every ability1..164 across generations,
+  including Hidden labels: exact full name/effect (NO ellipsis), horizontal and
+  vertical containment, no line overlap, unchanged drawback colors and hit geometry.
+  Pinned Nunito font SHA verified from primary source; hhea1000/1011/-353/0 gives
+  actual Body28 / Caption24 line boxes. Normal +ASan/UBSan/leaks1 tests PASS.
+- Nature picker source tests follow the new choiceHeight variable and still
+  require the Nature-specific row/outline and scrollbar gutter. Direct/app-wide
+  touch tests PASS and candidate contracts0 failures on this source.
+- The old blocking Held Item prompt test now requires actual docked helper,
+  live folded filter, native query/reset, rendering and controller+touch wiring;
+  original search/sort/native-ID behavior tests remain intact.
+- Full normal and sanitizer gates need their final rerun on this frozen source
+  (old already-compiled sanitizer binaries still expected former +/42px paths).
+  QA matrix remains489 with both compiler/plain/sanitized confirmations.
+- No official candidate yet. After all gates, integrate forward to307, build ONE
+  exact-head official NRO, verify/bind/audit. Historical27/6/4 unchanged; S06 NOT TESTED.
+
+## October 24 backup deletion boundary checkpoint
+
+- Last remote-verified WIP `55208f4f89f91b928af3e0d3d653bf6d95afb81b`.
+  Clang matrix direct confirmation now explicitly records plain AND sanitizer
+  exits0 with POKEBANK_QA_GEN3_FIXTURE set and detect_leaks=1, all489 cells.
+- Full normal suites progressed through Gen V exports, Language and move forms.
+  Updated Trainer test's old + footer assertion to the newly requested visible
+  Y Review (the old + UI shortcut still works; Hub + remains unchanged).
+- A forged game-directory deletion fixture exposed validation-order drift:
+  now exact record scope is checked before scanning children; child/symlink and
+  manifest protections still run before deletion. ORIGINAL safety assertions were
+  retained. test_emulator_backup_access PASSES including foreign/escape/final-copy
+  refusals, no backup on unchanged open, source bytes and timestamps unchanged.
+  Four backup/carry broken-path controls and repository safety PASS.
+- This header is the only production change since native ba7e9df3's PASS; another
+  WIP native build is requested for it. Full normal/sanitized suites still finish
+  on the frozen source; test-only source guard corrections are ongoing as needed.
+- Do not integrate, bind an old NRO or deliver smoke artifacts. Final #307 push,
+  ONE official candidate, full RomFS/provenance verification and independent audit
+  remain required. No new hardware PASS; historical27/6/4 and S06 NOT TESTED.
+
+## October 24 full-gate repair checkpoint
+
+- Remote WIP `ba7e9df3cacfae67125d0dee31a9bc5a2d15764a` PASSED native
+  compile/link/packaged RomFS run40073455301. Production is frozen since that SHA.
+- GCC and Clang QA contracts +489-cell matrix passed (18 C1-C6 export paths,
+  20 exact archived sessions and explicit differing internal Gen V copy choices).
+  GCC final leak checks1 passed; Clang direct confirmation reruns both variants
+  with the required POKEBANK_QA_GEN3_FIXTURE environment to record both summaries.
+- Full normal gates found stale source assertions: old Trainer-card touch count
+  rejected the new Review button; Gen II/III old local Review painter counts no
+  longer followed shared Review/Discard. Updated to require the real shared paths,
+  retain boxed Clone cells, locked-row no-touch and Y/B confirmation protections.
+- Fresh sanitizer builds exposed a missing 3-argument getIconSprite overload in
+  the ISOLATED host renderer mock. Added its no-assets backend stub; production
+  SpriteManager is unchanged. Both full sanitizer gates resumed with leaks1.
+- Safari Create cross-product now explicitly includes native Hyper Potion21,
+  asserting its native label as well as Safari5. All5 held choices x12 balls x5
+  Gen III titles are covered. This is a test extension, not another production change.
+- Shared Gen IV hardware surface guard now follows both normal and docked search
+  footers; targeted run passes. Full normal suites rerun; sanitizer suites compile.
+- Do not integrate until ALL full gates finish green. Then preserve remote updates,
+  push #307, build ONE official exact-head NRO, verify/bind/audit it, finish all CI.
+  Report remains NOT DEVICE TESTED; historical27/6/4 and S06 NOT TESTED unchanged.
+
+## October 24 validation checkpoint — production freeze
+
+- Remote WIP verified at `1716f7f7f0441b9e0f875046828ea88308b04ac1`.
+  Native smoke run 40073165857 is compiling it. #307 remains at92f95612.
+- Trainer informational fields now use the EXISTING shared ReadOnly gold token,
+  with an explicit card hint; no fake gender/time writer or selectable locked row.
+- Gen V UI source guard now follows classify/formAvailable/formRow/priorForm;
+  the actual new chooser covers these paths in behavioral tests. Touch viewport
+  guards now follow two-column docked search width, retaining clipped hitbox checks.
+- Source candidate guards are at0 failures. Owner regression70/196 passes;
+  native PNG and assets/workflow regressions pass. Gen II DV reroll still preserves
+  shiny/gender/Unown. Compact620 menu real-font geometry and inline Gen V Language pass.
+- Full GCC/Clang normal + fresh-directory sanitizer suites and both QA matrices
+  are running. Logs and resume state: project outputs/oct24-repairs. No hardware
+  result changed. Do not integrate until all required gates pass, then build,
+  verify, docs-bind and independently audit ONE official replacement candidate.
+
+## October 24 form-aware compatibility and validation checkpoint
+
+- Last remote WIP `18b76be5c7393c1f963d16ef1979f4d0a2892106` PASSED native
+  build 40072465759 (compile/link/complete RomFS). Not the final hardware NRO.
+- New Gen V form data covers 24 native form rows and all 23 multi-form species;
+  BW versus B2W2 availability follows pinned PKHeX personal tables. Wormadam
+  cloak, Rotom appliance and White/Black Kyurem are genuinely distinct. Added
+  prior-form labels for retained Deoxys/Shaymin/Giratina moves, correct BW Snarl
+  TM95 unavailability, and Smeargle's real Sketch exception. Existing unknown
+  moves remain Preserved, never certified legal. Reproducible generator + exact
+  hashes in docs/data/gen5-move-compatibility-sources.json.
+- Focused form, docked controller/touch/search/sort/no-match, Help/event-year
+  tests PASS normal AND ASan/UBSan with detect_leaks=1. Pikachu remains 55 BW /
+  64 B2W2 direct moves. Shared candidate contracts report 0 failing; 26 real
+  broken-path mutation controls PASS. Owner gate PASS all 70 Round 3 /196 guards.
+  Old 900px pin now follows the OWNER's October24 compact620 request; no old
+  hardware status is rewritten or inferred for these new dimensions.
+- GCC QA contracts + all489 matrix cells passed after badge/backup changes.
+  Rerun with final form data and leak checks enabled is in progress. Expanded
+  backup tests explicitly distinguish the two differing native Gen V copies;
+  UI uses existing glyph buttons to choose Primary / Backup / Cancel, with no
+  live-source fallback or assignment changes. Exact file is rechecked afterward.
+- Full GCC and Clang host builds are running from new campaign build directories.
+  Full sanitizer variants, final native build, #307 integration, exact-head ONE
+  official NRO + docs binding + independent audit are still required.
+- Earlier generations' unsupported Gender/Play Time writers remain read-only.
+  Native Switch historical previews remain immutable/read-only; Gen I-V emulator
+  archives have full existing staged Review/Discard/Export. S06 NOT TESTED.
+
+## October 24 Trainer / picker / touch checkpoint — WIP
+
+- Pushed checkpoint before these edits: `80377153dc2e5019c727e2bde441f3a6a8fae466`.
+  Its native build 40070164451 PASSED compile/link/assets/RomFS. #307 still starts
+  at 92f95612; no application integration or replacement hardware artifact yet.
+- Implemented native badge reads/presentation across Gen I-V, including 16 Johto+
+  Kanto badges for Gen II/HGSS; source-pinned PKHeX offsets. Name/Money stay staged.
+  Unsupported older Gender/Time writers remain clearly read-only; no invented Gen I Gender.
+- Implemented 620px Location/Ability geometry, shared docked Held Item search using
+  Species keyboard + two-column results and artwork, descriptive classic Help,
+  IV/V detail-tap viewport activation, and honest native event-year labels/evidence.
+- WORK IN PROGRESS: docked search needs behavioral tests + native compilation;
+  CG40 must follow the new per-generation shared helper and retain negative controls.
+  Current candidate guard also flags one old-style read-only Gender label; fix it
+  through shared field-state presentation. Full QA matrix (489 cells) currently building;
+  full normal/sanitized host suites must rerun on frozen source with leak checks outside ptrace.
+- Next: finish Gen V form-specific move pools from pinned PokeAPI CSVs downloaded
+  at /tmp/oct24-pokeapi; don't ignore form. Add targeted behavior regressions, run
+  full gates, integrate forward to #307, then ONE official NRO + docs binding + audit.
+- Historical hardware remains exactly 27 PASS / 6 FAIL / 4 unmarked; S06 NOT TESTED.
+
+## October 24 backup-browser repair checkpoint — WIP, not yet integrated
+
+- Starting #307 remains `92f956120019673733bd8d65cd65ab33c46cc237`. Review WIP
+  f0150dd6 passed unfiltered native build 40068229858 / job 120795867730,
+  including packaged RomFS. Held-item milestone 7130bff3 is pushed/verified.
+- Gen III Safari Create tests now PASS normal AND ASan/UBSan/leak detection on all
+  five titles. LeakSanitizer must run outside sandbox tracing (ptrace prevents it);
+  no sanitizer check was disabled. This is host evidence, not a hardware result.
+- New backup work: fullscreen emulator history with the same compact boxed rows as
+  native history; timestamp-first native/legacy labels, newest-first mixed copies;
+  exact selected-file opens through existing Gen I-V read-only Trainer bridges.
+  No profile/live-source binding changes and no fallback to the current original.
+  Recoverable archives remain visible when their live source/assignment is absent;
+  unassigned recovery history cannot Create/Browse/Delete or claim profile ownership.
+- Physical snapshots reject stale/replaced files, traversal, symlinks, oversized or
+  partial reads. Manifest/game/source/path are rechecked at A. Native legacy folders
+  remain ownership-unknown and non-deletable; native historical opens are validated,
+  immutable READ-ONLY previews (native Switch staged editing/export from those previews
+  is not added). Gen I-V emulator backups retain full staged Review/Discard/Export Copy.
+- Pure snapshot tests PASS normal + ASan/UBSan/leak detection: duplicate chronological
+  dates, source disappearance, stale files/manifests, directory changes, traversal/links.
+  Native backup deletion retains Y confirmation, protects legacy/unknown ownership,
+  and now keeps a final owned snapshot. Original source trees are never deletion targets.
+- Expanded QA matrix adds one real backup-session cell for EACH of all 20 game titles:
+  open exact archive -> stage native Money -> verified separate export -> strict
+  reparse -> Discard -> unchanged archive bytes/mtime. GCC build/run is in progress
+  (project output gcc-qa-matrix.log, exec session 16855); not yet claimed PASS.
+- Focused shared-editor, backup layout and namespace tests pass after updating their
+  obsolete Review/layout assertions to the newly approved shared paths. Full host
+  sweep earlier stopped on another retired Discard painter assertion; it now guards
+  the common confirmation. Full suites must rerun on the frozen final source.
+- Still pending: older Trainer badges/gender/play-time parity, compact Location/Ability
+  menus, docked Held Item search, Help audit, IV Pokérus touch, event/year context,
+  existing V compatibility/inline-Language and II Unown exhaustive verification;
+  full GCC/Clang host/sanitizers and both matrices; native build; #307 integration;
+  ONE freshly built, bound and independently audited replacement NRO. S06 NOT TESTED.
+
+## October 24 Gen III Create repair checkpoint
+
+- Review WIP `f0150dd621086e0317de0c8de42eb64cccaecd14` is pushed/remote-verified;
+  native compile run 40068229858 is in progress (not a hardware candidate).
+- R2-REVIEWMOVE Safari reproduction: caught-Ball IDs 1–12 were supported; the
+  Held Item chooser also offered Safari Ball but native validation incorrectly used
+  Bag availability. Use PKHeX's separate GetAllHeld set (244 IDs), pinned to
+  6042efa241a9925ce57e645329ea7f976deabdd3 / ItemStorage3RS.cs
+  SHA256 3c6d50c6a6775a9d61d6dced2e1b60366789bddefb7c6f60e8cb1ba045438646.
+  Picker and serializer now share native held-item support. Bag policy is unchanged;
+  unknown encounter/obtainability evidence is not a clean legality verdict.
+- GCC native staged-Pokémon regression PASS: all 12 caught Balls crossed with None,
+  Safari Ball, Hyper Potion and Berry Juice as Held Item, across all 5 Gen III games;
+  encrypted native Create/reparse/checksums/Discard/source immutability verified.
+  Key Items, HMs, out-of-range held IDs and unsupported caught Balls still refuse
+  without staging bytes. Full sanitizer and integration gates remain pending.
+- Existing touch source guards now follow the owner-requested shared Review pages,
+  including touchable shared navigation, instead of the retired Gen III scroll list.
+- Backup-session source changes remain local WIP under active development; not yet
+  integrated or claimed tested. No #307/main/#314 movement from this checkpoint.
+
+## October 24 repair campaign — active Codex writer
+
+- Fetched and resumed actual application #307 head `92f956120019673733bd8d65cd65ab33c46cc237`.
+  All ten newer commits preserved by fast-forward. Codex is the active application writer.
+- The owner supplied a new 27 PASS / 6 FAIL / 4 unmarked checklist, including requested
+  changes under PASS entries. Historical results are not rewritten by host tests.
+  Main and legality #314 remain separate; original sources/backups remain immutable.
+- First repair package routes Gen I–III Review through the accepted shared IV/V panel,
+  pages, X Export / Y Discard / B Back and shared two-step Discard. Gen V now uses
+  the same four-choice exit presenter/decision as I–IV. Trainer V exposes Y Review
+  and a visible touch control, retaining its existing + shortcut.
+- Focused GCC Review/discard/page/exit model tests, all-title Gen V Trainer footer
+  (196 checks), and classic stat-state/derived HP-DV test PASS. Candidate source
+  contracts report zero failures. Full normal/sanitizer/native gates still required.
+- Starting-head GCC/Clang CI both failed an obsolete assertion expecting the old
+  Special-stat drawing expression. It now guards both native calculated-column
+  values and their read-only styling, matching the approved #324 layout.
+- Work is temporarily on `wip/codex-oct24-repairs` until all integration gates pass;
+  then merge/push forward to the SAME application #307 branch. No repairs are lost.
+- Remaining packages: validated fullscreen backup open (including protected legacy
+  native backups), older Trainer parity, compact pickers/search/help, Gen III Safari
+  Create reproduction and validated held-item rules, existing V move/language and II
+  Unown verification, IV Pokérus touch, documented event labels. Build and audit ONE
+  replacement NRO after final application integration. The previous c60 binding is
+  historical and must not be reused for this changed application code. S06 NOT TESTED.
 
 ## Official Round 4 candidate binding — 2026-10-22
 
@@ -392,6 +676,13 @@ Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized appli
   encounter-backed IV/V location context; older Trainer summary; Review parity; missed
   older picker paths reported by CG40/41/42/44/45/46; complete gates then #307 integration,
   one final candidate and exact-binary QA-F9. S06 stays NOT TESTED.
+
+## 0. CURRENT BRANCH OWNER (read first)
+
+**2026-10-24 23:25 UTC: the owner chose Claude (coordinator session `session_01AnyHUH96AxxgM3qguezsET`) to own #307.**
+- Codex: do **not** push to `claude/gen5-integration-20261014` until the owner hands it back.
+- Codex's last commit is `7d661fa3` (Oct 24 candidate `8804f8f8`, NRO sha256 `5bbc090e…6085`, NOT DEVICE TESTED). It is kept as-is and is the base for round 5.
+- Round 5 lanes branch from `7d661fa3`. They verify Codex's Oct 24 repairs against `docs/hardware/OCT24_REPAIRS_AND_RETEST.md` and the owner's Oct 24 findings, and fix only real gaps.
 
 ## 1. Where to start
 

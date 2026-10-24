@@ -121,9 +121,10 @@ int main() {
     // Round 4 (R2-EMUBACKUP / C07 / S05): the PKSE-style actions and their wording.
     assert(E::rowAction(E::kCreateRowEntry, SB::Kind::OriginalSource) == E::RowAction::CreateBackup);
     assert(E::rowAction(0, SB::Kind::OriginalSource) == E::RowAction::BrowseSave);
-    for (const SB::Kind k : {SB::Kind::ManualBackup, SB::Kind::AppBackup, SB::Kind::ExportedCopy,
-                             SB::Kind::StagedWorkingCopy})
-        assert(E::rowAction(1, k) == E::RowAction::Details);
+    for (const SB::Kind k : {SB::Kind::ManualBackup, SB::Kind::AppBackup, SB::Kind::ExportedCopy})
+        assert(E::rowAction(1, k) == E::RowAction::OpenBackup);
+    assert(E::rowAction(1,SB::Kind::StagedWorkingCopy)==E::RowAction::Details);
+    assert(std::string(E::rowActionLabel(E::RowAction::OpenBackup))=="Open");
     assert(std::string(E::rowActionLabel(E::RowAction::CreateBackup)) == "Create");
     assert(std::string(E::rowActionLabel(E::RowAction::BrowseSave)) == "Browse");
     assert(E::rowLabel(SB::Kind::ManualBackup, "DraStic") == "Backup");
@@ -146,5 +147,5 @@ int main() {
     }
 
     std::cout << "CG13 emulator backups: SharedMenuGeometry BackupMenu frame / rows / hit targets, "
-                 "header + rows + notice fit, scroll reveals focus; Create / Browse / Details actions and copy fit PASS\n";
+                 "header + rows + notice fit, scroll reveals focus; Create / Browse / Open actions, protected recovery and copy fit PASS\n";
 }

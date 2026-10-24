@@ -131,7 +131,7 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 }
 
 void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    drawSharedReviewSurface(screen, fb); // the shared paged Review presenter (round 5)
+    drawSharedReviewSurface(screen,fb);
 }
 
 void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {

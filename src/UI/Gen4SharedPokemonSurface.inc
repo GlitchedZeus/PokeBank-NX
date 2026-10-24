@@ -1589,6 +1589,8 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
         rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
         rows.push_back({"Origin game",Enums::getOriginGameName(p->originVersion())});
         rows.push_back({"Met location",Names::getMetLocationDisplayName(p->originVersion(),view.metLocation())});
+        if(const auto event=Names::metLocationEventEvidence(p->originVersion(),view.metLocation());!event.empty())
+            rows.push_back({"Event provenance",event});
         rows.push_back({"Met level",std::to_string(p->metLevel())});
         // PKHeX 6042efa241a9 PK4: native met Y/M/D bytes at 0x7B..0x7D.
         const auto bytes=p->decryptedBytes();

@@ -513,9 +513,8 @@ static void testRealSourcesUseSharedUnit() {
                 "SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));") != std::string::npos,
             "exit save dialog draws its own Gen I-V footer");
     for (const auto* text : {&gen3, &gen4}) {
-        require(text->find("void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {\n"
-                           "    SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos,
-                "Discard All confirm owns the touch layer");
+        require(text->find("SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons)") != std::string::npos,
+                "Discard All uses the shared confirmation and its top touch layer");
         require(text->find("{\"A\", \"Select\"}") == std::string::npos, "action menus use the shared footer");
     }
     require(gen5.find("dimShared(screen,fb);\n    // The decision owns the frame's touch; the covered hub's footer is never tappable.\n"

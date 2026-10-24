@@ -159,8 +159,16 @@ int main() {
                 language != std::string::npos && cards < divider && divider < info && info < language,
                 "R2-BUG-003 Trainer page: editable cards, divider, identity rows, language detail");
         require(trainer.find("TRow::Language}") == std::string::npos, "R2-BUG-003 language is not a main-view card");
-        require(count(trainer.substr(cards == std::string::npos ? 0 : cards), "screen.touchButtons.push_back(") == 1,
-                "R2-BUG-003 only the selectable cards publish touch targets");
+        require(cards!=std::string::npos && divider!=std::string::npos &&
+                count(trainer.substr(cards,divider-cards), "screen.touchButtons.push_back(")==1,
+                "R2-BUG-003 selectable cards publish their touch targets");
+        require(info!=std::string::npos && language!=std::string::npos &&
+                count(trainer.substr(info,language-info),"screen.touchButtons.push_back(")==0,
+                "R2-BUG-003 locked identity rows publish no touch targets");
+        require(language!=std::string::npos &&
+                count(trainer.substr(language),"screen.touchButtons.push_back(")==1 &&
+                trainer.find("ClassicTrainerSession::kReviewTouchId")!=std::string::npos,
+                "October24 Gen V Trainer adds one accessible Review touch button");
     }
 
     // R2-CHECK-011 (owner: Black 2 offers "VGE 2018/2019/2020"): the Gen V met-location picker

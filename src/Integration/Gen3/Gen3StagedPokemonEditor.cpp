@@ -1,3 +1,4 @@
+#include "Integration/Gen3/Gen3HeldItems.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 
 #include "Encryption/Encryption3FRLG.h"
@@ -85,17 +86,7 @@ void repairChecksums(std::vector<uint8_t>& bytes,
     }
 }
 
-Inventory::ClassicGame classicGame(SourceGame game) noexcept {
-    using Inventory::ClassicGame;
-    switch (game) {
-        case SourceGame::RubyGBA: return ClassicGame::Ruby;
-        case SourceGame::SapphireGBA: return ClassicGame::Sapphire;
-        case SourceGame::EmeraldGBA: return ClassicGame::Emerald;
-        case SourceGame::FireRedGBA: return ClassicGame::FireRed;
-        case SourceGame::LeafGreenGBA: return ClassicGame::LeafGreen;
-    }
-    return ClassicGame::FireRed;
-}
+
 
 uint8_t originVersion(SourceGame game) noexcept {
     switch (game) {
@@ -155,14 +146,8 @@ bool validLanguage(uint8_t language) noexcept {
            language == 4 || language == 5 || language == 7;
 }
 
-bool validHeldItem(SourceGame game, uint16_t item) noexcept {
-    if (item == 0) return true;
-    const auto g = classicGame(game);
-    using Inventory::ClassicPocket;
-    return Inventory::isAddableItem(g, ClassicPocket::Items, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::Balls, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::TMHM, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::Berries, item);
+bool validHeldItem(SourceGame, uint16_t item) noexcept {
+    return nativeHeldItemSupported(item);
 }
 
 std::array<uint8_t, 6> ivs(const Pokemon::Pokemon3FRLG& p) noexcept {
