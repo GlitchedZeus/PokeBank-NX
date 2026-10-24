@@ -23,6 +23,7 @@
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
+#include "UI/HeldItemSearchPanel.h"
 #include "UI/AbilityEffects.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
@@ -89,6 +90,7 @@ struct EditorState {
     bool pickerOtherHistories = false;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedSearchInput::State heldSearch;   // Round 5 NEW-06: in-modal key grid, Species-chooser layout
 
     bool moveEditor = false;
     int moveEditorSlot = 0;
@@ -187,6 +189,7 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
     state.pickerNativeValues = state.pickerValues;
     state.pickerSort = ItemPickerSort::Mode::Native;
     state.pickerQuery.clear();
+    state.heldSearch = {};
     state.pickerMetContextActive = false;
     state.pickerOtherHistories = false;
     if (target == PickerTarget::Species) state.speciesChooser.reset();   // R2-SEARCH: full native list
@@ -261,9 +264,34 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         screen.controllerNavigation.reset();
         return true;
     }
+    bool heldSearchOwned = false;   // Round 5 NEW-06: the key grid took this frame's touch
+    if (state.pickerTarget == PickerTarget::HeldItem) {
+        // Species-chooser search: Minus opens the keys beside the results; while open, D-pad /
+        // A / B (and paging) drive the keys and every key re-filters the grid live.
+        const int px = (1280 - HeldItemGrid::modalWidth) / 2;
+        const int py = (720 - kNavBarH - HeldItemGrid::modalHeight) / 2;
+        const auto touched = HeldItemSearchPanel::handleTouch(state.heldSearch, SharedSearchInput::sample(touch), px, py);
+        const auto keyed = HeldItemSearchPanel::handleKeys(state.heldSearch, (down & HidNpadButton_Minus) != 0,
+            (down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0, (down & HidNpadButton_Left) != 0,
+            (down & HidNpadButton_Right) != 0, (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0);
+        heldSearchOwned = touched.consumed;
+        if (touched.queryChanged || keyed.queryChanged) {
+            // Never an empty picker: a query with no match keeps the last results (the panel says so).
+            const int row = ItemPickerSearch::apply(state.pickerValues, state.pickerNativeValues, state.pickerSort,
+                state.heldSearch.query, state.pickerRow,
+                [&](uint16_t id) { return A::pickerLabel(screen, state, PickerTarget::HeldItem, id); });
+            if (row >= 0) { state.pickerQuery = state.heldSearch.query; state.pickerRow = row; }
+            state.pickerViewport.reset();
+            state.pickerScroll.stop();
+        }
+        if (keyed.consumed || state.heldSearch.open)
+            down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
+                      HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
+                      HidNpadButton_A | HidNpadButton_B | HidNpadButton_Minus);
+    }
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
-    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const int columns = gridPicker ? HeldItemGrid::columnsFor(state.heldSearch.open) : 1;
     const int compactCount = std::max(0, count);
     const bool nature = state.pickerTarget == PickerTarget::Nature;
     const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
@@ -292,6 +320,8 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // The Species modal owns its own gesture. Other pickers scroll only when overflowing.
     bool speciesTouchOwned = false;   // R2-SEARCH: key grid / scrollbar took this frame's touch
     if (pickerBar.consumed) {
+        state.pickerScroll.stop();
+    } else if (heldSearchOwned) {
         state.pickerScroll.stop();
     } else if (count > 0 && (state.pickerTarget == PickerTarget::Species || maxFirstRow > 0)) {
         if (state.pickerTarget == PickerTarget::Species) {
@@ -330,9 +360,10 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
             constexpr int rowStep = HeldItemGrid::rowPitch;
             const int px = (1280 - pickerW) / 2;
             const int py = (720 - kNavBarH - pickerH) / 2;
+            (void)pickerW;
             state.pickerScroll.updateVertical(
                 touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
-                pickerW - 2 * HeldItemGrid::gridInsetX,
+                HeldItemGrid::gridWidth(columns),
                 HeldItemGrid::rows * rowStep, rowStep,
                 state.pickerViewport.firstRow, maxFirstRow + 1);
         } else if (state.pickerTarget == PickerTarget::Move) {
@@ -361,7 +392,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // Keep semantic focus fixed during picker drags; commit only the
     // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
-    if (!pickerBar.consumed && !speciesTouchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
+    if (!pickerBar.consumed && !speciesTouchOwned && !heldSearchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
         down |= HidNpadButton_A;
     }
@@ -388,26 +419,6 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         return true;
     }
-    if (gridPicker && (down & HidNpadButton_Minus)) {
-        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
-        // and the current sort still applies. Cancel restores the previous search; a query with
-        // no match keeps the previous list (never an empty picker).
-        const std::string previous = state.pickerQuery;
-        const auto refilter = [&](const std::string& query) {
-            const int row = ItemPickerSearch::apply(state.pickerValues, state.pickerNativeValues,
-                                                    state.pickerSort, query, state.pickerRow, heldItemName);
-            if (row >= 0) { state.pickerQuery = query; state.pickerRow = row; }
-            state.pickerViewport.reset();
-            state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
-        };
-        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.pickerQuery, 20, refilter);
-        refilter(result.accepted ? result.text : previous);
-        if (result.accepted && state.pickerQuery != result.text)
-            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
-        state.pickerScroll.stop();
-        screen.controllerNavigation.reset();
-        return true;
-    }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
         state.pickerScroll.stop();
     if (state.pickerTarget == PickerTarget::Species) {
@@ -424,17 +435,17 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                 state.pickerRow);
     } else if (state.pickerTarget == PickerTarget::HeldItem) {
         if (down & HidNpadButton_Up)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1, 0, columns);
         if (down & HidNpadButton_Down)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 1, 0, columns);
         if (down & HidNpadButton_Left)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, -1, 0);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, -1, 0, 0, columns);
         if (down & HidNpadButton_Right)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 1, 0);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 1, 0, 0, columns);
         if (down & HidNpadButton_L)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, -1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, -1, columns);
         if (down & HidNpadButton_R)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, 1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, 1, columns);
     } else {
         if (down & HidNpadButton_Up)
             state.pickerRow = (state.pickerRow - 1 + count) % count;
@@ -827,17 +838,15 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
 
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
+        const int cols = HeldItemGrid::columnsFor(state.heldSearch.open);   // Round 5 NEW-06
         SharedHeldItemPickerPresentation::drawHeading(
-            fb, x, y, A::kHeldItemTitle, state.pickerRow, count);
+            fb, x, y, A::kHeldItemTitle, state.pickerRow, count, cols);
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
-        if (const std::string tag = ItemPickerSearch::tag(state.pickerQuery); !tag.empty()) {
-            // NEW-06: the active search, top right on the title line.
-            int tw = 0, th = 0;
-            fb.measureText(tag, tw, th, TextStyle::Caption);
-            fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
-        }
+        if (!state.heldSearch.open && !state.pickerQuery.empty())
+            // NEW-06: a closed search keeps its filter; the shared field says which.
+            SharedSearchInput::drawField(fb, x + w / 2, y + 26, state.heldSearch, "Filter:", "- edits");
         // R2-BUG-005: a focused Gen IV / V TM/HM shows its move from this game's machine table.
         if (state.pickerRow >= 0 && state.pickerRow < count)
             UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, A::moveGame(screen),
@@ -847,24 +856,28 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return A::pickerLabel(screen, state, PickerTarget::HeldItem, value); },
             [&](uint16_t value) { return A::heldItemArtKey(screen, value); },
-            state.pickerViewport.firstRow, state.pickerScroll.offset());
+            state.pickerViewport.firstRow, state.pickerScroll.offset(), cols);
         const int gridX = x + HeldItemGrid::gridInsetX;
         const int gridY = y + HeldItemGrid::gridInsetY;
         const int cellHeight = HeldItemGrid::rowPitch;
-        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int cellW = HeldItemGrid::cellWidth;
         const int firstRow = state.pickerViewport.firstRow;
-        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
-        const int lastVisibleItem = std::min(count,
-            firstVisibleItem + HeldItemGrid::pageSize - 1);
-        (void)lastVisibleItem;
-        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
-             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
-            const int offset = i - firstRow * HeldItemGrid::columns;
-            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
-            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+        for (int i = std::max(0, (firstRow - 1) * cols);
+             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * cols); ++i) {
+            const int offset = i - firstRow * cols;
+            const int cellX = gridX + offset % cols * cellW;
+            const int cellY = gridY + offset / cols * cellHeight + state.pickerScroll.offset();
             appendClippedTouchButton(screen.touchButtons, 6000 + i,
                 cellX, cellY - 3, cellW - 10, cellHeight - 4,
-                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+                gridX, gridY - 3, HeldItemGrid::gridWidth(cols), HeldItemGrid::rows * cellHeight);
+        }
+        if (state.heldSearch.open && state.pickerRow >= 0 && state.pickerRow < count) {
+            // Round 5 NEW-06: the Species chooser's right column (query, focused artwork, keys).
+            const uint16_t focused = state.pickerValues[static_cast<size_t>(state.pickerRow)];
+            const bool matched = ItemPickerSearch::key(state.pickerQuery) == ItemPickerSearch::key(state.heldSearch.query);
+            HeldItemSearchPanel::draw(fb, x, y, state.heldSearch,
+                A::pickerLabel(screen, state, PickerTarget::HeldItem, focused),
+                focused != 0 ? A::heldItemArtKey(screen, focused) : std::string(), matched ? count : 0);
         }
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;

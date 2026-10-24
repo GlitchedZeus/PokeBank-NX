@@ -19,12 +19,13 @@ namespace UI::SharedHeldItemPickerPresentation {
 namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
 
 inline void drawHeading(PKSEFramebuffer& fb, int x, int y,
-                        const char* title, int selected, int count) {
+                        const char* title, int selected, int count, int cols = Grid::columns) {
     fb.drawText(x + 28, y + 20, title, Colors::Text, TextStyle::Heading);
-    const int pages = std::max(1, (count + Grid::pageSize - 1) / Grid::pageSize);
+    const int page = std::max(1, cols) * Grid::rows;
+    const int pages = std::max(1, (count + page - 1) / page);
     const int current = count > 0 ? std::clamp(selected, 0, count - 1) : 0;
     fb.drawText(x + 28, y + 55,
-                "Page " + std::to_string(current / Grid::pageSize + 1) +
+                "Page " + std::to_string(current / page + 1) +
                     " / " + std::to_string(pages),
                 Colors::TextDim, TextStyle::Caption);
 }
@@ -33,23 +34,24 @@ template <typename Item, typename LabelFor, typename SpriteNameFor>
 inline void drawGrid(PKSEFramebuffer& fb, int x, int y,
                      const std::vector<Item>& items, int selected,
                      LabelFor labelFor, SpriteNameFor spriteNameFor,
-                     int firstVisibleRow = -1, int scrollOffset = 0) {
+                     int firstVisibleRow = -1, int scrollOffset = 0, int cols = Grid::columns) {
     const int count = static_cast<int>(items.size());
     if (count == 0) return;
+    cols = std::max(1, cols);   // Round 5 NEW-06: 2 columns beside the search keyboard
+    const int page = cols * Grid::rows;
     const int focused = std::clamp(selected, 0, count - 1);
-    const int first = firstVisibleRow < 0 ? focused / Grid::pageSize * Grid::pageSize
-        : std::clamp(firstVisibleRow, 0, (count - 1) / Grid::columns) * Grid::columns;
-    const int last = std::min(count, first + Grid::pageSize + Grid::columns);
-    const int drawFirst = std::max(0, first - Grid::columns);
+    const int first = firstVisibleRow < 0 ? focused / page * page
+        : std::clamp(firstVisibleRow, 0, (count - 1) / cols) * cols;
+    const int last = std::min(count, first + page + cols);
+    const int drawFirst = std::max(0, first - cols);
     const int gridX = x + Grid::gridInsetX;
     const int gridY = y + Grid::gridInsetY;
-    const int cellWidth = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
-    fb.setClipRect(gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
-                   Grid::rows * Grid::rowPitch);
+    const int cellWidth = Grid::cellWidth;
+    fb.setClipRect(gridX, gridY - 3, Grid::gridWidth(cols), Grid::rows * Grid::rowPitch);
     for (int i = drawFirst; i < last; ++i) {
         const int offset = i - first;
-        const int cellX = gridX + (offset % Grid::columns) * cellWidth;
-        const int cellY = gridY + (offset / Grid::columns) * Grid::rowPitch + scrollOffset;
+        const int cellX = gridX + (offset % cols) * cellWidth;
+        const int cellY = gridY + (offset / cols) * Grid::rowPitch + scrollOffset;
         // R2-BUG-012: every cell is its own boxed row; the focused one has the yellow outline.
         SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4),
                                  {i == focused});

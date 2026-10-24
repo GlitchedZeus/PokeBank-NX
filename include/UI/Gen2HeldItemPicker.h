@@ -47,12 +47,12 @@ inline std::string spriteName(uint8_t item) {
 namespace UI::Gen2HeldItemPickerPresentation {
 inline void drawList(PKSEFramebuffer& fb, int panelX, int panelY,
                      const std::vector<uint8_t>& items, int selected,
-                     int firstVisibleRow = -1, int scrollOffset = 0) {
+                     int firstVisibleRow = -1, int scrollOffset = 0, int cols = SharedHeldItemPickerPresentation::Grid::columns) {
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
     // True Gen II item IDs and display names; shared Gen III grid geometry.
     SharedHeldItemPickerPresentation::drawGrid(
         fb, panelX, panelY, items, selected,
         [](uint8_t item) { return Model::itemName(item); },
-        [](uint8_t item) { return Model::spriteName(item); }, firstVisibleRow, scrollOffset);
+        [](uint8_t item) { return Model::spriteName(item); }, firstVisibleRow, scrollOffset, cols);
 }
 }
