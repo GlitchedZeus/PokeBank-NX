@@ -15,6 +15,12 @@ Owner hardware baseline stays **70 PASS / 37 FAIL / 3 NOT TESTED**. Every repair
 
 Do **not** promote R2-EMUBACKUP to PASS based on the previous host test; the 37/37 code-implemented count is a *prior candidate engineering statement*, not 37 hardware passes. C07 backup deletion and S05 original immutability remain **hardware unverified** until explicitly tested. Keep all previous owner PASS records, and S06 stays NOT TESTED. Historical unscoped backups must stay immutable and undeletable; safe validated browsing must not silently assign profile ownership or overwrite originals.
 
+## Owner hardware retest — October 23, 2026: shared Review and Trainer Info FAIL
+
+**Candidate:** audited `c60d4da0` NRO. Owner reports that each generation still has its own Review presentation and **Gen V Review cannot be reached in the tested UI path**. Also requests Trainer Info parity: native **Badges earned, Gender** visible in Gen I–IV where stored, and **editable Play Time and supported Trainer Gender** via staged, reviewed, export-only changes. The existing Gen V Play Time field is editable but Trainer Gender is currently read-only; Gen I / Gold / Silver have no freely editable player-gender field. Full source/format-specific acceptance and tests: **[#323](https://github.com/GlitchedZeus/PokeBank-NX/issues/323)**.
+
+**Hardware status:** shared Review parity `AUD-01` **FAIL**; Gen V Review accessibility **FAIL**; expanded Trainer Info feature **NOT IMPLEMENTED/UNVERIFIED**. Prior host tests do not overrule owner's physical test. Preserve all other records and source immutability.
+
 ## Original 37 failures
 
 All 37 entries below are implemented and host-tested in the validated application snapshot. The campaign preserves the earlier 12 app58 repairs. Hardware status for every row is **pending**. Exact-head CI and the independent binary audit are recorded in the PR checks linked below.
