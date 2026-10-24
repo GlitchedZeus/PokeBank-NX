@@ -38,6 +38,8 @@ XFAIL: dict[str, str] = {
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     "CG61-switch-backup-opens-staged-copy": "lane L (P2, #322: wip/l-r5-backup-copy-20261024 767fd4b0)",
+    "CG62-met-location-rows-fit": "lane P (4A NEW-10: claude/pickers-search-scrollbar-20261017 d361d86f)",
+    "CG63-help-names-real-controls": "lane P (4D: claude/pickers-search-scrollbar-20261017 edff856e)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -2315,6 +2317,63 @@ def round5_contracts(sources):
                 r.violations.append(f"src/UI/BackupSelectionScreen.cpp:{line}: footer still says A 'Open read-only'")
         if not re.search(r"\bkBackupSessionName\b", bss.code):
             r.violations.append("src/UI/BackupSelectionScreen.cpp: the open-backup session folder is listed as a backup")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # 4A / NEW-10 (lane P): the compact 620 px Met Location window must not clip rows. The source
+    # example (detail) gets the width the MEASURED place name leaves, not a fixed share (Gen IV/V
+    # rowW - 260 clipped 5,308 of 16,958 default rows with an ellipsis; Gen III got half a row).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG62-met-location-rows-fit",
+               "Gen III-V Met Location rows fit the compact window: the detail column is sized from the "
+               "measured place name, never a fixed share of the row (owner Oct 24 NEW-10 / 4A)")
+    for rel, name_expr in (("src/UI/SharedPokemonEditorSurface.inc", r"label\.substr\(\s*0\s*,\s*split\s*\)"),
+                           ("src/UI/Gen3SharedPokemonSurface.inc", r"row\.first")):
+        body = body_of(src(rel), "drawValuePicker")
+        # The row-drawing branch: the Met Location test whose branch draws the row text.
+        branches = []
+        for m in re.finditer(r"pickerTarget\s*==\s*PickerTarget::MetLocation", body):
+            b = body[m.start():m.start() + 3000]
+            nxt = re.search(r"\}\s*else\s+if\s*\(\s*state\.pickerTarget|(?<=.)pickerTarget\s*==\s*PickerTarget::MetLocation", b, re.S)
+            b = b[:nxt.start()] if nxt else b
+            if re.search(r"\bfit\s*\(", b) and re.search(name_expr, b) and re.search(r"drawText\s*\(\s*x\s*\+\s*38\b", b):
+                branches.append(b)
+        if len(branches) != 1:
+            r.violations.append(f"{rel}: drawValuePicker Met Location row branch not found (update this check)")
+            continue
+        branch = branches[0]
+        if re.search(r"rowW\s*-\s*260\b", branch) or re.search(r"\(\s*rowW\s*-\s*32\s*\)\s*/\s*2", branch):
+            r.violations.append(f"{rel}: Met Location detail has a fixed share of the row (clips long rows)")
+        mw = re.search(r"measureText\s*\(\s*" + name_expr + r"\s*,\s*(\w+)", branch)
+        if not mw or not re.search(r"\bfit\s*\([^;]*rowW\s*-\s*\d+\s*-\s*" + re.escape(mw.group(1)) + r"\b", branch):
+            r.violations.append(f"{rel}: Met Location detail width is not derived from the measured place name")
+    ctx = src("include/Integration/Encounter/EncounterContext45.h")
+    if ctx and any(" variants)" in lit for _, lit in ctx.literals):
+        r.violations.append("include/Integration/Encounter/EncounterContext45.h: '(+N variants)' detail does not fit 620 px")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # 4D (lane P): Help names only controls that act on that page in that generation. '+' opens Review
+    # only in Gen V; in Gen I-IV it goes to Product Home, so their Pokemon / Items pages must not claim
+    # '+ Review'. A help line must name a button ("Move  Place or cancel from the on-screen Move controls"
+    # named none).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG63-help-names-real-controls",
+               "Classic Help: '+ Review' appears only for Gen V; every line names a real control "
+               "(owner Oct 24 4D)")
+    hp = src("include/UI/ClassicHelpPresentation.h")
+    if not hp:
+        r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
+    else:
+        for m in re.finditer(r'"\+\s+Review[^"]*"', hp.code):
+            start = max(hp.code.rfind(";", 0, m.start()), hp.code.rfind("{", 0, m.start()),
+                        hp.code.rfind(":\n", 0, m.start()))
+            stmt = hp.code[start + 1:m.start()]
+            if not re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
+                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{hp.code.count(chr(10), 0, m.start()) + 1}: "
+                                    "'+ Review' is shown outside Gen V (Gen I-IV + opens Product Home)")
+        if any("on-screen Move controls" in lit for _, lit in hp.literals):
+            r.violations.append("include/UI/ClassicHelpPresentation.h: Move help names no button")
     res.append(r)
     return res
 
