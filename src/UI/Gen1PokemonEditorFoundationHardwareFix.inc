@@ -210,7 +210,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     const std::array<std::string, 6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
     const std::array<std::string, 6> leftValues{
-        speciesCompact(species),
+        speciesHeading(species),
         name,
         std::to_string(level),
         std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
@@ -334,13 +334,13 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
                 add ? std::string("Species default") : std::to_string(pokemon->catchRate), Colors::Text, TextStyle::Caption);
     // Origin & Legality (formerly under the move rows): Gen I records no origin to check.
     fb.drawText(leftPaneX + 10, splitY + 206, "Legality", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftPaneX + 10, splitY + 224, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 224, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
 
     fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);
 
     if (view) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else if (foundationStateFor(screen).editExitConfirm) {
         // The exit dialog is modal: its footer offers exactly the dialog's own B/Y/A, so a
         // footer tap (mapped to that button) never reads as a workspace edit shortcut.

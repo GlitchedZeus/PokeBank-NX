@@ -638,8 +638,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (state.removeConfirmActive) {
-        // The Remove question owns every input: Y removes, B cancels, nothing else acts.
-        switch (PokeBank::UIModel::classicRemoveConfirmStep((down & HidNpadButton_Y) != 0,
+        // The explicit Remove question owns every input: A confirms, B cancels.
+        switch (PokeBank::UIModel::classicRemoveConfirmStep((down & HidNpadButton_A) != 0,
                                                             (down & HidNpadButton_B) != 0)) {
             case PokeBank::UIModel::ClassicRemoveConfirm::Cancel:
                 state.removeConfirmActive = false;
@@ -967,12 +967,10 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             UI::SharedBagAddPicker::drawRemoveConfirm(fb, screen.touchButtons, group, "Remove " + name + "?",
                 state.pendingItem, name, stagedQuantity(screen, state.pendingPocket, state.pendingItem),
                 "Staged copy only; the original source save stays unchanged.");
-            drawNavBar(fb, {{"Y", "Remove"}, {"B", "Cancel"}});
         } else {
             UI::SharedBagAddPicker::drawKeyItemWarning(fb, screen.touchButtons, group, state.pendingItem,
                                                        name, PokeVault::Inventory::pocketName(state.pendingPocket),
                                                        state.pendingQuantity == 0);
-            drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
         }
         return;
     }

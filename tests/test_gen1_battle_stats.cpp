@@ -7,7 +7,9 @@
 using PokeVault::Integration::Gen1::StagedPokemonEditor;
 
 int main() {
-    // Default Add-draft Bulbasaur: level 5, four stored DVs = 8, zero Stat Exp.
+    const PokeVault::Integration::Gen1::BoxPokemonCreate defaults;
+    assert((defaults.dvs == std::array<uint8_t,4>{0,0,0,0}));
+    // Known Bulbasaur calculation: level 5, four stored DVs = 8, zero Stat Exp.
     // HP DV derives to zero because all four stored DVs are even.
     const auto bulbasaur = StagedPokemonEditor::calculateBattleStats(
         1, 5, std::array<uint8_t,4>{8,8,8,8}, std::array<uint16_t,5>{0,0,0,0,0});

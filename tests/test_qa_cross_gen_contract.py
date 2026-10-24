@@ -20,6 +20,7 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 DEFAULT_ROOT = Path(__file__).resolve().parent.parent
@@ -28,34 +29,6 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL: dict[str, str] = {
     # Round 4: owner round 3 FAIL items (ROUND3_RESULTS_62a2f8c3.md); owners per #307 MAIN_ACTIVE_HANDOFF.md §6b.
-    "CG30-trainer-page-opens-review": "C (R2-TRAINER, R2-BUG-002)",
-    "CG31-classic-exit-offers-review": "C (NEW-19, R2-BUG-002)",
-    "CG32-review-rows-readable-names": "C (R2-REVIEWMOVE)",
-    "CG33-party-opens-actions": "S (L06, E02, NEW-20)",
-    "CG34-gen5-key-tm-pockets-editable": "I (NEW-17)",
-    "CG35-gen5-review-matches-gen4": "S (AUD-01: Gen I-IV converge on the Gen V Review)",
-    "CG36-footer-hints-have-glyphs": "S (E05, NEW-01 remaining Close/Help footer)",
-    "CG37-no-touch-back-footer": "S (NEW-02)",
-    "CG38-bag-confirm-glyphs-a-commits": "I (NEW-03; B07 gate pin changes with it, owner-directed)",
-    "CG40-held-item-picker-search": "P (NEW-06)",
-    "CG41-gen2-ot-gender-inline": "P (NEW-07)",
-    "CG42-ball-picker-scrollbar-gutter": "P (NEW-08)",
-    "CG43-nature-stat-colours": "R (NEW-09)",
-    "CG44-met-location-compact": "P (NEW-10)",
-    "CG45-selected-species-name-first": "P (NEW-11)",
-    "CG46-ability-names-not-slots": "P (NEW-13)",
-    "CG47-classic-trainer-playtime-pokedex": "C (NEW-18)",
-    "CG48-origin-legality-truthful-state": "S (E03: no clean verdicts; one LegalityState per generation)",
-    "CG49-one-origin-legality-panel": "S (E03: one shared Origin & Legality panel)",
-    "CG50-gen2-unown-portrait-follows-dvs": "R (R2-REROLL audit: Gen II Unown portrait ignores the DV letter)",
-    "CG51-gen2-special-not-slashed": "R (R2-SPECIAL)",
-    "CG52-gen45-move-category-spacing": "S (M04/M05: Moves-panel second line, coordinator-confirmed)",
-    "CG53-gen45-met-location-context": "P (NEW-12, R2-CHECK-011)",
-    "CG54-gen5-language-editable": "R (NEW-14)",
-    "CG55-create-defaults-zero-ivs-dvs": "R (NEW-15)",
-    "CG56-gen2-carry-refresh-without-finalize": "C (NEW-04)",
-    "CG59-backup-browser-actions": "L (R2-EMUBACKUP, C07)",
-    "CG60-no-backup-on-unchanged-open": "L (S05 / R2-EMUBACKUP; reverses the pinned auto-backup-on-open design, owner directive)",
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED;
     # CG12 and CG14 XPASSed on #307 d104310 (batch 1), CG18 on 41cbe92 (batch 2), CG13 and CG15 on
     # d51c1ff (batch 3), CG16 and CG17 on 348129f (batch 4): ENFORCED.
@@ -288,11 +261,13 @@ def code_hits(sources, pattern, flags=0, exclude=()):
     return dedupe(out)
 
 
-def function_bodies(code: str, name_rx: re.Pattern):
-    """Yield (name, start_line, body) for C++ function definitions whose name matches."""
+@lru_cache(maxsize=2048)
+def function_definitions(code: str) -> tuple[tuple[str, int, str], ...]:
+    """Parse an exact source string once; changed mutation inputs have different cache keys."""
+    definitions = []
     for m in re.finditer(r"\b([A-Za-z_]\w*)\s*\([^;{}()]*(?:\([^;{}()]*\)[^;{}()]*)*\)\s*(?:const\s*)?(?:noexcept\s*)?\{", code):
         name = m.group(1)
-        if not name_rx.search(name) or name in ("if", "for", "while", "switch", "catch"):
+        if name in ("if", "for", "while", "switch", "catch"):
             continue
         depth, j = 0, m.end() - 1
         while j < len(code):
@@ -303,7 +278,13 @@ def function_bodies(code: str, name_rx: re.Pattern):
                 if depth == 0:
                     break
             j += 1
-        yield name, code.count("\n", 0, m.start()) + 1, code[m.end():j]
+        definitions.append((name, code.count("\n", 0, m.start()) + 1, code[m.end():j]))
+    return tuple(definitions)
+
+
+def function_bodies(code: str, name_rx: re.Pattern):
+    """Yield the same definition tuples, filtered without reparsing unchanged source."""
+    return (item for item in function_definitions(code) if name_rx.search(item[0]))
 
 
 @dataclass
@@ -412,7 +393,7 @@ def round4_p2_contracts(sources):
     # ------------------------------------------------------------------------------------------
     # R2-REROLL / Unown: the Gen II editor portrait shows the DV-derived Unown letter.
     # pret pokecrystal GetUnownLetter (engine/pokemon/unown? -> docs/REROLL_MECHANICS.md): letter =
-    # ((Atk&6)<<5 | (Def&6)<<3 | (Spd&6)<<1 | (Spc&6)>>1) / 10. 14/10/10/10 -> V, 15/8/8/3 -> 
+    # ((Atk&6)<<5 | (Def&6)<<3 | (Spd&6)<<1 | (Spc&6)>>1) / 10. 14/10/10/10 -> V, 15/8/8/3 ->
     # ------------------------------------------------------------------------------------------
     r = Result("CG50-gen2-unown-portrait-follows-dvs",
                "Gen II editor portraits pass the DV-derived Unown letter to SpriteManager::getSprite"
@@ -456,26 +437,33 @@ def round4_p2_contracts(sources):
     # Layout::kGap clear of the type badge to its left in the chooser row.
     # ------------------------------------------------------------------------------------------
     r = Result("CG52-gen45-move-category-spacing",
-               "Gen IV/V Moves panel: the second line keeps type + category apart from a separate, right-aligned "
-               "Pwr / Acc section (>= SharedMovesPanel::Layout::kGap), M04/M05")
-    # Coordinator (round 4): the owner's M04/M05 crowding is the Moves-panel second line (type, category, Pwr,
-    # Acc run together as one detailLine). The Move chooser's columns are owner-accepted (M06) and not checked.
+               "Gen IV/V move Category element keeps >= SharedMovesPanel::Layout::kGap from the type badge "
+               "and the Pwr/Acc cells (M04/M05)")
     mp = src("include/UI/SharedMovesPanel.h")
-    if not mp:
-        r.violations.append("include/UI/SharedMovesPanel.h: missing")
-    else:
-        gap = re.search(r"\bkGap\s*=\s*(\d+)", mp.code)
-        sect = re.search(r"\bkDetailSectionGap\s*=\s*(\d+)", mp.code)
-        split_fn = list(function_bodies(mp.code, re.compile(r"^detailSplit$")))
-        uses_split = re.search(r"\bdetailSplit\s*\(\s*\w+\s*\)", "".join(
-            b for n, _, b in function_bodies(mp.code, re.compile(r".")) if n != "detailSplit"))
-        if not split_fn or not uses_split:
-            r.violations.append("include/UI/SharedMovesPanel.h: the Moves panel draws Type / Category / Pwr / Acc "
-                                "as one detailLine (no separate Pwr/Acc section)")
-        elif not sect or not gap or int(sect.group(1)) < int(gap.group(1)):
-            r.violations.append("include/UI/SharedMovesPanel.h: the Pwr/Acc section gap "
-                                f"({sect.group(1) if sect else '?'}) is smaller than Layout::kGap "
-                                f"({gap.group(1) if gap else '?'})")
+    if mp:
+        def off(fn):
+            m = re.search(r"int\s+" + fn + r"\(\)\s*const\s*noexcept\s*\{\s*return\s+x\s*\+\s*w\s*-\s*(\d+)\s*;", mp.code)
+            return int(m.group(1)) if m else None
+        type_off, cat_off, pwr_off = off("typeX"), off("categoryX"), off("powerRight")
+        badge_h = re.search(r"kChooserBadgeHeight\s*=\s*(\d+)", mp.code)
+        gap = re.search(r"kGap\s*=\s*(\d+)", mp.code)
+        adv_src = src("include/UI/NunitoMetrics.h")
+        adv = [int(x) for x in re.search(r"kAsciiAdvance\[95\]\s*=\s*\{([^}]*)\}", adv_src.code).group(1).split(",")
+               if x.strip()]
+
+        def width(text, px=17):
+            u = sum(adv[ord(c) - 32] if 32 <= ord(c) < 127 else 1091 for c in text)
+            return -(-u * px // 1000)
+        if None not in (type_off, cat_off, pwr_off) and badge_h and gap:
+            badge_w, g = 5 * int(badge_h.group(1)), int(gap.group(1))  # 5:1 artwork (ClassicTypeBadges)
+            left = (type_off - cat_off) - badge_w
+            widest_cat = max(width(c) for c in ("Physical", "Special", "Status", "Category"))
+            right = (cat_off - pwr_off) - widest_cat - max(width(v) for v in ("120", "250", "Pwr", "—"))
+            if left < g:
+                r.violations.append(f"include/UI/SharedMovesPanel.h: chooser Category starts {left} px after "
+                                    f"the {badge_w} px type badge (< kGap {g})")
+            if right < g:
+                r.violations.append(f"include/UI/SharedMovesPanel.h: Category to Pwr gap {right} px (< kGap {g})")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
@@ -491,22 +479,16 @@ def round4_p2_contracts(sources):
         for m in re.finditer(r'"\s*\|\s*Met Lv\.\s*"\s*\+\s*std::to_string\(\s*\w+\s*->\s*metLevel\(\)\s*\)', s.code):
             r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: every location row shows the record's "
                                 "current Met Lv. (not an encounter level)")
-    # Encounter data: the Crystal / Gen III guardrails table (string game ids), or lane P's separate Gen IV / V
-    # table include/Integration/Encounter/Gen45EncounterData.inc ({game, species, location, ...}, game 1 D,
-    # 2 P, 3 Pt, 4 HG, 5 SS, 6 B, 7 W, 8 B2, 9 W2; generated from PKHeX 6501f0ab).
-    data = src("include/Integration/Encounter/EncounterGuardrailsData.inc")
+    # Follow the isolated IV/V context catalogue; legacy II/III guardrails stay unchanged.
+    data = src("include/Integration/Encounter/EncounterContext45Data.inc")
+    games = {"Gen IV": ("diamond_nds", "pearl_nds", "platinum_nds", "heartgold_nds", "soulsilver_nds"),
+             "Gen V": ("black_nds", "white_nds", "black2_nds", "white2_nds")}
     have = {lit for _, lit in data.literals} if data else set()
-    g45data = src("include/Integration/Encounter/Gen45EncounterData.inc")
-    g45games = set(int(x) for x in re.findall(r"^\s*\{\s*([1-9])\s*,", g45data.code, re.M)) if g45data else set()
-    games = {"Gen IV": (("diamond_nds", 1), ("pearl_nds", 2), ("platinum_nds", 3), ("heartgold_nds", 4),
-                        ("soulsilver_nds", 5)),
-             "Gen V": (("black_nds", 6), ("white_nds", 7), ("black2_nds", 8), ("white2_nds", 9))}
     for g, ids in games.items():
-        missing = [name for name, num in ids if name not in have and num not in g45games]
+        missing = [i for i in ids if i not in have]
         if missing:
             r.violations.append(f"{g}: no encounter templates for {', '.join(missing)} "
-                                "(EncounterGuardrailsData.inc / Gen45EncounterData.inc), so no Met Location row "
-                                "can be marked encounter-backed")
+                                "(EncounterContext45Data.inc), so no Met Location row can be marked encounter-backed")
     g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
     body4 = "".join(b for _, _, b in function_bodies(g4.code, re.compile(r"^openMetLocationPicker$"))) if g4 else ""
     if "isGen4NativeMetLocation" not in body4:
@@ -514,10 +496,23 @@ def round4_p2_contracts(sources):
     g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
     if g5 and "metLocationChoices()" not in g5.code:
         r.violations.append("Gen V: Met Location picker no longer offers every native location (false rejection)")
-    pickers = g45 + [x for x in (src("src/UI/SharedPokemonEditorSurface.inc"),) if x]
-    if not any(re.search(r"\bEncounterGuardrails\b|\bGen45Encounters::", s.code) for s in pickers):
-        r.violations.append("Gen IV/V Met Location picker never consults the encounter data "
-                            "(EncounterGuardrails / Gen45Encounters)")
+    shared = src("src/UI/SharedPokemonEditorSurface.inc")
+    context = src("include/Integration/Encounter/EncounterContext45.h")
+    for s in g45:
+        if "openContextualMetLocationPicker(" not in s.code or "pickerMetContext.detail(value," not in s.code:
+            r.violations.append(f"{s.rel}: Met Location does not use the real contextual picker and row details")
+    for s, tokens in ((shared, ("EncounterContext45::Catalogue context(", "context.choices()",
+                        "state.pickerMetContext.choices(state.pickerOtherHistories)",
+                        "pickerMetContext.stored()", "!unchangedLocation && !A::applyPicker")),
+                      (context, ('#include "Integration/Encounter/EncounterContext45Data.inc"',
+                                 "for (const auto& entry : kWild45)", "ancestry(generation(origin), species)",
+                                 "native_.push_back(stored)", '"Gift / static / other history; unverified"'))):
+        if not s:
+            r.violations.append("Missing real Gen IV/V contextual picker/catalogue")
+        else:
+            for token in tokens:
+                if token not in s.code:
+                    r.violations.append(f"{s.rel}: missing encounter-context behavior {token}")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
@@ -530,6 +525,11 @@ def round4_p2_contracts(sources):
     m = re.search(r"enum\s+class\s+Field\s*:\s*uint8_t\s*\{([^}]*)\}", rec.code) if rec else None
     if not m or not re.search(r"\bLanguage\b", m.group(1)):
         r.violations.append("include/Integration/Gen5/Gen5StagedPokemonRecord.h: StagedPokemon5Record::Field has no Language")
+    bridge = src("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+    if not bridge or not re.search(
+            r"case Shared::FieldIdentity::Language:\s*return session\.stage\(NativeField::Language,stat,value,error\)",
+            bridge.code):
+        r.violations.append("Gen5SharedEditorBridge.h: shared Language field does not reach native staged Language")
     fields = src("include/Integration/Gen5/Gen5EditorFields.h")
     for name, ln, body in function_bodies(fields.code, re.compile(r"^detailEditable$")):
         cm = re.search(r"case\s+Language\b", body)
@@ -672,6 +672,12 @@ def round4_p0_contracts(sources):
         for ln, body, off in found:
             reach = [(body, off)] + [(b2, o2) for c in callees(body) for _, b2, o2 in defs(GSC, c)]
             for b, o in reach:
+                # NEW-04's implemented ternary uses presentationBytes only while carrying;
+                # finalizedBytes remains valid on the explicitly non-carry branch. Any unguarded
+                # or inverted call still fails, as does removing finalize's carry refusal above.
+                b = re.sub(r"\b\w+\s*->\s*packedMoveActive\s*\(\s*\)\s*\?\s*"
+                           r"\w+\s*->\s*presentationBytes\s*\([^)]*\)\s*:\s*"
+                           r"\w+\s*->\s*finalizedBytes\s*\([^)]*\)", "", b)
                 m = re.search(r"\bfinalizedBytes\s*\(", b)
                 if m:
                     r.violations.append(f"{GSC}:{line_of(GSC, o + m.start())}: {name}() rebuilds the box view from "
@@ -779,7 +785,9 @@ def round4_p0_contracts(sources):
     else:
         if not reaches(blk, r"\bselectCurrentTitle\s*\(|\btitleSelected\s*=\s*true\b", depth=2):
             r.violations.append(f"{SS}:{bl}: Backups browser cannot open/browse the current save (A only sets a notice)")
-        if not reaches(blk, WRITE, depth=2):
+        # update -> createEmulatorBackup -> createBackup -> writeAll. Follow the real copy
+        # boundary, rather than requiring fopen/fwrite directly inside the screen handler.
+        if not reaches(blk, WRITE, depth=3):
             r.violations.append(f"{SS}:{bl}: Backups browser has no deliberate Create Backup action "
                                 "(no path reaches a file write; rows are only listed export records)")
     res.append(r)
@@ -885,8 +893,36 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     r = Result("CG08-modal-footer-and-touch-layer",
                "Every modal draws its own footer, and the covered footer is not tappable while it is open")
-    modal_rx = re.compile(r"^draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*$")
+    modal_rx = re.compile(r"^(?:drawOriginLegalityPanel|draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*)$")
     footer_rx = re.compile(r"\b(drawNavBar|drawFooter\w*|drawGlyphButton|drawControllerHints|drawPickerFooter\w*)\s*\(")
+    # Bag wrappers delegate their in-dialog choices and blank covered footer
+    # to drawConfirm. Follow that real call, rather than requiring a duplicate
+    # footer at the generation-specific call site (owner NEW-03).
+    bag_confirm = next((s for s in sources if s.rel == "include/UI/SharedBagAddPicker.h"), None)
+    shared_bag_footers = set()
+    if bag_confirm:
+        confirm_bodies = [b for _, _, b in function_bodies(bag_confirm.code, re.compile(r"^drawConfirm$"))]
+        if confirm_bodies and all(footer_rx.search(b) and STRICT_LAYER_RX.search(b) for b in confirm_bodies):
+            for n, _, b in function_bodies(bag_confirm.code, re.compile(r"^draw(?:RemoveConfirm|KeyItemWarning)$")):
+                if re.search(r"\bdrawConfirm\s*\(", b):
+                    shared_bag_footers.add(n)
+
+    def delegated_bag_footer(body):
+        return any(re.search(r"\bSharedBagAddPicker::" + n + r"\s*\(", body)
+                   for n in shared_bag_footers)
+    origin_panel = next((s for s in sources if s.rel == "include/UI/SharedEditorChrome.h"), None)
+    origin_owns_frame = origin_panel and any(
+        footer_rx.search(b) and STRICT_LAYER_RX.search(b)
+        for _, _, b in function_bodies(origin_panel.code, re.compile(r"^drawOriginLegalityPanel$")))
+
+    review_owns_frame = origin_panel and any(
+        footer_rx.search(b) and STRICT_LAYER_RX.search(b)
+        for _, _, b in function_bodies(origin_panel.code, re.compile(r"^drawReviewDiscardConfirm$")))
+
+    def delegated_origin_footer(body):
+        return (origin_owns_frame and re.search(r"\bSharedEditorChrome::drawOriginLegalityPanel\s*\(", body)) or (
+            review_owns_frame and re.search(r"\bSharedEditorChrome::drawReviewDiscardConfirm\s*\(", body))
+
     # Strict (coordinator, 2026-10-16): clearing screen touchButtons alone leaves g_touchGlyphHits /
     # g_navHits live (the P0 #320 tap-through class), so only a real top touch layer counts.
     layer_rx = STRICT_LAYER_RX
@@ -963,9 +999,9 @@ def contracts(sources: list[Source]) -> list[Result]:
                             r.violations.append(f"{s.rel}:{ln}: {name}() routes to {target}() ({drel}), which opens no "
                                                 "beginModal / beginTopTouchLayer")
                 continue
-            if not footer_rx.search(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
+            if not footer_rx.search(body) and not delegated_bag_footer(body) and not delegated_origin_footer(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
-            if not layer_rx.search(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
+            if not layer_rx.search(body) and not delegated_origin_footer(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() leaves the covered footer's touch targets live")
     res.append(r)
 
@@ -1639,41 +1675,40 @@ def contracts(sources: list[Source]) -> list[Result]:
     res.append(r)
 
     # ---------- CG33: L06 / E02 / NEW-20 -- Gen I-III Party A / tap opens Actions ----------
-    # One shared Gen I-III Party Actions overlay also satisfies this (lane S): ClassicPartyActions lists View /
-    # Edit / Origin & Legality / Cancel, opens on Party A or a Party tap, and TrainerViewScreen::update calls it
-    # before the base party touch and every Gen I-III handler. View inside it is the read-only View route.
-    cpa_h = src("include/UI/ClassicPartyActions.h")
-    cpa_in = [b for x in sources if x.rel.endswith("ClassicPartyActionsOverlay.inc")
-              for n, _, b in function_bodies(x.code, re.compile(r"^handleInput$"))]
-    comp = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
-    upd = "".join(b for _, _, b in function_bodies(comp.code, re.compile(r"^update$"))) if comp else ""
-    shared_overlay = False
-    if cpa_h and cpa_in and upd:
-        order = [m.group(0) for m in re.finditer(r'Action::(View|Edit|Legality|Cancel)\s*,', cpa_h.code)]
-        lists = [o.split("::")[1].rstrip(", ") for o in order][:4] == ["View", "Edit", "Legality", "Cancel"]
-        opens = any(re.search(r"HidNpadButton_A", b) and re.search(r"kPartyTouchBase|Party", b) for b in cpa_in)
-        call = upd.find("ClassicPartyActions::handleInput(")
-        later = [upd.find(t) for t in ("handleBasePartyTouch(", "updateGSCOverlay(", "Gen1", "Gen3SharedPokemonSurface::")
-                 if upd.find(t) >= 0]
-        shared_overlay = lists and opens and call >= 0 and all(call < x for x in later)
-
     r = Result("CG33-party-opens-actions",
                "Gen I-III Party A / tap opens the Pokemon Actions popup (View / Edit / Origin & Legality / Cancel), never straight to View")
-    for name, ln, body in ([] if shared_overlay else function_bodies(base.code, re.compile(r"^openPokemonActionSheet$"))):
+    for name, ln, body in function_bodies(base.code, re.compile(r"^openPokemonActionSheet$")):
         cut = body.find("openActionSheetTargetDetails")
         prefix = body if cut < 0 else body[:cut]
-        if cut >= 0 and not re.search(r"PokemonLocation::Party\b[\s\S]*?\breturn\b", prefix):
+        if cut >= 0 and not ("ClassicPartyActions::open(" in prefix and "PokemonLocation::Party" in prefix):
             r.violations.append(f"{base.rel}:{ln}: openPokemonActionSheet() sends a Gen I-V Party target straight to "
                                 "openActionSheetTargetDetails(true) (read-only View)")
-    if not shared_overlay:
-        r.violations += [v + "  <- Gen III Party opens View" for v in lit_hits(sources, r"open in View")]
+    r.violations += [v + "  <- Gen III Party opens View" for v in lit_hits(sources, r"open in View")]
     PARTY = re.compile(r"ViewMode::Party\b|PokemonLocation::Party\b|TargetKind::Party\b|\bpartyEntry\w*")
     ACTIONS_OPEN = {1: r"\bmode\s*=\s*(?:UX2Mode|Mode)::Actions\b|\bopenActions\s*\(",
                     2: r"\bpokemonActions\s*=\s*true\b",
                     3: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b",
                     4: r"\bbeginActions\s*\(|\bactions\s*=\s*true\b"}
     for g, rx in ACTIONS_OPEN.items():
-        if shared_overlay and g in (1, 2, 3):
+        if g <= 3:
+            # Party has one real popup before all older generation-specific action wrappers.
+            common=src("src/UI/ClassicPartyActions.inc")
+            composite=src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+            cases="".join(b for n, _, b in function_bodies(common.code,re.compile(r"^open$"))) if common else ""
+            action_rx=r"Gen1PokemonEditor::UX2Mode::Actions" if g==1 else rx
+            if not common or f"case {g}:" not in cases or not re.search(action_rx,cases):
+                r.violations.append(f"Gen {g}: shared Party sheet never opens its native Actions state")
+            if not composite or '#include "ClassicPartyActions.inc"' not in composite.code or "ClassicPartyActions::handle(*this" not in composite.code or "ClassicPartyActions::draw(*this" not in composite.code:
+                r.violations.append("Shared Party Actions is missing from actual frame input/draw")
+            if common and "actionsForSlot(true,{false,false,true},false)" not in common.code:
+                r.violations.append("Shared Party Actions no longer offers View/Edit/Origin/Cancel")
+            backend=src(f"src/Integration/Gen{g}/Gen{g}StagedPokemonEditor.cpp" if g!=2 else "src/Integration/Gen2/Gen2StagedEditor.cpp")
+            if not backend or "stagePartyPokemonEdit(" not in backend.code:
+                r.violations.append(f"Gen {g}: Party Edit has no native staged writer")
+            adapter=src("src/UI/Gen1PokemonEditorOverlayFoundation.inc" if g==1 else
+                f"include/UI/Gen{g}{'PokemonSession' if g==2 else 'SharedPokemonSession'}.h")
+            if not adapter or "stagePartyPokemonEdit(" not in adapter.code:
+                r.violations.append(f"Gen {g}: real Keep never invokes the native Party staged writer")
             continue
         if not any(PARTY.search(b) and re.search(rx, b)
                    for s in gen_files(g) for _, _, b in function_bodies(s.code, re.compile(r"."))):
@@ -1698,37 +1733,30 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     # ---------- CG35: AUD-01 -- Gen V Review matches Gen IV Review ----------
     r = Result("CG35-gen5-review-matches-gen4",
-               "Gen IV and Gen V Review show the same heading, footer actions and Discard-all confirmation "
-               "(AUD-01: converged through the shared review chrome, Gen V's S04 workflow kept)")
-    TITLE = r'SharedReviewChrome::kTitle\b|"Review Pending Changes"'
-    DISCARD_TITLE = r'SharedReviewChrome::kDiscardTitle\b|"Discard all staged changes\?"'
-    discard_choices = {}
-    for gname, rel in (("IV", "src/UI/Gen4SharedPokemonSurface.inc"), ("V", "src/UI/Gen5SharedReadOnlySurface.inc")):
-        f = src(rel)
-        if not f:
-            r.violations.append(f"{rel}: missing")
-            continue
-        rev = [b for _, _, b in function_bodies(f.code, re.compile(r"^drawReview$"))]
-        if not rev:
-            r.violations.append(f"{rel}: drawReview() missing")
-        for body in rev:
-            heads = re.findall(r'drawText\s*\([^;]*?(' + TITLE + r'|"Review Pending Changes[^"]*")', body)
-            if not any(re.fullmatch(TITLE, h) for h in heads):
-                r.violations.append(f"Gen {gname} Review heading is not the shared 'Review Pending Changes' "
-                                    f"({heads or 'none'})")
-            if not re.search(r"\bSharedReviewChrome::footer\s*\(", body):
-                r.violations.append(f"Gen {gname} Review footer is not SharedReviewChrome::footer() "
-                                    "(L/R Review Pages, X Export Copy, Y Discard All Staged, B Back)")
-        m = re.search(DISCARD_TITLE, f.code)
-        if not m:
-            r.violations.append(f"Gen {gname}: Discard-all confirmation does not use the shared title "
-                                "'Discard all staged changes?'")
-            continue
-        window = f.code[m.start():m.start() + 900]
-        discard_choices[gname] = frozenset(re.findall(r'\{\s*"([ABXY+])"\s*,\s*"([^"]+)"\s*\}', window))
-    if len(discard_choices) == 2 and discard_choices["IV"] != discard_choices["V"]:
-        r.violations.append(f"Discard-all choices differ: Gen IV {sorted(discard_choices['IV'])} vs "
-                            f"Gen V {sorted(discard_choices['V'])}")
+               "Gen IV and Gen V Review show the same heading, footer actions and Discard-all confirmation")
+    g4 = src("src/UI/Gen4SharedPokemonSurface.inc")
+    shared = src("include/UI/SharedEditorChrome.h")
+    model = src("include/UI/SharedReviewPresentation.h")
+    for generation, adapter in (("IV",g4),("V",g5)):
+        review_bodies=[body for _,_,body in function_bodies(adapter.code,re.compile(r"^drawReview$"))]
+        if not review_bodies or not all(re.search(r"SharedEditorChrome::drawReviewPanel\s*\(",body) for body in review_bodies):
+            r.violations.append(f"Gen {generation}: Review does not use the common panel")
+        if not re.search(r"SharedEditorChrome::drawReviewDiscardConfirm\s*\(",adapter.code):
+            r.violations.append(f"Gen {generation}: Discard All does not use the common confirmation")
+    panels=[body for _,_,body in function_bodies(shared.code,re.compile(r"^drawReviewPanel$"))] if shared else []
+    if not panels or not all('"Review Pending Changes"' in body and
+        re.search(r"drawFooter\s*\(\s*fb\s*,\s*R::footer\s*\(",body) and
+        re.search(r"beginModal\s*\(",body) for body in panels):
+        r.violations.append("Shared Review panel must own touch and draw the shared heading/footer")
+    for glyph,label in (("X","Export Copy"),("Y","Discard All"),("B","Back")):
+        if not model or not re.search(r'push\(\s*"'+glyph+r'"\s*,\s*"'+label+r'"\s*\)',model.code):
+            r.violations.append(f"Shared Review footer is missing {glyph} {label}")
+    confirms=[body for _,_,body in function_bodies(shared.code,re.compile(r"^drawReviewDiscardConfirm$"))] if shared else []
+    if not confirms or not all('"Discard all staged changes?"' in body and
+        re.search(r'\{\s*"Y"\s*,\s*"Discard All"',body) and
+        re.search(r'\{\s*"B"\s*,\s*"Keep Changes"',body) and
+        re.search(r"beginModal\s*\(",body) for body in confirms):
+        r.violations.append("Shared Discard All question must own touch and offer Y Discard / B Keep")
     res.append(r)
 
     # Round 4 P3 (owner round 3 FAIL, UI polish): CG36-CG47.
@@ -1934,7 +1962,15 @@ def contracts(sources: list[Source]) -> list[Result]:
     for s in U:
         if s.rel in HELD_SHARED or not re.search(r"\bSharedHeldItemPickerPresentation::draw(?:Heading|Grid)\s*\(", s.code):
             continue
-        if not (shared_search or re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", s.code)):
+        # The integrated Held Item path uses the live promptText callback to
+        # ItemPickerSearch, retaining Sort and restoring the old query on B.
+        # Require all of that wiring rather than a particular keyboard widget.
+        live_prompt = (re.search(r'promptText\s*\(\s*"Search Held Items"[^;]*,\s*refilter\s*\)', s.code) and
+                       re.search(r'\bItemPickerSearch::apply\s*\(', s.code) and
+                       re.search(r'refilter\s*\(\s*result\.accepted\s*\?\s*result\.text\s*:\s*previous', s.code) and
+                       re.search(r'\bItemPickerSearch::tag\s*\(', s.code) and
+                       re.search(r'minusLabel\s*=\s*"Search"', s.code))
+        if not (shared_search or live_prompt or re.search(r"\bSharedSearchInput::(?:drawField|handleKeys|handleTouch)\s*\(", s.code)):
             r.violations.append(f"{s.rel}: Held Item picker has Sort but no search (no SharedSearchInput field / input)")
     res.append(r)
 
@@ -1944,7 +1980,8 @@ def contracts(sources: list[Source]) -> list[Result]:
                "(owner round 3 NEW-07)")
     for v in code_hits(U, r"\bGen2FieldSelector::otGender\s*\("):
         r.violations.append(v + "  <- opens the OT Gender popup")
-    if not code_hits(U, r"\bcrystalOtGender\s*=\s*[^;]*\b(?:cycle\w*|next\w*)\s*\("):
+    inline_apply = code_hits(U, r"\bapplyFieldSelector\s*\([^;]*Field::OtGender\s*,[^;]*\bnextOtGender\s*\(")
+    if not (inline_apply or code_hits(U, r"\bcrystalOtGender\s*=\s*[^;]*\b(?:cycle\w*|next\w*)\s*\(")):
         r.violations.append("no Gen II UI code cycles state.crystalOtGender inline (cycle*/next* helper)")
     res.append(r)
 
@@ -1962,6 +1999,15 @@ def contracts(sources: list[Source]) -> list[Result]:
             bar = re.search(r"drawAndPublish\s*\(\s*fb\s*,\s*state\.pickerScrollbar\s*,\s*x\s*\+\s*w\s*-\s*(\d+)\s*,\s*viewportTop",
                             b)
             if not (row and bar):
+                # Current shared value lists use one rowW for drawing, clipping
+                # and touch, with an explicit gap before the scrollbar track.
+                gap = re.search(r"const int scrollbarGap\s*=\s*SharedScrollbar::kTouchSlop\s*\+\s*(\d+)\s*;", b)
+                if (gap and int(gap.group(1)) >= 0 and
+                    re.search(r"barGutter\s*=\s*count\s*>\s*visible\s*\?\s*SharedScrollbar::kTrackWidth\s*\+\s*scrollbarGap\s*:\s*0", b) and
+                    re.search(r"rowW\s*=\s*w\s*-\s*44\s*-\s*barGutter", b) and
+                    re.search(r"Rect\{x\s*\+\s*22,\s*yy\s*-\s*4,\s*rowW,", b) and
+                    re.search(r"drawAndPublish\s*\(\s*fb\s*,\s*state\.pickerScrollbar\s*,\s*x\s*\+\s*22\s*\+\s*rowW\s*\+\s*scrollbarGap", b)):
+                    continue
                 r.violations.append(f"{rel}:{ln}: Ball row / scrollbar geometry not found (update this check)")
                 continue
             inset = int(row.group(2)) - int(row.group(1))   # row right edge = x + w - inset
@@ -2079,7 +2125,8 @@ def contracts(sources: list[Source]) -> list[Result]:
                 seg = seg[:end.end()] if end else seg[:600]
                 for lit in re.findall(r'"([^"]*\bSlot\b[^"]*)"', seg):
                     r.violations.append(f"{rel}:{ln + body.count(chr(10), 0, a.start())}: Ability row label \"{lit}\"")
-    if not code_hits(U, r"(?i)\b\w*ability\w*(?:desc|effect|summary)\w*\s*\("):
+    if not (code_hits(U, r"(?i)\b\w*ability\w*(?:desc|effect|summary)\w*\s*\(") or
+            code_hits(U, r"\bAbilityEffects::row\s*\(")):
         r.violations.append("no ability effect-description source is used by any Gen III-V UI")
     r.violations = dedupe(r.violations)
     res.append(r)

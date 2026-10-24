@@ -1015,6 +1015,10 @@ void testQuarantinedPresentationRefresh() {
     auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
         *parsed, "platinum_nds", error);
     assert(trainer && error.empty() && trainer->stagedPokemonAvailable());
+    assert(PokeVault::Integration::Common::playTimeText(trainer->nativePlayTime)=="321:45:12");
+    assert(trainer->pokedexProgress().total==493);
+    assert(trainer->pokedexProgress().seen==parsed->dexProgress().seen);
+    assert(trainer->pokedexProgress().caught==parsed->dexProgress().caught);
     assert(trainer->party.size() == 2 && trainer->party[0] && !trainer->party[1]);
     assert(trainer->boxes[0][0] && !trainer->boxes[0][1]);
 

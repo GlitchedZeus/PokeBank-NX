@@ -650,6 +650,7 @@ Outcome fields(Ctx& c) {
         {FI::IV, 2, 30, "IV", [](auto& p) { return p.ivs()[2] == 30; }},
         {FI::EV, 1, 100, "EV", [](auto& p) { return p.evs()[1] == 100; }},
         {FI::HeldItem, 0, item, "HeldItem", [item](auto& p) { return p.heldItem() == item; }},
+        {FI::Language, 0, 3, "Language", [](auto& p) { return p.language() == 3; }},
         {FI::Ball, 0, 1, "Ball", [](auto& p) { return p.ball() == 1; }},
         {FI::MetLevel, 0, 3, "MetLevel", [](auto& p) { return p.metLevel() == 3; }},
         {FI::Move, 0, 33, "Move", [](auto& p) { return p.moves()[0] == 33; }},
@@ -688,12 +689,21 @@ Outcome fields(Ctx& c) {
          "open Edit on box 1 slot 1: " + error);
     auto& draft = ui.editDraft();
     for (const auto& k : cases) {
+        const auto before=draft.current();
+        const Bytes originalNames(before->decodedBytes().begin()+0x48,before->decodedBytes().begin()+0x5E);
+        const Bytes originalOt(before->decodedBytes().begin()+0x68,before->decodedBytes().begin()+0x78);
         bool ok;
         if (k.field == FI::Nickname) ok = G5::stageSharedName(draft, k.field, "QANICK", error);
         else if (k.field == FI::OriginalTrainer) ok = G5::stageSharedName(draft, k.field, "QAOT", error);
         else ok = G5::stageSharedField(draft, k.field, k.stat, k.value, error);
         need(ok, k.name + " refused: " + error);
         need(k.check(*draft.current()), k.name + " did not stage the requested value");
+        if(k.field==FI::Language) {
+            const auto after=draft.current();
+            need(std::equal(originalNames.begin(),originalNames.end(),after->decodedBytes().begin()+0x48) &&
+                 std::equal(originalOt.begin(),originalOt.end(),after->decodedBytes().begin()+0x68),
+                 "Language silently changed native OT/nickname bytes");
+        }
     }
     // The STATS PID-linked Shiny row (coordinated PID, Gen5EditorFields.h).
     need(F::toggleShiny(draft, error) && draft.current()->shiny(), "Shiny toggle: " + error);
@@ -731,9 +741,27 @@ Outcome pickers(Ctx& c) {
     auto& ui = t->sharedScreen();
     std::string error;
     need(F::kMaxSpecies == 649, "species bound");
-    const auto moves = F::moveChoices();
-    need(moves.size() == 560 && std::all_of(moves.begin() + 1, moves.end(), [](uint16_t m) {
-             return G5::validNativeMove5(m); }), "move picker list differs");
+    // The production picker must honor the exact save game, Pikachu's species
+    // and its existing source moves; it must never fall back to every native move.
+    namespace Moves = PokeVault::Integration::Gen5MoveCompatibility;
+    const auto moves = F::moveChoices(c.spec.game, 25, 0, {});
+    need(moves.size() > 40 && moves.size() < 180 && moves.front() == 0 &&
+             std::is_sorted(moves.begin(), moves.end()) &&
+             std::find(moves.begin(), moves.end(), 85) != moves.end() &&
+             std::find(moves.begin(), moves.end(), 459) == moves.end() &&
+             std::all_of(moves.begin() + 1, moves.end(), [](uint16_t m) {
+                 return G5::validNativeMove5(m);
+             }), "species/game move picker included an unsupported native move");
+    need(Moves::classify(c.spec.game, 25, 0, 459, false) == Moves::Availability::Unavailable,
+         "unsupported Pikachu move was certified selectable");
+    const auto originalOnly = F::moveChoices(c.spec.game, 25, 0, {459, 0, 0, 0});
+    need(std::find(originalOnly.begin(), originalOnly.end(), 459) != originalOnly.end() &&
+             Moves::classify(c.spec.game, 25, 0, 459, true) == Moves::Availability::Preserved,
+         "an unusual source move must survive without being certified legal");
+    size_t direct = 0;
+    for (uint16_t m = 1; m <= G5::MaxNativeMove5; ++m)
+        direct += Moves::direct(c.spec.game, 25, 0, m) ? 1u : 0u;
+    need(direct >= 40 && direct < moves.size(), "source-pinned direct learnset unexpectedly absent");
     const auto items = F::heldItemChoices();
     need(!items.empty() && items.front() == 0 &&
              std::all_of(items.begin(), items.end(), [](uint16_t i) { return i <= 638; }),
@@ -747,18 +775,21 @@ Outcome pickers(Ctx& c) {
     need(!ui.speciesRefusal(650).empty() && ui.speciesRefusal(kDeerling).empty(),
          "species picker bound / identity refusal differs");
     ui.discardDraft();
-    // Bag add pickers: Items/Medicine/Berries offer native released items; Key Items and TMs are
-    // never addable by design (Gen5Bag.h gen5BagItemAddable); key-item membership is per family.
-    for (const auto pocket : {G5::BagPocket5::Items, G5::BagPocket5::Medicine, G5::BagPocket5::Berries})
+    // Every native pocket has a real add catalogue. Unique Key Items/TMs/HMs are x1,
+    // not stackable; the actual warning/add/remove transactions are exercised by bagAdd.
+    for (const auto pocket : {G5::BagPocket5::Items, G5::BagPocket5::Medicine, G5::BagPocket5::Berries,
+                             G5::BagPocket5::KeyItems,G5::BagPocket5::Machines})
         need(!G5::gen5BagChoices(c.spec.family, static_cast<size_t>(pocket)).empty(), "empty Bag add picker");
-    need(G5::gen5BagChoices(c.spec.family, 1).empty() && G5::gen5BagChoices(c.spec.family, 2).empty(),
-         "Key Items / TMs offered as Bag additions");
+    for(const size_t pocket:{size_t{1},size_t{2}})
+        for(const auto id:G5::gen5BagChoices(c.spec.family,pocket))
+            need(G5::gen5BagItemInPocket(c.spec.family,pocket,id) &&
+                 G5::bagPocketLayout5(c.spec.family,pocket).maxCount==1,"invalid / stackable unique item");
     const uint16_t own = c.b2w2() ? G5::BagCatalog5::kKeyB2W2.back() : G5::BagCatalog5::kKeyBW.back();
     need(G5::gen5BagItemInPocket(c.spec.family, 1, own), "family key-item list not recognised");
     need(!ws.hasChanges(), "picker queries staged a change");
     return passed("species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, " +
                   std::to_string(G5::NativeMetLocations5.size()) +
-                  " met locations, Deerling 4 forms, ability slots; Bag add lists (no Key Items/TMs), family key-item list");
+                  " native met locations (not encounter proof), Deerling 4 forms, ability slots; all five native Bag add lists, unique Key/TM/HM x1");
 }
 
 Outcome actions(Ctx& c) {
@@ -1105,15 +1136,45 @@ Outcome bagAdd(Ctx& c) {
     need(heldIn(ws, kMedicine, potion) == 12 && ws.bagReviewChanges().size() == reviewBefore && focused &&
              focused->itemId == potion, "re-pick changed the stage or did not focus the Potion");
 
-    // A unique Key Item: Gen V Key Items cannot be added, and their row has a fixed quantity.
+    // Unique Key Items: existing items focus, a new one requires its story warning,
+    // cancellation changes no serialized byte, and explicit removal is staged separately.
     while (bag.pocket() != kKey) bag.changePocket(1);
-    need(!bag.openAdd(ws, error) && bag.surface() == BagSurface::Browse, "Key Items Add picker opened");
     const uint16_t key = c.b2w2() ? G5::BagCatalog5::kKeyB2W2[0] : G5::BagCatalog5::kKeyBW[0];
     const auto keyRule = gen5Rule(c, kKey, key);
     need(keyRule.valid && !keyRule.editable && keyRule.maximum == 1, "Key Item policy rule not unique / max 1");
     need(BagAdd::decideRow(keyRule, 1, G5::bagPocketLayout5(c.spec.family, kKey).maxCount).outcome ==
              BagAdd::RowOutcome::FixedQuantity, "Key Item row is not FixedQuantity");
     need(!bag.beginQuantity(ws, error).has_value(), "Key Item opened a quantity editor");
+    need(bag.openAdd(ws,error) && choose(key),"Existing Key Item not offered: "+error);
+    need(!bag.requestAddWarning(ws,keyRule) &&
+        bag.pickAdd(ws,keyRule,refresh,error).outcome==BagAdd::PickOutcome::FocusExisting,
+        "Existing Key Item did not focus without duplication");
+    constexpr uint16_t addedKey=447,addedMachine=618;
+    const auto beforeWarning=G5::buildStagedSaveCandidate(ws,&error);need(beforeWarning.has_value(),error);
+    const auto addKeyRule=gen5Rule(c,kKey,addedKey);
+    need(bag.openAdd(ws,error) && choose(addedKey),"New Key Item not offered: "+error);
+    need(!bag.confirmAdd(ws,addedKey,1,refresh,error),"Key Item staged without warning");
+    need(bag.requestAddWarning(ws,addKeyRule) && bag.surface()==BagSurface::KeyItemAddWarning,
+        "Key Item warning missing");
+    bag.cancel();
+    const auto cancelled=G5::buildStagedSaveCandidate(ws,&error);
+    need(cancelled && cancelled->bytes==beforeWarning->bytes,"Warning cancellation changed staged bytes");
+    need(bag.openAdd(ws,error) && choose(addedKey) && bag.requestAddWarning(ws,addKeyRule),"Reopen Key Item warning");
+    need(bag.pickAdd(ws,addKeyRule,refresh,error).outcome==BagAdd::PickOutcome::StageNew &&
+        heldIn(ws,kKey,addedKey)==1,"Key Item x1 not staged: "+error);
+    need(bag.tapRow(0,ws) && bag.requestRemove(ws,error),"Key Item Remove did not open");
+    bag.cancel();need(heldIn(ws,kKey,key)==1,"Cancel removed original Key Item");
+    need(bag.requestRemove(ws,error) && bag.confirmRemove(ws,refresh,error) && heldIn(ws,kKey,key)==0,
+        "Explicit Key Item Remove failed: "+error);
+    bag.changePocket(1);
+    const auto machineRule=gen5Rule(c,2,addedMachine);
+    need(bag.openAdd(ws,error) && choose(addedMachine),"TM/HM picker missing native item: "+error);
+    need(!bag.confirmAdd(ws,addedMachine,2,refresh,error),"TM/HM stacked above one");
+    need(!bag.requestAddWarning(ws,machineRule),"TM/HM incorrectly requested Key Item warning");
+    need(bag.pickAdd(ws,machineRule,refresh,error).outcome==BagAdd::PickOutcome::StageNew &&
+        heldIn(ws,2,addedMachine)==1,"TM/HM x1 not staged: "+error);
+    need(bag.tapRow(0,ws) && bag.requestRemove(ws,error) && bag.confirmRemove(ws,refresh,error),
+        "Explicit TM/HM Remove failed: "+error);
 
     // The staged bag really holds it: export candidate re-parses with Antidote x1.
     const auto out = G5::buildStagedSaveCandidate(ws, &error);
@@ -1124,10 +1185,13 @@ Outcome bagAdd(Ctx& c) {
     need(exported && std::any_of((*exported)[kMedicine].begin(), (*exported)[kMedicine].end(),
                                  [](const auto& s) { return s.itemId == kAntidote && s.count == 1; }),
          "re-parsed Medicine pocket lacks Antidote x1");
+    for(const auto& [pocket,id]:{std::pair<size_t,uint16_t>{kKey,addedKey},{2,addedMachine}})
+        need(std::any_of((*exported)[pocket].begin(),(*exported)[pocket].end(),
+            [id](const auto& slot){return slot.itemId==id && slot.count==1;}),"Unique item did not reparse at x1");
     need(c.sourceUntouched(), "bag add touched the source file");
     return passed("Gen5BagScreen::pickAdd(ws, gen5PolicyRule, refresh): Antidote StageNew x1 (no numpad), staged bag "
                   "x1 (candidate strict reparse); beginQuantity + decideRow EditQuantity [1,999]; held Potion -> "
-                  "FocusExisting, nothing staged; Key Items not addable, key row FixedQuantity, no editor");
+                  "FocusExisting, nothing staged; Key/TM/HM warning/cancel/add/remove x1 and strict reparse, no unique quantity editor");
 }
 
 Outcome reroll(Ctx& c) {

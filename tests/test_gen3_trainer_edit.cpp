@@ -59,6 +59,7 @@ LogicalSectors makeLogical(Family family, bool japanese) {
     if (japanese) logical[0][6] = logical[0][7] = 0;
     write16(logical[0], 0x0A, 12345);
     write16(logical[0], 0x0C, 54321);
+    write16(logical[0],0x0E,5432);logical[0][0x10]=45;logical[0][0x11]=59;
     if (family == Family::FRLG) {
         write32(logical[0], 0xAC, 1);
         write32(logical[0], 0xF20, kKey);
@@ -124,6 +125,8 @@ void runGame(SourceGame game, Family family, const std::filesystem::path& root) 
     assert(trainer && error.empty());
     assert(trainer->nameEditable() && trainer->trainerName() == "KYLIE" && trainer->money() == 3000);
 
+    const auto native=parse(source,game);
+    assert(native && PokeVault::Integration::Common::playTimeText(native.save->trainer().playTime)=="5432:45:59");
     // Refusals stage nothing.
     assert(!trainer->stageMoney(1000000, error) && !error.empty());
     assert(!trainer->stageTrainerName("", error));

@@ -1,3 +1,4 @@
+#include "Names/ItemNames.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedEditorPresentation.h"
@@ -540,7 +541,7 @@ std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     }
     if (auto* inv = trainer->stagedInventory()) {
         for (const auto& change : inv->pendingChanges()) {
-            out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
+            out.push_back(std::string(Names::getItemNameG1(change.itemId)) + ": " +
                 std::to_string(change.before) + " -> " + std::to_string(change.after));
         }
     }
@@ -779,7 +780,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
             {"Edit", "Summary / Moves / DVs / Stat Exp / Trainer"},
             {"Clone", "Choose a destination box; uses its first empty slot"},
             {"Remove", "Stages synchronized Gen I box compaction"},
-            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
             {"Cancel", "No mutation"},
         };
@@ -967,26 +968,24 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 28, y + 20, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 32, y + 92, "Source game", Colors::TextDim);
-    fb.drawText(x + 300, y + 92, screen.sourceGameId, Colors::Text);
-    fb.drawText(x + 32, y + 132, "Region/layout", Colors::TextDim);
-    fb.drawText(x + 300, y + 132, trainer && trainer->japaneseLayout() ? "Japanese (EDIT DISABLED)" : "International (validated editor)", Colors::Text);
-    fb.drawText(x + 32, y + 172, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 300, y + 172, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 32, y + 212, "Party mutation", Colors::TextDim);
-    fb.drawText(x + 300, y + 212, "DEFERRED", Colors::Text);
-    fb.drawText(x + 32, y + 252, "Format validation", Colors::TextDim);
-    fb.drawText(x + 300, y + 252, "Strict reparse + R/B/Y identity + checksum on export", Colors::Text);
-    fb.drawText(x + 32, y + 292, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim);
-    fb.drawText(x + 300, y + 292, "NOT CLAIMED by this editor", Colors::Accent);
-    fb.drawText(x + 32, y + 332, "Original bytes", Colors::TextDim);
-    fb.drawText(x + 300, y + 332, e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable", Colors::Text);
-    fb.drawText(x + 32, y + 372, "Pending semantic changes", Colors::TextDim);
-    fb.drawText(x + 300, y + 372, std::to_string(pendingLines(screen).size()), Colors::Text);
-    drawNavBar(fb, {{"B", "Back to Actions"}});
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=selectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
+    }
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 } // namespace

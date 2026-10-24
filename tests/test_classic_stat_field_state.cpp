@@ -115,7 +115,9 @@ int main() {
             assert(src.find(dev) == std::string::npos);
     }
     assert(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find("GameContext::SurfaceMode::CreateDraft") != std::string::npos);
-    assert(read("src/UI/Gen2PokemonEditorFoundation.inc").find("if (state.slot >= 0) record += \" / Slot \"") != std::string::npos);
+    const auto gen2Foundation = read("src/UI/Gen2PokemonEditorFoundation.inc");
+    assert(gen2Foundation.find("state.party?\"Party \"") != std::string::npos);
+    assert(gen2Foundation.find("if (!state.party && state.slot >= 0) record += \" / Slot \"") != std::string::npos);
     std::cout << "Gen I/II STATS field states: derived HP DV and calculated stats gold everywhere PASS\n";
     return 0;
 }

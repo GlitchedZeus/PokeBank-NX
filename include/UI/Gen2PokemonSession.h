@@ -174,11 +174,12 @@ struct Session {
         if (progression == ProgressionSource::Experience) create.experience = working.experience;
         return create;
     }
-    bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error) {
+    bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error,bool party=false) {
         if (mode != SessionMode::Edit || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Keep unavailable or incompatible new move"; return false;
         }
-        if (!editor.stageBoxPokemonEdit(box,slot,editRequest(),error)) return false;
+        if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
+                    editor.stageBoxPokemonEdit(box,slot,editRequest(),error))) return false;
         mode = SessionMode::None; confirmExit = false; return true;
     }
     bool add(Gen2::StagedEditor& editor,size_t box,size_t& slot,std::string& error) {

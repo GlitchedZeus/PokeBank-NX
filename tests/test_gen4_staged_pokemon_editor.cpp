@@ -210,6 +210,17 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(error.empty());
     assert(editor->hasChanges());
     assert(source == original);
+    const auto fields=PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor);
+    assert(fields.size()>4); // Every field remains reachable across Review pages.
+    assert(std::any_of(fields.begin(),fields.end(),[](const auto& row) {
+        return row.first=="Box 1 / Slot 1 / Move 1" && row.second.ends_with(" -> Recover");
+    }));
+    assert(std::any_of(fields.begin(),fields.end(),[](const auto& row) {
+        return row.first=="Box 1 / Slot 1 / IV HP" && row.second.ends_with(" -> 31");
+    }));
+    assert(std::any_of(fields.begin(),fields.end(),[](const auto& row) {
+        return row.first=="Box 1 / Slot 1 / EV Atk" && row.second.ends_with(" -> 200");
+    }));
 
     const auto finalBytes = editor->finalizedBytes(&error);
     assert(!finalBytes.empty() && error.empty());
@@ -472,6 +483,7 @@ void testMoveSwapAndCrossBoxTransactions() {
         const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
         assert(lines.size() == 1);
         assert(lines[0].rfind("Moved ", 0) == 0);
+        assert(PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor).size()==1);
         assert(lines[0].find(": Box 1 slot 1 -> Box 1 slot 2") != std::string::npos);
     }
     assert(!editor->stageMoveBoxPokemon(0, 0, 1, 0, &error));
@@ -643,10 +655,10 @@ void testGen4BagQuantityBoundsAndSourceImmutability() {
         const auto hasLine = [&](const std::string& text) {
             return std::find(bagLines.begin(), bagLines.end(), text) != bagLines.end();
         };
-        assert(hasLine("Bag Items: item #68 0 -> 900"));
-        assert(hasLine("Bag TM/HM: item #328 0 -> 99"));
-        assert(hasLine("Bag TM/HM: item #420 0 -> 1"));
-        assert(hasLine("Bag Key Items: item #434 0 -> 1"));
+        assert(hasLine("Bag Items: Black Flute 0 -> 900"));
+        assert(hasLine("Bag TM/HM: TM01 — Focus Punch 0 -> 99"));
+        assert(hasLine("Bag TM/HM: HM01 — Cut 0 -> 1"));
+        assert(hasLine("Bag Key Items: Sticker Case 0 -> 1"));
         editor->discard();
         assert(editor->stagedBytes() == original);
         assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());

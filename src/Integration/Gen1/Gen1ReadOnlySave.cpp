@@ -428,6 +428,10 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame game) {
 
     save->trainer_.name = decodeGen1String(raw.subspan(kMainStart, l.stringLength), l.region);
     save->trainer_.trainerId = readBE16(raw, l.tid);
+    // PKHeX 6042efa241a9 SAV1Offsets / SAV1: hours, maximum flag, minutes, seconds.
+    const size_t clockOffset=l.region==RegionLayout::Japanese?0x2CA0:0x2CED;
+    save->trainer_.playTime=Common::nativePlayTime(raw[clockOffset],raw[clockOffset+2],
+                                                raw[clockOffset+3],raw[clockOffset+1]!=0);
     if (!decodeBCD3(raw, l.money, save->trainer_.money)) {
         result.error = SaveError::InvalidTrainerData;
         result.detail = "Generation I money field is not valid packed BCD";

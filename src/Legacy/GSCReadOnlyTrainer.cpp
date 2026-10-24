@@ -85,7 +85,12 @@ std::unique_ptr<GSCReadOnlyTrainer> GSCReadOnlyTrainer::create(
 
 bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
     if (!stagedEditor_) { error = "Staged editing unavailable"; return false; }
-    const auto bytes = stagedEditor_->finalizedBytes(error);
+    // NEW-04: while a packed Y move carries Pokemon, finalizedBytes() deliberately refuses (a carry
+    // is not an exportable save). The grid is then drawn from presentationBytes(): the same strict
+    // reload repair on a copy, never exportable. Without this every Gen II pickup failed its first
+    // refresh with "Place or cancel carried Pokemon before finalizing the Gen II staged save".
+    const auto bytes = stagedEditor_->packedMoveActive() ? stagedEditor_->presentationBytes(error)
+                                                         : stagedEditor_->finalizedBytes(error);
     if (bytes.empty()) return false;
     const auto parsed = Integration::Gen2::parse(bytes, stagedEditor_->metadata().sourceGame);
     if (!parsed) { error = parsed.detail; return false; }
@@ -97,6 +102,23 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
         }
     }
     boxes.swap(displayBoxes);
+    decltype(party) displayParty;
+    for(const auto& record:parsed.save->party()) {
+        const size_t slot=displayParty.size();
+        // Box/Trainer refreshes must retain the existing Party object when its native
+        // body and separately stored names/egg marker are unchanged. Party edits still
+        // replace that one view from the strictly reparsed staged record.
+        const auto* previous=slot<party.size() && party[slot]
+            ? static_cast<const Pokemon::Pokemon2ReadOnly*>(party[slot].get()):nullptr;
+        const auto* old=previous?&previous->strictRecord():nullptr;
+        if(old && old->rawBodySize==record.rawBodySize && old->rawBody==record.rawBody &&
+           old->originalTrainer==record.originalTrainer && old->nickname==record.nickname &&
+           old->isEgg==record.isEgg)
+            displayParty.push_back(std::move(party[slot]));
+        else
+            displayParty.push_back(std::make_unique<Pokemon::Pokemon2ReadOnly>(record));
+    }
+    party.swap(displayParty);
     trainerName = parsed.save->trainer().name;
     money = parsed.save->trainer().money;
     return true;
@@ -105,6 +127,9 @@ bool GSCReadOnlyTrainer::refreshStagedBoxPresentation(std::string& error) {
 bool GSCReadOnlyTrainer::populate(
     const Integration::Gen2::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
+    nativePlayTime = strictTrainer.playTime;
+    const auto dex = save.dexProgress();
+    nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
     money = strictTrainer.money;
     TID16 = strictTrainer.trainerId;

@@ -13,6 +13,7 @@
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
 #include "UI/GameLauncher.h"
+#include "UI/WorkingCopyRefresh.h"
 #include "UI/InputTrace.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/Dialogs/KeyboardDialog.h"
@@ -39,6 +40,35 @@ using namespace Trainer;
 
 namespace UI {
     namespace {
+        // Round 4 (R2-EMUBACKUP / S05): opening an installed Switch save refreshes the single
+        // Working copy instead of adding a timestamped backup on every open. An earlier Working
+        // copy that holds edits is kept as a dated backup (WorkingCopyRefresh.h); an unchanged one
+        // leaves no backup behind. Deliberate backups come only from Save Backups -> Create.
+        std::string openWorkingCopy(AccountUid userUid, u64 titleId, const std::string& titleName) {
+            namespace W = PokeBank::UIModel::WorkingCopy;
+            const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+            const std::string working = identity
+                ? PokeBank::Paths::workspaceBackupPath(userUid, identity->id, "Working") : std::string{};
+            if (working.empty()) return backupSaveData(userUid, titleId, titleName, false); // refuses itself
+            const W::Result r = W::refresh(working, getTimestamp(), [&] {
+                return backupSaveData(userUid, titleId, titleName, false);
+            });
+            switch (r.outcome) {
+                case W::Outcome::Fresh:
+                case W::Outcome::UnchangedDropped:
+                    logInfoToFile("Opened installed save through the Working copy (no backup made)",
+                                  titleName.c_str());
+                    break;
+                case W::Outcome::EditsPreserved:
+                    logInfoToFile("Earlier Working copy held edits; kept as backup", r.preservedPath.c_str());
+                    break;
+                case W::Outcome::Failed:
+                    logErrorToFile("Working copy refresh failed", r.error.c_str());
+                    break;
+            }
+            return r.workingPath;
+        }
+
         // Opt-in input trace (P0 #320): enabled only by config/input_trace.enable; bounded log
         // logs/input-trace.log; buttons, screen tags and decision origins only.
         PokeBank::Diagnostics::InputTrace::Recorder& inputTrace() {
@@ -371,13 +401,11 @@ namespace UI {
                                            const std::string& titleName,
                                            std::string& error) {
         error.clear();
-        // Product Home Open is intentionally frictionless: create the same protected app-owned
-        // backup/working copy first, then enter the player/game workspace. Backup history is only
-        // shown when the user explicitly opens Current Game -> Backups.
-        logInfoToFile("Direct game open: creating protected backup/working copy first",
-                      titleName.c_str());
-        const std::string backupPath =
-            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        // Product Home Open is intentionally frictionless: read the installed save into the single
+        // Working copy (no new backup), then enter the player/game workspace. Backups are made only
+        // deliberately from Current Game -> Backups.
+        logInfoToFile("Direct game open: refreshing the Working copy", titleName.c_str());
+        const std::string backupPath = openWorkingCopy(userUid, titleId, titleName);
         if (backupPath.empty()) {
             logErrorToFile("Direct game open refused: backup creation failed",
                            titleName.c_str());
@@ -395,10 +423,8 @@ namespace UI {
 
     void UIManager::handleItemsQuickOpen(AccountUid userUid, u64 titleId,
                                          const std::string& titleName) {
-        logInfoToFile("Items quick-open: creating protected working backup first",
-                      titleName.c_str());
-        const std::string backupPath =
-            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        logInfoToFile("Items quick-open: refreshing the Working copy", titleName.c_str());
+        const std::string backupPath = openWorkingCopy(userUid, titleId, titleName);
         if (backupPath.empty()) {
             logErrorToFile("Items quick-open refused: backup creation failed",
                            titleName.c_str());
@@ -430,17 +456,27 @@ namespace UI {
                 fb.flush();
             }
 
+            if (backupScreen.takeCreateBackupRequest()) {
+                // The deliberate "Create backup now" row: a new timestamped copy of the installed
+                // save; the screen stays open and lists it.
+                logInfoToFile("Creating a backup on request for", titleName.c_str());
+                const std::string made = backupSaveData(userUid, titleId, titleName, true);
+                if (made.empty()) {
+                    logErrorToFile("Failed to back up save data");
+                    backupScreen.reportFailure("Couldn't create the backup. Check SD card space and try again.");
+                } else {
+                    backupScreen.reloadWithNotice("Backup created. The installed save was not changed.");
+                }
+                continue;
+            }
             if (backupScreen.hasSelectedBackup()) {
                 if (backupScreen.shouldCreateNewBackup()) {
-                    logInfoToFile("Creating new backup for", titleName.c_str());
-
-                    // Auto-backup ON -> new timestamped history folder (kept indefinitely; the user
-                    // decides when to delete backups, so we never prune). OFF -> reuse a single
-                    // "Working" copy so backups don't pile up.
-                    std::string backupPath = backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+                    // Browse the current save: the Working copy, never a new backup.
+                    logInfoToFile("Browsing the installed save through the Working copy", titleName.c_str());
+                    std::string backupPath = openWorkingCopy(userUid, titleId, titleName);
                     if (backupPath.empty()) {
-                        logErrorToFile("Failed to back up save data");
-                        backupScreen.reportFailure("Couldn't create the backup. Check SD card space and try again.");
+                        logErrorToFile("Failed to read the installed save");
+                        backupScreen.reportFailure("Couldn't read the save. Check SD card space and try again.");
                         continue;
                     }
                     std::string error;

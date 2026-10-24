@@ -2,11 +2,17 @@
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
+#include "Enums/Ball.h"
+#include "Enums/LanguageID.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Save/RtcFooter.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Names/MoveInfo.h"
+#include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
+#include "Names/ItemNames.h"
+#include "Names/PokemonNames.h"
+#include "Names/LocationDisplayNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Experience.h"
 #include "Utils/StringHelpers.h"
@@ -373,15 +379,42 @@ bool StagedPokemonEditor::writeBoxRaw(
 bool StagedPokemonEditor::stageBoxPokemonEdit(
     std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
     std::string& error) {
+    return stageRecordEdit(false,box,slot,edit,error);
+}
+std::vector<uint8_t> StagedPokemonEditor::readPartyRaw(std::size_t slot,std::string& error) const {
+    std::array<uint8_t,1> count{};
+    if(slot>=6 || !readLogical(staged_,sectorOffsets_,1,Detail::partyCountOffset(sourceGame_),count) || slot>=count[0]) {
+        error="Generation III Party slot is empty or out of range";return {};
+    }
+    std::vector<uint8_t> raw(100);
+    if(!readLogical(staged_,sectorOffsets_,1,Detail::partyDataOffset(sourceGame_)+slot*100,raw)) {
+        error="Generation III Party record crossed an invalid sector";return {};
+    }
+    error.clear();return raw;
+}
+std::optional<StagedPokemonRecord> StagedPokemonEditor::partyPokemon(std::size_t slot,std::string& error) const {
+    const auto bytes=readPartyRaw(slot,error);
+    if(bytes.empty()) return {};
+    std::array<uint8_t,80> raw{};
+    std::copy_n(bytes.begin(),80,raw.begin());
+    return parseRaw(raw,error);
+}
+bool StagedPokemonEditor::stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit& edit,std::string& error) {
+    return stageRecordEdit(true,0,slot,edit,error);
+}
+bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
+    const BoxPokemonEdit& edit,std::string& error) {
     error.clear();
     if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
     bool ok = false;
-    const auto raw = readBoxRaw(box, slot, ok);
+    const auto boxRaw = party?std::array<uint8_t,80>{}:readBoxRaw(box, slot, ok);
+    std::vector<uint8_t> raw=party?readPartyRaw(slot,error):std::vector<uint8_t>(boxRaw.begin(),boxRaw.end());
+    if(party) ok=!raw.empty();
     if (!ok) {
         error = "Generation III box/slot is outside the native 14 x 30 storage";
         return false;
     }
-    auto before = parseRaw(raw, error);
+    auto before = party?partyPokemon(slot,error):parseRaw(boxRaw, error);
     if (!before) {
         if (error.empty()) error = "Selected Generation III box slot is empty";
         return false;
@@ -389,6 +422,8 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
 
     Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+    const uint16_t originalHP=party?static_cast<uint16_t>(raw[0x56]|raw[0x57]<<8):0;
+    const uint16_t originalMax=party?static_cast<uint16_t>(raw[0x58]|raw[0x59]<<8):0;
     const uint32_t originalPid = pokemon.pid();
     const uint16_t originalTid = pokemon.tid16();
     const uint16_t originalSid = pokemon.sid16();
@@ -570,10 +605,27 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         return false;
     }
 
-    const auto replacement = encryptedBytes(pokemon);
+    const bool partyStatsChanged=before->species!=pokemon.speciesID() || before->experience!=pokemon.exp() ||
+        before->ivs!=ivs(pokemon) || before->evs!=evs(pokemon) || before->nature!=pokemon.nature();
+    if(party && partyStatsChanged)
+        pokemon.setStatHPCurrent(originalHP==0?0:originalHP>=originalMax?pokemon.statHPMax():
+                                std::min(originalHP,pokemon.statHPMax()));
+    std::vector<uint8_t> replacement(raw.size());
+    auto* encrypted=Encryption::encryptArray3FRLG(pokemon.getData());
+    std::memcpy(replacement.data(),encrypted,replacement.size());
+    delete[] encrypted;
+    // A name, item, friendship or PID edit with unchanged stat inputs must not repair
+    // unrelated unusual cached bytes merely because a PK3 setter recalculated them.
+    if(party && !partyStatsChanged)std::copy(raw.begin()+80,raw.end(),replacement.begin()+80);
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
-    if (!writeBoxRaw(box, slot, replacement, error)) {
+    bool written=false;
+    if(party) {
+        std::set<uint8_t> touched;
+        written=writeLogical(staged_,sectorOffsets_,1,Detail::partyDataOffset(sourceGame_)+slot*100,replacement,touched);
+        if(written) repairChecksums(staged_,sectorOffsets_,touched);
+    } else written=writeBoxRaw(box,slot,replacement,error);
+    if (!written) {
         staged_ = stagedBackup;
         return false;
     }
@@ -583,7 +635,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         return false;
     }
 
-    auto after = boxedPokemon(box, slot, error);
+    auto after = party?partyPokemon(slot,error):boxedPokemon(box, slot, error);
     if (!after) {
         staged_ = stagedBackup;
         changes_ = changesBackup;
@@ -600,10 +652,58 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         return false;
     }
 
-    changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
-                        recordLabel(box, slot) + " Pokemon edit",
-                        before->nickname + " Lv " + std::to_string(before->level),
-                        after->nickname + " Lv " + std::to_string(after->level)});
+    if(replacement==raw) return true;
+    const size_t firstChange=changes_.size();
+    const std::string location=party?"Party "+std::to_string(slot+1):recordLabel(box,slot);
+    const auto field=[&](const std::string& label,const std::string& oldValue,const std::string& value) {
+        if(oldValue!=value)changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
+            location+" "+label,oldValue,value,party});
+    };
+    field("Species",Names::getSpeciesName(before->species),Names::getSpeciesName(after->species));
+    field("Nickname",before->nickname,after->nickname);
+    field("OT Name",before->otName,after->otName);
+    field("Trainer ID",std::to_string(before->tid),std::to_string(after->tid));
+    field("Level",std::to_string(before->level),std::to_string(after->level));
+    field("Experience",std::to_string(before->experience),std::to_string(after->experience));
+    field("Held Item",Names::getItemName(before->heldItem),Names::getItemName(after->heldItem));
+    field("Nature",Names::getNatureName(before->nature),Names::getNatureName(after->nature));
+    field("Language",Enums::getLanguageName(before->language),Enums::getLanguageName(after->language));
+    field("Ball",Enums::getBallName(before->ball),Enums::getBallName(after->ball));
+    auto oldMet=Names::getMetLocationDisplayName(before->originGame,before->metLocation);
+    auto newMet=Names::getMetLocationDisplayName(after->originGame,after->metLocation);
+    if(oldMet==newMet && before->metLocation!=after->metLocation) {
+        oldMet+=" ("+std::to_string(before->metLocation)+")";
+        newMet+=" ("+std::to_string(after->metLocation)+")";
+    }
+    field("Met Location",oldMet,newMet);
+    field("Met Level",std::to_string(before->metLevel),std::to_string(after->metLevel));
+    field("Friendship",std::to_string(before->friendship),std::to_string(after->friendship));
+    field("PID",std::to_string(before->pid),std::to_string(after->pid));
+    field("Shiny",before->shiny?"Yes":"No",after->shiny?"Yes":"No");
+    const auto gender=[](uint8_t value){return value==0?"Male":value==1?"Female":"Genderless";};
+    field("Gender",gender(before->gender),gender(after->gender));
+    const auto ability=[](const auto& value){return std::string(Names::getAbilityName(value.ability))+
+        " (slot "+std::to_string(value.abilityNumber)+")";};
+    field("Ability",ability(*before),ability(*after));
+    const auto form=[](uint8_t value){return value<26?std::string(1,static_cast<char>('A'+value)):
+        value==26?std::string("!"):std::string("?");};
+    if(before->species==201 || after->species==201)field("Unown form",form(before->form),form(after->form));
+    const auto pokerus=[](uint8_t value){return std::string(value==0?"None":(value&15)?"Infected":"Cured")+
+        " ("+std::to_string(value)+")";};
+    field("Pokérus",pokerus(before->pokerus),pokerus(after->pokerus));
+    for(size_t i=0;i<4;++i) {
+        field("Move "+std::to_string(i+1),before->moves[i]?Names::getMoveName(before->moves[i]):"Empty",
+            after->moves[i]?Names::getMoveName(after->moves[i]):"Empty");
+        field("PP "+std::to_string(i+1),std::to_string(before->pp[i]),std::to_string(after->pp[i]));
+        field("PP Ups "+std::to_string(i+1),std::to_string(before->ppUps[i]),std::to_string(after->ppUps[i]));
+    }
+    constexpr const char* statNames[]{"HP","Attack","Defense","Speed","Sp. Atk","Sp. Def"};
+    for(size_t i=0;i<6;++i) {
+        field(std::string(statNames[i])+" IV",std::to_string(before->ivs[i]),std::to_string(after->ivs[i]));
+        field(std::string(statNames[i])+" EV",std::to_string(before->evs[i]),std::to_string(after->evs[i]));
+    }
+    if(changes_.size()==firstChange)
+        field("Stored record","Original bytes","Changed bytes");
     return true;
 }
 
@@ -898,6 +998,12 @@ std::optional<StagedPokemonRecord> StagedPokemonEditor::previewEdit(
     auto preview = *this;
     if (!preview.stageBoxPokemonEdit(box, slot, edit, error)) return {};
     return preview.boxedPokemon(box, slot, error);
+}
+std::optional<StagedPokemonRecord> StagedPokemonEditor::previewPartyEdit(
+    std::size_t slot,const BoxPokemonEdit& edit,std::string& error) const {
+    auto preview=*this;
+    if(!preview.stagePartyPokemonEdit(slot,edit,error)) return {};
+    return preview.partyPokemon(slot,error);
 }
 
 std::optional<StagedPokemonRecord> StagedPokemonEditor::previewCreate(
