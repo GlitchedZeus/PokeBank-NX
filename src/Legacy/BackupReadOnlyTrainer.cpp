@@ -11,7 +11,8 @@
 
 namespace PokeVault::Legacy {
 std::unique_ptr<Trainer::Trainer> openBackupTrainer(
-    const Source::ImmutableSnapshot::File& file,const std::string& gameId,std::string& error) {
+    const Source::ImmutableSnapshot::File& file,const std::string& gameId,std::string& error,
+    Integration::Gen5::SaveCopySelection copy) {
     namespace G1=Integration::Gen1;namespace G2=Integration::Gen2;
     namespace G3=Integration::Gen3;namespace G4=Integration::Gen4;namespace G5=Integration::Gen5;
     const auto* identity=Games::findGame(gameId);
@@ -58,7 +59,7 @@ std::unique_ptr<Trainer::Trainer> openBackupTrainer(
             if(error.empty())error="Backup container changed during validation";
             return {};
         }
-        const auto parsed=G5::Gen5ReadOnlySave::parse(raw,gameId,&error);
+        const auto parsed=G5::Gen5ReadOnlySave::parse(raw,gameId,&error,copy);
         if(!parsed || parsed->exactGameId()!=gameId)return {};
         trainer=Gen5ReadOnlyTrainer::create(*parsed,gameId,error);
     }

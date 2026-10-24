@@ -507,7 +507,7 @@ namespace UI {
                    screen.sourceGameId == "crystal_gbc") {
             infoRow("Trainer ID", std::to_string(t.TID16));
             if(screen.sourceGameId=="crystal_gbc")
-                infoRow("Gender (read-only)",t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown");
+                infoRow("Gender",std::string(t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown")+" (read-only)");
             else infoRow("Gender","Male (fixed by game)");
         } else if (screen.sourceGameId == "diamond_nds" ||
                    screen.sourceGameId == "pearl_nds" ||
@@ -516,7 +516,7 @@ namespace UI {
                    screen.sourceGameId == "soulsilver_nds" || generation==3) {
             // Native Gen IV IDs are two separate 16-bit numbers. Do not
             // mash them into one 'Trainer ID' row or repeat both as 'Full'.
-            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+            infoRow("Gender", t.trainerGender == 0 ? "Male (read-only)" : "Female (read-only)");
             infoRow("Trainer ID", std::to_string(t.TID16));
             infoRow("Secret ID", std::to_string(t.SID16));
         } else {

@@ -788,7 +788,8 @@ Outcome pickers(Ctx& c) {
     const uint16_t own = c.b2w2() ? G5::BagCatalog5::kKeyB2W2.back() : G5::BagCatalog5::kKeyBW.back();
     need(G5::gen5BagItemInPocket(c.spec.family, 1, own), "family key-item list not recognised");
     need(!ws.hasChanges(), "picker queries staged a change");
-    return passed("species 1-649 (650 refused), 559 moves + none, items <=638, 25 balls, " +
+    return passed("species 1-649 (650 refused), Pikachu " + std::to_string(moves.size()-1) +
+                  " compatibility-filtered moves + none (" + std::to_string(direct) + " direct in exact game), items <=638, 25 balls, " +
                   std::to_string(G5::NativeMetLocations5.size()) +
                   " native met locations (not encounter proof), Deerling 4 forms, ability slots; all five native Bag add lists, unique Key/TM/HM x1");
 }

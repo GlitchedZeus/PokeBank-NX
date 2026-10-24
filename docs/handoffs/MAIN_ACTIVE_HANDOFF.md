@@ -6,6 +6,35 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 form-aware compatibility and validation checkpoint
+
+- Last remote WIP `18b76be5c7393c1f963d16ef1979f4d0a2892106` PASSED native
+  build 40072465759 (compile/link/complete RomFS). Not the final hardware NRO.
+- New Gen V form data covers 24 native form rows and all 23 multi-form species;
+  BW versus B2W2 availability follows pinned PKHeX personal tables. Wormadam
+  cloak, Rotom appliance and White/Black Kyurem are genuinely distinct. Added
+  prior-form labels for retained Deoxys/Shaymin/Giratina moves, correct BW Snarl
+  TM95 unavailability, and Smeargle's real Sketch exception. Existing unknown
+  moves remain Preserved, never certified legal. Reproducible generator + exact
+  hashes in docs/data/gen5-move-compatibility-sources.json.
+- Focused form, docked controller/touch/search/sort/no-match, Help/event-year
+  tests PASS normal AND ASan/UBSan with detect_leaks=1. Pikachu remains 55 BW /
+  64 B2W2 direct moves. Shared candidate contracts report 0 failing; 26 real
+  broken-path mutation controls PASS. Owner gate PASS all 70 Round 3 /196 guards.
+  Old 900px pin now follows the OWNER's October24 compact620 request; no old
+  hardware status is rewritten or inferred for these new dimensions.
+- GCC QA contracts + all489 matrix cells passed after badge/backup changes.
+  Rerun with final form data and leak checks enabled is in progress. Expanded
+  backup tests explicitly distinguish the two differing native Gen V copies;
+  UI uses existing glyph buttons to choose Primary / Backup / Cancel, with no
+  live-source fallback or assignment changes. Exact file is rechecked afterward.
+- Full GCC and Clang host builds are running from new campaign build directories.
+  Full sanitizer variants, final native build, #307 integration, exact-head ONE
+  official NRO + docs binding + independent audit are still required.
+- Earlier generations' unsupported Gender/Play Time writers remain read-only.
+  Native Switch historical previews remain immutable/read-only; Gen I-V emulator
+  archives have full existing staged Review/Discard/Export. S06 NOT TESTED.
+
 ## October 24 Trainer / picker / touch checkpoint — WIP
 
 - Pushed checkpoint before these edits: `80377153dc2e5019c727e2bde441f3a6a8fae466`.

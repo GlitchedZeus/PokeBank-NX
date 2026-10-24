@@ -609,6 +609,9 @@ struct Gen5Editor {
         } else if(availability==C::Availability::Transfer) {
             status = "Transfer";
             color = Colors::Warning;
+        } else if(availability==C::Availability::FormHistory) {
+            status = "Prior form";
+            color = Colors::Warning;
         } else if(availability==C::Availability::Preserved) {
             status = "Preserved";
             color = Colors::Warning;

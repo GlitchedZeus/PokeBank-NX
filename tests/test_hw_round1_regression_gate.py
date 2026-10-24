@@ -215,7 +215,7 @@ GUARDS: dict[str, tuple[str, G]] = {
     ]),
     'L04': ('Gen IV/V location windows use clean layout', [
         ('host', 'test_shared_editor_unit', 'tests/test_shared_editor_unit.cpp', 'Gen IV/V location shows no raw id'),
-        ('pin', 'src/UI/SharedPokemonEditorSurface.inc', 'inline constexpr int kMetLocationPickerWidth = 900;', 'Gen III-V met-location picker width accepted on hardware (7fea1797)'),
+        ('pin', 'src/UI/SharedPokemonEditorSurface.inc', 'inline constexpr int kMetLocationPickerWidth = 620;', 'October 24 owner-directed compact Gen III-V location width; source context and scrolling retained (hardware retest pending)'),
     ]),
     'L05': ('No editor panel cursor or row overlaps', [
         ('host', 'test_shared_editor_unit', 'tests/test_shared_editor_unit.cpp', 'focus above data pane'),

@@ -1,4 +1,5 @@
 #include "test_backup_session_trace.h"
+#include "fuzz_synthetic_saves.h"
 #include "Legacy/BackupReadOnlyTrainer.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
@@ -76,6 +77,23 @@ bool verifyBackupSessionTrace(const std::vector<uint8_t>& bytes,const std::strin
             error=result.error;need(result.success,"Gen IV separate verified export");directory=result.directory;
             t->stagedPokemon()->discard();
         } else if(auto* t=dynamic_cast<L::Gen5ReadOnlyTrainer*>(trainer.get())) {
+            const auto family=t->sourceSave().family();
+            const auto version=t->sourceSave().trainer().gameVersion;
+            const auto different=qasynth::gen5::save(family,version,4);
+            const auto dualPath=history+"/two-different-native-copies.sav";
+            {std::ofstream f(dualPath,std::ios::binary);f.write(reinterpret_cast<const char*>(different.data()),different.size());}
+            S::File dual;need(S::read(dualPath,history,{},dual,error),"Snapshot dual-copy archive");
+            need(!L::openBackupTrainer(dual,game,error),"Ambiguous archived native copies are never guessed");
+            auto primary=L::openBackupTrainer(dual,game,error,G5::SaveCopySelection::Primary);
+            auto backup=L::openBackupTrainer(dual,game,error,G5::SaveCopySelection::Backup);
+            auto* p=dynamic_cast<L::Gen5ReadOnlyTrainer*>(primary.get());
+            auto* b=dynamic_cast<L::Gen5ReadOnlyTrainer*>(backup.get());
+            need(p && b,"Explicit archived Primary and Backup both open");
+            need(p->sourceSave().selectedCopyOffset()==0 && b->sourceSave().selectedCopyOffset()>0,
+                "Exact explicitly selected native copy reaches its staged session");
+            need(p->sourceSave().partyPokemon(0)->pid()!=b->sourceSave().partyPokemon(0)->pid(),
+                "Explicit copies contain different real native Pokemon");
+            need(S::unchanged(dual,error),"Both choices preserve the complete archived file");
             auto& workspace=t->stagedPokemon();
             auto* trainerEdit=workspace.stagedTrainer(&error);need(trainerEdit!=nullptr,"Gen V staged workspace");
             need(trainerEdit->setMoney(money,&error),"Gen V stage from backup");

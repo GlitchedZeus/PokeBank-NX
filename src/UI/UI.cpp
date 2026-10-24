@@ -17,6 +17,7 @@
 #include "UI/WorkingCopyRefresh.h"
 #include "UI/InputTrace.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
@@ -586,8 +587,38 @@ namespace UI {
         const PokeVault::Source::ImmutableSnapshot::File& file,const std::string& label,
         std::string& error) {
         auto trainer=PokeVault::Legacy::openBackupTrainer(file,gameId,error);
-        if(!trainer)return false;
         const auto* identity=PokeVault::Games::findGame(gameId);
+        if(!trainer && identity && identity->dataGeneration==5) {
+            // Some archived SAVs contain two valid, DIFFERENT native copies.
+            // Reuse the real parser and shared glyph buttons to ask explicitly;
+            // neither a timestamp nor a checksum proves which copy is newest.
+            namespace G5=PokeVault::Integration::Gen5;
+            std::string primaryError,backupError;
+            auto primary=PokeVault::Legacy::openBackupTrainer(file,gameId,primaryError,G5::SaveCopySelection::Primary);
+            auto backup=PokeVault::Legacy::openBackupTrainer(file,gameId,backupError,G5::SaveCopySelection::Backup);
+            if(primary && backup) {
+                while(appletMainLoop() && running && !trainer) {
+                    drawAppBackdrop(fb);
+                    constexpr int x=200,y=190,w=880,h=280;
+                    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+                    fb.drawText(x+28,y+24,"Choose the native copy inside this backup",Colors::Text,TextStyle::Heading);
+                    fb.drawText(x+28,y+78,"Both copies validate and differ. Neither is assumed newest.",Colors::TextDim,TextStyle::Caption);
+                    fb.drawText(x+28,y+112,"Primary: "+primary->trainerName+" / Money "+std::to_string(primary->money),Colors::Text,TextStyle::Caption);
+                    fb.drawText(x+28,y+140,"Backup: "+backup->trainerName+" / Money "+std::to_string(backup->money),Colors::Text,TextStyle::Caption);
+                    SharedBoxedRows::drawGlyphChoices(fb,x+28,y+202,w-56,
+                        std::array<SharedBoxedRows::GlyphChoice,3>{{{"B","Cancel"},{"A","Primary Copy"},{"X","Backup Copy"}}});
+                    drawNavBar(fb,{{"A","Primary Copy"},{"X","Backup Copy"},{"B","Cancel"}});
+                    fb.flush();padUpdate(&pad);touch.update();
+                    const u64 down=padGetButtonsDown(&pad)|navTouchButton(touch);
+                    if(down&HidNpadButton_B){error="Backup copy selection cancelled";return false;}
+                    if(down&HidNpadButton_A)trainer=std::move(primary);
+                    else if(down&HidNpadButton_X)trainer=std::move(backup);
+                }
+                if(!PokeVault::Source::ImmutableSnapshot::unchanged(file,error))return false;
+            }
+        }
+        if(!trainer)return false;
+        error.clear();
         const auto kind=identity->dataGeneration<=3?PokeVault::Safety::SourceKind::RetroArchLegacy:
             PokeVault::Safety::SourceKind::ExternalLegacy;
         TrainerViewScreen screen(*trainer,"Pokemon "+std::string(identity->title)+" / Backup "+label,
