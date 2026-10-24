@@ -131,10 +131,11 @@ constexpr Rule rule(MenuType type) noexcept {
             // 10 rows of 42 px (38 px highlight), 14 px bottom margin -> 520 px when full.
             return {Kind::List, 760, 1, 42, 4, 10, 86, 24, 14, 16, 0, 8, Text::Body};
         case MenuType::LocationPicker:
-            // The accepted Met Location window (owner round 1 L03/L04 PASS): 900 px, name left,
-            // method / level right, editor value-list rows. NEW-10 (Round 3 L03/L04 notes): 14 px
-            // under the last row instead of 39, so the window carries no unused band.
-            return {Kind::List, 900, 1, 42, 4, 8, 86, 22, 14, 16, 0, 8, Text::Body};
+            // Met Location window: name left, method / level right, editor value-list rows, 14 px
+            // under the last row (NEW-10 Round 3). Round 5 NEW-10 FAIL ("too wide"): 704 px, close to
+            // the approved 640 px Crystal window, the narrowest at which every Gen III-V place name
+            // and its encounter context still fit one row unclipped (tests/test_met_location_fit.cpp).
+            return {Kind::List, 704, 1, 42, 4, 8, 86, 22, 14, 16, 0, 8, Text::Body};
         case MenuType::ChoicePicker:
             // Editor value lists: 86 px title + counter, 42 px rows (38 px cells), 8 visible.
             return {Kind::List, 440, 1, 42, 4, 8, 86, 22, 39, 16, 0, 8, Text::Body};

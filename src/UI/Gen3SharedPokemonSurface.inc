@@ -399,8 +399,8 @@ std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
 }
 
 // The Met Location picker is wider than the other compact pickers so the place name and its
-// method / level fit on one readable row.
-constexpr int kMetLocationPickerWidth = 900;
+// method / level fit on one readable row (Round 5 NEW-10: 704 px, test_met_location_fit).
+constexpr int kMetLocationPickerWidth = 704;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
@@ -1963,8 +1963,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         if (state.pickerTarget == PickerTarget::MetLocation) {
             // Bright place name on the left, method / level on the right; nothing overlaps.
             const auto row = metLocationChoiceText(state, value);
-            int dw = 0, dh = 0;
-            const std::string detail = SharedMovesPanel::fit(fb, row.second, (rowW - 32) / 2);
+            int nw = 0, nh = 0, dw = 0, dh = 0;
+            fb.measureText(row.first, nw, nh, TextStyle::Body);
+            // Round 5 NEW-10: the detail gets what the name leaves (both fit at 704 px).
+            const std::string detail = SharedMovesPanel::fit(fb, row.second, std::max(0, rowW - 32 - nw - 20));
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7,
                         SharedMovesPanel::fit(fb, row.first, rowW - 32 - dw - 20, TextStyle::Body),

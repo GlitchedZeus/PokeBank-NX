@@ -122,7 +122,7 @@ public:
                 " Lv. " + std::to_string(encounter.minLevel);
             if (encounter.maxLevel != encounter.minLevel) text += "–" + std::to_string(encounter.maxLevel);
             if (encounter.species != species_) text += " via " + std::string(name(encounter.species));
-            if (row->variants) text += " (+" + std::to_string(row->variants) + " variants)";
+            if (row->variants) text += " (+" + std::to_string(row->variants) + ")";   // more slots here (Round 5 NEW-10: short)
             return tagged(text);
         }
         return tagged("Gift / static / other history; unverified");

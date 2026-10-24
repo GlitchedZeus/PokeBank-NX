@@ -208,8 +208,9 @@ inline void openContextualMetLocationPicker(TrainerViewScreen& screen, EditorSta
     state.pickerMetContextActive = true;
 }
 
-// Wide enough for a place name and a separate encounter-context example (Gen III too).
-inline constexpr int kMetLocationPickerWidth = 900;
+// Round 5 NEW-10: compact like Crystal's 640 px window, yet wide enough for a place name and its
+// encounter-context example on one unclipped row (Gen III too; test_met_location_fit).
+inline constexpr int kMetLocationPickerWidth = 704;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
@@ -911,8 +912,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         const auto split = label.find("  |  ");
         if (state.pickerTarget == PickerTarget::MetLocation && split != std::string::npos) {
             // Keep the source example in its own bounded column. It is not the stored Met Lv.
+            // Round 5 NEW-10: the detail gets what the name leaves (both fit at 704 px).
+            int nw = 0, nh = 0;
+            fb.measureText(label.substr(0, split), nw, nh, TextStyle::Body);
             const std::string detail = SharedMovesPanel::fit(fb, label.substr(split + 5),
-                std::max(0, rowW - 260), TextStyle::Caption);
+                std::max(0, rowW - 32 - nw - 20), TextStyle::Caption);
             int dw = 0, dh = 0;
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7, SharedMovesPanel::fit(fb, label.substr(0, split),
