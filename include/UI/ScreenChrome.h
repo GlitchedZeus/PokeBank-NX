@@ -9,8 +9,10 @@
 #include <vector>
 
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/Common.h"
 #include "UI/ControllerModel.h"
+#include "UI/GlyphInstruction.h"
 #include "UI/TouchInput.h"
 #include "UI/NarrowPokemonActionMenu.h"
 
@@ -251,6 +253,53 @@ namespace UI {
         return buttonGlyph(fb, 0, 0, btn, true);
     }
 
+    // --- Instruction text with controller badges (R2-BUG-013) -------------------------------------
+    //
+    // THE way to draw an instruction that names a controller button: help-window rows and modal
+    // text get the same coloured badges as the footer (buttonGlyph), never plain "A/B/X/Y".
+    // Segments come from UIModel::GlyphInstruction (helpLine / sentence). `y` is the text TOP, as
+    // for drawText; badges are centred on the line. Informational only: these badges publish no
+    // touch target (pressable buttons are drawGlyphButton; the footer is drawNavBar).
+    // Returns the drawn width; measureOnly draws nothing (for sizing a box around the text).
+    inline int drawGlyphText(PKSEFramebuffer& fb, int x, int y,
+                             const PokeBank::UIModel::GlyphInstruction::Segments& segments,
+                             Color color, TextStyle style = TextStyle::Body, bool measureOnly = false) {
+        using PokeBank::UIModel::GlyphInstruction::Kind;
+        constexpr int kBadgePad = 3;   // breathing room either side of a badge
+        int lineW = 0, lineH = 0;
+        fb.measureText("Ag", lineW, lineH, style);
+        const int cy = y + lineH / 2;
+        int cx = x;
+        for (const auto& seg : segments) {
+            if (seg.kind == Kind::Glyph) {
+                const int w = buttonGlyph(fb, cx + kBadgePad, cy, seg.text, true);
+                if (w > 0) {
+                    if (!measureOnly) buttonGlyph(fb, cx + kBadgePad, cy, seg.text, false);
+                    cx += w + 2 * kBadgePad;
+                    continue;
+                }
+                // No badge for this token: still readable as text, never dropped.
+            }
+            int tw = 0, th = 0;
+            fb.measureText(seg.text, tw, th, style);
+            if (!measureOnly) fb.drawText(cx, y, seg.text, color, style);
+            cx += tw;
+        }
+        return cx - x;
+    }
+    // Instruction prose: "Press Y to delete; A or B keeps it."
+    inline int drawGlyphSentence(PKSEFramebuffer& fb, int x, int y, const std::string& text,
+                                 Color color, TextStyle style = TextStyle::Body, bool measureOnly = false) {
+        return drawGlyphText(fb, x, y, PokeBank::UIModel::GlyphInstruction::sentence(text), color, style,
+                             measureOnly);
+    }
+    // Help-window row: "A   Open or show Pokémon actions".
+    inline int drawGlyphHelpLine(PKSEFramebuffer& fb, int x, int y, const std::string& line,
+                                 Color color, TextStyle style = TextStyle::Body, bool measureOnly = false) {
+        return drawGlyphText(fb, x, y, PokeBank::UIModel::GlyphInstruction::helpLine(line), color, style,
+                             measureOnly);
+    }
+
     // A held fingertip paints a transient pressed state while the input owner
     // still waits for a release-confirmed tap. This is visual feedback only:
     // no synthetic A/B or hold-to-repeat actions, no accidental save mutation.
@@ -402,6 +451,18 @@ namespace UI {
         if (btn == "L/R") return NavGestureKind::LR;
         if (btn == "ZL/ZR") return NavGestureKind::ZLZR;
         return NavGestureKind::None;
+    }
+
+    // A blocking modal drawn over a screen owns touch exclusively (P0 #320): drop every glyph,
+    // footer badge and gesture target the covered layer published this frame, so a tap can only
+    // inject a button the topmost layer visibly offers. The modal's own glyph buttons and footer
+    // republish their targets after this call.
+    inline void beginTopTouchLayer() {
+        g_touchGlyphAccum.clear();
+        g_touchGlyphHits.clear();
+        g_navHits.clear();
+        g_navGestureHits.clear();
+        g_productHeroSwipeRegistered = false;
     }
 
     inline bool navContains(int px, int py, int x, int y, int w, int h) {
@@ -746,10 +807,13 @@ namespace UI {
         fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::BrandAccent);
         int ly = y + 108;
         for (const std::string& line : lines) {
-            fb.drawText(x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
+            // Key rows draw their buttons as badges; banner lines stay plain text (R2-BUG-013).
+            drawGlyphHelpLine(fb, x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
             ly += 38;
         }
-        drawNavBar(fb, {{"B", "Close"}});
+        // Both close every help window (TrainerView, AppShell); the footer says so, matching rows
+        // like "-   Close help" (R2-BUG-013: modal text and footer agree).
+        drawNavBar(fb, {{"B", "Close Help"}});
     }
 
     // A HOME-style selectable list tile. Selection never tints the tile: the normal dark surface
@@ -775,13 +839,18 @@ namespace UI {
     // contentH the full content height, scroll the current offset. Item lists pass contentH =
     // totalItems * rowH and scroll = firstItem * rowH. One helper so every scrolling surface in the
     // app gets the same thumb the details editor uses.
+    // Draw-only wrapper over the one shared component (UI/SharedScrollbar.h); surfaces that own a
+    // SharedScrollbar::State call drawAndPublish there instead so the thumb is also draggable.
     inline void drawScrollbar(PKSEFramebuffer& fb, int x, int trackY, int trackH, int contentH, int scroll) {
-        if (contentH <= trackH || trackH <= 0) return;
-        const int maxS = contentH - trackH;
-        int s = scroll; if (s < 0) s = 0; if (s > maxS) s = maxS;
-        const int thumbH = std::max(24, trackH * trackH / contentH);
-        const int thumbY = trackY + (trackH - thumbH) * s / maxS;
-        fb.drawFilledRoundedRect(x, thumbY, 3, thumbH, 2, Colors::Border);
+        SharedScrollbar::paint(fb, SharedScrollbar::layout(x, trackY, SharedScrollbar::kTrackWidth, trackH,
+                                                          SharedScrollbar::pixels(contentH, trackH, scroll)));
+    }
+    // Same scrollbar, draggable: publishes the track into the owner's SharedScrollbar::State so
+    // the owner's update() can hit-test a thumb drag / track tap on the next frame.
+    inline void drawScrollbar(PKSEFramebuffer& fb, SharedScrollbar::State& bar,
+                              int x, int trackY, int trackH, int contentH, int scroll) {
+        SharedScrollbar::drawAndPublish(fb, bar, x, trackY, SharedScrollbar::kTrackWidth, trackH,
+                                        SharedScrollbar::pixels(contentH, trackH, scroll));
     }
 }
 

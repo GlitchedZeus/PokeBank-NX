@@ -4,9 +4,11 @@
 
 #include "Encryption/Encryption4.h"
 #include "Utils/CRC16.h"
+#include "Utils/Gen4Text.h"
 #include "Enums/LanguageID.h"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace PokeVault::Integration::Gen4 {
@@ -16,16 +18,21 @@ struct GeneralGeometry {
     size_t size = 0;
     size_t footerSize = 0;
     size_t partyOffset = 0;
+    size_t trainerOffset = 0; // PKHeX SAV4*.Trainer1, same values as Gen4ReadOnlySave's spec
 };
 
 GeneralGeometry generalGeometry(Layout layout) noexcept {
     switch (layout) {
-        case Layout::DiamondPearl: return {0xC100, 0x14, 0x98};
-        case Layout::Platinum: return {0xCF2C, 0x14, 0xA0};
-        case Layout::HeartGoldSoulSilver: return {0xF628, 0x10, 0x98};
+        case Layout::DiamondPearl: return {0xC100, 0x14, 0x98, 0x64};
+        case Layout::Platinum: return {0xCF2C, 0x14, 0xA0, 0x68};
+        case Layout::HeartGoldSoulSilver: return {0xF628, 0x10, 0x98, 0x64};
     }
     return {};
 }
+
+constexpr size_t kTrainerNameField = 0x00;  // 8 u16 units
+constexpr size_t kTrainerNameUnits = 8;
+constexpr size_t kTrainerMoneyField = 0x14; // u32
 
 struct StorageGeometry {
     size_t size = 0;
@@ -115,6 +122,18 @@ std::optional<Gen4ReadOnlySave> Gen4StagedPokemonEditor::reparse(
     }
     if (error) error->clear();
     return parsed;
+}
+
+bool Gen4StagedPokemonEditor::originalEmptyRecordAt(
+    const Gen4ReadOnlySave& stagedParse, size_t box, size_t slot, size_t offset) const {
+    if (original_.size() != staged_.size()) return false;
+    const auto original = Gen4ReadOnlySave::parse(original_, layout_, exactGameId_);
+    if (!original) return false;
+    if (original->storageSelection().offset != stagedParse.storageSelection().offset) return false;
+    const auto originalOffset = boxRecordOffset(*original, box, slot);
+    if (!originalOffset || *originalOffset != offset) return false;
+    const auto& record = original->box(box, slot);
+    return record.valid() && record.empty();
 }
 
 std::optional<size_t> Gen4StagedPokemonEditor::boxRecordOffset(
@@ -555,9 +574,19 @@ bool Gen4StagedPokemonEditor::stageReleaseBoxPokemon(
         return false;
     }
 
+    // A slot that started empty gets its original empty record back (retail empty box slots
+    // hold an encrypted blank, not zeros), so clone + release of the clone is byte-identical to
+    // the source. A slot that held a Pokemon in the source is zero-filled, which reparses as
+    // empty. The original slot only counts when the source selected the same Storage copy.
     const auto backup = staged_;
-    std::fill_n(staged_.begin() + static_cast<std::ptrdiff_t>(*offset),
-                Encryption::SIZE_STORED4, uint8_t{0});
+    const auto restore = originalEmptyRecordAt(*parsedBefore, box, slot, *offset);
+    if (restore)
+        std::copy_n(original_.begin() + static_cast<std::ptrdiff_t>(*offset),
+                    Encryption::SIZE_STORED4,
+                    staged_.begin() + static_cast<std::ptrdiff_t>(*offset));
+    else
+        std::fill_n(staged_.begin() + static_cast<std::ptrdiff_t>(*offset),
+                    Encryption::SIZE_STORED4, uint8_t{0});
 
     if (!refreshStorageCrc(*parsedBefore, error)) {
         staged_ = backup;
@@ -934,6 +963,92 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
     }
     if(error)error->clear();
     return true;
+}
+
+std::optional<size_t> Gen4StagedPokemonEditor::trainerRecordOffset(
+    const Gen4ReadOnlySave& parsed) const noexcept {
+    const auto geometry = generalGeometry(layout_);
+    const size_t base = parsed.generalSelection().offset;
+    // The whole trainer struct read by Gen4ReadOnlySave (0x26 bytes) must sit inside the selected
+    // General block, before its footer.
+    if (geometry.size == 0 || geometry.trainerOffset + 0x26 > geometry.size - geometry.footerSize ||
+        base > staged_.size() || geometry.size > staged_.size() - base) return std::nullopt;
+    return base + geometry.trainerOffset;
+}
+
+template <class Verify>
+bool Gen4StagedPokemonEditor::stageTrainerBytes(size_t field, std::span<const uint8_t> bytes,
+                                                Verify&& verify, std::string* error) {
+    auto before = reparse(error);
+    if (!before) return false;
+    const auto base = trainerRecordOffset(*before);
+    if (!base) {
+        setError(error, "Gen IV trainer structure is outside the selected General block");
+        return false;
+    }
+    auto backup = staged_;
+    std::copy(bytes.begin(), bytes.end(), staged_.begin() + static_cast<std::ptrdiff_t>(*base + field));
+    if (!refreshGeneralCrc(*before, error)) {
+        staged_ = std::move(backup);
+        return false;
+    }
+    auto after = reparse(error);
+    if (!after || after->generalSelection().offset != before->generalSelection().offset ||
+        !verify(after->trainer())) {
+        if (after) setError(error, "staged Gen IV trainer field did not reparse as entered");
+        staged_ = std::move(backup);
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+std::optional<TrainerReadOnly> Gen4StagedPokemonEditor::stagedTrainer(std::string* error) const {
+    auto parsed = reparse(error);
+    if (!parsed) return std::nullopt;
+    return parsed->trainer();
+}
+
+bool Gen4StagedPokemonEditor::trainerNameEditable() const {
+    const auto trainer = stagedTrainer();
+    if (!trainer) return false;
+    using L = Enums::LanguageID;
+    switch (static_cast<L>(trainer->language)) {
+        case L::English: case L::French: case L::Italian: case L::German: case L::Spanish:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerName(const std::u16string& name, std::string* error) {
+    if (!trainerNameEditable()) {
+        setError(error, "This Gen IV save's trainer name language is read-only here");
+        return false;
+    }
+    if (name.empty() || name.size() > kTrainerNameMax) {
+        setError(error, "Gen IV trainer name must be 1-7 characters");
+        return false;
+    }
+    if (!Utils::gen4CanEncode(name)) {
+        setError(error, "Gen IV trainer name has a character the game cannot store");
+        return false;
+    }
+    std::array<uint8_t, kTrainerNameUnits * 2> field{};
+    Utils::writeGen4Field(field.data(), kTrainerNameUnits, name, kTrainerNameMax);
+    return stageTrainerBytes(kTrainerNameField, field,
+        [&](const TrainerReadOnly& trainer) { return trainer.name == name; }, error);
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerMoney(uint32_t money, std::string* error) {
+    if (money > kMaxMoney) {
+        setError(error, "Gen IV money must be 0-999999");
+        return false;
+    }
+    const std::array<uint8_t, 4> field{static_cast<uint8_t>(money), static_cast<uint8_t>(money >> 8),
+                                       static_cast<uint8_t>(money >> 16), static_cast<uint8_t>(money >> 24)};
+    return stageTrainerBytes(kTrainerMoneyField, field,
+        [&](const TrainerReadOnly& trainer) { return trainer.money == money; }, error);
 }
 
 std::vector<uint8_t> Gen4StagedPokemonEditor::finalizedBytes(

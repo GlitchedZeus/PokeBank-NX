@@ -21,6 +21,7 @@
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
+#include "Integration/Gen5/Gen5Bag.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/ClassicInventoryUIModel.h"
 #include "UI/InventoryUIContract.h"
@@ -58,6 +59,11 @@ namespace Panels {
                    id == "heartgold_nds" || id == "soulsilver_nds";
         }
 
+        bool isGen5NdsSource(std::string_view id) noexcept {
+            return id == "black_nds" || id == "white_nds" ||
+                   id == "black2_nds" || id == "white2_nds";
+        }
+
         const char* gscPouchDisplayName(int category) noexcept {
             constexpr std::array<const char*, 5> names = {
                 "TM/HM", "Items", "Key Items", "Balls", "PC Items",
@@ -86,6 +92,8 @@ namespace Panels {
         else if (gameGroup == GameVersion::DP || gameGroup == GameVersion::PT ||
                  gameGroup == GameVersion::HGSS)
             name = PokeVault::Integration::Gen4::bagPocketName(static_cast<size_t>(category));
+        else if (gameGroup == GameVersion::BW || gameGroup == GameVersion::B2W2)
+            name = PokeVault::Integration::Gen5::bagPocketName5(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::RBY)  name = PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::FRLG) name = getPouchInfo3FRLG(static_cast<PouchType3FRLG>(category)).name;
         else                                     name = getPouchInfo8SWSH(static_cast<PouchType8SWSH>(category)).name;
@@ -104,6 +112,7 @@ namespace Panels {
         const bool gscSource = screen.legacyReadOnlySource() && isGSCSource(screen.sourceGameId);
         const bool rseSource = screen.legacyReadOnlySource() && isRSESource(screen.sourceGameId);
         const bool gen4Source = screen.legacyReadOnlySource() && isGen4NdsSource(screen.sourceGameId);
+        const bool gen5Source = isGen5NdsSource(screen.sourceGameId);
         const auto classicGame = PokeBank::UIModel::classicInventoryGame(screen.sourceGameId);
         const auto classicPocket = classicGame
             ? PokeBank::UIModel::classicInventoryPocketAt(*classicGame, screen.selectedCategory)
@@ -171,7 +180,18 @@ namespace Panels {
                         Colors::TextDim, TextStyle::Caption);
             fb.drawText(x + 24, y + hH + 82, "Trainer and Pokemon remain available; invalid bag entries are quarantined.",
                         Colors::TextDim, TextStyle::Caption);
-            fb.drawText(x + 24, y + hH + 106, "External emulator source remains read-only.",
+            fb.drawText(x + 24, y + hH + 106, screen.legacyProviderLabel() + " source remains read-only.",
+                        Colors::TextDim, TextStyle::Caption);
+            return;
+        }
+
+        if (gen5Source && screen.trainer.items.empty()) {
+            fb.drawText(x + 24, y + hH + 30, "Bag unavailable", Colors::Text, TextStyle::Body);
+            fb.drawText(x + 24, y + hH + 58, "Native Generation V bag data failed validation.",
+                        Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 82, "Trainer, Party and Boxes remain available; no item is guessed.",
+                        Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 106, screen.legacyProviderLabel() + " source remains read-only.",
                         Colors::TextDim, TextStyle::Caption);
             return;
         }
@@ -283,6 +303,11 @@ namespace Panels {
             screen.touchButtons.push_back({ i, tileX, ry, tileW, tileH });
             ry += rowPitch;
         }
+        // Shared draggable scrollbar (R2-SCROLLBAR): the list is paged, so the thumb reports the
+        // page's position in the pouch and a drag or track tap changes the page.
+        SharedScrollbar::drawAndPublish(fb, screen.itemsScrollbar, tileX + tileW + 8, y + hH + 40,
+            SharedScrollbar::kTrackWidth, itemsPerPage * rowPitch - (rowPitch - tileH),
+            SharedScrollbar::rows(total, itemsPerPage, startIdx));
 
         // Generation II mail is full 160x144 stationery, not a Gen III/IV
         // miniature icon. Display the authentic-source artwork at a useful

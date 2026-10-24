@@ -79,8 +79,16 @@ for stale in (
 ):
     require(stale not in backup_selection,
             "Save Backups must not bypass the shared controller glyph legend")
-require('{{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}}' in backup_selection,
-        "Save Backups must advertise D-pad/Left Stick selection alongside active actions")
+require('SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});' in backup_selection,
+        "Save Backups current source must retain the shared navigation/Select/Cancel footer")
+require('drawNavBar(fb,{{"Up/Down","Choose"},{"A","Open read-only"},{"Y","Delete"},{"B","Back"}});' in backup_selection,
+        "Owned historical backups must use shared colored navigation/Open/Y Delete/Back glyphs")
+require('drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open read-only"}, {"B", "Back"}});' in backup_selection,
+        "Unknown-ownership archives must advertise Open/Back without Delete")
+require('"Y", "Delete", Colors::Red' in backup_selection and
+        'const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);' in backup_selection and
+        'showDeleteConfirmation ? 0 : navTouchButton(touch)' in backup_selection,
+        "Backup deletion must keep the red Y-only decision and block the covered footer")
 require("Colors::Warning, 2" in backup_selection and "Colors::Orange, 2" not in backup_selection,
         "transient backup failures must use the semantic theme warning color")
 

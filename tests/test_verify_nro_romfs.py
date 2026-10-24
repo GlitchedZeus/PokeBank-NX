@@ -148,13 +148,24 @@ def main() -> int:
     nro = build_nro(build_romfs(files))
     packaged = v.walk_romfs(v.extract_romfs(nro))
     check(packaged == files, "walker returns every nested RomFS file with exact bytes")
+    # QA-F1: the Gen V covers are runtime-requested artwork and must be guarded
+    # exactly like Gen I-IV covers (prepare_release_romfs.sh stages all twenty).
+    for card in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
+        check(f"game_cards/{card}.png" in v.required_paths(), f"Gen V {card} cover is required")
+    for portrait in ("hilbert", "hilda", "nate", "rosa"):
+        check(f"trainer_portraits/{portrait}.png" in v.required_paths(),
+              f"Gen V {portrait} portrait is required")
+    missing_gen5 = {k: b for k, b in files.items() if k != "game_cards/black2_nds.png"}
+    gen5_package = v.walk_romfs(v.extract_romfs(build_nro(build_romfs(missing_gen5))))
+    check(any("required asset" in e for e in v.verify(gen5_package, missing_gen5, v.required_paths())),
+          "NRO without a Gen V cover is rejected")
     check(v.verify(packaged, files, v.required_paths()) == [], "complete package passes")
 
     stripped = {k: d for k, d in files.items()
                 if not k.startswith(("region_backdrops/", "trainer_portraits/"))}
     regressed = v.walk_romfs(v.extract_romfs(build_nro(build_romfs(stripped))))
     errors = v.verify(regressed, {}, v.required_paths())
-    check(bool(errors) and errors[0].startswith("30 required asset(s)"),
+    check(bool(errors) and errors[0].startswith("34 required asset(s)"),
           "missing region backdrops / trainer portraits fail the preflight")
 
     local = {"region_backdrops/kanto.png": b"approved art"}

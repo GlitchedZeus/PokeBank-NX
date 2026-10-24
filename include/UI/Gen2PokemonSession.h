@@ -2,6 +2,8 @@
 #include <algorithm>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/Gen12DVReroll.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
@@ -67,7 +69,19 @@ struct Session {
         working.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
         working.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
-        return setLevel(nextLevel);
+        // Unown's letter comes from the same DVs (pokecrystal GetUnownLetter); any other species has form 0.
+        working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
+        if (!setLevel(nextLevel)) return false;
+        // R2-BUG-004: the new species' native Gen II default moveset at the new level
+        // (pret pokegold / pokecrystal FillMoves over evos_attacks), base PP, no PP Ups.
+        // An unknown game selects no table, so the slots are cleared, never carried over.
+        const auto game = exactGameFromSourceId(sourceGameId);
+        const auto table = !game ? ::PokeBank::Moves::LevelUpTable15::Count
+                                 : ::PokeBank::Moves::levelUpTableGen2(*game == Gen2::SourceGame::Crystal);
+        SpeciesMoveDefaults::refreshArrays(table, species, 0, working.level,
+            [](uint16_t move) { return Gen2::StagedEditor::gen2MoveBasePP(move); },
+            working.moves, working.pp, working.ppUps);
+        return true;
     }
     uint8_t maximumPP(size_t slot) const noexcept {
         return slot < 4 ? Gen2::StagedEditor::gen2MoveMaxPP(working.moves[slot],working.ppUps[slot]) : 0;
@@ -160,11 +174,12 @@ struct Session {
         if (progression == ProgressionSource::Experience) create.experience = working.experience;
         return create;
     }
-    bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error) {
+    bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error,bool party=false) {
         if (mode != SessionMode::Edit || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Keep unavailable or incompatible new move"; return false;
         }
-        if (!editor.stageBoxPokemonEdit(box,slot,editRequest(),error)) return false;
+        if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
+                    editor.stageBoxPokemonEdit(box,slot,editRequest(),error))) return false;
         mode = SessionMode::None; confirmExit = false; return true;
     }
     bool add(Gen2::StagedEditor& editor,size_t box,size_t& slot,std::string& error) {

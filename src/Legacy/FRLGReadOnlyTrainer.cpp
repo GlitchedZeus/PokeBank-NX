@@ -90,6 +90,10 @@ namespace PokeVault::Legacy {
         trainer->stagedPokemon_ = Integration::Gen3::StagedPokemonEditor::create(
             save.sourceBytes(), metadata.sourceGame, pokemonStagedError);
         trainer->stagedPokemonUnavailableReason_ = std::move(pokemonStagedError);
+
+        std::string trainerStagedError;
+        trainer->stagedTrainer_ = Integration::Gen3::Gen3StagedTrainerEditor::create(
+            save.sourceBytes(), metadata.sourceGame, trainerStagedError);
         return trainer;
     }
 
@@ -132,12 +136,26 @@ namespace PokeVault::Legacy {
             return false;
         }
         boxes.swap(displayBoxes);
+        decltype(party) displayParty;
+        for(const auto& record:parsed.save->party()) {
+            auto pokemon=makePokemon(record,100,error);
+            if(!pokemon)return false;
+            displayParty.push_back(std::move(pokemon));
+        }
+        if(parsed.save->lastEnumerationError()!=Integration::Gen3::SaveError::None) {
+            error="strict Generation III staged Party enumeration failed";return false;
+        }
+        party.swap(displayParty);
         return true;
     }
 
     bool FRLGReadOnlyTrainer::populate(
         const Integration::Gen3::ReadOnlySave& save, std::string& error) {
         const auto& strictTrainer = save.trainer();
+        nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,8};
+        const auto dex = save.dexProgress();
+        nativeDexProgress = {dex.seen,dex.caught,dex.total};
         trainerName = strictTrainer.name;
         trainerGender = strictTrainer.gender;
         TID16 = strictTrainer.tid16;

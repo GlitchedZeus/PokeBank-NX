@@ -221,6 +221,11 @@ namespace Pokemon {
             recalculateStats(); refreshChecksum();
         }
         void setForm(uint8_t) noexcept override {}   // Gen3 forms (Unown/Deoxys) are PID/other-derived
+        // Unown (201) letter 0..27 (A..Z, !, ?), PID-derived like nature/gender/shiny. Re-rolls the
+        // PID with the same constructed-letter search as the other PID setters while keeping the
+        // nature and shininess. Returns false (record unchanged) for another species, an
+        // out-of-range letter, or when no PID keeps those traits within the search budget.
+        bool setUnownLetter(uint8_t letter, uint32_t trainerID32) noexcept;
         void setHeldItem(uint16_t item) noexcept override { wr16(0x22, item); refreshChecksum(); }
         void setPID(uint32_t p) noexcept override { wr32(0x00, p); recalculateStats(); refreshChecksum(); }
         void setEncryptionConstant(uint32_t p) noexcept override { setPID(p); }
@@ -263,10 +268,12 @@ namespace Pokemon {
         // Used by the nature/gender/shiny/ability setters -- all PID-derived in Gen 3. wantAbilityBit
         // constrains the PID's low bit, which Gen 3 legality requires to match the stored ability bit
         // (PKHeX AbilityVerifier.GetPIDAbilityMatch). No-op if no PID satisfies them.
-        void rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit = -1) noexcept;
-        // rerollPID that also holds the mon's CURRENT shininess, retrying without that constraint if
-        // it can't be met in budget. Editing one PID-derived field must not quietly change the others,
-        // but the edit the user asked for still has to land -- so shiny is the constraint that yields.
+        // wantLetter (Unown only) replaces the preserved current letter; -1 keeps it.
+        void rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit = -1,
+                       int wantLetter = -1) noexcept;
+        // rerollPID that also holds the mon's CURRENT shininess. The PID is constructed to hold every
+        // pinned trait (Gen3PidSearch.h), so shininess never yields; an impossible request (a gender
+        // the species cannot have) leaves the record unchanged.
         void rerollPreservingShiny(int wantGender, int wantNature, int wantAbilityBit = -1) noexcept;
         // The PID low bit a re-roll has to preserve so that editing some OTHER PID-derived field
         // cannot desync the PID from the stored ability bit. -1 (unconstrained) unless the species

@@ -12,9 +12,10 @@ constexpr PassiveViewAction passiveViewAction(bool controllerBack, int touchTarg
     return controllerBack || touchTarget == passiveBackTarget ? PassiveViewAction::Back : PassiveViewAction::None;
 }
 namespace Gen2PokemonEditor {
-enum class SlotAction : uint8_t { View, Edit, Clone, Shiny, Add, Review, Close, None };
+// Shiny is edited inside the Pokemon editor, never as a quick action from the sheet.
+enum class SlotAction : uint8_t { View, Edit, Clone, Add, Review, Close, None };
 constexpr std::array occupiedActions{SlotAction::View, SlotAction::Edit, SlotAction::Clone,
-    SlotAction::Shiny, SlotAction::Add, SlotAction::Review, SlotAction::Close};
+    SlotAction::Add, SlotAction::Review, SlotAction::Close};
 constexpr std::array emptyActions{SlotAction::Add, SlotAction::Review, SlotAction::Close};
 constexpr size_t slotActionCount(bool occupied) noexcept {
     return occupied ? occupiedActions.size() : emptyActions.size();

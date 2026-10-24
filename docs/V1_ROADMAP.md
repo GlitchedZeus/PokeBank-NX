@@ -3,7 +3,7 @@
 > **ROADMAP, NOT BRANCH AUTHORITY:** This file describes current product direction as a dated snapshot. Re-fetch GitHub and use `docs/ENGINEERING_AUTHORITY.md` for active lane/task routing.
 
 
-Last updated: **2026-09-29**
+Last updated: **2026-10-12**
 
 `CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction, not branch ownership.
 
@@ -21,6 +21,18 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - launch linked games/emulators where the target can be proven;
 - use touch and controller input across the full application;
 - only perform source writeback through individually approved transaction adapters.
+
+## v1.0 versus the long-running PKHeX-style legality engine
+
+**Owner-directed release policy (2026-10-12):** finish the supported generation editors first. Each generation targets the accepted **Gen IV shared-editor workflow parity**, with its own native game/format requirements, not encyclopedic PKHeX feature parity.
+
+- The PKHeX-style **legality engine is already being developed in parallel**, in separate legality engineering/integration lanes. Do not pause that development while generations are implemented.
+- **Integrate the verified, usable engine foundation after the generation editors are complete** and their save/source safety gates pass. Do not promise unsupported encounter/move/transfer rules as authoritative results.
+- **v1.0 does not require a complete legality database or every PKHeX legality rule.** Include only engine capabilities that have been integrated, tested, and explicitly supported by that release; show unknown/unsupported checks as unknown, not legal or illegal.
+- **v1.x and later continue integrating legality engine improvements** (encounters, moves, breeding, forms, transfers, events, generation-specific rules, and larger golden-fixture coverage), independent of the 1.0 release date.
+- Native binary integrity, checksum/reparse correctness, source immutability, explicit confirmation, backups/rollback, and device acceptance are **mandatory safety gates**, never deferred to the long-term legality engine.
+
+This separates **format/save integrity and source-write safety** (release blockers) from **complete game-rule/PKHeX legality coverage** (incremental post-release product improvement).
 
 ## Phase 0 — repository / safety / native foundation — COMPLETE
 
@@ -160,15 +172,17 @@ This starts **after** the integrated UI candidate is physically accepted.
 - [ ] legality/validation state
 - [ ] cries where appropriate
 
-## Phase 11 — conversion / legality / transfer workspace
+## Phase 11 — initial legality integration and transfer workspace (after generations)
 
-- [ ] host oracle/golden fixture corpus
-- [ ] generation-aware conversion
-- [ ] legality/provenance validation
-- [ ] controlled creation safeguards
-- [ ] staged destination representations
-- [ ] COPY / MOVE / CLONE remain distinct
-- [ ] source retirement only after durable validated destination
+- [ ] complete the generation editors' accepted native View/Create/Edit parity, then integrate tested legality engine capabilities
+- [ ] connect only verified, scoped legality rules to the shared editor and review UX
+- [ ] return an explicit unknown/unsupported result for rules not yet implemented
+- [ ] maintain source-backed tests/golden fixtures for each integrated rule set
+- [ ] distinguish basic native format integrity checks (mandatory at v1.0) from PKHeX-style game-rule legality (incremental)
+- [ ] keep staged destination representations and COPY / MOVE / CLONE distinctions for individually supported transfers
+- [ ] source retirement remains forbidden without durable validated destination and explicit transaction approval
+
+**1.0 scope:** a stable, safe editor and, where ready, an honestly scoped integrated legality foundation. **Not required for 1.0:** complete cross-generation conversion/transfer support or every encounter, breeding, move, event, form, ribbon and game-specific legality rule. Extend these in post-1.0 releases without making unsupported legality claims.
 
 ## Phase 12 — approved write transactions
 
@@ -210,15 +224,19 @@ full touch controls
         ↓
 Master Vault + Banks
         ↓
-provider / later-generation expansion
+provider / all supported generation editors
         ↓
 collection / provenance / search
         ↓
-conversion / legality / transfers
+integrate VERIFIED legality foundation
+(after generation-editor completion)
         ↓
-approved write transactions
+individually approved safe transactions
         ↓
-release hardening
+release hardening and hardware gates
         ↓
-v1.0
+v1.0 (full PKHeX legality coverage NOT required)
+        ↓
+v1.x+: expand legality rules, coverage,
+conversion and transfer capabilities
 ```

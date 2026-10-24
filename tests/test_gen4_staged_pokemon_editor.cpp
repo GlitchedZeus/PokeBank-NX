@@ -3,6 +3,7 @@
 #include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Integration/Gen4/Gen4ExportTransaction.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
+#include "Integration/Gen4/Gen4StagedTrainerEditor.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Utils/CRC16.h"
@@ -10,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -208,6 +210,17 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(error.empty());
     assert(editor->hasChanges());
     assert(source == original);
+    const auto fields=PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor);
+    assert(fields.size()>4); // Every field remains reachable across Review pages.
+    assert(std::any_of(fields.begin(),fields.end(),[](const auto& row) {
+        return row.first=="Box 1 / Slot 1 / Move 1" && row.second.ends_with(" -> Recover");
+    }));
+    assert(std::any_of(fields.begin(),fields.end(),[](const auto& row) {
+        return row.first=="Box 1 / Slot 1 / IV HP" && row.second.ends_with(" -> 31");
+    }));
+    assert(std::any_of(fields.begin(),fields.end(),[](const auto& row) {
+        return row.first=="Box 1 / Slot 1 / EV Atk" && row.second.ends_with(" -> 200");
+    }));
 
     const auto finalBytes = editor->finalizedBytes(&error);
     assert(!finalBytes.empty() && error.empty());
@@ -464,6 +477,15 @@ void testMoveSwapAndCrossBoxTransactions() {
                                moved->originalEncryptedBytes().end(), firstBytes.begin()));
     assert(editor->originalBytes() == original);
     const auto postMove = editor->stagedBytes();
+    {
+        // S04 follow-up: Review lists a staged Move as ONE line, not "X -> (empty)" plus
+        // "(empty) -> X". The staged bytes are the same two-slot transaction.
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 1);
+        assert(lines[0].rfind("Moved ", 0) == 0);
+        assert(PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor).size()==1);
+        assert(lines[0].find(": Box 1 slot 1 -> Box 1 slot 2") != std::string::npos);
+    }
     assert(!editor->stageMoveBoxPokemon(0, 0, 1, 0, &error));
     assert(editor->stagedBytes() == postMove);
     assert(!editor->stageMoveBoxPokemon(0, 1, 18, 0, &error));
@@ -489,6 +511,18 @@ void testMoveSwapAndCrossBoxTransactions() {
     assert(editor->stageMoveBoxPokemon(0, 2, 1, 0, &error) && error.empty());
     assert(!editor->boxedPokemon(0, 2, &error));
     assert(editor->boxedPokemon(1, 0, &error));
+    {
+        // Net effect against the ORIGINAL: Box 1/1's Pokemon now lives in Box 2/1 (one Moved
+        // line, destination before the source in slot order is still paired), and the created
+        // Pokemon sits in Box 1/2 (one plain line).
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 2);
+        const auto movedLine = std::find_if(lines.begin(), lines.end(), [](const std::string& l) {
+            return l.rfind("Moved ", 0) == 0;
+        });
+        assert(movedLine != lines.end());
+        assert(movedLine->find(": Box 1 slot 1 -> Box 2 slot 1") != std::string::npos);
+    }
     assert(editor->originalBytes() == original);
     editor->discard();
     assert(editor->stagedBytes() == untouched);
@@ -615,8 +649,19 @@ void testGen4BagQuantityBoundsAndSourceImmutability() {
         assert((*bag)[keyItems].size() == 1 &&
                (*bag)[keyItems][0].count == 1);
         assert(editor->originalBytes() == original);
+        // Bag-only changes are listed for Review and the manifest (one line per changed item).
+        const auto bagLines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(bagLines.size() == 4);
+        const auto hasLine = [&](const std::string& text) {
+            return std::find(bagLines.begin(), bagLines.end(), text) != bagLines.end();
+        };
+        assert(hasLine("Bag Items: Black Flute 0 -> 900"));
+        assert(hasLine("Bag TM/HM: TM01 — Focus Punch 0 -> 99"));
+        assert(hasLine("Bag TM/HM: HM01 — Cut 0 -> 1"));
+        assert(hasLine("Bag Key Items: Sticker Case 0 -> 1"));
         editor->discard();
         assert(editor->stagedBytes() == original);
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());
     }
 }
 
@@ -746,6 +791,9 @@ void testVerifiedWorkingCopyExport() {
         const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
         assert(manifest.find("GAME_ID=" + gameId(layout)) != std::string::npos);
         assert(manifest.find("SOURCE_SHA256=" + exported.originalSha256) != std::string::npos);
+        // No Open snapshot: the backup is the payload and no container facts are claimed.
+        assert(manifest.find("SOURCE_CONTAINER=") == std::string::npos);
+        assert(manifest.find("ORIGINAL_BACKUP_IS=") == std::string::npos);
         assert(manifest.find("EDITED_SHA256=" + exported.editedSha256) != std::string::npos);
         assert(manifest.find("STRICT_REPARSE=VERIFIED") != std::string::npos);
         assert(manifest.find("- Box 1 slot 2: (empty) -> ") != std::string::npos);
@@ -758,7 +806,397 @@ void testVerifiedWorkingCopyExport() {
     fs::remove_all(root);
 }
 
+// Phase 4: Party and Box edits exported SEPARATELY through the real transaction. Each export's
+// edited bytes differ from the source only inside that record and its own block CRC (the other
+// block is byte-identical), the review lines name only that surface, racing destinations and a
+// mid-publication failure leave no residue, and malformed inputs never open a working copy.
+void testPhase4PartyBoxExportSeparation() {
+    namespace fs = std::filesystem;
+    using PokeVault::Integration::Common::ExportFailurePoint;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g4-phase4-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    fs::create_directories(root);
+    auto entries = [&] {
+        return static_cast<size_t>(std::distance(fs::directory_iterator(root), fs::directory_iterator()));
+    };
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
+        const auto sp = spec(layout);
+        const auto original = makeSave(layout);
+        // makeSave stamps partition 0 newest for both blocks.
+        const size_t partyBegin = sp.party, partyEnd = partyBegin + Encryption::SIZE_PARTY4;
+        const size_t generalCrc = sp.generalSize - 2;
+        const size_t boxBegin = sp.storageStart + sp.boxData;
+        const size_t boxEnd = boxBegin + Encryption::SIZE_STORED4;
+        const size_t storageCrc = sp.storageStart + sp.storageSize - 2;
+
+        for (const bool partyEdit : {true, false}) {
+            auto source = original;
+            std::string error;
+            auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+            assert(editor && error.empty());
+            if (partyEdit) {
+                auto party = editor->editablePartyPokemon(0, &error);
+                assert(party && party->setFriendship(201));
+                assert(editor->commitPartyPokemon(0, *party, &error));
+            } else {
+                auto boxed = editor->editableBoxPokemon(0, 0, &error);
+                assert(boxed && boxed->setFriendship(202));
+                assert(editor->commitBoxPokemon(0, 0, *boxed, &error));
+            }
+            const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+            assert(lines.size() == 1);
+            assert(lines[0].rfind(partyEdit ? "Party slot 1: " : "Box 1 slot 1: ", 0) == 0);
+
+            PokeVault::Integration::Gen4::Gen4ExportRequest request;
+            request.rootDirectory = root.string();
+            request.directoryStem = gameId(layout) + (partyEdit ? "_party" : "_box");
+            request.sourcePath = "sdmc:/drastic/backup/fixture.dsv";
+            request.timestamp = "20261015-120000";
+            for (auto point : {ExportFailurePoint::AfterFirstPublishedFile,
+                               ExportFailurePoint::DestinationAppearsAsEmptyDirectory,
+                               ExportFailurePoint::DestinationAppearsAsFile}) {
+                auto faulty = request;
+                faulty.failurePoint = point;
+                auto failed = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, faulty);
+                assert(!failed.success && failed.directory.empty());
+                const fs::path raced = root / request.directoryStem;
+                if (point == ExportFailurePoint::DestinationAppearsAsEmptyDirectory) {
+                    assert(fs::is_directory(raced) && fs::is_empty(raced));
+                    fs::remove(raced);
+                } else if (point == ExportFailurePoint::DestinationAppearsAsFile) {
+                    assert(fs::is_regular_file(raced) && fs::file_size(raced) == 0);
+                    fs::remove(raced);
+                }
+                assert(entries() == 0);
+            }
+
+            auto exported = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+            assert(exported.success);
+            const fs::path dir(exported.directory);
+            assert(slurp(dir / "original_backup.sav") == original);
+            const auto edited = slurp(dir / "edited.sav");
+            assert(edited.size() == original.size());
+            bool recordChanged = false;
+            for (size_t i = 0; i < edited.size(); ++i) {
+                if (edited[i] == original[i]) continue;
+                if (partyEdit) {
+                    assert((i >= partyBegin && i < partyEnd) || i == generalCrc || i == generalCrc + 1);
+                    recordChanged = recordChanged || (i >= partyBegin && i < partyEnd);
+                } else {
+                    assert((i >= boxBegin && i < boxEnd) || i == storageCrc || i == storageCrc + 1);
+                    recordChanged = recordChanged || (i >= boxBegin && i < boxEnd);
+                }
+            }
+            assert(recordChanged);
+            auto reparsed = Gen4ReadOnlySave::parse(edited, layout, gameId(layout), &error);
+            assert(reparsed && !reparsed->recovered());
+            assert(reparsed->nativePartySlots()[0].friendship() == (partyEdit ? 201 : 70));
+            assert(reparsed->box(0, 0).friendship() == (partyEdit ? 70 : 202));
+            std::ifstream manifestIn(dir / "EDIT_MANIFEST.txt");
+            const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+            assert(manifest.find(partyEdit ? "- Party slot 1: " : "- Box 1 slot 1: ") != std::string::npos);
+            assert(manifest.find(partyEdit ? "- Box 1 slot 1: " : "- Party slot 1: ") == std::string::npos);
+            assert(source == original);
+            fs::remove_all(dir);
+            assert(entries() == 0);
+        }
+
+        // Malformed, truncated, oversized and doubly-corrupt inputs never open a working copy.
+        std::string error;
+        auto truncated = original;
+        truncated.resize(original.size() - 1);
+        assert(!Gen4StagedPokemonEditor::create(truncated, layout, gameId(layout), &error));
+        auto oversized = original;
+        oversized.push_back(0);
+        assert(!Gen4StagedPokemonEditor::create(oversized, layout, gameId(layout), &error));
+        assert(!Gen4StagedPokemonEditor::create(std::vector<uint8_t>{}, layout, gameId(layout), &error));
+        auto bothBroken = original;
+        bothBroken[sp.storageStart + sp.boxData] ^= 1;
+        bothBroken[PARTITION + sp.storageStart + sp.boxData] ^= 1;
+        assert(!Gen4StagedPokemonEditor::create(bothBroken, layout, gameId(layout), &error));
+        // The wrong exact game for these bytes is a mismatch, not a working copy.
+        const auto wrongLayout = layout == Layout::Platinum ? Layout::DiamondPearl : Layout::Platinum;
+        assert(!Gen4StagedPokemonEditor::create(original, wrongLayout, gameId(wrongLayout), &error));
+    }
+    fs::remove_all(root);
+}
+
+// Review lines describe Pokemon changes only: a Pokemon created and then released in this session
+// leaves a differently-encoded empty slot, which must not appear as "(empty) (edited)"; a real
+// release still reads "<species> -> (empty)".
+void testReviewLinesSkipEmptyToEmpty() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+        assert(editor);
+        auto draft = editor->createBoxDraft(0, 1, 393, &error);
+        assert(draft && editor->stageCreateBoxPokemon(0, 1, *draft, &error));
+        assert(editor->stageReleaseBoxPokemon(0, 1, &error));
+        for (const auto& line : PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor))
+            assert(line.find("(empty) (edited)") == std::string::npos);
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());
+        assert(editor->stageReleaseBoxPokemon(0, 0, &error));
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 1 && lines[0].rfind("Box 1 slot 1: ", 0) == 0 &&
+               lines[0].find("-> (empty)") != std::string::npos);
+    }
+}
+
+// QA-F8: a slot that started empty holds an encrypted blank in retail saves. Releasing a clone
+// placed there restores those original bytes, so the net no-op leaves the working copy (and any
+// export) byte-identical to the source and no review line; releasing a source Pokemon still
+// clears its slot.
+void testReleaseRestoresOriginalEmptyRecord() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
+        const auto source = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+        assert(editor);
+        assert(editor->stageCloneBoxPokemon(0, 0, 1, 0, &error));
+        assert(editor->hasChanges());
+        assert(editor->stageReleaseBoxPokemon(1, 0, &error));
+        assert(!editor->hasChanges());
+        assert(editor->stagedBytes() == source);
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());
+        const auto finalized = editor->finalizedBytes(&error);
+        assert(finalized == source);
+
+        // The original Pokemon's slot was never empty: Release still empties it.
+        assert(editor->stageReleaseBoxPokemon(0, 0, &error));
+        assert(editor->hasChanges());
+        const auto reparsed = Gen4ReadOnlySave::parse(editor->stagedBytes(), layout, gameId(layout), &error);
+        assert(reparsed && reparsed->box(0, 0).valid() && reparsed->box(0, 0).empty());
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).size() == 1);
+    }
+}
+
+// A synthetic DeSmuME .dsv container: payload, then the documented 40-byte footer (six u32 values
+// and the 16-byte "|-DESMUME SAVE-|" cookie). Values are fixture data, not a real save.
+std::vector<uint8_t> dsvContainer(const std::vector<uint8_t>& payload) {
+    std::vector<uint8_t> file = payload;
+    const uint32_t words[6] = {static_cast<uint32_t>(payload.size()), static_cast<uint32_t>(payload.size()),
+                               0, 0, 0, 0};
+    for (uint32_t word : words)
+        for (int i = 0; i < 4; ++i) file.push_back(static_cast<uint8_t>(word >> (8 * i)));
+    const std::string cookie = "|-DESMUME SAVE-|";
+    file.insert(file.end(), cookie.begin(), cookie.end());
+    return file;
+}
+
+void spitBytes(const std::filesystem::path& path, const std::vector<uint8_t>& bytes) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+}
+
+// Gen IV export with an Open snapshot: a raw or .dsv source that is unchanged exports; one that
+// changed after Open (content, size or mtime) is refused before anything is written, and the
+// source file itself is never touched.
+void testExportRefusesStaleSource() {
+    namespace fs = std::filesystem;
+    namespace G4 = PokeVault::Integration::Gen4;
+    const fs::path root = fs::temp_directory_path() / ("pokebank-g4-stale-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    fs::create_directories(root / "src");
+    for (const auto container : {G4::Gen4SourceContainer::Raw, G4::Gen4SourceContainer::Dsv}) {
+        const bool dsv = container == G4::Gen4SourceContainer::Dsv;
+        const auto payload = makeSave(Layout::Platinum);
+        const auto fileBytes = dsv ? dsvContainer(payload) : payload;
+        const fs::path sourcePath = root / "src" / (dsv ? "platinum.dsv" : "platinum.sav");
+        spitBytes(sourcePath, fileBytes);
+        const auto sourceTime = fs::last_write_time(sourcePath);
+        std::string error;
+
+        // Snapshot shape checks: the container must match the file, and the payload must lead it.
+        const auto wrong = dsv ? G4::Gen4SourceContainer::Raw : G4::Gen4SourceContainer::Dsv;
+        assert(!G4::snapshotGen4Source(sourcePath.string(), wrong, payload, &error) && !error.empty());
+        auto otherPayload = payload;
+        otherPayload[0x10] ^= 0xFF;
+        assert(!G4::snapshotGen4Source(sourcePath.string(), container, otherPayload, &error));
+        const auto snapshot = G4::snapshotGen4Source(sourcePath.string(), container, payload, &error);
+        assert(snapshot && error.empty());
+        assert(snapshot->fileSize == fileBytes.size() && snapshot->container == container);
+        assert(std::string(G4::gen4SourceContainerLabel(container)) == (dsv ? "dsv-footer" : "raw-nds-battery"));
+        assert(snapshot->fileSha256 == PokeVault::Integration::Common::sha256Hex(fileBytes));
+
+        auto editor = Gen4StagedPokemonEditor::create(payload, Layout::Platinum, "platinum_nds", &error);
+        assert(editor && editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+
+        G4::Gen4ExportRequest request;
+        request.rootDirectory = (root / "out").string();
+        request.sourcePath = sourcePath.string();
+        request.timestamp = "20261015-120000";
+        request.sourceSnapshot = snapshot;
+        int attempt = 0;
+        auto refused = [&](const std::vector<uint8_t>& replacement, bool restoreTime) {
+            spitBytes(sourcePath, replacement);
+            if (restoreTime) fs::last_write_time(sourcePath, sourceTime);
+            request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_stale_" + std::to_string(attempt++);
+            const auto result = G4::publishVerifiedGen4Export(*editor, request);
+            assert(!result.success && result.directory.empty());
+            assert(result.error.find("reopen it before exporting") != std::string::npos ||
+                   result.error.find("no longer begins") != std::string::npos);
+            assert(!fs::exists(fs::path(request.rootDirectory) / request.directoryStem));
+            assert(slurp(sourcePath) == replacement);
+        };
+
+        // Same size, one footer/payload byte different, mtime restored: the hash catches it.
+        auto flipped = fileBytes;
+        flipped.back() ^= 0x01;
+        refused(flipped, true);
+        // Truncated (a .dsv losing its footer, a raw file losing its tail).
+        refused(std::vector<uint8_t>(fileBytes.begin(), fileBytes.end() - 40), true);
+        // Identical bytes, but rewritten later: the mtime alone is enough to refuse.
+        spitBytes(sourcePath, fileBytes);
+        fs::last_write_time(sourcePath, sourceTime + std::chrono::seconds(5));
+        request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_touched";
+        auto touched = G4::publishVerifiedGen4Export(*editor, request);
+        assert(!touched.success && touched.error.find("changed after it was opened") != std::string::npos);
+        // Gone entirely.
+        fs::remove(sourcePath);
+        request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_missing";
+        auto missing = G4::publishVerifiedGen4Export(*editor, request);
+        assert(!missing.success && missing.error.find("missing or unreadable") != std::string::npos);
+
+        // Restored exactly as opened: the export proceeds and the source stays byte-identical.
+        spitBytes(sourcePath, fileBytes);
+        fs::last_write_time(sourcePath, sourceTime);
+        request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_ok";
+        const auto exported = G4::publishVerifiedGen4Export(*editor, request);
+        assert(exported.success && exported.error.empty());
+        const fs::path out(exported.directory);
+        // The backup is the source FILE verbatim (footer included); edited.sav is the raw payload.
+        const fs::path backupPath = out / (dsv ? "original_backup.dsv" : "original_backup.sav");
+        assert(slurp(backupPath) == fileBytes);
+        assert(!dsv || !fs::exists(out / "original_backup.sav"));
+        assert(!fs::exists(out / "edited.dsv"));
+        assert(slurp(out / "edited.sav") == editor->stagedBytes());
+        assert(exported.backupSha256 == PokeVault::Integration::Common::sha256Hex(fileBytes));
+        assert(exported.originalSha256 == PokeVault::Integration::Common::sha256Hex(payload));
+        std::ifstream manifestIn(out / "EDIT_MANIFEST.txt");
+        const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+        auto has = [&](const std::string& line) { return manifest.find(line + "\n") != std::string::npos; };
+        assert(has(std::string("SOURCE_CONTAINER=") + (dsv ? "dsv-footer" : "raw-nds-battery")));
+        assert(has("EDITED_CONTAINER=raw-nds-battery"));
+        assert(has("SOURCE_SHA256_SCOPE=0x80000_SAV4_PAYLOAD"));
+        assert(has("SOURCE_FILE_SIZE=" + std::to_string(fileBytes.size())));
+        assert(has("SOURCE_FILE_SHA256=" + exported.backupSha256));
+        assert(has("ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE"));
+        assert(has("SOURCE_SIZE=" + std::to_string(payload.size())));
+        assert(has(std::string("ORIGINAL_BACKUP=") + (dsv ? "original_backup.dsv" : "original_backup.sav")));
+        assert(has("EDITED_SAVE=edited.sav"));
+        assert(slurp(sourcePath) == fileBytes);
+    }
+    fs::remove_all(root);
+}
+
+// R2-BUG-002: Trainer Name / Money staged in the selected General block of every Gen IV game.
+// Edit -> verified export -> strict reparse: the fields come back as entered, every byte outside
+// the trainer name / money fields and the selected General CRC is identical (the other General
+// copy and both Storage copies included), Review lists both changes, Discard restores the source
+// image, and the source buffer itself never changes.
+void testTrainerNameMoneyRoundTrip() {
+    namespace fs = std::filesystem;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g4-trainer-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    struct Case { Layout layout; uint8_t rom; const char* id; int newerGeneral; };
+    const Case cases[] = {
+        {Layout::DiamondPearl, 10, "diamond_nds", 0}, {Layout::DiamondPearl, 11, "pearl_nds", 1},
+        {Layout::Platinum, 12, "platinum_nds", 1},
+        {Layout::HeartGoldSoulSilver, 7, "heartgold_nds", 0},
+        {Layout::HeartGoldSoulSilver, 8, "soulsilver_nds", 1},
+    };
+    for (const auto& c : cases) {
+        auto source = makeSave(c.layout, c.rom, c.newerGeneral);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, c.layout, c.id, &error);
+        assert(editor && error.empty());
+        assert(editor->trainerNameEditable());
+        const auto before = editor->stagedTrainer(&error);
+        assert(before && before->name == u"Kylie" && before->money == 0);
+
+        // Refusals change nothing.
+        assert(!editor->stageTrainerMoney(1000000, &error) && !error.empty());
+        assert(!editor->stageTrainerName(u"", &error));
+        assert(!editor->stageTrainerName(u"Eightchr", &error));
+        assert(!editor->stageTrainerName(u"A\U0001F600", &error));
+        assert(editor->stagedBytes() == original && !editor->hasChanges());
+
+        // Through the Trainer page's editor: only the changed fields are staged.
+        PokeVault::Integration::Gen4::Gen4StagedTrainerEditor trainerEditor(*editor);
+        assert(trainerEditor.available() && trainerEditor.trainerName() == "Kylie");
+        assert(trainerEditor.stage("Kylie", 0, error) && !editor->hasChanges());
+        assert(trainerEditor.stage("Ash", 123456, error) && error.empty());
+        assert(trainerEditor.trainerName() == "Ash" && trainerEditor.money() == 123456);
+        const auto after = editor->stagedTrainer(&error);
+        assert(after && after->name == u"Ash" && after->money == 123456);
+        assert(after->tid == before->tid && after->sid == before->sid && after->language == before->language);
+
+        // Footprint: only the trainer name (16 bytes) and money (4 bytes) fields and the selected
+        // General block's CRC differ.
+        const auto sp = spec(c.layout);
+        const size_t general = static_cast<size_t>(c.newerGeneral) * PARTITION;
+        const size_t trainer = general + sp.trainer;
+        const size_t crc = general + sp.generalSize - 2;
+        const auto& staged = editor->stagedBytes();
+        for (size_t i = 0; i < staged.size(); ++i) {
+            if (staged[i] == original[i]) continue;
+            const bool allowed = (i >= trainer && i < trainer + 16) ||
+                                 (i >= trainer + 0x14 && i < trainer + 0x18) || i == crc || i == crc + 1;
+            assert(allowed);
+        }
+        const size_t otherGeneral = static_cast<size_t>(1 - c.newerGeneral) * PARTITION;
+        assert(std::equal(staged.begin() + static_cast<std::ptrdiff_t>(otherGeneral),
+                          staged.begin() + static_cast<std::ptrdiff_t>(otherGeneral + sp.generalSize),
+                          original.begin() + static_cast<std::ptrdiff_t>(otherGeneral)));
+        // Name written PKHeX ClearZero style: "Ash", one terminator, the rest zero.
+        assert(staged[trainer + 6] == 0xFF && staged[trainer + 7] == 0xFF);
+        for (size_t i = trainer + 8; i < trainer + 16; ++i) assert(staged[i] == 0);
+
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(std::find(lines.begin(), lines.end(), "Trainer name: Kylie -> Ash") != lines.end());
+        assert(std::find(lines.begin(), lines.end(), "Money: 0 -> 123456") != lines.end());
+
+        PokeVault::Integration::Gen4::Gen4ExportRequest request;
+        request.rootDirectory = root.string();
+        request.directoryStem = std::string(c.id) + "_20261019-120000";
+        request.sourcePath = "sdmc:/retroarch/saves/fixture.sav";
+        request.timestamp = "20261019-120000";
+        auto exported = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+        assert(exported.success && exported.error.empty());
+        const auto edited = slurp(fs::path(exported.directory) / "edited.sav");
+        assert(edited == staged);
+        const auto reparsed = Gen4ReadOnlySave::parse(edited, c.layout, c.id, &error);
+        assert(reparsed && !reparsed->recovered());
+        assert(reparsed->trainer().name == u"Ash" && reparsed->trainer().money == 123456);
+        assert(slurp(fs::path(exported.directory) / "original_backup.sav") == original);
+        assert(source == original);
+
+        editor->discard();
+        assert(editor->stagedBytes() == original);
+    }
+
+    // Japanese (language 1): the name stays read-only; money still stages.
+    auto japanese = makeSave(Layout::Platinum, 12);
+    for (int partition = 0; partition < 2; ++partition) {
+        const size_t base = static_cast<size_t>(partition) * PARTITION;
+        japanese[base + spec(Layout::Platinum).trainer + 0x19] = 1;
+        stamp(japanese, base, spec(Layout::Platinum).generalSize, spec(Layout::Platinum).footerSize,
+              partition == 0 ? 20 : 10);
+    }
+    std::string error;
+    auto editor = Gen4StagedPokemonEditor::create(japanese, Layout::Platinum, "platinum_nds", &error);
+    assert(editor && !editor->trainerNameEditable());
+    assert(!editor->stageTrainerName(u"Ash", &error) && editor->stagedBytes() == japanese);
+    assert(editor->stageTrainerMoney(999999, &error) && editor->stagedTrainer()->money == 999999);
+    fs::remove_all(root);
+}
+
 int main() {
+    testTrainerNameMoneyRoundTrip();
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
@@ -766,6 +1204,8 @@ int main() {
     testMixedPartitionMutationFootprint();
     testEmptySlotCreateTransaction();
     testCloneAndReleaseTransactions();
+    testReleaseRestoresOriginalEmptyRecord();
+    testExportRefusesStaleSource();
     testMoveSwapAndCrossBoxTransactions();
     testSharedHoldYGroupPlacementAtomicity();
     testGen4BagQuantityBoundsAndSourceImmutability();
@@ -773,6 +1213,8 @@ int main() {
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
     testVerifiedWorkingCopyExport();
+    testPhase4PartyBoxExportSeparation();
+    testReviewLinesSkipEmptyToEmpty();
     std::cout << "Gen IV staged boxed Pokemon editor PASS\n";
     return 0;
 }

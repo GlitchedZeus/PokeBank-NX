@@ -2,6 +2,11 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "tests/fixtures/gsc_pokemon_fixture.h"
+#include "UI/NarrowPokemonActionMenu.h"
+
+#include <fstream>
+#include <iterator>
+#include <string_view>
 
 #include <algorithm>
 #include <cassert>
@@ -443,9 +448,88 @@ void runGen2(const L& layoutFixture, G2::SourceGame game) {
     }
 }
 
+std::string readText(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    assert(in && "run from the repository root");
+    return {std::istreambuf_iterator<char>(in), {}};
+}
+
+// R2-CHECK-009: Gen I Box Actions lists Move (between Clone and Release, the shared E02 order)
+// where the Boxes-view carry exists, and Move starts that carry with the Pokemon picked up:
+// Y drops it as ONE verified staged move, B leaves the source untouched.
+void runGen1BoxActionsMove(G1::SourceGame game) {
+    namespace Gen1 = PokeBank::UIModel::Gen1Editor;
+    namespace Menu = PokeBank::UIModel::NarrowPokemonMenu;
+    const auto labels = [](const Gen1::ActionSet& set) {
+        std::vector<std::string> out;
+        const auto model = Menu::gen1(set);
+        for (int i = 0; i < model.count; ++i) out.emplace_back(model.rows[static_cast<std::size_t>(i)].label);
+        return out;
+    };
+    const std::string legality = Menu::kOriginLegalityLabel;
+    assert((labels(Gen1::actionsForSlot(true, false, true)) ==
+            std::vector<std::string>{"View", "Edit", "Clone", "Move", "Release", legality, "Cancel"}));
+    assert((labels(Gen1::actionsForSlot(true, true, true)) ==
+            std::vector<std::string>{"View", "Edit", "Clone", "Move", "Release", legality,
+                                     "Review Pending Changes", "Cancel"}));
+    // Read-only Storage pane (boxMove false) and empty slots: no Move.
+    assert((labels(Gen1::actionsForSlot(true, false, false)) ==
+            std::vector<std::string>{"View", "Edit", "Clone", "Release", legality, "Cancel"}));
+    assert((labels(Gen1::actionsForSlot(false, false, true)) == std::vector<std::string>{"Add Pokemon", "Cancel"}));
+
+    const auto raw = Gen1Fixture::make(game);
+    std::string error;
+    {   // Actions -> Move (pickup), then Y: one staged move of the same record.
+        auto editor = makeGen1Editor(raw, game);
+        setupGen1Five(*editor);
+        const auto before = editor->boxedPokemon(2, 1, error);
+        const auto stagedBefore = staged(*editor);
+        assert(before && editor->beginPackedMove(2, 1, error));
+        std::size_t placed = 99;
+        assert(editor->placePackedMove(2, 3, placed, error) && placed == 3);
+        const auto moved = editor->boxedPokemon(2, 3, error);
+        assert(moved && moved->rawBody == before->rawBody && moved->nickname == before->nickname);
+        assert(staged(*editor) != stagedBefore);  // the move is staged in the working copy
+        assert((gen1Order(*editor, 2) == std::vector<std::string>{"PIKA", "C", "D", "B", "E"}));
+        assertGen1Packed(*editor);
+        assertOriginal(*editor, raw);
+    }
+    {   // Actions -> Move (pickup), then B: the staged box is exactly as before the pickup.
+        auto editor = makeGen1Editor(raw, game);
+        setupGen1Five(*editor);
+        const auto stagedBefore = staged(*editor);
+        const auto orderBefore = gen1Order(*editor, 2);
+        assert(editor->beginPackedMove(2, 1, error));
+        assert(editor->cancelPackedMove(error));
+        assert(staged(*editor) == stagedBefore && gen1Order(*editor, 2) == orderBefore);
+        assertOriginal(*editor, raw);
+    }
+
+    // Production routing: both live Gen I action dispatchers send Move into the SAME Boxes carry
+    // (ClassicPackedMove::beginGen1FromAction -> beginGen1), and every sheet / hit-test / dispatch
+    // builds its rows with the same boxMove flag so rows, touch ids and actions line up.
+    const auto overlay = readText("src/UI/ClassicPackedMoveOverlay.inc");
+    assert(overlay.find("bool beginGen1FromAction(TrainerViewScreen& screen, int box, int slot) {") != std::string::npos);
+    assert(overlay.find("screen.selectedMode != TrainerViewScreen::ViewMode::Boxes") != std::string::npos);
+    assert(overlay.find("beginGen1(screen, state, box, slot);") != std::string::npos);
+    for (const char* path : {"src/UI/ClassicReleaseActionFix.inc", "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc"}) {
+        const auto source = readText(path);
+        assert(source.find("ClassicPackedMove::beginGen1FromAction(screen, box, slot)") != std::string::npos);
+    }
+    const auto release = readText("src/UI/ClassicReleaseActionFix.inc");
+    std::size_t flagged = 0;
+    for (auto at = release.find("boxMoveAvailable(screen)"); at != std::string::npos;
+         at = release.find("boxMoveAvailable(screen)", at + 1)) ++flagged;
+    assert(flagged == 2); // input and draw
+    const auto ux = readText("src/UI/Gen1PokemonEditorOverlayUX.inc");
+    assert(ux.find("screen.selectedMode == TrainerViewScreen::ViewMode::Boxes;") != std::string::npos);
+}
+
 int main() {
-    for (const auto game : {G1::SourceGame::Red, G1::SourceGame::Blue, G1::SourceGame::Yellow})
+    for (const auto game : {G1::SourceGame::Red, G1::SourceGame::Blue, G1::SourceGame::Yellow}) {
         runGen1(game);
+        runGen1BoxActionsMove(game);
+    }
 
     runGen2(GS, G2::SourceGame::Gold);
     runGen2(C, G2::SourceGame::Crystal);

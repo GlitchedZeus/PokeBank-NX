@@ -20,6 +20,7 @@ import re
 from pathlib import Path
 
 from png_asset_validation import validate_png
+from fetch_product_art import TRAINER_URLS, REQUIRED_REGIONS
 
 ROOT = Path(__file__).resolve().parent.parent
 ROMFS = ROOT / "romfs"
@@ -42,6 +43,8 @@ TRAINER_PORTRAITS = (
     "harmony",
 )
 GAME_CARD_ART_DIR = ROMFS / "game_cards"
+REGION_BACKDROP_DIR = ROMFS / "region_backdrops"
+TRAINER_PORTRAIT_DIR = ROMFS / "trainer_portraits"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
 SPRITE_MANAGER = ROOT / "src" / "UI" / "SpriteManager.cpp"
 SPECIES_NAMES_CPP = ROOT / "src" / "Names" / "SpeciesNames.cpp"
@@ -243,6 +246,7 @@ def main() -> int:
         "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",
         "diamond_nds.png", "pearl_nds.png", "platinum_nds.png",
         "heartgold_nds.png", "soulsilver_nds.png",
+        "black_nds.png", "white_nds.png", "black2_nds.png", "white2_nds.png",
     )
     if not GAME_CARD_ART_DIR.is_dir():
         fail(errors, "romfs/game_cards/ is missing; run: make game-card-art")
@@ -251,7 +255,47 @@ def main() -> int:
         if missing_cards:
             fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
-            ok("GB/GBC/GBA legacy cards + Diamond/Pearl/Platinum/HeartGold/SoulSilver NDS artwork is present")
+            invalid_cards = []
+            for name in required_game_cards:
+                valid, reason, _ = validate_png(GAME_CARD_ART_DIR / name)
+                if not valid:
+                    invalid_cards.append(f"{name}: {reason}")
+            if invalid_cards:
+                fail(errors, "invalid packaged cover artwork: " + "; ".join(invalid_cards))
+            else:
+                ok("all required game-card artwork (Gen I-V) is packaged and PNG-validated")
+
+    # Use the same canonical exact Product Home manifest that stages
+    # trainer images and region scenes. Do not greenlight a native NRO with
+    # only the older eight backdrops or fake Trainer placeholder badges.
+    required_regions = REQUIRED_REGIONS
+    if not REGION_BACKDROP_DIR.is_dir():
+        fail(errors, "romfs/region_backdrops/ is missing; branch artwork was not packaged")
+    else:
+        missing_or_invalid = []
+        for region in required_regions:
+            file = REGION_BACKDROP_DIR / region
+            valid, reason, _ = validate_png(file)
+            if not valid:
+                missing_or_invalid.append(f"{region}: {reason}")
+        if missing_or_invalid:
+            fail(errors, "missing or invalid region scenery: " + "; ".join(missing_or_invalid))
+        else:
+            ok("all 10 regional backdrops are packaged and PNG-validated")
+
+    if not TRAINER_PORTRAIT_DIR.is_dir():
+        fail(errors, "romfs/trainer_portraits/ is missing; Product Home trainers were not packaged")
+    else:
+        missing_trainers = []
+        for name in TRAINER_URLS:
+            file = TRAINER_PORTRAIT_DIR / name
+            valid, reason, _ = validate_png(file)
+            if not valid:
+                missing_trainers.append(f"{name}: {reason}")
+        if missing_trainers:
+            fail(errors, "missing or invalid trainer portraits: " + "; ".join(missing_trainers))
+        else:
+            ok(f"all {len(TRAINER_URLS)} Product Home trainer portraits are packaged and PNG-validated")
 
     # Product Home scenery and trainer art. A previous hardware NRO silently lost these when CI
     # replaced the branch romfs/ with the older recovery snapshot; keep them mandatory.

@@ -3,11 +3,14 @@
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "UI/ClassicCarryGrid.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/SpriteManager.h"
 
 #include <algorithm>
+#include <optional>
 #include <cstddef>
 #include <cmath>
 #include <vector>
@@ -16,7 +19,7 @@ namespace UI::ClassicPackedMove {
 namespace {
 
 namespace Multi = PokeBank::UIModel::ClassicPackedMove;
-enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3, Gen4 };
+enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3, Gen4, Gen5 };
 
 struct CarriedVisual {
     uint16_t species = 0;
@@ -39,6 +42,10 @@ struct CarryState {
     // after the selected PK4 source records have changed in the workspace.
     const void* gen4StagedOwner = nullptr;
     std::vector<std::vector<std::byte>> gen4PickupRecords;
+    // Gen V (Round 3 Part 9): the same deferred carry. The exact staged PK5 the
+    // player picked up is remembered; nothing is staged until the Y drop.
+    const void* gen5StagedOwner = nullptr;
+    std::vector<uint8_t> gen5PickupRecord;
 
     bool yPending = false;
     int yFrames = 0;
@@ -54,6 +61,11 @@ struct CarryState {
     // a finger drag owns the grid directly and never synthesizes a held controller button.
     bool touchArmed = false;
     bool touchSelecting = false;
+
+    // Part 9 item 8: true when this interaction started in the Gen IV Storage view's SAVE pane.
+    // Its cursor is then stSaveBox / stSaveSlot and its cells are the pane's storage targets, so
+    // pickup, drop and the drawn carry all stay in the pane they came from.
+    bool storage = false;
 };
 
 constexpr int kMultiHoldFrames = 8;
@@ -93,11 +105,16 @@ bool isGen4(const TrainerViewScreen& screen) noexcept {
            id == "soulsilver_nds";
 }
 
+bool isGen5(const TrainerViewScreen& screen) noexcept {
+    const auto& id = screen.sourceGameId;
+    return id == "black_nds" || id == "white_nds" || id == "black2_nds" || id == "white2_nds";
+}
+
 bool classicSource(const TrainerViewScreen& screen) noexcept {
     return isGen1(screen) || isGen2(screen) || isGen3(screen) || isGen4(screen);
 }
 
-bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
+bool boxesGridOwnsInput(const TrainerViewScreen& screen) noexcept {
     return classicSource(screen) &&
            screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
            screen.detailViewActive &&
@@ -108,6 +125,58 @@ bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
            !screen.saveConfirmActive &&
            !screen.pickerActive &&
            !screen.itemEditDialogActive;
+}
+
+// The Gen IV Storage view's game-save pane is the same staged PK4 box grid as the Boxes view
+// (QA Part 9 item 8): with a staged Gen IV editor, Y there is Move / Hold Multi, exactly as in
+// Boxes, instead of being stripped as a read-only source key. The Bank pane is never affected.
+bool storageGridOwnsInput(const TrainerViewScreen& screen) noexcept {
+    namespace CarryGrid = PokeBank::UIModel::ClassicCarryGrid;
+    CarryGrid::StorageSurface surface;
+    surface.gen4 = isGen4(screen);
+    surface.storageView = screen.selectedMode == TrainerViewScreen::ViewMode::Storage && screen.detailViewActive;
+    surface.saveFocused = screen.storageFocusPane == 0;
+    surface.stagedEditor = surface.gen4 &&
+        static_cast<const PokeVault::Legacy::Gen4ReadOnlyTrainer&>(screen.trainer).stagedPokemon() != nullptr;
+    surface.modalOpen = screen.helpOverlayActive || screen.details.active || screen.actionSheet.isOpen() ||
+        screen.saveConfirmActive || screen.pickerActive || screen.itemEditDialogActive ||
+        screen.releaseConfirmActive || screen.groupMenuActive || screen.storageExitConfirmActive;
+    surface.legacyCarry = screen.carrying();
+    surface.saveBox = screen.stSaveBox;
+    surface.saveSlot = screen.stSaveSlot;
+    return CarryGrid::storageOwnsCarry(surface);
+}
+
+bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
+    return boxesGridOwnsInput(screen) || storageGridOwnsInput(screen);
+}
+
+// Which grid an interaction belongs to: fixed for the whole interaction once it has begun.
+bool storageMode(const TrainerViewScreen& screen, const CarryState& state) noexcept {
+    const bool busy = state.active || state.selecting || state.yPending ||
+                      state.touchArmed || state.touchSelecting;
+    return busy ? state.storage : storageGridOwnsInput(screen);
+}
+int& cursorBox(TrainerViewScreen& screen, const CarryState& state) noexcept {
+    return storageMode(screen, state) ? screen.stSaveBox : screen.selectedBoxIndex;
+}
+int& cursorSlot(TrainerViewScreen& screen, const CarryState& state) noexcept {
+    return storageMode(screen, state) ? screen.stSaveSlot : screen.selectedItemIndex;
+}
+struct CellRect {
+    int x = 0, y = 0, w = 0, h = 0;
+};
+// The drawn cell of a slot in the interaction's grid (Boxes touch buttons, or the save pane's
+// storage targets for the cursor box), as published by the last frame.
+std::optional<CellRect> cellRect(TrainerViewScreen& screen, const CarryState& state, int slot) {
+    if (storageMode(screen, state)) {
+        for (const auto& t : screen.storageTouchTargets)
+            if (t.pane == 0 && t.box == screen.stSaveBox && t.slot == slot) return CellRect{t.x, t.y, t.w, t.h};
+        return std::nullopt;
+    }
+    for (const auto& button : screen.touchButtons)
+        if (button.id == slot) return CellRect{button.x, button.y, button.w, button.h};
+    return std::nullopt;
 }
 
 int classicCapacity(TrainerViewScreen& screen) {
@@ -391,6 +460,31 @@ bool beginGen4(TrainerViewScreen& screen, CarryState& state, int box, int anchor
     return true;
 }
 
+// Gen V single-Pokemon carry, started from Actions -> Move (the Gen V box grid
+// keeps its own isolated input; see Gen5SharedReadOnlySurface handleInput).
+bool beginGen5(TrainerViewScreen& screen, CarryState& state, int box, int slot) {
+    auto& trainer = static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
+    auto& workspace = trainer.stagedPokemon();
+    const auto pokemon = workspace.viewBox(static_cast<std::size_t>(box), static_cast<std::size_t>(slot));
+    if (!pokemon || !pokemon->valid() || pokemon->empty()) {
+        screen.postStatus("Gen V Move needs an occupied box slot", 260);
+        clearTransientSelection(screen, state);
+        return true;
+    }
+    state.active = true;
+    state.generation = CarryGeneration::Gen5;
+    state.sourceBox = box;
+    state.sourceSlot = slot;
+    state.gen5StagedOwner = &workspace;
+    state.gen5PickupRecord.assign(pokemon->originalEncryptedBytes().begin(),
+                                  pokemon->originalEncryptedBytes().end());
+    state.visuals = {{pokemon->species(), pokemon->form(), pokemon->shiny()}};
+    clearTransientSelection(screen, state);
+    setLegacyHoldingPresentation(screen, true);
+    screen.postStatus("Gen V Pokemon picked up - Y places in an empty slot, B cancels", 240);
+    return true;
+}
+
 bool beginSelectedGroup(TrainerViewScreen& screen, CarryState& state) {
     const int capacity = classicCapacity(screen);
     const auto rectangle = Multi::rectangleSlots(state.selectionAnchor, state.selectionCursor, capacity);
@@ -553,9 +647,10 @@ bool cancel(TrainerViewScreen& screen, CarryState& state) {
     // Gen IV pickup is a visual/deferred transaction: no PK4 was changed
     // before placement. A B cancel therefore restores without any write.
     if (state.generation == CarryGeneration::Gen4) ok = true;
+    if (state.generation == CarryGeneration::Gen5) ok = true;  // same deferred carry
     if (ok) {
-        screen.selectedBoxIndex = state.sourceBox;
-        screen.selectedItemIndex = state.sourceSlot;
+        cursorBox(screen, state) = state.sourceBox;
+        cursorSlot(screen, state) = state.sourceSlot;
         screen.postStatus("Move cancelled - staged ordering restored", 220);
         clearState(screen, state);
     } else {
@@ -601,8 +696,9 @@ bool placeGen4(TrainerViewScreen& screen, CarryState& state) {
             return true;
         }
     }
-    const int destinationBox = screen.selectedBoxIndex;
-    const int destinationSlot = screen.selectedItemIndex;
+    // The drop lands in the grid the Pokemon came from (Boxes, or the Storage save pane).
+    const int destinationBox = cursorBox(screen, state);
+    const int destinationSlot = cursorSlot(screen, state);
     if (destinationBox < 0 || destinationBox >= 18 ||
         destinationSlot < 0 || destinationSlot >= 30) {
         screen.postStatus("Choose a valid Gen IV box slot", 260);
@@ -682,7 +778,7 @@ bool placeGen4(TrainerViewScreen& screen, CarryState& state) {
         return true;
     }
 
-    screen.selectedItemIndex = destinationSlot;
+    cursorSlot(screen, state) = destinationSlot;
     screen.postStatus(movePairs.size() == 1
         ? "Gen IV Pokemon moved/swapped in staged save"
         : std::to_string(movePairs.size()) + " Gen IV Pokemon moved in staged save", 270);
@@ -690,8 +786,51 @@ bool placeGen4(TrainerViewScreen& screen, CarryState& state) {
     return true;
 }
 
+// Gen V drop: one atomic staged Move (exact clone into a verified empty box
+// slot + release of the source) through Gen5SharedScreenState, which refuses
+// a drop if the carried staged record changed and rolls back on a failed
+// presentation refresh. An occupied target keeps the carry (choose another).
+bool placeGen5(TrainerViewScreen& screen, CarryState& state) {
+    auto& trainer = static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
+    auto& workspace = trainer.stagedPokemon();
+    if (&workspace != state.gen5StagedOwner || state.gen5PickupRecord.empty()) {
+        clearState(screen, state);
+        screen.postStatus("Gen V source workspace changed; pickup cancelled safely", 340);
+        return true;
+    }
+    const int box = screen.selectedBoxIndex;
+    const int slot = screen.selectedItemIndex;
+    if (box == state.sourceBox && slot == state.sourceSlot) {
+        screen.postStatus("Pokemon returned to its original position", 200);
+        clearState(screen, state);
+        return true;
+    }
+    if (box < 0 || box >= 24 || slot < 0 || slot >= 30 ||
+        !workspace.emptyCloneDestination(static_cast<std::size_t>(box), static_cast<std::size_t>(slot))) {
+        screen.postStatus("Choose an empty verified Gen V box slot, or B cancels", 280);
+        return true;
+    }
+    using Workspace = PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace;
+    const Workspace::Slot from{Workspace::Region::Box, static_cast<std::size_t>(state.sourceBox),
+                               static_cast<std::size_t>(state.sourceSlot)};
+    std::string error;
+    if (!trainer.sharedScreen().dropCarriedPokemon(
+            workspace, from, state.gen5PickupRecord,
+            static_cast<std::size_t>(box), static_cast<std::size_t>(slot),
+            [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); }, error)) {
+        clearState(screen, state);
+        screen.postStatus(error.empty() ? "Gen V staged Move failed; nothing staged" : error, 340);
+        return true;
+    }
+    screen.selectedItemIndex = slot;
+    screen.postStatus("Gen V Pokemon moved in the staged copy; source SAV5 unchanged", 260);
+    clearState(screen, state);
+    return true;
+}
+
 bool place(TrainerViewScreen& screen, CarryState& state) {
     if (state.generation == CarryGeneration::Gen4) return placeGen4(screen, state);
+    if (state.generation == CarryGeneration::Gen5) return placeGen5(screen, state);
     if (screen.selectedItemIndex < 0) {
         screen.postStatus("Choose a box slot before placing the carried Pokemon", 220);
         return true;
@@ -749,26 +888,34 @@ void resizeSelection(TrainerViewScreen& screen, CarryState& state, uint64_t down
     if (down & HidNpadButton_Left) next = Multi::moveCursor(next, Multi::Direction::Left, capacity);
     if (down & HidNpadButton_Right) next = Multi::moveCursor(next, Multi::Direction::Right, capacity);
     state.selectionCursor = next;
-    screen.selectedItemIndex = next;
+    cursorSlot(screen, state) = next;
 }
 
 bool slotOccupiedForFooter(TrainerViewScreen& screen) {
-    if (screen.selectedBoxIndex < 0 || screen.selectedItemIndex < 0 ||
-        screen.selectedBoxIndex >= static_cast<int>(screen.trainer.boxes.size())) return false;
-    const auto& box = screen.trainer.boxes[static_cast<std::size_t>(screen.selectedBoxIndex)];
-    if (screen.selectedItemIndex >= static_cast<int>(box.size())) return false;
-    const auto& pokemon = box[static_cast<std::size_t>(screen.selectedItemIndex)];
+    const auto& state = stateFor(screen);
+    const int boxIndex = cursorBox(screen, state), slot = cursorSlot(screen, state);
+    if (boxIndex < 0 || slot < 0 ||
+        boxIndex >= static_cast<int>(screen.trainer.boxes.size())) return false;
+    const auto& box = screen.trainer.boxes[static_cast<std::size_t>(boxIndex)];
+    if (slot >= static_cast<int>(box.size())) return false;
+    const auto& pokemon = box[static_cast<std::size_t>(slot)];
     return pokemon && pokemon->speciesID() != 0;
 }
 
-const TrainerViewScreen::TouchButton* selectedCell(TrainerViewScreen& screen) {
-    for (const auto& button : screen.touchButtons)
-        if (button.id == screen.selectedItemIndex) return &button;
-    return nullptr;
+std::optional<CellRect> selectedCell(TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    return cellRect(screen, state, cursorSlot(screen, state));
 }
 
 int cellAtPoint(TrainerViewScreen& screen, int x, int y) {
     const int capacity = classicCapacity(screen);
+    if (storageMode(screen, stateFor(screen))) {
+        for (const auto& t : screen.storageTouchTargets) {
+            if (t.pane != 0 || t.box != screen.stSaveBox || t.slot < 0 || t.slot >= capacity) continue;
+            if (x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h) return t.slot;
+        }
+        return -1;
+    }
     for (const auto& button : screen.touchButtons) {
         if (button.id < 0 || button.id >= capacity) continue;
         if (x >= button.x && x < button.x + button.w &&
@@ -786,12 +933,56 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
     }
 }
 
+// A carry picked up in the Storage save pane stays in that pane: the D-pad / stick move the
+// cursor over its 6x5 grid, L/R (or the header arrows) change box, a tapped cell moves the
+// cursor. The pane never changes, so a drop always lands where the Pokemon came from.
+bool storageCarryNavigation(TrainerViewScreen& screen, CarryState& state, uint64_t down, uint64_t held,
+                            int stickX, int stickY, const TouchInput& touch) {
+    const int boxes = std::max(1, static_cast<int>(screen.trainer.getBoxCount()));
+    if (touch.justTapped()) {
+        const int cell = cellAtPoint(screen, touch.x(), touch.y());
+        if (cell >= 0) {
+            screen.stSaveSlot = cell;
+            return true;
+        }
+        for (const auto& t : screen.storageTouchTargets) {
+            if (t.pane != 0 || t.box != screen.stSaveBox || (t.slot != -2 && t.slot != -3)) continue;
+            if (touch.x() >= t.x && touch.x() < t.x + t.w && touch.y() >= t.y && touch.y() < t.y + t.h)
+                screen.stSaveBox = (screen.stSaveBox + (t.slot == -2 ? boxes - 1 : 1)) % boxes;
+        }
+        return true;
+    }
+    const uint64_t nav = screen.controllerNavigation.apply(
+        down, held, stickX, stickY,
+        HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+    namespace CarryGrid = PokeBank::UIModel::ClassicCarryGrid;
+    CarryGrid::Keys keys;
+    keys.up = nav & HidNpadButton_Up;
+    keys.down = nav & HidNpadButton_Down;
+    keys.left = nav & HidNpadButton_Left;
+    keys.right = nav & HidNpadButton_Right;
+    keys.previousBox = down & HidNpadButton_L;
+    keys.nextBox = down & HidNpadButton_R;
+    const auto next = CarryGrid::step({screen.stSaveBox, screen.stSaveSlot}, keys, boxes, classicCapacity(screen));
+    screen.stSaveBox = next.box;
+    screen.stSaveSlot = next.slot;
+    (void)state;
+    return true;
+}
+
 } // namespace
 
 bool hidesGen4CarriedSource(const TrainerViewScreen& screen, int box, int slot) {
-    if (!isGen4(screen) || slot < 0 || box < 0) return false;
+    if (slot < 0 || box < 0) return false;
     // Shared carry state is owned by this overlay. Query it strictly for
     // presentation: never mutate the PK4 records on pickup/cursor navigation.
+    // Gen V's deferred carry hides its source cell the same way.
+    if (isGen5(screen)) {
+        const auto& state = stateFor(const_cast<TrainerViewScreen&>(screen));
+        return state.active && state.generation == CarryGeneration::Gen5 &&
+               state.sourceBox == box && state.sourceSlot == slot;
+    }
+    if (!isGen4(screen)) return false;
     const auto& state = stateFor(const_cast<TrainerViewScreen&>(screen));
     return state.active && state.generation == CarryGeneration::Gen4 &&
            state.sourceBox == box &&
@@ -804,7 +995,59 @@ bool beginGen4FromAction(TrainerViewScreen& screen, int box, int slot) {
         return false;
     auto& state = stateFor(screen);
     if (state.active || state.selecting || state.yPending) return false;
+    // Actions -> Move from the Storage save pane carries within that pane.
+    state.storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage &&
+                    screen.storageFocusPane == 0;
     return beginGen4(screen, state, box, slot, {static_cast<std::size_t>(slot)});
+}
+
+bool beginGen1FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen1(screen) || screen.selectedMode != TrainerViewScreen::ViewMode::Boxes ||
+        box < 0 || slot < 0 || slot >= classicCapacity(screen))
+        return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    screen.selectedBoxIndex = box;
+    screen.selectedItemIndex = slot;
+    beginGen1(screen, state, box, slot);
+    return state.active;
+}
+
+bool beginGen5FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen5(screen) || box < 0 || box >= 24 || slot < 0 || slot >= 30) return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    return beginGen5(screen, state, box, slot);
+}
+
+bool gen5CarryActive(TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    return isGen5(screen) && state.active && state.generation == CarryGeneration::Gen5;
+}
+
+// The Gen V box grid's carry keys, with the same meaning as Gen I-IV: Y drops,
+// B cancels, A / X are refused while carrying, a tapped cell only moves the
+// cursor. D-pad / stick / L/R / ZL/ZR return false so the Gen V grid moves.
+bool handleGen5CarryInput(TrainerViewScreen& screen, uint64_t down, int tap) {
+    auto& state = stateFor(screen);
+    if (!gen5CarryActive(screen)) return false;
+    setLegacyHoldingPresentation(screen, true);
+    if (down & HidNpadButton_B) return cancel(screen, state);
+    if (down & HidNpadButton_Y) return place(screen, state);
+    if (down & HidNpadButton_Plus) {
+        cancel(screen, state);
+        return false;
+    }
+    if (down & (HidNpadButton_A | HidNpadButton_X)) {
+        screen.postStatus("Place with Y or cancel with B first", 180);
+        return true;
+    }
+    if (tap >= 0 && tap < 30) {
+        screen.selectedItemIndex = tap;
+        return true;
+    }
+    if (tap == 1002 || tap == 2000) return true;
+    return false;
 }
 
 bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -817,8 +1060,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     // This gives touch full multi-select parity without faking a physical Y hold.
     if (!state.active && !state.selecting && gridOwnsInput(screen)) {
         if (down & HidNpadButton_B && state.touchArmed) {
-            screen.selectedBoxIndex = state.selectionBox;
-            screen.selectedItemIndex = state.selectionAnchor;
+            cursorBox(screen, state) = state.selectionBox;
+            cursorSlot(screen, state) = state.selectionAnchor;
             clearTransientSelection(screen, state);
             screen.postStatus("Touch multi-select cancelled; staged boxes unchanged", 200);
             return true;
@@ -827,9 +1070,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         if (touch.justTouchedDown()) {
             const int cell = cellAtPoint(screen, touch.x(), touch.y());
             if (cell >= 0) {
+                state.storage = storageGridOwnsInput(screen);
                 state.touchArmed = true;
                 state.touchSelecting = false;
-                state.selectionBox = screen.selectedBoxIndex;
+                state.selectionBox = cursorBox(screen, state);
                 state.selectionAnchor = cell;
                 state.selectionCursor = cell;
             }
@@ -840,10 +1084,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                 screen.postStatus("Touch multi-select: drag the rectangle, release to pick up", 180);
             state.touchSelecting = true;
             screen.currentlySelecting = true;
-            screen.selectedBoxIndex = state.selectionBox;
+            cursorBox(screen, state) = state.selectionBox;
             const int cell = cellAtPoint(screen, touch.x(), touch.y());
             if (cell >= 0) state.selectionCursor = cell;
-            screen.selectedItemIndex = state.selectionCursor;
+            cursorSlot(screen, state) = state.selectionCursor;
             return true;
         }
 
@@ -853,8 +1097,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             if (commit) {
                 state.touchSelecting = false;
                 screen.currentlySelecting = false;
-                screen.selectedBoxIndex = state.selectionBox;
-                screen.selectedItemIndex = state.selectionCursor;
+                cursorBox(screen, state) = state.selectionBox;
+                cursorSlot(screen, state) = state.selectionCursor;
                 return beginSelectedGroup(screen, state);
             }
             state.touchSelecting = false;
@@ -875,9 +1119,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             screen.postStatus("Place with Y or cancel with B first", 180);
             return true;
         }
+        if (state.storage) return storageCarryNavigation(screen, state, down, held, stickX, stickY, touch);
         const int tapped = screen.touchedButtonId(touch);
         if (tapped >= 0 && tapped < classicCapacity(screen)) {
-            screen.selectedItemIndex = tapped;
+            cursorSlot(screen, state) = tapped;
             return true;
         }
         if (tapped == 1002 || tapped == 2000) return true;
@@ -887,8 +1132,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (state.selecting) {
         screen.currentlySelecting = true;
         if (down & HidNpadButton_B) {
-            screen.selectedBoxIndex = state.selectionBox;
-            screen.selectedItemIndex = state.selectionAnchor;
+            cursorBox(screen, state) = state.selectionBox;
+            cursorSlot(screen, state) = state.selectionAnchor;
             clearTransientSelection(screen, state);
             screen.postStatus("Multi-select cancelled; staged boxes unchanged", 200);
             return true;
@@ -927,8 +1172,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                 state.selectionBox = state.pendingBox;
                 state.selectionAnchor = state.pendingSlot;
                 state.selectionCursor = state.pendingSlot;
-                screen.selectedBoxIndex = state.selectionBox;
-                screen.selectedItemIndex = state.selectionCursor;
+                cursorBox(screen, state) = state.selectionBox;
+                cursorSlot(screen, state) = state.selectionCursor;
                 screen.currentlySelecting = true;
                 screen.controllerNavigation.reset();
                 screen.postStatus("Multi-select: hold Y, resize with D-pad/Stick, release Y to pick up", 260);
@@ -950,11 +1195,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (!(down & HidNpadButton_Y) || !gridOwnsInput(screen)) return false;
     const int capacity = classicCapacity(screen);
-    if (screen.selectedItemIndex < 0 || screen.selectedItemIndex >= capacity) return true;
+    if (cursorSlot(screen, state) < 0 || cursorSlot(screen, state) >= capacity) return true;
+    state.storage = storageGridOwnsInput(screen);
     state.yPending = true;
     state.yFrames = 0;
-    state.pendingBox = screen.selectedBoxIndex;
-    state.pendingSlot = screen.selectedItemIndex;
+    state.pendingBox = cursorBox(screen, state);
+    state.pendingSlot = cursorSlot(screen, state);
     return true;
 }
 
@@ -965,12 +1211,9 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const int capacity = classicCapacity(screen);
         const auto rectangle = Multi::rectangleSlots(state.selectionAnchor, state.selectionCursor, capacity);
         for (std::size_t i = 0; i < rectangle.count; ++i) {
-            for (const auto& button : screen.touchButtons) {
-                if (button.id != rectangle[i]) continue;
-                fb.drawRoundedRect(button.x + 2, button.y + 2, button.w - 4, button.h - 4,
+            if (const auto cell = cellRect(screen, state, static_cast<int>(rectangle[i])))
+                fb.drawRoundedRect(cell->x + 2, cell->y + 2, cell->w - 4, cell->h - 4,
                                    10, Colors::Primary, 3);
-                break;
-            }
         }
         if (state.touchSelecting)
             drawNavBar(fb, {{"B", "Cancel"}});
@@ -979,13 +1222,15 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
-    if (state.active && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
-        screen.detailViewActive && screen.selectedItemIndex >= 0) {
+    const auto carryMode = state.storage ? TrainerViewScreen::ViewMode::Storage
+                                         : TrainerViewScreen::ViewMode::Boxes;
+    if (state.active && screen.selectedMode == carryMode &&
+        screen.detailViewActive && cursorSlot(screen, state) >= 0) {
         // The box renderer already hides Gen IV pickup source slots and the
         // Summary record via hidesGen4CarriedSource(). Never paint opaque
         // rectangles over a finished grid: those erased the disc/border and
         // could leave visually inconsistent cells during a Y carry.
-        const auto* cell = selectedCell(screen);
+        const auto cell = selectedCell(screen);
         if (!cell) return;
         const int cx = cell->x + cell->w / 2;
         const int cy = cell->y + cell->h / 2;
@@ -1006,7 +1251,8 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             fb.drawText(cx + radius / 2 + 10, cy + radius / 2 + 5,
                         std::to_string(state.visuals.size()) + " Pokemon", Colors::PrimaryText, TextStyle::Caption);
         }
-        fb.drawPointerCursor(cx, cy - radius - 3 + bob, kGridCursorH, Colors::Primary);
+        // The Storage pane draws its own pointer at the same cell (StoragePanel drawCarryAndCursor).
+        if (!state.storage) fb.drawPointerCursor(cx, cy - radius - 3 + bob, kGridCursorH, Colors::Primary);
         drawNavBar(fb, {{"Y", state.visuals.size() == 1 ? "Drop" : "Drop Group"},
                         {"L/R", "Box"}, {"B", "Cancel"}});
         return;
@@ -1017,6 +1263,8 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const bool occupied = slotOccupiedForFooter(screen);
         if (occupied)
             drawNavBar(fb, {{"A", "Actions"}, {"Y", "Move / Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+        else if (storageMode(screen, state))  // the save pane adds through Actions (X stays read-only)
+            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
         else
             drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
     }

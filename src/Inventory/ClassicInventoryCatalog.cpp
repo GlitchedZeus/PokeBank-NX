@@ -1,4 +1,5 @@
 #include "Inventory/ClassicInventoryCatalog.h"
+#include "Inventory/ItemQuantityPolicy.h"
 
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Names/ItemNames.h"
@@ -43,8 +44,10 @@ constexpr std::array<ClassicPocket, 6> kGen3Pockets{{
 constexpr std::array<uint16_t, 18> kG1Items{{
     10,29,30,32,33,34,46,47,49,51,55,56,57,58,65,66,67,68,
 }};
-constexpr std::array<uint16_t, 27> kG1Medicines{{
-    11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,50,52,53,54,60,61,62,79,80,81,82,
+// Id 50 is pokered's unused duplicate "PP UP" (the real PP Up is 79); PKHeX does not offer it,
+// so it is not addable here either.
+constexpr std::array<uint16_t, 26> kG1Medicines{{
+    11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,52,53,54,60,61,62,79,80,81,82,
 }};
 constexpr std::array<uint16_t, 4> kG1Balls{{1,2,3,4}};
 constexpr std::array<uint16_t, 20> kG1Keys{{
@@ -154,11 +157,25 @@ std::span<const uint16_t> gen2Pc(bool crystal) noexcept {
     return crystal ? asSpan(c) : asSpan(gs);
 }
 
+// What the game itself lets the player deposit into PC Items (R2-CHECK-010):
+//  * R/S: pret pokeruby 5784633c src/item_menu.c sub_80A6B64 refuses a deposit only when
+//    ItemId_GetImportance(item) == 2. src/data/items_en.h gives importance 2 to Devon Goods
+//    (269), Letter (274), Red Orb (276) and Blue Orb (277); every other Key Item (importance 1,
+//    e.g. the bikes and rods) and HM (importance 1) may be stored in the R/S PC.
+//  * Emerald: pret pokeemerald 731ad5bf src/item_menu.c TryDepositItem refuses ANY item with
+//    GetItemImportance != 0 ("Can't store important items"): no Key Item and no HM (339-346,
+//    importance 1 in src/data/items.h); TMs (importance 0) may be stored.
+//  * FR/LG: PKHeX ItemStorage3FRLG PCItems = General items only (unchanged).
+constexpr std::array<uint16_t, 4> kG3RSUndepositableKeys{{269, 274, 276, 277}};
+
 std::span<const uint16_t> gen3Pc(ClassicGame game) noexcept {
     static const std::vector<uint16_t> rs = [] {
         std::vector<uint16_t> out;
         append(out, kG3Items);
-        append(out, kG3KeysRS);
+        for (const uint16_t key : kG3KeysRS)
+            if (std::find(kG3RSUndepositableKeys.begin(), kG3RSUndepositableKeys.end(), key) ==
+                kG3RSUndepositableKeys.end())
+                out.push_back(key);
         append(out, kG3Berries);
         append(out, kG3Balls);
         append(out, kG3Machines);
@@ -169,7 +186,8 @@ std::span<const uint16_t> gen3Pc(ClassicGame game) noexcept {
         append(out, kG3Items);
         append(out, kG3Berries);
         append(out, kG3Balls);
-        append(out, kG3Machines);
+        for (const uint16_t machine : kG3Machines)
+            if (machine < 339) out.push_back(machine);  // TMs only; HM01-08 are important
         return out;
     }();
     static const std::vector<uint16_t> frlg = [] {
@@ -286,15 +304,38 @@ bool isAddableItem(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noex
     return itemId != 0 && supportsPocket(game, pocket) && contains<uint16_t>(addableItems(game, pocket), itemId);
 }
 
+// The one per-item quantity rule (Inventory/ItemQuantityPolicy.h): native pocket caps (Gen III
+// FRLG bag and RSE Berries/PC to 999), unique key items / HMs. This entry point keeps the classic
+// catalog's addable-item gate and maps the shared rule onto the classic shape.
+static_assert(static_cast<uint8_t>(QuantityPolicy::Game::Red) == static_cast<uint8_t>(ClassicGame::Red) &&
+              static_cast<uint8_t>(QuantityPolicy::Game::Crystal) == static_cast<uint8_t>(ClassicGame::Crystal) &&
+              static_cast<uint8_t>(QuantityPolicy::Game::Emerald) == static_cast<uint8_t>(ClassicGame::Emerald) &&
+              static_cast<uint8_t>(QuantityPolicy::Game::LeafGreen) == static_cast<uint8_t>(ClassicGame::LeafGreen),
+              "QuantityPolicy::Game starts with the classic games in ClassicGame order");
+QuantityPolicy::Game quantityPolicyGame(ClassicGame game) noexcept {
+    // QuantityPolicy::Game lists the classic games first, in ClassicGame order.
+    return static_cast<QuantityPolicy::Game>(static_cast<uint8_t>(game));
+}
+
+QuantityPolicy::Pocket quantityPolicyPocket(ClassicPocket pocket) noexcept {
+    using P = QuantityPolicy::Pocket;
+    switch (pocket) {
+        case ClassicPocket::Items: return P::Items;
+        case ClassicPocket::Medicines: return P::Medicine;
+        case ClassicPocket::Balls: return P::Balls;
+        case ClassicPocket::KeyItems: return P::KeyItems;
+        case ClassicPocket::TMHM: return P::TMHM;
+        case ClassicPocket::Berries: return P::Berries;
+        case ClassicPocket::PCItems: return P::PCItems;
+    }
+    return P::Items;
+}
+
 QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
     if (!isAddableItem(game, pocket, itemId)) return {false, 0, 0};
-    if (pocket == ClassicPocket::KeyItems) return {false, 1, 1};
-    if (pocket == ClassicPocket::TMHM) {
-        if (game <= ClassicGame::Yellow && itemId >= 196 && itemId <= 200) return {false, 1, 1};
-        if (game <= ClassicGame::Crystal && itemId >= 243) return {false, 1, 1};
-        if (game >= ClassicGame::Ruby && itemId >= 339) return {false, 1, 1};
-    }
-    return {true, 1, 99};
+    const auto rule = QuantityPolicy::quantityRule(quantityPolicyGame(game), quantityPolicyPocket(pocket), itemId);
+    if (!rule.valid) return {false, 0, 0};
+    return {rule.editable, rule.minimum, rule.maximum};
 }
 
 bool isStorySensitiveKeyItem(ClassicGame, ClassicPocket pocket, uint16_t) noexcept {

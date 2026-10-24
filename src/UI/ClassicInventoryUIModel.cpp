@@ -1,10 +1,12 @@
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/SharedBagAddFlow.h"
 
 #include <array>
 #include <algorithm>
 
 namespace PokeBank::UIModel {
 namespace {
+
 
 constexpr std::array<ClassicPocket, 6> kGen1Categories{{
     ClassicPocket::Items, ClassicPocket::Medicines, ClassicPocket::Balls,
@@ -69,9 +71,11 @@ uint16_t classicInventoryMaximumQuantity(ClassicGame game, ClassicPocket pocket,
     return PokeVault::Inventory::quantityRule(game, pocket, itemId).maximum;
 }
 
+// The shared Gen I-V Key Item warning rule (UI/SharedBagAddFlow.h): by the policy's item kind, so
+// a Key Item kept in the PC warns too.
 bool classicInventoryNeedsStoryWarning(ClassicGame game, ClassicPocket pocket,
                                        uint16_t itemId) noexcept {
-    return PokeVault::Inventory::isStorySensitiveKeyItem(game, pocket, itemId);
+    return BagAdd::needsKeyItemWarning(classicItemQuantityRule(game, pocket, itemId));
 }
 
 std::vector<uint16_t> classicInventoryAddableItems(ClassicGame game, ClassicPocket pocket) {
@@ -86,6 +90,40 @@ ClassicInventoryAction classicInventoryAction(ClassicInventoryInput input) noexc
 ClassicInventoryActionAvailability classicInventoryActionAvailability(
     bool categorySupported, bool hasSelection, bool quantityEditable) noexcept {
     return inventoryActionAvailability(true, categorySupported, hasSelection, quantityEditable);
+}
+
+// The one Gen I-III per-item quantity query: the classic catalog's addable gate, then the shared
+// QuantityPolicy rule (native pocket caps; key items and HMs unique at 1).
+ClassicItemQuantity classicItemQuantity(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
+    namespace Inv = PokeVault::Inventory;
+    if (!Inv::isAddableItem(game, pocket, itemId)) return {false, 0, 0};
+    const auto rule = Inv::QuantityPolicy::quantityRule(Inv::quantityPolicyGame(game),
+                                                        Inv::quantityPolicyPocket(pocket), itemId);
+    if (!rule.valid) return {false, 0, 0};
+    return {rule.editable, rule.minimum, rule.maximum};
+}
+
+PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
+    ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
+    namespace Inv = PokeVault::Inventory;
+    if (!Inv::isAddableItem(game, pocket, itemId)) return {};
+    return Inv::QuantityPolicy::quantityRule(Inv::quantityPolicyGame(game),
+                                             Inv::quantityPolicyPocket(pocket), itemId);
+}
+
+std::span<const std::string_view> classicInventoryHelpLines() noexcept {
+    static constexpr std::array<std::string_view, 9> kLines{{
+        "A   Edit amount (only when this item has an editable quantity)",
+        "X   Add item from the exact-game, exact-category catalog",
+        "Y   Remove the highlighted item",
+        "L / R   Previous / next supported inventory category",
+        "D-pad / Left Stick   Navigate (hold to repeat)",
+        "+   Inventory Options     -   Help     B   Back / Cancel",
+        "Empty valid categories show (None); X Add remains available.",
+        "Key Items may depend on story flags; warnings do not alter unrelated flags.",
+        "All edits are staged. Export creates an edited copy; the source save is not overwritten.",
+    }};
+    return kLines;
 }
 
 bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {

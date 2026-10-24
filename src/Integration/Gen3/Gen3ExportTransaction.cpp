@@ -4,10 +4,11 @@ namespace PokeVault::Integration::Gen3 {
 
 Common::VerifiedExportResult publishVerifiedGen3Export(
     const StagedPokemonEditor& editor, const Gen3ExportRequest& request,
-    const StagedInventoryEditor* inventory) {
+    const StagedInventoryEditor* inventory, const Gen3StagedTrainerEditor* trainer) {
     Common::VerifiedExportResult result;
     const bool bagPending = inventory && inventory->hasPendingChanges();
-    if (!editor.hasPendingChanges() && !bagPending) {
+    const bool trainerPending = trainer && trainer->hasPendingChanges();
+    if (!editor.hasPendingChanges() && !bagPending && !trainerPending) {
         result.error = "No pending changes to export";
         return result;
     }
@@ -34,6 +35,17 @@ Common::VerifiedExportResult publishVerifiedGen3Export(
             return result;
         }
     }
+    if (trainerPending) {
+        if (trainer->sourceGame() != editor.sourceGame() ||
+            trainer->originalBytes() != editor.originalBytes()) {
+            result.error = "Trainer and Pokemon workspaces were opened from different saves";
+            return result;
+        }
+        if (!trainer->applyTo(edited, finalizeError)) {
+            result.error = finalizeError;
+            return result;
+        }
+    }
 
     const SourceGame game = editor.sourceGame();
     Common::VerifiedExportRequest transaction;
@@ -50,9 +62,13 @@ Common::VerifiedExportResult publishVerifiedGen3Export(
     transaction.editedBytes = edited;
     for (const auto& change : editor.pendingChanges())
         transaction.changeLines.push_back(
-            "Box " + std::to_string(change.box + 1) + " slot " + std::to_string(change.slot + 1) +
+            (change.party?"Party "+std::to_string(change.slot+1):
+                "Box " + std::to_string(change.box + 1) + " slot " + std::to_string(change.slot + 1)) +
             " " + change.label + ": " + change.beforeValue + " -> " + change.afterValue);
     if (bagPending) transaction.changeLines.push_back("Bag: staged item changes included");
+    if (trainerPending)
+        for (const auto& change : trainer->pendingChanges())
+            transaction.changeLines.push_back(change.label + ": " + change.before + " -> " + change.after);
     transaction.validator = [game](std::span<const uint8_t> bytes, std::string& error) {
         auto parsed = parse(bytes, game);
         if (!parsed) {

@@ -17,6 +17,7 @@
 #include <span>
 #include <array>
 #include <memory>
+#include "Integration/Common/NativeBadges.h"
 #include <string>
 
 #include "Save/Block.h"
@@ -24,6 +25,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/StringHelpers.h"
 #include "Trainer/Inventory.h"
+#include "Integration/Common/NativePlayTime.h"
 #include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
 
@@ -431,7 +433,11 @@ namespace Trainer {
         virtual void updatePokedexBlock() {}
         /// Read the game's authoritative Pokédex progress without deriving it from party/boxes.
         /// Unsupported formats return total=0 so presentation stays truthful.
-        virtual PokedexProgress pokedexProgress() const { return {}; }
+        // Populated only from a native read model; unsupported formats remain unavailable.
+        std::optional<PokeVault::Integration::Common::NativePlayTime> nativePlayTime;
+        PokeVault::Integration::Common::NativeBadges nativeBadges;
+        PokedexProgress nativeDexProgress;
+        virtual PokedexProgress pokedexProgress() const { return nativeDexProgress; }
 
         /** Longest box name this game accepts, in characters (not bytes). 0 = renaming unsupported. */
         virtual size_t getMaxBoxNameLength() const noexcept { return 0; }

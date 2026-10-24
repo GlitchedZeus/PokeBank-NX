@@ -37,8 +37,6 @@ namespace UI
             constexpr int PRESSED_FRAMES = 6;
             constexpr int REFUSED_FRAMES = 30;
             constexpr int CARET_BLINK_FRAMES = 30;
-            constexpr int REPEAT_DELAY_FRAMES = 24;
-            constexpr int REPEAT_INTERVAL_FRAMES = 4;
 
             constexpr u64 DIRECTION_BUTTONS =
                 HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right;
@@ -223,7 +221,6 @@ namespace UI
             pendingFrames = 0;
             refusedFrames = 0;
             repeatingButton = 0;
-            repeatHeldFrames = 0;
             analogNavigation.reset();
             waitingForRelease = false;
             keys.clear();
@@ -317,7 +314,7 @@ namespace UI
             if (freshButtons != 0)
             {
                 repeatingButton = freshButtons & (~freshButtons + 1); // the lowest one, if several
-                repeatHeldFrames = 0;
+                repeatClock.start(PokeBank::UIModel::monotonicMilliseconds());
                 return 0;
             }
             if ((heldButtons & repeatingButton) == 0)
@@ -325,10 +322,8 @@ namespace UI
                 repeatingButton = 0;
                 return 0;
             }
-            ++repeatHeldFrames;
-            if (repeatHeldFrames < REPEAT_DELAY_FRAMES)
-                return 0;
-            return (repeatHeldFrames - REPEAT_DELAY_FRAMES) % REPEAT_INTERVAL_FRAMES == 0 ? repeatingButton : 0;
+            // Same wall-clock hold delay and cadence as every navigation surface (NavigationRepeat.h).
+            return repeatClock.due(PokeBank::UIModel::monotonicMilliseconds()) ? repeatingButton : 0;
         }
 
         void KeyboardState::update(const PadState &pad, const TouchInput &touch)

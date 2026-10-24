@@ -62,6 +62,22 @@ int main() {
             assert(context.find(Classic::modeLabel(mode)) != std::string::npos);
         }
     }
+    // S03: Gen III-V headers name the exact game in View / Edit / Create too.
+    const std::array<std::pair<const char*, const char*>, 14> laterGames{{
+        {"ruby_gba", "Ruby"}, {"sapphire_gba", "Sapphire"}, {"emerald_gba", "Emerald"},
+        {"firered_gba", "FireRed"}, {"leafgreen_gba", "LeafGreen"},
+        {"diamond_nds", "Diamond"}, {"pearl_nds", "Pearl"}, {"platinum_nds", "Platinum"},
+        {"heartgold_nds", "HeartGold"}, {"soulsilver_nds", "SoulSilver"},
+        {"black_nds", "Black"}, {"white_nds", "White"}, {"black2_nds", "Black 2"}, {"white2_nds", "White 2"},
+    }};
+    for (const auto& [id, expected] : laterGames) {
+        assert(Classic::exactGameName(id) == expected);
+        for (const auto mode : modes)
+            assert(Classic::contextLine("Box 1 / Slot 1", id, mode).find(std::string(" • ") + expected + " • ") !=
+                   std::string::npos);
+    }
+    assert(Classic::contextLine("Box 2 / Slot 3", "white2_nds", Classic::SurfaceMode::CreateDraft) ==
+           "Box 2 / Slot 3 • White 2 • Source save immutable • DRAFT");
     const auto yellow = Classic::contextLine("Box 1 / Slot 1", "yellow_gb", Classic::SurfaceMode::ViewReadOnly);
     assert(yellow.find("Box 1 / Slot 1 • Yellow • Source save immutable • READ ONLY") != std::string::npos);
 
@@ -126,27 +142,30 @@ int main() {
     assert(gen1Fix.find("SpriteManager::getTypeSprite") != std::string::npos);
     assert(gen2Final.find("SpriteManager::getTypeSprite") != std::string::npos);
 
-    // Calculated Gen II stats are neutral; stored DV/Stat Exp stay bright and derived HP DV stays dim.
-    assert(gen1Fix.find("const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim") != std::string::npos);
+    // R2-GOLD: stored DV / Stat Exp stay bright; derived HP DV and calculated stats are ReadOnly
+    // gold through the shared field-state contract (UI/ClassicStatFieldState.h), View and Edit alike.
+    assert(gen1Fix.find("ClassicStatFields::cellState(r, c), selected).value") != std::string::npos);
     assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
-    assert(gen1Passive.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
+    assert(gen1Passive.find("cell(i, 2), TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);
-    assert(gen2Final.find("stat, Colors::TextSecondary, TextStyle::Caption") != std::string::npos);
+    assert(gen2Final.find("stat, gen2StatCellColor(r, 2), TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("stat, Colors::Accent, TextStyle::Caption") == std::string::npos);
 
     // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
-    assert(gen1Passive.find("moveStatusRightPad") != std::string::npos);
-    assert(gen1Passive.find("ppRightOffset") != std::string::npos);
-    assert(gen1Passive.find("if (move != 0)") != std::string::npos);
-    assert(gen2Final.find("const int ppX = x + w - 226") != std::string::npos);
-    assert(gen2Final.find("x + w - 18 - statusW") != std::string::npos);
+    assert(gen1Passive.find("ClassicMovesPanel::draw(") != std::string::npos);
+    // Gen II rows are the shared Moves panel's (fixed PP / PP Ups / status columns).
+    assert(gen2Final.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(gen2Final.find("fb.drawText(x + 292, yy") == std::string::npos);
 
     // Classic derivation/storage notes have dedicated baselines instead of one long overlapping line.
     assert(gen1Passive.find("* HP DV derived / read-only") != std::string::npos);
     assert(gen1Passive.find("* one stored Gen I Special stat; split display only") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only") != std::string::npos);
-    assert(gen2Final.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
+    // Owner-approved Gen II Special layout: one DV/Stat Exp, distinct
+    // calculated SpA and SpD in the SAME calculated column.
+    assert(gen2Final.find("Special DV / Stat Exp shared by SpA and SpD") != std::string::npos);
+    assert(gen2Final.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
+    assert(gen2Final.find("x + 282, y + 246") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
     assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
     assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);
@@ -197,7 +216,7 @@ int main() {
     assert(gen2Fix.find("focus.row = 1;") != std::string::npos);
     assert(gen2Fix.find("focus.column = 0;") != std::string::npos);
     assert(gen2Fix.find("focus.panel = Unified::Panel::Details") == std::string::npos);
-    assert(gen2Final.find("r == 0 ? Colors::TextDim : Colors::Text") != std::string::npos);
+    assert(gen2Final.find("gen2StatCellColor(r, 0)") != std::string::npos); // R2-GOLD: derived HP DV is ReadOnly gold
 
     // Final hardware layers must never present the stale workspace label.
     assert(gen1Fix.find("PKSE three-panel workspace") == std::string::npos);

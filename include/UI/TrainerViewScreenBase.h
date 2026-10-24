@@ -3,21 +3,25 @@
 
 #include <cstddef>   // std::byte (details.editSnapshot)
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <switch.h>
 
 #include "Globals.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
 #include "UI/MutationTargetPolicy.h"
 #include "Safety/SourceMutationPolicy.h"
+#include "Source/SaveProviderIdentity.h"
 #include "UI/NavigationRepeat.h"
 #include "Utils/MoveTransactionProduction.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/UIScreen.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedScrollbar.h"
 #include "Trainer/Bank.h"
 #include "Panels/PartyPokemonPanel.h"
 #include "Panels/ItemsPanel.h"
@@ -86,6 +90,7 @@ namespace UI {
         bool genderEditable(const Pokemon::Pokemon& p) const;  // false -> the Gender row is read-only (nothing to change it TO)
         void openStorageEditor(int pane, int box, int slot);   // open the details modal on a storage slot
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
+        bool openStagedReview(bool exportCopy = false);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
         void openItemsShortcut() {
@@ -145,6 +150,9 @@ namespace UI {
         Trainer::Trainer& trainer;
         std::string titleName;
         std::string backupDir;  // working-backup path or read-only source location
+        // Gen IV only: the exact source FILE (raw or .dsv) at Open. Export refuses a file
+        // that changed since (Gen4ExportRequest::sourceSnapshot).
+        std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;
@@ -214,6 +222,8 @@ namespace UI {
             storageStatus = msg;
             storageStatusFrames = frames;
         }
+        // Paints the postStatus line on top of whatever owns the frame (see draw()).
+        void drawTransientStatus(PKSEFramebuffer& fb);
         // --- The carried block ---
         // Cells of the rectangle currently in hand, row-major over selectDimensions (w x h). A null
         // cell is a hole -- the source slot was empty, or it was locked and deliberately left behind.
@@ -314,11 +324,9 @@ namespace UI {
             return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy ||
                    sourceKind == PokeVault::Safety::SourceKind::ExternalLegacy;
         }
+        // The source's own provider name, exactly as Product Home shows it (never a generic word).
         std::string legacyProviderLabel() const {
-            if (!sourceProviderLabel.empty())
-                return sourceProviderLabel == "RetroArch" ? "RETROARCH" : sourceProviderLabel;
-            return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
-                ? "RETROARCH" : "EXTERNAL";
+            return PokeVault::Source::providerDisplayName(sourceProviderLabel);
         }
         bool requireMutationKind(PokeVault::Safety::SourceKind targetKind,
                                  PokeVault::Safety::SourceMutation mutation) {
@@ -330,7 +338,7 @@ namespace UI {
             }
             if (PokeVault::Safety::canPerform(targetKind, mutation)) return true;
             postStatus(legacyReadOnlySource()
-                ? "External source is read-only. Editing this file is disabled."
+                ? legacyProviderLabel() + " source is read-only. Editing this file is disabled."
                 : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
         }
@@ -427,6 +435,9 @@ namespace UI {
             bool leftScrollManual = false;               // finger drag owns scroll until direct/controller selection resumes
             int legalityScroll = 0;                      // first visible legality-report row
             int ribbonScroll = 0;                        // first visible ribbon/mark row
+            SharedScrollbar::State leftScrollbar;        // draggable thumb: info / native-data pane
+            SharedScrollbar::State legalityScrollbar;    // draggable thumb: legality report overlay
+            SharedScrollbar::State ribbonScrollbar;      // draggable thumb: ribbon / mark overlay
             std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)
             std::vector<std::byte> editSnapshot;         // baseline bytes for the "Unsaved changes" marker + revert
         };
@@ -466,6 +477,8 @@ namespace UI {
         Dialogs::PickerKind pickerKind = Dialogs::PickerKind::Nature;
         int pickerSlot = 0;   // which of the 4 move slots (when pickerKind == Move)
         int pickerSel = 0;    // highlighted option index
+        SharedScrollbar::State pickerScrollbar;   // draggable thumb on the picker list
+        SharedScrollbar::State itemsScrollbar;    // draggable thumb on the paged Items panel list
         int pickerCount = 0;  // number of options in the list
         // A pouch-item picker opened to CHANGE an existing item's type (Potion -> Super Potion),
         // not to add a new one. Changes the confirm behavior + the picker title; reuses PouchItem.

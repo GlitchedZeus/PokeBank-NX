@@ -25,12 +25,14 @@ int main() {
              SourceMutation::DirectMove, SourceMutation::Edit, SourceMutation::Rename,
              SourceMutation::EditTrainer, SourceMutation::EditItems, SourceMutation::SaveChanges}) {
         assert(!canPerform(SourceKind::InstalledGame, action));
+        assert(!canPerform(SourceKind::HistoricalBackup, action));
         assert(!canPerform(SourceKind::RetroArchLegacy, action));
         assert(!canPerform(SourceKind::ExternalLegacy, action));
         assert(canPerform(SourceKind::BackupOrStaged, action));
         assert(canPerform(SourceKind::AppOwnedStorage, action));
     }
     assert(canPerform(SourceKind::InstalledGame, SourceMutation::View));
+    assert(canPerform(SourceKind::HistoricalBackup, SourceMutation::View));
     assert(canPerform(SourceKind::RetroArchLegacy, SourceMutation::View));
 
     // Party/SaveBox inherit the immutable session source. Bank is app-owned and
