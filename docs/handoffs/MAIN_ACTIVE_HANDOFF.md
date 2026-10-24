@@ -6,6 +6,30 @@
 
 Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
 
+## October 24 compact Ability text repair — final production update
+
+- Last remote WIP `8d482845c6da778ec0d29fdd81b3599294f5daff` (native smoke40074802787).
+- Full native-name geometry found REAL long-effect pressure in the narrowed
+  Ability window. New SharedAbilityPicker uses the same620px frame with60px rows:
+  name above FULL short effect, content-driven height (3 choices280px). Both
+  Gen III and the shared IV/V surface read the SAME geometry for draw/touch/scroll.
+- Actual renderer regression now checks every ability1..164 across generations,
+  including Hidden labels: exact full name/effect (NO ellipsis), horizontal and
+  vertical containment, no line overlap, unchanged drawback colors and hit geometry.
+  Pinned Nunito font SHA verified from primary source; hhea1000/1011/-353/0 gives
+  actual Body28 / Caption24 line boxes. Normal +ASan/UBSan/leaks1 tests PASS.
+- Nature picker source tests follow the new choiceHeight variable and still
+  require the Nature-specific row/outline and scrollbar gutter. Direct/app-wide
+  touch tests PASS and candidate contracts0 failures on this source.
+- The old blocking Held Item prompt test now requires actual docked helper,
+  live folded filter, native query/reset, rendering and controller+touch wiring;
+  original search/sort/native-ID behavior tests remain intact.
+- Full normal and sanitizer gates need their final rerun on this frozen source
+  (old already-compiled sanitizer binaries still expected former +/42px paths).
+  QA matrix remains489 with both compiler/plain/sanitized confirmations.
+- No official candidate yet. After all gates, integrate forward to307, build ONE
+  exact-head official NRO, verify/bind/audit. Historical27/6/4 unchanged; S06 NOT TESTED.
+
 ## October 24 backup deletion boundary checkpoint
 
 - Last remote-verified WIP `55208f4f89f91b928af3e0d3d653bf6d95afb81b`.

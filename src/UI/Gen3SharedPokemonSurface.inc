@@ -1,3 +1,4 @@
+#include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
 #include "Inventory/ClassicInventoryCatalog.h"
@@ -614,9 +615,10 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
-    // NEW-13: Ability rows carry name + effect, so they use the wide two-column value list.
+    if(target==PickerTarget::Ability)return SharedAbilityPicker::layout(count);
+    // Met Location retains its bounded source-context columns.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation || target == PickerTarget::Ability
+                     : target == PickerTarget::MetLocation
                          ? G::MenuType::LocationPicker
                          : G::MenuType::ChoicePicker, count);
 }
@@ -1119,7 +1121,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
   const auto valueList = valueListLayout(state.pickerTarget, count);
   const int pickerW = nature ? natureLayout.width : compact ? valueList.frame.w : 680;
   const int pickerH = nature ? natureLayout.height : compact ? valueList.frame.h : 560;
-  const int rowStep = nature ? natureLayout.rowStep : 42;
+  const int rowStep = nature ? natureLayout.rowStep : compact ? valueList.rule.rowHeight : 42;
   const int px = (1280 - pickerW) / 2;
   const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
@@ -1939,7 +1941,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int visible = compactChoices ? visibleChoices : 10;
     const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
-    const int rowStep = naturePicker ? natureLayout.rowStep : 42;
+    const int rowStep = naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42;
+    const int choiceHeight=naturePicker? natureLayout.highlightHeight : rowStep-4;
     const int viewportTop = y + 90;
     // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
     // (rows, clip, touch boxes and the boxed highlight all use rowW).
@@ -1950,10 +1953,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     for (int i = first; i < last; ++i) {
         const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
         appendClippedTouchButton(screen.touchButtons, 4000 + i,
-            x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38,
+            x + 22, yy - 4, rowW, choiceHeight,
             x + 22, viewportTop - 4, rowW, visible * rowStep);
         const bool selected = i == state.pickerRow;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, choiceHeight), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         if (state.pickerTarget == PickerTarget::MetLocation) {
             // Bright place name on the left, method / level on the right; nothing overlaps.
@@ -1974,21 +1977,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ability) {
-            // NEW-13: ability name left, its short effect right (red only for a drawback).
-            const std::string label = pickerValueLabel(state, value);
-            const std::string name = UI::AbilityEffects::nameOf(label);
-            const std::string effect = label.size() > name.size() ? label.substr(name.size() + UI::AbilityEffects::kSplit.size()) : std::string();
-            int nw = 0, nh = 0;
-            fb.measureText(name, nw, nh, TextStyle::Body);
-            fb.drawText(x + 38, yy + 7, name, Colors::Text, TextStyle::Body);
-            if (!effect.empty()) {
-                const std::string shown = SharedMovesPanel::fit(fb, effect, std::max(0, rowW - 32 - nw - 24));
-                int dw = 0, dh = 0;
-                fb.measureText(shown, dw, dh, TextStyle::Caption);
-                fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, shown,
-                            UI::AbilityEffects::isDrawbackEffect(effect) ? Colors::Error
-                                : selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
-            }
+            SharedAbilityPicker::drawRow(fb,x+22,yy-4,rowW,choiceHeight,
+                pickerValueLabel(state,value),selected);
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ball) {
