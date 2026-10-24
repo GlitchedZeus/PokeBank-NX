@@ -162,6 +162,25 @@ So the launch dialog shows the core notice, replace the two `gameLaunchQuitRoute
 - **R4-6:** Switch title (e.g. SwSh): open, close, open again. No new dated backup appears in Save Backups. "Create backup now" adds exactly one.
 - **R4-7:** Settings (Product Home → System, and the in-editor panel) shows no Auto-Backup row. The other toggles still work by controller and touch.
 
+## Round 5 (#322): open a backup as a staged copy (verified against Codex 80377153 / 8d482845 / f3bbd43f)
+
+Already correct in #307 (Codex):
+- Emulator Save Backups: full-screen card (background cleared), rows with date, provider, path and type, newest first, the current save marked read-only, unassigned recovery history marked read-only.
+- A on an emulator copy opens THAT file through the strict Gen I-V parsers from an immutable snapshot (`openBackupTrainer`). Export Copy only; no backup on open; Y delete keeps the record and last-copy guards.
+- Native rows lead with the date and badge legacy folders "ownership unknown"; legacy is never deletable.
+
+Fixed here:
+- **Native Switch backups no longer open as a read-only preview.** A copies the selected backup (owned or legacy) into the isolated `Opened-Backup` workspace of the exact profile/game (`WorkingCopy::openBackupSession`) and opens that as a normal staged session. The backup's contents are validated for the exact title first, and its listing snapshot must still match after the copy. Edits saved in an earlier session are kept as a dated backup, never overwritten. The backup itself stays byte-identical.
+- The editor's top bar names the copy: "Opened from backup - <date>" (legacy: "Opened from legacy backup (owner unknown) - <date>").
+- Gen IV emulator copies get the Open snapshot, so Export Copy fails closed if the backup file changed after it was opened.
+- Emulator copies show the card's real provider instead of "Unknown provider".
+
+Device checks:
+- **R5-1:** SwSh/BDSP: Save Backups, A on an owned backup opens it in the editor (title bar says "Opened from backup"). Edit, save, back out: the backup folder is unchanged and a "Opened-Backup" row never appears.
+- **R5-2:** Same with a legacy PKSE folder: opens, never offers delete, the legacy folder is unchanged.
+- **R5-3:** Open backup A, edit and save, then open backup B: the edits from A appear as a new dated backup.
+- **R5-4:** DraStic Platinum: A on a backup opens it; Export Copy succeeds; the backup `.dsv` is unchanged.
+
 ## Opt-in for the device test
 
 The default remains the hardware-accepted direct handoff. To test the return host, create an empty file:

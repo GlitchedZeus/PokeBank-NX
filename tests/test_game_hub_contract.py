@@ -442,6 +442,17 @@ require(all("g_autoBackupEnabled" not in text
         "constexpr int kRows = 5;" in trainer_base and
         '"\\nautoBackup="' not in settings_source,
         "the retired Auto-Backup setting must not be shown, toggled, persisted or kept as a global")
+# Round 5 (#322): A on a Switch backup (owned or legacy) opens a COPY in the isolated Opened-Backup
+# session, a normal staged workspace; the backup is never the workspace, never edited in place.
+copy_session = ui_fn("std::string openBackupCopySession(")
+require("W::openBackupSession(gameDir, backupDir, getTimestamp()" in copy_session and
+        "Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)" in copy_session and
+        "ImmutableSnapshot::unchanged(listed, error)" in copy_session,
+        "a backup opens only through a validated, snapshot-checked isolated session copy")
+require("openBackupCopySession(\n                        userUid, titleId, backupScreen.getSelectedBackupPath(), historical, error)" in backup_flow and
+        "handleTrainerView(userUid, titleId, titleName, session, false, intent, error,\n                                           nullptr, provenance)" in backup_flow and
+        "backupScreen.getSelectedBackupPath(), false" not in backup_flow,
+        "the selected backup itself is never handed to the editor as its workspace")
 require("reportOpenFailure" in header and
         "selectScreen.reportOpenFailure(error);" in ui_manager and
         "bool UIManager::handleDefaultQuickOpen" in ui_manager,

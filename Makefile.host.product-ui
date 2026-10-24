@@ -72,6 +72,7 @@ EMU_BACKUP_SANITIZE := $(HOST_BUILD)/test_emulator_backup_access_sanitize
 EMU_BACKUP_SOURCES := tests/test_emulator_backup_access.cpp \
 	src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp
 EMU_BACKUP_INPUTS := $(EMU_BACKUP_SOURCES) include/UI/SourceBackupClassification.h \
+	include/UI/WorkingCopyRefresh.h \
 	include/Integration/Common/VerifiedStagedExport.h
 HOST_TESTS += $(EMU_BACKUP_TEST)
 HOST_SANITIZE_TESTS += $(EMU_BACKUP_SANITIZE)
