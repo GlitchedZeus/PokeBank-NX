@@ -401,6 +401,79 @@ struct CreateResult {
 // Largest save this screen copies (a DS save is at most 0x80000 + footer; GBA 128 KiB).
 inline constexpr std::size_t kMaxBackupBytes = 16u * 1024u * 1024u;
 
+// Round 5 (#322): A on a copy opens THAT copy in an isolated staged session. Before any parser sees
+// it, the copy is re-proven to be the listed record, read-only: the same app-owned location and
+// manifest checks as deletion (a record holding foreign files is refused too, though the last
+// remaining copy may of course be opened), the manifest naming this exact save and this exact game,
+// a plain file rather than a link, and for a deliberate backup exactly the size it recorded. The
+// bytes are read once and handed over; the copy on the SD card is never opened for writing.
+struct CopyRead {
+    bool ok = false;
+    std::vector<unsigned char> bytes;
+    std::string path;
+    std::string timestamp;
+    std::string error;
+};
+
+[[nodiscard]] inline CopyRead readCopyForOpen(const Listing& listing, std::size_t index,
+                                              const std::string& expectedGameId) {
+    CopyRead out;
+    if (index >= listing.entries.size()) {
+        out.error = "That copy is no longer listed. Reopen Save Backups.";
+        return out;
+    }
+    const Entry& e = listing.entries[index];
+    if (e.kind != Kind::ManualBackup && e.kind != Kind::AppBackup && e.kind != Kind::ExportedCopy) {
+        out.error = "Only a backup copy opens from here; the original save opens with Current save.";
+        return out;
+    }
+    const Refusal where = canDelete(listing, index);
+    if (where != Refusal::None && where != Refusal::OnlyRemainingCopy) {
+        out.error = where == Refusal::Missing ? "That copy is no longer on the SD card."
+                                              : "Not opened: this folder is not an intact PokeBank NX backup.";
+        return out;
+    }
+    struct stat st{};
+    if (::lstat(e.path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+        out.error = "That copy is no longer on the SD card.";
+        return out;
+    }
+    std::string gameId;
+    long long expectedSize = -1;
+    if (e.kind == Kind::ManualBackup) {
+        const detail::BackupManifest m = detail::readBackupManifest(e.recordDir + "/" + detail::kBackupManifestName);
+        if (!m.ok || e.path != e.recordDir + "/" + m.backupFile) {
+            out.error = "Not opened: the backup's manifest does not name this file.";
+            return out;
+        }
+        gameId = m.gameId;
+        expectedSize = m.size;
+        out.timestamp = m.timestamp;
+    } else {
+        const detail::Manifest m = detail::readManifest(e.recordDir + "/" + detail::kManifestName);
+        const std::string named = e.recordDir + "/" + (e.kind == Kind::AppBackup ? m.originalBackup : m.editedSave);
+        if (!m.ok || e.path != named) {
+            out.error = "Not opened: the export record's manifest does not name this file.";
+            return out;
+        }
+        gameId = m.gameId;
+        out.timestamp = m.timestamp;
+    }
+    if (expectedGameId.empty() || gameId != expectedGameId) {
+        out.error = "Not opened: this copy was made for a different game.";
+        return out;
+    }
+    if (!detail::readAll(e.path, out.bytes, kMaxBackupBytes) || out.bytes.empty() ||
+        (expectedSize >= 0 && static_cast<long long>(out.bytes.size()) != expectedSize)) {
+        out.bytes.clear();
+        out.error = "Not opened: the copy could not be read completely or its size changed.";
+        return out;
+    }
+    out.ok = true;
+    out.path = e.path;
+    return out;
+}
+
 // The ONE way a backup is made: the user pressed A on "Create backup" in the Backups screen.
 // Copies `sourcePath` byte for byte into <manualRoot>/<gameId>/<timestamp>[-n]/save<ext>, reads the
 // copy back and compares, then writes BACKUP_MANIFEST.txt last (a record without a manifest is never
