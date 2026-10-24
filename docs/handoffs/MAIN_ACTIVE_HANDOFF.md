@@ -6,6 +6,27 @@
 
 Last updated: 2026-10-22 UTC, by Codex (Round 4 takeover; owner-authorized application work).
 
+## October 24 Trainer / picker / touch checkpoint — WIP
+
+- Pushed checkpoint before these edits: `80377153dc2e5019c727e2bde441f3a6a8fae466`.
+  Its native build 40070164451 PASSED compile/link/assets/RomFS. #307 still starts
+  at 92f95612; no application integration or replacement hardware artifact yet.
+- Implemented native badge reads/presentation across Gen I-V, including 16 Johto+
+  Kanto badges for Gen II/HGSS; source-pinned PKHeX offsets. Name/Money stay staged.
+  Unsupported older Gender/Time writers remain clearly read-only; no invented Gen I Gender.
+- Implemented 620px Location/Ability geometry, shared docked Held Item search using
+  Species keyboard + two-column results and artwork, descriptive classic Help,
+  IV/V detail-tap viewport activation, and honest native event-year labels/evidence.
+- WORK IN PROGRESS: docked search needs behavioral tests + native compilation;
+  CG40 must follow the new per-generation shared helper and retain negative controls.
+  Current candidate guard also flags one old-style read-only Gender label; fix it
+  through shared field-state presentation. Full QA matrix (489 cells) currently building;
+  full normal/sanitized host suites must rerun on frozen source with leak checks outside ptrace.
+- Next: finish Gen V form-specific move pools from pinned PokeAPI CSVs downloaded
+  at /tmp/oct24-pokeapi; don't ignore form. Add targeted behavior regressions, run
+  full gates, integrate forward to #307, then ONE official NRO + docs binding + audit.
+- Historical hardware remains exactly 27 PASS / 6 FAIL / 4 unmarked; S06 NOT TESTED.
+
 ## October 24 backup-browser repair checkpoint — WIP, not yet integrated
 
 - Starting #307 remains `92f956120019673733bd8d65cd65ab33c46cc237`. Review WIP

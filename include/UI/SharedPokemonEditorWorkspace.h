@@ -176,6 +176,22 @@ constexpr NavigationResult navigate(Shared::Generation generation, Shared::Focus
 }
 
 // What an explicit activation of the focused field asks the caller to open.
+// A clipped but visible touch row must become visible before the activation
+// gate runs. Otherwise the first Pokérus tap only reveals the row and appears
+// inert, while A on the already-focused field cycles it immediately.
+template<class Viewport>
+[[nodiscard]] bool focusCompletedTap(int id,int detailRows,Shared::Focus& focus,
+    int& detailsFocus,Viewport& viewport,int visibleRows) {
+    Shared::Focus tapped{};
+    if(!focusForTouch(id,detailRows,tapped))return false;
+    focus=tapped;
+    if(tapped.panel==Shared::Panel::Details) {
+        detailsFocus=tapped.row;
+        viewport.reveal(detailsFocus,detailRows,visibleRows);
+    }
+    return true;
+}
+
 enum class ActivationKind : uint8_t { DetailField, IvCell, EvCell, PidLinkedRow, MoveRow };
 struct Activation {
     ActivationKind kind = ActivationKind::DetailField;

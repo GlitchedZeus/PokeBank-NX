@@ -17,6 +17,7 @@
 #include <span>
 #include <array>
 #include <memory>
+#include "Integration/Common/NativeBadges.h"
 #include <string>
 
 #include "Save/Block.h"
@@ -434,6 +435,7 @@ namespace Trainer {
         /// Unsupported formats return total=0 so presentation stays truthful.
         // Populated only from a native read model; unsupported formats remain unavailable.
         std::optional<PokeVault::Integration::Common::NativePlayTime> nativePlayTime;
+        PokeVault::Integration::Common::NativeBadges nativeBadges;
         PokedexProgress nativeDexProgress;
         virtual PokedexProgress pokedexProgress() const { return nativeDexProgress; }
 

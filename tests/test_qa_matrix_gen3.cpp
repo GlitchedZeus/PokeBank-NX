@@ -455,7 +455,7 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
         const auto sourceBefore = qacontract::fileState(srcPath);
         std::string backupError;
         const bool backupOk=verifyBackupSessionTrace(original,game,backupError);
-        row.check("backup-session",backupOk,backupError,
+        row.check("backup-session",backupOk?std::vector<std::string>{}:std::vector<std::string>{backupError},
             "Historical copy stages, separately exports and Discards without source mutation");
         const auto treeBefore = qacontract::treeState(retro);
         const std::string profile = "qa-profile-a";

@@ -140,7 +140,7 @@ qa-libfuzzer-run: qa-libfuzzer qa-seeds
 			$(QA_BUILD)/corpus/$$t $(call QA_REGRESSION,$$t); \
 	done
 
-QA_CONTRACT_TESTS := test_qa_export_contracts test_qa_regressions
+QA_CONTRACT_TESTS := test_qa_export_contracts test_qa_regressions test_native_trainer_badges
 qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $(QA_BUILD)/san/,$(QA_CONTRACT_TESTS)) $(QA_GEN3_FIXTURE)
 	@set -e; for t in $(QA_CONTRACT_TESTS); do \
 		$(QA_BUILD)/plain/$$t; \
@@ -153,7 +153,7 @@ qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $
 QA_MATRIX_SOURCES := tests/test_qa_matrix.cpp tests/test_qa_matrix_gen12.cpp tests/test_qa_matrix_gen3.cpp \
 	tests/test_qa_matrix_gen4.cpp tests/test_qa_matrix_gen5.cpp
 QA_MATRIX_EXTRA_SOURCES := src/Legacy/RBYReadOnlyTrainer.cpp src/UI/ClassicInventoryUIModel.cpp \
-    src/Legacy/BackupReadOnlyTrainer.cpp tests/test_backup_session_trace.cpp
+    src/Legacy/BackupReadOnlyTrainer.cpp src/Legacy/GSCReadOnlyTrainer.cpp tests/test_backup_session_trace.cpp
 $(QA_BUILD)/plain/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h tests/test_qa_matrix_round2.h \
 		$(QA_BUILD)/plain/libqacore.a $(QA_HEADERS)
 	$(CXX) $(QA_VARIANT_FLAGS_plain) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \

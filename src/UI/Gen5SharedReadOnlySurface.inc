@@ -1361,6 +1361,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     // Loaded-game hub (same as Gen I-IV). The base hub keeps cursor/focus and
     // help; Gen V intercepts only activation, Exit and Review so that the
     // inherited Bank/Storage and source writers stay unreachable.
+    if(state.surface()==Surface::Browse && (screen.helpOverlayActive || (down&HidNpadButton_Minus)))
+        return false;
     if(state.surface()==Surface::Browse && !screen.detailViewActive) {
         if(screen.helpOverlayActive)return false;
         namespace G=PokeVault::Integration::Gen5;
@@ -1887,6 +1889,8 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
         rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
         rows.push_back({"Origin game",Enums::getOriginGameName(origin)});
         rows.push_back({"Met location",metLocationText5(origin,p->metLocation())});
+        if(const auto event=Names::metLocationEventEvidence(origin,p->metLocation());!event.empty())
+            rows.push_back({"Event provenance",event});
         rows.push_back({"Met level",std::to_string(p->metLevel())});
         rows.push_back({"Met date (stored)",(date.month==0 && date.day==0)?std::string("Not recorded"):std::to_string(date.year)+"-"+std::to_string(date.month)+"-"+std::to_string(date.day)});
         rows.push_back({"Egg / fateful",std::string(p->egg()?"Unhatched":"Not egg")+" / "+(p->fatefulEncounter()?"Fateful":"Not fateful")});
@@ -1982,6 +1986,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     auto& trainer=nativeTrainer(screen);
     auto& state=trainer.sharedScreen();
     const auto& staged=trainer.stagedPokemon();
+    if(screen.helpOverlayActive){screen.drawGSCOverlay(fb);return true;}
     // The inherited modal unconditionally invokes an unsupported Gen V
     // legality analyzer; the shared Gen V adapter never opens that modal.
     screen.details.active=false;

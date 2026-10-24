@@ -551,8 +551,9 @@ namespace UI {
         std::visit([&](auto& trainer) {
             TrainerViewScreen trainerScreen(
                 trainer, titleName, backupDir, titleId, userUid,
-                (loadedFromCart || historical) ? PokeVault::Safety::SourceKind::InstalledGame
-                               : PokeVault::Safety::SourceKind::BackupOrStaged);
+                historical?PokeVault::Safety::SourceKind::HistoricalBackup:
+                loadedFromCart?PokeVault::Safety::SourceKind::InstalledGame:
+                    PokeVault::Safety::SourceKind::BackupOrStaged);
             trainerScreen.setMoveRecoveryState(moveRecovery.mutationLocked, moveRecovery.notice);
             if (intent == SaveSelectScreen::OpenIntent::Items)
                 trainerScreen.openItemsShortcut();

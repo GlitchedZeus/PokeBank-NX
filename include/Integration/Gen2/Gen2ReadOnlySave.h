@@ -78,6 +78,7 @@ struct TrainerRecord {
     uint16_t trainerId = 0;
     uint32_t money = 0;
     std::optional<uint8_t> gender;
+    uint16_t badges = 0;
 };
 
 struct BoxRecord {

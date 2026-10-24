@@ -6,6 +6,7 @@
 #include "UI/SharedBoxedRows.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedMenuGeometry.h"
+#include "UI/SharedHeldItemSearch.h"
 
 #include <algorithm>
 #include <string>
@@ -19,12 +20,13 @@ namespace UI::SharedHeldItemPickerPresentation {
 namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
 
 inline void drawHeading(PKSEFramebuffer& fb, int x, int y,
-                        const char* title, int selected, int count) {
+                        const char* title, int selected, int count,bool searching=false) {
     fb.drawText(x + 28, y + 20, title, Colors::Text, TextStyle::Heading);
-    const int pages = std::max(1, (count + Grid::pageSize - 1) / Grid::pageSize);
+    const int pageSize=Grid::pageSizeForSearch(searching);
+    const int pages = std::max(1, (count + pageSize - 1) / pageSize);
     const int current = count > 0 ? std::clamp(selected, 0, count - 1) : 0;
     fb.drawText(x + 28, y + 55,
-                "Page " + std::to_string(current / Grid::pageSize + 1) +
+                "Page " + std::to_string(current / pageSize + 1) +
                     " / " + std::to_string(pages),
                 Colors::TextDim, TextStyle::Caption);
 }
@@ -33,23 +35,29 @@ template <typename Item, typename LabelFor, typename SpriteNameFor>
 inline void drawGrid(PKSEFramebuffer& fb, int x, int y,
                      const std::vector<Item>& items, int selected,
                      LabelFor labelFor, SpriteNameFor spriteNameFor,
-                     int firstVisibleRow = -1, int scrollOffset = 0) {
+                     int firstVisibleRow = -1, int scrollOffset = 0,
+                     const SharedHeldItemSearch::State* search=nullptr) {
     const int count = static_cast<int>(items.size());
     if (count == 0) return;
     const int focused = std::clamp(selected, 0, count - 1);
-    const int first = firstVisibleRow < 0 ? focused / Grid::pageSize * Grid::pageSize
-        : std::clamp(firstVisibleRow, 0, (count - 1) / Grid::columns) * Grid::columns;
-    const int last = std::min(count, first + Grid::pageSize + Grid::columns);
-    const int drawFirst = std::max(0, first - Grid::columns);
+    const bool searching=search && search->open();
+    const int columns=Grid::columnsForSearch(searching),pageSize=Grid::pageSizeForSearch(searching);
+    if(search && (searching || search->noMatches))
+        SharedHeldItemSearch::draw(fb,x,y,*search,labelFor(items[focused]),spriteNameFor(items[focused]));
+    if(search && search->noMatches)return;
+    const int first = firstVisibleRow < 0 ? focused / pageSize * pageSize
+        : std::clamp(firstVisibleRow, 0, (count - 1) / columns) * columns;
+    const int last = std::min(count, first + pageSize + columns);
+    const int drawFirst = std::max(0, first - columns);
     const int gridX = x + Grid::gridInsetX;
     const int gridY = y + Grid::gridInsetY;
-    const int cellWidth = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
-    fb.setClipRect(gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
+    const int cellWidth = Grid::cellWidth;
+    fb.setClipRect(gridX, gridY - 3, Grid::gridWidth(searching),
                    Grid::rows * Grid::rowPitch);
     for (int i = drawFirst; i < last; ++i) {
         const int offset = i - first;
-        const int cellX = gridX + (offset % Grid::columns) * cellWidth;
-        const int cellY = gridY + (offset / Grid::columns) * Grid::rowPitch + scrollOffset;
+        const int cellX = gridX + (offset % columns) * cellWidth;
+        const int cellY = gridY + (offset / columns) * Grid::rowPitch + scrollOffset;
         // R2-BUG-012: every cell is its own boxed row; the focused one has the yellow outline.
         SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4),
                                  {i == focused});

@@ -87,6 +87,7 @@ struct TrainerRecord {
     std::string name;
     uint16_t trainerId = 0;
     uint32_t money = 0;
+    uint8_t badges = 0;
 };
 
 struct BoxRecord {

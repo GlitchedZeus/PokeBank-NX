@@ -37,6 +37,9 @@ bool verifyBackupSessionTrace(const std::vector<uint8_t>& bytes,const std::strin
         {std::ofstream f(root/"live.sav");f<<"a different invalid live source must never be substituted";}
         S::File snapshot;need(S::read(path,history,{},snapshot,error),"Read selected historical copy");
         auto trainer=L::openBackupTrainer(snapshot,game,error);need(bool(trainer),"Open selected historical copy as "+game);
+        const bool twoRegions=game=="gold_gbc" || game=="silver_gbc" || game=="crystal_gbc" ||
+            game=="heartgold_nds" || game=="soulsilver_nds";
+        need(trainer->nativeBadges.total==(twoRegions?16:8),"Trainer supports all native badge slots");
         const uint32_t money=trainer->money==123456?123457:123456;
         const auto exports=(root/"exports").string();
         std::string directory;

@@ -128,6 +128,7 @@ struct State {
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedHeldItemSearch::State heldItemSearch;
     std::vector<Encounter::EncounterProvenanceChoice> encounterChoices;
     std::optional<Encounter::EncounterProvenanceChoice> selectedEncounter;
     int actionRow = 0;
@@ -401,7 +402,7 @@ std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
 
 // The Met Location picker is wider than the other compact pickers so the place name and its
 // method / level fit on one readable row.
-constexpr int kMetLocationPickerWidth = 900;
+constexpr int kMetLocationPickerWidth = 620;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
@@ -657,6 +658,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     state.pickerScroll.reset();
     state.pickerViewport.reset();
     state.pickerTarget = target;
+    if(target==PickerTarget::HeldItem)state.heldItemSearch={};
     state.pickerMoveSlot = moveSlot;
     state.pickerValues.clear();
     state.encounterChoices.clear();
@@ -1040,7 +1042,29 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
-    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const auto heldItemName=[&](uint16_t id){return pickerValueLabel(state, id);};
+    if(gridPicker) {
+        const auto refilter=[&](const std::string& query) {
+            const int row=ItemPickerSearch::apply(state.pickerValues,state.pickerNativeValues,
+                state.pickerSort,query,state.pickerRow,heldItemName,SharedSearchInput::searchKey);
+            state.pickerQuery=query;
+            if(row>=0)state.pickerRow=row;
+            state.pickerViewport.reset();
+            return row>=0;
+        };
+        const int px=(1280-HeldItemGrid::modalWidth)/2,py=(720-kNavBarH-HeldItemGrid::modalHeight)/2;
+        const SharedSearchInput::Keys searchKeys{bool(down&HidNpadButton_Up),bool(down&HidNpadButton_Down),
+            bool(down&HidNpadButton_Left),bool(down&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+        if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
+            SharedSearchInput::sample(touch),px,py,refilter,
+            down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
+            state.pickerScroll.stop();
+            state.pickerViewport.reveal(state.pickerRow,static_cast<int>(state.pickerValues.size()),
+                HeldItemGrid::rows,HeldItemGrid::columnsForSearch(state.heldItemSearch.open()));
+            return true;
+        }
+    }
+    const int columns = gridPicker ? HeldItemGrid::columnsForSearch(state.heldItemSearch.open()) : 1;
     const int compactCount = std::max(0, count);
     const bool nature = state.pickerTarget == PickerTarget::Nature;
     const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
@@ -1079,7 +1103,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
   const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
       touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
-      pickerW - 2 * HeldItemGrid::gridInsetX,
+      HeldItemGrid::gridWidth(state.heldItemSearch.open()),
       HeldItemGrid::rows * rowStep, rowStep,
       state.pickerViewport.firstRow, maxFirstRow + 1);
         } else if (state.pickerTarget == PickerTarget::Move) {
@@ -1117,7 +1141,6 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         return true;
     }
 
-    const auto heldItemName = [&](uint16_t id) { return pickerValueLabel(state, id); };
     if ((gridPicker || state.pickerTarget == PickerTarget::Move) && (down & HidNpadButton_X)) {
         state.pickerSort = ItemPickerSort::next(state.pickerSort);
         state.pickerRow = ItemPickerSort::reorder(
@@ -1130,32 +1153,13 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
             });
         if (gridPicker)   // NEW-06: a re-sort keeps the active search
             state.pickerRow = std::max(0, ItemPickerSearch::narrow(state.pickerValues, state.pickerQuery,
-                                                                   state.pickerRow, heldItemName));
+                                                                   state.pickerRow, heldItemName,SharedSearchInput::searchKey));
         state.pickerScroll.stop();
         state.pickerViewport.reset();
         state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
         return true;
     }
-    if (gridPicker && (down & HidNpadButton_Minus)) {
-        // NEW-06: Minus searches the held items by name; the grid narrows live under the keyboard
-        // and the current sort still applies. Cancel restores the previous search; a query with
-        // no match keeps the previous list (never an empty picker).
-        const std::string previous = state.pickerQuery;
-        const auto refilter = [&](const std::string& query) {
-            const int row = ItemPickerSearch::apply(state.pickerValues, state.pickerNativeValues,
-                                                    state.pickerSort, query, state.pickerRow, heldItemName);
-            if (row >= 0) { state.pickerQuery = query; state.pickerRow = row; }
-            state.pickerViewport.reset();
-            state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
-        };
-        const auto result = Utils::promptText("Search Held Items", "Part of an item name", state.pickerQuery, 20, refilter);
-        refilter(result.accepted ? result.text : previous);
-        if (result.accepted && state.pickerQuery != result.text)
-            screen.postStatus("No held item matches \"" + result.text + "\"", 240);
-        state.pickerScroll.stop();
-        screen.controllerNavigation.reset();
-        return true;
-    }
+
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
         state.pickerScroll.stop();
     if (state.pickerTarget == PickerTarget::HeldItem) {
@@ -1869,8 +1873,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
 
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
+        const int heldColumns=HeldItemGrid::columnsForSearch(state.heldItemSearch.open());
         SharedHeldItemPickerPresentation::drawHeading(
-            fb, x, y, "Held Item — Generation III", state.pickerRow, count);
+            fb, x, y, "Held Item — Generation III", state.pickerRow, state.heldItemSearch.noMatches?0:count,state.heldItemSearch.open());
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
@@ -1895,29 +1900,32 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     screen.trainer.getGameGroup(), value);
                 return disc.empty() ? Names::getItemNameG3(value) : disc;
             },
-            state.pickerViewport.firstRow, state.pickerScroll.offset());
+            state.pickerViewport.firstRow, state.pickerScroll.offset(),&state.heldItemSearch);
         const int gridX = x + HeldItemGrid::gridInsetX;
         const int gridY = y + HeldItemGrid::gridInsetY;
         const int cellHeight = HeldItemGrid::rowPitch;
-        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int cellW = HeldItemGrid::cellWidth;
         const int firstRow = state.pickerViewport.firstRow;
-        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int firstVisibleItem = state.pickerViewport.firstRow * heldColumns + 1;
         const int lastVisibleItem = std::min(count,
-            firstVisibleItem + HeldItemGrid::pageSize - 1);
+            firstVisibleItem + HeldItemGrid::pageSizeForSearch(state.heldItemSearch.open()) - 1);
         (void)lastVisibleItem;
-        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
-             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
-            const int offset = i - firstRow * HeldItemGrid::columns;
-            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
-            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+        for (int i = std::max(0, (firstRow - 1) * heldColumns);
+             !state.heldItemSearch.noMatches && i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * heldColumns); ++i) {
+            const int offset = i - firstRow * heldColumns;
+            const int cellX = gridX + offset % heldColumns * cellW;
+            const int cellY = gridY + offset / heldColumns * cellHeight + state.pickerScroll.offset();
             appendClippedTouchButton(screen.touchButtons, 4000 + i,
                 cellX, cellY - 3, cellW - 10, cellHeight - 4,
-                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+                gridX, gridY - 3, HeldItemGrid::gridWidth(state.heldItemSearch.open()), HeldItemGrid::rows * cellHeight);
         }
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;
         footer.xLabel = "Sort";
         footer.minusLabel = "Search";   // NEW-06
+        if(state.heldItemSearch.open() || state.heldItemSearch.noMatches)
+            SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);
+        else
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
