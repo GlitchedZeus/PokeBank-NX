@@ -1171,8 +1171,9 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
                 screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
         }
         state.review = false;
+        state.actions = true;
         // NEW-19: opened from the exit menu, Review closes to the hub, not a stale Actions sheet.
-        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
+        if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges())) state.actions = false;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1182,8 +1183,9 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     }
     if (down & HidNpadButton_B) {
         state.review = false;
+        state.actions = true;
         // NEW-19: a Review opened from the exit menu returns there.
-        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
+        if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges())) state.actions = false;
         screen.controllerNavigation.reset();
         return true;
     }

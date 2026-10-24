@@ -1691,8 +1691,9 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
+        state.actions = true; // Restore the same popup and focused Review command.
         // NEW-19: a Review opened from the exit menu returns there, not to a stale Actions sheet.
-        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
+        if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges())) state.actions = false;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1716,8 +1717,9 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         }
         refreshPresentation(screen);
         state.review = false;
-        // Match Gen IV: Review exits back to Actions, not the box (the hub when opened from exit).
-        state.actions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges());
+        state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
+        // NEW-19: opened from the exit menu, Review closes to the hub instead.
+        if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), screen.trainer.hasStagedChanges())) state.actions = false;
         screen.controllerNavigation.reset();
         screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
         return true;

@@ -272,9 +272,9 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             std::string refreshError;
             gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
             legacy.review = false;
+            legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
             // NEW-19: opened from the exit menu, Review closes to the hub, not a stale Actions sheet.
-            legacy.pokemonActions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges()) &&
-                screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+            if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges())) legacy.pokemonActions = false;
             legacy.active = legacy.pokemonActions;
             legacy.pokemonRow = 0;
             screen.controllerNavigation.reset();
@@ -291,9 +291,9 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (nav & HidNpadButton_Down) legacy.reviewRow = (legacy.reviewRow + 1) % count;
     if (down & HidNpadButton_B) {
         legacy.review = false;
+        legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         // NEW-19: a Review opened from the exit menu returns there.
-        legacy.pokemonActions = !ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges()) &&
-            screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (ClassicExit::returnFromReview(ClassicExit::sessionFor(screen), editor->hasPendingChanges())) legacy.pokemonActions = false;
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();

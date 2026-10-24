@@ -751,14 +751,12 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) {
+        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0;
             // NEW-19: a Review opened from the exit menu returns there, not to a stale Actions sheet.
-            state.mode = PokeBank::UIModel::ClassicStagedExit::returnFromReview(
-                             PokeBank::UIModel::ClassicStagedExit::sessionFor(screen), screen.trainer.hasStagedChanges())
-                ? UX2Mode::Closed : UX2Mode::Actions;
-            state.row = 0;
-            return;
-        }
+            if (PokeBank::UIModel::ClassicStagedExit::returnFromReview(
+                    PokeBank::UIModel::ClassicStagedExit::sessionFor(screen), screen.trainer.hasStagedChanges()))
+                state.mode = UX2Mode::Closed;
+            return; }
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
