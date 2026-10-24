@@ -30,14 +30,15 @@ namespace Dialogs {
             return Geo::buttonRect(row, index, 2);
         }
 
-        void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+        void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb, bool stagedExit = false);
 
         // Gen I-V footer: names exactly what each visible button does (same ids and semantics).
+        // stagedExit: Gen V's ConfirmExit asks for the same staged exit as Gen I-IV.
         PokeBank::UIModel::SharedEditorPresentation::Footer classicSaveConfirmFooter(
-            const TrainerViewScreen& screen) {
+            const TrainerViewScreen& screen, bool stagedExit = false) {
             PokeBank::UIModel::SharedEditorPresentation::Footer footer;
             const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-            if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+            if (stagedExit || (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4)) {
                 footer.push("A", "Review Changes");
                 footer.push("B", "Continue Editing");
                 footer.push("Y", "Discard & Exit");
@@ -64,6 +65,13 @@ namespace Dialogs {
     // Gen I-V: the dialog owns the frame (the covered screen footer stops being tappable,
     // the Gen2WorkspaceLayers rule) and draws its own footer. Gen VI+ keeps its original
     // presentation: the body below is unchanged and draws no footer for them.
+    // Gen V's staged exit: the same Gen I-IV dialog, touch layer and footer.
+    void drawStagedExitDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+        SharedEditorChrome::beginModal(screen.touchButtons);
+        paintSaveConfirmContents(screen, fb, true);
+        SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen, true));
+    }
+
     void drawSaveConfirmDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const bool classicSessionDialog =
             PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
@@ -74,10 +82,10 @@ namespace Dialogs {
     }
 
     namespace {
-    void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb, bool stagedExit) {
         constexpr int w = kSaveDiscard.width;
         const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-        if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+        if (stagedExit || (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4)) {
             constexpr int cw = 840, ch = 330, pad = 28, gap = 16, bh = 60;
             constexpr int bw = (cw - 2 * pad - gap) / 2;
             const int x = (fb.getWidth() - cw) / 2, y = (fb.getHeight() - ch) / 2;

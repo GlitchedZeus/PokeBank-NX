@@ -6,6 +6,8 @@
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Inventory/ItemQuantityPolicy.h"
 #include "UI/SharedBagAddPicker.h"
+#include "UI/ClassicStagedExit.h"
+#include "UI/Dialogs/SaveConfirmDialog.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
@@ -1133,7 +1135,7 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     }
     if(keys&HidNpadButton_Up)editor.moveRow(-1);
     if(keys&HidNpadButton_Down)editor.moveRow(1);
-    if(keys&HidNpadButton_Plus) {
+    if(keys&(HidNpadButton_Y|HidNpadButton_Plus)) {
         if(!state.openReviewFromBrowse(ws))
             screen.postStatus("No staged Gen V changes to review",220);
         screen.controllerNavigation.reset();
@@ -1612,13 +1614,28 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 }
             }
             return true;
-        case Surface::ConfirmExit:
-            if(keys&HidNpadButton_B)(void)state.back();
-            else if(keys&HidNpadButton_X)state.reviewFromExit(staged);
-            else if(keys&HidNpadButton_Y) {
-                if(state.confirmDiscardAndExit(staged))screen.goBack=true;
+        case Surface::ConfirmExit: {
+            // The Gen I-IV staged exit input (UI/ClassicStagedExit.h): B or tap 0 Continue
+            // Editing, Y or tap 1 Discard & Exit, A or tap 2 Review Changes, X or tap 3 Export
+            // Copy (through Review's own Y-confirmed export; the source is never written).
+            namespace Exit=PokeBank::UIModel::ClassicStagedExit;
+            switch(Exit::choose(keys&HidNpadButton_A,keys&HidNpadButton_B,keys&HidNpadButton_X,
+                                keys&HidNpadButton_Y,tap)) {
+                case Exit::Action::ContinueEditing:(void)state.back();break;
+                case Exit::Action::DiscardExit:
+                    if(state.confirmDiscardAndExit(staged))screen.goBack=true;
+                    break;
+                case Exit::Action::Review:state.reviewFromExit(staged);break;
+                case Exit::Action::ExportCopy:
+                    state.reviewFromExit(staged);
+                    if(!state.requestExport(staged))
+                        screen.postStatus("Gen V needs verified staged changes to export",300);
+                    break;
+                case Exit::Action::None:break;
             }
+            screen.controllerNavigation.reset();
             return true;
+        }
         case Surface::CloneDestination:
             state.cancelBoxAction(); // only transient while the keypads are open
             return true;
@@ -2006,9 +2023,9 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
             return true;
         case Surface::ConfirmExit:
-            drawDecision(screen,fb,"Staged Changes Remain In Memory",
-                "Exit discards in-memory edits. Exported working copies remain safe.",
-                {{"Y","Discard & Exit"},{"X","Review"},{"B","Continue"}});
+            // AUD-01 (Round 5): the ONE Gen I-V staged exit, the same dialog Gen I-IV draw.
+            dimShared(screen,fb);
+            Dialogs::drawStagedExitDialog(screen,fb);
             return true;
         case Surface::Browse:break;
     }

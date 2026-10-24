@@ -335,3 +335,20 @@ $(GEN4_POKERUS_TOUCH_TEST): $(GEN4_POKERUS_TOUCH_INPUTS)
 $(GEN4_POKERUS_TOUCH_SANITIZE): $(GEN4_POKERUS_TOUCH_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# AUD-01 Gen V half (owner hardware Oct 24): Gen V uses the Gen I-IV staged exit and Y Review.
+GEN5_REVIEW_EXIT_INPUTS := tests/test_gen5_review_exit_parity.cpp include/UI/ClassicStagedExit.h \
+	src/UI/Dialogs/SaveConfirmDialog.cpp include/UI/Dialogs/SaveConfirmDialog.h \
+	src/UI/Gen5SharedReadOnlySurface.inc include/Integration/Gen5/Gen5TrainerScreen.h
+GEN5_REVIEW_EXIT_TEST := $(HOST_BUILD)/test_gen5_review_exit_parity
+GEN5_REVIEW_EXIT_SANITIZE := $(HOST_BUILD)/test_gen5_review_exit_parity_sanitize
+HOST_TESTS += $(GEN5_REVIEW_EXIT_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_REVIEW_EXIT_SANITIZE)
+host-test: $(GEN5_REVIEW_EXIT_TEST)
+host-sanitize: $(GEN5_REVIEW_EXIT_SANITIZE)
+$(GEN5_REVIEW_EXIT_TEST): $(GEN5_REVIEW_EXIT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(GEN5_REVIEW_EXIT_SANITIZE): $(GEN5_REVIEW_EXIT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
