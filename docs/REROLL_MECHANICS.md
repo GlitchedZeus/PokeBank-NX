@@ -26,8 +26,9 @@ every generation, through the real record code).
 when its Defense, Speed and Special DVs are 10 and its Attack DV is one of 2, 3, 6, 7, 10, 11,
 14, 15 (`CheckShininess`). Those DVs also feed the stat formula, so every shiny of a species at
 a given level has one of only eight DV spreads, and a non-shiny can never share one of them.
-The HP DV is the low bit of each of the four (always 1010b → 10 for a shiny, so a shiny
-always has an HP DV of 10 as well). A Gen I Pokemon stores no shiny flag at all; it is shown
+The HP DV packs the low bit of each of the four, Attack highest (pokecrystal
+`CalcMonStatC`). Defense, Speed and Special are 10 (1010b, low bit 0) for a shiny, so a shiny's
+HP DV is 8 when its Attack DV is odd (3, 7, 11, 15) and 0 when it is even (2, 6, 10, 14). A Gen I Pokemon stores no shiny flag at all; it is shown
 shiny after Time Capsule when its DVs match that same rule, and the editor applies the rule to
 Gen I DVs for exactly that reason (`Gen1Shiny.h`).
 
