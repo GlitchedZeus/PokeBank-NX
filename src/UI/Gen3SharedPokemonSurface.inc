@@ -32,6 +32,7 @@
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
+#include "UI/NatureStatPresentation.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
 #include "UI/ItemPickerSearch.h"
@@ -135,6 +136,7 @@ struct State {
     bool speciesPreviewShiny = false;
     Shared::Focus focus{};
     SessionModel::Session session{};
+    bool party = false;
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
@@ -182,6 +184,9 @@ std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
     if (const auto* staged = editor(screen))
         for (const auto& change : staged->pendingChanges())
             rows.push_back({change.label, change.beforeValue, change.afterValue});
+    if (const auto* inventory = bridge(screen).stagedInventory())
+        for (const auto& change : inventory->pendingChanges())
+            rows.push_back({change.label, std::to_string(change.before), std::to_string(change.after)});
     return rows;
 }
 
@@ -288,6 +293,8 @@ void beginActions(TrainerViewScreen& screen) {
     const bool storage = storageEntrySurface(screen);
     state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    state.party = screen.selectedMode==TrainerViewScreen::ViewMode::Party;
+    if(state.party) {state.box=0;state.slot=screen.selectedPartyIndex;}
     screen.controllerNavigation.reset();
 }
 
@@ -296,7 +303,8 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     auto* staged = editor(screen);
     if (!staged) return false;
     std::string error;
-    auto pokemon = staged->boxedPokemon(static_cast<std::size_t>(state.box),
+    auto pokemon = state.party?staged->partyPokemon(static_cast<size_t>(state.slot),error):
+        staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                         static_cast<std::size_t>(state.slot), error);
     if (!pokemon) {
         screen.postStatus(error.empty() ? "Selected Generation III slot is empty" : error, 300);
@@ -335,6 +343,7 @@ bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
     auto& state = stateFor(screen);
     state.box = box;
     state.slot = slot;
+    state.party = false;
     state.actions = false;
     state.review = false;
     state.legality = false;
@@ -359,7 +368,7 @@ bool keepWorkspace(TrainerViewScreen& screen) {
     bool ok = false;
     if (state.session.mode == SessionModel::Mode::Edit) {
         ok = state.session.keep(*staged, static_cast<std::size_t>(state.box),
-                                static_cast<std::size_t>(state.slot), error);
+                                static_cast<std::size_t>(state.slot), error,state.party);
     } else if (state.session.mode == SessionModel::Mode::Create) {
         ok = state.session.add(*staged, static_cast<std::size_t>(state.box),
                                static_cast<std::size_t>(state.slot), error);
@@ -369,8 +378,8 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     refreshPresentation(screen);
-    screen.selectedBoxIndex = state.box;
-    screen.selectedItemIndex = state.slot;
+    if(state.party) screen.selectedPartyIndex=state.slot;
+    else {screen.selectedBoxIndex = state.box;screen.selectedItemIndex = state.slot;}
     screen.postStatus("Generation III Pokemon change staged; source save unchanged", 300);
     return true;
 }
@@ -434,7 +443,7 @@ std::string gen3FormLabel(uint16_t species, uint8_t form) {
 std::string detailsValue(const TrainerViewScreen& screen,
                          const Gen3::StagedPokemonRecord& p, int row) {
     switch (row) {
-        case 0: return std::to_string(p.species) + " - " + Names::getSpeciesName(p.species);
+        case 0: return std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species);
         case 1: return p.nickname.empty() ? "(none)" : p.nickname;
         case 2: return std::to_string(p.level);
         case 3: return std::to_string(p.experience);
@@ -1718,7 +1727,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
-        state.actions = true; // Restore the same popup and focused Review command.
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1736,13 +1745,17 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.confirmDiscardAll = false;
         state.reviewTouchScroll.reset();
         staged->discard();
+        if (auto* inventory = bridge(screen).stagedInventory()) {
+            inventory->discard();
+            (void)ClassicInventory::refreshPresentation(screen);
+        }
         if (auto* trainer = bridge(screen).stagedTrainer()) {
             trainer->discard();
             bridge(screen).refreshStagedTrainerPresentation();
         }
         refreshPresentation(screen);
         state.review = false;
-        state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
         return true;
@@ -1785,7 +1798,8 @@ std::string surfaceContext(const TrainerViewScreen& screen, const State& state) 
         return "Legacy Storage / Slot " + std::to_string(screen.selectedItemIndex + 1);
     }
     return Context::contextLine(
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
+        state.party?"Party "+std::to_string(state.slot+1):
+            "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         screen.sourceGameId, mode);
 }
 
@@ -1934,7 +1948,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int viewportTop = y + 90;
     // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
     // (rows, clip, touch boxes and the boxed highlight all use rowW).
-    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + 10 : 0;
+    const int scrollbarGap = SharedScrollbar::kTouchSlop + 4;
+    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + scrollbarGap : 0;
     const int rowW = w - 44 - barGutter;
     fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
@@ -1956,6 +1971,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                         Colors::Text, TextStyle::Body);
             fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+            continue;
+        }
+        if (naturePicker) {
+            fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value), Colors::Text, TextStyle::Body);
+            NatureStats::drawEffect(fb, x + 166, yy + 10, value);
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ability) {
@@ -1990,7 +2010,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     Colors::Text, TextStyle::Body);
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + 10, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + scrollbarGap, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
@@ -2054,6 +2074,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         if (auto* staged = editor(screen)) {
             auto preview = state.session.mode == SessionModel::Mode::Create
                 ? staged->previewCreate(state.box, state.slot, state.session.createRequest(), state.previewError)
+                : state.party?staged->previewPartyEdit(state.slot,state.session.editRequest(),state.previewError)
                 : staged->previewEdit(state.box, state.slot, state.session.editRequest(), state.previewError);
             if (preview) {
                 state.previewRecord = *preview;
@@ -2073,7 +2094,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.session.mode == SessionModel::Mode::Create) mode = Context::SurfaceMode::CreateDraft;
     SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny,
         mode, state.passive ? surfaceContext(screen, state) :
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
+        state.party?"Party "+std::to_string(state.slot+1):
+            "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
     const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
     const int y = geometry.y, h = geometry.h;
     const int leftX = geometry.leftX, leftW = geometry.leftW;
@@ -2141,7 +2163,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             drawFocus(fb, midX + cell.x, yy - 5, cell.width, 30, true);
         }
         fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)],
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+                    NatureStats::statColor(p.nature, row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(midX + 126, yy, std::to_string(p.ivs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—",
@@ -2243,8 +2265,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Ball", Enums::getBallName(p.ball)},
         {"Met Location", metLocationText(p)},
         {"Encounter origin", encounterOriginText(screen, p)},
-        // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
-        {"Legality", Presentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)}
+        {"Legality", Presentation::legalityLabel(Presentation::LegalityState::NotChecked)}
     };
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
         Presentation::kOriginLegalityHeading, rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
@@ -2322,57 +2343,28 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
-// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel). Gen III fills it
-// from the staged PK3 record (decoded only when its checksum validates), its stored origin (PK3
-// stores no met date) and the same move guardrail the Moves panel uses. No verdict.
-PokeBank::UIModel::OriginLegality::Report legalityReport(TrainerViewScreen& screen,
-                                                         const Gen3::StagedPokemonRecord& p) {
-    namespace OL = PokeBank::UIModel::OriginLegality;
-    OL::Report report;
-    report.exactGame = std::string(Context::exactGameName(screen.sourceGameId));
-    report.format = "PK3";
-    report.structure = OL::Structure::Valid;
-    report.originGame = OL::value(Enums::getOriginGameName(p.originGame));
-    report.metLocation = OL::value(metLocationText(p));
-    report.metLevel = OL::value(p.metLevel == 0 ? std::string("Hatched (level 0)") : std::to_string(p.metLevel));
-    report.metDate = OL::notStored();
-    const auto descriptor =
-        PokeVault::Integration::Gen3EditorProvider::descriptorForSource(screen.sourceGameId, true);
-    using MoveResult = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult;
-    for (const uint16_t move : p.moves) {
-        if (move == 0) {
-            report.moves.push_back({"Empty", "Empty", OL::Tone::Dim});
-            continue;
-        }
-        auto result = MoveResult::Invalid;
-        if (descriptor)
-            result = descriptor->moves.evaluate({screen.sourceGameId, p.species, 0, move, true});
-        OL::MoveCheck check{std::string(Names::getMoveName(move)), "Invalid", OL::Tone::Caution};
-        if (result == MoveResult::Compatible) { check.status = "OK"; check.tone = OL::Tone::Good; }
-        else if (result == MoveResult::PreserveExisting) check.status = "Preserved";
-        else if (result == MoveResult::Unsupported) check.status = "Transfer";
-        report.moves.push_back(std::move(check));
-    }
-    return report;
-}
-
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.drawGSCOverlay(fb);
-    std::string error;
-    auto* staged = editor(screen);
-    const auto record = staged ? staged->boxedPokemon(static_cast<std::size_t>(state.box),
-                                                      static_cast<std::size_t>(state.slot), error)
-                               : std::nullopt;
-    if (!record) {
-        PokeBank::UIModel::OriginLegality::Report missing;
-        missing.exactGame = std::string(Context::exactGameName(screen.sourceGameId));
-        missing.format = "PK3";
-        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
-                                        error.empty() ? "No valid Pokemon selected" : error, missing);
-        return;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    screen.drawGSCOverlay(fb);std::string error;
+    auto* staged=editor(screen);
+    const auto p=!staged?std::nullopt:state.party?staged->partyPokemon(static_cast<size_t>(state.slot),error):
+        staged->boxedPokemon(static_cast<size_t>(state.box),static_cast<size_t>(state.slot),error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",std::string(Context::exactGameName(screen.sourceGameId))},
+        {"Native format","PK3 checksum verified; save sections checked on export"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->otName});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid)+" / "+std::to_string(p->sid)});
+        rows.push_back({"Origin game",Enums::getOriginGameName(p->originGame)});
+        rows.push_back({"Met location",metLocationText(*p)});
+        rows.push_back({"Met level",std::to_string(p->metLevel)});
+        rows.push_back({"PID",std::to_string(p->pid)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(record->species),
-                                    legalityReport(screen, *record));
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -2553,7 +2545,7 @@ bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexce
         !screen.carrying() && !screen.currentlySelecting;
 }
 
-bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64 held,
                           int stickX, int stickY, const TouchInput& touch) {
     if (!trainerMainPage(screen, state)) return false;
     auto& trainerBridge = bridge(screen);
@@ -2572,6 +2564,10 @@ bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 dow
             if (!trainer->stage(name, money, error)) return false;
             trainerBridge.refreshStagedTrainerPresentation();
             return true;
+        }, [&] {
+            state.review = true;
+            state.reviewScroll = 0;
+            state.reviewTouchScroll.reset();
         });
 }
 

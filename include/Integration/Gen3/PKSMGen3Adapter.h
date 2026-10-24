@@ -9,6 +9,8 @@
 #ifndef POKEBANK_INTEGRATION_GEN3_PKSM_GEN3_ADAPTER_H
 #define POKEBANK_INTEGRATION_GEN3_PKSM_GEN3_ADAPTER_H
 
+#include "Integration/Common/NativePlayTime.h"
+
 #include "Integration/Gen3/Gen3Gender.h"
 
 #include <array>
@@ -56,6 +58,7 @@ namespace PokeVault::Integration::Gen3 {
     };
 
     struct TrainerRecord {
+        std::optional<Common::NativePlayTime> playTime;
         std::string name;
         uint8_t gender = 0;
         uint16_t tid16 = 0;

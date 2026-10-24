@@ -1,6 +1,7 @@
 #include "Integration/Gen1/Gen1ExportTransaction.h"
 
 #include "Integration/Common/ClassicStrictValidators.h"
+#include "Names/ItemNames.h"
 
 #include <algorithm>
 
@@ -14,7 +15,7 @@ std::vector<std::string> gen1ExportChangeLines(
         out.push_back(change.label + ": " + change.beforeValue + " -> " + change.afterValue);
     if (inventory) {
         for (const auto& change : inventory->pendingChanges())
-            out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
+            out.push_back(std::string(Names::getItemNameG1(change.itemId)) + ": " +
                           std::to_string(change.before) + " -> " + std::to_string(change.after));
     }
     if (trainer) {

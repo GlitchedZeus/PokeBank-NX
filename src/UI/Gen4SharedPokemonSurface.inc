@@ -92,6 +92,7 @@ struct State : Surface::EditorState {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
+    size_t reviewPage = 0;
     bool legality = false;
     bool confirmRelease = false;
     // Discard All in Review is a two-step Y -> Y confirmation; B keeps the staged edits.
@@ -517,7 +518,7 @@ bool pidLinkedRowEditable(const State& state, int row,
 std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
                         const Pokemon::Pokemon4ReadOnlyView& view, int row) {
     switch (row) {
-        case 0: return std::to_string(p.species()) + " - " + Names::getSpeciesName(p.species());
+        case 0: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());
         case 1: {
             const auto value = Utils::utf16ToUtf8(p.nickname());
             return value.empty() ? "(none)" : value;
@@ -664,23 +665,17 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
             "Met Location editing is read-only for transferred non-Gen-IV origins", 300);
         return;
     }
-    state.valuePicker = true;
-    state.pickerScroll.reset();
-    state.pickerViewport.reset();
-    state.pickerTarget = PickerTarget::MetLocation;
-    state.pickerValues.clear();
+    std::vector<uint16_t> native;
     const auto table = Names::getLocationTable(record.originVersion());
     for (size_t id = 0; id < table.count && id <= 0xFFFFu; ++id)
         if (table.names && table.names[id] && table.names[id][0] != '\0' &&
             Names::isGen4NativeMetLocation(
                 record.originVersion(), static_cast<uint16_t>(id)))
-            state.pickerValues.push_back(static_cast<uint16_t>(id));
+            native.push_back(static_cast<uint16_t>(id));
     Pokemon::Pokemon4ReadOnlyView view(record);
     const uint16_t current = view.metLocation();
-    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
-    state.pickerRow = it == state.pickerValues.end() ? 0 :
-        static_cast<int>(std::distance(state.pickerValues.begin(), it));
-    screen.controllerNavigation.reset();
+    Surface::openContextualMetLocationPicker(screen, state, record.originVersion(), record.species(),
+        current, std::move(native), {view.eggLocation(), view.isEgg(), record.fatefulEncounter()});
 }
 
 void openFormPicker(TrainerViewScreen& screen, State& state) {
@@ -1079,6 +1074,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
         case MenuAction::Review:
             state.actions = false;
             state.review = true;
+            state.reviewPage = 0;
             break;
         case MenuAction::Close:
             state.actions = false;
@@ -1168,8 +1164,16 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
                 screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
         }
         state.review = false;
-        state.actions = true;
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
+        return true;
+    }
+    if (down & (HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L|HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R)) {
+        if(const auto* staged=editor(screen)) {
+            const size_t count=PokeVault::Integration::Gen4::describeStagedReviewChanges(*staged).size();
+            const int direction=(down&(HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))?-1:1;
+            state.reviewPage=PokeBank::UIModel::SharedReview::move(state.reviewPage,direction,count);
+        }
         return true;
     }
     if (down & HidNpadButton_X) {
@@ -1178,7 +1182,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     }
     if (down & HidNpadButton_B) {
         state.review = false;
-        state.actions = true;
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1214,8 +1218,9 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         std::string label = preview
             ? Names::getMetLocationDisplayName(preview->originVersion(), value)
             : std::string("Unknown location");
-        if (preview)
-            label += "  |  Met Lv. " + std::to_string(preview->metLevel());
+        if (state.pickerMetContextActive)
+            label += "  |  " + state.pickerMetContext.detail(value,
+                [](uint16_t species) { return Names::getSpeciesName(species); });
         return label;
     }
     if (target == PickerTarget::Pokerus)
@@ -1233,7 +1238,7 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
             state.session.working->abilityForSlot(static_cast<uint8_t>(value));
         // NEW-13: the ability's name and short effect, not "Slot 1 / Slot 2".
         return abilityId == 0
-            ? "Ability Slot " + std::to_string(value + 1)
+            ? "Unavailable ability"
             : UI::AbilityEffects::row(Trainer::getAbilityName(abilityId), abilityId, 4);
     }
     return {};
@@ -1256,7 +1261,7 @@ struct Gen4Editor {
     static constexpr const char* kMovePickerSubtitle =
         "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP";
     static constexpr const char* kMoveEditorSubtitle =
-        "Gen IV move compatibility checked • Origin & Legality: not checked";
+        "Gen IV move compatibility checked • Origin & Legality: incomplete";
     static constexpr const char* kDataTitle = "Origin & Legality";
 
     static State& gen4(Surface::EditorState& state) { return static_cast<State&>(state); }
@@ -1452,6 +1457,7 @@ struct Gen4Editor {
         return {SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type1),
                 SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
     }
+    static uint8_t nature(const Record& p) { return Pokemon::Pokemon4ReadOnlyView(p).nature(); }
     static std::string speciesLabel(uint16_t value) { return gen4DexLabel(value); }
     static std::string heldItemArtKey(TrainerViewScreen& screen, uint16_t value) {
         const auto disc = UI::ClassicMachineArtwork::artKey(screen.trainer.getGameGroup(), value);
@@ -1503,9 +1509,8 @@ struct Gen4Editor {
             {"OT gender", raw->originalTrainerGender() == 0 ? "Male" : "Female"},
             {"PC markings", PokeBank::UIModel::Gen4DataPresentation::markings(raw->markings())},
             // Structure + move guardrails run; no full encounter/event legality checker exists.
-            // E03: the one Gen I-V legality state (UI/SharedOriginLegality.h).
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)}
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete)}
         };
     }
 };
@@ -1556,110 +1561,46 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 // The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
 void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
     SharedEditorChrome::beginModal(screen.touchButtons);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-    constexpr int w = 760, h = 240;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 34, y + 96,
-                std::string("Every pending ") + generation + " edit in this workspace is lost.",
-                Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
-                Colors::TextDim, TextStyle::Caption);
-    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
-    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
-        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Keep Changes"}, {"Y", "Discard All"}}});
-    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+    (void)generation;
+    SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
-    auto* staged = editor(screen);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, SharedReviewChrome::kTitle, Colors::Text, TextStyle::Heading);
-    fb.drawText(32, 62,
-                "Generation IV app-owned staged workspace • external source bytes unchanged",
-                Colors::TextDim, TextStyle::Caption);
-    const bool changed = staged && staged->hasChanges();
-    fb.drawFilledRoundedRect(44, 118, fb.getWidth() - 88, 110, 12, Colors::Panel);
-    fb.drawText(64, 138, changed ? "Staged PK4 edits are pending" : "No staged Gen IV changes",
-                changed ? Colors::Text : Colors::TextDim, TextStyle::Body);
-    fb.drawText(64, 178,
-                changed ? "Strict PK4 serialize + Storage CRC + full save reparse: PASS"
-                        : "Original source remains the current baseline",
-                Colors::TextDim, TextStyle::Caption);
-    fb.drawText(44, 270, SharedReviewChrome::sourceLine(screen.legacyProviderLabel()), Colors::Accent);
-    fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
-                Colors::TextDim, TextStyle::Caption);
-    if (changed) {
-        // Original-versus-staged comparison, from strict parses of both buffers.
-        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*staged);
-        constexpr size_t kShown = 8;
-        int y = 352;
-        fb.drawText(44, y, "Changed slots (original -> staged)", Colors::Text, TextStyle::Body);
-        y += 36;
-        for (size_t i = 0; i < lines.size() && i < kShown; ++i, y += 30)
-            fb.drawText(64, y, lines[i], Colors::TextDim, TextStyle::Caption);
-        if (lines.size() > kShown)
-            fb.drawText(64, y, "+" + std::to_string(lines.size() - kShown) + " more",
-                        Colors::TextDim, TextStyle::Caption);
-        if (state.confirmDiscardAll) {
-            drawDiscardAllConfirm(screen, fb, "Generation IV");
-        } else {
-            drawNavBar(fb, SharedReviewChrome::footer(false));
-        }
-    } else {
-        drawNavBar(fb, {{"B", "Back"}});
-    }
-}
-
-// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel). Gen IV fills it
-// from the PK4 record: structure, stored origin and its real per-move guardrail. No verdict.
-PokeBank::UIModel::OriginLegality::Report legalityReport(TrainerViewScreen& screen, const Pokemon::Pokemon4ReadOnly& record) {
-    namespace OL = PokeBank::UIModel::OriginLegality;
-    OL::Report report;
-    report.exactGame = gameName(screen.sourceGameId);
-    report.format = "PK4";
-    report.structure = record.valid() ? OL::Structure::Valid : OL::Structure::Invalid;
-    Pokemon::Pokemon4ReadOnlyView view(record);
-    report.originGame = OL::value(Enums::getOriginGameName(record.originVersion()));
-    const uint16_t location = view.metLocation();
-    report.metLocation = location == 0 ? OL::value("None recorded")
-        : OL::value(Names::getMetLocationDisplayName(record.originVersion(), location));
-    report.metLevel = OL::value(std::to_string(record.metLevel()));
-    report.metDate = OL::notRead();  // PK4 stores a met date; this editor does not decode it yet
-    const auto moves = record.moves();
-    for (size_t i = 0; i < moves.size(); ++i) {
-        const uint16_t move = moves[i];
-        const auto availability = PokeVault::Integration::Gen4MoveCompatibility::classify(
-            screen.sourceGameId, record.species(), record.form(), move, true);
-        using A = PokeVault::Integration::Gen4MoveCompatibility::Availability;
-        OL::MoveCheck check{move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move)),
-                            "Invalid", OL::Tone::Caution};
-        if (move == 0) check = {"Empty", "Empty", OL::Tone::Dim};
-        else if (availability == A::Direct) { check.status = "OK"; check.tone = OL::Tone::Good; }
-        else if (availability == A::Transfer) check.status = "Transfer";
-        else if (availability == A::Preserved) check.status = "Preserved";
-        report.moves.push_back(std::move(check));
-    }
-    return report;
+    const auto* staged=editor(screen);
+    const auto rows=staged?PokeVault::Integration::Gen4::describeStagedReviewChanges(*staged):PokeBank::UIModel::SharedReview::Rows{};
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,state.reviewPage,staged && staged->hasChanges(),"Generation IV");
+    if (state.confirmDiscardAll) drawDiscardAllConfirm(screen,fb,"Generation IV");
 }
 
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.drawGSCOverlay(fb);
-    std::string error;
-    auto record = selectedRecord(screen, state, error);
-    if (!record) {
-        PokeBank::UIModel::OriginLegality::Report missing;
-        missing.exactGame = gameName(screen.sourceGameId);
-        missing.format = "PK4";
-        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
-                                        error.empty() ? "No valid Pokemon selected" : error, missing);
-        return;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    screen.drawGSCOverlay(fb);std::string error;
+    const auto p=selectedRecord(screen,state,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",gameName(screen.sourceGameId)},
+        {"Native format",p && p->valid()?"PK4 checksum and structure valid":"PK4 unavailable or invalid"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Structure and editor guardrails; full legality incomplete"}};
+    if(p && p->valid()) {
+        Pokemon::Pokemon4ReadOnlyView view(*p);
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species()))+" #"+std::to_string(p->species())});
+        rows.push_back({"Nickname",Utils::utf16ToUtf8(p->nickname())});
+        rows.push_back({"Original Trainer",Utils::utf16ToUtf8(p->originalTrainerName())});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
+        rows.push_back({"Origin game",Enums::getOriginGameName(p->originVersion())});
+        rows.push_back({"Met location",Names::getMetLocationDisplayName(p->originVersion(),view.metLocation())});
+        rows.push_back({"Met level",std::to_string(p->metLevel())});
+        // PKHeX 6042efa241a9 PK4: native met Y/M/D bytes at 0x7B..0x7D.
+        const auto bytes=p->decryptedBytes();
+        const auto year=std::to_integer<unsigned>(bytes[0x7B]);
+        const auto month=std::to_integer<unsigned>(bytes[0x7C]);
+        const auto day=std::to_integer<unsigned>(bytes[0x7D]);
+        rows.push_back({"Met date (stored)",(month==0 && day==0)?std::string("Not recorded"):std::to_string(2000+year)+"-"+std::to_string(month)+"-"+std::to_string(day)});
+        rows.push_back({"Egg / fateful",std::string(p->isEgg()?"Unhatched":"Not egg")+" / "+(p->fatefulEncounter()?"Fateful":"Not fateful")});
+        const auto moves=p->moves();
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),moves[i]?Names::getMoveName(moves[i]):"Empty"});
     }
-    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(record->species()),
-                                    legalityReport(screen, *record));
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::Incomplete);
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -1911,14 +1852,13 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         return true;
     }
     if(state.itemRemoveConfirmActive) {
-        // Deliberate Y->Y two-press removal with a separate confirmation frame.
-        // A never removes; B always cancels without touching a staged byte.
+        // Y opened this explicit Bag Remove question; A confirms it. B always cancels.
         if(down&HidNpadButton_B) {
             state.itemRemoveConfirmActive=false;
             screen.controllerNavigation.reset();
             return true;
         }
-        if(!(down&HidNpadButton_Y))return true;
+        if(!(down&HidNpadButton_A))return true;
         const int pocket=state.itemRemovePocket;
         const int index=state.itemRemoveVisibleRow;
         if(!itemsScreen || screen.selectedCategory!=pocket ||
@@ -2152,7 +2092,6 @@ void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const Stat
     UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
         Names::machineDisplayLabel(game,id,Names::getItemName(id)),
         Gen4::bagPocketName(static_cast<size_t>(state.itemKeyWarningPocket)),false);
-    drawNavBar(fb,{{"A","Confirm"},{"B","Cancel"}});
 }
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
@@ -2161,7 +2100,6 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
     UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,screen.trainer.getGameGroup(),
         "Remove Gen IV Item?",state.itemRemoveId,Names::getItemName(state.itemRemoveId),
         state.itemRemoveCount,"Staged copy only; Discard Changes restores it.");
-    drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
 }
 
 } // namespace
@@ -2182,7 +2120,7 @@ bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexce
         !screen.carrying() && !screen.currentlySelecting;
 }
 
-bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64 held,
                           int stickX, int stickY, const TouchInput& touch) {
     if (!trainerMainPage(screen, state)) return false;
     auto* staged = editor(screen);
@@ -2200,6 +2138,10 @@ bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 dow
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             return trainer.stage(name, money, error) && refreshPresentation(screen);
+        }, [&] {
+            state.review = true;
+            state.reviewPage = 0;
+            state.actions = false;
         });
 }
 

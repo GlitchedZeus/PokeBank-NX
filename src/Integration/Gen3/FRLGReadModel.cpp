@@ -88,7 +88,7 @@ namespace PokeVault::Integration::Gen3::Detail {
         bool readTrainerIdentity(std::span<const uint8_t> source,
                                  const std::array<size_t, 14>& sectors,
                                  TrainerRecord& trainer) noexcept {
-            std::array<uint8_t, 16> trainerBytes{};
+            std::array<uint8_t, 18> trainerBytes{};
             if (!readLogical(source, sectors, 0, 0, trainerBytes)) return false;
             // PKHeX/PKSM detect Japanese Gen III saves from the 5-character trainer-name shape:
             // bytes 6-7 remain zero on Japanese saves; international saves use the shared table.
@@ -101,6 +101,9 @@ namespace PokeVault::Integration::Gen3::Detail {
             trainer.tid16 = read16(trainerBytes, 0x0A);
             trainer.sid16 = read16(trainerBytes, 0x0C);
             trainer.id32 = read32(trainerBytes, 0x0A);
+            // PKHeX 6042efa241a9 SaveBlock3Small{RS,E,FRLG}: section 0 + 0x0E/10/11.
+            trainer.playTime=Common::nativePlayTime(read16(trainerBytes,0x0E),
+                                                   trainerBytes[0x10],trainerBytes[0x11]);
             return true;
         }
 

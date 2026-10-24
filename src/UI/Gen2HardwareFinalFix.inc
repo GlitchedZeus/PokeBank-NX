@@ -68,9 +68,9 @@ void drawGen2Focus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selecte
 }
 
 std::string gen2RecordContext(const State& state) {
-    std::string record = "Box " + std::to_string(state.box + 1);
-    if (state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
-    else record += " / New Pokemon";
+    std::string record = state.party?"Party "+std::to_string(state.slot+1):"Box " + std::to_string(state.box + 1);
+    if (!state.party && state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
+    else if(!state.party) record += " / New Pokemon";
     return record;
 }
 
@@ -96,7 +96,7 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     drawGen2TypePair(fb, x, w, y + 180, p);
 
     std::vector<std::pair<std::string, std::string>> rows{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"Experience", std::to_string(p.experience)},
@@ -164,7 +164,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
                               const UnifiedWorkspaceState& unified,
                               int x, int y, int w, bool passive) {
     const auto& p = state.working;
-    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p);
+    const auto battle = PokeBank::UIModel::Gen2Workspace::battleStats(p,state.mode!=Mode::View);
     const std::array<const char*, 5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
     const std::array<uint8_t, 5> dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
     const int shinyY = y + 366;
@@ -197,15 +197,15 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
         const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
         fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2), TextStyle::Caption);
     }
-    fb.drawText(x + 18, y + 246, "SPECIAL", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 274, "Sp. Atk", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 92, y + 274, std::to_string(battle[4]), gen2StatCellColor(4, 2), TextStyle::Caption);
-    fb.drawText(x + 200, y + 274, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 274, y + 274, std::to_string(battle[5]), gen2StatCellColor(4, 2), TextStyle::Caption);
-
-    // Generation II stores exactly one Special DV and one Special Stat Exp value.
-    // Both split battle stats are calculated from that same authentic pair.
-    fb.drawText(x + 18, y + 304, "One Gen II Special DV / Stat Exp feeds both", Colors::TextDim, TextStyle::Caption);
+    // One real editable Special DV/Stat Exp row. Both computed Special stats remain
+    // in the Calculated column, stacked cleanly without a fake second DV row.
+    // The Special row above already shows SpA via calculatedCell(battle, 4).
+    fb.drawText(x + 18, y + 246, "Sp. Def", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 282, y + 246,
+                PokeBank::UIModel::Gen2Workspace::calculatedSpecialDefenseCell(battle),
+                gen2StatCellColor(4, 2), TextStyle::Caption);
+    fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
+                Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const bool shinySelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;

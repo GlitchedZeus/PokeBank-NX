@@ -186,8 +186,8 @@ int main() {
         const auto removeBody = overlay.substr(removeAction, 400);
         assert(removeBody.find("state.removeConfirmActive = true;") != std::string::npos);
         assert(removeBody.find("queueMutationWithWarning") == std::string::npos);
-        assert(overlay.find("classicRemoveConfirmStep((down & HidNpadButton_Y) != 0,") != std::string::npos);
-        assert(overlay.find("drawNavBar(fb, {{\"Y\", \"Remove\"}, {\"B\", \"Cancel\"}});") != std::string::npos);
+        assert(overlay.find("classicRemoveConfirmStep((down & HidNpadButton_A) != 0,") != std::string::npos);
+        assert(overlay.find("drawNavBar(fb, {{\"Y\", \"Remove\"}, {\"B\", \"Cancel\"}});") == std::string::npos);
         // The add and edit quantity editors ask the one per-item query.
         assert(overlay.find("PokeVault::Inventory::quantityRule(") == std::string::npos);
     }

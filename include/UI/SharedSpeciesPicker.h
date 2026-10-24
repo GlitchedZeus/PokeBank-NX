@@ -323,7 +323,7 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  const TouchGestureSnapshot* gesture = nullptr,
                  bool shinyToggleAvailable = true,
                  std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF},
-                 Chooser* chooser = nullptr) {
+                 Chooser* chooser = nullptr, int nativeUnownForm = -1) {
         const bool searching = chooser && chooser->searching();
         if (!chooser) {
             fb.drawText(x + 24, y + 50,
@@ -409,7 +409,9 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
             SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(listX, rowY, listW, rowHeight), {selected});
             if (chooser) {
                 // Leading icon per the shared SpeciesPicker row rule (SharedMenuGeometry.h).
-                if (auto* icon = SpriteManager::getIconSprite(species, previewShiny); icon && icon->data)
+                const auto form = static_cast<uint8_t>(species == 201 && nativeUnownForm >= 0 &&
+                    nativeUnownForm < 26 ? nativeUnownForm : 0);
+                if (auto* icon = SpriteManager::getIconSprite(species, form, previewShiny); icon && icon->data)
                     fb.drawSpriteStaticContained(listX + kRowRule.cellPadX,
                         rowY + (rowHeight - kRowRule.spriteSize) / 2,
                         kRowRule.spriteSize, kRowRule.spriteSize,
@@ -432,6 +434,9 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         }
 
         const uint16_t preview = speciesAt(visualSpecies);
+        // Gen II's native Unown letter comes from its DVs; other species are unchanged.
+        const auto form = static_cast<uint8_t>(preview == 201 && nativeUnownForm >= 0 &&
+            nativeUnownForm < 26 ? nativeUnownForm : 0);
         const int previewX = x + kPreviewX;
         constexpr int previewW = 353;
         fb.drawText(previewX, y + 86, titleText(preview), Colors::Text, TextStyle::Heading);
@@ -439,10 +444,10 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         fb.drawText(previewX + 190, y + 122, "SHINY", previewShiny ? Colors::ShinyStar : Colors::TextDim, TextStyle::Caption);
         if (searching) {
             // NEW-05: compact artwork above the key grid (drawn earlier in this column).
-            if (auto* normal = SpriteManager::getSprite(preview, false); normal && normal->data)
+            if (auto* normal = SpriteManager::getSprite(preview, form, false); normal && normal->data)
                 fb.drawSpriteStaticContained(previewX, y + kSearchArtY, kSearchArtW, kSearchArtH,
                                              normal->width, normal->height, normal->data, normal->channels);
-            if (auto* shiny = SpriteManager::getSprite(preview, true); shiny && shiny->data)
+            if (auto* shiny = SpriteManager::getSprite(preview, form, true); shiny && shiny->data)
                 fb.drawSpriteStaticContained(previewX + 190, y + kSearchArtY, kSearchArtW, kSearchArtH,
                                              shiny->width, shiny->height, shiny->data, shiny->channels);
             const auto types = (previewTypes[0] == 0xFF && previewTypes[1] == 0xFF)
@@ -452,10 +457,10 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                                                 types[0], types[1], 20);
             return;
         }
-        if (auto* normal = SpriteManager::getSprite(preview, false); normal && normal->data)
+        if (auto* normal = SpriteManager::getSprite(preview, form, false); normal && normal->data)
             fb.drawSpriteStaticContained(previewX, y + 152, 165, 190, normal->width, normal->height, normal->data, normal->channels);
         else fb.drawText(previewX + 20, y + 235, "No sprite", Colors::TextDim, TextStyle::Caption);
-        if (auto* shiny = SpriteManager::getSprite(preview, true); shiny && shiny->data)
+        if (auto* shiny = SpriteManager::getSprite(preview, form, true); shiny && shiny->data)
             fb.drawSpriteStaticContained(previewX + 188, y + 152, 165, 190, shiny->width, shiny->height, shiny->data, shiny->channels);
         else fb.drawText(previewX + 208, y + 235, "No shiny sprite", Colors::TextDim, TextStyle::Caption);
 

@@ -225,7 +225,13 @@ void combinedEdit(const fs::path& root, const fs::path& source, SourceGame game)
             assert(inRange(i, kCurrentBox, 0x462) || inRange(i, bank(2), 0x462) ||
                    inRange(i, kBag, 0x25F3 - kBag) || isChecksum(i));
     const auto manifest = text(fs::path(result.directory) / "EDIT_MANIFEST.txt");
-    assert(manifest.find("Inventory item 20: 0 -> 25") != std::string::npos);
+    assert(manifest.find("Potion: 0 -> 25") != std::string::npos);
+    const auto inventory = StagedInventoryEditor::create(*reparsed.save, error);
+    assert(inventory);
+    bool potionFound = false;
+    for (const auto& entry : inventory->entries(ClassicPocket::Medicines, error))
+        potionFound = potionFound || (entry.itemId == 20 && entry.quantity == 25);
+    assert(potionFound);
     assert(slurp(source) == s.raw);
     fs::remove_all(result.directory);
 }

@@ -24,13 +24,13 @@ namespace PokeVault::Integration::Gen5 {
 //   X / footer X           -> Add picker      (mutable pockets only); A in the picker
 //                             stages the item at x1 with no keypad, or focuses an
 //                             existing stack (UI/SharedBagAddFlow.h, Gen I-V)
-//   Y / footer Y           -> Remove confirm, second Y stages the removal
+//   Y / footer Y           -> explicit Remove confirm, A confirms and B cancels
 //   L/R / header arrows    -> previous/next native pocket
-// Key Items and TMs/HMs are view-only; an unrecognized bag is unavailable.
+// Key Items and reusable TMs/HMs are unique; Key Item changes ask a story warning.
 class Gen5BagScreen {
 public:
     using Workspace=Gen5StagedPokemonWorkspace;
-    enum class Surface : uint8_t { Browse, AddPicker, ConfirmRemove };
+    enum class Surface : uint8_t { Browse, AddPicker, ConfirmRemove, KeyItemAddWarning };
 
     struct QuantityRequest {
         size_t pocket = 0;
@@ -54,9 +54,7 @@ public:
     }
 
     [[nodiscard]] static constexpr bool mutablePocket(size_t pocket) noexcept {
-        return pocket<BagPocket5Count &&
-               pocket!=static_cast<size_t>(BagPocket5::KeyItems) &&
-               pocket!=static_cast<size_t>(BagPocket5::Machines);
+        return pocket<BagPocket5Count;
     }
     [[nodiscard]] static bool available(const Workspace& ws) {
         return ws.bagPresentation().has_value();
@@ -76,13 +74,13 @@ public:
     availability(const Workspace& ws) const {
         return PokeBank::UIModel::inventoryActionAvailability(
             available(ws),mutablePocket(pocket_),selected(ws).has_value(),
-            mutablePocket(pocket_));
+            mutablePocket(pocket_) && bagPocketLayout5(ws.sourceSave().family(),pocket_).maxCount>1);
     }
     [[nodiscard]] std::vector<FooterEntry> footer(const Workspace& ws) const {
         if(surface_==Surface::AddPicker)
             return {{"D-pad/Stick","Choose"},{"L/R","Page"},{"A","Add"},{"B","Cancel"}};
-        if(surface_==Surface::ConfirmRemove)
-            return {{"Y","Confirm Remove"},{"B","Cancel"}};
+        if(surface_==Surface::ConfirmRemove || surface_==Surface::KeyItemAddWarning)
+            return {{"A","Confirm Remove"},{"B","Cancel"}};
         std::vector<FooterEntry> out{{"L/R","Pocket"}};
         const auto can=availability(ws);
         if(can.editAmount)out.push_back({"A","Quantity"});
@@ -95,8 +93,10 @@ public:
     [[nodiscard]] std::string status(const Workspace& ws) const {
         if(!available(ws))
             return "Gen V bag failed native validation; Items are unavailable";
-        if(!mutablePocket(pocket_))
-            return "Key Items and TMs/HMs come from story progress; view only";
+        if(pocket_==static_cast<size_t>(BagPocket5::KeyItems))
+            return "Key Items are unique; changing them leaves all story/event flags unchanged";
+        if(pocket_==static_cast<size_t>(BagPocket5::Machines))
+            return "Reusable TMs/HMs are unique; quantity is fixed at 1";
         return "Bag edits are staged in app memory; the source SAV5 is unchanged";
     }
 
@@ -183,7 +183,7 @@ public:
 
     [[nodiscard]] bool openAdd(Workspace& ws,std::string& error) {
         if(surface_!=Surface::Browse || !availability(ws).addItem) {
-            error=available(ws)?"Gen V Key Items and TMs/HMs cannot be added"
+            error=available(ws)?"Gen V Add is unavailable in the current surface"
                                :"Gen V bag is unavailable";
             return false;
         }
@@ -212,14 +212,20 @@ public:
         return focused;
     }
     [[nodiscard]] uint16_t addMaximum(const Workspace& ws) const noexcept {
-        return surface_==Surface::AddPicker
+        return surface_==Surface::AddPicker || surface_==Surface::KeyItemAddWarning
             ? bagPocketLayout5(ws.sourceSave().family(),pocket_).maxCount : 0;
     }
     template<class Refresh>
     [[nodiscard]] bool confirmAdd(Workspace& ws,uint16_t itemId,int quantity,
                                   Refresh&& refresh,std::string& error) {
-        if(surface_!=Surface::AddPicker || itemId==0 || itemId!=chosenAddItem()) {
+        if((surface_!=Surface::AddPicker && surface_!=Surface::KeyItemAddWarning) ||
+           itemId==0 || itemId!=chosenAddItem()) {
             error="Gen V Add selection changed; cancelled";
+            return false;
+        }
+        if(pocket_==static_cast<size_t>(BagPocket5::KeyItems) &&
+           (surface_!=Surface::KeyItemAddWarning || itemId!=warningItemId_)) {
+            error="Confirm the Key Item warning before staging this item";
             return false;
         }
         if(quantity<1 || quantity>static_cast<int>(addMaximum(ws))) {
@@ -254,13 +260,27 @@ public:
     // A in the Add picker, decided by UI/SharedBagAddFlow.h: a new item is staged at x1
     // (no keypad), a held item focuses its existing stack, a full pocket is refused.
     // Only StageNew touches the stage; every other outcome leaves every byte as it was.
+    // Returns true when the UI must present a warning instead of applying the pick.
+    // Duplicate/full/invalid picks still go through pickAdd without a mutation.
+    [[nodiscard]] bool requestAddWarning(const Workspace& ws,
+        const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule& rule) {
+        if(surface_!=Surface::AddPicker ||
+           !PokeBank::UIModel::BagAdd::needsKeyItemWarning(rule))return false;
+        const auto decision=PokeBank::UIModel::BagAdd::decidePick(
+            rule,addPocketState(ws),bagPocketName5(pocket_));
+        if(decision.outcome!=PokeBank::UIModel::BagAdd::PickOutcome::StageNew)return false;
+        warningItemId_=chosenAddItem();
+        surface_=Surface::KeyItemAddWarning;
+        return true;
+    }
+
     template<class Refresh>
     [[nodiscard]] PokeBank::UIModel::BagAdd::PickDecision pickAdd(
         Workspace& ws,const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule& rule,
         Refresh&& refresh,std::string& error) {
         using PokeBank::UIModel::BagAdd::PickOutcome;
         error.clear();
-        if(surface_!=Surface::AddPicker || chosenAddItem()==0) {
+        if((surface_!=Surface::AddPicker && surface_!=Surface::KeyItemAddWarning) || chosenAddItem()==0) {
             error="Gen V Add selection changed; cancelled";
             return {};
         }
@@ -292,7 +312,7 @@ public:
 
     [[nodiscard]] bool requestRemove(const Workspace& ws,std::string& error) {
         if(surface_!=Surface::Browse || !availability(ws).removeItem) {
-            error=available(ws)?"Gen V Key Items and TMs/HMs cannot be removed"
+            error=available(ws)?"Gen V Remove is unavailable in the current surface"
                                :"Gen V bag is unavailable";
             return false;
         }
@@ -329,6 +349,7 @@ private:
         addIndex_=0;
         removeTarget_.reset();
         removeRow_=0;
+        warningItemId_=0;
     }
     // Snapshot the whole workspace; a refused bag edit or a refused shared
     // presentation refresh restores every staged byte exactly.
@@ -359,6 +380,7 @@ private:
     size_t addIndex_=0;
     std::optional<Trainer::InventoryItem> removeTarget_;
     size_t removeRow_=0;
+    uint16_t warningItemId_=0;
 };
 
 } // namespace PokeVault::Integration::Gen5

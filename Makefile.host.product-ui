@@ -15,7 +15,7 @@ host-sanitize: $(PRODUCT_UI_SANITIZE_TESTS)
 
 .PHONY: product-ui-test
 product-ui-test: $(PRODUCT_UI_TESTS)
-	@set -e; for test_bin in $(PRODUCT_UI_TESTS); do ./$$test_bin; done
+	@set -e; for test_bin in $(PRODUCT_UI_TESTS); do $$test_bin; done
 
 $(HOST_BUILD)/test_app_shell_model: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
 	@mkdir -p $(HOST_BUILD)

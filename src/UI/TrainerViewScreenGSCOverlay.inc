@@ -68,6 +68,7 @@ struct Gen2EditorOverlayState {
     bool review = false;
     bool pokemonActions = false;
     bool pokemonFields = false;
+    bool pokemonParty = false;
     int selectedRow = 0;
     int reviewRow = 0;
     SharedScrollbar::State reviewScrollbar;   // draggable thumb on Review Pending Changes
@@ -197,6 +198,7 @@ bool openPokemonActions(TrainerViewScreen& screen) {
     state.pokemonActions = true;
     state.pokemonFields = false;
     state.pokemonBox = screen.selectedBoxIndex;
+    state.pokemonParty = false;
     state.pokemonSlot = screen.selectedItemIndex;
     state.pokemonRow = 0;
     state.reviewRow = 0;
@@ -367,7 +369,7 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     for (int i = 0; i < 4; ++i) {
         const auto dv = Utils::promptNumber("Add Gen II Pokemon - " +
             std::string(i == 0 ? "Attack" : i == 1 ? "Defense" : i == 2 ? "Speed" : "Special") + " DV",
-            8, 0, 15);
+            0, 0, 15);
         if (!dv.accepted) return false;
         create.dvs[i] = static_cast<uint8_t>(dv.value);
     }
@@ -527,6 +529,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
             state.reviewRow = (state.reviewRow + 1) % changeCount;
         if (down & HidNpadButton_B) {
             state.review = false;
+            if (screen.selectedMode == TrainerViewScreen::ViewMode::Trainer) state.active = false;
             return;
         }
         if (down & HidNpadButton_Y) {
@@ -828,8 +831,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    std::string(PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading) + ": " +
-                        PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked),
+                    std::string("Full legality analysis: ")+PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked),
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

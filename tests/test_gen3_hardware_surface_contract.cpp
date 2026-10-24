@@ -277,9 +277,9 @@ int main() {
     assert(moveEditorBegin != std::string::npos && workspaceBegin > moveEditorBegin);
     contains(surface, "state.session.editable() &&");
     contains(surface, "screen.drawGSCOverlay(fb)");
-    // E03: Origin & Legality is the one shared panel filled from the PK3 record (the old fixed
-    // "Game/species/location/level constrained" claim was printed without reading the record).
-    contains(surface, "SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(record->species),");
+    contains(surface, "SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked)");
+    contains(surface, "Full history not evaluated");
+    contains(surface, "Editor guardrails only; no complete legality check");
     const auto actionsBegin = surface.find("void drawActions(");
     const auto actionsEnd = surface.find("void drawReview(", actionsBegin);
     assert(actionsBegin != std::string::npos && actionsEnd != std::string::npos && actionsEnd > actionsBegin);

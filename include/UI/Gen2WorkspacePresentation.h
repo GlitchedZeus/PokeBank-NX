@@ -13,17 +13,21 @@
 namespace PokeBank::UIModel::Gen2Workspace {
 namespace G = PokeVault::Integration::Gen2;
 namespace Rules = Gen2PokemonEditor;
-inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p) {
-    if (p.partyRecord) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
+inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=false) {
+    if (p.partyRecord && !draft) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
     return G::calculateBattleStats(p.species, p.level, Rules::storedDVs(p), p.statExperience).asArray();
 }
-// The Calculated cell of a VALUES row (HP, Attack, Defense, Speed, Special). Gen II stores ONE
-// Special DV and ONE Special Stat Exp, but its battle stats are separate Special Attack and Special
-// Defense, each calculated from that same pair with its own base stat (pret/pokecrystal
-// engine/pokemon/move_mon.asm CalcMonStats). The Special row therefore shows both real numbers.
+// The Calculated column has a real value for every displayed DV/Stat Exp row.
+// Gen II has one stored Special DV and Stat Exp but TWO derived Special stats:
+// primary Special row = SpA, continuation in the SAME Calculated column = SpD.
+// Neither derived value is a second editable DV or Stat Exp (pret/pokecrystal CalcMonStats).
 inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
     if (row >= 0 && row < 4) return std::to_string(battle[static_cast<std::size_t>(row)]);
-    return std::to_string(battle[4]) + "/" + std::to_string(battle[5]);
+    if (row == 4) return "SpA " + std::to_string(battle[4]);
+    return {};
+}
+inline std::string calculatedSpecialDefenseCell(const std::array<uint16_t, 6>& battle) {
+    return std::to_string(battle[5]);
 }
 struct DataRow { std::string label, value; };
 inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {
@@ -51,13 +55,11 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     } else {
         rows.push_back({"Caught history", "No caught data recorded"});
     }
-    // Origin & Legality (formerly under the move rows): Crystal compares the current level with the
-    // recorded met level (a guardrail, shown as its own row); Gold/Silver record nothing to compare.
-    // E03: the Legality row itself is the one Gen I-V state, never a verdict.
-    if (game == G::SourceGame::Crystal)
-        rows.push_back({"Met level check",
-                        Gen2Native::caughtLevelLegalityText(Gen2Native::caughtLevelLegality(p.level, caught))});
-    rows.push_back({"Legality", SharedEditorPresentation::legalityLabel(SharedEditorPresentation::LegalityState::NotChecked)});
+    // A level comparison is one native fact, not a complete legality verdict.
+    if(game==G::SourceGame::Crystal)
+        rows.push_back({"Level context",Gen2Native::caughtLevelLegalityText(
+            Gen2Native::caughtLevelLegality(p.level,caught))});
+    rows.push_back({"Legality",SharedEditorPresentation::legalityLabel(SharedEditorPresentation::LegalityState::NotChecked)});
     return rows;
 }
 

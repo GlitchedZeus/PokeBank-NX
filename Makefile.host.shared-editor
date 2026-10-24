@@ -62,10 +62,10 @@ host-test: $(GSC_RENDER_TEST)
 host-sanitize: $(GSC_RENDER_SANITIZE)
 $(GSC_RENDER_TEST): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Itests/host-switch -Iinclude $(GSC_RENDER_SOURCES) -o $@
 $(GSC_RENDER_SANITIZE): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/host-switch -Iinclude $(GSC_RENDER_SOURCES) -o $@
 
 
 # Shared Gen I-IV move picker presentation: numbered rows plus exact-era
@@ -306,81 +306,16 @@ $(GEN4_STORAGE_CARRY_SANITIZE): $(GEN4_STORAGE_CARRY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@
 
-# E03 (Round 3 hardware): one shared, honest Origin & Legality layout for every Gen I-V game.
-SHARED_ORIGIN_LEGALITY_INPUTS := tests/test_shared_origin_legality.cpp include/UI/SharedOriginLegality.h \
-	include/UI/SharedEditorChrome.h include/UI/SharedEditorPresentation.h include/UI/Gen1OriginLegality.h \
-	src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc src/UI/Gen2SharedPokemonSurface.inc \
-	src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
-SHARED_ORIGIN_LEGALITY_TEST := $(HOST_BUILD)/test_shared_origin_legality
-SHARED_ORIGIN_LEGALITY_SANITIZE := $(HOST_BUILD)/test_shared_origin_legality_sanitize
-
-HOST_TESTS += $(SHARED_ORIGIN_LEGALITY_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_ORIGIN_LEGALITY_SANITIZE)
-host-test: $(SHARED_ORIGIN_LEGALITY_TEST)
-host-sanitize: $(SHARED_ORIGIN_LEGALITY_SANITIZE)
-
-$(SHARED_ORIGIN_LEGALITY_TEST): $(SHARED_ORIGIN_LEGALITY_INPUTS)
+# Owner Round 4 correction: keep green/red Nature effect hints in View/Edit STATS and Nature picker.
+STATS_LABEL_NEUTRAL_TEST := $(HOST_BUILD)/test_stats_label_neutral_contract
+STATS_LABEL_NEUTRAL_SANITIZE := $(HOST_BUILD)/test_stats_label_neutral_contract_sanitize
+HOST_TESTS += $(STATS_LABEL_NEUTRAL_TEST)
+HOST_SANITIZE_TESTS += $(STATS_LABEL_NEUTRAL_SANITIZE)
+host-test: $(STATS_LABEL_NEUTRAL_TEST)
+host-sanitize: $(STATS_LABEL_NEUTRAL_SANITIZE)
+$(STATS_LABEL_NEUTRAL_TEST): tests/test_stats_label_neutral_contract.cpp src/UI/SharedPokemonEditorSurface.inc include/UI/NatureStatEffect.h include/UI/NatureStatPresentation.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_origin_legality.cpp -o $@
-
-$(SHARED_ORIGIN_LEGALITY_SANITIZE): $(SHARED_ORIGIN_LEGALITY_INPUTS)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(STATS_LABEL_NEUTRAL_SANITIZE): tests/test_stats_label_neutral_contract.cpp src/UI/SharedPokemonEditorSurface.inc include/UI/NatureStatEffect.h include/UI/NatureStatPresentation.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_origin_legality.cpp -o $@
-
-# L06 / E02 / NEW-20 (Round 3 hardware): Gen I-III Party A / touch opens the Pokemon Actions popup.
-CLASSIC_PARTY_ACTIONS_INPUTS := tests/test_classic_party_actions.cpp include/UI/ClassicPartyActions.h \
-	src/UI/ClassicPartyActionsOverlay.inc src/UI/TrainerViewScreenCompositeOverlay.cpp
-CLASSIC_PARTY_ACTIONS_TEST := $(HOST_BUILD)/test_classic_party_actions
-CLASSIC_PARTY_ACTIONS_SANITIZE := $(HOST_BUILD)/test_classic_party_actions_sanitize
-
-HOST_TESTS += $(CLASSIC_PARTY_ACTIONS_TEST)
-HOST_SANITIZE_TESTS += $(CLASSIC_PARTY_ACTIONS_SANITIZE)
-host-test: $(CLASSIC_PARTY_ACTIONS_TEST)
-host-sanitize: $(CLASSIC_PARTY_ACTIONS_SANITIZE)
-
-$(CLASSIC_PARTY_ACTIONS_TEST): $(CLASSIC_PARTY_ACTIONS_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_party_actions.cpp -o $@
-
-$(CLASSIC_PARTY_ACTIONS_SANITIZE): $(CLASSIC_PARTY_ACTIONS_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_party_actions.cpp -o $@
-
-# M04 / M05 (Round 3 hardware): Gen IV / V Moves panel keeps the category with the type and gives
-# Pwr / Acc their own right-aligned section; Gen I-III keep the accepted single detail line.
-MOVES_PANEL_SPLIT_SOURCES := tests/test_moves_panel_category_split.cpp src/Names/MoveNames.cpp
-MOVES_PANEL_SPLIT_TEST := $(HOST_BUILD)/test_moves_panel_category_split
-MOVES_PANEL_SPLIT_SANITIZE := $(HOST_BUILD)/test_moves_panel_category_split_sanitize
-
-HOST_TESTS += $(MOVES_PANEL_SPLIT_TEST)
-HOST_SANITIZE_TESTS += $(MOVES_PANEL_SPLIT_SANITIZE)
-host-test: $(MOVES_PANEL_SPLIT_TEST)
-host-sanitize: $(MOVES_PANEL_SPLIT_SANITIZE)
-
-$(MOVES_PANEL_SPLIT_TEST): $(MOVES_PANEL_SPLIT_SOURCES) include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(MOVES_PANEL_SPLIT_SOURCES) -o $@
-
-$(MOVES_PANEL_SPLIT_SANITIZE): $(MOVES_PANEL_SPLIT_SOURCES) include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(MOVES_PANEL_SPLIT_SOURCES) -o $@
-
-# AUD-01 (Round 3 hardware): Gen V's Review matches Gen IV's chrome (title, source line, footer words,
-# Discard All confirmation); Gen V keeps its verified per-record rows.
-SHARED_REVIEW_CHROME_INPUTS := tests/test_shared_review_chrome.cpp include/UI/SharedReviewChrome.h \
-	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
-SHARED_REVIEW_CHROME_TEST := $(HOST_BUILD)/test_shared_review_chrome
-SHARED_REVIEW_CHROME_SANITIZE := $(HOST_BUILD)/test_shared_review_chrome_sanitize
-
-HOST_TESTS += $(SHARED_REVIEW_CHROME_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_REVIEW_CHROME_SANITIZE)
-host-test: $(SHARED_REVIEW_CHROME_TEST)
-host-sanitize: $(SHARED_REVIEW_CHROME_SANITIZE)
-
-$(SHARED_REVIEW_CHROME_TEST): $(SHARED_REVIEW_CHROME_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_review_chrome.cpp -o $@
-
-$(SHARED_REVIEW_CHROME_SANITIZE): $(SHARED_REVIEW_CHROME_INPUTS)
-	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_review_chrome.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

@@ -811,8 +811,8 @@ namespace UI {
             drawGlyphHelpLine(fb, x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
             ly += 38;
         }
-        // B and - both close every help window (TrainerView, AppShell). NEW-01: the footer names
-        // B once; the redundant "- Close Help" badge is gone (- still closes it).
+        // Both close every help window (TrainerView, AppShell); the footer says so, matching rows
+        // like "-   Close help" (R2-BUG-013: modal text and footer agree).
         drawNavBar(fb, {{"B", "Close Help"}});
     }
 

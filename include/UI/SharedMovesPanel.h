@@ -133,27 +133,6 @@ inline void drawRight(PKSEFramebuffer& fb, int right, int y, const std::string& 
     fb.drawText(right - w, y, text, color, TextStyle::Caption);
 }
 
-// M04 / M05: the second line of a move whose generation has a per-move category (Gen IV / V).
-// `split` is false for Gen I-III, which keep the single detail line.
-struct DetailSplit {
-    bool split = false;
-    std::string left;   // "Electric • Special"
-    std::string right;  // "Pwr 90   Acc 100"
-    int rightW = 0;     // caption width of `right` (bundled font metrics)
-};
-inline constexpr int kDetailSectionGap = 24;
-inline DetailSplit detailSplit(const Facts::MoveFacts& f) {
-    DetailSplit d;
-    const char* category = Facts::categoryLabel(f);
-    if (!f.exists || !*category) return d;
-    d.split = true;
-    d.left = Facts::typeLabel(f) + " \xE2\x80\xA2 " + category;
-    d.right = "Pwr " + Facts::powerLabel(f) + "   Acc " + Facts::accuracyLabel(f);
-    d.rightW = PokeBank::UIModel::SharedMenuGeometry::textWidth(
-        d.right, PokeBank::UIModel::SharedMenuGeometry::Text::Caption);
-    return d;
-}
-
 // Draw the four slots and column captions. `focusedSlot` < 0 draws no focus outline.
 // The caller draws the panel surface + "MOVES" title and publishes touch targets from
 // `layout.rowTop(slot)` / `Layout::kRowHeight`.
@@ -174,20 +153,10 @@ inline void draw(PKSEFramebuffer& fb, const Layout& l, const std::array<Slot, 4>
             drawRight(fb, l.ppRight(), l.line1Y(slot), ppText(s, game), Colors::Text);
             drawRight(fb, l.upsRight(), l.line1Y(slot), upsText(s),
                       s.ppUps ? Colors::Accent : Colors::TextDim);
-            const auto f = Facts::facts(s.move, game);
-            if (const auto split = detailSplit(f); split.split) {
-                // M04 / M05: Gen IV / V add a per-move category. Instead of one long dotted run
-                // ("Type • Category • Pwr • Acc") the category stays with the type on the left and
-                // Power / Accuracy get their own right-aligned section, so nothing crowds them.
-                drawRight(fb, l.statusRight(), l.line2Y(slot), split.right, Colors::TextDim);
-                fb.drawText(l.nameX(), l.line2Y(slot),
-                            fit(fb, split.left, l.statusRight() - split.rightW - kDetailSectionGap - l.nameX()),
-                            Colors::TextDim, TextStyle::Caption);
-            } else if (const std::string detail = Facts::detailLine(f); !detail.empty()) {
-                // Gen I-III (no per-move category): the accepted single detail line, unchanged.
+            const std::string detail = Facts::detailLine(Facts::facts(s.move, game));
+            if (!detail.empty())
                 fb.drawText(l.nameX(), l.line2Y(slot), fit(fb, detail, l.detailMaxW()),
                             Colors::TextDim, TextStyle::Caption);
-            }
         }
         if (s.status && *s.status)
             drawRight(fb, l.statusRight(), l.line1Y(slot),
@@ -204,7 +173,7 @@ struct ChooserColumns {
     int nameX() const noexcept { return x + 50; }
     int nameMaxW() const noexcept { return typeX() - 12 - nameX(); }
     int typeX() const noexcept { return x + w - 380; }
-    int categoryX() const noexcept { return x + w - 290; }
+    int categoryX() const noexcept { return x + w - 288; }
     int powerRight() const noexcept { return x + w - 132; }
     int accuracyRight() const noexcept { return x + w - 66; }
     int ppRight() const noexcept { return x + w; }

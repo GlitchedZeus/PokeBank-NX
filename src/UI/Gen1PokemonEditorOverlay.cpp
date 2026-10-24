@@ -1,6 +1,6 @@
+#include "Names/ItemNames.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
-#include "UI/Gen1OriginLegality.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
@@ -541,7 +541,7 @@ std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     }
     if (auto* inv = trainer->stagedInventory()) {
         for (const auto& change : inv->pendingChanges()) {
-            out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
+            out.push_back(std::string(Names::getItemNameG1(change.itemId)) + ": " +
                 std::to_string(change.before) + " -> " + std::to_string(change.after));
         }
     }
@@ -788,7 +788,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         rows = {
             {"Add Pokemon", "Draft first; no mutation until explicit Stage Add"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
-            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},  // E03 one wording
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "International R/B/Y editor capability"},
             {"Cancel", "No mutation"},
         };
     }
@@ -968,14 +968,24 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    // E03: the ONE shared Origin & Legality panel, drawn over this overlay's frame.
-    (void)x; (void)y; (void)w; (void)h;
-    std::string error;
-    const auto pokemon = selectedPokemon(screen, error);
-    namespace G1 = PokeBank::UIModel::Gen1OriginLegality;
-    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
-        pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (error.empty() ? std::string("Empty slot") : error),
-        pokemon ? G1::report(screen.sourceGameId, *pokemon) : G1::emptyReport(screen.sourceGameId));
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=selectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
+    }
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 } // namespace

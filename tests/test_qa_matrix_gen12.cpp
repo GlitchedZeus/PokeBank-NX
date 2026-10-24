@@ -794,8 +794,8 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
 
     r2cell(row, "special-stat",
            "Gen2Workspace::battleStats / calculatedCell on box Pikachu (stored, and with a staged Special DV 13 / "
-           "Stat Exp 40000): Special row shows \"SpA/SpD\" numbers equal to the CalcMonStats formula (base 50/40), "
-           "never a dash",
+           "Stat Exp 40000): separate Sp. Atk/Sp. Def values equal the CalcMonStats formula (base 50/40); "
+           "the old combined Special cell is empty (actual renderer layout is tested separately)",
            [&](Checks& c) {
         std::string error;
         auto editor = G2::StagedEditor::create(save, error);
@@ -831,10 +831,16 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
             c.expect(battle[4] == spa && battle[5] == spd,
                      "SpA/SpD " + std::to_string(battle[4]) + "/" + std::to_string(battle[5]) + " != formula " +
                          std::to_string(spa) + "/" + std::to_string(spd));
+            // The approved hardware layout shows SpA in the normal calculated
+            // Special cell and SpD immediately below in that SAME column.
+            // Neither value is a second DV or Stat Exp input.
             const auto cell = W::calculatedCell(battle, 4);
-            c.expect(cell == std::to_string(spa) + "/" + std::to_string(spd), "Special cell '" + cell + "'");
-            c.expect(cell.find("\xE2\x80\x94") == std::string::npos && cell.find("--") == std::string::npos,
-                     "Special cell shows a placeholder");
+            c.expect(cell == "SpA " + std::to_string(spa),
+                     "Calculated Special Attack does not match its own formula: '" + cell + "'");
+            c.expect(W::calculatedSpecialDefenseCell(battle) == std::to_string(spd),
+                     "Calculated Special Defense does not match its own formula");
+            c.expect(cell.find('/') == std::string::npos,
+                     "Calculated Special must not combine SpA/SpD into a cramped slash label");
             for (int r = 0; r < 4; ++r)
                 c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
                          "calculated row " + std::to_string(r));

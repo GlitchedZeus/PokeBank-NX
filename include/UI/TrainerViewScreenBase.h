@@ -90,6 +90,7 @@ namespace UI {
         bool genderEditable(const Pokemon::Pokemon& p) const;  // false -> the Gender row is read-only (nothing to change it TO)
         void openStorageEditor(int pane, int box, int slot);   // open the details modal on a storage slot
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
+        bool openStagedReview(bool exportCopy = false);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
         void openItemsShortcut() {

@@ -124,6 +124,15 @@ inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t
     return true;
 }
 
+// Preview exactly what the real A action would create, on a COPY of the
+// editor session. Never change working DVs or source saves while browsing.
+[[nodiscard]] inline int previewUnownForm(const Gen2PokemonEditor::Session& session,
+                                          bool shiny, std::string_view sourceGameId = {}) noexcept {
+    Gen2PokemonEditor::Session hypothetical = session;
+    if (!applySpeciesAppearance(hypothetical, 201, shiny, sourceGameId)) return -1;
+    return static_cast<int>(hypothetical.working.form);
+}
+
 // Re-selecting the already stored move is intentionally a no-op. This preserves unusual existing
 // PP / PP-Up bytes rather than normalizing them just because the user opened and accepted a picker.
 inline bool applyMoveChoice(Gen2PokemonEditor::Session& session, std::size_t slot,

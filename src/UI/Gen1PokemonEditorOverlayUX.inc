@@ -1,4 +1,3 @@
-#include "UI/Gen1OriginLegality.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedEditorChrome.h"
@@ -280,7 +279,7 @@ const char* fieldLabel(int row) noexcept {
 }
 
 std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
-    if (row == 0) return speciesCompact(d.species);
+    if (row == 0) return speciesHeading(d.species);
     if (row == 1) return d.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(d.species) + " (default)" : d.nickname;
     if (row == 2) return std::to_string(d.level);
     if (row == 3) return std::to_string(draftExperience(d)) + " (derived)";
@@ -302,7 +301,7 @@ std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
 }
 
 std::string existingValue(const PokemonRecord& p, int row) {
-    if (row == 0) return speciesCompact(p.species);
+    if (row == 0) return speciesHeading(p.species);
     if (row == 1) return p.nickname;
     if (row == 2) return std::to_string(p.level);
     if (row == 3) return std::to_string(p.experience);
@@ -1063,14 +1062,24 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    // E03: the ONE shared Origin & Legality panel, drawn over this overlay's frame.
-    (void)x; (void)y; (void)w; (void)h;
-    std::string error;
-    const auto pokemon = selectedPokemon(screen, error);
-    namespace G1 = PokeBank::UIModel::Gen1OriginLegality;
-    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons,
-        pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (error.empty() ? std::string("Empty slot") : error),
-        pokemon ? G1::report(screen.sourceGameId, *pokemon) : G1::emptyReport(screen.sourceGameId));
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=selectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
+    }
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {

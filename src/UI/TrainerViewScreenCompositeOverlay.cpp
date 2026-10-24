@@ -18,7 +18,6 @@
 #include "UI/ScreenChrome.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/SharedBoxedRows.h"   // R2-BUG-012: the one boxed-row modal style (Gen I/II modals)
-#include "UI/SharedReviewChrome.h"   // AUD-01: one Review chrome (Gen III-V)
 
 // Species changes use the shared exact-game level/EXP initialization policy; overlays must not reintroduce inherited level semantics.
 #include "UI/TouchInput.h"
@@ -171,9 +170,56 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 #include "Gen3SharedPokemonSurface.inc"
 #include "Gen4SharedPokemonSurface.inc"
 #include "Gen5SharedReadOnlySurface.inc"
-#include "ClassicPartyActionsOverlay.inc"   // L06 / E02 / NEW-20: Gen I-III Party Actions
+#include "ClassicPartyActions.inc"
 
 namespace UI {
+
+bool TrainerViewScreen::openStagedReview(bool exportCopy) {
+    std::string error, exported;
+    if (Gen1PokemonEditor::isGen1SourceUX(*this)) {
+        if (!Gen1PokemonEditor::editorAvailable(*this)) return false;
+        auto& state = Gen1PokemonEditor::ux2StateFor(*this);
+        state.mode = Gen1PokemonEditor::UX2Mode::Review;
+        state.reviewRow = 0;
+        state.reviewDiscard = {};
+        if (exportCopy) exported = Gen1PokemonEditor::exportStagedCopy(*this, error);
+    } else if (Gen2PokemonEditor::isGSC(*this)) {
+        auto* editor = stagedEditor(*this);
+        if (!editor) return false;
+        auto& state = editorOverlayState(*this);
+        state.active = true;
+        state.review = true;
+        state.pokemonActions = false;
+        state.pokemonFields = false;
+        state.reviewRow = 0;
+        if (exportCopy) exported = exportStagedCopy(*this, *editor, error);
+    } else if (Gen3SharedEditorSurface::isGen3Gba(*this)) {
+        if (!Gen3SharedEditorSurface::editor(*this)) return false;
+        auto& state = Gen3SharedEditorSurface::stateFor(*this);
+        state.review = true;
+        state.actions = false;
+        state.confirmDiscardAll = false;
+        state.reviewScroll = 0;
+        state.reviewTouchScroll.reset();
+        if (exportCopy) Gen3SharedEditorSurface::exportStagedGen3Copy(*this);
+    } else if (Gen4SharedEditorSurface::isGen4Nds(*this)) {
+        if (!Gen4SharedEditorSurface::editor(*this)) return false;
+        auto& state = Gen4SharedEditorSurface::stateFor(*this);
+        state.review = true;
+        state.actions = false;
+        state.confirmDiscardAll = false;
+        if (exportCopy) Gen4SharedEditorSurface::exportStagedGen4Copy(*this);
+    } else return false;
+    if (exportCopy && !exported.empty()) postStatus("Verified copy exported: " + exported, 600);
+    else if (!error.empty()) postStatus(error, 480);
+    saveConfirmActive = false;
+    exitingWithUnsavedChanges = false;
+    exitingViaPlus = false;
+    exitAfterSave = false;
+    controllerNavigation.reset();
+    return true;
+}
+
 namespace {
 
 void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
@@ -313,9 +359,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // Gen V source isolation precedes all inherited touch and save handlers.
     if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
         return;
-    // Gen I-III Party A / tap opens the shared Party Actions popup (before the base View route).
-    if (ClassicPartyActions::handleInput(*this, down, held, stick.x, stick.y, touch))
-        return;
+    if (ClassicPartyActions::handle(*this,down,held,stick.x,stick.y,touch))return;
 
     // Storage's legacy touch path fires A on first contact. For the GAME SAVE
     // pane in Gen I-IV, wait for the completed same-cell tap and route A
@@ -401,8 +445,8 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     g_touchGlyphAccum.clear();
     g_touchGlyphHits.clear();
 
+    if (ClassicPartyActions::draw(*this,fb))return;
     if (Gen5SharedReadOnlySurface::draw(*this, fb)) return;
-    if (ClassicPartyActions::draw(*this, fb)) return;
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 

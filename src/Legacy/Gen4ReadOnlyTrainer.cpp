@@ -106,6 +106,9 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
 
 void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {
     const auto& tr = save_.trainer();
+    nativePlayTime=Integration::Common::nativePlayTime(tr.playedHours,tr.playedMinutes,tr.playedSeconds);
+    const auto dex=save_.dexProgress();
+    nativeDexProgress={dex.seen,dex.caught,dex.total};
     trainerName = Utils::utf16ToUtf8(tr.name);
     TID16 = tr.tid;
     SID16 = tr.sid;

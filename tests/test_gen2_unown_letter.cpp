@@ -100,6 +100,30 @@ int main() {
     require(shiny.working.form == DV::unownLetter(Rules::storedDVs(shiny.working)),
             "draft form follows the shiny DVs (appearance change)");
     require(shiny.working.form == 8 || shiny.working.form == 21, "shiny draft is I or V");
+    // Chooser must render the exact form a confirmed species selection would
+    // produce, without modifying the Pokémon currently being edited.
+    for (bool wantsShiny : {false, true}) {
+        auto hypothetical = s;
+        require(Picker::applySpeciesAppearance(hypothetical, 201, wantsShiny, "silver_gbc"),
+                "hypothetical species appearance");
+        const auto originalDvs = Rules::storedDVs(s.working);
+        const int form = Picker::previewUnownForm(s, wantsShiny, "silver_gbc");
+        require(form == hypothetical.working.form && form >= 0 && form < 26,
+                "chooser form equals the eventual native Unown letter");
+        require(Rules::storedDVs(s.working) == originalDvs,
+                "preview does not alter working DV bytes");
+        if (wantsShiny) require(form == 8 || form == 21, "shiny preview can only be I or V");
+    }
+    const auto chooserSource = read("include/UI/SharedSpeciesPicker.h");
+    const auto chooserOverlay = read("src/UI/Gen2PokemonPickerOverlay.inc");
+    require(chooserSource.find("getIconSprite(species, form, previewShiny)") != std::string::npos &&
+            chooserSource.find("getSprite(preview, form, false)") != std::string::npos &&
+            chooserSource.find("getSprite(preview, form, true)") != std::string::npos,
+            "picker renders previews using native Unown form");
+    require(chooserOverlay.find("Gen2Picker::previewUnownForm(") != std::string::npos &&
+            chooserOverlay.find("&overlay.speciesChooser, unownForm)") != std::string::npos,
+            "Gen II supplies computed form to shared chooser");
+
     // Another species: form 0.
     Rules::Session other;
     other.begin(shiny.working, Rules::SessionMode::Edit);

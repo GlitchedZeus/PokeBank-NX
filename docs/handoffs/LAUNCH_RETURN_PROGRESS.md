@@ -124,6 +124,44 @@ Host tests cover all four decisions. Only the device can prove the emulator actu
 
 So the launch dialog shows the core notice, replace the two `gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(...))` calls (`openLaunchDecision` and `currentLaunchQuitNotice`) with `gameLaunchDialogNotice(...)`. Its quit-route text is identical when there is no notice.
 
+## Round 4 (2026-10-20): Save / Backup browser (R2-EMUBACKUP, C07, S05)
+
+**Base:** #307 `c2287f50`. Owner results are in `docs/hardware/ROUND3_RESULTS_62a2f8c3.md`.
+
+**Owner finding (screenshot 1):** Pokémon Black's "+ → Backups" showed only "Original DraStic save — READ ONLY" and "Staged edits — IN EDITOR", with no usable action. The list was built only from export records, and export (B08) has not produced any yet.
+
+**Repair (emulator saves: RetroArch, DraStic and melonDS):**
+
+| Owner flow | Now |
+|---|---|
+| Pick a game | Home card → + → Backups. One section per exact assigned or validated save. |
+| List saves and existing backups | The original save, then this save's backups (deliberate copies and export records), newest first, matched by exact `SOURCE_PATH`. |
+| Browse the current save | A on the original save runs the normal read-only open (`selectCurrentTitle`). It never makes a backup. |
+| Deliberately create a backup | A on "Create backup now" (`SourceBackups::createBackup`) copies the save byte for byte into `backups/emulator-saves/<game>/<timestamp>/save<ext>`. It reads the copy back and compares, then writes `BACKUP_MANIFEST.txt` last. This is the only place an emulator backup is made. |
+| Delete a backup | Y opens the confirmation. Only an explicit Y deletes that one backup. It is refused for foreign files or a forged path, and the last remaining copy is kept when the emulator file is gone. |
+| Never write the emulator's save | The source is only ever opened `"rb"`. Tests check that it stays byte- and mtime-identical. |
+
+**Tests:**
+- `test_emulator_backup_access`: create, list and delete for RetroArch `.srm`, DraStic `.dsv` and melonDS `.sav`; nothing is made on list or open; same-second backups get distinct records; other saves are excluded; foreign, forged and last-copy cases are refused; refusals create nothing.
+- `test_emulator_backup_layout`: Create, Browse and Details actions; all copy fits the BackupMenu rows and toast.
+- `test_game_hub_contract`: create-only-on-action and browse-is-read-only.
+
+**Installed Switch titles (SwSh/BDSP/LA/SV): no automatic backup on open (coordinator-confirmed).**
+- `handleDefaultQuickOpen`, `handleItemsQuickOpen` and the Backups "Browse current save" row now call `openWorkingCopy`. It reads the installed save into the single reusable "Working" copy through `WorkingCopyRefresh::refresh`.
+- If an earlier Working copy is byte-identical to the fresh one, it is deleted and no backup appears. If it differs, it holds PKSE edits, so it is kept as a dated backup folder and never discarded. If the fresh copy fails, the earlier one is put back.
+- A timestamped backup is made only by Save Backups → "Create backup now" (`backupSaveData(..., true)`, called exactly once in `UI.cpp`). Delete stays X, then Y confirmation.
+- The Settings **Auto-Backup** toggle is retired, in both the Product Home settings and the in-editor settings panel, along with the `g_autoBackupEnabled` global. A toggle that did nothing would mislead. An old `autoBackup=` line in `settings.cfg` is read and ignored, and no longer written.
+- Tests: `test_emulator_backup_access` `workingCopyRefresh` (fresh / unchanged dropped / edits preserved / failure restores); `test_game_hub_contract` pins the open paths, the single create call and the retired setting.
+
+**Device checks for round 4 (add to the checklist):**
+- **R4-1:** Black (DraStic): + → Backups shows "Create backup now", the original DraStic save and the staged-edits note.
+- **R4-2:** A on "Create backup now": a "Backup created" notice; a new "Backup · <date>" row is focused; the `.dsv` on the SD card is unchanged (SHA-256 before and after).
+- **R4-3:** Y on that backup, then Y: deleted. Y, then A or B: kept.
+- **R4-4:** A on the original save opens the game read-only. Back in Backups, no new backup appeared.
+- **R4-5:** Repeat with a RetroArch Gen I–III save and a melonDS save.
+- **R4-6:** Switch title (e.g. SwSh): open, close, open again. No new dated backup appears in Save Backups. "Create backup now" adds exactly one.
+- **R4-7:** Settings (Product Home → System, and the in-editor panel) shows no Auto-Backup row. The other toggles still work by controller and touch.
+
 ## Opt-in for the device test
 
 The default remains the hardware-accepted direct handoff. To test the return host, create an empty file:

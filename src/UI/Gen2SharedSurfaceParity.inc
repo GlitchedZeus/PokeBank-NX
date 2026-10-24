@@ -318,6 +318,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             legacy.active = true;
             legacy.review = false;
             legacy.pokemonActions = true;
+            legacy.pokemonParty = false;
             legacy.pokemonFields = false;
             legacy.pokemonBox = box;
             legacy.pokemonSlot = slot;
@@ -336,6 +337,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         legacy.active = true;
         legacy.review = false;
         legacy.pokemonActions = true;
+        legacy.pokemonParty = false;
         legacy.pokemonFields = false;
         legacy.pokemonBox = box;
         legacy.pokemonSlot = slot;

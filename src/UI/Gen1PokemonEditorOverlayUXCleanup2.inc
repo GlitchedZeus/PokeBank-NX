@@ -1,4 +1,3 @@
-#include "UI/Gen1OriginLegality.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
@@ -35,6 +34,7 @@ struct UX2State {
     UX2Mode mode = UX2Mode::Closed;
     int box = 0;
     int slot = 0;
+    bool party = false;
     int row = 0;
     int subRow = 0;
     int reviewRow = 0;
@@ -59,7 +59,7 @@ struct UX2State {
     uint8_t tempMove = 0;
     uint8_t tempPP = 0;
     uint8_t tempPPUps = 0;
-    std::array<uint8_t,4> tempDVs{8,8,8,8};
+    std::array<uint8_t,4> tempDVs{};
     std::array<uint16_t,5> tempStatExperience{};
 
     int cloneBox = 0;
@@ -89,6 +89,11 @@ void ux2ResetTouchMotion(UX2State& state) noexcept {
 
 std::optional<PokemonRecord> ux2SelectedPokemon(TrainerViewScreen& screen, std::string& error) {
     const auto& state = ux2StateFor(screen);
+    if(state.party) {
+        auto* staged=editor(screen);
+        if(!staged) {error="Native Party editor unavailable";return {};}
+        return staged->partyPokemon(static_cast<size_t>(state.slot),error);
+    }
     return pokemonAt(screen, state.box, state.slot, error);
 }
 
@@ -153,6 +158,7 @@ void ux2OpenActions(TrainerViewScreen& screen) {
     ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Actions;
     state.box = box;
+    state.party = false;
     state.slot = slot;
     state.row = 0;
     state.picker = UX2Picker::None;
@@ -183,7 +189,9 @@ bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const 
     auto* e = editor(screen);
     if (!e) return false;
     std::string error;
-    if (!e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error)) {
+    const bool kept=state.party?e->stagePartyPokemonEdit(static_cast<size_t>(state.slot),edit,error):
+        e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error);
+    if (!kept) {
         screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 300);
         return false;
     }
@@ -747,7 +755,11 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return; }
+        if (down & HidNpadButton_B) {
+            state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
+            state.row = 0;
+            return;
+        }
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
@@ -845,7 +857,7 @@ std::string ux2MainRowValue(TrainerViewScreen& screen, int row, bool add, const 
     auto* e = editor(screen);
     if (!e) return {};
     const auto& d = state.draft;
-    if (row == 0) return speciesCompact(add ? d.species : p->species);
+    if (row == 0) return speciesHeading(add ? d.species : p->species);
     if (row == 1) return add ? (d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname) : p->nickname;
     if (row == 2) return add ? ("Lv " + std::to_string(d.level) + "  •  EXP " + std::to_string(draftExperience(d)))
                               : ("Lv " + std::to_string(p->level) + "  •  EXP " + std::to_string(p->experience));
@@ -1108,24 +1120,25 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawText(x + 28, y + h - 42, "Last export: " + state.lastExportDirectory, Colors::TextDim, TextStyle::Caption);
 }
 
-// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel), drawn over this
-// modal's frame. A Gen I record stores no origin game, met location, level or date and has no
-// per-record checksum; the one guardrail is the exact-game move compatibility check. No verdict.
-PokeBank::UIModel::OriginLegality::Report gen1LegalityReport(TrainerViewScreen& screen, const PokemonRecord& p) {
-    return PokeBank::UIModel::Gen1OriginLegality::report(screen.sourceGameId, p);
-}
-
 void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    (void)x; (void)y; (void)w; (void)h;
-    std::string error;
-    const auto pokemon = ux2SelectedPokemon(screen, error);
-    if (!pokemon) {
-        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, error.empty() ? "Empty slot" : error,
-            PokeBank::UIModel::Gen1OriginLegality::emptyReport(screen.sourceGameId));
-        return;
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=ux2SelectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
-                                    gen1LegalityReport(screen, *pokemon));
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void ux2DrawRemoveConfirm(PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -1212,6 +1225,7 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
     state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    state.party = false;
     state.row = 0;
     state.picker = UX2Picker::None;
     std::string error;

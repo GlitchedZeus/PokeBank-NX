@@ -6,6 +6,7 @@
 #include "Integration/Gen5/Gen5CreateInputRules.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Integration/Gen5/Gen5ReviewRows.h"
+#include "UI/SharedReviewPresentation.h"
 #include "Pokemon/SpeciesMoveDefaults.h"
 
 #include <algorithm>
@@ -64,7 +65,7 @@ public:
             workspace.emptyCloneDestination(cloneDestinationIndex_/30,
                                             cloneDestinationIndex_%30);
     }
-    static constexpr size_t kReviewPageSize = 4;
+    static constexpr size_t kReviewPageSize = PokeBank::UIModel::SharedReview::kPageSize;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
     [[nodiscard]] bool isEditing() const noexcept { return surface_==Surface::Edit; }
 
@@ -393,7 +394,7 @@ public:
         r.nickname=std::string(nickname);
         r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
                      kSharedCreateBall,date.year,date.month,date.day};
-        r.ivs={15,15,15,15,15,15};
+        r.ivs={};
         r.evs={};
         r.moves[0]={kSharedCreateMove,0,std::nullopt};
         if(const auto checked=validateCreate5(r);!checked) {
@@ -581,13 +582,10 @@ public:
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
     }
-    void moveReviewPage(int delta,const Workspace& workspace) {
+    void moveReviewPage(int delta,const Workspace& workspace,size_t presentationRows=0) {
         if(surface_!=Surface::Review)return;
-        const size_t records=reviewRowCount(workspace);
-        const size_t pages=std::max(size_t{1},
-            (records+kReviewPageSize-1)/kReviewPageSize);
-        if(delta>0 && reviewPage_+1<pages)++reviewPage_;
-        else if(delta<0 && reviewPage_>0)--reviewPage_;
+        reviewPage_=PokeBank::UIModel::SharedReview::move(reviewPage_,delta,
+            presentationRows?presentationRows:reviewRowCount(workspace));
     }
 
     // Review lists staged PK5 records (a staged Move as ONE row, Gen5ReviewRows.h), then

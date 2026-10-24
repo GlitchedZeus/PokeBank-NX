@@ -1,0 +1,56 @@
+HOST_TESTS += $(HOST_BUILD)/test_classic_staged_exit
+HOST_TESTS += $(HOST_BUILD)/test_classic_party_actions
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_party_actions_sanitize
+host-test: $(HOST_BUILD)/test_classic_party_actions
+host-sanitize: $(HOST_BUILD)/test_classic_party_actions_sanitize
+$(HOST_BUILD)/test_classic_party_actions: tests/test_classic_party_actions.cpp src/UI/ClassicPartyActions.inc $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_party_actions.cpp $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp -o $@
+$(HOST_BUILD)/test_classic_party_actions_sanitize: tests/test_classic_party_actions.cpp src/UI/ClassicPartyActions.inc $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_party_actions.cpp $(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES) src/Names/ItemNames.cpp -o $@
+HOST_TESTS += $(HOST_BUILD)/test_gen2_party_edit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_party_edit_sanitize
+host-test: $(HOST_BUILD)/test_gen2_party_edit
+host-sanitize: $(HOST_BUILD)/test_gen2_party_edit_sanitize
+$(HOST_BUILD)/test_gen2_party_edit: tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) -o $@
+$(HOST_BUILD)/test_gen2_party_edit_sanitize: tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen2_party_edit.cpp $(GEN2_STAGED_EDITOR_COMMON) -o $@
+HOST_TESTS += $(HOST_BUILD)/test_gen45_encounter_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen45_encounter_context_sanitize
+host-test: $(HOST_BUILD)/test_gen45_encounter_context
+host-sanitize: $(HOST_BUILD)/test_gen45_encounter_context_sanitize
+$(HOST_BUILD)/test_gen45_encounter_context: tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp -o $@
+$(HOST_BUILD)/test_gen45_encounter_context_sanitize: tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen45_encounter_context.cpp src/Names/LocationNames.cpp -o $@
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_staged_exit_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_nature_stat_effect
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_nature_stat_effect_sanitize
+host-test: $(HOST_BUILD)/test_nature_stat_effect
+host-sanitize: $(HOST_BUILD)/test_nature_stat_effect_sanitize
+$(HOST_BUILD)/test_nature_stat_effect: tests/test_nature_stat_effect.cpp include/UI/NatureStatEffect.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_nature_stat_effect_sanitize: tests/test_nature_stat_effect.cpp include/UI/NatureStatEffect.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+.PHONY: round4-contract-mutations
+qa-tools-test: round4-contract-mutations
+round4-contract-mutations:
+	python3 tests/test_gen45_encounter_generator.py
+	python3 tests/test_round4_backup_contract_mutations.py
+	python3 tests/test_round4_shared_contract_mutations.py
+host-test: $(HOST_BUILD)/test_classic_staged_exit
+host-sanitize: $(HOST_BUILD)/test_classic_staged_exit_sanitize
+$(HOST_BUILD)/test_classic_staged_exit: tests/test_classic_staged_exit.cpp include/UI/ClassicStagedExit.h include/UI/ClassicTrainerSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_classic_staged_exit_sanitize: tests/test_classic_staged_exit.cpp include/UI/ClassicStagedExit.h include/UI/ClassicTrainerSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

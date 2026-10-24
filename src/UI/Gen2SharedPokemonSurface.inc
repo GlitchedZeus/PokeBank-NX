@@ -73,7 +73,7 @@ SharedEditor::ActionCapabilities gen2ActionCapabilities() noexcept {
     SharedEditor::ActionCapabilities caps;
     caps.canClone = true;
     caps.canRemove = false; // Gen2 StagedEditor has no proven remove/compaction adapter yet.
-    // This is an informational shell: encounter legality remains explicitly "Not checked".
+    // This is an informational shell: encounter legality remains explicitly PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked).
     caps.hasLegalityProvenance = true;
     return caps;
 }
@@ -150,6 +150,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             if (!pokemon) return true;
             state.box = legacy.pokemonBox;
             state.slot = legacy.pokemonSlot;
+            state.party = legacy.pokemonParty;
             state.begin(*pokemon, Mode::View);
             screen.controllerNavigation.reset();
             return true;
@@ -326,58 +327,31 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
-// E03: the ONE shared Origin & Legality panel (SharedEditorChrome::drawOriginLegalityPanel). Gen II records carry
-// no per-record checksum, so structure is "Not checked"; Crystal alone stores caught data (time,
-// level, landmark -- pret pokecrystal SetCaughtData / PKHeX PK2), Gold and Silver store none. The
-// one guardrail is the exact-game move compatibility check. No verdict.
-PokeBank::UIModel::OriginLegality::Report gen2LegalityReport(const TrainerViewScreen& screen,
-                                                             const PokeVault::Integration::Gen2::PokemonRecord& p) {
-    namespace OL = PokeBank::UIModel::OriginLegality;
-    OL::Report report;
-    report.exactGame = std::string("Pok\xC3\xA9mon ") + sharedGameName(screen);
-    report.format = "Gen II record";
-    report.structure = OL::Structure::NotChecked;
-    report.originGame = OL::notStored();
-    if (screen.sourceGameId == "crystal_gbc") {
-        const auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
-        report.metLocation = caught.present ? OL::value(Gen2Native::crystalCaughtLocationName(caught.location))
-                                            : OL::value("None recorded");
-        report.metLevel = OL::value(Gen2Native::crystalCaughtLevelText(caught));
-        report.metDate = OL::value(std::string("Time of day: ") + Gen2Native::crystalMetTimeName(caught.timeOfDay));
-    } else {
-        report.metLocation = OL::notStored();
-        report.metLevel = OL::notStored();
-        report.metDate = OL::notStored();
-    }
-    const auto game = PokeBank::UIModel::Gen2PokemonEditor::exactGameFromSourceId(screen.sourceGameId);
-    for (const uint8_t move : p.moves) {
-        if (move == 0) {
-            report.moves.push_back({"Empty", "Empty", OL::Tone::Dim});
-            continue;
-        }
-        const bool ok = game && PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(*game, p.species, move);
-        report.moves.push_back({std::string(Names::getMoveName(move)), ok ? "OK" : "Unusual (preserved)",
-                                ok ? OL::Tone::Good : OL::Tone::Caution});
-    }
-    return report;
-}
-
 void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const auto& legacy = editorOverlayState(screen);
-    std::string error;
-    const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
-                                               static_cast<std::size_t>(legacy.pokemonSlot), error);
-    if (!pokemon) {
-        PokeBank::UIModel::OriginLegality::Report missing;
-        missing.exactGame = std::string("Pok\xC3\xA9mon ") + sharedGameName(screen);
-        missing.format = "Gen II record";
-        SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, "Empty slot", missing);
-        return;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* editor=stagedEditor(screen);if(!editor)return;
+    const auto& legacy=editorOverlayState(screen);std::string error;
+    const auto p=legacy.pokemonParty?editor->partyPokemon(static_cast<size_t>(legacy.pokemonSlot),error):
+        editor->boxedPokemon(static_cast<size_t>(legacy.pokemonBox),static_cast<size_t>(legacy.pokemonSlot),error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",sharedGameName(screen)},
+        {"Location",legacy.pokemonParty?"Party "+std::to_string(legacy.pokemonSlot+1):
+            "Box "+std::to_string(legacy.pokemonBox+1)+" / Slot "+std::to_string(legacy.pokemonSlot+1)},
+        {"Native format","PK2; save checksums verified on export"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        if(screen.sourceGameId=="crystal_gbc") {
+            const auto caught=Gen2Native::decodeCrystalCaughtData(p->caughtData);
+            rows.push_back({"Met level",Gen2Native::crystalCaughtLevelText(caught)});
+            rows.push_back({"Met location",Gen2Native::crystalCaughtLocationName(caught.location)});
+        }
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    SharedEditorChrome::drawOriginLegalityPanel(fb, screen.touchButtons, Names::getSpeciesName(pokemon->species),
-                                    gen2LegalityReport(screen, *pokemon));
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -479,7 +453,7 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
     }
 
     const std::array<std::pair<std::string, std::string>, 5> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level / EXP", "Lv " + std::to_string(p.level) + " / " + std::to_string(p.experience)},
         {"OT", p.originalTrainer},
@@ -598,7 +572,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
-        drawNavBar(fb, {{"B", "Back"}});  // NEW-02: tap-to-go-back still works; no "Touch: Back" text
+        drawNavBar(fb, {{"B", "Back"}});
     } else if (create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});

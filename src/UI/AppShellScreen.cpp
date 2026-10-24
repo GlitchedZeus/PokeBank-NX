@@ -110,7 +110,7 @@ namespace {
     int settingsOptionCount(int category) {
         switch (category) {
             case 0: return 1;
-            case 1: return 3;
+            case 1: return 2;
             case 2: return 2;
             case 3: return 2;
             case 4: return 2;
@@ -133,8 +133,6 @@ namespace {
                          "Change the visual theme used throughout PokeBank NX.", true}};
             case 1:
                 return {
-                    {"Auto-Backup", g_autoBackupEnabled ? "On" : "Off",
-                     "Create or reuse the established working backup before supported edits.", true},
                     {"Move Compatibility Warnings", g_moveWarn ? "On" : "Off",
                      "Warn when a move is unusual for the selected generation or species.", true},
                     {"Allow Illegal Values", g_allowIllegalEdits ? "On" : "Off",
@@ -239,17 +237,11 @@ void AppShellScreen::activateSetting() {
         changed = true;
     } else if (settingsCategory == 1) {
         if (settingsIndex == 0) {
-            g_autoBackupEnabled = !g_autoBackupEnabled;
-            setStatus(g_autoBackupEnabled
-                ? "Auto-backup enabled for supported installed-title workflows."
-                : "Auto-backup disabled; supported workflows reuse their working copy.");
-            changed = true;
-        } else if (settingsIndex == 1) {
             g_moveWarn = !g_moveWarn;
             setStatus(g_moveWarn ? "Move compatibility warnings enabled."
                                  : "Move compatibility warnings disabled.");
             changed = true;
-        } else if (settingsIndex == 2) {
+        } else if (settingsIndex == 1) {
             g_allowIllegalEdits = !g_allowIllegalEdits;
             setStatus(g_allowIllegalEdits
                 ? "Illegal-value editing enabled for fields that explicitly support it."
@@ -673,7 +665,6 @@ void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
     line("Version", VERSION_STRING, Colors::TextPrimary);
     line("Build", BUILD_COMMIT, Colors::TextPrimary);
     line("Theme", std::string(themeModeName(g_themeMode)), Colors::TextPrimary);
-    line("Auto-backup", g_autoBackupEnabled ? "On" : "Off", Colors::TextPrimary);
     line("Debug logging", g_debugLogging ? "On" : "Off", Colors::TextPrimary);
     line("External source writes", "LOCKED", Colors::Info);
     line("Verified exports", PokeBank::Paths::exportsRoot() + "/gen1 ... gen4", Colors::TextPrimary);

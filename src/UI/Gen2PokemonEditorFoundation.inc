@@ -59,6 +59,7 @@ struct State : Rules::Session {
     bool itemPicker = false;
     int box = 0;
     int slot = 0;
+    bool party = false;
     Foundation::Panel panel = Foundation::Panel::Identity;
     int row = 0;
     int column = 0;
@@ -180,7 +181,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     p.friendship = 70;
     p.pokerus = 0;
     p.caughtData = 0;
-    applyEditableDVs(p, {8, 8, 8, 8});
+    applyEditableDVs(p, {0, 0, 0, 0});
     p.experience = minimumExpFor(p);
     return p;
 }
@@ -193,6 +194,7 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.confirmExit = false;
     state.itemPicker = false;
     state.box = box;
+    state.party = false;
     state.slot = -1;
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
@@ -206,11 +208,12 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     return true;
 }
 
-bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
+bool beginEdit(TrainerViewScreen& screen, int box, int slot, bool party=false) {
     auto* editor = stagedEditor(screen);
     if (!editor) return false;
     std::string error;
-    auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error);
+    auto pokemon = party?editor->partyPokemon(static_cast<size_t>(slot),error):
+        editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error);
     if (!pokemon) {
         screen.postStatus(error.empty() ? "Selected Gen II slot is empty" : error, 300);
         return false;
@@ -221,6 +224,7 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.itemPicker = false;
     state.box = box;
     state.slot = slot;
+    state.party = party;
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
     state.column = 0;
@@ -244,6 +248,9 @@ void closeToActions(TrainerViewScreen& screen) {
     legacy.active = true;
     legacy.review = false;
     legacy.pokemonActions = true;
+    legacy.pokemonParty = state.party;
+    legacy.pokemonSlot = state.slot;
+    legacy.pokemonBox = state.box;
     legacy.pokemonFields = false;
     legacy.pokemonRow = 0;
     screen.controllerNavigation.reset();
@@ -333,7 +340,7 @@ bool stageEdit(TrainerViewScreen& screen) {
 
     std::string error;
     if (!state.keep(*editor, static_cast<std::size_t>(state.box),
-                                     static_cast<std::size_t>(state.slot), error)) {
+                                     static_cast<std::size_t>(state.slot), error,state.party)) {
         screen.postStatus(error.empty() ? "Gen II staged edit was rejected" : error, 300);
         return false;
     }
@@ -803,7 +810,7 @@ void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, 
                 TextStyle::Heading);
     const auto& p = state.working;
     const std::array<std::pair<std::string, std::string>, 8> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"EXP", std::to_string(p.experience)},
@@ -1045,8 +1052,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // Shared source-game context line (Gen III-V shape): Box / Slot • <Game> • Source save immutable • mode.
     // A Create draft has no slot until it is added (the staged box assigns the next one).
     namespace GameContext = PokeBank::UIModel::ClassicGameContext;
-    std::string record = "Box " + std::to_string(state.box + 1);
-    if (state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
+    std::string record = state.party?"Party "+std::to_string(state.slot+1):"Box " + std::to_string(state.box + 1);
+    if (!state.party && state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
     fb.drawText(workspaceX + 24, workspaceY + 50,
                 GameContext::contextLine(record, screen.sourceGameId,
                                          state.mode == Mode::Create ? GameContext::SurfaceMode::CreateDraft
