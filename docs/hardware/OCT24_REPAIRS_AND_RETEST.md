@@ -2,7 +2,21 @@ October 24 repair session — detailed engineering record
 
 Starting application SHA: `92f956120019673733bd8d65cd65ab33c46cc237`.
 Validated production checkpoint: `52053c3b38904aac6cbaa4abe05b888fca731405`. Integration and official artifact identities are recorded below after completion.
-Implementation and host validation record; exact candidate binding is added only after the official build succeeds.
+Implementation and host validation record. The official candidate identity below was recorded only after the build succeeded and its exact downloaded bytes passed local audit.
+
+
+Official October 24 hardware candidate (one selected deliverable):
+
+- Application code: `8804f8f819a0da34c5d7b983a92bfb3a390eff16`.
+- Source tree: `66c321b13ce734239271ff0b9e924ca43cdaf92f`.
+- Filename: `PokeBank-NX-Gen1-5-Candidate-8804f8f8.nro`.
+- SHA-256: `5bbc090e186b624dcad8a9fcbc6c87a087254b6e737d157c3616309878536085`.
+- Size: 176783025 bytes.
+- [Official build 40099575742](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742) PASS.
+- [Download the selected official artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742/artifacts/12562103597).
+- Local exact-file audit PASS: single NRO, GitHub run/artifact records, BUILD_IDENTITY/SHA256SUMS, embedded `8804f8f8`, NACP, source tree and bytes agree. Packaged RomFS PASS: 4,267 files,156.6 MiB, content digest `bc09c152ac4232a2`.
+- `docs/qa/CANDIDATE_UNDER_AUDIT.env` is bound in a docs-only commit after the test-only polish guard correction. No application file changed after the selected code SHA. Independent QA-F9 and final-head workflow results must be checked at [PR307 checks](https://github.com/GlitchedZeus/PokeBank-NX/pull/307/checks) before delivery.
+- **NOT DEVICE TESTED**. The build and audit do not change the historical hardware result mapping.
 
 Original hardware evidence remains 27 PASS / 6 FAIL / 4 unmarked. No new code or host result is a hardware PASS. S06 NOT TESTED.
 
@@ -50,6 +64,7 @@ Validation commands (all run from the repository, with separate fresh compiler b
 | `python3 tests/test_ci_repository_safety_contract.py` | PASS |
 | `python3 tests/test_touch_appwide_surface_contract.py` and `python3 tests/test_touch_pokemon_editor_direct_rows_contract.py` | PASS |
 | `python3 tests/test_verify_nro_romfs.py`, `python3 tests/test_device_asset_png_validation.py`, asset regression/known-failure controls | PASS |
+| `python3 tests/test_v1_polish_contract.py` and the GCC CI pre-build recovery/species/font/authority checks | PASS; footer guard follows Y-only deletion and shared Open/Back controls |
 | `git diff --check` | PASS |
 | Native devkitA64 compile/link/packaged RomFS, workflow run 40075492367 at production checkpoint52053c3b | PASS |
 
@@ -125,7 +140,7 @@ Production and build/data-tool files changed (63, automatically enumerated again
 - `src/UI/UI.cpp`
 - `tools/gen_gen5_move_compatibility.py`
 
-Regression test/support files added or repaired (34):
+Regression test/support files added or repaired (35):
 
 - `tests/test_ability_effects.cpp`
 - `tests/test_backup_namespace_contract.cpp`
@@ -161,6 +176,7 @@ Regression test/support files added or repaired (34):
 - `tests/test_source_mutation_policy.cpp`
 - `tests/test_touch_appwide_surface_contract.py`
 - `tests/test_touch_pokemon_editor_direct_rows_contract.py`
+- `tests/test_v1_polish_contract.py`
 
 October 24 candidate — Switch retest checklist
 

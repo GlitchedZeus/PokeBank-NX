@@ -6,6 +6,49 @@
 
 Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
 
+## October 24 exact candidate binding — final CI required
+
+- Application code `8804f8f819a0da34c5d7b983a92bfb3a390eff16`, tree
+  `66c321b13ce734239271ff0b9e924ca43cdaf92f`. Official build40099575742 PASS.
+- Selected artifact12562103597 / `PokeBank-NX-Gen1-5-Candidate-8804f8f8.nro`:
+  176783025bytes, SHA256 `5bbc090e186b624dcad8a9fcbc6c87a087254b6e737d157c3616309878536085`.
+  Downloaded original artifact, validated GitHub run/path/head/success/artifact records,
+  single NRO, BUILD_IDENTITY, SHA256SUMS, embedded commit and exact source tree.
+  Local NRO AUDIT:PASS. RomFS PASS4267files/156.6MiB/digestbc09c152ac4232a2.
+- Last remote WIP `f3bbd43f4cbcc57a64b181e813e1163b6c312af9` is ONLY tests/docs
+  after the candidate. It corrects the stale X Delete polish assertion without
+  weakening protections. This new commit is DOCS ONLY and binds all8 exact fields
+  in CANDIDATE_UNDER_AUDIT.env. Application code is unchanged after8804f8f8.
+- Push this binding forward to307/WIP after checking both remote heads. Require
+  independent QA-F9 NRO AUDIT:PASS and ALL final-head CI green before reporting
+  Integrated or delivering. Select ONLY the bound8804f8f8artifact; automatic later
+  builds are CI outputs, not an additional hardware candidate.
+- Full local GCC/Clang suites202 normal+202 sanitizer each, both489-cell QA matrices,
+  owner/candidate/touch/assets/safety and native smoke all PASS. Additional local
+  qa-tools and GitHub gates are finishing; see project outputs/oct24-repairs.
+- Exact file list/checklist mapping/limits/retest: docs/hardware/OCT24_REPAIRS_AND_RETEST.md.
+  NOT DEVICE TESTED. Historical27PASS/6FAIL/4unmarked; S06 NOT TESTED. PR314/main untouched.
+
+## October 24 official build and CI source-guard checkpoint
+
+- Verified BOTH application307 and WIP remotes at `8804f8f819a0da34c5d7b983a92bfb3a390eff16`;
+  tree `66c321b13ce734239271ff0b9e924ca43cdaf92f`. Existing draft/base preserved.
+- Official integrated build [40099575742](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40099575742)
+  is compiling this exact code. Select ONLY its8804f8f8artifact after success; smoke artifacts
+  are not deliverables. Independent audit still has the old historical binding and correctly
+  rejects it until the replacement is built and verified.
+- GCC CI found an additional stale polish assertion BEFORE its build: expected X Delete
+  footer from the older browser. Source already uses the owner's Y-delete policy. Guard now
+  requires the shared current-source footer, colored owned Open/Y Delete/Back, unknown-owner
+  Open/Back with no Delete, red Y-only decision and covered-footer touch blocking. All other
+  polish assertions retained. This test and recovery/species/font/authority pre-build checks PASS.
+- This checkpoint changes tests/docs ONLY; application8804f8f8remains the candidate identity.
+  Hold application push until the official build succeeds; then verify bytes/RomFS and add
+  the required docs-only binding commit. Final CI must rerun and pass on that binding head.
+- Full qa-tools gate is running locally as additional CI parity verification. All202 normal
+  and202 sanitizer tests for EACH compiler and both489-cell matrices already PASS.
+- NOT DEVICE TESTED; historical27/6/4 unchanged; S06 NOT TESTED. PR314/main untouched.
+
 ## October 24 completed repair gate — forwarding to PR307
 
 - Final production WIP is remote-verified `52053c3b38904aac6cbaa4abe05b888fca731405`.
@@ -633,6 +676,13 @@ Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
   encounter-backed IV/V location context; older Trainer summary; Review parity; missed
   older picker paths reported by CG40/41/42/44/45/46; complete gates then #307 integration,
   one final candidate and exact-binary QA-F9. S06 stays NOT TESTED.
+
+## 0. CURRENT BRANCH OWNER (read first)
+
+**2026-10-24 23:25 UTC: the owner chose Claude (coordinator session `session_01AnyHUH96AxxgM3qguezsET`) to own #307.**
+- Codex: do **not** push to `claude/gen5-integration-20261014` until the owner hands it back.
+- Codex's last commit is `7d661fa3` (Oct 24 candidate `8804f8f8`, NRO sha256 `5bbc090e…6085`, NOT DEVICE TESTED). It is kept as-is and is the base for round 5.
+- Round 5 lanes branch from `7d661fa3`. They verify Codex's Oct 24 repairs against `docs/hardware/OCT24_REPAIRS_AND_RETEST.md` and the owner's Oct 24 findings, and fix only real gaps.
 
 ## 1. Where to start
 
