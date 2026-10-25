@@ -33,7 +33,7 @@ SCREENS = {
         ["src/UI/BackupSelectionScreen.cpp"],
         ["src/UI/BackupSelectionScreen.cpp"]),
     "Game Browser Party / Boxes / Trainer / Bag (Gen I-IV)": (
-        ["src/UI/TrainerViewScreenBase.inc", "src/UI/ClassicPartyActions.inc",
+        ["src/UI/TrainerViewScreenBase.inc", "include/UI/ClassicBrowseFooter.h", "src/UI/ClassicPartyActions.inc",
          "src/UI/ClassicPackedMoveOverlay.inc", "src/UI/ClassicReleaseActionFix.inc"],
         ["src/UI/TrainerViewScreenBase.inc", "src/UI/ClassicPartyActions.inc",
          "src/UI/ClassicPackedMoveOverlay.inc", "src/UI/ClassicReleaseActionFix.inc",
@@ -88,7 +88,7 @@ def requirements(key: str):
 
 
 PAIR = re.compile(r'\{\s*"([^"]{1,16})"\s*,\s*"([^"]*)"\s*\}')
-PUSH = re.compile(r'\.push\(\s*"([^"]{1,16})"\s*,\s*"([^"]*)"\s*\)')
+PUSH = re.compile(r'\.push(?:_back)?\(\s*\{?\s*"([^"]{1,16})"\s*,\s*"([^"]*)"\s*\}?\s*\)')
 STRING_FOOTER = re.compile(r'"((?:(?:Arrows|D-pad|D-Pad|Up/Down|Left/Right|[ABXYLR]|ZL|ZR|L/R|ZL/ZR|\+|-)'
                            r':\s*[^"|]*(?:\s*\|\s*)?){2,})"')
 
@@ -142,6 +142,7 @@ def string_pairs(s: str):
 # their footer keys are checked against those layers. Every other footer file must handle its own
 # keys (strict per file), and every footer file must also be covered by its screen's handlers.
 PRESENTATION_LAYERS = {
+    "include/UI/ClassicBrowseFooter.h": ["src/UI/TrainerViewScreenBase.inc"],
     "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc": [
         "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen1PokemonEditorOverlayFoundation.inc"],
     "src/UI/Gen2HardwareFinalFix.inc": [

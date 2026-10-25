@@ -42,3 +42,16 @@ $(HOST_BUILD)/test_gen2_unown_letter_selector_sanitize: tests/test_gen2_unown_le
 qa-tools-test: round6-footer-help-contract
 round6-footer-help-contract:
 	python3 tests/test_footer_help_handlers.py
+
+# Round 6 E05: Gen I-IV browse footer order (one model, Review slot off by default).
+R6R_FOOTER := $(HOST_BUILD)/test_classic_browse_footer
+HOST_TESTS += $(R6R_FOOTER)
+HOST_SANITIZE_TESTS += $(R6R_FOOTER)_sanitize
+host-test: $(R6R_FOOTER)
+host-sanitize: $(R6R_FOOTER)_sanitize
+$(R6R_FOOTER): tests/test_classic_browse_footer.cpp include/UI/ClassicBrowseFooter.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_browse_footer.cpp -o $@
+$(R6R_FOOTER)_sanitize: tests/test_classic_browse_footer.cpp include/UI/ClassicBrowseFooter.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_browse_footer.cpp -o $@
