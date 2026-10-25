@@ -88,6 +88,27 @@ public:
     bool stageTrainerEdit(std::string_view name, uint32_t money, std::string& error);
     bool stageTrainerName(std::string_view name, std::string& error);
     bool stageMoney(uint32_t money, std::string& error);
+
+    // P3 (Round 5): Play Time (Gold / Silver / Crystal) and Crystal Trainer Gender, staged in this
+    // image. Offsets are the ones Gen2ReadOnlySave already reads (PKHeX 6042efa241a9 SAV2Offsets):
+    // play time = big-endian u16 hours, then minutes and seconds bytes, at 0x2053 (international
+    // Gold / Silver) or 0x2052 (international Crystal), inside the checksummed main block (the
+    // checksum and backup mirror are repaired at finalize). Crystal gender = one byte at 0x3E3D,
+    // 0 male / 1 female. Gold / Silver have no gender byte. Hours are capped at 999 (the shared
+    // Gen III-V editor bound); the timer's other bytes are never touched.
+    struct PlayTime {
+        uint16_t hours = 0;
+        uint8_t minutes = 0;
+        uint8_t seconds = 0;
+        friend bool operator==(const PlayTime&, const PlayTime&) = default;
+    };
+    static constexpr uint16_t kMaxPlayedHours = 999;
+    PlayTime playTime() const noexcept;
+    bool playTimeEditable() const noexcept;
+    bool stagePlayTime(PlayTime time, std::string& error);
+    uint8_t trainerGender() const noexcept;
+    bool trainerGenderEditable() const noexcept;
+    bool stageTrainerGender(uint8_t gender, std::string& error);
     bool stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                            std::string& error);
 

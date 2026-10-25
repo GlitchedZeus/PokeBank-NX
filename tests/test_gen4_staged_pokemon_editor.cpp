@@ -1195,8 +1195,113 @@ void testTrainerNameMoneyRoundTrip() {
     fs::remove_all(root);
 }
 
+// P3 (Round 5): Trainer Gender (+0x18) and Play Time (+0x22 u16 hours, +0x24 minutes, +0x25
+// seconds; PKSM-Core Sav4) staged in the selected General block of every Gen IV game. Byte-exact:
+// only those bytes and the selected General CRC change; the other General copy and Storage are
+// identical; Review lists both; export -> strict reparse returns the values; Discard restores the
+// source image; the source buffer is never written. Out-of-range input and a non-native stored
+// gender byte are refused without changing anything.
+void testTrainerGenderPlayTimeRoundTrip() {
+    namespace fs = std::filesystem;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g4-trainer-p3-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    struct Case { Layout layout; uint8_t rom; const char* id; int newerGeneral; };
+    const Case cases[] = {
+        {Layout::DiamondPearl, 10, "diamond_nds", 0}, {Layout::DiamondPearl, 11, "pearl_nds", 1},
+        {Layout::Platinum, 12, "platinum_nds", 1},
+        {Layout::HeartGoldSoulSilver, 7, "heartgold_nds", 0},
+        {Layout::HeartGoldSoulSilver, 8, "soulsilver_nds", 1},
+    };
+    for (const auto& c : cases) {
+        auto source = makeSave(c.layout, c.rom, c.newerGeneral);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, c.layout, c.id, &error);
+        assert(editor && error.empty());
+        const auto before = editor->stagedTrainer(&error);
+        assert(before && before->gender == 1);   // the fixture's stored Female
+        assert(editor->trainerGenderEditable());
+
+        assert(!editor->stageTrainerGender(2, &error) && !error.empty());
+        assert(!editor->stageTrainerPlayTime(1000, 0, 0, &error));
+        assert(!editor->stageTrainerPlayTime(1, 60, 0, &error));
+        assert(!editor->stageTrainerPlayTime(1, 0, 60, &error));
+        assert(editor->stagedBytes() == original && !editor->hasChanges());
+
+        PokeVault::Integration::Gen4::Gen4StagedTrainerEditor trainer(*editor);
+        assert(trainer.genderEditable() && trainer.gender() == 1);
+        assert(trainer.stageGender(1, error) && !editor->hasChanges());   // unchanged: nothing staged
+        assert(trainer.stageGender(0, error) && trainer.gender() == 0);
+        assert(trainer.stagePlayTime({517, 42, 9, false}, error) && error.empty());
+        const auto time = trainer.playTime();
+        assert(time && time->hours == 517 && time->minutes == 42 && time->seconds == 9);
+
+        const auto sp = spec(c.layout);
+        const size_t general = static_cast<size_t>(c.newerGeneral) * PARTITION;
+        const size_t base = general + sp.trainer;
+        const size_t crc = general + sp.generalSize - 2;
+        const auto& staged = editor->stagedBytes();
+        assert(staged[base + 0x18] == 0);
+        assert(staged[base + 0x22] == (517 & 0xFF) && staged[base + 0x23] == (517 >> 8) &&
+               staged[base + 0x24] == 42 && staged[base + 0x25] == 9);
+        for (size_t i = 0; i < staged.size(); ++i) {
+            if (staged[i] == original[i]) continue;
+            const bool allowed = i == base + 0x18 || (i >= base + 0x22 && i < base + 0x26) ||
+                                 i == crc || i == crc + 1;
+            assert(allowed);
+        }
+        const size_t otherGeneral = static_cast<size_t>(1 - c.newerGeneral) * PARTITION;
+        assert(std::equal(staged.begin() + static_cast<std::ptrdiff_t>(otherGeneral),
+                          staged.begin() + static_cast<std::ptrdiff_t>(otherGeneral + sp.generalSize),
+                          original.begin() + static_cast<std::ptrdiff_t>(otherGeneral)));
+
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(std::find(lines.begin(), lines.end(), "Trainer gender: Female -> Male") != lines.end());
+        const std::string playLine = "Play time: " + PokeVault::Integration::Common::playTimeText(
+            PokeVault::Integration::Common::nativePlayTime(before->playedHours, before->playedMinutes,
+                                                           before->playedSeconds)) + " -> 517:42:09";
+        assert(std::find(lines.begin(), lines.end(), playLine) != lines.end());
+
+        PokeVault::Integration::Gen4::Gen4ExportRequest request;
+        request.rootDirectory = root.string();
+        request.directoryStem = std::string(c.id) + "_20261024-120000";
+        request.sourcePath = "sdmc:/retroarch/saves/fixture.sav";
+        request.timestamp = "20261024-120000";
+        auto exported = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+        assert(exported.success && exported.error.empty());
+        const auto edited = slurp(fs::path(exported.directory) / "edited.sav");
+        assert(edited == staged);
+        const auto reparsed = Gen4ReadOnlySave::parse(edited, c.layout, c.id, &error);
+        assert(reparsed && !reparsed->recovered());
+        assert(reparsed->trainer().gender == 0 && reparsed->trainer().playedHours == 517 &&
+               reparsed->trainer().playedMinutes == 42 && reparsed->trainer().playedSeconds == 9);
+        assert(reparsed->trainer().name == before->name && reparsed->trainer().money == before->money);
+        assert(slurp(fs::path(exported.directory) / "original_backup.sav") == original);
+        assert(source == original);
+
+        editor->discard();
+        assert(editor->stagedBytes() == original);
+    }
+
+    // A stored gender byte that is not a native 0 / 1 is never offered or rewritten.
+    auto odd = makeSave(Layout::Platinum, 12);
+    for (int partition = 0; partition < 2; ++partition) {
+        const size_t base = static_cast<size_t>(partition) * PARTITION;
+        odd[base + spec(Layout::Platinum).trainer + 0x18] = 7;
+        stamp(odd, base, spec(Layout::Platinum).generalSize, spec(Layout::Platinum).footerSize,
+              partition == 0 ? 20 : 10);
+    }
+    std::string error;
+    auto editor = Gen4StagedPokemonEditor::create(odd, Layout::Platinum, "platinum_nds", &error);
+    assert(editor && !editor->trainerGenderEditable());
+    assert(!editor->stageTrainerGender(0, &error) && editor->stagedBytes() == odd);
+    fs::remove_all(root);
+}
+
 int main() {
     testTrainerNameMoneyRoundTrip();
+    testTrainerGenderPlayTimeRoundTrip();
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
     testLayout(Layout::HeartGoldSoulSilver, 7, false);

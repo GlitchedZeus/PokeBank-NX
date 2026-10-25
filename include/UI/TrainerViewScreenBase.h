@@ -185,6 +185,11 @@ namespace UI {
         // -1 = nothing pending.
         int trainerSelectedRow = 0;
         int pendingTrainerEdit = -1;
+        // P3 (Round 5): a classic staged Trainer session (UI/ClassicTrainerSessionInput.h) mirrors
+        // which extra rows it can stage this frame: 2 Play Time, then Gender. The page draws them
+        // as editable rows instead of read-only info rows.
+        bool trainerPlayTimeEditable = false;
+        bool trainerGenderEditable = false;
         void editTrainerName();     // swkbd edit of the OT name (charset-validated, per-game length cap)
         void editTrainerMoney();    // numpad edit of money (clamped to the game's max)
         // After a name edit, re-stamp the trainer identity your Pokemon store so they stay

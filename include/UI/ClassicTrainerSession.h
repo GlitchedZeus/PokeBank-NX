@@ -11,6 +11,14 @@
 namespace PokeBank::UIModel::ClassicTrainerSession {
 
 inline constexpr int kRows = 2; // 0 Name, 1 Money
+// P3 (Round 5): rows a classic staged Trainer session adds where the native writer exists:
+// 2 Play Time, then Gender (row 3 with Play Time, else row 2). Gender is never added without a
+// native gender byte (Gen I, Gold / Silver).
+inline constexpr int kPlayTimeRow = 2;
+constexpr int genderRow(bool playTime) noexcept { return playTime ? 3 : 2; }
+constexpr int rowCount(bool playTime, bool gender) noexcept {
+    return kRows + (playTime ? 1 : 0) + (gender ? 1 : 0);
+}
 inline constexpr int kReviewTouchId = 61240;
 
 constexpr const char* trainerPageInstructions(bool editable) noexcept {

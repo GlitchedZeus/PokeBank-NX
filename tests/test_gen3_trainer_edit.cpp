@@ -203,6 +203,73 @@ void runGame(SourceGame game, Family family, const std::filesystem::path& root) 
     assert(source == original);
 }
 
+// P3 (Round 5): Trainer Gender (section 0 +0x08) and Play Time (section 0 +0x0E u16 hours,
+// +0x10 minutes, +0x11 seconds; PKSM-Core Sav3 / pret SaveBlock2) applied to the verified export
+// copy. Byte-exact: only those bytes and the section 0 checksum of the ACTIVE slot change (the
+// frame counter +0x12 and the inactive slot stay identical); strict reparse returns the values;
+// Review / manifest list both; Discard restores; the source is never written.
+void genderPlayTime(SourceGame game, Family family, const std::filesystem::path& root) {
+    namespace fs = std::filesystem;
+    auto source = fixture(family);
+    const auto original = source;
+    std::string error;
+    auto pokemon = StagedPokemonEditor::create(source, game, error);
+    auto trainer = Gen3StagedTrainerEditor::create(source, game, error);
+    assert(pokemon && trainer && error.empty());
+    assert(trainer->genderEditable() && trainer->gender() == 0 && trainer->playTimeEditable());
+    const auto start = trainer->playTime();
+    assert(start.hours == 5432 && start.minutes == 45 && start.seconds == 59);
+
+    assert(!trainer->stageGender(2, error) && !error.empty());
+    assert(!trainer->stagePlayTime({1000, 0, 0}, error));
+    assert(!trainer->stagePlayTime({1, 60, 0}, error) && !trainer->stagePlayTime({1, 0, 60}, error));
+    assert(!trainer->hasPendingChanges());
+
+    assert(trainer->stageGender(1, error) && trainer->gender() == 1);
+    assert(trainer->stagePlayTime({517, 42, 9}, error) && error.empty());
+    const auto changes = trainer->pendingChanges();
+    assert(changes.size() == 2);
+    assert(changes[0].label == "Trainer gender" && changes[0].before == "Male" && changes[0].after == "Female");
+    assert(changes[1].label == "Play time" && changes[1].before == "5432:45:59" && changes[1].after == "517:42:09");
+
+    Gen3ExportRequest request;
+    request.rootDirectory = root.string();
+    request.directoryStem = std::string(gameId(game)) + "_gender_playtime";
+    request.sourcePath = "sdmc:/retroarch/saves/fixture.srm";
+    request.timestamp = "20261024-120000";
+    auto exported = publishVerifiedGen3Export(*pokemon, request, nullptr, trainer.get());
+    assert(exported.success && exported.error.empty());
+    const auto edited = slurp(fs::path(exported.directory) / "edited.sav");
+    assert(slurp(fs::path(exported.directory) / "original_backup.sav") == original);
+    assert(source == original);
+
+    auto parsed = parse(edited, game);
+    assert(parsed && parsed.save->trainer().gender == 1);
+    assert(PokeVault::Integration::Common::playTimeText(parsed.save->trainer().playTime) == "517:42:09");
+    assert(parsed.save->trainer().name == "KYLIE" && parsed.save->trainer().money == 3000);
+
+    const Detail::SlotValidation slots[2] = {Detail::validateSlot(original, 0), Detail::validateSlot(original, 1)};
+    const uint8_t active = Detail::selectActiveSlot(slots);
+    const std::size_t block = slots[active].logicalSectorOffsets[0];
+    assert(edited[block + 0x08] == 1);
+    assert(edited[block + 0x0E] == (517 & 0xFF) && edited[block + 0x0F] == (517 >> 8) &&
+           edited[block + 0x10] == 42 && edited[block + 0x11] == 9);
+    for (std::size_t i = 0; i < edited.size(); ++i) {
+        if (edited[i] == original[i]) continue;
+        const bool allowed = i == block + 0x08 || (i >= block + 0x0E && i < block + 0x12) ||
+                             i == block + 0xFF6 || i == block + 0xFF7;
+        assert(allowed);
+    }
+    std::ifstream manifestIn(fs::path(exported.directory) / "EDIT_MANIFEST.txt");
+    const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+    assert(manifest.find("Trainer gender: Male -> Female") != std::string::npos);
+    assert(manifest.find("Play time: 5432:45:59 -> 517:42:09") != std::string::npos);
+
+    trainer->discard();
+    assert(!trainer->hasPendingChanges() && trainer->gender() == 0 && trainer->playTime() == start);
+    assert(source == original);
+}
+
 void japaneseNameReadOnly() {
     auto source = fixture(Family::FRLG, true);
     std::string error;
@@ -224,6 +291,11 @@ int main() {
     runGame(SourceGame::FireRedGBA, Family::FRLG, root);
     runGame(SourceGame::LeafGreenGBA, Family::FRLG, root);
     japaneseNameReadOnly();
+    genderPlayTime(SourceGame::RubyGBA, Family::RS, root);
+    genderPlayTime(SourceGame::SapphireGBA, Family::RS, root);
+    genderPlayTime(SourceGame::EmeraldGBA, Family::Emerald, root);
+    genderPlayTime(SourceGame::FireRedGBA, Family::FRLG, root);
+    genderPlayTime(SourceGame::LeafGreenGBA, Family::FRLG, root);
     // The emulator-source guard used by trainerFieldsEditable for the FRLG group.
     using PokeBank::UIModel::ClassicTrainerSession::isEmulatorGen3SourceId;
     for (const char* id : {"ruby_gba", "sapphire_gba", "emerald_gba", "firered_gba", "leafgreen_gba"})

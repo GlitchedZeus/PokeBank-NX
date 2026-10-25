@@ -319,3 +319,20 @@ $(STATS_LABEL_NEUTRAL_TEST): tests/test_stats_label_neutral_contract.cpp src/UI/
 $(STATS_LABEL_NEUTRAL_SANITIZE): tests/test_stats_label_neutral_contract.cpp src/UI/SharedPokemonEditorSurface.inc include/UI/NatureStatEffect.h include/UI/NatureStatPresentation.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# P3 (Round 5): the classic Trainer page's Play Time / Gender rows (native staged writers only).
+TRAINER_PT_GENDER_INPUTS := tests/test_trainer_playtime_gender_rows.cpp include/UI/ClassicTrainerSession.h \
+	include/UI/ClassicTrainerSessionInput.h src/UI/TrainerViewScreenBase.inc src/UI/Gen2TrainerSessionOverlay.inc \
+	src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc
+TRAINER_PT_GENDER_TEST := $(HOST_BUILD)/test_trainer_playtime_gender_rows
+TRAINER_PT_GENDER_SANITIZE := $(HOST_BUILD)/test_trainer_playtime_gender_rows_sanitize
+HOST_TESTS += $(TRAINER_PT_GENDER_TEST)
+HOST_SANITIZE_TESTS += $(TRAINER_PT_GENDER_SANITIZE)
+host-test: $(TRAINER_PT_GENDER_TEST)
+host-sanitize: $(TRAINER_PT_GENDER_SANITIZE)
+$(TRAINER_PT_GENDER_TEST): $(TRAINER_PT_GENDER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(TRAINER_PT_GENDER_SANITIZE): $(TRAINER_PT_GENDER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
