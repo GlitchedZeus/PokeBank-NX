@@ -10,6 +10,7 @@
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4StagedTrainerEditor.h"
 #include "UI/ClassicTrainerSessionInput.h"
+#include "UI/ClassicReviewOrigin.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
@@ -1165,6 +1166,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
         }
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1183,6 +1185,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_B) {
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
         return true;
     }

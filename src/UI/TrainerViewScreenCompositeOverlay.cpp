@@ -210,6 +210,8 @@ bool TrainerViewScreen::openStagedReview(bool exportCopy) {
         state.confirmDiscardAll = false;
         if (exportCopy) Gen4SharedEditorSurface::exportStagedGen4Copy(*this);
     } else return false;
+    // Opened outside Box Actions: its B returns here, not to an Actions sheet for a stale slot.
+    PokeBank::UIModel::ClassicReviewOrigin::markStandalone(*this);
     if (exportCopy && !exported.empty()) postStatus("Verified copy exported: " + exported, 600);
     else if (!error.empty()) postStatus(error, 480);
     saveConfirmActive = false;
