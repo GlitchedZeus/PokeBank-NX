@@ -129,6 +129,12 @@ void gen1Routes() {
     lacks(ux3, "{\"A\", \"Export Copy\"}");
     const auto navBar = between(ux3, "        case UX2Mode::Review:\n            // The shared Review panel", "case UX2Mode::Closed: return;");
     lacks(navBar, "drawNavBar(");
+    // Gen I Review touch: rows are informational; only a completed swipe pages (no row tap).
+    const auto reviewTouch = between(ux3, "    } else if (state.mode == UX2Mode::Review) {\n        // Round 5: the shared paged Review.",
+                                     "    return down;\n}");
+    has(reviewTouch, "PokeBank::UIModel::SharedReviewTouch::swipePage(");
+    lacks(reviewTouch, "selectedId(1300");
+    lacks(reviewTouch, "state.reviewRow = row");
 
     // Exit dialog footer: only the dialog's actions while it is open.
     const auto fix = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
