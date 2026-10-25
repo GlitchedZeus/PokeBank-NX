@@ -10,6 +10,7 @@
 #include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
 #include "UI/ClassicTrainerSession.h"
 #include "UI/ClassicStagedExit.h"
+#include "UI/ClassicBrowseFooter.h"
 #include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
 #include "UI/ClassicTrainerEditability.h"  // Trainer page footer: A Edit only when Name / Money are editable
 #include "UI/Gen4BagQuantity.h"        // Gen IV bag footer: one per-item quantity query
@@ -5390,7 +5391,6 @@ namespace UI {
                         trainerPageEditable()),
                     details.active, selectedMode == ViewMode::Settings,
                     stagedInventoryActionsAvailable)) {
-                instructions = "Arrows: Navigate  |  B: Back";
                 bool canOpen = !detailViewActive;
                 if (detailViewActive && selectedMode == ViewMode::Party)
                     canOpen = selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(trainer.party.size()) &&
@@ -5438,10 +5438,15 @@ namespace UI {
                         if (!instructions.empty()) instructions += "  |  ";
                         instructions += std::string(hint.glyph) + ": " + hint.label;
                     }
-                } else if (canOpen)
-                    instructions += "  |  A: View / Actions";
-                if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
-                    instructions += "  |  L/R: Box  |  ZL/ZR: Jump";
+                } else {
+                    // One fixed order for every Gen I-IV browse page, as in Gen V (E05).
+                    namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
+                    BrowseFooter::Spec spec;
+                    spec.canOpen = canOpen;
+                    spec.boxes = detailViewActive &&
+                        (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage);
+                    instructions = BrowseFooter::instructions(spec);
+                }
             }
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;

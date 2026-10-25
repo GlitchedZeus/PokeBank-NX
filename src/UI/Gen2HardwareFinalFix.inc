@@ -176,6 +176,8 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     // hardware layer. Clear through the final Gender baseline before repainting semantics so
     // the old neutral row cannot remain visible as a duplicate beneath the colored value.
     const int clearTop = y + 38;
+    const bool unown = p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies;
+    const int noteY = genderY + 38;
     const int semanticClearBottom = genderY + 30;
     fb.drawFilledRect(x + 10, clearTop, w - 20, semanticClearBottom - clearTop, Colors::Panel);
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
@@ -215,6 +217,16 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     fb.drawText(x + 134, shinyY, p.shiny ? "Yes" : "No",
                 ::UI::ClassicFieldColor::shinyValueColor(shinySelected), TextStyle::Caption);
     drawGen2Focus(fb, x + 8, genderY - 5, w - 16, 30, genderSelected);
+    if (unown) {
+        // Unown is genderless; row 6 is its Letter selector. The letter is computed from the DVs
+        // on every frame (pokecrystal GetUnownLetter), never stored independently.
+        fb.drawText(x + 18, genderY, "Letter", genderSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 134, genderY, gen2UnownLetterText(p),
+                    ::UI::ClassicFieldColor::shinyValueColor(genderSelected), TextStyle::Caption);
+        fb.drawFilledRect(x + 10, semanticClearBottom, w - 20, noteY + 26 - semanticClearBottom, Colors::Panel);
+        fb.drawText(x + 18, noteY, gen2UnownLetterNote(), Colors::TextDim, TextStyle::Caption);
+        return;
+    }
     fb.drawText(x + 18, genderY, "Gender", genderSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 134, genderY, genderText(p.gender), genderSelected ? Colors::SelectedText : gen2GenderColor(p.gender), TextStyle::Caption);
 }
