@@ -586,6 +586,74 @@ bool StagedEditor::stageMoney(uint32_t value, std::string& error) {
     return true;
 }
 
+namespace {
+// P3: the native clock and Crystal gender offsets (international layouts only; the staged editor
+// refuses Japanese saves). Same values Gen2ReadOnlySave reads.
+std::size_t playTimeOffset(VersionFamily family) noexcept {
+    return family == VersionFamily::Crystal ? 0x2052 : 0x2053;
+}
+constexpr std::size_t kCrystalGenderOffset = 0x3E3D;
+StagedEditor::PlayTime readPlayTime(std::span<const uint8_t> bytes, std::size_t at) noexcept {
+    return {static_cast<uint16_t>((bytes[at] << 8) | bytes[at + 1]), bytes[at + 2], bytes[at + 3]};
+}
+std::string playTimeLabel(const StagedEditor::PlayTime& t) {
+    const auto two = [](unsigned v) { return (v < 10 ? "0" : "") + std::to_string(v); };
+    return std::to_string(t.hours) + ":" + two(t.minutes) + ":" + two(t.seconds);
+}
+std::string genderLabel(uint8_t gender) { return gender == 0 ? "Male" : gender == 1 ? "Female" : "Unknown"; }
+} // namespace
+
+StagedEditor::PlayTime StagedEditor::playTime() const noexcept {
+    return readPlayTime(staged_, playTimeOffset(metadata_.family));
+}
+
+bool StagedEditor::playTimeEditable() const noexcept {
+    const auto original = readPlayTime(original_, playTimeOffset(metadata_.family));
+    return original.minutes <= 59 && original.seconds <= 59;
+}
+
+bool StagedEditor::stagePlayTime(PlayTime time, std::string& error) {
+    error.clear();
+    if (!playTimeEditable()) {
+        error = "This save's play time clock is not a native value; it stays read-only";
+        return false;
+    }
+    if (time.hours > kMaxPlayedHours || time.minutes > 59 || time.seconds > 59) {
+        error = "Gen II play time must be 0:00:00-999:59:59";
+        return false;
+    }
+    const std::size_t at = playTimeOffset(metadata_.family);
+    staged_[at] = static_cast<uint8_t>(time.hours >> 8);
+    staged_[at + 1] = static_cast<uint8_t>(time.hours);
+    staged_[at + 2] = time.minutes;
+    staged_[at + 3] = time.seconds;
+    setChange("play_time", "Play Time", playTimeLabel(readPlayTime(original_, at)), playTimeLabel(time));
+    return true;
+}
+
+uint8_t StagedEditor::trainerGender() const noexcept {
+    return metadata_.family == VersionFamily::Crystal ? staged_[kCrystalGenderOffset] : 0;
+}
+
+bool StagedEditor::trainerGenderEditable() const noexcept {
+    return metadata_.family == VersionFamily::Crystal && original_.size() > kCrystalGenderOffset &&
+           original_[kCrystalGenderOffset] <= 1;
+}
+
+bool StagedEditor::stageTrainerGender(uint8_t gender, std::string& error) {
+    error.clear();
+    if (!trainerGenderEditable() || gender > 1) {
+        error = metadata_.family == VersionFamily::Crystal
+            ? "This save's trainer gender byte is not a native Male / Female value"
+            : "Gold and Silver store no trainer gender";
+        return false;
+    }
+    staged_[kCrystalGenderOffset] = gender;
+    setChange("trainer_gender", "Trainer Gender", genderLabel(original_[kCrystalGenderOffset]),
+              genderLabel(gender));
+    return true;
+}
+
 uint8_t StagedEditor::itemQuantity(InventoryPocket pocket, uint8_t itemId) const noexcept {
     const auto& layout = layoutFor(metadata_.family);
     const auto offset = pocketOffset(layout, pocket);
@@ -1239,6 +1307,18 @@ std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
     }
     if (reparsed.save->trainer().name != trainerName_ || reparsed.save->trainer().money != money_) {
         error = "final staged Gen II export did not round-trip trainer fields";
+        return {};
+    }
+    // P3: the staged clock and Crystal gender must read back exactly through the strict parser.
+    const auto clock = playTime();
+    const auto& parsedClock = reparsed.save->trainer().playTime;
+    if (playTimeEditable() && (!parsedClock || parsedClock->hours != clock.hours ||
+                               parsedClock->minutes != clock.minutes || parsedClock->seconds != clock.seconds)) {
+        error = "final staged Gen II export did not round-trip play time";
+        return {};
+    }
+    if (trainerGenderEditable() && reparsed.save->trainer().gender != trainerGender()) {
+        error = "final staged Gen II export did not round-trip trainer gender";
         return {};
     }
     for (const auto& expectation : pokemonExpectations_) {

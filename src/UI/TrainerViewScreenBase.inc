@@ -483,6 +483,28 @@ namespace UI {
             screen.touchButtons.push_back({ i, cardX, cy, cardW, rowH });
             cy += rowH + 14;
         }
+        // P3 (Round 5): Play Time and Gender join the editable rows where a classic staged session
+        // has a native writer for them (rows 2 / 3, ClassicTrainerSession::genderRow).
+        const auto extraRow = [&](int row, const char* label, const std::string& value) {
+            const bool sel = (screen.trainerSelectedRow == row);
+            constexpr int extraH = 44;
+            fb.drawFilledRoundedRect(cardX, cy, cardW, extraH, 14, Colors::PanelAlt);
+            if (sel) fb.drawRoundedRect(cardX, cy, cardW, extraH, 14, Colors::FocusBorder, 2);
+            fb.drawText(cardX + 24, cy + (extraH - fb.lineHeight(TextStyle::Body)) / 2, label,
+                        sel ? Colors::SelectedText : Colors::TextDim, TextStyle::Body);
+            int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
+            fb.drawText(cardX + cardW - 24 - vw, cy + (extraH - vh) / 2, value, Colors::Text, TextStyle::Body);
+            screen.touchButtons.push_back({ row, cardX, cy, cardW, extraH });
+            cy += extraH + 8;
+        };
+        const bool playTimeEditable = classic && screen.trainerPlayTimeEditable;
+        const bool genderEditable = classic && screen.trainerGenderEditable;
+        if (playTimeEditable)
+            extraRow(PokeBank::UIModel::ClassicTrainerSession::kPlayTimeRow, "Play Time",
+                     PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
+        if (genderEditable)
+            extraRow(PokeBank::UIModel::ClassicTrainerSession::genderRow(playTimeEditable), "Gender",
+                     t.trainerGender == 0 ? "Male" : "Female");
 
         cy += 6;
         fb.drawHDivider(cardX + 20, cy, cardW - 40);
@@ -509,8 +531,10 @@ namespace UI {
         } else if (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
                    screen.sourceGameId == "crystal_gbc") {
             infoRow("Trainer ID", std::to_string(t.TID16));
-            if(screen.sourceGameId=="crystal_gbc")
-                infoRow("Gender",t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown");
+            if(screen.sourceGameId=="crystal_gbc") {
+                if(!genderEditable)
+                    infoRow("Gender",t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown");
+            }
             else infoRow("Gender","Male (fixed by game)");
         } else if (screen.sourceGameId == "diamond_nds" ||
                    screen.sourceGameId == "pearl_nds" ||
@@ -519,7 +543,7 @@ namespace UI {
                    screen.sourceGameId == "soulsilver_nds" || generation==3) {
             // Native Gen IV IDs are two separate 16-bit numbers. Do not
             // mash them into one 'Trainer ID' row or repeat both as 'Full'.
-            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+            if (!genderEditable) infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
             infoRow("Trainer ID", std::to_string(t.TID16));
             infoRow("Secret ID", std::to_string(t.SID16));
         } else {
@@ -529,7 +553,8 @@ namespace UI {
             infoRow("Full SID", std::to_string(t.SID));
         }
         if (classic) {
-            infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
+            if (!playTimeEditable)
+                infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
             infoRow("Badges",t.nativeBadges.text());
             const auto dex=t.pokedexProgress();
             infoRow("Pokédex",dex.available()?"Seen "+std::to_string(dex.seen)+" / Caught "+

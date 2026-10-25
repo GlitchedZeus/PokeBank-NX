@@ -1,5 +1,6 @@
 #include "Integration/Gen4/Gen4ExportTransaction.h"
 
+#include "Integration/Common/NativePlayTime.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Names/SpeciesNames.h"
 #include "Names/ItemNames.h"
@@ -79,6 +80,15 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
     if (before->trainer().money != after->trainer().money)
         lines.push_back("Money: " + std::to_string(before->trainer().money) + " -> " +
                         std::to_string(after->trainer().money));
+    const auto genderName = [](uint8_t g) { return std::string(g == 0 ? "Male" : "Female"); };
+    if (before->trainer().gender != after->trainer().gender)
+        lines.push_back("Trainer gender: " + genderName(before->trainer().gender) + " -> " +
+                        genderName(after->trainer().gender));
+    const auto playTime = [](const TrainerReadOnly& t) {
+        return Common::playTimeText(Common::nativePlayTime(t.playedHours, t.playedMinutes, t.playedSeconds));
+    };
+    if (playTime(before->trainer()) != playTime(after->trainer()))
+        lines.push_back("Play time: " + playTime(before->trainer()) + " -> " + playTime(after->trainer()));
 
     if (before->partyCount() != after->partyCount())
         lines.push_back("Party size: " + std::to_string(before->partyCount()) + " -> " +
