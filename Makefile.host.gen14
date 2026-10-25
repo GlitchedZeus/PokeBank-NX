@@ -355,3 +355,18 @@ $(HOST_BUILD)/test_gen2_box_move_presentation: $(GEN2_BOX_MOVE_SOURCES) $(GEN2_B
 $(HOST_BUILD)/test_gen2_box_move_presentation_sanitize: $(GEN2_BOX_MOVE_SOURCES) $(GEN2_BOX_MOVE_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(GEN2_BOX_MOVE_SOURCES) -o $@
+
+# Round 5: Party edit -> staged exit -> Review Changes (real GSC adapter), Bag -> shared Review, swipe paging.
+PARTY_REVIEW_SOURCES := tests/test_classic_party_review_path.cpp $(filter-out tests/test_gen2_box_move_presentation.cpp,$(GEN2_BOX_MOVE_SOURCES))
+PARTY_REVIEW_DEPS := include/UI/ClassicReviewOrigin.h include/UI/ClassicStagedExit.h include/UI/SharedReviewTouch.h \
+	include/UI/SharedReviewPresentation.h src/UI/ClassicInventoryOverlay.cpp $(GEN2_BOX_MOVE_DEPS)
+HOST_TESTS += $(HOST_BUILD)/test_classic_party_review_path
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_party_review_path_sanitize
+host-test: $(HOST_BUILD)/test_classic_party_review_path
+host-sanitize: $(HOST_BUILD)/test_classic_party_review_path_sanitize
+$(HOST_BUILD)/test_classic_party_review_path: $(PARTY_REVIEW_SOURCES) $(PARTY_REVIEW_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -I. -Iinclude $(PARTY_REVIEW_SOURCES) -o $@
+$(HOST_BUILD)/test_classic_party_review_path_sanitize: $(PARTY_REVIEW_SOURCES) $(PARTY_REVIEW_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(PARTY_REVIEW_SOURCES) -o $@

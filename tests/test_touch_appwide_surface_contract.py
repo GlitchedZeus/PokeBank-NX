@@ -57,7 +57,7 @@ SURFACES = {
     ),
     "Classic inventory": (
         "src/UI/ClassicInventoryOverlay.cpp",
-        ("pickerScroll.updateVertical(", "reviewScroll.updateVertical(",
+        ("pickerScroll.updateVertical(", "screen.openStagedReview(false)",
          "touchedButtonId(touch)"),
     ),
     "Packed move selection": (
@@ -145,8 +145,12 @@ if "touch.justTouchedDown()" in inventory_dispatch:
     raise AssertionError("Classic Inventory: Options/picker/review cannot focus on contact")
 if "state.optionsRow = touchId; down |= HidNpadButton_A;" not in inventory_dispatch:
     raise AssertionError("Classic Inventory: completed options tap must activate its row")
-require_all("src/UI/ClassicInventoryOverlay.cpp",
-            "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+require_all("src/UI/ClassicInventoryOverlay.cpp", "state.pickerRow = touchId;")
+# Round 5: the Bag's Review is the shared paged Review; a tap there never selects a row, a
+# completed vertical swipe turns one page (Gen I and Gen II alike).
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "PokeBank::UIModel::SharedReviewTouch::swipePage(")
+if "state.reviewRow = touchId;" in inventory_input:
+    raise AssertionError("Classic Inventory: the old private Review row tap must not return")
 # Gen I/II native action menus must wait until touch release too. A drag
 # across enabled/disabled choices cannot change the focused command.
 legacy_actions = read("src/UI/ClassicReleaseActionFix.inc")
@@ -325,7 +329,8 @@ if "touch.justReleased() && touch.dragged()" in app_shell:
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerScroll.updateVertical(",
             "state.editorScroll.updateVertical(",
-            "state.reviewScroll.updateVertical(",
+            # Round 5: Review is the shared paged presenter; touch turns pages (no private scroll).
+            "PokeBank::UIModel::SharedReviewTouch::swipePage(",
             "state.pickerScroll.offset()",
             "state.editorScroll.offset()",
             "SharedEditorChrome::drawReviewPanel")
