@@ -15,6 +15,7 @@
 #include "UI/BackupSelectionScreen.h"
 #include "UI/GameLauncher.h"
 #include "UI/WorkingCopyRefresh.h"
+#include "UI/BackupHistoryPresentation.h"
 #include "UI/InputTrace.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/SharedEditorChrome.h"
@@ -68,6 +69,50 @@ namespace UI {
                     logErrorToFile("Working copy refresh failed", r.error.c_str());
                     break;
             }
+            return r.workingPath;
+        }
+
+        // Round 5 (#322): A on a Switch backup (owned, or a legacy title-only folder) opens a COPY
+        // of it in the isolated Opened-Backup workspace of this exact profile/game, a normal
+        // staged session: edits and saves land in that copy, never in the backup. The backup's
+        // contents are validated for this exact title first, and its snapshot (taken when A was
+        // pressed) must still match after the copy, so the session holds exactly what was listed.
+        std::string openBackupCopySession(AccountUid userUid, u64 titleId, const std::string& backupDir,
+                                          const PokeVault::Source::ImmutableSnapshot::Directory& listed,
+                                          std::string& error) {
+            namespace W = PokeBank::UIModel::WorkingCopy;
+            const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+            const std::string gameDir = identity
+                ? PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id) : std::string{};
+            if (gameDir.empty()) {
+                error = "No safe profile/exact-game folder to open a copy in.";
+                return {};
+            }
+            // A04b: reconcile any interrupted durable Move first. One may target the previous
+            // session workspace, which openBackupSession is about to set aside.
+            const auto moveRecovery =
+                PokeBank::Storage::MoveTx::Production::recoverPendingMoveTransactions();
+            if (moveRecovery.mutationLocked) {
+                error = moveRecovery.notice.empty()
+                    ? "An interrupted Pokemon Move needs attention before a backup can be opened."
+                    : moveRecovery.notice;
+                return {};
+            }
+            if (!Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)) return {};
+            if (!PokeBank::Paths::ensureDirectoryTree(gameDir, &error)) return {};
+            const W::Result r = W::openBackupSession(gameDir, backupDir, getTimestamp(),
+                [](const std::string& from, const std::string& to) {
+                    return copyDirectoryTransactional(from.c_str(), to.c_str());
+                });
+            if (r.outcome == W::Outcome::Failed) {
+                error = r.error.empty() ? "Couldn't copy the backup into a session." : r.error;
+                logErrorToFile("Backup session copy failed", error.c_str());
+                return {};
+            }
+            if (r.outcome == W::Outcome::EditsPreserved)
+                logInfoToFile("Earlier backup session held edits; kept as backup", r.preservedPath.c_str());
+            if (!PokeVault::Source::ImmutableSnapshot::unchanged(listed, error)) return {};
+            logInfoToFile("Opened a copy of the backup (backup unchanged)", backupDir.c_str());
             return r.workingPath;
         }
 
@@ -327,7 +372,8 @@ namespace UI {
                         std::string error;
                         if(!handleEmulatorBackupView(selectScreen.getSelectedUser(),
                             selectScreen.getSelectedGameId(),selectScreen.getSelectedBackupSnapshot(),
-                            selectScreen.getSelectedBackupLabel(),error)) {
+                            selectScreen.getSelectedBackupLabel(),
+                            selectScreen.getSelectedBackupProvider(),error)) {
                             selectScreen.reportOpenFailure(error);
                             fb.startFade();
                             continue;
@@ -508,10 +554,17 @@ namespace UI {
                     if(historical.directories.empty() || historical.directories.front().second!=backupScreen.getSelectedBackupStamp()) {
                         backupScreen.reportFailure("Backup changed since listing; refresh the browser.");continue;
                     }
-                    const std::string provenance=titleName+(backupScreen.selectedBackupIsLegacy()
-                        ?" / Legacy backup / ownership unknown / read-only":" / Historical backup / read-only");
-                    if (!handleTrainerView(userUid, titleId, provenance,
-                                           backupScreen.getSelectedBackupPath(), false, intent, error,&historical)) {
+                    const std::string session = openBackupCopySession(
+                        userUid, titleId, backupScreen.getSelectedBackupPath(), historical, error);
+                    if (session.empty()) {
+                        backupScreen.reportFailure(error);
+                        continue;
+                    }
+                    const std::string provenance = (backupScreen.selectedBackupIsLegacy()
+                        ? "Opened from legacy backup (owner unknown) - " : "Opened from backup - ") +
+                        backupScreen.getSelectedBackupLabel();
+                    if (!handleTrainerView(userUid, titleId, titleName, session, false, intent, error,
+                                           nullptr, provenance)) {
                         backupScreen.reportFailure(error);
                         continue;
                     }
@@ -525,7 +578,8 @@ namespace UI {
     bool UIManager::handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                       const std::string& backupDir, bool loadedFromCart,
                                       SaveSelectScreen::OpenIntent intent, std::string& error,
-                                      const PokeVault::Source::ImmutableSnapshot::Directory* historical) {
+                                      const PokeVault::Source::ImmutableSnapshot::Directory* historical,
+                                      const std::string& provenance) {
         logInfoToFile("Loading save from", backupDir.c_str());
 
         // A04b startup gate: reconcile any interrupted durable Move BEFORE parsing this workspace.
@@ -556,6 +610,7 @@ namespace UI {
                 loadedFromCart?PokeVault::Safety::SourceKind::InstalledGame:
                     PokeVault::Safety::SourceKind::BackupOrStaged);
             trainerScreen.setMoveRecoveryState(moveRecovery.mutationLocked, moveRecovery.notice);
+            trainerScreen.provenanceNotice = provenance;
             if (intent == SaveSelectScreen::OpenIntent::Items)
                 trainerScreen.openItemsShortcut();
             fb.startFade();
@@ -585,7 +640,7 @@ namespace UI {
 
     bool UIManager::handleEmulatorBackupView(AccountUid userUid,const std::string& gameId,
         const PokeVault::Source::ImmutableSnapshot::File& file,const std::string& label,
-        std::string& error) {
+        const std::string& provider,std::string& error) {
         auto trainer=PokeVault::Legacy::openBackupTrainer(file,gameId,error);
         const auto* identity=PokeVault::Games::findGame(gameId);
         if(!trainer && identity && identity->dataGeneration==5) {
@@ -621,9 +676,32 @@ namespace UI {
         error.clear();
         const auto kind=identity->dataGeneration<=3?PokeVault::Safety::SourceKind::RetroArchLegacy:
             PokeVault::Safety::SourceKind::ExternalLegacy;
-        TrainerViewScreen screen(*trainer,"Pokemon "+std::string(identity->title)+" / Backup "+label,
-            file.path,0,userUid,kind,gameId,"Historical backup");
-        screen.postStatus("Opened from backup / "+label+". Export Copy only; source remains unchanged.",480);
+        // The card's own provider ("DraStic"), not a made-up label that would read as "Unknown
+        // provider"; the top bar names the copy (provenanceNotice) instead of the live source.
+        TrainerViewScreen screen(*trainer,"Pokemon "+std::string(identity->title),
+            file.path,0,userUid,kind,gameId,provider.empty() ? std::string("Manual") : provider);
+        const std::string when=PokeBank::UIModel::BackupHistory::date(label,0).label;
+        screen.provenanceNotice="Opened from backup - "+when;
+        if(identity->dataGeneration==4) {
+            // Same guard as the live Gen IV open: Export Copy re-reads this exact backup file and
+            // fails closed if it changed since it was opened (Gen4ExportRequest::sourceSnapshot).
+            namespace G4=PokeVault::Integration::Gen4;
+            const auto payload=G4::readSourcePayloadReadOnly(file.path);
+            if(!payload.ready()) {
+                error=payload.diagnostic.empty()?"Backup container changed during open":payload.diagnostic;
+                return false;
+            }
+            auto snapshot=G4::snapshotGen4Source(file.path,
+                payload.kind==G4::SourceContainerKind::DsvFooter?G4::Gen4SourceContainer::Dsv
+                                                               :G4::Gen4SourceContainer::Raw,
+                payload.bytes,&error);
+            if(!snapshot) {
+                if(error.empty())error="Backup snapshot failed";
+                return false;
+            }
+            screen.gen4SourceSnapshot=std::move(snapshot);
+        }
+        screen.postStatus("Opened from backup - "+when+". Export Copy only; the backup is not changed.",480);
         fb.startFade();
         while(appletMainLoop() && running && !screen.shouldExit() && !screen.hasRequestedExit()) {
             padUpdate(&pad);touch.update();keyboardBackdrop=&screen;

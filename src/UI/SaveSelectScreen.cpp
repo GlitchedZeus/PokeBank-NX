@@ -879,6 +879,7 @@ namespace UI {
         selectedSourceKind = SelectedSourceKind::None;
         selectedBackupSnapshot={};
         selectedBackupLabel.clear();
+        selectedBackupProvider.clear();
         selectedLegacySourceIndex = 0;
         openIntent = OpenIntent::Default;
         overlay = Overlay::None;
@@ -901,6 +902,7 @@ namespace UI {
         selectedSourceKind = SelectedSourceKind::None;
         selectedBackupSnapshot={};
         selectedBackupLabel.clear();
+        selectedBackupProvider.clear();
         selectedLegacySourceIndex = 0;
         openIntent = OpenIntent::Default;
         overlay = Overlay::None;
@@ -4084,6 +4086,7 @@ namespace UI {
                     selectedGameId=title.gameId;
                     selectedSourceKind=title.sourceKind;
                     selectedBackupLabel=entry.timestamp;
+                    selectedBackupProvider=title.providerLabel;
                     openIntent=OpenIntent::Default;
                     titleSelected=true;
                     return;

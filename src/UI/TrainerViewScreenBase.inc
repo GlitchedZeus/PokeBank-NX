@@ -5149,6 +5149,10 @@ namespace UI {
             trainer.saveRevisionString != "Base") {
             subtitle += "  (" + trainer.saveRevisionString + ")";
         }
+        // Round 5 (#322): a session opened from a backup copy names that copy, not the live source.
+        if (!provenanceNotice.empty())
+            subtitle = (legacyReadOnlySource() ? legacyProviderLabel() + "  •  " : std::string()) +
+                       titleName + "  •  " + provenanceNotice;
         drawTitleBar(fb, subtitle);
 
         // Not entered -> the HOME main menu (replaces the old left trainer-info + mode-selector

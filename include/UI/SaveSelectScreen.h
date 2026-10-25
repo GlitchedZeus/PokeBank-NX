@@ -107,6 +107,8 @@ namespace UI {
             return selectedBackupSnapshot;
         }
         const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
+        // The card's raw provider label for an opened backup copy (top bar names its provider).
+        const std::string& getSelectedBackupProvider() const { return selectedBackupProvider; }
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
@@ -282,6 +284,7 @@ namespace UI {
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
         PokeVault::Source::ImmutableSnapshot::File selectedBackupSnapshot;
         std::string selectedBackupLabel;
+        std::string selectedBackupProvider;
         // Ephemeral, exact-session selection; never guessed from file mtime
         // and never grants emulator/source write authority.
         PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =
