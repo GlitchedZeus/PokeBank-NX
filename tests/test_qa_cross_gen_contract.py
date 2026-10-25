@@ -38,8 +38,6 @@ XFAIL: dict[str, str] = {
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     "CG61-switch-backup-opens-staged-copy": "lane L (P2, #322: wip/l-r5-backup-copy-20261024 767fd4b0)",
-    "CG62-met-location-rows-fit": "lane P (4A NEW-10: claude/pickers-search-scrollbar-20261017 d361d86f)",
-    "CG63-help-names-real-controls": "lane P (4D: claude/pickers-search-scrollbar-20261017 edff856e)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
