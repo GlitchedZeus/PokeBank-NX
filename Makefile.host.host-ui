@@ -1,0 +1,52 @@
+# Host UI harness (Round 6 L06): tests that drive the REAL TrainerViewScreen::update / draw on the
+# host with scripted controller and touch input (tests/host-ui). The app's own sources are built
+# into a static archive against the scriptable libnx stub (tests/host-ui/switch.h); the linker pulls
+# only what a test references. Platform-only sources (framebuffer, keyboard applet, account /
+# filesystem utilities, the top-level screens) are replaced by tests/host-ui/HostUiStubs.cpp.
+# Application objects are built with -w: the app's warnings are gated by its own native build; the
+# tests themselves use the full host CXXFLAGS.
+HOST_UI_EXCLUDED := src/main.cpp src/UI/UI.cpp src/UI/SaveSelectScreen.cpp src/UI/BackupSelectionScreen.cpp \
+	src/UI/PKSEFramebuffer.cpp src/UI/PKSEFramebufferTouchTransform.cpp src/UI/SystemIcons.cpp \
+	src/Utils/FileUtilities.cpp src/Utils/Keyboard.cpp src/Utils/PhysicalMoveAudit.cpp \
+	src/Integration/Gen3/PKSMGen3Adapter.cpp
+HOST_UI_APP_SOURCES := $(filter-out $(HOST_UI_EXCLUDED),$(shell find src -name '*.cpp' | sort))
+HOST_UI_INCLUDES := -Iinclude -Itests/host-ui
+HOST_UI_APP_FLAGS := -std=c++20 -O1 -w -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST
+HOST_UI_DIR := $(HOST_BUILD)/host-ui
+HOST_UI_OBJECTS := $(patsubst src/%.cpp,$(HOST_UI_DIR)/obj/%.o,$(HOST_UI_APP_SOURCES))
+HOST_UI_SANITIZE_OBJECTS := $(patsubst src/%.cpp,$(HOST_UI_DIR)/asan/%.o,$(HOST_UI_APP_SOURCES))
+HOST_UI_ARCHIVE := $(HOST_UI_DIR)/libpokebank-hostui.a
+HOST_UI_SANITIZE_ARCHIVE := $(HOST_UI_DIR)/libpokebank-hostui-asan.a
+HOST_UI_STUBS := tests/host-ui/HostUiStubs.cpp
+
+$(HOST_UI_DIR)/obj/%.o: src/%.cpp tests/host-ui/switch.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(HOST_UI_APP_FLAGS) $(HOST_UI_INCLUDES) -c $< -o $@
+# GCC rejects Gen5PersonalTypes.h's constexpr `info==nullptr` static_asserts whenever UBSan
+# instruments the TU, so the one object that includes it (the composite device UI TU) is built with
+# AddressSanitizer only; every other application object gets the full ASan + UBSan flags.
+HOST_UI_SANITIZE := $(SANITIZE_FLAGS)
+$(HOST_UI_DIR)/asan/UI/TrainerViewScreenCompositeOverlay.o: HOST_UI_SANITIZE := -fsanitize=address -fno-omit-frame-pointer -O1
+$(HOST_UI_DIR)/asan/%.o: src/%.cpp tests/host-ui/switch.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(HOST_UI_APP_FLAGS) $(HOST_UI_SANITIZE) -w $(HOST_UI_INCLUDES) -c $< -o $@
+$(HOST_UI_ARCHIVE): $(HOST_UI_OBJECTS)
+	@rm -f $@
+	ar rcs $@ $^
+$(HOST_UI_SANITIZE_ARCHIVE): $(HOST_UI_SANITIZE_OBJECTS)
+	@rm -f $@
+	ar rcs $@ $^
+
+# L06: Gen III / Gen V Pokérus and Gen III Held Item through the real input path (A and touch).
+HOST_UI_EDITOR_TEST := $(HOST_BUILD)/test_ui_editor_input_host
+HOST_UI_EDITOR_SANITIZE := $(HOST_BUILD)/test_ui_editor_input_host_sanitize
+HOST_TESTS += $(HOST_UI_EDITOR_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_EDITOR_SANITIZE)
+host-test: $(HOST_UI_EDITOR_TEST)
+host-sanitize: $(HOST_UI_EDITOR_SANITIZE)
+$(HOST_UI_EDITOR_TEST): tests/test_ui_editor_input_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_editor_input_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_EDITOR_SANITIZE): tests/test_ui_editor_input_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_editor_input_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
