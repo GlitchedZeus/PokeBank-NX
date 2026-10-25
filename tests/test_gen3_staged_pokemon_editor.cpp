@@ -262,7 +262,9 @@ void runGame(SourceGame game, Family family) {
     // Exercise BOTH caught-Ball and Held Item choices; their numeric IDs must
     // never be confused. Reparse the native encrypted record and sector checksums.
     assert(std::string(Names::getItemNameG3(21))=="Hyper Potion");
-    for(const uint16_t held : {uint16_t{0},uint16_t{5},uint16_t{14},uint16_t{21},uint16_t{44}}) {
+    // Owner Oct 25: PKHeX ItemStorage3RS.Unreleased (Safari Ball 5, Berry
+    // Juice 44) are never released held items, so they are refused below.
+    for(const uint16_t held : {uint16_t{0},uint16_t{14},uint16_t{21}}) {
         for(uint8_t ball=1;ball<=12;++ball) {
             auto createEditor=StagedPokemonEditor::create(source,game,error); assert(createEditor);
             PokeBank::UIModel::Gen3SharedEditor::Session draft;
@@ -280,7 +282,10 @@ void runGame(SourceGame game, Family family) {
             createEditor->discard();assert(createEditor->stagedBytes()==immutableSource);
         }
     }
-    for(uint16_t invalid : {uint16_t{259},uint16_t{339},uint16_t{377},uint16_t{65535}}) {
+    assert(nativeHeldItemSupported(5) && nativeHeldItemSupported(44));
+    assert(!releasedHeldItem(5) && !releasedHeldItem(44));
+    assert(releasedHeldItem(0) && releasedHeldItem(4) && releasedHeldItem(43));
+    for(uint16_t invalid : {uint16_t{5},uint16_t{44},uint16_t{259},uint16_t{339},uint16_t{377},uint16_t{65535}}) {
         auto rejected=StagedPokemonEditor::create(source,game,error);assert(rejected);
         BoxPokemonCreate bad;bad.heldItem=invalid;
         assert(!rejected->stageAddBoxPokemon(0,1,bad,error));
@@ -409,6 +414,13 @@ void runGame(SourceGame game, Family family) {
     assert(editor->originalBytes() == immutableSource && source == immutableSource);
     before = editor->boxedPokemon(0, 0, error);
     assert(before && before->species == 25 && before->level == 20);
+
+    for (const uint16_t unreleased : {uint16_t{5}, uint16_t{44}}) {
+        BoxPokemonEdit bad; bad.heldItem = unreleased;
+        assert(!editor->stageBoxPokemonEdit(0, 0, bad, error));
+        assert(editor->stagedBytes() == immutableSource);
+    }
+    error.clear();
 
     BoxPokemonEdit edit;
     edit.nickname = "SPARKY";
