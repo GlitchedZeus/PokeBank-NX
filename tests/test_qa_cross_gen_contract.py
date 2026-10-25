@@ -47,8 +47,6 @@ XFAIL: dict[str, str] = {
     "CG73-review-entry-visible-gen1-5": "lane L (round 6 P3: B08 / P1-RETURN)",
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
     "CG75-met-location-rows-distinguishable": "lane P (round 6 P5: R2-CHECK-011)",
-    "CG76-gen2-unown-letter-from-dvs": "lane R (round 6 P6: R2-REROLL)",
-    "CG77-footer-help-controls-have-handlers": "lane R (round 6 P4 / E05)",
     "CG78-tap-outside-dismisses-non-destructive": "lane P (round 6 7D)",
     "CG79-no-gen5-language-toast": "lane S (round 6 7C)",
 }

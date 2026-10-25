@@ -869,7 +869,10 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
         TextStyle::Caption);
     const auto& p = state.working;
-    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny, p.form);
+    // The portrait letter is computed from the current DVs on every frame (never a cached form).
+    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny,
+        p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(
+                               {p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]})) : uint8_t{0});
     if (const auto* personal = Gen2::personalRecord(p.species)) {
         int badgeX = x + 18;
         sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType1));
