@@ -36,6 +36,7 @@ XFAIL: dict[str, str] = {
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
     # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9, CG61 (L 1eec6f18), CG68 (C 9f034431): ENFORCED.
+    # Round 6: CG76 (R 8613b13d) on #307 c3d64423: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
@@ -47,7 +48,6 @@ XFAIL: dict[str, str] = {
     "CG73-review-entry-visible-gen1-5": "lane L (round 6 P3: B08 / P1-RETURN)",
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
     "CG75-met-location-rows-distinguishable": "lane P (round 6 P5: R2-CHECK-011)",
-    "CG76-gen2-unown-letter-from-dvs": "lane R (round 6 P6: R2-REROLL)",
     "CG77-footer-help-controls-have-handlers": "lane R (round 6 P4 / E05)",
     "CG78-tap-outside-dismisses-non-destructive": "lane P (round 6 7D)",
     "CG79-no-gen5-language-toast": "lane S (round 6 7C)",
@@ -2853,13 +2853,26 @@ def round6_contracts(sources):
     r = Result("CG76-gen2-unown-letter-from-dvs",
                "Gen II Unown: every portrait derives the letter from the current DVs, and Shiny says when it changes "
                "the letter (owner Oct 25 R2-REROLL)")
+    # Lane R (8613b13d) keeps the draft letter in working.form and recomputes it from the DVs wherever the
+    # draft DVs change; portraits may read that form. So: every Gen II UI function that writes the draft's
+    # DVs must also set its form from unownLetter in the same function (no stale cached letter).
+    for f in sources:
+        if not re.search(r"^(?:src/UI/Gen2\w*\.inc|include/UI/Gen2\w*\.h)$", f.rel):
+            continue
+        for name, ln, body in function_definitions(f.code):
+            if not re.search(r"\b(?:p|working|draft)\s*\.\s*dvs\s*\[[^\]]*\]\s*=[^=]", body):
+                continue
+            if not re.search(r"\.\s*form\s*=[^=][^;]*unownLetter\s*\(", body):
+                r.violations.append(f"{f.rel}:{ln}: {name}() changes the draft DVs without recomputing the Unown "
+                                    "letter from them (stale letter / sprite)")
     for f in sources:
         if not re.search(r"src/UI/Gen2\w*\.inc$", f.rel):
             continue
         for m in re.finditer(r"\bdrawPortrait\s*\(([^;]*)\)\s*;", f.code):
-            if re.search(r"\b\w+\s*(?:\.|->)\s*form\b(?!\s*\()", m.group(1)) and "unownLetter" not in m.group(1):
-                r.violations.append(f"{f.rel}:{ln_at(f, m.start())}: Gen II portrait uses the cached form, not the "
-                                    "DV-derived Unown letter")
+            arg = m.group(1)
+            if re.search(r"\b\w+\s*->\s*form\b(?!\s*\()", arg) and "unownLetter" not in arg:
+                r.violations.append(f"{f.rel}:{ln_at(f, m.start())}: Gen II portrait uses a record's stored form "
+                                    "field directly, not the DV-derived letter")
     fnd = src("src/UI/Gen2PokemonEditorFoundation.inc")
     ts = body_of(fnd, "toggleShiny")
     if not ts:

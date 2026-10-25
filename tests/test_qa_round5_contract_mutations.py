@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Negative controls for the round 5 cross-gen contracts (tests/test_qa_cross_gen_contract.py).
 
-The unmutated tree must pass each enforced contract (CG43, CG64), and each deliberately broken
+The unmutated tree must pass each enforced contract (CG43, CG64, CG76), and each deliberately broken
 source path must be reported by its contract. CG61-CG63 stay XFAIL until their lane lands (the
 pre-fix code is their own negative control); here they only need to exist.
 """
@@ -58,6 +58,10 @@ MUTATIONS = [
     ("Gen I offers a gender edit", "CG64-trainer-playtime-gender-staged", "src/UI/Gen1PokemonEditorOverlayFoundation.inc",
      "fields.nameEditable = editor->nameEditable();",
      "fields.nameEditable = editor->nameEditable();\n    fields.stageGender = nullptr;"),
+    ("Gen II Unown letter not recomputed after a DV change", "CG76-gen2-unown-letter-from-dvs",
+     "src/UI/Gen2PokemonEditorFoundation.inc",
+     "    p.form = p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs)) : 0;\n",
+     ""),
     ("Gen IV play time written straight to a file", "CG64-trainer-playtime-gender-staged",
      "src/Integration/Gen4/Gen4StagedPokemonEditor.cpp",
      "return stageTrainerBytes(kTrainerPlayTimeField, field,",
@@ -68,7 +72,7 @@ MUTATIONS = [
 def main() -> int:
     failures = 0
     base = {r.cid: r for r in qa.contracts(SOURCES)}
-    for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged"):
+    for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged", "CG76-gen2-unown-letter-from-dvs"):
         if base[cid].violations:
             print(f"FAIL  unmutated tree: {cid}: {base[cid].violations[:2]}")
             failures += 1
