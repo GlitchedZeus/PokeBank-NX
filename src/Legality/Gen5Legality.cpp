@@ -20,6 +20,7 @@
 // file's Gen V tables).
 #include "Legality/Gen5Legality.h"
 #include "Legality/Gen5GiftReceivability.h"
+#include "Legality/Gen5FullCardCatalog.h"
 
 #include <algorithm>
 #include <array>
@@ -589,6 +590,8 @@ struct Template {
     bool egg = false;      // PKHeX IEncounterTemplate.IsEgg
     std::array<uint16_t, 4> moves{};
     bool receivingUnverified = false;
+    bool archivedFullCard = false;
+    bool archivedReceivingClaim = false;
     const uint8_t* card = nullptr; // PGF
     int trade = -1;        // row of Gen5Data::kTrades
 };
@@ -1417,6 +1420,9 @@ void Gen5Analyzer::giftCandidates(std::vector<Candidate>& out) {
         // when hatching, so do not impose its receiving language on that hatch.
         const bool tradedEgg=g.isEgg()&&!p_.isEgg&&(p_.eggLocation==kLinkTrade5||p_.eggLocation==kLinkTrade5NPC);
         c.t.receivingUnverified=!tradedEgg&&!Gen5Gift::permits(i,p_.version,p_.language);
+        const auto archive=Gen5Gift::archivedFullCardEvidence(i,{g.c,D::kPgfSize},p_.version,p_.language);
+        c.t.archivedFullCard=archive.templates!=0;
+        c.t.archivedReceivingClaim=archive.pairedReceivingClaim;
         c.t.fixedBall = g.ball();
         for (int m = 0; m < 4; ++m) c.t.moves[m] = g.move(m);
         const bool shiny = Gen5::isShiny(p_.pid, p_.tid, p_.sid);
@@ -1558,6 +1564,12 @@ void Gen5Analyzer::encounterGen5() {
             // history. Missing receipt proof cannot establish an impossible origin.
             cov.eventGift=CoverageLevel::Partial;
             a_.warn(CheckIdentifier::EventGift,"PGF receiving language/game is unsupported by the newer event catalog; original distribution evidence is required");
+        }
+        if(match_.archivedFullCard) {
+            a_.info(CheckIdentifier::EventGift,
+                "A released-archive WC5FULL template matches (receipt date handled separately); distribution and acquisition history are not authenticated");
+            if(match_.archivedReceivingClaim)
+                a_.info(CheckIdentifier::EventGift,"The archived full card contains a paired game/language claim for these stored values");
         }
         a_.info(CheckIdentifier::Encounter, std::string("Matches a Gen V ") + kindName(match_.kind) +
                 " (" + speciesName(match_.species) + ")");

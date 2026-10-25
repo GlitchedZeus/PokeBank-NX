@@ -1,3 +1,7 @@
+# October25 historical evidence continuation
+
+Current continuation starts from pushed PR314 `0b01ad6c614c1652a6c9591195ebff22cb761d8f`; owner research is being authenticated on WIP `wip/legality-evidence-20261025`. See [current progress](../historical-evidence-20261025/PROGRESS.md) for code, exact source pins, tests and remaining gates. Preserve all prior evidence and metrics below. Application PR307 is separate and untouched.
+
 # Remaining engineering work
 
 `TUTOR_INHERITANCE.md` records the subsequent production correction for Crystal's three inherited tutor moves. The same-donor requirement remains strict. Three valid combinations now pass; GS-birth, Korean-only source and incompatible-donor controls remain covered. Existing150000 GB outputs are byte-identical and an additional declared30000-record holdout has zero unexplained outcomes. Frozen metrics and historical evidence claims are unchanged.

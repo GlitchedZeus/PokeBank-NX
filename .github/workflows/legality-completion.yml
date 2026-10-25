@@ -42,11 +42,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
           for name in "${names[@]}"; do "build-completion/$name"; "build-completion/${name}_sanitize"; done
+      - name: Original full-card corpus and provenance negative controls
+        run: |
+          set -euo pipefail
+          mkdir -p build-completion/source
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/kwsch/PKHeX/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Resources/legality/mgdb/pgf.pkl \
+            --output build-completion/source/pgf.pkl
+          for reader in test_gen5_full_card_evidence test_gen5_full_card_evidence_sanitize; do
+            python3 tools/legality_completion/full_card_evidence.py \
+              --archive build-completion/archive --pgf build-completion/source/pgf.pkl \
+              --fetch --check --reader "build-completion/$reader" \
+              --report "build-completion/$reader.json"
+          done
+          python3 tests/test_gen5_full_card_generator.py \
+            --archive build-completion/archive --pgf build-completion/source/pgf.pkl
   app-boundary:
     runs-on: ubuntu-latest
     steps:

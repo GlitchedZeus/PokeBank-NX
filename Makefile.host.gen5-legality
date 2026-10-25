@@ -18,13 +18,14 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_sanitize
 host-test: $(HOST_BUILD)/test_legality_gen5
 host-sanitize: $(HOST_BUILD)/test_legality_gen5_sanitize
 
-$(HOST_BUILD)/test_legality_gen5: $(GEN5_LEGALITY_SOURCES)
+GEN5_FULL_CARD_HEADERS := include/Legality/Gen5FullWonderCard.h include/Legality/Gen5FullCardCatalog.h
+$(HOST_BUILD)/test_legality_gen5: $(GEN5_LEGALITY_SOURCES) $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_LEGALITY_SOURCES) -o $@
 
-$(HOST_BUILD)/test_legality_gen5_sanitize: $(GEN5_LEGALITY_SOURCES)
+$(HOST_BUILD)/test_legality_gen5_sanitize: $(GEN5_LEGALITY_SOURCES) $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_LEGALITY_SOURCES) -o $@
 
 # App adapter (include/Legality/Gen5AppAdapter.h): raw PK5 bytes + the app's source game id.
 GEN5_ADAPTER_SOURCES := tests/test_legality_gen5_adapter.cpp src/Legality/Gen5AppAdapter.cpp \
@@ -35,11 +36,11 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
 host-test: $(HOST_BUILD)/test_legality_gen5_adapter
 host-sanitize: $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
 
-$(HOST_BUILD)/test_legality_gen5_adapter: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h
+$(HOST_BUILD)/test_legality_gen5_adapter: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
 
-$(HOST_BUILD)/test_legality_gen5_adapter_sanitize: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h
+$(HOST_BUILD)/test_legality_gen5_adapter_sanitize: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
 
@@ -48,10 +49,10 @@ HOST_TESTS += $(HOST_BUILD)/test_gen5_gift_receivability
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_gift_receivability_sanitize
 host-test: $(HOST_BUILD)/test_gen5_gift_receivability
 host-sanitize: $(HOST_BUILD)/test_gen5_gift_receivability_sanitize
-$(HOST_BUILD)/test_gen5_gift_receivability: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h
+$(HOST_BUILD)/test_gen5_gift_receivability: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_GIFT_RECEIPT_SOURCES) -o $@
-$(HOST_BUILD)/test_gen5_gift_receivability_sanitize: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h
+$(HOST_BUILD)/test_gen5_gift_receivability_sanitize: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_GIFT_RECEIPT_SOURCES) -o $@
 
@@ -66,3 +67,15 @@ $(HOST_BUILD)/test_gen5_full_wonder_card: tests/test_gen5_full_wonder_card.cpp i
 $(HOST_BUILD)/test_gen5_full_wonder_card_sanitize: tests/test_gen5_full_wonder_card.cpp include/Legality/Gen5FullWonderCard.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+GEN5_FULL_CARD_TEST_SOURCES := tests/test_gen5_full_card_evidence.cpp src/Legality/Gen5LegalityData.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen5_full_card_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_full_card_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen5_full_card_evidence
+host-sanitize: $(HOST_BUILD)/test_gen5_full_card_evidence_sanitize
+$(HOST_BUILD)/test_gen5_full_card_evidence: $(GEN5_FULL_CARD_TEST_SOURCES) $(GEN5_FULL_CARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN5_FULL_CARD_TEST_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_full_card_evidence_sanitize: $(GEN5_FULL_CARD_TEST_SOURCES) $(GEN5_FULL_CARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_FULL_CARD_TEST_SOURCES) -o $@

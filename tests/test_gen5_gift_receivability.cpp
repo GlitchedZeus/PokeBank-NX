@@ -31,5 +31,24 @@ int main() {
         assert(raw==before);++cases;
     }
     assert(cases==6);
+    // Retained original oracle records, not fabricated PK5s: Karrablast and
+    // Meloetta in English/Italian. Their real full-card templates are archived.
+    std::ifstream archiveInput("tests/fixtures/gen15_session2/full_card_engine.txt");assert(archiveInput);
+    std::string id;size_t archivedCases=0;
+    while(archiveInput>>id>>hex) {
+        std::vector<uint8_t> raw;
+        for(size_t i=0;i<hex.size();i+=2)raw.push_back(std::stoul(hex.substr(i,2),nullptr,16));
+        const auto before=raw;
+        const auto result=Legality::analyzePk5(raw,{.encrypted=false});
+        bool source=false,paired=false;
+        for(const auto& issue:result.issues) {
+            source|=issue.text.find("released-archive WC5FULL")!=std::string::npos;
+            paired|=issue.text.find("paired game/language claim")!=std::string::npos;
+        }
+        assert(source&&paired);
+        assert(result.verdict()==Legality::Verdict::NoProblemsFound&&raw==before);
+        ++archivedCases;
+    }
+    assert(archivedCases==4);
     std::cout<<"Gen V receiving metadata: "<<checks<<" version/language boundaries; unsupported receipt stays incomplete, fully supported alternate remains certified PASS\n";
 }
