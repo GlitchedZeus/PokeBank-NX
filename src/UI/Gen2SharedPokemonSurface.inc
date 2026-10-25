@@ -14,6 +14,7 @@ namespace Gen2Native = PokeBank::UIModel::Gen2Native;
 
 struct SharedSurfaceState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     bool cloneActive = false;
     bool provenanceActive = false;
@@ -23,9 +24,9 @@ struct SharedSurfaceState {
 
 SharedSurfaceState& sharedSurfaceStateFor(const TrainerViewScreen& screen) {
     static SharedSurfaceState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;

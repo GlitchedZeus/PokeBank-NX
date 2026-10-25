@@ -62,6 +62,7 @@ enum class PickerKind : uint8_t { None, Species, Move };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Mode mode = Mode::Closed;
     int box = 0;
@@ -79,9 +80,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -112,6 +113,7 @@ bool boxMoveAvailable(const TrainerViewScreen& screen) noexcept {
 // trainer/staged editor (source reload) is never used.
 struct Gen1EditDraft {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     const Editor* base = nullptr;
     std::unique_ptr<Editor> draft;
 };
@@ -129,7 +131,7 @@ Editor* realEditor(TrainerViewScreen& screen) noexcept {
 Editor* editor(TrainerViewScreen& screen) noexcept {
     auto* real = realEditor(screen);
     auto& d = editDraftFor();
-    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    if (real && d.draft && d.owner == &screen && d.base == real && d.ownerSerial == screen.instanceSerial) return d.draft.get();
     return real;
 }
 
@@ -137,7 +139,7 @@ const Editor* editor(const TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
     const Editor* real = trainer ? trainer->stagedPokemon() : nullptr;
     const auto& d = editDraftFor();
-    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    if (real && d.draft && d.owner == &screen && d.base == real && d.ownerSerial == screen.instanceSerial) return d.draft.get();
     return real;
 }
 
@@ -152,7 +154,7 @@ bool beginEditDraft(TrainerViewScreen& screen, std::string& error) {
     }
     auto draft = Editor::create(real->view(), error);
     if (!draft) return false;
-    d.owner = &screen;
+    d.owner = &screen; d.ownerSerial = screen.instanceSerial;
     d.base = real;
     d.draft = std::move(draft);
     return true;
@@ -163,7 +165,7 @@ void dropEditDraft() noexcept { editDraftFor() = {}; }
 bool editDraftActive(const TrainerViewScreen& screen) noexcept {
     const auto* trainer = rbyTrainer(screen);
     const auto& d = editDraftFor();
-    return trainer && d.draft && d.owner == &screen && d.base == trainer->stagedPokemon();
+    return trainer && d.draft && d.owner == &screen && d.base == trainer->stagedPokemon() && d.ownerSerial == screen.instanceSerial;
 }
 
 bool editorAvailable(const TrainerViewScreen& screen) noexcept {

@@ -23,6 +23,7 @@
 #include <array>
 #include <cstdlib>
 #include <cstring>
+#include <new>
 #include <iostream>
 #include <span>
 #include <string>
@@ -486,6 +487,97 @@ void gen5HeldItemPartialRow() {
     check(screen.storageStatus.find("press A again") == std::string::npos, "Gen V partly visible row needs no second press");
 }
 
+// Round 6 state leak: the generation surfaces keep per-screen state in statics. Save B's screen
+// is constructed at EXACTLY save A's address (the device builds the screen on the stack for every
+// opened game); nothing from A -- open editor, dirty draft, open picker -- may carry over to B.
+void gen3NoStateAcrossScreens() {
+    alignas(UI::TrainerViewScreen) static unsigned char storage[sizeof(UI::TrainerViewScreen)];
+    auto bytesA = gen3Fixture(13), bytesB = gen3Fixture(13);
+    auto parsedA = G3::parse(bytesA, G3::SourceGame::FireRedGBA);
+    auto parsedB = G3::parse(bytesB, G3::SourceGame::FireRedGBA);
+    std::string error;
+    auto trainerA = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*parsedA.save, error);
+    auto trainerB = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*parsedB.save, error);
+    if (!trainerA || !trainerB) { check(false, "state-leak fixtures open"); return; }
+    auto* a = new (storage) UI::TrainerViewScreen(*trainerA, "Pokemon FireRed", "/host/a.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::RetroArchLegacy, "firered_gba", "mGBA");
+    {
+        Driver d{*a, {}, {}};
+        if (!openGen3PartyEdit(d)) return;
+        for (int i = 0; i < 20 && !d.target(31014); ++i) d.press(HidNpadButton_Down);
+        d.tap(31014);                       // dirty draft: Pokérus None -> Infected
+        check(drawnValue("Pokerus") == "Infected", "save A: the draft is dirty");
+        d.tap(31007);                       // and the Held Item picker is open
+        check(!cells(d, 4000).empty(), "save A: the Held Item picker is open");
+    }
+    a->~TrainerViewScreen();
+    auto* b = new (storage) UI::TrainerViewScreen(*trainerB, "Pokemon FireRed", "/host/b.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::RetroArchLegacy, "firered_gba", "mGBA");
+    check(static_cast<void*>(a) == static_cast<void*>(b), "save B's screen reuses save A's address");
+    {
+        Driver d{*b, {}, {}};
+        d.frame();
+        d.screen.detailViewActive = true;
+        d.screen.selectedMode = UI::TrainerViewScreen::ViewMode::Boxes;
+        d.screen.selectedBoxIndex = 0;
+        d.screen.selectedItemIndex = 0;
+        d.frame();
+        check(cells(d, 4000).empty(), "save B: no picker carried over");
+        check(drawnValue("Pokerus").front() == '<', "save B: no editor carried over");
+        d.press(HidNpadButton_X);           // X here must be B's own Add, never A's stale Keep
+        check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");
+        check(drawnValue("Species").find("#") != std::string::npos && trainerB->stagedPokemon()->pendingChanges().empty(),
+              "save B: X opens a fresh Create draft (species " + drawnValue("Species") + ")");
+    }
+    b->~TrainerViewScreen();
+}
+
+void gen5NoStateAcrossScreens() {
+    alignas(UI::TrainerViewScreen) static unsigned char storage[sizeof(UI::TrainerViewScreen)];
+    const auto input = gen5Fixture();
+    std::string error;
+    const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+    auto trainerA = PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error);
+    auto trainerB = PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error);
+    if (!trainerA || !trainerB) { check(false, "Gen V state-leak fixtures open"); return; }
+    auto* a = new (storage) UI::TrainerViewScreen(*trainerA, "Pokemon Black", "/host/a.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    {
+        Driver d{*a, {}, {}};
+        d.frame();
+        a->detailViewActive = true;
+        a->selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        d.frame();
+        d.press(HidNpadButton_A);
+        auto& state = trainerA->sharedScreen();
+        const auto actions = state.availableActions(trainerA->stagedPokemon());
+        for (size_t i = 0; i < actions.count && actions[i] != PokeBank::UIModel::SharedPokemonEditor::Action::Edit; ++i)
+            d.press(HidNpadButton_Down);
+        d.press(HidNpadButton_A);
+        d.tap(Workspace::kDetailTouchBase + 7);   // the Held Item picker is open in A's editor workspace
+        check(!cells(d, 6000).empty(), "Gen V save A: the Held Item picker is open");
+    }
+    a->~TrainerViewScreen();
+    auto* b = new (storage) UI::TrainerViewScreen(*trainerB, "Pokemon Black", "/host/b.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    {
+        Driver d{*b, {}, {}};
+        d.frame();
+        b->detailViewActive = true;
+        b->selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        d.frame();
+        d.press(HidNpadButton_A);
+        auto& state = trainerB->sharedScreen();
+        const auto actions = state.availableActions(trainerB->stagedPokemon());
+        for (size_t i = 0; i < actions.count && actions[i] != PokeBank::UIModel::SharedPokemonEditor::Action::Edit; ++i)
+            d.press(HidNpadButton_Down);
+        d.press(HidNpadButton_A);
+        check(state.surface() == G5::Gen5SharedScreenState::Surface::Edit, "Gen V save B opens its own editor");
+        check(cells(d, 6000).empty(), "Gen V save B: A's open picker did not carry over");
+    }
+    b->~TrainerViewScreen();
+}
+
 } // namespace
 
 int main() {
@@ -495,6 +587,8 @@ int main() {
     gen3CreatePokerus();
     gen3HeldItem();
     gen5HeldItemPartialRow();
+    gen3NoStateAcrossScreens();
+    gen5NoStateAcrossScreens();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;

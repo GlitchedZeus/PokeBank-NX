@@ -93,6 +93,7 @@ enum class PickerTarget : uint8_t {
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool passive = false;
     int detailsFocus = 0;
     TouchScrollState detailsTouchScroll;
@@ -145,9 +146,9 @@ struct State {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }

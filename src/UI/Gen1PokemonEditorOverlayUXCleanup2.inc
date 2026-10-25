@@ -31,6 +31,7 @@ enum class UX2Picker : uint8_t { None, Species, Move };
 
 struct UX2State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     UX2Mode mode = UX2Mode::Closed;
     int box = 0;
@@ -71,9 +72,9 @@ struct UX2State {
 
 UX2State& ux2StateFor(const TrainerViewScreen& screen) {
     static UX2State state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
