@@ -35,6 +35,7 @@ XFAIL: dict[str, str] = {
     # Round 3: CG21/CG26/CG28 on #307 aeccd13, CG20/CG24/CG25/CG27 on 7ed1cc16, CG20b on 7ed1cc16,
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
+    # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     "CG61-switch-backup-opens-staged-copy": "lane L (P2, #322: wip/l-r5-backup-copy-20261024 767fd4b0)",
@@ -2264,6 +2265,19 @@ def round5_contracts(sources):
     def body_of(f, name):
         return "\n".join(b for _, _, b in function_bodies(f.code, re.compile("^" + re.escape(name) + "$"))) if f else ""
 
+    def block_after(code, pos):
+        """Text from pos to the end of the enclosing { } block."""
+        d, j = 0, pos
+        while j < len(code):
+            if code[j] == "{":
+                d += 1
+            elif code[j] == "}":
+                d -= 1
+                if d < 0:
+                    break
+            j += 1
+        return code[pos:j]
+
     # ------------------------------------------------------------------------------------------
     # P2 / #322 (lane L): A on a native Switch backup opens THAT copy in an isolated staged session
     # (owner: "A opens that specific copy in an isolated staged session"), not a read-only preview and
@@ -2432,7 +2446,89 @@ def round5_contracts(sources):
             r.violations.append(f"{f.rel}: Gen I offers a trainer gender edit (Gen I has no gender field)")
     # Gold / Silver: the Gen II gender stager is Crystal-only (checked above) and refuses others.
     if not re.search(r"Gold and Silver store no trainer gender", src(g2).code if src(g2) else ""):
-        r.violations.append(f"{g2}: stageTrainerGender does not refuse Gold / Silver")
+        r.violations.append(f"{g2}: stageTrainerGender does not refuse Gen II Gold / Silver")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P1 Gen I-IV (lane C 8f0e1210): only the shared Review presenter paints Gen I Review. The old
+    # 760x240 "Discard Staged" panel and the old footer (A Export Copy; X exports in the shared panel)
+    # were painted over SharedEditorChrome::drawReviewPanel / drawReviewDiscardConfirm.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG65-gen1-review-shared-presenter-only",
+               "Gen I Review: nothing but the shared Review panel / Discard All confirmation paints it; no old "
+               "Discard Staged panel or 'A Export Copy' footer on top (owner Oct 24 P1)")
+    g1 = src("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
+    if not g1:
+        r.violations.append("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc: missing")
+    else:
+        if re.search(r"drawText\s*\([^;]*Gen12ReviewDiscard::kTitle", g1.code):
+            r.violations.append(f"{g1.rel}: the old Gen I Discard Staged panel is still painted over the shared confirmation")
+        foot = body_of(g1, "ux3FooterText")
+        m = re.search(r"case\s+UX2Mode::Review\s*:\s*return\s*\"([^\"]*)\"", foot)
+        if not m or re.search(r"\bA\s*:\s*Export", m.group(1)):
+            r.violations.append(f"{g1.rel}: ux3FooterText Review names A as Export Copy (X exports in the shared Review)")
+        nav = body_of(g1, "ux3DrawTouchNavBar")
+        m = re.search(r"case\s+UX2Mode::Review\s*:(.*?)(?=case\s+UX2Mode::|\Z)", nav, re.S)
+        if not m or re.search(r"\bdrawNavBar\s*\(", m.group(1)):
+            r.violations.append(f"{g1.rel}: ux3DrawTouchNavBar paints a second Review footer over the shared one")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P1 (lane C 8f0e1210): Gen II Review touch on the shared paged panel. reviewRow is the shared
+    # presenter's PAGE: a tap selects nothing (rows are informational) and one completed vertical swipe
+    # on the panel turns exactly one page (SharedReview::move by +/-1), inert while Discard All is asked.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG66-gen2-review-swipe-one-page",
+               "Gen II Review touch: a tap never jumps pages; one vertical swipe turns one shared Review page; "
+               "inert during Discard All (owner Oct 24 P1)")
+    g2h = src("src/UI/Gen2HardwareWorkspaceFix.inc")
+    body = body_of(g2h, "handleParityTouch")
+    m = re.search(r"if\s*\(\s*legacy\.active\s*&&\s*legacy\.review\s*\)", body)
+    if not m:
+        r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: handleParityTouch Review branch not found (update this check)")
+    else:
+        branch = block_after(body, body.index("{", m.end()) + 1)
+        if re.search(r"reviewRow\s*=\s*i\b", branch) or re.search(r"justTapped\s*\(", branch):
+            r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: a Review tap still sets reviewRow (jumps pages)")
+        if re.search(r"/\s*45\b|\bsteps\b", branch) or not re.search(
+                r"SharedReview::move\s*\([^;]*\?\s*1\s*:\s*-1", branch):
+            r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: a Review swipe does not turn exactly one shared page")
+        if not re.search(r"!\s*[^;]*reviewDiscard\.confirming", branch):
+            r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: Review swipe is live under the Discard All confirmation")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P1 (lane C a7244a64): a Review opened outside Box Actions (staged-exit Review Changes / Export
+    # Copy, Trainer card, Bag) closes to the screen underneath, never to a stale slot's Actions sheet.
+    # openStagedReview marks it standalone; every Gen I-IV Review exit that falls back to Actions takes
+    # the mark.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG67-standalone-review-returns-underneath",
+               "Gen I-IV Review opened from the exit menu / Trainer / Bag closes to the screen underneath, not "
+               "to a stale Box Actions sheet (owner Oct 24 P1)")
+    origin = src("include/UI/ClassicReviewOrigin.h")
+    if not origin or not (re.search(r"\bmarkStandalone\s*\(", origin.code) and re.search(r"\btakeStandalone\s*\(", origin.code)):
+        r.violations.append("include/UI/ClassicReviewOrigin.h: no standalone Review origin (markStandalone / takeStandalone)")
+    comp = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    if not re.search(r"ClassicReviewOrigin::markStandalone\s*\(", body_of(comp, "openStagedReview")):
+        r.violations.append("src/UI/TrainerViewScreenCompositeOverlay.cpp: openStagedReview does not mark its Review standalone")
+    FALLBACK = re.compile(r"selectedMode\s*[!=]=\s*TrainerViewScreen::ViewMode::Trainer")
+    for rel, fn_name, anchor in (
+            ("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", "ux2HandleActiveInput", r"state\.mode\s*==\s*UX2Mode::Review\s*\)"),
+            ("src/UI/Gen2SharedPokemonSurface.inc", "handleSharedReview", None),
+            ("src/UI/Gen3SharedPokemonSurface.inc", "handleReview", None),
+            ("src/UI/Gen4SharedPokemonSurface.inc", "handleReview", None)):
+        body = body_of(src(rel), fn_name)
+        if anchor:
+            m = re.search(anchor, body)
+            body = block_after(body, body.index("{", m.end()) + 1) if m else ""
+        if not body:
+            r.violations.append(f"{rel}: {fn_name} Review exit not found (update this check)")
+            continue
+        for fb in FALLBACK.finditer(body):
+            if not re.search(r"ClassicReviewOrigin::takeStandalone\s*\(", body[fb.end():fb.end() + 400]):
+                r.violations.append(f"{rel}: {fn_name}: a Review exit falls back to Actions without consulting "
+                                    "ClassicReviewOrigin (stale Box Actions after a standalone Review)")
     res.append(r)
     return res
 
