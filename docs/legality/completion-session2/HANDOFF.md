@@ -1,6 +1,6 @@
 # October25 historical evidence continuation
 
-Current continuation starts from pushed PR314 `0b01ad6c614c1652a6c9591195ebff22cb761d8f`; owner research is being authenticated on WIP `wip/legality-evidence-20261025`. See [current progress](../historical-evidence-20261025/PROGRESS.md) for code, exact source pins, tests and remaining gates. Preserve all prior evidence and metrics below. Application PR307 is separate and untouched.
+Current continuation starts from pushed PR314 `0b01ad6c614c1652a6c9591195ebff22cb761d8f`; owner research was audited and implemented on WIP `wip/legality-evidence-20261025`. See [current progress](../historical-evidence-20261025/PROGRESS.md) for code, exact source pins,52 passing local configurations,135193 unchanged retained Gen5 outputs and the exact-head CI publication gate. Preserve all prior evidence and metrics below. Application PR307 is separate and untouched.
 
 # Remaining engineering work
 

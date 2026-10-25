@@ -1,3 +1,11 @@
+# October25 verified archive update
+
+The earlier synthetic-only checkpoint below is superseded by [the original-file audit and source assessment](../historical-evidence-20261025/SOURCE_ASSESSMENT.md). All81 archived full cards were downloaded and Git-blob/SHA256 verified:63 released and18 unreleased. All81 confirm CCITT-FALSE over00..2CD. Raw game masks were corrected; the published Italian/German labels are contradicted by actual bytes and the native enum. All63 released payloads pair under an explicit four-byte receipt-date-only relation, not exact byte identity. Unknown masks and unreleased/debug provenance remain unverified. One archive/catalog receiving conflict is retained.
+
+The generated released-template evidence now reaches the actual Gen5 gift report as information only. No original receipt is authenticated, no unsupported receipt warning removed, and no Pokémon verdict changed across the retained135193 inputs. GCC/Clang normal+sanitizer52 configurations PASS. Exact-head CI remains required after publication. See [progress and handoff](../historical-evidence-20261025/PROGRESS.md).
+
+## Prior October21 checkpoint (historical)
+
 # WC5FULL distributor evidence parsing: source pins and limitations
 
 First-party distribution receipts are NOT authenticated by a valid-looking

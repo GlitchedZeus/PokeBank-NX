@@ -33,6 +33,7 @@ jobs:
     env:
       CXX: ${{ matrix.cxx }}
       ASAN_OPTIONS: detect_leaks=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,6 +63,17 @@ jobs:
           done
           python3 tests/test_gen5_full_card_generator.py \
             --archive build-completion/archive --pgf build-completion/source/pgf.pkl
+      - name: Preserve independently replayed full-card evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-full-card-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen5_full_card_evidence*.json
+            build-completion/archive/**/*.wc5full
+            docs/legality/historical-evidence-20261025/FULL_CARD_MANIFEST.json
+          if-no-files-found: warn
+          retention-days: 30
   app-boundary:
     runs-on: ubuntu-latest
     steps:
