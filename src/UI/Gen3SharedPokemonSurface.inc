@@ -483,9 +483,11 @@ bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
     if (row == 15) return state.session.working.species == 201; // Unown letter (PID-derived)
     if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;
+    // L06 (Round 6): Pokérus (14) is editable in Create too, as in Gen IV. The Create backend
+    // validates, writes and verifies create.pokerus (Gen3StagedPokemonEditor::stageAddBoxPokemon).
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
-               row == 8 || row == 9 || row == 11 || row == 12 || row == 13;
+               row == 8 || row == 9 || row == 11 || row == 12 || row == 13 || row == 14;
     return row == 0 || row == 1 || row == 2 || row == 3 || row == 4 ||
            row == 7 || row == 8 || row == 9 || row == 11 || row == 12 ||
            row == 13 || row == 14;
