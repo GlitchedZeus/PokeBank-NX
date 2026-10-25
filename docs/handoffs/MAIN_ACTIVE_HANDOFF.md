@@ -727,7 +727,9 @@ Round-5 changes (each lane first verified Codex's Oct 24 work, then fixed only r
 | P5 | R docs `a4678bdc` | All audited correct; shiny HP DV doc fix |
 | QA | `b5548272` … `d09e393f` | 27 Oct-24 PASS items gated (236 guards); CG61–CG68 enforced |
 
-**Open owner decision:** Codex `7130bff3` allows Safari Ball and Berry Juice as Gen III *held* items (PKHeX GetAllHeld), which PKHeX legality flags as unreleased held items.
+**Owner decision (Oct 25):** Gen III held items follow PKHeX legality, so Safari Ball (5) and Berry Juice (44) are never offered or written as held items.
+- Fix: `wip/coord-r5-gen3-held-legal-20261025` `15c77226`. It is pushed, the host test and all Python gates pass, and a mutation of the fix fails the test. NOT DEVICE TESTED.
+- Owner instruction: do not build an NRO for this alone. Merge it into #307 with the round-6 fixes so it ships in the next candidate, not in `1ca2faec`.
 
 **Parked, not integrated (superseded):**
 - `wip/coord-r5-safari-ball-20261024` `31a75206` (duplicate of Codex 5B);
