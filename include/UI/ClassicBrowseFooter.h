@@ -4,7 +4,7 @@
 #include <vector>
 
 // Round 6 E05: the Gen I-IV Game Browser browse footer (save hub, Party, Boxes, Storage and the
-// read-only pages) in one fixed order, the same as Gen V (Gen5SharedReadOnlySurface: D-pad, A,
+// read-only pages, and the Gen I-III Boxes grid repaint in ClassicPackedMoveOverlay) in one fixed order, the same as Gen V (Gen5SharedReadOnlySurface: D-pad, A,
 // L/R, ZL/ZR, Review, B): D-pad/Stick, A, L/R, ZL/ZR, [Review], B, -. Owner Round 5 (1ca2faec)
 // found Party footers inconsistent: the old string put B before A and appended A afterwards.
 //
@@ -21,6 +21,8 @@ struct Hint {
 
 struct Spec {
     bool canOpen = false;        // A: the focused slot / hub panel opens
+    std::string openLabel = "View / Actions";
+    std::vector<Hint> actions;   // page actions after A (Gen I-III Boxes: X Add, Y Move / Hold Multi)
     bool boxes = false;          // L/R and ZL/ZR change box (Boxes, Storage)
     bool review = false;         // Review slot: off until a Review key is handled on this page
     std::string reviewGlyph = "Y";
@@ -28,7 +30,8 @@ struct Spec {
 
 inline std::vector<Hint> hints(const Spec& spec) {
     std::vector<Hint> out{{"D-pad/Stick", "Navigate"}};
-    if (spec.canOpen) out.push_back({"A", "View / Actions"});
+    if (spec.canOpen) out.push_back({"A", spec.openLabel});
+    for (const auto& action : spec.actions) out.push_back(action);
     if (spec.boxes) {
         out.push_back({"L/R", "Box"});
         out.push_back({"ZL/ZR", "Jump"});

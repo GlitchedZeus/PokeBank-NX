@@ -7,6 +7,7 @@
 #include "UI/ClassicCarryGrid.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include "UI/ClassicPackedMovePresentation.h"
+#include "UI/ClassicBrowseFooter.h"
 #include "UI/SpriteManager.h"
 
 #include <algorithm>
@@ -1260,13 +1261,23 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     // Override the legacy box footer last so Y is never advertised as a destructive shortcut.
     if (gridOwnsInput(screen)) {
+        // The same browse footer model and order as every other Gen I-V box page (E05): D-pad, A,
+        // page actions, L/R, ZL/ZR, [Review], B, - (the grid handles ZL/ZR jumps and - Help).
         const bool occupied = slotOccupiedForFooter(screen);
+        namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
+        BrowseFooter::Spec spec;
+        spec.canOpen = true;
+        spec.openLabel = "Actions";
+        spec.boxes = true;
         if (occupied)
-            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Move / Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            spec.actions = {{"Y", "Move / Hold Multi"}};
         else if (storageMode(screen, state))  // the save pane adds through Actions (X stays read-only)
-            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            spec.actions = {{"Y", "Hold Multi"}};
         else
-            drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            spec.actions = {{"X", "Add"}, {"Y", "Hold Multi"}};
+        std::vector<ControllerHint> hints;
+        for (const auto& hint : BrowseFooter::hints(spec)) hints.push_back({hint.glyph, hint.label});
+        drawNavBar(fb, hints);
     }
 }
 
