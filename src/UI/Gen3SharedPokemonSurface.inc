@@ -1048,9 +1048,9 @@ PokeBank::UIModel::SharedPickerPaging::Keys gen3PickerKeys(u64 down) noexcept {
 
 bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
+    // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's return
+    // keeps the gesture from reaching the workspace underneath.
     if (SharedPopupDismiss::tappedOutside(touch)) {
-        // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's
-        // return keeps the gesture from reaching the workspace underneath.
         state.pickerScroll.stop();
         screen.controllerNavigation.reset();
         state.valuePicker = false;
@@ -1141,8 +1141,12 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     // Do not retarget on contact: the same finger may scroll the picker.
     // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
+    // CG70: a completed tap on any published row (a partly visible edge row included) is a
+    // visible choice and commits; the reveal-first A gate below is for a controller focus only.
+    bool rowTapped = false;
     if (!gridPicker && !pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
+        rowTapped = true;
         down |= HidNpadButton_A;
     }
     if (count <= 0) {
@@ -1218,7 +1222,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (down & HidNpadButton_A) {
         // The finger can browse far away from the highlighted controller choice. A must never
         // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
-        if (!state.pickerViewport.containsSelection(
+        if (!rowTapped && !state.pickerViewport.containsSelection(
                 state.pickerRow, count, visibleRows, columns)) {
             state.pickerScroll.stop();
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);

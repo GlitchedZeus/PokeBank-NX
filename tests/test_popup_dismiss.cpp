@@ -117,9 +117,9 @@ void testWiring() {
               "        // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's\n"
               "        // return keeps the gesture from reaching the workspace underneath.\n"
               "        state.itemScroll.stop();\n        state.itemPicker = false;");
-    has(gen3, "    if (!state.valuePicker) return false;\n    if (SharedPopupDismiss::tappedOutside(touch)) {");
+    has(gen3, "    if (SharedPopupDismiss::tappedOutside(touch)) {\n        state.pickerScroll.stop();\n        screen.controllerNavigation.reset();\n        state.valuePicker = false;");
     has(gen3, "    if (!state.speciesPicker) return false;\n    if (SharedPopupDismiss::tappedOutside(touch)) {");
-    has(gen45, "    if (!state.valuePicker) return false;\n    if (SharedPopupDismiss::tappedOutside(touch)) {");
+    has(gen45, "    if (SharedPopupDismiss::tappedOutside(touch)) {\n        state.pickerScroll.stop();\n        state.valuePicker = false;");
     // Only picker draws publish a frame, each right after its beginModal / frame geometry.
     has(gen2, "    UI::SharedEditorChrome::beginModal(screen.touchButtons);\n    SharedPopupDismiss::publish(x, y, w, h);");
     has(gen3, "    const int y = (fb.getHeight() - kNavBarH - h) / 2;\n    SharedPopupDismiss::publish(x, y, w, h);");
@@ -133,10 +133,24 @@ void testWiring() {
         const int n = occurrences(text, "SharedPopupDismiss::publish(");
         const std::string name = entry.path().filename().string();
         if (n) assert(name == "Gen2PokemonEditorFoundation.inc" || name == "Gen3SharedPokemonSurface.inc" ||
-                      name == "SharedPokemonEditorSurface.inc");
+                      name == "SharedPokemonEditorSurface.inc" || name == "SaveSelectScreen.cpp" ||
+                      name == "ClassicPartyActions.inc");
         publishers += n;
     }
-    assert(publishers == 5);   // Gen II Held Item; Gen III value + species; Gen IV/V value + species
+    // Gen II Held Item; Gen III value + species; Gen IV/V value + species; Game Browser Help;
+    // Party Actions. Game / Trainer Help publishes from ScreenChrome drawInfoOverlay.
+    assert(publishers == 7);
+    has(read("include/UI/ScreenChrome.h"), "        drawModalSurface(fb, x, y, w, h);\n"
+        "        SharedPopupDismiss::publish(x, y, w, h);   // 7D: Help closes on a tap outside it");
+    has(read("src/UI/SaveSelectScreen.cpp"), "            if (SharedPopupDismiss::tappedOutside(touch)) {\n"
+        "                overlay = helpReturnOverlay;");
+    has(read("src/UI/TrainerViewScreenBase.inc"), "            if (SharedPopupDismiss::tappedOutside(touch)) {\n"
+        "                helpOverlayActive = false;\n                return;");
+    has(read("src/UI/ClassicPartyActions.inc"), "if(SharedPopupDismiss::tappedOutside(touch)){close(screen);return true;}");
+    // Destructive confirmations never consult it.
+    for (const char* rel : {"src/UI/BackupSelectionScreen.cpp", "src/UI/ClassicReleaseActionFix.inc",
+                            "include/UI/Gen12ReviewDiscardConfirm.h"})
+        assert(read(rel).find("SharedPopupDismiss") == std::string::npos);
     std::cout << "Gen II / III / IV-V picker wiring, confirmations never publish ok\n";
 }
 } // namespace

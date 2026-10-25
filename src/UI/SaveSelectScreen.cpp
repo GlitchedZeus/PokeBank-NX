@@ -364,6 +364,7 @@ namespace UI {
             const int x = (fb.getWidth() - w) / 2;
             const int y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
+            SharedPopupDismiss::publish(x, y, w, h);   // 7D: Help closes on a tap outside it
 
             fb.drawText(x + 28, y + 18, "POKEBANK NX / HELP",
                         Colors::Info, TextStyle::Caption);
@@ -3789,6 +3790,12 @@ namespace UI {
             return;
         }
         if (overlay == Overlay::Help) {
+            // 7D: a completed tap outside Help closes it like B and is consumed here.
+            if (SharedPopupDismiss::tappedOutside(touch)) {
+                overlay = helpReturnOverlay;
+                helpReturnOverlay = Overlay::None;
+                return;
+            }
             if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) {
                 overlay = helpReturnOverlay;
                 helpReturnOverlay = Overlay::None;

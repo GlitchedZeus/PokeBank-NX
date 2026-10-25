@@ -2780,6 +2780,11 @@ namespace UI {
         }
 
         if (helpOverlayActive) {
+            // 7D: a completed tap outside Help closes it like B; the return consumes it.
+            if (SharedPopupDismiss::tappedOutside(touch)) {
+                helpOverlayActive = false;
+                return;
+            }
             if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) helpOverlayActive = false;
             return;
         }

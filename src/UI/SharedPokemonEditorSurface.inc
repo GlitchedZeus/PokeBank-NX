@@ -251,9 +251,9 @@ constexpr auto sharedSpeciesName = [](uint16_t species) { return std::string(Nam
 template <class A>
 bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
+    // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's return
+    // keeps the gesture from reaching the workspace underneath.
     if (SharedPopupDismiss::tappedOutside(touch)) {
-        // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's
-        // return keeps the gesture from reaching the workspace underneath.
         state.pickerScroll.stop();
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
@@ -387,8 +387,12 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // Keep semantic focus fixed during picker drags; commit only the
     // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
+    // CG70: a completed tap on any published row (a partly visible edge row included) is a
+    // visible choice and commits; the reveal-first A gate below is for a controller focus only.
+    bool rowTapped = false;
     if (!gridPicker && !pickerBar.consumed && !speciesTouchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
+        rowTapped = true;
         down |= HidNpadButton_A;
     }
     if (count <= 0) {
@@ -491,7 +495,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
 
     // Species uses its own modal gesture. In other pickers the highlighted controller
     // choice can be off-screen after a finger scroll; A reveals rather than accepting it unseen.
-    if (state.pickerTarget != PickerTarget::Species &&
+    if (state.pickerTarget != PickerTarget::Species && !rowTapped &&
         !state.pickerViewport.containsSelection(
             state.pickerRow, count, visibleRows, columns)) {
         state.pickerScroll.stop();

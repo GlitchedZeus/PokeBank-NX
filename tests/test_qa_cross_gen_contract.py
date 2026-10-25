@@ -39,17 +39,14 @@ XFAIL: dict[str, str] = {
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
-    # coordinator's round 6 assignment.
+    # coordinator's round 6 assignment. CG70 / CG75 / CG78 XPASSed on lane P (round 6): ENFORCED.
     "CG69-pokerus-editable-gen3-gen5": "lane S (round 6 P1: L06)",
-    "CG70-held-item-tap-commits-any-row": "lane P (round 6 P1: L06 Held Item)",
     "CG71-gen3-held-item-vs-caught-ball": "lane S (round 6: Gen III held-item policy)",
     "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
     "CG73-review-entry-visible-gen1-5": "lane L (round 6 P3: B08 / P1-RETURN)",
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
-    "CG75-met-location-rows-distinguishable": "lane P (round 6 P5: R2-CHECK-011)",
     "CG76-gen2-unown-letter-from-dvs": "lane R (round 6 P6: R2-REROLL)",
     "CG77-footer-help-controls-have-handlers": "lane R (round 6 P4 / E05)",
-    "CG78-tap-outside-dismisses-non-destructive": "lane P (round 6 7D)",
     "CG79-no-gen5-language-toast": "lane S (round 6 7C)",
 }
 
