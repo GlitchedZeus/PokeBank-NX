@@ -89,6 +89,18 @@ MUTATIONS = [
     ("Oct 24 owner list changed (M05 recorded as PASS)", "docs/hardware/OCT24_REPAIRS_AND_RETEST.md",
      "- PASS: E03, L06,", "- PASS: M05, E03, L06,",
      "docs/hardware/OCT24_REPAIRS_AND_RETEST.md: owner Oct 24 PASS"),
+    ("Oct 25 R2-SPECIAL: SpD copied from SpA (calculation, not layout)", "tests/test_gen2_special_stat.cpp",
+     "assert(battle[4] == spa && battle[5] == spd && spa != spd);", "assert(battle[4] == spa);",
+     "R2-SPECIAL: tests/test_gen2_special_stat.cpp no longer contains"),
+    ("Oct 25 NEW-14: Gen V Language opens a picker again", "tests/test_gen5_language_cycle.cpp",
+     'assert(branch.find("openPicker(")==std::string::npos);', "assert(true);",
+     "NEW-14: tests/test_gen5_language_cycle.cpp no longer contains"),
+    ("Oct 25 P3-TRAINER: Gen III gender offered for any stored byte", "include/Integration/Gen3/Gen3StagedTrainerEditor.h",
+     "return originalGender_ <= 1;", "return true;",
+     "P3-TRAINER: CG64-trainer-playtime-gender-staged fails"),
+    ("Oct 25 owner sheet changed (L06 recorded as PASS)", "docs/hardware/ROUND5_RESULTS_1ca2faec.md",
+     "E03, C07, M04, E02, R2-BUG-002,", "L06, E03, C07, M04, E02, R2-BUG-002,",
+     "docs/hardware/ROUND5_RESULTS_1ca2faec.md: 32 Oct 25 PASS items"),
 ]
 
 

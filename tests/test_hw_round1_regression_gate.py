@@ -529,9 +529,70 @@ GUARDS_ROUND5: dict[str, tuple[str, G]] = {
 }
 
 
+# Round 6 (owner on the round 5 candidate 1ca2faec, Oct 25; docs/hardware/ROUND5_RESULTS_1ca2faec.md):
+# 31 PASS. 21 were already Oct 24 PASS (GUARDS_ROUND5); the 10 below are new. Several are being
+# restyled in round 6 at the owner's request (7A Gen II Special layout, 7B Gen V move label, 7C Language
+# toast, P2 Trainer layout, P3/P4 Review entry and Help), so these guards pin BEHAVIOUR (calculation,
+# staging, inline cycling, native offsets, immutability), never the old visuals. Every guard held on
+# 1ca2faec except the Safari Ball / Berry Juice held-item refusal, which is the owner's Oct 25 decision
+# (PKHeX ItemStorage3RS.Unreleased, fix 15c77226, on #307 at a5db3368). The Oct 24 PASS items
+# the owner failed on Oct 25 (L06, R2-TRAINER, B08, E05, R2-CHECK-011, NEW-18) keep their guards: those pin
+# what was accepted, and the new failures are round 6 contracts (CG69+, XFAIL until fixed).
+ROUND6_DOC = "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+ROUND6_PASS_COUNT = 31
+GUARDS_ROUND6: dict[str, tuple[str, G]] = {
+    'R2-SPECIAL': ('Gen II one Special DV / Stat Exp, separate calculated SpA and SpD (Oct 25 PASS)', [
+        ('host', 'test_gen2_special_stat', 'tests/test_gen2_special_stat.cpp', 'assert(battle[4] == spa && battle[5] == spd && spa != spd);'),
+        ('cg', 'CG51-gen2-special-not-slashed'),
+    ]),
+    'R2-REVIEWMOVE': ('Gen III Create: every caught Ball incl. Safari, released held items only, named Review (Oct 25 PASS)', [
+        ('host', 'test_gen3_staged_pokemon_editor', 'tests/test_gen3_staged_pokemon_editor.cpp', 'assert(persisted && persisted->heldItem==held && persisted->ball==ball);'),
+        ('host', 'test_gen3_staged_pokemon_editor', 'tests/test_gen3_staged_pokemon_editor.cpp', 'assert(!releasedHeldItem(5) && !releasedHeldItem(44));'),
+        ('cg', 'CG32-review-rows-readable-names'),
+    ]),
+    'M05': ('Gen V species- and form-specific move pools (Oct 25 PASS)', [
+        ('host', 'test_gen5_move_compatibility', 'tests/test_gen5_move_compatibility.cpp', 'assert(bwDirect==55 && b2Direct==64);'),
+        ('host', 'test_gen5_move_compatibility', 'tests/test_gen5_move_compatibility.cpp', 'assert(C::direct(game,235,0,459)); // Smeargle is the genuine Sketch exception.'),
+    ]),
+    'S05': ('Original saves never change; backups open through a copy (Oct 25 PASS)', [
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen12.cpp', 'row.check("immutability", qacontract::fileState(source) == sourceBefore,'),
+        ('cg', 'CG61-switch-backup-opens-staged-copy'),
+        ('cg', 'CG60-no-backup-on-unchanged-open'),
+    ]),
+    'NEW-10': ('Met Location rows fit the compact window (Oct 25 PASS)', [
+        ('host', 'test_met_location_fit', 'tests/test_met_location_fit.cpp', 'assert(widest <= kTextRoom);'),
+        ('cg', 'CG62-met-location-rows-fit'),
+    ]),
+    'NEW-14': ('Gen V Language cycles inline as a staged native edit (Oct 25 PASS)', [
+        ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("stage(screen, Field::Language, 0, nextLanguage)")!=std::string::npos);'),
+        ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("openPicker(")==std::string::npos);'),
+        ('cg', 'CG54-gen5-language-editable'),
+    ]),
+    'R2-EMUBACKUP': ('Backups: newest first, A opens the exact copy, original protected (Oct 25 PASS)', [
+        ('host', 'test_emulator_backup_access', 'tests/test_emulator_backup_access.cpp', 'assert(B::deleteRecord(l, 0) == B::Refusal::OriginalSource);'),
+        ('cg', 'CG59-backup-browser-actions'),
+        ('cg', 'CG61-switch-backup-opens-staged-copy'),
+    ]),
+    'C01': ('A selects and advances; assigned Gen V save opens directly (Oct 25 PASS)', [
+        ('cg', 'CG57-gen5-home-a-opens-assigned-save'),
+        ('host', 'test_home_input_guard', 'tests/test_home_input_guard.cpp', 'Q::decide(Q::kButtonA) == Q::Decision::Stay'),
+    ]),
+    'P3-TRAINER': ('Trainer Play Time / Gender staged at native offsets, Review, Export only (Oct 25 PASS)', [
+        ('cg', 'CG64-trainer-playtime-gender-staged'),
+        ('host', 'test_gen4_staged_pokemon_editor', 'tests/test_gen4_staged_pokemon_editor.cpp', 'const bool allowed = i == base + 0x18 || (i >= base + 0x22 && i < base + 0x26) ||'),
+        ('host', 'test_gen3_trainer_edit', 'tests/test_gen3_trainer_edit.cpp', 'const bool allowed = i == block + 0x08 || (i >= block + 0x0E && i < block + 0x12) ||'),
+        ('host', 'test_gsc_readonly_bridge', 'tests/test_gsc_readonly_bridge.cpp', 'assert(edited[clock]==0x02&&edited[clock+1]==0x05&&edited[clock+2]==42&&edited[clock+3]==9);'),
+    ]),
+    '4D-HELP': ('Help never claims a control that does nothing there (Oct 25 PASS)', [
+        ('cg', 'CG63-help-names-real-controls'),
+        ('host', 'test_classic_help_accuracy', 'tests/test_classic_help_accuracy.cpp', 'assert(lines.size() >= 6 && lines.size() <= 10);'),
+    ]),
+}
+
+
 def all_guards():
     """Every (pid, title, guards) entry; an item passed again in a later round keeps every round's guards."""
-    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5):
+    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5, GUARDS_ROUND6):
         for pid, (title, guards) in table.items():
             yield pid, title, guards
 
@@ -627,6 +688,26 @@ def check(root: Path, run_python: bool = True) -> list[str]:
             not_r3_fail = [i for i in r5_pass if r3_state.get(i) != "FAIL"]
             if not_r3_fail:
                 errors.append(f"{ROUND5_DOC}: Oct 24 PASS item(s) that were not round 3 FAILs: {not_r3_fail}")
+    # Round 6: every Oct 25 PASS is guarded; GUARDS_ROUND6 is exactly those not already Oct 24 PASS, in
+    # the recorded order, and every one was an Oct 24 FAIL or unmarked item.
+    r6 = text(ROUND6_DOC)
+    if r6 is None:
+        errors.append(f"{ROUND6_DOC} is missing")
+    else:
+        m6 = re.search(r"^### PASS \((\d+)\)\s*\n\s*\n(.+)$", r6, re.M)
+        r6_pass = [i.strip().rstrip(".") for i in m6.group(2).split(",")] if m6 else []
+        if len(r6_pass) != ROUND6_PASS_COUNT or (m6 and int(m6.group(1)) != ROUND6_PASS_COUNT):
+            errors.append(f"{ROUND6_DOC}: {len(r6_pass)} Oct 25 PASS items, gate expects {ROUND6_PASS_COUNT}")
+        new6 = [i for i in r6_pass if i not in GUARDS_ROUND5]
+        if list(GUARDS_ROUND6) != new6:
+            errors.append(f"{ROUND6_DOC}: new Oct 25 PASS {new6}, gate maps {list(GUARDS_ROUND6)}")
+        if r5 is not None:
+            # P3-TRAINER and 4D-HELP are round 5 owner requests, not Oct 24 sheet rows.
+            prior = [i.strip().rstrip(".") for line in re.findall(r"^- (?:FAIL|UNMARKED / TRACKED): (.*)$", r5, re.M)
+                     for i in line.split(",")]
+            not_open = [i for i in GUARDS_ROUND6 if i not in prior and i not in ("P3-TRAINER", "4D-HELP")]
+            if not_open:
+                errors.append(f"GUARDS_ROUND6 item(s) that were neither Oct 24 FAIL / unmarked nor round 5 requests: {not_open}")
     for pid, title, guards in all_guards():
         kinds = {g[0] for g in guards}
         if not kinds & PR_GATING_KINDS and pid not in PIN_ONLY_ALLOWED:
@@ -684,8 +765,8 @@ def main(argv: list[str]) -> int:
                 print(f"      {g[0]:4} {' | '.join(str(x) for x in g[1:3])}")
     n = sum(len(g) for _, _, g in all_guards())
     label = (f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 + {len(GUARDS_ROUND3)} round 3 + "
-             f"{len(GUARDS_ROUND5)} Oct 24 owner PASS items; all {ROUND3_PASS_COUNT} round 3 and "
-             f"{ROUND5_PASS_COUNT} Oct 24 PASS guarded")
+             f"{len(GUARDS_ROUND5)} Oct 24 + {len(GUARDS_ROUND6)} Oct 25 owner PASS items; all {ROUND3_PASS_COUNT} round 3, "
+             f"{ROUND5_PASS_COUNT} Oct 24 and {ROUND6_PASS_COUNT} Oct 25 PASS guarded")
     if errors:
         print(f"Hardware-accepted regression gate: FAIL ({len(errors)} problem(s), {label}, {n} guards)")
         for e in errors:
