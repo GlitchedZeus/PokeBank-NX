@@ -1,5 +1,6 @@
 #include "UI/ClassicPartyActions.h"
 #include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedPopupDismiss.h"
 
 // One Party sheet. The existing generation surfaces own the View / Edit /
 // Origin sessions; their explicit Party target selects the native backend.
@@ -132,7 +133,8 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         pokemon?Names::getSpeciesName(pokemon->speciesID()):"Party Pokémon",
         "PARTY / SOURCE SAVE IMMUTABLE",89000);
     {   // 7D: the sheet's frame, so a tap outside it closes it
-        const auto g=PokeBank::UIModel::NarrowPokemonMenu::geometry(model.count,fb.getWidth(),fb.getHeight(),kNavBarH);
+        const auto g=PokeBank::UIModel::NarrowPokemonMenu::geometry(model.count,fb.getWidth(),fb.getHeight(),
+            SharedPopupDismiss::kNavBarHeight);
         SharedPopupDismiss::publish(g.x,g.y,g.width,g.height);
     }
     SharedEditorChrome::drawPickerFooter(fb,{true,false});

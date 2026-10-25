@@ -22,7 +22,8 @@ struct Frame {
     }
 };
 
-inline constexpr int kFooterTop = 720 - 56;   // ScreenChrome kNavBarH footer band
+inline constexpr int kNavBarHeight = 56;                // ScreenChrome kNavBarH
+inline constexpr int kFooterTop = 720 - kNavBarHeight;  // the footer band
 
 inline Frame& published() noexcept {
     static Frame frame;
