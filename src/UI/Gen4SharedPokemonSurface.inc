@@ -1219,7 +1219,7 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
     if (target == PickerTarget::MetLocation) {
         const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily());
         std::string label = preview
-            ? Names::getMetLocationDisplayName(preview->originVersion(), value)
+            ? Names::getMetLocationChoiceName(preview->originVersion(), value)   // P5: twins show their id
             : std::string("Unknown location");
         if (state.pickerMetContextActive)
             label += "  |  " + state.pickerMetContext.detail(value,

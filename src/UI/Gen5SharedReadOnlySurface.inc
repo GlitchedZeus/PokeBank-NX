@@ -632,7 +632,7 @@ struct Gen5Editor {
                     Names::machineDisplayLabel(screen.trainer.getGameGroup(), value, Names::getItemName(value));
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
-                std::string label = metLocationText5(p ? p->originVersion() : 20, value);
+                std::string label = Names::getMetLocationChoiceName(p ? p->originVersion() : 20, value);   // P5
                 if (state.pickerMetContextActive)
                     label += "  |  " + state.pickerMetContext.detail(value,
                         [](uint16_t species) { return Names::getSpeciesName(species); });
