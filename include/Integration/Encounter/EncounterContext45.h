@@ -93,7 +93,9 @@ public:
         return row == wild_.end() ? nullptr : &*row;
     }
     const char* scope(bool otherHistories) const noexcept {
-        return otherHistories ? "Other native histories; unverified" : "Species / ancestry wild data; conditions unchecked";
+        // Row 1 of either list is always the stored location (focused_ / native_ start with it).
+        return otherHistories ? "Other native histories; unverified; row 1 = stored"
+                              : "Wild data, species + ancestry; unchecked; row 1 = stored";
     }
     template <class SpeciesName>
     std::string detail(uint16_t location, SpeciesName name) const {
@@ -122,7 +124,7 @@ public:
                 " Lv. " + std::to_string(encounter.minLevel);
             if (encounter.maxLevel != encounter.minLevel) text += "–" + std::to_string(encounter.maxLevel);
             if (encounter.species != species_) text += " via " + std::string(name(encounter.species));
-            if (row->variants) text += " (+" + std::to_string(row->variants) + " variants)";
+            if (row->variants) text += " (+" + std::to_string(row->variants) + ")";   // more slots here; short so rows fit 620 px
             return tagged(text);
         }
         return tagged("Gift / static / other history; unverified");

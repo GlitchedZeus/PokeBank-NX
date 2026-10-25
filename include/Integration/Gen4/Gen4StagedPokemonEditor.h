@@ -111,6 +111,16 @@ public:
     [[nodiscard]] bool trainerNameEditable() const;
     bool stageTrainerName(const std::u16string& name, std::string* error = nullptr);
     bool stageTrainerMoney(uint32_t money, std::string* error = nullptr);
+    // P3 (Round 5): Trainer Gender +0x18 (u8 0 / 1) and Play Time +0x22 (u16 hours, u8 minutes,
+    // u8 seconds), the offsets pinned PKSM-Core aa22d7a Sav4::gender / playedHours /
+    // playedMinutes / playedSeconds read and write (vendor/PKSM-Core/source/sav/Sav4.cpp). Same
+    // staged image, General CRC refresh and strict reparse as Name / Money. Gender is offered only
+    // when the stored byte is a native 0 / 1. Hours are capped at 999 (the shared Gen V editor bound).
+    static constexpr uint16_t kMaxPlayedHours = 999;
+    [[nodiscard]] bool trainerGenderEditable() const;
+    bool stageTrainerGender(uint8_t gender, std::string* error = nullptr);
+    bool stageTrainerPlayTime(uint16_t hours, uint8_t minutes, uint8_t seconds,
+                              std::string* error = nullptr);
 
     void discard() noexcept { staged_ = original_; }
 

@@ -75,6 +75,20 @@ MUTATIONS = [
      "| S03 | Gen V Create, Clone, Move and Release work (left-panel clipping, parity) | PASS |",
      "| S03 | Gen V Create, Clone, Move and Release work (left-panel clipping, parity) | FAIL |",
      "docs/hardware/ROUND2_RESULTS_e10f307f.md: PASS"),
+    ("Oct 24 NEW-09 nature colours swapped (raised red)", "include/UI/NatureStatPresentation.h",
+     "return modifier > 0 ? Colors::Success : modifier < 0 ? Colors::Error : normal;",
+     "return modifier > 0 ? Colors::Error : modifier < 0 ? Colors::Success : normal;",
+     "NEW-09: CG43-nature-stat-colours fails"),
+    ("Oct 24 NEW-09 stat rows stop colouring by Nature", "src/UI/SharedPokemonEditorSurface.inc",
+     "NatureStats::statColor(A::nature(*raw), row, selected ? Colors::SelectedText : Colors::TextDim)",
+     "(selected ? Colors::SelectedText : Colors::TextDim)",
+     "NEW-09: CG43-nature-stat-colours fails"),
+    ("Oct 24 guard literal deleted (NEW-12 Walrein ancestry)", "tests/test_gen45_encounter_context.cpp",
+     "assert(walrein[365] && walrein[364] && walrein[363] && !walrein[362]);", "assert(walrein[365]);",
+     "NEW-12: tests/test_gen45_encounter_context.cpp no longer contains"),
+    ("Oct 24 owner list changed (M05 recorded as PASS)", "docs/hardware/OCT24_REPAIRS_AND_RETEST.md",
+     "- PASS: E03, L06,", "- PASS: M05, E03, L06,",
+     "docs/hardware/OCT24_REPAIRS_AND_RETEST.md: owner Oct 24 PASS"),
 ]
 
 

@@ -10,6 +10,7 @@
 #include "UI/SourceBackupClassification.h"
 #include "UI/WorkingCopyRefresh.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
@@ -347,6 +348,86 @@ void workingCopyRefresh(const fs::path& root) {
     assert(W::refresh(working.string(), "..", makeFresh).outcome == W::Outcome::Failed);
 }
 
+
+// Round 5 (#322): A on a Switch backup (owned or legacy) opens an isolated session copy in the
+// exact profile/game folder; the backup itself, legacy or not, stays byte- and time-identical, and
+// edits saved in an earlier session are kept as a dated backup instead of being overwritten.
+void backupSessions(const fs::path& root) {
+    namespace W = PokeBank::UIModel::WorkingCopy;
+    const fs::path game = root / "sessions" / "profile" / "brilliant_diamond_switch";
+    const fs::path owned = game / "20261020_100000";
+    const fs::path legacy = root / "sessions" / "Pokemon Brilliant Diamond" / "20260921_101010";
+    const std::vector<uint8_t> ownedMain(0x2000, 0x31), legacyMain(0x2000, 0x52);
+    write(owned / "main", ownedMain);
+    write(owned / "backup" / "poke", {1, 2});
+    write(legacy / "main", legacyMain);
+    write(legacy / "backup" / "poke", {3, 4});
+    const auto ownedTime = fs::last_write_time(owned / "main");
+    const auto legacyTime = fs::last_write_time(legacy / "main");
+    int copies = 0;
+    const auto copyTree = [&](const std::string& from, const std::string& to) {
+        ++copies;
+        fs::copy(from, to, fs::copy_options::recursive);
+        return true;
+    };
+    const auto originals = [&] {
+        assert(slurp(owned / "main") == ownedMain && slurp(owned / "backup" / "poke") == std::vector<uint8_t>({1, 2}));
+        assert(slurp(legacy / "main") == legacyMain && slurp(legacy / "backup" / "poke") == std::vector<uint8_t>({3, 4}));
+        assert(fs::last_write_time(owned / "main") == ownedTime && fs::last_write_time(legacy / "main") == legacyTime);
+    };
+    const fs::path session = game / W::kBackupSessionName;
+    const auto datedFolders = [&] {
+        std::size_t n = 0;
+        for (const auto& e : fs::directory_iterator(game))
+            if (e.is_directory() && e.path() != session && e.path() != owned) ++n;
+        return n;
+    };
+
+    // Open the owned backup: a session copy, the backup untouched, no new backup.
+    W::Result r = W::openBackupSession(game.string(), owned.string(), "20261024_100000", copyTree);
+    assert(r.outcome == W::Outcome::Fresh && fs::path(r.workingPath) == session && r.error.empty());
+    assert(slurp(session / "main") == ownedMain && W::readOrigin(session.string()) == owned.string());
+    originals();
+    // Open the legacy backup next (the earlier session held no edits): dropped, nothing new.
+    r = W::openBackupSession(game.string(), legacy.string(), "20261024_100100", copyTree);
+    assert(r.outcome == W::Outcome::UnchangedDropped && slurp(session / "main") == legacyMain);
+    assert(datedFolders() == 0);
+    originals();
+    // Edits saved into the session, then another backup opened: the edits survive as a dated backup.
+    write(session / "main", std::vector<uint8_t>(0x2000, 0x99));
+    r = W::openBackupSession(game.string(), owned.string(), "20261024_100200", copyTree);
+    assert(r.outcome == W::Outcome::EditsPreserved && fs::path(r.preservedPath) == game / "20261024_100200");
+    assert(slurp(fs::path(r.preservedPath) / "main") == std::vector<uint8_t>(0x2000, 0x99));
+    assert(slurp(session / "main") == ownedMain && datedFolders() == 1);
+    originals();
+    // A session with no origin record is kept, never dropped.
+    fs::remove(W::originFileFor(session.string()));
+    write(session / "main", ownedMain);
+    r = W::openBackupSession(game.string(), owned.string(), "20261024_100300", copyTree);
+    assert(r.outcome == W::Outcome::EditsPreserved && datedFolders() == 2);
+    originals();
+    // Refusals copy nothing: a missing backup, the session itself, an empty game folder.
+    const int before = copies;
+    assert(W::openBackupSession(game.string(), (game / "nope").string(), "20261024_100400", copyTree).outcome ==
+           W::Outcome::Failed);
+    assert(W::openBackupSession(game.string(), session.string(), "20261024_100400", copyTree).outcome ==
+           W::Outcome::Failed);
+    assert(W::openBackupSession("", owned.string(), "20261024_100400", copyTree).outcome == W::Outcome::Failed);
+    assert(copies == before);
+    // A failed copy restores the earlier session exactly.
+    write(session / "main", std::vector<uint8_t>(0x2000, 0x11));
+    r = W::openBackupSession(game.string(), legacy.string(), "20261024_100500",
+                             [](const std::string&, const std::string&) { return false; });
+    assert(r.outcome == W::Outcome::Failed && slurp(session / "main") == std::vector<uint8_t>(0x2000, 0x11));
+    assert(W::readOrigin(session.string()) == owned.string());
+    originals();
+    // refresh() still rotates only Working and this session: never a backup folder itself.
+    const auto never = [&] { ++copies; return std::string(); };
+    assert(W::refresh(owned.string(), "20261024_100600", never).outcome == W::Outcome::Failed);
+    assert(W::refresh(legacy.string(), "20261024_100600", never).outcome == W::Outcome::Failed);
+    assert(copies == before);   // refused before any copy
+    originals();
+}
 } // namespace
 
 int main() {
@@ -361,9 +442,11 @@ int main() {
     deliberateBackups(root, {"drastic", "backup/POKEMON B.dsv", 5, "black_nds", ".dsv"});
     deliberateBackups(root, {"melonds", "saves/Pokemon White 2.sav", 5, "white2_nds", ".sav"});
     workingCopyRefresh(root);
+    backupSessions(root);
     fs::remove_all(root);
     std::cout << "Emulator backups: RetroArch / DraStic / melonDS sources read-only and unchanged, records by "
                  "exact SOURCE_PATH, whole-record deletion only, foreign files / escapes / last copy refused; deliberate "
                  "copy-only backups created / listed / deleted, none on open, source byte- and time-identical; Switch "
-                 "Working copy refreshed without unnecessary backups, edits preserved, failures restore PASS\n";
+                 "Working copy refreshed without unnecessary backups, edits preserved, failures restore; backup sessions "
+                 "leave owned and legacy backups byte-identical PASS\n";
 }

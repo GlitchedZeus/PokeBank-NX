@@ -37,6 +37,28 @@ ABILITY_EFFECTS_INPUTS := $(ABILITY_EFFECTS_SOURCES) include/UI/AbilityEffects.h
     src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc \
     src/UI/Gen5SharedReadOnlySurface.inc src/UI/SharedPokemonEditorSurface.inc
 
+# Round 5 NEW-10: every Gen III-V Met Location row fits the compact 620 px window unclipped.
+MET_LOCATION_FIT_TEST := $(HOST_BUILD)/test_met_location_fit
+MET_LOCATION_FIT_SANITIZE := $(HOST_BUILD)/test_met_location_fit_sanitize
+MET_LOCATION_FIT_SOURCES := tests/test_met_location_fit.cpp src/Names/LocationNames.cpp src/Names/SpeciesNames.cpp
+MET_LOCATION_FIT_INPUTS := $(MET_LOCATION_FIT_SOURCES) include/UI/SharedMenuGeometry.h \
+    include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc \
+    include/Integration/Encounter/EncounterGuardrails.h include/Names/LocationDisplayNames.h \
+    src/UI/SharedPokemonEditorSurface.inc src/UI/Gen3SharedPokemonSurface.inc
+
+# Round 5 4D: Gen I-V Help pages name only working controls.
+HELP_ACCURACY_TEST := $(HOST_BUILD)/test_classic_help_accuracy
+HELP_ACCURACY_SANITIZE := $(HOST_BUILD)/test_classic_help_accuracy_sanitize
+HELP_ACCURACY_INPUTS := tests/test_classic_help_accuracy.cpp include/UI/ClassicHelpPresentation.h \
+    src/UI/Gen5SharedReadOnlySurface.inc src/UI/ClassicInventoryOverlay.cpp src/UI/TrainerViewScreenBase.inc \
+    include/UI/ClassicTrainerSessionInput.h src/UI/ClassicPackedMoveOverlay.inc
+
+# Round 5 6B: Gen IV / V event-year labels only where the native PKHeX name carries the year.
+EVENT_YEAR_TEST := $(HOST_BUILD)/test_event_year_source
+EVENT_YEAR_SANITIZE := $(HOST_BUILD)/test_event_year_source_sanitize
+EVENT_YEAR_SOURCES := tests/test_event_year_source.cpp src/Names/LocationNames.cpp
+EVENT_YEAR_INPUTS := $(EVENT_YEAR_SOURCES) include/Names/LocationDisplayNames.h include/Names/LocationNames.h
+
 # tests/test_touch_scroll_state.cpp (TouchScroll.h, Lane P) was only built by the touch-input
 # workflow; QA Part 9 found no host Makefile ran it. It runs in host-test / host-sanitize here.
 TOUCH_SCROLL_STATE_TEST := $(HOST_BUILD)/test_touch_scroll_state
@@ -44,10 +66,10 @@ TOUCH_SCROLL_STATE_SANITIZE := $(HOST_BUILD)/test_touch_scroll_state_sanitize
 TOUCH_SCROLL_STATE_INPUTS := tests/test_touch_scroll_state.cpp include/UI/TouchScroll.h \
     include/UI/TouchGesture.h tests/touch_fakes/UI/TouchInput.h
 
-HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE)
-host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST)
-host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE)
+HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE)
+host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST)
+host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE)
 
 $(ITEM_SEARCH_TEST): $(ITEM_SEARCH_INPUTS)
 	@mkdir -p $(HOST_BUILD)
@@ -64,6 +86,30 @@ $(ABILITY_EFFECTS_TEST): $(ABILITY_EFFECTS_INPUTS)
 $(ABILITY_EFFECTS_SANITIZE): $(ABILITY_EFFECTS_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ABILITY_EFFECTS_SOURCES) -o $@
+
+$(MET_LOCATION_FIT_TEST): $(MET_LOCATION_FIT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MET_LOCATION_FIT_SOURCES) -o $@
+
+$(MET_LOCATION_FIT_SANITIZE): $(MET_LOCATION_FIT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MET_LOCATION_FIT_SOURCES) -o $@
+
+$(HELP_ACCURACY_TEST): $(HELP_ACCURACY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_help_accuracy.cpp -o $@
+
+$(HELP_ACCURACY_SANITIZE): $(HELP_ACCURACY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_help_accuracy.cpp -o $@
+
+$(EVENT_YEAR_TEST): $(EVENT_YEAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(EVENT_YEAR_SOURCES) -o $@
+
+$(EVENT_YEAR_SANITIZE): $(EVENT_YEAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(EVENT_YEAR_SOURCES) -o $@
 
 $(TOUCH_SCROLL_STATE_TEST): $(TOUCH_SCROLL_STATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)

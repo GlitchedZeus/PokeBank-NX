@@ -2,9 +2,11 @@
 #define POKEBANK_INTEGRATION_GEN4_STAGED_TRAINER_EDITOR_H
 
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
+#include "Integration/Common/NativePlayTime.h"
 #include "Utils/StringHelpers.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace PokeVault::Integration::Gen4 {
@@ -32,6 +34,27 @@ public:
         return trainer ? trainer->money : 0;
     }
     [[nodiscard]] bool nameEditable() const { return workspace_.trainerNameEditable(); }
+
+    // P3: Trainer Gender and Play Time, staged in the same workspace (Gen4StagedPokemonEditor).
+    static constexpr uint16_t kMaxPlayedHours = Gen4StagedPokemonEditor::kMaxPlayedHours;
+    [[nodiscard]] uint8_t gender() const {
+        const auto trainer = workspace_.stagedTrainer();
+        return trainer ? trainer->gender : 0;
+    }
+    [[nodiscard]] bool genderEditable() const { return workspace_.trainerGenderEditable(); }
+    [[nodiscard]] std::optional<Common::NativePlayTime> playTime() const {
+        const auto trainer = workspace_.stagedTrainer();
+        if (!trainer) return std::nullopt;
+        return Common::nativePlayTime(trainer->playedHours, trainer->playedMinutes, trainer->playedSeconds);
+    }
+    bool stageGender(uint8_t gender, std::string& error) {
+        error.clear();
+        return gender == this->gender() || workspace_.stageTrainerGender(gender, &error);
+    }
+    bool stagePlayTime(const Common::NativePlayTime& time, std::string& error) {
+        error.clear();
+        return workspace_.stageTrainerPlayTime(time.hours, time.minutes, time.seconds, &error);
+    }
 
     // Stages only the fields that changed; returns false (nothing staged for that field) on refusal.
     bool stage(const std::string& name, uint32_t money, std::string& error) {

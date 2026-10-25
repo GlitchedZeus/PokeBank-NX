@@ -1,6 +1,7 @@
 #include "Source/ImmutableSourceSnapshot.h"
 #include "UI/BackupHistoryPresentation.h"
 #include "UI/BackupBrowserChrome.h"
+#include "UI/WorkingCopyRefresh.h"
 #include <algorithm>
 #include <cstdio>
 
@@ -84,6 +85,8 @@ namespace UI {
                 // profile/exact-game-scoped root, so preserve it verbatim after rejecting traversal.
                 if (name.empty() || name == "." || name == ".." ||
                     name.find('/') != std::string::npos) continue;
+                // Round 5 (#322): the open-backup session is a staging copy, not a backup.
+                if (name == PokeBank::UIModel::WorkingCopy::kBackupSessionName) continue;
                 const std::string path = gameDirectory + "/" + name;
                 if (!PokeBank::Paths::isOwnedPath(path)) continue;
                 BackupInfo info;
@@ -313,9 +316,15 @@ namespace UI {
                 createBackupRequested = true;
             } else {
                 const auto& chosen = backups[selectedIndex];
-                // Unknown ownership never grants mutation or injection permission.
-                // A opens a strictly validated immutable preview; Y deletion stays refused.
+                // Unknown ownership never grants mutation, injection or deletion permission.
+                // Round 5 (#322): A opens a COPY of this backup in the isolated Opened-Backup
+                // session (UIManager); the backup itself, owned or legacy, stays byte-identical.
+                if (!namespaceReady) {
+                    reportFailure("No safe profile/exact-game folder to open a copy in.");
+                    return;
+                }
                 selectedLegacy=chosen.legacyUnscoped;
+                selectedBackupLabel=chosen.displayName;
                 selectedBackupRoot=chosen.legacyUnscoped?legacyGameDirectory:gameDirectory;
                 selectedBackupStamp=chosen.physicalStamp;
                 if (chosen.path.empty() || !PokeBank::Paths::isOwnedPath(chosen.path)) {
@@ -344,13 +353,13 @@ namespace UI {
 
         if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
             backups[selectedIndex].legacyUnscoped) {
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open read-only"}, {"B", "Back"}});
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open copy"}, {"B", "Back"}});
         } else if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
                    backups[selectedIndex].createAction) {
             drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Create backup"}, {"B", "Back"}});
         } else if (selectedIndex > 0) {
             // The shared green-A Select / red-B Cancel picker footer (SharedEditorChrome).
-            drawNavBar(fb,{{"Up/Down","Choose"},{"A","Open read-only"},{"Y","Delete"},{"B","Back"}});
+            drawNavBar(fb,{{"Up/Down","Choose"},{"A","Open copy"},{"Y","Delete"},{"B","Back"}});
         } else {
             SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         }

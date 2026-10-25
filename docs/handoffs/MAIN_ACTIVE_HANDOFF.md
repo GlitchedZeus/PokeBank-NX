@@ -4,7 +4,29 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-24 UTC, by Codex (October 24 hardware repair mission).
+Last updated: 2026-10-25 UTC, by Claude (Thread R, Round 5 verification).
+
+## Round 5 Thread R — verify-first audit on `claude/reroll-mechanics-20261017`
+
+- Fast-forwarded to #307 `eb606c7f`; doc fix `a4678bdc`. No application code changed.
+- Already correct (live Switch TU paths traced through TrainerViewScreenCompositeOverlay.cpp):
+  - 5A R2-SPECIAL: View and Edit both end in `drawFullscreenGen2Workspace` →
+    `redrawGen2StatsSemantics` (#324 / `0ab0656`): one Special DV + Stat Exp, "SpA N" in the
+    Calculated column, SpD on a "Sp. Def" row in the same column, no x/y. The legacy
+    Gen2PokemonDetailsModal "A/D" line is painted then fully covered by the passive repaint.
+  - 5C M05 `1716f7f7`: all 1344 BW/B2W2 base + form rows equal the pinned PokeAPI
+    168b1e89 pools (ancestors, methods 1/2/3/4/6, BW TM95 excluded) except the documented
+    Rotom appliance moves. Pikachu 55/64 reproduced independently. PKHeX 6042efa files are
+    byte-identical at the campaign pin 6501f0ab except MoveInfo.cs, whose Gen 5 Sketch rule
+    (≤559, not Struggle/Chatter) is unchanged. Labels Learnable/Transfer/Prior form/Preserved;
+    Legality stays Incomplete.
+  - 5D NEW-14: A and a completed tap (`down |= A`) reach `editDetail` → inline
+    `Gen5LanguageCycle::next` → `stage(...)`; Review names Language.
+  - 5E R2-REROLL: chooser uses `previewUnownForm` (sprite + "Unown X" title);
+    Gen2HardwarePickerFix only overrides the move picker; keep→reparse letter pinned.
+- Fixed: docs/REROLL_MECHANICS.md — shiny Gen II HP DV is 8 (odd Attack) or 0 (even), not 10.
+- Gates PASS: clean GCC host-test, GCC host-sanitize, qa, clean Clang host-test, Clang
+  host-sanitize (195 PASS each suite); cross-gen `--candidate` 0 failing, all tests/test_*.py, `git diff --check`.
 
 ## October 24 exact candidate binding — final CI required
 

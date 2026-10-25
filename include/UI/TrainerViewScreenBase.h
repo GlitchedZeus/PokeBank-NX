@@ -153,6 +153,9 @@ namespace UI {
         // Gen IV only: the exact source FILE (raw or .dsv) at Open. Export refuses a file
         // that changed since (Gen4ExportRequest::sourceSnapshot).
         std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;
+        // Round 5 (#322): "Opened from backup - <date>" when this session was opened from a backup
+        // copy (Save Backups -> A). Shown in the top bar; empty for the live source.
+        std::string provenanceNotice;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;
@@ -185,6 +188,11 @@ namespace UI {
         // -1 = nothing pending.
         int trainerSelectedRow = 0;
         int pendingTrainerEdit = -1;
+        // P3 (Round 5): a classic staged Trainer session (UI/ClassicTrainerSessionInput.h) mirrors
+        // which extra rows it can stage this frame: 2 Play Time, then Gender. The page draws them
+        // as editable rows instead of read-only info rows.
+        bool trainerPlayTimeEditable = false;
+        bool trainerGenderEditable = false;
         void editTrainerName();     // swkbd edit of the OT name (charset-validated, per-game length cap)
         void editTrainerMoney();    // numpad edit of money (clamped to the game's max)
         // After a name edit, re-stamp the trainer identity your Pokemon store so they stay

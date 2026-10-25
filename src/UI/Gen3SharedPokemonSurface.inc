@@ -563,20 +563,22 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
     if (value == EncounterPicker::kKeepStoredRow) {
         // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
         return {"Keep stored: " + Names::getMetLocationDisplayName(stored.originGame, stored.metLocation),
-                "Met Lv. " + std::to_string(stored.metLevel) + " \xE2\x80\xA2 as stored"};
+                "Met Lv. " + std::to_string(stored.metLevel)};   // the name already says "Keep stored"
     }
     const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
     if (!selected) return {"Unknown location", {}};
     const auto& encounter = selected->encounter;
     std::string place = Names::getMetLocationDisplayName(state.session.working.originGame, encounter.location);
+    // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
+    // (tests/test_met_location_fit.cpp).
     std::string detail = std::string(Encounter::methodName(encounter.method)) +
-                         " \xE2\x80\xA2 Lv. " + std::to_string(encounter.minLevel);
+                         " Lv. " + std::to_string(encounter.minLevel);
     if (encounter.maxLevel != encounter.minLevel)
         detail += "–" + std::to_string(encounter.maxLevel);
     if (selected->evolved) {
-        detail += " \xE2\x80\xA2 met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
+        detail += ", met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
         if (selected->minimumEvolutionLevel != 0)
-            detail += " (evolves Lv. " + std::to_string(selected->minimumEvolutionLevel) + ")";
+            detail += " (evo. " + std::to_string(selected->minimumEvolutionLevel) + ")";
     }
     // R2-BUG-008: the save's own met data is the "Keep stored" row; candidate rows show only the
     // encounter itself (NEW-10 / Round 3 L03: no "not stored" filler on every other row).
@@ -1964,8 +1966,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         if (state.pickerTarget == PickerTarget::MetLocation) {
             // Bright place name on the left, method / level on the right; nothing overlaps.
             const auto row = metLocationChoiceText(state, value);
-            int dw = 0, dh = 0;
-            const std::string detail = SharedMovesPanel::fit(fb, row.second, (rowW - 32) / 2);
+            int nw = 0, nh = 0, dw = 0, dh = 0;
+            fb.measureText(row.first, nw, nh, TextStyle::Body);
+            // Round 5 NEW-10: the detail gets what the measured name leaves, so at 620 px every
+            // real row shows both in full (tests/test_met_location_fit.cpp).
+            const std::string detail = SharedMovesPanel::fit(fb, row.second, std::max(0, rowW - 32 - nw - 20));
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7,
                         SharedMovesPanel::fit(fb, row.first, rowW - 32 - dw - 20, TextStyle::Body),
@@ -2496,6 +2501,24 @@ bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64
     fields.nameGuide = "1-7 characters the game can store";
     fields.nameEditable = trainer->nameEditable();
     fields.nameReadOnlyReason = "Japanese Gen III trainer names are read-only here";
+    // P3: native Play Time and Trainer Gender (SaveBlock2), applied to the verified export copy.
+    if (trainer->playTimeEditable()) {
+        const auto time = trainer->playTime();
+        fields.playTime = PokeVault::Integration::Common::NativePlayTime{time.hours, time.minutes, time.seconds, false};
+        fields.playTimeMaxHours = Gen3::Gen3StagedTrainerEditor::kMaxPlayedHours;
+        fields.stagePlayTime = [&](const PokeVault::Integration::Common::NativePlayTime& next, std::string& error) {
+            if (!trainer->stagePlayTime({next.hours, next.minutes, next.seconds}, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        };
+    }
+    fields.gender = trainer->gender();
+    if (trainer->genderEditable())
+        fields.stageGender = [&](uint8_t gender, std::string& error) {
+            if (!trainer->stageGender(gender, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        };
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             if (!trainer->stage(name, money, error)) return false;

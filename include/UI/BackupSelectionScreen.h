@@ -38,6 +38,8 @@ namespace UI {
         bool selectedBackupIsLegacy() const { return selectedLegacy; }
         const std::string& getSelectedBackupRoot() const { return selectedBackupRoot; }
         const std::string& getSelectedBackupStamp() const { return selectedBackupStamp; }
+        // The selected copy's date line ("2026-10-23 12:00:00"), for the editor's provenance banner.
+        const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
 
         /**
          * Report that acting on the selection failed, so the screen can say so and take the choice
@@ -85,6 +87,7 @@ namespace UI {
         std::string selectedBackupRoot;
         std::string selectedBackupStamp;
         bool selectedLegacy=false;
+        std::string selectedBackupLabel;
         bool showDeleteConfirmation;
         int deleteConfirmationIndex;
         // Delete-confirm button rects, captured during draw and hit-tested next frame (this screen
