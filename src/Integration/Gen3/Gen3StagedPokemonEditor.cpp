@@ -147,7 +147,7 @@ bool validLanguage(uint8_t language) noexcept {
 }
 
 bool validHeldItem(SourceGame, uint16_t item) noexcept {
-    return nativeHeldItemSupported(item);
+    return releasedHeldItem(item);
 }
 
 std::array<uint8_t, 6> ivs(const Pokemon::Pokemon3FRLG& p) noexcept {
