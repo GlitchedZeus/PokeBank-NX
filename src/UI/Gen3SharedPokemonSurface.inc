@@ -1,3 +1,4 @@
+#include "UI/ReviewEntry.h"
 #include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
@@ -1381,6 +1382,20 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         return true;
     }
 
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays re-roll). Review
+    // is handled and drawn before this workspace, and its B returns here with the draft and focus
+    // untouched. A passive View keeps its read-only controls.
+    if (state.session.mode != SessionModel::Mode::View) {
+        namespace Entry = PokeBank::UIModel::ReviewEntry;
+        if (Entry::opensReview(state.session.mode == SessionModel::Mode::Create ? Entry::Screen::Create
+                                                                                : Entry::Screen::Edit,
+                               3, down)) {
+            if (!screen.openStagedReview(false))
+                screen.postStatus("No staged Generation III changes to review", 220);
+            return true;
+        }
+    }
+
     const auto panelBeforeNavigation = state.focus.panel;
     const bool passiveView = state.session.mode == SessionModel::Mode::View;
     // Drag scrolls the visible left-side rows without changing the selected
@@ -2268,11 +2283,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     } else if (state.session.mode == SessionModel::Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Add"}, {"B", "Exit"}});
+                        {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Keep"}, {"B", "Exit"}});
+                        {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 
     if (state.session.confirmExit) {

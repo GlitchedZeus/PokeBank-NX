@@ -107,6 +107,7 @@ public:
         if(action==Action::Close) {surface_=Surface::Browse;error.clear();return true;}
         if(action==Action::Review) {
             reviewPage_=0;
+            reviewReturn_=Surface::Browse;
             surface_=Surface::Review;
             error.clear();
             return true;
@@ -599,9 +600,23 @@ public:
     [[nodiscard]] bool openReviewFromBrowse(const Workspace& workspace) noexcept {
         if(surface_!=Surface::Browse || !workspace.hasChanges())return false;
         reviewPage_=0;
+        reviewReturn_=Surface::Browse;
         surface_=Surface::Review;
         return true;
     }
+    // Round 6 (P1-RETURN): + in the Create / Edit workspace opens the same Review, and B there
+    // returns to that workspace with its draft (and Create's staged record) intact. Only Browse
+    // and Edit may open it; every other surface is a modal step that must finish first.
+    [[nodiscard]] bool openReviewFrom(const Workspace& workspace) noexcept {
+        if(surface_==Surface::Browse)return openReviewFromBrowse(workspace);
+        if(surface_!=Surface::Edit || !workspace.hasChanges())return false;
+        reviewPage_=0;
+        reviewReturn_=Surface::Edit;
+        surface_=Surface::Review;
+        return true;
+    }
+    // Where B from Review goes: the workspace it was opened from, otherwise Browse.
+    [[nodiscard]] Surface reviewReturn() const noexcept { return reviewReturn_; }
 
     [[nodiscard]] bool keep(Workspace& workspace,std::string& error) {
         // A on the dirty-draft decision is a real Keep, not a dead action.
@@ -670,7 +685,10 @@ public:
             surface_=Surface::ConfirmDraft;
             return false;
         }
-        if(surface_==Surface::Actions || surface_==Surface::Review)
+        if(surface_==Surface::Review) {
+            surface_=reviewReturn_;
+            reviewReturn_=Surface::Browse;
+        } else if(surface_==Surface::Actions)
             surface_=Surface::Browse;
         else if(surface_==Surface::Legality)surface_=Surface::Actions;
         else if(surface_==Surface::ConfirmDraft)continueEditing();
@@ -716,6 +734,14 @@ public:
         if(surface_!=Surface::ConfirmDiscardAll)return false;
         workspace.discardAll();
         surface_=Surface::Browse;
+        if(reviewReturn_!=Surface::Browse) {
+            // Discard All removed what the workspace was editing (a Create's staged record
+            // included): never return into it; the draft goes with the discarded changes.
+            reviewReturn_=Surface::Browse;
+            draft_.discardDraft();
+            createPending_=false;
+            pendingCreateInput_.reset();
+        }
         return true;
     }
 
@@ -730,12 +756,21 @@ public:
             return false;
         }
         Workspace previous=workspace;
+        // A rejected refresh restores everything, including a workspace Review's draft.
+        Gen5SharedPokemonSession previousDraft=draft_;
+        const Surface previousReturn=reviewReturn_;
+        const bool previousCreatePending=createPending_;
+        const auto previousCreateInput=pendingCreateInput_;
         if(!confirmDiscardAll(workspace))return false;
         if(std::forward<Refresh>(refresh)(error)) {
             error.clear();
             return true;
         }
         workspace=std::move(previous);
+        draft_=std::move(previousDraft);
+        reviewReturn_=previousReturn;
+        createPending_=previousCreatePending;
+        pendingCreateInput_=previousCreateInput;
         surface_=Surface::ConfirmDiscardAll;
         if(error.empty())error="Gen V discard refresh rejected; staged changes preserved";
         return false;
@@ -749,6 +784,7 @@ public:
     void reviewFromExit(const Workspace& workspace) noexcept {
         if(surface_==Surface::ConfirmExit && workspace.hasChanges()) {
             reviewPage_=0;
+            reviewReturn_=Surface::Browse;
             surface_=Surface::Review;
         }
     }
@@ -764,6 +800,7 @@ private:
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
     bool createPending_=false;
+    Surface reviewReturn_=Surface::Browse;
 public:
     // Shared Create defaults (not format rules): a native species, move and
     // met data the Gen V validators accept, all editable before Keep.

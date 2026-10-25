@@ -852,6 +852,11 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        // Round 6 (B08): + opens the shared Review directly, as in Gen IV/V, so the Bag's Review is
+        // no longer buried in a menu. Its Export Copy and Discard All are X and Y there, Bag
+        // changes included. Only a source with no staged Review workspace falls back to the Bag's
+        // own Options (Export / Discard of the staged Bag), so nothing becomes unreachable.
+        if (screen.openStagedReview(false)) return true;
         state.optionsActive = true;
         state.optionsRow = 0;
         return true;

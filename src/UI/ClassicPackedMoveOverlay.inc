@@ -80,6 +80,13 @@ CarryState& stateFor(TrainerViewScreen& screen) {
     return state;
 }
 
+// Round 6: no carry, rectangle selection or pending Y hold is in progress, so the shared Review
+// may open over the grid (+ Review) without stranding a carried group.
+bool idle(TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    return !state.active && !state.selecting && !state.yPending && !state.touchArmed && !state.touchSelecting;
+}
+
 bool isGen1(const TrainerViewScreen& screen) noexcept {
     return screen.sourceGameId == "red_gb" ||
            screen.sourceGameId == "blue_gb" ||
@@ -1261,12 +1268,15 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // Override the legacy box footer last so Y is never advertised as a destructive shortcut.
     if (gridOwnsInput(screen)) {
         const bool occupied = slotOccupiedForFooter(screen);
+        // Round 6 (B08): + Review on the Boxes grid (Y stays Move / Multi, ReviewEntry.h).
         if (occupied)
-            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Move / Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Move / Hold Multi"}, {"L/R", "Box"}, {"+", "Review"},
+                            {"B", "Back"}});
         else if (storageMode(screen, state))  // the save pane adds through Actions (X stays read-only)
-            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
         else
-            drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"+", "Review"},
+                            {"B", "Back"}});
     }
 }
 

@@ -181,6 +181,42 @@ Device checks:
 - **R5-3:** Open backup A, edit and save, then open backup B: the edits from A appear as a new dated backup.
 - **R5-4:** DraStic Platinum: A on a backup opens it; Export Copy succeeds; the backup `.dsv` is unchanged.
 
+## Round 6: Review entry and return in Gen I–V (B08, P1-RETURN, AUD-01, 4D-HELP follow-up)
+
+The four-option staged exit is unchanged. One rule for the Review button (`include/UI/ReviewEntry.h`):
+
+| Screen | Gen I–IV | Gen V | Why |
+|---|---|---|---|
+| Trainer Info | Y (and +) | Y (and +) | Y was already Review, as on Gen V's Trainer page. |
+| Party | **Y** or + | **Y** or + | Y had no job on Party. |
+| Boxes | **+** | **Y** or + | Gen I–IV Y is Move / hold for Multi; Gen V Browse Y was free. |
+| Bag | **+** | **+** | Y is Remove Item. In the Gen I–III Bag, + used to open an Options menu whose Review was a row ("buried", B08). + now opens the shared Review directly; the menu's Export and Discard are X and Y inside Review (Bag changes included in Gen I, II and III). The menu remains only as the fallback when a source has no Review workspace. |
+| Create / Edit | **+** | **+** | Y is re-roll, and Discard inside the exit confirmation. |
+
+How Review returns to the screen it was opened from:
+- **Gen I–IV Party / Boxes / Bag / Trainer:** `openStagedReview` marks the Review standalone (`ClassicReviewOrigin`). Its B, or a closing Discard All, returns to the screen underneath. Cursor, box and page are untouched while Review is open. Party and Boxes go through one router (`ClassicBrowseReview.h`) that only acts on the plain grid: no overlay, Actions sheet, carry or modal.
+- **Gen I Create / Edit:** `UX2State::reviewReturn` restores the workspace mode. The draft and focus survive, because `foundationSyncMainMode` leaves them alone for the same mode. A Discard All closes the workspace instead, since the draft's baseline is gone.
+- **Gen II Create / Edit:** Review is routed and drawn ahead of the still-open workspace. B closes it back to the workspace.
+- **Gen III / IV Create / Edit:** Review is already handled and drawn before the workspace, so B returns to it.
+- **Gen V:** `Gen5SharedScreenState::openReviewFrom` records the return surface (Browse or Edit). B returns there with the draft, and Create's staged record, intact. Discard All lands on Browse and clears the draft.
+- **Footers** advertise the entry (`footerHint`), and the Help pages' Review lines now match the code.
+
+Tests:
+- `test_review_entry`: the button rule over 5 generations × 6 screens, and the real Gen I–IV router plus Review origin on a stub screen: open, close, same screen, cursor, box and page.
+- `test_gen5_review_discard_export_trace` `workspaceReviewReturn`: the real Gen V reader, Trainer bridge and state machine (Browse / Edit / Create return; Discard All).
+- `test_classic_help_accuracy` re-pinned to the new claims.
+- No end-to-end host test drives the real `TrainerViewScreen` (it is libnx-bound). Wiring is covered by the native build and the device checks below.
+
+Save safety (7E): `docs/audits/ROUND6_SAVE_SAFETY_PKSE.md` (audit only; no save-path change).
+
+Device checks:
+- **R6-1:** Each generation, Party: Y opens Review; B returns to Party on the same slot. + does the same.
+- **R6-2:** Gen I–IV Boxes: + opens Review; B returns to the same box and slot. Y still moves and holds for Multi. Gen V Boxes: Y and + open Review.
+- **R6-3:** Each generation, Bag: + opens the shared Review directly (no Options menu); B returns to the same pocket and row. Y still asks to remove.
+- **R6-4:** Each generation, Edit a Pokémon, change a field, press +: Review opens. B returns to Edit with the change still in the draft. Same from Create.
+- **R6-5:** Gen I and Gen V: in a Review opened from Create/Edit, choose Discard All: you land outside the workspace, never back in a stale draft.
+- **R6-6:** Trainer Info: Y and + open Review; the four-option exit (B with staged changes) is unchanged.
+
 ## Opt-in for the device test
 
 The default remains the hardware-accepted direct handoff. To test the return host, create an empty file:

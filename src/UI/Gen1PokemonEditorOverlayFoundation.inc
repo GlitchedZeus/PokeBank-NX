@@ -1,3 +1,4 @@
+#include "UI/ReviewEntry.h"
 #include "UI/ClassicTrainerSessionInput.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
@@ -382,6 +383,17 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
             foundationExitMainMode(screen);
             return;
         }
+        return;
+    }
+
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays Random DVs); B
+    // there returns to this workspace with its draft and focus. A passive View keeps its controls.
+    if (editable && PokeBank::UIModel::ReviewEntry::opensReview(
+            add ? PokeBank::UIModel::ReviewEntry::Screen::Create : PokeBank::UIModel::ReviewEntry::Screen::Edit,
+            1, down)) {
+        const UX2Mode back = state.mode;
+        if (screen.openStagedReview(false)) state.reviewReturn = back;
+        else screen.postStatus("No staged Generation I changes to review", 220);
         return;
     }
 

@@ -67,7 +67,14 @@ struct UX2State {
     int cloneSlot = 0;
     std::string lastExportDirectory;
     PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
+    // Round 6 (P1-RETURN): the View / Create / Edit workspace a Review was opened from (+), so
+    // its B returns there; Closed for every other Review.
+    UX2Mode reviewReturn = UX2Mode::Closed;
 };
+
+// Defined with the workspace in Gen1PokemonEditorOverlayFoundation.inc (same translation unit).
+bool foundationMainMode(UX2Mode mode) noexcept;
+void foundationExitMainMode(TrainerViewScreen& screen);
 
 UX2State& ux2StateFor(const TrainerViewScreen& screen) {
     static UX2State state;
@@ -750,6 +757,13 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
                 discardAll(screen);
                 screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
                 state.reviewRow = 0;
+                if (foundationMainMode(state.reviewReturn)) {
+                    // The workspace's draft was built on what was just discarded: close it, so B
+                    // never returns into a draft whose baseline is gone.
+                    foundationExitMainMode(screen);
+                    state.mode = UX2Mode::Review;
+                    state.reviewReturn = UX2Mode::Closed;
+                }
                 return;
         }
         const auto lines = pendingLines(screen);
@@ -763,6 +777,10 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             state.mode = screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? UX2Mode::Closed : UX2Mode::Actions;
             // A standalone Review (exit menu, Bag, Trainer) returns to the screen underneath.
             if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.mode = UX2Mode::Closed;
+            // Round 6: a Review opened from the View / Create / Edit workspace returns to it, with
+            // its draft and focus (foundationSyncMainMode leaves both alone for the same mode).
+            if (foundationMainMode(state.reviewReturn)) state.mode = state.reviewReturn;
+            state.reviewReturn = UX2Mode::Closed;
             state.row = 0;
             return;
         }

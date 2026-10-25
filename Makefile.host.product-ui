@@ -87,6 +87,24 @@ $(EMU_BACKUP_SANITIZE): $(EMU_BACKUP_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(EMU_BACKUP_SOURCES) -o $@
 
+# Round 6 (B08 / P1-RETURN): Review entry from every editor screen, Gen I-IV return to the screen.
+REVIEW_ENTRY_TEST := $(HOST_BUILD)/test_review_entry
+REVIEW_ENTRY_SANITIZE := $(HOST_BUILD)/test_review_entry_sanitize
+REVIEW_ENTRY_INPUTS := tests/test_review_entry.cpp include/UI/ReviewEntry.h include/UI/ClassicBrowseReview.h \
+	include/UI/ClassicReviewOrigin.h include/UI/Gen2WorkspaceLayers.h include/UI/InventoryUIContract.h
+HOST_TESTS += $(REVIEW_ENTRY_TEST)
+HOST_SANITIZE_TESTS += $(REVIEW_ENTRY_SANITIZE)
+host-test: $(REVIEW_ENTRY_TEST)
+host-sanitize: $(REVIEW_ENTRY_SANITIZE)
+
+$(REVIEW_ENTRY_TEST): $(REVIEW_ENTRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_review_entry.cpp -o $@
+
+$(REVIEW_ENTRY_SANITIZE): $(REVIEW_ENTRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_review_entry.cpp -o $@
+
 # Round 2 phase 13 / L06: party and summary-panel taps open the native Actions sheet (Gen III-V).
 L06_TAP_TEST := $(HOST_BUILD)/test_party_summary_tap_routing
 L06_TAP_SANITIZE := $(HOST_BUILD)/test_party_summary_tap_routing_sanitize

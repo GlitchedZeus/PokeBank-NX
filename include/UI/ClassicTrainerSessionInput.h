@@ -51,7 +51,8 @@ bool handle(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX,
     if (genderRow) screen.trainer.trainerGender = fields.gender;
     if (screen.trainerSelectedRow >= kRows) screen.trainerSelectedRow = 0;
     const int touched = screen.touchedButtonId(touch);
-    if (!(down & HidNpadButton_B) && ((down & HidNpadButton_Y) ||
+    // Y Review (and + Review, as on every Round 6 editor screen and Gen V's Trainer page).
+    if (!(down & HidNpadButton_B) && ((down & (HidNpadButton_Y | HidNpadButton_Plus)) ||
         touched == PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId)) {
         review();
         screen.controllerNavigation.reset();

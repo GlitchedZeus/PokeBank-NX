@@ -12,6 +12,8 @@
 #include "Names/SpeciesNames.h"
 #include "UI/Common.h"
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/ReviewEntry.h"
+#include "UI/ClassicBrowseReview.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PokemonViewActions.h"
 #include "UI/PKSEFramebuffer.h"
@@ -182,6 +184,7 @@ bool TrainerViewScreen::openStagedReview(bool exportCopy) {
         state.mode = Gen1PokemonEditor::UX2Mode::Review;
         state.reviewRow = 0;
         state.reviewDiscard = {};
+        state.reviewReturn = Gen1PokemonEditor::UX2Mode::Closed;   // a workspace entry sets its own
         if (exportCopy) exported = Gen1PokemonEditor::exportStagedCopy(*this, error);
     } else if (Gen2PokemonEditor::isGSC(*this)) {
         auto* editor = stagedEditor(*this);
@@ -260,6 +263,19 @@ bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
         return state.mode == decltype(state.mode)::None && !editorOverlayState(screen).active;
     }
     return false;
+}
+
+// Round 6 (B08 / P1-RETURN): Review straight from Gen I-IV Party / Boxes (ClassicBrowseReview.h).
+bool openClassicBrowseReview(TrainerViewScreen& screen, u64 down) {
+    namespace Entry = PokeBank::UIModel::ReviewEntry;
+    static_assert(Entry::kButtonY == HidNpadButton_Y && Entry::kButtonPlus == HidNpadButton_Plus,
+                  "ReviewEntry restates the libnx button bits");
+    if (!ClassicPackedMove::classicSource(screen)) return false;
+    const int generation = ClassicPackedMove::isGen1(screen) ? 1 : ClassicPackedMove::isGen2(screen) ? 2
+                         : ClassicPackedMove::isGen3(screen) ? 3 : 4;
+    const bool gridIdle = classicPackedMoveLayerAvailable(screen) && !ClassicPartyActions::active(screen) &&
+                          ClassicPackedMove::idle(screen);
+    return PokeBank::UIModel::ClassicBrowseReview::open(screen, down, generation, gridIdle);
 }
 
 bool gen2ClassicBoxFooterActive(const TrainerViewScreen& screen) noexcept {
@@ -408,6 +424,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         }
     }
 
+    if (openClassicBrowseReview(*this, down)) return;
     if (classicPackedMoveLayerAvailable(*this) &&
         ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen4SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;

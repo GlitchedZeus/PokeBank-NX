@@ -1,3 +1,4 @@
+#include "UI/ReviewEntry.h"
 #include "Inventory/ItemQuantityPolicy.h"
 #include "UI/Gen4BagQuantity.h"
 #include "UI/SharedBagAddFlow.h"
@@ -1253,6 +1254,7 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
 struct Gen4Editor {
     using Record = Pokemon::Pokemon4ReadOnly;
     static constexpr auto generation = Shared::Generation::Gen4;
+    static constexpr int kGeneration = 4;   // ReviewEntry's button rule
     static constexpr int kDetailRows = static_cast<int>(detailLabels.size());
     static constexpr int kMaxSpecies = 493;
     static constexpr bool kCompactForm = false;
@@ -1309,6 +1311,13 @@ struct Gen4Editor {
     static void discard(TrainerViewScreen& screen, Surface::EditorState& state) {
         gen4(state).session.discardDraft();
         screen.postStatus("Gen IV draft cancelled; original source remains unchanged", 120);
+    }
+    // Round 6: + opens the shared Review over this workspace; its B returns here (the workspace
+    // state is untouched while Review is open, and Review is handled before the workspace).
+    static void openReview(TrainerViewScreen& screen, Surface::EditorState&) {
+        if (!screen.openStagedReview(false))
+            screen.postStatus("No staged Generation IV changes to review", 220);
+        screen.controllerNavigation.reset();
     }
     static void keep(TrainerViewScreen& screen, Surface::EditorState& state) {
         if (keepWorkspace(screen)) gen4(state).session.confirmExit = false;
@@ -1918,10 +1927,18 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         // Forward controller movement and B/Exit to the shared Items panel.
         // Only A on an occupied, validated native stack opens an app-memory
         // draft. A must NEVER perform a destructive removal or source write.
-        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y|HidNpadButton_X)) ||
+        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y|HidNpadButton_X|HidNpadButton_Plus)) ||
            screen.helpOverlayActive || screen.itemEditDialogActive ||
            screen.saveConfirmActive || screen.pickerActive ||
            screen.actionSheet.isOpen())return false;
+        // Round 6 (B08): + opens the shared Review straight from the Bag (Y stays Remove); B
+        // there returns to this pocket and row.
+        if(PokeBank::UIModel::ReviewEntry::opensReview(
+               PokeBank::UIModel::ReviewEntry::Screen::Bag,4,down&HidNpadButton_Plus)) {
+            if(!screen.openStagedReview(false))
+                screen.postStatus("No staged Generation IV changes to review",220);
+            return true;
+        }
         const int pocket=screen.selectedCategory;
         if(down&HidNpadButton_X) {
             auto* staged=editor(screen);
