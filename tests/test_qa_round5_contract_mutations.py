@@ -72,7 +72,8 @@ def main() -> int:
         if base[cid].violations:
             print(f"FAIL  unmutated tree: {cid}: {base[cid].violations[:2]}")
             failures += 1
-    for cid in ("CG61-switch-backup-opens-staged-copy", "CG62-met-location-rows-fit", "CG63-help-names-real-controls"):
+    for cid in ("CG61-switch-backup-opens-staged-copy", "CG62-met-location-rows-fit", "CG63-help-names-real-controls",
+                "CG68-gen1-review-swipe-one-page"):
         if cid not in base:
             print(f"FAIL  {cid} is missing")
             failures += 1

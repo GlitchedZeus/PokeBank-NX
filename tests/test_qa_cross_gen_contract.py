@@ -38,6 +38,7 @@ XFAIL: dict[str, str] = {
     # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9, CG61 (L 1eec6f18): ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
+    "CG68-gen1-review-swipe-one-page": "lane C (P1 Bag -> shared Review: claude/gen14-campaign-20261015 9f034431, WIP)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -2494,6 +2495,39 @@ def round5_contracts(sources):
             r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: a Review swipe does not turn exactly one shared page")
         if not re.search(r"!\s*[^;]*reviewDiscard\.confirming", branch):
             r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: Review swipe is live under the Discard All confirmation")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P1 (lane C 9f034431): Gen I's shared Review gets the same touch rule as Gen II (CG66), now that
+    # the Bag opens it. A tap selects nothing, and one completed vertical swipe on the panel turns one
+    # page (SharedReviewTouch::swipePage -> SharedReview::move). No private row scroll survives.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG68-gen1-review-swipe-one-page",
+               "Gen I Review touch: a tap never selects a row; one vertical swipe on the panel turns one shared "
+               "Review page (owner Oct 24 P1, N03 / AUD-05 re-pin)")
+    g1t = src("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
+    body = body_of(g1t, "ux3DirectTouchInput")
+    m = re.search(r"else\s+if\s*\(\s*state\.mode\s*==\s*UX2Mode::Review\s*\)\s*\{", body)
+    if not m:
+        r.violations.append("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc: ux3DirectTouchInput Review branch not found (update this check)")
+    else:
+        branch = block_after(body, m.end())
+        if re.search(r"\bselectedId\s*\(|reviewRow\s*=\s*row\b", branch):
+            r.violations.append(f"{g1t.rel}: a Gen I Review tap still selects a row")
+        if re.search(r"reviewScroll\.updateVertical\s*\(", branch):
+            r.violations.append(f"{g1t.rel}: Gen I Review still scrolls a private row list")
+        if not (re.search(r"SharedReviewTouch::swipePage\s*\(\s*touch\.justReleased\s*\(\s*\)\s*,\s*touch\.dragged\s*\(\s*\)", branch)
+                and re.search(r"SharedReview::move\s*\([^;]*\bpage\b", branch)):
+            r.violations.append(f"{g1t.rel}: a completed Gen I Review swipe does not turn one shared page")
+    srt = src("include/UI/SharedReviewTouch.h")
+    sp = body_of(srt, "swipePage")
+    for rx, why in ((r"!\s*justReleased\s*\|\|\s*!\s*dragged", "only a completed drag pages"),
+                    (r"!\s*panel\.contains\s*\(\s*startX\s*,\s*startY\s*\)\s*\|\|\s*!\s*panel\.contains\s*\(\s*endX\s*,\s*endY\s*\)",
+                     "the swipe starts and ends on the panel"),
+                    (r"ady\s*<\s*kMinSwipe\s*\|\|\s*ady\s*<=\s*adx", "short or sideways drags do nothing"),
+                    (r"dy\s*<\s*0\s*\?\s*1\s*:\s*-1", "one page per swipe")):
+        if not re.search(rx, sp):
+            r.violations.append(f"include/UI/SharedReviewTouch.h: swipePage: {why} (missing)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
