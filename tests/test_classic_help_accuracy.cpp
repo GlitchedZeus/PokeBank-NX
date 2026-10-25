@@ -1,6 +1,8 @@
 // Round 5 4D (owner, Oct 24): Gen I-V Help pages name only controls that perform the stated action
 // in that generation, and never a vague "Tools". Each claim is tied to the code that handles it.
 #include "UI/ClassicHelpPresentation.h"
+#include "UI/ClassicStagedExit.h"
+#include "UI/GlyphInstruction.h"
 
 #include <algorithm>
 #include <cassert>
@@ -80,12 +82,55 @@ void testClaimsMatchTheCode() {
     assert(carry.find("if (down & HidNpadButton_B) return cancel(screen, state);") != std::string::npos);
     std::cout << "Help claims match the input code ok\n";
 }
+
+// Round 6 E05 (owner, 1ca2faec): Game Browser Controls rows lacked coloured glyphs and Help repeated
+// stale Review lines. Every row after the banner now starts with real keys (drawn as badges), each
+// page names one Review route, and the new rows are tied to their handlers.
+void testEveryRowDrawsGlyphsAndReviewIsNamedOnce() {
+    namespace G = PokeBank::UIModel::GlyphInstruction;
+    for (int gen = 1; gen <= 5; ++gen)
+        for (const auto page : kPages) {
+            const auto lines = Help::lines(page, gen);
+            int reviewRoutes = 0;
+            for (std::size_t i = 1; i < lines.size(); ++i) {
+                const auto segments = G::helpLine(lines[i]);
+                const bool glyph = !segments.empty() && segments.front().kind == G::Kind::Glyph;
+                if (!glyph) std::cerr << "Gen " << gen << " row without a key badge: " << lines[i] << '\n';
+                assert(glyph);
+                assert(lines[i].find("Review: X Export") == std::string::npos);      // another screen's keys
+                assert(lines[i].find("Available from the staged exit menu") == std::string::npos);
+                const bool names = lines[i] == Help::kReviewRoute ||
+                                   lines[i].rfind("+   Review", 0) == 0 ||
+                                   lines[i].rfind("+   Inventory Options: Review", 0) == 0 ||
+                                   lines[i].rfind("Y   Review", 0) == 0;
+                reviewRoutes += names;
+            }
+            if (page != Help::Page::Hub) assert(reviewRoutes == 1);
+            assert(lines.back() == Help::kCloseHelp);
+        }
+    // The Hub's exit-menu row matches ClassicStagedExit::choose; B (also a tap on 0) continues.
+    namespace Exit = PokeBank::UIModel::ClassicStagedExit;
+    static_assert(Exit::choose(true, false, false, false) == Exit::Action::Review);
+    static_assert(Exit::choose(false, false, true, false) == Exit::Action::ExportCopy);
+    static_assert(Exit::choose(false, false, false, true) == Exit::Action::DiscardExit);
+    static_assert(Exit::choose(false, true, false, false) == Exit::Action::ContinueEditing);
+    for (int gen = 1; gen <= 5; ++gen) {
+        const auto hub = Help::lines(Help::Page::Hub, gen);
+        assert(std::find(hub.begin(), hub.end(), std::string(Help::kExitMenu)) != hub.end());
+    }
+    const std::string base = read("src/UI/TrainerViewScreenBase.inc");
+    assert(base.find("if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) helpOverlayActive = false;") != std::string::npos);
+    assert(base.find("const auto action = Exit::choose(kDown & HidNpadButton_A, kDown & HidNpadButton_B,") != std::string::npos);
+    assert(read("src/UI/Gen5SharedReadOnlySurface.inc").find("const auto action=Exit::choose(keys&HidNpadButton_A,keys&HidNpadButton_B,") != std::string::npos);
+    std::cout << "every Help row draws key badges; one Review route per page; exit menu and close keys match ok\n";
+}
 } // namespace
 
 int main() {
     testPlusOnlyWhereHandled();
     testEveryLineIsConcrete();
     testClaimsMatchTheCode();
+    testEveryRowDrawsGlyphsAndReviewIsNamedOnce();
     std::cout << "test_classic_help_accuracy: all passed\n";
     return 0;
 }
