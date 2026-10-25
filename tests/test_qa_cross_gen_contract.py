@@ -36,6 +36,10 @@ XFAIL: dict[str, str] = {
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
+    # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
+    "CG61-switch-backup-opens-staged-copy": "lane L (P2, #322: wip/l-r5-backup-copy-20261024 767fd4b0)",
+    "CG62-met-location-rows-fit": "lane P (4A NEW-10: claude/pickers-search-scrollbar-20261017 d361d86f)",
+    "CG63-help-names-real-controls": "lane P (4D: claude/pickers-search-scrollbar-20261017 edff856e)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -2247,6 +2251,191 @@ def contracts(sources: list[Source]) -> list[Result]:
         r.violations = [v for v in r.violations if v.split(":", 1)[0] not in scope]
     res.extend(round4_p2_contracts(sources))
     res.extend(round4_p0_contracts(sources))
+    res.extend(round5_contracts(sources))
+    return res
+
+
+def round5_contracts(sources):
+    """Round 5: gaps in the owner's Oct 24 FAIL items and requests that the lanes confirmed
+    (docs/hardware/OCT24_REPAIRS_AND_RETEST.md). Called from contracts()."""
+    res = []
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def body_of(f, name):
+        return "\n".join(b for _, _, b in function_bodies(f.code, re.compile("^" + re.escape(name) + "$"))) if f else ""
+
+    # ------------------------------------------------------------------------------------------
+    # P2 / #322 (lane L): A on a native Switch backup opens THAT copy in an isolated staged session
+    # (owner: "A opens that specific copy in an isolated staged session"), not a read-only preview and
+    # never the backup folder itself. The backup stays byte-identical: the session is a copy in the exact
+    # profile/game folder, and the listed snapshot must still match after copying.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG61-switch-backup-opens-staged-copy",
+               "Switch Save Backups: A opens a copy of the selected backup in an isolated staged session "
+               "(never a read-only preview, never the backup folder itself) (owner Oct 24 P2, #322)")
+    uic = src("src/UI/UI.cpp")
+    m = re.search(r'"Loading existing backup"', uic.code) if uic else None
+    if not m:
+        r.violations.append("src/UI/UI.cpp: Save Backups open path ('Loading existing backup') not found (update this check)")
+    else:
+        region = uic.code[m.start():m.start() + 6000]
+        nxt = re.search(r"\n\s*bool\s+UIManager::", region)
+        region = region[:nxt.start()] if nxt else region
+        at = uic.code.count("\n", 0, m.start()) + 1
+        if re.search(r"handleTrainerView\s*\([^;]*getSelectedBackupPath\s*\(\s*\)", region):
+            r.violations.append(f"src/UI/UI.cpp:{at}: A on a backup opens the backup folder itself in the editor")
+        if re.search(r"handleTrainerView\s*\([^;]*&\s*historical\b", region) or re.search(r"\bread-only\b", region):
+            r.violations.append(f"src/UI/UI.cpp:{at}: A on a backup opens a read-only historical preview, "
+                                "not an isolated staged session")
+        # The session comes from a helper that copies via WorkingCopy::openBackupSession and re-checks the
+        # listed snapshot; its result (not the backup path) is what the editor opens.
+        helpers = [n for n, _, b in function_definitions(uic.code)
+                   if re.search(r"\bopenBackupSession\s*\(", b) and re.search(r"ImmutableSnapshot::unchanged\s*\(", b)]
+        call = next((re.search(r"(?:const\s+)?(?:std::string|auto)\s+(\w+)\s*=\s*" + re.escape(h) + r"\s*\(", region)
+                     for h in helpers if re.search(r"\b" + re.escape(h) + r"\s*\(", region)), None)
+        if not call:
+            r.violations.append(f"src/UI/UI.cpp:{at}: no copy-into-session step (a helper calling "
+                                "WorkingCopy::openBackupSession and re-checking ImmutableSnapshot::unchanged)")
+        elif not re.search(r"handleTrainerView\s*\([^;]*\b" + re.escape(call.group(1)) + r"\b", region):
+            r.violations.append(f"src/UI/UI.cpp:{at}: the editor is not opened on the copied session")
+    wc = src("include/UI/WorkingCopyRefresh.h")
+    ob = body_of(wc, "openBackupSession")
+    if not ob:
+        r.violations.append("include/UI/WorkingCopyRefresh.h: no openBackupSession")
+    else:
+        for rx, why in ((r"gameDir\s*\+\s*\"/\"\s*\+\s*kBackupSessionName", "the session lives in the exact game folder"),
+                        (r"copyTree\s*\(\s*backupDir\s*,\s*session\s*\)", "the backup is copied INTO the session"),
+                        (r"backupDir\s*==\s*session", "the session itself is never opened as a backup")):
+            if not re.search(rx, ob):
+                r.violations.append(f"include/UI/WorkingCopyRefresh.h: openBackupSession: {why} (missing)")
+    bss = src("src/UI/BackupSelectionScreen.cpp")
+    if bss:
+        for line, lit in bss.literals:
+            if lit == "Open read-only":
+                r.violations.append(f"src/UI/BackupSelectionScreen.cpp:{line}: footer still says A 'Open read-only'")
+        if not re.search(r"\bkBackupSessionName\b", bss.code):
+            r.violations.append("src/UI/BackupSelectionScreen.cpp: the open-backup session folder is listed as a backup")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # 4A / NEW-10 (lane P): the compact 620 px Met Location window must not clip rows. The source
+    # example (detail) gets the width the MEASURED place name leaves, not a fixed share (Gen IV/V
+    # rowW - 260 clipped 5,308 of 16,958 default rows with an ellipsis; Gen III got half a row).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG62-met-location-rows-fit",
+               "Gen III-V Met Location rows fit the compact window: the detail column is sized from the "
+               "measured place name, never a fixed share of the row (owner Oct 24 NEW-10 / 4A)")
+    for rel, name_expr in (("src/UI/SharedPokemonEditorSurface.inc", r"label\.substr\(\s*0\s*,\s*split\s*\)"),
+                           ("src/UI/Gen3SharedPokemonSurface.inc", r"row\.first")):
+        body = body_of(src(rel), "drawValuePicker")
+        # The row-drawing branch: the Met Location test whose branch draws the row text.
+        branches = []
+        for m in re.finditer(r"pickerTarget\s*==\s*PickerTarget::MetLocation", body):
+            b = body[m.start():m.start() + 3000]
+            nxt = re.search(r"\}\s*else\s+if\s*\(\s*state\.pickerTarget|(?<=.)pickerTarget\s*==\s*PickerTarget::MetLocation", b, re.S)
+            b = b[:nxt.start()] if nxt else b
+            if re.search(r"\bfit\s*\(", b) and re.search(name_expr, b) and re.search(r"drawText\s*\(\s*x\s*\+\s*38\b", b):
+                branches.append(b)
+        if len(branches) != 1:
+            r.violations.append(f"{rel}: drawValuePicker Met Location row branch not found (update this check)")
+            continue
+        branch = branches[0]
+        if re.search(r"rowW\s*-\s*260\b", branch) or re.search(r"\(\s*rowW\s*-\s*32\s*\)\s*/\s*2", branch):
+            r.violations.append(f"{rel}: Met Location detail has a fixed share of the row (clips long rows)")
+        mw = re.search(r"measureText\s*\(\s*" + name_expr + r"\s*,\s*(\w+)", branch)
+        if not mw or not re.search(r"\bfit\s*\([^;]*rowW\s*-\s*\d+\s*-\s*" + re.escape(mw.group(1)) + r"\b", branch):
+            r.violations.append(f"{rel}: Met Location detail width is not derived from the measured place name")
+    ctx = src("include/Integration/Encounter/EncounterContext45.h")
+    if ctx and any(" variants)" in lit for _, lit in ctx.literals):
+        r.violations.append("include/Integration/Encounter/EncounterContext45.h: '(+N variants)' detail does not fit 620 px")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # 4D (lane P): Help names only controls that act on that page in that generation. '+' opens Review
+    # only in Gen V; in Gen I-IV it goes to Product Home, so their Pokemon / Items pages must not claim
+    # '+ Review'. A help line must name a button ("Move  Place or cancel from the on-screen Move controls"
+    # named none).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG63-help-names-real-controls",
+               "Classic Help: '+ Review' appears only for Gen V; every line names a real control "
+               "(owner Oct 24 4D)")
+    hp = src("include/UI/ClassicHelpPresentation.h")
+    if not hp:
+        r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
+    else:
+        for m in re.finditer(r'"\+\s+Review[^"]*"', hp.code):
+            start = max(hp.code.rfind(";", 0, m.start()), hp.code.rfind("{", 0, m.start()),
+                        hp.code.rfind(":\n", 0, m.start()))
+            stmt = hp.code[start + 1:m.start()]
+            if not re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
+                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{hp.code.count(chr(10), 0, m.start()) + 1}: "
+                                    "'+ Review' is shown outside Gen V (Gen I-IV + opens Product Home)")
+        if any("on-screen Move controls" in lit for _, lit in hp.literals):
+            r.violations.append("include/UI/ClassicHelpPresentation.h: Move help names no button")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P3 (lane S f775db01, ENFORCED): Trainer Play Time (Gen II-IV) and Gender (Crystal, Gen III-IV)
+    # are staged edits only: the stager writes the staged image / pending fields, Review lists the
+    # change, Discard restores it, Export writes it; never the source. Gender is offered only where the
+    # native format stores it (no Gen I, no Gold / Silver) and only when the stored byte is 0 / 1.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG64-trainer-playtime-gender-staged",
+               "Gen II-IV Trainer Play Time and Gender are staged -> Review -> Export only; Gender only for "
+               "Crystal / Gen III / Gen IV and only when the stored byte is 0 / 1 (owner Oct 24 P3)")
+    SOURCE_WRITE = re.compile(r"\b(?:fopen|ofstream|fwrite|writeFile|writeSave|commitSave|injectSave|"
+                              r"replaceFileAtomic|std::filesystem::(?:copy|rename|remove))\b")
+
+    def fn(rel, name):
+        return body_of(src(rel), name)
+    g2 = "src/Integration/Gen2/Gen2StagedEditor.cpp"
+    g3 = "include/Integration/Gen3/Gen3StagedTrainerEditor.h"
+    g4 = "src/Integration/Gen4/Gen4StagedPokemonEditor.cpp"
+    for rel, name, needs in (
+            (g2, "stagePlayTime", (r"\bstaged_\s*\[", r'setChange\s*\(\s*"play_time"')),
+            (g2, "stageTrainerGender", (r"\bstaged_\s*\[", r'setChange\s*\(\s*"trainer_gender"', r"gender\s*>\s*1")),
+            (g2, "trainerGenderEditable", (r"VersionFamily::Crystal", r"original_\s*\[[^\]]*\]\s*<=\s*1")),
+            (g3, "stageGender", (r"\bgender_\s*=\s*gender\b", r"gender\s*>\s*1", r"genderEditable\s*\(")),
+            (g3, "genderEditable", (r"originalGender_\s*<=\s*1",)),
+            (g3, "stagePlayTime", (r"\bplayTime_\s*=\s*time\b", r"kMaxPlayedHours")),
+            (g3, "discard", (r"gender_\s*=\s*originalGender_", r"playTime_\s*=\s*originalPlayTime_")),
+            (g4, "stageTrainerGender", (r"\bstageTrainerBytes\s*\(", r"gender\s*>\s*1", r"trainerGenderEditable\s*\(")),
+            (g4, "stageTrainerPlayTime", (r"\bstageTrainerBytes\s*\(", r"kMaxPlayedHours")),
+            (g4, "trainerGenderEditable", (r"<=\s*1",))):
+        body = fn(rel, name)
+        if not body:
+            r.violations.append(f"{rel}: {name}() missing")
+            continue
+        for rx in needs:
+            if not re.search(rx, body):
+                r.violations.append(f"{rel}: {name}() lacks {rx!r}")
+        if name.startswith("stage") and SOURCE_WRITE.search(body):
+            r.violations.append(f"{rel}: {name}() writes a file; Trainer edits must stay staged")
+    g3h = src(g3)
+    if g3h and not ({"Trainer gender", "Play time"} <= {lit for _, lit in g3h.literals}):
+        r.violations.append(f"{g3}: Gen III Review rows for Trainer gender / Play time missing")
+    g4x = src("src/Integration/Gen4/Gen4ExportTransaction.cpp")
+    if not g4x or not (re.search(r'"Trainer gender: "', g4x.code) and re.search(r'"Play time: "', g4x.code)):
+        r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: Gen IV Review lines for Trainer gender / Play time missing")
+    # The UI offers a Gender row only when the generation supplies a gender stager.
+    cin = src("include/UI/ClassicTrainerSessionInput.h")
+    if not cin or not re.search(r"genderRow\s*=\s*static_cast<bool>\(\s*fields\.stageGender\s*\)", cin.code):
+        r.violations.append("include/UI/ClassicTrainerSessionInput.h: Gender row not tied to a native gender stager")
+    for rel in ("src/UI/Gen2TrainerSessionOverlay.inc", "src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+        f = src(rel)
+        if f and re.search(r"fields\.stageGender\s*=", f.code) and not re.search(
+                r"if\s*\(\s*\w+(?:->|\.)(?:trainerGenderEditable|genderEditable)\s*\(\s*\)\s*\)\s*fields\.stageGender\s*=", f.code):
+            r.violations.append(f"{rel}: Gender stager is set without checking the stored byte is native (0 / 1)")
+    # Gen I stores no trainer gender: its session never gets a gender stager.
+    for f in sources:
+        if re.search(r"(?:^|/)(?:Gen1|RBY)", f.rel) and re.search(r"\bfields\.stageGender\b|\bstageTrainerGender\b", f.code):
+            r.violations.append(f"{f.rel}: Gen I offers a trainer gender edit (Gen I has no gender field)")
+    # Gold / Silver: the Gen II gender stager is Crystal-only (checked above) and refuses others.
+    if not re.search(r"Gold and Silver store no trainer gender", src(g2).code if src(g2) else ""):
+        r.violations.append(f"{g2}: stageTrainerGender does not refuse Gold / Silver")
+    res.append(r)
     return res
 
 
