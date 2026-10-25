@@ -10,6 +10,7 @@
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
+#include "UI/SharedReviewTouch.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen13PickerPaging.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
@@ -890,31 +891,13 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         // The discard confirmation is modal; only its nav-bar B/Y act.
         state.reviewScroll.stop();
     } else if (state.mode == UX2Mode::Review) {
-        const auto lines = ux3PendingLines(screen);
-        const int count = static_cast<int>(lines.size());
-        // Touching a row can focus it on a clean release. Scrolling the
-        // pending list must never navigate the semantic review cursor.
-        const int row = selectedId(1300, count, tapped);
-        if (row >= 0) state.reviewRow = row;
-        if (count > 0) {
-            const auto geometry = UX3Contract::pendingGeometry(lines.size());
-            const int visible = std::max(1, std::min(geometry.visibleRows, count));
-            state.reviewViewport.ensure(state.reviewRow, count, visible);
-            const int rx = (1280 - geometry.width) / 2;
-            const int ry = (672 - geometry.height) / 2;
-            const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
-            if (maxFirst > 0)
-                state.reviewScroll.updateVertical(
-                    touch, rx + 24, ry + 64, geometry.width - 48,
-                    geometry.height - 108, 48, state.reviewViewport.firstRow,
-                    maxFirst + 1);
-            else
-                state.reviewScroll.stop();
-        } else {
-            state.reviewScroll.stop();
-        }
-        if (down & (HidNpadButton_Up | HidNpadButton_Down))
-            state.reviewScroll.stop();
+        // Round 5: the shared paged Review. Rows are informational (a tap selects nothing); a
+        // completed vertical swipe on the panel turns one page, like L/R and Gen II's Review.
+        const int page = PokeBank::UIModel::SharedReviewTouch::swipePage(
+            touch.justReleased(), touch.dragged(), touch.startX(), touch.startY(), touch.x(), touch.y());
+        if (page != 0)
+            state.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(
+                static_cast<size_t>(std::max(0, state.reviewRow)), page, ux3PendingLines(screen).size()));
     }
     return down;
 }
