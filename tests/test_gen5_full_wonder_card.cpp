@@ -75,7 +75,7 @@ int main() {
     full[15]^=1; checksum(full);
     const auto changed=parse(full);
     assert(changed.checksumValid() && !changed.matchesPayload(std::span<const uint8_t>(before).first(kPgfSize)));
-    for(const auto [raw,claims]:std::array<std::pair<uint16_t,uint8_t>,4>{{{0x10,2},{0x20,1},{0x30,3},{0xF0,15}}}) {
+    for(const auto& [raw,claims]:std::array<std::pair<uint16_t,uint8_t>,4>{{{0x10,2},{0x20,1},{0x30,3},{0xF0,15}}}) {
         full=before;full[kVersionOffset]=static_cast<uint8_t>(raw);checksum(full);
         const auto view=parse(full);
         assert(view.catalogVersionClaims()==claims);
