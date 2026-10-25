@@ -673,7 +673,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.pickerValues.reserve(count);
         for (std::size_t id = 0; id < count; ++id) {
             const char* name = Names::getItemNameG3(static_cast<uint16_t>(id));
-            if (Gen3::nativeHeldItemSupported(static_cast<uint16_t>(id)) &&
+            if (Gen3::releasedHeldItem(static_cast<uint16_t>(id)) &&
                 (id == 0 || (name && *name && std::string(name) != "???")))
                 state.pickerValues.push_back(static_cast<uint16_t>(id));
         }

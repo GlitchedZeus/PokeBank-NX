@@ -6,6 +6,33 @@
 
 Last updated: 2026-10-25 UTC, by Claude (Thread R, Round 5 verification).
 
+## Round 6: active (started Oct 25 2026, coordinator session_01AnyHUH96AxxgM3qguezsET)
+
+**Owner Round 5 results on `1ca2faec`:** 31 PASS / 8 FAIL / 3 NOT TESTED. Full record and work list: `docs/hardware/ROUND5_RESULTS_1ca2faec.md`.
+
+**#307 base for Round 6:** `ac68ba1a`. It includes the Safari/Berry Juice held-item fix, merged at `a5db3368`.
+
+### Lane assignments
+
+Lanes push to their own branches. Only the coordinator integrates into #307.
+
+| Lane | Branch | Scope |
+| --- | --- | --- |
+| S | `claude/shared-editor-gen35-20261016` | L06 Pokérus in Gen III/V; Gen III Held Item editor path; held vs caught Ball tests and honest label; Create Review details (Gen III/V); 7B; 7C |
+| C | `claude/gen14-campaign-20261015` | P2 Gen I–IV Trainer rebuilt to Gen V design, including the Gold/Silver overlap; 7A; Gen I/II Review detail shape |
+| P | `claude/pickers-search-scrollbar-20261017` | L06 shared Held Item picker A and touch; 7D tap outside (non-destructive only, no tap-through); P5 met-location disambiguation |
+| L | `claude/launch-return-20261015` | P3 Review entry points and return for Trainer, Create, Edit, Bag, Party and Boxes; 7E PKSE save-safety audit (`docs/audits/ROUND6_SAVE_SAFETY_PKSE.md`) |
+| R | `claude/reroll-mechanics-20261017` | P6 Gen II Unown letter, shiny and DV agreement, plus letter selector; P4/E05 glyph, Help and footer sweep |
+| QA | `audit/app-qa-20261014` | Gates for the 31 PASS items; CG69+ contracts XFAIL until each lane lands; `docs/hardware/RETEST_ROUND6_TEMPLATE.md` (durable, offline-editable) |
+
+### Plan
+
+1. Integrate lanes into #307 one at a time, with tests between each.
+2. Build one Round 6 NRO, bind it, and run the QA-F9 audit.
+3. Write `RETEST_<sha>.md` and upload it as an artifact.
+
+NOT DEVICE TESTED.
+
 ## Round 5 Thread R — verify-first audit on `claude/reroll-mechanics-20261017`
 
 - Fast-forwarded to #307 `eb606c7f`; doc fix `a4678bdc`. No application code changed.
@@ -727,7 +754,9 @@ Round-5 changes (each lane first verified Codex's Oct 24 work, then fixed only r
 | P5 | R docs `a4678bdc` | All audited correct; shiny HP DV doc fix |
 | QA | `b5548272` … `d09e393f` | 27 Oct-24 PASS items gated (236 guards); CG61–CG68 enforced |
 
-**Open owner decision:** Codex `7130bff3` allows Safari Ball and Berry Juice as Gen III *held* items (PKHeX GetAllHeld), which PKHeX legality flags as unreleased held items.
+**Owner decision (Oct 25):** Gen III held items follow PKHeX legality, so Safari Ball (5) and Berry Juice (44) are never offered or written as held items.
+- Fix: `wip/coord-r5-gen3-held-legal-20261025` `15c77226`. It is pushed, the host test and all Python gates pass, and a mutation of the fix fails the test. NOT DEVICE TESTED.
+- Owner instruction: do not build an NRO for this alone. Merge it into #307 with the round-6 fixes so it ships in the next candidate, not in `1ca2faec`.
 
 **Parked, not integrated (superseded):**
 - `wip/coord-r5-safari-ball-20261024` `31a75206` (duplicate of Codex 5B);

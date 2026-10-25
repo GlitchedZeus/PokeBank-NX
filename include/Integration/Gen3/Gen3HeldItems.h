@@ -30,4 +30,15 @@ inline constexpr std::array<uint16_t, 244> kNativeHeldItems{{
 inline bool nativeHeldItemSupported(uint16_t item) noexcept {
     return item==0 || std::binary_search(kNativeHeldItems.begin(),kNativeHeldItems.end(),item);
 }
+// Held items that were never released as held items in Generation III.
+// Source: kwsch/PKHeX@6501f0ab PKHeX.Core/Items/ItemStorage3RS.cs
+// `Unreleased = [005 Safari Ball, 044 Berry Juice]`, and ItemRestrictions
+// ReleasedHeldItems_3 = GetPermitList(..., HeldItems_RS, ItemStorage3RS.Unreleased).
+// Owner decision (Oct 25 2026): new choices follow PKHeX legality, so these
+// are never offered or written. A record that already holds one is read as-is.
+inline constexpr std::array<uint16_t, 2> kUnreleasedHeldItems{{5, 44}};
+inline bool releasedHeldItem(uint16_t item) noexcept {
+    return nativeHeldItemSupported(item) &&
+           std::find(kUnreleasedHeldItems.begin(),kUnreleasedHeldItems.end(),item)==kUnreleasedHeldItems.end();
+}
 }
