@@ -35,10 +35,9 @@ XFAIL: dict[str, str] = {
     # Round 3: CG21/CG26/CG28 on #307 aeccd13, CG20/CG24/CG25/CG27 on 7ed1cc16, CG20b on 7ed1cc16,
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
-    # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9, CG61 (L 1eec6f18): ENFORCED.
+    # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9, CG61 (L 1eec6f18), CG68 (C 9f034431): ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
-    "CG68-gen1-review-swipe-one-page": "lane C (P1 Bag -> shared Review: claude/gen14-campaign-20261015 9f034431, WIP)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational

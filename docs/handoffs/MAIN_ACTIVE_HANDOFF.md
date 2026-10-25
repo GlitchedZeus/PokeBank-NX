@@ -706,6 +706,35 @@ Last updated: 2026-10-25 UTC, by Claude (Thread R, Round 5 verification).
 - Codex's last commit is `7d661fa3` (Oct 24 candidate `8804f8f8`, NRO sha256 `5bbc090e…6085`, NOT DEVICE TESTED). It is kept as-is and is the base for round 5.
 - Round 5 lanes branch from `7d661fa3`. They verify Codex's Oct 24 repairs against `docs/hardware/OCT24_REPAIRS_AND_RETEST.md` and the owner's Oct 24 findings, and fix only real gaps.
 
+## 0b. Round 5 (Oct 24 hardware findings), 2026-10-25: state
+
+- **Start:** `7d661fa3` (Codex). **Final code:** `1ca2faec55ee64702eac6e0779daed3a1c8b3377` (tree `d33207fa`).
+- **Binding:** `ade0df37` (docs-only).
+- **Candidate:** `PokeBank-NX-Gen1-5-Candidate-1ca2faec.nro`, sha256 `b8966cdbd108530ae1c056a07e318d2f05d0cdee30d910b361ab29f381e41511`, 176799409 bytes.
+  [Build run 40151550783](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40151550783), artifact `12582906901`.
+- **QA-F9 PASS:** [run 40152597969](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40152597969), job `121047076478`. The coordinator read the full log: 0 errors, 72/72 contracts in candidate mode.
+- **Hardware status:** NOT DEVICE TESTED.
+- **Retest sheet:** [`docs/hardware/RETEST_1ca2faec.md`](../hardware/RETEST_1ca2faec.md).
+
+Round-5 changes (each lane first verified Codex's Oct 24 work, then fixed only real gaps):
+
+| Area | Commit | Change |
+| --- | --- | --- |
+| P1 Gen I–IV Review | C `8f0e1210`, `a7244a64`, `9f034431` | Gen I legacy panel/footer removed; Gen II/I swipe paging (`UI/SharedReviewTouch.h`); standalone Review returns underneath (`UI/ClassicReviewOrigin.h`); Gen I/II Bag Review on the shared Review; Party Review path test |
+| P2 backups | L `767fd4b0`, `a9de4618` | Native Switch backups open as an isolated staged copy (the backup stays byte-identical); interrupted-move recovery order |
+| P3 Trainer | S `f775db01` | Staged Play Time (Gen II–IV) and Gender (Crystal, Gen III–IV) from PKSM-Core/pret offsets, Review/Export only; no Gen I gender |
+| P4 menus/Help | P `d361d86f`, `edff856e`, `1821c921` | Met Location rows fit (no "…"); Help names real controls; event-year source guard |
+| P5 | R docs `a4678bdc` | All audited correct; shiny HP DV doc fix |
+| QA | `b5548272` … `d09e393f` | 27 Oct-24 PASS items gated (236 guards); CG61–CG68 enforced |
+
+**Open owner decision:** Codex `7130bff3` allows Safari Ball and Berry Juice as Gen III *held* items (PKHeX GetAllHeld), which PKHeX legality flags as unreleased held items.
+
+**Parked, not integrated (superseded):**
+- `wip/coord-r5-safari-ball-20261024` `31a75206` (duplicate of Codex 5B);
+- `wip/l-r5-backup-browser-20261024`;
+- `wip/p-heldsearch-20261024`;
+- `wip/c-r5-review-20261024`.
+
 ## 1. Where to start
 
 | Item | Value |
