@@ -25,8 +25,8 @@ Last updated: 2026-10-25 UTC, by Claude (Thread R, Round 5 verification).
   - 5E R2-REROLL: chooser uses `previewUnownForm` (sprite + "Unown X" title);
     Gen2HardwarePickerFix only overrides the move picker; keep→reparse letter pinned.
 - Fixed: docs/REROLL_MECHANICS.md — shiny Gen II HP DV is 8 (odd Attack) or 0 (even), not 10.
-- Gates PASS: clean GCC host-test, GCC host-sanitize, qa, clean Clang host-test. Clang
-  host-sanitize RUNNING (result in next update); cross-gen `--candidate` 0 failing, all tests/test_*.py, `git diff --check`.
+- Gates PASS: clean GCC host-test, GCC host-sanitize, qa, clean Clang host-test, Clang
+  host-sanitize (195 PASS each suite); cross-gen `--candidate` 0 failing, all tests/test_*.py, `git diff --check`.
 
 ## October 24 exact candidate binding — final CI required
 
