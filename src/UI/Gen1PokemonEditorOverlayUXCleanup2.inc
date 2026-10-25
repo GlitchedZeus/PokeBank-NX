@@ -748,7 +748,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
                 return;
             case Discard::Outcome::Discard:
                 discardAll(screen);
-                screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
+                screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 300);
                 state.reviewRow = 0;
                 return;
         }

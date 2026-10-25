@@ -7,6 +7,7 @@
 //     / Export Copy), never to the source save;
 //   * the page draws them as focusable, tappable rows and drops the matching read-only info row.
 #include "UI/ClassicTrainerSession.h"
+#include "UI/ClassicTrainerPage.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -35,13 +36,6 @@ std::string read(const char* path) {
         std::exit(EXIT_FAILURE);
     }
     return {std::istreambuf_iterator<char>(in), {}};
-}
-
-std::string between(const std::string& text, const std::string& from, const std::string& to) {
-    const auto a = text.find(from);
-    if (a == std::string::npos) return {};
-    const auto b = text.find(to, a + from.size());
-    return text.substr(a, b == std::string::npos ? std::string::npos : b - a);
 }
 
 } // namespace
@@ -80,17 +74,45 @@ int main() {
               gen4.find("trainer.stageGender(gender, error) && refreshPresentation(screen)") != std::string::npos,
           "Gen IV stages Play Time and Gender");
 
+    // Round 6 P2: the classic page draws from UI/ClassicTrainerPage.h (Gen V design); the same
+    // guarantees, now checked on the model the page paints from (test_classic_trainer_page covers
+    // the layout and the routing).
+    namespace P = PokeBank::UIModel::ClassicTrainerPage;
     const auto base = read("src/UI/TrainerViewScreenBase.inc");
-    const auto view = between(base, "static void drawTrainerView(", "\n    }\n");
-    check(view.find("constexpr int kEditRows = 2;") != std::string::npos, "Name / Money rows unchanged");
-    check(view.find("extraRow(PokeBank::UIModel::ClassicTrainerSession::kPlayTimeRow, \"Play Time\",") != std::string::npos &&
-              view.find("extraRow(PokeBank::UIModel::ClassicTrainerSession::genderRow(playTimeEditable), \"Gender\",") !=
-                  std::string::npos &&
-              view.find("screen.touchButtons.push_back({ row, cardX, cy, cardW, extraH });") != std::string::npos,
-          "Play Time / Gender are drawn as focusable, tappable rows");
-    check(view.find("if (!playTimeEditable)") != std::string::npos && view.find("if (!genderEditable) infoRow(\"Gender\"") != std::string::npos,
-          "the read-only info row is dropped when the field is editable");
-    check(view.find("infoRow(\"Badges\",t.nativeBadges.text());") != std::string::npos, "Badges stay display-only");
+    check(base.find("drawClassicTrainerView(screen, fb, x, y, w, h, generation);") != std::string::npos &&
+              base.find("const auto page = Page::layout(rows, x, y, w, h);") != std::string::npos,
+          "the classic Trainer page is drawn from the shared row model");
+    for (int generation = 1; generation <= 4; ++generation) {
+        const bool genderStored = generation >= 3;
+        const auto both = P::rows({generation, false, true, true});
+        const auto none = P::rows({generation, false, false, false});
+        check(both[0].field == P::Field::Name && both[0].editable && both[0].touchId == 0 &&
+                  both[1].field == P::Field::Money && both[1].editable && both[1].touchId == 1,
+              "Name / Money rows unchanged");
+        check(both[2].field == P::Field::PlayTime && both[2].editable && both[2].touchId == T::kPlayTimeRow,
+              "Play Time is a focusable, tappable row when its writer exists");
+        if (genderStored)
+            check(both[3].field == P::Field::Gender && both[3].editable && both[3].touchId == T::genderRow(true),
+                  "Gender is a focusable, tappable row when its writer exists");
+        int playTimeRows = 0, genderRows = 0, readOnlyPlayTime = 0, readOnlyGender = 0;
+        for (const auto& row : both) {
+            playTimeRows += row.field == P::Field::PlayTime;
+            genderRows += row.field == P::Field::Gender;
+            if (row.field == P::Field::Badges) check(!row.editable, "Badges stay display-only");
+        }
+        for (const auto& row : none) {
+            readOnlyPlayTime += row.field == P::Field::PlayTime && !row.editable;
+            readOnlyGender += row.field == P::Field::Gender && !row.editable;
+        }
+        check(playTimeRows == 1 && genderRows == (genderStored ? 1 : 0),
+              "the read-only info row is dropped when the field is editable");
+        check(readOnlyPlayTime == 1 && readOnlyGender == (genderStored ? 1 : 0),
+              "without a writer the field stays as one read-only info row");
+    }
+    // Crystal stores a gender; Gold / Silver do not (no row, editable or read-only).
+    check(P::rows({2, true, true, true})[3].field == P::Field::Gender, "Crystal Gender row");
+    for (const auto& row : P::rows({2, false, true, true}))
+        check(row.field != P::Field::Gender, "Gold / Silver show no invented Gender row");
 
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
