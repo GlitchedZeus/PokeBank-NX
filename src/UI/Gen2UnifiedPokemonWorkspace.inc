@@ -535,6 +535,11 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 5) { toggleShiny(screen, p); return true; }
+        // Unown is genderless; its row 6 is the Letter selector (the letter follows the DVs).
+        if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {
+            chooseUnownLetter(screen, p);
+            return true;
+        }
         chooseGender(screen, p);
         return true;
     }
@@ -753,6 +758,16 @@ inline Color gen2StatCellColor(int row, int column) {
     return UI::SharedEditorChrome::fieldColor(UI::SharedEditorChrome::FieldState::style(
         PokeBank::UIModel::ClassicStatFields::cellState(row, column), false).value);
 }
+// Unown's letter as shown on the Values Letter row: computed from the DVs every frame, so it can
+// never disagree with the sprite (the draft form) or the stored record.
+inline std::string gen2UnownLetterText(const PokeVault::Integration::Gen2::PokemonRecord& p) {
+    return std::string(1, PokeBank::UIModel::Gen2UnownLetter::letterChar(
+        PokeBank::UIModel::Gen12DVReroll::unownLetter({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]})));
+}
+inline std::string gen2UnownLetterNote() {
+    return "Letter follows DVs; only " + PokeBank::UIModel::Gen2UnownLetter::shinyLettersText() +
+           " can be shiny";
+}
 // The HP DV shown is always the one derived from the four stored DVs.
 inline uint8_t gen2ShownHpDv(const PokeVault::Integration::Gen2::PokemonRecord& p) {
     return PokeBank::UIModel::ClassicStatFields::derivedHpDv({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]});
@@ -798,9 +813,11 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
+    const bool unown = p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies;
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
         {"Shiny", p.shiny ? "Yes" : "No"},
-        {"Gender", genderText(p.gender)},
+        unown ? std::pair<std::string, std::string>{"Letter", gen2UnownLetterText(p)}
+              : std::pair<std::string, std::string>{"Gender", genderText(p.gender)},
     }};
     for (int i = 0; i < 2; ++i) {
         const int row = 5 + i;

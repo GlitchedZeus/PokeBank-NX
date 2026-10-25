@@ -19,3 +19,39 @@ $(HOST_BUILD)/test_gen2_unown_letter_sanitize: tests/test_gen2_unown_letter.cpp 
 	include/UI/Gen2PokemonSession.h include/UI/Gen2PokemonPickerModel.h tests/fixtures/gsc_pokemon_fixture.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests tests/test_gen2_unown_letter.cpp $(R4R_GEN2_SOURCES) -o $@
+
+# Round 6 P6: Gen II Unown letter selector (exhaustive DV space; stored form, sprite key, Review).
+R6R_TESTS := $(HOST_BUILD)/test_gen2_unown_letter_selector
+R6R_SANITIZE := $(addsuffix _sanitize,$(R6R_TESTS))
+HOST_TESTS += $(R6R_TESTS)
+HOST_SANITIZE_TESTS += $(R6R_SANITIZE)
+host-test: $(R6R_TESTS)
+host-sanitize: $(R6R_SANITIZE)
+
+$(HOST_BUILD)/test_gen2_unown_letter_selector: tests/test_gen2_unown_letter_selector.cpp $(R4R_GEN2_SOURCES) \
+	include/UI/Gen2UnownLetter.h include/UI/Gen12DVReroll.h include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests tests/test_gen2_unown_letter_selector.cpp $(R4R_GEN2_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_unown_letter_selector_sanitize: tests/test_gen2_unown_letter_selector.cpp $(R4R_GEN2_SOURCES) \
+	include/UI/Gen2UnownLetter.h include/UI/Gen12DVReroll.h include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests tests/test_gen2_unown_letter_selector.cpp $(R4R_GEN2_SOURCES) -o $@
+
+# Round 6 E05: every footer / Help key maps to a real input handler (static contract, with mutations).
+.PHONY: round6-footer-help-contract
+qa-tools-test: round6-footer-help-contract
+round6-footer-help-contract:
+	python3 tests/test_footer_help_handlers.py
+
+# Round 6 E05: Gen I-IV browse footer order (one model, Review slot off by default).
+R6R_FOOTER := $(HOST_BUILD)/test_classic_browse_footer
+HOST_TESTS += $(R6R_FOOTER)
+HOST_SANITIZE_TESTS += $(R6R_FOOTER)_sanitize
+host-test: $(R6R_FOOTER)
+host-sanitize: $(R6R_FOOTER)_sanitize
+$(R6R_FOOTER): tests/test_classic_browse_footer.cpp include/UI/ClassicBrowseFooter.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_browse_footer.cpp -o $@
+$(R6R_FOOTER)_sanitize: tests/test_classic_browse_footer.cpp include/UI/ClassicBrowseFooter.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_browse_footer.cpp -o $@
