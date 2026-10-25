@@ -1139,9 +1139,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     // Do not retarget on contact: the same finger may scroll the picker.
     // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
+    bool tappedChoice = false;
     if (!pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
         down |= HidNpadButton_A;
+        tappedChoice = true;
     }
     if (count <= 0) {
         state.valuePicker = false;
@@ -1202,12 +1204,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (down & HidNpadButton_A) {
         // The finger can browse far away from the highlighted controller choice. A must never
         // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
+        // L06 (Round 6): a completed tap on a partly visible cell (the clipped row a finger
+        // scroll leaves at the grid's edge) is revealed AND chosen, exactly like A on a visible
+        // cell. Only a controller A on a choice scrolled out of sight stops to reveal it.
         if (!state.pickerViewport.containsSelection(
                 state.pickerRow, count, visibleRows, columns)) {
             state.pickerScroll.stop();
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
-            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
-            return true;
+            if (!tappedChoice) {
+                screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+                return true;
+            }
         }
         state.pickerScroll.stop();
         applyValuePicker(state);

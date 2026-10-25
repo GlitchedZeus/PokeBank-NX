@@ -386,8 +386,10 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // Keep semantic focus fixed during picker drags; commit only the
     // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
+    bool tappedChoice = false;
     if (!pickerBar.consumed && !speciesTouchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
+        tappedChoice = true;
         down |= HidNpadButton_A;
     }
     if (count <= 0) {
@@ -474,13 +476,17 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
 
     // Species uses its own modal gesture. In other pickers the highlighted controller
     // choice can be off-screen after a finger scroll; A reveals rather than accepting it unseen.
+    // L06 (Round 6): a completed tap on a partly visible choice (the clipped row a finger scroll
+    // leaves at the grid's edge) is the user pointing at it, so it is revealed AND chosen, like A.
     if (state.pickerTarget != PickerTarget::Species &&
         !state.pickerViewport.containsSelection(
             state.pickerRow, count, visibleRows, columns)) {
         state.pickerScroll.stop();
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
-        screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
-        return true;
+        if (!tappedChoice) {
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
     }
 
     state.pickerScroll.stop();
