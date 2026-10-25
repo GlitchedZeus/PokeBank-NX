@@ -2375,6 +2375,67 @@ def round5_contracts(sources):
         if any("on-screen Move controls" in lit for _, lit in hp.literals):
             r.violations.append("include/UI/ClassicHelpPresentation.h: Move help names no button")
     res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P3 (lane S f775db01, ENFORCED): Trainer Play Time (Gen II-IV) and Gender (Crystal, Gen III-IV)
+    # are staged edits only: the stager writes the staged image / pending fields, Review lists the
+    # change, Discard restores it, Export writes it; never the source. Gender is offered only where the
+    # native format stores it (no Gen I, no Gold / Silver) and only when the stored byte is 0 / 1.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG64-trainer-playtime-gender-staged",
+               "Gen II-IV Trainer Play Time and Gender are staged -> Review -> Export only; Gender only for "
+               "Crystal / Gen III / Gen IV and only when the stored byte is 0 / 1 (owner Oct 24 P3)")
+    SOURCE_WRITE = re.compile(r"\b(?:fopen|ofstream|fwrite|writeFile|writeSave|commitSave|injectSave|"
+                              r"replaceFileAtomic|std::filesystem::(?:copy|rename|remove))\b")
+
+    def fn(rel, name):
+        return body_of(src(rel), name)
+    g2 = "src/Integration/Gen2/Gen2StagedEditor.cpp"
+    g3 = "include/Integration/Gen3/Gen3StagedTrainerEditor.h"
+    g4 = "src/Integration/Gen4/Gen4StagedPokemonEditor.cpp"
+    for rel, name, needs in (
+            (g2, "stagePlayTime", (r"\bstaged_\s*\[", r'setChange\s*\(\s*"play_time"')),
+            (g2, "stageTrainerGender", (r"\bstaged_\s*\[", r'setChange\s*\(\s*"trainer_gender"', r"gender\s*>\s*1")),
+            (g2, "trainerGenderEditable", (r"VersionFamily::Crystal", r"original_\s*\[[^\]]*\]\s*<=\s*1")),
+            (g3, "stageGender", (r"\bgender_\s*=\s*gender\b", r"gender\s*>\s*1", r"genderEditable\s*\(")),
+            (g3, "genderEditable", (r"originalGender_\s*<=\s*1",)),
+            (g3, "stagePlayTime", (r"\bplayTime_\s*=\s*time\b", r"kMaxPlayedHours")),
+            (g3, "discard", (r"gender_\s*=\s*originalGender_", r"playTime_\s*=\s*originalPlayTime_")),
+            (g4, "stageTrainerGender", (r"\bstageTrainerBytes\s*\(", r"gender\s*>\s*1", r"trainerGenderEditable\s*\(")),
+            (g4, "stageTrainerPlayTime", (r"\bstageTrainerBytes\s*\(", r"kMaxPlayedHours")),
+            (g4, "trainerGenderEditable", (r"<=\s*1",))):
+        body = fn(rel, name)
+        if not body:
+            r.violations.append(f"{rel}: {name}() missing")
+            continue
+        for rx in needs:
+            if not re.search(rx, body):
+                r.violations.append(f"{rel}: {name}() lacks {rx!r}")
+        if name.startswith("stage") and SOURCE_WRITE.search(body):
+            r.violations.append(f"{rel}: {name}() writes a file; Trainer edits must stay staged")
+    g3h = src(g3)
+    if g3h and not ({"Trainer gender", "Play time"} <= {lit for _, lit in g3h.literals}):
+        r.violations.append(f"{g3}: Gen III Review rows for Trainer gender / Play time missing")
+    g4x = src("src/Integration/Gen4/Gen4ExportTransaction.cpp")
+    if not g4x or not (re.search(r'"Trainer gender: "', g4x.code) and re.search(r'"Play time: "', g4x.code)):
+        r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: Gen IV Review lines for Trainer gender / Play time missing")
+    # The UI offers a Gender row only when the generation supplies a gender stager.
+    cin = src("include/UI/ClassicTrainerSessionInput.h")
+    if not cin or not re.search(r"genderRow\s*=\s*static_cast<bool>\(\s*fields\.stageGender\s*\)", cin.code):
+        r.violations.append("include/UI/ClassicTrainerSessionInput.h: Gender row not tied to a native gender stager")
+    for rel in ("src/UI/Gen2TrainerSessionOverlay.inc", "src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+        f = src(rel)
+        if f and re.search(r"fields\.stageGender\s*=", f.code) and not re.search(
+                r"if\s*\(\s*\w+(?:->|\.)(?:trainerGenderEditable|genderEditable)\s*\(\s*\)\s*\)\s*fields\.stageGender\s*=", f.code):
+            r.violations.append(f"{rel}: Gender stager is set without checking the stored byte is native (0 / 1)")
+    # Gen I stores no trainer gender: its session never gets a gender stager.
+    for f in sources:
+        if re.search(r"(?:^|/)(?:Gen1|RBY)", f.rel) and re.search(r"\bfields\.stageGender\b|\bstageTrainerGender\b", f.code):
+            r.violations.append(f"{f.rel}: Gen I offers a trainer gender edit (Gen I has no gender field)")
+    # Gold / Silver: the Gen II gender stager is Crystal-only (checked above) and refuses others.
+    if not re.search(r"Gold and Silver store no trainer gender", src(g2).code if src(g2) else ""):
+        r.violations.append(f"{g2}: stageTrainerGender does not refuse Gold / Silver")
+    res.append(r)
     return res
 
 
