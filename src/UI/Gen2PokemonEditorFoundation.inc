@@ -20,6 +20,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspaceLayers.h"
 #include "UI/Gen12DVReroll.h"
+#include "UI/Gen2UnownLetter.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -398,7 +399,63 @@ std::string describeDVChanges(const std::array<uint8_t, 4>& before, const std::a
     return out;
 }
 
+// Unown's letter is bits 1-2 of the same DVs, so a shiny toggle keeps it whenever the letter
+// allows (Gen2UnownLetter.h) and says so when it cannot.
+void toggleUnownShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    const auto before = editableDVs(p);
+    const int oldLetter = PokeBank::UIModel::Gen12DVReroll::unownLetter(before);
+    const auto toggled = Letter::toggleShiny(before);
+    applyEditableDVs(p, toggled.dvs);
+    const std::string changes = "DVs " + describeDVChanges(before, toggled.dvs);
+    if (!p.shiny) {
+        screen.postStatus("Shiny off: Unown " + std::string(1, Letter::letterChar(oldLetter)) +
+                          " kept; " + changes, 300);
+    } else if (toggled.letterChanged) {
+        screen.postStatus("Only Unown " + Letter::shinyLettersText() + " can be shiny: letter " +
+                          std::string(1, Letter::letterChar(oldLetter)) + " -> " +
+                          std::string(1, Letter::letterChar(p.form)) + "; " + changes, 420);
+    } else {
+        screen.postStatus("Shiny on: Unown " + std::string(1, Letter::letterChar(p.form)) +
+                          " kept; " + changes, 300);
+    }
+}
+
+// Unown letter selector: one letter A-Z typed on the keyboard; the DVs closest to the current
+// ones that give that letter are applied (shiny state kept when that letter can be shiny).
+void chooseUnownLetter(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    const auto before = editableDVs(p);
+    const std::string current(1, Letter::letterChar(PokeBank::UIModel::Gen12DVReroll::unownLetter(before)));
+    const auto result = Utils::promptText("Unown letter", "A-Z; the letter follows the DVs", current, 1);
+    if (!result.accepted) return;
+    const int letter = Letter::parseLetter(result.text);
+    const auto selection = Letter::selectLetter(before, letter);
+    switch (selection.outcome) {
+        case Letter::Outcome::Invalid:
+            screen.postStatus("Enter one letter, A to Z", 240);
+            return;
+        case Letter::Outcome::Unchanged:
+            screen.postStatus("Already Unown " + current, 200);
+            return;
+        case Letter::Outcome::ShinyImpossible:
+            screen.postStatus("Unown " + std::string(1, Letter::letterChar(letter)) +
+                              " cannot be shiny; only " + Letter::shinyLettersText() +
+                              " can. Turn Shiny off first. Nothing changed", 420);
+            return;
+        case Letter::Outcome::Changed:
+            applyEditableDVs(p, selection.dvs);
+            screen.postStatus("Unown " + std::string(1, Letter::letterChar(letter)) + ": DVs " +
+                              describeDVChanges(before, selection.dvs) + " (stats follow)", 320);
+            return;
+    }
+}
+
 void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
+    if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {
+        toggleUnownShiny(screen, p);
+        return;
+    }
     const auto before = editableDVs(p);
     auto dvs = before;
     if (Gen2::StagedEditor::isShinyDVs(dvs)) {
