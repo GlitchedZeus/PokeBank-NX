@@ -1007,6 +1007,13 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
         setChange(prefix + "pp", labelPrefix + "Move PP", array4(before.pp), array4(verified->pp));
     if (editableDVs(before) != editableDVs(*verified))
         setChange(prefix + "dvs", labelPrefix + "DVs", array4(editableDVs(before)), array4(editableDVs(*verified)));
+    // Unown's letter is derived from the DVs on reparse (pokecrystal GetUnownLetter); Review names
+    // the letter the staged bytes actually produce, the same one the sprite shows.
+    if (verified->species == 201 && (before.species != 201 || before.form != verified->form)) {
+        const auto letter = [](uint8_t form) { return std::string("Unown ") + static_cast<char>('A' + (form > 25 ? 25 : form)); };
+        setChange(prefix + "unown_letter", labelPrefix + "Unown Letter",
+                  before.species == 201 ? letter(before.form) : "-", letter(verified->form));
+    }
     if (before.statExperience != verified->statExperience)
         setChange(prefix + "statexp", labelPrefix + "Stat Experience",
                   statExpText(before.statExperience), statExpText(verified->statExperience));
