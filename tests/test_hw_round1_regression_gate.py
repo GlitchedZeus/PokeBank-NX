@@ -421,6 +421,120 @@ GUARDS_ROUND3: dict[str, tuple[str, G]] = {
 }
 ROUND3_PASS_COUNT = 70
 
+# Round 5 (owner on the round 4 candidate c60d4da0, Oct 24; docs/hardware/OCT24_REPAIRS_AND_RETEST.md,
+# "Historical owner status mapping"): 27 PASS, all of them round 3 FAILs. Each guard below already held on
+# c60d4da0, the exact source the owner tested, and holds on the head under test, except two that follow
+# later owner-directed work: CG40 now pins the docked Held Item keyboard that replaced the accepted live
+# search prompt (Oct 24 request), and test_stats_label_neutral_contract was added after c60d4da0 (its
+# CG43 / pin companions held there). Round 1 items the owner
+# passed again (C07, M04, B08, E02, E05) keep their round 1 guards and gain these; the 6 Oct 24 FAILs and
+# the 4 unmarked items are round 5 contracts (XFAIL until fixed). Nature colours stay green / red (NEW-09).
+ROUND5_DOC = "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+ROUND5_PASS_COUNT = 27
+GUARDS_ROUND5: dict[str, tuple[str, G]] = {
+    'E03': ('Origin & Legality wording and one truthful panel (Oct 24 PASS)', [
+        ('cg', 'CG03-origin-legality-heading'),
+        ('cg', 'CG48-origin-legality-truthful-state'),
+        ('cg', 'CG49-one-origin-legality-panel'),
+    ]),
+    'L06': ('Touch Party / summary opens Actions (Oct 24 PASS)', [
+        ('host', 'test_party_summary_tap_routing', 'tests/test_party_summary_tap_routing.cpp', 'assert(B4::SummaryPanelTouchId == 2000);'),
+        ('cg', 'CG33-party-opens-actions'),
+    ]),
+    'R2-TRAINER': ('Gen I Trainer Name / Money reach Review (Oct 24 PASS)', [
+        ('cg', 'CG30-trainer-page-opens-review'),
+    ]),
+    'C07': ('Backup browser actions and deletion (Oct 24 PASS)', [
+        ('cg', 'CG59-backup-browser-actions'),
+        ('cg', 'CG60-no-backup-on-unchanged-open'),
+    ]),
+    'M04': ('Gen IV move Category spacing (Oct 24 PASS)', [
+        ('cg', 'CG52-gen45-move-category-spacing'),
+    ]),
+    'B08': ('Export outcome visible (Oct 24 PASS)', [
+        ('cg', 'CG58-export-outcome-visible'),
+    ]),
+    'E02': ('Pokemon Actions present in order (Oct 24 PASS)', [
+        ('cg', 'CG33-party-opens-actions'),
+    ]),
+    'E05': ('Footer glyphs and Help close on B (Oct 24 PASS)', [
+        ('cg', 'CG36-footer-hints-have-glyphs'),
+        ('cg', 'CG29-help-closes-with-b'),
+    ]),
+    'R2-BUG-002': ('Gen III/IV Trainer Review and staged exit (Oct 24 PASS)', [
+        ('cg', 'CG30-trainer-page-opens-review'),
+        ('cg', 'CG31-classic-exit-offers-review'),
+    ]),
+    'R2-CHECK-011': ('Black 2 location choices are context-backed (Oct 24 PASS)', [
+        ('cg', 'CG53-gen45-met-location-context'),
+        ('host', 'test_gen45_encounter_context', 'tests/test_gen45_encounter_context.cpp', 'assert(pikachu[25] && pikachu[172] && !pikachu[26]);'),
+    ]),
+    'NEW-02': ('No Touch:Back footer, touch Back kept (Oct 24 PASS)', [
+        ('cg', 'CG37-no-touch-back-footer'),
+    ]),
+    'NEW-03': ('Bag Remove / Key Item warning glyphs, A commits (Oct 24 PASS)', [
+        ('cg', 'CG38-bag-confirm-glyphs-a-commits'),
+    ]),
+    'NEW-04': ('Gen II PC Move completes (Oct 24 PASS)', [
+        ('cg', 'CG56-gen2-carry-refresh-without-finalize'),
+        ('host', 'test_gen2_box_move_presentation', 'tests/test_gen2_box_move_presentation.cpp', 'assert(editor->packedMoveActive());'),
+    ]),
+    'NEW-05': ('Species keyboard beside the list (Oct 24 PASS)', [
+        ('cg', 'CG39-species-search-keyboard-beside-list'),
+    ]),
+    'NEW-06': ('Held Item search with Sort (Oct 24 PASS)', [
+        ('cg', 'CG40-held-item-picker-search'),
+    ]),
+    'NEW-07': ('Crystal OT Gender cycles inline (Oct 24 PASS)', [
+        ('cg', 'CG41-gen2-ot-gender-inline'),
+    ]),
+    'NEW-08': ('Ball picker scrollbar gutter (Oct 24 PASS)', [
+        ('cg', 'CG42-ball-picker-scrollbar-gutter'),
+    ]),
+    'NEW-09': ('Nature stat colours: raised green, lowered red (Oct 24 PASS)', [
+        ('cg', 'CG43-nature-stat-colours'),
+        ('host', 'test_stats_label_neutral_contract', 'tests/test_stats_label_neutral_contract.cpp', 'assert(stats.find("NatureStats::statColor(A::nature(*raw), row") != std::string::npos);'),
+        ('host', 'test_stats_label_neutral_contract', 'tests/test_stats_label_neutral_contract.cpp', 'assert(nature.find("Colors::Success") != std::string::npos);'),
+        ('host', 'test_stats_label_neutral_contract', 'tests/test_stats_label_neutral_contract.cpp', 'assert(nature.find("Colors::Error") != std::string::npos);'),
+        ('pin', 'include/UI/NatureStatPresentation.h', 'return modifier > 0 ? Colors::Success : modifier < 0 ? Colors::Error : normal;', 'owner Oct 24: keep Nature-based green/red stat colours'),
+    ]),
+    'NEW-11': ('Selected species reads name first (Oct 24 PASS)', [
+        ('cg', 'CG45-selected-species-name-first'),
+    ]),
+    'NEW-12': ('Gen IV/V location choices are context-backed (Oct 24 PASS)', [
+        ('cg', 'CG53-gen45-met-location-context'),
+        ('host', 'test_gen45_encounter_context', 'tests/test_gen45_encounter_context.cpp', 'assert(walrein[365] && walrein[364] && walrein[363] && !walrein[362]);'),
+    ]),
+    'NEW-13': ('Ability picker shows names and effects (Oct 24 PASS)', [
+        ('cg', 'CG46-ability-names-not-slots'),
+    ]),
+    'NEW-15': ('Create defaults IVs / DVs 0 (Oct 24 PASS)', [
+        ('cg', 'CG55-create-defaults-zero-ivs-dvs'),
+    ]),
+    'NEW-16': ('Gen V Home A opens the assigned save (Oct 24 PASS)', [
+        ('cg', 'CG57-gen5-home-a-opens-assigned-save'),
+    ]),
+    'NEW-17': ('Gen V Key Items / TMs editable (Oct 24 PASS)', [
+        ('cg', 'CG34-gen5-key-tm-pockets-editable'),
+    ]),
+    'NEW-18': ('Classic Trainer Play Time and Pokedex (Oct 24 PASS)', [
+        ('cg', 'CG47-classic-trainer-playtime-pokedex'),
+    ]),
+    'NEW-19': ('Gen I-IV staged exit menu (Oct 24 PASS)', [
+        ('cg', 'CG31-classic-exit-offers-review'),
+    ]),
+    'NEW-20': ('Gen I-III Party Actions popup (Oct 24 PASS)', [
+        ('cg', 'CG33-party-opens-actions'),
+    ]),
+}
+
+
+def all_guards():
+    """Every (pid, title, guards) entry; an item passed again in a later round keeps every round's guards."""
+    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5):
+        for pid, (title, guards) in table.items():
+            yield pid, title, guards
+
 PR_GATING_KINDS = {"host", "qa", "cg", "py"}  # "pin" alone is not a behavioural guard (except P09)
 PIN_ONLY_ALLOWED = {"C09": "no host seam: libnx pad input does not run on the host"}
 
@@ -499,7 +613,21 @@ def check(root: Path, run_python: bool = True) -> list[str]:
         stray = [i for i in GUARDS_ROUND3 if i not in r3_pass or i in GUARDS or i in GUARDS_ROUND2]
         if stray:
             errors.append(f"GUARDS_ROUND3 holds item(s) that are not new round 3 PASS: {stray}")
-    for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2, **GUARDS_ROUND3}.items():
+    # Round 5: GUARDS_ROUND5 is exactly the owner's Oct 24 PASS list, in the recorded order.
+    r5 = text(ROUND5_DOC)
+    if r5 is None:
+        errors.append(f"{ROUND5_DOC} is missing")
+    else:
+        m5 = re.search(r"^- PASS: (.*)$", r5, re.M)
+        r5_pass = [i.strip().rstrip(".") for i in m5.group(1).split(",")] if m5 else []
+        if len(r5_pass) != ROUND5_PASS_COUNT or list(GUARDS_ROUND5) != r5_pass:
+            errors.append(f"{ROUND5_DOC}: owner Oct 24 PASS {r5_pass}, gate maps {list(GUARDS_ROUND5)}")
+        if r3 is not None:
+            r3_state = dict(re.findall(r"^- \*\*([A-Z0-9-]+) — (PASS|FAIL|NOT TESTED) — ", r3, re.M))
+            not_r3_fail = [i for i in r5_pass if r3_state.get(i) != "FAIL"]
+            if not_r3_fail:
+                errors.append(f"{ROUND5_DOC}: Oct 24 PASS item(s) that were not round 3 FAILs: {not_r3_fail}")
+    for pid, title, guards in all_guards():
         kinds = {g[0] for g in guards}
         if not kinds & PR_GATING_KINDS and pid not in PIN_ONLY_ALLOWED:
             errors.append(f"{pid} {title}: no guard that runs on every PR")
@@ -550,14 +678,14 @@ def main(argv: list[str]) -> int:
     args = ap.parse_args(argv[1:])
     errors = check(args.root.resolve())
     if args.list:
-        for pid, (title, guards) in {**GUARDS, **GUARDS_ROUND2, **GUARDS_ROUND3}.items():
+        for pid, title, guards in all_guards():
             print(f"{pid} {title}")
             for g in guards:
                 print(f"      {g[0]:4} {' | '.join(str(x) for x in g[1:3])}")
-    every = {**GUARDS, **GUARDS_ROUND2, **GUARDS_ROUND3}
-    n = sum(len(g) for _, g in every.values())
-    label = (f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 + {len(GUARDS_ROUND3)} round 3 owner PASS items; "
-             f"all {ROUND3_PASS_COUNT} round 3 PASS guarded")
+    n = sum(len(g) for _, _, g in all_guards())
+    label = (f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 + {len(GUARDS_ROUND3)} round 3 + "
+             f"{len(GUARDS_ROUND5)} Oct 24 owner PASS items; all {ROUND3_PASS_COUNT} round 3 and "
+             f"{ROUND5_PASS_COUNT} Oct 24 PASS guarded")
     if errors:
         print(f"Hardware-accepted regression gate: FAIL ({len(errors)} problem(s), {label}, {n} guards)")
         for e in errors:

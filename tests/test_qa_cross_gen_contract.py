@@ -2042,6 +2042,32 @@ def contracts(sources: list[Source]) -> list[Result]:
         body = block_after(f.code, start)
         if not re.search(r"(?i)nature", body):
             r.violations.append(f"{rel}:{ln_of(f.code, start)}: stat rows ignore the Nature (no +/- stat colouring)")
+        elif not re.search(r"\bNatureStats::statColor\s*\(", body):
+            r.violations.append(f"{rel}:{ln_of(f.code, start)}: stat rows do not colour through NatureStats::statColor "
+                                "(owner Oct 24 PASS: raised green / lowered red)")
+    # Round 5 (owner Oct 24 PASS, NEW-09): the colours themselves stay green for the raised stat and red for
+    # the lowered one, in the stat rows and in the Nature picker's +10% / -10% effect line, in every theme.
+    nat = src("include/UI/NatureStatPresentation.h")
+    if not nat or not re.search(r"modifier\s*>\s*0\s*\?\s*Colors::Success\s*:\s*modifier\s*<\s*0\s*\?\s*Colors::Error\s*:\s*normal",
+                                nat.code):
+        r.violations.append("include/UI/NatureStatPresentation.h: statColor no longer maps raised -> Colors::Success "
+                            "(green) and lowered -> Colors::Error (red)")
+    elif not (re.search(r'"\+10% "[^;]*Colors::Success', nat.code) and re.search(r'"-10% "[^;]*Colors::Error', nat.code)):
+        r.violations.append("include/UI/NatureStatPresentation.h: Nature effect line is not +10% green / -10% red")
+    pal = src("include/UI/Common.h")
+    palettes = re.findall(r"ThemePalette\s+(\w+)\s*\{([^}]*)\}", pal.code) if pal else []
+    if not palettes:
+        r.violations.append("include/UI/Common.h: no ThemePalette definitions found (update this check)")
+    for name, body in palettes:
+        rgb = [tuple(map(int, c)) for c in re.findall(r"Color\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", body)]
+        if len(rgb) != 15:
+            r.violations.append(f"include/UI/Common.h: {name} has {len(rgb)} colours, expected 15 (update this check)")
+            continue
+        success, error = rgb[11], rgb[13]  # ThemePalette field order: ... divider, success, warning, error, info
+        if not (success[1] > success[0] and success[1] > success[2]):
+            r.violations.append(f"include/UI/Common.h: {name}.success {success} is not green")
+        if not (error[0] > error[1] and error[0] > error[2]):
+            r.violations.append(f"include/UI/Common.h: {name}.error {error} is not red")
     res.append(r)
 
     # ---------------------------------------------------------------- NEW-10
