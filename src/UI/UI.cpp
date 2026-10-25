@@ -88,6 +88,16 @@ namespace UI {
                 error = "No safe profile/exact-game folder to open a copy in.";
                 return {};
             }
+            // A04b: reconcile any interrupted durable Move first. One may target the previous
+            // session workspace, which openBackupSession is about to set aside.
+            const auto moveRecovery =
+                PokeBank::Storage::MoveTx::Production::recoverPendingMoveTransactions();
+            if (moveRecovery.mutationLocked) {
+                error = moveRecovery.notice.empty()
+                    ? "An interrupted Pokemon Move needs attention before a backup can be opened."
+                    : moveRecovery.notice;
+                return {};
+            }
             if (!Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)) return {};
             if (!PokeBank::Paths::ensureDirectoryTree(gameDir, &error)) return {};
             const W::Result r = W::openBackupSession(gameDir, backupDir, getTimestamp(),
