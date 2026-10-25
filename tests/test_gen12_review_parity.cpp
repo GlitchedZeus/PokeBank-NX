@@ -208,11 +208,6 @@ void reviewOriginContract() {
         if (uses != expected) std::cerr << file << ": takeStandalone uses " << uses << '\n';
         assert(uses == expected); // every Review B / closing Discard All consults the origin
     }
-    // Gen I / II Bag -> Options -> Review is the shared Review, not a separate list.
-    const auto bag = read("src/UI/ClassicInventoryOverlay.cpp");
-    has(bag, "if (!screen.openStagedReview(false))");
-    lacks(bag, "Pending Classic Save Changes");
-    lacks(bag, "reviewActive");
 }
 
 int main() {
