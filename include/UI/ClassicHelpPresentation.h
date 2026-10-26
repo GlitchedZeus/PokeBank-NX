@@ -4,9 +4,10 @@
 namespace PokeBank::UIModel::ClassicHelp {
 enum class Page { Hub,Pokemon,Party,Items,Trainer };
 // Round 5 4D: every control named here performs that action in that generation.
-// Round 6 (ReviewEntry.h): + opens the shared Review from Boxes, Party and Bag in every generation,
-// and Y does too where Y is free (Trainer, Party; Gen V Boxes). The Gen I-IV save hub still reaches
-// Review through the staged exit menu (B, then A in that menu: ClassicStagedExit::choose).
+// Round 7 (ReviewEntry.h): one Review key per page, the one its footer shows: Y on Trainer, Party
+// and Gen V Boxes; + on Gen I-IV Boxes and the Bag (Y moves / removes there). The Gen I-IV save
+// hub still reaches Review through the staged exit menu (B, then A in that menu:
+// ClassicStagedExit::choose).
 //
 // Round 6 E05: every row after the banner starts with real controller keys, so the Help window
 // draws them as the coloured badges (GlyphInstruction::helpLine; "A or tap" or "Review Changes"
@@ -14,6 +15,7 @@ enum class Page { Hub,Pokemon,Party,Items,Trainer };
 // "Review: X Export Copy..." and "Review Changes   Available..." rows repeated it and described
 // another screen's buttons. tests/test_classic_help_accuracy.cpp ties each row to its handler.
 inline constexpr const char* kPlusReview = "+   Review staged changes     B   Return to the save hub";
+inline constexpr const char* kYReview = "Y   Review staged changes     B   Return to the save hub";
 inline constexpr const char* kExitMenu = "A / X / Y   Exit menu: A Review, X Export Copy, Y Discard and leave";
 // TrainerViewScreenBase: B or - closes this Help window (helpOverlayActive).
 inline constexpr const char* kCloseHelp = "B / -   Close this Help";
@@ -32,14 +34,14 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back("A   Actions: View, Edit, Move, Clone, Origin or Release");
             out.push_back("A   On an empty slot: create a Pokemon draft");
             out.push_back("L / R   Previous / next box     ZL / ZR   Jump boxes");
-            out.push_back(kPlusReview);
+            out.push_back(generation==5?kYReview:kPlusReview);   // Gen I-IV Boxes: Y is Move
             out.push_back("Y   While moving: place it here     B   While moving: cancel");
             out.push_back("Y   Release question: only Y releases; B cancels");
             break;
         case Page::Party:
             out.push_back("A   Open the action menu for the highlighted Party Pokemon");
             out.push_back("A   In that menu: View, Edit, Origin & Legality or Cancel (tap works too)");
-            out.push_back("Y / +   Review staged changes     B   Return to the save hub");
+            out.push_back(kYReview);
             break;
         case Page::Items:
             out.push_back("L / R   Previous / next inventory pocket");
@@ -51,7 +53,7 @@ inline std::vector<std::string> lines(Page page,int generation) {
         case Page::Trainer:
             out.push_back(generation==5?"A   Edit Name, Money or Play Time; other facts are read-only":
                 "A   Edit Name or Money; other native facts are read-only");
-            out.push_back("Y / +   Review every staged change (or tap Review Changes)");
+            out.push_back("Y   Review every staged change (or tap Review Changes)");
             out.push_back("B   Return to the save hub; edits stay staged");
             break;
     }

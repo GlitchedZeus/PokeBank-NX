@@ -5513,6 +5513,13 @@ int reviewGeneration(const std::string& gameId) {
                             : classicBag ? Entry::Screen::Bag : Entry::Screen::Trainer,
                             reviewGen).glyph;
                     }
+                    // Round 7: the Gen V save hub's + opens Review (Gen5SharedReadOnlySurface browse
+                    // input, Help "+ Review staged ..."); its footer now shows that key too, so no
+                    // screen has a Review key its footer does not name.
+                    if (!detailViewActive && reviewGen == 5) {
+                        spec.review = true;
+                        spec.reviewGlyph = "+";
+                    }
                     instructions = BrowseFooter::instructions(spec);
                 }
             }
