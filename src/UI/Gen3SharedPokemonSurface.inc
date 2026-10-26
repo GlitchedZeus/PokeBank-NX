@@ -1,5 +1,6 @@
 #include "UI/ClassicSourceGuard.h"
 #include "UI/ReviewEntry.h"
+#include "UI/SharedViewOnlyNotice.h"
 #include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
@@ -512,6 +513,33 @@ bool pidLinkedRowEditable(const State& state, int row) noexcept {
     if (row == 7) return variableGenderSpecies(state.session.working.species);
     if (row == 9) return true;
     return false; // PID itself is always derived/read-only.
+}
+
+// View (passive): A or a completed tap on a field says why nothing changes (owner Oct 25 L06),
+// with the Gen IV / V wording (UI/SharedViewOnlyNotice.h). Rows Edit cannot change either (SID,
+// Origin, a non-Unown Form, PID, a fixed Gender) never point at Edit.
+void viewOnlyActivate(TrainerViewScreen& screen, const State& state) {
+    namespace Notice = PokeBank::UIModel::ViewOnlyNotice;
+    constexpr std::array<const char*,5> pidLabels{{"Nature", "Gender", "Shiny", "Ability", "PID"}};
+    const auto& focus = state.focus;
+    const int row = focus.row;
+    std::string field;
+    bool locked = false;
+    if (focus.panel == Shared::Panel::Details) {
+        if (row < 0 || row >= static_cast<int>(detailLabels.size())) return;
+        field = detailLabels[static_cast<size_t>(row)];
+        locked = row == 6 || row == 10 || (row == 15 && state.session.working.species != 201);
+    } else if (focus.panel == Shared::Panel::Moves) {
+        field = "moves";
+    } else if (row < 6) {
+        field = focus.column == 0 ? "IVs" : "EVs";
+    } else if (row <= 10) {
+        field = pidLabels[static_cast<size_t>(row - 6)];
+        locked = row == 10 || (row == 7 && !variableGenderSpecies(state.session.working.species));
+    } else {
+        return;
+    }
+    screen.postStatus(locked ? Notice::lockedHint(field) : Notice::editHint(field), Notice::kFrames);
 }
 
 void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelChanged = false) {
@@ -1544,7 +1572,10 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
     // A touch-down can still become a swipe. Never retarget semantic focus
     // before the release confirms a tap inside the same clipped row.
     const int directTap = screen.touchedButtonId(touch);
-    if (applyDirectFocus(directTap) && state.session.editable()) down |= HidNpadButton_A;
+    if (applyDirectFocus(directTap)) {
+        if (state.session.editable()) down |= HidNpadButton_A;
+        else if (passiveView) viewOnlyActivate(screen, state);
+    }
     if (touch.justReleased() && touch.dragged()) {
         const int dx = touch.deltaX(), dy = touch.deltaY();
         if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
@@ -1580,6 +1611,10 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         w.evs = next.evs;
         state.previewValid = false;
         screen.postStatus(Reroll::kRerollStatus, 200);
+        return true;
+    }
+    if ((down & HidNpadButton_A) && passiveView) {
+        viewOnlyActivate(screen, state);
         return true;
     }
     if (!(down & HidNpadButton_A) || !state.session.editable()) return true;

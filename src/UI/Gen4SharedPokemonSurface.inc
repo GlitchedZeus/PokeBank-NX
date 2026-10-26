@@ -1352,10 +1352,14 @@ struct Gen4Editor {
                            const Record& p) {
         return UI::Gen4SharedEditorSurface::editDetail(screen, gen4(state), row, p);
     }
-    static void passiveActivate(TrainerViewScreen& screen, Surface::EditorState& state, int row) {
+    // True when this generation has its own View message for the row.
+    static bool passiveActivate(TrainerViewScreen& screen, Surface::EditorState& state, int row) {
         const auto& s = gen4(state);
-        if (row == 15 && s.session.working && s.session.working->formCount() <= 1)
+        if (row == 15 && s.session.working && s.session.working->formCount() <= 1) {
             screen.postStatus("This Gen IV Pokémon has only its default form", 135);
+            return true;
+        }
+        return false;
     }
 
     static std::array<uint8_t,6> ivs(const Record& p) { return p.ivs(); }
@@ -1375,6 +1379,13 @@ struct Gen4Editor {
     static bool pidRowEditable(const TrainerViewScreen&, const Surface::EditorState& state,
                                int row, const Record& p) {
         return pidLinkedRowEditable(gen4(state), row, p);
+    }
+    // pidLinkedRowEditable without the mode gate: rows Edit cannot change for this record either.
+    static bool pidRowLocked(const TrainerViewScreen&, const Surface::EditorState&, int row, const Record& p) {
+        if (row == 6 || row == 8) return false;
+        if (row == 7) return !variableGenderSpecies(p);
+        if (row == 9) return !dualAbilitySpecies(p);
+        return true;
     }
     static uint8_t gender(const Record& p) { return p.gender(); }
     static std::string pidRowValue(const TrainerViewScreen&, const Record& raw, int row) {
