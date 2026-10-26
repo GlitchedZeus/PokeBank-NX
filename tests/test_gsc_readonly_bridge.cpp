@@ -165,7 +165,8 @@ int main(){
         assert(trainer->getGameGroup()==Enums::GameVersion::GSC);
         assert(trainer->sourceGameId()=="gold_gbc");
         assert(!trainer->japaneseLayout()&&!trainer->crystalFamily());
-        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
+        // Round 6 (owner Oct 25): Gold / Silver store no player gender, so they report none.
+        assert(!trainer->hasTrainerGender());
         assert(trainer->trainerName=="A"&&trainer->money==123456&&trainer->TID16==0x1234);
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==0x1234);
         assert(trainer->getBoxCount()==14&&trainer->getSlotsPerBox()==20&&trainer->getCurrentBox()==0);
@@ -276,7 +277,7 @@ int main(){
         assert(Integration::Common::playTimeText(trainer->nativePlayTime)=="291:45:59");
         assert(trainer->pokedexProgress().total==251);
         assert(trainer->sourceGameId()=="silver_gbc"&&trainer->japaneseLayout());
-        assert(trainer->hasTrainerGender()&&trainer->trainerGender==0);
+        assert(!trainer->hasTrainerGender()); // Gold / Silver: no stored gender (round 6)
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
         assert(trainer->getBoxCount()==9&&trainer->getSlotsPerBox()==30&&trainer->boxNames.size()==9);
     }

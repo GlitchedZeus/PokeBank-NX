@@ -11,6 +11,7 @@
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "UI/SharedReviewTouch.h"
+#include "UI/Gen1ReviewRows.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen13PickerPaging.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
@@ -665,7 +666,7 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
 
 void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, int, int) {
     auto& state=ux2StateFor(screen);
-    const auto rows=PokeBank::UIModel::SharedReview::fromLines(ux3PendingLines(screen));
+    const auto rows=PokeBank::UIModel::Gen1ReviewRows::fromChangeLines(ux3PendingLines(screen));
     SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
         static_cast<size_t>(state.reviewRow),hasPending(screen),"Generation I");
     if(state.reviewDiscard.confirming)

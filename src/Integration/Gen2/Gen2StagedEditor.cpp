@@ -5,6 +5,8 @@
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "Names/SpeciesNames.h"
 #include "Names/MoveNames.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
+#include "UI/Gen2NativePresentation.h"
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
@@ -1267,9 +1269,35 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
         return false;
     }
     rememberPokemonExpectation(destinationBox, destinationSlot, *verified);
-    setChange("box:" + std::to_string(destinationBox) + ":" + std::to_string(destinationSlot) + ":add",
-              "Box " + std::to_string(destinationBox + 1) + " Slot " + std::to_string(destinationSlot + 1),
-              "Empty", "Added " + verified->nickname + " Lv. " + std::to_string(verified->level));
+    // Round 6 P3 (CG74): the Review of a created Pokemon lists what was created. The header row,
+    // then one named row per stored, non-default value of the VERIFIED record (an empty "before"
+    // is a new value). Gen II stores no nature, ability, ball or Secret ID.
+    namespace C = Gen12CreateReview;
+    const std::string key = "box:" + std::to_string(destinationBox) + ":" + std::to_string(destinationSlot) + ":add";
+    const std::string where = "Box " + std::to_string(destinationBox + 1) + " Slot " + std::to_string(destinationSlot + 1);
+    setChange(key, where + " / " + std::string(C::kAddPokemon), "Empty",
+              C::header(Names::getSpeciesName(verified->species), verified->level));
+    const auto detail = [&](const char* field, const std::string& value) {
+        if (!value.empty()) setChange(key + ":" + field, where + " / " + field, "", value);
+    };
+    const BoxPokemonCreate defaults{};
+    detail("Moves", C::moves(verified->moves, Names::getMoveName));
+    if (verified->heldItem) detail("Held Item", itemLabel(verified->heldItem));
+    detail("OT / TID", C::trainer(verified->originalTrainer, verified->trainerId));
+    const std::array<uint8_t, 4> dvs{verified->dvs[1], verified->dvs[2], verified->dvs[3], verified->dvs[4]};
+    detail("DVs", C::nonZero(std::array<const char*, 4>{"Atk", "Def", "Spe", "Spc"}, dvs));
+    if (isShinyDVs(dvs)) detail("Shiny", "Yes");
+    detail("Stat Exp", C::nonZero(std::array<const char*, 5>{"HP", "Atk", "Def", "Spe", "Spc"},
+                                  verified->statExperience));
+    if (verified->friendship != defaults.friendship) detail("Friendship", std::to_string(verified->friendship));
+    if (verified->pokerus != defaults.pokerus) detail("Pokérus", PokeBank::UIModel::Gen2Native::pokerusText(verified->pokerus));
+    // Crystal alone stores caught data (Gen2NativePresentation.h: PKHeX PK2 / pret SetCaughtData).
+    const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
+    if (sourceGame_ == SourceGame::Crystal && caught.present) {
+        detail("OT Gender", PokeBank::UIModel::Gen2Native::crystalOriginalTrainerGenderText(caught));
+        detail("Met", std::string(PokeBank::UIModel::Gen2Native::crystalCaughtLocationName(caught.location)) + ", " +
+                          PokeBank::UIModel::Gen2Native::crystalCaughtLevelText(caught));
+    }
     return true;
 }
 

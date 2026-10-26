@@ -400,8 +400,10 @@ void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto* editor=stagedEditor(screen);
     if(!editor)return;
     PokeBank::UIModel::SharedReview::Rows rows;
+    // An empty "before" is a new value (a created Pokemon's details, round 6 P3).
     for(const auto& change:editor->pendingChanges())
-        rows.emplace_back(change.label,change.beforeValue+" -> "+change.afterValue);
+        rows.emplace_back(change.label,change.beforeValue.empty()?change.afterValue
+                                                                 :change.beforeValue+" -> "+change.afterValue);
     SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
         static_cast<size_t>(editorOverlayState(screen).reviewRow),editor->hasPendingChanges(),"Generation II");
     if(sharedSurfaceStateFor(screen).reviewDiscard.confirming)
