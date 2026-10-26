@@ -13,7 +13,10 @@
 #include "Pokemon/Pokemon3FRLG.h"
 #include "UI/SharedPokemonEditorContract.h"
 
+#include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "fuzz_synthetic_saves.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Names/ItemNames.h"
@@ -911,6 +914,54 @@ void gen5ViewOnly() {
     check(!trainer->stagedPokemon().hasChanges(), "Gen V View stages nothing");
 }
 
+// Gen IV View (Round 6 follow-up): the Gen IV adapter's own lock rules (pidRowLocked, detailLocked)
+// through the real screen. QA's synthetic Platinum party Pikachu has a non-Gen IV origin byte, so its
+// Ball stays read-only in Edit too; Pikachu has one ability in Gen IV; its gender ratio varies.
+void gen4ViewOnly() {
+    const auto bytes = qasynth::gen4::save(qasynth::gen4::Kind::Platinum);
+    std::string error;
+    auto parsed = PokeVault::Integration::Gen4::Gen4ReadOnlySave::parse(
+        bytes, PokeVault::Integration::Gen4::Layout::Platinum, "platinum_nds", &error);
+    check(parsed.has_value(), "Gen IV fixture parses: " + error);
+    if (!parsed) return;
+    auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*parsed, "platinum_nds", error);
+    check(trainer != nullptr, "Gen IV trainer opens: " + error);
+    if (!trainer) return;
+    UI::TrainerViewScreen screen(*trainer, "Pokemon Platinum", "/host/platinum.sav", 0, AccountUid{},
+                                 PokeVault::Safety::SourceKind::ExternalLegacy, "platinum_nds", "DraStic");
+    Driver d{screen, {}, {}};
+    d.frame();
+    screen.detailViewActive = true;
+    screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+    screen.selectedPartyIndex = 0;
+    d.frame();
+    d.press(HidNpadButton_A);   // the Party Actions menu
+    d.press(HidNpadButton_A);   // its first row: View
+    const int base = Workspace::kDetailTouchBase;
+    check(d.target(base + 1) != nullptr, "Gen IV Party A, A opens View");
+    if (!d.target(base + 1)) return;
+    const auto status = [&] { return screen.storageStatus; };
+    const auto tapSays = [&](int id, const std::string& expected, const std::string& what) {
+        for (int i = 0; i < 18 && !d.target(id); ++i) d.press(HidNpadButton_Down);
+        screen.postStatus("", 0);
+        const bool tapped = d.tap(id);
+        check(tapped && status() == expected, "Gen IV View tap on " + what + " (got \"" + status() + "\")");
+    };
+    tapSays(base + 1, "View only: choose Edit to change Nickname", "Nickname explains View");
+    screen.postStatus("", 0);
+    d.press(HidNpadButton_A);
+    check(status() == "View only: choose Edit to change Nickname", "Gen IV View A explains View (got \"" + status() + "\")");
+    tapSays(base + 6, "SID is read-only for this Pokemon", "SID says read-only");
+    tapSays(base + 10, "Origin is read-only for this Pokemon", "Origin says read-only");
+    tapSays(base + 11, "Ball is read-only for this Pokemon", "a transferred Ball says read-only");
+    tapSays(41206, "View only: choose Edit to change Nature", "Nature explains View");
+    tapSays(41207, "View only: choose Edit to change Gender", "a variable Gender explains View");
+    tapSays(41209, "Ability is read-only for this Pokemon", "a single Ability says read-only");
+    tapSays(41210, "PID is read-only for this Pokemon", "PID says read-only");
+    tapSays(41300, "View only: choose Edit to change moves", "a move explains View");
+    check(HostUi::promptCount == 0, "Gen IV View never opens a prompt");
+}
+
 int main() {
     gen5Pokerus();
     gen5CreatePokerus();
@@ -926,6 +977,7 @@ int main() {
     gen5LanguageNoToast();
     gen3ViewOnly();
     gen5ViewOnly();
+    gen4ViewOnly();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;
