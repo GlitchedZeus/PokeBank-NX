@@ -92,6 +92,23 @@ MUTATIONS = [
      "        screen.postStatus(\"Unown unchanged\", 200);\n", ""),
     ("Unown reroll no longer names the changed DVs", "CG85-unown-letter-shiny-confirmed", "include/UI/Gen2UnownLetter.h",
      "\" kept: \" + dvChanges(before, after)", "\" kept\""),
+    ("Gen II Create Review drawn under the workspace again", "CG80-gen2-create-review-visible",
+     "src/UI/Gen2HardwareFinalFix.inc",
+     "    if (gen2WorkspaceReviewOpen(screen)) {\n        drawSharedReviewSurface(screen, fb);\n        return true;\n    }\n", ""),
+    ("Gen II Review predicate stops testing review", "CG80-gen2-create-review-visible", "src/UI/Gen2HardwareWorkspaceFix.inc",
+     "editorOverlayState(screen).active &&\n           editorOverlayState(screen).review;", "editorOverlayState(screen).active;"),
+    ("Save Backups skips Gen V records", "CG82-gen5-exports-in-save-backups", "include/UI/SourceBackupClassification.h",
+     "const std::string account = detail::gen5AccountDir(exportsRoot, out.profileIdentity);", "const std::string account;"),
+    ("canDelete accepts another profile's Gen V folder", "CG82-gen5-exports-in-save-backups",
+     "include/UI/SourceBackupClassification.h",
+     "const std::string account = detail::gen5AccountDir(listing.exportsRoot, listing.profileIdentity);",
+     "const std::string account = listing.exportsRoot + \"/gen5\";"),
+    ("Gen V backup open accepts another profile's folder", "CG82-gen5-exports-in-save-backups", "include/UI/SourceBackupOpen.h",
+     "const auto account=detail::gen5AccountDir(root,listing.profileIdentity);", "const auto account=root+\"/gen5\";"),
+    ("canDelete drops the export record's source check", "CG82-gen5-exports-in-save-backups",
+     "include/UI/SourceBackupClassification.h",
+     "    if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;\n    for (const std::string& name : detail::children(dir))\n        if (name != manifestName",
+     "    if (!m.ok) return Refusal::NotAnExportRecord;\n    for (const std::string& name : detail::children(dir))\n        if (name != manifestName"),
     ("Quick Games stops publishing its frame", "CG88-quick-games-tap-outside", "src/UI/SaveSelectScreen.cpp",
      "SharedPopupDismiss::publish(x + offset, 0, w, h);", "(void)offset;"),
 ]
@@ -102,7 +119,7 @@ def main() -> int:
     base = {r.cid: r for r in qa.contracts(SOURCES)}
     for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged", "CG76-gen2-unown-letter-from-dvs",
                 "CG74-create-review-details", "CG87-event-locations-described", "CG88-quick-games-tap-outside",
-                "CG85-unown-letter-shiny-confirmed"):
+                "CG85-unown-letter-shiny-confirmed", "CG80-gen2-create-review-visible", "CG82-gen5-exports-in-save-backups"):
         if base[cid].violations:
             print(f"FAIL  unmutated tree: {cid}: {base[cid].violations[:2]}")
             failures += 1
