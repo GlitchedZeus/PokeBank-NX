@@ -257,6 +257,28 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         check(row("/ OT / TID"), where + ": a named OT / TID row");
         if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (Gen I Create has level-up moves)");
     }
+    // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in that lane's
+    // row shapes (Gen III "<slot> Add Pokemon" / "<slot> Moves" / "<slot> OT" rows; Gen V one
+    // "<slot>" label per detail with "Create in Box: ...", "Move 1: ...", "Trainer ID: ..." values).
+    if (reviewed && (game == "FireRed" || game == "Black")) {
+        const auto has = [](const std::string& needle, bool prefix) {
+            for (const auto& t : HostUi::visibleText)
+                if (prefix ? t.text.rfind(needle, 0) == 0
+                           : t.text.size() >= needle.size() &&
+                             t.text.compare(t.text.size() - needle.size(), needle.size(), needle) == 0) return true;
+            return false;
+        };
+        const std::string where = game + " / Review (staged Create)";
+        if (game == "FireRed") {
+            check(has(" Add Pokemon", false), where + ": the Add Pokemon header row");
+            check(has(" Moves", false), where + ": a named Moves row");
+            check(has(" OT", false), where + ": a named OT row (with TID / SID)");
+        } else {
+            check(has("Create in Box: Empty -> ", true), where + ": the Create header value");
+            check(has("Move 1: ", true), where + ": a move detail");
+            check(has("Trainer ID: ", true), where + ": a Trainer ID detail");
+        }
+    }
     press(HidNpadButton_B);   // close Review only (B on the hub with staged edits opens the exit menu)
 
     // With a staged change, every browse page's footer offers Review (lane L's Review entries).
