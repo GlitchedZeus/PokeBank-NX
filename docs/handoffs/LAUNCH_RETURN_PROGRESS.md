@@ -234,6 +234,34 @@ sdmc:/switch/PokeBank-NX/config/experimental_return_host.enable
 
 Delete it to go back to the direct path. No other behaviour depends on it.
 
+## Round 7: B08 (P1-RETURN) repairs and 7E G1
+
+Base: #307 `6ec8dc53` (owner Round 6 results on `26186464`: 49 PASS / 9 FAIL), merged forward as a fast-forward. Every NRO is **NOT DEVICE TESTED**.
+
+| Item | Commit | What changed | Test |
+|---|---|---|---|
+| B08 (1), P0: the Gen II Create → Review screen looked invisible | `146511e2` | Not Unown-specific: any Gen II Create or Edit draft was affected. + opened Review and input went to it, but the outermost draw (`Gen2HardwareFinalFix` → `SharedSurfaceParity`) painted the workspace and then the full-screen editor on top of it. Review now owns the frame while it is open over a workspace (`gen2WorkspaceReviewOpen`, one predicate for input and draw). | `test_ui_gen2_create_review_host`, 76 checks, Silver and Crystal, Unown (real picker) and Pikachu:<ul><li>the title, count and rows are visible;</li><li>no draft is painted;</li><li>Y Discard is a question and B keeps everything;</li><li>X Export leaves the source and the staged changes;</li><li>B returns to the same draft;</li><li>Y never opens Review.</li></ul>36 checks fail without the fix. |
+| B08 (2), P0: + opened Review from Party | `acc0b772` | One Review key per screen, the one its footer shows (`ReviewEntry.h`). The staged exit's four choices are unchanged. | `test_review_entry`, `test_ui_review_entry_host` (243 checks; 25 fail with the old rule), `test_classic_help_accuracy` |
+| 7E G1, P1: Gen V exports were missing from Save Backups | `55635234` | `SourceBackups` lists, opens and deletes the current profile's `exports/gen5/account-<p>/` records (see the audit's G1 row). | `test_gen5_backup_listing_host` (87 checks, real `publishGen5WorkingCopy` records) |
+
+Review key per screen:
+
+| Screen | Gen I | Gen II | Gen III | Gen IV | Gen V |
+|---|---|---|---|---|---|
+| Trainer | Y | Y | Y | Y | Y |
+| Party | Y | Y | Y | Y | Y |
+| Boxes | + (Y is Move / Multi) | + | + | + | Y |
+| Bag | + (Y is Remove) | + | + | + | + |
+| Create / Edit | + (Y is re-roll) | + | + | + | + |
+| Save hub | B, then A in the exit menu | same | same | same | + |
+
+The other key never opens Review on these screens.
+
+Device checks for the owner:
+- **R7-1:** Gen II (Gold, Silver or Crystal): Boxes → empty slot → Create Unown → +. Review is visible with its rows. B returns to the Unown draft, and the draft still responds to its keys.
+- **R7-2:** on each screen in the table, the footer's key opens Review and the other key does not. Party + does nothing.
+- **R7-3:** export an edited Gen V save, then open Save Backups for that game. The export is listed with its date. A opens it with the edit present. Y deletes only that record.
+
 ## Final Switch checklist — owner A/B procedure (exact integrated NRO)
 
 Use the integrated #307 candidate NRO that contains this branch. Record the NRO SHA-256 with the results.

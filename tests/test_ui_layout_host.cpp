@@ -290,7 +290,8 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         checkEditorHeadings(game + " / Create");
 
     // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
-    // its own surface (+ on a browse page, Gen5SharedReadOnlySurface openReviewFromBrowse).
+    // its own surface (Boxes' Review key, Y since Round 7 ReviewEntry: Gen5SharedReadOnlySurface
+    // openReviewFromBrowse).
     press(HidNpadButton_X);
     screen.goBack = false;
     screen.detailViewActive = true;
@@ -300,7 +301,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     frame();
     bool reviewed = false;
     if (gen5) {
-        press(HidNpadButton_Plus);
+        press(HidNpadButton_Y);
         reviewed = true;
     } else if (screen.openStagedReview(false)) {
         frame();
