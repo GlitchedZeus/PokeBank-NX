@@ -652,19 +652,16 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
         }
         namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
         const bool unown = p.species == Letter::kUnownSpecies;
-        if (focus.row == 5) {
+        if (focus.row == 5 && unown) {
             // Round 7: Shiny on a letter that cannot be shiny asks before it changes the letter.
-            if (unown) {
-                const auto request = Letter::requestShinyToggle(editableDVs(p));
-                if (request.ask) {
-                    unifiedStateFor(screen).unownQuestion = request.question;
-                    screen.controllerNavigation.reset();
-                    return true;
-                }
+            const auto request = Letter::requestShinyToggle(editableDVs(p));
+            if (request.ask) {
+                unifiedStateFor(screen).unownQuestion = request.question;
+                screen.controllerNavigation.reset();
+                return true;
             }
-            toggleShiny(screen, p);
-            return true;
         }
+        if (focus.row == 5) { toggleShiny(screen, p); return true; }
         // Unown is genderless; its row 6 is the Letter picker (the letter follows the DVs).
         if (unown) {
             unifiedStateFor(screen).unownPicker = Letter::openPicker(editableDVs(p));
