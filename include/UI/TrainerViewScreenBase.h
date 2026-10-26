@@ -1,6 +1,7 @@
 #ifndef UI_TRAINER_VIEW_SCREEN_H
 #define UI_TRAINER_VIEW_SCREEN_H
 
+#include <atomic>
 #include <cstddef>   // std::byte (details.editSnapshot)
 #include <memory>
 #include <optional>
@@ -65,6 +66,15 @@ namespace UI {
                           std::string sourceProviderLabel = {});
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
+        // Round 6 state-leak fix: unique per constructed screen and never reused. A screen is built
+        // on the stack for each opened game, so the next game's screen usually gets the SAME
+        // address; the generation surfaces' per-screen statics compare this serial, never the
+        // address alone, so no draft, editor or picker carries over to another save.
+        const uint64_t instanceSerial = nextInstanceSerial();
+        static uint64_t nextInstanceSerial() noexcept {
+            static std::atomic<uint64_t> counter{0};
+            return ++counter;
+        }
         bool shouldExit() const override { return goBack; }
         bool hasRequestedExit() const { return exitRequested; }
 
@@ -156,6 +166,9 @@ namespace UI {
         // Round 5 (#322): "Opened from backup - <date>" when this session was opened from a backup
         // copy (Save Backups -> A). Shown in the top bar; empty for the live source.
         std::string provenanceNotice;
+        // Round 6 (7E G5): Gen I-III only: the exact source FILE at Open (ClassicSourceGuard.h).
+        // Every Gen I-III Export Copy refuses a file that changed since.
+        std::optional<PokeVault::Source::ImmutableSnapshot::File> classicSourceSnapshot;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;

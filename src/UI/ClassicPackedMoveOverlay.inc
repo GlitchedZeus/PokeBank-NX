@@ -7,6 +7,7 @@
 #include "UI/ClassicCarryGrid.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include "UI/ClassicPackedMovePresentation.h"
+#include "UI/ClassicBrowseFooter.h"
 #include "UI/SpriteManager.h"
 
 #include <algorithm>
@@ -29,6 +30,7 @@ struct CarriedVisual {
 
 struct CarryState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     CarryGeneration generation = CarryGeneration::None;
     bool active = false;
@@ -72,12 +74,19 @@ constexpr int kMultiHoldFrames = 8;
 
 CarryState& stateFor(TrainerViewScreen& screen) {
     static CarryState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
+}
+
+// Round 6: no carry, rectangle selection or pending Y hold is in progress, so the shared Review
+// may open over the grid (+ Review) without stranding a carried group.
+bool idle(TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    return !state.active && !state.selecting && !state.yPending && !state.touchArmed && !state.touchSelecting;
 }
 
 bool isGen1(const TrainerViewScreen& screen) noexcept {
@@ -220,9 +229,11 @@ void clearState(TrainerViewScreen& screen, CarryState& state) noexcept {
     screen.currentlySelecting = false;
     screen.controllerNavigation.reset();
     const auto owner = state.owner;
+    const auto ownerSerial = state.ownerSerial;
     const auto sourceGameId = state.sourceGameId;
     state = {};
     state.owner = owner;
+    state.ownerSerial = ownerSerial;
     state.sourceGameId = sourceGameId;
 }
 
@@ -1260,13 +1271,29 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     // Override the legacy box footer last so Y is never advertised as a destructive shortcut.
     if (gridOwnsInput(screen)) {
+        // The same browse footer model and order as every other Gen I-V box page (E05): D-pad, A,
+        // page actions, L/R, ZL/ZR, [Review], B, - (the grid handles ZL/ZR jumps and - Help).
         const bool occupied = slotOccupiedForFooter(screen);
+        namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
+        BrowseFooter::Spec spec;
+        spec.canOpen = true;
+        spec.openLabel = "Actions";
+        spec.boxes = true;
         if (occupied)
-            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Move / Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            spec.actions = {{"Y", "Move / Hold Multi"}};
         else if (storageMode(screen, state))  // the save pane adds through Actions (X stays read-only)
-            drawNavBar(fb, {{"A", "Actions"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            spec.actions = {{"Y", "Hold Multi"}};
         else
-            drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"Y", "Hold Multi"}, {"L/R", "Box"}, {"B", "Back"}});
+            spec.actions = {{"X", "Add"}, {"Y", "Hold Multi"}};
+        // Round 6 (B08): Review on the Boxes grid is + (Y stays Move / Multi), the key
+        // openClassicBrowseReview reads there (ReviewEntry.h). The Storage grid has no Review key.
+        if (screen.selectedMode == TrainerViewScreen::ViewMode::Boxes) {
+            spec.review = true;
+            spec.reviewGlyph = "+";
+        }
+        std::vector<ControllerHint> hints;
+        for (const auto& hint : BrowseFooter::hints(spec)) hints.push_back({hint.glyph, hint.label});
+        drawNavBar(fb, hints);
     }
 }
 

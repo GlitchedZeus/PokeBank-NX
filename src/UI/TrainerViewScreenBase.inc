@@ -1,4 +1,5 @@
 #include "UI/ClassicHelpPresentation.h"
+#include "UI/ReviewEntry.h"
 #include <cstring>
 #include <ctime>     // std::time / std::localtime -> a created mon's met date = today
 #include <algorithm>
@@ -11,6 +12,7 @@
 #include "UI/ClassicTrainerSession.h"
 #include "UI/ClassicTrainerPage.h"  // Round 6 P2: Gen I-IV Trainer Info rows and layout
 #include "UI/ClassicStagedExit.h"
+#include "UI/ClassicBrowseFooter.h"
 #include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
 #include "UI/ClassicTrainerEditability.h"  // Trainer page footer: A Edit only when Name / Money are editable
 #include "UI/Gen4BagQuantity.h"        // Gen IV bag footer: one per-item quantity query
@@ -69,6 +71,13 @@
 #include "Utils/StringHelpers.h"
 
 namespace UI {
+namespace {
+// The data generation of the open source (1-5), for ReviewEntry's button rule; 0 for other titles.
+int reviewGeneration(const std::string& gameId) {
+    const auto* game = PokeVault::Games::findGame(gameId);
+    return game ? static_cast<int>(game->dataGeneration) : 0;
+}
+} // namespace
     static std::string leafName(const std::string& path);   // defined below; used by the ctor's trace
 
     // UI Layout constants
@@ -5272,8 +5281,11 @@ namespace UI {
                                 PokeBank::UIModel::classicInventoryQuantityEditable(*game, *pocket, item.itemId);
                         }
                     }
+                    // Round 6: the staged Bag's + opens Review (ReviewEntry.h).
                     instructions = PokeBank::UIModel::inventoryFooter(
-                        true, pocket.has_value(), hasSelection, quantityEditable);
+                        true, pocket.has_value(), hasSelection, quantityEditable,
+                        PokeBank::UIModel::ReviewEntry::footerText(
+                            PokeBank::UIModel::ReviewEntry::Screen::Bag, reviewGeneration(sourceGameId)));
                 } else {
                     const bool categorySupported = selectedCategory >= 0 &&
                         selectedCategory < static_cast<int>(trainer.items.size());
@@ -5412,7 +5424,6 @@ namespace UI {
                         trainerPageEditable()),
                     details.active, selectedMode == ViewMode::Settings,
                     stagedInventoryActionsAvailable)) {
-                instructions = "Arrows: Navigate  |  B: Back";
                 bool canOpen = !detailViewActive;
                 if (detailViewActive && selectedMode == ViewMode::Party)
                     canOpen = selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(trainer.party.size()) &&
@@ -5454,16 +5465,38 @@ namespace UI {
                     }
                     footer.push("X", "Add Item");
                     if (hasItem) footer.push("Y", "Remove");
+                    // Round 6 (B08): Review straight from the Bag (+; Y stays Remove).
+                    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
+                                      PokeBank::UIModel::ReviewEntry::Screen::Bag, 4).glyph[0] == '+');
+                    footer.push("+", "Review");
                     footer.push("B", "Back");
                     instructions.clear();
                     for (const auto& hint : footer) {
                         if (!instructions.empty()) instructions += "  |  ";
                         instructions += std::string(hint.glyph) + ": " + hint.label;
                     }
-                } else if (canOpen)
-                    instructions += "  |  A: View / Actions";
-                if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
-                    instructions += "  |  L/R: Box  |  ZL/ZR: Jump";
+                } else {
+                    // One fixed order for every Gen I-IV browse page, as in Gen V (E05).
+                    namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
+                    BrowseFooter::Spec spec;
+                    spec.canOpen = canOpen;
+                    spec.boxes = detailViewActive &&
+                        (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage);
+                    // Round 6 (B08 / P1-RETURN): the Review slot on Gen I-IV Party / Trainer (Y) and
+                    // Boxes (+), the keys openClassicBrowseReview handles (ReviewEntry.h).
+                    const int reviewGen = reviewGeneration(sourceGameId);
+                    if (detailViewActive && reviewGen >= 1 && reviewGen <= 4 &&
+                        (selectedMode == ViewMode::Party || selectedMode == ViewMode::Boxes ||
+                         selectedMode == ViewMode::Trainer)) {
+                        namespace Entry = PokeBank::UIModel::ReviewEntry;
+                        spec.review = true;
+                        spec.reviewGlyph = Entry::footerHint(
+                            selectedMode == ViewMode::Party ? Entry::Screen::Party
+                            : selectedMode == ViewMode::Boxes ? Entry::Screen::Boxes : Entry::Screen::Trainer,
+                            reviewGen).glyph;
+                    }
+                    instructions = BrowseFooter::instructions(spec);
+                }
             }
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;

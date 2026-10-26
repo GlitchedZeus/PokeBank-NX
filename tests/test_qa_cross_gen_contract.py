@@ -36,8 +36,17 @@ XFAIL: dict[str, str] = {
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
     # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9, CG61 (L 1eec6f18), CG68 (C 9f034431): ENFORCED.
+    # Round 6: CG76 (R 8613b13d) on #307 c3d64423: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
+    # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
+    # coordinator's round 6 assignment.
+    "CG71-gen3-held-item-vs-caught-ball": "lane S (round 6: Gen III held-item policy)",
+    "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
+    "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
+    "CG75-met-location-rows-distinguishable": "lane P (round 6 P5: R2-CHECK-011)",
+    "CG78-tap-outside-dismisses-non-destructive": "lane P (round 6 7D)",
+    "CG79-no-gen5-language-toast": "lane S (round 6 7C)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -2268,6 +2277,7 @@ def contracts(sources: list[Source]) -> list[Result]:
     res.extend(round4_p2_contracts(sources))
     res.extend(round4_p0_contracts(sources))
     res.extend(round5_contracts(sources))
+    res.extend(round6_contracts(sources))
     return res
 
 
@@ -2387,20 +2397,40 @@ def round5_contracts(sources):
     # '+ Review'. A help line must name a button ("Move  Place or cancel from the on-screen Move controls"
     # named none).
     # ------------------------------------------------------------------------------------------
+    # Round 6 (lane L, B08 / P1-RETURN) retarget: + now opens the shared Review on Gen I-IV Boxes,
+    # Party, Bag and Trainer too (ReviewEntry.h, read by openClassicBrowseReview and the Bag's +).
+    # A '+ Review' line outside a generation==5 branch is accepted only while those handlers exist,
+    # and never on the Gen I-IV save hub (there + still points to Product Home).
     r = Result("CG63-help-names-real-controls",
-               "Classic Help: '+ Review' appears only for Gen V; every line names a real control "
-               "(owner Oct 24 4D)")
+               "Classic Help: '+ Review' appears only where + opens Review (Gen V, and Gen I-IV editor pages "
+               "per ReviewEntry.h); every line names a real control (owner Oct 24 4D, Oct 25 B08)")
     hp = src("include/UI/ClassicHelpPresentation.h")
+    entry = src("include/UI/ReviewEntry.h")
+    composite = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    bag = src("src/UI/ClassicInventoryOverlay.cpp")
+    classic_plus = bool(entry and re.search(r"plusOpensReview", entry.code) and
+                        composite and "if (openClassicBrowseReview(*this, down)) return;" in composite.code and
+                        bag and "if (screen.openStagedReview(false)) return true;" in bag.code)
     if not hp:
         r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
     else:
+        hub = re.search(r"case\s+Page::Hub:(.*?)break;", hp.code, re.S)
         for m in re.finditer(r'"\+\s+Review[^"]*"', hp.code):
             start = max(hp.code.rfind(";", 0, m.start()), hp.code.rfind("{", 0, m.start()),
                         hp.code.rfind(":\n", 0, m.start()))
             stmt = hp.code[start + 1:m.start()]
-            if not re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
-                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{hp.code.count(chr(10), 0, m.start()) + 1}: "
-                                    "'+ Review' is shown outside Gen V (Gen I-IV + opens Product Home)")
+            line = hp.code.count(chr(10), 0, m.start()) + 1
+            if re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
+                continue
+            if not classic_plus:
+                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: "
+                                    "'+ Review' is shown outside Gen V but no Gen I-IV handler opens Review on +")
+        if hub:
+            for m in re.finditer(r'(if\s*\(\s*generation\s*==\s*5\s*\)\s*)?out\.push_back\(([^;]*)\);', hub.group(1)):
+                if ("kPlusReview" in m.group(2) or re.search(r'"\+\s+Review', m.group(2))) and \
+                        not m.group(1) and not re.search(r"generation\s*==\s*5", m.group(2)):
+                    r.violations.append("include/UI/ClassicHelpPresentation.h: the Gen I-IV save hub names "
+                                        "'+ Review' (there + opens Product Home)")
         if any("on-screen Move controls" in lit for _, lit in hp.literals):
             r.violations.append("include/UI/ClassicHelpPresentation.h: Move help names no button")
     res.append(r)
@@ -2579,6 +2609,478 @@ def round5_contracts(sources):
             if not re.search(r"ClassicReviewOrigin::takeStandalone\s*\(", body[fb.end():fb.end() + 400]):
                 r.violations.append(f"{rel}: {fn_name}: a Review exit falls back to Actions without consulting "
                                     "ClassicReviewOrigin (stale Box Actions after a standalone Review)")
+    res.append(r)
+    return res
+
+
+# GlyphInstruction::canonicalButton (include/UI/GlyphInstruction.h): the written control names a Help
+# row's key part may use and still be drawn as glyph badges.
+_GLYPH_TOKENS = {"A", "B", "X", "Y", "L", "R", "ZL", "ZR", "L/R", "ZL/ZR", "+", "-", "Plus", "Minus",
+                 "D-pad/LeftStick", "D-pad/Stick", "D-Pad/LeftStick", "LeftStick", "D-pad", "D-Pad", "Arrows",
+                 "Up/Down", "Left/Right", "Left", "Right", "Up", "Down"}
+
+
+def _glyph_keys(keys: str) -> bool:
+    """keyCluster(): the whole key part, or each '/'-separated part, is a control name."""
+    if keys.replace(" ", "") in _GLYPH_TOKENS:
+        return True
+    parts = [k.strip().replace(" ", "") for k in keys.split("/")]
+    return bool(parts) and all(k in _GLYPH_TOKENS for k in parts)
+
+
+def round6_contracts(sources):
+    """Round 6: owner Oct 25 FAIL items and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md).
+    Called from contracts()."""
+    res = []
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def body_of(f, name):
+        return "\n".join(b for _, _, b in function_bodies(f.code, re.compile("^" + re.escape(name) + "$"))) if f else ""
+
+    def block_after(code, pos):
+        d, j = 0, pos
+        while j < len(code):
+            if code[j] == "{":
+                d += 1
+            elif code[j] == "}":
+                d -= 1
+                if d < 0:
+                    break
+            j += 1
+        return code[pos:j]
+
+    def block(f, anchor_rx):
+        """Body of the first `if (...) {` block whose condition matches anchor_rx."""
+        m = re.search(anchor_rx, f.code) if f else None
+        if not m:
+            return None, 0
+        brace = f.code.find("{", m.end() - 1)
+        return block_after(f.code, brace + 1), f.code.count("\n", 0, m.start()) + 1
+
+    def stmt_at(f, pos):
+        """The statement around pos: from the previous ';' / '{' / '}' to the next ';'."""
+        start = max(f.code.rfind(";", 0, pos), f.code.rfind("{\n", 0, pos), f.code.rfind("}", 0, pos))
+        return f.code[start + 1:f.code.find(";", pos) + 1]
+
+    def ln_at(f, pos):
+        return f.code.count("\n", 0, pos) + 1
+
+    # ------------------------------------------------------------------------------------------
+    # P1 / L06 (lane S): Pokerus is editable in Gen III and V like Gen II / IV. Gen III Create left row 14
+    # (Pokerus) out of detailEditable, and Gen III's direct tap never revealed the row before the A gate
+    # (Gen IV / V got that in 6A via Workspace::focusCompletedTap), so the first tap only scrolled.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG69-pokerus-editable-gen3-gen5",
+               "Gen III / V Pokerus: editable in Create and Edit, and a completed tap on its row acts like A "
+               "(owner Oct 25 L06)")
+    g3 = src("src/UI/Gen3SharedPokemonSurface.inc")
+    de = body_of(g3, "detailEditable")
+    m = re.search(r"if\s*\(\s*state\.session\.mode\s*==\s*SessionModel::Mode::Create\s*\)\s*return([^;]*);", de)
+    if not de:
+        r.violations.append("src/UI/Gen3SharedPokemonSurface.inc: detailEditable not found (update this check)")
+    elif m and not re.search(r"\brow\s*==\s*14\b", m.group(1)):
+        r.violations.append("src/UI/Gen3SharedPokemonSurface.inc: Gen III Create leaves Pokerus (row 14) read-only "
+                            "while drawing it as Editable")
+    if g3:
+        m = re.search(r"auto\s+applyDirectFocus\s*=\s*\[[^\]]*\]\s*\(\s*int\s+\w+\s*\)\s*\{", g3.code)
+        body = block_after(g3.code, m.end()) if m else ""
+        if not m:
+            if not re.search(r"focusCompletedTap\s*\(", g3.code):
+                r.violations.append("src/UI/Gen3SharedPokemonSurface.inc: Gen III detail tap path not found (update this check)")
+        elif not re.search(r"\breveal\s*\(|focusCompletedTap\s*\(", body):
+            r.violations.append(f"src/UI/Gen3SharedPokemonSurface.inc:{ln_at(g3, m.start())}: a Gen III detail tap does "
+                                "not reveal its row before the A gate (first tap on Pokerus only scrolls)")
+    g5f = src("include/Integration/Gen5/Gen5EditorFields.h")
+    if g5f and not re.search(r"case\s+Pokerus\s*:", g5f.code):
+        r.violations.append("include/Integration/Gen5/Gen5EditorFields.h: Gen V Pokerus is not an editable detail")
+    g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    ed5 = body_of(g5, "editDetail")
+    if not re.search(r"stage\s*\(\s*screen\s*,\s*Field::Pokerus", ed5):
+        r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Gen V editDetail does not stage Field::Pokerus")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P1 / L06 Held Item (lane P): A and a completed tap select a Held Item at the top, middle and bottom
+    # of the list. The pickers publish hit targets for the partly visible row above and below, but a tap
+    # there sets the row, then fails the "is the selection visible" A gate and only reveals it (owner: some
+    # taps do nothing). A tap is already a visible, release-confirmed choice: the gate is for a controller
+    # selection scrolled away by a finger, not for the tapped row itself.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG70-held-item-tap-commits-any-row",
+               "Held Item picker: a completed tap on any published row commits it (no reveal-only gate for taps) in "
+               "Gen III and the shared Gen IV / V picker (owner Oct 25 L06)")
+    for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc"):
+        body = body_of(src(rel), "handleValuePicker")
+        if not body:
+            r.violations.append(f"{rel}: handleValuePicker not found (update this check)")
+            continue
+        for m in re.finditer(r"if\s*\(([^{;]*!\s*state\.pickerViewport\.containsSelection\s*\([^)]*\)[^{;]*)\)\s*\{", body):
+            if not re.search(r"(?i)tap|touch", m.group(1)):
+                r.violations.append(f"{rel}: the picker's A gate also refuses a completed tap on a partly visible row "
+                                    "(tap only reveals; press A again)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # Gen III held item vs caught Ball (lane S, owner Oct 25 decision): Safari Ball (5) / Berry Juice (44)
+    # are never offered as HELD items (PKHeX ItemStorage3RS.Unreleased); Safari stays a valid caught Ball;
+    # a record that already holds one is kept and labelled honestly; Gen III Review names Gen III items.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG71-gen3-held-item-vs-caught-ball",
+               "Gen III: unreleased held items never offered, a stored one is labelled honestly, Safari stays a caught "
+               "Ball, Review uses Gen III item names (owner Oct 25 held-item policy)")
+    hi = src("include/Integration/Gen3/Gen3HeldItems.h")
+    if not hi or not re.search(r"kUnreleasedHeldItems\s*\{\{\s*5\s*,\s*44\s*\}\}", hi.code):
+        r.violations.append("include/Integration/Gen3/Gen3HeldItems.h: Safari Ball / Berry Juice are not the unreleased held items")
+    if g3 and not re.search(r"releasedHeldItem\s*\(", g3.code):
+        r.violations.append("src/UI/Gen3SharedPokemonSurface.inc: the Held Item picker does not filter unreleased items")
+    if g3 and not any(re.search(r"(?i)unreleased", lit) for _, lit in g3.literals):
+        r.violations.append("src/UI/Gen3SharedPokemonSurface.inc: a stored unreleased held item (Safari Ball / Berry Juice) "
+                            "is shown and offered with no honest label")
+    bl = src("include/Enums/Ball.h")
+    if bl and not re.search(r"\{\s*1\s*,\s*2\s*,\s*3\s*,\s*4\s*,\s*5\b", bl.code):
+        r.violations.append("include/Enums/Ball.h: Gen III caught Balls no longer include Safari (5)")
+    g3e = src("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp")
+    if g3e and re.search(r'field\s*\(\s*"Held Item"\s*,\s*Names::getItemName\s*\(', g3e.code):
+        r.violations.append("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp: Gen III Review names the held item from the "
+                            "non-Gen III item table (getItemName, not getItemNameG3)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P2 (lane C): Gold / Silver store no trainer gender and Gen I has none. No Gender row, no stale
+    # "Male" painted over the page (Gen2HardwareFinalFix drawGoldSilverTrainerGender used the old
+    # geometry and overlapped), and the read-only trainer does not invent one.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG72-gold-silver-trainer-no-gender",
+               "Gold / Silver and Gen I Trainer pages show no Gender row and nothing paints one over the page "
+               "(owner Oct 25 R2-TRAINER / NEW-18)")
+    tvb = src("src/UI/TrainerViewScreenBase.inc")
+    if tvb:
+        for line, lit in tvb.literals:
+            if lit == "Male (fixed by game)":
+                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{line}: Gold / Silver Trainer shows an invented Gender row")
+    ff = src("src/UI/Gen2HardwareFinalFix.inc")
+    if ff and re.search(r"\bdrawGoldSilverTrainerGender\s*\(", ff.code):
+        r.violations.append("src/UI/Gen2HardwareFinalFix.inc: drawGoldSilverTrainerGender paints a stale Gender / Male row "
+                            "over the Gold / Silver Trainer page")
+    gsc = src("src/Legacy/GSCReadOnlyTrainer.cpp")
+    if gsc and re.search(r'"gold_gbc"[^;{]*"silver_gbc"[^{]*\{[^}]*trainerGenderAvailable_\s*=\s*true', gsc.code):
+        r.violations.append("src/Legacy/GSCReadOnlyTrainer.cpp: Gold / Silver report a trainer gender they do not store")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P3 (lane L): a VISIBLE Review prompt on Trainer, Bag, Party, Boxes, Create and Edit in every
+    # generation (owner Oct 25 B08 / P1-RETURN: Review was buried in + Options and the save-exit flow).
+    # Each screen's footer must name Review; the Trainer page shows it whether or not a row is editable.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG73-review-entry-visible-gen1-5",
+               "Trainer / Bag / Party / Boxes / Create / Edit footers show a Review prompt in Gen I-V "
+               "(owner Oct 25 B08 / P1-RETURN)")
+    cts = src("include/UI/ClassicTrainerSession.h")
+    tp = body_of(cts, "trainerPageInstructions")
+    if not tp:
+        r.violations.append("include/UI/ClassicTrainerSession.h: trainerPageInstructions not found (update this check)")
+    else:
+        for lit in re.findall(r'"([^"]*)"', tp):
+            if "Back" in lit and "Review" not in lit:
+                r.violations.append(f"include/UI/ClassicTrainerSession.h: Gen I-IV Trainer footer {lit!r} hides Review")
+    inv = src("include/UI/InventoryUIContract.h")
+    if inv:
+        for line, lit in inv.literals:
+            if "Options" in lit and "Back" in lit and "Review" not in lit:
+                r.violations.append(f"include/UI/InventoryUIContract.h:{line}: Gen I-III Bag footer {lit!r} shows no Review")
+    tv = src("src/UI/TrainerViewScreenBase.inc")
+    # Lane L (round 6): the old literal Party / Boxes / Storage footers in TrainerViewScreenBase serve only
+    # editable (installed-title) sources. Every Gen I-IV emulator session is RetroArchLegacy / ExternalLegacy,
+    # has no Edit, so the read-only override replaces them with ClassicBrowseFooter, whose Review slot is on
+    # for Gen I-IV Party / Boxes / Trainer. The literals are exempt only while all of that is proven here.
+    inv_ovr = body_of(inv, "useReadOnlyInventoryFooterOverride")
+    pol = src("include/Safety/SourceMutationPolicy.h")
+    uic = src("src/UI/UI.cpp")
+    staged_kinds = [m.start() for m in re.finditer(r"SourceKind::(?:BackupOrStaged|AppOwnedStorage)\b", uic.code)] if uic else []
+    htv = [(m.start(), m.start() + len(b_)) for m in re.finditer(r"bool\s+UIManager::handleTrainerView\s*\(", uic.code)
+           for b_ in [block_after(uic.code, uic.code.find("{", m.end()) + 1)]] if uic else []
+    override_proven = bool(
+        re.search(r"return\s+sourceReadOnly\s*&&\s*!detailsActive\s*&&\s*!settingsMode\s*&&\s*"
+                  r"!stagedInventoryActionsAvailable\s*;", inv_ovr) and
+        pol and re.search(r"return\s+source\s*==\s*SourceKind::BackupOrStaged\s*\|\|\s*source\s*==\s*"
+                          r"SourceKind::AppOwnedStorage\s*;", pol.code) and
+        staged_kinds and all(any(lo <= k < hi for lo, hi in htv) for k in staged_kinds) and
+        tv and re.search(r"spec\.review\s*=\s*true\s*;", tv.code) and
+        re.search(r"selectedMode\s*==\s*ViewMode::Party\s*\|\|\s*selectedMode\s*==\s*ViewMode::Boxes\s*\|\|\s*"
+                  r"selectedMode\s*==\s*ViewMode::Trainer", tv.code) and
+        re.search(r"BrowseFooter::instructions\s*\(\s*spec\s*\)", tv.code))
+    if tv:
+        if not override_proven:
+            for line, lit in tv.literals:
+                if "A: Actions" in lit and "B: Back" in lit and "Review" not in lit:
+                    r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{line}: Gen I-IV Party / Boxes footer {lit!r} shows no Review")
+        m = re.search(r'footer\.push\(\s*"A"\s*,\s*"Edit Quantity"\s*\)', tv.code)
+        if m:
+            region = block_after(tv.code, tv.code.rfind("{", 0, tv.code.rfind("Presentation::Footer footer;", 0, m.start())) + 1)
+            if not re.search(r'footer\.push\(\s*"[^"]+"\s*,\s*"[^"]*Review', region):
+                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{ln_at(tv, m.start())}: Gen IV Bag footer shows no Review")
+    box = src("src/UI/ClassicPackedMoveOverlay.inc")
+    if box:
+        for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{\{"A"\s*,\s*"Actions"\}[^;]*;', box.code):
+            if "Review" not in m.group(0):
+                r.violations.append(f"{box.rel}:{ln_at(box, m.start())}: Gen I-III Boxes footer shows no Review")
+    # Create / Edit footers. Dead renderers are exempt only while they are proven unreachable:
+    # - Gen II drawSharedWorkspace: its only caller is drawSharedSurface's mode != None branch, and the
+    #   only caller of drawSharedSurface is drawUnifiedGen2Surface after it returned for mode != None;
+    # - Gen I Cleanup3 Edit / AddDraft footers: Foundation's drawOverlayUX sends the main modes (View,
+    #   Edit, AddDraft) to foundationDrawWorkspace, the composite calls drawFoundationPicker only with a
+    #   picker or the Move editor, and ux3DrawTouchNavBar returns for every picker before the mode switch.
+    g2s = src("src/UI/Gen2SharedPokemonSurface.inc")
+    g2u = src("src/UI/Gen2UnifiedPokemonWorkspace.inc")
+    callers = [f for f in sources if re.search(r"\bdrawSharedSurface\s*\(\s*screen\s*,\s*fb\s*\)\s*;", f.code)]
+    dsu = body_of(g2u, "drawUnifiedGen2Surface")
+    dss = body_of(g2s, "drawSharedSurface")
+    g2_dead = bool(
+        callers == [g2u] and dsu.count("drawSharedSurface(") == 1 and
+        re.search(r"if\s*\(\s*stateFor\(screen\)\.mode\s*!=\s*Mode::None\s*\)\s*\{\s*drawUnifiedWorkspace\(screen,\s*fb\);\s*"
+                  r"return\s+true;\s*\}\s*return\s+drawSharedSurface\(screen,\s*fb\);", dsu) and
+        g2s and len(re.findall(r"\bdrawSharedWorkspace\s*\(\s*screen", g2s.code)) == 1 and
+        re.search(r"if\s*\(\s*stateFor\(screen\)\.mode\s*!=\s*Mode::None\s*\)\s*\{\s*drawSharedWorkspace", dss))
+    g1f = src("src/UI/Gen1PokemonEditorOverlayFoundation.inc")
+    g1h = src("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc")
+    g1c = src("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
+    g12 = src("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
+    comp = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    nav = body_of(g1c, "ux3DrawTouchNavBar")
+    g1_dead = bool(
+        g1f and re.search(r"return\s+mode\s*==\s*UX2Mode::View\s*\|\|\s*mode\s*==\s*UX2Mode::Edit\s*\|\|\s*"
+                          r"mode\s*==\s*UX2Mode::AddDraft\s*;", g1f.code) and
+        re.search(r"if\s*\(\s*foundationMainMode\(state\.mode\)\s*\)\s*\{\s*foundationDrawWorkspace\(screen,\s*fb\);\s*return;",
+                  body_of(g1f, "drawOverlayUX")) and
+        comp and len(re.findall(r"drawFoundationPicker\s*\(", comp.code)) == 1 and
+        re.search(r"\(Gen1PokemonEditor::foundationPickerActive\(\*this\)\s*\|\|\s*Gen1PokemonEditor::foundationMoveEditorActive"
+                  r"\(\*this\)\)\)\s*\{\s*Gen1PokemonEditor::drawFoundationPicker", comp.code) and
+        g12 and re.search(r"enum\s+class\s+UX2Picker\s*:\s*uint8_t\s*\{\s*None\s*,\s*Species\s*,\s*Move\s*\}", g12.code) and
+        re.search(r"UX2Picker::Species\)\s*\{[^}]*return;\s*\}\s*if\s*\(\s*state\.picker\s*==\s*UX2Picker::Move\s*\)\s*\{[^}]*return;",
+                  nav, re.S) and
+        g1h and re.search(r"if\s*\(\s*!foundationMainMode\(state\.mode\)\s*&&\s*state\.mode\s*!=\s*UX2Mode::MoveEditor\s*\)",
+                          body_of(g1h, "drawFoundationPicker")))
+    exempt = {}
+    if g2_dead and g2s:
+        exempt["src/UI/Gen2SharedPokemonSurface.inc"] = body_of(g2s, "drawSharedWorkspace")
+    if g1_dead and g1c:
+        exempt["src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"] = nav
+    for rel in ("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
+                "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen2SharedPokemonSurface.inc",
+                "src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc"):
+        f = src(rel)
+        if not f:
+            continue
+        for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{[^;]*\{"A"\s*,\s*"Edit"\}[^;]*\{"B"\s*,\s*"Exit"\}[^;]*;', f.code):
+            if "Review" in m.group(0):
+                continue
+            if rel in exempt and m.group(0) in exempt[rel]:
+                continue
+            r.violations.append(f"{rel}:{ln_at(f, m.start())}: Create / Edit footer shows no Review")
+    wl = src("include/UI/Gen2WorkspaceLayers.h")
+    if not wl or not re.search(r'push\(\s*f\s*,\s*"[^"]+"\s*,\s*"Review"\s*\)', wl.code):
+        r.violations.append("include/UI/Gen2WorkspaceLayers.h: the Gen II unified Create / Edit footer shows no Review")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P3 Create Review details (lane S): a created Pokemon's Review shows what was created (moves, held
+    # item, Ball, ... as stored), not only "Empty -> PIKACHU Lv 25". Each generation's Create change
+    # builder must go on to describe the created record's fields.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG74-create-review-details",
+               "Review of a created Pokemon lists its details (moves, held item, Ball, ...), not just Empty -> "
+               "species (owner Oct 25 P3)")
+    FIELD_RX = re.compile(r"(?i)\b(moves?|held\s*item|heldItem|ball|nature|ability|met\s*location|metLocation|"
+                          r"ivs?|dvs?|ot\b|otName)\b")
+    for rel, anchor_rx, what in (
+            ("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp", r'"Added Pokemon"', "Gen I"),
+            ("src/Integration/Gen2/Gen2StagedEditor.cpp", r'"Added "\s*\+', "Gen II"),
+            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'" Add Pokemon"', "Gen III")):
+        f = src(rel)
+        m = re.search(anchor_rx, f.code) if f else None
+        if not m:
+            r.violations.append(f"{rel}: {what} Create Review row not found (update this check)")
+            continue
+        window = f.code[m.end():m.end() + 1200]
+        cut = re.search(r"\breturn\b|\bcontinue\b", window)
+        window = window[:cut.start()] if cut else window
+        if len(set(x.lower() for x in FIELD_RX.findall(window))) < 3:
+            r.violations.append(f"{rel}:{ln_at(f, m.start())}: {what} Create Review row stops at the species / level")
+    g4x = src("src/Integration/Gen4/Gen4ExportTransaction.cpp")
+    cmp_ = body_of(g4x, "compare")
+    if g4x and re.search(r"if\s*\(\s*a\.empty\(\)[^)]*\)\s*return\s*;", cmp_):
+        r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: compare() skips every field of a created slot")
+    sr5 = src("include/Integration/Gen5/Gen5SharedReview.h")
+    if sr5:
+        m = re.search(r"Field::CreateBox", sr5.code)
+        window = sr5.code[m.end():m.end() + 800] if m else ""
+        if not m or len(set(x.lower() for x in FIELD_RX.findall(window))) < 3:
+            r.violations.append("include/Integration/Gen5/Gen5SharedReview.h: Gen V Create Review row stops at the species")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P5 (lane P): no two Met Location / event rows read the same. Gen V POKEPARK (40097-40108, twelve
+    # identical names) and Festa rows (differ only by a number) must be told apart, and unknown provenance
+    # stays honest. Evidence required: a host-test check that enumerates the Gen IV and Gen V native
+    # choices through the display layer and requires the displayed rows to be distinct.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG75-met-location-rows-distinguishable",
+               "Every Gen IV / V Met Location choice displays distinctly (POKEPARK / Festa rows told apart); "
+               "a host test enumerates the native choices (owner Oct 25 R2-CHECK-011)")
+    # Host tests and Makefiles are outside the scanned sources: read them from the same checkout.
+    root = Path(str(sources[0].path)[:-len(sources[0].rel)]) if sources else Path(".")
+    mk = "\n".join(m.read_text(errors="replace") for m in root.glob("Makefile.host*"))
+    proof = []
+    for t in sorted((root / "tests").glob("*.cpp")):
+        code = t.read_text(errors="replace")
+        if re.search(r"getMetLocationDisplayName|metLocationText5|metLocationDisplay", code) and \
+                re.search(r"NativeMetLocations5|metLocationChoices", code) and \
+                re.search(r"std::(?:unordered_)?set\s*<\s*std::string|adjacent_find|distinct|unique", code) and \
+                re.search(r"\b" + re.escape(t.stem) + r"\b", mk):
+            proof.append(t.name)
+    if not proof:
+        r.violations.append("no host test enumerates the Gen V native Met Location choices and requires distinct "
+                            "displayed rows (POKEPARK x12, Festa)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # P6 (lane R): the Gen II Unown letter shown is always f(current DVs). The workspace portrait must not
+    # use the cached record form, and making a non-I/V Unown shiny must say the letter changes (a shiny
+    # Gen II Unown can only be I or V: Def / Spd / Spc 10).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG76-gen2-unown-letter-from-dvs",
+               "Gen II Unown: every portrait derives the letter from the current DVs, and Shiny says when it changes "
+               "the letter (owner Oct 25 R2-REROLL)")
+    # Lane R (8613b13d) keeps the draft letter in working.form and recomputes it from the DVs wherever the
+    # draft DVs change; portraits may read that form. So: every Gen II UI function that writes the draft's
+    # DVs must also set its form from unownLetter in the same function (no stale cached letter).
+    for f in sources:
+        if not re.search(r"^(?:src/UI/Gen2\w*\.inc|include/UI/Gen2\w*\.h)$", f.rel):
+            continue
+        for name, ln, body in function_definitions(f.code):
+            if not re.search(r"\b(?:p|working|draft)\s*\.\s*dvs\s*\[[^\]]*\]\s*=[^=]", body):
+                continue
+            if not re.search(r"\.\s*form\s*=[^=][^;]*unownLetter\s*\(", body):
+                r.violations.append(f"{f.rel}:{ln}: {name}() changes the draft DVs without recomputing the Unown "
+                                    "letter from them (stale letter / sprite)")
+    for f in sources:
+        if not re.search(r"src/UI/Gen2\w*\.inc$", f.rel):
+            continue
+        for m in re.finditer(r"\bdrawPortrait\s*\(([^;]*)\)\s*;", f.code):
+            arg = m.group(1)
+            if re.search(r"\b\w+\s*->\s*form\b(?!\s*\()", arg) and "unownLetter" not in arg:
+                r.violations.append(f"{f.rel}:{ln_at(f, m.start())}: Gen II portrait uses a record's stored form "
+                                    "field directly, not the DV-derived letter")
+    fnd = src("src/UI/Gen2PokemonEditorFoundation.inc")
+    ts = body_of(fnd, "toggleShiny")
+    if not ts:
+        r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: toggleShiny not found (update this check)")
+    elif not re.search(r"(?i)unownLetter|letter", ts):
+        r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: toggleShiny changes Unown DVs without telling the "
+                            "owner the letter changes")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # E05 / P4 (lane R): every control a footer or Help row shows has a glyph and a handler, and every
+    # handled control is shown. Owner Oct 25: Game Browser Controls, Party footers and Help rows without
+    # glyphs; stale Review lines.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG77-footer-help-controls-have-handlers",
+               "Help rows name their control as a glyph-able button; Game Browser / Gen I-III Boxes footers list "
+               "every control their handler acts on (owner Oct 25 E05 / P4)")
+    hp = src("include/UI/ClassicHelpPresentation.h")
+    if not hp:
+        r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
+    else:
+        for line, lit in hp.literals:
+            if lit.startswith("Original save unchanged") or lit in ("Help",):
+                continue
+            m = re.search(r" {2,}", lit)
+            if not m or not _glyph_keys(lit[:m.start()]):
+                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: Help row {lit!r} names no glyph "
+                                    "control before its description (drawn as plain text)")
+    ss = src("src/UI/SaveSelectScreen.cpp")
+    if ss:
+        m = re.search(r'\{"ZR"\s*,\s*"Launch"\}', ss.code)
+        hb = re.search(r"if\s*\(\s*classicGamesActive\s*\)", ss.code)
+        if not m:
+            r.violations.append("src/UI/SaveSelectScreen.cpp: Game Browser footer not found (update this check)")
+        elif hb and re.search(r"HidNpadButton_Minus", block_after(ss.code, ss.code.find("{", hb.end()) + 1)):
+            stmt = ss.code[ss.code.rfind(";", 0, m.start()):ss.code.find(";", m.end())]
+            if not re.search(r'\{"-"\s*,', stmt):
+                r.violations.append("src/UI/SaveSelectScreen.cpp: Game Browser handles - (Help) but its footer "
+                                    "does not show it")
+    box = src("src/UI/ClassicPackedMoveOverlay.inc")
+    if box:
+        for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{\{"A"\s*,\s*"Actions"\}[^;]*;', box.code):
+            ln = box.code.count("\n", 0, m.start()) + 1
+            if not re.search(r'\{"-"\s*,', m.group(0)):
+                r.violations.append(f"{box.rel}:{ln}: Gen I-III Boxes footer drops - Help, which the screen handles")
+            if not re.search(r'\{"ZL/ZR"\s*,', m.group(0)):
+                r.violations.append(f"{box.rel}:{ln}: Gen I-III Boxes footer omits ZL / ZR jump, which the screen "
+                                    "handles and Help claims")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # 7D (lane P): a completed tap outside a NON-destructive popup (Help, value pickers, Party Actions)
+    # closes it and consumes the tap (no tap-through to what is underneath). Destructive confirmations
+    # (Discard All, Release, Backup Delete) never close on an outside tap.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG78-tap-outside-dismisses-non-destructive",
+               "A tap outside Help / pickers / Party Actions closes them and is consumed; Discard / Release / "
+               "Delete confirmations ignore outside taps (owner Oct 25 7D)")
+    OUTSIDE = re.compile(r"\b\w*[Oo]utside\w*\s*\(")
+    non_destructive = []
+    tv = src("src/UI/TrainerViewScreenBase.inc")
+    b, ln = block(tv, r"if\s*\(\s*helpOverlayActive\s*\)\s*\{")
+    non_destructive.append(("src/UI/TrainerViewScreenBase.inc", ln, "Help overlay", b))
+    b, ln = block(ss, r"if\s*\(\s*overlay\s*==\s*Overlay::Help\s*\)\s*\{")
+    non_destructive.append(("src/UI/SaveSelectScreen.cpp", ln, "Game Browser Help", b))
+    for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc"):
+        non_destructive.append((rel, 0, "value picker", body_of(src(rel), "handleValuePicker") or None))
+    non_destructive.append(("src/UI/ClassicPartyActions.inc", 0, "Party Actions", body_of(src("src/UI/ClassicPartyActions.inc"), "handle") or None))
+    for rel, ln, what, body in non_destructive:
+        if body is None:
+            r.violations.append(f"{rel}: {what} input handler not found (update this check)")
+            continue
+        m = OUTSIDE.search(body)
+        if not m:
+            r.violations.append(f"{rel}:{ln}: {what} does not close on a tap outside it")
+        elif not re.search(r"\breturn\b", body[m.end():m.end() + 300]):
+            r.violations.append(f"{rel}:{ln}: {what} outside tap is not consumed (tap-through)")
+    destructive = []
+    bs = src("src/UI/BackupSelectionScreen.cpp")
+    b, ln = block(bs, r"if\s*\(\s*showDeleteConfirmation\s*\)\s*\{")
+    destructive.append(("src/UI/BackupSelectionScreen.cpp", ln, "Backup Delete confirmation", b))
+    rel = src("src/UI/ClassicReleaseActionFix.inc")
+    b, ln = block(rel, r"if\s*\(\s*confirm\.active\s*\)\s*\{")
+    destructive.append(("src/UI/ClassicReleaseActionFix.inc", ln, "Release confirmation", b))
+    dis = src("include/UI/Gen12ReviewDiscardConfirm.h")
+    destructive.append(("include/UI/Gen12ReviewDiscardConfirm.h", 0, "Discard All confirmation", dis.code if dis else None))
+    for rel, ln, what, body in destructive:
+        if body is not None and OUTSIDE.search(body):
+            r.violations.append(f"{rel}:{ln}: {what} closes on an outside tap (destructive confirmations must not)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # 7C (lane S): Gen V Language cycles inline; the changed value is the feedback, so there is no
+    # "Language: ..." toast (Gen III Language and Crystal OT Gender post none).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG79-no-gen5-language-toast",
+               "Gen V Language cycles inline without a redundant status toast (owner Oct 25 7C)")
+    g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    ed = body_of(g5, "editDetail")
+    m = re.search(r"case\s+Language\s*:\s*\{", ed)
+    if not m:
+        r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: editDetail Language case not found (update this check)")
+    else:
+        branch = block_after(ed, m.end())
+        if re.search(r"if\s*\(\s*stage\s*\([^;]*\)\s*\)\s*\{?\s*screen\.postStatus", branch) or \
+                re.search(r'postStatus\s*\([^;]*"Language', branch):
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Gen V Language posts a toast after a "
+                                "successful inline change")
     res.append(r)
     return res
 

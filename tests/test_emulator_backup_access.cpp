@@ -7,6 +7,7 @@
 // - refused: foreign files in a record, a record outside exports/genN, the staged-edits row, and
 //   the last remaining app backup when the emulator's own file is gone.
 #include "Integration/Common/VerifiedStagedExport.h"
+#include "UI/ClassicSourceGuard.h"
 #include "UI/SourceBackupClassification.h"
 #include "UI/WorkingCopyRefresh.h"
 
@@ -428,6 +429,50 @@ void backupSessions(const fs::path& root) {
     assert(copies == before);   // refused before any copy
     originals();
 }
+
+// Round 6 (7E gap G5): Gen I-III Export Copy refuses an emulator save that changed since Open, as
+// Gen IV / V already do. Open snapshots the exact file and requires the bytes discovery parsed.
+void classicSourceGuard(const fs::path& root) {
+    namespace Guard = PokeBank::UIModel::ClassicSourceGuard;
+    namespace Snap = PokeVault::Source::ImmutableSnapshot;
+    const fs::path source = root / "guard" / "saves" / "Pokemon - Crystal Version (USA).srm";
+    std::vector<uint8_t> bytes(0x8000 + 0x10);
+    for (std::size_t i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<uint8_t>(i * 7 + 3);
+    write(source, bytes);
+    const std::string parsed = Snap::fingerprint(bytes);
+    std::string error;
+
+    // Open: the file is exactly what discovery parsed.
+    auto snapshot = Guard::snapshotAtOpen(source.string(), parsed, error);
+    assert(snapshot && error.empty() && snapshot->sha256 == parsed && snapshot->bytes == bytes);
+    // Unchanged file: Export Copy may proceed.
+    assert(Guard::unchangedSinceOpen(snapshot, error) && error.empty());
+    // No snapshot taken: not refused (as Gen IV's optional Open snapshot).
+    assert(Guard::unchangedSinceOpen(std::nullopt, error));
+
+    // Discovery parsed different bytes than are on disk now: Open is refused.
+    assert(!Guard::snapshotAtOpen(source.string(), std::string(64, '0'), error) && !error.empty());
+
+    // The emulator saved meanwhile (one byte): Export Copy is refused.
+    auto changed = bytes;
+    changed[0x2009] ^= 0xFF;
+    ::usleep(20000);
+    write(source, changed);
+    assert(!Guard::unchangedSinceOpen(snapshot, error) && error.find("changed since it was opened") != std::string::npos);
+    // Even the same bytes rewritten (a new stamp) are not trusted blindly.
+    ::usleep(20000);
+    write(source, bytes);
+    assert(!Guard::unchangedSinceOpen(snapshot, error));
+    // A deleted source is refused too.
+    fs::remove(source);
+    assert(!Guard::unchangedSinceOpen(snapshot, error));
+    // A link is never followed at Open.
+    write(root / "guard" / "real.srm", bytes);
+    fs::create_symlink(root / "guard" / "real.srm", source);
+    assert(!Guard::snapshotAtOpen(source.string(), parsed, error));
+    // Reading never changed the file it read.
+    assert(slurp(root / "guard" / "real.srm") == bytes);
+}
 } // namespace
 
 int main() {
@@ -443,10 +488,11 @@ int main() {
     deliberateBackups(root, {"melonds", "saves/Pokemon White 2.sav", 5, "white2_nds", ".sav"});
     workingCopyRefresh(root);
     backupSessions(root);
+    classicSourceGuard(root);
     fs::remove_all(root);
     std::cout << "Emulator backups: RetroArch / DraStic / melonDS sources read-only and unchanged, records by "
                  "exact SOURCE_PATH, whole-record deletion only, foreign files / escapes / last copy refused; deliberate "
                  "copy-only backups created / listed / deleted, none on open, source byte- and time-identical; Switch "
                  "Working copy refreshed without unnecessary backups, edits preserved, failures restore; backup sessions "
-                 "leave owned and legacy backups byte-identical PASS\n";
+                 "leave owned and legacy backups byte-identical; Gen I-III exports refuse a source changed since Open PASS\n";
 }

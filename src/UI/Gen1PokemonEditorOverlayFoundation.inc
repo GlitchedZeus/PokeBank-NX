@@ -1,3 +1,4 @@
+#include "UI/ReviewEntry.h"
 #include "UI/ClassicTrainerSessionInput.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
@@ -20,6 +21,7 @@ namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
 
 struct FoundationState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Foundation::Focus focus{};
     PokeBank::UIModel::ControllerNavigation navigation;
@@ -31,9 +33,9 @@ struct FoundationState {
 
 FoundationState& foundationStateFor(const TrainerViewScreen& screen) {
     static FoundationState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -382,6 +384,16 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
             foundationExitMainMode(screen);
             return;
         }
+        return;
+    }
+
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays Random DVs); B
+    // there returns to this workspace with its draft and focus. A passive View keeps its controls.
+    if (editable && (down & HidNpadButton_Plus) && PokeBank::UIModel::ReviewEntry::plusOpensReview(
+            add ? PokeBank::UIModel::ReviewEntry::Screen::Create : PokeBank::UIModel::ReviewEntry::Screen::Edit, 1)) {
+        const UX2Mode back = state.mode;
+        if (screen.openStagedReview(false)) state.reviewReturn = back;
+        else screen.postStatus("No staged Generation I changes to review", 220);
         return;
     }
 

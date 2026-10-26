@@ -1,3 +1,5 @@
+#include "UI/ClassicSourceGuard.h"
+#include "UI/ReviewEntry.h"
 #include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
@@ -93,6 +95,7 @@ enum class PickerTarget : uint8_t {
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool passive = false;
     int detailsFocus = 0;
     TouchScrollState detailsTouchScroll;
@@ -145,9 +148,9 @@ struct State {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -483,9 +486,11 @@ bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
     if (row == 15) return state.session.working.species == 201; // Unown letter (PID-derived)
     if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;
+    // L06 (Round 6): Pokérus (14) is editable in Create too, as in Gen IV. The Create backend
+    // validates, writes and verifies create.pokerus (Gen3StagedPokemonEditor::stageAddBoxPokemon).
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
-               row == 8 || row == 9 || row == 11 || row == 12 || row == 13;
+               row == 8 || row == 9 || row == 11 || row == 12 || row == 13 || row == 14;
     return row == 0 || row == 1 || row == 2 || row == 3 || row == 4 ||
            row == 7 || row == 8 || row == 9 || row == 11 || row == 12 ||
            row == 13 || row == 14;
@@ -1137,9 +1142,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     // Do not retarget on contact: the same finger may scroll the picker.
     // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
+    bool tappedChoice = false;
     if (!pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
         down |= HidNpadButton_A;
+        tappedChoice = true;
     }
     if (count <= 0) {
         state.valuePicker = false;
@@ -1200,13 +1207,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (down & HidNpadButton_A) {
         // The finger can browse far away from the highlighted controller choice. A must never
         // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
-        if (!state.pickerViewport.containsSelection(
+        // L06 (Round 6): a completed tap on a partly visible cell (the clipped row a finger
+        // scroll leaves at the grid's edge) is revealed AND chosen, exactly like A on a visible
+        // cell. Only a controller A on a choice scrolled out of sight stops to reveal it.
+        if (!tappedChoice && !state.pickerViewport.containsSelection(
                 state.pickerRow, count, visibleRows, columns)) {
             state.pickerScroll.stop();
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
             screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
             return true;
         }
+        if (tappedChoice) state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         state.pickerScroll.stop();
         applyValuePicker(state);
         return true;
@@ -1381,6 +1392,20 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         return true;
     }
 
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays re-roll). Review
+    // is handled and drawn before this workspace, and its B returns here with the draft and focus
+    // untouched. A passive View keeps its read-only controls.
+    if (state.session.mode != SessionModel::Mode::View) {
+        namespace Entry = PokeBank::UIModel::ReviewEntry;
+        if ((down & HidNpadButton_Plus) &&
+            Entry::plusOpensReview(state.session.mode == SessionModel::Mode::Create ? Entry::Screen::Create
+                                                                                    : Entry::Screen::Edit, 3)) {
+            if (!screen.openStagedReview(false))
+                screen.postStatus("No staged Generation III changes to review", 220);
+            return true;
+        }
+    }
+
     const auto panelBeforeNavigation = state.focus.panel;
     const bool passiveView = state.session.mode == SessionModel::Mode::View;
     // Drag scrolls the visible left-side rows without changing the selected
@@ -1458,6 +1483,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
             if (!(passiveView || detailEditable(state, row))) return false;
             state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
             state.detailsFocus = row;
+            // CG69 (Round 6 L06): reveal the tapped row first, as the Gen IV / V
+            // Workspace::focusCompletedTap does, so a FIRST tap on the partly visible row
+            // (Pokérus, row 14 of 16 with 8 visible) passes the A gate and acts like A.
+            state.detailsTouchScroll.stop();
+            state.detailsViewport.reveal(row, static_cast<int>(detailLabels.size()), visibleDetailRows);
             return true;
         }
         if (id >= 31100 && id < 31106) {
@@ -1668,6 +1698,11 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
         return;
     }
     std::string error;
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error)) {
+        screen.postStatus(error, 480);
+        return;
+    }
     const std::string root = PokeBank::Paths::gen3ExportsRoot();
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
@@ -2268,11 +2303,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     } else if (state.session.mode == SessionModel::Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Add"}, {"B", "Exit"}});
+                        {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Keep"}, {"B", "Exit"}});
+                        {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 
     if (state.session.confirmExit) {

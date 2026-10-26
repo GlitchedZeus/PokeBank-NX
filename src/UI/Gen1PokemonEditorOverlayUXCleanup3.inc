@@ -28,6 +28,7 @@ using PokeVault::Integration::Gen1::ShinyDVs;
 
 struct UX3State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     PokeBank::UIModel::ControllerNavigation navigation;
     bool pickerPreviewShiny = false;
@@ -37,9 +38,9 @@ struct UX3State {
 
 UX3State& ux3StateFor(const TrainerViewScreen& screen) {
     static UX3State state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -739,9 +740,9 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::View:
         case UX2Mode::Provenance: drawNavBar(fb, {{"B", "Back"}}); return;
         case UX2Mode::Edit:
-            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"B", "Exit"}}); return;
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"+", "Review"}, {"B", "Exit"}}); return;
         case UX2Mode::AddDraft:
-            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}}); return;
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}}); return;
         case UX2Mode::Actions:
             UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); return; // Browse, A Select, B Cancel
         case UX2Mode::LevelExpEditor:

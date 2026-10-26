@@ -1,3 +1,4 @@
+#include "UI/ClassicSourceGuard.h"
 #include "Names/ItemNames.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
@@ -57,6 +58,7 @@ enum class EditSection : uint8_t { Summary, Moves, DVs, StatExp, Trainer };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Mode mode = Mode::Closed;
     int box = 0;
@@ -76,9 +78,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -560,6 +562,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "No pending Generation I changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
 
     const std::string root = PokeBank::Paths::gen1ExportsRoot();
     if (!PokeBank::Paths::ensureGen1ExportsRoot(&error)) return {};

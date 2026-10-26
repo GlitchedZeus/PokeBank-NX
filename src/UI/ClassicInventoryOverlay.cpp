@@ -1,3 +1,4 @@
+#include "UI/ClassicSourceGuard.h"
 #include "UI/ClassicInventoryOverlay.h"
 #include "UI/SharedBoxedRows.h"   // R2-BUG-012: Add Item picker rows use the shared boxed style
 
@@ -59,6 +60,7 @@ enum class SourceKind : uint8_t { None, Gen1, Gen2, Gen3 };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     bool presentationInitialized = false;
     bool pickerActive = false;
@@ -83,9 +85,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -388,6 +390,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "No pending changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
     auto edited = finalizedBytes(screen, error);
     if (edited.empty()) {
         if (error.empty()) error = "Staged save finalization failed";
@@ -845,6 +850,13 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
 
+    // Round 6 (B08): + opens the shared Review directly, as in Gen IV/V, so the Bag's Review is no
+    // longer buried in a menu. Its Export Copy and Discard All are X and Y there, Bag changes
+    // included. Review needs no Bag backend, so it opens even when this pocket cannot stage.
+    if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        if (screen.openStagedReview(false)) return true;
+    }
+
     std::string availabilityError;
     if (!backendAvailable(screen, availabilityError)) {
         screen.postStatus(availabilityError, 360);
@@ -852,6 +864,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        // Only a source with no staged Review workspace falls back to the Bag's own Options
+        // (Export / Discard of the staged Bag), so nothing becomes unreachable.
         state.optionsActive = true;
         state.optionsRow = 0;
         return true;

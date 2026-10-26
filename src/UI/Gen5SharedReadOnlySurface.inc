@@ -9,6 +9,7 @@
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
+#include "UI/ReviewEntry.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
 #include "UI/ClassicStagedExit.h"
 #include "UI/ClassicTrainerSession.h"
@@ -169,6 +170,7 @@ struct PendingPidChange5 {
 };
 struct Gen5EditorState : EditorSurface::EditorState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool workspaceOpen = false;
     PendingPidChange5 pid;
     SharedScrollbar::State bagAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
@@ -182,9 +184,9 @@ std::string pidHex5(uint32_t pid) {
 }
 Gen5EditorState& editorStateFor(const TrainerViewScreen& screen) {
     static Gen5EditorState state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -220,6 +222,7 @@ struct Gen5Editor {
     using Field = Fields::Field;
     using PickerTarget = EditorSurface::PickerTarget;
     static constexpr auto generation = PokeBank::UIModel::SharedPokemonEditor::Generation::Gen5;
+    static constexpr int kGeneration = 5;   // ReviewEntry's button rule
     static constexpr int kDetailRows = Fields::RowCount;
     static constexpr int kMaxSpecies = Fields::kMaxSpecies;
     static constexpr bool kCompactForm = true;
@@ -278,6 +281,12 @@ struct Gen5Editor {
         (void)discardEditDraft(screen);
     }
     static void keep(TrainerViewScreen& screen, EditorSurface::EditorState&) { keepDraft(screen); }
+    // Round 6: + opens the shared Review; B there returns to this workspace (reviewReturn).
+    static void openReview(TrainerViewScreen& screen, EditorSurface::EditorState&) {
+        if (!backend(screen).openReviewFrom(nativeTrainer(screen).stagedPokemon()))
+            screen.postStatus("No staged Gen V changes to review", 220);
+        screen.controllerNavigation.reset();
+    }
 
     // Stage one native field; report the native refusal reason when refused.
     static bool stage(TrainerViewScreen& screen, Field field, size_t stat, uint32_t value) {
@@ -888,7 +897,11 @@ bool handleSharedWorkspace(TrainerViewScreen& screen, u64 keys, const TouchInput
     }
     if (handlePidConfirmation(screen, state, keys, touch)) return true;
     EditorSurface::handleWorkspace<Gen5Editor>(screen, state, keys, touch);
-    if (!workspaceSurface(nativeTrainer(screen).sharedScreen().surface())) {
+    const auto& shared = nativeTrainer(screen).sharedScreen();
+    // A Review opened from this workspace returns to it: keep its focus and pending PID step.
+    const bool reviewOverWorkspace =
+        shared.surface() == Surface::Review && shared.reviewReturn() == Surface::Edit;
+    if (!workspaceSurface(shared.surface()) && !reviewOverWorkspace) {
         EditorSurface::resetWorkspaceFocus(state);
         state.workspaceOpen = false;
         state.pid = {};
@@ -1661,7 +1674,13 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         screen.controllerNavigation.reset();
         return true;
     }
-    if(keys&HidNpadButton_Plus) {
+    // Round 6: + on every panel; Y too on Party and Boxes, where Y has no other job in Browse
+    // (carrying is handled above). B in Review returns here with the cursor and box intact.
+    namespace Entry=PokeBank::UIModel::ReviewEntry;
+    const bool party=screen.selectedMode==TrainerViewScreen::ViewMode::Party;
+    const bool boxes=screen.selectedMode==TrainerViewScreen::ViewMode::Boxes;
+    if((keys&HidNpadButton_Plus) ||
+       ((party || boxes) && Entry::opensReview(party?Entry::Screen::Party:Entry::Screen::Boxes,5,keys))) {
         if(!state.openReviewFromBrowse(staged))
             screen.postStatus("No staged Gen V changes to review",220);
         return true;
@@ -2069,10 +2088,10 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         ClassicPackedMove::draw(screen,fb); // carried sprite + "Y Drop / L/R Box / B Cancel"
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
         drawNavBar(fb,{{"D-pad","Navigate"},{"L/R","Box"},
-                       {"ZL/ZR","Jump 5"},{"A","Actions"},{"+","Review"},{"B","Back"}});
+                       {"ZL/ZR","Jump 5"},{"A","Actions"},{"Y","Review"},{"B","Back"}});
     else
         drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Actions"},
-                       {"+","Review"},{"B","Back"}});
+                       {"Y","Review"},{"B","Back"}});
     return true;
 }
 } // namespace UI::Gen5SharedReadOnlySurface
