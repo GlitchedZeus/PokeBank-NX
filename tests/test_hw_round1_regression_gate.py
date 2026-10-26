@@ -591,9 +591,98 @@ GUARDS_ROUND6: dict[str, tuple[str, G]] = {
 }
 
 
+# Round 7 (owner on the round 6 candidate 26186464, Oct 26; docs/hardware/ROUND6_RESULTS_26186464.md):
+# 49 PASS of 59. The sheet numbers its rows (A01-D03). The 30 Group A passes are earlier owner IDs that
+# keep their existing guards (round 1-6 tables); A22 (R2-SPECIAL) FAILED and keeps its earlier guards,
+# which pin the Special calculation, not its placement (being moved, lane C). The 19 B / C / D passes
+# are guarded here by their sheet number. Trainer layout, Gen II Special placement, editor typography
+# and Help wording are being restyled in round 7, so every guard pins behaviour (staging, native rules,
+# input routing, immutability), never visuals. Owner's Oct 26 rule: "A PASS does not close the request".
+ROUND7_DOC = "docs/hardware/ROUND6_RESULTS_26186464.md"
+ROUND7_PASS_COUNT = 49
+GUARDS_ROUND7: dict[str, tuple[str, G]] = {
+    'B01': ('L06: Gen III/V Pokerus and Held Item activation (Oct 26 PASS)', [
+        ('cg', 'CG69-pokerus-editable-gen3-gen5'),
+        ('cg', 'CG70-held-item-tap-commits-any-row'),
+        ('host', 'test_held_item_input', 'tests/test_held_item_input.cpp', 'assert(t.tap(b.x + b.w / 2, b.y + b.h / 2).choose && t.committed == a.committed);'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(d.target(kGen3DetailTouchBase + kPokerusRow) != nullptr, "Gen III Pokérus row scrolled into view");'),
+    ]),
+    'B02': ('R2-TRAINER: no Gold / Silver gender overlap, supported Trainer edits kept (Oct 26 PASS)', [
+        ('cg', 'CG72-gold-silver-trainer-no-gender'),
+        ('cg', 'CG64-trainer-playtime-gender-staged'),
+        ('host', 'test_classic_trainer_page', 'tests/test_classic_trainer_page.cpp', 'assert(countField(rows, Field::Gender) == (genderStored ? 1 : 0)); // no Gen I / Gold / Silver gender'),
+    ]),
+    'B03': ('B08: direct Bag Review (Oct 26 PASS)', [
+        ('cg', 'CG73-review-entry-visible-gen1-5'),
+        ('cg', 'CG58-export-outcome-visible'),
+    ]),
+    'C02': ('7B: Gen V directly learnable move reads OK (Oct 26 PASS)', [
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(ok && !learnable, "Gen V Moves panel marks Thunder Shock OK, not Learnable");'),
+    ]),
+    'C03': ('7C: Gen V Language cycles inline, no toast (Oct 26 PASS)', [
+        ('cg', 'CG79-no-gen5-language-toast'),
+        ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("postStatus(")==std::string::npos);'),
+    ]),
+    'C04': ('7D: tap outside closes non-destructive popups, no tap-through (Oct 26 PASS)', [
+        ('cg', 'CG78-tap-outside-dismisses-non-destructive'),
+        ('host', 'test_popup_dismiss', 'tests/test_popup_dismiss.cpp', 'assert(s.pickerOpen && s.dismissals == 0);      // contact alone never closes it'),
+        ('host', 'test_popup_dismiss', 'tests/test_popup_dismiss.cpp', 'assert(s.underneathActivations == 0);'),
+    ]),
+    'C05': ('7E: save safety: originals protected, backups through a copy (Oct 26 PASS)', [
+        ('cg', 'CG61-switch-backup-opens-staged-copy'),
+        ('cg', 'CG60-no-backup-on-unchanged-open'),
+        ('host', 'test_emulator_backup_access', 'tests/test_emulator_backup_access.cpp', 'assert(B::deleteRecord(l, 0) == B::Refusal::OriginalSource);'),
+    ]),
+    'C07': ('7G: Bag Review discoverable (Oct 26 PASS)', [
+        ('cg', 'CG73-review-entry-visible-gen1-5'),
+    ]),
+    'C08': ('Gen III held-item policy: no unreleased held items, Safari as a caught Ball (Oct 26 PASS)', [
+        ('cg', 'CG71-gen3-held-item-vs-caught-ball'),
+        ('host', 'test_gen3_staged_pokemon_editor', 'tests/test_gen3_staged_pokemon_editor.cpp', 'assert(!releasedHeldItem(5) && !releasedHeldItem(44));'),
+    ]),
+    'C10': ('Tap-through: a popup consumes its taps (Oct 26 PASS)', [
+        ('cg', 'CG78-tap-outside-dismisses-non-destructive'),
+        ('cg', 'CG08-modal-footer-and-touch-layer'),
+    ]),
+    'C11': ('View-only notice: View explains, never stages or prompts (Oct 26 PASS)', [
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(HostUi::promptCount == 0, "Gen III View never opens a prompt");'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(!editor || editor->pendingChanges().empty(), "Gen III View stages nothing");'),
+    ]),
+    'C12': ('Gen V Pokerus Keep stages the toggled mode, keeps the strain (Oct 26 PASS)', [
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(staged() == 0x20, "Gen V Keep stages Cured, keeping the stored strain (got " + std::to_string(staged()) + ")");'),
+    ]),
+    'C13': ('Create Review lists the created details (Oct 26 PASS)', [
+        ('cg', 'CG74-create-review-details'),
+    ]),
+    'C14': ('Gen II Create starts with native level-up moves (Oct 26 PASS)', [
+        ('host', 'test_species_change_moves_gen2', 'tests/test_species_change_moves_gen2.cpp', 'require((fresh.moves == std::array<uint8_t, 4>{84, 45, 0, 0}), "Pikachu Lv 5: Thunder Shock, Growl");'),
+    ]),
+    'C15': ('Stored unreleased held item is labelled, kept (Oct 26 PASS)', [
+        ('cg', 'CG71-gen3-held-item-vs-caught-ball'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(staged && staged->heldItem == 5, "Keep leaves the stored Safari Ball held item in place");'),
+    ]),
+    'C16': ('No draft carried across saves (Oct 26 PASS)', [
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");'),
+    ]),
+    'C17': ('Gen I-III export refuses a changed original (Oct 26 PASS)', [
+        ('host', 'test_emulator_backup_access', 'tests/test_emulator_backup_access.cpp', 'assert(!Guard::unchangedSinceOpen(snapshot, error) && error.find("changed since it was opened") != std::string::npos);'),
+    ]),
+    'D01': ('AUD-01: one shared Gen I-V Review (Oct 26 PASS: do not redesign)', [
+        ('cg', 'CG35-gen5-review-matches-gen4'),
+        ('cg', 'CG65-gen1-review-shared-presenter-only'),
+        ('cg', 'CG67-standalone-review-returns-underneath'),
+        ('host', 'test_gen12_review_parity', 'tests/test_gen12_review_parity.cpp', 'assert(Discard::step(s, false, false, false) == Outcome::NotHandled);'),
+    ]),
+    'D02': ('P1-GEN1: Gen I Review presentation (Oct 26 PASS)', [
+        ('cg', 'CG65-gen1-review-shared-presenter-only'),
+        ('cg', 'CG68-gen1-review-swipe-one-page'),
+    ]),
+}
+
+
 def all_guards():
     """Every (pid, title, guards) entry; an item passed again in a later round keeps every round's guards."""
-    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5, GUARDS_ROUND6):
+    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5, GUARDS_ROUND6, GUARDS_ROUND7):
         for pid, (title, guards) in table.items():
             yield pid, title, guards
 
@@ -709,6 +798,24 @@ def check(root: Path, run_python: bool = True) -> list[str]:
             not_open = [i for i in GUARDS_ROUND6 if i not in prior and i not in ("P3-TRAINER", "4D-HELP")]
             if not_open:
                 errors.append(f"GUARDS_ROUND6 item(s) that were neither Oct 24 FAIL / unmarked nor round 5 requests: {not_open}")
+    # Round 7: every Oct 26 PASS row is guarded. Group A rows by their earlier owner ID (round 1-6 tables);
+    # B / C / D rows by their sheet number in GUARDS_ROUND7, which holds exactly those, in order.
+    r7 = text(ROUND7_DOC)
+    if r7 is None:
+        errors.append(f"{ROUND7_DOC} is missing")
+    else:
+        rows7 = re.findall(r"^\| (?:\*\*)?([ABCD]\d\d)(?:\*\*)? \| (?:\*\*)?([^|*]+?)(?:\*\*)? \| "
+                           r"(?:\*\*)?(PASS|FAIL|NOT TESTED)(?:\*\*)? \|", r7, re.M)
+        pass7 = [(n, i) for n, i, res in rows7 if res == "PASS"]
+        if len(rows7) != 59 or len(pass7) != ROUND7_PASS_COUNT:
+            errors.append(f"{ROUND7_DOC}: {len(rows7)} rows / {len(pass7)} PASS, gate expects 59 / {ROUND7_PASS_COUNT}")
+        earlier = set(GUARDS) | set(GUARDS_ROUND2) | set(GUARDS_ROUND3) | set(GUARDS_ROUND5) | set(GUARDS_ROUND6)
+        unguarded = [f"{n} {i}" for n, i in pass7 if n.startswith("A") and i not in earlier]
+        if unguarded:
+            errors.append(f"{ROUND7_DOC}: Oct 26 Group A PASS item(s) with no earlier guard: {unguarded}")
+        want7 = [n for n, _ in pass7 if not n.startswith("A")]
+        if list(GUARDS_ROUND7) != want7:
+            errors.append(f"{ROUND7_DOC}: Oct 26 B / C / D PASS rows {want7}, gate maps {list(GUARDS_ROUND7)}")
     for pid, title, guards in all_guards():
         kinds = {g[0] for g in guards}
         if not kinds & PR_GATING_KINDS and pid not in PIN_ONLY_ALLOWED:
@@ -766,8 +873,9 @@ def main(argv: list[str]) -> int:
                 print(f"      {g[0]:4} {' | '.join(str(x) for x in g[1:3])}")
     n = sum(len(g) for _, _, g in all_guards())
     label = (f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 + {len(GUARDS_ROUND3)} round 3 + "
-             f"{len(GUARDS_ROUND5)} Oct 24 + {len(GUARDS_ROUND6)} Oct 25 owner PASS items; all {ROUND3_PASS_COUNT} round 3, "
-             f"{ROUND5_PASS_COUNT} Oct 24 and {ROUND6_PASS_COUNT} Oct 25 PASS guarded")
+             f"{len(GUARDS_ROUND5)} Oct 24 + {len(GUARDS_ROUND6)} Oct 25 + {len(GUARDS_ROUND7)} Oct 26 owner PASS items; all "
+             f"{ROUND3_PASS_COUNT} round 3, {ROUND5_PASS_COUNT} Oct 24, {ROUND6_PASS_COUNT} Oct 25 and {ROUND7_PASS_COUNT} Oct 26 "
+             f"PASS guarded")
     if errors:
         print(f"Hardware-accepted regression gate: FAIL ({len(errors)} problem(s), {label}, {n} guards)")
         for e in errors:

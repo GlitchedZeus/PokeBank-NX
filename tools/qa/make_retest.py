@@ -5,7 +5,7 @@
   python3 tools/qa/make_retest.py --check    # verify that file names exactly the bound candidate
 
 The candidate identity comes only from docs/qa/CANDIDATE_UNDER_AUDIT.env (the same single source QA-F9
-uses); nothing is guessed. The template (docs/hardware/RETEST_ROUND6_TEMPLATE.md) keeps its items, steps
+uses); nothing is guessed. The template (docs/hardware/RETEST_ROUND<N>_TEMPLATE.md, the current round by default) keeps its items, steps
 and empty result boxes; only its identity table and binding note are filled in. The result always says
 NOT DEVICE TESTED: only the owner's own test of this exact NRO records acceptance.
 """
@@ -18,7 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 ENV = "docs/qa/CANDIDATE_UNDER_AUDIT.env"
-TEMPLATE = "docs/hardware/RETEST_ROUND6_TEMPLATE.md"
+TEMPLATE = "docs/hardware/RETEST_ROUND7_TEMPLATE.md"
+TEMPLATE_OF_ROUND = "docs/hardware/RETEST_ROUND{}_TEMPLATE.md"
 REPO = "https://github.com/GlitchedZeus/PokeBank-NX"
 
 FIELDS = {
@@ -75,12 +76,13 @@ def identity_table(env: dict[str, str]) -> str:
 
 def render(template: str, env: dict[str, str]) -> str:
     short = env["CODE_SHA"][:8]
-    out, n = re.subn(r"^# Round 6 hardware retest checklist \(template\)$",
-                     f"# Round 6 hardware retest checklist: {env['NRO_FILE']}", template, count=1, flags=re.M)
-    if n != 1:
+    head = re.search(r"^# Round (\d+) hardware retest checklist \(template\)$", template, flags=re.M)
+    if not head:
         raise SystemExit("template heading not found")
-    out, n = re.subn(r"^When the coordinator binds the round 6 candidate.*?(?=\n\n)",
-                     f"This checklist is for the bound round 6 candidate `{short}` (docs/qa/CANDIDATE_UNDER_AUDIT.env).\n"
+    rnd = head.group(1)
+    out = template[:head.start()] + f"# Round {rnd} hardware retest checklist: {env['NRO_FILE']}" + template[head.end():]
+    out, n = re.subn(rf"^When the coordinator binds the round {rnd} candidate.*?(?=\n\n)",
+                     f"This checklist is for the bound round {rnd} candidate `{short}` (docs/qa/CANDIDATE_UNDER_AUDIT.env).\n"
                      "Test only the file whose SHA-256 matches the table. Every other build is not this candidate.",
                      out, count=1, flags=re.M | re.S)
     if n != 1:
@@ -128,6 +130,11 @@ def main(argv: list[str]) -> int:
     template = (root / args.template).read_text(encoding="utf-8")
     out = root / (args.out or f"docs/hardware/RETEST_{env['CODE_SHA'][:8]}.md")
     if args.check:
+        # A checklist made for an earlier round is checked against that round's template.
+        head = re.search(r"^# Round (\d+) hardware retest checklist: ", out.read_text(encoding="utf-8"), re.M) \
+            if out.is_file() and args.template == TEMPLATE else None
+        if head and (root / TEMPLATE_OF_ROUND.format(head.group(1))).is_file():
+            template = (root / TEMPLATE_OF_ROUND.format(head.group(1))).read_text(encoding="utf-8")
         problems = check(out, env, template)
         for p in problems:
             print(f"FAIL  {p}")
