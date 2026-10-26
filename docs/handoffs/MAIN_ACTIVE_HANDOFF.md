@@ -4,7 +4,7 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-26 UTC, by Claude (Lane P, Round 6).
+Last updated: 2026-10-26 UTC, by Claude (Lane P, Round 7).
 
 ## Round 6 Lane R — P6 Gen II Unown, P4/E05 glyph/Help/footer sweep
 
@@ -97,6 +97,22 @@ Lanes push to their own branches. Only the coordinator integrates into #307.
 3. Write `RETEST_<sha>.md` and upload it as an artifact.
 
 NOT DEVICE TESTED.
+
+## Round 7 Lane P — B05 event / Met Location descriptions, C04 outside taps
+
+Branch `claude/pickers-search-scrollbar-20261017` (merges #307 `6ec8dc53`; not pushed to #307).
+- **B05 (R2-CHECK-011) `b421c1c6`:** `include/Names/SpecialMetLocationNotes.h`. Every Gen IV / V event,
+  transfer, trade and egg marker gets a short row kind plus a full info line with its native id
+  (shown in the Met Location header for the focused row). Sources: PKHeX 6501f0ab Locations.cs /
+  Locations5.cs constants and the native names in every PKHeX language (WCS = "Campeonato Mundial",
+  VGE = "Evento de VJ", PC <city> = "CP <city>"). Years only where the name carries them; other numbers
+  are "native number N"; unknown markers say "meaning not documented". 620 px popup kept (rows 496/496,
+  info line 411/425). Test `test_special_met_location_notes`.
+- **C04 `727fad5d`:** outside tap closes Quick Games, the profile / game-file pickers, Legacy details, Quick
+  Options (Product Home) and the Pokémon actions / carried-block menus (game browser). Confirmations
+  never. Product Home now builds in the host-ui harness (switch.h account / save stubs,
+  `tests/host-ui/HostUiProductHomeStubs.cpp`); `test_ui_quick_games_host` (16 checks).
+- Gates: GCC host-test, GCC host-sanitize, py 36/36, cross-gen 0 failing, owner-PASS gate PASS (263).
 
 ## Round 6 Lane P — L06 Held Item, 7D outside taps, P5 met-location rows
 

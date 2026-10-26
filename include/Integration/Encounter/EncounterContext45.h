@@ -1,5 +1,6 @@
 #pragma once
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Names/SpecialMetLocationNotes.h"
 #include <array>
 #include <string>
 
@@ -86,6 +87,7 @@ public:
         return otherHistories ? native_ : focused_;
     }
     uint16_t stored() const noexcept { return stored_; }
+    uint8_t origin() const noexcept { return origin_; }
     const WildRow* wildRow(uint16_t location) const noexcept {
         const auto row = std::find_if(wild_.begin(), wild_.end(), [&](const auto& r) {
             return r.encounter.location == location;
@@ -100,23 +102,14 @@ public:
     template <class SpeciesName>
     std::string detail(uint16_t location, SpeciesName name) const {
         const bool current = location == stored_;
-        const uint8_t gen = generation(origin_);
         const auto tagged = [&](std::string text) { return current ? "Stored: " + text : text; };
         // Stored history takes priority over wild tables. No edit invents a matching history.
         if (current && history_.egg) return "Stored egg; hatch history unverified";
         if (current && history_.eggLocation) return "Stored egg/hatch history; unverified";
-        if ((gen == 4 && location == 55) ||
-            (gen == 5 && (location == 30001 || (location >= 30010 && location <= 30013))))
-            return tagged("Transfer marker; history unverified");
-        if ((gen == 4 && location == 2002) || (gen == 5 && location == 30003))
-            return tagged("Trade marker; history unverified");
-        if ((gen == 4 && location == 2001) || (gen == 5 && location == 30002))
-            return tagged(gen == 5 ? "NPC / egg trade marker; unverified" : "NPC trade marker; unverified");
-        if ((gen == 4 && location == 2000) || (gen == 5 && location == 60002))
-            return tagged("Day-Care / egg marker; unverified");
-        if ((gen == 4 && location >= 3000 && location <= 3076) ||
-            (gen == 5 && location > 40000 && location < 50000))
-            return tagged("Event / special location; unverified");
+        // Round 7 B05: transfer / trade / egg markers and event locations say what the pinned
+        // tables and native names establish, and their native id (Names/SpecialMetLocationNotes.h).
+        if (auto special = Names::specialMetLocation(origin_, location); !special.empty())
+            return tagged(std::move(special.row));
         if (current && history_.fateful) return "Stored fateful flag; event/gift unverified";
         if (const auto* row = wildRow(location)) {
             const auto& encounter = row->encounter;
