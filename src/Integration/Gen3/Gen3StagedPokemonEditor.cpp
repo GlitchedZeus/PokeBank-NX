@@ -856,6 +856,42 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
                         recordLabel(box, slot) + " Add Pokemon", "Empty",
                         after->nickname + " Lv " + std::to_string(after->level)});
+    // CG74 (owner Oct 25 P3): Review lists what was created, one named row per value, read back
+    // from the reparsed record. Values left at the Create default (no item, no Pokérus, base
+    // friendship, zero IVs / EVs) add no row.
+    const auto detail=[&](const std::string& label,const std::string& value){
+        changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
+                            recordLabel(box,slot)+" "+label,"",value,false,true});
+    };
+    std::string moveList;
+    for(const auto move:after->moves)
+        if(move)moveList+=(moveList.empty()?"":", ")+std::string(Names::getMoveName(move));
+    detail("Moves",moveList.empty()?"(none)":moveList);
+    if(after->heldItem)
+        detail("Held Item",std::string(Names::getItemNameG3(after->heldItem))+
+               (storedUnreleasedHeldItem(after->heldItem)?kUnreleasedHeldItemSuffix:""));
+    detail("Ball",Enums::getBallName(after->ball));
+    detail("OT",after->otName+" / TID "+std::to_string(after->tid)+" / SID "+std::to_string(after->sid));
+    detail("Met",Names::getMetLocationDisplayName(after->originGame,after->metLocation)+
+           ", Lv "+std::to_string(after->metLevel));
+    detail("Nature",Names::getNatureName(after->nature));
+    detail("Gender",after->gender==0?"Male":after->gender==1?"Female":"Genderless");
+    if(after->shiny)detail("Shiny","Yes");
+    detail("Ability",std::string(Names::getAbilityName(after->ability))+
+           " (slot "+std::to_string(after->abilityNumber)+")");
+    detail("Language",Enums::getLanguageName(after->language));
+    const auto statLine=[](const std::array<uint8_t,6>& values){
+        std::string line;
+        for(const auto v:values)line+=(line.empty()?"":"/")+std::to_string(v);
+        return line;
+    };
+    constexpr std::array<uint8_t,6> zeroStats{};
+    if(after->ivs!=zeroStats)detail("IVs (HP/Atk/Def/Spe/SpA/SpD)",statLine(after->ivs));
+    if(after->evs!=zeroStats)detail("EVs (HP/Atk/Def/Spe/SpA/SpD)",statLine(after->evs));
+    if(after->pokerus)
+        detail("Pokérus",std::string((after->pokerus&15)?"Infected":"Cured")+
+               " ("+std::to_string(after->pokerus)+")");
+    if(after->friendship!=BoxPokemonCreate{}.friendship)detail("Friendship",std::to_string(after->friendship));
     return true;
 }
 

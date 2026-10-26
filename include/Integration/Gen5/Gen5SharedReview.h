@@ -27,6 +27,9 @@ struct VerifiedFieldChange {
 struct VerifiedSlotReview {
     Gen5StagedPokemonWorkspace::Slot location;
     std::vector<VerifiedFieldChange> fields;
+    // CG74 (owner Oct 25 P3): for a created Pokemon, the values of the certified staged record
+    // (after = value, before unused), read only for Review. `fields` stays the verified edit list.
+    std::vector<VerifiedFieldChange> created;
 };
 
 [[nodiscard]] inline std::optional<VerifiedSlotReview> verifyStagedReview(
@@ -65,6 +68,28 @@ struct VerifiedSlotReview {
                afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
                 return fail("Gen V Create certificate disagrees with the native PK5 baseline");
             result.fields.push_back({Field::CreateBox,0,0,afterBox.species()});
+            // Created values, one per row: moves, held item and Ball, OT IDs, met data, nature,
+            // gender, ability, language; IVs / EVs / Pokerus / Friendship only when not default.
+            auto& created=result.created;
+            const auto moves=afterBox.moves();
+            for(size_t i=0;i<moves.size();++i)
+                if(moves[i])created.push_back({Field::Move,i,0,moves[i]});
+            if(afterBox.heldItem())created.push_back({Field::HeldItem,0,0,afterBox.heldItem()});
+            created.push_back({Field::Ball,0,0,afterBox.ball()});
+            created.push_back({Field::TrainerId,0,0,afterBox.tid()});
+            created.push_back({Field::SecretId,0,0,afterBox.sid()});
+            created.push_back({Field::MetLocation,0,0,afterBox.metLocation()});
+            created.push_back({Field::MetLevel,0,0,afterBox.metLevel()});
+            created.push_back({Field::Nature,0,0,afterBox.nature()});
+            created.push_back({Field::Gender,0,0,afterBox.gender()});
+            if(afterBox.shiny())created.push_back({Field::Shiny,0,0,1});
+            created.push_back({Field::AbilitySlot,0,0,afterBox.ability()});
+            created.push_back({Field::Language,0,0,afterBox.language()});
+            const auto ivs=afterBox.ivs(),evs=afterBox.evs();
+            for(size_t i=0;i<6;++i)if(ivs[i])created.push_back({Field::IV,i,0,ivs[i]});
+            for(size_t i=0;i<6;++i)if(evs[i])created.push_back({Field::EV,i,0,evs[i]});
+            if(afterBox.pokerusMode())created.push_back({Field::Pokerus,0,0,afterBox.pokerusMode()});
+            if(afterBox.friendship()!=70)created.push_back({Field::Friendship,0,0,afterBox.friendship()});
         } else if(change.kind==Kind::RemoveBox) {
             if(change.createRequest)
                 return fail("Gen V Remove carried an unrelated creation request");
