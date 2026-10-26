@@ -42,7 +42,6 @@ XFAIL: dict[str, str] = {
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
     # coordinator's round 6 assignment.
     "CG71-gen3-held-item-vs-caught-ball": "lane S (round 6: Gen III held-item policy)",
-    "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
     "CG75-met-location-rows-distinguishable": "lane P (round 6 P5: R2-CHECK-011)",
     "CG78-tap-outside-dismisses-non-destructive": "lane P (round 6 7D)",
