@@ -219,7 +219,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const uint32_t toNextLevel = p.level < 100 && nextLevelExp > p.experience
         ? nextLevelExp - p.experience : 0;
 
-    fb.drawText(leftPaneX + 10, splitY + 10, "GEN I DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 10, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 38, "Game / record", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 56,
                 p.sourceGameLabel + " / " + shortRecordLabel(p.recordLabel), Colors::Text, TextStyle::Caption);

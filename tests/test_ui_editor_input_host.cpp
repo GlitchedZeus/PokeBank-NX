@@ -227,11 +227,26 @@ void gen5CreatePokerus() {
             if (t.find(part) != std::string::npos) return true;
         return false;
     };
-    for (const char* part : {"Create in Box: Empty -> ", "Ball: ", "Trainer ID: ", "Met Location: ",
-                             "Nature: ", "Gender: ", "Ability: ", "Language: ", "Pokerus: Cured"})
-        check(shown(part), std::string("Gen V Create Review lists \"") + part + "\"");
-    check(!shown("Held Item: ") && !shown("IV ") && !shown("EV "), "Gen V Create Review adds no default noise");
-    check(!shown("Pokerus: None -> "), "Gen V Create Review shows created values, not edits from the template");
+    // The shared Create Review shape (Gen I-V): "<loc> / Field" labels with the value alone.
+    const auto labelled = [&](const std::string& field) {
+        const std::string suffix = " / " + field;
+        for (const auto& t : drawn)
+            if (t.size() >= suffix.size() && t.compare(t.size() - suffix.size(), suffix.size(), suffix) == 0)
+                return true;
+        return false;
+    };
+    const auto exact = [&](const std::string& value) {
+        return std::find(drawn.begin(), drawn.end(), value) != drawn.end();
+    };
+    for (const char* field : {"Add Pok\xC3\xA9mon", "OT / TID / SID", "Ball", "Met Location", "Nature", "Gender",
+                              "Ability", "Language", "Pokerus"})
+        check(labelled(field), std::string("Gen V Create Review has a \"<loc> / ") + field + "\" row");
+    check(exact("Empty -> Pikachu Lv 5") || exact("Empty -> PIKACHU Lv 5"), "Gen V Create Review header value");
+    check(exact("Cured"), "Gen V Create Review shows the created Pokérus value");
+    check(!labelled("Held Item") && !labelled("IVs") && !labelled("EVs") && !labelled("Trainer ID"),
+          "Gen V Create Review adds no default noise and one OT / TID / SID row");
+    check(!shown("Create in Box: ") && !shown(" -> Cured"),
+          "Gen V Create Review shows created values, not edits from the template");
 }
 
 // ---- Gen III (FireRed): one 100-byte party Pikachu in the active rotated slot, the record shape

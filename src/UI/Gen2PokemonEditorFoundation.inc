@@ -948,7 +948,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     const auto battle = Gen2::calculateBattleStats(state.working.species, state.working.level,
                                                     editableDVs(state.working), state.working.statExperience).asArray();
     fb.drawFilledRect(x + 14, y + 286, w - 28, 1, Colors::Divider);
-    fb.drawText(x + 18, y + 304, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(x + 18, y + 332, "Game", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 105, y + 332,
                 screen.sourceGameId == "gold_gbc" ? "Gold" : screen.sourceGameId == "silver_gbc" ? "Silver" : "Crystal",

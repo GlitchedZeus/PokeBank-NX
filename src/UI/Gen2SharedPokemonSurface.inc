@@ -476,9 +476,9 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
     }
     const int statusY = y + 246;
     fb.drawHDivider(x + 14, statusY - 12, w - 28);
-    fb.drawText(x + 18, statusY, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, statusY, "Legality", Colors::TextDim, TextStyle::Caption);   // the pane below is titled Origin & Legality
     fb.drawText(x + 152, statusY, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
-    fb.drawText(x + 18, statusY + 28, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 18, statusY + 28, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
 
     const auto& p = state.working;
     const auto* personal = Gen2::personalRecord(p.species);

@@ -983,7 +983,7 @@ std::array<UI::SharedMovesPanel::Slot, 4> gen2MoveSlots(const TrainerViewScreen&
 }
 
 // The ONE shared Moves panel (UI/SharedMovesPanel.h via UI/Gen2MovesPanel.h), same rows as
-// Gen III-V. Origin & Legality is a row of the GEN II DATA pane below it.
+// Gen III-V. Origin & Legality is the data pane below it.
 void drawGen2SharedMoveRows(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                             const UnifiedWorkspaceState& unified, int x, int y, int w, bool passive) {
     const auto visibleMoveFocus = Unified::normalizeMoveRowFocus(
