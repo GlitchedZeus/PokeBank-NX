@@ -27,6 +27,18 @@ inline bool sameEditableRecord(const Gen2::PokemonRecord& a, const Gen2::Pokemon
 
 // UI-owned transaction. Only keep/add below can mutate the staged copy; field
 // browsing and Back/Discard/Continue never call the backend.
+// Round 6: a new Gen II Create record starts with its species' native default moveset at its
+// level, the same R2-BUG-004 rule Session::setSpecies applies on a species change (pret
+// pokegold / pokecrystal FillMoves over evos_attacks: the last four level-up moves at or below
+// the level), base PP, no PP Ups. An unknown game selects no table: the slots stay empty.
+inline bool seedNativeMoves(Gen2::PokemonRecord& p, std::string_view sourceGameId) {
+    const auto game = exactGameFromSourceId(sourceGameId);
+    const auto table = !game ? ::PokeBank::Moves::LevelUpTable15::Count
+                             : ::PokeBank::Moves::levelUpTableGen2(*game == Gen2::SourceGame::Crystal);
+    return SpeciesMoveDefaults::refreshArrays(table, p.species, 0, p.level,
+        [](uint16_t move) { return Gen2::StagedEditor::gen2MoveBasePP(move); }, p.moves, p.pp, p.ppUps);
+}
+
 struct Session {
     SessionMode mode = SessionMode::None;
     bool confirmExit = false;
