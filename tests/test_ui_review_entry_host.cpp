@@ -111,8 +111,24 @@ Entry::Screen entryScreen(View mode) {
     }
 }
 
-// Enter `mode`, place a cursor, press the screen's Review key: the shared Review is drawn. B returns
-// to the same screen with the same cursor and no Review.
+// The footer's Review badge: the glyph drawn immediately left of the "Review" label on the footer
+// band. Letter glyphs are drawn as text ("Y"); the + and - badges are icons and leave no text, so a
+// + Review reads as "" here. Returns "?" when the footer names no Review.
+std::string footerReviewGlyph() {
+    const HostUi::TextRect* label = nullptr;
+    for (const auto& t : HostUi::visibleText)
+        if (t.y >= 720 - 56 && t.text == "Review") label = &t;
+    if (!label) return "?";
+    const HostUi::TextRect* glyph = nullptr;
+    for (const auto& t : HostUi::visibleText)
+        if (t.y >= 720 - 56 && t.x + t.w <= label->x && label->x - (t.x + t.w) <= 40 &&
+            (!glyph || t.x > glyph->x)) glyph = &t;
+    return glyph ? glyph->text : "";
+}
+
+// Enter `mode`, place a cursor, press the screen's Review key (the one its footer shows): the shared
+// Review is drawn. B returns to the same screen with the same cursor and no Review. The other key
+// (Y / +) does not open Review there.
 template <class Enter = void (*)()>
 void reviewRoundTrip(Driver& d, int generation, const std::string& game, View mode, Enter&& enter = [] {}) {
     const std::string what = "Gen " + std::to_string(generation) + " " + game + " " + modeName(mode);
@@ -130,17 +146,27 @@ void reviewRoundTrip(Driver& d, int generation, const std::string& game, View mo
     const Cursor before = cursor(d.screen);
     const auto hint = Entry::footerHint(entryScreen(mode), generation);
     const u64 key = hint.glyph[0] == 'Y' ? HidNpadButton_Y : HidNpadButton_Plus;
+    // The drawn footer shows that same key for Review (Round 7: the footer's key is the only one).
+    const std::string drawnGlyph = footerReviewGlyph();
+    check(key == HidNpadButton_Y ? drawnGlyph == "Y" : drawnGlyph == "",
+          what + ": the footer shows " + hint.glyph + " Review (drawn glyph \"" + drawnGlyph + "\")");
     d.press(key);
     check(reviewShown(), what + ": " + hint.glyph + " opens the shared Review (status: " + d.screen.storageStatus + ")");
     d.press(HidNpadButton_B);
     check(!reviewShown(), what + ": B closes Review");
     check(same(cursor(d.screen), before), what + ": B returns to the same screen and cursor");
-    if (key == HidNpadButton_Y && mode != View::Trainer) {
-        // + is the same entry on every screen.
-        d.press(HidNpadButton_Plus);
-        check(reviewShown(), what + ": + opens Review too");
+    // Round 7 (owner Round 6 B08 (2)): ONE Review key per screen, the footer's. The other key never
+    // opens Review: + on a Y screen (Party, Trainer, Gen V Boxes) is not a hidden second entry, and
+    // Y on a + screen keeps its own job (Bag Remove, Gen I-IV Box Move / Multi).
+    const u64 other = key == HidNpadButton_Y ? HidNpadButton_Plus : HidNpadButton_Y;
+    d.press(other);
+    check(!reviewShown(), what + ": " + (other == HidNpadButton_Y ? "Y" : "+") + " does not open Review");
+    if (other == HidNpadButton_Plus)
+        check(same(cursor(d.screen), before), what + ": + leaves the screen and cursor as they were");
+    // B undoes whatever Y started on a + screen (a Box Move / Multi selection, a Remove question).
+    if (other == HidNpadButton_Y) {
         d.press(HidNpadButton_B);
-        check(!reviewShown() && same(cursor(d.screen), before), what + ": + Review returns the same way");
+        check(!d.screen.carrying() && !d.screen.currentlySelecting, what + ": B cancels what Y started");
     }
 }
 
@@ -177,14 +203,48 @@ Opened* openClassic(const qasynth::Bytes& bytes, const std::string& game, PokeVa
     return &opened;
 }
 
+// A Gen I-IV Create (empty box slot: A, then A on the sheet's first row) or Edit (Party slot 1: A,
+// Down, A) workspace through the real input: + (the footer's key) opens Review, B returns to the
+// same workspace draw, Y (Random DVs / the editor's own job) does not open Review. The draft is then
+// left without staging (B, then Y in the exit question).
+void workspaceRoundTrip(Driver& d, int generation, const std::string& game, bool create, int emptySlot) {
+    const std::string what = "Gen " + std::to_string(generation) + " " + game + (create ? " Create" : " Edit");
+    d.screen.goBack = false;
+    d.screen.helpOverlayActive = false;
+    d.screen.detailViewActive = true;
+    d.screen.selectedMode = create ? View::Boxes : View::Party;
+    d.screen.selectedBoxIndex = 0;
+    d.screen.selectedItemIndex = create ? emptySlot : 0;
+    d.screen.selectedPartyIndex = 0;
+    d.frame();
+    d.press(HidNpadButton_A);
+    if (!create) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    check(!reviewShown(), what + ": the workspace is open, no Review yet");
+    const auto texts = HostUi::texts;
+    d.press(HidNpadButton_Plus);
+    check(reviewShown(), what + ": + opens the shared Review");
+    d.press(HidNpadButton_B);
+    check(!reviewShown() && HostUi::texts == texts, what + ": B returns to the same workspace draw");
+    d.press(HidNpadButton_Y);
+    check(!reviewShown(), what + ": Y does not open Review");
+    d.press(HidNpadButton_B);   // the exit question
+    d.press(HidNpadButton_Y);   // leave without staging
+    d.frame();
+    check(!reviewShown(), what + ": left the workspace");
+    std::cout << what << ": + Review / B return / Y not Review checked\n";
+}
+
 void classicGeneration(int generation, const qasynth::Bytes& bytes, const std::string& game,
-                       PokeVault::Safety::SourceKind kind, const std::string& provider) {
+                       PokeVault::Safety::SourceKind kind, const std::string& provider, int emptySlot = -1) {
     auto* opened = openClassic(bytes, game, kind, provider);
     if (!opened) return;
     Driver d{*opened->screen, {}, {}};
     d.frame();
     for (const View mode : {View::Trainer, View::Party, View::Boxes, View::Items})
         reviewRoundTrip(d, generation, game, mode);
+    if (emptySlot >= 0) workspaceRoundTrip(d, generation, game, true, emptySlot);
+    if (d.screen.trainer.getPartySize() > 0) workspaceRoundTrip(d, generation, game, false, emptySlot);
 }
 
 // ---- Gen I Bag whose inventory failed validation ("Inventory unavailable"). ----
@@ -223,6 +283,8 @@ void gen1InvalidInventoryBag() {
         // The footer's "Review" badge label (the + glyph is drawn as an icon), before B Back.
         check(drawn("Review") && drawn("Back"), what + ": footer names Review");
         reviewRoundTrip(d, 1, valid ? "red_gb valid inventory" : "red_gb invalid inventory", View::Items);
+        d.screen.detailViewActive = true;   // the round trip's last B may leave the Bag page
+        d.screen.selectedMode = View::Items;
         d.frame();
         check(drawn("Review"), what + ": footer still names Review after Review closes");
     }
@@ -335,6 +397,8 @@ void gen5Workspaces() {
     check(ui.surface() == G5::Gen5SharedScreenState::Surface::Edit && !reviewShown() && exp() == staged &&
               ui.editDraft().dirty(),
           "Gen V Edit: B returns to the Edit draft unchanged");
+    d.press(HidNpadButton_Y);   // Round 7: Y keeps its editor job; + is the Edit Review key
+    check(ui.surface() == G5::Gen5SharedScreenState::Surface::Edit && !reviewShown(), "Gen V Edit: Y does not open Review");
 
     // Create: an empty box slot's Add -> A on Create -> the shared editor in Create; + Review; B
     // back in Create with its staged record.
@@ -354,6 +418,8 @@ void gen5Workspaces() {
     d.press(HidNpadButton_B);
     check(ui.surface() == G5::Gen5SharedScreenState::Surface::Edit && ui.createPending() && !reviewShown(),
           "Gen V Create: B returns to Create with its staged record");
+    d.press(HidNpadButton_Y);
+    check(ui.surface() == G5::Gen5SharedScreenState::Surface::Edit && !reviewShown(), "Gen V Create: Y does not open Review");
 }
 
 // ---- Gen III (FireRed): one party Pikachu, the L06 harness fixture shape. ----
@@ -487,6 +553,8 @@ void gen3Workspaces() {
     check(reviewShown(), "Gen III Edit: + opens Review");
     d.press(HidNpadButton_B);
     check(!reviewShown() && HostUi::texts == texts, "Gen III Edit: B returns to the same Edit draw");
+    d.press(HidNpadButton_Y);   // Round 7: + is the Edit Review key; Y never opens it
+    check(!reviewShown(), "Gen III Edit: Y does not open Review");
 
     // Create from an empty box slot, on a fresh screen (as the L06 Create case).
     auto* created3 = openGen3();
@@ -511,6 +579,8 @@ void gen3Create(Driver& d) {
     check(reviewShown(), "Gen III Create: + opens Review");
     d.press(HidNpadButton_B);
     check(!reviewShown() && HostUi::texts == createTexts, "Gen III Create: B returns to the same Create draw");
+    d.press(HidNpadButton_Y);
+    check(!reviewShown(), "Gen III Create: Y does not open Review");
 }
 
 
@@ -543,7 +613,7 @@ void gen3ExportRefusesChangedSource() {
     d.screen.detailViewActive = true;
     d.screen.selectedMode = View::Party;
     d.frame();
-    d.press(HidNpadButton_Plus);
+    d.press(HidNpadButton_Y);   // the Party's Review key
     check(reviewShown(), "G5: Review open");
     auto changed = g3->bytes;
     changed[0x10] ^= 0x5A;   // the emulator saved meanwhile
@@ -563,14 +633,14 @@ void gen3ExportRefusesChangedSource() {
 
 int main() {
     using Kind = PokeVault::Safety::SourceKind;
-    classicGeneration(1, qasynth::gen1::save(), "red_gb", Kind::RetroArchLegacy, "RetroArch");
+    classicGeneration(1, qasynth::gen1::save(), "red_gb", Kind::RetroArchLegacy, "RetroArch", 1);
     gen1InvalidInventoryBag();
-    classicGeneration(2, fixture(GS), "gold_gbc", Kind::RetroArchLegacy, "RetroArch");
+    classicGeneration(2, fixture(GS), "gold_gbc", Kind::RetroArchLegacy, "RetroArch", 1);
     gen3Screens();
     gen3Workspaces();
     gen3ExportRefusesChangedSource();
     classicGeneration(4, qasynth::gen4::save(qasynth::gen4::Kind::Platinum), "platinum_nds", Kind::ExternalLegacy,
-                      "DraStic");
+                      "DraStic", 1);
     gen5Screens();
     gen5Workspaces();
     if (failures) {

@@ -150,6 +150,9 @@ void scenario(const std::string& game, bool crystal, bool unown) {
     check(visible(kReviewTitle), what + ": + opens Review again from the draft");
     d.press(HidNpadButton_B);
     check(visible(title) && visible("DRAFT"), what + ": and B returns to the draft again");
+    // Round 7 (one Review key per screen): Y is this workspace's Random DVs, never Review.
+    d.press(HidNpadButton_Y);
+    check(!visible(kReviewTitle) && visible(title) && visible("DRAFT"), what + ": Y does not open Review");
 }
 } // namespace
 

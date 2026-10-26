@@ -48,6 +48,21 @@ void testPlusOnlyWhereHandled() {
                        line.find("Review every staged change") != std::string::npos;
             }));
         }
+    // Round 7 (ReviewEntry.h): each page names the ONE key its footer shows. Party and Trainer: Y;
+    // Boxes: + in Gen I-IV (Y is Move), Y in Gen V; Bag: + (Y is Remove).
+    for (int gen = 1; gen <= 5; ++gen)
+        for (const auto page : {Help::Page::Pokemon, Help::Page::Party, Help::Page::Items, Help::Page::Trainer}) {
+            const bool y = page == Help::Page::Party || page == Help::Page::Trainer ||
+                           (page == Help::Page::Pokemon && gen == 5);
+            int named = 0;
+            for (const auto& line : Help::lines(page, gen))
+                if (line.find("Review staged changes") != std::string::npos ||
+                    line.find("Review every staged change") != std::string::npos) {
+                    ++named;
+                    assert(line.rfind(y ? "Y   " : "+   ", 0) == 0);
+                }
+            assert(named == 1);
+        }
     std::cout << "+ named only where it acts ok\n";
 }
 
@@ -80,10 +95,16 @@ void testClaimsMatchTheCode() {
            std::string::npos);
     // Gen I-IV: + in the game browser is not Review (it points to Product Home).
     assert(read("src/UI/TrainerViewScreenBase.inc").find("Current Game tools are on Product Home") != std::string::npos);
-    // Trainer page: Y or the Review button opens Review (Gen I-IV shared session input).
+    // Trainer page: Y or the Review button opens Review (Gen I-IV shared session input). Round 7:
+    // Y is the page's one Review key; the session input reads no + at all.
     const std::string trainer = read("include/UI/ClassicTrainerSessionInput.h");
-    assert(trainer.find("((down & (HidNpadButton_Y | HidNpadButton_Plus)) ||") != std::string::npos &&
+    assert(trainer.find("((down & HidNpadButton_Y) ||") != std::string::npos &&
            trainer.find("review();") != std::string::npos);
+    assert(trainer.find("HidNpadButton_Plus") == std::string::npos);
+    // Gen V Trainer page: the same, Y (or the Review Changes button) only.
+    assert(gen5.find("if(keys&HidNpadButton_Y ||\n       tap==PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId)") !=
+           std::string::npos);
+    assert(gen5.find("keys&(HidNpadButton_Plus|HidNpadButton_Y)") == std::string::npos);
     // Moving a Pokemon: Y places, B cancels.
     const std::string carry = read("src/UI/ClassicPackedMoveOverlay.inc");
     assert(carry.find("if (down & HidNpadButton_Y) return place(screen, state);") != std::string::npos);
@@ -107,9 +128,10 @@ void testEveryRowDrawsGlyphsAndReviewIsNamedOnce() {
                 assert(glyph);
                 assert(lines[i].find("Review: X Export") == std::string::npos);      // another screen's keys
                 assert(lines[i].find("Available from the staged exit menu") == std::string::npos);
-                const bool names = lines[i] == Help::kPlusReview ||
+                // Round 7: one Review key per page, never "Y / +".
+                assert(lines[i].rfind("Y / +", 0) != 0);
+                const bool names = lines[i] == Help::kPlusReview || lines[i] == Help::kYReview ||
                                    lines[i].rfind("+   Review", 0) == 0 ||
-                                   lines[i].rfind("Y / +   Review", 0) == 0 ||
                                    lines[i].rfind("Y   Review", 0) == 0;
                 reviewRoutes += names;
             }
