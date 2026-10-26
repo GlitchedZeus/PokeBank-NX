@@ -55,7 +55,6 @@ XFAIL: dict[str, str] = {
     "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
     "CG85-unown-letter-shiny-confirmed": "R (round 7 B07 / C09)",
     "CG86-inventory-help-controls": "R (round 7 B04)",
-    "CG87-event-locations-described": "P (round 7 B05)",
     "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
     "CG89-one-editor-heading-style": "S (round 7 typography)",
     "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
