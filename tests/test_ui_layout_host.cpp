@@ -90,49 +90,58 @@ void verifyFrame(const std::string& where) {
         for (const auto& r : t) std::cout << "  " << describe(r) << '\n';
 }
 
-// Round 6 7A (lane C e39a92e2): one Special DV / Stat Exp row; the calculated Sp. Atk sits in the
-// Special row's Calculated cell and Sp. Def directly beneath it, each with a dim tag just left of
-// its number; every calculated number is right-aligned in the one Calculated column; no "x / y".
+// Round 7 (owner Round 6 A22 / C01, lane C): Gen II Special uses the Gen I calculated-Special
+// presentation. One Special DV / Stat Exp row; the numeric Calculated column holds plain numbers
+// for HP, Attack, Defense and Speed only (nothing on the Special row, no tags, no "x / y"); the
+// derived values sit in the lower-middle of the STATS panel: "CALCULATED SPECIAL STATS", then one
+// line "Sp. Atk n   Sp. Def n", below the grid and the HP note and above Shiny.
 void checkGen2Special(const std::string& where) {
-    const HostUi::TextRect* spaTag = nullptr;
-    const HostUi::TextRect* spdTag = nullptr;
-    const HostUi::TextRect* calculated = nullptr;
-    for (const auto& t : HostUi::visibleText) {
-        if (t.text == "Sp. Atk") spaTag = &t;
-        if (t.text == "Sp. Def") spdTag = &t;
-        if (t.text == "Calculated") calculated = &t;
-    }
-    check(spaTag && spdTag && calculated, where + ": Calculated column with Sp. Atk and Sp. Def tags");
-    if (!spaTag || !spdTag || !calculated) return;
-    const auto valueRightOf = [&](const HostUi::TextRect& tag) -> const HostUi::TextRect* {
-        for (const auto& t : HostUi::visibleText)
-            if (t.y == tag.y && t.x > tag.x + tag.w && !t.text.empty() &&
-                t.text.find_first_not_of("0123456789") == std::string::npos) return &t;
-        return nullptr;
+    const HostUi::TextRect* find[7] = {};
+    const char* names[7] = {"Calculated", "Special", "* HP DV derived / read-only", "CALCULATED SPECIAL STATS",
+                            "Sp. Atk", "Sp. Def", "Shiny"};
+    for (const auto& t : HostUi::visibleText)
+        for (int i = 0; i < 7; ++i)
+            if (t.text == names[i] && !find[i]) find[i] = &t;
+    for (int i = 0; i < 7; ++i) check(find[i] != nullptr, where + ": \"" + names[i] + "\" is visible");
+    for (const auto* f : find) if (!f) return;
+    const auto& calculated = *find[0];
+    const auto& special = *find[1];
+    const auto& hpNote = *find[2];
+    const auto& caption = *find[3];
+    const auto& spaTag = *find[4];
+    const auto& spdTag = *find[5];
+    const auto& shiny = *find[6];
+    const auto numeric = [](const HostUi::TextRect& t) {
+        return !t.text.empty() && t.text.find_first_not_of("0123456789") == std::string::npos;
     };
-    const auto* spa = valueRightOf(*spaTag);
-    const auto* spd = valueRightOf(*spdTag);
-    check(spa && spd, where + ": Sp. Atk and Sp. Def numbers follow their tags");
-    if (!spa || !spd) return;
-    check(spd->y > spa->y && spd->y - spa->y <= 40, where + ": Sp. Def directly beneath Sp. Atk");
-    check(spa->x + spa->w == spd->x + spd->w, where + ": Sp. Atk / Sp. Def right-aligned in one column");
-    // Every number of the Calculated column (right of its header's left edge, between the header and
-    // Sp. Def) ends on the same right edge.
+    const auto valueRightOf = [&](const HostUi::TextRect& tag) -> const HostUi::TextRect* {
+        const HostUi::TextRect* best = nullptr;
+        for (const auto& t : HostUi::visibleText)
+            if (t.y == tag.y && t.x > tag.x + tag.w && numeric(t) && (!best || t.x < best->x)) best = &t;
+        return best;
+    };
+    const auto* spa = valueRightOf(spaTag);
+    const auto* spd = valueRightOf(spdTag);
+    check(spa && spd, where + ": Sp. Atk and Sp. Def numbers follow their labels");
+    // The block: one line, below the Special row, the HP note and its caption, above Shiny.
+    check(spaTag.y == spdTag.y && spaTag.x < spdTag.x, where + ": Sp. Atk and Sp. Def on one line");
+    check(special.y < hpNote.y && hpNote.y < caption.y && caption.y < spaTag.y && spaTag.y + spaTag.h <= shiny.y - 5,
+          where + ": the Special block is below the grid and the HP note, above Shiny");
+    check(spa && spa->x + spa->w < spdTag.x, where + ": the Sp. Atk number ends before Sp. Def");
+    // The numeric Calculated column (texts starting at its header's x, between the header and the
+    // Special row): exactly HP / Attack / Defense / Speed, plain numbers; nothing on the Special row.
     int column = 0;
+    for (const auto& t : HostUi::visibleText) {
+        if (t.x != calculated.x || t.y <= calculated.y || t.y > special.y + 4) continue;
+        check(numeric(t), where + ": plain number in the Calculated column (\"" + t.text + "\")");
+        check(t.y + t.h <= special.y, where + ": nothing in the Special row's Calculated cell (\"" + t.text + "\")");
+        ++column;
+    }
+    check(column == 4, where + ": four calculated values (HP, Attack, Defense, Speed), found " + std::to_string(column));
     for (const auto& t : HostUi::visibleText)
-        if (t.x >= calculated->x - 10 && t.y > calculated->y && t.y <= spd->y && t.x < calculated->x + 140 &&
-            !t.text.empty() && t.text.find_first_not_of("0123456789") == std::string::npos) {
-            ++column;
-            check(t.x + t.w == spa->x + spa->w, where + ": calculated value \"" + t.text + "\" right-aligned");
-        }
-    // Nothing in the Calculated column is a combined "SpA N" / "A x / D y" cell (the radar's "SpA N"
-    // axis label on the graph pane is a different surface).
-    for (const auto& t : HostUi::visibleText)
-        if (t.x >= calculated->x - 100 && t.x < calculated->x + 140 && t.y > calculated->y && t.y <= spd->y)
-            check(t.text.rfind("SpA ", 0) != 0 && t.text.find(" / ") == std::string::npos,
-                  where + ": no combined Special cell in the Calculated column (\"" + t.text + "\")");
-    check(column == 6, where + ": six calculated values (HP, Atk, Def, Spe, Sp. Atk, Sp. Def), found " +
-          std::to_string(column));
+        if (t.x >= calculated.x - 100 && t.y > calculated.y && t.y <= special.y + 4)
+            check(t.text.rfind("Sp", 0) != 0 && t.text.find(" / ") == std::string::npos,
+                  where + ": no Special value squeezed into the STATS columns (\"" + t.text + "\")");
 }
 
 // Round 7 (owner Round 6 B06 / C06, lane C): the Gen I-IV Trainer page looks exactly like Gen V's.

@@ -7,6 +7,7 @@
 #include "UI/StatsRadar.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include <algorithm>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -17,39 +18,42 @@ inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=
     if (p.partyRecord && !draft) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
     return G::calculateBattleStats(p.species, p.level, Rules::storedDVs(p), p.statExperience).asArray();
 }
-// The Calculated column has a real value for every displayed DV/Stat Exp row.
-// Gen II has one stored Special DV and Stat Exp but TWO derived Special stats:
-// primary Special row = SpA, continuation in the SAME Calculated column = SpD.
-// Neither derived value is a second editable DV or Stat Exp (pret/pokecrystal CalcMonStats).
+// Gen II has one stored Special DV and Stat Exp but TWO derived Special stats (pret/pokecrystal
+// CalcMonStats); neither derived value is a second editable DV or Stat Exp.
 //
-// Round 6 7A (owner Oct 25, R2-SPECIAL follow-up): one STATS grid. Every row, including the SpD
-// continuation (row 5), sits on the same row step; every calculated number is right-aligned in
-// the one Calculated column; the two derived Special values carry matching dim tags ("Sp. Atk",
-// "Sp. Def") inside that column, and the continuation row has no DV / Stat Exp label of its own
-// (it is not a second stored stat). No slash display.
-struct CalculatedCell {
-    std::string tag;   // "Sp. Atk" / "Sp. Def" on the derived Special values, else empty
-    std::string value; // the calculated stat
-};
-inline constexpr int kSpecialDefenseRow = 5;       // continuation row in the Calculated column
-inline CalculatedCell calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
-    if (row >= 0 && row < 4) return {{}, std::to_string(battle[static_cast<std::size_t>(row)])};
-    if (row == 4) return {"Sp. Atk", std::to_string(battle[4])};
-    if (row == kSpecialDefenseRow) return {"Sp. Def", std::to_string(battle[5])};
+// Round 7 (owner Round 6 A22 / C01, R2-SPECIAL): the Gen I calculated-Special presentation is the
+// reference. The STATS grid keeps plain numbers: HP, Attack, Defense and Speed show their
+// calculated stat in the Calculated column; the Special row has no single calculated value (Gen II
+// splits it), so its Calculated cell stays empty. The two derived values are explained in the
+// lower-middle of the STATS panel, below the grid and above Shiny, as Gen I shows its Special:
+// "CALCULATED SPECIAL STATS", then "Sp. Atk <n>   Sp. Def <n>", then one note line. No slash
+// display and no tags squeezed into the numeric column.
+inline constexpr int kSpecialRow = 4;
+// The Calculated column's value for a grid row ("" for the Special row and out of range).
+inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
+    if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);
     return {};
 }
-// STATS grid geometry shared by every Gen II painter (relative to the STATS panel origin).
+// STATS geometry shared by every Gen II painter (relative to the STATS panel origin).
 struct StatsGrid {
     static constexpr int kFirstRowY = 70, kRowStep = 34;
-    static constexpr int kTagX = 282;      // Calculated column left edge (header "Calculated")
-    static constexpr int kRightInset = 24; // numbers right-aligned to panel width - inset
-    static constexpr int kTagGap = 8;      // a tag ends this far left of its right-aligned number
-    static constexpr int kPanelW = 398;    // the STATS panel width every Gen II painter passes
-    // Where a tagged value's tag starts: exactly kTagGap left of its right-aligned number.
-    static constexpr int tagX(int panelW, int valueW, int tagW) noexcept {
-        return panelW - kRightInset - valueW - kTagGap - tagW;
-    }
+    static constexpr int kCalculatedX = 292;  // the Calculated column (header "Calculated")
+    static constexpr int kPanelW = 398;       // the STATS panel width every Gen II painter passes
     static constexpr int rowY(int row) noexcept { return kFirstRowY + row * kRowStep; }
+    static constexpr int kHpNoteY = 240;      // "* HP DV derived / read-only", directly below the grid
+    static constexpr int kShinyY = 366;       // the Shiny row (redrawGen2StatsSemantics)
+};
+// The lower-middle Special block (Gen I reference: Gen1PokemonEditorFoundationHardwareFix.inc).
+struct SpecialBlock {
+    static constexpr const char* kCaption = "CALCULATED SPECIAL STATS";
+    static constexpr const char* kSpecialAttack = "Sp. Atk";
+    static constexpr const char* kSpecialDefense = "Sp. Def";
+    static constexpr const char* kNote = "one stored Special DV / Stat Exp";
+    static constexpr int kCaptionY = 270, kValuesY = 296, kNoteY = 322;  // below the HP note, above Shiny
+    static constexpr int kLabelX = 18;        // "Sp. Atk" (and caption, note)
+    static constexpr int kSpAValueX = 90;     // its number
+    static constexpr int kSpDLabelX = 200;    // "Sp. Def"
+    static constexpr int kSpDValueX = 272;    // its number
 };
 struct DataRow { std::string label, value; };
 inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {

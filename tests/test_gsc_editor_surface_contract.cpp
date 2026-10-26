@@ -190,18 +190,20 @@ int main() {
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
-    // Owner-approved revision: both derived Special stats stay in the same
-    // Calculated column, no detached SPECIAL block or empty Special cell.
-    // Round 6 7A: one Calculated-column painter on the shared STATS grid; SpD is the next grid
-    // row under SpA in the same column, both tagged; no off-grid or left-column SpD label.
+    // Round 7 (owner Round 6 A22 / C01): the owner rejected squeezing the calculated Special
+    // values into the numeric STATS column. Gen I is the reference: plain numbers in the columns
+    // (the Special row's Calculated cell is empty), and SpA / SpD in the lower-middle "CALCULATED
+    // SPECIAL STATS" block below the grid. No off-grid SpD line, no tags in the column.
     assert(unified.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+    assert(unified.find("drawGen2SpecialBlock(fb, battle, x, y);") != std::string::npos);
     assert(unified.find("y + 246") == std::string::npos);
-    assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") != std::string::npos);
+    assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") == std::string::npos);
     const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
-    assert(gen2Presentation.find("if (row == 4) return {\"Sp. Atk\", std::to_string(battle[4])};") != std::string::npos);
-    assert(gen2Presentation.find("if (row == kSpecialDefenseRow) return {\"Sp. Def\", std::to_string(battle[5])};") != std::string::npos);
+    assert(gen2Presentation.find("if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);") !=
+           std::string::npos);
+    assert(gen2Presentation.find("static constexpr const char* kCaption = \"CALCULATED SPECIAL STATS\";") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
-    assert(unified.find("gen2StatCellColor(std::min(row, 4), 2), TextStyle::Caption);") != std::string::npos);
+    assert(unified.find("gen2StatCellColor(row, 2), TextStyle::Caption);") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
     const auto valuesEnd = unified.find("void drawUnifiedMoveEditor", valuesBegin);
     assert(valuesBegin != std::string::npos && valuesEnd != std::string::npos && valuesEnd > valuesBegin);

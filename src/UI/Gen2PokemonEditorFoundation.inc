@@ -896,9 +896,8 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
                     dvColor, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]),
                     statExpColor, TextStyle::Caption);
-        // Round 6 7A: the same Calculated cell model as every Gen II STATS painter (no slash).
-        const auto cell = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, i);
-        fb.drawText(x + 286, yy, cell.tag.empty() ? cell.value : cell.tag + " " + cell.value,
+        // Round 7: the same plain-number Calculated cell model as every Gen II STATS painter.
+        fb.drawText(x + 286, yy, PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, i),
                     Colors::Text, TextStyle::Caption);
     }
 

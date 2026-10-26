@@ -9,6 +9,7 @@
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/Gen2NativePresentation.h"
+#include "UI/Gen2WorkspacePresentation.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -213,15 +214,24 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         fb.drawText(midX + 96, y, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
                     cellColor(i, 0), TextStyle::Caption);
         fb.drawText(midX + 192, y, std::to_string(statExp[static_cast<std::size_t>(i)]), cellColor(i, 1), TextStyle::Caption);
-        const std::string stat = i < 4 ? std::to_string(battleStats[static_cast<std::size_t>(i)])
-                                      : "A" + std::to_string(battleStats[4]) + " / D" + std::to_string(battleStats[5]);
-        fb.drawText(midX + 290, y, stat, cellColor(i, 2), TextStyle::Caption);
+        // Round 7 (owner A22 / C01, Gen I reference): plain numbers only; the Special row's Stat
+        // cell stays empty and Sp. Atk / Sp. Def get their own line below.
+        if (i < 4)
+            fb.drawText(midX + 290, y, std::to_string(battleStats[static_cast<std::size_t>(i)]), cellColor(i, 2),
+                        TextStyle::Caption);
     }
     fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
     compactRow(fb, midX + 16, contentY + 356, "Shiny", p.isShiny(0, {}) ? "Yes" : "No", 124);
     compactRow(fb, midX + 16, contentY + 390, "Level", std::to_string(p.level()), 124);
-    fb.drawText(midX + 16, contentY + 426, "One Special DV + Stat Exp feeds SpA and SpD",
-                Colors::TextDim, TextStyle::Caption);
+    {
+        // The calculated Special stats, as Gen I shows its Special (Gen2Workspace::SpecialBlock).
+        using B = PokeBank::UIModel::Gen2Workspace::SpecialBlock;
+        const int bx = midX - 2, by = contentY + 426;
+        fb.drawText(bx + B::kLabelX, by, B::kSpecialAttack, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(bx + B::kSpAValueX, by, std::to_string(battleStats[4]), cellColor(4, 2), TextStyle::Caption);
+        fb.drawText(bx + B::kSpDLabelX, by, B::kSpecialDefense, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(bx + B::kSpDValueX, by, std::to_string(battleStats[5]), cellColor(4, 2), TextStyle::Caption);
+    }
     fb.drawText(midX + 16, contentY + 454,
                 calculatedBoxStats ? "Box battle stats calculated / read-only" : "Party battle stats stored / read-only",
                 Colors::TextDim, TextStyle::Caption);

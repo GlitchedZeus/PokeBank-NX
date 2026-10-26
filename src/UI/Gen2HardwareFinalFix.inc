@@ -197,12 +197,12 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     gen2StatCellColor(r, 1), TextStyle::Caption);
     }
-    // One real editable Special DV/Stat Exp row; both computed Special stats stay in the one
-    // Calculated column, SpD on the next grid row under SpA (no fake second DV row).
+    // One real editable Special DV / Stat Exp row; the two calculated Special stats are explained
+    // below the grid, as Gen I shows its Special (no fake second DV row, nothing squeezed).
     drawGen2CalculatedColumn(fb, battle, x, y, w);
-    fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
+    fb.drawText(x + 18, y + PokeBank::UIModel::Gen2Workspace::StatsGrid::kHpNoteY, "* HP DV derived / read-only",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
+    drawGen2SpecialBlock(fb, battle, x, y);
 
     const bool shinySelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 5;
     const bool genderSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
