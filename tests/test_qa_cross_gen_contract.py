@@ -441,6 +441,23 @@ def round4_p2_contracts(sources):
         for m in re.finditer(r'\[\s*4\s*\][^;\n]*"\s*/\s*"[^;\n]*\[\s*5\s*\]|specialAttack[^;\n]*"\s*/\s*"[^;\n]*specialDefense',
                              s.code):
             r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: {s.code.splitlines()[line_of(s.code, m.start()) - 1].strip()}")
+    # Round 6 7A (lane C e39a92e2) put SpD on a STATS grid row of its own (row 5). It stays a calculated
+    # value: the native record holds exactly one Special DV and one Special Stat Exp (5-entry arrays: HP,
+    # Atk, Def, Spe, Special; pret pokecrystal), the Calculated-column painter only paints (no touch
+    # target, no DV / Stat Exp access), and the editable DV / Stat Exp rows stop at the Special row.
+    rec = src("include/Integration/Gen2/Gen2ReadOnlySave.h")
+    if not rec or not (re.search(r"std::array<uint16_t,\s*5>\s+statExperience\b", rec.code) and
+                       re.search(r"std::array<uint8_t,\s*5>\s+dvs\b", rec.code)):
+        r.violations.append("include/Integration/Gen2/Gen2ReadOnlySave.h: the Gen II record no longer holds exactly "
+                            "one Special DV and one Special Stat Exp (5-entry dvs / statExperience)")
+    for s in gen2_ui:
+        for name, ln, body in function_definitions(s.code):
+            if name == "drawGen2CalculatedColumn" and re.search(r"touchButtons|\bdvs\b|statExperience", body):
+                r.violations.append(f"{s.rel}:{ln}: the Gen II Calculated column (SpA / SpD) is interactive or reads "
+                                    "a DV / Stat Exp: SpD must stay a calculated value, not an editable stat")
+        for m in re.finditer(r"\b(?:dvs|statExperience)\s*\[\s*(?:5|kSpecialDefenseRow|W::kSpecialDefenseRow)\s*\]", s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: indexes a sixth DV / Stat Exp (Gen II has one "
+                                "Special DV / Stat Exp shared by SpA and SpD)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
