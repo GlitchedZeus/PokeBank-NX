@@ -188,3 +188,23 @@ Base: #307 `c2287f50` (fast-forward). Branch `claude/gen14-campaign-20261015`.
 - Test: test_gen2_box_move_presentation (Gold, Silver, Crystal; real GSCReadOnlyTrainer): pickup,
   same-box drop, other-box drop, cancel, finalize + verified export, source unchanged. Fails
   without the fix.
+
+## Round 6 (Lane C) — checkpoint
+
+Base: #307 `a96a9559` merged forward. Branch HEAD `cd6d89ff` (verified with ls-remote).
+
+| Item | Commit | State |
+| --- | --- | --- |
+| P2 / R2-TRAINER / NEW-18 Trainer Info in Gen V design, no overlap | eb0ae8ee | integrated (#307 1dd0a338) |
+| 7A Gen II Special SpA/SpD on the STATS grid | e39a92e2 | integrated (#307 a96a9559) |
+| CG72 Gold / Silver report no trainer gender; XFAIL dropped | d2a7f7d9 | gated green |
+| P3 Gen I/II Create Review details (CG74, lane S shape) | f082ac1d | gated green |
+| "Native touch contracts" fix: GSC surface contract builds without -Iinclude | 1208301b | gated green |
+
+Gate for f082ac1d + 1208301b: GCC and Clang host-test and host-sanitize; qa-fuzz-smoke /
+qa-contracts / qa-matrix for both compilers; qa-tools-test; py contracts (fail=0); cross-gen
+contract (78 PASS; CG74 keeps only the Gen III / Gen V violations, which other lanes own);
+`git diff --check`; native objs + NRO. NOT DEVICE TESTED.
+
+Remaining: nothing assigned. Not mine, reported: #307 head Clang host-ui build error in
+`src/Save/GetSaveFileContents.cpp` (ambiguous `Trainer`).
