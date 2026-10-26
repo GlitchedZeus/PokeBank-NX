@@ -63,6 +63,7 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
+    SharedPopupDismiss::publish(x, y, panelW, panelH);   // 7D
     fb.drawText(x + 24, y + 18, "Move — Generation II", Colors::Text, TextStyle::Heading);
     {
         const std::string scope = "Compatible moves only";
@@ -113,6 +114,13 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (!isGSC(screen)) return false;
     auto& state = stateFor(screen);
     auto& picker = pickerStateFor(screen);
+
+    // 7D: a completed tap outside the species / move / Met Location picker closes it like B;
+    // returning here keeps the tap from reaching the editor underneath.
+    if (picker.model.active() && state.mode != Mode::View && SharedPopupDismiss::tappedOutside(touch)) {
+        closePicker(screen, picker);
+        return true;
+    }
 
     if (!picker.model.active()) {
         const bool handled = handlePickerInputBase(screen, down, held, stickX, stickY, touch);

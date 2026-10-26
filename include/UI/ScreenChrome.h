@@ -10,6 +10,7 @@
 
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SharedScrollbar.h"
+#include "UI/SharedPopupDismiss.h"
 #include "UI/Common.h"
 #include "UI/ControllerModel.h"
 #include "UI/GlyphInstruction.h"
@@ -801,6 +802,7 @@ namespace UI {
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
         drawModalSurface(fb, x, y, w, h);
+        SharedPopupDismiss::publish(x, y, w, h);   // 7D: Help closes on a tap outside it
         fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::BrandAccent,
                     TextStyle::Caption);
         fb.drawText(x + 28, y + 44, title, Colors::TextPrimary, TextStyle::Heading);

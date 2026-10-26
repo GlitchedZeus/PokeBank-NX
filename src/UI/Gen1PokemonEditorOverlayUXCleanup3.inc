@@ -564,6 +564,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     if (speciesPicker) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedPopupDismiss::publish(modal.x, modal.y, modal.width, modal.height);   // 7D
         SharedSpeciesPicker::refilter(state.speciesChooser, 151, ux3SpeciesAvailable, ux3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
@@ -580,6 +581,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     ux2DrawPanel(fb, x, y, w, h);
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
     fb.drawText(x + 24, y + 18, "Move \xE2\x80\x94 Generation I", Colors::Text, TextStyle::Heading);
 
     const auto choices = ux3MoveChoices(screen);
@@ -978,6 +980,16 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
 
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
                    const TouchInput& touch) {
+    // 7D: a completed tap outside the species / move picker closes it like B; returning here
+    // keeps the tap from reaching the editor underneath.
+    if (isGen1SourceUX(screen) && ux2StateFor(screen).picker != UX2Picker::None &&
+        SharedPopupDismiss::tappedOutside(touch)) {
+        auto& state = ux2StateFor(screen);
+        state.pickerScroll.reset();
+        state.pickerViewport.reset();
+        state.picker = UX2Picker::None;
+        return true;
+    }
     uint64_t input = ux3DirectTouchInput(screen, down, touch);
     // Touch and A must reach the same native staged Pokémon menu. The legacy
     // box handler otherwise opens the old generic action sheet when the finger

@@ -87,6 +87,51 @@ void verifyFrame(const std::string& where) {
         for (const auto& r : t) std::cout << "  " << describe(r) << '\n';
 }
 
+// Round 6 7A (lane C e39a92e2): one Special DV / Stat Exp row; the calculated Sp. Atk sits in the
+// Special row's Calculated cell and Sp. Def directly beneath it, each with a dim tag just left of
+// its number; every calculated number is right-aligned in the one Calculated column; no "x / y".
+void checkGen2Special(const std::string& where) {
+    const HostUi::TextRect* spaTag = nullptr;
+    const HostUi::TextRect* spdTag = nullptr;
+    const HostUi::TextRect* calculated = nullptr;
+    for (const auto& t : HostUi::visibleText) {
+        if (t.text == "Sp. Atk") spaTag = &t;
+        if (t.text == "Sp. Def") spdTag = &t;
+        if (t.text == "Calculated") calculated = &t;
+    }
+    check(spaTag && spdTag && calculated, where + ": Calculated column with Sp. Atk and Sp. Def tags");
+    if (!spaTag || !spdTag || !calculated) return;
+    const auto valueRightOf = [&](const HostUi::TextRect& tag) -> const HostUi::TextRect* {
+        for (const auto& t : HostUi::visibleText)
+            if (t.y == tag.y && t.x > tag.x + tag.w && !t.text.empty() &&
+                t.text.find_first_not_of("0123456789") == std::string::npos) return &t;
+        return nullptr;
+    };
+    const auto* spa = valueRightOf(*spaTag);
+    const auto* spd = valueRightOf(*spdTag);
+    check(spa && spd, where + ": Sp. Atk and Sp. Def numbers follow their tags");
+    if (!spa || !spd) return;
+    check(spd->y > spa->y && spd->y - spa->y <= 40, where + ": Sp. Def directly beneath Sp. Atk");
+    check(spa->x + spa->w == spd->x + spd->w, where + ": Sp. Atk / Sp. Def right-aligned in one column");
+    // Every number of the Calculated column (right of its header's left edge, between the header and
+    // Sp. Def) ends on the same right edge.
+    int column = 0;
+    for (const auto& t : HostUi::visibleText)
+        if (t.x >= calculated->x - 10 && t.y > calculated->y && t.y <= spd->y && t.x < calculated->x + 140 &&
+            !t.text.empty() && t.text.find_first_not_of("0123456789") == std::string::npos) {
+            ++column;
+            check(t.x + t.w == spa->x + spa->w, where + ": calculated value \"" + t.text + "\" right-aligned");
+        }
+    // Nothing in the Calculated column is a combined "SpA N" / "A x / D y" cell (the radar's "SpA N"
+    // axis label on the graph pane is a different surface).
+    for (const auto& t : HostUi::visibleText)
+        if (t.x >= calculated->x - 100 && t.x < calculated->x + 140 && t.y > calculated->y && t.y <= spd->y)
+            check(t.text.rfind("SpA ", 0) != 0 && t.text.find(" / ") == std::string::npos,
+                  where + ": no combined Special cell in the Calculated column (\"" + t.text + "\")");
+    check(column == 6, where + ": six calculated values (HP, Atk, Def, Spe, Sp. Atk, Sp. Def), found " +
+          std::to_string(column));
+}
+
 void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot = 1, bool gen5 = false,
            bool noTrainerGender = false) {
     UI::PKSEFramebuffer fb;
@@ -146,6 +191,12 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         press(HidNpadButton_Down);
         press(HidNpadButton_A);
         verifyFrame(game + " / Party Edit");
+        if (game == "Silver" || game == "Crystal") {
+            press(HidNpadButton_R);   // focus the STATS panel
+            verifyFrame(game + " / Edit -> STATS");
+            checkGen2Special(game + " / Edit -> STATS");
+            press(HidNpadButton_L);
+        }
         press(HidNpadButton_B);   // the exit question (nothing staged)
         verifyFrame(game + " / Party Edit exit question");
         press(HidNpadButton_Y);   // only Y discards and leaves; B would continue editing

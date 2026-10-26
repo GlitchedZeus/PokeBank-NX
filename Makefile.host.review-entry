@@ -1,6 +1,6 @@
 # Round 6 (B08 / P1-RETURN): Review entry and return through the REAL TrainerViewScreen, Gen I-V
 # (tests/host-ui harness from Makefile.host.host-ui, which must be included first).
-# GCC only, like the harness archive it links (see Makefile.host.host-ui).
+# Links the application archive, so GCC-only like Makefile.host.host-ui.
 ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
 HOST_UI_REVIEW_TEST := $(HOST_BUILD)/test_ui_review_entry_host
 HOST_UI_REVIEW_SANITIZE := $(HOST_BUILD)/test_ui_review_entry_host_sanitize

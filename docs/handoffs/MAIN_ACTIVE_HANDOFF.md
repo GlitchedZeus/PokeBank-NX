@@ -4,7 +4,7 @@
 > **Source of truth:** GitHub. Resume from the SHA below, not from any chat summary.
 > **Updating:** update this file at every significant checkpoint, and push it.
 
-Last updated: 2026-10-25 UTC, by Claude (Thread R, Round 6 P6 + E05).
+Last updated: 2026-10-26 UTC, by Claude (Lane P, Round 6).
 
 ## Round 6 Lane R — P6 Gen II Unown, P4/E05 glyph/Help/footer sweep
 
@@ -48,6 +48,30 @@ Lanes push to their own branches. Only the coordinator integrates into #307.
 3. Write `RETEST_<sha>.md` and upload it as an artifact.
 
 NOT DEVICE TESTED.
+
+## Round 6 Lane P — L06 Held Item, 7D outside taps, P5 met-location rows
+
+Branch `claude/pickers-search-scrollbar-20261017` at `0bff975e` (merges #307 `eaf6c6df`, incl. Lane S CG70 `0951ce79`, reconciled to S's version; not pushed to #307).
+
+- **L06 Held Item (Gen II–V):** one shared input step, `include/UI/SharedHeldItemInput.h`. Tap and A commit
+  the same item. A tap is resolved from the drawn grid (column it landed in, content row under the finger), so
+  wobble near a cell edge, the gaps between cells and half-visible edge rows no longer lose a tap. Gen II's grid
+  now starts a modal touch layer (covered workspace rows used to shadow cells). CG70: a tapped row in any Gen III /
+  Gen IV/V value picker commits; the reveal-first gate is for A only. No separate Gen III editor-side cause found.
+- **7D:** `include/UI/SharedPopupDismiss.h`. A completed tap outside the Gen II Held Item picker, the Gen III value and
+  species pickers, the Gen IV/V pickers, Trainer / Game Browser Help and Party Actions closes it like B; the
+  handler's return consumes it (no tap-through). `beginModal` clears the frame, so confirmations never qualify.
+  Gen I species / move and Gen II species, Crystal Met Location, move pickers also close (`0bff975e`; source-pinned, no real-screen Gen I/II test yet).
+- **P5 (R2-CHECK-011):** Gen V 40098–40108 read "POKÉPARK 10"–"20" (PKHeX 6501f0ab `text_bw2_40000_{ja,de,fr}.txt`).
+  Festa numbers carry "meaning … unverified"; no year claimed. Same-name native ids show "Name #id" in picker rows
+  only (`Names::getMetLocationChoiceName`). 620 px popup kept (widest row 496/496 px).
+- **Tests:** `test_held_item_input`, `test_popup_dismiss`, `test_met_location_rows_distinct`,
+  `test_ui_held_item_host` (real TrainerViewScreen, 46 checks; fails 6/46 with dismissal disabled). Pins moved,
+  for QA review: Gen II pins in `test_touch_pokemon_editor_direct_rows_contract.py` now point at the shared step;
+  `test_classic_party_actions` fake touch gained a tap shape plus an outside-tap case.
+- **QA:** CG70 / CG75 / CG78 XFAIL markers dropped (PASS). CG77 PASS (R's c69999fb fix taken).
+- **Gates on `0bff975e`:** GCC host-test, GCC host-sanitize (ASan + UBSan, detect_leaks=1; incl. test_ui_layout_host 231 and test_ui_review_entry_host 139 checks), py 35/35,
+  cross-gen 0 failing, owner-PASS gate PASS (262 guards), `git diff --check`.
 
 ## Round 5 Thread R — verify-first audit on `claude/reroll-mechanics-20261017`
 
@@ -884,7 +908,7 @@ Later docs-only commits on #307 also trigger a candidate build. Those artifacts 
 | --- | --- | --- |
 | C | `claude/gen14-campaign-20261015` | `114a22f3` |
 | S | `claude/shared-editor-gen35-20261016` | `3ff061bf` |
-| P | `claude/pickers-search-scrollbar-20261017` | `8d533b52` |
+| P | `claude/pickers-search-scrollbar-20261017` | `0bff975e` (round 6, not yet on #307) |
 | I | `claude/item-quantity-policy-20261016` | `18ffcc76` |
 | R | `claude/reroll-mechanics-20261017` | `a1c96ed6` |
 | L | `claude/launch-return-20261015` | `4f57bde4` (draft PR #319, CI only) |

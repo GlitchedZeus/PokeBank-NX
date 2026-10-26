@@ -441,8 +441,7 @@ struct Gen5Editor {
                 // The existing guarded staging path maintains encryption/checksum,
                 // Review/Discard and source-save immutability. The changed value is the
                 // feedback: no status toast (owner Oct 25 7C, matching Gen III Language).
-                const uint8_t nextLanguage = PokeBank::UIModel::Gen5LanguageCycle::next(p.language());
-                stage(screen, Field::Language, 0, nextLanguage);
+                stage(screen, Field::Language, 0, PokeBank::UIModel::Gen5LanguageCycle::next(p.language()));
                 return true;
             }
             case Friendship: {
@@ -641,7 +640,7 @@ struct Gen5Editor {
                     Names::machineDisplayLabel(screen.trainer.getGameGroup(), value, Names::getItemName(value));
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
-                std::string label = metLocationText5(p ? p->originVersion() : 20, value);
+                std::string label = Names::getMetLocationChoiceName(p ? p->originVersion() : 20, value);   // P5
                 if (state.pickerMetContextActive)
                     label += "  |  " + state.pickerMetContext.detail(value,
                         [](uint16_t species) { return Names::getSpeciesName(species); });
