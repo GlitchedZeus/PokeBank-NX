@@ -1,0 +1,36 @@
+{
+  "old_commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "current_commit": "641c26ba100225f3605e5a44b61b3b16e15a3774",
+  "files": [
+    {
+      "path": "Saves/Util/SaveUtil.cs",
+      "old_exists": true,
+      "old_sha256": "a5a15e440d868deeec86a0d243c7fded27978ca4039431a2c69a0fbea47159b4",
+      "current_sha256": "d92f995440dc2073b9ba0e703e35f22807b7861e4705f3b1a86703449ee01714"
+    },
+    {
+      "path": "PKM/PA9.cs",
+      "old_exists": true,
+      "old_sha256": "2cf275a602484efa79eb26676e24c60dd2de2ccbca3cfc338aae68d69184d593",
+      "current_sha256": "2cf275a602484efa79eb26676e24c60dd2de2ccbca3cfc338aae68d69184d593"
+    },
+    {
+      "path": "Saves/SAV9ZA.cs",
+      "old_exists": true,
+      "old_sha256": "388d78a1b7b6c2aded72a95b47d4d9060cf9f9e67cab638ef0eaeb4048d88bed",
+      "current_sha256": "ff858785df3989b6592262ef470a810236b76c4eb100b0a739db287a660954d6"
+    },
+    {
+      "path": "Saves/Encryption/MemeCrypto/MemeCrypto.cs",
+      "old_exists": true,
+      "old_sha256": "a70695891d494f92801a1477d2cde2eb483332a35dc054e96c3ca6e260fa03bd",
+      "current_sha256": "a70695891d494f92801a1477d2cde2eb483332a35dc054e96c3ca6e260fa03bd"
+    },
+    {
+      "path": "PKM/Util/PokeCrypto.cs",
+      "old_exists": true,
+      "old_sha256": "43b17fe70caa0af5fc16015f8ba64877973cbffc10003dc3198fc1077c6bc098",
+      "current_sha256": "6984b874afcdb30752937b6646d71ba42704e717df70e0f38abbe7c19a15c55a"
+    }
+  ]
+}

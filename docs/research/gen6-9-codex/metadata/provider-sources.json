@@ -1,0 +1,196 @@
+[
+  {
+    "repository": "PalindromicBreadLoaf/dekopon",
+    "commit": "dfba28f5e5342310c1ccff5963363be8512862f6",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "43290323c02d1ee300f176f421928e7f1d73f63c73a032bc7ea4952ca01946b5",
+        "url": "https://github.com/PalindromicBreadLoaf/dekopon/blob/dfba28f5e5342310c1ccff5963363be8512862f6/CMakeLists.txt"
+      },
+      {
+        "path": "src/citra_switch/config.cpp",
+        "sha256": "1d29b06ef5ef0323fe2137c017b232c760d1be690c5f6e693480a31cd9a99e79",
+        "url": "https://github.com/PalindromicBreadLoaf/dekopon/blob/dfba28f5e5342310c1ccff5963363be8512862f6/src/citra_switch/config.cpp"
+      },
+      {
+        "path": "src/citra_switch/save_manager.cpp",
+        "sha256": "31b74b50f2d7f7b92a6c3be38d3b0a29a1e18155fe6bf6287a9e4241fd0799b6",
+        "url": "https://github.com/PalindromicBreadLoaf/dekopon/blob/dfba28f5e5342310c1ccff5963363be8512862f6/src/citra_switch/save_manager.cpp"
+      },
+      {
+        "path": "src/common/file_util.cpp",
+        "sha256": "52de7ec4a31ed7a4d94954a9f1941f86807f08379eff77dd537ed46b4fdee2e0",
+        "url": "https://github.com/PalindromicBreadLoaf/dekopon/blob/dfba28f5e5342310c1ccff5963363be8512862f6/src/common/file_util.cpp"
+      },
+      {
+        "path": "src/core/file_sys/archive_source_sd_savedata.cpp",
+        "sha256": "e19740647af1560b6b0ce7ea1801aa298cd8e3601c338f543a16146334551e04",
+        "url": "https://github.com/PalindromicBreadLoaf/dekopon/blob/dfba28f5e5342310c1ccff5963363be8512862f6/src/core/file_sys/archive_source_sd_savedata.cpp"
+      },
+      {
+        "path": "src/core/hle/service/fs/archive.h",
+        "sha256": "11461948bb48cb8137dce5ce1b41d12cefdffd19fddea67fb91b59526b131c3b",
+        "url": "https://github.com/PalindromicBreadLoaf/dekopon/blob/dfba28f5e5342310c1ccff5963363be8512862f6/src/core/hle/service/fs/archive.h"
+      }
+    ]
+  },
+  {
+    "repository": "azahar-emu/azahar",
+    "commit": "987f18405073960622e1043bb44005989135c6e1",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": ".github/workflows/libretro.yml",
+        "sha256": "c139b5e3db12bbbb0079f7d238efc2fe53b414207fc9fc58e59c0cbd2d4c9059",
+        "url": "https://github.com/azahar-emu/azahar/blob/987f18405073960622e1043bb44005989135c6e1/.github/workflows/libretro.yml"
+      },
+      {
+        "path": "README.md",
+        "sha256": "9d325b7e75be361b51968a69da02b1f1f11d23eac6875a969d61e1afab045d7f",
+        "url": "https://github.com/azahar-emu/azahar/blob/987f18405073960622e1043bb44005989135c6e1/README.md"
+      },
+      {
+        "path": "src/CMakeLists.txt",
+        "sha256": "525bbf8289395cb11b872af6f43c2c8704cd4dccdaf0256d13b12b15db97e201",
+        "url": "https://github.com/azahar-emu/azahar/blob/987f18405073960622e1043bb44005989135c6e1/src/CMakeLists.txt"
+      }
+    ]
+  },
+  {
+    "repository": "FlagBrew/Checkpoint",
+    "commit": "740f221a853db784401458fe74276977afcfa8b0",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": "3ds/source/paths.cpp",
+        "sha256": "593330492ef2d365a4aec514647e0833c3ef15f41b1509867d4c515851f8ed3e",
+        "url": "https://github.com/FlagBrew/Checkpoint/blob/740f221a853db784401458fe74276977afcfa8b0/3ds/source/paths.cpp"
+      },
+      {
+        "path": "3ds/source/titleprobe.cpp",
+        "sha256": "5d61e749dea0fa5838703a088adad444da89b2285a30f9a7d18cc8d29371ae7c",
+        "url": "https://github.com/FlagBrew/Checkpoint/blob/740f221a853db784401458fe74276977afcfa8b0/3ds/source/titleprobe.cpp"
+      }
+    ]
+  },
+  {
+    "repository": "J-D-K/JKSM",
+    "commit": "f883dff8fccbbb90851c3c6c2a16ea8bda250356",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": "JKSM/include/Config.hpp",
+        "sha256": "4d5337b5864e59ce5db0fbbcf4c5d20aa0167312d63e186d2d83f2cfbbe993c0",
+        "url": "https://github.com/J-D-K/JKSM/blob/f883dff8fccbbb90851c3c6c2a16ea8bda250356/JKSM/include/Config.hpp"
+      },
+      {
+        "path": "JKSM/source/AppStates/BackupMenuState.cpp",
+        "sha256": "4daa4d986aa3264a43d669661c515de18f74597cb97b4d2e9ebbc52cac6e5dee",
+        "url": "https://github.com/J-D-K/JKSM/blob/f883dff8fccbbb90851c3c6c2a16ea8bda250356/JKSM/source/AppStates/BackupMenuState.cpp"
+      },
+      {
+        "path": "JKSM/source/Config.cpp",
+        "sha256": "4b68ab79b7b3411a6536bd93dc2281faf49fdca9eaa228f63a34a47a2706a9c5",
+        "url": "https://github.com/J-D-K/JKSM/blob/f883dff8fccbbb90851c3c6c2a16ea8bda250356/JKSM/source/Config.cpp"
+      },
+      {
+        "path": "JKSM/source/FS/FS.cpp",
+        "sha256": "f38a96029027beaeedba1dc085a1cf81736e0789815f5ff8669f9e8f82593826",
+        "url": "https://github.com/J-D-K/JKSM/blob/f883dff8fccbbb90851c3c6c2a16ea8bda250356/JKSM/source/FS/FS.cpp"
+      }
+    ]
+  },
+  {
+    "repository": "FlagBrew/PKSM",
+    "commit": "9e18c8068ede315f73a99f4c834819630393b5c5",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": "3ds/source/titles/Title.cpp",
+        "sha256": "869a7028b80f4e14103dff098aa7a2dc01a900ba9c9843bf907bed9e724821f0",
+        "url": "https://github.com/FlagBrew/PKSM/blob/9e18c8068ede315f73a99f4c834819630393b5c5/3ds/source/titles/Title.cpp"
+      },
+      {
+        "path": "3ds/source/titles/loader.cpp",
+        "sha256": "d52e0e4c71e4fc14e76960c60533d37ef04abf77618ee9ab322f7db9072d6730",
+        "url": "https://github.com/FlagBrew/PKSM/blob/9e18c8068ede315f73a99f4c834819630393b5c5/3ds/source/titles/loader.cpp"
+      },
+      {
+        "path": "common/source/ConfigurationFile.cpp",
+        "sha256": "d9a48f3c6717c261dc262ceb5989594ec6a7f417cdf00d1ad1a61b74ecfdd8b6",
+        "url": "https://github.com/FlagBrew/PKSM/blob/9e18c8068ede315f73a99f4c834819630393b5c5/common/source/ConfigurationFile.cpp"
+      }
+    ]
+  },
+  {
+    "repository": "J-D-K/JKSV",
+    "commit": "d39fd80a208b7c802d12edb12f362506a0addb47",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": "include/config/ConfigContext.hpp",
+        "sha256": "7fb45e0c2a6c081c37715fc973130d709910130363401401144bcd25ff17b454",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/include/config/ConfigContext.hpp"
+      },
+      {
+        "path": "include/config/config.hpp",
+        "sha256": "6a2c9f26933e239f8b71c44e8f96ddcd585d536a57203c94037f1ab71da18c85",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/include/config/config.hpp"
+      },
+      {
+        "path": "include/config/keys.hpp",
+        "sha256": "c0b577f56334decb6cb7032f5dbc4c83330e3c74e7bfb77db0009c6d1116c088",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/include/config/keys.hpp"
+      },
+      {
+        "path": "include/fs/PathFilter.hpp",
+        "sha256": "8daede5d11d3146b6049ddce2f352cd85ce334f1852e7f3f908fb8bb95095635",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/include/fs/PathFilter.hpp"
+      },
+      {
+        "path": "source/appstates/BackupMenuState.cpp",
+        "sha256": "dcbff65709d8a21d187024035df0e63a3fb35a029bfd46601cef17eb12905c0c",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/source/appstates/BackupMenuState.cpp"
+      },
+      {
+        "path": "source/config/ConfigContext.cpp",
+        "sha256": "f04e4f42e34714fb9e9245c231cdb187acfcb89a0dc2396243c156ddded3e7a7",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/source/config/ConfigContext.cpp"
+      },
+      {
+        "path": "source/config/config.cpp",
+        "sha256": "f0cbffbd99e3482d53bf83a656119e4e61187feed9026e913c05196779ca904b",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/source/config/config.cpp"
+      },
+      {
+        "path": "source/fs/PathFilter.cpp",
+        "sha256": "667e22e9f57c63ef79f5cc72d16845cfb292523a601d540ce59e4e1760174d9c",
+        "url": "https://github.com/J-D-K/JKSV/blob/d39fd80a208b7c802d12edb12f362506a0addb47/source/fs/PathFilter.cpp"
+      }
+    ]
+  },
+  {
+    "repository": "switchbrew/libnx",
+    "commit": "20cbcfd90567f7bf84df7725f27e345e2164fa6b",
+    "confidence": "ORIGINAL source inspection; no device acceptance",
+    "files": [
+      {
+        "path": "nx/include/switch/runtime/env.h",
+        "sha256": "ffb54f75f8518ab71a8bd6f580f3153745b701356e218663c036c1863c74f407",
+        "url": "https://github.com/switchbrew/libnx/blob/20cbcfd90567f7bf84df7725f27e345e2164fa6b/nx/include/switch/runtime/env.h"
+      },
+      {
+        "path": "nx/include/switch/services/fs.h",
+        "sha256": "670740e6228674a0bb9d2cb1d4230a230d6cc867f423a68df827c083d4f24504",
+        "url": "https://github.com/switchbrew/libnx/blob/20cbcfd90567f7bf84df7725f27e345e2164fa6b/nx/include/switch/services/fs.h"
+      },
+      {
+        "path": "nx/source/runtime/init.c",
+        "sha256": "0ac6563292f7c5848437670e4423e87974ebbe5a4144095bdb822af054845c06",
+        "url": "https://github.com/switchbrew/libnx/blob/20cbcfd90567f7bf84df7725f27e345e2164fa6b/nx/source/runtime/init.c"
+      }
+    ]
+  }
+]
