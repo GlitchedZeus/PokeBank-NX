@@ -229,9 +229,11 @@ int main() {
     assert(repaint.find("genderSelected ? Colors::SelectedText : gen2GenderColor") != std::string::npos);
     assert(repaint.find("Colors::Accent") == std::string::npos);
     // R2-GOLD: derived HP DV and calculated stats use the shared field-state colours.
-    assert(repaint.find("stat, gen2StatCellColor(r, 2)") != std::string::npos);
+    // Round 6 7A: the calculated column is the one shared painter, coloured by the field state.
+    assert(repaint.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
     assert(repaint.find("gen2StatCellColor(r, 0)") != std::string::npos);
     const std::string unified = readFile("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+    assert(unified.find("gen2StatCellColor(std::min(row, 4), 2), TextStyle::Caption);") != std::string::npos);
     assert(unified.find("selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption") != std::string::npos);
     assert(unified.find("rows[static_cast<std::size_t>(row)].first") != std::string::npos);
     assert(unified.find("rowSelected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
