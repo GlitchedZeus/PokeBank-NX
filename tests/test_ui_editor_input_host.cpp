@@ -87,7 +87,7 @@ struct Driver {
 };
 
 // A Black save with one party Pikachu (the Gen V Bag-screen fixture shape).
-std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0) {
+std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
     // An established trainer "NX" (TID 12345 / SID 54321, 12:34:56), as test_gen5_trainer_footer.
     const size_t player = 0x19400;
@@ -107,6 +107,7 @@ std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0) {
     C5::write16(party, 8, 25);
     party[0x8C] = 30;
     party[0x82] = pokerus;   // native Pokérus byte: strain << 4 | days
+    C5::write16(party, 0x28, move1);   // first move slot
     const auto encrypted = C5::encryptCandidate(party);
     std::copy(encrypted.begin(), encrypted.end(), sav.begin() + static_cast<std::ptrdiff_t>(L5::PartyOffset + 8));
     auto copy = std::span<uint8_t>(sav).subspan(0, L5::BlackWhiteCopySize);
@@ -750,7 +751,7 @@ void gen3SafariBallRoles() {
 // Owner Oct 25 7C: Gen V Language cycles inline on A and on a tap; the changed value is the
 // feedback, so neither posts a "Language: ..." status toast.
 void gen5LanguageNoToast() {
-    const auto input = gen5Fixture();
+    const auto input = gen5Fixture(0, 84);   // Pikachu knows Thunder Shock (a level-up move)
     std::string error;
     const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
     check(parsed.has_value(), "Gen V fixture parses: " + error);
@@ -776,6 +777,15 @@ void gen5LanguageNoToast() {
     d.press(HidNpadButton_A);
     check(state.surface() == G5::Gen5SharedScreenState::Surface::Edit, "Gen V Language: the editor opens");
     if (state.surface() != G5::Gen5SharedScreenState::Surface::Edit) return;
+
+    // Owner Oct 25 7B: a directly learnable Gen V move reads "OK", as in Gen I-IV.
+    d.frame();
+    bool ok = false, learnable = false;
+    for (const auto& t : HostUi::texts) {
+        ok = ok || t == "OK";
+        learnable = learnable || t.find("Learnable") != std::string::npos;
+    }
+    check(ok && !learnable, "Gen V Moves panel marks Thunder Shock OK, not Learnable");
 
     const auto language = [&] {
         const auto p = state.draft().current();

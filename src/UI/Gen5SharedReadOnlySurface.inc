@@ -604,7 +604,7 @@ struct Gen5Editor {
         status = move==0 ? "-" : "Unknown";
         color = move==0 ? Colors::TextDim : Colors::Error;
         if(availability==C::Availability::Direct) {
-            status = move==0 ? "-" : "Learnable";
+            status = move==0 ? "-" : "OK";   // owner Oct 25 7B: the Gen I-IV treatment
             color = move==0 ? Colors::TextDim : Colors::Success;
         } else if(availability==C::Availability::Transfer) {
             status = "Transfer";
