@@ -49,7 +49,7 @@ XFAIL: dict[str, str] = {
     # Round 7: owner Oct 26 FAILs and requests (docs/hardware/ROUND6_RESULTS_26186464.md), owners per the
     # coordinator's round 7 assignment.
     "CG80-gen2-create-review-visible": "L (round 7 B08 defect 1)",
-    "CG81-one-review-key-per-screen": "L (round 7 B08 defect 2)",
+    # CG81 (L 67c53525: drawGen2ClassicBoxFooter names + Review; L acc0b772 / 42bf612d one key per screen): ENFORCED.
     "CG82-gen5-exports-in-save-backups": "L (round 7 C12 / G1)",
     "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
     "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
