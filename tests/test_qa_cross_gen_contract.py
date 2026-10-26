@@ -2186,17 +2186,35 @@ def contracts(sources: list[Source]) -> list[Result]:
                "The Gen I-IV Trainer card shows native Play Time and Pokedex seen/caught, like Gen V "
                "(owner round 3 NEW-18)")
     g5t = [b for _, b in bodies_ln("src/UI/Gen5SharedReadOnlySurface.inc", "drawTrainerEditor")]
-    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawTrainerView"),):
+    # Round 6 P2 (lane C): the classic card is drawClassicTrainerView, painting the rows of
+    # include/UI/ClassicTrainerPage.h (Gen V design); drawTrainerView only routes Gen I-IV to it.
+    # The guard follows the renderer: the classic body must paint the Play Time and Pokedex fields
+    # with the native readers, and the model must label and always place both rows.
+    page_h = next((x for x in sources if x.rel == "include/UI/ClassicTrainerPage.h"), None)
+    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawClassicTrainerView"),):
         bs = bodies_ln(rel, fn)
         if not bs:
             r.violations.append(f"{rel}: {fn}() missing")
         for ln, b in bs:
             lits = [l for l in re.findall(r'"([^"]*)"', b)]
-            if not any(re.search(r"(?i)play\s*time", l) for l in lits):
+            model = page_h.code if page_h else ""
+            model_lits = re.findall(r'"([^"]*)"', model)
+            play = (any(re.search(r"(?i)play\s*time", l) for l in lits) or
+                    ("Field::PlayTime" in b and "nativePlayTime" in b and
+                     any(re.search(r"(?i)^play\s*time$", l) for l in model_lits) and
+                     re.search(r"if \(!in\.playTimeEditable\) out\.push_back\(\{Field::PlayTime, false", model)))
+            if not play:
                 r.violations.append(f"{rel}:{ln}: {fn}() shows no Play Time row")
-            if not (any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
-                    re.search(r"\bdexProgress\s*\(|\bseen\b", b)):
+            dex = ((any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
+                    re.search(r"\bpokedexProgress\s*\(", b)) and
+                   ("Field::Pokedex" not in b or
+                    (any(re.search(r"(?i)^pok[eé]dex$", l) for l in model_lits) and
+                     "out.push_back({Field::Pokedex, false, -1});" in model)))
+            if not dex:
                 r.violations.append(f"{rel}:{ln}: {fn}() shows no Pokedex seen / caught row")
+    view = bodies_ln("src/UI/TrainerViewScreenBase.inc", "drawTrainerView")
+    if not view or not all("drawClassicTrainerView(screen, fb, x, y, w, h, generation);" in b for _, b in view):
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: drawTrainerView() does not route Gen I-IV to drawClassicTrainerView")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",

@@ -1757,7 +1757,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
-        screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
+        screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 360);
         return true;
     }
     return true;

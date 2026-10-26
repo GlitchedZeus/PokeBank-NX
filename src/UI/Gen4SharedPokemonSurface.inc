@@ -1162,7 +1162,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
         if (auto* staged = editor(screen)) {
             staged->discard();
             if (refreshPresentation(screen))
-                screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
+                screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 300);
         }
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;

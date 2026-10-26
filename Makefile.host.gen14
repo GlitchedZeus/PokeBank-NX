@@ -370,3 +370,17 @@ $(HOST_BUILD)/test_classic_party_review_path: $(PARTY_REVIEW_SOURCES) $(PARTY_RE
 $(HOST_BUILD)/test_classic_party_review_path_sanitize: $(PARTY_REVIEW_SOURCES) $(PARTY_REVIEW_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -I. -Iinclude $(PARTY_REVIEW_SOURCES) -o $@
+
+# Round 6 P2: Gen I-IV Trainer Info rows / layout in the Gen V design (no overlap, no invented gender).
+CLASSIC_TRAINER_PAGE_DEPS := include/UI/ClassicTrainerPage.h include/UI/ClassicTrainerSession.h \
+	include/Integration/Common/NativeBadges.h src/UI/TrainerViewScreenBase.inc src/UI/Gen2HardwareFinalFix.inc
+HOST_TESTS += $(HOST_BUILD)/test_classic_trainer_page
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_trainer_page_sanitize
+host-test: $(HOST_BUILD)/test_classic_trainer_page
+host-sanitize: $(HOST_BUILD)/test_classic_trainer_page_sanitize
+$(HOST_BUILD)/test_classic_trainer_page: tests/test_classic_trainer_page.cpp $(CLASSIC_TRAINER_PAGE_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_trainer_page.cpp -o $@
+$(HOST_BUILD)/test_classic_trainer_page_sanitize: tests/test_classic_trainer_page.cpp $(CLASSIC_TRAINER_PAGE_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_trainer_page.cpp -o $@
