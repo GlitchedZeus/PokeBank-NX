@@ -60,6 +60,7 @@ enum class SourceKind : uint8_t { None, Gen1, Gen2, Gen3 };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     bool presentationInitialized = false;
     bool pickerActive = false;
@@ -84,9 +85,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;

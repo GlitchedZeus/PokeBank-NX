@@ -58,6 +58,7 @@ enum class EditSection : uint8_t { Summary, Moves, DVs, StatExp, Trainer };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Mode mode = Mode::Closed;
     int box = 0;
@@ -77,9 +78,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;

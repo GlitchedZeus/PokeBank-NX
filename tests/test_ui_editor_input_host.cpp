@@ -13,6 +13,7 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "Names/ItemNames.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SharedPokemonEditorWorkspace.h"
 #include "UI/TouchInput.h"
@@ -22,6 +23,7 @@
 #include <array>
 #include <cstdlib>
 #include <cstring>
+#include <new>
 #include <iostream>
 #include <span>
 #include <string>
@@ -333,6 +335,35 @@ void gen3Pokerus() {
 }
 
 // Gen III Create: Party has room, so an empty box slot's Add opens the editor in Create mode.
+// CG69: the owner's Gen III Edit symptom. Pokérus (row 14 of 16, 8 visible) sits partly visible
+// at the bottom of DETAILS; the FIRST tap on it must act like A (it used to only scroll and ask
+// for "press A again"). No Down press ever brings row 14 into full view here.
+void gen3PokerusFirstTapOnPartialRow() {
+    auto& g3 = openGen3(13);
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyEdit(d)) return;
+    constexpr int kBase = 31000, kPokerus = 14;
+    for (int i = 0; i < 20 && !d.target(kBase + 13); ++i) d.press(HidNpadButton_Down);
+    check(d.target(kBase + 13) != nullptr && d.target(kBase + kPokerus) == nullptr,
+          "row 13 is the last fully visible DETAILS row; Pokérus is just below");
+    // A short finger drag (past the tap slop) leaves Pokérus partly visible.
+    const auto* r = d.target(kBase + 10);
+    const u32 x = static_cast<u32>(r->x + r->w / 2), y = static_cast<u32>(r->y + r->h / 2);
+    HostUi::touch = {true, x, y};
+    d.frame();
+    for (int k = 1; k <= 4; ++k) { HostUi::touch = {true, x, y - static_cast<u32>(k * 7)}; d.frame(); }
+    const auto* partial = d.target(kBase + kPokerus);
+    HostUi::touch = {false, x, y - 28};
+    d.frame();
+    partial = d.target(kBase + kPokerus);
+    check(partial && partial->h < 30, "a finger drag leaves the Pokérus row partly visible (h=" + std::to_string(partial ? partial->h : -1) + ")");
+    check(d.tap(kBase + kPokerus), "the partly visible Pokérus row is tappable");
+    check(drawnValue("Pokerus") == "Infected", "the FIRST tap on the partly visible Pokérus row toggles it (got " +
+                                                   drawnValue("Pokerus") + ")");
+    check(d.screen.storageStatus.find("press A again") == std::string::npos, "no second press is needed");
+}
+
 void gen3CreatePokerus() {
     auto& g3 = openGen3(13);
     if (!g3.screen) return;
@@ -354,6 +385,228 @@ void gen3CreatePokerus() {
     check(drawnValue("Pokerus") == "Cured", "Gen III Create A on Pokérus toggles Infected -> Cured (got " + drawnValue("Pokerus") + ")");
 }
 
+// Ids of the picker cells the last draw published (the visible, possibly clipped, grid).
+std::vector<int> cells(const Driver& d, int base) {
+    std::vector<int> ids;
+    for (const auto& b : d.screen.touchButtons)
+        if (b.id >= base && b.id < base + 1000) ids.push_back(b.id);
+    return ids;
+}
+// A finger drag on the grid (past the 22 px tap slop), released and settled: the grid scrolls by
+// pixels and leaves a partly visible row at its bottom edge. Returns that bottom-row cell.
+int dragAndPickBottomCell(Driver& d, int base, int pixels) {
+    const auto ids = cells(d, base);
+    if (ids.size() < 12) return -1;
+    const auto* a = d.target(ids[ids.size() / 2]);
+    const u32 x = static_cast<u32>(a->x + a->w / 2), y = static_cast<u32>(a->y + a->h / 2);
+    HostUi::touch = {true, x, y};
+    d.frame();
+    for (int k = 1; k <= 4; ++k) {
+        HostUi::touch = {true, x, y - static_cast<u32>(k * pixels / 4)};
+        d.frame();
+    }
+    HostUi::touch = {false, x, y - static_cast<u32>(pixels)};
+    d.frame();
+    for (int k = 0; k < 3; ++k) d.frame();
+    int bottom = -1, bottomY = -1;
+    for (const auto& b : d.screen.touchButtons)
+        if (b.id >= base && b.id < base + 1000 && b.y > bottomY) { bottom = b.id; bottomY = b.y; }
+    return bottom;
+}
+
+// L06: the Gen III Held Item picker selects with A and with a tap at the top, middle and bottom of
+// the list, after a search, and on the partly visible row a finger scroll leaves (it used to only
+// say "press A again"). The chosen item is what Keep stages.
+void gen3HeldItem() {
+    auto& g3 = openGen3(13);
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyEdit(d)) return;
+    constexpr int kHeldItemRow = 31007, kCell = 4000;
+    std::string held = drawnValue("Held Item");
+    check(held == "Potion", "Gen III editor shows the stored Potion (got " + held + ")");
+    const auto chose = [&](const std::string& how) {
+        const std::string now = drawnValue("Held Item");
+        check(now != held && !now.empty() && now[0] != '<', "Gen III Held Item: " + how + " selects (" + held + " -> " + now + ")");
+        check(cells(d, kCell).empty(), "Gen III Held Item: " + how + " closes the picker");
+        check(d.screen.storageStatus.find("press A again") == std::string::npos, "Gen III Held Item: " + how + " needs no second press");
+        held = now;
+        d.screen.storageStatus.clear();
+    };
+    const auto open = [&] {
+        const bool ok = d.tap(kHeldItemRow) && !cells(d, kCell).empty();
+        check(ok, "Gen III Held Item row opens the picker by tap");
+        return ok;
+    };
+    // Search first, while the current item (Potion) does not match "A": the results then focus a
+    // different item, which A chooses (the search grid owns the D-pad while it is open).
+    if (open()) {
+        d.press(HidNpadButton_Minus);   // open search
+        d.press(HidNpadButton_A);       // type the focused key
+        d.press(HidNpadButton_B);       // back to the results
+        d.press(HidNpadButton_A);
+        chose("A after a search");
+    }
+    if (open()) {
+        d.press(HidNpadButton_Minus);
+        d.press(HidNpadButton_A);
+        d.press(HidNpadButton_B);
+        const auto ids = cells(d, kCell);
+        check(ids.size() > 2 && d.tap(ids[ids.size() / 2]), "Gen III Held Item: search results publish cells");
+        chose("tap after a search");
+    }
+    if (open()) {
+        const int partial = dragAndPickBottomCell(d, kCell, 30);
+        const auto* b = d.target(partial);
+        check(b && b->h < 36, "a 30 px finger scroll leaves a partly visible bottom row");
+        d.tap(partial);
+        chose("tap on the partly visible row after a finger scroll");
+    }
+    if (open()) { d.tap(kCell + 3); chose("tap at the top"); }
+    if (open()) { d.press(HidNpadButton_Right); d.press(HidNpadButton_Down); d.press(HidNpadButton_Down); d.press(HidNpadButton_A); chose("A in the middle"); }
+    if (open()) { for (int i = 0; i < 30; ++i) d.press(HidNpadButton_R); d.press(HidNpadButton_A); chose("A at the bottom"); }
+    if (open()) {
+        for (int i = 0; i < 30; ++i) d.press(HidNpadButton_R);
+        const auto ids = cells(d, kCell);
+        check(!ids.empty() && d.tap(ids.back()), "Gen III Held Item: last page publishes cells");
+        chose("tap at the bottom");
+    }
+    // Keep stages exactly the item shown.
+    d.press(HidNpadButton_X);
+    std::string error;
+    const auto staged = g3.trainer->stagedPokemon()->partyPokemon(0, error);
+    check(staged && Names::getItemNameG3(staged->heldItem) == held,
+          "Gen III Keep stages the chosen Held Item (" + held + ")");
+}
+
+// The shared Gen IV / V picker has the same partly visible row; Gen V's Held Item must take a tap there.
+void gen5HeldItemPartialRow() {
+    const auto input = gen5Fixture();
+    std::string error;
+    const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+    auto trainer = parsed ? PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error) : nullptr;
+    if (!trainer) { check(false, "Gen V held-item fixture opens"); return; }
+    UI::TrainerViewScreen screen(*trainer, "Pokemon Black", "/host/black.sav", 0, AccountUid{},
+                                 PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    Driver d{screen, {}, {}};
+    d.frame();
+    screen.detailViewActive = true;
+    screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+    d.frame();
+    d.press(HidNpadButton_A);
+    auto& state = trainer->sharedScreen();
+    const auto actions = state.availableActions(trainer->stagedPokemon());
+    for (size_t i = 0; i < actions.count && actions[i] != PokeBank::UIModel::SharedPokemonEditor::Action::Edit; ++i)
+        d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    if (state.surface() != G5::Gen5SharedScreenState::Surface::Edit) { check(false, "Gen V Edit opens for Held Item"); return; }
+    const auto held = [&] {
+        const auto p = state.draft().current();
+        return p ? static_cast<int>(p->heldItem()) : -1;
+    };
+    const int before = held();
+    constexpr int kHeldItemRow = 7;
+    check(d.tap(Workspace::kDetailTouchBase + kHeldItemRow) && !cells(d, 6000).empty(), "Gen V Held Item row opens the picker by tap");
+    const int partial = dragAndPickBottomCell(d, 6000, 30);
+    const auto* b = d.target(partial);
+    check(b && b->h < 36, "Gen V: a 30 px finger scroll leaves a partly visible bottom row");
+    d.tap(partial);
+    check(held() != before && cells(d, 6000).empty(),
+          "Gen V tap on the partly visible Held Item row selects it (" + std::to_string(before) + " -> " + std::to_string(held()) + ")");
+    check(screen.storageStatus.find("press A again") == std::string::npos, "Gen V partly visible row needs no second press");
+}
+
+// Round 6 state leak: the generation surfaces keep per-screen state in statics. Save B's screen
+// is constructed at EXACTLY save A's address (the device builds the screen on the stack for every
+// opened game); nothing from A -- open editor, dirty draft, open picker -- may carry over to B.
+void gen3NoStateAcrossScreens() {
+    alignas(UI::TrainerViewScreen) static unsigned char storage[sizeof(UI::TrainerViewScreen)];
+    auto bytesA = gen3Fixture(13), bytesB = gen3Fixture(13);
+    auto parsedA = G3::parse(bytesA, G3::SourceGame::FireRedGBA);
+    auto parsedB = G3::parse(bytesB, G3::SourceGame::FireRedGBA);
+    std::string error;
+    auto trainerA = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*parsedA.save, error);
+    auto trainerB = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*parsedB.save, error);
+    if (!trainerA || !trainerB) { check(false, "state-leak fixtures open"); return; }
+    auto* a = new (storage) UI::TrainerViewScreen(*trainerA, "Pokemon FireRed", "/host/a.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::RetroArchLegacy, "firered_gba", "mGBA");
+    {
+        Driver d{*a, {}, {}};
+        if (!openGen3PartyEdit(d)) return;
+        for (int i = 0; i < 20 && !d.target(31014); ++i) d.press(HidNpadButton_Down);
+        d.tap(31014);                       // dirty draft: Pokérus None -> Infected
+        check(drawnValue("Pokerus") == "Infected", "save A: the draft is dirty");
+        d.tap(31007);                       // and the Held Item picker is open
+        check(!cells(d, 4000).empty(), "save A: the Held Item picker is open");
+    }
+    a->~TrainerViewScreen();
+    auto* b = new (storage) UI::TrainerViewScreen(*trainerB, "Pokemon FireRed", "/host/b.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::RetroArchLegacy, "firered_gba", "mGBA");
+    check(static_cast<void*>(a) == static_cast<void*>(b), "save B's screen reuses save A's address");
+    {
+        Driver d{*b, {}, {}};
+        d.frame();
+        d.screen.detailViewActive = true;
+        d.screen.selectedMode = UI::TrainerViewScreen::ViewMode::Boxes;
+        d.screen.selectedBoxIndex = 0;
+        d.screen.selectedItemIndex = 0;
+        d.frame();
+        check(cells(d, 4000).empty(), "save B: no picker carried over");
+        check(drawnValue("Pokerus").front() == '<', "save B: no editor carried over");
+        d.press(HidNpadButton_X);           // X here must be B's own Add, never A's stale Keep
+        check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");
+        check(drawnValue("Species").find("#") != std::string::npos && trainerB->stagedPokemon()->pendingChanges().empty(),
+              "save B: X opens a fresh Create draft (species " + drawnValue("Species") + ")");
+    }
+    b->~TrainerViewScreen();
+}
+
+void gen5NoStateAcrossScreens() {
+    alignas(UI::TrainerViewScreen) static unsigned char storage[sizeof(UI::TrainerViewScreen)];
+    const auto input = gen5Fixture();
+    std::string error;
+    const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+    auto trainerA = PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error);
+    auto trainerB = PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error);
+    if (!trainerA || !trainerB) { check(false, "Gen V state-leak fixtures open"); return; }
+    auto* a = new (storage) UI::TrainerViewScreen(*trainerA, "Pokemon Black", "/host/a.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    {
+        Driver d{*a, {}, {}};
+        d.frame();
+        a->detailViewActive = true;
+        a->selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        d.frame();
+        d.press(HidNpadButton_A);
+        auto& state = trainerA->sharedScreen();
+        const auto actions = state.availableActions(trainerA->stagedPokemon());
+        for (size_t i = 0; i < actions.count && actions[i] != PokeBank::UIModel::SharedPokemonEditor::Action::Edit; ++i)
+            d.press(HidNpadButton_Down);
+        d.press(HidNpadButton_A);
+        d.tap(Workspace::kDetailTouchBase + 7);   // the Held Item picker is open in A's editor workspace
+        check(!cells(d, 6000).empty(), "Gen V save A: the Held Item picker is open");
+    }
+    a->~TrainerViewScreen();
+    auto* b = new (storage) UI::TrainerViewScreen(*trainerB, "Pokemon Black", "/host/b.sav", 0, AccountUid{},
+        PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    {
+        Driver d{*b, {}, {}};
+        d.frame();
+        b->detailViewActive = true;
+        b->selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        d.frame();
+        d.press(HidNpadButton_A);
+        auto& state = trainerB->sharedScreen();
+        const auto actions = state.availableActions(trainerB->stagedPokemon());
+        for (size_t i = 0; i < actions.count && actions[i] != PokeBank::UIModel::SharedPokemonEditor::Action::Edit; ++i)
+            d.press(HidNpadButton_Down);
+        d.press(HidNpadButton_A);
+        check(state.surface() == G5::Gen5SharedScreenState::Surface::Edit, "Gen V save B opens its own editor");
+        check(cells(d, 6000).empty(), "Gen V save B: A's open picker did not carry over");
+    }
+    b->~TrainerViewScreen();
+}
+
 } // namespace
 
 int main() {
@@ -361,6 +614,11 @@ int main() {
     gen5CreatePokerus();
     gen3Pokerus();
     gen3CreatePokerus();
+    gen3PokerusFirstTapOnPartialRow();
+    gen3HeldItem();
+    gen5HeldItemPartialRow();
+    gen3NoStateAcrossScreens();
+    gen5NoStateAcrossScreens();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;

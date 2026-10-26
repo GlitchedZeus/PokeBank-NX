@@ -31,6 +31,7 @@ enum class UX2Picker : uint8_t { None, Species, Move };
 
 struct UX2State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     UX2Mode mode = UX2Mode::Closed;
     int box = 0;
@@ -78,9 +79,9 @@ void foundationExitMainMode(TrainerViewScreen& screen);
 
 UX2State& ux2StateFor(const TrainerViewScreen& screen) {
     static UX2State state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -757,7 +758,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
                 return;
             case Discard::Outcome::Discard:
                 discardAll(screen);
-                screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
+                screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 300);
                 state.reviewRow = 0;
                 if (foundationMainMode(state.reviewReturn)) {
                     // The workspace's draft was built on what was just discarded: close it, so B

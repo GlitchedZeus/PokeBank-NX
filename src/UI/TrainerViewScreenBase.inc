@@ -10,6 +10,7 @@
 #include "Names/ItemPouches.h"
 #include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
 #include "UI/ClassicTrainerSession.h"
+#include "UI/ClassicTrainerPage.h"  // Round 6 P2: Gen I-IV Trainer Info rows and layout
 #include "UI/ClassicStagedExit.h"
 #include "UI/ClassicBrowseFooter.h"
 #include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
@@ -450,17 +451,101 @@ int reviewGeneration(const std::string& gameId) {
     // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
     // rows (Name / Money) are editable; the rows below are informational -- editing TID/SID would
     // re-own every Pokemon already in the save, so it is deliberately left out.
+    // Round 6 P2 (R2-TRAINER / NEW-18): Gen I-IV Trainer Info in the Gen V Trainer design. The
+    // rows and their rects come from UI/ClassicTrainerPage.h (the layout the tests check): Gen V
+    // cards with value pills for the staged Name / Money / Play Time / Gender, a divider, gold
+    // read-only native rows, and the visible Y Review Changes button in its own slot. No field is
+    // invented (no Gen I or Gold / Silver gender) and nothing is drawn twice.
+    static void drawClassicTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                       int generation) {
+        namespace Page = PokeBank::UIModel::ClassicTrainerPage;
+        Trainer::Trainer& t = screen.trainer;
+        fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
+        fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
+        fb.drawFilledRoundedRect(x, y, w, Page::kHeaderH, 16, Colors::AccentDim);
+        fb.drawFilledRect(x, y + Page::kHeaderH - 16, w, 16, Colors::AccentDim);
+        fb.drawText(x + 22, y + (Page::kHeaderH - fb.lineHeight(TextStyle::Heading)) / 2, "Trainer",
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(x + 170, y + (Page::kHeaderH - fb.lineHeight(TextStyle::Caption)) / 2,
+                    "Edits are staged in app memory; gold values are read-only; the source save is unchanged",
+                    Colors::TextDim, TextStyle::Caption);
+        screen.touchButtons.clear();
+
+        const auto rows = Page::rows({generation, screen.sourceGameId == "crystal_gbc",
+                                      screen.trainerPlayTimeEditable, screen.trainerGenderEditable});
+        const auto page = Page::layout(rows, x, y, w, h);
+        const auto value = [&](Page::Field field) -> std::string {
+            switch (field) {
+                case Page::Field::Name: return t.trainerName.empty() ? "(none)" : t.trainerName;
+                case Page::Field::Money: return "$" + std::to_string(t.money);
+                case Page::Field::PlayTime: return PokeVault::Integration::Common::playTimeText(t.nativePlayTime);
+                case Page::Field::Gender:
+                    return t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown";
+                case Page::Field::TrainerId: return std::to_string(t.TID16);
+                case Page::Field::SecretId: return std::to_string(t.SID16);
+                case Page::Field::Badges: return t.nativeBadges.text();
+                case Page::Field::Pokedex: {
+                    const auto dex = t.pokedexProgress();
+                    return dex.available() ? "Seen " + std::to_string(dex.seen) + " / Caught " +
+                        std::to_string(dex.caught) + " / " + std::to_string(dex.total) : "Unavailable";
+                }
+            }
+            return {};
+        };
+        const auto readOnly = SharedEditorChrome::fieldColor(PokeBank::UIModel::SharedFieldState::style(
+            PokeBank::UIModel::SharedFieldState::State::ReadOnly, false).value);
+        const int textH = fb.lineHeight(TextStyle::Body);
+        bool dividerDrawn = false;
+        for (const auto& placed : page.rows) {
+            const auto& c = placed.card;
+            const std::string label(Page::label(placed.row.field));
+            const std::string text = value(placed.row.field);
+            int lw = 0, lh = 0, vw = 0, vh = 0;
+            fb.measureText(label, lw, lh, TextStyle::Body);
+            fb.measureText(text, vw, vh, TextStyle::Body);
+            const auto rects = Page::textRects(placed, lw, vw, textH);
+            if (placed.row.editable) {
+                const bool sel = screen.trainerSelectedRow == placed.row.touchId;
+                fb.drawSoftShadow(c.x, c.y, c.w, c.h, 14);
+                fb.drawFilledRoundedRect(c.x, c.y, c.w, c.h, 14, Colors::PanelAlt);
+                if (sel) fb.drawRoundedRect(c.x, c.y, c.w, c.h, 14, Colors::FocusBorder, 2);
+                fb.drawText(rects.label.x, rects.label.y, label, sel ? Colors::SelectedText : Colors::TextDim,
+                            TextStyle::Body);
+                fb.drawPill(rects.value.x, rects.value.y, rects.value.w, rects.value.h, Colors::Background);
+                fb.drawText(rects.value.x + (rects.value.w - vw) / 2, rects.value.y + (rects.value.h - vh) / 2,
+                            text, Colors::Text, TextStyle::Body);
+                screen.touchButtons.push_back({placed.row.touchId, c.x, c.y, c.w, c.h});
+            } else {
+                if (!dividerDrawn) {
+                    fb.drawHDivider(c.x + 20, page.dividerY, c.w - 40);
+                    dividerDrawn = true;
+                }
+                fb.drawFilledRoundedRect(c.x, c.y, c.w, c.h, 12, Colors::PanelAlt);
+                fb.drawText(rects.label.x, rects.label.y, label, Colors::TextDim, TextStyle::Body);
+                fb.drawText(rects.value.x, rects.value.y, text, readOnly, TextStyle::Body);
+            }
+        }
+        drawGlyphButton(fb, page.review.x, page.review.y, page.review.w, page.review.h, "Y", "Review Changes");
+        screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
+            page.review.x, page.review.y, page.review.w, page.review.h});
+    }
+
+    // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
+    // rows (Name / Money) are editable; the rows below are informational -- editing TID/SID would
+    // re-own every Pokemon already in the save, so it is deliberately left out.
     static void drawTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
         Trainer::Trainer& t = screen.trainer;
         const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-        const bool classic=generation>=1 && generation<=4;
+        if (generation >= 1 && generation <= 4) {
+            drawClassicTrainerView(screen, fb, x, y, w, h, generation);
+            return;
+        }
         fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
         fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
         constexpr int hH = 46;
         fb.drawFilledRoundedRect(x, y, w, hH, 16, Colors::AccentDim);
         fb.drawFilledRect(x, y + hH - 16, w, 16, Colors::AccentDim);
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Trainer", Colors::Text, TextStyle::Heading);
-        if(classic)fb.drawText(x+w-264,y+15,"Gold values are read-only",Colors::TextDim,TextStyle::Caption);
 
         screen.touchButtons.clear();
 
@@ -492,28 +577,6 @@ int reviewGeneration(const std::string& gameId) {
             screen.touchButtons.push_back({ i, cardX, cy, cardW, rowH });
             cy += rowH + 14;
         }
-        // P3 (Round 5): Play Time and Gender join the editable rows where a classic staged session
-        // has a native writer for them (rows 2 / 3, ClassicTrainerSession::genderRow).
-        const auto extraRow = [&](int row, const char* label, const std::string& value) {
-            const bool sel = (screen.trainerSelectedRow == row);
-            constexpr int extraH = 44;
-            fb.drawFilledRoundedRect(cardX, cy, cardW, extraH, 14, Colors::PanelAlt);
-            if (sel) fb.drawRoundedRect(cardX, cy, cardW, extraH, 14, Colors::FocusBorder, 2);
-            fb.drawText(cardX + 24, cy + (extraH - fb.lineHeight(TextStyle::Body)) / 2, label,
-                        sel ? Colors::SelectedText : Colors::TextDim, TextStyle::Body);
-            int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(cardX + cardW - 24 - vw, cy + (extraH - vh) / 2, value, Colors::Text, TextStyle::Body);
-            screen.touchButtons.push_back({ row, cardX, cy, cardW, extraH });
-            cy += extraH + 8;
-        };
-        const bool playTimeEditable = classic && screen.trainerPlayTimeEditable;
-        const bool genderEditable = classic && screen.trainerGenderEditable;
-        if (playTimeEditable)
-            extraRow(PokeBank::UIModel::ClassicTrainerSession::kPlayTimeRow, "Play Time",
-                     PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
-        if (genderEditable)
-            extraRow(PokeBank::UIModel::ClassicTrainerSession::genderRow(playTimeEditable), "Gender",
-                     t.trainerGender == 0 ? "Male" : "Female");
 
         cy += 6;
         fb.drawHDivider(cardX + 20, cy, cardW - 40);
@@ -521,58 +584,17 @@ int reviewGeneration(const std::string& gameId) {
 
         // --- Read-only rows (not selectable). ---
         auto infoRow = [&](const char* label, const std::string& value) {
-            const int infoH=classic?28:46;
+            const int infoH = 46;
             fb.drawFilledRoundedRect(cardX, cy, cardW, infoH, 12, Colors::PanelAlt);
             fb.drawText(cardX + 24, cy + (infoH - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            const auto valueColor=classic?SharedEditorChrome::fieldColor(
-                PokeBank::UIModel::SharedFieldState::style(PokeBank::UIModel::SharedFieldState::State::ReadOnly,false).value):Colors::Text;
-            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, valueColor, TextStyle::Body);
-            cy += infoH+(classic?6:8);
+            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, Colors::Text, TextStyle::Body);
+            cy += infoH + 8;
         };
-        const bool generationOne = screen.sourceGameId == "red_gb" ||
-                                   screen.sourceGameId == "blue_gb" ||
-                                   screen.sourceGameId == "yellow_gb";
-        if (generationOne) {
-            // Gen I stores one visible 16-bit Trainer ID. There is no SID or trainer-gender field
-            // to present here, so do not manufacture later-generation rows from neutral defaults.
-            infoRow("Trainer ID", std::to_string(t.TID16));
-        } else if (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
-                   screen.sourceGameId == "crystal_gbc") {
-            infoRow("Trainer ID", std::to_string(t.TID16));
-            if(screen.sourceGameId=="crystal_gbc") {
-                if(!genderEditable)
-                    infoRow("Gender",t.trainerGender==0?"Male":t.trainerGender==1?"Female":"Unknown");
-            }
-            else infoRow("Gender","Male (fixed by game)");
-        } else if (screen.sourceGameId == "diamond_nds" ||
-                   screen.sourceGameId == "pearl_nds" ||
-                   screen.sourceGameId == "platinum_nds" ||
-                   screen.sourceGameId == "heartgold_nds" ||
-                   screen.sourceGameId == "soulsilver_nds" || generation==3) {
-            // Native Gen IV IDs are two separate 16-bit numbers. Do not
-            // mash them into one 'Trainer ID' row or repeat both as 'Full'.
-            if (!genderEditable) infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
-            infoRow("Trainer ID", std::to_string(t.TID16));
-            infoRow("Secret ID", std::to_string(t.SID16));
-        } else {
-            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
-            infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
-            infoRow("Full TID", std::to_string(t.TID));
-            infoRow("Full SID", std::to_string(t.SID));
-        }
-        if (classic) {
-            if (!playTimeEditable)
-                infoRow("Play Time",PokeVault::Integration::Common::playTimeText(t.nativePlayTime));
-            infoRow("Badges",t.nativeBadges.text());
-            const auto dex=t.pokedexProgress();
-            infoRow("Pokédex",dex.available()?"Seen "+std::to_string(dex.seen)+" / Caught "+
-                std::to_string(dex.caught)+" / "+std::to_string(dex.total):"Unavailable");
-            const int bx = cardX + cardW - 240, by = y + h - 60;
-            drawGlyphButton(fb, bx, by, 240, 48, "Y", "Review Changes");
-            screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
-                bx, by, 240, 48});
-        }
+        infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+        infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
+        infoRow("Full TID", std::to_string(t.TID));
+        infoRow("Full SID", std::to_string(t.SID));
     }
 
     void TrainerViewScreen::captureInventorySourceBaseline() {

@@ -1,3 +1,4 @@
+#include "UI/ClassicTrainerPage.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -367,13 +368,25 @@ int main() {
     assert(workspaceFix.find("stray bottom glyph") != std::string::npos);
     assert(workspaceFix.find("contentY + contentH - 34") != std::string::npos);
 
-    // Gold/Silver receive the same informational Gender row that Crystal already renders;
-    // the established Name/Money two-row cursor contract above is unchanged.
-    assert(finalFix.find("gold_gbc") != std::string::npos);
-    assert(finalFix.find("silver_gbc") != std::string::npos);
-    assert(finalFix.find("hasTrainerGender()") != std::string::npos);
-    assert(finalFix.find("\"Gender\"") != std::string::npos);
-    assert(finalFix.find("trainerGender == 0 ? \"Male\"") != std::string::npos);
+    // Round 6 P2 (owner Oct 25, R2-TRAINER / NEW-18): Gold / Silver store no trainer gender, and the
+    // separate Gold / Silver Gender card painted over the Trainer rows ("Male" under the new row).
+    // The owner's rule is "no invented Gen I or Gold / Silver gender": the second renderer is gone
+    // and the one Trainer model gives Gold / Silver no Gender row; Crystal keeps its stored gender.
+    // The established Name/Money two-row cursor contract above is unchanged.
+    assert(finalFix.find("drawGoldSilverTrainerGender") == std::string::npos);
+    assert(finalFix.find("trainerGender == 0 ? \"Male\"") == std::string::npos);
+    {
+        namespace Page = PokeBank::UIModel::ClassicTrainerPage;
+        for (bool playTime : {false, true})
+            for (bool gender : {false, true}) {
+                for (const auto& row : Page::rows({2, false, playTime, gender}))
+                    assert(row.field != Page::Field::Gender);
+                int crystalGender = 0;
+                for (const auto& row : Page::rows({2, true, playTime, gender}))
+                    crystalGender += row.field == Page::Field::Gender;
+                assert(crystalGender == 1);
+            }
+    }
 
     std::cout << "GSC shared editor Trainer/field-layout/session/export + hardware regression contract: PASS\n";
     return 0;

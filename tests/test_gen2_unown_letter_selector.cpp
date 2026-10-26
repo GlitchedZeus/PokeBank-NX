@@ -178,8 +178,9 @@ int main() {
     const auto workspace = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     require(workspace.find("if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {\n            chooseUnownLetter(screen, p);") != std::string::npos,
             "Values row 6 opens the letter selector for Unown");
-    require(workspace.find("SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny, p.form);") != std::string::npos,
-            "portrait sprite keyed by the draft letter");
+    require(workspace.find("SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny,\n        p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(") != std::string::npos &&
+            workspace.find("drawPortrait(fb, x, y, p.species, p.shiny, p.form)") == std::string::npos,
+            "portrait sprite keyed by the letter computed from the current DVs");
     require(workspace.find("unownLetter({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]})") != std::string::npos,
             "Letter row text computed from the DVs");
     const auto finalFix = read("src/UI/Gen2HardwareFinalFix.inc");

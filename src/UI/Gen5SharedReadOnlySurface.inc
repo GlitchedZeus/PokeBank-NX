@@ -170,6 +170,7 @@ struct PendingPidChange5 {
 };
 struct Gen5EditorState : EditorSurface::EditorState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool workspaceOpen = false;
     PendingPidChange5 pid;
     SharedScrollbar::State bagAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
@@ -183,9 +184,9 @@ std::string pidHex5(uint32_t pid) {
 }
 Gen5EditorState& editorStateFor(const TrainerViewScreen& screen) {
     static Gen5EditorState state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }

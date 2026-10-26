@@ -28,6 +28,7 @@ using PokeVault::Integration::Gen1::ShinyDVs;
 
 struct UX3State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     PokeBank::UIModel::ControllerNavigation navigation;
     bool pickerPreviewShiny = false;
@@ -37,9 +38,9 @@ struct UX3State {
 
 UX3State& ux3StateFor(const TrainerViewScreen& screen) {
     static UX3State state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
