@@ -813,6 +813,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, A::moveGame(screen));
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
+        // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+        // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+        state.pickerViewport.ensure(state.pickerRow, count, visible);
         const int first = state.pickerViewport.firstRow;
         const int last = std::min(count, first + visible);
         const int viewportTop = y + moveLayout.rowStart;
@@ -841,6 +844,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
         const int heldColumns=HeldItemGrid::columnsForSearch(state.heldItemSearch.open());
+        state.pickerViewport.ensure(state.pickerRow, count, HeldItemGrid::rows, heldColumns);   // see the list draws below
         SharedHeldItemPickerPresentation::drawHeading(
             fb, x, y, A::kHeldItemTitle, state.pickerRow, state.heldItemSearch.noMatches?0:count,state.heldItemSearch.open());
         fb.drawText(x + w - 250, y + 55,
@@ -902,6 +906,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             state.pickerMetContext.scope(state.pickerOtherHistories), w - 195, TextStyle::Caption),
             Colors::TextSecondary, TextStyle::Caption);
     const int visible = compactChoices ? visibleChoices : 10;
+    // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+    // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+    state.pickerViewport.ensure(state.pickerRow, count, visible);
     const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
     const int rowStep = naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42;

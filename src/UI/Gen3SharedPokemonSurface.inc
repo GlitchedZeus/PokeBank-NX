@@ -455,7 +455,10 @@ std::string detailsValue(const TrainerViewScreen& screen,
         case 4: return p.otName.empty() ? "(none)" : p.otName;
         case 5: return std::to_string(p.tid);
         case 6: return std::to_string(p.sid);
-        case 7: return Names::getItemNameG3(p.heldItem);
+        // CG71: a stored Safari Ball / Berry Juice held item is kept and labelled honestly
+        // ("unreleased as held item"); the picker never offers it.
+        case 7: return std::string(Names::getItemNameG3(p.heldItem)) +
+                       (Gen3::storedUnreleasedHeldItem(p.heldItem) ? Gen3::kUnreleasedHeldItemShortSuffix : "");
         case 8: return std::to_string(p.friendship);
         case 9: return Enums::getLanguageName(p.language);
         case 10: return exactOriginText(screen, p);
@@ -591,9 +594,12 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
 std::string pickerValueLabel(const State& state, uint16_t value) {
     switch (state.pickerTarget) {
         case PickerTarget::HeldItem:
+            // CG71: a stored unreleased item is listed only so it can be kept (the stored value is
+            // appended); it carries the same honest label as the DETAILS row.
             return value == 0 ? "None" :
                 Names::machineDisplayLabel(Enums::GameVersion::FRLG, value,
-                                           Names::getItemNameG3(value));
+                                           Names::getItemNameG3(value)) +
+                (Gen3::storedUnreleasedHeldItem(value) ? Gen3::kUnreleasedHeldItemShortSuffix : "");
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
         case PickerTarget::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
@@ -857,7 +863,13 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
 
-    if (row == 7) { openValuePicker(screen, state, PickerTarget::HeldItem); return; }
+    if (row == 7) {
+        openValuePicker(screen, state, PickerTarget::HeldItem);
+        if (Gen3::storedUnreleasedHeldItem(p.heldItem))
+            screen.postStatus(std::string(Names::getItemNameG3(p.heldItem)) +
+                " is unreleased as a held item in Gen III; it is kept unless you choose another", 360);
+        return;
+    }
     if (row == 15) { openValuePicker(screen, state, PickerTarget::Form); return; }
     if (row == 9) {
         // Inline toggle: A cycles Japanese / English / French / Italian / German / Spanish in
@@ -1867,6 +1879,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, kGen3MoveGame);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
+        // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+        // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+        state.pickerViewport.ensure(state.pickerRow, count, visible);
         const int first = state.pickerViewport.firstRow;
         const int last = std::min(count, first + visible);
         const int viewportTop = y + moveLayout.rowStart;
@@ -1895,6 +1910,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
         const int heldColumns=HeldItemGrid::columnsForSearch(state.heldItemSearch.open());
+        state.pickerViewport.ensure(state.pickerRow, count, HeldItemGrid::rows, heldColumns);   // see the list draws below
         SharedHeldItemPickerPresentation::drawHeading(
             fb, x, y, "Held Item — Generation III", state.pickerRow, state.heldItemSearch.noMatches?0:count,state.heldItemSearch.open());
         fb.drawText(x + w - 250, y + 55,
@@ -1958,6 +1974,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
     const int visible = compactChoices ? visibleChoices : 10;
+    // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+    // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+    state.pickerViewport.ensure(state.pickerRow, count, visible);
     const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
     const int rowStep = naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42;

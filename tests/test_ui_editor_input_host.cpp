@@ -5,7 +5,10 @@
 #include "HostUi.h"
 
 #include "Encryption/Encryption3FRLG.h"
+#include "Integration/Gen3/Gen3HeldItems.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
+#include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "Enums/Ball.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -71,6 +74,7 @@ struct Driver {
     }
     // A clean tap: finger down on the target's centre, then up at the same point.
     bool tap(int id) {
+        frame();   // a finger lands at least one frame after what it aims at is drawn
         const auto* b = target(id);
         if (!b) return false;
         const auto x = static_cast<u32>(b->x + b->w / 2), y = static_cast<u32>(b->y + b->h / 2);
@@ -463,7 +467,11 @@ void gen3HeldItem() {
         d.tap(partial);
         chose("tap on the partly visible row after a finger scroll");
     }
-    if (open()) { d.tap(kCell + 3); chose("tap at the top"); }
+    if (open()) {
+        for (int i = 0; i < 20; ++i) d.press(HidNpadButton_Up);   // up to the first row of the grid
+        check(d.target(kCell) != nullptr && d.tap(kCell + 3), "Gen III Held Item: the first page publishes its cells");
+        chose("tap at the top");
+    }
     if (open()) { d.press(HidNpadButton_Right); d.press(HidNpadButton_Down); d.press(HidNpadButton_Down); d.press(HidNpadButton_A); chose("A in the middle"); }
     if (open()) { for (int i = 0; i < 30; ++i) d.press(HidNpadButton_R); d.press(HidNpadButton_A); chose("A at the bottom"); }
     if (open()) {
@@ -660,6 +668,83 @@ void gen5PokerusKeepWithStoredStrain() {
     check(staged() == 0x21, "Gen V cycling back restores the exact stored byte (got " + std::to_string(staged()) + ")");
 }
 
+// CG71 (owner Oct 25 Gen III held-item decision). Caught Ball, held item and Bag are separate
+// rules: Safari Ball (5) is refused as a NEW held item (PKHeX ItemStorage3RS.Unreleased) yet stays a
+// valid caught Ball (1-12); a record that already holds it keeps it, labelled honestly.
+void gen3SafariBallRoles() {
+    namespace H = PokeVault::Integration::Gen3;
+    check(H::nativeHeldItemSupported(5) && !H::releasedHeldItem(5) && H::storedUnreleasedHeldItem(5),
+          "Safari Ball is a native held-item value but not a released held item");
+    check(!H::releasedHeldItem(44) && H::storedUnreleasedHeldItem(44), "Berry Juice: same rule");
+    check(H::releasedHeldItem(13) && !H::storedUnreleasedHeldItem(13), "Potion stays a released held item");
+    const auto balls = Enums::getBallList(Enums::GameVersion::FRLG);
+    check(balls.size() == 12 && balls[4] == 5, "Gen III caught Balls are 1-12, Safari Ball (5) included");
+
+    auto& g3 = openGen3(5);   // a stored record that already holds a Safari Ball
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyEdit(d)) return;
+    check(drawnValue("Held Item").rfind("Safari Ball (", 0) == 0,
+          "a stored Safari Ball held item is labelled honestly (got " + drawnValue("Held Item") + ")");
+    // The Held Item picker never offers it, explains why, and the stored item is not silently deleted.
+    d.tap(31007);
+    check(d.screen.storageStatus.find("unreleased as a held item") != std::string::npos,
+          "opening the picker explains the unreleased held item (status: " + d.screen.storageStatus + ")");
+    bool offered = false;
+    bool keptLabelled = false;
+    const auto scan = [&] {
+        for (const auto& t : HostUi::texts) {
+            if (t == "Safari Ball") offered = true;                       // a plain, choosable cell
+            if (t == "Safari Ball (unreleased)") keptLabelled = true;      // the stored value, kept
+        }
+    };
+    scan();
+    d.press(HidNpadButton_L);   // the first page, where an id-5 item would sit by number
+    scan();
+    for (int i = 0; i < 30; ++i) d.press(HidNpadButton_R);   // the last page, where the kept value sits
+    scan();
+    check(!offered, "the Held Item picker never offers Safari Ball as a plain choice");
+    check(keptLabelled, "the stored Safari Ball is listed only as the labelled, kept value");
+    d.press(HidNpadButton_B);
+    check(drawnValue("Held Item").rfind("Safari Ball (", 0) == 0, "closing the picker keeps the stored item");
+    // As a caught Ball, Safari is a normal choice: Ball picker -> Safari Ball -> Keep.
+    for (int i = 0; i < 20 && !d.target(31011); ++i) d.press(HidNpadButton_Down);
+    check(d.tap(31011) && d.target(4000 + 4) != nullptr, "the Ball picker lists Safari Ball (5th)");
+    // The picker's FIRST draw (its viewport still unset) publishes the same cells as the next one:
+    // it used to start at row -1 (reading pickerValues[-1], caught by ASan) and shift every hitbox.
+    const int firstFrameY = d.target(4000 + 4) ? d.target(4000 + 4)->y : -1;
+    d.frame();
+    check(d.target(4000 + 4) && d.target(4000 + 4)->y == firstFrameY, "a just-opened picker's hitboxes do not shift");
+    d.tap(4000 + 4);
+    check(drawnValue("Ball") == "Safari Ball", "Safari Ball is chosen as the caught Ball (got " + drawnValue("Ball") + ")");
+    d.press(HidNpadButton_X);
+    std::string error;
+    const auto staged = g3.trainer->stagedPokemon()->partyPokemon(0, error);
+    check(staged && staged->ball == 5, "Keep stages Safari Ball as the caught Ball");
+    check(staged && staged->heldItem == 5, "Keep leaves the stored Safari Ball held item in place");
+    bool heldRow = false;
+    for (const auto& c : g3.trainer->stagedPokemon()->pendingChanges())
+        if (c.label.find("Held Item") != std::string::npos) heldRow = true;
+    check(!heldRow, "Review lists no Held Item change (nothing was rewritten)");
+    // A NEW held item can never be Safari Ball / Berry Juice: the backend refuses it.
+    auto copy = PokeVault::Integration::Gen3::StagedPokemonEditor::create(g3.bytes, G3::SourceGame::FireRedGBA, error);
+    const auto heldEdit = [](uint16_t item) {
+        PokeVault::Integration::Gen3::BoxPokemonEdit e;
+        e.heldItem = item;
+        return e;
+    };
+    const auto ballEdit = [](uint8_t ball) {
+        PokeVault::Integration::Gen3::BoxPokemonEdit e;
+        e.ball = ball;
+        return e;
+    };
+    check(copy && !copy->stagePartyPokemonEdit(0, heldEdit(44), error),
+          "the backend refuses Berry Juice as a new held item");
+    check(copy && !copy->stagePartyPokemonEdit(0, heldEdit(5), error) &&
+              copy->stagePartyPokemonEdit(0, ballEdit(5), error),
+          "the backend refuses Safari Ball as a held item but accepts it as the caught Ball");
+}
+
 } // namespace
 
 int main() {
@@ -673,6 +758,7 @@ int main() {
     gen3NoStateAcrossScreens();
     gen5NoStateAcrossScreens();
     gen5PokerusKeepWithStoredStrain();
+    gen3SafariBallRoles();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;
