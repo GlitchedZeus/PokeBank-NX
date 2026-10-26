@@ -111,24 +111,31 @@ assert "std::clamp(touchTap - 2000, 1, 251);" not in gen2
 
 gen2_item = read("src/UI/Gen2PokemonEditorFoundation.inc")
 require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
-        "screen.touchedButtonId(touch)",
-        "state.itemChoiceIndex = touchTap - 3000;",
-        "state.itemScroll.updateVertical(",
+        "SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport,",
+        "state.itemChoiceIndex, count, state.heldItemSearch.open(), px, py,",
         "state.itemScroll.offset()",
         "TouchPickerViewport itemViewport;",
-        "state.itemViewport.firstRow, maxFirstRow + 1",
-        "state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, columns)",
-        "state.itemViewport.containsSelection(",
         "const int firstRow = state.itemViewport.firstRow;",
         "appendClippedTouchButton(screen.touchButtons, 3000 + i")
+# Round 6 L06: the Gen II / III / IV-V Held Item grids share one input step. Its tap is
+# release-confirmed (justTapped, never a contact), scrolls the viewport only, and a hidden
+# focus is revealed before A commits (behaviour: tests/test_held_item_input.cpp).
+held_step = read("include/UI/SharedHeldItemInput.h")
+require(held_step, "include/UI/SharedHeldItemInput.h",
+        "if (!touch.justTapped() || !inside(viewport(modalX, modalY, searchOpen), touch.startX(), touch.startY()))",
+        "scroll.updateVertical(touch, v.x, v.y, v.w, v.h, Grid::rowPitch, view.firstRow, maxFirst + 1);",
+        "view.reveal(selected, count, Grid::rows, columns);",
+        "if (!view.containsSelection(selected, count, Grid::rows, columns)) {")
+assert "touchedButtonDownId" not in held_step and "justTouchedDown" not in held_step
 
 # A provisional contact in the Gen II held-item grid must not move the
 # choice, even if the finger began on an item and later turned into a swipe.
 gen2_contact = gen2_item.split("bool handleItemPicker(", 1)[1].split(
     "bool handleConfirm(", 1)[0]
 assert "touchedButtonDownId(touch)" not in gen2_contact
-assert "state.itemChoiceIndex = touchTap - 3000;" in gen2_contact
-assert "state.itemScroll.updateVertical(" in gen2_contact
+assert "SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport," in gen2_contact
+assert "state.itemChoiceIndex =" not in gen2_contact.split("SharedHeldItemInput::update(", 1)[0].split(
+    "if (down & HidNpadButton_X) {", 1)[0]
 
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
 for token in (
@@ -158,8 +165,7 @@ gen1_mode = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
 assert "touchedButtonDownId(touch)" not in gen1_mode
 for rel, snippets in (
     ("src/UI/Gen2PokemonEditorFoundation.inc", (
-        "const int touchTap = screen.touchedButtonId(touch);",
-        "state.itemChoiceIndex = touchTap - 3000;",
+        "SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport,",
     )),
     ("src/UI/Gen3SharedPokemonSurface.inc", (
         "const int touchTap = screen.touchedButtonId(touch);",

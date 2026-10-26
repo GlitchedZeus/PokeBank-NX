@@ -19,7 +19,13 @@ class PKSEFramebuffer {
 public:int dims=0;int getWidth()const{return 1280;}int getHeight()const{return 720;}
     void drawFilledRect(int,int,int,int,Color){++dims;}
 };
-struct TouchInput {int completedTarget=-1;};
+struct TouchInput {
+    int completedTarget=-1;
+    // 7D: a completed tap (start and release points) for SharedPopupDismiss.
+    bool tapped=false;int sx=0,sy=0,ex=0,ey=0;
+    bool justTapped()const{return tapped;}
+    int startX()const{return sx;}int startY()const{return sy;}int x()const{return ex;}int y()const{return ey;}
+};
 struct Navigation {
     int resets=0;void reset(){++resets;}
     uint64_t apply(uint64_t down,uint64_t,int,int,uint64_t,uint64_t,uint64_t,uint64_t){return down;}
@@ -115,6 +121,18 @@ int main() {
         assert(ClassicPartyActions::handle(screen,HidNpadButton_A|HidNpadButton_B,0,0,0,{}));
         assert(!ClassicPartyActions::active(screen));
         assert(!ClassicPartyActions::handle(screen,HidNpadButton_A,0,0,0,{}));
+        // 7D: a completed tap outside the drawn sheet closes it exactly like B and enters no
+        // session; a tap inside the sheet (not on a row) does not close it.
+        reset();assert(ClassicPartyActions::open(screen,0));
+        assert(ClassicPartyActions::handle(screen,HidNpadButton_B,0,0,0,{}));
+        const int afterB=mode();
+        reset();assert(ClassicPartyActions::open(screen,0));
+        {PKSEFramebuffer fb;assert(ClassicPartyActions::draw(screen,fb));}
+        const auto g=PokeBank::UIModel::NarrowPokemonMenu::geometry(4,1280,720,56);
+        assert(ClassicPartyActions::handle(screen,0,0,0,0,{-1,true,g.x+8,g.y+8,g.x+9,g.y+9}));
+        assert(ClassicPartyActions::active(screen));
+        assert(ClassicPartyActions::handle(screen,0,0,0,0,{-1,true,20,40,22,41}));
+        assert(!ClassicPartyActions::active(screen) && mode()==afterB);
     }
     std::cout<<"Actual Gen I-III Party coordinator: four shared rows, controller/touch parity, native sessions, cancel priority PASS\n";
 }

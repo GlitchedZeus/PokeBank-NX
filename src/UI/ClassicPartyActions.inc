@@ -1,5 +1,6 @@
 #include "UI/ClassicPartyActions.h"
 #include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedPopupDismiss.h"
 
 // One Party sheet. The existing generation surfaces own the View / Edit /
 // Origin sessions; their explicit Party target selects the native backend.
@@ -75,6 +76,8 @@ bool open(TrainerViewScreen& screen,int slot) {
 }
 bool handle(TrainerViewScreen& screen,uint64_t down,uint64_t held,int stickX,int stickY,const TouchInput& touch) {
     if(!active(screen))return false;
+    // 7D: a completed tap outside the actions sheet closes it like B; the return consumes it.
+    if(SharedPopupDismiss::tappedOutside(touch)){close(screen);return true;}
     auto& selected=row(screen);
     const auto list=actions();
     const uint64_t nav=screen.controllerNavigation.apply(down,held,stickX,stickY,
@@ -129,6 +132,11 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     drawNarrowPokemonActions(fb,screen.touchButtons,model,row(screen),
         pokemon?Names::getSpeciesName(pokemon->speciesID()):"Party Pokémon",
         "PARTY / SOURCE SAVE IMMUTABLE",89000);
+    {   // 7D: the sheet's frame, so a tap outside it closes it
+        const auto g=PokeBank::UIModel::NarrowPokemonMenu::geometry(model.count,fb.getWidth(),fb.getHeight(),
+            SharedPopupDismiss::kNavBarHeight);
+        SharedPopupDismiss::publish(g.x,g.y,g.width,g.height);
+    }
     SharedEditorChrome::drawPickerFooter(fb,{true,false});
     return true;
 }

@@ -187,6 +187,47 @@ void classicGeneration(int generation, const qasynth::Bytes& bytes, const std::s
         reviewRoundTrip(d, generation, game, mode);
 }
 
+// ---- Gen I Bag whose inventory failed validation ("Inventory unavailable"). ----
+// The staged session is not the Bag: Pokemon / Trainer changes are still there to review, so the
+// Bag page keeps the same + Review key and footer slot as a valid Bag (coordinator follow-up to
+// R's layout sweep). Synthetic save: the bag count byte (PKHeX SAV1Offsets 0x25C9) above its
+// 20-slot capacity, so Gen1::decodeInventory rejects it; a valid twin has a terminated empty list.
+bool drawn(const std::string& text) {
+    for (const auto& t : HostUi::texts)
+        if (t == text) return true;
+    return false;
+}
+
+void gen1InvalidInventoryBag() {
+    using Kind = PokeVault::Safety::SourceKind;
+    for (const bool valid : {true, false}) {
+        auto bytes = qasynth::gen1::save();
+        bytes[0x25C9] = valid ? 0 : 0x30;   // count; 0x30 > 20 carried slots
+        bytes[0x25CA] = 0xFF;               // terminator of an empty list
+        bytes[0x27E6] = 0;                  // PC items (0x27E6): a valid empty list either way
+        bytes[0x27E7] = 0xFF;
+        qasynth::gen1::forge(bytes);
+        auto* opened = openClassic(bytes, "red_gb", Kind::RetroArchLegacy, "RetroArch");
+        if (!opened) return;
+        const std::string what = std::string("Gen 1 red_gb ") + (valid ? "valid" : "invalid") + " Bag";
+        check(opened->trainer->items.empty() != valid, what + ": inventory decode as built");
+        Driver d{*opened->screen, {}, {}};
+        d.frame();
+        d.screen.detailViewActive = true;
+        d.screen.selectedMode = View::Items;
+        d.screen.selectedCategory = 0;
+        d.screen.selectedItemIndex = 0;
+        d.frame();
+        d.frame();
+        if (!valid) check(drawn("Inventory unavailable"), what + ": the unavailable panel is shown");
+        // The footer's "Review" badge label (the + glyph is drawn as an icon), before B Back.
+        check(drawn("Review") && drawn("Back"), what + ": footer names Review");
+        reviewRoundTrip(d, 1, valid ? "red_gb valid inventory" : "red_gb invalid inventory", View::Items);
+        d.frame();
+        check(drawn("Review"), what + ": footer still names Review after Review closes");
+    }
+}
+
 // ---- Gen V: a Black save with one party Pikachu (the L06 harness fixture shape). ----
 std::vector<uint8_t> gen5Fixture() {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
@@ -523,6 +564,7 @@ void gen3ExportRefusesChangedSource() {
 int main() {
     using Kind = PokeVault::Safety::SourceKind;
     classicGeneration(1, qasynth::gen1::save(), "red_gb", Kind::RetroArchLegacy, "RetroArch");
+    gen1InvalidInventoryBag();
     classicGeneration(2, fixture(GS), "gold_gbc", Kind::RetroArchLegacy, "RetroArch");
     gen3Screens();
     gen3Workspaces();

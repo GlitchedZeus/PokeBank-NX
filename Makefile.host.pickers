@@ -59,6 +59,33 @@ EVENT_YEAR_SANITIZE := $(HOST_BUILD)/test_event_year_source_sanitize
 EVENT_YEAR_SOURCES := tests/test_event_year_source.cpp src/Names/LocationNames.cpp
 EVENT_YEAR_INPUTS := $(EVENT_YEAR_SOURCES) include/Names/LocationDisplayNames.h include/Names/LocationNames.h
 
+# Round 6 L06: Gen II-V Held Item grid input (tap and A commit the same item; taps never lost).
+HELD_ITEM_INPUT_TEST := $(HOST_BUILD)/test_held_item_input
+HELD_ITEM_INPUT_SANITIZE := $(HOST_BUILD)/test_held_item_input_sanitize
+HELD_ITEM_INPUT_INPUTS := tests/test_held_item_input.cpp include/UI/SharedHeldItemInput.h \
+    include/UI/SharedHeldItemPicker.h include/UI/TouchScroll.h include/UI/TouchGesture.h \
+    include/UI/ItemPickerSearch.h include/UI/ItemPickerSort.h tests/touch_fakes/UI/TouchInput.h \
+    src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+    src/UI/SharedPokemonEditorSurface.inc include/UI/Gen2PokemonEditorRules.h \
+    include/Integration/Gen5/Gen5EditorFields.h
+
+# Round 6 7D: tap outside a non-destructive editor picker closes it like B, with no tap-through.
+POPUP_DISMISS_TEST := $(HOST_BUILD)/test_popup_dismiss
+POPUP_DISMISS_SANITIZE := $(HOST_BUILD)/test_popup_dismiss_sanitize
+POPUP_DISMISS_INPUTS := tests/test_popup_dismiss.cpp include/UI/SharedPopupDismiss.h \
+    include/UI/SharedEditorChrome.h tests/touch_fakes/UI/TouchInput.h \
+    src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+    src/UI/SharedPokemonEditorSurface.inc
+
+# Round 6 P5: no two identical rows in any Gen IV / V Met Location list (POKÉPARK / Festa / twins).
+MET_ROWS_DISTINCT_TEST := $(HOST_BUILD)/test_met_location_rows_distinct
+MET_ROWS_DISTINCT_SANITIZE := $(HOST_BUILD)/test_met_location_rows_distinct_sanitize
+MET_ROWS_DISTINCT_SOURCES := tests/test_met_location_rows_distinct.cpp src/Names/LocationNames.cpp src/Names/SpeciesNames.cpp
+MET_ROWS_DISTINCT_INPUTS := $(MET_ROWS_DISTINCT_SOURCES) include/Names/LocationDisplayNames.h \
+    include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc \
+    include/Integration/Gen5/Gen5EncounterLocations.h src/UI/Gen4SharedPokemonSurface.inc \
+    src/UI/Gen5SharedReadOnlySurface.inc src/UI/SharedPokemonEditorSurface.inc
+
 # tests/test_touch_scroll_state.cpp (TouchScroll.h, Lane P) was only built by the touch-input
 # workflow; QA Part 9 found no host Makefile ran it. It runs in host-test / host-sanitize here.
 TOUCH_SCROLL_STATE_TEST := $(HOST_BUILD)/test_touch_scroll_state
@@ -66,10 +93,10 @@ TOUCH_SCROLL_STATE_SANITIZE := $(HOST_BUILD)/test_touch_scroll_state_sanitize
 TOUCH_SCROLL_STATE_INPUTS := tests/test_touch_scroll_state.cpp include/UI/TouchScroll.h \
     include/UI/TouchGesture.h tests/touch_fakes/UI/TouchInput.h
 
-HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE)
-host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST)
-host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE)
+HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST) $(HELD_ITEM_INPUT_TEST) $(POPUP_DISMISS_TEST) $(MET_ROWS_DISTINCT_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE) $(HELD_ITEM_INPUT_SANITIZE) $(POPUP_DISMISS_SANITIZE) $(MET_ROWS_DISTINCT_SANITIZE)
+host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST) $(HELD_ITEM_INPUT_TEST) $(POPUP_DISMISS_TEST) $(MET_ROWS_DISTINCT_TEST)
+host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE) $(HELD_ITEM_INPUT_SANITIZE) $(POPUP_DISMISS_SANITIZE) $(MET_ROWS_DISTINCT_SANITIZE)
 
 $(ITEM_SEARCH_TEST): $(ITEM_SEARCH_INPUTS)
 	@mkdir -p $(HOST_BUILD)
@@ -160,3 +187,27 @@ $(SHARED_SCROLLBAR_TEST): $(SHARED_SCROLLBAR_INPUTS)
 $(SHARED_SCROLLBAR_SANITIZE): $(SHARED_SCROLLBAR_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude $(SHARED_SCROLLBAR_SOURCES) -o $@
+
+$(HELD_ITEM_INPUT_TEST): $(HELD_ITEM_INPUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/touch_fakes -Iinclude tests/test_held_item_input.cpp -o $@
+
+$(HELD_ITEM_INPUT_SANITIZE): $(HELD_ITEM_INPUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude tests/test_held_item_input.cpp -o $@
+
+$(POPUP_DISMISS_TEST): $(POPUP_DISMISS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/touch_fakes -Iinclude tests/test_popup_dismiss.cpp -o $@
+
+$(POPUP_DISMISS_SANITIZE): $(POPUP_DISMISS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude tests/test_popup_dismiss.cpp -o $@
+
+$(MET_ROWS_DISTINCT_TEST): $(MET_ROWS_DISTINCT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MET_ROWS_DISTINCT_SOURCES) -o $@
+
+$(MET_ROWS_DISTINCT_SANITIZE): $(MET_ROWS_DISTINCT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MET_ROWS_DISTINCT_SOURCES) -o $@
