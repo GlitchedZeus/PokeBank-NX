@@ -1,0 +1,103 @@
+{
+  "status": "Local gates PASS; exact-head CI pending",
+  "starting_wip": "865688c365db7d35b3ef367223ee77983117a4ed",
+  "prior_passing_code": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+  "focused": {
+    "status": "PASS",
+    "configurations": 20,
+    "compilers": [
+      "g++",
+      "clang++"
+    ],
+    "suites": [
+      "test_gen4_ground_tile",
+      "test_legality_gen4",
+      "test_legality_gen5",
+      "test_legality_gen5_adapter",
+      "test_gen34_language_analyzer"
+    ],
+    "modes": [
+      "normal",
+      "ASan/UBSan"
+    ],
+    "leak_detection": true,
+    "halt_on_error": true
+  },
+  "replay": [
+    {
+      "cohort": "retained-gen4",
+      "records": 50995,
+      "prior_sha256": "8e2a4dcf7cf2cb7bacb97d3a55c0d187fe6b8d5bcd1d246db6ce2b830a060099",
+      "baseline_matches_prior": true,
+      "repaired_sha256": "8e2a4dcf7cf2cb7bacb97d3a55c0d187fe6b8d5bcd1d246db6ce2b830a060099",
+      "byte_identical": true,
+      "raw_line_changes": 0,
+      "verdict_changes": 0,
+      "counts": {
+        "NOPROBLEMS": 22521,
+        "INVALID": 27815,
+        "INCOMPLETE": 659
+      },
+      "changed_ids": []
+    },
+    {
+      "cohort": "prior-holdout-gen4",
+      "records": 25999,
+      "prior_sha256": "c6d84aac7c026ba7bc89c0a0cc3653319fe66d423061ad7a0af983461c5923b8",
+      "baseline_matches_prior": true,
+      "repaired_sha256": "c6d84aac7c026ba7bc89c0a0cc3653319fe66d423061ad7a0af983461c5923b8",
+      "byte_identical": true,
+      "raw_line_changes": 0,
+      "verdict_changes": 0,
+      "counts": {
+        "NOPROBLEMS": 15956,
+        "INVALID": 9815,
+        "INCOMPLETE": 228
+      },
+      "changed_ids": []
+    },
+    {
+      "cohort": "retained-gen5",
+      "records": 135193,
+      "prior_sha256": "1641e2721e4419b2cd568cebf832c0d3e2e8274ba0140ae07f8f279b3efe2543",
+      "baseline_matches_prior": true,
+      "repaired_sha256": "1641e2721e4419b2cd568cebf832c0d3e2e8274ba0140ae07f8f279b3efe2543",
+      "byte_identical": true,
+      "raw_line_changes": 0,
+      "verdict_changes": 0,
+      "counts": {
+        "NOPROBLEMS": 58505,
+        "INVALID": 72410,
+        "INCOMPLETE": 4278
+      },
+      "changed_ids": []
+    }
+  ],
+  "directed": {
+    "original_positives": 10,
+    "corruptions": 70,
+    "previous_false_clean": 63,
+    "both_oracles_accept_corruptions": 63,
+    "repaired_rejects_corruptions": 70,
+    "oracle_exceptions_added": 0
+  },
+  "native_regression": {
+    "corrupt_bytes_per_configuration": 2310,
+    "original_fixtures": 10,
+    "max24_preserved": true,
+    "inputs_immutable": true
+  },
+  "workflow_yaml": {
+    "files": 46,
+    "status": "PASS"
+  },
+  "app_boundary": {
+    "status": "PASS",
+    "titles": 4,
+    "app_sha": "11b44e09562ddbfc3e9e6dc08b138f022b8c3d3a",
+    "deployment": "none; read-only host bridge"
+  },
+  "oracle_exceptions_added": 0,
+  "old_fixture_expectations_changed": false,
+  "full_parity": "NOT ACHIEVED; frozen metrics and unresolved histories preserved"
+}

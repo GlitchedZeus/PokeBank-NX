@@ -1,3 +1,7 @@
+# October 25 native terrain continuation
+
+The next repair rejects wrapped Gen IV terrain bytes in both encounter selection and final verification, including Gen IV origins in PK5. See [native terrain evidence](../native-terrain-20261025/README.md). All 20 affected compiler/mode configurations pass; 212,187 retained outputs are byte-identical, and the current-app read-only bridge passes four titles. Two fresh pinned PKHeX references share the documented 63-case corruption blind spot; raw results are retained and no oracle exception is added. Exact-head CI remains the publication gate. Application PR #307 and main are unchanged.
+
 # October25 historical evidence continuation
 
 Current continuation starts from PR #314 `0b01ad6c614c1652a6c9591195ebff22cb761d8f`; owner research was audited and implemented on WIP `wip/legality-evidence-20261025`. Published code head: `45448775e3dba93a9410c2d7cab1e7a62c0f63d7`. See [current progress](../historical-evidence-20261025/PROGRESS.md) and [source assessment](../historical-evidence-20261025/SOURCE_ASSESSMENT.md) for the verified reader correction, exact source pins, 52 passing local configurations and 135,193 unchanged retained Gen V outputs. Preserve all prior evidence and metrics below.

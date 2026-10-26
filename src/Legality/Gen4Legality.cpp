@@ -1648,9 +1648,7 @@ void Analyzer::verifyGroundTile() {
     uint32_t allow = 0;
     if (enc_.kind == EncKind::Slot) { hasTile = true; allow = enc_.area->groundTile; }
     else if (enc_.kind == EncKind::Static) { hasTile = true; allow = D::kStatics[enc_.index].groundTile; }
-    bool valid;
-    if (!hasTile || allow == 1) valid = pk_.groundTile == 0;
-    else valid = (allow & (uint32_t{1} << (pk_.groundTile & 31))) != 0;
+    const bool valid = hasTile ? isGroundTileAllowed(allow, pk_.groundTile) : pk_.groundTile == 0;
     if (!valid) invalid(CheckIdentifier::Encounter, "Encounter ground tile type does not match the encounter");
 }
 

@@ -531,7 +531,7 @@ Search searchEncounters(const Pk4& pk, const std::vector<Evo>& chain) {
     for (const Candidate& c : e.out) {
         bool hasTile = false;
         const uint32_t allowed = groundTileAllowed(c, hasTile);
-        const bool tileOk = hasTile ? (allowed & (uint32_t{1} << (pk.groundTile & 31))) != 0 : pk.groundTile == 0;
+        const bool tileOk = hasTile ? isGroundTileAllowed(allowed, pk.groundTile) : pk.groundTile == 0;
         if (!tileOk) { defer(Deferral::Tile, c); continue; }
         const Compat compat = typeCompatible(c, pk, s.pidiv.type);
         if (compat != Compat::Match) {

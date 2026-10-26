@@ -40,6 +40,14 @@ inline bool isGen4Version(uint8_t v) noexcept { return v == D::kHG || v == D::kS
 inline bool isGen3Version(uint8_t v) noexcept { return (v >= 1 && v <= 5) || v == 15; }
 inline bool isHGSS(uint8_t v) noexcept { return v == D::kHG || v == D::kSS; }
 
+// A stored terrain byte is an index into the allowed flags, not a value modulo
+// 32. The native HGSS capture path writes BattleSystem_GetTerrainId(), which is
+// bounded by TERRAIN_MAX (24). Check the mask width before shifting so corrupt
+// bytes such as 34 cannot masquerade as Grass (2), including after Poke Transfer.
+inline bool isGroundTileAllowed(uint32_t allowed, uint8_t tile) noexcept {
+    return tile < 32 && (allowed & (uint32_t{1} << tile)) != 0;
+}
+
 // ---------------------------------------------------------------- personal tables
 enum class Table : uint8_t { DP, Pt, HGSS };
 struct Personal {

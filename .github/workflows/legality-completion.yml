@@ -16,6 +16,7 @@ on:
       - 'tests/test_finite_breeding_chain.cpp'
       - 'tests/test_gen3_workspace_legality.cpp'
       - 'tests/test_gen5_gift_receivability.cpp'
+      - 'tests/test_gen4_ground_tile.cpp'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
@@ -43,11 +44,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
-          for name in "${names[@]}"; do "build-completion/$name"; "build-completion/${name}_sanitize"; done
+          for name in "${names[@]}"; do
+            "build-completion/$name" 2>&1 | tee "build-completion/$name.log"
+            "build-completion/${name}_sanitize" 2>&1 | tee "build-completion/${name}_sanitize.log"
+          done
+      - name: Preserve native terrain boundary regressions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-ground-tile-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen4_ground_tile*.log
+            tests/fixtures/gen15_session2/ground_tile.txt
+            docs/legality/native-terrain-20261025/SOURCE_PINS.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Original full-card corpus and provenance negative controls
         run: |
           set -euo pipefail
