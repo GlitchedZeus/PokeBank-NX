@@ -570,7 +570,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // LEFT — identity/details. Every row below the artwork is focusable in all three modes.
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     if (auto* sprite = SpriteManager::getSprite(species, shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(leftX + 63, contentY + 34, 174, 146,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
@@ -637,7 +637,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(gridX + 12, gridY + 406, "Calculated Stat cells are read-only", Colors::TextDim, TextStyle::Caption);
 
     // RIGHT — four real Move rows, semantic compatibility status, then PokeBank's five-axis radar.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     for (int i = 0; i < 4; ++i) {
         const int rowY = contentY + 44 + i * 40;
         const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
