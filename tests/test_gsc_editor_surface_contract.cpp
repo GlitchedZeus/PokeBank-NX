@@ -211,7 +211,7 @@ int main() {
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
-    // Origin & Legality moved from under the move rows into the GEN II DATA pane.
+    // Origin & Legality moved from under the move rows into the Gen II Origin & Legality pane.
     assert(unified.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
     // Touching a visually scrolled Details row must not invoke the old

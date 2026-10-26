@@ -1,4 +1,5 @@
 #include "Integration/Gen3/Gen3HeldItems.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 
 #include "Encryption/Encryption3FRLG.h"
@@ -853,25 +854,30 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         if (error.empty()) error = "Generation III Create failed strict semantic reparse";
         return false;
     }
+    // CG74 (owner Oct 25 P3): Review lists what was created in the shared Gen I-V row shape
+    // (Gen12CreateReview.h): a "<loc> / Add Pokémon" header with "Empty -> SPECIES Lv n", then one
+    // "<loc> / Field" row per value read back from the reparsed record. Empty rows and values left at
+    // the Create default (no moves, no item, no Pokérus, base friendship, zero IVs / EVs) add none.
+    namespace C = PokeVault::Integration::Gen12CreateReview;
+    const std::string loc = recordLabel(box, slot) + " / ";
     changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
-                        recordLabel(box, slot) + " Add Pokemon", "Empty",
-                        after->nickname + " Lv " + std::to_string(after->level)});
-    // CG74 (owner Oct 25 P3): Review lists what was created, one named row per value, read back
-    // from the reparsed record. Values left at the Create default (no item, no Pokérus, base
-    // friendship, zero IVs / EVs) add no row.
+                        loc + std::string(C::kAddPokemon), "Empty",
+                        C::header(Names::getSpeciesName(after->species), after->level)});
     const auto detail=[&](const std::string& label,const std::string& value){
         changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
-                            recordLabel(box,slot)+" "+label,"",value,false,true});
+                            loc+label,"",value,false,true});
     };
     std::string moveList;
     for(const auto move:after->moves)
         if(move)moveList+=(moveList.empty()?"":", ")+std::string(Names::getMoveName(move));
-    detail("Moves",moveList.empty()?"(none)":moveList);
+    if(!moveList.empty())detail("Moves",moveList);
+    detail("Nickname",after->nickname);
+    detail("OT / TID / SID",(after->otName.empty()?std::string("(none)"):after->otName)+" / "+
+           std::to_string(after->tid)+" / "+std::to_string(after->sid));
     if(after->heldItem)
         detail("Held Item",std::string(Names::getItemNameG3(after->heldItem))+
                (storedUnreleasedHeldItem(after->heldItem)?kUnreleasedHeldItemSuffix:""));
     detail("Ball",Enums::getBallName(after->ball));
-    detail("OT",after->otName+" / TID "+std::to_string(after->tid)+" / SID "+std::to_string(after->sid));
     detail("Met",Names::getMetLocationDisplayName(after->originGame,after->metLocation)+
            ", Lv "+std::to_string(after->metLevel));
     detail("Nature",Names::getNatureName(after->nature));
@@ -880,14 +886,9 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     detail("Ability",std::string(Names::getAbilityName(after->ability))+
            " (slot "+std::to_string(after->abilityNumber)+")");
     detail("Language",Enums::getLanguageName(after->language));
-    const auto statLine=[](const std::array<uint8_t,6>& values){
-        std::string line;
-        for(const auto v:values)line+=(line.empty()?"":"/")+std::to_string(v);
-        return line;
-    };
-    constexpr std::array<uint8_t,6> zeroStats{};
-    if(after->ivs!=zeroStats)detail("IVs (HP/Atk/Def/Spe/SpA/SpD)",statLine(after->ivs));
-    if(after->evs!=zeroStats)detail("EVs (HP/Atk/Def/Spe/SpA/SpD)",statLine(after->evs));
+    constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
+    if(const auto ivs=C::nonZero(statLabels,after->ivs);!ivs.empty())detail("IVs",ivs);
+    if(const auto evs=C::nonZero(statLabels,after->evs);!evs.empty())detail("EVs",evs);
     if(after->pokerus)
         detail("Pokérus",std::string((after->pokerus&15)?"Infected":"Cured")+
                " ("+std::to_string(after->pokerus)+")");
