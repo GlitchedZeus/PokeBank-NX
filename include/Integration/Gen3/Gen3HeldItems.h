@@ -41,4 +41,14 @@ inline bool releasedHeldItem(uint16_t item) noexcept {
     return nativeHeldItemSupported(item) &&
            std::find(kUnreleasedHeldItems.begin(),kUnreleasedHeldItems.end(),item)==kUnreleasedHeldItems.end();
 }
+// A record that already holds one of the unreleased items keeps it (never silently deleted); the
+// editor names it honestly. A caught Ball and the Bag are separate rules: Safari Ball (5) stays a
+// valid caught Ball (Enums::getBallList), and Bag validation is its own policy.
+inline bool storedUnreleasedHeldItem(uint16_t item) noexcept {
+    return nativeHeldItemSupported(item) && !releasedHeldItem(item);
+}
+inline constexpr const char* kUnreleasedHeldItemSuffix = " (unreleased as held item)";
+// The 148 px DETAILS value column cannot hold the long form; it shows this short one and the
+// Held Item picker explains it in full when opened.
+inline constexpr const char* kUnreleasedHeldItemShortSuffix = " (unreleased)";
 }
