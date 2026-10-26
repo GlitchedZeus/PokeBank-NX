@@ -2,8 +2,10 @@
 #include "UI/SourceBackupClassification.h"
 
 namespace PokeBank::UIModel::SourceBackups {
+// Every source path this game's history names. `profileIdentity` (32 hex) adds that profile's Gen V
+// export records (exports/gen5/account-<profile>/); no other profile's folder is read.
 inline std::vector<std::string> historicalSources(const std::string& exportsRoot,
-    const std::string& manualRoot,const std::string& game) {
+    const std::string& manualRoot,const std::string& game,const std::string& profileIdentity={}) {
     std::vector<std::string> paths;
     if(!detail::plainName(game))return paths;
     for(const auto& name:detail::children(manualRoot+"/"+game)) {
@@ -20,6 +22,14 @@ inline std::vector<std::string> historicalSources(const std::string& exportsRoot
         const auto m=detail::readManifest(manifest);
         if(m.ok && m.gameId==game)paths.push_back(m.sourcePath);
     }
+    if(const auto account=detail::gen5AccountDir(exportsRoot,profileIdentity);!account.empty())
+        for(const auto& name:detail::children(account)) {
+            if(!detail::gen5RecordName(name))continue;
+            const auto manifest=account+"/"+name+"/"+detail::kGen5ManifestName;
+            if(!PokeVault::Source::ImmutableSnapshot::safePath(manifest,exportsRoot))continue;
+            const auto m=detail::readManifest(manifest);
+            if(m.ok && m.gameId==game)paths.push_back(m.sourcePath);
+        }
     std::sort(paths.begin(),paths.end());paths.erase(std::unique(paths.begin(),paths.end()),paths.end());
     return paths;
 }
@@ -36,7 +46,8 @@ inline bool openSnapshot(const Listing& listing,size_t index,const std::string& 
     }
     const bool manual=e.kind==Kind::ManualBackup;
     const auto root=manual?listing.manualRoot:listing.exportsRoot;
-    const std::string manifest=e.recordDir+"/"+(manual?detail::kBackupManifestName:detail::kManifestName);
+    const std::string manifest=e.recordDir+"/"+(manual?detail::kBackupManifestName:
+                                               detail::manifestNameFor(e.profileScoped));
     ImmutableSnapshot::File metadata;
     if(!ImmutableSnapshot::read(manifest,root,{},metadata,error,64*1024))return false;
     std::string expected;
@@ -56,7 +67,12 @@ inline bool openSnapshot(const Listing& listing,size_t index,const std::string& 
             error="Export manifest no longer matches this source and game";return false;
         }
         bool scoped=false;
-        for(int gen=1;gen<=5;++gen) {
+        if(e.profileScoped) {
+            // Gen V: exactly this listing's profile folder (never another profile's).
+            const auto account=detail::gen5AccountDir(root,listing.profileIdentity);
+            scoped=!account.empty() && e.recordDir.starts_with(account+"/") &&
+                   detail::gen5RecordName(e.recordDir.substr(account.size()+1));
+        } else for(int gen=1;gen<=5;++gen) {
             const auto prefix=root+"/gen"+std::to_string(gen)+"/";
             scoped|=e.recordDir.starts_with(prefix) && detail::plainName(e.recordDir.substr(prefix.size()));
         }

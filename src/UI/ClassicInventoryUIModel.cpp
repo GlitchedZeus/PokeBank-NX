@@ -111,21 +111,6 @@ PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
                                              Inv::quantityPolicyPocket(pocket), itemId);
 }
 
-std::span<const std::string_view> classicInventoryHelpLines() noexcept {
-    static constexpr std::array<std::string_view, 9> kLines{{
-        "A   Edit amount (only when this item has an editable quantity)",
-        "X   Add item from the exact-game, exact-category catalog",
-        "Y   Remove the highlighted item",
-        "L / R   Previous / next supported inventory category",
-        "D-pad / Left Stick   Navigate (hold to repeat)",
-        "+   Inventory Options     -   Help     B   Back / Cancel",
-        "Empty valid categories show (None); X Add remains available.",
-        "Key Items may depend on story flags; warnings do not alter unrelated flags.",
-        "All edits are staged. Export creates an edited copy; the source save is not overwritten.",
-    }};
-    return kLines;
-}
-
 bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {
     return supported && visibleItems == 0;
 }

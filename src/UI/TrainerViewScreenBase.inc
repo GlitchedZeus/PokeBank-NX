@@ -5513,6 +5513,13 @@ int reviewGeneration(const std::string& gameId) {
                             : classicBag ? Entry::Screen::Bag : Entry::Screen::Trainer,
                             reviewGen).glyph;
                     }
+                    // Round 7: the Gen V save hub's + opens Review (Gen5SharedReadOnlySurface browse
+                    // input, Help "+ Review staged ..."); its footer now shows that key too, so no
+                    // screen has a Review key its footer does not name.
+                    if (!detailViewActive && reviewGen == 5) {
+                        spec.review = true;
+                        spec.reviewGlyph = "+";
+                    }
                     instructions = BrowseFooter::instructions(spec);
                 }
             }
@@ -5593,7 +5600,9 @@ int reviewGeneration(const std::string& gameId) {
                     selectedMode==ViewMode::Items?Help::Page::Items:
                     selectedMode==ViewMode::Trainer?Help::Page::Trainer:
                     selectedMode==ViewMode::Party?Help::Page::Party:Help::Page::Pokemon;
-                drawInfoOverlay(fb,"Game Browser Controls",Help::lines(page,generation));
+                // Round 7 (B04): the Bag's Help is "Inventory Controls" in every generation.
+                drawInfoOverlay(fb,page==Help::Page::Items?PokeBank::UIModel::InventoryHelp::kTitle:"Game Browser Controls",
+                                Help::lines(page,generation));
                 return;
             }
             drawInfoOverlay(fb, "Game Browser Controls", {

@@ -216,6 +216,29 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     }
     screen.helpOverlayActive = false;
 
+    // Round 7 (B04): - on the Bag opens the ONE Inventory Help, titled "Inventory Controls" in every
+    // generation (Gen I-III through the inventory overlay, Gen IV / V through the Game Browser Help).
+    screen.detailViewActive = true;
+    screen.selectedMode = View::Items;
+    screen.selectedItemIndex = 0;
+    frame();
+    press(HidNpadButton_Minus);
+    {
+        const std::string where = game + " / Bag Help";
+        verifyFrame(where);
+        bool title = false, stale = false;
+        for (const auto& t : HostUi::visibleText) {
+            title = title || t.text == "Inventory Controls";
+            stale = stale || t.text == "Game Browser Controls" || t.text == "Inventory Help" ||
+                    t.text.find("Inventory Options") != std::string::npos ||
+                    t.text.find("remains available") != std::string::npos;
+        }
+        check(title, where + ": titled Inventory Controls");
+        check(!stale, where + ": no old title or stale rows");
+    }
+    press(HidNpadButton_B);
+    screen.helpOverlayActive = false;
+
     // Party slot 1 through the real input: A opens the action menu, A on its first row (View), and
     // Down + A (Edit). Each surface is captured, then B backs out.
     const auto partyPage = [&] {
@@ -274,7 +297,8 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         checkEditorHeadings(game + " / Create");
 
     // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
-    // its own surface (+ on a browse page, Gen5SharedReadOnlySurface openReviewFromBrowse).
+    // its own surface (Boxes' Review key, Y since Round 7 ReviewEntry: Gen5SharedReadOnlySurface
+    // openReviewFromBrowse).
     press(HidNpadButton_X);
     screen.goBack = false;
     screen.detailViewActive = true;
@@ -284,7 +308,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     frame();
     bool reviewed = false;
     if (gen5) {
-        press(HidNpadButton_Plus);
+        press(HidNpadButton_Y);
         reviewed = true;
     } else if (screen.openStagedReview(false)) {
         frame();
