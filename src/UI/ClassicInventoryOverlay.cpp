@@ -13,6 +13,8 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryHelp.h"
+#include "UI/ClassicGenericUiGuard.h"
 #include "UI/SharedBagAddFlow.h"
 #include "UI/SharedBagAddPicker.h"
 #include "UI/InventoryUIContract.h"
@@ -1041,12 +1043,14 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.helpActive) {
-        fb.drawText(x + 30, y + 20, "Inventory Help", Colors::Text, TextStyle::Heading);
-        // R2-BUG-013: key rows draw their buttons as glyph badges (ScreenChrome::drawGlyphHelpLine);
-        // the notes stay plain text. Rows: ClassicInventoryUIModel classicInventoryHelpLines().
+        // Round 7 (B04): the same "Inventory Controls" Help as the Gen IV / V Bag (InventoryHelp.h);
+        // key rows draw their buttons as glyph badges (ScreenChrome::drawGlyphHelpLine, R2-BUG-013).
+        namespace InvHelp = PokeBank::UIModel::InventoryHelp;
+        fb.drawText(x + 30, y + 20, InvHelp::kTitle, Colors::Text, TextStyle::Heading);
         int rowY = y + 78;
-        for (const auto line : PokeBank::UIModel::classicInventoryHelpLines()) {
-            drawGlyphHelpLine(fb, x + 34, rowY, std::string(line), Colors::TextDim, TextStyle::Body);
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        for (const auto& line : InvHelp::lines(generation)) {
+            drawGlyphHelpLine(fb, x + 34, rowY, line, Colors::TextDim, TextStyle::Body);
             rowY += 48;
         }
         drawNavBar(fb, {{"B", "Close Help"}});
