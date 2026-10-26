@@ -142,10 +142,10 @@ void testWiring() {
     assert(publishers == 7);
     has(read("include/UI/ScreenChrome.h"), "        drawModalSurface(fb, x, y, w, h);\n"
         "        SharedPopupDismiss::publish(x, y, w, h);   // 7D: Help closes on a tap outside it");
-    has(read("src/UI/SaveSelectScreen.cpp"), "            if (SharedPopupDismiss::tappedOutside(touch)) {\n"
-        "                overlay = helpReturnOverlay;");
-    has(read("src/UI/TrainerViewScreenBase.inc"), "            if (SharedPopupDismiss::tappedOutside(touch)) {\n"
-        "                helpOverlayActive = false;\n                return;");
+    has(read("src/UI/SaveSelectScreen.cpp"), "            if ((kDown & (HidNpadButton_B | HidNpadButton_Minus)) || "
+        "SharedPopupDismiss::tappedOutside(touch)) {\n                overlay = helpReturnOverlay;");
+    has(read("src/UI/TrainerViewScreenBase.inc"), "            else if (SharedPopupDismiss::tappedOutside(touch)) "
+        "helpOverlayActive = false;\n            return;");
     has(read("src/UI/ClassicPartyActions.inc"), "if(SharedPopupDismiss::tappedOutside(touch)){close(screen);return true;}");
     // Destructive confirmations never consult it.
     for (const char* rel : {"src/UI/BackupSelectionScreen.cpp", "src/UI/ClassicReleaseActionFix.inc",

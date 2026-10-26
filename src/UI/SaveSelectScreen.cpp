@@ -3790,13 +3790,8 @@ namespace UI {
             return;
         }
         if (overlay == Overlay::Help) {
-            // 7D: a completed tap outside Help closes it like B and is consumed here.
-            if (SharedPopupDismiss::tappedOutside(touch)) {
-                overlay = helpReturnOverlay;
-                helpReturnOverlay = Overlay::None;
-                return;
-            }
-            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) {
+            // 7D: a completed tap outside Help closes it like B; the return below consumes it.
+            if ((kDown & (HidNpadButton_B | HidNpadButton_Minus)) || SharedPopupDismiss::tappedOutside(touch)) {
                 overlay = helpReturnOverlay;
                 helpReturnOverlay = Overlay::None;
             }
