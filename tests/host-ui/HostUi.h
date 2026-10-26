@@ -29,6 +29,8 @@ inline std::vector<std::string> texts;                 // every string the last 
 struct TextRect {
     int x = 0, y = 0, w = 0, h = 0;
     std::string text;
+    int style = -1;          // TextStyle as drawn (Round 7 typography checks)
+    uint32_t rgba = 0;       // the drawn Color, packed as Color::toRGBA8
 };
 inline constexpr int kFontPx[4] = {17, 20, 28, 32};
 inline constexpr int charWidth(int style) noexcept { return style == 0 ? 9 : style == 1 ? 10 : style == 2 ? 14 : 16; }
@@ -41,7 +43,7 @@ inline void resetLayout() {
     footerBars = 0;
     clipOn = false;
 }
-inline void recordText(int x, int y, const std::string& text, int style) {
+inline void recordText(int x, int y, const std::string& text, int style, uint32_t rgba = 0) {
     if (text.empty() || style < 0 || style > 3) return;
     const int px = kFontPx[style];
     int x0 = x, y0 = y + (px * 306 + 500) / 1000, x1 = x + static_cast<int>(text.size()) * charWidth(style);
@@ -51,7 +53,7 @@ inline void recordText(int x, int y, const std::string& text, int style) {
         x1 = std::min(x1, clipX + clipW); y1 = std::min(y1, clipY + clipH);
     }
     if (x1 <= x0 || y1 <= y0) return;
-    visibleText.push_back({x0, y0, x1 - x0, y1 - y0, text});
+    visibleText.push_back({x0, y0, x1 - x0, y1 - y0, text, style, rgba});
 }
 inline void occlude(int x, int y, int w, int h, unsigned alpha) {
     if (alpha < 240 || w <= 0 || h <= 0) return;   // translucent scrims leave text readable

@@ -843,9 +843,7 @@ Color statusColor(Rules::CompatibilityState status) {
 
 void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "DETAILS",
-                state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text,
-                TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "DETAILS");
     const auto& p = state.working;
     const std::array<std::pair<std::string, std::string>, 8> rows{{
         {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
@@ -926,9 +924,7 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
 void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "MOVES",
-                state.panel == Foundation::Panel::Moves ? Colors::Accent : Colors::Text,
-                TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "MOVES");
     fb.drawText(x + 198, y + 43, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 260, y + 43, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {

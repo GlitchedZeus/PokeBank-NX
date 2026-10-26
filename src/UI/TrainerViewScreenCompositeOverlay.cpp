@@ -1,3 +1,4 @@
+#include "UI/SharedPanelHeading.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 #include "UI/ClassicDefaultNickname.h"
