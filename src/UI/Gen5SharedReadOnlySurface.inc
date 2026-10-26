@@ -1168,7 +1168,8 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     }
     if(keys&HidNpadButton_Up)editor.moveRow(-1);
     if(keys&HidNpadButton_Down)editor.moveRow(1);
-    if(keys&(HidNpadButton_Plus|HidNpadButton_Y) ||
+    // Y (or the Review Changes button): the Trainer page's one Review key (ReviewEntry.h).
+    if(keys&HidNpadButton_Y ||
        tap==PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId) {
         if(!state.openReviewFromBrowse(ws))
             screen.postStatus("No staged Gen V changes to review",220);
@@ -1671,13 +1672,15 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         screen.controllerNavigation.reset();
         return true;
     }
-    // Round 6: + on every panel; Y too on Party and Boxes, where Y has no other job in Browse
-    // (carrying is handled above). B in Review returns here with the cursor and box intact.
+    // Round 7 (ReviewEntry.h): one Review key per screen. Party and Boxes: Y, where Y has no other
+    // job in Browse (carrying is handled above); + is not a second key there. The save hub keeps
+    // its + Review. B in Review returns here with the cursor and box intact.
     namespace Entry=PokeBank::UIModel::ReviewEntry;
     const bool party=screen.selectedMode==TrainerViewScreen::ViewMode::Party;
     const bool boxes=screen.selectedMode==TrainerViewScreen::ViewMode::Boxes;
-    if((keys&HidNpadButton_Plus) ||
-       ((party || boxes) && Entry::opensReview(party?Entry::Screen::Party:Entry::Screen::Boxes,5,keys))) {
+    const bool panel=screen.detailViewActive && (party || boxes);
+    if((!screen.detailViewActive && (keys&HidNpadButton_Plus)) ||
+       (panel && Entry::opensReview(party?Entry::Screen::Party:Entry::Screen::Boxes,5,keys))) {
         if(!state.openReviewFromBrowse(staged))
             screen.postStatus("No staged Gen V changes to review",220);
         return true;

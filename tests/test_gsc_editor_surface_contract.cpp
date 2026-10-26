@@ -361,11 +361,13 @@ int main() {
     assert(workspaceFix.find("state.working.moves[static_cast<std::size_t>(slot)] != 0") != std::string::npos);
     assert(workspaceFix.find("rightX + 184") != std::string::npos);
 
-    // Panel titles are neutral; only the actual field/cell carries focus. The stray scroll glyph is erased.
+    // Panel titles never carry focus; only the actual field/cell does. Round 7 P2 (owner Oct 26):
+    // they are the one shared Gen IV / V heading style. The stray scroll glyph is erased.
     assert(workspaceFix.find("clearHardwarePanelHeading") != std::string::npos);
-    assert(workspaceFix.find("\"DETAILS\", TextStyle::Caption") != std::string::npos);
-    assert(workspaceFix.find("\"STATS\", TextStyle::Heading") != std::string::npos);
-    assert(workspaceFix.find("\"MOVES\", TextStyle::Heading") != std::string::npos);
+    assert(workspaceFix.find("PokeBank::UIModel::PanelHeading::draw(fb, x, y, text)") != std::string::npos);
+    assert(workspaceFix.find("clearHardwarePanelHeading(fb, leftX, contentY, 120, \"DETAILS\")") != std::string::npos);
+    assert(workspaceFix.find("clearHardwarePanelHeading(fb, midX, contentY, 120, \"STATS\")") != std::string::npos);
+    assert(workspaceFix.find("clearHardwarePanelHeading(fb, rightX, contentY, 120, \"MOVES\")") != std::string::npos);
     assert(workspaceFix.find("stray bottom glyph") != std::string::npos);
     assert(workspaceFix.find("contentY + contentH - 34") != std::string::npos);
 

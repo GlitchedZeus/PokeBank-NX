@@ -18,13 +18,13 @@ void PKSEFramebuffer::clear(Color) {}
 void PKSEFramebuffer::drawPixel(int, int, Color) {}
 void PKSEFramebuffer::drawRect(int, int, int, int, Color) {}
 void PKSEFramebuffer::drawFilledRect(int x, int y, int w, int h, Color c) { HostUi::occlude(x, y, w, h, c.a); }
-void PKSEFramebuffer::drawText(int x, int y, const char* text, Color c, TextStyle style) {
+void PKSEFramebuffer::drawText(int x, int y, const char* text, Color color, TextStyle style) {
     HostUi::texts.emplace_back(text);
-    HostUi::recordText(x, y, text, static_cast<int>(style), c.toRGBA8());
+    HostUi::recordText(x, y, text, static_cast<int>(style), color.toRGBA8());
 }
-void PKSEFramebuffer::drawText(int x, int y, const std::string& text, Color c, TextStyle style) {
+void PKSEFramebuffer::drawText(int x, int y, const std::string& text, Color color, TextStyle style) {
     HostUi::texts.push_back(text);
-    HostUi::recordText(x, y, text, static_cast<int>(style), c.toRGBA8());
+    HostUi::recordText(x, y, text, static_cast<int>(style), color.toRGBA8());
 }
 void PKSEFramebuffer::drawSymbol(int, int, const std::string&, Color, TextStyle) {}
 void PKSEFramebuffer::drawImage(int, int, int, int, const unsigned char*, int) {}

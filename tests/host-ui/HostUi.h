@@ -30,7 +30,8 @@ inline std::vector<std::string> texts;                 // every string the last 
 struct TextRect {
     int x = 0, y = 0, w = 0, h = 0;
     std::string text;
-    uint32_t rgba = 0;   // the colour it was drawn in (r | g << 8 | b << 16 | a << 24)
+    int style = -1;          // TextStyle as drawn (Round 7 typography checks)
+    uint32_t rgba = 0;       // the drawn Color, packed as Color::toRGBA8
 };
 // Round 7 (lane C): every opaque rounded fill / pill of the frame, in paint order, with its colour
 // and corner radius (-1 for a pill), so style tokens (row cards, backgrounds) can be compared.
@@ -61,7 +62,7 @@ inline void recordText(int x, int y, const std::string& text, int style, uint32_
         x1 = std::min(x1, clipX + clipW); y1 = std::min(y1, clipY + clipH);
     }
     if (x1 <= x0 || y1 <= y0) return;
-    visibleText.push_back({x0, y0, x1 - x0, y1 - y0, text, rgba});
+    visibleText.push_back({x0, y0, x1 - x0, y1 - y0, text, style, rgba});
 }
 inline void occlude(int x, int y, int w, int h, unsigned alpha) {
     if (alpha < 240 || w <= 0 || h <= 0) return;   // translucent scrims leave text readable

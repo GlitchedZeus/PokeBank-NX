@@ -1,10 +1,12 @@
 // Round 6 (B08, P1-RETURN, AUD-01, 4D-HELP follow-up): one visible way into the shared Review
 // from Trainer, Party, Boxes, Bag, Create and Edit in Gen I-V, and back to the same screen.
-//   1. ReviewEntry's button rule for every generation x screen: + everywhere, Y only where Y is
-//      free (never taking Bag Remove, Gen I-IV Box Move / Multi or the Create / Edit re-roll).
+//   1. ReviewEntry's button rule for every generation x screen (Round 7: ONE key per screen, the
+//      footer's): Y where Y is free, + only where Y has another job (Bag Remove, Gen I-IV Box Move /
+//      Multi, the Create / Edit re-roll); the other key never opens Review.
 //   2. The production Gen I-IV Party / Boxes / Trainer router (ClassicBrowseReview.h) driven on a stub screen
-//      with the real ClassicReviewOrigin: Y / + open Review, a standalone close returns to the same
-//      screen with cursor, box and page intact, Y on Boxes stays Move, modals and carry block it.
+//      with the real ClassicReviewOrigin: the footer's key opens Review and the other key does not,
+//      a standalone close returns to the same screen with cursor, box and page intact, Y on Boxes
+//      stays Move, modals and carry block it.
 //   3. The footers that advertise it (Gen II workspace model, the staged Bag footer).
 // Gen V's open/return path runs on the real Gen V state machine in
 // test_gen5_review_discard_export_trace (workspaceReviewReturn).
@@ -35,11 +37,14 @@ constexpr Entry::Screen kScreens[] = {Entry::Screen::Trainer, Entry::Screen::Par
 void buttonRule() {
     for (int gen = 1; gen <= 5; ++gen) {
         for (const auto screen : kScreens) {
-            // + opens Review on every screen of every generation.
-            assert(Entry::opensReview(screen, gen, kPlus));
             const bool yFree = screen == Entry::Screen::Trainer || screen == Entry::Screen::Party ||
                                (screen == Entry::Screen::Boxes && gen == 5);
+            // One key: Y where Y is free, otherwise +; the other key never opens Review.
             assert(Entry::opensReview(screen, gen, kY) == yFree);
+            assert(Entry::opensReview(screen, gen, kPlus) == !yFree);
+            assert(Entry::plusOpensReview(screen, gen) == !yFree && Entry::yOpensReview(screen, gen) == yFree);
+            // Both pressed together still means the one key.
+            assert(Entry::opensReview(screen, gen, kY | kPlus));
             assert(!Entry::opensReview(screen, gen, kA) && !Entry::opensReview(screen, gen, 0));
             const auto hint = Entry::footerHint(screen, gen);
             assert(std::strcmp(hint.label, "Review") == 0);
@@ -116,13 +121,14 @@ void classicRouter() {
         StubScreen screen;
         screen.sourceGameId = games[gen - 1];
 
-        // Party: Y and + both open the shared Review; closing returns to Party, same slot.
-        for (const std::uint64_t button : {kY, kPlus}) {
-            screen.selectedMode = StubScreen::ViewMode::Party;
-            screen.selectedPartyIndex = 4;
-            screen.selectedItemIndex = 4;
+        // Party: Y opens the shared Review; closing returns to Party, same slot. + does not.
+        screen.selectedMode = StubScreen::ViewMode::Party;
+        screen.selectedPartyIndex = 4;
+        screen.selectedItemIndex = 4;
+        {
             const Where before = where(screen);
-            assert(Browse::open(screen, button, gen, true) && screen.reviewOpen);
+            assert(!Browse::open(screen, kPlus, gen, true) && !screen.reviewOpen);
+            assert(Browse::open(screen, kY, gen, true) && screen.reviewOpen);
             assert(screen.closeReview());               // standalone: back to the screen underneath
             assert(same(where(screen), before) && !screen.reviewOpen);
         }
@@ -150,11 +156,12 @@ void classicRouter() {
         screen.details.active = false;
         assert(!Browse::open(screen, kPlus, gen, false) && !screen.reviewOpen);   // overlay owns the frame
 
-        // Trainer page (with or without editable rows): Y and + open Review and return there.
-        for (const std::uint64_t button : {kY, kPlus}) {
-            screen.selectedMode = StubScreen::ViewMode::Trainer;
+        // Trainer page (with or without editable rows): Y opens Review and returns there; + does not.
+        screen.selectedMode = StubScreen::ViewMode::Trainer;
+        {
             const Where trainerBefore = where(screen);
-            assert(Browse::open(screen, button, gen, true) && screen.reviewOpen);
+            assert(!Browse::open(screen, kPlus, gen, true) && !screen.reviewOpen);
+            assert(Browse::open(screen, kY, gen, true) && screen.reviewOpen);
             assert(screen.closeReview() && same(where(screen), trainerBefore));
         }
 
@@ -162,13 +169,13 @@ void classicRouter() {
         screen.selectedMode = StubScreen::ViewMode::Items;
         assert(!Browse::open(screen, kPlus, gen, true));
         screen.selectedMode = StubScreen::ViewMode::Party;
-        screen.detailViewActive = false;
+        screen.detailViewActive = false;   // the save hub
         assert(!Browse::open(screen, kPlus | kY, gen, true));
         screen.detailViewActive = true;
 
-        // Nothing staged: the press is answered, nothing opens.
+        // Nothing staged: the Party's Review key (Y) is answered, nothing opens.
         screen.staged = false;
-        assert(Browse::open(screen, kPlus, gen, true) && !screen.reviewOpen && !screen.status.empty());
+        assert(Browse::open(screen, kY, gen, true) && !screen.reviewOpen && !screen.status.empty());
         screen.staged = true;
 
         // A Box Actions Review (not standalone) still returns to its Actions sheet.
@@ -180,7 +187,8 @@ void classicRouter() {
     StubScreen gen5;
     gen5.sourceGameId = "black_nds";
     assert(!Browse::open(gen5, kPlus | kY, 5, true));
-    std::cout << "Gen I-IV Party / Boxes open Review and return to the same screen ok\n";
+    std::cout << "Gen I-IV Party / Boxes / Trainer: the footer's key opens Review, the other does not, "
+                 "and Review returns to the same screen ok\n";
 }
 
 void footers() {

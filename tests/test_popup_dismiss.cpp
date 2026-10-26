@@ -135,13 +135,32 @@ void testWiring() {
         if (n) assert(name == "Gen2PokemonEditorFoundation.inc" || name == "Gen3SharedPokemonSurface.inc" ||
                       name == "SharedPokemonEditorSurface.inc" || name == "SaveSelectScreen.cpp" ||
                       name == "ClassicPartyActions.inc" || name == "Gen1PokemonEditorOverlayUXCleanup3.inc" ||
-                      name == "Gen2PokemonPickerOverlay.inc" || name == "Gen2HardwarePickerFix.inc");
+                      name == "Gen2PokemonPickerOverlay.inc" || name == "Gen2HardwarePickerFix.inc" ||
+                      name == "StoragePanel.cpp");
         publishers += n;
     }
     // Gen II Held Item; Gen III value + species; Gen IV/V value + species; Game Browser Help;
     // Party Actions; Gen I species + move; Gen II species, Crystal Met Location, move list and the
     // hardware move picker. Game / Trainer Help publishes from ScreenChrome drawInfoOverlay.
-    assert(publishers == 13);
+    // Round 7 C04: Product Home Quick Games, profile / game-file pickers, Legacy details, Quick
+    // Options (SaveSelectScreen.cpp, now 6), and the Pokémon actions / carried-block menus
+    // (StoragePanel.cpp drawPopupMenu, only when `dismissible`).
+    assert(publishers == 19);
+    const std::string home = read("src/UI/SaveSelectScreen.cpp");
+    has(home, "        if (SharedPopupDismiss::tappedOutside(touch)) {\n            switch (overlay) {\n"
+              "                case Overlay::GamesDrawer:\n                    if (!quickDrawerMotion.interactive()) break;\n"
+              "                    quickDrawerMotion.closeAnimated();");
+    for (const char* never : {"case Overlay::QuitConfirm:\n                    overlay", "case Overlay::EmulatorBackupDeleteConfirm:\n                    overlay",
+                              "case Overlay::Gen5UnassignConfirm:\n                    overlay"})
+        assert(home.find(never) == std::string::npos);
+    const std::string storage = read("src/UI/Panels/StoragePanel.cpp");
+    has(storage, "                if (dismissible) SharedPopupDismiss::publish(x, y, w, h);\n"
+                 "                else SharedPopupDismiss::clear();");
+    // The storage-exit "Save bank changes?" confirmation never passes `dismissible`.
+    has(storage, "drawPopupMenu(screen, fb, \"Save bank changes?\", items, 3, screen.storageExitConfirmIndex);");
+    const std::string browser = read("src/UI/TrainerViewScreenBase.inc");
+    has(browser, "            if (SharedPopupDismiss::tappedOutside(touch)) {\n                actionSheet.close();\n                return;");
+    has(browser, "            if (SharedPopupDismiss::tappedOutside(touch)) {\n                groupMenuActive = false;\n                return;");
     // Gen I / II species and move pickers: the one input entry closes the open picker like B.
     has(read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"),
         "    if (isGen1SourceUX(screen) && ux2StateFor(screen).picker != UX2Picker::None &&\n"

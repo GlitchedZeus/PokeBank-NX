@@ -869,9 +869,13 @@ workspace = body("void SaveSelectScreen::activateGameWorkspace()")
 require("openEmulatorBackups();" in workspace and "External emulator sources stay read-only" not in source,
         "+ -> Backups opens the emulator backups list instead of a dead-end notice")
 opener = body("void SaveSelectScreen::openEmulatorBackups(")
-require("SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot)" in opener and "instance.path()" in opener and
-        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener,
-        "Emulator backups come only from exact validated / assigned source paths")
+# Round 7 (7E G1): the listing also carries the current profile, so that profile's Gen V export
+# records (exports/gen5/account-<profile>/) are listed and no other profile's.
+require("SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot, profile)" in opener and "instance.path()" in opener and
+        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener and
+        "const std::string profile=currentProfileIdentity();" in opener and
+        "SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId,profile)" in opener,
+        "Emulator backups come only from exact validated / assigned source paths (and the current profile's Gen V records)")
 # Round 4 (R2-EMUBACKUP / C07 / S05): a backup is made only by the deliberate "Create backup now" row,
 # never by opening a save; browsing the save is the normal read-only open.
 creator = body("void SaveSelectScreen::createEmulatorBackup(")

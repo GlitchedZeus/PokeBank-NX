@@ -21,6 +21,8 @@ enum class Layer : uint8_t {
     ProgressionEditor, // Level / Experience
     MoveEditor,        // Move N contextual editor
     FieldSelector,     // Pokérus / Crystal Met Time / Crystal OT Gender
+    UnownQuestion,     // Round 7: "Turn Shiny off and use X?" / "Change letter to V?" (Gen2UnownLetter.h)
+    UnownPicker,       // Round 7: the Unown Letter grid
     Workspace,
 };
 
@@ -31,6 +33,8 @@ struct Open {
     bool progressionEditor = false;
     bool moveEditor = false;
     bool fieldSelector = false;
+    bool unownQuestion = false;
+    bool unownPicker = false;
 };
 
 constexpr Layer topLayer(const Open& open) noexcept {
@@ -40,6 +44,8 @@ constexpr Layer topLayer(const Open& open) noexcept {
     if (open.progressionEditor) return Layer::ProgressionEditor;
     if (open.moveEditor) return Layer::MoveEditor;
     if (open.fieldSelector) return Layer::FieldSelector;
+    if (open.unownQuestion) return Layer::UnownQuestion;
+    if (open.unownPicker) return Layer::UnownPicker;
     return Layer::Workspace;
 }
 
@@ -83,6 +89,8 @@ constexpr Action action(Layer layer, Session session, Button button) noexcept {
         case Layer::ProgressionEditor:
         case Layer::MoveEditor:
         case Layer::FieldSelector:
+        case Layer::UnownQuestion:
+        case Layer::UnownPicker:
             if (button == Button::A) return Action::Select;
             if (button == Button::B) return Action::Cancel;
             return Action::None; // Y in the Species picker toggles Normal/Shiny; that footer is the picker's own
@@ -129,6 +137,12 @@ constexpr Footer footer(Layer layer, Session session) noexcept {
                      "A", create ? "Keep" : "Save", "Y", "Discard"))
                 detail::push(f, hint.glyph, hint.label);
             break;
+        case Layer::UnownQuestion:
+            // The question's own two answers: A applies the offered DVs, B keeps everything.
+            detail::push(f, "A", "Confirm");
+            detail::push(f, "B", "Cancel");
+            break;
+        case Layer::UnownPicker:
         case Layer::FieldSelector: {
             // The shared picker footer (SharedEditorPresentation::pickerFooter): Browse, A Select,
             // B Cancel; a short chooser has no paging.

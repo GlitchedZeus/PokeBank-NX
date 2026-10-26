@@ -41,6 +41,9 @@ struct UnifiedWorkspaceState {
     uint16_t moveBaseline = 0;
     uint8_t movePpBaseline = 0;
     uint8_t movePpUpsBaseline = 0;
+    // Round 7 (B07 / C09): the Unown Letter grid and its two questions (Gen2UnownLetter.h).
+    PokeBank::UIModel::Gen2UnownLetter::Picker unownPicker;
+    PokeBank::UIModel::Gen2UnownLetter::Question unownQuestion;
 };
 
 UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
@@ -62,6 +65,8 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.moveEditor = false;
         state.moveEditorRow = 0;
         state.selector = {};
+        state.unownPicker = {};
+        state.unownQuestion = {};
         state.lastMode = mode;
     }
     state.crystal = screen.sourceGameId == "crystal_gbc";
@@ -79,6 +84,8 @@ PokeBank::UIModel::Gen2WorkspaceLayers::Layer workspaceTopLayer(const TrainerVie
     open.progressionEditor = unified.progressionEditor;
     open.moveEditor = unified.moveEditor;
     open.fieldSelector = unified.selector.open();
+    open.unownQuestion = unified.unownQuestion.ask != PokeBank::UIModel::Gen2UnownLetter::Ask::None;
+    open.unownPicker = unified.unownPicker.open;
     return PokeBank::UIModel::Gen2WorkspaceLayers::topLayer(open);
 }
 
@@ -104,6 +111,8 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.moveEditor = false;
     unified.moveEditorRow = 0;
     unified.selector = {};
+    unified.unownPicker = {};
+    unified.unownQuestion = {};
     unified.lastMode = stateFor(screen).mode;
     screen.controllerNavigation.reset();
 }
@@ -353,6 +362,112 @@ void drawFieldSelector(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     }
 }
 
+// ---- Round 7 (owner B07 / C09): Unown Letter grid and its questions --------------------------
+constexpr int kUnownPickerTouchBase = 1780;   // + letter (0..25)
+constexpr int kUnownConfirmTouch = 1810;
+constexpr int kUnownCancelTouch = 1811;
+
+void applyUnownDVs(TrainerViewScreen& screen, State& state, const std::array<uint8_t, 4>& dvs) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    const auto before = editableDVs(state.working);
+    applyEditableDVs(state.working, dvs);
+    screen.postStatus("Unown " + Letter::letterText(PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs)) +
+                      (state.working.shiny ? ", shiny" : ", not shiny") + ": " +
+                      Letter::dvChanges(before, dvs) + " (stats follow)", 360);
+}
+
+bool handleUnownQuestion(TrainerViewScreen& screen, State& state, uint64_t down, const TouchInput& touch) {
+    auto& unified = unifiedStateFor(screen);
+    const int tapped = screen.touchedButtonId(touch);
+    if ((down & HidNpadButton_A) || tapped == kUnownConfirmTouch) {
+        const auto question = unified.unownQuestion;
+        unified.unownQuestion = {};
+        unified.unownPicker = {};
+        applyUnownDVs(screen, state, question.dvs);
+        screen.controllerNavigation.reset();
+    } else if ((down & HidNpadButton_B) || tapped == kUnownCancelTouch) {
+        unified.unownQuestion = {};
+        screen.postStatus("Unown unchanged", 200);
+        screen.controllerNavigation.reset();
+    }
+    return true;
+}
+
+bool handleUnownPicker(TrainerViewScreen& screen, State& state, uint64_t down, uint64_t held,
+                       int stickX, int stickY, const TouchInput& touch) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    auto& unified = unifiedStateFor(screen);
+    auto& picker = unified.unownPicker;
+    const uint64_t nav = screen.controllerNavigation.apply(
+        down, held, stickX, stickY,
+        HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+    if (nav & HidNpadButton_Left) picker.cursor = Letter::moveCursor(picker.cursor, -1, 0);
+    if (nav & HidNpadButton_Right) picker.cursor = Letter::moveCursor(picker.cursor, 1, 0);
+    if (nav & HidNpadButton_Up) picker.cursor = Letter::moveCursor(picker.cursor, 0, -1);
+    if (nav & HidNpadButton_Down) picker.cursor = Letter::moveCursor(picker.cursor, 0, 1);
+    if (down & HidNpadButton_B) {
+        picker = {};
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    const int tapped = screen.touchedButtonId(touch);
+    const bool tappedLetter = tapped >= kUnownPickerTouchBase && tapped < kUnownPickerTouchBase + Letter::kLetterCount;
+    if (tappedLetter) picker.cursor = tapped - kUnownPickerTouchBase;
+    if (!(down & HidNpadButton_A) && !tappedLetter) return true;
+    const auto result = Letter::pick(editableDVs(state.working), picker.cursor);
+    if (result.action == Letter::PickAction::Ask) {
+        unified.unownQuestion = result.question;   // the grid stays open under the question
+    } else {
+        if (result.action == Letter::PickAction::Apply) applyUnownDVs(screen, state, result.dvs);
+        picker = {};
+    }
+    screen.controllerNavigation.reset();
+    return true;
+}
+
+void drawUnownLetterPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
+                           const UnifiedWorkspaceState& unified) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    const auto dvs = editableDVs(state.working);
+    const int current = PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs);
+    constexpr int cell = 64, gap = 8, w = 32 + Letter::kGridColumns * (cell + gap) + 8;
+    const int rows = (Letter::kLetterCount + Letter::kGridColumns - 1) / Letter::kGridColumns;
+    const int h = 150 + rows * (cell + gap);
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, Letter::pickerTitle(dvs), Colors::Primary);
+    for (int letter = 0; letter < Letter::kLetterCount; ++letter) {
+        const int cx = x + 20 + (letter % Letter::kGridColumns) * (cell + gap);
+        const int ry = cy + (letter / Letter::kGridColumns) * (cell + gap);
+        const bool focused = letter == unified.unownPicker.cursor;
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cx, ry, cell, cell), {focused});
+        if (letter == current) fb.drawRoundedRect(cx + 3, ry + 3, cell - 6, cell - 6, 6, Colors::Accent, 2);
+        fb.drawText(cx + 22, ry + 18, Letter::letterText(letter),
+                    focused ? Colors::SelectedText : Colors::Text, TextStyle::Body);
+        if (Letter::canBeShiny(letter)) fb.drawShinyMark(cx + cell - 20, ry + 6, 14, Colors::ShinyStar);
+        screen.touchButtons.push_back({kUnownPickerTouchBase + letter, cx, ry, cell, cell});
+    }
+    fb.drawText(x + 20, y + h - 44, Letter::pickerNote(), Colors::TextDim, TextStyle::Caption);
+}
+
+void drawUnownQuestion(TrainerViewScreen& screen, PKSEFramebuffer& fb, const UnifiedWorkspaceState& unified) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    const auto& question = unified.unownQuestion;
+    constexpr int w = 760, h = 230;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, "Unown letter and Shiny", Colors::Primary);
+    fb.drawText(x + 24, cy + 4, Letter::questionText(question), Colors::Text, TextStyle::Body);
+    fb.drawText(x + 24, cy + 40, Letter::pickerNote(), Colors::TextDim, TextStyle::Caption);
+    const int by = y + h - 70;
+    drawGlyphButton(fb, x + 24, by, 330, 48, "A", Letter::confirmLabel(question));
+    screen.touchButtons.push_back({kUnownConfirmTouch, x + 24, by, 330, 48});
+    drawGlyphButton(fb, x + w - 24 - 220, by, 220, 48, "B", "Cancel");
+    screen.touchButtons.push_back({kUnownCancelTouch, x + w - 24 - 220, by, 220, 48});
+}
+
 bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified::Focus& focus) {
     auto& p = state.working;
     if (focus.panel == Unified::Panel::Details) {
@@ -535,10 +650,22 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             screen.postStatus("Calculated battle stats are read-only; edit DVs or Stat Exp instead", 280);
             return true;
         }
+        namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+        const bool unown = p.species == Letter::kUnownSpecies;
+        if (focus.row == 5 && unown) {
+            // Round 7: Shiny on a letter that cannot be shiny asks before it changes the letter.
+            const auto request = Letter::requestShinyToggle(editableDVs(p));
+            if (request.ask) {
+                unifiedStateFor(screen).unownQuestion = request.question;
+                screen.controllerNavigation.reset();
+                return true;
+            }
+        }
         if (focus.row == 5) { toggleShiny(screen, p); return true; }
-        // Unown is genderless; its row 6 is the Letter selector (the letter follows the DVs).
-        if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {
-            chooseUnownLetter(screen, p);
+        // Unown is genderless; its row 6 is the Letter picker (the letter follows the DVs).
+        if (unown) {
+            unifiedStateFor(screen).unownPicker = Letter::openPicker(editableDVs(p));
+            screen.controllerNavigation.reset();
             return true;
         }
         chooseGender(screen, p);
@@ -636,6 +763,10 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (layer == Layers::Layer::MoveEditor)
         return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);
 
+    if (layer == Layers::Layer::UnownQuestion) return handleUnownQuestion(screen, state, down, touch);
+    if (layer == Layers::Layer::UnownPicker)
+        return handleUnownPicker(screen, state, down, held, stickX, stickY, touch);
+
     if (layer == Layers::Layer::FieldSelector) {
         // The field selector owns all input while open: Up/Down move, A or a tap applies, B
         // cancels; the field keeps focus either way.
@@ -670,9 +801,18 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
 
     // Y Random DVs re-rolls this draft at once (Gen12DVReroll.h): every press is a new roll that
     // keeps the shiny state, the gender and the Unown letter. Nothing is staged until Keep/Add.
+    // Round 7 (B07): Unown keeps its letter and shiny state, so its sprite does not change; the
+    // status names what was kept and the DVs that changed (or exactly why none could).
+    const auto rerollBefore = editableDVs(state.working);
+    const bool rerollUnown = state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies;
     if (down & HidNpadButton_Y) {
         if (randomizeDVs(state))
-            screen.postStatus("Generation II DVs re-rolled in this draft; Keep/Add stages them", 240);
+            screen.postStatus(rerollUnown
+                ? PokeBank::UIModel::Gen2UnownLetter::rerollStatus(rerollBefore, editableDVs(state.working), true)
+                : std::string("Generation II DVs re-rolled in this draft; Keep/Add stages them"),
+                rerollUnown ? 360 : 240);
+        else if (rerollUnown)
+            screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(rerollBefore, rerollBefore, false), 300);
         else
             screen.postStatus(state.working.shiny
                 ? "No other shiny DVs keep this Pokemon's gender; DVs unchanged"
@@ -898,9 +1038,7 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
                         UnifiedWorkspaceState& unified,
                         int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "DETAILS",
-        !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
-        TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "DETAILS");
     const auto& p = state.working;
     // The portrait letter is computed from the current DVs on every frame (never a cached form).
     SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny,
@@ -1001,9 +1139,7 @@ void drawGen2SharedMoveRows(PKSEFramebuffer& fb, const TrainerViewScreen& screen
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                       const UnifiedWorkspaceState& unified, int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "MOVES",
-        !passive && unified.focus.panel == Unified::Panel::Moves ? Colors::Accent : Colors::Text,
-        TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "MOVES");
     drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + UI::SharedMovesPanel::kDataPaneOffset,

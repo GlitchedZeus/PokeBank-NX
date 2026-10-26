@@ -119,16 +119,21 @@ int main() {
     assert(gen1Passive.find("fb.drawText(28, 16, name") != std::string::npos);
     assert(gen1Passive.find("passiveContextLine(p)") != std::string::npos);
     assert(gen1Passive.find("drawPanelSurface(fb, workspaceX") == std::string::npos);
-    assert(gen1Passive.find("\"STATS\", Colors::Text") != std::string::npos);
+    assert(gen1Passive.find("PanelHeading::draw(fb, midX, contentY, \"STATS\")") != std::string::npos);
     assert(gen1Passive.find("\"VALUES\"") == std::string::npos);
 
-    // Headings are neutral; the focus cursor is a separate red/theme focus border.
-    assert(gen1Fix.find("\"DETAILS\", Colors::Text") != std::string::npos);
-    assert(gen1Fix.find("\"STATS\", Colors::Text") != std::string::npos);
-    assert(gen1Fix.find("\"MOVES\", Colors::Text") != std::string::npos);
+    // Headings never signal focus; the focus cursor is a separate red/theme focus border. Round 7
+    // P2 (owner Oct 26): every heading is the one shared Gen IV / V style (UI/SharedPanelHeading.h,
+    // which takes no focus argument).
+    assert(gen1Fix.find("PanelHeading::draw(fb, leftX, contentY, \"DETAILS\")") != std::string::npos);
+    assert(gen1Fix.find("PanelHeading::draw(fb, midX, contentY, \"STATS\")") != std::string::npos);
+    assert(gen1Fix.find("PanelHeading::draw(fb, rightX, contentY, \"MOVES\")") != std::string::npos);
     assert(gen1Fix.find("Colors::FocusBorder, 2") != std::string::npos);
-    assert(gen1Passive.find("\"DETAILS\", Colors::Text") != std::string::npos);
-    assert(gen1Passive.find("\"MOVES\", Colors::Text") != std::string::npos);
+    assert(gen1Passive.find("PanelHeading::draw(fb, leftX, contentY, \"DETAILS\")") != std::string::npos);
+    assert(gen1Passive.find("PanelHeading::draw(fb, rightX, contentY, \"MOVES\")") != std::string::npos);
+    for (const auto* source : {&gen1Fix, &gen1Passive})
+        for (const char* old : {"\"DETAILS\", Colors::", "\"STATS\", Colors::", "\"MOVES\", Colors::"})
+            assert(source->find(old) == std::string::npos);
 
     // Canonical type badge helper is shared by mature passive View and the shared RBY/GSC picker.
     assert(sharedTypes.find("SpriteManager::getTypeSprite") != std::string::npos);

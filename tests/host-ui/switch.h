@@ -49,3 +49,23 @@ typedef struct { u8 d[0x100]; } AccountUserData;
 typedef struct { u8 d[16]; } AccountProfile;
 inline bool appletMainLoop() { return false; }
 inline u64 armGetSystemTick() { return 0; }
+// Product Home (SaveSelectScreen) on the host (Round 7 C04, lane P): no account and no save data.
+// Every call reports failure / nothing, so Product Home shows its empty state; it never reaches a
+// real save. AccountUid comes from Utils/NXTypes.h, hence the deduced parameters.
+#define ACC_USER_LIST_SIZE 8
+struct AccountUid;
+inline Result accountListAllUsers(AccountUid*, s32, s32* count) { if (count) *count = 0; return 1; }
+template <class Uid> inline Result accountGetProfile(AccountProfile*, Uid) { return 1; }
+inline Result accountProfileGet(AccountProfile*, AccountUserData*, AccountProfileBase*) { return 1; }
+inline void accountProfileClose(AccountProfile*) {}
+typedef enum { FsSaveDataSpaceId_System = 0, FsSaveDataSpaceId_User = 1, FsSaveDataSpaceId_SdUser = 3,
+               FsSaveDataSpaceId_All = -1 } FsSaveDataSpaceId;
+typedef enum { FsSaveDataType_System = 0, FsSaveDataType_Account = 1 } FsSaveDataType;
+typedef struct { u8 d[8]; } FsSaveDataInfoReader;
+typedef struct { u64 save_data_id; u8 save_data_space_id; u8 save_data_type; u8 pad[6];
+                 u64 uid[2]; u64 system_save_data_id; u64 application_id; u64 size; } FsSaveDataInfo;
+inline Result fsOpenSaveDataInfoReader(FsSaveDataInfoReader*, FsSaveDataSpaceId) { return 1; }
+inline Result fsSaveDataInfoReaderRead(FsSaveDataInfoReader*, FsSaveDataInfo*, size_t, s64* n) { if (n) *n = 0; return 1; }
+inline void fsSaveDataInfoReaderClose(FsSaveDataInfoReader*) {}
+template <class Uid> inline Result fsdevMountSaveData(const char*, u64, Uid) { return 1; }
+inline Result fsdevUnmountDevice(const char*) { return 0; }

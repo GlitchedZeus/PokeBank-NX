@@ -4213,6 +4213,11 @@ int reviewGeneration(const std::string& gameId) {
         // never holds a mutable Pokemon pointer. Opening, moving focus, B, and Cancel therefore have
         // no mutation path. Unsupported commands return one explicit result and remain on the sheet.
         if (actionSheet.isOpen()) {
+            // Round 7 C04: a completed tap outside the actions menu closes it like B (consumed here).
+            if (SharedPopupDismiss::tappedOutside(touch)) {
+                actionSheet.close();
+                return;
+            }
             constexpr int count = static_cast<int>(PokeVault::UIModel::POKEMON_ACTIONS.size());
             const int tb = touchedButtonId(touch);
             if (tb >= 0 && tb < count) {
@@ -4252,6 +4257,11 @@ int reviewGeneration(const std::string& gameId) {
         // Handle the carried-block menu, opened with Minus (Release all / Return / Cancel). Moving a
         // block no longer needs a menu entry -- you carry it to where you want it and press A.
         if (groupMenuActive) {
+            // Round 7 C04: a tap outside the carried-block menu is Cancel (B), never Release all.
+            if (SharedPopupDismiss::tappedOutside(touch)) {
+                groupMenuActive = false;
+                return;
+            }
             constexpr int N = 3;
             int tb = touchedButtonId(touch);
             if (tb >= 0) { groupMenuIndex = tb; kDown |= HidNpadButton_A; }  // tap a row = select + confirm
@@ -5480,6 +5490,13 @@ int reviewGeneration(const std::string& gameId) {
                             : selectedMode == ViewMode::Boxes ? Entry::Screen::Boxes
                             : classicBag ? Entry::Screen::Bag : Entry::Screen::Trainer,
                             reviewGen).glyph;
+                    }
+                    // Round 7: the Gen V save hub's + opens Review (Gen5SharedReadOnlySurface browse
+                    // input, Help "+ Review staged ..."); its footer now shows that key too, so no
+                    // screen has a Review key its footer does not name.
+                    if (!detailViewActive && reviewGen == 5) {
+                        spec.review = true;
+                        spec.reviewGlyph = "+";
                     }
                     instructions = BrowseFooter::instructions(spec);
                 }

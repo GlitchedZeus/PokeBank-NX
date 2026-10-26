@@ -70,8 +70,8 @@ void lacks(const std::string& text, const char* needle) {
 }
 
 void everyOverlapHasOneOwner() {
-    // All 64 combinations of open layers: the owner is the highest open one, never two.
-    for (int bits = 0; bits < 64; ++bits) {
+    // All 256 combinations of open layers: the owner is the highest open one, never two.
+    for (int bits = 0; bits < 256; ++bits) {
         L::Open open;
         open.picker = bits & 1;
         open.heldItemPicker = bits & 2;
@@ -79,17 +79,20 @@ void everyOverlapHasOneOwner() {
         open.progressionEditor = bits & 8;
         open.moveEditor = bits & 16;
         open.fieldSelector = bits & 32;
+        open.unownQuestion = bits & 64;   // Round 7: Unown letter / Shiny question
+        open.unownPicker = bits & 128;    // Round 7: Unown Letter grid
         const auto owner = L::topLayer(open);
         int expected = 0;
-        while (expected < 6 && !(bits & (1 << expected))) ++expected;
-        assert(static_cast<int>(owner) == expected); // Layer::Workspace == 6 when nothing is open
+        while (expected < 8 && !(bits & (1 << expected))) ++expected;
+        assert(static_cast<int>(owner) == expected); // Layer::Workspace == 8 when nothing is open
     }
 }
 
 void footersMatchActions() {
     for (const auto session : kSessions) {
         const bool create = session == L::Session::Create;
-        for (const auto layer : {L::Layer::Workspace, L::Layer::ExitConfirm, L::Layer::FieldSelector}) {
+        for (const auto layer : {L::Layer::Workspace, L::Layer::ExitConfirm, L::Layer::FieldSelector,
+                                 L::Layer::UnownQuestion, L::Layer::UnownPicker}) {
             const auto f = L::footer(layer, session);
             for (const auto button : kButtons) {
                 const char* label = hinted(f, button);
@@ -236,7 +239,8 @@ void liveRoutesThroughTheModel() {
     assert(afterView < viewEnd && viewEnd < dispatch);
     for (const char* owner : {"Layers::Layer::Picker", "Layers::Layer::HeldItemPicker",
                               "Layers::Layer::ExitConfirm", "Layers::Layer::ProgressionEditor",
-                              "Layers::Layer::MoveEditor", "Layers::Layer::FieldSelector"}) {
+                              "Layers::Layer::MoveEditor", "Layers::Layer::FieldSelector",
+                              "Layers::Layer::UnownQuestion", "Layers::Layer::UnownPicker"}) {
         const auto at = edit.find(owner);
         assert(at != std::string::npos && at > dispatch);
         // Owners are dispatched before any workspace A/B/X handling.
