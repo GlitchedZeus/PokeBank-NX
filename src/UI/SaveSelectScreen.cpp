@@ -3164,13 +3164,16 @@ namespace UI {
         }
         const auto assignedSources=sources;
         const std::string manualRoot=SB::emulatorBackupsRoot(PokeBank::Paths::backupsRoot());
-        const auto historical=SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId);
+        // Round 7 (7E G1): the current profile's Gen V export records (exports/gen5/account-<p>/)
+        // are part of this game's history; another profile's are never read here.
+        const std::string profile=currentProfileIdentity();
+        const auto historical=SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId,profile);
         sources.insert(sources.end(),historical.begin(),historical.end());
         std::sort(sources.begin(),sources.end());
         sources.erase(std::unique(sources.begin(),sources.end()),sources.end());
         for (const std::string& source : sources) {
             if (source.empty()) continue;
-            emuBackupListings.push_back(SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot));
+            emuBackupListings.push_back(SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot, profile));
             const int li = static_cast<int>(emuBackupListings.size()) - 1;
             emuBackupListings.back().recoveryReadOnly=
                 std::find(assignedSources.begin(),assignedSources.end(),source)==assignedSources.end();
