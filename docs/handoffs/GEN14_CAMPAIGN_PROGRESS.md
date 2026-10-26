@@ -200,6 +200,7 @@ Base: #307 `a96a9559` merged forward. Branch HEAD `cd6d89ff` (verified with ls-r
 | CG72 Gold / Silver report no trainer gender; XFAIL dropped | d2a7f7d9 | gated green |
 | P3 Gen I/II Create Review details (CG74, lane S shape) | f082ac1d | gated green |
 | "Native touch contracts" fix: GSC surface contract builds without -Iinclude | 1208301b | gated green |
+| Gen II Create seeds native level-up moves (seedNativeMoves, R2-BUG-004 data) | 48fbf94b | host-test x2, py, CG, native green; qa targets pending |
 
 Gate for f082ac1d + 1208301b: GCC and Clang host-test and host-sanitize; qa-fuzz-smoke /
 qa-contracts / qa-matrix for both compilers; qa-tools-test; py contracts (fail=0); cross-gen

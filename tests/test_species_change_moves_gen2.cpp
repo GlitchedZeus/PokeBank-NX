@@ -9,6 +9,8 @@
 #include "UI/SpeciesChangeLevelPolicy.h"
 
 #include <cassert>
+#include <fstream>
+#include <iterator>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -85,6 +87,42 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 "no data: empty slots");
     }
 
+    // A new Create record starts with its species' native moves (beginCreate seeds the moveless
+    // default with seedNativeMoves): Pikachu Lv 5 -> Thunder Shock, Growl at base PP. Through the
+    // real Session::add -> stageAddBoxPokemon, the staged record and the Create Review carry them.
+    {
+        auto createEditor = StagedEditor::create(*parsed.save, error);
+        require(static_cast<bool>(createEditor), "create editor");
+        PokemonRecord fresh = entry;
+        fresh.level = 5;
+        fresh.moves = {};
+        fresh.pp = {};
+        fresh.ppUps = {};
+        require(Rules::seedNativeMoves(fresh, sourceId), "Pikachu learnset known");
+        require((fresh.moves == std::array<uint8_t, 4>{84, 45, 0, 0}), "Pikachu Lv 5: Thunder Shock, Growl");
+        require((fresh.pp == std::array<uint8_t, 4>{30, 40, 0, 0}) && fresh.ppUps == (std::array<uint8_t, 4>{}),
+                "base PP, no PP Ups");
+        checkNativeMoves(fresh, crystal, std::string(sourceId) + " Create Pikachu Lv 5");
+        Session create;
+        create.begin(fresh, SessionMode::Create);
+        require(create.setLevel(5), "Create level 5");
+        std::size_t slot = 99;
+        require(create.add(*createEditor, 2, slot, error), "Create add: " + error);
+        const auto added = createEditor->boxedPokemon(2, slot, error);
+        require(added && added->species == 25 && added->level == 5 && added->moves == fresh.moves &&
+                added->pp == fresh.pp, "staged Create carries the native moves");
+        bool movesRow = false;
+        for (const auto& change : createEditor->pendingChanges())
+            movesRow |= change.label == "Box 3 Slot " + std::to_string(slot + 1) + " / Moves" &&
+                        change.afterValue == "Thunder Shock, Growl";
+        require(movesRow, "Create Review shows a Moves row");
+        // An unknown game has no table: nothing is invented.
+        PokemonRecord unknown = fresh;
+        unknown.moves = {};
+        require(!Rules::seedNativeMoves(unknown, "not_a_gen2_game") && unknown.moves == (std::array<uint8_t, 4>{}),
+                "unknown game: no moves invented");
+    }
+
     // Pikachu -> Fearow, Keep, Review, export -> strict reparse; only box 1 bytes move.
     auto editor = StagedEditor::create(*parsed.save, error);
     Session s;
@@ -118,9 +156,24 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
             "Discard restores every byte");
 }
 
+// The UI's Create entry is a TrainerViewScreen member path (no host harness): pin that it seeds
+// the default record through the same helper the test above exercises.
+void createEntrySeedsMoves() {
+    std::ifstream in("src/UI/Gen2PokemonEditorFoundation.inc", std::ios::binary);
+    const std::string src{std::istreambuf_iterator<char>(in), {}};
+    const auto begin = src.find("bool beginCreate(TrainerViewScreen& screen, int box) {");
+    require(begin != std::string::npos, "beginCreate found");
+    const auto body = src.substr(begin, src.find("\n}\n", begin) - begin);
+    const auto record = body.find("state.working = defaultCreateRecord(*editor);");
+    const auto seed = body.find("Rules::seedNativeMoves(state.working, screen.sourceGameId);");
+    require(record != std::string::npos && seed != std::string::npos && record < seed &&
+            seed < body.find("state.begin(state.working, Mode::Create);"), "beginCreate seeds native moves");
+}
+
 } // namespace
 
 int main() {
+    createEntrySeedsMoves();
     run(GS, SourceGame::Gold, "gold_gbc");
     run(GS, SourceGame::Silver, "silver_gbc");
     run(C, SourceGame::Crystal, "crystal_gbc");

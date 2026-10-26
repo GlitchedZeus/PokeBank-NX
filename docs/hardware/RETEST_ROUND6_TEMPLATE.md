@@ -434,6 +434,55 @@ requested visual change in Group C; here, check only that the behaviour still wo
 - **Comment:**
 - **Screenshots sent separately:**
 
+### C11 · View mode explains instead of doing nothing (L06 follow-up)
+- **Steps:** Gen III, IV and V → open a Pokémon in **View** (not Edit) → press A on Pokérus, then tap Held Item. Also press A on Origin or PID.
+- **Expected:** Pokérus / Held Item say "View only: choose Edit to change …". Origin / PID say "… is read-only for this Pokémon". Nothing is staged. (Gen I/II use different screens and are not covered.)
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C12 · Gen V Pokérus on a Pokémon that already has it (L06)
+- **Steps:** Gen V → Edit a Pokémon that already has Pokérus (infected or cured) → change Pokérus, cycle it back and forth → Keep → Review.
+- **Expected:** Keep is accepted, Review names the Pokérus state in words, not raw numbers like "2 -> 1".
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C13 · Create Review shows the new Pokémon's details (P3)
+- **Steps:** In each generation, Create a Pokémon → Keep → open Review.
+- **Expected:** A header "Add Pokémon: Empty → <Species> Lv n" followed by named rows: Moves, OT / ID, and where the game stores them Held Item, Ball, Nature, Gender, Ability, Language, Met. Only changed IVs/EVs/DVs, Shiny, Pokérus, Friendship appear. Gen I/II never show Nature, Ability or Ball.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C14 · Gen II Create starts with level-up moves
+- **Steps:** Gold, Silver or Crystal → Create → Pikachu Lv 5.
+- **Expected:** Moves start as Thunder Shock and Growl (with PP), as in Gen I and III–V, and Review lists them.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C15 · Stored unreleased held item is labelled, not deleted
+- **Steps:** Gen III → open a Pokémon that already holds Safari Ball or Berry Juice (if you have one).
+- **Expected:** The item shows with "(unreleased)" and is kept; it is not offered as a new choice for other Pokémon.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C16 · Switching saves never carries a draft over
+- **Steps:** Open save A → start editing a Pokémon (do not Keep) → leave the save with Discard & Exit → open save B → open its Boxes.
+- **Expected:** Save B shows no editor, picker or draft from save A; Review of B lists only B's own changes.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C17 · Gen I–III export refuses a changed original
+- **Steps:** Open a Gen I–III emulator save in PokeBank → make an edit → (optional, advanced) change the original save file outside the app → Export Copy.
+- **Expected:** If the original changed since it was opened, the export is refused with a message; otherwise it exports normally. The original is never modified.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+- **Screenshots sent separately:**
+
 ---
 
 ## Group D: still untested
