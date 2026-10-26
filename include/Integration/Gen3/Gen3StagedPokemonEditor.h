@@ -105,6 +105,7 @@ struct StagedPokemonChange {
     std::string beforeValue;
     std::string afterValue;
     bool party = false;
+    bool createdDetail = false;   // CG74: one value of a created Pokemon; there is no "before"
 };
 
 class StagedPokemonEditor {
