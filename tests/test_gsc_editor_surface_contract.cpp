@@ -1,4 +1,3 @@
-#include "UI/ClassicTrainerPage.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -375,18 +374,14 @@ int main() {
     // The established Name/Money two-row cursor contract above is unchanged.
     assert(finalFix.find("drawGoldSilverTrainerGender") == std::string::npos);
     assert(finalFix.find("trainerGender == 0 ? \"Male\"") == std::string::npos);
-    {
-        namespace Page = PokeBank::UIModel::ClassicTrainerPage;
-        for (bool playTime : {false, true})
-            for (bool gender : {false, true}) {
-                for (const auto& row : Page::rows({2, false, playTime, gender}))
-                    assert(row.field != Page::Field::Gender);
-                int crystalGender = 0;
-                for (const auto& row : Page::rows({2, true, playTime, gender}))
-                    crystalGender += row.field == Page::Field::Gender;
-                assert(crystalGender == 1);
-            }
-    }
+    // The row model itself is exercised for Gold / Silver / Crystal under every writer set by
+    // tests/test_classic_trainer_page.cpp. This contract is built without -Iinclude
+    // (touch-input-gating.yml), so it pins the model's native rule as source.
+    const auto page = readFile("include/UI/ClassicTrainerPage.h");
+    assert(page.find("const bool genderStored = in.generation >= 3 || (in.generation == 2 && in.crystal);") !=
+           std::string::npos);
+    assert(page.find("if (genderStored && !genderEditable) out.push_back({Field::Gender, false, -1});") !=
+           std::string::npos);
 
     std::cout << "GSC shared editor Trainer/field-layout/session/export + hardware regression contract: PASS\n";
     return 0;

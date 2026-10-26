@@ -1,4 +1,5 @@
 #include "fixtures/gsc_pokemon_fixture.h"
+#include "UI/Gen2NativePresentation.h"
 
 namespace {
 void runFamily(const L& l,SourceGame game){
@@ -204,6 +205,45 @@ void runFamily(const L& l,SourceGame game){
     const auto* createdPersonal=personalRecord(158);assert(createdPersonal);
     assert(added->experience==Pokemon::getExpForLevel(5,createdPersonal->experienceGrowth));
     assert((added->statExperience==std::array<uint16_t,5>{0,0,0,0,0}));
+    // Round 6 P3 (CG74): the Review of a created Pokemon lists what was created, from the verified
+    // record: "<loc> / Add Pokémon" with "Empty" -> "<SPECIES> Lv n", then one row per stored,
+    // non-default value (an empty "before"); never a nature, ability, ball or Secret ID.
+    {
+        const auto rowsFor=[&](const std::string& key){
+            std::vector<StagedChange> out;
+            for(const auto& c:editor->pendingChanges()) if(c.key.rfind(key,0)==0) out.push_back(c);
+            return out;
+        };
+        const auto rows=rowsFor("box:3:0:add");
+        assert(rows.size()==4);
+        assert(rows[0].label=="Box 4 Slot 1 / Add Pokémon"&&rows[0].beforeValue=="Empty"&&rows[0].afterValue=="Totodile Lv 5");
+        assert(rows[1].label=="Box 4 Slot 1 / Moves"&&rows[1].beforeValue.empty()&&rows[1].afterValue=="Scratch, Leer");
+        assert(rows[2].label=="Box 4 Slot 1 / OT / TID"&&rows[2].afterValue=="ASH / 4660");
+        assert(rows[3].label=="Box 4 Slot 1 / DVs"&&rows[3].afterValue=="Atk 8, Def 8, Spe 8, Spc 8");
+        // Every non-default value: held item, shiny DVs, Stat Exp, Friendship, Pokerus, Crystal caught data.
+        namespace N=PokeBank::UIModel::Gen2Native;
+        BoxPokemonCreate full=created;full.nickname="CROC";full.heldItem=0x52;full.dvs={10,10,10,10};
+        full.statExperience={0,300,0,0,7};full.friendship=200;full.pokerus=0x21;
+        if(game==SourceGame::Crystal) full.caughtData=N::encodeCrystalCaughtData({true,1,5,true,1});
+        size_t fullSlot=99;assert(editor->stageAddBoxPokemon(6,full,fullSlot,error));assert(fullSlot==0);
+        const auto stored=editor->boxedPokemon(6,0,error);assert(stored&&stored->heldItem==0x52);
+        const auto more=rowsFor("box:6:0:add");
+        std::vector<std::string> labels;for(const auto& c:more) labels.push_back(c.label.substr(c.label.find(" / ")+3));
+        std::vector<std::string> expected{"Add Pokémon","Moves","Held Item","OT / TID","DVs","Shiny","Stat Exp",
+                                          "Friendship","Pokérus"};
+        if(game==SourceGame::Crystal){expected.push_back("OT Gender");expected.push_back("Met");}
+        assert(labels==expected);
+        const auto value=[&](const char* field){
+            for(const auto& c:more) if(c.label=="Box 7 Slot 1 / "+std::string(field)) return c.afterValue;
+            assert(false);return std::string();
+        };
+        assert(value("Held Item")==std::string(gen2ItemName(0x52))&&!value("Held Item").empty());
+        assert(value("DVs")=="Atk 10, Def 10, Spe 10, Spc 10"&&value("Shiny")=="Yes"&&stored->shiny);
+        assert(value("Stat Exp")=="Atk 300, Spc 7"&&value("Friendship")=="200"&&value("Pokérus")=="Infected");
+        if(game==SourceGame::Crystal){assert(value("OT Gender")=="Female"&&value("Met")=="New Bark Town, Lv 5");}
+        for(const auto& c:more) for(const char* absent:{"Nature","Ability","Ball","SID","Secret"})
+            assert(c.label.find(absent)==std::string::npos);
+    }
 
     BoxPokemonCreate defaultNamed=created;defaultNamed.species=25;defaultNamed.nickname.clear();
     size_t defaultSlot=99;assert(editor->stageAddBoxPokemon(5,defaultNamed,defaultSlot,error));
