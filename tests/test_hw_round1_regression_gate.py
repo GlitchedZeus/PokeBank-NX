@@ -564,7 +564,8 @@ GUARDS_ROUND6: dict[str, tuple[str, G]] = {
         ('cg', 'CG62-met-location-rows-fit'),
     ]),
     'NEW-14': ('Gen V Language cycles inline as a staged native edit (Oct 25 PASS)', [
-        ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("stage(screen, Field::Language, 0, nextLanguage)")!=std::string::npos);'),
+        ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("stage(screen, Field::Language, 0, PokeBank::UIModel::Gen5LanguageCycle::next(p.language()))")!=std::string::npos);'),
+        ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("postStatus(")==std::string::npos);'),
         ('host', 'test_gen5_language_cycle', 'tests/test_gen5_language_cycle.cpp', 'assert(branch.find("openPicker(")==std::string::npos);'),
         ('cg', 'CG54-gen5-language-editable'),
     ]),

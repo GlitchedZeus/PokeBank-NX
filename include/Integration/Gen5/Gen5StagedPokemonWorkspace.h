@@ -347,6 +347,13 @@ public:
         return 720;
     }
 
+    // The Pokerus byte this workspace's own replay restores to for a slot (its staging baseline):
+    // the source record, or a Create / Clone replacement's current bytes.
+    [[nodiscard]] std::optional<uint8_t> pokerusRestoreByte(const Slot& s) const {
+        const auto record=boxReplacements_.count(s)?view(s):sourceSlot(s);
+        if(!record || !record->valid() || record->empty())return std::nullopt;
+        return record->pokerusState();
+    }
     [[nodiscard]] std::optional<Pokemon5ReadOnly> viewParty(size_t slot) const {
         return view({Region::Party,0,slot});
     }

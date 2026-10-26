@@ -5,6 +5,12 @@
 # filesystem utilities, the top-level screens) are replaced by tests/host-ui/HostUiStubs.cpp.
 # Application objects are built with -w: the app's warnings are gated by its own native build; the
 # tests themselves use the full host CXXFLAGS.
+# The application itself is GCC-only (devkitA64): several headers name `Trainer::Trainer` /
+# `Pokemon::...` while a global using-directive is in scope, which Clang reports as ambiguous and
+# GCC accepts. The harness therefore links the app only when the host compiler is GCC; under Clang
+# this file adds no targets and the rest of the host suite is unchanged.
+HOST_UI_COMPILER_IS_CLANG := $(shell $(CXX) --version 2>/dev/null | grep -qi clang && echo yes)
+ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
 HOST_UI_EXCLUDED := src/main.cpp src/UI/UI.cpp src/UI/SaveSelectScreen.cpp src/UI/BackupSelectionScreen.cpp \
 	src/UI/PKSEFramebuffer.cpp src/UI/PKSEFramebufferTouchTransform.cpp src/UI/SystemIcons.cpp \
 	src/Utils/FileUtilities.cpp src/Utils/Keyboard.cpp src/Utils/PhysicalMoveAudit.cpp \
@@ -81,3 +87,4 @@ $(HOST_UI_LAYOUT_TEST): $(HOST_UI_LAYOUT_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_LAYOUT_SANITIZE): $(HOST_UI_LAYOUT_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_layout_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+endif

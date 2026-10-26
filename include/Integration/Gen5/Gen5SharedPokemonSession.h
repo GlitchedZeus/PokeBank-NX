@@ -47,6 +47,8 @@ public:
         auto draft=StagedPokemon5Record::create(record->originalEncryptedBytes(),&error,
                                                   workspace.black2White2());
         if(!draft)return false;
+        if(const auto restore=workspace.pokerusRestoreByte(location))
+            draft->setPokerusRestoreBaseline(*restore);
         baseline_={record->originalEncryptedBytes().begin(),
                    record->originalEncryptedBytes().end()};
         working_=std::move(*draft);

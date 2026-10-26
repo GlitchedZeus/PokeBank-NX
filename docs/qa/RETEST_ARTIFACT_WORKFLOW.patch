@@ -1,0 +1,28 @@
+diff --git a/.github/workflows/app-qa-nro-audit.yml b/.github/workflows/app-qa-nro-audit.yml
+index d3690f25..24a65b33 100644
+--- a/.github/workflows/app-qa-nro-audit.yml
++++ b/.github/workflows/app-qa-nro-audit.yml
+@@ -219,6 +219,15 @@ jobs:
+             --record HARDWARE_TEST_RECORD.md | tee nro-audit.log
+           { echo; cat HARDWARE_TEST_RECORD.md; } >> "$GITHUB_STEP_SUMMARY"
+ 
++      # The owner's offline retest checklist for THIS candidate ships with the audit record. It must be
++      # committed with the binding (tools/qa/make_retest.py) and name exactly the audited NRO.
++      - name: Owner retest checklist for this candidate
++        run: |
++          set -euo pipefail
++          python3 tools/qa/make_retest.py --check | tee retest-check.log
++          cp "docs/hardware/RETEST_${SHORT_SHA}.md" .
++          echo "| Owner retest checklist | docs/hardware/RETEST_${SHORT_SHA}.md names this NRO; uploaded with the audit record |" >> "$GITHUB_STEP_SUMMARY"
++
+       - name: Upload the audit record
+         if: always()
+         uses: actions/upload-artifact@v4
+@@ -229,5 +238,7 @@ jobs:
+             nro-audit.log
+             run-artifacts.tsv
+             cross-gen-contracts.log
++            RETEST_${{ env.SHORT_SHA }}.md
++            retest-check.log
+           if-no-files-found: ignore
+           retention-days: 30
