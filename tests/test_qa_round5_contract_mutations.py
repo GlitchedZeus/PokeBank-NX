@@ -62,6 +62,9 @@ MUTATIONS = [
      "src/UI/Gen2PokemonEditorFoundation.inc",
      "    p.form = p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs)) : 0;\n",
      ""),
+    ("Gen IV created slot falls into compare()'s early return (no Create detail)", "CG74-create-review-details",
+     "src/Integration/Gen4/Gen4ExportTransaction.cpp",
+     "if(a.valid() && a.empty() && b.valid() && !b.empty() && !inOriginal(b))return created(b,location);\n", ""),
     ("Gen IV play time written straight to a file", "CG64-trainer-playtime-gender-staged",
      "src/Integration/Gen4/Gen4StagedPokemonEditor.cpp",
      "return stageTrainerBytes(kTrainerPlayTimeField, field,",
@@ -72,7 +75,8 @@ MUTATIONS = [
 def main() -> int:
     failures = 0
     base = {r.cid: r for r in qa.contracts(SOURCES)}
-    for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged", "CG76-gen2-unown-letter-from-dvs"):
+    for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged", "CG76-gen2-unown-letter-from-dvs",
+                "CG74-create-review-details"):
         if base[cid].violations:
             print(f"FAIL  unmutated tree: {cid}: {base[cid].violations[:2]}")
             failures += 1

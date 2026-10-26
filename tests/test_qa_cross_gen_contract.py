@@ -2920,10 +2920,32 @@ def round6_contracts(sources):
         window = window[:cut.start()] if cut else window
         if len(set(x.lower() for x in FIELD_RX.findall(window))) < 3:
             r.violations.append(f"{rel}:{ln_at(f, m.start())}: {what} Create Review row stops at the species / level")
+    # Gen IV builds Review rows in lambdas (describeStagedReviewChanges: compare / created). A slot that
+    # was empty before (a.empty()) is a created Pokemon: before compare()'s early return for an empty or
+    # unchanged slot, a created branch must return a describer whose body lists the record's fields.
     g4x = src("src/Integration/Gen4/Gen4ExportTransaction.cpp")
-    cmp_ = body_of(g4x, "compare")
-    if g4x and re.search(r"if\s*\(\s*a\.empty\(\)[^)]*\)\s*return\s*;", cmp_):
-        r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: compare() skips every field of a created slot")
+
+    def lambda_body(f, name):
+        m = re.search(r"\bconst\s+auto\s+" + re.escape(name) + r"\s*=\s*\[[^\]]*\]\s*\([^)]*\)\s*\{", f.code) if f else None
+        return block_after(f.code, m.end()) if m else ""
+    cmp_ = lambda_body(g4x, "compare")
+    if not cmp_:
+        r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: compare lambda not found (update this check)")
+    else:
+        early = re.search(r"if\s*\(([^;{]*\ba\.empty\(\)[^;{]*)\)\s*return\s*;", cmp_)
+        head = cmp_[:early.start()] if early else cmp_
+        made = re.search(r"if\s*\(([^;{]*\ba\.empty\(\)[^;{]*)\)\s*return\s+(\w+)\s*\(\s*b\b", head)
+        if early and not made:
+            r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: compare() returns early for an empty "
+                                "'before' slot, so a created Pokemon gets no Review detail")
+        elif made:
+            if re.search(r"!\s*a\.empty\(\)", made.group(1)) or not re.search(r"!\s*b\.empty\(\)", made.group(1)):
+                r.violations.append("src/Integration/Gen4/Gen4ExportTransaction.cpp: the created branch is not 'empty before, "
+                                    "filled after'")
+            fields = lambda_body(g4x, made.group(2)) or body_of(g4x, made.group(2))
+            if len(set(x.lower() for x in FIELD_RX.findall(fields))) < 3:
+                r.violations.append(f"src/Integration/Gen4/Gen4ExportTransaction.cpp: {made.group(2)}() does not list the "
+                                    "created Pokemon's fields")
     sr5 = src("include/Integration/Gen5/Gen5SharedReview.h")
     if sr5:
         m = re.search(r"Field::CreateBox", sr5.code)
