@@ -87,7 +87,8 @@ void verifyFrame(const std::string& where) {
         for (const auto& r : t) std::cout << "  " << describe(r) << '\n';
 }
 
-void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot = 1, bool gen5 = false) {
+void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot = 1, bool gen5 = false,
+           bool noTrainerGender = false) {
     UI::PKSEFramebuffer fb;
     UI::TouchInput touch;
     const auto frame = [&](u64 down = 0) {
@@ -113,6 +114,13 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
             frame();
         }
         verifyFrame(game + " / " + page.name);
+        if (page.mode == View::Trainer && page.detail && !page.help && noTrainerGender) {
+            // Gen I and Gold / Silver store no trainer gender (CG72): no "Gender" text is drawn at
+            // all on the Trainer page, visible or painted over.
+            bool drawn = false;
+            for (const auto& text : HostUi::texts) drawn = drawn || text.find("Gender") != std::string::npos;
+            check(!drawn, game + " / Trainer: no Gender text is drawn (the save stores none)");
+        }
     }
     screen.helpOverlayActive = false;
 
@@ -183,6 +191,26 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     }
     check(reviewed, game + ": Review opens after a staged Create");
     if (reviewed) verifyFrame(game + (gen5 ? " / Review (Gen V surface, staged Create)" : " / Review (staged Create)"));
+    press(HidNpadButton_B);   // close Review only (B on the hub with staged edits opens the exit menu)
+
+    // With a staged change, every browse page's footer offers Review (lane L's Review entries).
+    for (const auto& [name, mode] : {std::pair{"Party", View::Party}, std::pair{"Boxes", View::Boxes},
+                                     std::pair{"Bag", View::Items}}) {
+        screen.goBack = false;
+        screen.helpOverlayActive = false;
+        screen.detailViewActive = true;
+        screen.selectedMode = mode;
+        screen.selectedBoxIndex = 0;
+        screen.selectedItemIndex = 0;
+        screen.selectedPartyIndex = 0;
+        frame();
+        const std::string where = game + " / " + name + " (staged)";
+        verifyFrame(where);
+        bool review = false;
+        for (const auto& t : HostUi::visibleText)
+            review = review || (t.y >= 720 - 56 && t.text == "Review");
+        check(review, where + ": the footer offers Review");
+    }
 }
 
 // The recorder itself: overlap, occlusion and clipping behave as the checks assume.
@@ -238,12 +266,19 @@ int main(int argc, char** argv) {
     {
         auto bytes = std::make_shared<std::vector<uint8_t>>(qasynth::gen1::save());
         keepAlive.push_back(bytes);
+        // A valid Bag (item 0x14 x3) and an empty PC item list, the list shape and
+        // offsets of tests/test_rby_readonly_bridge.cpp (BAG 0x25C9, PCITEMS 0x27E6), then the
+        // main checksum again, so the Gen I Bag page has a real inventory surface.
+        auto& d = *bytes;
+        d[0x25C9] = 1; d[0x25CA] = 0x14; d[0x25CB] = 3; d[0x25CC] = 0xFF;
+        d[0x27E6] = 0; d[0x27E7] = 0xFF;
+        qasynth::gen1::forge(d);
         auto parsed = PokeVault::Integration::Gen1::parse(*bytes, PokeVault::Integration::Gen1::SourceGame::Red);
         check(static_cast<bool>(parsed), "Gen I fixture parses");
         if (parsed) {
             auto* trainer = keep(PokeVault::Legacy::RBYReadOnlyTrainer::create(*parsed.save, error));
             check(trainer != nullptr, "Gen I trainer: " + error);
-            if (trainer) sweep("Red", *open(*trainer, "Pokemon Red", "red_gb", "mGBA"));
+            if (trainer) sweep("Red", *open(*trainer, "Pokemon Red", "red_gb", "mGBA"), 1, false, true);
         }
     }
     // Gen II: PKHeX-shaped Silver fixture with a boxed Pikachu (tests/fixtures/gsc_pokemon_fixture.h).
@@ -255,7 +290,19 @@ int main(int argc, char** argv) {
         if (parsed) {
             auto* trainer = keep(PokeVault::Legacy::GSCReadOnlyTrainer::create(*parsed.save, error));
             check(trainer != nullptr, "Gen II trainer: " + error);
-            if (trainer) sweep("Silver", *open(*trainer, "Pokemon Silver", "silver_gbc", "mGBA"));
+            if (trainer) sweep("Silver", *open(*trainer, "Pokemon Silver", "silver_gbc", "mGBA"), 1, false, true);
+        }
+    }
+    // Gen II Crystal: the same fixture shape on the Crystal layout.
+    {
+        auto bytes = std::make_shared<std::vector<uint8_t>>(fixture(C, true));
+        keepAlive.push_back(bytes);
+        auto parsed = parse(*bytes, SourceGame::Crystal);
+        check(static_cast<bool>(parsed), "Crystal fixture parses");
+        if (parsed) {
+            auto* trainer = keep(PokeVault::Legacy::GSCReadOnlyTrainer::create(*parsed.save, error));
+            check(trainer != nullptr, "Crystal trainer: " + error);
+            if (trainer) sweep("Crystal", *open(*trainer, "Pokemon Crystal", "crystal_gbc", "mGBA"));
         }
     }
     // Gen III: FireRed with a party Pikachu (HostUiFixtures::gen3Fixture).
