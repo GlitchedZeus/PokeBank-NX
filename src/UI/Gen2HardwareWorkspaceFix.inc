@@ -285,6 +285,11 @@ void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint6
 bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                    int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
+    // Round 6 (P1-RETURN): a Review opened from the Create / Edit workspace (+) owns input
+    // until its B, which returns to the workspace still open underneath.
+    if (stateFor(screen).mode != Mode::None && editorOverlayState(screen).active &&
+        editorOverlayState(screen).review)
+        return handleSharedReview(screen, down, held, stickX, stickY);
     if (stateFor(screen).mode != Mode::None) {
         handleUnifiedTouch(screen, touch, down);
         normalizeHardwareMoveRowFocus(screen);
@@ -301,6 +306,12 @@ bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uin
 
 bool drawUnifiedGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
+    // Round 6: the shared Review replaces the workspace while open (nothing drawn underneath).
+    if (stateFor(screen).mode != Mode::None && editorOverlayState(screen).active &&
+        editorOverlayState(screen).review) {
+        drawSharedReviewSurface(screen, fb);
+        return true;
+    }
     if (stateFor(screen).mode != Mode::None) {
         normalizeHardwareDerivedHpDvFocus(screen);
         drawUnifiedWorkspace(screen, fb);

@@ -2398,20 +2398,40 @@ def round5_contracts(sources):
     # '+ Review'. A help line must name a button ("Move  Place or cancel from the on-screen Move controls"
     # named none).
     # ------------------------------------------------------------------------------------------
+    # Round 6 (lane L, B08 / P1-RETURN) retarget: + now opens the shared Review on Gen I-IV Boxes,
+    # Party, Bag and Trainer too (ReviewEntry.h, read by openClassicBrowseReview and the Bag's +).
+    # A '+ Review' line outside a generation==5 branch is accepted only while those handlers exist,
+    # and never on the Gen I-IV save hub (there + still points to Product Home).
     r = Result("CG63-help-names-real-controls",
-               "Classic Help: '+ Review' appears only for Gen V; every line names a real control "
-               "(owner Oct 24 4D)")
+               "Classic Help: '+ Review' appears only where + opens Review (Gen V, and Gen I-IV editor pages "
+               "per ReviewEntry.h); every line names a real control (owner Oct 24 4D, Oct 25 B08)")
     hp = src("include/UI/ClassicHelpPresentation.h")
+    entry = src("include/UI/ReviewEntry.h")
+    composite = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    bag = src("src/UI/ClassicInventoryOverlay.cpp")
+    classic_plus = bool(entry and re.search(r"plusOpensReview", entry.code) and
+                        composite and "if (openClassicBrowseReview(*this, down)) return;" in composite.code and
+                        bag and "if (screen.openStagedReview(false)) return true;" in bag.code)
     if not hp:
         r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
     else:
+        hub = re.search(r"case\s+Page::Hub:(.*?)break;", hp.code, re.S)
         for m in re.finditer(r'"\+\s+Review[^"]*"', hp.code):
             start = max(hp.code.rfind(";", 0, m.start()), hp.code.rfind("{", 0, m.start()),
                         hp.code.rfind(":\n", 0, m.start()))
             stmt = hp.code[start + 1:m.start()]
-            if not re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
-                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{hp.code.count(chr(10), 0, m.start()) + 1}: "
-                                    "'+ Review' is shown outside Gen V (Gen I-IV + opens Product Home)")
+            line = hp.code.count(chr(10), 0, m.start()) + 1
+            if re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
+                continue
+            if not classic_plus:
+                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: "
+                                    "'+ Review' is shown outside Gen V but no Gen I-IV handler opens Review on +")
+        if hub:
+            for m in re.finditer(r'(if\s*\(\s*generation\s*==\s*5\s*\)\s*)?out\.push_back\(([^;]*)\);', hub.group(1)):
+                if ("kPlusReview" in m.group(2) or re.search(r'"\+\s+Review', m.group(2))) and \
+                        not m.group(1) and not re.search(r"generation\s*==\s*5", m.group(2)):
+                    r.violations.append("include/UI/ClassicHelpPresentation.h: the Gen I-IV save hub names "
+                                        "'+ Review' (there + opens Product Home)")
         if any("on-screen Move controls" in lit for _, lit in hp.literals):
             r.violations.append("include/UI/ClassicHelpPresentation.h: Move help names no button")
     res.append(r)

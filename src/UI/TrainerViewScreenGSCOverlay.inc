@@ -1,3 +1,4 @@
+#include "UI/ClassicSourceGuard.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
@@ -112,6 +113,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
         error = "No pending changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
 
     // Path construction remains centralized in PokeBankPaths, but all save finalization and I/O are
     // owned by Gen2ExportTransaction. This wrapper deliberately contains no fopen/fwrite sequence.

@@ -41,8 +41,11 @@ struct InventoryActionAvailability {
     };
 }
 
+// `plusHint` names what + does: "+: Options" (installed titles), "+: Review" (Gen I-V staged
+// Bags, ReviewEntry.h).
 [[nodiscard]] inline std::string inventoryFooter(bool editable, bool categorySupported,
-                                                 bool hasSelection, bool quantityEditable) {
+                                                 bool hasSelection, bool quantityEditable,
+                                                 const char* plusHint = "+: Options") {
     const auto available = inventoryActionAvailability(
         editable, categorySupported, hasSelection, quantityEditable);
     std::string out = "D-pad/Stick: Navigate";
@@ -50,7 +53,9 @@ struct InventoryActionAvailability {
     if (available.addItem) out += "  |  X: Add Item";
     if (available.removeItem) out += "  |  Y: Remove Item";
     if (categorySupported) out += "  |  L/R: Category";
-    out += "  |  +: Options  |  -: Help  |  B: Back";
+    out += "  |  ";
+    out += plusHint;
+    out += "  |  -: Help  |  B: Back";
     return out;
 }
 
