@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -3132,6 +3135,66 @@ def round6_contracts(sources):
     return res
 
 
+def _trainer_review_slot(sources, tvb):
+    """CG83: run include/UI/ClassicTrainerPage.h's layout at the real Trainer panel bounds for every
+    Gen I-IV game and every Play Time / Gender writer combination; the Review button must sit inside
+    the panel body, below every row (a measured slot under the last row, or the footer action area)."""
+    page = next((x for x in sources if x.rel == "include/UI/ClassicTrainerPage.h"), None)
+    if not page or not tvb:
+        return ["include/UI/ClassicTrainerPage.h: page model not found (update this check)"]
+    consts = dict(re.findall(r"constexpr\s+int\s+(LEFT_PANEL_X|LEFT_PANEL_Y|CONTENT_PANEL_HEIGHT)\s*=\s*(\d+)\s*;", tvb.code))
+    call = re.search(r"drawTrainerView\s*\(\s*\*this\s*,\s*fb\s*,\s*contentX\s*,\s*CONTENT_PANEL_Y\s*,\s*"
+                     r"contentPanelWidth\s*,\s*CONTENT_PANEL_HEIGHT\s*\)", tvb.code)
+    cx = re.search(r"const\s+int\s+contentX\s*=\s*LEFT_PANEL_X\s*;", tvb.code)
+    if len(consts) != 3 or not call or not cx or not re.search(r"CONTENT_PANEL_Y\s*=\s*LEFT_PANEL_Y\s*;", tvb.code):
+        return ["src/UI/TrainerViewScreenBase.inc: Trainer panel bounds not found (update this check)"]
+    x, y, h = int(consts["LEFT_PANEL_X"]), int(consts["LEFT_PANEL_Y"]), int(consts["CONTENT_PANEL_HEIGHT"])
+    w = 1280 - x   # contentPanelWidth = fb.getWidth() - contentX on the 1280x720 framebuffer
+    root = Path(str(page.path)[:-len(page.rel)]) if str(page.path).endswith(page.rel) else DEFAULT_ROOT
+    cxx = shutil.which("g++") or shutil.which("clang++") or shutil.which("c++")
+    if not cxx:
+        return ["CG83 needs a host C++ compiler to run the Trainer page model (none found)"]
+    games = (("red/blue/yellow", 1, False), ("gold/silver", 2, False), ("crystal", 2, True),
+             ("ruby/sapphire/emerald/firered/leafgreen", 3, False),
+             ("diamond/pearl/platinum/heartgold/soulsilver", 4, False))
+    probe = """#include "UI/ClassicTrainerPage.h"
+#include <cstdio>
+namespace P = PokeBank::UIModel::ClassicTrainerPage;
+int main() {
+    struct G { const char* name; int gen; bool crystal; } games[] = {%s};
+    for (const auto& g : games)
+        for (int pt = 0; pt < 2; ++pt)
+            for (int gd = 0; gd < 2; ++gd) {
+                const auto page = P::layout(P::rows({g.gen, g.crystal, pt == 1, gd == 1}), %d, %d, %d, %d);
+                const P::Rect body{%d, %d + P::kHeaderH, %d, %d - P::kHeaderH};
+                int last = 0;
+                for (const auto& placed : page.rows) {
+                    if (placed.card.bottom() > last) last = placed.card.bottom();
+                    if (placed.card.overlaps(page.review))
+                        std::printf("%%s (play time %%s, gender %%s): Review overlaps the %%s row\\n", g.name,
+                                    pt ? "editable" : "read-only", gd ? "editable" : "read-only",
+                                    std::string(P::label(placed.row.field)).c_str());
+                }
+                if (!page.review.inside(body))
+                    std::printf("%%s: Review is outside the Trainer panel body\\n", g.name);
+                if (page.review.y < last)
+                    std::printf("%%s (play time %%s, gender %%s): Review at y=%%d is not below the last row (bottom %%d)\\n",
+                                g.name, pt ? "editable" : "read-only", gd ? "editable" : "read-only", page.review.y, last);
+            }
+}
+""" % (", ".join('{"%s", %d, %s}' % (n, g, "true" if c else "false") for n, g, c in games), x, y, w, h, x, y, w, h)
+    with tempfile.TemporaryDirectory() as tmp:
+        cpp, exe = Path(tmp) / "probe.cpp", Path(tmp) / "probe"
+        cpp.write_text(probe.replace("#include <cstdio>", "#include <cstdio>\n#include <string>"), encoding="utf-8")
+        built = subprocess.run([cxx, "-std=c++20", "-I", str(root / "include"), str(cpp), "-o", str(exe)],
+                               capture_output=True, text=True)
+        if built.returncode:
+            first = built.stderr.strip().splitlines()[0] if built.stderr.strip() else "no compiler output"
+            return [f"include/UI/ClassicTrainerPage.h: page model probe does not build (update this check): {first}"]
+        ran = subprocess.run([str(exe)], capture_output=True, text=True)
+    return [f"include/UI/ClassicTrainerPage.h: {line}" for line in dict.fromkeys(ran.stdout.splitlines())]
+
+
 def round7_contracts(sources):
     """Round 7: owner Oct 26 FAIL items and requests (docs/hardware/ROUND6_RESULTS_26186464.md).
     Called from contracts()."""
@@ -3263,8 +3326,8 @@ def round7_contracts(sources):
     # read-only token), and the same Review button, which overlaps no row.
     # ------------------------------------------------------------------------------------------
     r = Result("CG83-classic-trainer-gen5-tokens",
-               "Gen I-IV Trainer uses Gen V's value colour and Review button; no yellow values "
-               "(owner Oct 26 B06 / C06)")
+               "Gen I-IV Trainer uses Gen V's value colour, no yellow values; Review sits in a measured slot "
+               "below the rows and overlaps none, for every Gen I-IV game (owner Oct 26 B06 / C06)")
     tvb = src("src/UI/TrainerViewScreenBase.inc")
     ct = body_of(tvb, "drawClassicTrainerView")
     if not ct:
@@ -3275,17 +3338,14 @@ def round7_contracts(sources):
                                 "token (Gen V uses Colors::Text)")
         if re.search(r'"[^"]*gold values', ct):
             r.violations.append("src/UI/TrainerViewScreenBase.inc: Gen I-IV Trainer caption still announces gold values")
-    gv = body_of(g5, "drawTrainerEditor")
-    gm = re.search(r"reviewY\s*=\s*y\s*\+\s*h\s*-\s*(\d+)\s*;[^;]*?drawGlyphButton\s*\([^;]*?,\s*(\d+)\s*,\s*(\d+)\s*,\s*\"Y\"", gv, re.S)
-    page = src("include/UI/ClassicTrainerPage.h")
-    pc = {k: int(v) for k, v in re.findall(r"\b(kReview[WH]|kReviewMargin)\s*=\s*(\d+)", page.code)} if page else {}
-    if not gm or len(pc) != 3:
-        missing(r, "Gen V / ClassicTrainerPage.h", "Trainer Review button geometry")
-    else:
-        g5_bottom, g5_w, g5_h = int(gm.group(1)), int(gm.group(2)), int(gm.group(3))
-        if (pc["kReviewW"], pc["kReviewH"], pc["kReviewMargin"] + pc["kReviewH"]) != (g5_w, g5_h, g5_bottom):
-            r.violations.append(f"include/UI/ClassicTrainerPage.h: Review {pc['kReviewW']}x{pc['kReviewH']} at "
-                                f"bottom-{pc['kReviewMargin'] + pc['kReviewH']}; Gen V's is {g5_w}x{g5_h} at bottom-{g5_bottom}")
+    # Review button (coordinator round 7 scope): placed in a measured slot below the last row (or the
+    # footer action area) and intersecting no row, computed with the page model at the real Trainer
+    # panel bounds for every Gen I-IV game, and drawn exactly where the model puts it.
+    if ct and not re.search(r"drawGlyphButton\s*\(\s*fb\s*,\s*page\.review\.x\s*,\s*page\.review\.y\s*,\s*"
+                            r"page\.review\.w\s*,\s*page\.review\.h\s*,\s*\"Y\"", ct):
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: the Gen I-IV Trainer Review button is not drawn at "
+                            "the page model's review rect")
+    r.violations.extend(_trainer_review_slot(sources, tvb))
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
