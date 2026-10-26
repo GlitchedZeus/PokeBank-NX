@@ -2934,7 +2934,10 @@ def round6_contracts(sources):
         window = f.code[m.end():m.end() + 1200]
         cut = re.search(r"\breturn\b|\bcontinue\b", window)
         window = window[:cut.start()] if cut else window
-        if len(set(x.lower() for x in FIELD_RX.findall(window))) < 3:
+        # Count the row labels the Review shows (string literals), not C++ identifiers such as moveList,
+        # getMoveName or after->heldItem, which a row-less window still contains.
+        labels = " ".join(re.findall(r'"((?:[^"\\]|\\.)*)"', window))
+        if len(set(x.lower() for x in FIELD_RX.findall(labels))) < 3:
             r.violations.append(f"{rel}:{ln_at(f, m.start())}: {what} Create Review row stops at the species / level")
     # Gen IV builds Review rows in lambdas (describeStagedReviewChanges: compare / created). A slot that
     # was empty before (a.empty()) is a created Pokemon: before compare()'s early return for an empty or
@@ -3647,9 +3650,24 @@ def round7_contracts(sources):
             r.violations.append("src/UI/ClassicInventoryOverlay.cpp: Gen I-III Bag Help is not titled from "
                                 "InventoryHelp::kTitle (\"Inventory Controls\")")
     if tvb:
-        if not re.search(r"page\s*==\s*Help::Page::Items\s*\?\s*PokeBank::UIModel::InventoryHelp::kTitle", tvb.code):
+        # The title is the drawInfoOverlay argument that the Items page Help rows are drawn with, and no
+        # page-Help overlay is drawn under a fixed literal title.
+        if not re.search(r"drawInfoOverlay\s*\(\s*fb\s*,\s*page\s*==\s*Help::Page::Items\s*\?\s*"
+                         r"(?:PokeBank::UIModel::)?InventoryHelp::kTitle\s*:[^,]*,\s*Help::lines\s*\(\s*page", tvb.code):
             r.violations.append("src/UI/TrainerViewScreenBase.inc: the Gen IV / V Bag Help is not titled "
                                 "\"Inventory Controls\" (InventoryHelp::kTitle)")
+        for m in re.finditer(r'drawInfoOverlay\s*\(\s*fb\s*,\s*"([^"]+)"\s*,\s*Help::lines\s*\(\s*page', tvb.code):
+            r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{tvb.code.count(chr(10), 0, m.start()) + 1}: "
+                                f"page Help (Bag included) drawn under the fixed title \"{m.group(1)}\"")
+    # One shared Help: the Gen IV / V Items page and the Gen I-III overlay both draw InventoryHelp's rows.
+    chp = src("include/UI/ClassicHelpPresentation.h")
+    items = re.search(r"case\s+Page::Items\s*:(.*?)(?=case\s+Page::|default\s*:|\Z)", chp.code if chp else "", re.S)
+    if not items or not re.search(r"return\s+(?:PokeBank::UIModel::)?InventoryHelp::lines\s*\(\s*generation\s*\)", items.group(1)):
+        r.violations.append("include/UI/ClassicHelpPresentation.h: the Gen IV / V Items Help does not use the shared "
+                            "InventoryHelp rows")
+    if ov and not re.search(r"for\s*\(\s*const\s+auto\s*&\s*\w+\s*:\s*InvHelp::lines\s*\(\s*generation\s*\)\s*\)", ov.code):
+        r.violations.append("src/UI/ClassicInventoryOverlay.cpp: the Gen I-III Bag Help does not draw the shared "
+                            "InventoryHelp rows")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
