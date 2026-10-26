@@ -500,10 +500,14 @@ struct Gen5Editor {
         const auto personal = PokeVault::Integration::Gen5::personal5(p.species(), 0, b2w2(screen));
         return !personal || personal.forms <= 1;
     }
-    static void passiveActivate(TrainerViewScreen& screen, EditorSurface::EditorState&, int row) {
+    // True when this generation has its own View message for the row.
+    static bool passiveActivate(TrainerViewScreen& screen, EditorSurface::EditorState&, int row) {
         const auto p = draft(screen).current();
-        if (row == Fields::Form && p && singleForm(screen, *p))
+        if (row == Fields::Form && p && singleForm(screen, *p)) {
             screen.postStatus("This Gen V Pokémon has only its default form", 135);
+            return true;
+        }
+        return false;
     }
 
     static std::array<uint8_t,6> ivs(const Record& p) { return p.ivs(); }
@@ -522,6 +526,19 @@ struct Gen5Editor {
     static bool pidRowEditable(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                int row, const Record&) {
         return Fields::pidRowEditable(draft(screen), row, b2w2(screen));
+    }
+    // Fields::pidRowEditable without the mode gate: rows Edit cannot change for this record either.
+    static bool pidRowLocked(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
+                             int row, const Record& p) {
+        if (Fields::earlierOrigin(p)) return true;
+        const auto personal = PokeVault::Integration::Gen5::personal5(p.species(), p.form(), b2w2(screen));
+        if (!personal) return true;
+        switch (row) {
+            case Fields::NatureRow: case Fields::ShinyRow: return false;
+            case Fields::GenderRow: return !PokeVault::Integration::Gen5::variableGenderRatio5(personal.info->genderRatio);
+            case Fields::AbilityRow: return Fields::abilityChoices(p, b2w2(screen)).size() <= 1;
+            default: return true;
+        }
     }
     static uint8_t gender(const Record& p) { return p.gender(); }
     static std::string pidRowValue(const TrainerViewScreen&, const Record& p, int row) {
