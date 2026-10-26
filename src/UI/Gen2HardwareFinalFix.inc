@@ -194,16 +194,10 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
                     gen2StatCellColor(r, 0), TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     gen2StatCellColor(r, 1), TextStyle::Caption);
-        const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
-        fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2), TextStyle::Caption);
     }
-    // One real editable Special DV/Stat Exp row. Both computed Special stats remain
-    // in the Calculated column, stacked cleanly without a fake second DV row.
-    // The Special row above already shows SpA via calculatedCell(battle, 4).
-    fb.drawText(x + 18, y + 246, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 282, y + 246,
-                PokeBank::UIModel::Gen2Workspace::calculatedSpecialDefenseCell(battle),
-                gen2StatCellColor(4, 2), TextStyle::Caption);
+    // One real editable Special DV/Stat Exp row; both computed Special stats stay in the one
+    // Calculated column, SpD on the next grid row under SpA (no fake second DV row).
+    drawGen2CalculatedColumn(fb, battle, x, y, w);
     fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);

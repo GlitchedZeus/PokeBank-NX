@@ -49,23 +49,50 @@ int main() {
         const uint16_t spa = expectedStat(personal->specialAttack, c.specialDV, c.specialExp, c.level);
         const uint16_t spd = expectedStat(personal->specialDefense, c.specialDV, c.specialExp, c.level);
         assert(battle[4] == spa && battle[5] == spd && spa != spd);
-        const std::string cell = W::calculatedCell(battle, 4);
-        assert(cell == "SpA " + std::to_string(spa)); // Special's Calculated cell is NOT blank.
-        assert(W::calculatedSpecialDefenseCell(battle) == std::to_string(spd));
-        for (int row = 0; row < 4; ++row)
-            assert(W::calculatedCell(battle, row) == std::to_string(battle[static_cast<std::size_t>(row)]));
+        // Round 6 7A: Special's Calculated cell is SpA (tagged, NOT blank); SpD is the next grid
+        // row in the SAME Calculated column; neither is a second DV / Stat Exp; no slash.
+        const auto cell = W::calculatedCell(battle, 4);
+        assert(cell.tag == "Sp. Atk" && cell.value == std::to_string(spa));
+        static_assert(W::kSpecialDefenseRow == 5 && W::StatsGrid::rowY(5) == W::StatsGrid::rowY(4) + W::StatsGrid::kRowStep);
+        const auto spdCell = W::calculatedCell(battle, W::kSpecialDefenseRow);
+        assert(spdCell.tag == "Sp. Def" && spdCell.value == std::to_string(spd));
+        for (int row = 0; row < 4; ++row) {
+            const auto plain = W::calculatedCell(battle, row);
+            assert(plain.tag.empty() && plain.value == std::to_string(battle[static_cast<std::size_t>(row)]));
+        }
+        for (int row = 0; row <= W::kSpecialDefenseRow; ++row)
+            assert(W::calculatedCell(battle, row).value.find('/') == std::string::npos);
         (void)c.game; // the stat formula is the same in Gold, Silver and Crystal
     }
     // Both VALUES layers (the unified workspace and the final hardware repaint) use the helper.
     for (const char* path : {"src/UI/Gen2UnifiedPokemonWorkspace.inc", "src/UI/Gen2HardwareFinalFix.inc"}) {
         const auto src = read(path);
-        assert(src.find("Gen2Workspace::calculatedCell(battle, r)") != std::string::npos);
-        assert(src.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
-        assert(src.find("\"Sp. Def\"") != std::string::npos);
-        assert(src.find("x + 282, y + 246") != std::string::npos); // same Calculated column
-        assert(src.find("\"Sp. Atk\"") == std::string::npos); // no detached duplicate readout
+        // Round 6 7A: one shared Calculated-column painter on the shared grid (same column).
+        assert(src.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+        assert(src.find("y + 246") == std::string::npos);       // no off-grid SpD line
+        assert(src.find("\"Sp. Def\"") == std::string::npos);   // no left-column pseudo-stat label
+        assert(src.find("\"Sp. Atk\"") == std::string::npos);   // no detached duplicate readout
         assert(src.find(": \"\xE2\x80\x94\";") == std::string::npos);
     }
+    const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+    const auto painter = unified.substr(unified.find("void drawGen2CalculatedColumn("),
+                                        unified.find("void drawUnifiedValues(") - unified.find("void drawGen2CalculatedColumn("));
+    assert(painter.find("W::calculatedCell(battle, row)") != std::string::npos);
+    assert(painter.find("y + W::StatsGrid::rowY(row)") != std::string::npos);
+    assert(painter.find("x + W::StatsGrid::tagX(w, vw, tw)") != std::string::npos);
+    // The tag never runs into its number, and stays clear of the Stat Exp column ("65535" at x+184)
+    // at the real panel width, with upper-bound caption widths (10 px/glyph: "Sp. Atk" 70, "999" 30).
+    for (int valueW : {10, 20, 30})
+        for (int tagW : {48, 56, 63, 70}) {
+            const int tagX = W::StatsGrid::tagX(W::StatsGrid::kPanelW, valueW, tagW);
+            const int valueX = W::StatsGrid::kPanelW - W::StatsGrid::kRightInset - valueW;
+            assert(tagX + tagW + W::StatsGrid::kTagGap == valueX);
+            assert(tagX >= 184 + 5 * 10 + 8);
+        }
+    for (const char* path : {"src/UI/Gen2UnifiedPokemonWorkspace.inc", "src/UI/Gen2SharedSurfaceParity.inc",
+                             "src/UI/Gen2HardwareWorkspaceFix.inc"})
+        assert(read(path).find("midW = 398") != std::string::npos); // == StatsGrid::kPanelW
+    assert(painter.find("x + w - W::StatsGrid::kRightInset - vw") != std::string::npos);
     std::cout << "Gen II Special: real Special Attack / Special Defense in the Calculated column PASS\n";
     return 0;
 }
