@@ -87,4 +87,20 @@ $(HOST_UI_LAYOUT_TEST): $(HOST_UI_LAYOUT_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_LAYOUT_SANITIZE): $(HOST_UI_LAYOUT_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_layout_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 6 7D (lane P): Gen I Species and Gen II Move pickers close on an outside tap, real screen.
+HOST_UI_CLASSIC_DISMISS_TEST := $(HOST_BUILD)/test_ui_classic_picker_dismiss_host
+HOST_UI_CLASSIC_DISMISS_SANITIZE := $(HOST_BUILD)/test_ui_classic_picker_dismiss_host_sanitize
+HOST_UI_CLASSIC_DISMISS_INPUTS := tests/test_ui_classic_picker_dismiss_host.cpp tests/host-ui/HostUi.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_CLASSIC_DISMISS_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_CLASSIC_DISMISS_SANITIZE)
+host-test: $(HOST_UI_CLASSIC_DISMISS_TEST)
+host-sanitize: $(HOST_UI_CLASSIC_DISMISS_SANITIZE)
+$(HOST_UI_CLASSIC_DISMISS_TEST): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_CLASSIC_DISMISS_SANITIZE): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
 endif
