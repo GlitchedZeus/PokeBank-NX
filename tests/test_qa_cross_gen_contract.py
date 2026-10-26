@@ -48,14 +48,14 @@ XFAIL: dict[str, str] = {
     # and CG75 / CG78 (P): ENFORCED.
     # Round 7: owner Oct 26 FAILs and requests (docs/hardware/ROUND6_RESULTS_26186464.md), owners per the
     # coordinator's round 7 assignment.
-    "CG80-gen2-create-review-visible": "L (round 7 B08 defect 1)",
     "CG81-one-review-key-per-screen": "L (round 7 B08 defect 2)",
-    "CG82-gen5-exports-in-save-backups": "L (round 7 C12 / G1)",
     "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
     "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
     "CG86-inventory-help-controls": "R (round 7 B04)",
     # CG87 (P e52b7d97) and CG88 (P e52b7d97, one early outside-tap dispatcher in SaveSelectScreen::update)
     # on #307 2de1c390, and CG85 (R 47b8097e, Gen2UnownLetter.h questions + Letter grid): ENFORCED.
+    # CG80 (L 146511e2, the outer Gen II draw shows an open Review first) and CG82 (L ab46883e, this
+    # profile's exports/gen5/account-<p> records, EXPORT_MANIFEST.txt) on #307 ab46883e: ENFORCED.
     "CG89-one-editor-heading-style": "S (round 7 typography)",
     "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
@@ -3311,15 +3311,54 @@ def round7_contracts(sources):
                "Gen II Create / Edit -> Review is drawn (not occluded by the workspace) and B returns "
                "(owner Oct 26 B08, defect 1)")
     MODE_GATE = re.compile(r"if\s*\(([^{;]*?\bmode\s*!=\s*Mode::None[^{;]*?)\)\s*\{")
-    for rel in ("src/UI/Gen2SharedSurfaceParity.inc", "src/UI/Gen2HardwareFinalFix.inc"):
-        body = body_of(src(rel), "drawFinalGen2Surface")
-        if not body:
-            missing(r, rel, "drawFinalGen2Surface")
-            continue
-        m = MODE_GATE.search(body)
-        if m and not re.search(r"\breview\b", body[:m.start()]) and not re.search(r"\breview\b", m.group(1)):
-            r.violations.append(f"{rel}: drawFinalGen2Surface paints the Create / Edit workspace without first "
-                                "drawing an open Review (Review owns the input but is never visible)")
+
+    def review_predicate(cond):
+        """True when an if-condition tests the open Review: inline (`.review`) or through a predicate
+        function whose own body tests it (lane L 146511e2: gen2WorkspaceReviewOpen)."""
+        if re.search(r"\breview\b", cond):
+            return True
+        for name in re.findall(r"\b(\w+)\s*\(", cond):
+            for f in sources:
+                body = body_of(f, name) if re.search(r"\b" + name + r"\s*\(", f.code) else ""
+                if re.search(r"\.\s*review\b", body) and re.search(r"\bmode\s*!=\s*Mode::None", body):
+                    return True
+        return False
+
+    def review_first(body):
+        """The body draws an open Review and returns before its first workspace paint (a Create / Edit
+        mode gate, or a call into the base layer)."""
+        first = min([m.start() for m in (MODE_GATE.search(body), re.search(r"drawFinalGen2SurfaceBase\s*\(", body)) if m],
+                    default=len(body))
+        for m in re.finditer(r"if\s*\(((?:[^()]|\([^()]*\))*)\)\s*\{", body[:first]):
+            blk = block_after(body, m.end())
+            if review_predicate(m.group(1)) and re.search(r"draw\w*Review\w*\s*\(", blk) and \
+                    re.search(r"return\s+true\s*;", blk):
+                return True
+        return False
+
+    # The frame is drawn by the outermost drawFinalGen2Surface (Gen2HardwareFinalFix.inc; the parity layer
+    # is renamed drawFinalGen2SurfaceBase and only reached through it). The outer layer must draw an open
+    # Review first; the base layer is exempt only while the outer one does.
+    outer = body_of(src("src/UI/Gen2HardwareFinalFix.inc"), "drawFinalGen2Surface")
+    base = body_of(src("src/UI/Gen2SharedSurfaceParity.inc"), "drawFinalGen2Surface")
+    co = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    renamed = co and re.search(r"#define\s+drawFinalGen2Surface\s+drawFinalGen2SurfaceBase", co.code)
+    if not outer or not base or not renamed:
+        missing(r, "src/UI/Gen2HardwareFinalFix.inc / Gen2SharedSurfaceParity.inc", "drawFinalGen2Surface layers")
+    else:
+        outer_ok = review_first(outer)
+        if not outer_ok:
+            r.violations.append("src/UI/Gen2HardwareFinalFix.inc: drawFinalGen2Surface paints the Create / Edit "
+                                "workspace without first drawing an open Review (Review owns the input but is never visible)")
+        if not outer_ok and not review_first(base):
+            r.violations.append("src/UI/Gen2SharedSurfaceParity.inc: drawFinalGen2Surface paints the Create / Edit "
+                                "workspace without first drawing an open Review")
+    # The input owner hands keys to Review under the same test the draw uses.
+    hu = body_of(src("src/UI/Gen2HardwareWorkspaceFix.inc"), "handleUnifiedGen2SurfaceInput")
+    hm = re.search(r"if\s*\(((?:[^()]|\([^()]*\))*)\)\s*return\s+handleSharedReview\s*\(", hu)
+    if not hm or not review_predicate(hm.group(1)):
+        r.violations.append("src/UI/Gen2HardwareWorkspaceFix.inc: the Gen II input owner does not hand an open "
+                            "Review its keys under the Review test")
     hr = body_of(src("src/UI/Gen2SharedPokemonSurface.inc"), "handleSharedReview")
     bm = re.search(r"if\s*\([^)]*HidNpadButton_B[^)]*\)\s*\{", hr)
     if not hr or not bm:
@@ -3378,18 +3417,71 @@ def round7_contracts(sources):
         missing(r, "include/UI/SourceBackupClassification.h / src/Integration/Gen5/Gen5WorkingCopyExport.cpp",
                 "export manifest name")
     else:
-        g5_manifests = set(re.findall(r'"([A-Z_]+MANIFEST\.txt)"', g5x.code))
-        uses_shared = re.search(r"\bkManifestName\b", g5x.code)
-        if not uses_shared and km.group(1) not in g5_manifests:
+        CLS, OPN = "include/UI/SourceBackupClassification.h", "include/UI/SourceBackupOpen.h"
+        def defn_body(f, name):
+            """Body of `name`'s definition, for signatures function_definitions skips (multi-line, with
+            `= {}` default arguments): balanced parameter list, then an opening brace."""
+            for m in re.finditer(r"\b" + re.escape(name) + r"\s*\(", f.code):
+                d, j = 1, m.end()
+                while j < len(f.code) and d:
+                    d += {"(": 1, ")": -1}.get(f.code[j], 0)
+                    j += 1
+                tail = re.match(r"\s*(?:const\s*)?(?:noexcept\s*)?\{", f.code[j:])
+                if tail:
+                    return block_after(f.code, j + tail.end())
+            return ""
+
+        lst, hist = defn_body(cls, "list"), defn_body(opn, "historicalSources")
+        cd, osn = body_of(cls, "canDelete"), body_of(opn, "openSnapshot")
+        # 1. The manifest Gen V writes is one Save Backups reads: the shared name, or (lane L ab46883e)
+        #    a Gen V record name that the listing, the history scan and open / delete all read.
+        g5_manifests = set(re.findall(r'"([A-Z0-9_]+MANIFEST\.txt)"', g5x.code))
+        g5m = re.search(r'kGen5ManifestName\s*=\s*"([^"]+)"', cls.code)
+        shared = re.search(r"\bkManifestName\b", g5x.code) or km.group(1) in g5_manifests
+        own = g5m and g5m.group(1) in g5_manifests
+        if not shared and not own:
             r.violations.append(f"src/Integration/Gen5/Gen5WorkingCopyExport.cpp: writes {sorted(g5_manifests)}; "
                                 f"Save Backups reads {km.group(1)}")
+        elif own and not shared:
+            for rel, body, what in ((CLS, lst, "list"), (OPN, hist, "historicalSources")):
+                if not re.search(r"kGen5ManifestName|manifestNameFor\s*\(", body):
+                    r.violations.append(f"{rel}: {what} never reads the Gen V {g5m.group(1)}")
+            for rel, body, what in ((CLS, cd, "canDelete"), (OPN, osn, "openSnapshot")):
+                if not re.search(r"manifestNameFor\s*\(\s*\w+\.profileScoped\s*\)|kGen5ManifestName", body):
+                    r.violations.append(f"{rel}: {what} does not read a Gen V record's own manifest")
+        # 2. Gen V's account-<profile> folder is read for THIS profile only: one validated builder
+        #    (32 hex), used by the listing and the history scan with the current profile; no scan of
+        #    every account folder.
         if re.search(r'"account-"', g5x.code):
-            for f, what in ((cls, "list / canDelete"), (opn, "historicalSources / openSnapshot")):
-                if "account-" not in f.code:
-                    r.violations.append(f"{f.rel}: {what} scan exports/genN/<name> only; Gen V exports under "
-                                        "exports/gen5/account-<id>/ are never listed")
-        cd = body_of(cls, "canDelete")
-        if not cd or "UnexpectedFiles" not in cd or "sourcePath" not in cd:
+            acct = body_of(cls, "gen5AccountDir")
+            vp = body_of(cls, "validProfile")
+            if not acct or not re.search(r'"/gen5/account-"', acct) or "validProfile" not in acct or \
+                    not re.search(r"size\s*\(\s*\)\s*!=\s*32", vp):
+                r.violations.append(f"{CLS}: no validated exports/gen5/account-<32 hex profile> path "
+                                    "(Gen V exports are never listed, or any profile's are)")
+            if not re.search(r"gen5AccountDir\s*\(\s*exportsRoot\s*,\s*out\.profileIdentity\s*\)", lst):
+                r.violations.append(f"{CLS}: list does not read this listing's Gen V account folder")
+            if not re.search(r"gen5AccountDir\s*\(\s*exportsRoot\s*,\s*profileIdentity\s*\)", hist):
+                r.violations.append(f"{OPN}: historicalSources does not read the current profile's Gen V folder")
+            for rel, body in ((CLS, lst), (OPN, hist)):
+                if re.search(r'children\s*\([^;]*"/gen5"', body) or re.search(r'starts_with\s*\(\s*"account-"|'
+                                                                             r'compare\s*\([^;]*"account-"', body):
+                    r.violations.append(f"{rel}: scans every Gen V account folder, not only the current profile's")
+            ss = src("src/UI/SaveSelectScreen.cpp")
+            if not ss or not re.search(r"SB::list\s*\([^;]*,\s*profile\s*\)", ss.code) or \
+                    not re.search(r"SB::historicalSources\s*\([^;]*,\s*profile\s*\)", ss.code) or \
+                    not re.search(r"const\s+std::string\s+profile\s*=\s*currentProfileIdentity\s*\(\s*\)", ss.code):
+                r.violations.append("src/UI/SaveSelectScreen.cpp: Save Backups is not given the current profile, so "
+                                    "no Gen V export is listed")
+            # 3. Ownership: delete and open accept a Gen V record only under this listing's profile folder.
+            for rel, body, what in ((CLS, cd, "canDelete"), (OPN, osn, "openSnapshot")):
+                if not re.search(r"gen5AccountDir\s*\(\s*(?:listing\.exportsRoot|root)\s*,\s*listing\.profileIdentity\s*\)", body):
+                    r.violations.append(f"{rel}: {what} does not confine a Gen V record to this profile's folder")
+        # The export-record branch (after its manifest read), not the manual-backup branch, must check the
+        # recorded source and the exact file set.
+        er = re.search(r"readManifest\s*\(\s*dir\s*\+\s*\"/\"\s*\+\s*manifestName\s*\)", cd or "")
+        tail = cd[er.end():] if er else ""
+        if not cd or not er or "UnexpectedFiles" not in tail or not re.search(r"m\.sourcePath\s*!=\s*listing\.sourcePath", tail):
             r.violations.append("include/UI/SourceBackupClassification.h: canDelete no longer checks the record's "
                                 "source and its exact files (ownership)")
     res.append(r)
