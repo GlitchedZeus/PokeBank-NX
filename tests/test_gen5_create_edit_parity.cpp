@@ -152,7 +152,8 @@ int main() {
         const auto at = gen5.find("void drawTrainerEditor(");
         const std::string trainer = gen5.substr(at, gen5.find("\n}\n", at) - at);
         const auto cards = trainer.find("for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex})");
-        const auto divider = trainer.find("fb.drawHDivider(cardX+20,cy,cardW-40);");
+        // Round 7: the divider is painted by the shared Trainer painter (UI/SharedTrainerPanel.h).
+        const auto divider = trainer.find("TPanel::drawDivider(fb,cardX,cy,cardW);");
         const auto info = trainer.find("for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges})");
         const auto language = trainer.find("\"Game language: \"");
         require(cards != std::string::npos && divider != std::string::npos && info != std::string::npos &&

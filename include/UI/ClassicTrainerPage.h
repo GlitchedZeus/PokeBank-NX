@@ -12,8 +12,11 @@
 //
 //   * Selectable rows first, as Gen V cards with a value pill: Name, Money, then Play Time and
 //     Gender where the generation has a native staged writer (ClassicTrainerSession rows 2 / 3).
-//   * A divider, then the read-only identity rows (gold, unselectable), one per native field.
-//   * A visible "Y Review Changes" button in its own slot at the bottom of the card.
+//   * A divider, then the read-only identity rows (unselectable, neutral text as on Gen V), one
+//     per native field, every row at the Gen V height (no compression).
+//   * Round 7 (owner B06 / C06): a compact "Y Review Changes" button in a measured slot directly
+//     below the last row, right-aligned with the cards; it never overlaps a row.
+// UI/SharedTrainerPanel.h paints exactly these rects, for Gen V and Gen I-IV alike.
 //
 // Native capability rules (no row is invented):
 //   * Gen I stores no trainer gender and no Secret ID: Trainer ID only.
@@ -86,8 +89,10 @@ inline constexpr int kTop = 18;
 inline constexpr int kCardW = 680;
 inline constexpr int kEditH = 52, kEditGap = 8;
 inline constexpr int kDividerBefore = 4, kDividerAfter = 14;
-inline constexpr int kInfoH = 42, kInfoGap = 6, kMinInfoH = 30;
-inline constexpr int kReviewW = 240, kReviewH = 48, kReviewMargin = 12;
+inline constexpr int kInfoH = 42, kInfoGap = 6;
+// The Gen I-IV Review button: narrower and shorter than a row card, kReviewGap below the content,
+// at least kReviewMargin above the panel's bottom edge.
+inline constexpr int kReviewW = 200, kReviewH = 36, kReviewGap = 8, kReviewMargin = 8;
 inline constexpr int kPillPad = 44, kPillH = 36, kTextInset = 24, kPillInset = 20;
 
 struct Placed {
@@ -101,7 +106,7 @@ struct Page {
     std::vector<Placed> rows;
     int dividerY = 0;
     Rect review;
-    bool fits = true; // every row ends above the Review button
+    bool fits = true; // the rows and the Review button end inside the panel
 };
 
 inline Page layout(const std::vector<Row>& rows, int x, int y, int w, int h) {
@@ -109,35 +114,31 @@ inline Page layout(const std::vector<Row>& rows, int x, int y, int w, int h) {
     page.panel = {x, y, w, h};
     page.header = {x, y, w, kHeaderH};
     const int cardX = x + (w - kCardW) / 2;
-    // The Review button is right-aligned with the cards, at the bottom of the panel.
-    page.review = {cardX + kCardW - kReviewW, y + h - kReviewMargin - kReviewH, kReviewW, kReviewH};
     int cy = y + kHeaderH + kTop;
-    int info = 0;
     for (const auto& row : rows) {
-        if (row.editable) {
-            page.rows.push_back({row, {cardX, cy, kCardW, kEditH}});
-            cy += kEditH + kEditGap;
-        } else {
-            ++info;
-        }
+        if (!row.editable) continue;
+        page.rows.push_back({row, {cardX, cy, kCardW, kEditH}});
+        cy += kEditH + kEditGap;
     }
     cy += kDividerBefore;
     page.dividerY = cy;
     cy += kDividerAfter;
-    // Read-only rows share what is left above the Review button, at most the Gen V height.
-    const int available = page.review.y - kReviewMargin - cy;
-    const int infoH = info ? std::clamp((available + kInfoGap) / info - kInfoGap, kMinInfoH, kInfoH) : kInfoH;
+    int bottom = page.dividerY;
     for (const auto& row : rows) {
         if (row.editable) continue;
-        page.rows.push_back({row, {cardX, cy, kCardW, infoH}});
-        cy += infoH + kInfoGap;
+        page.rows.push_back({row, {cardX, cy, kCardW, kInfoH}});
+        bottom = cy + kInfoH;
+        cy += kInfoH + kInfoGap;
     }
-    page.fits = cy - kInfoGap <= page.review.y - kReviewMargin;
+    // Measured from the real content: the slot below the last row, right-aligned with the cards.
+    page.review = {cardX + kCardW - kReviewW, bottom + kReviewGap, kReviewW, kReviewH};
+    page.fits = page.review.bottom() <= y + h - kReviewMargin;
     return page;
 }
 
-// Where the label and the value text of a placed row are drawn, given their measured widths and
-// the text height. Editable rows carry the value in a pill; read-only rows right-align it.
+// Where the label and the value text of a placed row are drawn (UI/SharedTrainerPanel.h), given
+// their measured widths and the text height. Editable rows carry the value in a pill; read-only
+// rows right-align it.
 struct TextRects {
     Rect label;
     Rect value; // the pill for an editable row

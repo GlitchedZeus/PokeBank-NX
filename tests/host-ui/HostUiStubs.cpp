@@ -18,13 +18,13 @@ void PKSEFramebuffer::clear(Color) {}
 void PKSEFramebuffer::drawPixel(int, int, Color) {}
 void PKSEFramebuffer::drawRect(int, int, int, int, Color) {}
 void PKSEFramebuffer::drawFilledRect(int x, int y, int w, int h, Color c) { HostUi::occlude(x, y, w, h, c.a); }
-void PKSEFramebuffer::drawText(int x, int y, const char* text, Color, TextStyle style) {
+void PKSEFramebuffer::drawText(int x, int y, const char* text, Color c, TextStyle style) {
     HostUi::texts.emplace_back(text);
-    HostUi::recordText(x, y, text, static_cast<int>(style));
+    HostUi::recordText(x, y, text, static_cast<int>(style), c.toRGBA8());
 }
-void PKSEFramebuffer::drawText(int x, int y, const std::string& text, Color, TextStyle style) {
+void PKSEFramebuffer::drawText(int x, int y, const std::string& text, Color c, TextStyle style) {
     HostUi::texts.push_back(text);
-    HostUi::recordText(x, y, text, static_cast<int>(style));
+    HostUi::recordText(x, y, text, static_cast<int>(style), c.toRGBA8());
 }
 void PKSEFramebuffer::drawSymbol(int, int, const std::string&, Color, TextStyle) {}
 void PKSEFramebuffer::drawImage(int, int, int, int, const unsigned char*, int) {}
@@ -42,8 +42,9 @@ void PKSEFramebuffer::drawCard(int x, int y, int w, int h) { HostUi::occlude(x, 
 void PKSEFramebuffer::drawSelectionHighlight(int, int, int, int) {}
 void PKSEFramebuffer::drawHDivider(int, int, int) {}
 void PKSEFramebuffer::drawFilledEllipse(int, int, int, int, Color) {}
-void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int, Color c) {
+void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int radius, Color c) {
     HostUi::occlude(x, y, w, h, c.a);
+    HostUi::fills.push_back({x, y, w, h, radius, c.toRGBA8()});
     if (x == 0 && w == width && y == height - 56) ++HostUi::footerBars;   // ScreenChrome::drawNavBar band
 }
 void PKSEFramebuffer::drawRoundedRect(int, int, int, int, int, Color, int) {}
@@ -54,7 +55,10 @@ void PKSEFramebuffer::drawShinyMark(int, int, int, Color) {}
 void PKSEFramebuffer::drawBackspaceIcon(int, int, int, Color) {}
 void PKSEFramebuffer::drawShiftIcon(int, int, int, Color, bool) {}
 void PKSEFramebuffer::drawPointerCursor(int, int, int, Color) {}
-void PKSEFramebuffer::drawPill(int x, int y, int w, int h, Color c) { HostUi::occlude(x, y, w, h, c.a); }
+void PKSEFramebuffer::drawPill(int x, int y, int w, int h, Color c) {
+    HostUi::occlude(x, y, w, h, c.a);
+    HostUi::fills.push_back({x, y, w, h, -1, c.toRGBA8()});
+}
 void PKSEFramebuffer::drawPillBorder(int, int, int, int, Color, int) {}
 void PKSEFramebuffer::drawSoftShadow(int, int, int, int, int) {}
 void PKSEFramebuffer::drawVerticalGradient(int x, int y, int w, int h, Color top, Color bottom) {

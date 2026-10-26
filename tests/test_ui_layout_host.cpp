@@ -25,6 +25,9 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <map>
+#include <set>
+#include <utility>
 #include <memory>
 #include <string>
 #include <vector>
@@ -132,6 +135,102 @@ void checkGen2Special(const std::string& where) {
           std::to_string(column));
 }
 
+// Round 7 (owner Round 6 B06 / C06, lane C): the Gen I-IV Trainer page looks exactly like Gen V's.
+// From each game's real Trainer frame: the row cards (680-wide rounded fills), their x, heights per
+// kind (radius 14 = selectable card, radius 12 = read-only row), their colour, the label and value
+// text colours, and the Review button. Every Gen I-IV signature must equal Black's; values are
+// neutral text (never a highlight colour); the Gen I-IV Review button is smaller than a row card's
+// height and Gen V's 240 x 44 and intersects no row; nothing else is painted over the rows.
+struct TrainerStyle {
+    bool captured = false;
+    int cardX = -1;
+    std::set<std::pair<int, int>> radiusHeight;   // {radius, height} of every row card
+    std::set<uint32_t> cardColors, labelColors, valueColors;
+    std::vector<HostUi::Fill> cards;
+    HostUi::Fill review{};
+    bool hasReview = false;
+};
+std::map<std::string, TrainerStyle> trainerStyles;
+
+void captureTrainerStyle(const std::string& game) {
+    TrainerStyle st;
+    st.captured = true;
+    // Only what the visible Trainer panel paints: the fills after its last full panel fill (Gen V
+    // paints its page over the base view, whose fills are hidden beneath).
+    std::vector<HostUi::Fill> fills;
+    for (const auto& f : HostUi::fills) {
+        if (f.radius == 16 && f.w >= 1000 && f.h >= 400) fills.clear();
+        fills.push_back(f);
+    }
+    for (const auto& f : fills)
+        if (f.w == 680 && (f.radius == 12 || f.radius == 14)) {
+            st.cards.push_back(f);
+            st.cardX = f.x;
+            st.radiusHeight.insert({f.radius, f.h});
+            st.cardColors.insert(f.rgba);
+        }
+    const auto inside = [](const HostUi::TextRect& t, const HostUi::Fill& f) {
+        return t.x >= f.x && t.x + t.w <= f.x + f.w && t.y >= f.y && t.y + t.h <= f.y + f.h;
+    };
+    for (const auto& t : HostUi::visibleText) {
+        for (const auto& card : st.cards)
+            if (inside(t, card)) (t.x == card.x + 24 ? st.labelColors : st.valueColors).insert(t.rgba);
+        if (t.text == "Review Changes")
+            for (const auto& f : fills)
+                if (f.radius == 8 && inside(t, f)) { st.review = f; st.hasReview = true; }
+    }
+    check(!st.cards.empty(), game + " / Trainer: row cards drawn");
+    // Nothing but the row cards and their value pills is painted over the rows' area.
+    for (const auto& f : fills) {
+        if (f.w == 680 || f.radius == -1 || (st.hasReview && f.x == st.review.x && f.y == st.review.y)) continue;
+        for (const auto& card : st.cards)
+            check(!(f.x < card.x + card.w && card.x < f.x + f.w && f.y < card.y + card.h && card.y < f.y + f.h) ||
+                  (f.w >= 1000),   // the panel / header behind the rows
+                  game + " / Trainer: no other fill over a row (" + std::to_string(f.x) + "," +
+                  std::to_string(f.y) + " " + std::to_string(f.w) + "x" + std::to_string(f.h) + ")");
+    }
+    trainerStyles[game] = st;
+}
+
+void compareTrainerStyles() {
+    const auto gen5 = trainerStyles.find("Black");
+    check(gen5 != trainerStyles.end() && gen5->second.captured, "Black Trainer captured (the reference)");
+    if (gen5 == trainerStyles.end()) return;
+    const auto& ref = gen5->second;
+    const uint32_t neutral = UI::Colors::Text.toRGBA8();
+    check(ref.valueColors == std::set<uint32_t>{neutral}, "Black Trainer: values are neutral text");
+    for (const char* game : {"Red", "Silver", "Crystal", "FireRed", "Platinum"}) {
+        const auto it = trainerStyles.find(game);
+        check(it != trainerStyles.end(), std::string(game) + " Trainer captured");
+        if (it == trainerStyles.end()) continue;
+        const auto& st = it->second;
+        const std::string where = std::string(game) + " / Trainer vs Black";
+        check(st.cardX == ref.cardX, where + ": same card x / width");
+        if (st.radiusHeight != ref.radiusHeight) {
+            std::cerr << where << ": card kinds";
+            for (const auto& [r, h] : st.radiusHeight) std::cerr << " r" << r << "/h" << h;
+            std::cerr << " vs Black";
+            for (const auto& [r, h] : ref.radiusHeight) std::cerr << " r" << r << "/h" << h;
+            std::cerr << '\n';
+        }
+        check(st.radiusHeight == ref.radiusHeight, where + ": same card kinds and heights");
+        check(st.cardColors == ref.cardColors, where + ": same row background");
+        check(st.valueColors == ref.valueColors, where + ": same (neutral) value colour");
+        for (const auto c : st.labelColors)
+            check(ref.labelColors.count(c) || c == UI::Colors::SelectedText.toRGBA8(), where + ": label colour");
+        check(st.hasReview, where + ": a Review Changes button");
+        if (!st.hasReview) continue;
+        check(st.review.w < 240 && st.review.h < 44, where + ": Review button narrower and shorter than Gen V's");
+        for (const auto& card : st.cards)
+            check(!(st.review.x < card.x + card.w && card.x < st.review.x + st.review.w &&
+                    st.review.y < card.y + card.h && card.y < st.review.y + st.review.h),
+                  where + ": the Review button intersects no row");
+        int lowest = 0;
+        for (const auto& card : st.cards) lowest = std::max(lowest, card.y + card.h);
+        check(st.review.y >= lowest, where + ": the Review button sits below the rows");
+    }
+}
+
 void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot = 1, bool gen5 = false,
            bool noTrainerGender = false) {
     UI::PKSEFramebuffer fb;
@@ -159,6 +258,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
             frame();
         }
         verifyFrame(game + " / " + page.name);
+        if (page.mode == View::Trainer && page.detail && !page.help) captureTrainerStyle(game);
         if (page.mode == View::Trainer && page.detail && !page.help && noTrainerGender) {
             // Gen I and Gold / Silver store no trainer gender (CG72): no "Gender" text is drawn at
             // all on the Trainer page, visible or painted over.
@@ -433,6 +533,8 @@ int main(int argc, char** argv) {
             if (trainer) sweep("Black", *open(*trainer, "Pokemon Black", "black_nds", "DraStic"), 1, true);
         }
     }
+
+    compareTrainerStyles();
 
     if (failures) {
         std::cerr << failures << " of " << checks << " layout checks failed\n";
