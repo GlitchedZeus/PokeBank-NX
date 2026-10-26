@@ -79,7 +79,8 @@ void testTwinsShowTheirId() {
     const C::Catalogue c(22, 25, 4, nativeIds(22), {});
     const auto name = [](uint16_t s) { return Names::getSpeciesName(s); };
     assert(c.detail(76, name).find("unverified") != std::string::npos);
-    assert(c.detail(30012, name).find("unverified") != std::string::npos);
+    // Round 7 B05: a transfer marker says what PKHeX pins it as (Transfer4_CrownUnused).
+    assert(c.detail(30012, name) == "Transfer: Crown Beast");
     std::cout << "same-name ids show their native id in the picker only ok\n";
 }
 
