@@ -1,3 +1,4 @@
+#include "Names/MoveNames.h"
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
@@ -399,7 +400,25 @@ void testEmptySlotCreateTransaction() {
                 assert(value(field) && !value(field)->empty() && value(field)->find(" -> ") == std::string::npos);
             assert(*value("OT / TID / SID") == "Kylie / 12150 / 22558");
             assert(!value("Held Item") && !value("Pokerus") && !value("IVs") && !value("EVs"));
-            assert(!value("Moves") || !value("Moves")->empty());
+            // A Moves row exactly when the created record has moves, naming each in slot order.
+            std::string expectedMoves;
+            for (const auto move : created->moves())
+                if (move) expectedMoves += (expectedMoves.empty() ? "" : ", ") + std::string(Names::getMoveName(move));
+            assert(static_cast<bool>(value("Moves")) == !expectedMoves.empty());
+            if (!expectedMoves.empty()) assert(*value("Moves") == expectedMoves);
+            // QA R7: the Moves row is required whenever the created record has moves (this Piplup
+            // draft has none, so a second draft below carries two).
+            auto withMoves = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+            assert(withMoves);
+            auto movesDraft = withMoves->createBoxDraft(0, 2, 393, &error);
+            assert(movesDraft && movesDraft->setMove(0, 33) && movesDraft->setMove(1, 45));
+            assert(withMoves->stageCreateBoxPokemon(0, 2, *movesDraft, &error));
+            const auto movesRows = PokeVault::Integration::Gen4::describeStagedReviewChanges(*withMoves);
+            const auto movesRow = std::find_if(movesRows.begin(), movesRows.end(), [](const auto& row) {
+                return row.first == "Box 1 / Slot 3 / Moves"; });
+            assert(movesRow != movesRows.end() &&
+                   movesRow->second == std::string(Names::getMoveName(33)) + ", " + Names::getMoveName(45));
+            assert(source == original);
             assert(std::any_of(rows.begin(), rows.end(), [](const auto& row) {
                 return row.first == "Staged change" && row.second.find("(empty) -> ") != std::string::npos &&
                        row.second.find("#393") != std::string::npos; }));
