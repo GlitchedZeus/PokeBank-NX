@@ -35,7 +35,9 @@ int main() {
     assert(lang!=std::string::npos && end!=std::string::npos && end>lang);
     const auto branch=src.substr(lang,end-lang);
     assert(branch.find("Gen5LanguageCycle::next(p.language())")!=std::string::npos);
-    assert(branch.find("stage(screen, Field::Language, 0, nextLanguage)")!=std::string::npos);
+    // Round 6 7C: the staged next language is passed straight to stage() and no toast follows.
+    assert(branch.find("stage(screen, Field::Language, 0, PokeBank::UIModel::Gen5LanguageCycle::next(p.language()))")!=std::string::npos);
+    assert(branch.find("postStatus(")==std::string::npos);
     assert(branch.find("openPicker(")==std::string::npos);
     // Both A and touch share the same adapter detail activation path.
     assert(src.find("static bool editDetail(")!=std::string::npos);
