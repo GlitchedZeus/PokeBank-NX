@@ -40,9 +40,8 @@ XFAIL: dict[str, str] = {
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
-    # coordinator's round 6 assignment. CG69 / CG70 / CG71 / CG79 (S), CG73 (L), CG76 / CG77 (R) and
-    # CG75 / CG78 (P): ENFORCED.
-    "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
+    # coordinator's round 6 assignment. CG69 / CG70 / CG71 / CG79 (S), CG72 (C), CG73 (L), CG76 / CG77 (R)
+    # and CG75 / CG78 (P): ENFORCED.
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
 }
 
@@ -2909,8 +2908,8 @@ def round6_contracts(sources):
     FIELD_RX = re.compile(r"(?i)\b(moves?|held\s*item|heldItem|ball|nature|ability|met\s*location|metLocation|"
                           r"ivs?|dvs?|ot\b|otName)\b")
     for rel, anchor_rx, what in (
-            ("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp", r'"Added Pokemon"', "Gen I"),
-            ("src/Integration/Gen2/Gen2StagedEditor.cpp", r'"Added "\s*\+', "Gen II"),
+            ("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp", r'add\("presence",std::string\(C::kAddPokemon\)', "Gen I"),
+            ("src/Integration/Gen2/Gen2StagedEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen II"),
             ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'" Add Pokemon"', "Gen III")):
         f = src(rel)
         m = re.search(anchor_rx, f.code) if f else None

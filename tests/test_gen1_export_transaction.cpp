@@ -8,6 +8,7 @@
 // moves and empty sessions are refused; every fault point and racing destination leaves no
 // residue; malformed, truncated and checksum-broken inputs are refused before a workspace opens.
 #include "Integration/Gen1/Gen1ExportTransaction.h"
+#include "UI/Gen1ReviewRows.h"
 
 #include <algorithm>
 #include <cassert>
@@ -150,6 +151,47 @@ std::vector<uint8_t> verifyPublished(const Common::VerifiedExportResult& result,
     for (const auto& entry : fs::directory_iterator(root))
         assert(entry.path().filename().string().find(".tmp") == std::string::npos);
     return edited;
+}
+
+// Round 6 P3 (CG74): the Review of a created Pokemon lists what was created. Through the real
+// path (stageAdd -> pendingChanges -> gen1ExportChangeLines -> the Review rows the Gen I editor
+// paints): "<loc> / Add Pokémon" over "Empty -> <Species> Lv n", then one named row per stored,
+// non-default value. Gen I stores no held item, Secret ID, Met data, nature, ability or ball.
+void createReview(const fs::path& source, SourceGame game) {
+    auto s = open(source, game);
+    std::string error;
+    BoxPokemonCreate create; // Pikachu Lv 5, Thunder Shock / Growl
+    create.otName = "RED";
+    create.trainerId = 1234;
+    create.dvs = {0, 9, 0, 12};
+    create.statExperience = {0, 0, 0, 0, 500};
+    assert(s.pokemon->stageAdd(3, 0, create, error));
+    const auto rows = PokeBank::UIModel::Gen1ReviewRows::fromChangeLines(gen1ExportChangeLines(*s.pokemon));
+    const PokeBank::UIModel::SharedReview::Rows expected{
+        {"Box 4 Slot 1 / Add Pokémon", "Empty -> Pikachu Lv 5"},
+        {"Box 4 Slot 1 / Moves", "Thunder Shock, Growl"},
+        {"Box 4 Slot 1 / OT / TID", "RED / 1234"},
+        {"Box 4 Slot 1 / DVs", "Def 9, Spc 12"},
+        {"Box 4 Slot 1 / Stat Exp", "Spc 500"},
+    };
+    if (rows != expected)
+        for (const auto& [label, value] : rows) std::cerr << label << " = " << value << '\n';
+    assert(rows == expected);
+    // Shiny appears only when the stored DVs are shiny.
+    BoxPokemonCreate shiny = create;
+    shiny.dvs = {10, 10, 10, 10};
+    assert(s.pokemon->stageAdd(3, 1, shiny, error));
+    bool sawShiny = false;
+    for (const auto& [label, value] : PokeBank::UIModel::Gen1ReviewRows::fromChangeLines(gen1ExportChangeLines(*s.pokemon))) {
+        for (const char* absent : {"Nature", "Ability", "Ball", "Held", "SID", "Secret", "Met"})
+            assert(label.find(absent) == std::string::npos);
+        if (label == "Box 4 Slot 2 / Shiny") sawShiny = value == "Yes";
+        if (label.rfind("Box 4 Slot 1", 0) == 0) assert(label != "Box 4 Slot 1 / Shiny");
+    }
+    assert(sawShiny);
+    // Removing it again lists a removal, not a create.
+    assert(s.pokemon->stageRemove(3, 1, error));
+    for (const auto& line : gen1ExportChangeLines(*s.pokemon)) assert(line.rfind("Box 4 Slot 2", 0) != 0);
 }
 
 void boxEdit(const fs::path& root, const fs::path& source, SourceGame game) {
@@ -331,6 +373,7 @@ int main() {
         const fs::path source = base / sourceGameId(game) / "source.srm";
         fs::create_directories(root);
         spit(source, fixture(game));
+        createReview(source, game);
         boxEdit(root, source, game);
         bagEdit(root, source, game);
         combinedEdit(root, source, game);

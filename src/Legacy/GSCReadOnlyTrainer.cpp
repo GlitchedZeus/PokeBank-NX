@@ -140,15 +140,12 @@ bool GSCReadOnlyTrainer::populate(
     SID = 0;
 
     // Crystal stores a validated 0/1 player-gender byte and the strict parser owns that truth.
-    // Gold/Silver have no selectable player gender: their player character is fixed male, so resolve
-    // that game rule here instead of reading an unrelated save byte or pretending gender is absent.
+    // Gold/Silver store no player gender (pret/pokegold has no wPlayerGender), so they report none
+    // (round 6, owner Oct 25: "no invented Gold/Silver gender"). trainerGender keeps the base
+    // default 0 only as an unused placeholder: no Gen II page, Create or export reads it unless
+    // hasTrainerGender() is true. Art that wants the fixed Gold/Silver boy derives it from the game.
     trainerGenderAvailable_ = strictTrainer.gender.has_value();
-    if (strictTrainer.gender) {
-        trainerGender = *strictTrainer.gender;
-    } else if (sourceGameId_ == "gold_gbc" || sourceGameId_ == "silver_gbc") {
-        trainerGender = 0;
-        trainerGenderAvailable_ = true;
-    }
+    if (strictTrainer.gender) trainerGender = *strictTrainer.gender;
 
     // Inventory is deliberately optional. A malformed optional item submodel never invalidates an
     // otherwise-valid Trainer/Party/Boxes save. A valid empty inventory still exposes all five real
