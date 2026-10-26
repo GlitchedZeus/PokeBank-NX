@@ -367,6 +367,19 @@ void gen5Screens() {
     });
     for (const View mode : {View::Party, View::Boxes, View::Items})
         reviewRoundTrip(d, 5, "black_nds", mode);
+    // Round 7: the Gen V save hub keeps its + Review (Help names it) and its footer shows it; Y does
+    // not open Review there.
+    d.screen.detailViewActive = false;
+    d.screen.selectedMode = View::Party;
+    d.frame();
+    d.frame();
+    check(footerReviewGlyph() == "", "Gen 5 save hub: the footer shows + Review (glyph \"" + footerReviewGlyph() + "\")");
+    d.press(HidNpadButton_Y);
+    check(!reviewShown(), "Gen 5 save hub: Y does not open Review");
+    d.press(HidNpadButton_Plus);
+    check(reviewShown(), "Gen 5 save hub: + opens Review");
+    d.press(HidNpadButton_B);
+    check(!reviewShown() && !d.screen.detailViewActive, "Gen 5 save hub: B returns to the hub");
 }
 
 // Gen V Edit and Create: + opens Review; B returns to the same workspace with the draft intact.
