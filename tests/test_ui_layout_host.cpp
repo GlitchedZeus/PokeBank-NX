@@ -87,7 +87,7 @@ void verifyFrame(const std::string& where) {
         for (const auto& r : t) std::cout << "  " << describe(r) << '\n';
 }
 
-void sweep(const std::string& game, UI::TrainerViewScreen& screen) {
+void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot = 1, bool gen5 = false) {
     UI::PKSEFramebuffer fb;
     UI::TouchInput touch;
     const auto frame = [&](u64 down = 0) {
@@ -140,16 +140,49 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen) {
         verifyFrame(game + " / Party Edit");
         press(HidNpadButton_B);   // the exit question (nothing staged)
         verifyFrame(game + " / Party Edit exit question");
-        press(HidNpadButton_B);
+        press(HidNpadButton_Y);   // only Y discards and leaves; B would continue editing
     }
     // Review of the staged workspace (empty review where nothing is staged).
     screen.detailViewActive = false;
     frame();
-    if (screen.openStagedReview(false)) {
+    if (screen.openStagedReview(false)) {   // Gen I-IV, nothing staged yet
         frame();
-        verifyFrame(game + " / Review");
+        verifyFrame(game + " / Review (nothing staged)");
         for (int i = 0; i < 3; ++i) press(HidNpadButton_B);
     }
+
+    // Create: an empty Boxes slot through the real input. A opens the empty-slot sheet (or the
+    // Create workspace directly), A on its first row starts the draft; the frame is captured.
+    screen.goBack = false;
+    screen.detailViewActive = true;
+    screen.selectedMode = View::Boxes;
+    screen.selectedBoxIndex = 0;
+    screen.selectedItemIndex = emptySlot;
+    frame();
+    press(HidNpadButton_A);
+    verifyFrame(game + " / Boxes empty-slot menu");
+    press(HidNpadButton_A);
+    verifyFrame(game + " / Create");
+
+    // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
+    // its own surface (+ on a browse page, Gen5SharedReadOnlySurface openReviewFromBrowse).
+    press(HidNpadButton_X);
+    screen.goBack = false;
+    screen.detailViewActive = true;
+    screen.selectedMode = View::Boxes;
+    screen.selectedBoxIndex = 0;
+    screen.selectedItemIndex = 0;
+    frame();
+    bool reviewed = false;
+    if (gen5) {
+        press(HidNpadButton_Plus);
+        reviewed = true;
+    } else if (screen.openStagedReview(false)) {
+        frame();
+        reviewed = true;
+    }
+    check(reviewed, game + ": Review opens after a staged Create");
+    if (reviewed) verifyFrame(game + (gen5 ? " / Review (Gen V surface, staged Create)" : " / Review (staged Create)"));
 }
 
 // The recorder itself: overlap, occlusion and clipping behave as the checks assume.
@@ -262,7 +295,7 @@ int main(int argc, char** argv) {
         if (parsed) {
             auto* trainer = keep(PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error));
             check(trainer != nullptr, "Gen V trainer: " + error);
-            if (trainer) sweep("Black", *open(*trainer, "Pokemon Black", "black_nds", "DraStic"));
+            if (trainer) sweep("Black", *open(*trainer, "Pokemon Black", "black_nds", "DraStic"), 1, true);
         }
     }
 

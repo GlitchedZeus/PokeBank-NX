@@ -148,7 +148,10 @@ int main() {
     assert(gen1Passive.find("p.hasBattleStats ? std::to_string(p.battleStats") != std::string::npos);
     assert(gen1Passive.find("cell(i, 2), TextStyle::Caption") != std::string::npos);
     assert(gen2Final.find("std::to_string(p.statExperience") != std::string::npos);
-    assert(gen2Final.find("stat, gen2StatCellColor(r, 2), TextStyle::Caption") != std::string::npos);
+    // Round 6 7A: the calculated column is the shared painter, coloured by the field state.
+    assert(gen2Final.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+    assert(readText("src/UI/Gen2UnifiedPokemonWorkspace.inc").find(
+               "gen2StatCellColor(std::min(row, 4), 2), TextStyle::Caption);") != std::string::npos);
     assert(gen2Final.find("stat, Colors::Accent, TextStyle::Caption") == std::string::npos);
 
     // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
@@ -164,8 +167,8 @@ int main() {
     // Owner-approved Gen II Special layout: one DV/Stat Exp, distinct
     // calculated SpA and SpD in the SAME calculated column.
     assert(gen2Final.find("Special DV / Stat Exp shared by SpA and SpD") != std::string::npos);
-    assert(gen2Final.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
-    assert(gen2Final.find("x + 282, y + 246") != std::string::npos);
+    assert(gen2Final.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+    assert(gen2Final.find("y + 246") == std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
     assert(gen2Final.find("const int shinyY = y + 366") != std::string::npos);
     assert(gen2Final.find("const int genderY = y + 408") != std::string::npos);

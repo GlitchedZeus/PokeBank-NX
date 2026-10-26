@@ -835,15 +835,19 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
             // The approved hardware layout shows SpA in the normal calculated
             // Special cell and SpD immediately below in that SAME column.
             // Neither value is a second DV or Stat Exp input.
+            // Round 6 7A: SpA tagged in the Special row, SpD tagged on the next grid row of the
+            // same Calculated column.
             const auto cell = W::calculatedCell(battle, 4);
-            c.expect(cell == "SpA " + std::to_string(spa),
-                     "Calculated Special Attack does not match its own formula: '" + cell + "'");
-            c.expect(W::calculatedSpecialDefenseCell(battle) == std::to_string(spd),
+            c.expect(cell.tag == "Sp. Atk" && cell.value == std::to_string(spa),
+                     "Calculated Special Attack does not match its own formula: '" + cell.value + "'");
+            const auto spdCell = W::calculatedCell(battle, W::kSpecialDefenseRow);
+            c.expect(spdCell.tag == "Sp. Def" && spdCell.value == std::to_string(spd),
                      "Calculated Special Defense does not match its own formula");
-            c.expect(cell.find('/') == std::string::npos,
+            c.expect(cell.value.find('/') == std::string::npos && spdCell.value.find('/') == std::string::npos,
                      "Calculated Special must not combine SpA/SpD into a cramped slash label");
             for (int r = 0; r < 4; ++r)
-                c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
+                c.expect(W::calculatedCell(battle, r).value == std::to_string(battle[static_cast<size_t>(r)]) &&
+                             W::calculatedCell(battle, r).tag.empty(),
                          "calculated row " + std::to_string(r));
         }
     });
