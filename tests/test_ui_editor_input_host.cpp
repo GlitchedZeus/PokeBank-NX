@@ -83,7 +83,7 @@ struct Driver {
 };
 
 // A Black save with one party Pikachu (the Gen V Bag-screen fixture shape).
-std::vector<uint8_t> gen5Fixture() {
+std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0) {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
     // An established trainer "NX" (TID 12345 / SID 54321, 12:34:56), as test_gen5_trainer_footer.
     const size_t player = 0x19400;
@@ -102,6 +102,7 @@ std::vector<uint8_t> gen5Fixture() {
     party[0] = 0x23; party[1] = 0x01;
     C5::write16(party, 8, 25);
     party[0x8C] = 30;
+    party[0x82] = pokerus;   // native Pokérus byte: strain << 4 | days
     const auto encrypted = C5::encryptCandidate(party);
     std::copy(encrypted.begin(), encrypted.end(), sav.begin() + static_cast<std::ptrdiff_t>(L5::PartyOffset + 8));
     auto copy = std::span<uint8_t>(sav).subspan(0, L5::BlackWhiteCopySize);
@@ -607,6 +608,58 @@ void gen5NoStateAcrossScreens() {
     b->~TrainerViewScreen();
 }
 
+// QA's Gen V lead: Keep replays the 0 / 1 / 2 Pokérus mode against each record's own baseline
+// byte. A record that already stores strain 2 / 1 day (Infected, 0x21) is cycled, kept and
+// reviewed: the visible change must survive Keep and appear in Review, and cycling back to the
+// stored mode restores the exact stored byte.
+void gen5PokerusKeepWithStoredStrain() {
+    const auto input = gen5Fixture(0x21);
+    std::string error;
+    const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+    auto trainer = parsed ? PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error) : nullptr;
+    if (!trainer) { check(false, "Gen V stored-strain fixture opens: " + error); return; }
+    UI::TrainerViewScreen screen(*trainer, "Pokemon Black", "/host/black.sav", 0, AccountUid{},
+                                 PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    Driver d{screen, {}, {}};
+    const auto openEdit = [&] {
+        d.frame();
+        screen.detailViewActive = true;
+        screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        d.frame();
+        d.press(HidNpadButton_A);
+        auto& state = trainer->sharedScreen();
+        const auto actions = state.availableActions(trainer->stagedPokemon());
+        for (size_t i = 0; i < actions.count && actions[i] != PokeBank::UIModel::SharedPokemonEditor::Action::Edit; ++i)
+            d.press(HidNpadButton_Down);
+        d.press(HidNpadButton_A);
+        for (int i = 0; i < 20 && !d.target(Workspace::kDetailTouchBase + 14); ++i) d.press(HidNpadButton_Down);
+        return state.surface() == G5::Gen5SharedScreenState::Surface::Edit;
+    };
+    auto& state = trainer->sharedScreen();
+    const auto staged = [&] {
+        const auto p = trainer->stagedPokemon().viewParty(0);
+        return p ? static_cast<int>(p->pokerusState()) : -1;
+    };
+    check(openEdit() && state.draft().current()->pokerusMode() == 2, "Gen V stored strain opens as Infected");
+    d.tap(Workspace::kDetailTouchBase + 14);                      // Infected -> Cured
+    check(state.draft().current()->pokerusMode() == 1, "Gen V tap: Infected -> Cured");
+    d.press(HidNpadButton_X);                                      // Keep
+    check(staged() == 0x20, "Gen V Keep stages Cured, keeping the stored strain (got " + std::to_string(staged()) + ")");
+    check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Keep");
+    d.frame();
+    bool listed = false;
+    for (const auto& text : HostUi::texts)
+        if (text.find("Cured") != std::string::npos) listed = true;
+    check(listed, "Gen V Review names the kept Pokérus change (Infected -> Cured)");
+    d.press(HidNpadButton_B);
+    // Back to Infected in a new draft: the exact stored byte (strain 2, 1 day) comes back.
+    check(openEdit(), "Gen V editor reopens");
+    d.tap(Workspace::kDetailTouchBase + 14);                      // Cured -> None
+    d.tap(Workspace::kDetailTouchBase + 14);                      // None -> Infected (the stored mode)
+    d.press(HidNpadButton_X);
+    check(staged() == 0x21, "Gen V cycling back restores the exact stored byte (got " + std::to_string(staged()) + ")");
+}
+
 } // namespace
 
 int main() {
@@ -619,6 +672,7 @@ int main() {
     gen5HeldItemPartialRow();
     gen3NoStateAcrossScreens();
     gen5NoStateAcrossScreens();
+    gen5PokerusKeepWithStoredStrain();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;

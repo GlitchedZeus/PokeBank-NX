@@ -1808,6 +1808,11 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
             case Field::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
             case Field::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
             case Field::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
+            // Round 6 L06: Review names values instead of raw native modes ("Pokerus: 2 -> 1").
+            case Field::Pokerus: return Fields::pokerusLabel(value);
+            case Field::OriginalTrainerGender: return value == 0 ? "Male" : "Female";
+            case Field::Gender: return value == 0 ? "Male" : value == 1 ? "Female" : "Genderless";
+            case Field::FatefulEncounter: return value ? "Yes" : "No";
             default: return std::to_string(value);
         }
     };
