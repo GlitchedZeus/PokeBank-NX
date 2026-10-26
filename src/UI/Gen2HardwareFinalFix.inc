@@ -273,6 +273,10 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(screen, fb, state);
     if (unified.selector.open()) drawFieldSelector(screen, fb, unified.selector);
+    // Round 7 (B07 / C09): the Unown Letter grid, and its question above it.
+    if (unified.unownPicker.open) drawUnownLetterPicker(screen, fb, state, unified);
+    if (unified.unownQuestion.ask != PokeBank::UIModel::Gen2UnownLetter::Ask::None)
+        drawUnownQuestion(screen, fb, unified);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 

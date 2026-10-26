@@ -965,10 +965,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
-    if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive)
+    if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive) {
+        // Round 7 B05: a focused event / transfer / trade / egg marker shows its full source-backed
+        // line and native id here (Names/SpecialMetLocationNotes.h); other rows show the list scope.
+        const uint16_t focused = state.pickerRow >= 0 && state.pickerRow < count
+            ? state.pickerValues[static_cast<size_t>(state.pickerRow)] : 0;
+        const std::string note = Names::specialMetLocationNote(state.pickerMetContext.origin(), focused);
         fb.drawText(x + 165, y + 55, SharedMovesPanel::fit(fb,
-            state.pickerMetContext.scope(state.pickerOtherHistories), w - 195, TextStyle::Caption),
-            Colors::TextSecondary, TextStyle::Caption);
+            note.empty() ? state.pickerMetContext.scope(state.pickerOtherHistories) : note, w - 195, TextStyle::Caption),
+            note.empty() ? Colors::TextSecondary : Colors::Text, TextStyle::Caption);
+    }
     const int visible = compactChoices ? visibleChoices : 10;
     // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
     // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.

@@ -3437,6 +3437,37 @@ namespace UI {
             return;
         }
 
+        // Round 7 C04 (7D): a completed tap outside an ordinary open overlay (Quick Games, the
+        // profile and game-file pickers, Legacy details, Quick Options) closes it exactly like B and
+        // returns here, before any row or the Home card underneath sees it. Confirmations (Quit,
+        // Delete, Unassign, Open failure) and setup flows publish no frame, so they never close
+        // this way (UI/SharedPopupDismiss.h).
+        if (SharedPopupDismiss::tappedOutside(touch)) {
+            switch (overlay) {
+                case Overlay::GamesDrawer:
+                    if (!quickDrawerMotion.interactive()) break;
+                    quickDrawerMotion.closeAnimated();
+                    gamesDrawerTouchScroll.stop();
+                    return;
+                case Overlay::ProfilePicker:
+                    profileTouchScroll.stop();
+                    overlay = Overlay::None;
+                    return;
+                case Overlay::GameFilePicker:
+                    launchFileTouchScroll.stop();
+                    overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
+                    return;
+                case Overlay::LegacyDetails:
+                    overlay = Overlay::LegacyInstances;
+                    return;
+                case Overlay::Options:
+                    overlay = Overlay::None;
+                    return;
+                default:
+                    break;
+            }
+        }
+
         // Quick Games is a card attached to the user's finger, not a binary
         // swipe-release toggle. Horizontal movement (including reversal)
         // controls its actual x position. A vertical motion remains a list
@@ -5230,6 +5261,7 @@ namespace UI {
             // translated by the actual finger displacement. The home card
             // remains visible beneath a proportional dim scrim.
             const int offset = quickDrawerMotion.offset();
+            SharedPopupDismiss::publish(x + offset, 0, w, h);   // C04: a tap outside closes it like B
             const int shade = (92 * (w - offset)) / w;
             fb.drawFilledRect(0, 0, fb.getWidth(), h, Color(0, 0, 0,
                               static_cast<std::uint8_t>(std::clamp(shade, 0, 92))));
@@ -5344,6 +5376,7 @@ namespace UI {
             const int x = (fb.getWidth() - w) / 2;
             const int y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
+            SharedPopupDismiss::publish(x, y, w, h);   // C04
 
             fb.drawText(x + 30, y + 20, "SWITCH PROFILE",
                         Colors::Info, TextStyle::Caption);
@@ -5522,6 +5555,7 @@ namespace UI {
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
+            SharedPopupDismiss::publish(x, y, w, h);   // C04
             fb.drawText(x + 28, y + 18, "GAME LAUNCH / LINK GAME FILE",
                         Colors::AccentPrimary, TextStyle::Caption);
             fb.drawText(x + 28, y + 44, "Choose the ROM / game file",
@@ -5648,6 +5682,7 @@ namespace UI {
             constexpr int w = 900, h = 520;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
+            SharedPopupDismiss::publish(x, y, w, h);   // C04
             const std::string detailsProvider =
                 PokeVault::Source::providerDisplayName(legacyDetailsInstance.providerLabel);
             fb.drawText(x + 28, y + 18,
@@ -5935,6 +5970,7 @@ namespace UI {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
+            SharedPopupDismiss::publish(x, y, w, h);   // C04
             fb.drawText(x + 26, y + 16, "POKEBANK NX  /  OPTIONS", Colors::AccentPrimary,
                         TextStyle::Caption);
             fb.drawText(x + 26, y + 40, "Quick Options", Colors::TextPrimary, TextStyle::Heading);

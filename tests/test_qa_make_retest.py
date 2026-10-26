@@ -77,6 +77,24 @@ expect(mr.main(["make_retest", "--root", str(root), "--check"]) == 1, "--check r
 out.unlink()
 expect(mr.main(["make_retest", "--root", str(root), "--check"]) == 1, "--check rejects a missing checklist")
 
+expect(text.startswith("# Round 7 hardware retest checklist: PokeBank-NX-Gen1-5-Candidate-0123abcd.nro"),
+       "default template is round 7 and the heading names the NRO")
+expect("bound round 7 candidate `0123abcd`" in text, "binding note names round 7 and the candidate")
+
+# An earlier round's checklist is still checked against its own round's template.
+old = tree(ENV)
+r6 = "docs/hardware/RETEST_ROUND6_TEMPLATE.md"
+shutil.copy(ROOT / r6, old / r6)
+expect(mr.main(["make_retest", "--root", str(old), "--template", r6]) == 0, "renders from the round 6 template")
+old_out = old / "docs/hardware/RETEST_0123abcd.md"
+old_text = old_out.read_text(encoding="utf-8")
+expect(old_text.startswith("# Round 6 hardware retest checklist: "), "round 6 heading kept")
+expect(mr.main(["make_retest", "--root", str(old), "--check"]) == 0, "--check uses the round 6 template for a round 6 checklist")
+old_out.write_text(old_text.replace("### C17 · ", "### X17 · "), encoding="utf-8")
+expect(mr.main(["make_retest", "--root", str(old), "--check"]) == 1, "--check rejects a round 6 checklist with an item dropped")
+old_out.write_text(old_text.replace("# Round 6 hardware", "# Round 7 hardware"), encoding="utf-8")
+expect(mr.main(["make_retest", "--root", str(old), "--check"]) == 1, "--check rejects a round 6 checklist relabelled round 7")
+
 for bad, why in ((ENV.replace("CODE_SHA=0123abcd", "CODE_SHA=0123"), "short CODE_SHA"),
                  (ENV.replace("NRO_SIZE=123456\n", ""), "missing NRO_SIZE"),
                  (ENV.replace("Candidate-0123abcd.nro", "Candidate-99999999.nro"), "NRO_FILE for another build"),

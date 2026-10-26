@@ -175,4 +175,111 @@ inline int parseLetter(const std::string& text) noexcept {
     return -1;
 }
 
+// ---- Round 7 (owner B07 / C09, 26186464): the letter chooser and Shiny never act silently ------
+// The owner found the Round 6 flow confusing: Shiny quietly changed the letter, a letter that cannot
+// be shiny was refused (or shininess silently dropped), and Reroll looked inert because it keeps the
+// letter. These models drive the Values-panel Letter picker and its two questions.
+
+inline std::string letterText(int letter) { return std::string(1, letterChar(letter)); }
+
+// Picker: a 7-column grid of A..Z. The cursor starts on the current letter; I and V carry a shiny
+// mark (canBeShiny). A / a tap picks, B cancels.
+inline constexpr int kGridColumns = 7;
+struct Picker {
+    bool open = false;
+    int cursor = 0;
+};
+constexpr int moveCursor(int cursor, int dx, int dy) noexcept {
+    const int rows = (kLetterCount + kGridColumns - 1) / kGridColumns;
+    int col = cursor % kGridColumns, row = cursor / kGridColumns;
+    col = (col + dx + kGridColumns) % kGridColumns;
+    row = (row + dy + rows) % rows;
+    int next = row * kGridColumns + col;
+    // The last row is short (Z ends at column 4): wrap a vertical move into it to its last letter,
+    // a horizontal one back to its first.
+    if (next >= kLetterCount) next = dy != 0 ? kLetterCount - 1 : row * kGridColumns;
+    return next;
+}
+inline Picker openPicker(const DVs& current) noexcept { return {true, DV::unownLetter(current)}; }
+inline std::string pickerTitle(const DVs& current) {
+    return "Unown letter: now " + letterText(DV::unownLetter(current)) +
+           (DV::isShiny(current) ? ", shiny" : ", not shiny");
+}
+inline std::string pickerNote() {
+    return "Letter follows DVs; only " + shinyLettersText() + " can be shiny (marked)";
+}
+
+// A question awaiting A (confirm) or B (cancel). The DVs are applied only on A.
+enum class Ask : uint8_t { None, DropShinyForLetter, ChangeLetterForShiny };
+struct Question {
+    Ask ask = Ask::None;
+    int letter = -1;   // the letter the confirmed DVs give
+    DVs dvs{};
+};
+inline std::string questionText(const Question& q) {
+    if (q.ask == Ask::DropShinyForLetter)
+        return "Unown " + letterText(q.letter) + " can't be shiny. Turn Shiny off and use " +
+               letterText(q.letter) + "?";
+    if (q.ask == Ask::ChangeLetterForShiny)
+        return "Shiny Unown can only be " + shinyLettersText() + ". Change letter to " +
+               letterText(q.letter) + "?";
+    return {};
+}
+inline std::string confirmLabel(const Question& q) {
+    return q.ask == Ask::DropShinyForLetter ? "Shiny off, use " + letterText(q.letter)
+                                            : "Use shiny " + letterText(q.letter);
+}
+
+// What a pick in the picker does: close (same letter), apply (same shiny state), or ask first
+// (a shiny Unown picking a letter that cannot be shiny: the non-shiny DV set closest to the
+// current one is offered, never applied silently).
+enum class PickAction : uint8_t { Close, Apply, Ask };
+struct Pick {
+    PickAction action = PickAction::Close;
+    DVs dvs{};
+    Question question{};
+};
+inline Pick pick(const DVs& current, int letter) noexcept {
+    const auto selection = selectLetter(current, letter);
+    if (selection.outcome == Outcome::Changed) return {PickAction::Apply, selection.dvs, {}};
+    if (selection.outcome == Outcome::ShinyImpossible) {
+        const auto plain = nearest(current, letter, false);
+        return {PickAction::Ask, current, {Ask::DropShinyForLetter, letter, plain.dvs}};
+    }
+    return {PickAction::Close, current, {}};
+}
+
+// Shiny row: turning Shiny off keeps the letter and applies at once; turning it on asks first when
+// the letter has to change (only I and V can be shiny).
+struct ShinyRequest {
+    bool ask = false;
+    DVs dvs{};
+    Question question{};
+};
+inline ShinyRequest requestShinyToggle(const DVs& current) noexcept {
+    const auto t = toggleShiny(current);
+    if (!t.letterChanged) return {false, t.dvs, {}};
+    return {true, current, {Ask::ChangeLetterForShiny, DV::unownLetter(t.dvs), t.dvs}};
+}
+
+// Reroll (Y) for Unown keeps the letter and the shiny state, so the sprite does not change; the
+// status names that and the DVs that did change, or says exactly why nothing could change.
+inline std::string dvChanges(const DVs& before, const DVs& after) {
+    static constexpr const char* names[4] = {"Atk", "Def", "Spe", "Spc"};
+    std::string out;
+    for (std::size_t i = 0; i < 4; ++i) {
+        if (before[i] == after[i]) continue;
+        if (!out.empty()) out += ", ";
+        out += std::string(names[i]) + " " + std::to_string(before[i]) + "->" + std::to_string(after[i]);
+    }
+    return out;
+}
+inline std::string rerollStatus(const DVs& before, const DVs& after, bool changed) {
+    const std::string kept = "Unown " + letterText(DV::unownLetter(before)) +
+                             (DV::isShiny(before) ? ", shiny" : ", not shiny");
+    if (!changed)
+        return "No other DVs give " + kept + "; DVs unchanged";
+    return "DVs re-rolled, " + kept + " kept: " + dvChanges(before, after);
+}
+
 } // namespace PokeBank::UIModel::Gen2UnownLetter
