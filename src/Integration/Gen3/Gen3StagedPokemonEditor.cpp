@@ -650,7 +650,11 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
     field("Trainer ID",std::to_string(before->tid),std::to_string(after->tid));
     field("Level",std::to_string(before->level),std::to_string(after->level));
     field("Experience",std::to_string(before->experience),std::to_string(after->experience));
-    field("Held Item",Names::getItemName(before->heldItem),Names::getItemName(after->heldItem));
+    // CG71: Gen III Review names Gen III items (the Gen III item table), with the honest label for
+    // a kept unreleased held item.
+    const auto heldItem=[](uint16_t item){return std::string(Names::getItemNameG3(item))+
+        (storedUnreleasedHeldItem(item)?kUnreleasedHeldItemSuffix:"");};
+    field("Held Item",heldItem(before->heldItem),heldItem(after->heldItem));
     field("Nature",Names::getNatureName(before->nature),Names::getNatureName(after->nature));
     field("Language",Enums::getLanguageName(before->language),Enums::getLanguageName(after->language));
     field("Ball",Enums::getBallName(before->ball),Enums::getBallName(after->ball));
