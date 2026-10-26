@@ -999,7 +999,9 @@ void ux2DrawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     ux2DrawFiveStatLabels(fb, x + 395, y + 392, stats);
 
     const int rx = x + 790;
-    fb.drawText(rx, y + 90, "MOVES", Colors::Accent, TextStyle::Caption);
+    // Round 7 P2: the shared heading, for a MOVES column whose top-left is (rx - 14, y + 80).
+    PokeBank::UIModel::PanelHeading::draw(fb, rx - PokeBank::UIModel::PanelHeading::kInsetX,
+                                          y + 90 - PokeBank::UIModel::PanelHeading::kInsetY, "MOVES");
     for (int i = 0; i < 4; ++i)
         fb.drawText(rx, y + 124 + i * 48,
             std::to_string(i + 1) + ". " + moveDisplay(p->moves[static_cast<size_t>(i)]), Colors::Text);

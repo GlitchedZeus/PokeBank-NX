@@ -55,7 +55,7 @@ XFAIL: dict[str, str] = {
     # on #307 2de1c390, and CG85 (R 47b8097e, Gen2UnownLetter.h questions + Letter grid): ENFORCED.
     # CG80 (L 146511e2, the outer Gen II draw shows an open Review first) and CG82 (L ab46883e, this
     # profile's exports/gen5/account-<p> records, EXPORT_MANIFEST.txt) on #307 ab46883e: ENFORCED.
-    "CG89-one-editor-heading-style": "S (round 7 typography)",
+    # CG89 (S b9e8e517, include/UI/SharedPanelHeading.h for every Gen I-V editor heading): ENFORCED.
     "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
 
