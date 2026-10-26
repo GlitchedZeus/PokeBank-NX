@@ -53,8 +53,6 @@ XFAIL: dict[str, str] = {
     "CG82-gen5-exports-in-save-backups": "L (round 7 C12 / G1)",
     "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
     "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
-    "CG85-unown-letter-shiny-confirmed": "R (round 7 B07 / C09)",
-    "CG86-inventory-help-controls": "R (round 7 B04)",
     "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
     "CG89-one-editor-heading-style": "S (round 7 typography)",
     "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
@@ -3041,16 +3039,23 @@ def round6_contracts(sources):
     r = Result("CG77-footer-help-controls-have-handlers",
                "Help rows name their control as a glyph-able button; Game Browser / Gen I-III Boxes footers list "
                "every control their handler acts on (owner Oct 25 E05 / P4)")
-    hp = src("include/UI/ClassicHelpPresentation.h")
-    if not hp:
-        r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
-    else:
+    # Round 7 (B04): the Bag's rows moved to the shared InventoryHelp.h, checked with the same rule.
+    # An #include path is not a Help row.
+    for help_rel in ("include/UI/ClassicHelpPresentation.h", "include/UI/InventoryHelp.h"):
+        hp = src(help_rel)
+        if not hp:
+            r.violations.append(f"{help_rel}: missing")
+            continue
+        include_lines = {hp.code.count("\n", 0, m.start()) + 1
+                         for m in re.finditer(r'^\s*#\s*include\s*"', hp.code, re.M)}
         for line, lit in hp.literals:
-            if lit.startswith("Original save unchanged") or lit in ("Help",):
+            if line in include_lines:
+                continue
+            if lit.startswith("Original save unchanged") or lit in ("Help", "Inventory Controls"):
                 continue
             m = re.search(r" {2,}", lit)
             if not m or not _glyph_keys(lit[:m.start()]):
-                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: Help row {lit!r} names no glyph "
+                r.violations.append(f"{help_rel}:{line}: Help row {lit!r} names no glyph "
                                     "control before its description (drawn as plain text)")
     ss = src("src/UI/SaveSelectScreen.cpp")
     if ss:
@@ -3443,27 +3448,34 @@ def round7_contracts(sources):
     r = Result("CG85-unown-letter-shiny-confirmed",
                "Gen II Unown: letter / Shiny changes are confirmed, a letter choice states shiny, reroll is "
                "never silent (owner Oct 26 B07 / C09)")
+    # Round 7 (lane R 2dfad968): the Letter grid and its questions live in the Gen II workspace and
+    # include/UI/Gen2UnownLetter.h (the keyboard chooseUnownLetter is gone).
     fd = src("src/UI/Gen2PokemonEditorFoundation.inc")
-    tu = body_of(fd, "toggleUnownShiny")
-    cl = body_of(fd, "chooseUnownLetter")
-    if not tu or not cl:
-        missing(r, "src/UI/Gen2PokemonEditorFoundation.inc", "toggleUnownShiny / chooseUnownLetter")
+    ul = src("include/UI/Gen2UnownLetter.h")
+    if fd and re.search(r"\bchooseUnownLetter\b", fd.code):
+        r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: the keyboard Unown letter prompt is back "
+                            "(it cannot state or confirm shiny)")
+    if not uw or not ul:
+        missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc / include/UI/Gen2UnownLetter.h", "Unown Letter grid")
     else:
-        if not re.search(r"confirm", tu, re.I):
-            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: Shiny on changes the Unown letter at once, "
+        if not re.search(r"Letter::requestShinyToggle\(", uw.code) or \
+                not re.search(r"unownQuestion\s*=\s*request\.question", uw.code):
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: Shiny on changes the Unown letter at once, "
                                 "without a confirmation")
-        imp = re.search(r"case\s+Letter::Outcome::ShinyImpossible\s*:(.*?)(?=case\s+Letter::Outcome|\Z)", cl, re.S)
-        if imp and not re.search(r"confirm", imp.group(1), re.I):
-            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: a letter that cannot be shiny is refused "
-                                "(\"Nothing changed\") instead of offering to turn Shiny off")
-        ch = re.search(r"case\s+Letter::Outcome::Changed\s*:(.*?)(?=case\s+Letter::Outcome|\Z)", cl, re.S)
-        if ch and not re.search(r"[Ss]hiny", ch.group(1)):
-            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: choosing a letter does not say whether the "
+        if not re.search(r"PickAction::Ask", uw.code) or \
+                not re.search(r"unownQuestion\s*=\s*result\.question", uw.code) or \
+                not re.search(r"Turn Shiny off and use", ul.code):
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: a letter that cannot be shiny is refused or "
+                                "applied silently instead of offering to turn Shiny off")
+        title = body_of(ul, "pickerTitle")
+        applied = body_of(uw, "applyUnownDVs")
+        if not title or "not shiny" not in title or not applied or "shiny" not in applied:
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: choosing a letter does not say whether the "
                                 "result is shiny")
     hy, _ = block(uw, r"if\s*\(\s*down\s*&\s*HidNpadButton_Y\s*\)\s*\{(?=\s*if\s*\(\s*randomizeDVs)")
     if hy is None:
         missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc", "Y reroll branch")
-    elif not re.search(r"describeDVChanges", hy):
+    elif not re.search(r"describeDVChanges|rerollStatus", hy):
         r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: Y reroll keeps the letter and sprite and says "
                             "only \"re-rolled\", so it looks like it did nothing")
     if fd and re.search(r"HidNpadButton_Y\s*\)\s*\{\s*randomizeDVs\s*\(\s*state\s*\)\s*;", fd.code):
@@ -3478,28 +3490,30 @@ def round7_contracts(sources):
     r = Result("CG86-inventory-help-controls",
                "Inventory Help: titled \"Inventory Controls\", no \"X Add remains available\", + described as "
                "Review (owner Oct 26 B04)")
-    um = src("src/UI/ClassicInventoryUIModel.cpp")
-    hl = body_of(um, "classicInventoryHelpLines")
+    # Round 7 (lane R f5ee4266): the Gen I-V Bag shares ONE Help, include/UI/InventoryHelp.h.
+    ih = src("include/UI/InventoryHelp.h")
     ov = src("src/UI/ClassicInventoryOverlay.cpp")
-    if not hl or not ov:
-        missing(r, "src/UI/ClassicInventoryUIModel.cpp", "classicInventoryHelpLines")
+    um = src("src/UI/ClassicInventoryUIModel.cpp")
+    if not ih or not ov:
+        missing(r, "include/UI/InventoryHelp.h / src/UI/ClassicInventoryOverlay.cpp", "Inventory Help")
     else:
-        if re.search(r"Add remains available", hl):
-            r.violations.append("src/UI/ClassicInventoryUIModel.cpp: Gen I-III Inventory Help still says "
-                                "\"X Add remains available\"")
+        if not re.search(r'kTitle\s*=\s*"Inventory Controls"', ih.code):
+            r.violations.append("include/UI/InventoryHelp.h: the Bag Help is not titled \"Inventory Controls\"")
+        for f in (ih, um):
+            if f and re.search(r"Add remains available", f.code):
+                r.violations.append(f"{f.rel}: Inventory Help still says \"X Add remains available\"")
         plus_review = re.search(r"ClassicInventoryAction::Options\s*\)\s*\{[^}]*openStagedReview", ov.code)
-        for line in re.findall(r'"(\+[^"]*)"', hl):
-            if plus_review and "Review" not in line.split("-")[0]:
-                r.violations.append(f"src/UI/ClassicInventoryUIModel.cpp: Help says \"{line.split('  ')[0]} ...\" "
+        for _, line in ih.literals:
+            if line.startswith("+") and plus_review and "Review" not in line.split("     ")[0]:
+                r.violations.append(f"include/UI/InventoryHelp.h: Help says \"{line.split('  ')[0]} ...\" "
                                     "but + opens Review")
-        if re.search(r'"Inventory Help"', ov.code):
-            r.violations.append("src/UI/ClassicInventoryOverlay.cpp: Gen I-III Bag Help is titled \"Inventory Help\", "
-                                "not \"Inventory Controls\"")
+        if re.search(r'"Inventory Help"', ov.code) or not re.search(r"InvHelp::kTitle", ov.code):
+            r.violations.append("src/UI/ClassicInventoryOverlay.cpp: Gen I-III Bag Help is not titled from "
+                                "InventoryHelp::kTitle (\"Inventory Controls\")")
     if tvb:
-        for m in re.finditer(r'drawInfoOverlay\s*\(\s*fb\s*,\s*"([^"]+)"\s*,\s*Help::lines\s*\(\s*page', tvb.code):
-            if m.group(1) != "Inventory Controls":
-                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{tvb.code.count(chr(10), 0, m.start()) + 1}: "
-                                    f"Gen IV / V Bag Help is titled \"{m.group(1)}\" (every page shares one title)")
+        if not re.search(r"page\s*==\s*Help::Page::Items\s*\?\s*PokeBank::UIModel::InventoryHelp::kTitle", tvb.code):
+            r.violations.append("src/UI/TrainerViewScreenBase.inc: the Gen IV / V Bag Help is not titled "
+                                "\"Inventory Controls\" (InventoryHelp::kTitle)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------

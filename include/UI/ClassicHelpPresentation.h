@@ -1,4 +1,6 @@
 #pragma once
+#include "UI/InventoryHelp.h"
+
 #include <string>
 #include <vector>
 namespace PokeBank::UIModel::ClassicHelp {
@@ -44,12 +46,9 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back(kYReview);
             break;
         case Page::Items:
-            out.push_back("L / R   Previous / next inventory pocket");
-            out.push_back("A   Edit a stack quantity; unique items stay at one");
-            out.push_back("X   Add an item at one     Y   Ask to remove the selected item");
-            out.push_back("A / B   Remove question: A removes, B cancels");
-            out.push_back(kPlusReview);
-            break;
+            // Round 7 (B04): the Bag has ONE Help, shared with the Gen I-III inventory overlay
+            // (InventoryHelp.h, "Inventory Controls").
+            return InventoryHelp::lines(generation);
         case Page::Trainer:
             out.push_back(generation==5?"A   Edit Name, Money or Play Time; other facts are read-only":
                 "A   Edit Name or Money; other native facts are read-only");

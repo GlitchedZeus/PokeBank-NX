@@ -5600,7 +5600,9 @@ int reviewGeneration(const std::string& gameId) {
                     selectedMode==ViewMode::Items?Help::Page::Items:
                     selectedMode==ViewMode::Trainer?Help::Page::Trainer:
                     selectedMode==ViewMode::Party?Help::Page::Party:Help::Page::Pokemon;
-                drawInfoOverlay(fb,"Game Browser Controls",Help::lines(page,generation));
+                // Round 7 (B04): the Bag's Help is "Inventory Controls" in every generation.
+                drawInfoOverlay(fb,page==Help::Page::Items?PokeBank::UIModel::InventoryHelp::kTitle:"Game Browser Controls",
+                                Help::lines(page,generation));
                 return;
             }
             drawInfoOverlay(fb, "Game Browser Controls", {

@@ -777,8 +777,15 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
 
     if (down & HidNpadButton_Y) {
-        randomizeDVs(state);
-        screen.postStatus("Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived", 240);
+        // Round 7 (B07): report what really happened; Unown names the kept letter / shiny state.
+        const auto before = editableDVs(state.working);
+        const bool rerolled = randomizeDVs(state);
+        if (state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies)
+            screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(
+                before, editableDVs(state.working), rerolled), 360);
+        else
+            screen.postStatus(rerolled ? "Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived"
+                                       : "No other DVs keep this Pokemon's gender and shiny state; DVs unchanged", 240);
     }
     if (down & HidNpadButton_A) activateField(screen, state);
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
