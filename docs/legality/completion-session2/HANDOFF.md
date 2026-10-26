@@ -1,6 +1,8 @@
 # October25 historical evidence continuation
 
-Current continuation starts from pushed PR314 `0b01ad6c614c1652a6c9591195ebff22cb761d8f`; owner research was audited and implemented on WIP `wip/legality-evidence-20261025`. See [current progress](../historical-evidence-20261025/PROGRESS.md) for code, exact source pins,52 passing local configurations,135193 unchanged retained Gen5 outputs and the exact-head CI publication gate. Preserve all prior evidence and metrics below. Application PR307 is separate and untouched.
+Current continuation starts from PR #314 `0b01ad6c614c1652a6c9591195ebff22cb761d8f`; owner research was audited and implemented on WIP `wip/legality-evidence-20261025`. Published code head: `45448775e3dba93a9410c2d7cab1e7a62c0f63d7`. See [current progress](../historical-evidence-20261025/PROGRESS.md) and [source assessment](../historical-evidence-20261025/SOURCE_ASSESSMENT.md) for the verified reader correction, exact source pins, 52 passing local configurations and 135,193 unchanged retained Gen V outputs. Preserve all prior evidence and metrics below.
+
+Application status in the older sections below is historical. Separate app PR #307 already contains the save/workspace binding repairs and passed its app campaign at `7d661fa33689681a0cb741dbaa3407ca79990960`. Do not reapply the old `c3b0ac48` app patch. This legality continuation changed neither PR #307 nor main and passed a read-only four-title bridge against the current app checkout `11b44e09562ddbfc3e9e6dc08b138f022b8c3d3a` (documentation checkpoint over the repaired app).
 
 # Remaining engineering work
 

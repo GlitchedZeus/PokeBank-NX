@@ -1,0 +1,16 @@
+.github/workflows/legality-completion.yml
+Makefile.host.gen5-legality
+docs/legality/completion-session2/HANDOFF.md
+docs/legality/completion-session2/WC5FULL_EVIDENCE.md
+docs/legality/historical-evidence-20261025/FULL_CARD_MANIFEST.json
+docs/legality/historical-evidence-20261025/PROGRESS.md
+docs/legality/historical-evidence-20261025/SOURCE_ASSESSMENT.md
+include/Legality/Gen5FullCardCatalog.h
+include/Legality/Gen5FullWonderCard.h
+src/Legality/Gen5Legality.cpp
+tests/fixtures/gen15_session2/full_card_engine.txt
+tests/test_gen5_full_card_evidence.cpp
+tests/test_gen5_full_card_generator.py
+tests/test_gen5_full_wonder_card.cpp
+tests/test_gen5_gift_receivability.cpp
+tools/legality_completion/full_card_evidence.py
