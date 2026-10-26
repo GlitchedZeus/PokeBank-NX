@@ -97,6 +97,36 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
 - **CG13 (ItemPicker becomes the item grid).** I gave P the exact SharedMenuGeometry patch: ItemPicker gets the grid rule and HeldItemPicker becomes `return rule(MenuType::ItemPicker);`. P lands it with its Bag Add switch, because on this branch ItemPicker's only consumer is still the list-style Add picker.
 - **devkitA64:** built in Docker (`devkitpro/devkita64`) on a copy of the branch head.
 
+## Round 6 (owner results `docs/hardware/ROUND5_RESULTS_1ca2faec.md`)
+
+**Host UI harness:**
+- What it is: `Makefile.host.host-ui`, `tests/host-ui/` and `tests/test_ui_editor_input_host.cpp`. It drives the real `TrainerViewScreen::update` / `draw` with scripted pad and touch input against a libnx stub.
+- How it builds: the app sources go into a static archive. Platform-only sources are stubbed in `HostUiStubs.cpp`.
+- GCC only: under Clang the app has existing `Trainer::Trainer` / `Pokemon::` lookup ambiguities, so the harness, R's layout test, L's Review-entry test and P's held-item test add no targets there.
+
+**Landed:**
+
+| Item | Commit | What changed |
+|---|---|---|
+| L06 Pokérus (Gen III/V) | `25a1146`, `b6a4069` | Gen III Create now offers Pokérus. A first tap on a partly visible row reveals it and acts like A (CG69). |
+| L06 Gen V Pokérus | `b4cffb7` | Keep replays the mode against the record's own baseline byte. Review names the mode. |
+| L06 Held Item | `0951ce7` | A tap on a partly visible picker cell selects it (CG70). |
+| Safety | `fae05dc` | Per-screen state is keyed by `TrainerViewScreen::instanceSerial`, never the screen's address. |
+| CG71 | `02ae078` | Stored Safari Ball / Berry Juice held items are labelled "(unreleased)". Gen III Review uses `getItemNameG3`. |
+| Picker viewport | `02ae078` | Both pickers ensure the viewport before the first draw. This fixes an ASan `pickerValues[-1]` read. |
+| 7B | `f7e836f` | A directly learnable Gen V move reads OK. |
+| 7C / CG79 | `64fe8f9` | The Gen V Language toast is gone. |
+| CG74 Gen III | `0663a6e` | Create Review lists the created values (`createdDetail` rows). |
+| CG74 Gen IV/V | `1b6db61` | Gen V `VerifiedSlotReview::created`. Gen IV rows for a slot holding a record that is in no original slot. |
+
+**View mode:**
+- In View, A or a tap on a field says why nothing changes, via `UI/SharedViewOnlyNotice.h`.
+- A field Edit can change gets "View only: choose Edit to change <field>".
+- A field locked in every mode gets "<field> is read-only for this Pokemon". Locked fields are Origin, SID (Gen III), PID, a fixed Gender or Ability, a transferred record's encounter data and a fixed form.
+- Coverage: Gen III, and Gen IV/V through the shared surface. The harness covers Gen III and Gen V. Gen I/II use their own surfaces and are not covered.
+
+**Open:** CG74 Gen I / Gen II rows are lane C's.
+
 ## Not done / blocked
 
 

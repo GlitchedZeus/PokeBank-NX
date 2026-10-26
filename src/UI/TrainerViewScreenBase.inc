@@ -5485,16 +5485,22 @@ int reviewGeneration(const std::string& gameId) {
                     spec.boxes = detailViewActive &&
                         (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage);
                     // Round 6 (B08 / P1-RETURN): the Review slot on Gen I-IV Party / Trainer (Y) and
-                    // Boxes (+), the keys openClassicBrowseReview handles (ReviewEntry.h).
+                    // Boxes (+), the keys openClassicBrowseReview handles (ReviewEntry.h). A Gen I-III
+                    // Bag lands here only when its inventory failed validation ("Inventory
+                    // unavailable"); its + still opens Review (ClassicInventory::handleInput tries
+                    // Review before the Bag backend), so the slot stays as on a valid Bag.
                     const int reviewGen = reviewGeneration(sourceGameId);
+                    const bool classicBag = selectedMode == ViewMode::Items && reviewGen >= 1 && reviewGen <= 3 &&
+                        ClassicInventory::isClassicSource(*this);
                     if (detailViewActive && reviewGen >= 1 && reviewGen <= 4 &&
                         (selectedMode == ViewMode::Party || selectedMode == ViewMode::Boxes ||
-                         selectedMode == ViewMode::Trainer)) {
+                         selectedMode == ViewMode::Trainer || classicBag)) {
                         namespace Entry = PokeBank::UIModel::ReviewEntry;
                         spec.review = true;
                         spec.reviewGlyph = Entry::footerHint(
                             selectedMode == ViewMode::Party ? Entry::Screen::Party
-                            : selectedMode == ViewMode::Boxes ? Entry::Screen::Boxes : Entry::Screen::Trainer,
+                            : selectedMode == ViewMode::Boxes ? Entry::Screen::Boxes
+                            : classicBag ? Entry::Screen::Bag : Entry::Screen::Trainer,
                             reviewGen).glyph;
                     }
                     instructions = BrowseFooter::instructions(spec);

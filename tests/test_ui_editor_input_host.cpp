@@ -87,7 +87,7 @@ struct Driver {
 };
 
 // A Black save with one party Pikachu (the Gen V Bag-screen fixture shape).
-std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0) {
+std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
     // An established trainer "NX" (TID 12345 / SID 54321, 12:34:56), as test_gen5_trainer_footer.
     const size_t player = 0x19400;
@@ -107,6 +107,7 @@ std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0) {
     C5::write16(party, 8, 25);
     party[0x8C] = 30;
     party[0x82] = pokerus;   // native Pokérus byte: strain << 4 | days
+    C5::write16(party, 0x28, move1);   // first move slot
     const auto encrypted = C5::encryptCandidate(party);
     std::copy(encrypted.begin(), encrypted.end(), sav.begin() + static_cast<std::ptrdiff_t>(L5::PartyOffset + 8));
     auto copy = std::span<uint8_t>(sav).subspan(0, L5::BlackWhiteCopySize);
@@ -208,6 +209,26 @@ void gen5CreatePokerus() {
     check(mode() == 2, "Gen V Create tap on Pokérus toggles None -> Infected (got " + std::to_string(mode()) + ")");
     d.press(HidNpadButton_A);
     check(mode() == 1, "Gen V Create A on Pokérus toggles Infected -> Cured (got " + std::to_string(mode()) + ")");
+
+    // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
+    d.press(HidNpadButton_X);   // Keep
+    check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Create");
+    std::vector<std::string> drawn;
+    for (int page = 0; page < 6; ++page) {
+        d.frame();
+        drawn.insert(drawn.end(), HostUi::texts.begin(), HostUi::texts.end());
+        d.press(HidNpadButton_R);
+    }
+    const auto shown = [&](const std::string& part) {
+        for (const auto& t : drawn)
+            if (t.find(part) != std::string::npos) return true;
+        return false;
+    };
+    for (const char* part : {"Create in Box: Empty -> ", "Ball: ", "Trainer ID: ", "Met Location: ",
+                             "Nature: ", "Gender: ", "Ability: ", "Language: ", "Pokerus: Cured"})
+        check(shown(part), std::string("Gen V Create Review lists \"") + part + "\"");
+    check(!shown("Held Item: ") && !shown("IV ") && !shown("EV "), "Gen V Create Review adds no default noise");
+    check(!shown("Pokerus: None -> "), "Gen V Create Review shows created values, not edits from the template");
 }
 
 // ---- Gen III (FireRed): one 100-byte party Pikachu in the active rotated slot, the record shape
@@ -306,7 +327,11 @@ std::string drawnValue(const std::string& label) {
 }
 
 // Party A -> the classic Party Actions popup -> a real tap on its Edit row -> the Gen III editor.
+bool openGen3PartyAction(Driver& d, PokeBank::UIModel::SharedPokemonEditor::Action action);
 bool openGen3PartyEdit(Driver& d) {
+    return openGen3PartyAction(d, PokeBank::UIModel::SharedPokemonEditor::Action::Edit);
+}
+bool openGen3PartyAction(Driver& d, PokeBank::UIModel::SharedPokemonEditor::Action action) {
     d.frame();
     d.screen.detailViewActive = true;
     d.screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
@@ -317,8 +342,9 @@ bool openGen3PartyEdit(Driver& d) {
     const auto list = Shared::actionsForSlot(true, {false, false, true}, false);
     int edit = -1;
     for (size_t i = 0; i < list.count; ++i)
-        if (list[i] == Shared::Action::Edit) edit = static_cast<int>(i);
-    check(edit >= 0 && d.target(89000 + edit) != nullptr, "Gen III Party A opens the Party Actions popup with Edit");
+        if (list[i] == action) edit = static_cast<int>(i);
+    check(edit >= 0 && d.target(89000 + edit) != nullptr,
+          std::string("Gen III Party A opens the Party Actions popup with ") + Shared::actionLabel(action));
     if (edit < 0 || !d.tap(89000 + edit)) return false;
     return true;
 }
@@ -750,7 +776,7 @@ void gen3SafariBallRoles() {
 // Owner Oct 25 7C: Gen V Language cycles inline on A and on a tap; the changed value is the
 // feedback, so neither posts a "Language: ..." status toast.
 void gen5LanguageNoToast() {
-    const auto input = gen5Fixture();
+    const auto input = gen5Fixture(0, 84);   // Pikachu knows Thunder Shock (a level-up move)
     std::string error;
     const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
     check(parsed.has_value(), "Gen V fixture parses: " + error);
@@ -777,6 +803,15 @@ void gen5LanguageNoToast() {
     check(state.surface() == G5::Gen5SharedScreenState::Surface::Edit, "Gen V Language: the editor opens");
     if (state.surface() != G5::Gen5SharedScreenState::Surface::Edit) return;
 
+    // Owner Oct 25 7B: a directly learnable Gen V move reads "OK", as in Gen I-IV.
+    d.frame();
+    bool ok = false, learnable = false;
+    for (const auto& t : HostUi::texts) {
+        ok = ok || t == "OK";
+        learnable = learnable || t.find("Learnable") != std::string::npos;
+    }
+    check(ok && !learnable, "Gen V Moves panel marks Thunder Shock OK, not Learnable");
+
     const auto language = [&] {
         const auto p = state.draft().current();
         return p ? static_cast<int>(p->language()) : -1;
@@ -797,6 +832,85 @@ void gen5LanguageNoToast() {
     check(HostUi::promptCount == 0, "Language never opens a prompt");
 }
 
+// Owner Oct 25 L06 acceptance ("no dead taps or invisible restrictions"): in View, A or a tap on a
+// field says why nothing changes, and a row locked in every mode never points at Edit.
+void gen3ViewOnly() {
+    namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    auto& g3 = openGen3(13);
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyAction(d, Shared::Action::View)) return;
+    auto& screen = *g3.screen;
+    const auto status = [&] { return screen.storageStatus; };
+    screen.postStatus("", 0);
+    d.press(HidNpadButton_A);
+    check(status() == "View only: choose Edit to change Species",
+          "Gen III View A on Species explains View (got \"" + status() + "\")");
+    const auto tapSays = [&](int id, const std::string& expected, const std::string& what) {
+        for (int i = 0; i < 16 && !d.target(id); ++i) d.press(HidNpadButton_Down);
+        screen.postStatus("", 0);
+        const bool tapped = d.tap(id);
+        check(tapped && status() == expected, "Gen III View tap on " + what + " (got \"" + status() + "\")");
+    };
+    tapSays(31014, "View only: choose Edit to change Pokerus", "Pokérus explains View");
+    tapSays(31010, "Origin is read-only for this Pokemon", "Origin says read-only, not Edit");
+    tapSays(31300, "View only: choose Edit to change moves", "a move explains View");
+    tapSays(31206, "View only: choose Edit to change Nature", "Nature explains View");
+    tapSays(31210, "PID is read-only for this Pokemon", "PID says read-only");
+    check(HostUi::promptCount == 0, "Gen III View never opens a prompt");
+    const auto* editor = g3.trainer->stagedPokemon();
+    check(!editor || editor->pendingChanges().empty(), "Gen III View stages nothing");
+}
+
+void gen5ViewOnly() {
+    const auto input = gen5Fixture(0, 84);
+    std::string error;
+    const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+    auto trainer = parsed ? PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error) : nullptr;
+    check(trainer != nullptr, "Gen V View fixture opens");
+    if (!trainer) return;
+    UI::TrainerViewScreen screen(*trainer, "Pokemon Black", "/host/black.sav", 0, AccountUid{},
+                                 PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    Driver d{screen, {}, {}};
+    d.frame();
+    screen.detailViewActive = true;
+    screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+    screen.selectedPartyIndex = 0;
+    d.frame();
+    d.press(HidNpadButton_A);
+    auto& state = trainer->sharedScreen();
+    const auto actions = state.availableActions(trainer->stagedPokemon());
+    size_t viewRow = actions.count;
+    for (size_t i = 0; i < actions.count; ++i)
+        if (actions[i] == PokeBank::UIModel::SharedPokemonEditor::Action::View) viewRow = i;
+    for (size_t i = 0; i < viewRow; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    check(state.surface() == G5::Gen5SharedScreenState::Surface::View, "Gen V Actions A on View opens View");
+    if (state.surface() != G5::Gen5SharedScreenState::Surface::View) return;
+    const auto status = [&] { return screen.storageStatus; };
+    const auto tapSays = [&](int id, const std::string& expected, const std::string& what) {
+        for (int i = 0; i < 18 && !d.target(id); ++i) d.press(HidNpadButton_Down);
+        screen.postStatus("", 0);
+        const bool tapped = d.tap(id);
+        check(tapped && status() == expected, "Gen V View tap on " + what + " (got \"" + status() + "\")");
+    };
+    const int base = Workspace::kDetailTouchBase;
+    tapSays(base + 1, "View only: choose Edit to change Nickname", "Nickname explains View");
+    screen.postStatus("", 0);
+    d.press(HidNpadButton_A);
+    check(status() == "View only: choose Edit to change Nickname", "Gen V View A explains View (got \"" + status() + "\")");
+    tapSays(base + 14, "View only: choose Edit to change Pokerus", "Pokérus explains View");
+    tapSays(base + 10, "Origin is read-only for this Pokemon", "Origin says read-only");
+    // The fixture's origin is not a Gen V game, so its Ball stays read-only in Edit too, as does
+    // the PID itself: View must not promise otherwise. Its Nature is editable in Edit.
+    tapSays(base + 11, "Ball is read-only for this Pokemon", "a transferred Ball says read-only");
+    tapSays(41206, "View only: choose Edit to change Nature", "Nature explains View");
+    tapSays(41210, "PID is read-only for this Pokemon", "PID says read-only");
+    tapSays(41300, "View only: choose Edit to change moves", "a move explains View");
+    check(HostUi::promptCount == 0, "Gen V View never opens a prompt");
+    check(!trainer->stagedPokemon().hasChanges(), "Gen V View stages nothing");
+}
+
 int main() {
     gen5Pokerus();
     gen5CreatePokerus();
@@ -810,6 +924,8 @@ int main() {
     gen5PokerusKeepWithStoredStrain();
     gen3SafariBallRoles();
     gen5LanguageNoToast();
+    gen3ViewOnly();
+    gen5ViewOnly();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;

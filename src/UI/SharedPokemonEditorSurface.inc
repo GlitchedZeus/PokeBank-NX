@@ -38,6 +38,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
+#include "UI/SharedViewOnlyNotice.h"
 #include "UI/ReviewEntry.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedPokemonShell.h"
@@ -631,6 +632,35 @@ bool editStatCell(TrainerViewScreen& screen, EditorState& state, const typename 
     return A::editPidRow(screen, state, activation.row, p);
 }
 
+// View (passive): A or a completed tap on a field says why nothing changes (owner Oct 25 L06:
+// no dead taps or invisible restrictions). Rows locked in every mode never point at Edit.
+template <class A, class Record>
+void viewOnlyActivate(TrainerViewScreen& screen, EditorState& state, Shared::Focus focus, const Record& p) {
+    namespace Notice = PokeBank::UIModel::ViewOnlyNotice;
+    constexpr std::array<const char*,5> pidLabels{{"Nature", "Gender", "Shiny", "Ability", "PID"}};
+    const auto activation = Workspace::activationFor(focus);
+    std::string field;
+    bool locked = false;
+    switch (activation.kind) {
+        case Workspace::ActivationKind::DetailField:
+            if (A::passiveActivate(screen, state, activation.row)) return;
+            field = A::detailLabel(activation.row);
+            locked = A::detailLocked(screen, state, activation.row, p);
+            break;
+        case Workspace::ActivationKind::MoveRow: field = "moves"; break;
+        case Workspace::ActivationKind::IvCell: field = "IVs"; break;
+        case Workspace::ActivationKind::EvCell: field = "EVs"; break;
+        case Workspace::ActivationKind::PidLinkedRow: {
+            const int index = activation.row - Workspace::kStatRows;
+            if (index < 0 || index >= static_cast<int>(pidLabels.size())) return;
+            field = pidLabels[static_cast<size_t>(index)];
+            locked = A::pidRowLocked(screen, state, activation.row, p);
+            break;
+        }
+    }
+    screen.postStatus(locked ? Notice::lockedHint(field) : Notice::editHint(field), Notice::kFrames);
+}
+
 template <class A>
 bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, const TouchInput& touch) {
     if (handleValuePicker<A>(screen, state, down, touch)) return true;
@@ -714,8 +744,7 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         const auto tapped=state.focus;
         if(tapped.panel==Shared::Panel::Details)state.detailsTouchScroll.stop();
         if (editable) down |= HidNpadButton_A;
-        else if (passive && tapped.panel == Shared::Panel::Details)
-            A::passiveActivate(screen, state, tapped.row);
+        else if (passive) viewOnlyActivate<A>(screen, state, tapped, *record);
     }
     if (touch.justReleased() && touch.dragged()) {
         const int dx = touch.deltaX(), dy = touch.deltaY();
@@ -748,9 +777,8 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         screen.postStatus(Reroll::kRerollStatus, 200);
         return true;
     }
-    if ((down & HidNpadButton_A) && passive &&
-        state.focus.panel == Shared::Panel::Details)
-        A::passiveActivate(screen, state, state.focus.row);
+    if ((down & HidNpadButton_A) && passive)
+        viewOnlyActivate<A>(screen, state, state.focus, *record);
     if (!(down & HidNpadButton_A) || !editable) return true;
     if (state.focus.panel == Shared::Panel::Details &&
         !state.detailsViewport.containsSelection(state.focus.row, rows, visibleDetailRows)) {

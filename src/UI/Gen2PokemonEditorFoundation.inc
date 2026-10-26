@@ -205,6 +205,9 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.row = 0;
     state.column = 0;
     state.working = defaultCreateRecord(*editor);
+    // A new Pokemon starts with its species' native level-up moves, like a species change during
+    // Create and Gen I / III-V Create (Pikachu Lv 5: Thunder Shock, Growl).
+    Rules::seedNativeMoves(state.working, screen.sourceGameId);
     state.begin(state.working, Mode::Create);
     state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
     state.crystalMetTime = 0;
