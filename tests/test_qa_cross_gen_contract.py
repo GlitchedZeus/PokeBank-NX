@@ -3492,41 +3492,53 @@ def round7_contracts(sources):
     # Gen I-V editor; the reference is the shared Gen IV / V editor's small coloured label.
     # ------------------------------------------------------------------------------------------
     r = Result("CG89-one-editor-heading-style",
-               "DETAILS / STATS / MOVES headings use the shared Gen IV / V editor's one style token in Gen I-V "
-               "(owner Oct 26 typography)")
-    sh = src("src/UI/SharedPokemonEditorSurface.inc")
-    ref = re.search(r"drawText\s*\([^;]*\btitle\b[^;]*TextStyle::(\w+)\s*\)", body_of(sh, "drawPanel"))
-    if not ref:
-        missing(r, "src/UI/SharedPokemonEditorSurface.inc", "drawPanel heading style")
+               "DETAILS / STATS / MOVES headings all draw through the one shared heading helper "
+               "(UI/SharedPanelHeading.h, the Gen IV / V style) in Gen I-V (owner Oct 26 typography)")
+    HELPER = "include/UI/SharedPanelHeading.h"
+    hp = src(HELPER)
+    hd = body_of(hp, "draw")
+    if not hp or not hd:
+        missing(r, HELPER, "PanelHeading::draw")
     else:
-        want = ref.group(1)
-        HEAD = re.compile(r'drawText\s*\([^;]*?(?:"(?:DETAILS|STATS|MOVES)"|statsHeading\s*\(\s*\))[^;]*?TextStyle::(\w+)\s*\)')
-        for f in sources:
-            if not EDITOR_FILE_RX.search(f.rel):
+        if not re.search(r"kStyle\s*=\s*UI::TextStyle::Caption\s*;", hp.code):
+            r.violations.append(f"{HELPER}: the shared heading style is not the Gen IV / V Caption")
+        if not re.search(r"return\s+UI::Colors::Accent\s*;", body_of(hp, "color")):
+            r.violations.append(f"{HELPER}: the shared heading colour is not the Gen IV / V Accent")
+        if not re.search(r"drawText\s*\([^;]*kInsetX[^;]*kInsetY[^;]*\btitle\b[^;]*color\s*\(\s*\)\s*,\s*kStyle\s*\)", hd):
+            r.violations.append(f"{HELPER}: draw does not use the helper's inset, colour and style")
+    HEADING = r'"(?:DETAILS|STATS|MOVES)"|\bstatsHeading\s*\(\s*\)'
+    VIA_HELPER = re.compile(r"PanelHeading::draw\s*\(")
+
+    def forwarder_body(f, name):
+        """Body of the function or lambda `name` that a heading literal is passed to."""
+        m = re.search(r"\b" + re.escape(name) + r"\s*=\s*\[[^\]]*\]\s*\([^)]*\)\s*\{", f.code)
+        return block_after(f.code, m.end()) if m else body_of(f, name)
+
+    if not re.search(r"PanelHeading::draw\s*\([^;]*\btitle\b", body_of(src("src/UI/SharedPokemonEditorSurface.inc"), "drawPanel")):
+        r.violations.append("src/UI/SharedPokemonEditorSurface.inc: the Gen IV / V reference drawPanel does not use "
+                            "the shared heading helper")
+    for f in sources:
+        if not EDITOR_FILE_RX.search(f.rel):
+            continue
+        for m in re.finditer(HEADING, f.code):
+            stmt = f.code[max(f.code.rfind(";", 0, m.start()), f.code.rfind("{", 0, m.start()),
+                              f.code.rfind("}", 0, m.start())) + 1:f.code.find(";", m.end()) + 1]
+            ln = f.code.count("\n", 0, m.start()) + 1
+            if VIA_HELPER.search(stmt):
                 continue
-            for m in HEAD.finditer(f.code):
-                if m.group(1) != want:
-                    r.violations.append(f"{f.rel}:{f.code.count(chr(10), 0, m.start()) + 1}: panel heading uses "
-                                        f"TextStyle::{m.group(1)}, not the shared TextStyle::{want}")
-            for helper in ("drawPanel", "clearHardwarePanelHeading"):
-                for m in re.finditer(r"drawText\s*\([^;]*\b(?:title|text)\b[^;]*TextStyle::(\w+)\s*\)", body_of(f, helper)):
-                    if m.group(1) != want:
-                        r.violations.append(f"{f.rel}: {helper} draws panel headings in TextStyle::{m.group(1)}, "
-                                            f"not TextStyle::{want}")
-        for f in sources:
-            if not EDITOR_FILE_RX.search(f.rel):
+            if re.search(r"\bdrawText\s*\(", stmt):
+                r.violations.append(f"{f.rel}:{ln}: panel heading drawn with drawText, not the shared heading helper")
                 continue
-            for m in re.finditer(r"\bredraw\s*\(\s*\w+\s*,\s*\"(?:DETAILS|STATS|MOVES)\"\s*,\s*TextStyle::(\w+)", f.code):
-                if m.group(1) != want:
-                    r.violations.append(f"{f.rel}:{f.code.count(chr(10), 0, m.start()) + 1}: panel heading uses "
-                                        f"TextStyle::{m.group(1)}, not TextStyle::{want}")
-        for f in sources:
-            if not EDITOR_FILE_RX.search(f.rel):
-                continue
-            for m in re.finditer(r"clearHardwarePanelHeading\s*\([^;]*\"(?:DETAILS|STATS|MOVES)\"\s*,\s*TextStyle::(\w+)", f.code):
-                if m.group(1) != want:
-                    r.violations.append(f"{f.rel}:{f.code.count(chr(10), 0, m.start()) + 1}: panel heading uses "
-                                        f"TextStyle::{m.group(1)}, not TextStyle::{want}")
+            call = re.match(r"\s*(?:\w+(?:::|\.))*(\w+)\s*\(", stmt)
+            if not call or call.group(1) in ("return", "if", "static_assert", "assert"):
+                continue   # not a draw (a value, a comparison, a static check)
+            fb = forwarder_body(f, call.group(1))
+            if not fb:
+                r.violations.append(f"{f.rel}:{ln}: heading passed to {call.group(1)}, whose body was not found "
+                                    "(update this check)")
+            elif not VIA_HELPER.search(fb) or re.search(r"\bdrawText\s*\([^;]*\b(?:title|text)\b", fb):
+                r.violations.append(f"{f.rel}:{ln}: heading passed to {call.group(1)}, which does not draw it "
+                                    "through the shared heading helper")
     res.append(r)
     return res
 
