@@ -134,12 +134,22 @@ void testWiring() {
         const std::string name = entry.path().filename().string();
         if (n) assert(name == "Gen2PokemonEditorFoundation.inc" || name == "Gen3SharedPokemonSurface.inc" ||
                       name == "SharedPokemonEditorSurface.inc" || name == "SaveSelectScreen.cpp" ||
-                      name == "ClassicPartyActions.inc");
+                      name == "ClassicPartyActions.inc" || name == "Gen1PokemonEditorOverlayUXCleanup3.inc" ||
+                      name == "Gen2PokemonPickerOverlay.inc" || name == "Gen2HardwarePickerFix.inc");
         publishers += n;
     }
     // Gen II Held Item; Gen III value + species; Gen IV/V value + species; Game Browser Help;
-    // Party Actions. Game / Trainer Help publishes from ScreenChrome drawInfoOverlay.
-    assert(publishers == 7);
+    // Party Actions; Gen I species + move; Gen II species, Crystal Met Location, move list and the
+    // hardware move picker. Game / Trainer Help publishes from ScreenChrome drawInfoOverlay.
+    assert(publishers == 13);
+    // Gen I / II species and move pickers: the one input entry closes the open picker like B.
+    has(read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"),
+        "    if (isGen1SourceUX(screen) && ux2StateFor(screen).picker != UX2Picker::None &&\n"
+        "        SharedPopupDismiss::tappedOutside(touch)) {");
+    has(read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"), "        state.picker = UX2Picker::None;\n        return true;");
+    has(read("src/UI/Gen2HardwarePickerFix.inc"),
+        "    if (picker.model.active() && state.mode != Mode::View && SharedPopupDismiss::tappedOutside(touch)) {\n"
+        "        closePicker(screen, picker);\n        return true;");
     has(read("include/UI/ScreenChrome.h"), "        drawModalSurface(fb, x, y, w, h);\n"
         "        SharedPopupDismiss::publish(x, y, w, h);   // 7D: Help closes on a tap outside it");
     has(read("src/UI/SaveSelectScreen.cpp"), "            if ((kDown & (HidNpadButton_B | HidNpadButton_Minus)) || "

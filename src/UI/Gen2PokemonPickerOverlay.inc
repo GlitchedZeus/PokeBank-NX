@@ -157,6 +157,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     auto& overlay = pickerStateFor(screen);
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedPopupDismiss::publish(modal.x, modal.y, modal.width, modal.height);   // 7D
         SharedSpeciesPicker::refilter(overlay.speciesChooser, 251, gen2SpeciesAvailable, gen2SpeciesName);
         const int unownForm = Gen2Picker::previewUnownForm(
             state, model.previewShiny, screen.sourceGameId);
@@ -191,6 +192,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         const auto g = Gen2Picker::locationPickerGeometry(count, fb.getWidth(), fb.getHeight());
         fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
         drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18);
+        SharedPopupDismiss::publish(g.x, g.y, g.width, g.height);   // 7D
         fb.drawText(g.x + 24, g.y + 18, "Met Location", Colors::Text, TextStyle::Heading);
         fb.drawText(g.x + 24, g.y + 52, "Where this Pokémon was caught in Crystal",
                     Colors::TextDim, TextStyle::Caption);
@@ -223,6 +225,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
+    SharedPopupDismiss::publish(x, y, panelW, panelH);   // 7D
 
     const bool species = model.kind == Gen2Picker::Kind::Species;
     fb.drawText(x + 24, y + 18, species ? "Species — Generation II" : "Move — Generation II",
