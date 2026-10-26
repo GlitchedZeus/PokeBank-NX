@@ -14,6 +14,7 @@
 #include "UI/SharedMenuGeometry.h"
 #include "UI/SharedBoxedRows.h"
 #include "UI/SharedReviewPresentation.h"
+#include "UI/SharedPopupDismiss.h"
 
 #include <string>
 #include <vector>
@@ -45,6 +46,7 @@ inline void drawPickerFooter(PKSEFramebuffer& fb, const Presentation::PickerFoot
 template <class Buttons>
 inline void beginModal(Buttons& screenTouchButtons) {
     beginTopTouchLayer();
+    SharedPopupDismiss::clear();   // 7D: only a picker re-publishes a tap-outside frame
     screenTouchButtons.clear();
 }
 

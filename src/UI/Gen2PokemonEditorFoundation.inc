@@ -34,6 +34,7 @@
 #include "UI/StatsRadar.h"
 #include "UI/ScreenChrome.h"
 #include "UI/TouchScroll.h"
+#include "UI/SharedHeldItemInput.h"
 #include "UI/Dialogs/DialogFrame.h"
 
 #include <algorithm>
@@ -636,9 +637,16 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
-    using PokeBank::UIModel::Gen2HeldItemPicker::move;
+    if (SharedPopupDismiss::tappedOutside(touch)) {
+        // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's
+        // return keeps the gesture from reaching the workspace underneath.
+        state.itemScroll.stop();
+        state.itemPicker = false;
+        screen.controllerNavigation.reset();
+        return true;
+    }
     namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
-    constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight, rowStep = Grid::rowPitch;
+    constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight;
     const int px = (1280 - pickerW) / 2;
     const int py = (720 - kNavBarH - pickerH) / 2;
     const auto heldItemName=[](uint8_t id){return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id);};
@@ -662,26 +670,6 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
     }
     const int columns=Grid::columnsForSearch(state.heldItemSearch.open());
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, columns);
-    const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, columns);
-    if (maxFirstRow > 0) {
-        state.itemScroll.updateVertical(
-            touch, px + Grid::gridInsetX, py + Grid::gridInsetY - 3,
-            Grid::gridWidth(state.heldItemSearch.open()), Model::rows * rowStep,
-            rowStep, state.itemViewport.firstRow, maxFirstRow + 1);
-    } else {
-        state.itemScroll.stop();
-    }
-
-    // Scrolling and semantic selection are independent. Touch-down is NOT
-    // a choice: it may become a held-item grid drag. Preserve controller focus
-    // until release confirms an actual tap on that choice.
-    const int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= 3000 && touchTap < 3000 + count) {
-        state.itemScroll.stop();
-        state.itemChoiceIndex = touchTap - 3000;
-        down |= HidNpadButton_A;
-    }
     if (down & HidNpadButton_X) {
         state.itemSort = ItemPickerSort::next(state.itemSort);
         state.itemChoiceIndex = ItemPickerSort::reorder(
@@ -697,35 +685,22 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()), Model::rows, columns);
         return true;
     }
-
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right) ||
-        down & (HidNpadButton_L | HidNpadButton_R))
-        state.itemScroll.stop();
-    if (nav & HidNpadButton_Up) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, -1);
-    if (nav & HidNpadButton_Down) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 1);
-    if (nav & HidNpadButton_Left) state.itemChoiceIndex = move(state.itemChoiceIndex, count, -1, 0);
-    if (nav & HidNpadButton_Right) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 1, 0);
-    if (down & HidNpadButton_L) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, -1);
-    if (down & HidNpadButton_R) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, 1);
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
-               HidNpadButton_Left | HidNpadButton_Right) ||
-        down & (HidNpadButton_L | HidNpadButton_R))
-        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, columns);
     if (down & HidNpadButton_B) {
         state.itemScroll.stop();
         state.itemPicker = false;
         screen.controllerNavigation.reset();
         return true;
     }
-    if (down & HidNpadButton_A) {
-        if (!state.itemViewport.containsSelection(
-                state.itemChoiceIndex, count, Model::rows, columns)) {
-            state.itemScroll.stop();
-            state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, columns);
-            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
-            return true;
-        }
-        state.itemScroll.stop();
+    // L06: scrolling and semantic selection stay independent (touch-down is never a choice); a
+    // release-confirmed tap on a cell and A on the focus share one step and one commit.
+    const auto step = SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport,
+        state.itemChoiceIndex, count, state.heldItemSearch.open(), px, py,
+        {bool(nav & HidNpadButton_Up), bool(nav & HidNpadButton_Down), bool(nav & HidNpadButton_Left),
+         bool(nav & HidNpadButton_Right), bool(down & HidNpadButton_L), bool(down & HidNpadButton_R),
+         bool(down & HidNpadButton_A)});
+    if (step.revealed)
+        screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+    if (step.choose) {
         state.working.heldItem = state.itemChoices[static_cast<std::size_t>(state.itemChoiceIndex)];
         state.itemPicker = false;
         screen.controllerNavigation.reset();
@@ -1006,6 +981,9 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     constexpr int w = Grid::modalWidth, h = Grid::modalHeight;
     const int x = (W - w) / 2;
     const int y = (H - kNavBarH - h) / 2;
+    // L06: the modal owns the frame's touch; covered workspace rows must not shadow its cells.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);

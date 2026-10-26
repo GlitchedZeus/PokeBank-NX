@@ -50,6 +50,7 @@
 #include "UI/SharedStatReroll.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemInput.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/TouchScroll.h"
@@ -1062,6 +1063,16 @@ PokeBank::UIModel::SharedPickerPaging::Keys gen3PickerKeys(u64 down) noexcept {
 
 bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
+    // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's return
+    // keeps the gesture from reaching the workspace underneath.
+    if (SharedPopupDismiss::tappedOutside(touch)) {
+        state.pickerScroll.stop();
+        screen.controllerNavigation.reset();
+        state.valuePicker = false;
+        state.pickerTarget = PickerTarget::None;
+        state.pickerValues.clear();
+        return true;
+    }
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
     const auto heldItemName=[&](uint16_t id){return pickerValueLabel(state, id);};
@@ -1118,16 +1129,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         state.pickerScroll.stop();
     } else if (count > 0 && maxFirstRow > 0) {
         if (state.pickerTarget == PickerTarget::HeldItem) {
-  constexpr int pickerW = HeldItemGrid::modalWidth;
-  constexpr int pickerH = HeldItemGrid::modalHeight;
-  constexpr int rowStep = HeldItemGrid::rowPitch;
-  const int px = (1280 - pickerW) / 2;
-  const int py = (720 - kNavBarH - pickerH) / 2;
-  state.pickerScroll.updateVertical(
-      touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
-      HeldItemGrid::gridWidth(state.heldItemSearch.open()),
-      HeldItemGrid::rows * rowStep, rowStep,
-      state.pickerViewport.firstRow, maxFirstRow + 1);
+  // L06: SharedHeldItemInput::update below owns the grid's scroll, tap and A.
         } else if (state.pickerTarget == PickerTarget::Move) {
   constexpr auto pickerLayout = MoveUI::compactPickerLayout();
   const int px = (1280 - pickerLayout.width) / 2;
@@ -1155,7 +1157,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
     bool tappedChoice = false;
-    if (!pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
+    // The Held Item grid resolves its own taps (SharedHeldItemInput::update below).
+    if (!gridPicker && !pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
         down |= HidNpadButton_A;
         tappedChoice = true;
@@ -1184,6 +1187,20 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         return true;
     }
 
+    if (gridPicker && !(down & HidNpadButton_B)) {
+        // L06: tap and A share one step and one commit (UI/SharedHeldItemInput.h).
+        const int px = (1280 - HeldItemGrid::modalWidth) / 2;
+        const int py = (720 - kNavBarH - HeldItemGrid::modalHeight) / 2;
+        const auto held = SharedHeldItemInput::update(touch, state.pickerScroll, state.pickerViewport,
+            state.pickerRow, count, state.heldItemSearch.open(), px, py,
+            {bool(down & HidNpadButton_Up), bool(down & HidNpadButton_Down), bool(down & HidNpadButton_Left),
+             bool(down & HidNpadButton_Right), bool(down & HidNpadButton_L), bool(down & HidNpadButton_R),
+             bool(down & HidNpadButton_A)});
+        if (held.revealed)
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+        if (held.choose) applyValuePicker(state);
+        return true;
+    }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
         state.pickerScroll.stop();
     if (state.pickerTarget == PickerTarget::HeldItem) {
@@ -1243,6 +1260,10 @@ constexpr auto gen3SpeciesName = [](uint16_t species) { return std::string(Names
 
 bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.speciesPicker) return false;
+    if (SharedPopupDismiss::tappedOutside(touch)) {   // 7D: like B, never a tap-through
+        state.speciesPicker = false;
+        return true;
+    }
     // R2-SEARCH: the search key grid and the list scrollbar take their touches first; X / Minus
     // toggle the grid, and while it is open the D-pad / stick, A and B type into it.
     uint16_t chosen = std::clamp<uint16_t>(state.speciesPreview, 1, 386);
@@ -1882,6 +1903,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         naturePicker ? natureLayout.height : compactChoices ? valueList.frame.h : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
 
     // Keep every Gen III picker in the same dark modal family as Gen I/II.
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
@@ -2363,6 +2385,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.speciesPicker) {
         SharedEditorChrome::beginModal(screen.touchButtons);
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedPopupDismiss::publish(modal.x, modal.y, modal.width, modal.height);   // 7D
         SharedSpeciesPicker::refilter(state.speciesChooser, 386, gen3SpeciesAvailable, gen3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.speciesPreview, 386, state.speciesPreviewShiny,

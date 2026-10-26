@@ -82,7 +82,7 @@ void testGen45RowsFit() {
                 const C::Catalogue catalogue(origin, static_cast<uint16_t>(species), stored, native, {});
                 for (const bool other : {false, true})
                     for (const auto location : catalogue.choices(other)) {
-                        const std::string name = Names::getMetLocationDisplayName(origin, location);
+                        const std::string name = Names::getMetLocationChoiceName(origin, location);   // P5 row name
                         const auto speciesName = [](uint16_t s) { return Names::getSpeciesName(s); };
                         std::string detail = catalogue.detail(location, speciesName);
                         if (catalogue.wildRow(location)) {
