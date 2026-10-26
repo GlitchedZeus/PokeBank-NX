@@ -172,7 +172,51 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
     const auto before=strictParse(editor.originalBytes(),editor,error);
     const auto after=strictParse(editor.stagedBytes(),editor,error);
     if(!before || !after)return {};
+    // CG74 (owner Oct 25 P3): a slot that was empty and now holds a record found nowhere in the
+    // original save was created. A Move or a Clone of an original lands an existing record, so it
+    // gets no detail rows; it is described by its Staged change line alone.
+    const auto inOriginal=[&](const Pokemon::Pokemon4ReadOnly& record) {
+        for(const auto& p:before->nativePartySlots())if(p.valid() && !p.empty() && sameRecord(p,record))return true;
+        for(size_t box=0;box<kBoxCount;++box)for(size_t slot=0;slot<kBoxSlots;++slot) {
+            const auto& o=before->box(box,slot);
+            if(o.valid() && !o.empty() && sameRecord(o,record))return true;
+        }
+        return false;
+    };
+    const auto created=[&](const Pokemon::Pokemon4ReadOnly& b,const std::string& location) {
+        // One named row per value; Held Item, Shiny, IVs, EVs and Pokerus only when not default.
+        const auto detail=[&](const std::string& field,const std::string& value) {
+            rows.push_back({location+" / "+field,value});
+        };
+        const Pokemon::Pokemon4ReadOnlyView bv(b);
+        std::string moves;
+        for(const auto move:b.moves())if(move)moves+=(moves.empty()?"":", ")+std::string(Names::getMoveName(move));
+        detail("Moves",moves.empty()?"(none)":moves);
+        if(b.heldItem())detail("Held Item",Names::getItemName(b.heldItem()));
+        detail("Ball",Enums::getBallName(bv.ball()));
+        detail("Original Trainer",Utils::utf16ToUtf8(b.originalTrainerName())+" / TID "+std::to_string(b.tid())+
+               " / SID "+std::to_string(b.sid()));
+        detail("Met",Names::getMetLocationDisplayName(b.originVersion(),bv.metLocation())+", Lv "+
+               std::to_string(b.metLevel()));
+        detail("Nature",Names::getNatureName(bv.nature()));
+        detail("Gender",bv.genderSymbol());
+        if(bv.isShiny(b.id32(),{}))detail("Shiny","Yes");
+        detail("Ability",Names::getAbilityName(b.ability()));
+        detail("Language",Enums::getLanguageName(b.language()));
+        const auto statLine=[](const auto& values) {
+            std::string line;
+            bool any=false;
+            for(const auto v:values) { line+=(line.empty()?"":"/")+std::to_string(v); any=any||v; }
+            return any?line:std::string();
+        };
+        if(const auto ivs=statLine(b.ivs());!ivs.empty())detail("IVs (HP/Atk/Def/Spe/SpA/SpD)",ivs);
+        if(const auto evs=statLine(b.evs());!evs.empty())detail("EVs (HP/Atk/Def/Spe/SpA/SpD)",evs);
+        if(b.pokerusState())detail("Pokerus",std::string((b.pokerusState()&15)?"Infected":"Cured")+
+                                   " ("+std::to_string(b.pokerusState())+")");
+        if(b.friendship()!=70)detail("Friendship",std::to_string(b.friendship()));
+    };
     const auto compare=[&](const auto& a,const auto& b,const std::string& location) {
+        if(a.valid() && a.empty() && b.valid() && !b.empty() && !inOriginal(b))return created(b,location);
         if(!a.valid() || a.empty() || !b.valid() || b.empty() || sameRecord(a,b))return;
         const auto emit=[&](const char* field,const std::string& from,const std::string& to) {
             if(from!=to)rows.push_back({location+" / "+field,from+" -> "+to});

@@ -209,6 +209,26 @@ void gen5CreatePokerus() {
     check(mode() == 2, "Gen V Create tap on Pokérus toggles None -> Infected (got " + std::to_string(mode()) + ")");
     d.press(HidNpadButton_A);
     check(mode() == 1, "Gen V Create A on Pokérus toggles Infected -> Cured (got " + std::to_string(mode()) + ")");
+
+    // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
+    d.press(HidNpadButton_X);   // Keep
+    check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Create");
+    std::vector<std::string> drawn;
+    for (int page = 0; page < 6; ++page) {
+        d.frame();
+        drawn.insert(drawn.end(), HostUi::texts.begin(), HostUi::texts.end());
+        d.press(HidNpadButton_R);
+    }
+    const auto shown = [&](const std::string& part) {
+        for (const auto& t : drawn)
+            if (t.find(part) != std::string::npos) return true;
+        return false;
+    };
+    for (const char* part : {"Create in Box: Empty -> ", "Ball: ", "Trainer ID: ", "Met Location: ",
+                             "Nature: ", "Gender: ", "Ability: ", "Language: ", "Pokerus: Cured"})
+        check(shown(part), std::string("Gen V Create Review lists \"") + part + "\"");
+    check(!shown("Held Item: ") && !shown("IV ") && !shown("EV "), "Gen V Create Review adds no default noise");
+    check(!shown("Pokerus: None -> "), "Gen V Create Review shows created values, not edits from the template");
 }
 
 // ---- Gen III (FireRed): one 100-byte party Pikachu in the active rotated slot, the record shape
