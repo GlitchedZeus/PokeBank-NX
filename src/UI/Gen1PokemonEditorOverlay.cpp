@@ -1,3 +1,4 @@
+#include "UI/ClassicSourceGuard.h"
 #include "Names/ItemNames.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
@@ -560,6 +561,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "No pending Generation I changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
 
     const std::string root = PokeBank::Paths::gen1ExportsRoot();
     if (!PokeBank::Paths::ensureGen1ExportsRoot(&error)) return {};

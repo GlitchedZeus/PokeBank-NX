@@ -559,10 +559,12 @@ void ux2HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
         case 11:
             if (add) ux2StageAdd(screen);
             else {
+                // Round 6 (P1-RETURN): the Edit row's Review returns to this Edit, not to Actions:
+                // the same standalone Review + return target as + in the workspace.
                 state.reviewScroll.reset();
                 state.reviewViewport.reset();
-                state.mode = UX2Mode::Review;
-                state.reviewRow = 0;
+                const UX2Mode back = state.mode;
+                if (screen.openStagedReview(false)) state.reviewReturn = back;
             }
             break;
         case 12:

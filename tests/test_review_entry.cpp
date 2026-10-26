@@ -2,7 +2,7 @@
 // from Trainer, Party, Boxes, Bag, Create and Edit in Gen I-V, and back to the same screen.
 //   1. ReviewEntry's button rule for every generation x screen: + everywhere, Y only where Y is
 //      free (never taking Bag Remove, Gen I-IV Box Move / Multi or the Create / Edit re-roll).
-//   2. The production Gen I-IV Party / Boxes router (ClassicBrowseReview.h) driven on a stub screen
+//   2. The production Gen I-IV Party / Boxes / Trainer router (ClassicBrowseReview.h) driven on a stub screen
 //      with the real ClassicReviewOrigin: Y / + open Review, a standalone close returns to the same
 //      screen with cursor, box and page intact, Y on Boxes stays Move, modals and carry block it.
 //   3. The footers that advertise it (Gen II workspace model, the staged Bag footer).
@@ -150,7 +150,15 @@ void classicRouter() {
         screen.details.active = false;
         assert(!Browse::open(screen, kPlus, gen, false) && !screen.reviewOpen);   // overlay owns the frame
 
-        // Other screens route Review through their own handlers; the save hub is not a grid.
+        // Trainer page (with or without editable rows): Y and + open Review and return there.
+        for (const std::uint64_t button : {kY, kPlus}) {
+            screen.selectedMode = StubScreen::ViewMode::Trainer;
+            const Where trainerBefore = where(screen);
+            assert(Browse::open(screen, button, gen, true) && screen.reviewOpen);
+            assert(screen.closeReview() && same(where(screen), trainerBefore));
+        }
+
+        // The Bag routes Review through its own handler; the save hub is not a page here.
         screen.selectedMode = StubScreen::ViewMode::Items;
         assert(!Browse::open(screen, kPlus, gen, true));
         screen.selectedMode = StubScreen::ViewMode::Party;

@@ -659,8 +659,8 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     // workspace stays open underneath; B in Review returns here with the draft and focus intact.
     {
         namespace Entry = PokeBank::UIModel::ReviewEntry;
-        if (Entry::opensReview(state.mode == Mode::Create ? Entry::Screen::Create : Entry::Screen::Edit,
-                               2, down)) {
+        if ((down & HidNpadButton_Plus) &&
+            Entry::plusOpensReview(state.mode == Mode::Create ? Entry::Screen::Create : Entry::Screen::Edit, 2)) {
             if (!screen.openStagedReview(false))
                 screen.postStatus("No staged Generation II changes to review", 220);
             return true;

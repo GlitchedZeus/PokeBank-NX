@@ -5444,9 +5444,9 @@ int reviewGeneration(const std::string& gameId) {
                     footer.push("X", "Add Item");
                     if (hasItem) footer.push("Y", "Remove");
                     // Round 6 (B08): Review straight from the Bag (+; Y stays Remove).
-                    const auto review = PokeBank::UIModel::ReviewEntry::footerHint(
-                        PokeBank::UIModel::ReviewEntry::Screen::Bag, 4);
-                    footer.push(review.glyph, review.label);
+                    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
+                                      PokeBank::UIModel::ReviewEntry::Screen::Bag, 4).glyph[0] == '+');
+                    footer.push("+", "Review");
                     footer.push("B", "Back");
                     instructions.clear();
                     for (const auto& hint : footer) {
@@ -5460,15 +5460,17 @@ int reviewGeneration(const std::string& gameId) {
                     spec.canOpen = canOpen;
                     spec.boxes = detailViewActive &&
                         (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage);
-                    // Round 6 (B08 / P1-RETURN): the Review slot on Gen I-IV Party (Y) and Boxes (+),
-                    // the keys openClassicBrowseReview handles (ReviewEntry.h).
+                    // Round 6 (B08 / P1-RETURN): the Review slot on Gen I-IV Party / Trainer (Y) and
+                    // Boxes (+), the keys openClassicBrowseReview handles (ReviewEntry.h).
                     const int reviewGen = reviewGeneration(sourceGameId);
                     if (detailViewActive && reviewGen >= 1 && reviewGen <= 4 &&
-                        (selectedMode == ViewMode::Party || selectedMode == ViewMode::Boxes)) {
+                        (selectedMode == ViewMode::Party || selectedMode == ViewMode::Boxes ||
+                         selectedMode == ViewMode::Trainer)) {
                         namespace Entry = PokeBank::UIModel::ReviewEntry;
                         spec.review = true;
                         spec.reviewGlyph = Entry::footerHint(
-                            selectedMode == ViewMode::Party ? Entry::Screen::Party : Entry::Screen::Boxes,
+                            selectedMode == ViewMode::Party ? Entry::Screen::Party
+                            : selectedMode == ViewMode::Boxes ? Entry::Screen::Boxes : Entry::Screen::Trainer,
                             reviewGen).glyph;
                     }
                     instructions = BrowseFooter::instructions(spec);

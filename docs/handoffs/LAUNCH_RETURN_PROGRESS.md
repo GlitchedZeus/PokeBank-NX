@@ -205,7 +205,13 @@ Tests:
 - `test_review_entry`: the button rule over 5 generations × 6 screens, and the real Gen I–IV router plus Review origin on a stub screen: open, close, same screen, cursor, box and page.
 - `test_gen5_review_discard_export_trace` `workspaceReviewReturn`: the real Gen V reader, Trainer bridge and state machine (Browse / Edit / Create return; Discard All).
 - `test_classic_help_accuracy` re-pinned to the new claims.
-- No end-to-end host test drives the real `TrainerViewScreen` (it is libnx-bound). Wiring is covered by the native build and the device checks below.
+- `test_ui_review_entry_host` (Lane S's real-input harness, `tests/host-ui`): the REAL `TrainerViewScreen::update`/`draw`. Covers:
+  - Gen I, II, III, IV and V Trainer, Party, Boxes and Bag: the Review key opens the shared Review, and B returns to the same screen and cursor.
+  - Gen III and Gen V Edit and Create: `+` opens Review, and B returns to the draft.
+  - Gen III Export Copy is refused once the source changed since Open.
+  - Disabling the Gen I–IV router makes 24 checks fail.
+- Merged into #307: Party / Boxes / Trainer use Lane R's `ClassicBrowseFooter` `spec.review` (glyph from `ReviewEntry::footerHint`). CG63 was retargeted, because `+` now opens Review on Gen I–IV editor pages, but never on the save hub. The Gen I Edit row "Review / Stage Add" now returns to Edit, not Actions.
+- **7E G5 closed:** Gen I–III Open takes the exact file's snapshot (`ClassicSourceGuard::snapshotAtOpen`). The file must still be the bytes discovery parsed. Every Gen I–III Export Copy re-checks it and refuses a changed source (`unchangedSinceOpen`), as Gen IV / V already do.
 
 Save safety (7E): `docs/audits/ROUND6_SAVE_SAFETY_PKSE.md` (audit only; no save-path change).
 
@@ -216,6 +222,7 @@ Device checks:
 - **R6-4:** Each generation, Edit a Pokémon, change a field, press +: Review opens. B returns to Edit with the change still in the draft. Same from Create.
 - **R6-5:** Gen I and Gen V: in a Review opened from Create/Edit, choose Discard All: you land outside the workspace, never back in a stale draft.
 - **R6-6:** Trainer Info: Y and + open Review; the four-option exit (B with staged changes) is unchanged.
+- **R6-7:** Gen I–III: open a save, edit, then let the emulator save over it (or replace the file). Export Copy is refused with "the save file changed since it was opened"; nothing is written.
 
 ## Opt-in for the device test
 

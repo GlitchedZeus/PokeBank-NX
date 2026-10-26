@@ -1,3 +1,4 @@
+#include "UI/ClassicSourceGuard.h"
 #include "UI/ReviewEntry.h"
 #include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
@@ -1389,9 +1390,9 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
     // untouched. A passive View keeps its read-only controls.
     if (state.session.mode != SessionModel::Mode::View) {
         namespace Entry = PokeBank::UIModel::ReviewEntry;
-        if (Entry::opensReview(state.session.mode == SessionModel::Mode::Create ? Entry::Screen::Create
-                                                                                : Entry::Screen::Edit,
-                               3, down)) {
+        if ((down & HidNpadButton_Plus) &&
+            Entry::plusOpensReview(state.session.mode == SessionModel::Mode::Create ? Entry::Screen::Create
+                                                                                    : Entry::Screen::Edit, 3)) {
             if (!screen.openStagedReview(false))
                 screen.postStatus("No staged Generation III changes to review", 220);
             return true;
@@ -1685,6 +1686,11 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
         return;
     }
     std::string error;
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error)) {
+        screen.postStatus(error, 480);
+        return;
+    }
     const std::string root = PokeBank::Paths::gen3ExportsRoot();
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||

@@ -23,6 +23,7 @@ int main() {
     assert(E::choose(false, true, false, false, 1) == A::ContinueEditing);
     namespace T = PokeBank::UIModel::ClassicTrainerSession;
     assert(std::string_view(T::trainerPageInstructions(true)).find("Y: Review") != std::string_view::npos);
-    assert(std::string_view(T::trainerPageInstructions(false)).find("Review") == std::string_view::npos);
+    // Round 6 (B08): Review is offered whether or not the focused row is editable.
+    assert(std::string_view(T::trainerPageInstructions(false)).find("Y: Review") != std::string_view::npos);
     std::cout << "Classic staged exit: Review/Continue/Export/Y Discard, controller-touch parity and B priority PASS\n";
 }
