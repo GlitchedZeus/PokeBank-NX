@@ -30,6 +30,7 @@ struct CarriedVisual {
 
 struct CarryState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     CarryGeneration generation = CarryGeneration::None;
     bool active = false;
@@ -73,9 +74,9 @@ constexpr int kMultiHoldFrames = 8;
 
 CarryState& stateFor(TrainerViewScreen& screen) {
     static CarryState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -221,9 +222,11 @@ void clearState(TrainerViewScreen& screen, CarryState& state) noexcept {
     screen.currentlySelecting = false;
     screen.controllerNavigation.reset();
     const auto owner = state.owner;
+    const auto ownerSerial = state.ownerSerial;
     const auto sourceGameId = state.sourceGameId;
     state = {};
     state.owner = owner;
+    state.ownerSerial = ownerSerial;
     state.sourceGameId = sourceGameId;
 }
 

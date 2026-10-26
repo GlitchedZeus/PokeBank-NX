@@ -91,6 +91,7 @@ struct MenuActionSet {
 // Gen IV session state around the ONE shared editor workspace state.
 struct State : Surface::EditorState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool actions = false;
     bool review = false;
     size_t reviewPage = 0;
@@ -125,9 +126,9 @@ struct State : Surface::EditorState {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }

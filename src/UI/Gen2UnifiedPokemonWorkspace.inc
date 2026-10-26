@@ -15,6 +15,7 @@ namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 struct UnifiedWorkspaceState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Mode lastMode = Mode::None;
     Unified::Focus focus{};
@@ -44,9 +45,9 @@ struct UnifiedWorkspaceState {
 UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
     static UnifiedWorkspaceState state;
     const auto mode = stateFor(screen).mode;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
         state.lastMode = mode;
     } else if (state.lastMode != mode) {

@@ -19,6 +19,7 @@ namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 struct PickerOverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     Gen2Picker::Model model;
     TouchScrollState scroll;
     TouchScrollState moveScroll;
@@ -35,9 +36,9 @@ constexpr auto gen2SpeciesName = [](uint16_t species) { return std::string(Names
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
     static PickerOverlayState picker;
-    if (picker.owner != &screen) {
+    if ((picker.owner != &screen || picker.ownerSerial != screen.instanceSerial)) {
         picker = {};
-        picker.owner = &screen;
+        picker.owner = &screen; picker.ownerSerial = screen.instanceSerial;
     }
     return picker;
 }
