@@ -1280,39 +1280,48 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     // Secret ID as two separate native 16-bit numbers, plus Gen V's Badges). The raw language id is
     // secondary information: one unboxed detail line, by name. Every value is still read from the
     // save; nothing is merged or recomputed. Touch ids stay kGen5TrainerRowTouchBase + kRows index.
+    // Round 7 (owner B06 / C06, QA CG90): the rects come from the one Trainer page model
+    // (UI/ClassicTrainerPage.h) the Gen I-IV page uses: the Gen V heights, a compact Review button
+    // in its measured slot below the last row, and the language line beside it in that band, so
+    // neither can overlap a row.
     using TRow=G::Gen5TrainerScreen::Row;
-    constexpr int cardW=TPage::kCardW,rowH=TPage::kEditH,rowGap=TPage::kEditGap,infoH=TPage::kInfoH,
-                  infoGap=TPage::kInfoGap,top=TPage::kHeaderH+TPage::kTop;
-    const int cardX=x+(w-cardW)/2;
+    using F=TPage::Field;
+    const std::vector<TPage::Row> model{{F::Name,true,-1},{F::Money,true,-1},{F::PlayTime,true,-1},
+        {F::Pokedex,true,-1},{F::Gender,false,-1},{F::TrainerId,false,-1},{F::SecretId,false,-1},
+        {F::Badges,false,-1}};
+    const auto page=PokeBank::UIModel::ClassicTrainerPage::layout(model,x,y,w,h,true);
     const auto indexOf=[](TRow row) {
         for(size_t i=0;i<G::Gen5TrainerScreen::kRows.size();++i)
             if(G::Gen5TrainerScreen::kRows[i]==row)return i;
         return G::Gen5TrainerScreen::kRows.size();
     };
-    int cy=y+top;
+    size_t placed=0;
     for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex}) {
         const size_t i=indexOf(row);
         const bool sel=editor.open() && i==editor.row();
-        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),cardX,cy,cardW,rowH});
-        TPanel::drawEditableRow(fb,cardX,cy,cardW,rowH,G::Gen5TrainerScreen::label(row),
+        const auto& c=page.rows[placed++].card;
+        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),c.x,c.y,c.w,c.h});
+        TPanel::drawEditableRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
                                 G::Gen5TrainerScreen::value(ws,row),sel);
-        cy+=rowH+rowGap;
     }
-    cy+=TPage::kDividerBefore;
-    TPanel::drawDivider(fb,cardX,cy,cardW);
-    cy+=TPage::kDividerAfter;
+    {
+        const int cardX=page.rows.front().card.x,cy=page.dividerY,cardW=TPage::kCardW;
+        TPanel::drawDivider(fb,cardX,cy,cardW);
+    }
     for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges}) {
-        TPanel::drawInfoRow(fb,cardX,cy,cardW,infoH,G::Gen5TrainerScreen::label(row),
+        const auto& c=page.rows[placed++].card;
+        TPanel::drawInfoRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
                             G::Gen5TrainerScreen::value(ws,row));
-        cy+=infoH+infoGap;
     }
-    if(const auto t=ws.trainerPresentation())
-        fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
-                    "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
-    const int reviewX=cardX+cardW-240,reviewY=y+h-54;
-    drawGlyphButton(fb,reviewX,reviewY,240,44,"Y","Review Changes");
+    if(const auto t=ws.trainerPresentation()) {
+        const auto& line=page.language;
+        fb.drawText(line.x,line.y+(line.h-fb.lineHeight(TextStyle::Caption))/2,std::string("Game language: ")+
+                    Enums::getLanguageName(t->language)+"  (stored id "+std::to_string(t->language)+")",
+                    Colors::TextDim,TextStyle::Caption);
+    }
+    drawGlyphButton(fb,page.review.x,page.review.y,page.review.w,page.review.h,"Y","Review Changes");
     screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
-        reviewX,reviewY,240,44});
+        page.review.x,page.review.y,page.review.w,page.review.h});
     std::vector<ControllerHint> hints;
     for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);

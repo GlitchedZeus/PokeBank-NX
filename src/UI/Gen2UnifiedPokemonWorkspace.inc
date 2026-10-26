@@ -931,7 +931,7 @@ void drawGen2CalculatedColumn(PKSEFramebuffer& fb, const std::array<uint16_t, 6>
 void drawGen2SpecialBlock(PKSEFramebuffer& fb, const std::array<uint16_t, 6>& battle, int x, int y) {
     using B = PokeBank::UIModel::Gen2Workspace::SpecialBlock;
     const Color value = gen2StatCellColor(4, 2);
-    fb.drawText(x + B::kLabelX, y + B::kCaptionY, B::kCaption, Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + B::kLabelX, y + B::kCaptionY, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + B::kLabelX, y + B::kValuesY, B::kSpecialAttack, Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + B::kSpAValueX, y + B::kValuesY, std::to_string(battle[4]), value, TextStyle::Caption);
     fb.drawText(x + B::kSpDLabelX, y + B::kValuesY, B::kSpecialDefense, Colors::TextDim, TextStyle::Caption);

@@ -84,7 +84,7 @@ int main() {
            std::string::npos);
     assert(column.find("Sp.") == std::string::npos && column.find("tag") == std::string::npos);
     // The block: caption, "Sp. Atk n   Sp. Def n", note, from SpecialBlock; display only.
-    for (const char* call : {"B::kCaption", "B::kSpecialAttack", "std::to_string(battle[4])", "B::kSpecialDefense",
+    for (const char* call : {"\"CALCULATED SPECIAL STATS\"", "B::kSpecialAttack", "std::to_string(battle[4])", "B::kSpecialDefense",
                              "std::to_string(battle[5])", "B::kNote"})
         assert(block.find(call) != std::string::npos);
     for (const char* forbidden : {"touchButtons", "dvs", "statExperience", "\" / \""})

@@ -16,7 +16,8 @@
 //     per native field, every row at the Gen V height (no compression).
 //   * Round 7 (owner B06 / C06): a compact "Y Review Changes" button in a measured slot directly
 //     below the last row, right-aligned with the cards; it never overlaps a row.
-// UI/SharedTrainerPanel.h paints exactly these rects, for Gen V and Gen I-IV alike.
+// UI/SharedTrainerPanel.h paints exactly these rects, for Gen V and Gen I-IV alike; Gen V builds its
+// own row list (its four selectable cards and four identity rows) and uses the same layout.
 //
 // Native capability rules (no row is invented):
 //   * Gen I stores no trainer gender and no Secret ID: Trainer ID only.
@@ -106,10 +107,13 @@ struct Page {
     std::vector<Placed> rows;
     int dividerY = 0;
     Rect review;
+    // Round 7 (QA CG90): the optional secondary detail line (Gen V: "Game language"), left of the
+    // Review button in the same band below the rows, so it can overlap neither. Empty when unused.
+    Rect language;
     bool fits = true; // the rows and the Review button end inside the panel
 };
 
-inline Page layout(const std::vector<Row>& rows, int x, int y, int w, int h) {
+inline Page layout(const std::vector<Row>& rows, int x, int y, int w, int h, bool detailLine = false) {
     Page page;
     page.panel = {x, y, w, h};
     page.header = {x, y, w, kHeaderH};
@@ -132,6 +136,8 @@ inline Page layout(const std::vector<Row>& rows, int x, int y, int w, int h) {
     }
     // Measured from the real content: the slot below the last row, right-aligned with the cards.
     page.review = {cardX + kCardW - kReviewW, bottom + kReviewGap, kReviewW, kReviewH};
+    if (detailLine)
+        page.language = {cardX + kTextInset, page.review.y, page.review.x - kReviewGap - (cardX + kTextInset), kReviewH};
     page.fits = page.review.bottom() <= y + h - kReviewMargin;
     return page;
 }

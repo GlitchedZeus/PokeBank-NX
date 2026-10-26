@@ -161,6 +161,8 @@ struct TrainerStyle {
     std::vector<HostUi::Fill> cards;
     HostUi::Fill review{};
     bool hasReview = false;
+    HostUi::TextRect language{};   // Gen V's "Game language" detail line, when drawn
+    bool hasLanguage = false;
 };
 std::map<std::string, TrainerStyle> trainerStyles;
 
@@ -187,6 +189,7 @@ void captureTrainerStyle(const std::string& game) {
     for (const auto& t : HostUi::visibleText) {
         for (const auto& card : st.cards)
             if (inside(t, card)) (t.x == card.x + 24 ? st.labelColors : st.valueColors).insert(t.rgba);
+        if (t.text.rfind("Game language: ", 0) == 0) { st.language = t; st.hasLanguage = true; }
         if (t.text == "Review Changes")
             for (const auto& f : fills)
                 if (f.radius == 8 && inside(t, f)) { st.review = f; st.hasReview = true; }
@@ -209,9 +212,11 @@ void compareTrainerStyles() {
     check(gen5 != trainerStyles.end() && gen5->second.captured, "Black Trainer captured (the reference)");
     if (gen5 == trainerStyles.end()) return;
     const auto& ref = gen5->second;
+    check(ref.hasLanguage, "Black Trainer: the Game language line is drawn");
     const uint32_t neutral = UI::Colors::Text.toRGBA8();
     check(ref.valueColors == std::set<uint32_t>{neutral}, "Black Trainer: values are neutral text");
-    for (const char* game : {"Red", "Silver", "Crystal", "FireRed", "Platinum"}) {
+    // Gen V itself is held to the same Review rule (QA CG90): Black is checked against itself.
+    for (const char* game : {"Red", "Silver", "Crystal", "FireRed", "Platinum", "Black"}) {
         const auto it = trainerStyles.find(game);
         check(it != trainerStyles.end(), std::string(game) + " Trainer captured");
         if (it == trainerStyles.end()) continue;
@@ -240,6 +245,13 @@ void compareTrainerStyles() {
         int lowest = 0;
         for (const auto& card : st.cards) lowest = std::max(lowest, card.y + card.h);
         check(st.review.y >= lowest, where + ": the Review button sits below the rows");
+        if (st.hasLanguage) {
+            const auto& l = st.language;
+            check(!(l.x < st.review.x + st.review.w && st.review.x < l.x + l.w && l.y < st.review.y + st.review.h &&
+                    st.review.y < l.y + l.h),
+                  where + ": the Game language line clears the Review button");
+            check(l.y >= lowest, where + ": the Game language line sits below the rows");
+        }
     }
 }
 

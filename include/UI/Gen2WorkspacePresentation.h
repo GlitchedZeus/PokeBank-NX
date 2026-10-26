@@ -45,7 +45,6 @@ struct StatsGrid {
 };
 // The lower-middle Special block (Gen I reference: Gen1PokemonEditorFoundationHardwareFix.inc).
 struct SpecialBlock {
-    static constexpr const char* kCaption = "CALCULATED SPECIAL STATS";
     static constexpr const char* kSpecialAttack = "Sp. Atk";
     static constexpr const char* kSpecialDefense = "Sp. Def";
     static constexpr const char* kNote = "one stored Special DV / Stat Exp";

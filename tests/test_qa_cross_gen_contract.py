@@ -51,13 +51,10 @@ XFAIL: dict[str, str] = {
     "CG80-gen2-create-review-visible": "L (round 7 B08 defect 1)",
     "CG81-one-review-key-per-screen": "L (round 7 B08 defect 2)",
     "CG82-gen5-exports-in-save-backups": "L (round 7 C12 / G1)",
-    "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
-    "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
     "CG85-unown-letter-shiny-confirmed": "R (round 7 B07 / C09)",
     "CG86-inventory-help-controls": "R (round 7 B04)",
     "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
     "CG89-one-editor-heading-style": "S (round 7 typography)",
-    "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational

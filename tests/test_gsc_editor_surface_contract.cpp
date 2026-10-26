@@ -201,7 +201,7 @@ int main() {
     const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
     assert(gen2Presentation.find("if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);") !=
            std::string::npos);
-    assert(gen2Presentation.find("static constexpr const char* kCaption = \"CALCULATED SPECIAL STATS\";") != std::string::npos);
+    assert(unified.find("y + B::kCaptionY, \"CALCULATED SPECIAL STATS\"") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
     assert(unified.find("gen2StatCellColor(row, 2), TextStyle::Caption);") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
