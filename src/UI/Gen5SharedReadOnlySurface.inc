@@ -431,10 +431,9 @@ struct Gen5Editor {
             case Language: {
                 // A/touch cycles native PK5 language IDs inline, without a modal.
                 // The existing guarded staging path maintains encryption/checksum,
-                // Review/Discard and source-save immutability.
-                const uint8_t nextLanguage = PokeBank::UIModel::Gen5LanguageCycle::next(p.language());
-                if (stage(screen, Field::Language, 0, nextLanguage))
-                    screen.postStatus(std::string("Language: ") + Enums::getLanguageName(nextLanguage), 145);
+                // Review/Discard and source-save immutability. The changed value is the
+                // feedback: no status toast (owner Oct 25 7C, matching Gen III Language).
+                stage(screen, Field::Language, 0, PokeBank::UIModel::Gen5LanguageCycle::next(p.language()));
                 return true;
             }
             case Friendship: {

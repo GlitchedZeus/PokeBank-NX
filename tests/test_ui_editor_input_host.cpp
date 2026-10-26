@@ -747,6 +747,56 @@ void gen3SafariBallRoles() {
 
 } // namespace
 
+// Owner Oct 25 7C: Gen V Language cycles inline on A and on a tap; the changed value is the
+// feedback, so neither posts a "Language: ..." status toast.
+void gen5LanguageNoToast() {
+    const auto input = gen5Fixture();
+    std::string error;
+    const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+    check(parsed.has_value(), "Gen V fixture parses: " + error);
+    if (!parsed) return;
+    auto trainer = PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error);
+    check(trainer != nullptr, "Gen V trainer opens: " + error);
+    if (!trainer) return;
+    UI::TrainerViewScreen screen(*trainer, "Pokemon Black", "/host/black.sav", 0, AccountUid{},
+                                 PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+    Driver d{screen, {}, {}};
+    d.frame();
+    screen.detailViewActive = true;
+    screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+    screen.selectedPartyIndex = 0;
+    d.frame();
+    d.press(HidNpadButton_A);
+    auto& state = trainer->sharedScreen();
+    const auto actions = state.availableActions(trainer->stagedPokemon());
+    size_t editRow = actions.count;
+    for (size_t i = 0; i < actions.count; ++i)
+        if (actions[i] == PokeBank::UIModel::SharedPokemonEditor::Action::Edit) editRow = i;
+    for (size_t i = 0; i < editRow; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    check(state.surface() == G5::Gen5SharedScreenState::Surface::Edit, "Gen V Language: the editor opens");
+    if (state.surface() != G5::Gen5SharedScreenState::Surface::Edit) return;
+
+    const auto language = [&] {
+        const auto p = state.draft().current();
+        return p ? static_cast<int>(p->language()) : -1;
+    };
+    const auto toast = [&] { return screen.storageStatus.find("Language") != std::string::npos; };
+    screen.postStatus("", 0);
+    const int before = language();
+    constexpr int kLanguageRow = 9;   // rows 1..9 precede the first locked row (Origin)
+    for (int i = 0; i < kLanguageRow; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    const int afterA = language();
+    check(afterA != before, "Gen V A on Language cycles the language");
+    check(!toast(), "Gen V Language A posts no toast (got \"" + screen.storageStatus + "\")");
+    d.press(HidNpadButton_Up);
+    check(d.tap(Workspace::kDetailTouchBase + kLanguageRow), "the Language row publishes a touch target");
+    check(language() != afterA, "Gen V tap on Language cycles the language");
+    check(!toast(), "Gen V Language tap posts no toast (got \"" + screen.storageStatus + "\")");
+    check(HostUi::promptCount == 0, "Language never opens a prompt");
+}
+
 int main() {
     gen5Pokerus();
     gen5CreatePokerus();
@@ -759,6 +809,7 @@ int main() {
     gen5NoStateAcrossScreens();
     gen5PokerusKeepWithStoredStrain();
     gen3SafariBallRoles();
+    gen5LanguageNoToast();
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;
