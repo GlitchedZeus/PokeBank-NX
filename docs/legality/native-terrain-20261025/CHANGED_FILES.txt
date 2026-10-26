@@ -1,0 +1,11 @@
+.github/workflows/legality-completion.yml
+Makefile.host.gen5-legality
+docs/legality/completion-session2/HANDOFF.md
+docs/legality/native-terrain-20261025/LOCAL_VALIDATION.json
+docs/legality/native-terrain-20261025/README.md
+docs/legality/native-terrain-20261025/SOURCE_PINS.json
+src/Legality/Gen4Legality.cpp
+src/Legality/Gen4LegalityEncounters.cpp
+src/Legality/Gen4LegalityInternal.h
+tests/fixtures/gen15_session2/ground_tile.txt
+tests/test_gen4_ground_tile.cpp

@@ -1,5 +1,5 @@
 {
-  "status": "Local gates PASS; exact-head CI pending",
+  "status": "Local gates PASS; final exact-head CI is retained in FINAL_VALIDATION.json",
   "starting_wip": "865688c365db7d35b3ef367223ee77983117a4ed",
   "prior_passing_code": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
   "focused": {
