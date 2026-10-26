@@ -2772,10 +2772,31 @@ def round6_contracts(sources):
             if "Options" in lit and "Back" in lit and "Review" not in lit:
                 r.violations.append(f"include/UI/InventoryUIContract.h:{line}: Gen I-III Bag footer {lit!r} shows no Review")
     tv = src("src/UI/TrainerViewScreenBase.inc")
+    # Lane L (round 6): the old literal Party / Boxes / Storage footers in TrainerViewScreenBase serve only
+    # editable (installed-title) sources. Every Gen I-IV emulator session is RetroArchLegacy / ExternalLegacy,
+    # has no Edit, so the read-only override replaces them with ClassicBrowseFooter, whose Review slot is on
+    # for Gen I-IV Party / Boxes / Trainer. The literals are exempt only while all of that is proven here.
+    inv_ovr = body_of(inv, "useReadOnlyInventoryFooterOverride")
+    pol = src("include/Safety/SourceMutationPolicy.h")
+    uic = src("src/UI/UI.cpp")
+    staged_kinds = [m.start() for m in re.finditer(r"SourceKind::(?:BackupOrStaged|AppOwnedStorage)\b", uic.code)] if uic else []
+    htv = [(m.start(), m.start() + len(b_)) for m in re.finditer(r"bool\s+UIManager::handleTrainerView\s*\(", uic.code)
+           for b_ in [block_after(uic.code, uic.code.find("{", m.end()) + 1)]] if uic else []
+    override_proven = bool(
+        re.search(r"return\s+sourceReadOnly\s*&&\s*!detailsActive\s*&&\s*!settingsMode\s*&&\s*"
+                  r"!stagedInventoryActionsAvailable\s*;", inv_ovr) and
+        pol and re.search(r"return\s+source\s*==\s*SourceKind::BackupOrStaged\s*\|\|\s*source\s*==\s*"
+                          r"SourceKind::AppOwnedStorage\s*;", pol.code) and
+        staged_kinds and all(any(lo <= k < hi for lo, hi in htv) for k in staged_kinds) and
+        tv and re.search(r"spec\.review\s*=\s*true\s*;", tv.code) and
+        re.search(r"selectedMode\s*==\s*ViewMode::Party\s*\|\|\s*selectedMode\s*==\s*ViewMode::Boxes\s*\|\|\s*"
+                  r"selectedMode\s*==\s*ViewMode::Trainer", tv.code) and
+        re.search(r"BrowseFooter::instructions\s*\(\s*spec\s*\)", tv.code))
     if tv:
-        for line, lit in tv.literals:
-            if "A: Actions" in lit and "B: Back" in lit and "Review" not in lit:
-                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{line}: Gen I-IV Party / Boxes footer {lit!r} shows no Review")
+        if not override_proven:
+            for line, lit in tv.literals:
+                if "A: Actions" in lit and "B: Back" in lit and "Review" not in lit:
+                    r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{line}: Gen I-IV Party / Boxes footer {lit!r} shows no Review")
         m = re.search(r'footer\.push\(\s*"A"\s*,\s*"Edit Quantity"\s*\)', tv.code)
         if m:
             region = block_after(tv.code, tv.code.rfind("{", 0, tv.code.rfind("Presentation::Footer footer;", 0, m.start())) + 1)
@@ -2786,17 +2807,62 @@ def round6_contracts(sources):
         for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{\{"A"\s*,\s*"Actions"\}[^;]*;', box.code):
             if "Review" not in m.group(0):
                 r.violations.append(f"{box.rel}:{ln_at(box, m.start())}: Gen I-III Boxes footer shows no Review")
-    for rel in ("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen2SharedPokemonSurface.inc",
+    # Create / Edit footers. Dead renderers are exempt only while they are proven unreachable:
+    # - Gen II drawSharedWorkspace: its only caller is drawSharedSurface's mode != None branch, and the
+    #   only caller of drawSharedSurface is drawUnifiedGen2Surface after it returned for mode != None;
+    # - Gen I Cleanup3 Edit / AddDraft footers: Foundation's drawOverlayUX sends the main modes (View,
+    #   Edit, AddDraft) to foundationDrawWorkspace, the composite calls drawFoundationPicker only with a
+    #   picker or the Move editor, and ux3DrawTouchNavBar returns for every picker before the mode switch.
+    g2s = src("src/UI/Gen2SharedPokemonSurface.inc")
+    g2u = src("src/UI/Gen2UnifiedPokemonWorkspace.inc")
+    callers = [f for f in sources if re.search(r"\bdrawSharedSurface\s*\(\s*screen\s*,\s*fb\s*\)\s*;", f.code)]
+    dsu = body_of(g2u, "drawUnifiedGen2Surface")
+    dss = body_of(g2s, "drawSharedSurface")
+    g2_dead = bool(
+        callers == [g2u] and dsu.count("drawSharedSurface(") == 1 and
+        re.search(r"if\s*\(\s*stateFor\(screen\)\.mode\s*!=\s*Mode::None\s*\)\s*\{\s*drawUnifiedWorkspace\(screen,\s*fb\);\s*"
+                  r"return\s+true;\s*\}\s*return\s+drawSharedSurface\(screen,\s*fb\);", dsu) and
+        g2s and len(re.findall(r"\bdrawSharedWorkspace\s*\(\s*screen", g2s.code)) == 1 and
+        re.search(r"if\s*\(\s*stateFor\(screen\)\.mode\s*!=\s*Mode::None\s*\)\s*\{\s*drawSharedWorkspace", dss))
+    g1f = src("src/UI/Gen1PokemonEditorOverlayFoundation.inc")
+    g1h = src("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc")
+    g1c = src("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
+    g12 = src("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
+    comp = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    nav = body_of(g1c, "ux3DrawTouchNavBar")
+    g1_dead = bool(
+        g1f and re.search(r"return\s+mode\s*==\s*UX2Mode::View\s*\|\|\s*mode\s*==\s*UX2Mode::Edit\s*\|\|\s*"
+                          r"mode\s*==\s*UX2Mode::AddDraft\s*;", g1f.code) and
+        re.search(r"if\s*\(\s*foundationMainMode\(state\.mode\)\s*\)\s*\{\s*foundationDrawWorkspace\(screen,\s*fb\);\s*return;",
+                  body_of(g1f, "drawOverlayUX")) and
+        comp and len(re.findall(r"drawFoundationPicker\s*\(", comp.code)) == 1 and
+        re.search(r"\(Gen1PokemonEditor::foundationPickerActive\(\*this\)\s*\|\|\s*Gen1PokemonEditor::foundationMoveEditorActive"
+                  r"\(\*this\)\)\)\s*\{\s*Gen1PokemonEditor::drawFoundationPicker", comp.code) and
+        g12 and re.search(r"enum\s+class\s+UX2Picker\s*:\s*uint8_t\s*\{\s*None\s*,\s*Species\s*,\s*Move\s*\}", g12.code) and
+        re.search(r"UX2Picker::Species\)\s*\{[^}]*return;\s*\}\s*if\s*\(\s*state\.picker\s*==\s*UX2Picker::Move\s*\)\s*\{[^}]*return;",
+                  nav, re.S) and
+        g1h and re.search(r"if\s*\(\s*!foundationMainMode\(state\.mode\)\s*&&\s*state\.mode\s*!=\s*UX2Mode::MoveEditor\s*\)",
+                          body_of(g1h, "drawFoundationPicker")))
+    exempt = {}
+    if g2_dead and g2s:
+        exempt["src/UI/Gen2SharedPokemonSurface.inc"] = body_of(g2s, "drawSharedWorkspace")
+    if g1_dead and g1c:
+        exempt["src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"] = nav
+    for rel in ("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
+                "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen2SharedPokemonSurface.inc",
                 "src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc"):
         f = src(rel)
         if not f:
             continue
-        hits = [m for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{[^;]*\{"A"\s*,\s*"Edit"\}[^;]*\{"B"\s*,\s*"Exit"\}[^;]*;', f.code)]
-        if not hits:
-            r.violations.append(f"{rel}: Create / Edit footer not found (update this check)")
-        for m in hits:
-            if "Review" not in m.group(0):
-                r.violations.append(f"{rel}:{ln_at(f, m.start())}: Create / Edit footer shows no Review")
+        for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{[^;]*\{"A"\s*,\s*"Edit"\}[^;]*\{"B"\s*,\s*"Exit"\}[^;]*;', f.code):
+            if "Review" in m.group(0):
+                continue
+            if rel in exempt and m.group(0) in exempt[rel]:
+                continue
+            r.violations.append(f"{rel}:{ln_at(f, m.start())}: Create / Edit footer shows no Review")
+    wl = src("include/UI/Gen2WorkspaceLayers.h")
+    if not wl or not re.search(r'push\(\s*f\s*,\s*"[^"]+"\s*,\s*"Review"\s*\)', wl.code):
+        r.violations.append("include/UI/Gen2WorkspaceLayers.h: the Gen II unified Create / Edit footer shows no Review")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
