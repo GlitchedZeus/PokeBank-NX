@@ -51,7 +51,7 @@ NOT DEVICE TESTED.
 
 ## Round 6 Lane P — L06 Held Item, 7D outside taps, P5 met-location rows
 
-Branch `claude/pickers-search-scrollbar-20261017` at `be49ad22` (merges #307 `a821aedb`; not pushed to #307).
+Branch `claude/pickers-search-scrollbar-20261017` at `0bff975e` (merges #307 `eaf6c6df`, incl. Lane S CG70 `0951ce79`, reconciled to S's version; not pushed to #307).
 
 - **L06 Held Item (Gen II–V):** one shared input step, `include/UI/SharedHeldItemInput.h`. Tap and A commit
   the same item. A tap is resolved from the drawn grid (column it landed in, content row under the finger), so
@@ -61,7 +61,7 @@ Branch `claude/pickers-search-scrollbar-20261017` at `be49ad22` (merges #307 `a8
 - **7D:** `include/UI/SharedPopupDismiss.h`. A completed tap outside the Gen II Held Item picker, the Gen III value and
   species pickers, the Gen IV/V pickers, Trainer / Game Browser Help and Party Actions closes it like B; the
   handler's return consumes it (no tap-through). `beginModal` clears the frame, so confirmations never qualify.
-  Not covered: the Gen I/II species and move pickers.
+  Gen I species / move and Gen II species, Crystal Met Location, move pickers also close (`0bff975e`; source-pinned, no real-screen Gen I/II test yet).
 - **P5 (R2-CHECK-011):** Gen V 40098–40108 read "POKÉPARK 10"–"20" (PKHeX 6501f0ab `text_bw2_40000_{ja,de,fr}.txt`).
   Festa numbers carry "meaning … unverified"; no year claimed. Same-name native ids show "Name #id" in picker rows
   only (`Names::getMetLocationChoiceName`). 620 px popup kept (widest row 496/496 px).
@@ -69,9 +69,8 @@ Branch `claude/pickers-search-scrollbar-20261017` at `be49ad22` (merges #307 `a8
   `test_ui_held_item_host` (real TrainerViewScreen, 46 checks; fails 6/46 with dismissal disabled). Pins moved,
   for QA review: Gen II pins in `test_touch_pokemon_editor_direct_rows_contract.py` now point at the shared step;
   `test_classic_party_actions` fake touch gained a tap shape plus an outside-tap case.
-- **QA:** CG70 / CG75 / CG78 XFAIL markers dropped (PASS). CG77 (lane R) flags the Help row
-  `Review   Trainer page Y, …` (from my Round 5 `kReviewRoute`) for having no glyph.
-- **Gates on `be49ad22`:** GCC host-test, GCC host-sanitize (ASan + UBSan, detect_leaks=1), py 34/34,
+- **QA:** CG70 / CG75 / CG78 XFAIL markers dropped (PASS). CG77 PASS (R's c69999fb fix taken).
+- **Gates on `0bff975e`:** GCC host-test, GCC host-sanitize (ASan + UBSan, detect_leaks=1; incl. test_ui_layout_host 231 and test_ui_review_entry_host 139 checks), py 35/35,
   cross-gen 0 failing, owner-PASS gate PASS (262 guards), `git diff --check`.
 
 ## Round 5 Thread R — verify-first audit on `claude/reroll-mechanics-20261017`
@@ -909,7 +908,7 @@ Later docs-only commits on #307 also trigger a candidate build. Those artifacts 
 | --- | --- | --- |
 | C | `claude/gen14-campaign-20261015` | `114a22f3` |
 | S | `claude/shared-editor-gen35-20261016` | `3ff061bf` |
-| P | `claude/pickers-search-scrollbar-20261017` | `be49ad22` (round 6, not yet on #307) |
+| P | `claude/pickers-search-scrollbar-20261017` | `0bff975e` (round 6, not yet on #307) |
 | I | `claude/item-quantity-policy-20261016` | `18ffcc76` |
 | R | `claude/reroll-mechanics-20261017` | `a1c96ed6` |
 | L | `claude/launch-return-20261015` | `4f57bde4` (draft PR #319, CI only) |
