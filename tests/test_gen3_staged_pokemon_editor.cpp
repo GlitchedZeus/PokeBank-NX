@@ -14,6 +14,8 @@
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Names/PokemonNames.h"
 #include "Names/ItemNames.h"
+#include "Names/MoveNames.h"
+#include "Enums/Ball.h"
 #include "Names/LocationDisplayNames.h"
 #include "Utils/StringHelpers.h"
 
@@ -317,7 +319,49 @@ void runGame(SourceGame game, Family family) {
         const auto added = identity->boxedPokemon(0, 1, error); assert(added);
         assert(added->nickname == "DRAFT" && added->level == 50 && added->otName == "BLUE" && added->tid == 0);
         assert(identity->originalBytes() == immutableSource);
+        // CG74 (owner Oct 25 P3): Review lists the created record's values, not only the species.
+        {
+            const auto& rows = identity->pendingChanges();
+            const auto row = [&](const std::string& name) -> const StagedPokemonChange* {
+                for (const auto& r : rows)
+                    if (r.label == "Box 1 / Slot 2 " + name) return &r;
+                return nullptr;
+            };
+            assert(row("Add Pokemon") && !row("Add Pokemon")->createdDetail &&
+                   row("Add Pokemon")->afterValue == "DRAFT Lv 50");
+            for (const char* name : {"Moves", "Ball", "OT", "Met", "Nature", "Gender", "Ability", "Language"})
+                assert(row(name) && row(name)->createdDetail && row(name)->beforeValue.empty() &&
+                       !row(name)->afterValue.empty());
+            assert(row("Ball")->afterValue == Enums::getBallName(4));
+            assert(row("OT")->afterValue == "BLUE / TID 0 / SID " + std::to_string(added->sid));
+            assert(row("Moves")->afterValue == "(none)");
+            // Create defaults add no noise.
+            for (const char* name : {"Held Item", "Shiny", "Pokérus", "Friendship",
+                                     "IVs (HP/Atk/Def/Spe/SpA/SpD)", "EVs (HP/Atk/Def/Spe/SpA/SpD)"})
+                assert(!row(name) || (std::string(name) == "Shiny" && added->shiny));
+        }
         identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        {
+            BoxPokemonCreate full = create;
+            full.moves = {85, 98, 0, 0};
+            full.pp = {15, 30, 0, 0};
+            full.heldItem = 13;
+            full.ivs = {31, 0, 0, 0, 0, 1};
+            full.pokerus = 0x21;
+            full.friendship = 255;
+            assert(identity->stageAddBoxPokemon(0, 1, full, error));
+            std::vector<std::string> details;
+            for (const auto& r : identity->pendingChanges())
+                if (r.createdDetail) details.push_back(r.label.substr(std::string("Box 1 / Slot 2 ").size()) + "=" + r.afterValue);
+            const auto has = [&](const std::string& entry) {
+                return std::find(details.begin(), details.end(), entry) != details.end();
+            };
+            assert(has("Moves=" + std::string(Names::getMoveName(85)) + ", " + Names::getMoveName(98)));
+            assert(has("Held Item=" + std::string(Names::getItemNameG3(13))));
+            assert(has("IVs (HP/Atk/Def/Spe/SpA/SpD)=31/0/0/0/0/1"));
+            assert(has("Pokérus=Infected (33)") && has("Friendship=255"));
+            identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        }
         // A blank English nickname defaults to the upper-case retail species name.
         BoxPokemonCreate unnamed; unnamed.species = 25; unnamed.level = 5; unnamed.language = 2;
         unnamed.otName = "BLUE";

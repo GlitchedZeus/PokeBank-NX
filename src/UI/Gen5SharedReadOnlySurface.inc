@@ -612,7 +612,7 @@ struct Gen5Editor {
         status = move==0 ? "-" : "Unknown";
         color = move==0 ? Colors::TextDim : Colors::Error;
         if(availability==C::Availability::Direct) {
-            status = move==0 ? "-" : "Learnable";
+            status = move==0 ? "-" : "OK";   // owner Oct 25 7B: the Gen I-IV treatment
             color = move==0 ? Colors::TextDim : Colors::Success;
         } else if(availability==C::Availability::Transfer) {
             status = "Transfer";
@@ -1777,10 +1777,8 @@ const char* reviewedStatName(size_t stat) noexcept {
     constexpr const char* names[]={"HP","Atk","Def","Spe","SpA","SpD"};
     return stat<6?names[stat]:"?";
 }
-std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
+std::string reviewedFieldName(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
     using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
-    if(c.field==Field::NicknameText)return "Nickname changed";
-    if(c.field==Field::OriginalTrainerText)return "OT Name changed";
     std::string name;
     switch(c.field) {
         case Field::Nature:name="Nature";break;
@@ -1815,8 +1813,12 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::MovePP:name="PP "+std::to_string(c.stat+1);break;
         default:name="Unsupported";break;
     }
-    const auto display = [&](uint32_t value) -> std::string {
-        switch (c.field) {
+    return name;
+}
+std::string reviewedFieldValue(PokeVault::Integration::Gen5::StagedPokemon5Record::Field field,
+                               uint32_t value) {
+    using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
+        switch (field) {
             case Field::Move: return Names::getMoveName(static_cast<uint16_t>(value));
             case Field::HeldItem: return Names::getItemName(static_cast<uint16_t>(value));
             case Field::Species: case Field::CreateBox: case Field::CloneBox: case Field::RemoveBox:
@@ -1832,8 +1834,13 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
             case Field::FatefulEncounter: return value ? "Yes" : "No";
             default: return std::to_string(value);
         }
-    };
-    return name+": "+display(c.before)+" -> "+display(c.after);
+}
+std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
+    using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
+    if(c.field==Field::NicknameText)return "Nickname changed";
+    if(c.field==Field::OriginalTrainerText)return "OT Name changed";
+    return reviewedFieldName(c)+": "+reviewedFieldValue(c.field,c.before)+" -> "+
+           reviewedFieldValue(c.field,c.after);
 }
 PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen,
     const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
@@ -1857,6 +1864,23 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
         if(!verified) {rows.push_back({location(c.location),"Unverified staged difference"});continue;}
         const G::Pokemon5ReadOnly before(std::span<const uint8_t>(c.before));
         const G::Pokemon5ReadOnly after(std::span<const uint8_t>(c.after));
+        if(!verified->created.empty()) {
+            // CG74: a created Pokemon reads "Create in Box: Empty -> SPECIES Lv n", then one row per
+            // value of the certified staged record (any later edits are already in those values).
+            using F=G::StagedPokemon5Record::Field;
+            rows.push_back({location(c.location),"Create in Box: Empty -> "+
+                std::string(Names::getSpeciesName(after.species()))+" Lv "+
+                std::to_string(Fields::level(after,nativeTrainer(screen).sharedScreen().black2White2()))});
+            for(const auto& v:verified->created) {
+                std::string value=reviewedFieldValue(v.field,v.after);
+                if(v.field==F::AbilitySlot)value=Trainer::getAbilityName(static_cast<uint16_t>(v.after));
+                if(v.field==F::MetLocation)value=Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
+                std::string name=reviewedFieldName(v);
+                if(v.field==F::AbilitySlot)name="Ability";
+                rows.push_back({location(c.location),name+": "+value});
+            }
+            continue;
+        }
         for(const auto& field:verified->fields) {
             using F=G::StagedPokemon5Record::Field;
             std::string detail=reviewedFieldLabel(field);

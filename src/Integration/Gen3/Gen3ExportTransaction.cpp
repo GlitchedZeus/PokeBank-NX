@@ -64,7 +64,9 @@ Common::VerifiedExportResult publishVerifiedGen3Export(
         transaction.changeLines.push_back(
             (change.party?"Party "+std::to_string(change.slot+1):
                 "Box " + std::to_string(change.box + 1) + " slot " + std::to_string(change.slot + 1)) +
-            " " + change.label + ": " + change.beforeValue + " -> " + change.afterValue);
+            " " + change.label + ": " +
+            (change.createdDetail ? change.afterValue   // CG74: a created Pokemon's detail
+                                        : change.beforeValue + " -> " + change.afterValue));
     if (bagPending) transaction.changeLines.push_back("Bag: staged item changes included");
     if (trainerPending)
         for (const auto& change : trainer->pendingChanges())
