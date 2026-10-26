@@ -23,6 +23,7 @@
 #include "UI/TouchInput.h"
 #include "UI/TrainerViewScreen.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -61,8 +62,10 @@ constexpr Page kPages[] = {
 };
 
 std::string describe(const HostUi::TextRect& t) {
+    char style[32];
+    std::snprintf(style, sizeof style, " s%d #%08x", t.style, static_cast<unsigned>(t.rgba));
     return "\"" + t.text + "\" @" + std::to_string(t.x) + "," + std::to_string(t.y) + " " +
-           std::to_string(t.w) + "x" + std::to_string(t.h);
+           std::to_string(t.w) + "x" + std::to_string(t.h) + style;
 }
 
 // One captured frame: a footer bar is drawn and no two visible text runs overlap.
@@ -132,6 +135,43 @@ void checkGen2Special(const std::string& where) {
           std::to_string(column));
 }
 
+// Round 7 P2 (owner Oct 26 typography): every Pokemon editor surface, Gen I-V, draws its section
+// headings in the one shared style (UI/SharedPanelHeading.h: Accent, Caption), as the shared Gen IV /
+// V editor does. Each heading that is visible must use it; DETAILS and MOVES must be visible.
+void checkEditorHeadings(const std::string& where) {
+    const uint32_t accent = UI::Colors::Accent.toRGBA8();
+    bool details = false, moves = false;
+    for (const auto& t : HostUi::visibleText) {
+        const bool heading = t.text == "DETAILS" || t.text == "STATS" || t.text == "MOVES" ||
+                             t.text == "Origin & Legality" || t.text == "GEN I DATA" || t.text == "GEN II DATA";
+        if (!heading) continue;
+        details = details || t.text == "DETAILS";
+        moves = moves || t.text == "MOVES";
+        if (std::getenv("HOSTUI_HEADINGS"))
+            std::cout << where << ": " << describe(t) << " style " << t.style << " rgba " << std::hex << t.rgba
+                      << std::dec << '\n';
+        check(t.style == static_cast<int>(UI::TextStyle::Caption) && t.rgba == accent,
+              where + ": heading \"" + t.text + "\" uses the shared heading style (Caption, Accent)");
+    }
+    check(details && moves, where + ": DETAILS and MOVES headings are visible");
+    // Supporting field labels (unfocused DETAILS rows, STATS column labels) use the reference's dim
+    // Caption label, so no generation draws larger or brighter labels than another.
+    const uint32_t dim = UI::Colors::TextDim.toRGBA8();
+    const uint32_t focused = UI::Colors::Text.toRGBA8();   // the one focused row's label, as in Gen IV / V
+    int labels = 0, focusedLabels = 0;
+    for (const auto& t : HostUi::visibleText) {
+        const bool label = t.text == "Nickname" || t.text == "Level" || t.text == "Experience" ||
+                           t.text == "Trainer ID" || t.text == "Held Item";
+        if (!label || t.x > 340) continue;
+        ++labels;
+        if (t.rgba == focused) ++focusedLabels;
+        check(t.style == static_cast<int>(UI::TextStyle::Caption) && (t.rgba == dim || t.rgba == focused),
+              where + ": field label \"" + t.text + "\" uses the dim Caption label style (" + describe(t) + ")");
+    }
+    check(focusedLabels <= 1, where + ": at most one DETAILS label is drawn as focused");
+    check(labels >= 3, where + ": DETAILS field labels are visible");
+}
+
 void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot = 1, bool gen5 = false,
            bool noTrainerGender = false) {
     UI::PKSEFramebuffer fb;
@@ -185,12 +225,14 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         verifyFrame(game + " / Party action menu");
         press(HidNpadButton_A);
         verifyFrame(game + " / Party View");
+        checkEditorHeadings(game + " / Party View");
         press(HidNpadButton_B);
         partyPage();
         press(HidNpadButton_A);
         press(HidNpadButton_Down);
         press(HidNpadButton_A);
         verifyFrame(game + " / Party Edit");
+        checkEditorHeadings(game + " / Party Edit");
         if (game == "Silver" || game == "Crystal") {
             press(HidNpadButton_R);   // focus the STATS panel
             verifyFrame(game + " / Edit -> STATS");
@@ -222,6 +264,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     verifyFrame(game + " / Boxes empty-slot menu");
     press(HidNpadButton_A);
     verifyFrame(game + " / Create");
+        checkEditorHeadings(game + " / Create");
 
     // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
     // its own surface (Boxes' Review key, Y since Round 7 ReviewEntry: Gen5SharedReadOnlySurface

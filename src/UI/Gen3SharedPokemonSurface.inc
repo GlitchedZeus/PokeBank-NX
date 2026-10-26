@@ -1,6 +1,7 @@
 #include "UI/ClassicSourceGuard.h"
 #include "UI/ReviewEntry.h"
 #include "UI/SharedViewOnlyNotice.h"
+#include "UI/SharedPanelHeading.h"
 #include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
@@ -1906,9 +1907,9 @@ std::string surfaceContext(const TrainerViewScreen& screen, const State& state) 
 }
 
 void drawPanel(PKSEFramebuffer& fb, int x, int y, int w, int h, const char* title) {
-    fb.drawFilledRoundedRect(x, y, w, h, 14, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 14, Colors::Border, 1);
-    fb.drawText(x + 14, y + 12, title, Colors::Text, TextStyle::Heading);
+    // Round 7 P2: the shared Gen IV / V panel and heading (UI/SharedPanelHeading.h).
+    drawPanelSurface(fb, x, y, w, h, false, 14);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, title);
 }
 
 void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {

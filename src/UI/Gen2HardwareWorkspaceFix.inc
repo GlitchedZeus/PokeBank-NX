@@ -44,10 +44,10 @@ void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
     focus.column = 1;
 }
 
-void clearHardwarePanelHeading(PKSEFramebuffer& fb, int x, int y, int width,
-                               const char* text, TextStyle style) {
+void clearHardwarePanelHeading(PKSEFramebuffer& fb, int x, int y, int width, const char* text) {
     fb.drawFilledRect(x + 10, y + 6, width, 34, Colors::Panel);
-    fb.drawText(x + 14, y + 10, text, Colors::Text, style);
+    // Round 7 P2: the one shared heading style (UI/SharedPanelHeading.h), as Gen IV / V.
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, text);
 }
 
 void drawHardwareWorkspaceCorrections(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -59,11 +59,11 @@ void drawHardwareWorkspaceCorrections(TrainerViewScreen& screen, PKSEFramebuffer
     const int midX = leftX + leftW + 14, midW = 398;
     const int rightX = midX + midW + 14;
 
-    // Gen I is the accepted focus model: headings remain neutral and the compact
-    // outline on the actual field/cell communicates focus.
-    clearHardwarePanelHeading(fb, leftX, contentY, 120, "DETAILS", TextStyle::Caption);
-    clearHardwarePanelHeading(fb, midX, contentY, 120, "STATS", TextStyle::Heading);
-    clearHardwarePanelHeading(fb, rightX, contentY, 120, "MOVES", TextStyle::Heading);
+    // Headings never signal focus (the compact outline on the field/cell does); they use the
+    // shared Gen IV / V heading style (owner Oct 26 typography).
+    clearHardwarePanelHeading(fb, leftX, contentY, 120, "DETAILS");
+    clearHardwarePanelHeading(fb, midX, contentY, 120, "STATS");
+    clearHardwarePanelHeading(fb, rightX, contentY, 120, "MOVES");
 
     // Keep DETAILS scrolling behavior available for future/Crystal rows but remove
     // the stray bottom glyph until the product intentionally exposes a scroll cue.

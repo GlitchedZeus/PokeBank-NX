@@ -172,12 +172,20 @@ int main() {
             "every DV change recomputes the draft letter (sprite key)");
     require(foundation.find("if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {\n        toggleUnownShiny(screen, p);") != std::string::npos,
             "Unown shiny toggle keeps / explains the letter");
-    require(foundation.find("Letter::selectLetter(before, letter)") != std::string::npos &&
-            foundation.find("Turn Shiny off first. Nothing changed") != std::string::npos,
-            "letter selector applies the model and explains an impossible shiny letter");
+    require(foundation.find("chooseUnownLetter") == std::string::npos &&
+            foundation.find("promptText(\"Unown letter\"") == std::string::npos,
+            "Round 7: no keyboard letter prompt (the Letter grid replaces it)");
     const auto workspace = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
-    require(workspace.find("if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {\n            chooseUnownLetter(screen, p);") != std::string::npos,
-            "Values row 6 opens the letter selector for Unown");
+    require(workspace.find("unifiedStateFor(screen).unownPicker = Letter::openPicker(editableDVs(p));") != std::string::npos,
+            "Values row 6 opens the Letter grid for Unown");
+    require(workspace.find("const auto request = Letter::requestShinyToggle(editableDVs(p));") != std::string::npos &&
+            workspace.find("unifiedStateFor(screen).unownQuestion = request.question;") != std::string::npos,
+            "Shiny on a non-I/V letter asks before changing the letter");
+    require(workspace.find("const auto result = Letter::pick(editableDVs(state.working), picker.cursor);") != std::string::npos &&
+            workspace.find("unified.unownQuestion = result.question;") != std::string::npos,
+            "a shiny Unown picking a non-shiny letter is asked, never silently changed");
+    require(workspace.find("PokeBank::UIModel::Gen2UnownLetter::rerollStatus(") != std::string::npos,
+            "Unown Reroll names what changed and what was kept");
     require(workspace.find("SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny,\n        p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(") != std::string::npos &&
             workspace.find("drawPortrait(fb, x, y, p.species, p.shiny, p.form)") == std::string::npos,
             "portrait sprite keyed by the letter computed from the current DVs");
@@ -197,6 +205,61 @@ int main() {
     }
     const auto header = read("include/UI/Gen2UnownLetter.h");
     require(header.find("uint8_t form") == std::string::npos, "the selector never stores an independent form");
+
+    // 7. Round 7 (owner B07 / C09): picker, questions and Reroll never act silently.
+    for (unsigned v = 0; v < 0x10000u; ++v) {
+        const auto d = fromIndex(v);
+        const bool shiny = crystalShiny(d);
+        for (int l = 0; l < 26; ++l) {
+            const auto r = Letter::pick(d, l);
+            if (crystalLetter(d) == l) {
+                require(r.action == Letter::PickAction::Close, "same letter closes the grid");
+            } else if (shiny && !Letter::canBeShiny(l)) {
+                require(r.action == Letter::PickAction::Ask && r.dvs == d, "shiny + non-I/V letter asks, DVs kept");
+                require(r.question.ask == Letter::Ask::DropShinyForLetter && r.question.letter == l &&
+                        crystalLetter(r.question.dvs) == l && !crystalShiny(r.question.dvs),
+                        "the question offers non-shiny DVs for that letter");
+            } else {
+                require(r.action == Letter::PickAction::Apply && crystalLetter(r.dvs) == l &&
+                        crystalShiny(r.dvs) == shiny, "a pick applies the letter and keeps shiny");
+            }
+        }
+        const auto t = Letter::requestShinyToggle(d);
+        if (!shiny && !Letter::canBeShiny(crystalLetter(d))) {
+            require(t.ask && t.dvs == d && t.question.ask == Letter::Ask::ChangeLetterForShiny &&
+                    crystalShiny(t.question.dvs) && crystalLetter(t.question.dvs) == t.question.letter &&
+                    Letter::canBeShiny(t.question.letter), "Shiny on a non-I/V letter asks first");
+        } else {
+            require(!t.ask && crystalShiny(t.dvs) == !shiny && crystalLetter(t.dvs) == crystalLetter(d),
+                    "Shiny toggles at once when the letter is kept");
+        }
+        // Reroll (Y) for Unown keeps letter and shiny and always finds different DVs.
+        uint32_t rng = 0x1234567u + v;
+        const auto roll = DV::reroll(d, rng, DV::NoGender{}, true);
+        require(roll.changed && roll.dvs != d && crystalLetter(roll.dvs) == crystalLetter(d) &&
+                crystalShiny(roll.dvs) == shiny, "Unown Reroll changes DVs, keeps letter and shiny");
+        if (v % 4099 == 0) {
+            const auto status = Letter::rerollStatus(d, roll.dvs, true);
+            require(status.find(std::string("Unown ") + Letter::letterChar(crystalLetter(d))) != std::string::npos &&
+                    status.find(shiny ? ", shiny" : ", not shiny") != std::string::npos &&
+                    status.find("->") != std::string::npos, "Reroll status names letter, shiny and DV changes");
+        }
+    }
+    require(Letter::questionText({Letter::Ask::DropShinyForLetter, 10, {}}) ==
+            "Unown K can't be shiny. Turn Shiny off and use K?", "drop-shiny question text");
+    require(Letter::questionText({Letter::Ask::ChangeLetterForShiny, 21, {}}) ==
+            "Shiny Unown can only be I and V. Change letter to V?", "shiny question text");
+    require(Letter::pickerTitle({15, 8, 8, 3}) == "Unown letter: now T, not shiny" &&
+            Letter::pickerTitle({14, 10, 10, 10}) == "Unown letter: now V, shiny", "picker shows letter and shiny");
+    require(Letter::pickerNote().find("only I and V can be shiny") != std::string::npos, "picker note");
+    // Grid: every move stays on a letter; Right from Z wraps to that row's first letter.
+    for (int c = 0; c < 26; ++c)
+        for (auto [dx, dy] : {std::pair{1, 0}, std::pair{-1, 0}, std::pair{0, 1}, std::pair{0, -1}}) {
+            const int n = Letter::moveCursor(c, dx, dy);
+            require(n >= 0 && n < 26, "grid move stays on a letter");
+        }
+    require(Letter::moveCursor(25, 1, 0) == 21 && Letter::moveCursor(0, -1, 0) == 6 &&
+            Letter::moveCursor(6, 0, 1) == 13 && Letter::moveCursor(20, 0, 1) == 25, "grid wrap");
 
     std::cout << "Gen II Unown letter selector (shiny letters derived = I and V; all 65536 DV sets x 26 letters; "
                  "shiny kept or explained; stored form, sprite key and Review agree): PASS\n";

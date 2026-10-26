@@ -101,6 +101,18 @@ MUTATIONS = [
     ("Oct 25 owner sheet changed (L06 recorded as PASS)", "docs/hardware/ROUND5_RESULTS_1ca2faec.md",
      "E03, C07, M04, E02, R2-BUG-002,", "L06, E03, C07, M04, E02, R2-BUG-002,",
      "docs/hardware/ROUND5_RESULTS_1ca2faec.md: 32 Oct 25 PASS items"),
+    ("Oct 26 C16: a draft leaks into the next save (guard literal deleted)", "tests/test_ui_editor_input_host.cpp",
+     'check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");', "",
+     "C16: tests/test_ui_editor_input_host.cpp no longer contains"),
+    ("Oct 26 C04: popups close on contact (tap-outside rule weakened)", "tests/test_popup_dismiss.cpp",
+     "assert(s.pickerOpen && s.dismissals == 0);      // contact alone never closes it", "assert(true);",
+     "C04: tests/test_popup_dismiss.cpp no longer contains"),
+    ("Oct 26 B02: Gold / Silver gender comes back", "src/UI/TrainerViewScreenBase.inc",
+     "infoRow(\"Trainer ID\"", "infoRow(\"Gender\",\"Male (fixed by game)\");infoRow(\"Trainer ID\"",
+     "B02: CG72-gold-silver-trainer-no-gender fails"),
+    ("Oct 26 owner sheet changed (B04 recorded as PASS)", "docs/hardware/ROUND6_RESULTS_26186464.md",
+     "| **B04** | **E05** | **FAIL** |", "| **B04** | **E05** | **PASS** |",
+     "docs/hardware/ROUND6_RESULTS_26186464.md: Oct 26 B / C / D PASS rows"),
 ]
 
 

@@ -1,3 +1,4 @@
+#include "UI/SharedPanelHeading.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicStatFieldState.h"
 #include "UI/Modals/Gen2PokemonDetailsModal.h"
@@ -151,7 +152,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // DETAILS
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     constexpr int renderSize = 174;
     if (auto* sprite = SpriteManager::getSprite(p.speciesID(), p.form(), p.isShiny(0, {})); sprite && sprite->data) {
         fb.drawSpriteStaticContained(leftX + 63, contentY + 34, renderSize, 146,
@@ -227,7 +228,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                 Colors::TextDim, TextStyle::Caption);
 
     // MOVES: calculate exact-game compatibility fresh from current source game/species/four moves.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     std::array<uint8_t, 4> currentMoves{};
     for (int slot = 0; slot < 4; ++slot) {
         const int y = contentY + 50 + slot * 44;

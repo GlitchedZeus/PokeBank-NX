@@ -89,7 +89,7 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
                                 int x, int y, int w, int h, bool passive) {
     const auto& p = state.working;
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
-    fb.drawText(x + 14, y + 10, "DETAILS", Colors::Text, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "DETAILS");
 
     // Replace legacy outlined labels with the canonical ROMFS type sprites.
     fb.drawFilledRect(x + 12, y + 174, w - 24, 38, Colors::Panel);
@@ -171,7 +171,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     const int genderY = y + 408;
 
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
-    fb.drawText(x + 14, y + 10, "STATS", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "STATS");
     // drawUnifiedValues() has already painted its legacy Shiny/Gender rows underneath this
     // hardware layer. Clear through the final Gender baseline before repainting semantics so
     // the old neutral row cannot remain visible as a duplicate beneath the colored value.
@@ -230,7 +230,7 @@ void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& scre
                               int x, int y, int w, bool passive) {
     // Repaint the heading and the shared move rows over anything an older layer drew there.
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
-    fb.drawText(x + 14, y + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "MOVES");
     fb.drawFilledRect(x + 6, y + 32, w - 12, UI::SharedMovesPanel::kDataPaneOffset - 36, Colors::Panel);
     drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
 }
@@ -273,6 +273,10 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(screen, fb, state);
     if (unified.selector.open()) drawFieldSelector(screen, fb, unified.selector);
+    // Round 7 (B07 / C09): the Unown Letter grid, and its question above it.
+    if (unified.unownPicker.open) drawUnownLetterPicker(screen, fb, state, unified);
+    if (unified.unownQuestion.ask != PokeBank::UIModel::Gen2UnownLetter::Ask::None)
+        drawUnownQuestion(screen, fb, unified);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 

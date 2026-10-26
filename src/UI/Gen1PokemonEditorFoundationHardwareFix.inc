@@ -112,12 +112,13 @@ void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
     constexpr int midX = leftX + leftW + 14;
     constexpr int midW = 398;
     constexpr int rightX = midX + midW + 14;
-    const auto redraw = [&fb](int x, const char* text, TextStyle style) {
-        fb.drawText(x + 14, contentY + 10, text, Colors::Text, style);
+    // Round 7 P2: the one shared heading style (UI/SharedPanelHeading.h), as Gen IV / V.
+    const auto redraw = [&fb](int x, const char* text) {
+        PokeBank::UIModel::PanelHeading::draw(fb, x, contentY, text);
     };
-    redraw(leftX, "DETAILS", TextStyle::Caption);
-    redraw(midX, "STATS", TextStyle::Heading);
-    redraw(rightX, "MOVES", TextStyle::Heading);
+    redraw(leftX, "DETAILS");
+    redraw(midX, "STATS");
+    redraw(rightX, "MOVES");
 }
 
 void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb, UX2Mode workspaceMode) {
@@ -200,7 +201,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // DETAILS — heading remains neutral; Gen I intentionally shows no native gender.
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Text, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     if (auto* sprite = SpriteManager::getSprite(species, presentation.shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(leftX + 75, contentY + 34, 150, 136,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
@@ -230,7 +231,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     // STATS — the shared field-state contract (UI/ClassicStatFieldState.h): stored DV / Stat Exp
     // are Editable (Text), the derived HP DV and the calculated Stat column are ReadOnly (gold) in
     // View, Create and Edit alike (R2-GOLD).
-    fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, midX, contentY, "STATS");
     constexpr int labelW = 76;
     constexpr int cellW = 96;
     const int gridX = midX + 10;
@@ -287,7 +288,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V.
     // An unlearnable move is Invalid in Create (it must be fixed) and Preserved in Edit.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     {
         const auto& ups = add ? state.draft.ppUps : pokemon->ppUps;
         std::array<int, 4> maxPP{};
