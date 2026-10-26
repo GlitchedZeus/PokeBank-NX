@@ -2,6 +2,8 @@
 #include "Pokemon/Experience.h"
 #include "Names/SpeciesNames.h"
 #include "Names/MoveNames.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
+#include "Integration/Gen1/Gen1Shiny.h"
 #include <algorithm>
 
 namespace PokeVault::Integration::Gen1 {
@@ -183,9 +185,24 @@ void StagedPokemonEditor::rebuildChanges() {
             if(before!=after) changes_.push_back({prefix+key,label+title,before,after});
         };
         if(!a || !z) {
-            if(bool(a)!=bool(z)) add("presence",z?"Added Pokemon":"Removed Pokemon",
-                a?std::string(Names::getSpeciesName(a->species)):"Empty",
-                z?std::string(Names::getSpeciesName(z->species)):"Empty");
+            if(!a && z) {
+                // Round 6 P3 (CG74): a created Pokemon's Review lists what was created. The header
+                // row, then one named row per stored, non-default value (Gen I has no held item,
+                // Secret ID, Met data, nature, ability or ball). An empty "before" is a new value.
+                namespace C = Gen12CreateReview;
+                add("presence",std::string(C::kAddPokemon),"Empty",
+                    C::header(Names::getSpeciesName(z->species),z->level));
+                add("create/moves","Moves","",C::moves(z->moves,Names::getMoveName));
+                add("create/ot","OT / TID","",C::trainer(z->originalTrainer,z->trainerId));
+                add("create/dvs","DVs","",C::nonZero(std::array<const char*,4>{"Atk","Def","Spe","Spc"},
+                    std::array<uint8_t,4>{z->dvs[1],z->dvs[2],z->dvs[3],z->dvs[4]}));
+                if(ShinyDVs::isShiny({z->dvs[1],z->dvs[2],z->dvs[3],z->dvs[4]}))
+                    add("create/shiny","Shiny","","Yes");
+                add("create/statexp","Stat Exp","",C::nonZero(std::array<const char*,5>{"HP","Atk","Def","Spe","Spc"},
+                    z->statExperience));
+            } else if(a && !z) {
+                add("presence","Removed Pokemon",std::string(Names::getSpeciesName(a->species)),"Empty");
+            }
             return;
         }
         add("species","Species",Names::getSpeciesName(a->species),Names::getSpeciesName(z->species));
