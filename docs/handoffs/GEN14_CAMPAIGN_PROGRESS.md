@@ -209,3 +209,18 @@ contract (78 PASS; CG74 keeps only the Gen III / Gen V violations, which other l
 
 Remaining: nothing assigned. Not mine, reported: #307 head Clang host-ui build error in
 `src/Save/GetSaveFileContents.cpp` (ambiguous `Trainer`).
+
+## Round 7 (Lane C) — checkpoint
+
+Base: #307 `6ec8dc53` merged forward (fast-forward). Owner results:
+`docs/hardware/ROUND6_RESULTS_26186464.md`.
+
+| Item | Commit | State |
+| --- | --- | --- |
+| P1 B06 / C06: Gen I-IV Trainer painted by Gen V's Trainer painter (UI/SharedTrainerPanel.h); neutral values; Gen V row heights; 200 x 36 Review in a measured slot | 7eab05cf | gated green, pushed, reported |
+| P1 A22 / C01: Gen II Special like Gen I (plain STATS columns, lower-middle CALCULATED SPECIAL STATS block) | 0e58157b | host x2, sanitize x2, py, CG, native green; qa targets running |
+
+Tests: test_ui_layout_host compares the visible Gen I-IV Trainer frame against Black's (HostUi now
+records text colour and rounded fills, additively) and checks the Gen II STATS capture against the
+new layout; test_classic_trainer_page; test_gen2_special_stat. Re-pins: test_gen5_create_edit_parity
+(R2-BUG-003 divider call), and the Gen II Special pins in five tests now follow the owner's rule.
