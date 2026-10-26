@@ -17,6 +17,7 @@ Exit status: 0 when nothing fails in the chosen mode, 1 otherwise.
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import shutil
 import subprocess
@@ -57,6 +58,7 @@ XFAIL: dict[str, str] = {
     "CG87-event-locations-described": "P (round 7 B05)",
     "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
     "CG89-one-editor-heading-style": "S (round 7 typography)",
+    "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -3135,6 +3137,66 @@ def round6_contracts(sources):
     return res
 
 
+def _gen5_trainer_slot(te, tvb, sources):
+    """CG90: replay Gen V drawTrainerEditor's fixed-pitch layout from its own constants at the real
+    panel bounds; every row card and the Game language line must end at or above Review's top."""
+    WHERE = "src/UI/Gen5SharedReadOnlySurface.inc"
+    try:
+        consts = dict(re.findall(r"constexpr\s+int\s+(LEFT_PANEL_Y|CONTENT_PANEL_HEIGHT)\s*=\s*(\d+)\s*;", tvb.code))
+        env = {"y": int(consts["LEFT_PANEL_Y"]), "h": int(consts["CONTENT_PANEL_HEIGHT"])}
+        assert re.search(r"\by\s*=\s*CONTENT_PANEL_Y\b", te) and re.search(r"\bh\s*=\s*CONTENT_PANEL_HEIGHT\b", te)
+        env["hH"] = int(re.search(r"constexpr\s+int\s+hH\s*=\s*(\d+)\s*;", te).group(1))
+        decl = re.search(r"constexpr\s+int\s+(cardW\s*=.*?);", te, re.S).group(1)
+        for name, expr in re.findall(r"(\w+)\s*=\s*([^,]+)", decl):
+            env[name] = eval(expr, {}, dict(env))
+        fpx = re.search(r"kFontSizes\[[^\]]*\]\s*=\s*\{\s*([\d.]+)f?",
+                        next(x for x in sources if x.rel == "src/UI/PKSEFramebuffer.cpp").code)
+        caption_h = math.ceil(float(fpx.group(1)) * 1.364)   # Nunito line height (tests/host-ui/HostUi.h)
+        cy = eval(re.search(r"int\s+cy\s*=\s*([^;]+);", te).group(1), {}, dict(env))
+        review_y = eval(re.search(r"reviewY\s*=\s*([^;,]+)", te).group(1), {}, dict(env))
+        start = re.search(r"int\s+cy\s*=", te).end()
+        end = re.search(r"reviewY\s*=", te).start()
+    except Exception as e:   # noqa: BLE001 - any parse miss means the page changed shape
+        return [f"{WHERE}: Gen V Trainer layout not recognised ({type(e).__name__}; update this check)"]
+    items, problems, pos = [], [], start
+    step = re.compile(r"for\s*\(\s*const\s+TRow\s+row\s*:\s*\{([^}]*)\}\s*\)\s*\{|cy\s*\+=\s*([^;]+);|"
+                      r"drawText\s*\(\s*cardX\s*\+\s*\d+\s*,\s*cy\s*\+\s*(\d+)\s*,[^;]*?\"Game language")
+    while True:
+        m = step.search(te, pos, end)
+        if not m:
+            break
+        if m.group(1) is not None:
+            d, j = 0, m.end()
+            while j < len(te):
+                d += te[j] == "{"
+                if te[j] == "}":
+                    if d == 0:
+                        break
+                    d -= 1
+                j += 1
+            body = te[m.end():j]
+            hm = re.search(r"drawFilledRoundedRect\s*\(\s*cardX\s*,\s*cy\s*,\s*cardW\s*,\s*(\w+)", body)
+            inc = re.search(r"cy\s*\+=\s*([^;]+);", body)
+            if not hm or not inc:
+                return [f"{WHERE}: Gen V Trainer row loop not recognised (update this check)"]
+            for row in [x.strip().split("::")[-1] for x in m.group(1).split(",")]:
+                items.append((row, cy + env[hm.group(1)]))
+                cy += eval(inc.group(1), {}, dict(env))
+            pos = j + 1
+        elif m.group(2) is not None:
+            cy += eval(m.group(2), {}, dict(env))
+            pos = m.end()
+        else:
+            items.append(("Game language line", cy + int(m.group(3)) + caption_h))
+            pos = m.end()
+    if not items:
+        return [f"{WHERE}: Gen V Trainer rows not recognised (update this check)"]
+    for name, bottom in items:
+        if bottom > review_y:
+            problems.append(f"{WHERE}: Gen V Trainer {name} ends at y={bottom}, below Review's top y={review_y}")
+    return problems
+
+
 def _trainer_review_slot(sources, tvb):
     """CG83: run include/UI/ClassicTrainerPage.h's layout at the real Trainer panel bounds for every
     Gen I-IV game and every Play Time / Gender writer combination; the Review button must sit inside
@@ -3539,6 +3601,30 @@ def round7_contracts(sources):
             elif not VIA_HELPER.search(fb) or re.search(r"\bdrawText\s*\([^;]*\b(?:title|text)\b", fb):
                 r.violations.append(f"{f.rel}:{ln}: heading passed to {call.group(1)}, which does not draw it "
                                     "through the shared heading helper")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B06 / C06 NEW-18, Gen V (lane C; coordinator round 7 scope): Gen I-V Trainer share one
+    # presentation and Review overlaps nothing. Gen V's page either renders through the
+    # ClassicTrainerPage model (its measured Review slot, CG83's probe) or its own fixed-pitch rows,
+    # divider and "Game language" line all end at or above the Review button's top.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG90-gen5-trainer-review-slot",
+               "Gen V Trainer: every row and the Game language line end at or above Review, or the page uses "
+               "the ClassicTrainerPage measured slot (owner Oct 26 B06 / C06)")
+    te = body_of(g5, "drawTrainerEditor")
+    if not te:
+        missing(r, "src/UI/Gen5SharedReadOnlySurface.inc", "drawTrainerEditor")
+    elif re.search(r"ClassicTrainerPage::layout\s*\(|\bPage::layout\s*\(", te):
+        if not re.search(r"drawGlyphButton\s*\(\s*fb\s*,\s*\w+\.review\.x\s*,\s*\w+\.review\.y", te):
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Gen V Trainer uses the page model but does not "
+                                "draw Review at its review rect")
+        lang = re.search(r"drawText\s*\([^;]*\"Game language", te)
+        if lang and not re.search(r"\w+\.(?:rows|review|language)\b", te[max(0, lang.start() - 200):lang.end()]):
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: the Game language line is not placed by the "
+                                "page model")
+    else:
+        r.violations.extend(_gen5_trainer_slot(te, tvb, sources))
     res.append(r)
     return res
 
