@@ -56,7 +56,6 @@ XFAIL: dict[str, str] = {
     "CG85-unown-letter-shiny-confirmed": "R (round 7 B07 / C09)",
     "CG86-inventory-help-controls": "R (round 7 B04)",
     "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
-    "CG89-one-editor-heading-style": "S (round 7 typography)",
     "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
 
@@ -2926,7 +2925,7 @@ def round6_contracts(sources):
     for rel, anchor_rx, what in (
             ("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp", r'add\("presence",std::string\(C::kAddPokemon\)', "Gen I"),
             ("src/Integration/Gen2/Gen2StagedEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen II"),
-            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'" Add Pokemon"', "Gen III")):
+            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen III")):
         f = src(rel)
         m = re.search(anchor_rx, f.code) if f else None
         if not m:
