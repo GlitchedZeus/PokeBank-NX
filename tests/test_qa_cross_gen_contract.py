@@ -40,9 +40,8 @@ XFAIL: dict[str, str] = {
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
-    # coordinator's round 6 assignment. CG69 / CG70 / CG71 / CG79 (S), CG72 (C), CG73 (L), CG76 / CG77 (R)
+    # coordinator's round 6 assignment. CG69 / CG70 / CG71 / CG74 / CG79 (S; CG74 Gen I/II C), CG72 (C), CG73 (L), CG76 / CG77 (R)
     # and CG75 / CG78 (P): ENFORCED.
-    "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational

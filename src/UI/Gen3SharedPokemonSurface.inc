@@ -181,6 +181,7 @@ struct ReviewRow {
     std::string label;
     std::string beforeValue;
     std::string afterValue;
+    bool createdDetail = false;   // CG74: shown as the value alone
 };
 
 std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
@@ -191,7 +192,7 @@ std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
             rows.push_back({change.label, change.before, change.after});
     if (const auto* staged = editor(screen))
         for (const auto& change : staged->pendingChanges())
-            rows.push_back({change.label, change.beforeValue, change.afterValue});
+            rows.push_back({change.label, change.beforeValue, change.afterValue, change.createdDetail});
     if (const auto* inventory = bridge(screen).stagedInventory())
         for (const auto& change : inventory->pendingChanges())
             rows.push_back({change.label, std::to_string(change.before), std::to_string(change.after)});
@@ -2491,7 +2492,8 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if(!staged)return;
     PokeBank::UIModel::SharedReview::Rows rows;
     for(const auto& change:reviewRows(screen))
-        rows.emplace_back(change.label,change.beforeValue+" -> "+change.afterValue);
+        rows.emplace_back(change.label,change.createdDetail?change.afterValue:
+                          change.beforeValue+" -> "+change.afterValue);
     SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
         static_cast<size_t>(state.reviewScroll),!rows.empty(),"Generation III");
     if(state.confirmDiscardAll)

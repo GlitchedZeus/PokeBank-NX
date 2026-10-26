@@ -386,6 +386,23 @@ void testEmptySlotCreateTransaction() {
         const auto draftBytes = draft->encryptedBytes();
         assert(createdBytes.size() == draftBytes.size());
         assert(std::equal(createdBytes.begin(), createdBytes.end(), draftBytes.begin()));
+        {
+            // CG74 (owner Oct 25 P3): Review lists the created record's values, one named row each.
+            const auto rows = PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor);
+            const auto value = [&](const std::string& field) -> const std::string* {
+                for (const auto& row : rows)
+                    if (row.first == "Box 1 / Slot 2 / " + field) return &row.second;
+                return nullptr;
+            };
+            for (const char* field : {"Moves", "Ball", "Original Trainer", "Met", "Nature", "Gender",
+                                      "Ability", "Language"})
+                assert(value(field) && !value(field)->empty() && value(field)->find(" -> ") == std::string::npos);
+            assert(*value("Original Trainer") == "Kylie / TID 12150 / SID 22558");
+            assert(!value("Held Item") && !value("Pokerus"));
+            assert(std::any_of(rows.begin(), rows.end(), [](const auto& row) {
+                return row.first == "Staged change" && row.second.find("(empty) -> ") != std::string::npos &&
+                       row.second.find("#393") != std::string::npos; }));
+        }
 
         // Create must never replace an occupied target.
         const auto stagedBeforeRefusal = editor->stagedBytes();
