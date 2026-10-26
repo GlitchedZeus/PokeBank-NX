@@ -53,9 +53,9 @@ XFAIL: dict[str, str] = {
     "CG82-gen5-exports-in-save-backups": "L (round 7 C12 / G1)",
     "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
     "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
-    "CG85-unown-letter-shiny-confirmed": "R (round 7 B07 / C09)",
     "CG86-inventory-help-controls": "R (round 7 B04)",
-    "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
+    # CG87 (P e52b7d97) and CG88 (P e52b7d97, one early outside-tap dispatcher in SaveSelectScreen::update)
+    # on #307 2de1c390, and CG85 (R 47b8097e, Gen2UnownLetter.h questions + Letter grid): ENFORCED.
     "CG89-one-editor-heading-style": "S (round 7 typography)",
     "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
@@ -3196,6 +3196,9 @@ def _gen5_trainer_slot(te, tvb, sources):
     return problems
 
 
+_TRAINER_PROBE_CACHE: dict = {}
+
+
 def _trainer_review_slot(sources, tvb):
     """CG83: run include/UI/ClassicTrainerPage.h's layout at the real Trainer panel bounds for every
     Gen I-IV game and every Play Time / Gender writer combination; the Review button must sit inside
@@ -3244,6 +3247,11 @@ int main() {
             }
 }
 """ % (", ".join('{"%s", %d, %s}' % (n, g, "true" if c else "false") for n, g, c in games), x, y, w, h, x, y, w, h)
+    # The probe compiles the headers on disk, so its result is a function of their text and the bounds:
+    # cache it (the mutation suites call contracts() dozens of times on one tree).
+    key = (str(root), probe, tuple((p.name, p.read_bytes()) for p in sorted((root / "include/UI").glob("ClassicTrainer*.h"))))
+    if key in _TRAINER_PROBE_CACHE:
+        return list(_TRAINER_PROBE_CACHE[key])
     with tempfile.TemporaryDirectory() as tmp:
         cpp, exe = Path(tmp) / "probe.cpp", Path(tmp) / "probe"
         cpp.write_text(probe.replace("#include <cstdio>", "#include <cstdio>\n#include <string>"), encoding="utf-8")
@@ -3253,7 +3261,11 @@ int main() {
             first = built.stderr.strip().splitlines()[0] if built.stderr.strip() else "no compiler output"
             return [f"include/UI/ClassicTrainerPage.h: page model probe does not build (update this check): {first}"]
         ran = subprocess.run([str(exe)], capture_output=True, text=True)
-    return [f"include/UI/ClassicTrainerPage.h: {line}" for line in dict.fromkeys(ran.stdout.splitlines())]
+    out = [f"include/UI/ClassicTrainerPage.h: {line}" for line in dict.fromkeys(ran.stdout.splitlines())]
+    if ran.returncode:
+        out.append(f"include/UI/ClassicTrainerPage.h: page model probe exited {ran.returncode}")
+    _TRAINER_PROBE_CACHE[key] = tuple(out)
+    return out
 
 
 def round7_contracts(sources):
@@ -3443,32 +3455,70 @@ def round7_contracts(sources):
     r = Result("CG85-unown-letter-shiny-confirmed",
                "Gen II Unown: letter / Shiny changes are confirmed, a letter choice states shiny, reroll is "
                "never silent (owner Oct 26 B07 / C09)")
-    fd = src("src/UI/Gen2PokemonEditorFoundation.inc")
-    tu = body_of(fd, "toggleUnownShiny")
-    cl = body_of(fd, "chooseUnownLetter")
-    if not tu or not cl:
-        missing(r, "src/UI/Gen2PokemonEditorFoundation.inc", "toggleUnownShiny / chooseUnownLetter")
+    # Lane R 47b8097e: the rules live in include/UI/Gen2UnownLetter.h (pick / requestShinyToggle return a
+    # Question instead of applying; rerollStatus names what was kept and the DVs that changed) and the
+    # unified Gen II workspace wires them (Letter grid, question A confirm / B cancel, Y reroll status).
+    LM = "include/UI/Gen2UnownLetter.h"
+    lm = src(LM)
+    rq, pk = body_of(lm, "requestShinyToggle"), body_of(lm, "pick")
+    rs, pt = body_of(lm, "rerollStatus"), body_of(lm, "pickerTitle")
+    if not (rq and pk and rs and pt):
+        missing(r, LM, "requestShinyToggle / pick / rerollStatus / pickerTitle")
     else:
-        if not re.search(r"confirm", tu, re.I):
-            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: Shiny on changes the Unown letter at once, "
-                                "without a confirmation")
-        imp = re.search(r"case\s+Letter::Outcome::ShinyImpossible\s*:(.*?)(?=case\s+Letter::Outcome|\Z)", cl, re.S)
-        if imp and not re.search(r"confirm", imp.group(1), re.I):
-            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: a letter that cannot be shiny is refused "
-                                "(\"Nothing changed\") instead of offering to turn Shiny off")
-        ch = re.search(r"case\s+Letter::Outcome::Changed\s*:(.*?)(?=case\s+Letter::Outcome|\Z)", cl, re.S)
-        if ch and not re.search(r"[Ss]hiny", ch.group(1)):
-            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: choosing a letter does not say whether the "
-                                "result is shiny")
+        if not re.search(r"letterChanged[^;]*\)\s*return\s*\{\s*false", rq) or \
+                not re.search(r"return\s*\{\s*true\s*,\s*current\s*,\s*\{\s*Ask::ChangeLetterForShiny", rq):
+            r.violations.append(f"{LM}: Shiny on that changes the letter is not asked first (requestShinyToggle)")
+        if not re.search(r"ShinyImpossible\s*\)\s*\{[^}]*PickAction::Ask\s*,\s*current\s*,\s*\{\s*Ask::DropShinyForLetter", pk):
+            r.violations.append(f"{LM}: a letter that cannot be shiny is not offered with Shiny off (pick)")
+        if not re.search(r"\bshiny\b", pt):
+            r.violations.append(f"{LM}: the Letter picker does not state the current shiny state")
+        if not re.search(r"dvChanges\s*\(\s*before\s*,\s*after\s*\)", rs) or not re.search(r"if\s*\(\s*!\s*changed\s*\)", rs):
+            r.violations.append(f"{LM}: rerollStatus does not name the changed DVs and why nothing changed")
+    act = body_of(uw, "activateUnifiedField")
+    rqpos, tgpos = act.find("requestShinyToggle("), act.find("toggleShiny(screen, p)")
+    if not act:
+        missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc", "activateUnifiedField")
+    else:
+        if rqpos < 0 or (tgpos >= 0 and rqpos > tgpos) or \
+                not re.search(r"if\s*\(\s*request\.ask\s*\)\s*\{[^}]*unownQuestion\s*=\s*request\.question[^}]*return\s+true", act):
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: the Shiny row toggles Unown before asking "
+                                "about a letter change")
+        if re.search(r"chooseUnownLetter|promptText\s*\(\s*\"Unown", act) or "openPicker(" not in act:
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: the Letter row does not open the Unown grid")
+    hq, hpk = body_of(uw, "handleUnownQuestion"), body_of(uw, "handleUnownPicker")
+    if not hq or not hpk:
+        missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc", "handleUnownQuestion / handleUnownPicker")
+    else:
+        am = re.search(r"if\s*\([^{]*HidNpadButton_A[^{]*\)\s*\{", hq)
+        bm = re.search(r"if\s*\([^{]*HidNpadButton_B[^{]*\)\s*\{", hq)
+        a_body = block_after(hq, am.end()) if am else ""
+        b_body = block_after(hq, bm.end()) if bm else ""
+        if "applyUnownDVs" not in a_body or "applyUnownDVs" in b_body or "postStatus" not in b_body:
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: the Unown question is not A = apply, "
+                                "B = cancel with a message")
+        if not re.search(r"PickAction::Ask\s*\)\s*\{[^}]*unownQuestion\s*=\s*result\.question", hpk) or \
+                "applyUnownDVs" not in hpk:
+            r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: a Letter pick is applied without its question")
+    ap = body_of(uw, "applyUnownDVs")
+    if not ap or not re.search(r"shiny", ap) or "dvChanges" not in ap:
+        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: an applied letter does not state shiny and the "
+                            "changed DVs")
     hy, _ = block(uw, r"if\s*\(\s*down\s*&\s*HidNpadButton_Y\s*\)\s*\{(?=\s*if\s*\(\s*randomizeDVs)")
     if hy is None:
         missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc", "Y reroll branch")
-    elif not re.search(r"describeDVChanges", hy):
-        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: Y reroll keeps the letter and sprite and says "
-                            "only \"re-rolled\", so it looks like it did nothing")
-    if fd and re.search(r"HidNpadButton_Y\s*\)\s*\{\s*randomizeDVs\s*\(\s*state\s*\)\s*;", fd.code):
+    elif len(re.findall(r"rerollStatus\s*\(", hy)) < 2 and not re.search(r"describeDVChanges|dvChanges", hy):
+        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: Y reroll keeps the letter and sprite but does "
+                            "not say so or name the changed DVs (success and no-change)")
+    # The legacy Foundation input path (Gen2PokemonEditor::handleInput) is not dispatched by the composite
+    # overlay; its Y branch counts only if something calls it again.
+    legacy_called = any(re.search(r"Gen2PokemonEditor::handleInput\s*\(", f.code) for f in sources
+                        if f.rel != "src/UI/Gen2PokemonEditorFoundation.inc") or \
+        any(re.search(r"(?<![:\w])handleInput\s*\(\s*screen\b", f.code) for f in sources
+            if re.match(r"src/UI/Gen2(?!PokemonEditorFoundation)\w*\.inc$", f.rel))
+    fd = src("src/UI/Gen2PokemonEditorFoundation.inc")
+    if legacy_called and fd and re.search(r"HidNpadButton_Y\s*\)\s*\{\s*randomizeDVs\s*\(\s*state\s*\)\s*;", fd.code):
         r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: Y reroll ignores randomizeDVs' result and "
-                            "always reports success")
+                            "always reports success (and that input path is reachable)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
@@ -3541,9 +3591,32 @@ def round7_contracts(sources):
     else:
         if "SharedPopupDismiss::publish" not in db:
             r.violations.append(f"src/UI/SaveSelectScreen.cpp:{dln}: Quick Games does not publish its panel frame")
+        # Either the Quick Games input block checks the outside tap itself, or (lane P e52b7d97) one early
+        # dispatcher in SaveSelectScreen::update does, ahead of every Quick Games touch path: its
+        # GamesDrawer case must close the drawer and return so the tap never reaches the Home card.
         m = re.search(r"SharedPopupDismiss::tappedOutside\s*\(", hb)
-        if not m or not re.search(r"closeAnimated|overlay\s*=\s*Overlay::None", hb[m.end():m.end() + 300]) or \
-                not re.search(r"\breturn\b", hb[m.end():m.end() + 400]):
+        handled = bool(m and re.search(r"closeAnimated|overlay\s*=\s*Overlay::None", hb[m.end():m.end() + 300])
+                       and re.search(r"\breturn\b", hb[m.end():m.end() + 400]))
+        upd = body_of(ss, "update")
+        for d in re.finditer(r"if\s*\(\s*SharedPopupDismiss::tappedOutside\s*\(\s*touch\s*\)\s*\)\s*\{\s*switch\s*\(\s*overlay\s*\)\s*\{",
+                             upd):
+            sw = block_after(upd, d.end())
+            case = re.search(r"case\s+Overlay::GamesDrawer\s*:(.*?)(?=case\s+Overlay::|default\s*:|\Z)", sw, re.S)
+            # Quick Games touch paths: the drag (arm / track / release), the tile hits (case GamesDrawer
+            # outside this switch) and the Quick Games input block. The per-frame "closed" bookkeeping
+            # at the top of update() reads no touch.
+            sw_span = range(d.start(), d.end() + len(sw))
+            touch_paths = [x.start() for x in re.finditer(
+                r"quickDrawerMotion\s*\.\s*(?:arm|track|release)\s*\(|case\s+Overlay::GamesDrawer\s*:", upd)
+                if x.start() not in sw_span]
+            ib = re.search(r"if\s*\(\s*overlay\s*==\s*Overlay::GamesDrawer\s*\)\s*\{(?=(?:(?!\n\s*\}).)*?"
+                           r"(?:closeAnimated|HidNpadButton_B))", upd, re.S)
+            touch_paths += [ib.start()] if ib else []
+            first_drawer_touch = min(touch_paths, default=len(upd))
+            if case and re.search(r"quickDrawerMotion\s*\.\s*closeAnimated\s*\(|overlay\s*=\s*Overlay::None", case.group(1)) \
+                    and re.search(r"\breturn\s*;", case.group(1)) and d.start() < first_drawer_touch:
+                handled = True
+        if not handled:
             r.violations.append(f"src/UI/SaveSelectScreen.cpp:{ln}: Quick Games does not close on a tap outside it "
                                 "(only B or a drag closes it)")
     res.append(r)
