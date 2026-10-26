@@ -1034,9 +1034,7 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
                         UnifiedWorkspaceState& unified,
                         int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "DETAILS",
-        !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
-        TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "DETAILS");
     const auto& p = state.working;
     // The portrait letter is computed from the current DVs on every frame (never a cached form).
     SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny,
@@ -1137,9 +1135,7 @@ void drawGen2SharedMoveRows(PKSEFramebuffer& fb, const TrainerViewScreen& screen
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                       const UnifiedWorkspaceState& unified, int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "MOVES",
-        !passive && unified.focus.panel == Unified::Panel::Moves ? Colors::Accent : Colors::Text,
-        TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "MOVES");
     drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + UI::SharedMovesPanel::kDataPaneOffset,

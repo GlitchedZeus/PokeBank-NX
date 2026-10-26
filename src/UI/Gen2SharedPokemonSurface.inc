@@ -413,9 +413,7 @@ void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h,
                        bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "DETAILS",
-                !passive && state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text,
-                TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "DETAILS");
     const auto& p = state.working;
     // Unown's letter is the form computed from the DVs (pokecrystal GetUnownLetter, Gen12DVReroll::unownLetter); the
     // sprite follows the draft's own DVs so a shiny / Random DVs / typed-DV change shows the new letter.
@@ -459,9 +457,7 @@ void drawSharedDetails(PKSEFramebuffer& fb, const State& state, int x, int y, in
 void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                      int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "MOVES",
-                !passive && state.panel == Foundation::Panel::Moves ? Colors::Accent : Colors::Text,
-                TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "MOVES");
     fb.drawText(x + 190, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 246, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {

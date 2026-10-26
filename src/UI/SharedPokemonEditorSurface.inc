@@ -39,6 +39,7 @@
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
 #include "UI/SharedViewOnlyNotice.h"
+#include "UI/SharedPanelHeading.h"
 #include "UI/ReviewEntry.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedPokemonShell.h"
@@ -151,7 +152,7 @@ inline Color genderValueColor(uint8_t gender) {
 
 inline void drawPanel(PKSEFramebuffer& fb, int x, int y, int w, int h, const char* title) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, title, Colors::Accent, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, title);
 }
 
 inline void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {

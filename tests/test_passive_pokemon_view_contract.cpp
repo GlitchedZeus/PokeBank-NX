@@ -41,11 +41,12 @@ int main() {
     requireCleanPassiveSurface(gen2Final);
 
     // Pokémon-tab / Party Gen I View is no longer the old card renderer: it shares canonical
-    // type sprites, neutral panel headings, exact-game context, accent calculated stats, and
+    // type sprites, shared panel headings, exact-game context, accent calculated stats, and
     // a fixed far-right compatibility/status region.
     assert(gen1Presentation.find("ClassicTypeBadges::drawPairCentered") != std::string::npos);
     assert(gen1Presentation.find("passiveContextLine(p)") != std::string::npos);
-    assert(gen1Presentation.find("\"STATS\", Colors::Text") != std::string::npos);
+    // Round 7 P2 (owner Oct 26): panel headings use the one shared heading style (Gen IV / V).
+    assert(gen1Presentation.find("PanelHeading::draw(fb, midX, contentY, \"STATS\")") != std::string::npos);
     assert(gen1Presentation.find("\"VALUES\"") == std::string::npos);
     assert(gen1Presentation.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
     assert(gen1Presentation.find("ClassicMovesPanel::draw(") != std::string::npos);

@@ -17,8 +17,12 @@ Exit status: 0 when nothing fails in the chosen mode, 1 otherwise.
 from __future__ import annotations
 
 import argparse
+import math
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -42,6 +46,19 @@ XFAIL: dict[str, str] = {
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
     # coordinator's round 6 assignment. CG69 / CG70 / CG71 / CG74 / CG79 (S; CG74 Gen I/II C), CG72 (C), CG73 (L), CG76 / CG77 (R)
     # and CG75 / CG78 (P): ENFORCED.
+    # Round 7: owner Oct 26 FAILs and requests (docs/hardware/ROUND6_RESULTS_26186464.md), owners per the
+    # coordinator's round 7 assignment.
+    "CG80-gen2-create-review-visible": "L (round 7 B08 defect 1)",
+    "CG81-one-review-key-per-screen": "L (round 7 B08 defect 2)",
+    "CG82-gen5-exports-in-save-backups": "L (round 7 C12 / G1)",
+    "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
+    "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
+    "CG85-unown-letter-shiny-confirmed": "R (round 7 B07 / C09)",
+    "CG86-inventory-help-controls": "R (round 7 B04)",
+    "CG87-event-locations-described": "P (round 7 B05)",
+    "CG88-quick-games-tap-outside": "P (round 7 C04 follow-up)",
+    "CG89-one-editor-heading-style": "S (round 7 typography)",
+    "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -2290,6 +2307,7 @@ def contracts(sources: list[Source]) -> list[Result]:
     res.extend(round4_p0_contracts(sources))
     res.extend(round5_contracts(sources))
     res.extend(round6_contracts(sources))
+    res.extend(round7_contracts(sources))
     return res
 
 
@@ -3122,6 +3140,498 @@ def round6_contracts(sources):
                 re.search(r'postStatus\s*\([^;]*"Language', branch):
             r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Gen V Language posts a toast after a "
                                 "successful inline change")
+    res.append(r)
+    return res
+
+
+def _gen5_trainer_slot(te, tvb, sources):
+    """CG90: replay Gen V drawTrainerEditor's fixed-pitch layout from its own constants at the real
+    panel bounds; every row card and the Game language line must end at or above Review's top."""
+    WHERE = "src/UI/Gen5SharedReadOnlySurface.inc"
+    try:
+        consts = dict(re.findall(r"constexpr\s+int\s+(LEFT_PANEL_Y|CONTENT_PANEL_HEIGHT)\s*=\s*(\d+)\s*;", tvb.code))
+        env = {"y": int(consts["LEFT_PANEL_Y"]), "h": int(consts["CONTENT_PANEL_HEIGHT"])}
+        assert re.search(r"\by\s*=\s*CONTENT_PANEL_Y\b", te) and re.search(r"\bh\s*=\s*CONTENT_PANEL_HEIGHT\b", te)
+        env["hH"] = int(re.search(r"constexpr\s+int\s+hH\s*=\s*(\d+)\s*;", te).group(1))
+        decl = re.search(r"constexpr\s+int\s+(cardW\s*=.*?);", te, re.S).group(1)
+        for name, expr in re.findall(r"(\w+)\s*=\s*([^,]+)", decl):
+            env[name] = eval(expr, {}, dict(env))
+        fpx = re.search(r"kFontSizes\[[^\]]*\]\s*=\s*\{\s*([\d.]+)f?",
+                        next(x for x in sources if x.rel == "src/UI/PKSEFramebuffer.cpp").code)
+        caption_h = math.ceil(float(fpx.group(1)) * 1.364)   # Nunito line height (tests/host-ui/HostUi.h)
+        cy = eval(re.search(r"int\s+cy\s*=\s*([^;]+);", te).group(1), {}, dict(env))
+        review_y = eval(re.search(r"reviewY\s*=\s*([^;,]+)", te).group(1), {}, dict(env))
+        start = re.search(r"int\s+cy\s*=", te).end()
+        end = re.search(r"reviewY\s*=", te).start()
+    except Exception as e:   # noqa: BLE001 - any parse miss means the page changed shape
+        return [f"{WHERE}: Gen V Trainer layout not recognised ({type(e).__name__}; update this check)"]
+    items, problems, pos = [], [], start
+    step = re.compile(r"for\s*\(\s*const\s+TRow\s+row\s*:\s*\{([^}]*)\}\s*\)\s*\{|cy\s*\+=\s*([^;]+);|"
+                      r"drawText\s*\(\s*cardX\s*\+\s*\d+\s*,\s*cy\s*\+\s*(\d+)\s*,[^;]*?\"Game language")
+    while True:
+        m = step.search(te, pos, end)
+        if not m:
+            break
+        if m.group(1) is not None:
+            d, j = 0, m.end()
+            while j < len(te):
+                d += te[j] == "{"
+                if te[j] == "}":
+                    if d == 0:
+                        break
+                    d -= 1
+                j += 1
+            body = te[m.end():j]
+            hm = re.search(r"drawFilledRoundedRect\s*\(\s*cardX\s*,\s*cy\s*,\s*cardW\s*,\s*(\w+)", body)
+            inc = re.search(r"cy\s*\+=\s*([^;]+);", body)
+            if not hm or not inc:
+                return [f"{WHERE}: Gen V Trainer row loop not recognised (update this check)"]
+            for row in [x.strip().split("::")[-1] for x in m.group(1).split(",")]:
+                items.append((row, cy + env[hm.group(1)]))
+                cy += eval(inc.group(1), {}, dict(env))
+            pos = j + 1
+        elif m.group(2) is not None:
+            cy += eval(m.group(2), {}, dict(env))
+            pos = m.end()
+        else:
+            items.append(("Game language line", cy + int(m.group(3)) + caption_h))
+            pos = m.end()
+    if not items:
+        return [f"{WHERE}: Gen V Trainer rows not recognised (update this check)"]
+    for name, bottom in items:
+        if bottom > review_y:
+            problems.append(f"{WHERE}: Gen V Trainer {name} ends at y={bottom}, below Review's top y={review_y}")
+    return problems
+
+
+def _trainer_review_slot(sources, tvb):
+    """CG83: run include/UI/ClassicTrainerPage.h's layout at the real Trainer panel bounds for every
+    Gen I-IV game and every Play Time / Gender writer combination; the Review button must sit inside
+    the panel body, below every row (a measured slot under the last row, or the footer action area)."""
+    page = next((x for x in sources if x.rel == "include/UI/ClassicTrainerPage.h"), None)
+    if not page or not tvb:
+        return ["include/UI/ClassicTrainerPage.h: page model not found (update this check)"]
+    consts = dict(re.findall(r"constexpr\s+int\s+(LEFT_PANEL_X|LEFT_PANEL_Y|CONTENT_PANEL_HEIGHT)\s*=\s*(\d+)\s*;", tvb.code))
+    call = re.search(r"drawTrainerView\s*\(\s*\*this\s*,\s*fb\s*,\s*contentX\s*,\s*CONTENT_PANEL_Y\s*,\s*"
+                     r"contentPanelWidth\s*,\s*CONTENT_PANEL_HEIGHT\s*\)", tvb.code)
+    cx = re.search(r"const\s+int\s+contentX\s*=\s*LEFT_PANEL_X\s*;", tvb.code)
+    if len(consts) != 3 or not call or not cx or not re.search(r"CONTENT_PANEL_Y\s*=\s*LEFT_PANEL_Y\s*;", tvb.code):
+        return ["src/UI/TrainerViewScreenBase.inc: Trainer panel bounds not found (update this check)"]
+    x, y, h = int(consts["LEFT_PANEL_X"]), int(consts["LEFT_PANEL_Y"]), int(consts["CONTENT_PANEL_HEIGHT"])
+    w = 1280 - x   # contentPanelWidth = fb.getWidth() - contentX on the 1280x720 framebuffer
+    root = Path(str(page.path)[:-len(page.rel)]) if str(page.path).endswith(page.rel) else DEFAULT_ROOT
+    cxx = shutil.which("g++") or shutil.which("clang++") or shutil.which("c++")
+    if not cxx:
+        return ["CG83 needs a host C++ compiler to run the Trainer page model (none found)"]
+    games = (("red/blue/yellow", 1, False), ("gold/silver", 2, False), ("crystal", 2, True),
+             ("ruby/sapphire/emerald/firered/leafgreen", 3, False),
+             ("diamond/pearl/platinum/heartgold/soulsilver", 4, False))
+    probe = """#include "UI/ClassicTrainerPage.h"
+#include <cstdio>
+namespace P = PokeBank::UIModel::ClassicTrainerPage;
+int main() {
+    struct G { const char* name; int gen; bool crystal; } games[] = {%s};
+    for (const auto& g : games)
+        for (int pt = 0; pt < 2; ++pt)
+            for (int gd = 0; gd < 2; ++gd) {
+                const auto page = P::layout(P::rows({g.gen, g.crystal, pt == 1, gd == 1}), %d, %d, %d, %d);
+                const P::Rect body{%d, %d + P::kHeaderH, %d, %d - P::kHeaderH};
+                int last = 0;
+                for (const auto& placed : page.rows) {
+                    if (placed.card.bottom() > last) last = placed.card.bottom();
+                    if (placed.card.overlaps(page.review))
+                        std::printf("%%s (play time %%s, gender %%s): Review overlaps the %%s row\\n", g.name,
+                                    pt ? "editable" : "read-only", gd ? "editable" : "read-only",
+                                    std::string(P::label(placed.row.field)).c_str());
+                }
+                if (!page.review.inside(body))
+                    std::printf("%%s: Review is outside the Trainer panel body\\n", g.name);
+                if (page.review.y < last)
+                    std::printf("%%s (play time %%s, gender %%s): Review at y=%%d is not below the last row (bottom %%d)\\n",
+                                g.name, pt ? "editable" : "read-only", gd ? "editable" : "read-only", page.review.y, last);
+            }
+}
+""" % (", ".join('{"%s", %d, %s}' % (n, g, "true" if c else "false") for n, g, c in games), x, y, w, h, x, y, w, h)
+    with tempfile.TemporaryDirectory() as tmp:
+        cpp, exe = Path(tmp) / "probe.cpp", Path(tmp) / "probe"
+        cpp.write_text(probe.replace("#include <cstdio>", "#include <cstdio>\n#include <string>"), encoding="utf-8")
+        built = subprocess.run([cxx, "-std=c++20", "-I", str(root / "include"), str(cpp), "-o", str(exe)],
+                               capture_output=True, text=True)
+        if built.returncode:
+            first = built.stderr.strip().splitlines()[0] if built.stderr.strip() else "no compiler output"
+            return [f"include/UI/ClassicTrainerPage.h: page model probe does not build (update this check): {first}"]
+        ran = subprocess.run([str(exe)], capture_output=True, text=True)
+    return [f"include/UI/ClassicTrainerPage.h: {line}" for line in dict.fromkeys(ran.stdout.splitlines())]
+
+
+def round7_contracts(sources):
+    """Round 7: owner Oct 26 FAIL items and requests (docs/hardware/ROUND6_RESULTS_26186464.md).
+    Called from contracts()."""
+    res = []
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def body_of(f, name):
+        return "\n".join(b for _, _, b in function_bodies(f.code, re.compile("^" + re.escape(name) + "$"))) if f else ""
+
+    def block_after(code, pos):
+        d, j = 0, pos
+        while j < len(code):
+            if code[j] == "{":
+                d += 1
+            elif code[j] == "}":
+                d -= 1
+                if d < 0:
+                    break
+            j += 1
+        return code[pos:j]
+
+    def block(f, anchor_rx):
+        """Body of the first `if (...) {` block whose condition matches anchor_rx."""
+        m = re.search(anchor_rx, f.code) if f else None
+        if not m:
+            return None, 0
+        brace = f.code.find("{", m.end() - 1)
+        return block_after(f.code, brace + 1), f.code.count("\n", 0, m.start()) + 1
+
+    def missing(r, rel, what):
+        r.violations.append(f"{rel}: {what} not found (update this check)")
+
+    # ------------------------------------------------------------------------------------------
+    # B08 defect 1 / P1-RETURN (lane L): Gen II Create -> + opens Review, but the final draw chain
+    # tests the Create mode before the Review flag, so the Create workspace is repainted over the
+    # Review that owns the input: an invisible screen that looks frozen. B in Review must return.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG80-gen2-create-review-visible",
+               "Gen II Create / Edit -> Review is drawn (not occluded by the workspace) and B returns "
+               "(owner Oct 26 B08, defect 1)")
+    MODE_GATE = re.compile(r"if\s*\(([^{;]*?\bmode\s*!=\s*Mode::None[^{;]*?)\)\s*\{")
+    for rel in ("src/UI/Gen2SharedSurfaceParity.inc", "src/UI/Gen2HardwareFinalFix.inc"):
+        body = body_of(src(rel), "drawFinalGen2Surface")
+        if not body:
+            missing(r, rel, "drawFinalGen2Surface")
+            continue
+        m = MODE_GATE.search(body)
+        if m and not re.search(r"\breview\b", body[:m.start()]) and not re.search(r"\breview\b", m.group(1)):
+            r.violations.append(f"{rel}: drawFinalGen2Surface paints the Create / Edit workspace without first "
+                                "drawing an open Review (Review owns the input but is never visible)")
+    hr = body_of(src("src/UI/Gen2SharedPokemonSurface.inc"), "handleSharedReview")
+    bm = re.search(r"if\s*\([^)]*HidNpadButton_B[^)]*\)\s*\{", hr)
+    if not hr or not bm:
+        missing(r, "src/UI/Gen2SharedPokemonSurface.inc", "handleSharedReview B branch")
+    elif not re.search(r"\breview\s*=\s*false\b", block_after(hr, bm.end())):
+        r.violations.append("src/UI/Gen2SharedPokemonSurface.inc: B in the Gen II Review does not close it")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B08 defect 2 / P1-RETURN (lane L): each screen opens Review with exactly the one key its footer
+    # shows. + must not secretly open Review where the footer shows Y (Party, Trainer), and a screen
+    # where + opens Review must show it.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG81-one-review-key-per-screen",
+               "One Review key per screen, matching its footer; no hidden + Review on Party / Trainer "
+               "(owner Oct 26 B08, defect 2)")
+    re_h = src("include/UI/ReviewEntry.h")
+    plus = body_of(re_h, "plusOpensReview")
+    if not plus:
+        missing(r, "include/UI/ReviewEntry.h", "plusOpensReview")
+    elif not re.search(r"\byOpensReview\b|Screen::(?:Party|Trainer)\b", plus):
+        r.violations.append("include/UI/ReviewEntry.h: plusOpensReview is true on every screen, so + opens Review "
+                            "on Party / Trainer where the footer shows only Y")
+    tsi = src("include/UI/ClassicTrainerSessionInput.h")
+    if tsi and re.search(r"HidNpadButton_Y\s*\|\s*HidNpadButton_Plus|HidNpadButton_Plus\s*\|\s*HidNpadButton_Y", tsi.code):
+        r.violations.append("include/UI/ClassicTrainerSessionInput.h: Gen I-IV Trainer opens Review on + as well as "
+                            "its footer's Y")
+    g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    if g5:
+        for m in re.finditer(r"keys\s*&\s*\(\s*HidNpadButton_(?:Plus\s*\|\s*HidNpadButton_Y|Y\s*\|\s*HidNpadButton_Plus)\s*\)", g5.code):
+            if "openReviewFromBrowse" in g5.code[m.end():m.end() + 300]:
+                r.violations.append(f"src/UI/Gen5SharedReadOnlySurface.inc:{g5.code.count(chr(10), 0, m.start()) + 1}: "
+                                    "Gen V Trainer opens Review on + as well as its footer's Y")
+        for m in re.finditer(r"\(\s*keys\s*&\s*HidNpadButton_Plus\s*\)\s*\|\|[^;{]*?\bScreen::Party\b", g5.code):
+            r.violations.append(f"src/UI/Gen5SharedReadOnlySurface.inc:{g5.code.count(chr(10), 0, m.start()) + 1}: "
+                                "Gen V Party opens Review on + although its footer shows Y")
+    co = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    bf = body_of(co, "drawGen2ClassicBoxFooter")
+    if co and bf and re.search(r"drawNavBar", bf) and not re.search(r"Review|footerHint", bf):
+        r.violations.append("src/UI/TrainerViewScreenCompositeOverlay.cpp: Gen II Boxes footer hides the + Review "
+                            "that the Boxes screen opens")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # C12 follow-up / G1 (lane L): Gen V exports are listed in Save Backups like Gen I-IV, with the
+    # same ownership checks. Gen V writes exports/gen5/account-<id>/<stem>/EXPORT_MANIFEST.txt; the
+    # listing reads exports/genN/<name>/EDIT_MANIFEST.txt, so no Gen V export is ever listed.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG82-gen5-exports-in-save-backups",
+               "Gen V exports appear in Save Backups, with ownership enforced (owner Oct 26 C12 / G1)")
+    cls = src("include/UI/SourceBackupClassification.h")
+    opn = src("include/UI/SourceBackupOpen.h")
+    g5x = src("src/Integration/Gen5/Gen5WorkingCopyExport.cpp")
+    km = re.search(r'kManifestName\s*=\s*"([^"]+)"', cls.code) if cls else None
+    if not (cls and opn and g5x and km):
+        missing(r, "include/UI/SourceBackupClassification.h / src/Integration/Gen5/Gen5WorkingCopyExport.cpp",
+                "export manifest name")
+    else:
+        g5_manifests = set(re.findall(r'"([A-Z_]+MANIFEST\.txt)"', g5x.code))
+        uses_shared = re.search(r"\bkManifestName\b", g5x.code)
+        if not uses_shared and km.group(1) not in g5_manifests:
+            r.violations.append(f"src/Integration/Gen5/Gen5WorkingCopyExport.cpp: writes {sorted(g5_manifests)}; "
+                                f"Save Backups reads {km.group(1)}")
+        if re.search(r'"account-"', g5x.code):
+            for f, what in ((cls, "list / canDelete"), (opn, "historicalSources / openSnapshot")):
+                if "account-" not in f.code:
+                    r.violations.append(f"{f.rel}: {what} scan exports/genN/<name> only; Gen V exports under "
+                                        "exports/gen5/account-<id>/ are never listed")
+        cd = body_of(cls, "canDelete")
+        if not cd or "UnexpectedFiles" not in cd or "sourcePath" not in cd:
+            r.violations.append("include/UI/SourceBackupClassification.h: canDelete no longer checks the record's "
+                                "source and its exact files (ownership)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B06 / C06 NEW-18 (lane C): Gen I-IV Trainer uses Gen V's tokens: neutral values (no gold
+    # read-only token), and the same Review button, which overlaps no row.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG83-classic-trainer-gen5-tokens",
+               "Gen I-IV Trainer uses Gen V's value colour, no yellow values; Review sits in a measured slot "
+               "below the rows and overlaps none, for every Gen I-IV game (owner Oct 26 B06 / C06)")
+    tvb = src("src/UI/TrainerViewScreenBase.inc")
+    ct = body_of(tvb, "drawClassicTrainerView")
+    if not ct:
+        missing(r, "src/UI/TrainerViewScreenBase.inc", "drawClassicTrainerView")
+    else:
+        if re.search(r"State::ReadOnly|ShinyStar|ClassicFieldColor|\bGold\b", ct):
+            r.violations.append("src/UI/TrainerViewScreenBase.inc: Gen I-IV Trainer values use the gold read-only "
+                                "token (Gen V uses Colors::Text)")
+        if re.search(r'"[^"]*gold values', ct):
+            r.violations.append("src/UI/TrainerViewScreenBase.inc: Gen I-IV Trainer caption still announces gold values")
+    # Review button (coordinator round 7 scope): placed in a measured slot below the last row (or the
+    # footer action area) and intersecting no row, computed with the page model at the real Trainer
+    # panel bounds for every Gen I-IV game, and drawn exactly where the model puts it.
+    if ct and not re.search(r"drawGlyphButton\s*\(\s*fb\s*,\s*page\.review\.x\s*,\s*page\.review\.y\s*,\s*"
+                            r"page\.review\.w\s*,\s*page\.review\.h\s*,\s*\"Y\"", ct):
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: the Gen I-IV Trainer Review button is not drawn at "
+                            "the page model's review rect")
+    r.violations.extend(_trainer_review_slot(sources, tvb))
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # A22 / C01 R2-SPECIAL (lane C): Gen II's calculated Sp. Atk / Sp. Def are NOT in the numeric
+    # Calculated column; they sit in the lower-middle of the STATS panel, as Gen I's block does.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG84-gen2-special-lower-middle",
+               "Gen II calculated Special is in the lower-middle STATS area like Gen I, not the numeric column "
+               "(owner Oct 26 A22 / C01)")
+    wp = src("include/UI/Gen2WorkspacePresentation.h")
+    cc = body_of(wp, "calculatedCell")
+    if cc and re.search(r'"Sp\.\s*(?:Atk|Def)"', cc):
+        r.violations.append("include/UI/Gen2WorkspacePresentation.h: calculatedCell puts Sp. Atk / Sp. Def in the "
+                            "numeric Calculated column")
+    uw = src("src/UI/Gen2UnifiedPokemonWorkspace.inc")
+    col = body_of(uw, "drawGen2CalculatedColumn")
+    if col and re.search(r"row\s*<=\s*W::kSpecialDefenseRow", col):
+        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: drawGen2CalculatedColumn draws the Special "
+                            "rows inside the numeric column")
+    md = src("src/UI/Modals/Gen2PokemonDetailsModal.cpp")
+    if md and re.search(r'"A"\s*\+\s*std::to_string\([^)]*\)\s*\+\s*" / D"', md.code):
+        r.violations.append("src/UI/Modals/Gen2PokemonDetailsModal.cpp: Special shown as \"A.. / D..\" in the Stat column")
+    if not any(f and re.search(r'"CALCULATED SPECIAL', f.code) for f in
+               (uw, src("src/UI/Gen2HardwareFinalFix.inc"), src("src/UI/Gen2HardwareWorkspaceFix.inc"))):
+        r.violations.append("src/UI/Gen2*.inc: no calculated Special block in the STATS panel (Gen I reference: "
+                            "\"CALCULATED SPECIAL STATS\" in Gen1PokemonEditorFoundationHardwareFix.inc)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B07 / C09 R2-REROLL, UNOWN-LETTER (lane R): the Unown letter, Shiny and Reroll never change
+    # silently or do nothing: a change of letter or Shiny is confirmed first, choosing a letter says
+    # the resulting shiny state, and a reroll names the DVs it changed.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG85-unown-letter-shiny-confirmed",
+               "Gen II Unown: letter / Shiny changes are confirmed, a letter choice states shiny, reroll is "
+               "never silent (owner Oct 26 B07 / C09)")
+    fd = src("src/UI/Gen2PokemonEditorFoundation.inc")
+    tu = body_of(fd, "toggleUnownShiny")
+    cl = body_of(fd, "chooseUnownLetter")
+    if not tu or not cl:
+        missing(r, "src/UI/Gen2PokemonEditorFoundation.inc", "toggleUnownShiny / chooseUnownLetter")
+    else:
+        if not re.search(r"confirm", tu, re.I):
+            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: Shiny on changes the Unown letter at once, "
+                                "without a confirmation")
+        imp = re.search(r"case\s+Letter::Outcome::ShinyImpossible\s*:(.*?)(?=case\s+Letter::Outcome|\Z)", cl, re.S)
+        if imp and not re.search(r"confirm", imp.group(1), re.I):
+            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: a letter that cannot be shiny is refused "
+                                "(\"Nothing changed\") instead of offering to turn Shiny off")
+        ch = re.search(r"case\s+Letter::Outcome::Changed\s*:(.*?)(?=case\s+Letter::Outcome|\Z)", cl, re.S)
+        if ch and not re.search(r"[Ss]hiny", ch.group(1)):
+            r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: choosing a letter does not say whether the "
+                                "result is shiny")
+    hy, _ = block(uw, r"if\s*\(\s*down\s*&\s*HidNpadButton_Y\s*\)\s*\{(?=\s*if\s*\(\s*randomizeDVs)")
+    if hy is None:
+        missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc", "Y reroll branch")
+    elif not re.search(r"describeDVChanges", hy):
+        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: Y reroll keeps the letter and sprite and says "
+                            "only \"re-rolled\", so it looks like it did nothing")
+    if fd and re.search(r"HidNpadButton_Y\s*\)\s*\{\s*randomizeDVs\s*\(\s*state\s*\)\s*;", fd.code):
+        r.violations.append("src/UI/Gen2PokemonEditorFoundation.inc: Y reroll ignores randomizeDVs' result and "
+                            "always reports success")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B04 E05 (lane R): Inventory Help is titled "Inventory Controls" in every generation, has no
+    # "X Add remains available", and describes + as Review where + opens Review.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG86-inventory-help-controls",
+               "Inventory Help: titled \"Inventory Controls\", no \"X Add remains available\", + described as "
+               "Review (owner Oct 26 B04)")
+    um = src("src/UI/ClassicInventoryUIModel.cpp")
+    hl = body_of(um, "classicInventoryHelpLines")
+    ov = src("src/UI/ClassicInventoryOverlay.cpp")
+    if not hl or not ov:
+        missing(r, "src/UI/ClassicInventoryUIModel.cpp", "classicInventoryHelpLines")
+    else:
+        if re.search(r"Add remains available", hl):
+            r.violations.append("src/UI/ClassicInventoryUIModel.cpp: Gen I-III Inventory Help still says "
+                                "\"X Add remains available\"")
+        plus_review = re.search(r"ClassicInventoryAction::Options\s*\)\s*\{[^}]*openStagedReview", ov.code)
+        for line in re.findall(r'"(\+[^"]*)"', hl):
+            if plus_review and "Review" not in line.split("-")[0]:
+                r.violations.append(f"src/UI/ClassicInventoryUIModel.cpp: Help says \"{line.split('  ')[0]} ...\" "
+                                    "but + opens Review")
+        if re.search(r'"Inventory Help"', ov.code):
+            r.violations.append("src/UI/ClassicInventoryOverlay.cpp: Gen I-III Bag Help is titled \"Inventory Help\", "
+                                "not \"Inventory Controls\"")
+    if tvb:
+        for m in re.finditer(r'drawInfoOverlay\s*\(\s*fb\s*,\s*"([^"]+)"\s*,\s*Help::lines\s*\(\s*page', tvb.code):
+            if m.group(1) != "Inventory Controls":
+                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{tvb.code.count(chr(10), 0, m.start()) + 1}: "
+                                    f"Gen IV / V Bag Help is titled \"{m.group(1)}\" (every page shares one title)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B05 R2-CHECK-011 (lane P): event / special Met Location rows describe that choice; no single
+    # generic "...; unverified" text returned for a whole range of location ids.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG87-event-locations-described",
+               "Event / Met Location rows say what each choice is; no generic \"unverified\" text for a whole "
+               "id range (owner Oct 26 B05)")
+    ec = src("include/Integration/Encounter/EncounterContext45.h")
+    det = body_of(ec, "detail")
+    if not det:
+        missing(r, "include/Integration/Encounter/EncounterContext45.h", "detail")
+    else:
+        for m in re.finditer(r"return\s+(?:tagged\s*\(\s*)?\"([^\"]*)\"", det):
+            cond = det[det.rfind("if", 0, m.start()):m.start()]
+            span = re.search(r"location\s*>=?\s*(\d+)\s*&&\s*location\s*<=?\s*(\d+)", cond)
+            if span and int(span.group(2)) - int(span.group(1)) > 8:   # a handful of transfer ids may share one
+                r.violations.append(f"include/Integration/Encounter/EncounterContext45.h: \"{m.group(1)}\" is the one "
+                                    "description of every id in a range")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # C04 follow-up 7D (lane P): Quick Games closes on a completed tap outside the panel, and that tap
+    # is consumed (no tap-through to the game card underneath).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG88-quick-games-tap-outside",
+               "Quick Games closes on a tap outside it, with no tap-through (owner Oct 26 C04 follow-up)")
+    ss = src("src/UI/SaveSelectScreen.cpp")
+    hb, ln = None, 0
+    for m in re.finditer(r"if\s*\(\s*overlay\s*==\s*Overlay::GamesDrawer\s*\)\s*\{", ss.code if ss else ""):
+        b = block_after(ss.code, m.end())
+        if "closeAnimated" in b and "HidNpadButton_B" in b:
+            hb, ln = b, ss.code.count("\n", 0, m.start()) + 1
+            break
+    db, dln = block(ss, r"\}\s*else\s+if\s*\(\s*overlay\s*==\s*Overlay::GamesDrawer\s*\)\s*\{")
+    if hb is None or db is None:
+        missing(r, "src/UI/SaveSelectScreen.cpp", "Quick Games draw / input block")
+    else:
+        if "SharedPopupDismiss::publish" not in db:
+            r.violations.append(f"src/UI/SaveSelectScreen.cpp:{dln}: Quick Games does not publish its panel frame")
+        m = re.search(r"SharedPopupDismiss::tappedOutside\s*\(", hb)
+        if not m or not re.search(r"closeAnimated|overlay\s*=\s*Overlay::None", hb[m.end():m.end() + 300]) or \
+                not re.search(r"\breturn\b", hb[m.end():m.end() + 400]):
+            r.violations.append(f"src/UI/SaveSelectScreen.cpp:{ln}: Quick Games does not close on a tap outside it "
+                                "(only B or a drag closes it)")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # Typography (lane S): DETAILS / STATS / MOVES panel headings use one text style token in every
+    # Gen I-V editor; the reference is the shared Gen IV / V editor's small coloured label.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG89-one-editor-heading-style",
+               "DETAILS / STATS / MOVES headings all draw through the one shared heading helper "
+               "(UI/SharedPanelHeading.h, the Gen IV / V style) in Gen I-V (owner Oct 26 typography)")
+    HELPER = "include/UI/SharedPanelHeading.h"
+    hp = src(HELPER)
+    hd = body_of(hp, "draw")
+    if not hp or not hd:
+        missing(r, HELPER, "PanelHeading::draw")
+    else:
+        if not re.search(r"kStyle\s*=\s*UI::TextStyle::Caption\s*;", hp.code):
+            r.violations.append(f"{HELPER}: the shared heading style is not the Gen IV / V Caption")
+        if not re.search(r"return\s+UI::Colors::Accent\s*;", body_of(hp, "color")):
+            r.violations.append(f"{HELPER}: the shared heading colour is not the Gen IV / V Accent")
+        if not re.search(r"drawText\s*\([^;]*kInsetX[^;]*kInsetY[^;]*\btitle\b[^;]*color\s*\(\s*\)\s*,\s*kStyle\s*\)", hd):
+            r.violations.append(f"{HELPER}: draw does not use the helper's inset, colour and style")
+    HEADING = r'"(?:DETAILS|STATS|MOVES)"|\bstatsHeading\s*\(\s*\)'
+    VIA_HELPER = re.compile(r"PanelHeading::draw\s*\(")
+
+    def forwarder_body(f, name):
+        """Body of the function or lambda `name` that a heading literal is passed to."""
+        m = re.search(r"\b" + re.escape(name) + r"\s*=\s*\[[^\]]*\]\s*\([^)]*\)\s*\{", f.code)
+        return block_after(f.code, m.end()) if m else body_of(f, name)
+
+    if not re.search(r"PanelHeading::draw\s*\([^;]*\btitle\b", body_of(src("src/UI/SharedPokemonEditorSurface.inc"), "drawPanel")):
+        r.violations.append("src/UI/SharedPokemonEditorSurface.inc: the Gen IV / V reference drawPanel does not use "
+                            "the shared heading helper")
+    for f in sources:
+        if not EDITOR_FILE_RX.search(f.rel):
+            continue
+        for m in re.finditer(HEADING, f.code):
+            stmt = f.code[max(f.code.rfind(";", 0, m.start()), f.code.rfind("{", 0, m.start()),
+                              f.code.rfind("}", 0, m.start())) + 1:f.code.find(";", m.end()) + 1]
+            ln = f.code.count("\n", 0, m.start()) + 1
+            if VIA_HELPER.search(stmt):
+                continue
+            if re.search(r"\bdrawText\s*\(", stmt):
+                r.violations.append(f"{f.rel}:{ln}: panel heading drawn with drawText, not the shared heading helper")
+                continue
+            call = re.match(r"\s*(?:\w+(?:::|\.))*(\w+)\s*\(", stmt)
+            if not call or call.group(1) in ("return", "if", "static_assert", "assert"):
+                continue   # not a draw (a value, a comparison, a static check)
+            fb = forwarder_body(f, call.group(1))
+            if not fb:
+                r.violations.append(f"{f.rel}:{ln}: heading passed to {call.group(1)}, whose body was not found "
+                                    "(update this check)")
+            elif not VIA_HELPER.search(fb) or re.search(r"\bdrawText\s*\([^;]*\b(?:title|text)\b", fb):
+                r.violations.append(f"{f.rel}:{ln}: heading passed to {call.group(1)}, which does not draw it "
+                                    "through the shared heading helper")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # B06 / C06 NEW-18, Gen V (lane C; coordinator round 7 scope): Gen I-V Trainer share one
+    # presentation and Review overlaps nothing. Gen V's page either renders through the
+    # ClassicTrainerPage model (its measured Review slot, CG83's probe) or its own fixed-pitch rows,
+    # divider and "Game language" line all end at or above the Review button's top.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG90-gen5-trainer-review-slot",
+               "Gen V Trainer: every row and the Game language line end at or above Review, or the page uses "
+               "the ClassicTrainerPage measured slot (owner Oct 26 B06 / C06)")
+    te = body_of(g5, "drawTrainerEditor")
+    if not te:
+        missing(r, "src/UI/Gen5SharedReadOnlySurface.inc", "drawTrainerEditor")
+    elif re.search(r"ClassicTrainerPage::layout\s*\(|\bPage::layout\s*\(", te):
+        if not re.search(r"drawGlyphButton\s*\(\s*fb\s*,\s*\w+\.review\.x\s*,\s*\w+\.review\.y", te):
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Gen V Trainer uses the page model but does not "
+                                "draw Review at its review rect")
+        lang = re.search(r"drawText\s*\([^;]*\"Game language", te)
+        if lang and not re.search(r"\w+\.(?:rows|review|language)\b", te[max(0, lang.start() - 200):lang.end()]):
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: the Game language line is not placed by the "
+                                "page model")
+    else:
+        r.violations.extend(_gen5_trainer_slot(te, tvb, sources))
     res.append(r)
     return res
 
