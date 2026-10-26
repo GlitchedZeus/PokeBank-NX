@@ -11,7 +11,7 @@
 # this file adds no targets and the rest of the host suite is unchanged.
 HOST_UI_COMPILER_IS_CLANG := $(shell $(CXX) --version 2>/dev/null | grep -qi clang && echo yes)
 ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
-HOST_UI_EXCLUDED := src/main.cpp src/UI/UI.cpp src/UI/SaveSelectScreen.cpp src/UI/BackupSelectionScreen.cpp \
+HOST_UI_EXCLUDED := src/main.cpp src/UI/UI.cpp src/UI/BackupSelectionScreen.cpp \
 	src/UI/PKSEFramebuffer.cpp src/UI/PKSEFramebufferTouchTransform.cpp src/UI/SystemIcons.cpp \
 	src/Utils/FileUtilities.cpp src/Utils/Keyboard.cpp src/Utils/PhysicalMoveAudit.cpp \
 	src/Integration/Gen3/PKSMGen3Adapter.cpp
@@ -102,5 +102,22 @@ $(HOST_UI_CLASSIC_DISMISS_TEST): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI_ARC
 $(HOST_UI_CLASSIC_DISMISS_SANITIZE): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Round 7 C04 (lane P): Quick Games and Product Home Help close on an outside tap, through the
+# real SaveSelectScreen (Product Home builds on the host with no account or saves, switch.h).
+HOST_UI_QUICK_GAMES_TEST := $(HOST_BUILD)/test_ui_quick_games_host
+HOST_UI_QUICK_GAMES_SANITIZE := $(HOST_BUILD)/test_ui_quick_games_host_sanitize
+HOST_UI_QUICK_GAMES_INPUTS := tests/test_ui_quick_games_host.cpp tests/host-ui/HostUi.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_QUICK_GAMES_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_QUICK_GAMES_SANITIZE)
+host-test: $(HOST_UI_QUICK_GAMES_TEST)
+host-sanitize: $(HOST_UI_QUICK_GAMES_SANITIZE)
+$(HOST_UI_QUICK_GAMES_TEST): $(HOST_UI_QUICK_GAMES_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_quick_games_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_QUICK_GAMES_SANITIZE): $(HOST_UI_QUICK_GAMES_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_quick_games_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 
 endif
