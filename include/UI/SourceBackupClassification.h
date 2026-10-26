@@ -17,7 +17,14 @@
 //
 // An export record is found by the exact SOURCE_PATH its EDIT_MANIFEST.txt recorded (written by
 // Integration/Common/VerifiedStagedExport from the session's exact source path); identity is never
-// guessed from names or folders. The deletion unit is one whole export record, and only after an
+// guessed from names or folders.
+//
+// Round 7 (7E G1): Gen V exports are written by Integration/Gen5/Gen5WorkingCopyExport, profile
+// scoped: exports/gen5/account-<32 hex profile>/<gameId>_<timestamp>[-n]/ with EXPORT_MANIFEST.txt
+// (GAME_ID, SOURCE_PATH, TIMESTAMP, ORIGINAL_BACKUP, EDITED_SAVE), original_backup.sav or .dsv and
+// edited.sav. They are listed only for the CURRENT profile (Listing::profileIdentity): another
+// profile's account folder is never read, opened or deleted from here. ".<label>.pending"
+// reservations the writer left are not records and are never listed. The deletion unit is one whole export record, and only after an
 // explicit Y in a visible decision (HomeQuit::decide). It is refused when the target is not a direct
 // child of exports/genN, when the folder holds any file PokeBank NX did not write, or when the
 // original emulator file is missing and this is the last remaining app backup of that save.
@@ -75,6 +82,7 @@ struct Entry {
     std::string gameId;
     bool exists = false;
     std::string physicalStamp{};
+    bool profileScoped = false;   // a Gen V account-<profile> record (EXPORT_MANIFEST.txt)
 };
 
 struct Listing {
@@ -84,6 +92,7 @@ struct Listing {
     bool sourceExists = false;
     std::vector<Entry> entries; // [0] is the original source, then records newest first, then staged
     bool recoveryReadOnly=false; // history found without a current exact-source/profile assignment
+    std::string profileIdentity; // 32 hex; empty = no Gen V profile records listed
 };
 
 enum class Refusal : unsigned char {
@@ -166,6 +175,26 @@ inline Manifest readManifest(const std::string& path) {
     return m;
 }
 inline constexpr const char* kManifestName = "EDIT_MANIFEST.txt";
+// Gen5WorkingCopyExport's record manifest (same keys for the fields read here).
+inline constexpr const char* kGen5ManifestName = "EXPORT_MANIFEST.txt";
+// The profile component Gen5WorkingCopyExport writes: exactly 32 lowercase hex digits
+// (Gen5WorkingCopyExport validProfile; all zero is the offline "Pokemon Saves" profile).
+inline bool validProfile(std::string_view profile) {
+    if (profile.size() != 32) return false;
+    for (const char c : profile)
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
+    return true;
+}
+// exports/gen5/account-<profile>, or "" for an invalid profile.
+inline std::string gen5AccountDir(const std::string& exportsRoot, const std::string& profile) {
+    return exportsRoot.empty() || !validProfile(profile) ? std::string{}
+                                                         : exportsRoot + "/gen5/account-" + profile;
+}
+// A published Gen V record name (never a ".<label>.pending" reservation).
+inline bool gen5RecordName(std::string_view name) { return plainName(name) && name.front() != '.'; }
+inline std::string manifestNameFor(bool profileScoped) {
+    return profileScoped ? kGen5ManifestName : kManifestName;
+}
 inline constexpr const char* kBackupManifestName = "BACKUP_MANIFEST.txt";
 
 struct BackupManifest {
@@ -244,17 +273,19 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
 } // namespace detail
 
 // Every export record whose manifest names exactly `sourcePath`, newest first, plus the immutable
-// source row and the informational staged-edits row.
+// source row and the informational staged-edits row. With a valid `profileIdentity`, that profile's
+// Gen V records (exports/gen5/account-<profile>/) are listed too; no other profile's.
 [[nodiscard]] inline Listing list(const std::string& exportsRoot, const std::string& sourcePath,
-                                  const std::string& manualRoot = {}) {
+                                  const std::string& manualRoot = {}, const std::string& profileIdentity = {}) {
     Listing out;
     out.exportsRoot = exportsRoot;
     out.manualRoot = manualRoot;
     out.sourcePath = sourcePath;
+    out.profileIdentity = detail::validProfile(profileIdentity) ? profileIdentity : std::string{};
     out.sourceExists = !sourcePath.empty() && detail::isFile(sourcePath);
     out.entries.push_back({Kind::OriginalSource, sourcePath, {}, {}, {}, out.sourceExists});
 
-    struct Record { detail::Manifest m; std::string dir; };
+    struct Record { detail::Manifest m; std::string dir; bool profileScoped = false; };
     std::vector<Record> records;
     if (!sourcePath.empty()) {
         for (int gen = detail::kFirstGen; gen <= detail::kLastGen; ++gen) {
@@ -266,6 +297,16 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
                 if (m.ok && m.sourcePath == sourcePath) records.push_back({std::move(m), dir});
             }
         }
+        // Gen V: this profile's account folder only.
+        const std::string account = detail::gen5AccountDir(exportsRoot, out.profileIdentity);
+        if (!account.empty() && detail::isDir(account))
+            for (const std::string& name : detail::children(account)) {
+                const std::string dir = account + "/" + name;
+                if (!detail::gen5RecordName(name) || !detail::isDir(dir)) continue;
+                detail::Manifest m = detail::readManifest(dir + "/" + detail::kGen5ManifestName);
+                if (m.ok && !m.gameId.empty() && m.sourcePath == sourcePath)
+                    records.push_back({std::move(m), dir, true});
+            }
     }
     std::stable_sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
         return a.m.timestamp != b.m.timestamp ? a.m.timestamp > b.m.timestamp : a.dir < b.dir;
@@ -298,9 +339,9 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
         const std::string backup = r.dir + "/" + r.m.originalBackup;
         const std::string edited = r.dir + "/" + r.m.editedSave;
         out.entries.push_back({Kind::AppBackup, backup, r.dir, r.m.timestamp, r.m.gameId,
-                               detail::isFile(backup)});
+                               detail::isFile(backup), {}, r.profileScoped});
         out.entries.push_back({Kind::ExportedCopy, edited, r.dir, r.m.timestamp, r.m.gameId,
-                               detail::isFile(edited)});
+                               detail::isFile(edited), {}, r.profileScoped});
     }
     // Manual backups and export records share one chronological history.
     std::stable_sort(out.entries.begin() + 1, out.entries.end(), [](const Entry& a, const Entry& b) {
@@ -362,10 +403,17 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
             if (name != detail::kBackupManifestName && name != m.backupFile) return Refusal::UnexpectedFiles;
         return lastCopyGuard(dir);
     }
-    // The record must be exactly <exportsRoot>/genN/<plain name>; never anything else.
+    // The record must be exactly <exportsRoot>/genN/<plain name>, or for a Gen V record exactly
+    // <exportsRoot>/gen5/account-<this listing's profile>/<record>; never anything else.
     const std::string& dir = e.recordDir;
     bool underGen = false;
-    for (int gen = detail::kFirstGen; gen <= detail::kLastGen && !underGen; ++gen) {
+    if (e.profileScoped) {
+        const std::string account = detail::gen5AccountDir(listing.exportsRoot, listing.profileIdentity);
+        const std::string prefix = account + "/";
+        underGen = !account.empty() && dir.size() > prefix.size() && dir.compare(0, prefix.size(), prefix) == 0 &&
+                   detail::gen5RecordName(std::string_view(dir).substr(prefix.size()));
+    }
+    for (int gen = detail::kFirstGen; gen <= detail::kLastGen && !underGen && !e.profileScoped; ++gen) {
         const std::string prefix = listing.exportsRoot + "/gen" + std::to_string(gen) + "/";
         underGen = listing.exportsRoot.size() > 0 && dir.size() > prefix.size() &&
                    dir.compare(0, prefix.size(), prefix) == 0 &&
@@ -375,10 +423,11 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
     if (listing.sourcePath.compare(0, dir.size() + 1, dir + "/") == 0) return Refusal::NotAnExportRecord;
     if (!detail::isDir(dir)) return Refusal::Missing;
     if(!safeChildren(dir))return Refusal::UnexpectedFiles;
-    const detail::Manifest m = detail::readManifest(dir + "/" + detail::kManifestName);
+    const std::string manifestName = detail::manifestNameFor(e.profileScoped);
+    const detail::Manifest m = detail::readManifest(dir + "/" + manifestName);
     if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;
     for (const std::string& name : detail::children(dir))
-        if (name != detail::kManifestName && name != m.originalBackup && name != m.editedSave)
+        if (name != manifestName && name != m.originalBackup && name != m.editedSave)
             return Refusal::UnexpectedFiles;
     return lastCopyGuard(dir);
 }
@@ -397,12 +446,13 @@ inline constexpr int kFirstGen = 1, kLastGen = 5;
         ::rmdir(dir.c_str());
         return detail::isDir(dir) ? Refusal::UnexpectedFiles : Refusal::None;
     }
-    const detail::Manifest m = detail::readManifest(dir + "/" + detail::kManifestName);
+    const std::string manifestName = detail::manifestNameFor(listing.entries[index].profileScoped);
+    const detail::Manifest m = detail::readManifest(dir + "/" + manifestName);
     for (const std::string& name : {m.originalBackup, m.editedSave}) {
         const std::string path = dir + "/" + name;
         if (detail::isFile(path)) ::unlink(path.c_str());
     }
-    ::unlink((dir + "/" + detail::kManifestName).c_str());
+    ::unlink((dir + "/" + manifestName).c_str());
     ::rmdir(dir.c_str());
     return detail::isDir(dir) ? Refusal::UnexpectedFiles : Refusal::None;
 }

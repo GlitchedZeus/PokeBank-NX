@@ -293,6 +293,14 @@ void drawFullscreenGen2Passive(TrainerViewScreen& screen, PKSEFramebuffer& fb,
 } // namespace
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    // Round 7 (B08 (1), owner Round 6 "invisible screen"): a Review opened from the Create / Edit
+    // workspace (+) owns input (handleUnifiedGen2SurfaceInput), so it must also own the frame. The
+    // parity base and the full-screen repaint below both paint the workspace whenever a draft is
+    // open, which hid the Review: the device showed the Create page that ignored every key but B.
+    if (gen2WorkspaceReviewOpen(screen)) {
+        drawSharedReviewSurface(screen, fb);
+        return true;
+    }
     if (drawFinalGen2SurfaceBase(screen, fb)) {
         if (isGSC(screen) && stateFor(screen).mode != Mode::None) {
             // Repaint after the accepted route so the editor itself owns the full page;
