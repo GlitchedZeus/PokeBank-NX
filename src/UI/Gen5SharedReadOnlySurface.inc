@@ -441,7 +441,8 @@ struct Gen5Editor {
                 // The existing guarded staging path maintains encryption/checksum,
                 // Review/Discard and source-save immutability. The changed value is the
                 // feedback: no status toast (owner Oct 25 7C, matching Gen III Language).
-                stage(screen, Field::Language, 0, PokeBank::UIModel::Gen5LanguageCycle::next(p.language()));
+                const uint8_t nextLanguage = PokeBank::UIModel::Gen5LanguageCycle::next(p.language());
+                stage(screen, Field::Language, 0, nextLanguage);
                 return true;
             }
             case Friendship: {
