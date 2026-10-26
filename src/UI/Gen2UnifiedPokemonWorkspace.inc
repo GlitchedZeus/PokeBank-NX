@@ -938,9 +938,7 @@ void drawGen2CalculatedColumn(PKSEFramebuffer& fb, const std::array<uint16_t, 6>
 void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified,
                        int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, Unified::statsHeading(),
-        !passive && unified.focus.panel == Unified::Panel::Values ? Colors::Accent : Colors::Text,
-        TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, Unified::statsHeading());   // Round 7 P2
     fb.drawText(x + 114, y + 42, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 184, y + 42, "Stat Exp", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 292, y + 42, "Calculated", Colors::TextDim, TextStyle::Caption);
@@ -1123,7 +1121,7 @@ std::array<UI::SharedMovesPanel::Slot, 4> gen2MoveSlots(const TrainerViewScreen&
 }
 
 // The ONE shared Moves panel (UI/SharedMovesPanel.h via UI/Gen2MovesPanel.h), same rows as
-// Gen III-V. Origin & Legality is a row of the GEN II DATA pane below it.
+// Gen III-V. Origin & Legality is the data pane below it.
 void drawGen2SharedMoveRows(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                             const UnifiedWorkspaceState& unified, int x, int y, int w, bool passive) {
     const auto visibleMoveFocus = Unified::normalizeMoveRowFocus(

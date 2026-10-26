@@ -1,4 +1,5 @@
 #include "Integration/Gen4/Gen4ExportTransaction.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
 
 #include "Integration/Common/NativePlayTime.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
@@ -189,13 +190,16 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
             rows.push_back({location+" / "+field,value});
         };
         const Pokemon::Pokemon4ReadOnlyView bv(b);
+        // The shared Create Review shape (Gen12CreateReview.h, as Gen I / II / III / V).
+        namespace CR=PokeVault::Integration::Gen12CreateReview;
         std::string moves;
         for(const auto move:b.moves())if(move)moves+=(moves.empty()?"":", ")+std::string(Names::getMoveName(move));
-        detail("Moves",moves.empty()?"(none)":moves);
+        if(!moves.empty())detail("Moves",moves);
+        const auto ot=Utils::utf16ToUtf8(b.originalTrainerName());
+        detail("OT / TID / SID",(ot.empty()?std::string("(none)"):ot)+" / "+std::to_string(b.tid())+" / "+
+               std::to_string(b.sid()));
         if(b.heldItem())detail("Held Item",Names::getItemName(b.heldItem()));
         detail("Ball",Enums::getBallName(bv.ball()));
-        detail("Original Trainer",Utils::utf16ToUtf8(b.originalTrainerName())+" / TID "+std::to_string(b.tid())+
-               " / SID "+std::to_string(b.sid()));
         detail("Met",Names::getMetLocationDisplayName(b.originVersion(),bv.metLocation())+", Lv "+
                std::to_string(b.metLevel()));
         detail("Nature",Names::getNatureName(bv.nature()));
@@ -203,14 +207,9 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
         if(bv.isShiny(b.id32(),{}))detail("Shiny","Yes");
         detail("Ability",Names::getAbilityName(b.ability()));
         detail("Language",Enums::getLanguageName(b.language()));
-        const auto statLine=[](const auto& values) {
-            std::string line;
-            bool any=false;
-            for(const auto v:values) { line+=(line.empty()?"":"/")+std::to_string(v); any=any||v; }
-            return any?line:std::string();
-        };
-        if(const auto ivs=statLine(b.ivs());!ivs.empty())detail("IVs (HP/Atk/Def/Spe/SpA/SpD)",ivs);
-        if(const auto evs=statLine(b.evs());!evs.empty())detail("EVs (HP/Atk/Def/Spe/SpA/SpD)",evs);
+        constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
+        if(const auto ivs=CR::nonZero(statLabels,b.ivs());!ivs.empty())detail("IVs",ivs);
+        if(const auto evs=CR::nonZero(statLabels,b.evs());!evs.empty())detail("EVs",evs);
         if(b.pokerusState())detail("Pokerus",std::string((b.pokerusState()&15)?"Infected":"Cured")+
                                    " ("+std::to_string(b.pokerusState())+")");
         if(b.friendship()!=70)detail("Friendship",std::to_string(b.friendship()));

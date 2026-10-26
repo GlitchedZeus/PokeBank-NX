@@ -81,11 +81,13 @@ int main() {
     const auto yellow = Classic::contextLine("Box 1 / Slot 1", "yellow_gb", Classic::SurfaceMode::ViewReadOnly);
     assert(yellow.find("Box 1 / Slot 1 • Yellow • Source save immutable • READ ONLY") != std::string::npos);
 
-    // Generation labels stay exact on the two classic presentation families.
-    assert(gen1Fix.find("\"GEN I DATA\"") != std::string::npos);
-    assert(gen1Passive.find("\"GEN I DATA\"") != std::string::npos);
-    assert(gen2Data.find("\"GEN II DATA\"") != std::string::npos);
-    assert(gen2Data.find("\"GEN I DATA\"") == std::string::npos);
+    // Round 7 (owner E03 wording): both classic presentation families title their provenance pane
+    // with the one shared "Origin & Legality" heading, and neither names another generation.
+    for (const auto* source : {&gen1Fix, &gen1Passive, &gen2Data}) {
+        assert(source->find("SharedEditorPresentation::kOriginLegalityHeading") != std::string::npos);
+        assert(source->find("\"GEN I DATA\"") == std::string::npos);
+        assert(source->find("\"GEN II DATA\"") == std::string::npos);
+    }
 
     // Nature remains absent from Gen I/II; the shared convention only begins with Gen III.
     assert(!Classic::generationHasNature(1));

@@ -324,20 +324,22 @@ void runGame(SourceGame game, Family family) {
             const auto& rows = identity->pendingChanges();
             const auto row = [&](const std::string& name) -> const StagedPokemonChange* {
                 for (const auto& r : rows)
-                    if (r.label == "Box 1 / Slot 2 " + name) return &r;
+                    if (r.label == "Box 1 / Slot 2 / " + name) return &r;
                 return nullptr;
             };
-            assert(row("Add Pokemon") && !row("Add Pokemon")->createdDetail &&
-                   row("Add Pokemon")->afterValue == "DRAFT Lv 50");
-            for (const char* name : {"Moves", "Ball", "OT", "Met", "Nature", "Gender", "Ability", "Language"})
+            // The shared Gen I-V Create Review shape (Gen12CreateReview.h).
+            assert(row("Add Pok\xC3\xA9mon") && !row("Add Pok\xC3\xA9mon")->createdDetail &&
+                   row("Add Pok\xC3\xA9mon")->beforeValue == "Empty" &&
+                   row("Add Pok\xC3\xA9mon")->afterValue == "Pikachu Lv 50");
+            for (const char* name : {"Nickname", "Ball", "OT / TID / SID", "Met", "Nature", "Gender", "Ability",
+                                     "Language"})
                 assert(row(name) && row(name)->createdDetail && row(name)->beforeValue.empty() &&
                        !row(name)->afterValue.empty());
             assert(row("Ball")->afterValue == Enums::getBallName(4));
-            assert(row("OT")->afterValue == "BLUE / TID 0 / SID " + std::to_string(added->sid));
-            assert(row("Moves")->afterValue == "(none)");
-            // Create defaults add no noise.
-            for (const char* name : {"Held Item", "Shiny", "Pokérus", "Friendship",
-                                     "IVs (HP/Atk/Def/Spe/SpA/SpD)", "EVs (HP/Atk/Def/Spe/SpA/SpD)"})
+            assert(row("Nickname")->afterValue == "DRAFT");
+            assert(row("OT / TID / SID")->afterValue == "BLUE / 0 / " + std::to_string(added->sid));
+            // Empty rows and Create defaults add no noise (this draft has no moves).
+            for (const char* name : {"Moves", "Held Item", "Shiny", "Pokérus", "Friendship", "IVs", "EVs"})
                 assert(!row(name) || (std::string(name) == "Shiny" && added->shiny));
         }
         identity->discard(); assert(identity->stagedBytes() == immutableSource);
@@ -352,13 +354,13 @@ void runGame(SourceGame game, Family family) {
             assert(identity->stageAddBoxPokemon(0, 1, full, error));
             std::vector<std::string> details;
             for (const auto& r : identity->pendingChanges())
-                if (r.createdDetail) details.push_back(r.label.substr(std::string("Box 1 / Slot 2 ").size()) + "=" + r.afterValue);
+                if (r.createdDetail) details.push_back(r.label.substr(std::string("Box 1 / Slot 2 / ").size()) + "=" + r.afterValue);
             const auto has = [&](const std::string& entry) {
                 return std::find(details.begin(), details.end(), entry) != details.end();
             };
             assert(has("Moves=" + std::string(Names::getMoveName(85)) + ", " + Names::getMoveName(98)));
             assert(has("Held Item=" + std::string(Names::getItemNameG3(13))));
-            assert(has("IVs (HP/Atk/Def/Spe/SpA/SpD)=31/0/0/0/0/1"));
+            assert(has("IVs=HP 31, SpD 1"));
             assert(has("Pokérus=Infected (33)") && has("Friendship=255"));
             identity->discard(); assert(identity->stagedBytes() == immutableSource);
         }
