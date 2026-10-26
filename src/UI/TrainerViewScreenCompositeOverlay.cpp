@@ -298,10 +298,14 @@ void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         occupied = static_cast<bool>(screen.trainer.boxes[static_cast<std::size_t>(screen.selectedBoxIndex)]
                                                 [static_cast<std::size_t>(screen.selectedItemIndex)]);
     }
+    // Round 7 (ReviewEntry.h): + is the Gen I-IV Boxes Review key (openClassicBrowseReview), so this
+    // footer names it too, in ClassicBrowseFooter's place (after L/R, before B).
+    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(PokeBank::UIModel::ReviewEntry::Screen::Boxes, 2)
+                      .glyph[0] == '+');
     if (occupied)
-        drawNavBar(fb, {{"A", "Actions"}, {"L/R", "Box"}, {"B", "Back"}});
+        drawNavBar(fb, {{"A", "Actions"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
     else
-        drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"B", "Back"}});
+        drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
 }
 
 constexpr int kPartyTouchBase = 6200;

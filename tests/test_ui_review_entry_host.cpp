@@ -290,6 +290,33 @@ void gen1InvalidInventoryBag() {
     }
 }
 
+// ---- Gen II Silver / Crystal Boxes (QA CG81): the composite-overlay Boxes footer and whatever is
+// painted over it leave "+ Review" visible on an occupied and an empty slot, and + opens Review. ----
+void gen2BoxesFooter() {
+    using Kind = PokeVault::Safety::SourceKind;
+    for (const bool crystal : {false, true}) {
+        const std::string game = crystal ? "crystal_gbc" : "silver_gbc";
+        auto* opened = openClassic(fixture(crystal ? C : GS, true), game, Kind::RetroArchLegacy, "RetroArch");
+        if (!opened) continue;
+        Driver d{*opened->screen, {}, {}};
+        d.frame();
+        for (const int slot : {0, 1}) {   // slot 0 holds the fixture's boxed Pikachu; slot 1 is empty
+            const std::string what = "Gen 2 " + game + " Boxes slot " + std::to_string(slot);
+            d.screen.detailViewActive = true;
+            d.screen.selectedMode = View::Boxes;
+            d.screen.selectedBoxIndex = 0;
+            d.screen.selectedItemIndex = slot;
+            d.frame();
+            d.frame();
+            check(footerReviewGlyph() == "", what + ": the drawn footer shows + Review (\"" + footerReviewGlyph() + "\")");
+            d.press(HidNpadButton_Plus);
+            check(reviewShown(), what + ": + opens Review");
+            d.press(HidNpadButton_B);
+            check(!reviewShown() && d.screen.selectedItemIndex == slot, what + ": B returns to the same slot");
+        }
+    }
+}
+
 // ---- Gen V: a Black save with one party Pikachu (the L06 harness fixture shape). ----
 std::vector<uint8_t> gen5Fixture() {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
@@ -648,6 +675,7 @@ int main() {
     using Kind = PokeVault::Safety::SourceKind;
     classicGeneration(1, qasynth::gen1::save(), "red_gb", Kind::RetroArchLegacy, "RetroArch", 1);
     gen1InvalidInventoryBag();
+    gen2BoxesFooter();
     classicGeneration(2, fixture(GS), "gold_gbc", Kind::RetroArchLegacy, "RetroArch", 1);
     gen3Screens();
     gen3Workspaces();
