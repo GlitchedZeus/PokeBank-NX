@@ -15,6 +15,7 @@ namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 
 struct UnifiedWorkspaceState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Mode lastMode = Mode::None;
     Unified::Focus focus{};
@@ -44,9 +45,9 @@ struct UnifiedWorkspaceState {
 UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
     static UnifiedWorkspaceState state;
     const auto mode = stateFor(screen).mode;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
         state.lastMode = mode;
     } else if (state.lastMode != mode) {
@@ -869,7 +870,10 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         !passive && unified.focus.panel == Unified::Panel::Details ? Colors::Accent : Colors::Text,
         TextStyle::Caption);
     const auto& p = state.working;
-    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny, p.form);
+    // The portrait letter is computed from the current DVs on every frame (never a cached form).
+    SharedPokemonShell::drawPortrait(fb, x, y, p.species, p.shiny,
+        p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(
+                               {p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]})) : uint8_t{0});
     if (const auto* personal = Gen2::personalRecord(p.species)) {
         int badgeX = x + 18;
         sharedBadge(fb, badgeX, y + 184, sharedTypeName(personal->rawType1));

@@ -6,6 +6,22 @@
 
 Last updated: 2026-10-26 UTC, by Claude (Lane P, Round 6).
 
+## Round 6 Lane R — P6 Gen II Unown, P4/E05 glyph/Help/footer sweep
+
+- Base: #307 `ac68ba1a` merged forward (fast-forward). Not pushed to #307; coordinator integrates.
+- P6 `8613b13d` (devkitA64 native-pr-build run 40244148499 SUCCESS):
+  `include/UI/Gen2UnownLetter.h` derives the shiny letters (I and V) from CheckShininess +
+  GetUnownLetter over all 65536 DV sets; letter selector = Values row 6 "Letter" for Unown
+  (keyboard A-Z), keeps shiny or refuses with an explanation; Unown shiny toggle keeps the letter;
+  in-UI note; Review "Unown Letter" line. Test `test_gen2_unown_letter_selector`.
+- E05 part 1 `e0576799`: Game Browser Help rows all start with keys (badges render), one Review
+  route per page, exit-menu and close rows tied to handlers; `tests/test_footer_help_handlers.py`
+  (qa-tools-test) maps 402 footer/Help keys to their screens' input code, with mutations.
+- E05 footer model `26be3f8b`: `include/UI/ClassicBrowseFooter.h`, Gen I-IV browse footer in Gen V
+  order (D-pad, A, L/R, ZL/ZR, [Review], B, -). Review slot defaults off; Lane L turns it on there.
+- Gates: GCC host-test 199 PASS, GCC ASan 199 PASS, Python contracts PASS, cross-gen 0 failing.
+- NOT DEVICE TESTED. Remaining E05 sweep items need hardware screenshots to locate overlaps.
+
 ## Round 6: active (started Oct 25 2026, coordinator session_01AnyHUH96AxxgM3qguezsET)
 
 **Owner Round 5 results on `1ca2faec`:** 31 PASS / 8 FAIL / 3 NOT TESTED. Full record and work list: `docs/hardware/ROUND5_RESULTS_1ca2faec.md`.

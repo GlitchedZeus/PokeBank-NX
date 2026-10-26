@@ -36,17 +36,15 @@ XFAIL: dict[str, str] = {
     # CG18b on 11940524, CG19 on 8a84128e, CG20c/CG22/CG23 on lane P 8d533b52: ENFORCED.
     # Round 4: CG39 (P 05d1d79), CG57 / CG58 (coordinator c59ac178) on #307 3d72654f: ENFORCED.
     # Round 5: CG62 / CG63 (P 1821c921) and CG65-CG67 (C 4e1532d3) on #307 fc78fef9, CG61 (L 1eec6f18), CG68 (C 9f034431): ENFORCED.
+    # Round 6: CG76 (R 8613b13d) on #307 c3d64423: ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
-    # coordinator's round 6 assignment. CG70 / CG75 / CG78 XPASSed on lane P (round 6): ENFORCED.
-    "CG69-pokerus-editable-gen3-gen5": "lane S (round 6 P1: L06)",
+    # coordinator's round 6 assignment. CG69 / CG70 (S), CG76 / CG77 (R) and CG75 / CG78 (P, round 6): ENFORCED.
     "CG71-gen3-held-item-vs-caught-ball": "lane S (round 6: Gen III held-item policy)",
     "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
     "CG73-review-entry-visible-gen1-5": "lane L (round 6 P3: B08 / P1-RETURN)",
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
-    "CG76-gen2-unown-letter-from-dvs": "lane R (round 6 P6: R2-REROLL)",
-    "CG77-footer-help-controls-have-handlers": "lane R (round 6 P4 / E05)",
     "CG79-no-gen5-language-toast": "lane S (round 6 7C)",
 }
 
@@ -2184,17 +2182,35 @@ def contracts(sources: list[Source]) -> list[Result]:
                "The Gen I-IV Trainer card shows native Play Time and Pokedex seen/caught, like Gen V "
                "(owner round 3 NEW-18)")
     g5t = [b for _, b in bodies_ln("src/UI/Gen5SharedReadOnlySurface.inc", "drawTrainerEditor")]
-    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawTrainerView"),):
+    # Round 6 P2 (lane C): the classic card is drawClassicTrainerView, painting the rows of
+    # include/UI/ClassicTrainerPage.h (Gen V design); drawTrainerView only routes Gen I-IV to it.
+    # The guard follows the renderer: the classic body must paint the Play Time and Pokedex fields
+    # with the native readers, and the model must label and always place both rows.
+    page_h = next((x for x in sources if x.rel == "include/UI/ClassicTrainerPage.h"), None)
+    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawClassicTrainerView"),):
         bs = bodies_ln(rel, fn)
         if not bs:
             r.violations.append(f"{rel}: {fn}() missing")
         for ln, b in bs:
             lits = [l for l in re.findall(r'"([^"]*)"', b)]
-            if not any(re.search(r"(?i)play\s*time", l) for l in lits):
+            model = page_h.code if page_h else ""
+            model_lits = re.findall(r'"([^"]*)"', model)
+            play = (any(re.search(r"(?i)play\s*time", l) for l in lits) or
+                    ("Field::PlayTime" in b and "nativePlayTime" in b and
+                     any(re.search(r"(?i)^play\s*time$", l) for l in model_lits) and
+                     re.search(r"if \(!in\.playTimeEditable\) out\.push_back\(\{Field::PlayTime, false", model)))
+            if not play:
                 r.violations.append(f"{rel}:{ln}: {fn}() shows no Play Time row")
-            if not (any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
-                    re.search(r"\bdexProgress\s*\(|\bseen\b", b)):
+            dex = ((any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
+                    re.search(r"\bpokedexProgress\s*\(", b)) and
+                   ("Field::Pokedex" not in b or
+                    (any(re.search(r"(?i)^pok[eé]dex$", l) for l in model_lits) and
+                     "out.push_back({Field::Pokedex, false, -1});" in model)))
+            if not dex:
                 r.violations.append(f"{rel}:{ln}: {fn}() shows no Pokedex seen / caught row")
+    view = bodies_ln("src/UI/TrainerViewScreenBase.inc", "drawTrainerView")
+    if not view or not all("drawClassicTrainerView(screen, fb, x, y, w, h, generation);" in b for _, b in view):
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: drawTrainerView() does not route Gen I-IV to drawClassicTrainerView")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
@@ -2850,13 +2866,26 @@ def round6_contracts(sources):
     r = Result("CG76-gen2-unown-letter-from-dvs",
                "Gen II Unown: every portrait derives the letter from the current DVs, and Shiny says when it changes "
                "the letter (owner Oct 25 R2-REROLL)")
+    # Lane R (8613b13d) keeps the draft letter in working.form and recomputes it from the DVs wherever the
+    # draft DVs change; portraits may read that form. So: every Gen II UI function that writes the draft's
+    # DVs must also set its form from unownLetter in the same function (no stale cached letter).
+    for f in sources:
+        if not re.search(r"^(?:src/UI/Gen2\w*\.inc|include/UI/Gen2\w*\.h)$", f.rel):
+            continue
+        for name, ln, body in function_definitions(f.code):
+            if not re.search(r"\b(?:p|working|draft)\s*\.\s*dvs\s*\[[^\]]*\]\s*=[^=]", body):
+                continue
+            if not re.search(r"\.\s*form\s*=[^=][^;]*unownLetter\s*\(", body):
+                r.violations.append(f"{f.rel}:{ln}: {name}() changes the draft DVs without recomputing the Unown "
+                                    "letter from them (stale letter / sprite)")
     for f in sources:
         if not re.search(r"src/UI/Gen2\w*\.inc$", f.rel):
             continue
         for m in re.finditer(r"\bdrawPortrait\s*\(([^;]*)\)\s*;", f.code):
-            if re.search(r"\b\w+\s*(?:\.|->)\s*form\b(?!\s*\()", m.group(1)) and "unownLetter" not in m.group(1):
-                r.violations.append(f"{f.rel}:{ln_at(f, m.start())}: Gen II portrait uses the cached form, not the "
-                                    "DV-derived Unown letter")
+            arg = m.group(1)
+            if re.search(r"\b\w+\s*->\s*form\b(?!\s*\()", arg) and "unownLetter" not in arg:
+                r.violations.append(f"{f.rel}:{ln_at(f, m.start())}: Gen II portrait uses a record's stored form "
+                                    "field directly, not the DV-derived letter")
     fnd = src("src/UI/Gen2PokemonEditorFoundation.inc")
     ts = body_of(fnd, "toggleShiny")
     if not ts:

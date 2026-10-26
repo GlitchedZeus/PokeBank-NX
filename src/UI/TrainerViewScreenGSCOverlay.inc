@@ -64,6 +64,7 @@ struct Gen2EditorOverlayGeometry {
 
 struct Gen2EditorOverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool active = false;
     bool review = false;
     bool pokemonActions = false;
@@ -80,9 +81,9 @@ struct Gen2EditorOverlayState {
 
 Gen2EditorOverlayState& editorOverlayState(const TrainerViewScreen& screen) {
     static Gen2EditorOverlayState state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -414,7 +415,7 @@ void handlePokemonFieldInput(TrainerViewScreen& screen, u64 down) {
 void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     auto& state = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
-    if (!editor) { state = {}; state.owner = &screen; return; }
+    if (!editor) { state = {}; state.owner = &screen; state.ownerSerial = screen.instanceSerial; return; }
     std::string error;
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(state.pokemonBox),
                                               static_cast<std::size_t>(state.pokemonSlot), error);

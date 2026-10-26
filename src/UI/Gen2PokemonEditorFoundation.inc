@@ -58,6 +58,7 @@ using Mode = Rules::SessionMode;
 
 struct State : Rules::Session {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool itemPicker = false;
     int box = 0;
     int slot = 0;
@@ -83,9 +84,9 @@ struct State : Rules::Session {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }

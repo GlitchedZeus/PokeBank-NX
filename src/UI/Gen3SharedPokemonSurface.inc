@@ -94,6 +94,7 @@ enum class PickerTarget : uint8_t {
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool passive = false;
     int detailsFocus = 0;
     TouchScrollState detailsTouchScroll;
@@ -146,9 +147,9 @@ struct State {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -1141,13 +1142,12 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     // Do not retarget on contact: the same finger may scroll the picker.
     // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
-    // CG70: a completed tap on any published row (a partly visible edge row included) is a
-    // visible choice and commits; the reveal-first A gate below is for a controller focus only.
-    bool rowTapped = false;
+    bool tappedChoice = false;
+    // The Held Item grid resolves its own taps (SharedHeldItemInput::update below).
     if (!gridPicker && !pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
-        rowTapped = true;
         down |= HidNpadButton_A;
+        tappedChoice = true;
     }
     if (count <= 0) {
         state.valuePicker = false;
@@ -1222,13 +1222,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (down & HidNpadButton_A) {
         // The finger can browse far away from the highlighted controller choice. A must never
         // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
-        if (!rowTapped && !state.pickerViewport.containsSelection(
+        // L06 (Round 6): a completed tap on a partly visible cell (the clipped row a finger
+        // scroll leaves at the grid's edge) is revealed AND chosen, exactly like A on a visible
+        // cell. Only a controller A on a choice scrolled out of sight stops to reveal it.
+        if (!tappedChoice && !state.pickerViewport.containsSelection(
                 state.pickerRow, count, visibleRows, columns)) {
             state.pickerScroll.stop();
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
             screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
             return true;
         }
+        if (tappedChoice) state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         state.pickerScroll.stop();
         applyValuePicker(state);
         return true;
@@ -1484,6 +1488,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
             if (!(passiveView || detailEditable(state, row))) return false;
             state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
             state.detailsFocus = row;
+            // CG69 (Round 6 L06): reveal the tapped row first, as the Gen IV / V
+            // Workspace::focusCompletedTap does, so a FIRST tap on the partly visible row
+            // (Pokérus, row 14 of 16 with 8 visible) passes the A gate and acts like A.
+            state.detailsTouchScroll.stop();
+            state.detailsViewport.reveal(row, static_cast<int>(detailLabels.size()), visibleDetailRows);
             return true;
         }
         if (id >= 31100 && id < 31106) {
@@ -1781,7 +1790,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
-        screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
+        screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 360);
         return true;
     }
     return true;

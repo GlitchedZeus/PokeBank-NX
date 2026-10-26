@@ -91,6 +91,7 @@ struct MenuActionSet {
 // Gen IV session state around the ONE shared editor workspace state.
 struct State : Surface::EditorState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool actions = false;
     bool review = false;
     size_t reviewPage = 0;
@@ -125,9 +126,9 @@ struct State : Surface::EditorState {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -1162,7 +1163,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
         if (auto* staged = editor(screen)) {
             staged->discard();
             if (refreshPresentation(screen))
-                screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
+                screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 300);
         }
         state.review = false;
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
