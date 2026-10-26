@@ -218,7 +218,9 @@ Base: #307 `6ec8dc53` merged forward (fast-forward). Owner results:
 | Item | Commit | State |
 | --- | --- | --- |
 | P1 B06 / C06: Gen I-IV Trainer painted by Gen V's Trainer painter (UI/SharedTrainerPanel.h); neutral values; Gen V row heights; 200 x 36 Review in a measured slot | 7eab05cf | gated green, pushed, reported |
-| P1 A22 / C01: Gen II Special like Gen I (plain STATS columns, lower-middle CALCULATED SPECIAL STATS block) | 0e58157b | host x2, sanitize x2, py, CG, native green; qa targets running |
+| P1 A22 / C01: Gen II Special like Gen I (plain STATS columns, lower-middle CALCULATED SPECIAL STATS block) | 0e58157b | gated green (with 4f549775) |
+| Merge #307 ab46883e (HostUi recorders reconciled with S's d88056c) | 67c9b0f5 | gated green (with 4f549775) |
+| Gen V Trainer on the same page model (measured Review slot, language line in the model's detail slot); CG83 / CG84 / CG90 XFAIL dropped | 4f549775 | gated green: host x2, sanitize x2, qa x2, qa-tools, py, CG 0 failing, native |
 
 Tests: test_ui_layout_host compares the visible Gen I-IV Trainer frame against Black's (HostUi now
 records text colour and rounded fills, additively) and checks the Gen II STATS capture against the
