@@ -3024,16 +3024,23 @@ def round6_contracts(sources):
     r = Result("CG77-footer-help-controls-have-handlers",
                "Help rows name their control as a glyph-able button; Game Browser / Gen I-III Boxes footers list "
                "every control their handler acts on (owner Oct 25 E05 / P4)")
-    hp = src("include/UI/ClassicHelpPresentation.h")
-    if not hp:
-        r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
-    else:
+    # Round 7 (B04): the Bag's rows moved to the shared InventoryHelp.h, checked with the same rule.
+    # An #include path is not a Help row.
+    for help_rel in ("include/UI/ClassicHelpPresentation.h", "include/UI/InventoryHelp.h"):
+        hp = src(help_rel)
+        if not hp:
+            r.violations.append(f"{help_rel}: missing")
+            continue
+        include_lines = {hp.code.count("\n", 0, m.start()) + 1
+                         for m in re.finditer(r'^\s*#\s*include\s*"', hp.code, re.M)}
         for line, lit in hp.literals:
-            if lit.startswith("Original save unchanged") or lit in ("Help",):
+            if line in include_lines:
+                continue
+            if lit.startswith("Original save unchanged") or lit in ("Help", "Inventory Controls"):
                 continue
             m = re.search(r" {2,}", lit)
             if not m or not _glyph_keys(lit[:m.start()]):
-                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: Help row {lit!r} names no glyph "
+                r.violations.append(f"{help_rel}:{line}: Help row {lit!r} names no glyph "
                                     "control before its description (drawn as plain text)")
     ss = src("src/UI/SaveSelectScreen.cpp")
     if ss:
