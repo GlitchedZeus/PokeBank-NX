@@ -51,7 +51,6 @@ XFAIL: dict[str, str] = {
     "CG81-one-review-key-per-screen": "L (round 7 B08 defect 2)",
     "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
     "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
-    "CG86-inventory-help-controls": "R (round 7 B04)",
     # CG87 (P e52b7d97) and CG88 (P e52b7d97, one early outside-tap dispatcher in SaveSelectScreen::update)
     # on #307 2de1c390, and CG85 (R 47b8097e, Gen2UnownLetter.h questions + Letter grid): ENFORCED.
     # CG80 (L 146511e2, the outer Gen II draw shows an open Review first) and CG82 (L ab46883e, this
@@ -2926,7 +2925,7 @@ def round6_contracts(sources):
     for rel, anchor_rx, what in (
             ("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp", r'add\("presence",std::string\(C::kAddPokemon\)', "Gen I"),
             ("src/Integration/Gen2/Gen2StagedEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen II"),
-            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'" Add Pokemon"', "Gen III")):
+            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen III")):
         f = src(rel)
         m = re.search(anchor_rx, f.code) if f else None
         if not m:
@@ -3041,16 +3040,23 @@ def round6_contracts(sources):
     r = Result("CG77-footer-help-controls-have-handlers",
                "Help rows name their control as a glyph-able button; Game Browser / Gen I-III Boxes footers list "
                "every control their handler acts on (owner Oct 25 E05 / P4)")
-    hp = src("include/UI/ClassicHelpPresentation.h")
-    if not hp:
-        r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
-    else:
+    # Round 7 (B04): the Bag's rows moved to the shared InventoryHelp.h, checked with the same rule.
+    # An #include path is not a Help row.
+    for help_rel in ("include/UI/ClassicHelpPresentation.h", "include/UI/InventoryHelp.h"):
+        hp = src(help_rel)
+        if not hp:
+            r.violations.append(f"{help_rel}: missing")
+            continue
+        include_lines = {hp.code.count("\n", 0, m.start()) + 1
+                         for m in re.finditer(r'^\s*#\s*include\s*"', hp.code, re.M)}
         for line, lit in hp.literals:
-            if lit.startswith("Original save unchanged") or lit in ("Help",):
+            if line in include_lines:
+                continue
+            if lit.startswith("Original save unchanged") or lit in ("Help", "Inventory Controls"):
                 continue
             m = re.search(r" {2,}", lit)
             if not m or not _glyph_keys(lit[:m.start()]):
-                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: Help row {lit!r} names no glyph "
+                r.violations.append(f"{help_rel}:{line}: Help row {lit!r} names no glyph "
                                     "control before its description (drawn as plain text)")
     ss = src("src/UI/SaveSelectScreen.cpp")
     if ss:
@@ -3620,28 +3626,30 @@ def round7_contracts(sources):
     r = Result("CG86-inventory-help-controls",
                "Inventory Help: titled \"Inventory Controls\", no \"X Add remains available\", + described as "
                "Review (owner Oct 26 B04)")
-    um = src("src/UI/ClassicInventoryUIModel.cpp")
-    hl = body_of(um, "classicInventoryHelpLines")
+    # Round 7 (lane R f5ee4266): the Gen I-V Bag shares ONE Help, include/UI/InventoryHelp.h.
+    ih = src("include/UI/InventoryHelp.h")
     ov = src("src/UI/ClassicInventoryOverlay.cpp")
-    if not hl or not ov:
-        missing(r, "src/UI/ClassicInventoryUIModel.cpp", "classicInventoryHelpLines")
+    um = src("src/UI/ClassicInventoryUIModel.cpp")
+    if not ih or not ov:
+        missing(r, "include/UI/InventoryHelp.h / src/UI/ClassicInventoryOverlay.cpp", "Inventory Help")
     else:
-        if re.search(r"Add remains available", hl):
-            r.violations.append("src/UI/ClassicInventoryUIModel.cpp: Gen I-III Inventory Help still says "
-                                "\"X Add remains available\"")
+        if not re.search(r'kTitle\s*=\s*"Inventory Controls"', ih.code):
+            r.violations.append("include/UI/InventoryHelp.h: the Bag Help is not titled \"Inventory Controls\"")
+        for f in (ih, um):
+            if f and re.search(r"Add remains available", f.code):
+                r.violations.append(f"{f.rel}: Inventory Help still says \"X Add remains available\"")
         plus_review = re.search(r"ClassicInventoryAction::Options\s*\)\s*\{[^}]*openStagedReview", ov.code)
-        for line in re.findall(r'"(\+[^"]*)"', hl):
-            if plus_review and "Review" not in line.split("-")[0]:
-                r.violations.append(f"src/UI/ClassicInventoryUIModel.cpp: Help says \"{line.split('  ')[0]} ...\" "
+        for _, line in ih.literals:
+            if line.startswith("+") and plus_review and "Review" not in line.split("     ")[0]:
+                r.violations.append(f"include/UI/InventoryHelp.h: Help says \"{line.split('  ')[0]} ...\" "
                                     "but + opens Review")
-        if re.search(r'"Inventory Help"', ov.code):
-            r.violations.append("src/UI/ClassicInventoryOverlay.cpp: Gen I-III Bag Help is titled \"Inventory Help\", "
-                                "not \"Inventory Controls\"")
+        if re.search(r'"Inventory Help"', ov.code) or not re.search(r"InvHelp::kTitle", ov.code):
+            r.violations.append("src/UI/ClassicInventoryOverlay.cpp: Gen I-III Bag Help is not titled from "
+                                "InventoryHelp::kTitle (\"Inventory Controls\")")
     if tvb:
-        for m in re.finditer(r'drawInfoOverlay\s*\(\s*fb\s*,\s*"([^"]+)"\s*,\s*Help::lines\s*\(\s*page', tvb.code):
-            if m.group(1) != "Inventory Controls":
-                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{tvb.code.count(chr(10), 0, m.start()) + 1}: "
-                                    f"Gen IV / V Bag Help is titled \"{m.group(1)}\" (every page shares one title)")
+        if not re.search(r"page\s*==\s*Help::Page::Items\s*\?\s*PokeBank::UIModel::InventoryHelp::kTitle", tvb.code):
+            r.violations.append("src/UI/TrainerViewScreenBase.inc: the Gen IV / V Bag Help is not titled "
+                                "\"Inventory Controls\" (InventoryHelp::kTitle)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------

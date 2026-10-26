@@ -143,7 +143,7 @@ void checkEditorHeadings(const std::string& where) {
     bool details = false, moves = false;
     for (const auto& t : HostUi::visibleText) {
         const bool heading = t.text == "DETAILS" || t.text == "STATS" || t.text == "MOVES" ||
-                             t.text == "Origin & Legality" || t.text == "GEN I DATA" || t.text == "GEN II DATA";
+                             t.text == "Origin & Legality";
         if (!heading) continue;
         details = details || t.text == "DETAILS";
         moves = moves || t.text == "MOVES";
@@ -154,6 +154,13 @@ void checkEditorHeadings(const std::string& where) {
               where + ": heading \"" + t.text + "\" uses the shared heading style (Caption, Accent)");
     }
     check(details && moves, where + ": DETAILS and MOVES headings are visible");
+    // Gen I-V title their provenance pane with the one shared heading (owner E03 wording).
+    bool origin = false, oldTitle = false;
+    for (const auto& t : HostUi::visibleText) {
+        origin = origin || t.text == "Origin & Legality";
+        oldTitle = oldTitle || t.text == "GEN I DATA" || t.text == "GEN II DATA";
+    }
+    check(origin && !oldTitle, where + ": the provenance pane is titled \"Origin & Legality\"");
     // Supporting field labels (unfocused DETAILS rows, STATS column labels) use the reference's dim
     // Caption label, so no generation draws larger or brighter labels than another.
     const uint32_t dim = UI::Colors::TextDim.toRGBA8();
@@ -207,6 +214,29 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
             check(!drawn, game + " / Trainer: no Gender text is drawn (the save stores none)");
         }
     }
+    screen.helpOverlayActive = false;
+
+    // Round 7 (B04): - on the Bag opens the ONE Inventory Help, titled "Inventory Controls" in every
+    // generation (Gen I-III through the inventory overlay, Gen IV / V through the Game Browser Help).
+    screen.detailViewActive = true;
+    screen.selectedMode = View::Items;
+    screen.selectedItemIndex = 0;
+    frame();
+    press(HidNpadButton_Minus);
+    {
+        const std::string where = game + " / Bag Help";
+        verifyFrame(where);
+        bool title = false, stale = false;
+        for (const auto& t : HostUi::visibleText) {
+            title = title || t.text == "Inventory Controls";
+            stale = stale || t.text == "Game Browser Controls" || t.text == "Inventory Help" ||
+                    t.text.find("Inventory Options") != std::string::npos ||
+                    t.text.find("remains available") != std::string::npos;
+        }
+        check(title, where + ": titled Inventory Controls");
+        check(!stale, where + ": no old title or stale rows");
+    }
+    press(HidNpadButton_B);
     screen.helpOverlayActive = false;
 
     // Party slot 1 through the real input: A opens the action menu, A on its first row (View), and
@@ -301,9 +331,8 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         check(row("/ OT / TID"), where + ": a named OT / TID row");
         if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (Gen I Create has level-up moves)");
     }
-    // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in that lane's
-    // row shapes (Gen III "<slot> Add Pokemon" / "<slot> Moves" / "<slot> OT" rows; Gen V one
-    // "<slot>" label per detail with "Create in Box: ...", "Move 1: ...", "Trainer ID: ..." values).
+    // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in the shared
+    // Gen I-V "<slot> / Field" row shape.
     if (reviewed && (game == "FireRed" || game == "Black")) {
         const auto has = [](const std::string& needle, bool prefix) {
             for (const auto& t : HostUi::visibleText)
@@ -314,13 +343,16 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         };
         const std::string where = game + " / Review (staged Create)";
         if (game == "FireRed") {
-            check(has(" Add Pokemon", false), where + ": the Add Pokemon header row");
-            check(has(" Moves", false), where + ": a named Moves row");
-            check(has(" OT", false), where + ": a named OT row (with TID / SID)");
+            // Round 7: Gen III uses the shared Gen I-V shape; an empty Moves row is omitted.
+            check(has("/ Add Pok\xC3\xA9mon", false), where + ": the Add Pokémon header row");
+            check(has("Empty -> ", true), where + ": the Create header value");
+            check(has("/ OT / TID / SID", false), where + ": a named OT / TID / SID row");
+            check(!has(" Add Pokemon", false), where + ": no old Gen III \"Add Pokemon\" header");
         } else {
-            check(has("Create in Box: Empty -> ", true), where + ": the Create header value");
-            check(has("Move 1: ", true), where + ": a move detail");
-            check(has("Trainer ID: ", true), where + ": a Trainer ID detail");
+            // Round 7: Gen V uses the shared Gen I-IV shape ("<loc> / Field" + value).
+            check(has("/ Add Pok\xC3\xA9mon", false), where + ": the Add Pokémon header row");
+            check(has("Empty -> ", true), where + ": the Create header value");
+            check(has("/ OT / TID / SID", false), where + ": a named OT / TID / SID row");
         }
     }
     press(HidNpadButton_B);   // close Review only (B on the hub with staged edits opens the exit menu)

@@ -394,11 +394,12 @@ void testEmptySlotCreateTransaction() {
                     if (row.first == "Box 1 / Slot 2 / " + field) return &row.second;
                 return nullptr;
             };
-            for (const char* field : {"Moves", "Ball", "Original Trainer", "Met", "Nature", "Gender",
-                                      "Ability", "Language"})
+            // The shared Create Review shape: "<loc> / Field" + value; empty and default rows omitted.
+            for (const char* field : {"OT / TID / SID", "Ball", "Met", "Nature", "Gender", "Ability", "Language"})
                 assert(value(field) && !value(field)->empty() && value(field)->find(" -> ") == std::string::npos);
-            assert(*value("Original Trainer") == "Kylie / TID 12150 / SID 22558");
-            assert(!value("Held Item") && !value("Pokerus"));
+            assert(*value("OT / TID / SID") == "Kylie / 12150 / 22558");
+            assert(!value("Held Item") && !value("Pokerus") && !value("IVs") && !value("EVs"));
+            assert(!value("Moves") || !value("Moves")->empty());
             assert(std::any_of(rows.begin(), rows.end(), [](const auto& row) {
                 return row.first == "Staged change" && row.second.find("(empty) -> ") != std::string::npos &&
                        row.second.find("#393") != std::string::npos; }));

@@ -265,7 +265,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         : p.exp();
     const uint32_t expRemaining = nextExp > p.exp() ? nextExp - p.exp() : 0;
 
-    fb.drawText(leftPaneX + 10, splitY + 8, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 8, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     const int nativeTop = splitY + 28;
     const int nativeBottom = splitY + splitH - 8;
     const int nativeViewH = nativeBottom - nativeTop;

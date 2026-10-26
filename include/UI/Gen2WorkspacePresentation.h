@@ -85,7 +85,7 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     return rows;
 }
 
-// The GEN II DATA pane text is laid out by the ONE shared data-pane layout
+// The Gen II Origin & Legality pane text is laid out by the ONE shared data-pane layout
 // (UI/SharedDataPaneLayout.h, SharedDataPane::layoutRows): "Label: value" when it fits, otherwise
 // the label then the value wrapped beneath it, "..." where the pane runs out, so caught-history
 // text never spills into the BATTLE STATS graph or past the panel.
@@ -109,7 +109,9 @@ inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
     // The shared composition draws both panes, the title and the graph; the rows are laid out
     // here so long caught-history values wrap inside the data pane instead of overflowing it.
     namespace W = PokeBank::UIModel::Gen2Workspace;
-    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", std::vector<W::DataRow>{},
+    // The pane title, as Gen III-V's adapters name it (A::kDataTitle): the shared heading.
+    constexpr const char* kDataTitle = PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading;
+    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, kDataTitle, std::vector<W::DataRow>{},
         W::battleStats(p));
     namespace Pane = PokeBank::UIModel::SharedDataPane;
     const auto lines = Pane::layoutRows(rows, Pane::kTextWidth,

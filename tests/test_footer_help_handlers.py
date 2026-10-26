@@ -196,8 +196,49 @@ def self_test() -> None:
     assert not clean, clean
 
 
+# Round 7 (B04): the ONE Inventory Help (include/UI/InventoryHelp.h, "Inventory Controls") serves the
+# Gen I-V Bag. Every key its rows name must be read by EACH generation's Bag input code.
+INVENTORY_HELP = "include/UI/InventoryHelp.h"
+BAG_HANDLERS = {
+    "Gen I-III Bag": ["src/UI/ClassicInventoryOverlay.cpp", "src/UI/ClassicInventoryUIModel.cpp"],
+    "Gen IV Bag": ["src/UI/TrainerViewScreenBase.inc", "src/UI/Gen4SharedPokemonSurface.inc"],
+    "Gen V Bag": ["src/UI/Gen5SharedReadOnlySurface.inc", "include/Integration/Gen5/Gen5BagScreen.h"],
+}
+HELP_ROW = re.compile(r'"([^"]+?)(?:\s{2,})[^"]*"')
+
+
+def help_row_keys(code: str):
+    """Yield (line, key) for every "KEYS   description" row literal (groups split by 5+ spaces)."""
+    for m in re.finditer(r'"([^"\n]*)"', code):
+        literal = m.group(1)
+        line = code.count("\n", 0, m.start()) + 1
+        for group in re.split(r" {5,}", literal):
+            km = re.match(r"(.+?) {2,}\S", group)
+            if not km:
+                continue
+            for token in km.group(1).split("/"):
+                token = token.strip()
+                if token and requirements(token) is not None:
+                    yield line, token
+
+
+def check_inventory_help(help_code: str, handlers: dict) -> tuple[int, list]:
+    violations, checked = [], 0
+    for line, key in help_row_keys(help_code):
+        for bag, code in handlers.items():
+            checked += 1
+            for alternatives in requirements(key):
+                if not any(a in code for a in alternatives):
+                    violations.append(f"{INVENTORY_HELP}:{line}: Inventory Help names {key!r} but the {bag} "
+                                      f"input never reads {alternatives[0]}")
+    return checked, violations
+
+
 def main() -> int:
     self_test()
+    # The Bag Help check must fail on a row naming a key some Bag never reads.
+    _, bad = check_inventory_help('"ZL   Jump pockets"', {"mutant Bag": "HidNpadButton_A"})
+    assert any("never reads HidNpadButton_ZL" in v for v in bad), bad
     violations = []
     checked = 0
     for screen, (footers, handlers) in SCREENS.items():
@@ -213,6 +254,16 @@ def main() -> int:
             count, found = check(rel, screen, code, own, screen_code)
             checked += count
             violations += found
+    help_path = ROOT / INVENTORY_HELP
+    if not help_path.is_file():
+        violations.append(f"{INVENTORY_HELP}: missing")
+    else:
+        handlers = {bag: "".join(source(rel) for rel in rels) for bag, rels in BAG_HANDLERS.items()}
+        count, found = check_inventory_help(source(INVENTORY_HELP), handlers)
+        if count < 24:
+            violations.append(f"{INVENTORY_HELP}: only {count} Help key checks; the row extractor is broken")
+        checked += count
+        violations += found
     for v in violations:
         print("VIOLATION", v)
     print(f"footer/Help keys checked: {checked}; violations: {len(violations)}")

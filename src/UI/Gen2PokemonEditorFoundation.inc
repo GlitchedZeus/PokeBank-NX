@@ -777,8 +777,15 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
 
     if (down & HidNpadButton_Y) {
-        randomizeDVs(state);
-        screen.postStatus("Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived", 240);
+        // Round 7 (B07): report what really happened; Unown names the kept letter / shiny state.
+        const auto before = editableDVs(state.working);
+        const bool rerolled = randomizeDVs(state);
+        if (state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies)
+            screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(
+                before, editableDVs(state.working), rerolled), 360);
+        else
+            screen.postStatus(rerolled ? "Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived"
+                                       : "No other DVs keep this Pokemon's gender and shiny state; DVs unchanged", 240);
     }
     if (down & HidNpadButton_A) activateField(screen, state);
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
@@ -918,7 +925,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     const auto battle = Gen2::calculateBattleStats(state.working.species, state.working.level,
                                                     editableDVs(state.working), state.working.statExperience).asArray();
     fb.drawFilledRect(x + 14, y + 286, w - 28, 1, Colors::Divider);
-    fb.drawText(x + 18, y + 304, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(x + 18, y + 332, "Game", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 105, y + 332,
                 screen.sourceGameId == "gold_gbc" ? "Gold" : screen.sourceGameId == "silver_gbc" ? "Silver" : "Crystal",

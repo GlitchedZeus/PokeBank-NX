@@ -141,12 +141,13 @@ int main() {
                     p.caughtData = static_cast<uint16_t>(0xFFFF & (0xFF80 | location));
                     texts.clear();
                     UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 438, 260, p, game);
+                    // Round 7 (owner E03 wording): the pane is the shared "Origin & Legality" pane.
                     const auto gen2TitleCount = std::count_if(texts.begin(), texts.end(), [](const Text& t) {
-                        return t.value == "GEN II DATA";
+                        return t.value == PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading;
                     });
                     assert(gen2TitleCount == 1);
                     assert(std::none_of(texts.begin(), texts.end(), [](const Text& t) {
-                        return t.value == "GEN I DATA";
+                        return t.value == "GEN I DATA" || t.value == "GEN II DATA";
                     }));
                     for (std::size_t i = 0; i < texts.size(); ++i) {
                         const auto& t = texts[i];
@@ -155,7 +156,7 @@ int main() {
                             assert(false);
                         }
                         for (std::size_t j=i+1;j<texts.size();++j) assert(!intersects(t,texts[j]));
-                        // Phase 9: text in the GEN II DATA pane (x 12..210) stays inside it and
+                        // Phase 9: text in the Gen II Origin & Legality pane (x 12..210) stays inside it and
                         // never reaches the BATTLE STATS pane that starts at x 220.
                         if (t.x < 12 + 198) {
                             if (t.x + t.w > 12 + 198 - 10) {

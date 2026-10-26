@@ -5,6 +5,7 @@
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Inventory/ItemQuantityPolicy.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
 #include "UI/SharedBagAddPicker.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
@@ -1885,20 +1886,39 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
         const G::Pokemon5ReadOnly before(std::span<const uint8_t>(c.before));
         const G::Pokemon5ReadOnly after(std::span<const uint8_t>(c.after));
         if(!verified->created.empty()) {
-            // CG74: a created Pokemon reads "Create in Box: Empty -> SPECIES Lv n", then one row per
-            // value of the certified staged record (any later edits are already in those values).
+            // CG74: the shared Create Review shape (Gen12CreateReview.h, as Gen I-IV): a
+            // "<loc> / Add Pokémon" header with "Empty -> SPECIES Lv n", then one "<loc> / Field" row
+            // per value of the certified staged record (later edits are already in those values).
             using F=G::StagedPokemon5Record::Field;
-            rows.push_back({location(c.location),"Create in Box: Empty -> "+
-                std::string(Names::getSpeciesName(after.species()))+" Lv "+
-                std::to_string(Fields::level(after,nativeTrainer(screen).sharedScreen().black2White2()))});
+            namespace CR=PokeVault::Integration::Gen12CreateReview;
+            const std::string loc=location(c.location);
+            rows.push_back({loc+" / "+std::string(CR::kAddPokemon),"Empty -> "+CR::header(
+                Names::getSpeciesName(after.species()),
+                Fields::level(after,nativeTrainer(screen).sharedScreen().black2White2()))});
+            std::string moves;
+            std::array<uint32_t,6> ivs{},evs{};
             for(const auto& v:verified->created) {
+                if(v.field==F::Move)moves+=(moves.empty()?"":", ")+std::string(Names::getMoveName(static_cast<uint16_t>(v.after)));
+                if(v.field==F::IV && v.stat<6)ivs[v.stat]=v.after;
+                if(v.field==F::EV && v.stat<6)evs[v.stat]=v.after;
+            }
+            if(!moves.empty())rows.push_back({loc+" / Moves",moves});
+            const auto ot=G::asciiName5(after.decodedBytes(),false);
+            rows.push_back({loc+" / OT / TID / SID",(ot && !ot->empty()?*ot:std::string("(none)"))+" / "+
+                std::to_string(after.tid())+" / "+std::to_string(after.sid())});
+            for(const auto& v:verified->created) {
+                if(v.field==F::Move || v.field==F::IV || v.field==F::EV ||
+                   v.field==F::TrainerId || v.field==F::SecretId)continue;
                 std::string value=reviewedFieldValue(v.field,v.after);
                 if(v.field==F::AbilitySlot)value=Trainer::getAbilityName(static_cast<uint16_t>(v.after));
                 if(v.field==F::MetLocation)value=Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
                 std::string name=reviewedFieldName(v);
                 if(v.field==F::AbilitySlot)name="Ability";
-                rows.push_back({location(c.location),name+": "+value});
+                rows.push_back({loc+" / "+name,value});
             }
+            constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
+            if(const auto line=CR::nonZero(statLabels,ivs);!line.empty())rows.push_back({loc+" / IVs",line});
+            if(const auto line=CR::nonZero(statLabels,evs);!line.empty())rows.push_back({loc+" / EVs",line});
             continue;
         }
         for(const auto& field:verified->fields) {
