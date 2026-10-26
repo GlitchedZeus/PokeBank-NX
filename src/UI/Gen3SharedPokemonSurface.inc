@@ -1208,15 +1208,14 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         // L06 (Round 6): a completed tap on a partly visible cell (the clipped row a finger
         // scroll leaves at the grid's edge) is revealed AND chosen, exactly like A on a visible
         // cell. Only a controller A on a choice scrolled out of sight stops to reveal it.
-        if (!state.pickerViewport.containsSelection(
+        if (!tappedChoice && !state.pickerViewport.containsSelection(
                 state.pickerRow, count, visibleRows, columns)) {
             state.pickerScroll.stop();
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
-            if (!tappedChoice) {
-                screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
-                return true;
-            }
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
         }
+        if (tappedChoice) state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         state.pickerScroll.stop();
         applyValuePicker(state);
         return true;
@@ -1468,6 +1467,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
             if (!(passiveView || detailEditable(state, row))) return false;
             state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
             state.detailsFocus = row;
+            // CG69 (Round 6 L06): reveal the tapped row first, as the Gen IV / V
+            // Workspace::focusCompletedTap does, so a FIRST tap on the partly visible row
+            // (Pokérus, row 14 of 16 with 8 visible) passes the A gate and acts like A.
+            state.detailsTouchScroll.stop();
+            state.detailsViewport.reveal(row, static_cast<int>(detailLabels.size()), visibleDetailRows);
             return true;
         }
         if (id >= 31100 && id < 31106) {

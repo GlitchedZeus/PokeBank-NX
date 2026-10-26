@@ -41,8 +41,6 @@ XFAIL: dict[str, str] = {
     # Round 5: owner Oct 24 FAIL / request gaps confirmed by their lane (via the coordinator).
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
     # coordinator's round 6 assignment.
-    "CG69-pokerus-editable-gen3-gen5": "lane S (round 6 P1: L06)",
-    "CG70-held-item-tap-commits-any-row": "lane P (round 6 P1: L06 Held Item)",
     "CG71-gen3-held-item-vs-caught-ball": "lane S (round 6: Gen III held-item policy)",
     "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
     "CG73-review-entry-visible-gen1-5": "lane L (round 6 P3: B08 / P1-RETURN)",

@@ -478,15 +478,17 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // choice can be off-screen after a finger scroll; A reveals rather than accepting it unseen.
     // L06 (Round 6): a completed tap on a partly visible choice (the clipped row a finger scroll
     // leaves at the grid's edge) is the user pointing at it, so it is revealed AND chosen, like A.
-    if (state.pickerTarget != PickerTarget::Species &&
+    if (state.pickerTarget != PickerTarget::Species && !tappedChoice &&
         !state.pickerViewport.containsSelection(
             state.pickerRow, count, visibleRows, columns)) {
         state.pickerScroll.stop();
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
-        if (!tappedChoice) {
-            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
-            return true;
-        }
+        screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+        return true;
+    }
+    if (tappedChoice) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
     }
 
     state.pickerScroll.stop();

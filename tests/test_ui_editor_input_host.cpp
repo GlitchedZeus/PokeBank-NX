@@ -335,6 +335,35 @@ void gen3Pokerus() {
 }
 
 // Gen III Create: Party has room, so an empty box slot's Add opens the editor in Create mode.
+// CG69: the owner's Gen III Edit symptom. Pokérus (row 14 of 16, 8 visible) sits partly visible
+// at the bottom of DETAILS; the FIRST tap on it must act like A (it used to only scroll and ask
+// for "press A again"). No Down press ever brings row 14 into full view here.
+void gen3PokerusFirstTapOnPartialRow() {
+    auto& g3 = openGen3(13);
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyEdit(d)) return;
+    constexpr int kBase = 31000, kPokerus = 14;
+    for (int i = 0; i < 20 && !d.target(kBase + 13); ++i) d.press(HidNpadButton_Down);
+    check(d.target(kBase + 13) != nullptr && d.target(kBase + kPokerus) == nullptr,
+          "row 13 is the last fully visible DETAILS row; Pokérus is just below");
+    // A short finger drag (past the tap slop) leaves Pokérus partly visible.
+    const auto* r = d.target(kBase + 10);
+    const u32 x = static_cast<u32>(r->x + r->w / 2), y = static_cast<u32>(r->y + r->h / 2);
+    HostUi::touch = {true, x, y};
+    d.frame();
+    for (int k = 1; k <= 4; ++k) { HostUi::touch = {true, x, y - static_cast<u32>(k * 7)}; d.frame(); }
+    const auto* partial = d.target(kBase + kPokerus);
+    HostUi::touch = {false, x, y - 28};
+    d.frame();
+    partial = d.target(kBase + kPokerus);
+    check(partial && partial->h < 30, "a finger drag leaves the Pokérus row partly visible (h=" + std::to_string(partial ? partial->h : -1) + ")");
+    check(d.tap(kBase + kPokerus), "the partly visible Pokérus row is tappable");
+    check(drawnValue("Pokerus") == "Infected", "the FIRST tap on the partly visible Pokérus row toggles it (got " +
+                                                   drawnValue("Pokerus") + ")");
+    check(d.screen.storageStatus.find("press A again") == std::string::npos, "no second press is needed");
+}
+
 void gen3CreatePokerus() {
     auto& g3 = openGen3(13);
     if (!g3.screen) return;
@@ -585,6 +614,7 @@ int main() {
     gen5CreatePokerus();
     gen3Pokerus();
     gen3CreatePokerus();
+    gen3PokerusFirstTapOnPartialRow();
     gen3HeldItem();
     gen5HeldItemPartialRow();
     gen3NoStateAcrossScreens();
