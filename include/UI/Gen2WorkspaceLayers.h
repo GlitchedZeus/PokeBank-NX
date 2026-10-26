@@ -107,7 +107,7 @@ struct Hint {
 };
 
 struct Footer {
-    std::array<Hint, 6> hints{};
+    std::array<Hint, 7> hints{};
     std::size_t count = 0;
 };
 
@@ -142,6 +142,7 @@ constexpr Footer footer(Layer layer, Session session) noexcept {
             detail::push(f, "A", "Edit");
             detail::push(f, "Y", "Random DVs");
             detail::push(f, "X", create ? "Add" : "Keep");
+            detail::push(f, "+", "Review");   // Round 6: Y stays Random DVs (ReviewEntry.h)
             detail::push(f, "B", "Exit");
             break;
     }

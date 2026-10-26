@@ -15,6 +15,7 @@
 #include "UI/BackupSelectionScreen.h"
 #include "UI/GameLauncher.h"
 #include "UI/WorkingCopyRefresh.h"
+#include "UI/ClassicSourceGuard.h"
 #include "UI/BackupHistoryPresentation.h"
 #include "UI/InputTrace.h"
 #include "UI/TrainerViewScreen.h"
@@ -682,6 +683,7 @@ namespace UI {
             file.path,0,userUid,kind,gameId,provider.empty() ? std::string("Manual") : provider);
         const std::string when=PokeBank::UIModel::BackupHistory::date(label,0).label;
         screen.provenanceNotice="Opened from backup - "+when;
+        if(identity->dataGeneration<=3)screen.classicSourceSnapshot=file;   // ClassicSourceGuard.h
         if(identity->dataGeneration==4) {
             // Same guard as the live Gen IV open: Export Copy re-reads this exact backup file and
             // fails closed if it changed since it was opened (Gen4ExportRequest::sourceSnapshot).
@@ -773,10 +775,16 @@ namespace UI {
             return false;
         }
 
+        // Round 6 (7E G5): the exact file at Open, proven to be the bytes discovery parsed; every
+        // Gen I-III Export Copy re-checks it (ClassicSourceGuard.h).
+        auto sourceSnapshot = PokeBank::UIModel::ClassicSourceGuard::snapshotAtOpen(
+            selected.path, selected.contentFingerprint, error);
+        if (!sourceSnapshot) return false;
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), selected.path, 0, userUid,
             PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId,
             selected.providerLabel);
+        trainerScreen.classicSourceSnapshot = std::move(sourceSnapshot);
         if (intent == SaveSelectScreen::OpenIntent::Items)
             trainerScreen.openItemsShortcut();
         fb.startFade();

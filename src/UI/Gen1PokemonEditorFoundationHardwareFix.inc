@@ -347,10 +347,10 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         drawNavBar(fb, {{"B", "Back"}, {"Y", "Discard"}, {"A", add ? "Keep" : "Save"}});
     } else if (add) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Keep"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 }
 

@@ -1,3 +1,4 @@
+#include "UI/ReviewEntry.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen2FieldSelector.h"
@@ -653,6 +654,18 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         if (result.outcome == Selector::Outcome::Apply || result.outcome == Selector::Outcome::Cancelled)
             screen.controllerNavigation.reset();
         return true;
+    }
+
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays Random DVs). The
+    // workspace stays open underneath; B in Review returns here with the draft and focus intact.
+    {
+        namespace Entry = PokeBank::UIModel::ReviewEntry;
+        if ((down & HidNpadButton_Plus) &&
+            Entry::plusOpensReview(state.mode == Mode::Create ? Entry::Screen::Create : Entry::Screen::Edit, 2)) {
+            if (!screen.openStagedReview(false))
+                screen.postStatus("No staged Generation II changes to review", 220);
+            return true;
+        }
     }
 
     // Y Random DVs re-rolls this draft at once (Gen12DVReroll.h): every press is a new roll that

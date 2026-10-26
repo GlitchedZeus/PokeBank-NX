@@ -21,9 +21,11 @@ constexpr int rowCount(bool playTime, bool gender) noexcept {
 }
 inline constexpr int kReviewTouchId = 61240;
 
+// Round 6 (B08): Y Review whether or not the focused row is editable; on a page without the
+// staged Trainer session the Gen I-IV grid router (ClassicBrowseReview.h) handles the key.
 constexpr const char* trainerPageInstructions(bool editable) noexcept {
     return editable ? "Up/Down: Select  |  A: Edit  |  Y: Review  |  B: Back  |  +: Exit App"
-                    : "Up/Down: Select  |  B: Back  |  +: Exit App";
+                    : "Up/Down: Select  |  Y: Review  |  B: Back  |  +: Exit App";
 }
 
 // R2-BUG-001: on an editable Trainer page "A: Edit" is offered for the FOCUSED row only: Money
