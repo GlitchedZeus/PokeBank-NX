@@ -1,3 +1,4 @@
+#include "UI/ClassicTrainerPage.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -192,16 +193,16 @@ int main() {
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
     // Owner-approved revision: both derived Special stats stay in the same
     // Calculated column, no detached SPECIAL block or empty Special cell.
-    assert(unified.find("Gen2Workspace::calculatedCell(battle, r)") != std::string::npos);
-    assert(unified.find("Gen2Workspace::calculatedSpecialDefenseCell(battle)") != std::string::npos);
-    assert(unified.find("\"Sp. Def\"") != std::string::npos);
-    assert(unified.find("x + 282, y + 246") != std::string::npos);
+    // Round 6 7A: one Calculated-column painter on the shared STATS grid; SpD is the next grid
+    // row under SpA in the same column, both tagged; no off-grid or left-column SpD label.
+    assert(unified.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+    assert(unified.find("y + 246") == std::string::npos);
     assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") != std::string::npos);
     const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
-    assert(gen2Presentation.find("return \"SpA \" + std::to_string(battle[4])") != std::string::npos);
-    assert(gen2Presentation.find("std::to_string(battle[5])") != std::string::npos);
+    assert(gen2Presentation.find("if (row == 4) return {\"Sp. Atk\", std::to_string(battle[4])};") != std::string::npos);
+    assert(gen2Presentation.find("if (row == kSpecialDefenseRow) return {\"Sp. Def\", std::to_string(battle[5])};") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
-    assert(unified.find("fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2)") != std::string::npos);
+    assert(unified.find("gen2StatCellColor(std::min(row, 4), 2), TextStyle::Caption);") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
     const auto valuesEnd = unified.find("void drawUnifiedMoveEditor", valuesBegin);
     assert(valuesBegin != std::string::npos && valuesEnd != std::string::npos && valuesEnd > valuesBegin);
@@ -367,13 +368,25 @@ int main() {
     assert(workspaceFix.find("stray bottom glyph") != std::string::npos);
     assert(workspaceFix.find("contentY + contentH - 34") != std::string::npos);
 
-    // Gold/Silver receive the same informational Gender row that Crystal already renders;
-    // the established Name/Money two-row cursor contract above is unchanged.
-    assert(finalFix.find("gold_gbc") != std::string::npos);
-    assert(finalFix.find("silver_gbc") != std::string::npos);
-    assert(finalFix.find("hasTrainerGender()") != std::string::npos);
-    assert(finalFix.find("\"Gender\"") != std::string::npos);
-    assert(finalFix.find("trainerGender == 0 ? \"Male\"") != std::string::npos);
+    // Round 6 P2 (owner Oct 25, R2-TRAINER / NEW-18): Gold / Silver store no trainer gender, and the
+    // separate Gold / Silver Gender card painted over the Trainer rows ("Male" under the new row).
+    // The owner's rule is "no invented Gen I or Gold / Silver gender": the second renderer is gone
+    // and the one Trainer model gives Gold / Silver no Gender row; Crystal keeps its stored gender.
+    // The established Name/Money two-row cursor contract above is unchanged.
+    assert(finalFix.find("drawGoldSilverTrainerGender") == std::string::npos);
+    assert(finalFix.find("trainerGender == 0 ? \"Male\"") == std::string::npos);
+    {
+        namespace Page = PokeBank::UIModel::ClassicTrainerPage;
+        for (bool playTime : {false, true})
+            for (bool gender : {false, true}) {
+                for (const auto& row : Page::rows({2, false, playTime, gender}))
+                    assert(row.field != Page::Field::Gender);
+                int crystalGender = 0;
+                for (const auto& row : Page::rows({2, true, playTime, gender}))
+                    crystalGender += row.field == Page::Field::Gender;
+                assert(crystalGender == 1);
+            }
+    }
 
     std::cout << "GSC shared editor Trainer/field-layout/session/export + hardware regression contract: PASS\n";
     return 0;

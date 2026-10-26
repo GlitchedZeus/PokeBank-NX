@@ -279,7 +279,7 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             legacy.active = legacy.pokemonActions;
             legacy.pokemonRow = 0;
             screen.controllerNavigation.reset();
-            screen.postStatus("All staged Gen II changes discarded", 300);
+            screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 300);
             return true;
         }
     }

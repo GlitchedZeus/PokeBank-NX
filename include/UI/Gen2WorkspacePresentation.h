@@ -21,14 +21,36 @@ inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=
 // Gen II has one stored Special DV and Stat Exp but TWO derived Special stats:
 // primary Special row = SpA, continuation in the SAME Calculated column = SpD.
 // Neither derived value is a second editable DV or Stat Exp (pret/pokecrystal CalcMonStats).
-inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
-    if (row >= 0 && row < 4) return std::to_string(battle[static_cast<std::size_t>(row)]);
-    if (row == 4) return "SpA " + std::to_string(battle[4]);
+//
+// Round 6 7A (owner Oct 25, R2-SPECIAL follow-up): one STATS grid. Every row, including the SpD
+// continuation (row 5), sits on the same row step; every calculated number is right-aligned in
+// the one Calculated column; the two derived Special values carry matching dim tags ("Sp. Atk",
+// "Sp. Def") inside that column, and the continuation row has no DV / Stat Exp label of its own
+// (it is not a second stored stat). No slash display.
+struct CalculatedCell {
+    std::string tag;   // "Sp. Atk" / "Sp. Def" on the derived Special values, else empty
+    std::string value; // the calculated stat
+};
+inline constexpr int kSpecialDefenseRow = 5;       // continuation row in the Calculated column
+inline CalculatedCell calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
+    if (row >= 0 && row < 4) return {{}, std::to_string(battle[static_cast<std::size_t>(row)])};
+    if (row == 4) return {"Sp. Atk", std::to_string(battle[4])};
+    if (row == kSpecialDefenseRow) return {"Sp. Def", std::to_string(battle[5])};
     return {};
 }
-inline std::string calculatedSpecialDefenseCell(const std::array<uint16_t, 6>& battle) {
-    return std::to_string(battle[5]);
-}
+// STATS grid geometry shared by every Gen II painter (relative to the STATS panel origin).
+struct StatsGrid {
+    static constexpr int kFirstRowY = 70, kRowStep = 34;
+    static constexpr int kTagX = 282;      // Calculated column left edge (header "Calculated")
+    static constexpr int kRightInset = 24; // numbers right-aligned to panel width - inset
+    static constexpr int kTagGap = 8;      // a tag ends this far left of its right-aligned number
+    static constexpr int kPanelW = 398;    // the STATS panel width every Gen II painter passes
+    // Where a tagged value's tag starts: exactly kTagGap left of its right-aligned number.
+    static constexpr int tagX(int panelW, int valueW, int tagW) noexcept {
+        return panelW - kRightInset - valueW - kTagGap - tagW;
+    }
+    static constexpr int rowY(int row) noexcept { return kFirstRowY + row * kRowStep; }
+};
 struct DataRow { std::string label, value; };
 inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {
     const auto* personal = G::personalRecord(p.species);

@@ -37,6 +37,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
+#include "UI/ReviewEntry.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/SharedSpeciesPicker.h"
@@ -638,6 +639,16 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         return true;
     }
 
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays re-roll); B in
+    // Review returns to this workspace with its draft and focus intact. View keeps its controls.
+    namespace Entry = PokeBank::UIModel::ReviewEntry;
+    if (!A::passive(screen, state) && (down & HidNpadButton_Plus) &&
+        Entry::plusOpensReview(A::creating(screen, state) ? Entry::Screen::Create : Entry::Screen::Edit,
+                               A::kGeneration)) {
+        A::openReview(screen, state);
+        return true;
+    }
+
     constexpr int rows = A::kDetailRows;
     const bool passive = A::passive(screen, state);
     const bool editable = A::editable(screen, state);
@@ -1180,12 +1191,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, A::kDataTitle, rows, stats);
 
+    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
+                      PokeBank::UIModel::ReviewEntry::Screen::Edit, A::kGeneration).glyph[0] == '+');
     if (viewMode)
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", A::creating(screen, state) ? "Add" : "Keep"}, {"B", "Exit"}});
+                        {"X", A::creating(screen, state) ? "Add" : "Keep"},
+                        {"+", "Review"}, {"B", "Exit"}});
 
     if (A::confirmExit(screen, state)) {
         constexpr int w = 560, h = 226;

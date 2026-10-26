@@ -145,6 +145,11 @@ PRESENTATION_LAYERS = {
     "include/UI/ClassicBrowseFooter.h": ["src/UI/TrainerViewScreenBase.inc"],
     "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc": [
         "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen1PokemonEditorOverlayFoundation.inc"],
+    # Round 6 (lane L): Cleanup3's ux3DrawTouchNavBar also paints the Gen I Create / Edit workspace
+    # footer (UX2Mode::Edit / AddDraft), whose input is foundationHandleMainInput (Foundation.inc);
+    # its picker footers are read by Cleanup3 itself.
+    "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc": [
+        "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen1PokemonEditorOverlayFoundation.inc"],
     "src/UI/Gen2HardwareFinalFix.inc": [
         "src/UI/Gen2SharedSurfaceParity.inc", "src/UI/Gen2UnifiedPokemonWorkspace.inc"],
 }

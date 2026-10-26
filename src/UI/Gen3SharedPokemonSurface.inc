@@ -1,3 +1,5 @@
+#include "UI/ClassicSourceGuard.h"
+#include "UI/ReviewEntry.h"
 #include "UI/SharedAbilityPicker.h"
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
@@ -1402,6 +1404,20 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         return true;
     }
 
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays re-roll). Review
+    // is handled and drawn before this workspace, and its B returns here with the draft and focus
+    // untouched. A passive View keeps its read-only controls.
+    if (state.session.mode != SessionModel::Mode::View) {
+        namespace Entry = PokeBank::UIModel::ReviewEntry;
+        if ((down & HidNpadButton_Plus) &&
+            Entry::plusOpensReview(state.session.mode == SessionModel::Mode::Create ? Entry::Screen::Create
+                                                                                    : Entry::Screen::Edit, 3)) {
+            if (!screen.openStagedReview(false))
+                screen.postStatus("No staged Generation III changes to review", 220);
+            return true;
+        }
+    }
+
     const auto panelBeforeNavigation = state.focus.panel;
     const bool passiveView = state.session.mode == SessionModel::Mode::View;
     // Drag scrolls the visible left-side rows without changing the selected
@@ -1694,6 +1710,11 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
         return;
     }
     std::string error;
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error)) {
+        screen.postStatus(error, 480);
+        return;
+    }
     const std::string root = PokeBank::Paths::gen3ExportsRoot();
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
@@ -1781,7 +1802,7 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
         if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
-        screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
+        screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 360);
         return true;
     }
     return true;
@@ -2301,11 +2322,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     } else if (state.session.mode == SessionModel::Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Add"}, {"B", "Exit"}});
+                        {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Keep"}, {"B", "Exit"}});
+                        {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 
     if (state.session.confirmExit) {

@@ -1,0 +1,17 @@
+# Round 6 (B08 / P1-RETURN): Review entry and return through the REAL TrainerViewScreen, Gen I-V
+# (tests/host-ui harness from Makefile.host.host-ui, which must be included first).
+# GCC only, like the harness archive it links (see Makefile.host.host-ui).
+ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
+HOST_UI_REVIEW_TEST := $(HOST_BUILD)/test_ui_review_entry_host
+HOST_UI_REVIEW_SANITIZE := $(HOST_BUILD)/test_ui_review_entry_host_sanitize
+HOST_TESTS += $(HOST_UI_REVIEW_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_REVIEW_SANITIZE)
+host-test: $(HOST_UI_REVIEW_TEST)
+host-sanitize: $(HOST_UI_REVIEW_SANITIZE)
+$(HOST_UI_REVIEW_TEST): tests/test_ui_review_entry_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_review_entry_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_REVIEW_SANITIZE): tests/test_ui_review_entry_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_review_entry_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+endif

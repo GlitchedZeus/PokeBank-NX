@@ -42,10 +42,8 @@ XFAIL: dict[str, str] = {
     # Round 6: owner Oct 25 FAILs and requests (docs/hardware/ROUND5_RESULTS_1ca2faec.md), owners per the
     # coordinator's round 6 assignment.
     "CG72-gold-silver-trainer-no-gender": "lane C (round 6 P2: R2-TRAINER / NEW-18)",
-    "CG73-review-entry-visible-gen1-5": "lane L (round 6 P3: B08 / P1-RETURN)",
     "CG74-create-review-details": "lane S (round 6 P3: Create Review details)",
     "CG75-met-location-rows-distinguishable": "lane P (round 6 P5: R2-CHECK-011)",
-    "CG77-footer-help-controls-have-handlers": "lane R (round 6 P4 / E05)",
     "CG78-tap-outside-dismisses-non-destructive": "lane P (round 6 7D)",
 }
 
@@ -441,6 +439,23 @@ def round4_p2_contracts(sources):
         for m in re.finditer(r'\[\s*4\s*\][^;\n]*"\s*/\s*"[^;\n]*\[\s*5\s*\]|specialAttack[^;\n]*"\s*/\s*"[^;\n]*specialDefense',
                              s.code):
             r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: {s.code.splitlines()[line_of(s.code, m.start()) - 1].strip()}")
+    # Round 6 7A (lane C e39a92e2) put SpD on a STATS grid row of its own (row 5). It stays a calculated
+    # value: the native record holds exactly one Special DV and one Special Stat Exp (5-entry arrays: HP,
+    # Atk, Def, Spe, Special; pret pokecrystal), the Calculated-column painter only paints (no touch
+    # target, no DV / Stat Exp access), and the editable DV / Stat Exp rows stop at the Special row.
+    rec = src("include/Integration/Gen2/Gen2ReadOnlySave.h")
+    if not rec or not (re.search(r"std::array<uint16_t,\s*5>\s+statExperience\b", rec.code) and
+                       re.search(r"std::array<uint8_t,\s*5>\s+dvs\b", rec.code)):
+        r.violations.append("include/Integration/Gen2/Gen2ReadOnlySave.h: the Gen II record no longer holds exactly "
+                            "one Special DV and one Special Stat Exp (5-entry dvs / statExperience)")
+    for s in gen2_ui:
+        for name, ln, body in function_definitions(s.code):
+            if name == "drawGen2CalculatedColumn" and re.search(r"touchButtons|\bdvs\b|statExperience", body):
+                r.violations.append(f"{s.rel}:{ln}: the Gen II Calculated column (SpA / SpD) is interactive or reads "
+                                    "a DV / Stat Exp: SpD must stay a calculated value, not an editable stat")
+        for m in re.finditer(r"\b(?:dvs|statExperience)\s*\[\s*(?:5|kSpecialDefenseRow|W::kSpecialDefenseRow)\s*\]", s.code):
+            r.violations.append(f"{s.rel}:{line_of(s.code, m.start())}: indexes a sixth DV / Stat Exp (Gen II has one "
+                                "Special DV / Stat Exp shared by SpA and SpD)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
@@ -2183,17 +2198,35 @@ def contracts(sources: list[Source]) -> list[Result]:
                "The Gen I-IV Trainer card shows native Play Time and Pokedex seen/caught, like Gen V "
                "(owner round 3 NEW-18)")
     g5t = [b for _, b in bodies_ln("src/UI/Gen5SharedReadOnlySurface.inc", "drawTrainerEditor")]
-    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawTrainerView"),):
+    # Round 6 P2 (lane C): the classic card is drawClassicTrainerView, painting the rows of
+    # include/UI/ClassicTrainerPage.h (Gen V design); drawTrainerView only routes Gen I-IV to it.
+    # The guard follows the renderer: the classic body must paint the Play Time and Pokedex fields
+    # with the native readers, and the model must label and always place both rows.
+    page_h = next((x for x in sources if x.rel == "include/UI/ClassicTrainerPage.h"), None)
+    for rel, fn in (("src/UI/TrainerViewScreenBase.inc", "drawClassicTrainerView"),):
         bs = bodies_ln(rel, fn)
         if not bs:
             r.violations.append(f"{rel}: {fn}() missing")
         for ln, b in bs:
             lits = [l for l in re.findall(r'"([^"]*)"', b)]
-            if not any(re.search(r"(?i)play\s*time", l) for l in lits):
+            model = page_h.code if page_h else ""
+            model_lits = re.findall(r'"([^"]*)"', model)
+            play = (any(re.search(r"(?i)play\s*time", l) for l in lits) or
+                    ("Field::PlayTime" in b and "nativePlayTime" in b and
+                     any(re.search(r"(?i)^play\s*time$", l) for l in model_lits) and
+                     re.search(r"if \(!in\.playTimeEditable\) out\.push_back\(\{Field::PlayTime, false", model)))
+            if not play:
                 r.violations.append(f"{rel}:{ln}: {fn}() shows no Play Time row")
-            if not (any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
-                    re.search(r"\bdexProgress\s*\(|\bseen\b", b)):
+            dex = ((any(re.search(r"(?i)pok[eé]dex|\bseen\b", l) for l in lits) and
+                    re.search(r"\bpokedexProgress\s*\(", b)) and
+                   ("Field::Pokedex" not in b or
+                    (any(re.search(r"(?i)^pok[eé]dex$", l) for l in model_lits) and
+                     "out.push_back({Field::Pokedex, false, -1});" in model)))
+            if not dex:
                 r.violations.append(f"{rel}:{ln}: {fn}() shows no Pokedex seen / caught row")
+    view = bodies_ln("src/UI/TrainerViewScreenBase.inc", "drawTrainerView")
+    if not view or not all("drawClassicTrainerView(screen, fb, x, y, w, h, generation);" in b for _, b in view):
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: drawTrainerView() does not route Gen I-IV to drawClassicTrainerView")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
@@ -2379,20 +2412,40 @@ def round5_contracts(sources):
     # '+ Review'. A help line must name a button ("Move  Place or cancel from the on-screen Move controls"
     # named none).
     # ------------------------------------------------------------------------------------------
+    # Round 6 (lane L, B08 / P1-RETURN) retarget: + now opens the shared Review on Gen I-IV Boxes,
+    # Party, Bag and Trainer too (ReviewEntry.h, read by openClassicBrowseReview and the Bag's +).
+    # A '+ Review' line outside a generation==5 branch is accepted only while those handlers exist,
+    # and never on the Gen I-IV save hub (there + still points to Product Home).
     r = Result("CG63-help-names-real-controls",
-               "Classic Help: '+ Review' appears only for Gen V; every line names a real control "
-               "(owner Oct 24 4D)")
+               "Classic Help: '+ Review' appears only where + opens Review (Gen V, and Gen I-IV editor pages "
+               "per ReviewEntry.h); every line names a real control (owner Oct 24 4D, Oct 25 B08)")
     hp = src("include/UI/ClassicHelpPresentation.h")
+    entry = src("include/UI/ReviewEntry.h")
+    composite = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    bag = src("src/UI/ClassicInventoryOverlay.cpp")
+    classic_plus = bool(entry and re.search(r"plusOpensReview", entry.code) and
+                        composite and "if (openClassicBrowseReview(*this, down)) return;" in composite.code and
+                        bag and "if (screen.openStagedReview(false)) return true;" in bag.code)
     if not hp:
         r.violations.append("include/UI/ClassicHelpPresentation.h: missing")
     else:
+        hub = re.search(r"case\s+Page::Hub:(.*?)break;", hp.code, re.S)
         for m in re.finditer(r'"\+\s+Review[^"]*"', hp.code):
             start = max(hp.code.rfind(";", 0, m.start()), hp.code.rfind("{", 0, m.start()),
                         hp.code.rfind(":\n", 0, m.start()))
             stmt = hp.code[start + 1:m.start()]
-            if not re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
-                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{hp.code.count(chr(10), 0, m.start()) + 1}: "
-                                    "'+ Review' is shown outside Gen V (Gen I-IV + opens Product Home)")
+            line = hp.code.count(chr(10), 0, m.start()) + 1
+            if re.search(r"generation\s*==\s*5\s*(?:\?|\))", stmt):
+                continue
+            if not classic_plus:
+                r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: "
+                                    "'+ Review' is shown outside Gen V but no Gen I-IV handler opens Review on +")
+        if hub:
+            for m in re.finditer(r'(if\s*\(\s*generation\s*==\s*5\s*\)\s*)?out\.push_back\(([^;]*)\);', hub.group(1)):
+                if ("kPlusReview" in m.group(2) or re.search(r'"\+\s+Review', m.group(2))) and \
+                        not m.group(1) and not re.search(r"generation\s*==\s*5", m.group(2)):
+                    r.violations.append("include/UI/ClassicHelpPresentation.h: the Gen I-IV save hub names "
+                                        "'+ Review' (there + opens Product Home)")
         if any("on-screen Move controls" in lit for _, lit in hp.literals):
             r.violations.append("include/UI/ClassicHelpPresentation.h: Move help names no button")
     res.append(r)
@@ -2753,10 +2806,31 @@ def round6_contracts(sources):
             if "Options" in lit and "Back" in lit and "Review" not in lit:
                 r.violations.append(f"include/UI/InventoryUIContract.h:{line}: Gen I-III Bag footer {lit!r} shows no Review")
     tv = src("src/UI/TrainerViewScreenBase.inc")
+    # Lane L (round 6): the old literal Party / Boxes / Storage footers in TrainerViewScreenBase serve only
+    # editable (installed-title) sources. Every Gen I-IV emulator session is RetroArchLegacy / ExternalLegacy,
+    # has no Edit, so the read-only override replaces them with ClassicBrowseFooter, whose Review slot is on
+    # for Gen I-IV Party / Boxes / Trainer. The literals are exempt only while all of that is proven here.
+    inv_ovr = body_of(inv, "useReadOnlyInventoryFooterOverride")
+    pol = src("include/Safety/SourceMutationPolicy.h")
+    uic = src("src/UI/UI.cpp")
+    staged_kinds = [m.start() for m in re.finditer(r"SourceKind::(?:BackupOrStaged|AppOwnedStorage)\b", uic.code)] if uic else []
+    htv = [(m.start(), m.start() + len(b_)) for m in re.finditer(r"bool\s+UIManager::handleTrainerView\s*\(", uic.code)
+           for b_ in [block_after(uic.code, uic.code.find("{", m.end()) + 1)]] if uic else []
+    override_proven = bool(
+        re.search(r"return\s+sourceReadOnly\s*&&\s*!detailsActive\s*&&\s*!settingsMode\s*&&\s*"
+                  r"!stagedInventoryActionsAvailable\s*;", inv_ovr) and
+        pol and re.search(r"return\s+source\s*==\s*SourceKind::BackupOrStaged\s*\|\|\s*source\s*==\s*"
+                          r"SourceKind::AppOwnedStorage\s*;", pol.code) and
+        staged_kinds and all(any(lo <= k < hi for lo, hi in htv) for k in staged_kinds) and
+        tv and re.search(r"spec\.review\s*=\s*true\s*;", tv.code) and
+        re.search(r"selectedMode\s*==\s*ViewMode::Party\s*\|\|\s*selectedMode\s*==\s*ViewMode::Boxes\s*\|\|\s*"
+                  r"selectedMode\s*==\s*ViewMode::Trainer", tv.code) and
+        re.search(r"BrowseFooter::instructions\s*\(\s*spec\s*\)", tv.code))
     if tv:
-        for line, lit in tv.literals:
-            if "A: Actions" in lit and "B: Back" in lit and "Review" not in lit:
-                r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{line}: Gen I-IV Party / Boxes footer {lit!r} shows no Review")
+        if not override_proven:
+            for line, lit in tv.literals:
+                if "A: Actions" in lit and "B: Back" in lit and "Review" not in lit:
+                    r.violations.append(f"src/UI/TrainerViewScreenBase.inc:{line}: Gen I-IV Party / Boxes footer {lit!r} shows no Review")
         m = re.search(r'footer\.push\(\s*"A"\s*,\s*"Edit Quantity"\s*\)', tv.code)
         if m:
             region = block_after(tv.code, tv.code.rfind("{", 0, tv.code.rfind("Presentation::Footer footer;", 0, m.start())) + 1)
@@ -2767,17 +2841,62 @@ def round6_contracts(sources):
         for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{\{"A"\s*,\s*"Actions"\}[^;]*;', box.code):
             if "Review" not in m.group(0):
                 r.violations.append(f"{box.rel}:{ln_at(box, m.start())}: Gen I-III Boxes footer shows no Review")
-    for rel in ("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen2SharedPokemonSurface.inc",
+    # Create / Edit footers. Dead renderers are exempt only while they are proven unreachable:
+    # - Gen II drawSharedWorkspace: its only caller is drawSharedSurface's mode != None branch, and the
+    #   only caller of drawSharedSurface is drawUnifiedGen2Surface after it returned for mode != None;
+    # - Gen I Cleanup3 Edit / AddDraft footers: Foundation's drawOverlayUX sends the main modes (View,
+    #   Edit, AddDraft) to foundationDrawWorkspace, the composite calls drawFoundationPicker only with a
+    #   picker or the Move editor, and ux3DrawTouchNavBar returns for every picker before the mode switch.
+    g2s = src("src/UI/Gen2SharedPokemonSurface.inc")
+    g2u = src("src/UI/Gen2UnifiedPokemonWorkspace.inc")
+    callers = [f for f in sources if re.search(r"\bdrawSharedSurface\s*\(\s*screen\s*,\s*fb\s*\)\s*;", f.code)]
+    dsu = body_of(g2u, "drawUnifiedGen2Surface")
+    dss = body_of(g2s, "drawSharedSurface")
+    g2_dead = bool(
+        callers == [g2u] and dsu.count("drawSharedSurface(") == 1 and
+        re.search(r"if\s*\(\s*stateFor\(screen\)\.mode\s*!=\s*Mode::None\s*\)\s*\{\s*drawUnifiedWorkspace\(screen,\s*fb\);\s*"
+                  r"return\s+true;\s*\}\s*return\s+drawSharedSurface\(screen,\s*fb\);", dsu) and
+        g2s and len(re.findall(r"\bdrawSharedWorkspace\s*\(\s*screen", g2s.code)) == 1 and
+        re.search(r"if\s*\(\s*stateFor\(screen\)\.mode\s*!=\s*Mode::None\s*\)\s*\{\s*drawSharedWorkspace", dss))
+    g1f = src("src/UI/Gen1PokemonEditorOverlayFoundation.inc")
+    g1h = src("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc")
+    g1c = src("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
+    g12 = src("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
+    comp = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+    nav = body_of(g1c, "ux3DrawTouchNavBar")
+    g1_dead = bool(
+        g1f and re.search(r"return\s+mode\s*==\s*UX2Mode::View\s*\|\|\s*mode\s*==\s*UX2Mode::Edit\s*\|\|\s*"
+                          r"mode\s*==\s*UX2Mode::AddDraft\s*;", g1f.code) and
+        re.search(r"if\s*\(\s*foundationMainMode\(state\.mode\)\s*\)\s*\{\s*foundationDrawWorkspace\(screen,\s*fb\);\s*return;",
+                  body_of(g1f, "drawOverlayUX")) and
+        comp and len(re.findall(r"drawFoundationPicker\s*\(", comp.code)) == 1 and
+        re.search(r"\(Gen1PokemonEditor::foundationPickerActive\(\*this\)\s*\|\|\s*Gen1PokemonEditor::foundationMoveEditorActive"
+                  r"\(\*this\)\)\)\s*\{\s*Gen1PokemonEditor::drawFoundationPicker", comp.code) and
+        g12 and re.search(r"enum\s+class\s+UX2Picker\s*:\s*uint8_t\s*\{\s*None\s*,\s*Species\s*,\s*Move\s*\}", g12.code) and
+        re.search(r"UX2Picker::Species\)\s*\{[^}]*return;\s*\}\s*if\s*\(\s*state\.picker\s*==\s*UX2Picker::Move\s*\)\s*\{[^}]*return;",
+                  nav, re.S) and
+        g1h and re.search(r"if\s*\(\s*!foundationMainMode\(state\.mode\)\s*&&\s*state\.mode\s*!=\s*UX2Mode::MoveEditor\s*\)",
+                          body_of(g1h, "drawFoundationPicker")))
+    exempt = {}
+    if g2_dead and g2s:
+        exempt["src/UI/Gen2SharedPokemonSurface.inc"] = body_of(g2s, "drawSharedWorkspace")
+    if g1_dead and g1c:
+        exempt["src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"] = nav
+    for rel in ("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
+                "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen2SharedPokemonSurface.inc",
                 "src/UI/Gen3SharedPokemonSurface.inc", "src/UI/SharedPokemonEditorSurface.inc"):
         f = src(rel)
         if not f:
             continue
-        hits = [m for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{[^;]*\{"A"\s*,\s*"Edit"\}[^;]*\{"B"\s*,\s*"Exit"\}[^;]*;', f.code)]
-        if not hits:
-            r.violations.append(f"{rel}: Create / Edit footer not found (update this check)")
-        for m in hits:
-            if "Review" not in m.group(0):
-                r.violations.append(f"{rel}:{ln_at(f, m.start())}: Create / Edit footer shows no Review")
+        for m in re.finditer(r'drawNavBar\s*\(\s*fb\s*,\s*\{[^;]*\{"A"\s*,\s*"Edit"\}[^;]*\{"B"\s*,\s*"Exit"\}[^;]*;', f.code):
+            if "Review" in m.group(0):
+                continue
+            if rel in exempt and m.group(0) in exempt[rel]:
+                continue
+            r.violations.append(f"{rel}:{ln_at(f, m.start())}: Create / Edit footer shows no Review")
+    wl = src("include/UI/Gen2WorkspaceLayers.h")
+    if not wl or not re.search(r'push\(\s*f\s*,\s*"[^"]+"\s*,\s*"Review"\s*\)', wl.code):
+        r.violations.append("include/UI/Gen2WorkspaceLayers.h: the Gen II unified Create / Edit footer shows no Review")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------

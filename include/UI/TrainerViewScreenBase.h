@@ -166,6 +166,9 @@ namespace UI {
         // Round 5 (#322): "Opened from backup - <date>" when this session was opened from a backup
         // copy (Save Backups -> A). Shown in the top bar; empty for the live source.
         std::string provenanceNotice;
+        // Round 6 (7E G5): Gen I-III only: the exact source FILE at Open (ClassicSourceGuard.h).
+        // Every Gen I-III Export Copy refuses a file that changed since.
+        std::optional<PokeVault::Source::ImmutableSnapshot::File> classicSourceSnapshot;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;

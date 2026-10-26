@@ -196,16 +196,10 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
                     gen2StatCellColor(r, 0), TextStyle::Caption);
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     gen2StatCellColor(r, 1), TextStyle::Caption);
-        const std::string stat = PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, r);
-        fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2), TextStyle::Caption);
     }
-    // One real editable Special DV/Stat Exp row. Both computed Special stats remain
-    // in the Calculated column, stacked cleanly without a fake second DV row.
-    // The Special row above already shows SpA via calculatedCell(battle, 4).
-    fb.drawText(x + 18, y + 246, "Sp. Def", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 282, y + 246,
-                PokeBank::UIModel::Gen2Workspace::calculatedSpecialDefenseCell(battle),
-                gen2StatCellColor(4, 2), TextStyle::Caption);
+    // One real editable Special DV/Stat Exp row; both computed Special stats stay in the one
+    // Calculated column, SpD on the next grid row under SpA (no fake second DV row).
+    drawGen2CalculatedColumn(fb, battle, x, y, w);
     fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
@@ -292,40 +286,6 @@ void drawFullscreenGen2Passive(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     drawFullscreenGen2Workspace(screen, fb, visual, unified, true, gen2PassiveRecordContext(screen));
 }
 
-void drawGoldSilverTrainerGender(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    if (screen.sourceGameId != "gold_gbc" && screen.sourceGameId != "silver_gbc") return;
-    const auto& bridge = gscTrainer(screen);
-    if (!bridge.hasTrainerGender()) return;
-
-    constexpr int contentX = 12;
-    constexpr int contentY = 80;
-    constexpr int headerH = 46;
-    constexpr int cardW = 680;
-    constexpr int editableRowH = 60;
-    constexpr int editableRowGap = 14;
-    constexpr int dividerBefore = 6;
-    constexpr int dividerAfter = 20;
-    constexpr int infoRowStep = 54;
-
-    const int contentW = fb.getWidth() - contentX;
-    const int cardX = contentX + (contentW - cardW) / 2;
-    const int trainerIdY = contentY + headerH + 26 + 2 * (editableRowH + editableRowGap) +
-                           dividerBefore + dividerAfter;
-    const int genderY = trainerIdY + infoRowStep;
-    const std::string value = screen.trainer.trainerGender == 0 ? "Male" :
-                              screen.trainer.trainerGender == 1 ? "Female" : "Unknown";
-    const Color valueColor = screen.trainer.trainerGender == 0 ? gen2MaleColor() :
-                             screen.trainer.trainerGender == 1 ? Colors::Magenta : Colors::Text;
-
-    fb.drawFilledRoundedRect(cardX, genderY, cardW, 46, 12, Colors::PanelAlt);
-    fb.drawText(cardX + 24, genderY + (46 - fb.lineHeight(TextStyle::Body)) / 2,
-                "Gender", Colors::TextDim, TextStyle::Body);
-    int vw = 0, vh = 0;
-    fb.measureText(value, vw, vh, TextStyle::Body);
-    fb.drawText(cardX + cardW - 24 - vw, genderY + (46 - vh) / 2,
-                value, valueColor, TextStyle::Body);
-}
-
 } // namespace
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -339,11 +299,9 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         }
         return true;
     }
-    if (trainerMainPage(screen) &&
-        (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc")) {
-        drawGoldSilverTrainerGender(screen, fb);
-        return true;
-    }
+    // Round 6 P2: the Gold / Silver Trainer page no longer paints a second Gender card over the
+    // base page (it overlapped the rows; Gold / Silver store no trainer gender). The shared page
+    // (UI/ClassicTrainerPage.h) is the only Trainer renderer.
     return false;
 }
 
