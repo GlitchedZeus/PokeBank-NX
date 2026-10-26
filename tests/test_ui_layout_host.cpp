@@ -307,9 +307,8 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         check(row("/ OT / TID"), where + ": a named OT / TID row");
         if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (Gen I Create has level-up moves)");
     }
-    // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in that lane's
-    // row shapes (Gen III "<slot> Add Pokemon" / "<slot> Moves" / "<slot> OT" rows; Gen V the shared
-    // "<slot> / Field" rows).
+    // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in the shared
+    // Gen I-V "<slot> / Field" row shape.
     if (reviewed && (game == "FireRed" || game == "Black")) {
         const auto has = [](const std::string& needle, bool prefix) {
             for (const auto& t : HostUi::visibleText)
@@ -320,9 +319,11 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         };
         const std::string where = game + " / Review (staged Create)";
         if (game == "FireRed") {
-            check(has(" Add Pokemon", false), where + ": the Add Pokemon header row");
-            check(has(" Moves", false), where + ": a named Moves row");
-            check(has(" OT", false), where + ": a named OT row (with TID / SID)");
+            // Round 7: Gen III uses the shared Gen I-V shape; an empty Moves row is omitted.
+            check(has("/ Add Pok\xC3\xA9mon", false), where + ": the Add Pokémon header row");
+            check(has("Empty -> ", true), where + ": the Create header value");
+            check(has("/ OT / TID / SID", false), where + ": a named OT / TID / SID row");
+            check(!has(" Add Pokemon", false), where + ": no old Gen III \"Add Pokemon\" header");
         } else {
             // Round 7: Gen V uses the shared Gen I-IV shape ("<loc> / Field" + value).
             check(has("/ Add Pok\xC3\xA9mon", false), where + ": the Add Pokémon header row");

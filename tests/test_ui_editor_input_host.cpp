@@ -268,6 +268,10 @@ std::vector<uint8_t> gen3Fixture(uint16_t heldItem) {
     put32(logical[1], 0x0290, key);
     put16(logical[0], 0x0A, 12345);
     put16(logical[0], 0x0C, 54321);
+    // Trainer name "RED" (Gen III charset; PKHeX SAV3 OT at section 0 + 0x00, 0xFF-padded to 8 bytes,
+    // which also marks the save international: a Japanese save leaves bytes 6-7 zero).
+    logical[0][0] = 0xCC; logical[0][1] = 0xBF; logical[0][2] = 0xBE;
+    for (std::size_t i = 3; i < 8; ++i) logical[0][i] = 0xFF;
     std::vector<uint8_t> save(D3::kSaveSize, 0);
     for (uint8_t slot = 0; slot < 2; ++slot) {
         const uint8_t rotation = slot == 0 ? 0 : 5;
@@ -432,6 +436,33 @@ void gen3CreatePokerus() {
     check(drawnValue("Pokerus") == "Infected", "Gen III Create tap on Pokérus toggles None -> Infected (got " + drawnValue("Pokerus") + ")");
     d.press(HidNpadButton_A);
     check(drawnValue("Pokerus") == "Cured", "Gen III Create A on Pokérus toggles Infected -> Cured (got " + drawnValue("Pokerus") + ")");
+
+    // Coordinator R7 (R's capture): Create defaults the OT to the save's trainer name, and Review
+    // lists it in the shared Gen I-V shape ("<loc> / Add Pokémon", "<loc> / OT / TID / SID", ...).
+    for (int i = 0; i < 20 && drawnValue("OT").find("not drawn") != std::string::npos; ++i) d.press(HidNpadButton_Up);
+    check(drawnValue("OT") == "RED", "Gen III Create OT defaults to the trainer name (got " + drawnValue("OT") + ")");
+    d.press(HidNpadButton_X);   // Keep
+    check(d.screen.openStagedReview(false), "Gen III Review opens after Create");
+    d.frame();
+    const auto& rows = g3.trainer->stagedPokemon()->pendingChanges();
+    const auto row = [&](const std::string& field) -> const PokeVault::Integration::Gen3::StagedPokemonChange* {
+        for (const auto& r : rows)
+            if (r.label.size() >= field.size() + 3 &&
+                r.label.compare(r.label.size() - field.size() - 3, std::string::npos, " / " + field) == 0) return &r;
+        return nullptr;
+    };
+    check(row("Add Pok\xC3\xA9mon") && row("Add Pok\xC3\xA9mon")->afterValue == "Pikachu Lv 5",
+          "Gen III Create Review header \"<loc> / Add Pokémon\" with \"Empty -> Pikachu Lv 5\"");
+    check(row("OT / TID / SID") && row("OT / TID / SID")->afterValue == "RED / 12345 / 54321",
+          "Gen III Create Review OT row carries the trainer name");
+    check(!row("Moves") || !row("Moves")->afterValue.empty(), "Gen III Create Review omits an empty Moves row");
+    bool drawnOt = false, drawnHeader = false;
+    for (const auto& t : HostUi::texts) {
+        drawnOt = drawnOt || t == "RED / 12345 / 54321";
+        drawnHeader = drawnHeader || t == "Empty -> Pikachu Lv 5";
+    }
+    check(drawnOt && drawnHeader, "Gen III Review draws the created OT and header values");
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_B);
 }
 
 // Ids of the picker cells the last draw published (the visible, possibly clipped, grid).
