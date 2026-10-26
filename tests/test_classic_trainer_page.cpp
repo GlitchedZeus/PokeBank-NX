@@ -9,6 +9,9 @@
 // the panel, no two rects overlapping (rows, label vs value, the Y Review Changes button), no
 // duplicate label, and that the session's focus order is the drawn order. Worst-case values use a
 // conservative glyph width. The routing pins at the end bind the native-only renderer to it.
+// Round 7 (owner B06 / C06): every row at the exact Gen V height (no compression), and a compact
+// Review button in a measured slot below the last row, inside the panel. The colours and the
+// painted geometry against Gen V's own Trainer frame are checked in tests/test_ui_layout_host.cpp.
 #include "Integration/Common/NativeBadges.h"
 #include "UI/ClassicTrainerPage.h"
 
@@ -114,13 +117,20 @@ void checkPage(const Game& game, bool playTime, bool gender) {
     // Layout: Gen V metrics, inside the panel, nothing overlapping.
     const auto page = Page::layout(rows, kX, kY, kW, kH);
     assert(page.fits && page.rows.size() == rows.size());
+    // The compact Review button: smaller than a row card and than Gen V's 240 x 44, right-aligned
+    // with the cards, ending kReviewMargin or more above the panel's bottom edge.
+    assert(page.review.w == Page::kReviewW && page.review.h == Page::kReviewH);
+    assert(page.review.w < 240 && page.review.h < 44 && page.review.h < Page::kInfoH);
+    assert(page.review.right() == page.rows.front().card.right());
+    assert(page.review.bottom() <= kY + kH - Page::kReviewMargin);
     const Page::Rect body{kX, kY + Page::kHeaderH, kW, kH - Page::kHeaderH};
     assert(page.review.inside(body));
     std::vector<Page::Rect> rects{page.review};
     for (const auto& placed : page.rows) {
         const auto& c = placed.card;
         assert(c.inside(body) && c.w == Page::kCardW);
-        assert(c.h == (placed.row.editable ? Page::kEditH : c.h) && c.h >= Page::kMinInfoH && c.h <= Page::kInfoH + 10);
+        assert(c.h == (placed.row.editable ? Page::kEditH : Page::kInfoH));   // the Gen V heights, never squeezed
+        assert(page.review.y >= c.bottom() + Page::kReviewGap);               // the Review slot is below every row
         if (!placed.row.editable) assert(c.y > page.dividerY);
         else assert(c.bottom() < page.dividerY);
         const std::string label(Page::label(placed.row.field));
@@ -151,9 +161,22 @@ void routes() {
                                      base.find("static void drawTrainerView(") - base.find("static void drawClassicTrainerView("));
     assert(classic.find("const auto rows = Page::rows({generation, screen.sourceGameId == \"crystal_gbc\",") != std::string::npos);
     assert(classic.find("const auto page = Page::layout(rows, x, y, w, h);") != std::string::npos);
-    assert(classic.find("Page::textRects(placed, lw, vw, textH)") != std::string::npos);
     assert(classic.find("screen.touchButtons.push_back({placed.row.touchId, c.x, c.y, c.w, c.h});") != std::string::npos);
     assert(classic.find("ClassicTrainerSession::kReviewTouchId") != std::string::npos);
+    // Round 7: painted by the one shared Trainer painter, the one Gen V's Trainer page uses.
+    for (const char* call : {"Panel::drawPanel(fb, x, y, w, h,", "Panel::drawEditableRow(fb, c.x, c.y, c.w, c.h,",
+                             "Panel::drawInfoRow(fb, c.x, c.y, c.w, c.h,", "Panel::drawDivider(fb, c.x, page.dividerY, c.w);",
+                             "drawGlyphButton(fb, page.review.x, page.review.y, page.review.w, page.review.h,"})
+        assert(classic.find(call) != std::string::npos);
+    for (const char* direct : {"fb.drawText(", "fb.drawFilledRoundedRect(", "fb.drawPill(", "SharedFieldState"})
+        assert(classic.find(direct) == std::string::npos);   // nothing painted outside the shared painter
+    const auto gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
+    const auto g5 = gen5.substr(gen5.find("void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {"));
+    for (const char* call : {"TPanel::drawPanel(fb,x,y,w,h,", "TPanel::drawEditableRow(fb,c.x,c.y,c.w,c.h,",
+                             "TPanel::drawInfoRow(fb,c.x,c.y,c.w,c.h,", "TPanel::drawDivider(fb,cardX,cy,cardW);"})
+        assert(g5.find(call) != std::string::npos);
+    const auto painter = read("include/UI/SharedTrainerPanel.h");
+    assert(painter.find("inline Color valueColor() noexcept { return Colors::Text; }") != std::string::npos);
     assert(base.find("Male (fixed by game)") == std::string::npos);
     // The second Gold / Silver renderer that overlapped the page is gone.
     const auto gen2 = read("src/UI/Gen2HardwareFinalFix.inc");
@@ -173,10 +196,38 @@ int main() {
         checkPage(game, false, false);                   // writers unavailable (new-game / read-only)
         checkPage(game, true, true);                     // worst case: every writer
     }
+    // Round 7 (QA CG90): Gen V's Trainer page lays out its own rows (four selectable cards: Name,
+    // Money, Play Time, Pokedex; four identity rows: Gender, Trainer ID, Secret ID, Badges) with the
+    // same model plus the language detail line, which sits left of Review in its band.
+    {
+        using F = Page::Field;
+        const std::vector<Page::Row> gen5{{F::Name, true, -1},     {F::Money, true, -1},  {F::PlayTime, true, -1},
+                                          {F::Pokedex, true, -1},  {F::Gender, false, -1}, {F::TrainerId, false, -1},
+                                          {F::SecretId, false, -1}, {F::Badges, false, -1}};
+        const auto page = Page::layout(gen5, kX, kY, kW, kH, true);
+        assert(page.fits && page.rows.size() == gen5.size());
+        const Page::Rect body{kX, kY + Page::kHeaderH, kW, kH - Page::kHeaderH};
+        assert(page.review.inside(body) && page.language.inside(body));
+        assert(page.language.y == page.review.y && page.language.h == page.review.h);
+        assert(page.language.right() + Page::kReviewGap == page.review.x);
+        // "Game language: Japanese  (stored id 1)" at a conservative Caption width fits the line.
+        assert(static_cast<int>(std::string("Game language: Japanese  (stored id 255)").size()) * 10 <= page.language.w);
+        for (const auto& placed : page.rows) {
+            assert(placed.card.h == (placed.row.editable ? Page::kEditH : Page::kInfoH));
+            assert(!placed.card.overlaps(page.review) && !placed.card.overlaps(page.language));
+        }
+        assert(Page::layout(gen5, kX, kY, kW, kH).language.w == 0);   // no detail line unless asked
+        const auto g5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
+        assert(g5.find("const auto page=PokeBank::UIModel::ClassicTrainerPage::layout(model,x,y,w,h,true);") != std::string::npos);
+        assert(g5.find("drawGlyphButton(fb,page.review.x,page.review.y,page.review.w,page.review.h,\"Y\",\"Review Changes\");") !=
+               std::string::npos);
+        assert(g5.find("const auto& line=page.language;") != std::string::npos);
+        assert(g5.find("reviewY=y+h-54") == std::string::npos);
+    }
     const auto gen4 = Page::layout(Page::rows({4, false, true, true}), kX, kY, kW, kH);
     assert(gen4.rows.front().card.h == Page::kEditH && gen4.rows.back().card.h <= Page::kInfoH);
     routes();
     std::cout << "Gen I-IV Trainer Info (Gen V design): native rows, no overlap, no duplicate gender, "
-                 "16 games x 3 writer sets: PASS\n";
+                 "16 games x 3 writer sets; Gen V on the same model: PASS\n";
     return 0;
 }

@@ -26,6 +26,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <map>
+#include <set>
+#include <utility>
 #include <memory>
 #include <string>
 #include <vector>
@@ -90,49 +93,166 @@ void verifyFrame(const std::string& where) {
         for (const auto& r : t) std::cout << "  " << describe(r) << '\n';
 }
 
-// Round 6 7A (lane C e39a92e2): one Special DV / Stat Exp row; the calculated Sp. Atk sits in the
-// Special row's Calculated cell and Sp. Def directly beneath it, each with a dim tag just left of
-// its number; every calculated number is right-aligned in the one Calculated column; no "x / y".
+// Round 7 (owner Round 6 A22 / C01, lane C): Gen II Special uses the Gen I calculated-Special
+// presentation. One Special DV / Stat Exp row; the numeric Calculated column holds plain numbers
+// for HP, Attack, Defense and Speed only (nothing on the Special row, no tags, no "x / y"); the
+// derived values sit in the lower-middle of the STATS panel: "CALCULATED SPECIAL STATS", then one
+// line "Sp. Atk n   Sp. Def n", below the grid and the HP note and above Shiny.
 void checkGen2Special(const std::string& where) {
-    const HostUi::TextRect* spaTag = nullptr;
-    const HostUi::TextRect* spdTag = nullptr;
-    const HostUi::TextRect* calculated = nullptr;
-    for (const auto& t : HostUi::visibleText) {
-        if (t.text == "Sp. Atk") spaTag = &t;
-        if (t.text == "Sp. Def") spdTag = &t;
-        if (t.text == "Calculated") calculated = &t;
-    }
-    check(spaTag && spdTag && calculated, where + ": Calculated column with Sp. Atk and Sp. Def tags");
-    if (!spaTag || !spdTag || !calculated) return;
-    const auto valueRightOf = [&](const HostUi::TextRect& tag) -> const HostUi::TextRect* {
-        for (const auto& t : HostUi::visibleText)
-            if (t.y == tag.y && t.x > tag.x + tag.w && !t.text.empty() &&
-                t.text.find_first_not_of("0123456789") == std::string::npos) return &t;
-        return nullptr;
+    const HostUi::TextRect* find[7] = {};
+    const char* names[7] = {"Calculated", "Special", "* HP DV derived / read-only", "CALCULATED SPECIAL STATS",
+                            "Sp. Atk", "Sp. Def", "Shiny"};
+    for (const auto& t : HostUi::visibleText)
+        for (int i = 0; i < 7; ++i)
+            if (t.text == names[i] && !find[i]) find[i] = &t;
+    for (int i = 0; i < 7; ++i) check(find[i] != nullptr, where + ": \"" + names[i] + "\" is visible");
+    for (const auto* f : find) if (!f) return;
+    const auto& calculated = *find[0];
+    const auto& special = *find[1];
+    const auto& hpNote = *find[2];
+    const auto& caption = *find[3];
+    const auto& spaTag = *find[4];
+    const auto& spdTag = *find[5];
+    const auto& shiny = *find[6];
+    const auto numeric = [](const HostUi::TextRect& t) {
+        return !t.text.empty() && t.text.find_first_not_of("0123456789") == std::string::npos;
     };
-    const auto* spa = valueRightOf(*spaTag);
-    const auto* spd = valueRightOf(*spdTag);
-    check(spa && spd, where + ": Sp. Atk and Sp. Def numbers follow their tags");
-    if (!spa || !spd) return;
-    check(spd->y > spa->y && spd->y - spa->y <= 40, where + ": Sp. Def directly beneath Sp. Atk");
-    check(spa->x + spa->w == spd->x + spd->w, where + ": Sp. Atk / Sp. Def right-aligned in one column");
-    // Every number of the Calculated column (right of its header's left edge, between the header and
-    // Sp. Def) ends on the same right edge.
+    const auto valueRightOf = [&](const HostUi::TextRect& tag) -> const HostUi::TextRect* {
+        const HostUi::TextRect* best = nullptr;
+        for (const auto& t : HostUi::visibleText)
+            if (t.y == tag.y && t.x > tag.x + tag.w && numeric(t) && (!best || t.x < best->x)) best = &t;
+        return best;
+    };
+    const auto* spa = valueRightOf(spaTag);
+    const auto* spd = valueRightOf(spdTag);
+    check(spa && spd, where + ": Sp. Atk and Sp. Def numbers follow their labels");
+    // The block: one line, below the Special row, the HP note and its caption, above Shiny.
+    check(spaTag.y == spdTag.y && spaTag.x < spdTag.x, where + ": Sp. Atk and Sp. Def on one line");
+    check(special.y < hpNote.y && hpNote.y < caption.y && caption.y < spaTag.y && spaTag.y + spaTag.h <= shiny.y - 5,
+          where + ": the Special block is below the grid and the HP note, above Shiny");
+    check(spa && spa->x + spa->w < spdTag.x, where + ": the Sp. Atk number ends before Sp. Def");
+    // The numeric Calculated column (texts starting at its header's x, between the header and the
+    // Special row): exactly HP / Attack / Defense / Speed, plain numbers; nothing on the Special row.
     int column = 0;
+    for (const auto& t : HostUi::visibleText) {
+        if (t.x != calculated.x || t.y <= calculated.y || t.y > special.y + 4) continue;
+        check(numeric(t), where + ": plain number in the Calculated column (\"" + t.text + "\")");
+        check(t.y + t.h <= special.y, where + ": nothing in the Special row's Calculated cell (\"" + t.text + "\")");
+        ++column;
+    }
+    check(column == 4, where + ": four calculated values (HP, Attack, Defense, Speed), found " + std::to_string(column));
     for (const auto& t : HostUi::visibleText)
-        if (t.x >= calculated->x - 10 && t.y > calculated->y && t.y <= spd->y && t.x < calculated->x + 140 &&
-            !t.text.empty() && t.text.find_first_not_of("0123456789") == std::string::npos) {
-            ++column;
-            check(t.x + t.w == spa->x + spa->w, where + ": calculated value \"" + t.text + "\" right-aligned");
+        if (t.x >= calculated.x - 100 && t.y > calculated.y && t.y <= special.y + 4)
+            check(t.text.rfind("Sp", 0) != 0 && t.text.find(" / ") == std::string::npos,
+                  where + ": no Special value squeezed into the STATS columns (\"" + t.text + "\")");
+}
+
+// Round 7 (owner Round 6 B06 / C06, lane C): the Gen I-IV Trainer page looks exactly like Gen V's.
+// From each game's real Trainer frame: the row cards (680-wide rounded fills), their x, heights per
+// kind (radius 14 = selectable card, radius 12 = read-only row), their colour, the label and value
+// text colours, and the Review button. Every Gen I-IV signature must equal Black's; values are
+// neutral text (never a highlight colour); the Gen I-IV Review button is smaller than a row card's
+// height and Gen V's 240 x 44 and intersects no row; nothing else is painted over the rows.
+struct TrainerStyle {
+    bool captured = false;
+    int cardX = -1;
+    std::set<std::pair<int, int>> radiusHeight;   // {radius, height} of every row card
+    std::set<uint32_t> cardColors, labelColors, valueColors;
+    std::vector<HostUi::Fill> cards;
+    HostUi::Fill review{};
+    bool hasReview = false;
+    HostUi::TextRect language{};   // Gen V's "Game language" detail line, when drawn
+    bool hasLanguage = false;
+};
+std::map<std::string, TrainerStyle> trainerStyles;
+
+void captureTrainerStyle(const std::string& game) {
+    TrainerStyle st;
+    st.captured = true;
+    // Only what the visible Trainer panel paints: the fills after its last full panel fill (Gen V
+    // paints its page over the base view, whose fills are hidden beneath).
+    std::vector<HostUi::Fill> fills;
+    for (const auto& f : HostUi::fills) {
+        if (f.radius == 16 && f.w >= 1000 && f.h >= 400) fills.clear();
+        fills.push_back(f);
+    }
+    for (const auto& f : fills)
+        if (f.w == 680 && (f.radius == 12 || f.radius == 14)) {
+            st.cards.push_back(f);
+            st.cardX = f.x;
+            st.radiusHeight.insert({f.radius, f.h});
+            st.cardColors.insert(f.rgba);
         }
-    // Nothing in the Calculated column is a combined "SpA N" / "A x / D y" cell (the radar's "SpA N"
-    // axis label on the graph pane is a different surface).
-    for (const auto& t : HostUi::visibleText)
-        if (t.x >= calculated->x - 100 && t.x < calculated->x + 140 && t.y > calculated->y && t.y <= spd->y)
-            check(t.text.rfind("SpA ", 0) != 0 && t.text.find(" / ") == std::string::npos,
-                  where + ": no combined Special cell in the Calculated column (\"" + t.text + "\")");
-    check(column == 6, where + ": six calculated values (HP, Atk, Def, Spe, Sp. Atk, Sp. Def), found " +
-          std::to_string(column));
+    const auto inside = [](const HostUi::TextRect& t, const HostUi::Fill& f) {
+        return t.x >= f.x && t.x + t.w <= f.x + f.w && t.y >= f.y && t.y + t.h <= f.y + f.h;
+    };
+    for (const auto& t : HostUi::visibleText) {
+        for (const auto& card : st.cards)
+            if (inside(t, card)) (t.x == card.x + 24 ? st.labelColors : st.valueColors).insert(t.rgba);
+        if (t.text.rfind("Game language: ", 0) == 0) { st.language = t; st.hasLanguage = true; }
+        if (t.text == "Review Changes")
+            for (const auto& f : fills)
+                if (f.radius == 8 && inside(t, f)) { st.review = f; st.hasReview = true; }
+    }
+    check(!st.cards.empty(), game + " / Trainer: row cards drawn");
+    // Nothing but the row cards and their value pills is painted over the rows' area.
+    for (const auto& f : fills) {
+        if (f.w == 680 || f.radius == -1 || (st.hasReview && f.x == st.review.x && f.y == st.review.y)) continue;
+        for (const auto& card : st.cards)
+            check(!(f.x < card.x + card.w && card.x < f.x + f.w && f.y < card.y + card.h && card.y < f.y + f.h) ||
+                  (f.w >= 1000),   // the panel / header behind the rows
+                  game + " / Trainer: no other fill over a row (" + std::to_string(f.x) + "," +
+                  std::to_string(f.y) + " " + std::to_string(f.w) + "x" + std::to_string(f.h) + ")");
+    }
+    trainerStyles[game] = st;
+}
+
+void compareTrainerStyles() {
+    const auto gen5 = trainerStyles.find("Black");
+    check(gen5 != trainerStyles.end() && gen5->second.captured, "Black Trainer captured (the reference)");
+    if (gen5 == trainerStyles.end()) return;
+    const auto& ref = gen5->second;
+    check(ref.hasLanguage, "Black Trainer: the Game language line is drawn");
+    const uint32_t neutral = UI::Colors::Text.toRGBA8();
+    check(ref.valueColors == std::set<uint32_t>{neutral}, "Black Trainer: values are neutral text");
+    // Gen V itself is held to the same Review rule (QA CG90): Black is checked against itself.
+    for (const char* game : {"Red", "Silver", "Crystal", "FireRed", "Platinum", "Black"}) {
+        const auto it = trainerStyles.find(game);
+        check(it != trainerStyles.end(), std::string(game) + " Trainer captured");
+        if (it == trainerStyles.end()) continue;
+        const auto& st = it->second;
+        const std::string where = std::string(game) + " / Trainer vs Black";
+        check(st.cardX == ref.cardX, where + ": same card x / width");
+        if (st.radiusHeight != ref.radiusHeight) {
+            std::cerr << where << ": card kinds";
+            for (const auto& [r, h] : st.radiusHeight) std::cerr << " r" << r << "/h" << h;
+            std::cerr << " vs Black";
+            for (const auto& [r, h] : ref.radiusHeight) std::cerr << " r" << r << "/h" << h;
+            std::cerr << '\n';
+        }
+        check(st.radiusHeight == ref.radiusHeight, where + ": same card kinds and heights");
+        check(st.cardColors == ref.cardColors, where + ": same row background");
+        check(st.valueColors == ref.valueColors, where + ": same (neutral) value colour");
+        for (const auto c : st.labelColors)
+            check(ref.labelColors.count(c) || c == UI::Colors::SelectedText.toRGBA8(), where + ": label colour");
+        check(st.hasReview, where + ": a Review Changes button");
+        if (!st.hasReview) continue;
+        check(st.review.w < 240 && st.review.h < 44, where + ": Review button narrower and shorter than Gen V's");
+        for (const auto& card : st.cards)
+            check(!(st.review.x < card.x + card.w && card.x < st.review.x + st.review.w &&
+                    st.review.y < card.y + card.h && card.y < st.review.y + st.review.h),
+                  where + ": the Review button intersects no row");
+        int lowest = 0;
+        for (const auto& card : st.cards) lowest = std::max(lowest, card.y + card.h);
+        check(st.review.y >= lowest, where + ": the Review button sits below the rows");
+        if (st.hasLanguage) {
+            const auto& l = st.language;
+            check(!(l.x < st.review.x + st.review.w && st.review.x < l.x + l.w && l.y < st.review.y + st.review.h &&
+                    st.review.y < l.y + l.h),
+                  where + ": the Game language line clears the Review button");
+            check(l.y >= lowest, where + ": the Game language line sits below the rows");
+        }
+    }
 }
 
 // Round 7 P2 (owner Oct 26 typography): every Pokemon editor surface, Gen I-V, draws its section
@@ -206,6 +326,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
             frame();
         }
         verifyFrame(game + " / " + page.name);
+        if (page.mode == View::Trainer && page.detail && !page.help) captureTrainerStyle(game);
         if (page.mode == View::Trainer && page.detail && !page.help && noTrainerGender) {
             // Gen I and Gold / Silver store no trainer gender (CG72): no "Gender" text is drawn at
             // all on the Trainer page, visible or painted over.
@@ -509,6 +630,8 @@ int main(int argc, char** argv) {
             if (trainer) sweep("Black", *open(*trainer, "Pokemon Black", "black_nds", "DraStic"), 1, true);
         }
     }
+
+    compareTrainerStyles();
 
     if (failures) {
         std::cerr << failures << " of " << checks << " layout checks failed\n";

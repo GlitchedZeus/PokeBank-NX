@@ -49,14 +49,12 @@ XFAIL: dict[str, str] = {
     # Round 7: owner Oct 26 FAILs and requests (docs/hardware/ROUND6_RESULTS_26186464.md), owners per the
     # coordinator's round 7 assignment.
     "CG81-one-review-key-per-screen": "L (round 7 B08 defect 2)",
-    "CG83-classic-trainer-gen5-tokens": "C (round 7 B06 / C06)",
-    "CG84-gen2-special-lower-middle": "C (round 7 A22 / C01)",
     # CG87 (P e52b7d97) and CG88 (P e52b7d97, one early outside-tap dispatcher in SaveSelectScreen::update)
     # on #307 2de1c390, and CG85 (R 47b8097e, Gen2UnownLetter.h questions + Letter grid): ENFORCED.
     # CG80 (L 146511e2, the outer Gen II draw shows an open Review first) and CG82 (L ab46883e, this
     # profile's exports/gen5/account-<p> records, EXPORT_MANIFEST.txt) on #307 ab46883e: ENFORCED.
     # CG89 (S b9e8e517, include/UI/SharedPanelHeading.h for every Gen I-V editor heading): ENFORCED.
-    "CG90-gen5-trainer-review-slot": "C (round 7 B06 / C06, Gen V)",
+    # CG83 / CG84 / CG90 (C 73248a15: SharedTrainerPanel + ClassicTrainerPage for Gen I-V, Gen II Special block): ENFORCED.
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational

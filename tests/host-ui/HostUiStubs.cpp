@@ -42,8 +42,9 @@ void PKSEFramebuffer::drawCard(int x, int y, int w, int h) { HostUi::occlude(x, 
 void PKSEFramebuffer::drawSelectionHighlight(int, int, int, int) {}
 void PKSEFramebuffer::drawHDivider(int, int, int) {}
 void PKSEFramebuffer::drawFilledEllipse(int, int, int, int, Color) {}
-void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int, Color c) {
+void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int radius, Color c) {
     HostUi::occlude(x, y, w, h, c.a);
+    HostUi::fills.push_back({x, y, w, h, radius, c.toRGBA8()});
     if (x == 0 && w == width && y == height - 56) ++HostUi::footerBars;   // ScreenChrome::drawNavBar band
 }
 void PKSEFramebuffer::drawRoundedRect(int, int, int, int, int, Color, int) {}
@@ -54,7 +55,10 @@ void PKSEFramebuffer::drawShinyMark(int, int, int, Color) {}
 void PKSEFramebuffer::drawBackspaceIcon(int, int, int, Color) {}
 void PKSEFramebuffer::drawShiftIcon(int, int, int, Color, bool) {}
 void PKSEFramebuffer::drawPointerCursor(int, int, int, Color) {}
-void PKSEFramebuffer::drawPill(int x, int y, int w, int h, Color c) { HostUi::occlude(x, y, w, h, c.a); }
+void PKSEFramebuffer::drawPill(int x, int y, int w, int h, Color c) {
+    HostUi::occlude(x, y, w, h, c.a);
+    HostUi::fills.push_back({x, y, w, h, -1, c.toRGBA8()});
+}
 void PKSEFramebuffer::drawPillBorder(int, int, int, int, Color, int) {}
 void PKSEFramebuffer::drawSoftShadow(int, int, int, int, int) {}
 void PKSEFramebuffer::drawVerticalGradient(int x, int y, int w, int h, Color top, Color bottom) {

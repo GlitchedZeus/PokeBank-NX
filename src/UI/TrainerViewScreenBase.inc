@@ -11,6 +11,7 @@
 #include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
 #include "UI/ClassicTrainerSession.h"
 #include "UI/ClassicTrainerPage.h"  // Round 6 P2: Gen I-IV Trainer Info rows and layout
+#include "UI/SharedTrainerPanel.h"   // Round 7: the one Trainer painter (Gen V and Gen I-IV)
 #include "UI/ClassicStagedExit.h"
 #include "UI/ClassicBrowseFooter.h"
 #include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
@@ -451,24 +452,18 @@ int reviewGeneration(const std::string& gameId) {
     // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
     // rows (Name / Money) are editable; the rows below are informational -- editing TID/SID would
     // re-own every Pokemon already in the save, so it is deliberately left out.
-    // Round 6 P2 (R2-TRAINER / NEW-18): Gen I-IV Trainer Info in the Gen V Trainer design. The
-    // rows and their rects come from UI/ClassicTrainerPage.h (the layout the tests check): Gen V
-    // cards with value pills for the staged Name / Money / Play Time / Gender, a divider, gold
-    // read-only native rows, and the visible Y Review Changes button in its own slot. No field is
-    // invented (no Gen I or Gold / Silver gender) and nothing is drawn twice.
+    // Round 6 P2 / Round 7 (owner B06 / C06): Gen I-IV Trainer Info looks exactly like Gen V
+    // Trainer. Which rows a game shows and where they go come from UI/ClassicTrainerPage.h (the
+    // layout the tests check); every pixel is painted by UI/SharedTrainerPanel.h, the painter Gen V's
+    // Trainer page uses: the same header bar, cards, value pills, divider, neutral read-only values
+    // and row backgrounds. No field is invented (no Gen I or Gold / Silver gender) and nothing is
+    // drawn twice. The compact Y Review Changes button sits in its measured slot below the rows.
     static void drawClassicTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h,
                                        int generation) {
         namespace Page = PokeBank::UIModel::ClassicTrainerPage;
+        namespace Panel = SharedTrainerPanel;
         Trainer::Trainer& t = screen.trainer;
-        fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
-        fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
-        fb.drawFilledRoundedRect(x, y, w, Page::kHeaderH, 16, Colors::AccentDim);
-        fb.drawFilledRect(x, y + Page::kHeaderH - 16, w, 16, Colors::AccentDim);
-        fb.drawText(x + 22, y + (Page::kHeaderH - fb.lineHeight(TextStyle::Heading)) / 2, "Trainer",
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 170, y + (Page::kHeaderH - fb.lineHeight(TextStyle::Caption)) / 2,
-                    "Edits are staged in app memory; gold values are read-only; the source save is unchanged",
-                    Colors::TextDim, TextStyle::Caption);
+        Panel::drawPanel(fb, x, y, w, h, "Edits are staged in app memory; the source save is unchanged");
         screen.touchButtons.clear();
 
         const auto rows = Page::rows({generation, screen.sourceGameId == "crystal_gbc",
@@ -492,37 +487,20 @@ int reviewGeneration(const std::string& gameId) {
             }
             return {};
         };
-        const auto readOnly = SharedEditorChrome::fieldColor(PokeBank::UIModel::SharedFieldState::style(
-            PokeBank::UIModel::SharedFieldState::State::ReadOnly, false).value);
-        const int textH = fb.lineHeight(TextStyle::Body);
         bool dividerDrawn = false;
         for (const auto& placed : page.rows) {
             const auto& c = placed.card;
             const std::string label(Page::label(placed.row.field));
-            const std::string text = value(placed.row.field);
-            int lw = 0, lh = 0, vw = 0, vh = 0;
-            fb.measureText(label, lw, lh, TextStyle::Body);
-            fb.measureText(text, vw, vh, TextStyle::Body);
-            const auto rects = Page::textRects(placed, lw, vw, textH);
             if (placed.row.editable) {
-                const bool sel = screen.trainerSelectedRow == placed.row.touchId;
-                fb.drawSoftShadow(c.x, c.y, c.w, c.h, 14);
-                fb.drawFilledRoundedRect(c.x, c.y, c.w, c.h, 14, Colors::PanelAlt);
-                if (sel) fb.drawRoundedRect(c.x, c.y, c.w, c.h, 14, Colors::FocusBorder, 2);
-                fb.drawText(rects.label.x, rects.label.y, label, sel ? Colors::SelectedText : Colors::TextDim,
-                            TextStyle::Body);
-                fb.drawPill(rects.value.x, rects.value.y, rects.value.w, rects.value.h, Colors::Background);
-                fb.drawText(rects.value.x + (rects.value.w - vw) / 2, rects.value.y + (rects.value.h - vh) / 2,
-                            text, Colors::Text, TextStyle::Body);
+                Panel::drawEditableRow(fb, c.x, c.y, c.w, c.h, label, value(placed.row.field),
+                                       screen.trainerSelectedRow == placed.row.touchId);
                 screen.touchButtons.push_back({placed.row.touchId, c.x, c.y, c.w, c.h});
             } else {
                 if (!dividerDrawn) {
-                    fb.drawHDivider(c.x + 20, page.dividerY, c.w - 40);
+                    Panel::drawDivider(fb, c.x, page.dividerY, c.w);
                     dividerDrawn = true;
                 }
-                fb.drawFilledRoundedRect(c.x, c.y, c.w, c.h, 12, Colors::PanelAlt);
-                fb.drawText(rects.label.x, rects.label.y, label, Colors::TextDim, TextStyle::Body);
-                fb.drawText(rects.value.x, rects.value.y, text, readOnly, TextStyle::Body);
+                Panel::drawInfoRow(fb, c.x, c.y, c.w, c.h, label, value(placed.row.field));
             }
         }
         drawGlyphButton(fb, page.review.x, page.review.y, page.review.w, page.review.h, "Y", "Review Changes");

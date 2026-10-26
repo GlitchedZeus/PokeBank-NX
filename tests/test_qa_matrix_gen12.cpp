@@ -562,7 +562,7 @@ std::string partySummary(size_t count) { return "party " + std::to_string(count)
 //                 Gen2::StagedEditor GSCReadOnlyTrainer holds, stageInventoryQuantity)
 //   trainer-edit  RBYReadOnlyTrainer::stagedTrainer() (Gen1StagedTrainerEditor) and
 //                 ClassicTrainerSession::trainerFieldsEditable (tests/test_gen1_trainer_edit.cpp)
-//   special-stat  Gen2Workspace::battleStats / calculatedCell (tests/test_gen2_special_stat.cpp)
+//   special-stat  Gen2Workspace::battleStats / calculatedCell / SpecialBlock (tests/test_gen2_special_stat.cpp)
 //   met-time      Gen2FieldSelector::nextMetTime + Gen2Native caught-data codec, staged through
 //                 Gen2::StagedEditor::stageBoxPokemonEdit (tests/test_crystal_met_time_inline.cpp)
 //   reroll        Gen12DVReroll::reroll (the Y handler of Gen1PokemonEditorOverlayFoundation.inc /
@@ -832,22 +832,14 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
             c.expect(battle[4] == spa && battle[5] == spd,
                      "SpA/SpD " + std::to_string(battle[4]) + "/" + std::to_string(battle[5]) + " != formula " +
                          std::to_string(spa) + "/" + std::to_string(spd));
-            // The approved hardware layout shows SpA in the normal calculated
-            // Special cell and SpD immediately below in that SAME column.
-            // Neither value is a second DV or Stat Exp input.
-            // Round 6 7A: SpA tagged in the Special row, SpD tagged on the next grid row of the
-            // same Calculated column.
-            const auto cell = W::calculatedCell(battle, 4);
-            c.expect(cell.tag == "Sp. Atk" && cell.value == std::to_string(spa),
-                     "Calculated Special Attack does not match its own formula: '" + cell.value + "'");
-            const auto spdCell = W::calculatedCell(battle, W::kSpecialDefenseRow);
-            c.expect(spdCell.tag == "Sp. Def" && spdCell.value == std::to_string(spd),
-                     "Calculated Special Defense does not match its own formula");
-            c.expect(cell.value.find('/') == std::string::npos && spdCell.value.find('/') == std::string::npos,
-                     "Calculated Special must not combine SpA/SpD into a cramped slash label");
-            for (int r = 0; r < 4; ++r)
-                c.expect(W::calculatedCell(battle, r).value == std::to_string(battle[static_cast<size_t>(r)]) &&
-                             W::calculatedCell(battle, r).tag.empty(),
+            // Round 7 (owner A22 / C01, Gen I reference): the numeric STATS columns hold plain
+            // numbers; the Special row's Calculated cell is empty and SpA / SpD (battle[4] /
+            // battle[5], checked against the formula above) are shown in the Special block below
+            // the grid. Neither value is a second DV or Stat Exp input.
+            c.expect(W::calculatedCell(battle, W::kSpecialRow).empty(),
+                     "the Special row's Calculated cell holds no squeezed SpA / SpD value");
+            for (int r = 0; r < W::kSpecialRow; ++r)
+                c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
                          "calculated row " + std::to_string(r));
         }
     });

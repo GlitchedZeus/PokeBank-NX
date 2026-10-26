@@ -70,20 +70,22 @@ int main() {
         const auto src = read(path);
         assert(src.find("dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]}") != std::string::npos);
         assert(src.find("gen2StatCellColor(r, 0)") != std::string::npos);
-        // Owner-approved #324 layout (round 6 7A grid): SpA and SpD occupy the same Calculated
-        // column. The Special DV / Stat Exp remain one editable native row.
+        // Round 7 (owner A22 / C01): plain-number Calculated column plus the Gen I-style Special
+        // block. The Special DV / Stat Exp remain one editable native row.
         assert(src.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+        assert(src.find("drawGen2SpecialBlock(fb, battle, x, y);") != std::string::npos);
     }
     {
-        // The one Calculated-column painter: model cells, shared field-state colour (SpD uses the
-        // Special row's state, like SpA).
+        // The one Calculated-column painter: model cells, shared field-state colour; the Special
+        // block's SpA / SpD values use the Special row's calculated state (ReadOnly gold).
         const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
-        assert(unified.find("const auto cell = W::calculatedCell(battle, row);") != std::string::npos);
-        assert(unified.find("gen2StatCellColor(std::min(row, 4), 2)") != std::string::npos);
+        assert(unified.find("W::calculatedCell(battle, row),\n                    gen2StatCellColor(row, 2)") != std::string::npos);
+        assert(unified.find("const Color value = gen2StatCellColor(4, 2);") != std::string::npos);
     }
     const auto gen2View = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     assert(gen2View.find("CSF::derivedHpDv(") != std::string::npos);
-    assert(gen2View.find("stat, cellColor(i, 2)") != std::string::npos);
+    assert(gen2View.find("std::to_string(battleStats[static_cast<std::size_t>(i)]), cellColor(i, 2)") != std::string::npos);
+    assert(gen2View.find("std::to_string(battleStats[5]), cellColor(4, 2)") != std::string::npos);
     // QA CG16: Shiny is an Editable inline toggle (never gold); the split SpA / SpD display is
     // ReadOnly gold. No Gen I / II editor value is drawn in a raw gold token; each goes through
     // UI/ClassicFieldColor.h (the shared field-state colour).

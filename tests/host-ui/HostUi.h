@@ -6,6 +6,7 @@
 #include <switch.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <deque>
 #include <optional>
 #include <string>
@@ -32,6 +33,13 @@ struct TextRect {
     int style = -1;          // TextStyle as drawn (Round 7 typography checks)
     uint32_t rgba = 0;       // the drawn Color, packed as Color::toRGBA8
 };
+// Round 7 (lane C): every opaque rounded fill / pill of the frame, in paint order, with its colour
+// and corner radius (-1 for a pill), so style tokens (row cards, backgrounds) can be compared.
+struct Fill {
+    int x = 0, y = 0, w = 0, h = 0, radius = 0;
+    uint32_t rgba = 0;
+};
+inline std::vector<Fill> fills;
 inline constexpr int kFontPx[4] = {17, 20, 28, 32};
 inline constexpr int charWidth(int style) noexcept { return style == 0 ? 9 : style == 1 ? 10 : style == 2 ? 14 : 16; }
 inline std::vector<TextRect> visibleText;
@@ -40,6 +48,7 @@ inline bool clipOn = false;
 inline int clipX = 0, clipY = 0, clipW = 0, clipH = 0;
 inline void resetLayout() {
     visibleText.clear();
+    fills.clear();
     footerBars = 0;
     clipOn = false;
 }

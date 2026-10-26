@@ -14,6 +14,7 @@
 #include "Integration/Gen5/Gen5SharedReview.h"
 #include "UI/ClassicStagedExit.h"
 #include "UI/ClassicTrainerSession.h"
+#include "UI/SharedTrainerPanel.h"
 #include "Integration/Gen5/Gen5HubRouting.h"
 #include "Integration/Gen5/Gen5DisplayStats.h"
 #include "Integration/Gen5/Gen5EditorFields.h"
@@ -1267,72 +1268,61 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     // card as the base Trainer view (no modal). Name / Money / Play Time /
     // Pokedex are cards with a value pill; the read-only identity rows sit
     // below a divider (R2-BUG-003). The page always draws its own footer.
+    // Round 7: painted by UI/SharedTrainerPanel.h, the painter the Gen I-IV Trainer page uses too.
     screen.drawGSCOverlay(fb);
     const int x=LEFT_PANEL_X,y=CONTENT_PANEL_Y;
     const int w=fb.getWidth()-x,h=CONTENT_PANEL_HEIGHT;
-    fb.drawFilledRoundedRect(x,y,w,h,16,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,16,Colors::Border,1);
-    constexpr int hH=46;
-    fb.drawFilledRoundedRect(x,y,w,hH,16,Colors::AccentDim);
-    fb.drawFilledRect(x,y+hH-16,w,16,Colors::AccentDim);
-    fb.drawText(x+22,y+(hH-fb.lineHeight(TextStyle::Heading))/2,"Trainer",
-                Colors::Text,TextStyle::Heading);
-    fb.drawText(x+170,y+(hH-fb.lineHeight(TextStyle::Caption))/2,
-                "Name, Money and Play Time are staged in app memory; the source save is unchanged",
-                Colors::TextDim,TextStyle::Caption);
+    namespace TPanel=UI::SharedTrainerPanel;
+    namespace TPage=PokeBank::UIModel::ClassicTrainerPage;
+    TPanel::drawPanel(fb,x,y,w,h,"Name, Money and Play Time are staged in app memory; the source save is unchanged");
     // R2-BUG-003: the Gen I-IV Trainer hierarchy. Selectable rows first (the staged Name / Money /
     // Play Time edits, and the Pokedex view) as cards with a value pill; a divider; then the
     // read-only identity rows, compact and unselectable, as Gen IV shows them (Gender, Trainer ID,
     // Secret ID as two separate native 16-bit numbers, plus Gen V's Badges). The raw language id is
     // secondary information: one unboxed detail line, by name. Every value is still read from the
     // save; nothing is merged or recomputed. Touch ids stay kGen5TrainerRowTouchBase + kRows index.
+    // Round 7 (owner B06 / C06, QA CG90): the rects come from the one Trainer page model
+    // (UI/ClassicTrainerPage.h) the Gen I-IV page uses: the Gen V heights, a compact Review button
+    // in its measured slot below the last row, and the language line beside it in that band, so
+    // neither can overlap a row.
     using TRow=G::Gen5TrainerScreen::Row;
-    constexpr int cardW=680,rowH=52,rowGap=8,infoH=42,infoGap=6,top=hH+18;
-    const int cardX=x+(w-cardW)/2;
+    using F=TPage::Field;
+    const std::vector<TPage::Row> model{{F::Name,true,-1},{F::Money,true,-1},{F::PlayTime,true,-1},
+        {F::Pokedex,true,-1},{F::Gender,false,-1},{F::TrainerId,false,-1},{F::SecretId,false,-1},
+        {F::Badges,false,-1}};
+    const auto page=PokeBank::UIModel::ClassicTrainerPage::layout(model,x,y,w,h,true);
     const auto indexOf=[](TRow row) {
         for(size_t i=0;i<G::Gen5TrainerScreen::kRows.size();++i)
             if(G::Gen5TrainerScreen::kRows[i]==row)return i;
         return G::Gen5TrainerScreen::kRows.size();
     };
-    int cy=y+top;
+    size_t placed=0;
     for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex}) {
         const size_t i=indexOf(row);
         const bool sel=editor.open() && i==editor.row();
-        fb.drawSoftShadow(cardX,cy,cardW,rowH,14);
-        fb.drawFilledRoundedRect(cardX,cy,cardW,rowH,14,Colors::PanelAlt);
-        if(sel)fb.drawRoundedRect(cardX,cy,cardW,rowH,14,Colors::FocusBorder,2);
-        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),cardX,cy,cardW,rowH});
-        fb.drawText(cardX+24,cy+(rowH-fb.lineHeight(TextStyle::Body))/2,G::Gen5TrainerScreen::label(row),
-                    sel?Colors::SelectedText:Colors::TextDim,TextStyle::Body);
-        const std::string value=G::Gen5TrainerScreen::value(ws,row);
-        int vw=0,vh=0;
-        fb.measureText(value,vw,vh,TextStyle::Body);
-        const int pillW=vw+44,pillH=36;
-        const int px=cardX+cardW-pillW-20,py=cy+(rowH-pillH)/2;
-        fb.drawPill(px,py,pillW,pillH,Colors::Background);
-        fb.drawText(px+(pillW-vw)/2,py+(pillH-vh)/2,value,Colors::Text,TextStyle::Body);
-        cy+=rowH+rowGap;
+        const auto& c=page.rows[placed++].card;
+        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),c.x,c.y,c.w,c.h});
+        TPanel::drawEditableRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
+                                G::Gen5TrainerScreen::value(ws,row),sel);
     }
-    cy+=4;
-    fb.drawHDivider(cardX+20,cy,cardW-40);
-    cy+=14;
+    {
+        const int cardX=page.rows.front().card.x,cy=page.dividerY,cardW=TPage::kCardW;
+        TPanel::drawDivider(fb,cardX,cy,cardW);
+    }
     for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges}) {
-        fb.drawFilledRoundedRect(cardX,cy,cardW,infoH,12,Colors::PanelAlt);
-        fb.drawText(cardX+24,cy+(infoH-fb.lineHeight(TextStyle::Body))/2,G::Gen5TrainerScreen::label(row),
-                    Colors::TextDim,TextStyle::Body);
-        const std::string value=G::Gen5TrainerScreen::value(ws,row);
-        int vw=0,vh=0;
-        fb.measureText(value,vw,vh,TextStyle::Body);
-        fb.drawText(cardX+cardW-24-vw,cy+(infoH-vh)/2,value,Colors::Text,TextStyle::Body);
-        cy+=infoH+infoGap;
+        const auto& c=page.rows[placed++].card;
+        TPanel::drawInfoRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
+                            G::Gen5TrainerScreen::value(ws,row));
     }
-    if(const auto t=ws.trainerPresentation())
-        fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
-                    "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
-    const int reviewX=cardX+cardW-240,reviewY=y+h-54;
-    drawGlyphButton(fb,reviewX,reviewY,240,44,"Y","Review Changes");
+    if(const auto t=ws.trainerPresentation()) {
+        const auto& line=page.language;
+        fb.drawText(line.x,line.y+(line.h-fb.lineHeight(TextStyle::Caption))/2,std::string("Game language: ")+
+                    Enums::getLanguageName(t->language)+"  (stored id "+std::to_string(t->language)+")",
+                    Colors::TextDim,TextStyle::Caption);
+    }
+    drawGlyphButton(fb,page.review.x,page.review.y,page.review.w,page.review.h,"Y","Review Changes");
     screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
-        reviewX,reviewY,240,44});
+        page.review.x,page.review.y,page.review.w,page.review.h});
     std::vector<ControllerHint> hints;
     for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);

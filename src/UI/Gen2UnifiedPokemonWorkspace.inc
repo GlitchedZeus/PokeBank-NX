@@ -914,25 +914,29 @@ inline uint8_t gen2ShownHpDv(const PokeVault::Integration::Gen2::PokemonRecord& 
     return PokeBank::UIModel::ClassicStatFields::derivedHpDv({p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]});
 }
 
-// Round 6 7A: the STATS Calculated column for every Gen II painter (Gen2Workspace::StatsGrid).
-// Rows 0-3 and the Special row are on the grid; SpD is the continuation row directly beneath
-// SpA. Numbers are right-aligned in one column; the derived Special values carry matching tags.
+// Round 7 (owner A22 / C01): the STATS Calculated column for every Gen II painter holds plain
+// numbers only (HP, Attack, Defense, Speed); the Special row's cell stays empty because Gen II
+// splits Special into two calculated stats, shown by drawGen2SpecialBlock below the grid.
 void drawGen2CalculatedColumn(PKSEFramebuffer& fb, const std::array<uint16_t, 6>& battle,
-                              int x, int y, int w) {
+                              int x, int y, int) {
     namespace W = PokeBank::UIModel::Gen2Workspace;
-    for (int row = 0; row <= W::kSpecialDefenseRow; ++row) {
-        const auto cell = W::calculatedCell(battle, row);
-        const int yy = y + W::StatsGrid::rowY(row);
-        int vw = 0, vh = 0;
-        fb.measureText(cell.value, vw, vh, TextStyle::Caption);
-        if (!cell.tag.empty()) {
-            int tw = 0, th = 0;
-            fb.measureText(cell.tag, tw, th, TextStyle::Caption);
-            fb.drawText(x + W::StatsGrid::tagX(w, vw, tw), yy, cell.tag, Colors::TextDim, TextStyle::Caption);
-        }
-        fb.drawText(x + w - W::StatsGrid::kRightInset - vw, yy, cell.value,
-                    gen2StatCellColor(std::min(row, 4), 2), TextStyle::Caption);
-    }
+    for (int row = 0; row < W::kSpecialRow; ++row)
+        fb.drawText(x + W::StatsGrid::kCalculatedX, y + W::StatsGrid::rowY(row), W::calculatedCell(battle, row),
+                    gen2StatCellColor(row, 2), TextStyle::Caption);
+}
+
+// Round 7: the Gen I calculated-Special presentation (Gen1PokemonEditorFoundationHardwareFix.inc,
+// "CALCULATED SPECIAL STATS"), in the lower-middle of the STATS panel: below the grid and the HP
+// note, above Shiny. Display only: it paints, publishes no touch target and reads no DV / Stat Exp.
+void drawGen2SpecialBlock(PKSEFramebuffer& fb, const std::array<uint16_t, 6>& battle, int x, int y) {
+    using B = PokeBank::UIModel::Gen2Workspace::SpecialBlock;
+    const Color value = gen2StatCellColor(4, 2);
+    fb.drawText(x + B::kLabelX, y + B::kCaptionY, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + B::kLabelX, y + B::kValuesY, B::kSpecialAttack, Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + B::kSpAValueX, y + B::kValuesY, std::to_string(battle[4]), value, TextStyle::Caption);
+    fb.drawText(x + B::kSpDLabelX, y + B::kValuesY, B::kSpecialDefense, Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + B::kSpDValueX, y + B::kValuesY, std::to_string(battle[5]), value, TextStyle::Caption);
+    fb.drawText(x + B::kLabelX, y + B::kNoteY, B::kNote, Colors::TextDim, TextStyle::Caption);
 }
 
 void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified,
@@ -960,12 +964,12 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
         fb.drawText(x + 184, yy, std::to_string(p.statExperience[static_cast<std::size_t>(r)]),
                     gen2StatCellColor(r, 1), TextStyle::Caption);
     }
-    // One real editable Special DV/Stat Exp row; both computed Special stats stay in the one
-    // Calculated column, SpD on the next grid row under SpA (no fake second DV row).
+    // One real editable Special DV / Stat Exp row; the two calculated Special stats are explained
+    // below the grid, as Gen I shows its Special (no fake second DV row, nothing squeezed).
     drawGen2CalculatedColumn(fb, battle, x, y, w);
-    fb.drawText(x + 18, y + 291, "Special DV / Stat Exp shared by SpA and SpD",
+    fb.drawText(x + 18, y + PokeBank::UIModel::Gen2Workspace::StatsGrid::kHpNoteY, "* HP DV derived / read-only",
                 Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
+    drawGen2SpecialBlock(fb, battle, x, y);
 
     const bool unown = p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies;
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
