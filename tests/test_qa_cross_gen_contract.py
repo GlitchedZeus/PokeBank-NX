@@ -2925,7 +2925,7 @@ def round6_contracts(sources):
     for rel, anchor_rx, what in (
             ("src/Integration/Gen1/Gen1StagedPokemonEditor.cpp", r'add\("presence",std::string\(C::kAddPokemon\)', "Gen I"),
             ("src/Integration/Gen2/Gen2StagedEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen II"),
-            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'" Add Pokemon"', "Gen III")):
+            ("src/Integration/Gen3/Gen3StagedPokemonEditor.cpp", r'std::string\(C::kAddPokemon\)', "Gen III")):
         f = src(rel)
         m = re.search(anchor_rx, f.code) if f else None
         if not m:
