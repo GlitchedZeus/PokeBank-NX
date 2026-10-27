@@ -62,6 +62,50 @@ std::array<uint8_t,4> stored(const PokemonRecord& p) {
 } // namespace
 
 int main() {
+    // Native Party edit: preserve status/unknown bytes and every box while updating
+    // the 44-byte cache, named Review and the independently reparsed export.
+    {
+        auto source=fixture();
+        constexpr size_t party=0x2F2C, body=party+8;
+        source[party]=1;source[party+1]=0x54;source[party+2]=0xFF;
+        std::copy_n(source.begin()+0x30C0+22,33,source.begin()+body);
+        source[body+4]=8; // poison status survives edits
+        source[body+33]=5;
+        const auto stats=StagedPokemonEditor::calculateBattleStats(25,5,{8,8,8,8},{}).asArray();
+        for(size_t i=0;i<stats.size();++i) {source[body+34+i*2]=stats[i]>>8;source[body+35+i*2]=stats[i]&255;}
+        source[body+1]=0;source[body+2]=stats[0]-3;
+        std::copy_n(source.begin()+0x30C0+682,11,source.begin()+body+6*44);
+        std::copy_n(source.begin()+0x30C0+902,11,source.begin()+body+6*44+6*11);
+        repair(source);const auto immutable=source;
+        const auto parsed=parse(source,SourceGame::Red);assert(parsed);
+        std::string error;auto editor=StagedPokemonEditor::create(*parsed.save,error);assert(editor);
+        const auto original=editor->partyPokemon(0,error);assert(original);
+        BoxPokemonEdit nick;nick.nickname="PARTY";
+        assert(editor->stagePartyPokemonEdit(0,nick,error));
+        const auto named=editor->partyPokemon(0,error);assert(named && named->nickname=="PARTY");
+        assert(named->rawBody==original->rawBody); // name-only: cache and damage stay byte-exact
+        BoxPokemonEdit edit;edit.level=50;edit.dvs=std::array<uint8_t,4>{1,2,3,4};edit.moves=std::array<uint8_t,4>{85,0,0,0};
+        assert(editor->stagePartyPokemonEdit(0,edit,error));
+        const auto after=editor->partyPokemon(0,error);assert(after && after->level==50 && after->moves[0]==85);
+        assert(after->status==8 && after->currentHP==original->currentHP);
+        const auto expected=StagedPokemonEditor::calculateBattleStats(25,50,{1,2,3,4},{}).asArray();
+        assert((std::array<uint16_t,5>{after->maxHP,after->attack,after->defense,after->speed,after->special})==expected);
+        assert(editor->pendingChanges().size()>5);
+        bool moveNamed=false;
+        for(const auto& row:editor->pendingChanges())
+            if(row.label=="Party 1: Move 1") {assert(row.afterValue=="Thunderbolt");moveNamed=true;}
+        assert(moveNamed);
+        const auto candidate=editor->finalizedBytes(error);assert(!candidate.empty() && parse(candidate,SourceGame::Red));
+        for(size_t i=0;i<source.size();++i)
+            if(candidate[i]!=source[i]) assert(i==0x3523 || (i>=party && i<0x30C0));
+        const auto staged=std::vector<uint8_t>(editor->stagedBytes().begin(),editor->stagedBytes().end());
+        edit.level=0;assert(!editor->stagePartyPokemonEdit(0,edit,error));
+        assert(!editor->stagePartyPokemonEdit(1,{},error));
+        assert(std::equal(staged.begin(),staged.end(),editor->stagedBytes().begin()));
+        assert(source==immutable && std::equal(source.begin(),source.end(),editor->originalBytes().begin()));
+        editor->discard();assert(!editor->hasPendingChanges());
+        assert(std::equal(source.begin(),source.end(),editor->stagedBytes().begin()));
+    }
     auto raw = fixture();
     const auto parsed = parse(raw, SourceGame::Red);
     assert(parsed && parsed.save);

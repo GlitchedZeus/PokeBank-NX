@@ -12,6 +12,8 @@ enum class Method : uint8_t {
     Grass = 0, Surf = 1, OldRod = 2, GoodRod = 3, SuperRod = 4, RockSmash = 5,
     Headbutt = 6, HeadbuttSpecial = 7, BugContest = 8,
     Static = 9, Gift = 10, Egg = 11, Event = 12,
+    HoneyTree = 13, SafariGrass = 14, SafariSurf = 15, SafariOldRod = 16,
+    SafariGoodRod = 17, SafariSuperRod = 18, Standard = 19, Swarm = 20, HiddenGrotto = 21,
 };
 
 struct EncounterTemplate {
@@ -56,6 +58,15 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::Gift: return "Gift";
         case Method::Egg: return "Egg";
         case Method::Event: return "Event";
+        case Method::HoneyTree: return "Honey Tree";
+        case Method::SafariGrass: return "Safari grass";
+        case Method::SafariSurf: return "Safari surf";
+        case Method::SafariOldRod: return "Safari Old Rod";
+        case Method::SafariGoodRod: return "Safari Good Rod";
+        case Method::SafariSuperRod: return "Safari Super Rod";
+        case Method::Standard: return "Wild";
+        case Method::Swarm: return "Swarm";
+        case Method::HiddenGrotto: return "Hidden Grotto";
     }
     return "Encounter";
 }

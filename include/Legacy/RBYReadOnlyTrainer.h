@@ -4,6 +4,7 @@
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
+#include "Integration/Gen1/Gen1StagedTrainerEditor.h"
 #include "Trainer/Trainer.h"
 
 #include <memory>
@@ -26,7 +27,8 @@ public:
     size_t getPartySize() const noexcept override { return party.size(); }
     bool hasStagedChanges() const noexcept override {
         return (stagedPokemon_ && stagedPokemon_->hasPendingChanges()) ||
-               (stagedInventory_ && stagedInventory_->hasPendingChanges());
+               (stagedInventory_ && stagedInventory_->hasPendingChanges()) ||
+               (stagedTrainer_ && stagedTrainer_->hasPendingChanges());
     }
     Enums::GameVersion getGameGroup() const noexcept override { return Enums::GameVersion::RBY; }
 
@@ -42,6 +44,12 @@ public:
     Integration::Gen1::StagedPokemonEditor* stagedPokemon() noexcept { return stagedPokemon_.get(); }
     const Integration::Gen1::StagedPokemonEditor* stagedPokemon() const noexcept { return stagedPokemon_.get(); }
     const std::string& stagedPokemonUnavailableReason() const noexcept { return stagedPokemonUnavailableReason_; }
+
+    // Staged Trainer Name / Money. Exported together with the staged Pokemon workspace, so it is
+    // only offered where that export exists (International saves).
+    Integration::Gen1::StagedTrainerEditor* stagedTrainer() noexcept { return stagedTrainer_.get(); }
+    const Integration::Gen1::StagedTrainerEditor* stagedTrainer() const noexcept { return stagedTrainer_.get(); }
+    bool stagedTrainerEditable() const noexcept { return stagedTrainer_ && stagedPokemon_; }
 
     // Rebuilds only the on-screen boxed-Pokemon presentation from the staged editor. It never writes
     // the RetroArch source and never changes party bytes. Used after semantic staged box mutations.
@@ -59,6 +67,7 @@ private:
     std::string stagedInventoryUnavailableReason_;
     std::unique_ptr<Integration::Gen1::StagedPokemonEditor> stagedPokemon_;
     std::string stagedPokemonUnavailableReason_;
+    std::unique_ptr<Integration::Gen1::StagedTrainerEditor> stagedTrainer_;
 };
 
 } // namespace PokeVault::Legacy

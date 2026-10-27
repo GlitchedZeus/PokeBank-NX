@@ -1,8 +1,10 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "Integration/Gen2/Gen2ExportTransaction.h"
+#include "test_temp_dir.h"
 
 #include <cassert>
 #include <cstdio>
+#include <dirent.h>
 #include <fstream>
 #include <iterator>
 #include <string>
@@ -29,6 +31,29 @@ std::string readText(const std::string& path) {
     return std::string(std::istreambuf_iterator<char>(in), {});
 }
 
+// Every entry name directly inside the export root (no "." / "..").
+std::vector<std::string> rootEntries(const std::string& root) {
+    std::vector<std::string> names;
+    DIR* dir = ::opendir(root.c_str());
+    assert(dir);
+    while (const dirent* entry = ::readdir(dir)) {
+        const std::string name = entry->d_name;
+        if (name != "." && name != "..") names.push_back(name);
+    }
+    ::closedir(dir);
+    return names;
+}
+
+bool isDirectory(const std::string& path) {
+    struct stat st{};
+    return ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool isEmptyRegularFile(const std::string& path) {
+    struct stat st{};
+    return ::stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode) && st.st_size == 0;
+}
+
 void removeExport(const std::string& directory) {
     std::remove((directory + "/original_backup.srm").c_str());
     std::remove((directory + "/edited.srm").c_str());
@@ -51,8 +76,7 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     assert(!edited.empty());
     assert(source == std::vector<uint8_t>(editor->originalBytes().begin(), editor->originalBytes().end()));
 
-    const std::string root = "/tmp/pokebank-gen2-export-" + std::to_string(::getpid());
-    ::mkdir(root.c_str(), 0777);
+    const std::string root = PokeBankTest::freshTempBase("pokebank-gen2-export");  // fresh per run
     const std::string stem = "verified-" + tag;
 
     // This is the same staged-editor-level abstraction used by the real Gen II UI. It owns
@@ -113,6 +137,54 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     assert(!exists(root + "/fail-" + tag));
     assert(!exists(root + "/fail-" + tag + ".tmp"));
 
+    // Every pre-publication fault point fails closed: the export root gains no final directory
+    // and no temporary tree (only the successful UI export above remains).
+    for (const auto point : {ExportFailurePoint::AfterBackupWrite, ExportFailurePoint::AfterEditedWrite,
+                             ExportFailurePoint::AfterReadbackVerify, ExportFailurePoint::AfterManifestWrite,
+                             ExportFailurePoint::AfterFirstPublishedFile}) {
+        ExportTransactionRequest faulty = request;
+        faulty.directoryStem = "fault-" + tag;
+        faulty.failurePoint = point;
+        assert(!publishVerifiedExport(faulty).success);
+        assert(rootEntries(root).size() == 1);
+    }
+
+    // QA-F3b: a destination that appears after the unique name was chosen (an empty directory,
+    // which rename(2) would silently replace, or a plain file) is never replaced or removed, and
+    // nothing of this export is left behind.
+    ExportTransactionRequest racedDir = request;
+    racedDir.directoryStem = "raced-dir-" + tag;
+    racedDir.failurePoint = ExportFailurePoint::DestinationAppearsAsEmptyDirectory;
+    const auto racedDirResult = publishVerifiedExport(racedDir);
+    assert(!racedDirResult.success);
+    assert(racedDirResult.error.find("appeared before publication") != std::string::npos);
+    assert(isDirectory(root + "/raced-dir-" + tag));
+    assert(rootEntries(root + "/raced-dir-" + tag).empty());
+    assert(rootEntries(root).size() == 2);
+    ::rmdir((root + "/raced-dir-" + tag).c_str());
+
+    ExportTransactionRequest racedFile = request;
+    racedFile.directoryStem = "raced-file-" + tag;
+    racedFile.failurePoint = ExportFailurePoint::DestinationAppearsAsFile;
+    const auto racedFileResult = publishVerifiedExport(racedFile);
+    assert(!racedFileResult.success);
+    assert(racedFileResult.error.find("appeared before publication") != std::string::npos);
+    assert(isEmptyRegularFile(root + "/raced-file-" + tag));
+    assert(rootEntries(root).size() == 2);
+    std::remove((root + "/raced-file-" + tag).c_str());
+    assert(rootEntries(root).size() == 1);
+
+    // A clean low-level publish leaves no temporary directory beside the final one.
+    ExportTransactionRequest clean = request;
+    clean.directoryStem = "clean-" + tag;
+    const auto cleanResult = publishVerifiedExport(clean);
+    assert(cleanResult.success);
+    assert(readBytes(cleanResult.directory + "/edited.srm") == edited);
+    assert(readBytes(cleanResult.directory + "/original_backup.srm") == source);
+    assert(exists(cleanResult.directory + "/EDIT_MANIFEST.txt"));
+    for (const auto& name : rootEntries(root)) assert(name.find(".tmp") == std::string::npos);
+    removeExport(cleanResult.directory);
+
     // 0x2009 is inside the checksum-covered payload for both G/S and Crystal fixtures.
     // Flipping it without updating the stored checksum must be rejected by strict parse before
     // any export directory is created. Do not weaken this to accept successful parsing.
@@ -135,11 +207,86 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     ::rmdir(root.c_str());
 }
 
+
+// Phase 4: a Box edit and a Trainer (money) edit exported SEPARATELY. Neither touches the party
+// list or the RTC trailer; the Box edit never touches money; the money edit never touches PC box
+// banks. Both reparse strictly. Truncated, oversized, empty and checksum-broken images are refused.
+void phase4(const L& layout, SourceGame game, const std::string& tag) {
+    const auto source = fixture(layout, true);
+    const size_t partyLength = listLen(6, 48, 11);
+    const std::string root = PokeBankTest::freshTempBase("pokebank-gen2-phase4");  // fresh per run
+    auto exportWith = [&](auto&& stage, const std::string& stem) {
+        auto parsed = parse(source, game);
+        assert(parsed);
+        std::string error;
+        auto editor = StagedEditor::create(*parsed.save, error);
+        assert(editor && stage(*editor, error));
+        StagedEditorExportRequest request;
+        request.rootDirectory = root;
+        request.directoryStem = stem + "-" + tag;
+        request.sourcePath = "/retroarch/saves/" + tag + ".srm";
+        request.gameId = sourceGameId(game);
+        request.timestamp = "20261015-120000";
+        const auto result = publishVerifiedStagedEditorExport(*editor, request);
+        assert(result.success);
+        assert(readBytes(result.directory + "/original_backup.srm") == source);
+        auto edited = readBytes(result.directory + "/edited.srm");
+        removeExport(result.directory);
+        assert(edited.size() == source.size());
+        assert(parse(edited, game));
+        // Party list and RTC trailer are never written by either edit.
+        assert(std::equal(edited.begin() + static_cast<std::ptrdiff_t>(layout.party),
+                          edited.begin() + static_cast<std::ptrdiff_t>(layout.party + partyLength),
+                          source.begin() + static_cast<std::ptrdiff_t>(layout.party)));
+        assert(std::equal(edited.begin() + 0x8000, edited.end(), source.begin() + 0x8000));
+        return edited;
+    };
+
+    const auto box = exportWith([](StagedEditor& editor, std::string& error) {
+        BoxPokemonEdit edit;
+        edit.nickname = "SPARK";
+        return editor.stageBoxPokemonEdit(1, 0, edit, error);
+    }, "box");
+    assert(std::equal(box.begin() + static_cast<std::ptrdiff_t>(layout.money),
+                      box.begin() + static_cast<std::ptrdiff_t>(layout.money + 3),
+                      source.begin() + static_cast<std::ptrdiff_t>(layout.money)));
+    {
+        auto reparsed = parse(box, game);
+        std::string error;
+        auto reopened = StagedEditor::create(*reparsed.save, error);
+        assert(reopened);
+        const auto mon = reopened->boxedPokemon(1, 0, error);
+        assert(mon && mon->nickname == "SPARK");
+        assert(reparsed.save->party().size() == parse(source, game).save->party().size());
+    }
+
+    const auto money = exportWith([](StagedEditor& editor, std::string& error) {
+        return editor.stageMoney(123457, error);
+    }, "money");
+    // PC box banks are untouched by a money edit. The only bytes there that may change are the
+    // Gold/Silver secondary checksum (0x7E6D), which covers the mirrored backup copy of the
+    // main data; Crystal keeps its secondary checksum outside the banks (0x1F0D).
+    for (size_t i = 0x4000; i < 0x8000; ++i)
+        if (money[i] != source[i]) assert(i == layout.sum2 || i == layout.sum2 + 1);
+
+    auto truncated = source; truncated.resize(0x7FFF);
+    assert(!parse(truncated, game));
+    assert(!parse(std::vector<uint8_t>{}, game));
+    auto oversized = source; oversized.resize(0x9000);
+    assert(!parse(oversized, game));
+    auto broken = source; broken[layout.money] ^= 0x01;
+    assert(!parse(broken, game));
+    ::rmdir(root.c_str());
+}
+
 } // namespace
 
 int main() {
     runExport(GS, SourceGame::Gold, "gold");
     runExport(GS, SourceGame::Silver, "silver");
     runExport(C, SourceGame::Crystal, "crystal");
+    phase4(GS, SourceGame::Gold, "gold");
+    phase4(GS, SourceGame::Silver, "silver");
+    phase4(C, SourceGame::Crystal, "crystal");
     std::puts("GSC verified staged UI export + transaction: files, provenance, read-back, strict reparse, cleanup and source immutability PASS");
 }

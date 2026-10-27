@@ -14,6 +14,7 @@
 
 #include "Utils/PokeBankPaths.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/Logger.h"
 #include "Games/GameIdentity.h"
 
 #ifdef __SWITCH__
@@ -34,7 +35,13 @@ using BindingMap = std::map<std::string, StoredLaunchBinding>;
 constexpr std::string_view kBindingHeader = "POKEBANK_GAME_LAUNCH_BINDINGS_V1\n";
 constexpr const char* kReturnHostRomfsPath = "romfs:/runtime/PokeBankReturnHost.nro";
 constexpr const char* kReturnHostFileName = "PokeBankReturnHost.nro";
+// The nested return host is not on the default launch path: candidate 698ea4d1 crashed Gen I-III
+// RetroArch startup on device, and the hardware-accepted path (97f540e4 / 0760334f) chains
+// directly to the emulator. It runs only when the owner creates this marker for a device test.
+constexpr const char* kReturnHostOptInFileName = "experimental_return_host.enable";
+constexpr const char* kReturnSelectionFileName = "launch_return_selection.cfg";
 std::string g_gameLaunchReturnPath;
+bool g_gameLaunchHandoffRequested = false;
 
 bool regularFile(const std::string& path) {
     struct stat st{};
@@ -46,25 +53,101 @@ bool directory(const std::string& path) {
     return !path.empty() && ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-[[maybe_unused]] bool prepareRetroArchReturnHost(std::string& hostPath, std::string& error) {
-    if (g_gameLaunchReturnPath.empty() || !regularFile(g_gameLaunchReturnPath)) {
-        error = "PokeBank NX cannot prove its own NRO path for the RetroArch return handoff.";
-        return false;
-    }
+bool returnHostOptedIn() {
+    return regularFile(PokeBank::Paths::configRoot() + "/" + kReturnHostOptInFileName);
+}
 
+// Copies the bundled host out of RomFS through a verified temporary file. Returns false if any
+// byte cannot be read, written or checked back.
+bool installVerifiedFile(const char* source, const std::string& target) {
+    FILE* in = std::fopen(source, "rb");
+    if (!in) return false;
+    std::vector<unsigned char> bytes;
+    unsigned char chunk[16 * 1024];
+    size_t got = 0;
+    while ((got = std::fread(chunk, 1, sizeof(chunk), in)) > 0) {
+        bytes.insert(bytes.end(), chunk, chunk + got);
+        if (bytes.size() > 8u * 1024u * 1024u) break;
+    }
+    const bool readOk = !std::ferror(in) && !bytes.empty() && bytes.size() <= 8u * 1024u * 1024u;
+    std::fclose(in);
+    if (!readOk) return false;
+
+    const std::string temp = target + ".tmp";
+    FILE* out = std::fopen(temp.c_str(), "wb");
+    if (!out) return false;
+    bool ok = std::fwrite(bytes.data(), 1, bytes.size(), out) == bytes.size();
+    if (ok) ok = std::fflush(out) == 0;
+    if (ok) ok = ::fsync(::fileno(out)) == 0;
+    if (std::fclose(out) != 0) ok = false;
+    struct stat st{};
+    if (ok) ok = ::stat(temp.c_str(), &st) == 0 && static_cast<size_t>(st.st_size) == bytes.size();
+    if (ok) { std::remove(target.c_str()); ok = std::rename(temp.c_str(), target.c_str()) == 0; }
+    if (!ok) std::remove(temp.c_str());
+    return ok;
+}
+
+// Whether the opt-in return host can actually be used, decided once and re-validated on every
+// query. The launch dialog preview and the real handoff both read this, so the route the user
+// is promised is the route the launch takes.
+struct ReturnHostReadiness {
+    bool checked = false;
+    bool optedIn = false;
+    bool ready = false;
+    std::string hostPath;
+    std::string reason; // why it is not ready
+};
+ReturnHostReadiness g_returnHost;
+
+const ReturnHostReadiness& returnHostReadiness() {
+    const bool optedIn = returnHostOptedIn();
+    if (g_returnHost.checked && g_returnHost.optedIn == optedIn &&
+        (!g_returnHost.ready || regularFile(g_returnHost.hostPath)))
+        return g_returnHost;
+
+    g_returnHost = {};
+    g_returnHost.checked = true;
+    g_returnHost.optedIn = optedIn;
+    if (!optedIn) return g_returnHost;
+    if (g_gameLaunchReturnPath.empty() || !regularFile(g_gameLaunchReturnPath)) {
+        g_returnHost.reason = "PokeBank NX cannot prove its own NRO path for the return handoff.";
+        return g_returnHost;
+    }
     const std::string runtimeDir = PokeBank::Paths::root() + "/runtime";
     std::string pathError;
     if (!PokeBank::Paths::ensureDirectoryTree(runtimeDir, &pathError)) {
-        error = pathError.empty() ? "Could not prepare the PokeBank runtime directory." : pathError;
-        return false;
+        g_returnHost.reason = pathError.empty()
+            ? "Could not prepare the PokeBank runtime directory." : pathError;
+        return g_returnHost;
     }
+    const std::string hostPath = runtimeDir + "/" + kReturnHostFileName;
+    if (!installVerifiedFile(kReturnHostRomfsPath, hostPath) || !regularFile(hostPath)) {
+        g_returnHost.reason = "Could not install the bundled return host.";
+        return g_returnHost;
+    }
+    g_returnHost.ready = true;
+    g_returnHost.hostPath = hostPath;
+    return g_returnHost;
+}
 
-    hostPath = runtimeDir + "/" + kReturnHostFileName;
-    if (!Utils::copyFile(kReturnHostRomfsPath, hostPath.c_str()) || !regularFile(hostPath)) {
-        error = "Could not install the bundled RetroArch return host.";
-        return false;
+GameLaunchReturnOptions returnOptionsFor(const ReturnHostReadiness& readiness) {
+    GameLaunchReturnOptions options;
+    if (readiness.ready) {
+        options.pokeBankNroPath = g_gameLaunchReturnPath;
+        options.returnHostNroPath = readiness.hostPath;
+        options.returnHostEnabled = true;
     }
-    return true;
+    return options;
+}
+
+// The route last promised for a descriptor, keyed by everything that shapes the handoff.
+std::string g_previewKey;
+GameLaunchQuitRoute g_previewRoute = GameLaunchQuitRoute::None;
+
+std::string launchRouteKey(const GameLaunchDescriptor& d) {
+    return std::to_string(static_cast<int>(d.backend)) + '|' +
+           std::to_string(static_cast<int>(d.state)) + '|' + d.providerId + '|' +
+           d.launcherPath + '|' + d.contentPath + '|' + d.corePath;
 }
 
 std::string switchPath(std::string path) {
@@ -184,6 +267,15 @@ bool installedForwarderNameMatches(std::string_view gameId, std::string_view nor
     if (gameId == "platinum_nds") return shaped("platinum");
     if (gameId == "heartgold_nds") return shaped("heartgold");
     if (gameId == "soulsilver_nds") return shaped("soulsilver");
+    // "pokemonblack" prefixes "pokemonblack2"; never let the original claim the sequel.
+    const bool sequel = normalizedName.find("black2") != std::string_view::npos ||
+                        normalizedName.find("white2") != std::string_view::npos ||
+                        normalizedName.find("blackversion2") != std::string_view::npos ||
+                        normalizedName.find("whiteversion2") != std::string_view::npos;
+    if (gameId == "black_nds") return !sequel && shaped("black");
+    if (gameId == "white_nds") return !sequel && shaped("white");
+    if (gameId == "black2_nds") return sequel && shaped("black");
+    if (gameId == "white2_nds") return sequel && shaped("white");
     return false;
 }
 
@@ -502,6 +594,40 @@ std::string defaultRetroArchCore(std::string_view gameId) {
     return {};
 }
 
+// The core that must run this save. Evidence from the save itself (RetroArch per-core folder,
+// DeSmuME .dsv / melonDS .sav) wins over the game-ID default; a proven core that is not
+// installed is reported instead of silently launching another core that cannot load the save.
+struct RetroArchCoreChoice {
+    std::string corePath;
+    RetroArchSaveCore evidence = RetroArchSaveCore::Unknown;
+    bool provenCoreMissing = false;
+    std::string notice; // shown in the launch dialog when the choice is not proven
+};
+
+RetroArchCoreChoice retroArchCoreForSave(std::string_view gameId, std::string_view sourcePath) {
+    RetroArchCoreChoice choice;
+    const RetroArchSaveCoreEvidence evidence = retroArchSaveCoreEvidence(gameId, sourcePath);
+    choice.evidence = evidence.core;
+    if (evidence.core == RetroArchSaveCore::Unknown) {
+        choice.corePath = defaultRetroArchCore(gameId);
+        return choice;
+    }
+    if (evidence.core == RetroArchSaveCore::Ambiguous) {
+        choice.corePath = defaultRetroArchCore(gameId);
+        // Short enough to share the launch dialog's two notice lines with the quit route.
+        choice.notice = "Core unproven (" + evidence.reason + "); it may not load this save.";
+        return choice;
+    }
+    choice.corePath = std::string("sdmc:/retroarch/cores/") + retroArchSaveCoreNroName(evidence.core);
+    choice.provenCoreMissing = !regularFile(choice.corePath);
+    return choice;
+}
+
+std::string retroArchMissingCoreDetail(RetroArchSaveCore core) {
+    return std::string("This save was written by RetroArch's ") + retroArchSaveCoreLabel(core) +
+           " core, which is not installed; install it to launch with this save.";
+}
+
 GameLaunchProviderKind providerKindForSourcePath(std::string_view providerId,
                                                 std::string_view sourcePath) {
     GameLaunchProviderKind kind = gameLaunchProviderKind(providerId);
@@ -663,7 +789,8 @@ GameLaunchDescriptor directDescriptor(GameLaunchProviderKind kind,
     result.providerId = std::string(providerId);
     result.contentPath = std::move(content);
     if (kind == GameLaunchProviderKind::RetroArch) {
-        result.corePath = defaultRetroArchCore(gameId);
+        // The caller already chose the core from the save's evidence.
+        result.corePath = launcher.empty() ? defaultRetroArchCore(gameId) : std::move(launcher);
         result.launcherPath = result.corePath;
     } else {
         result.launcherPath = std::move(launcher);
@@ -693,7 +820,8 @@ GameLaunchDescriptor directDescriptor(GameLaunchProviderKind kind,
 
 GameLaunchDescriptor descriptorFromStored(std::string_view gameId,
                                           std::string_view providerId,
-                                          const StoredLaunchBinding& stored) {
+                                          const StoredLaunchBinding& stored,
+                                          std::string_view sourcePath) {
     const GameLaunchProviderKind kind = gameLaunchProviderKind(providerId);
     GameLaunchDescriptor result;
     result.backend = kind == GameLaunchProviderKind::RetroArch
@@ -704,9 +832,12 @@ GameLaunchDescriptor descriptorFromStored(std::string_view gameId,
     // Recompute the NRO/core from the provider adapter every time so a hand-edited/stale config
     // cannot redirect PokeBank NX to an arbitrary executable path.
     result.contentPath = stored.contentPath;
+    RetroArchCoreChoice coreChoice;
     if (kind == GameLaunchProviderKind::RetroArch) {
-        result.corePath = defaultRetroArchCore(gameId);
+        coreChoice = retroArchCoreForSave(gameId, sourcePath);
+        result.corePath = coreChoice.corePath;
         result.launcherPath = result.corePath;
+        result.launchNotice = coreChoice.notice;
     } else {
         result.launcherPath = defaultLauncherPath(kind, gameId, stored.contentPath);
     }
@@ -724,6 +855,9 @@ GameLaunchDescriptor descriptorFromStored(std::string_view gameId,
         // silently launch a different Pokémon game.
         result.state = GameLaunchState::NeedsContentLink;
         result.detail = "The linked game file is a different Pokémon game; link it again.";
+    } else if (kind == GameLaunchProviderKind::RetroArch && coreChoice.provenCoreMissing) {
+        result.state = GameLaunchState::LauncherMissing;
+        result.detail = retroArchMissingCoreDetail(coreChoice.evidence);
     } else if (kind == GameLaunchProviderKind::RetroArch &&
                (result.corePath.empty() || !regularFile(result.corePath))) {
         result.state = GameLaunchState::LauncherMissing;
@@ -741,9 +875,18 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
     GameLaunchDescriptor result;
     result.backend = GameLaunchBackend::RetroArch;
     result.providerId = "retroarch";
-    result.corePath = defaultRetroArchCore(gameId);
+    const RetroArchCoreChoice coreChoice = retroArchCoreForSave(gameId, sourcePath);
+    const bool coreProven = coreChoice.evidence != RetroArchSaveCore::Unknown &&
+                            coreChoice.evidence != RetroArchSaveCore::Ambiguous;
+    result.corePath = coreChoice.corePath;
     result.launcherPath = result.corePath;
+    result.launchNotice = coreChoice.notice;
 
+    if (coreChoice.provenCoreMissing) {
+        result.state = GameLaunchState::LauncherMissing;
+        result.detail = retroArchMissingCoreDetail(coreChoice.evidence);
+        return result;
+    }
     if (result.corePath.empty() || !regularFile(result.corePath)) {
         result.state = GameLaunchState::LauncherMissing;
         result.detail = "A compatible RetroArch core NRO is not installed.";
@@ -752,7 +895,7 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
 
     StoredLaunchBinding stored;
     if (loadStoredBinding(bindingKey, "retroarch", stored))
-        return descriptorFromStored(gameId, "retroarch", stored);
+        return descriptorFromStored(gameId, "retroarch", stored, sourcePath);
 
     const std::string wanted = normalizedLaunchStem(sourcePath);
     if (wanted.empty()) {
@@ -823,8 +966,10 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
                     continue;
                 }
                 core = switchPath(core);
-                if (core == "DETECT" || core.empty() || !regularFile(core))
-                    core = defaultRetroArchCore(gameId);
+                // The playlist names the core last used for this ROM, but only the core that
+                // wrote the save can load it: proven save evidence always wins.
+                if (coreProven || core == "DETECT" || core.empty() || !regularFile(core))
+                    core = result.corePath;
                 if (core.empty() || !regularFile(core)) {
                     pos += 6;
                     continue;
@@ -927,7 +1072,7 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
                                           std::string_view bindingKey) {
     StoredLaunchBinding stored;
     if (loadStoredBinding(bindingKey, providerId, stored))
-        return descriptorFromStored(gameId, providerId, stored);
+        return descriptorFromStored(gameId, providerId, stored, sourcePath);
 
     const std::string launcher = defaultLauncherPath(kind, gameId, sourcePath);
     if (launcher.empty() || !regularFile(launcher)) {
@@ -1013,29 +1158,15 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
     return result;
 }
 
-#ifdef __SWITCH__
-std::string quoted(std::string_view value) {
-    std::string out = "\"";
-    for (char c : value) {
-        if (c == '"' || c == '\\') out.push_back('\\');
-        out.push_back(c);
-    }
-    out.push_back('"');
-    return out;
-}
-#endif
 
 } // namespace
 
 void setGameLaunchReturnPath(std::string_view path) {
-#ifdef __SWITCH__
     std::string candidate(path);
     if (!candidate.empty() && candidate.front() == '/' && candidate.find(":/") == std::string::npos)
         candidate = "sdmc:" + candidate;
     g_gameLaunchReturnPath = regularFile(candidate) ? std::move(candidate) : std::string{};
-#else
-    (void)path;
-#endif
+    g_returnHost = {}; // the return target changed; re-decide readiness
 }
 
 GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
@@ -1145,6 +1276,9 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
     binding.launcherPath = defaultLauncherPath(kind, gameId, content);
     binding.contentPath = content;
     if (kind == GameLaunchProviderKind::RetroArch) {
+        // Only proves that SOME compatible core is installed: defaultRetroArchCore() returns the
+        // first existing one (e.g. melonDS when DeSmuME is absent). The launch itself recomputes
+        // the core from the save's evidence (retroArchCoreForSave), never from this value.
         binding.corePath = defaultRetroArchCore(gameId);
         if (binding.corePath.empty() || !regularFile(binding.corePath)) {
             error = "No compatible RetroArch core is installed for this game.";
@@ -1220,69 +1354,50 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
             error = buf;
             return false;
         }
+        g_gameLaunchHandoffRequested = true;
         return true;
     }
 
-    if (descriptor.backend == GameLaunchBackend::RetroArch) {
+    if (descriptor.backend == GameLaunchBackend::RetroArch ||
+        descriptor.backend == GameLaunchBackend::HomebrewNro) {
         if (!envHasNextLoad()) {
             error = "The current homebrew loader does not support chaining to another NRO.";
             return false;
         }
-        const std::string& target = descriptor.corePath.empty()
-            ? descriptor.launcherPath : descriptor.corePath;
+        const bool retroArch = descriptor.backend == GameLaunchBackend::RetroArch;
+        const std::string& target = retroArch && !descriptor.corePath.empty()
+            ? descriptor.corePath : descriptor.launcherPath;
         if (!regularFile(target)) {
-            error = "The RetroArch core NRO for this game is missing.";
+            error = retroArch ? "The RetroArch core NRO for this game is missing."
+                              : "The configured emulator/launcher NRO is missing.";
             return false;
         }
-        if (descriptor.state != GameLaunchState::LauncherOnly &&
+        if (retroArch && descriptor.state != GameLaunchState::LauncherOnly &&
             !retroArchContentExists(descriptor.contentPath)) {
             error = "The linked game ROM is missing.";
             return false;
         }
 
-        // Hardware safety rule: normal RetroArch startup takes the direct hbloader path that
-        // was device-proven at 97f540e4. The experimental nested return host remains packaged
-        // separately for future lifecycle work, but it must not sit on the critical launch path
-        // until that loader reimplementation is independently hardware-proven.
-        std::string argv = quoted(target);
-        if (descriptor.state != GameLaunchState::LauncherOnly &&
-            !descriptor.contentPath.empty())
-            argv += " " + quoted(descriptor.contentPath);
-        if (argv.size() >= 2000) {
-            error = "The RetroArch launch arguments are too long.";
-            return false;
-        }
+        // Hardware safety rule: by default the emulator is chained directly, exactly as on the
+        // device-accepted builds. The return host is used only behind the explicit opt-in, and
+        // only along the route the launch dialog promised (planGameLaunchHandoff).
+        GameLaunchChainPlan plan;
+        if (!planGameLaunchHandoff(descriptor, plan, error)) return false;
+        if (!plan.returnHostSkipped.empty())
+            Utils::logErrorToFile("Return host skipped; launching directly", plan.returnHostSkipped.c_str());
 
-        const Result rc = envSetNextLoad(target.c_str(), argv.c_str());
+        const Result rc = envSetNextLoad(plan.nroPath.c_str(), plan.argv.c_str());
         if (R_FAILED(rc)) {
             char buf[96];
-            std::snprintf(buf, sizeof(buf), "RetroArch game launch failed (0x%08X).", static_cast<unsigned>(rc));
+            std::snprintf(buf, sizeof(buf), "%s launch failed (0x%08X).",
+                          retroArch ? "RetroArch game" : "Homebrew game",
+                          static_cast<unsigned>(rc));
             error = buf;
             return false;
         }
-        return true;
-    }
-
-    if (descriptor.backend == GameLaunchBackend::HomebrewNro) {
-        if (!envHasNextLoad()) {
-            error = "The current homebrew loader does not support chaining to another NRO.";
-            return false;
-        }
-        if (!regularFile(descriptor.launcherPath)) {
-            error = "The configured emulator/launcher NRO is missing.";
-            return false;
-        }
-        std::string argv = quoted(descriptor.launcherPath);
-        if (descriptor.state != GameLaunchState::LauncherOnly &&
-            !descriptor.contentPath.empty())
-            argv += " " + quoted(descriptor.contentPath);
-        const Result rc = envSetNextLoad(descriptor.launcherPath.c_str(), argv.c_str());
-        if (R_FAILED(rc)) {
-            char buf[96];
-            std::snprintf(buf, sizeof(buf), "Homebrew game launch failed (0x%08X).", static_cast<unsigned>(rc));
-            error = buf;
-            return false;
-        }
+        Utils::logInfoToFile(plan.viaReturnHost ? "Launch handoff via return host"
+                                                : "Launch handoff direct", plan.argv.c_str());
+        g_gameLaunchHandoffRequested = true;
         return true;
     }
 #else
@@ -1291,6 +1406,93 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
 
     error = "Launch is unavailable on this build.";
     return false;
+}
+
+
+GameLaunchQuitRoute previewGameLaunchQuitRoute(const GameLaunchDescriptor& descriptor) {
+    if (descriptor.backend == GameLaunchBackend::SwitchTitle) return GameLaunchQuitRoute::None;
+    const GameLaunchChainPlan plan =
+        buildGameLaunchChainPlan(descriptor, returnOptionsFor(returnHostReadiness()));
+    const GameLaunchQuitRoute route = plan.ok ? plan.quitRoute : GameLaunchQuitRoute::None;
+    g_previewKey = launchRouteKey(descriptor);
+    g_previewRoute = route;
+    return route;
+}
+
+bool planGameLaunchHandoff(const GameLaunchDescriptor& descriptor, GameLaunchChainPlan& plan,
+                           std::string& error) {
+    error.clear();
+    plan = buildGameLaunchChainPlan(descriptor, returnOptionsFor(returnHostReadiness()));
+    if (!plan.ok) {
+        error = plan.error;
+        return false;
+    }
+    // Never take a different route than the one shown when this launch was confirmed (for
+    // example the host file vanished and could not be reinstalled). Refuse once with the new
+    // route; the next preview shows it.
+    if (g_previewKey == launchRouteKey(descriptor) && g_previewRoute != plan.quitRoute) {
+        const GameLaunchQuitRoute promised = g_previewRoute;
+        g_previewRoute = plan.quitRoute;
+        error = std::string("Where quitting leads has changed since this launch was shown (") +
+                (promised == GameLaunchQuitRoute::ReturnsToPokeBank && !g_returnHost.reason.empty()
+                     ? g_returnHost.reason : std::string("return route unavailable")) +
+                "). " + gameLaunchQuitRouteNotice(plan.quitRoute) + " Launch again to continue.";
+        return false;
+    }
+    return true;
+}
+
+std::string gameLaunchDialogNotice(const GameLaunchDescriptor& descriptor) {
+    std::string notice = descriptor.launchNotice;
+    const std::string route = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(descriptor));
+    if (!route.empty()) {
+        if (!notice.empty()) notice += ' ';
+        notice += route;
+    }
+    return notice;
+}
+
+bool gameLaunchHandoffRequested() { return g_gameLaunchHandoffRequested; }
+
+bool saveGameLaunchReturnSelection(const GameLaunchReturnSelection& selection, std::string& error) {
+    error.clear();
+    std::string payload;
+    if (!serializeGameLaunchReturnSelection(selection, payload)) {
+        error = "The launched game selection cannot be recorded.";
+        return false;
+    }
+    std::string dirError;
+    if (!PokeBank::Paths::ensureConfigRoot(&dirError)) {
+        error = dirError.empty() ? "Could not create the PokeBank NX config directory." : dirError;
+        return false;
+    }
+    const std::string target = PokeBank::Paths::configRoot() + "/" + kReturnSelectionFileName;
+    const std::string temp = target + ".tmp";
+    FILE* f = std::fopen(temp.c_str(), "wb");
+    if (!f) { error = "Could not create the return selection record."; return false; }
+    bool ok = std::fwrite(payload.data(), 1, payload.size(), f) == payload.size();
+    if (ok) ok = std::fflush(f) == 0;
+    if (ok) ok = ::fsync(::fileno(f)) == 0;
+    if (std::fclose(f) != 0) ok = false;
+    std::string written;
+    if (ok) ok = readTextFile(temp, written, 64 * 1024) && written == payload;
+    // rename() over an existing file is not atomic on every FAT driver; remove first.
+    if (ok) { std::remove(target.c_str()); ok = std::rename(temp.c_str(), target.c_str()) == 0; }
+    if (!ok) {
+        std::remove(temp.c_str());
+        error = "Could not safely write the return selection record.";
+    }
+    return ok;
+}
+
+bool consumeGameLaunchReturnSelection(int64_t now, GameLaunchReturnSelection& selection) {
+    selection = {};
+    const std::string target = PokeBank::Paths::configRoot() + "/" + kReturnSelectionFileName;
+    std::string text;
+    const bool read = readTextFile(target, text, 64 * 1024);
+    // Consume-once: a stale or corrupt record must never pin focus on every later start.
+    std::remove(target.c_str());
+    return read && parseGameLaunchReturnSelection(text, now, selection);
 }
 
 } // namespace UI

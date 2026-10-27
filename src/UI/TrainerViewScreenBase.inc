@@ -1,3 +1,5 @@
+#include "UI/ClassicHelpPresentation.h"
+#include "UI/ReviewEntry.h"
 #include <cstring>
 #include <ctime>     // std::time / std::localtime -> a created mon's met date = today
 #include <algorithm>
@@ -6,6 +8,15 @@
 #include <sys/stat.h>
 
 #include "Names/ItemPouches.h"
+#include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
+#include "UI/ClassicTrainerSession.h"
+#include "UI/ClassicTrainerPage.h"  // Round 6 P2: Gen I-IV Trainer Info rows and layout
+#include "UI/SharedTrainerPanel.h"   // Round 7: the one Trainer painter (Gen V and Gen I-IV)
+#include "UI/ClassicStagedExit.h"
+#include "UI/ClassicBrowseFooter.h"
+#include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
+#include "UI/ClassicTrainerEditability.h"  // Trainer page footer: A Edit only when Name / Money are editable
+#include "UI/Gen4BagQuantity.h"        // Gen IV bag footer: one per-item quantity query
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"   // getPouchItems -> the add-item picker's per-pouch list
 #include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0
 #include "Names/MoveNames.h"     // getMoveCount -> scan for a created mon's first legal move
@@ -61,6 +72,13 @@
 #include "Utils/StringHelpers.h"
 
 namespace UI {
+namespace {
+// The data generation of the open source (1-5), for ReviewEntry's button rule; 0 for other titles.
+int reviewGeneration(const std::string& gameId) {
+    const auto* game = PokeVault::Games::findGame(gameId);
+    return game ? static_cast<int>(game->dataGeneration) : 0;
+}
+} // namespace
     static std::string leafName(const std::string& path);   // defined below; used by the ctor's trace
 
     // UI Layout constants
@@ -380,9 +398,8 @@ namespace UI {
         fb.drawText(x + 22, y + (hH - fb.lineHeight(TextStyle::Heading)) / 2, "Settings", Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
-        constexpr int kRows = 6;
+        constexpr int kRows = 5;
         const char* labels[kRows] = {
-            "Auto-Backup on Load",
             "Theme",
             "Allow Illegal Values",
             "Bank Storage LGPE Move Warning",
@@ -390,14 +407,13 @@ namespace UI {
             "Enable Debug Logging"
         };
         std::string values[kRows] = {
-            g_autoBackupEnabled ? "On" : "Off",
             std::string(themeModeName(g_themeMode)),
             g_allowIllegalEdits ? "On" : "Off",
             g_moveWarn ? "On" : "Off",
             "Locked",
             g_debugLogging ? "On" : "Off",
         };
-        // Keep the six touch rows comfortably above the minimum target while reserving a compact,
+        // Keep the five touch rows comfortably above the minimum target while reserving a compact,
         // read-only build/safety footer. The global control legend remains the only control help.
         constexpr int rowW = 720, rowH = 62, rowGap = 9, rowsTop = 14, footerH = 48;
         static_assert(hH + rowsTop + kRows * (rowH + rowGap) + footerH <= CONTENT_PANEL_HEIGHT,
@@ -416,11 +432,10 @@ namespace UI {
             // Amber "On" for benign toggles; red for the illegal-values override. The live-write
             // row is green because this alpha's compile-time safety policy is actively locked.
             Color pillFill = Colors::Background, pillText = Colors::Text;
-            if (i == 0 && g_autoBackupEnabled)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
-            else if (i == 2 && g_allowIllegalEdits) { pillFill = Color(200, 80, 80); pillText = Colors::White; }
-            else if (i == 3 && g_moveWarn)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
-            else if (i == 4)                        { pillFill = Color(50, 125, 85);  pillText = Colors::White; }
-            else if (i == 5 && g_debugLogging)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
+            if (i == 1 && g_allowIllegalEdits)      { pillFill = Color(200, 80, 80); pillText = Colors::White; }
+            else if (i == 2 && g_moveWarn)          { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
+            else if (i == 3)                        { pillFill = Color(50, 125, 85);  pillText = Colors::White; }
+            else if (i == 4 && g_debugLogging)      { pillFill = Colors::Primary;    pillText = Colors::PrimaryText; }
             fb.drawPill(px, py, pillW, pillH, pillFill);
             fb.drawText(px + (pillW - vw) / 2, py + (pillH - vh) / 2, values[i], pillText, TextStyle::Body);
             screen.touchButtons.push_back({ i, rx, ry, rowW, rowH });
@@ -437,8 +452,72 @@ namespace UI {
     // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
     // rows (Name / Money) are editable; the rows below are informational -- editing TID/SID would
     // re-own every Pokemon already in the save, so it is deliberately left out.
+    // Round 6 P2 / Round 7 (owner B06 / C06): Gen I-IV Trainer Info looks exactly like Gen V
+    // Trainer. Which rows a game shows and where they go come from UI/ClassicTrainerPage.h (the
+    // layout the tests check); every pixel is painted by UI/SharedTrainerPanel.h, the painter Gen V's
+    // Trainer page uses: the same header bar, cards, value pills, divider, neutral read-only values
+    // and row backgrounds. No field is invented (no Gen I or Gold / Silver gender) and nothing is
+    // drawn twice. The compact Y Review Changes button sits in its measured slot below the rows.
+    static void drawClassicTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                       int generation) {
+        namespace Page = PokeBank::UIModel::ClassicTrainerPage;
+        namespace Panel = SharedTrainerPanel;
+        Trainer::Trainer& t = screen.trainer;
+        Panel::drawPanel(fb, x, y, w, h, "Edits are staged in app memory; the source save is unchanged");
+        screen.touchButtons.clear();
+
+        const auto rows = Page::rows({generation, screen.sourceGameId == "crystal_gbc",
+                                      screen.trainerPlayTimeEditable, screen.trainerGenderEditable});
+        const auto page = Page::layout(rows, x, y, w, h);
+        const auto value = [&](Page::Field field) -> std::string {
+            switch (field) {
+                case Page::Field::Name: return t.trainerName.empty() ? "(none)" : t.trainerName;
+                case Page::Field::Money: return "$" + std::to_string(t.money);
+                case Page::Field::PlayTime: return PokeVault::Integration::Common::playTimeText(t.nativePlayTime);
+                case Page::Field::Gender:
+                    return t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown";
+                case Page::Field::TrainerId: return std::to_string(t.TID16);
+                case Page::Field::SecretId: return std::to_string(t.SID16);
+                case Page::Field::Badges: return t.nativeBadges.text();
+                case Page::Field::Pokedex: {
+                    const auto dex = t.pokedexProgress();
+                    return dex.available() ? "Seen " + std::to_string(dex.seen) + " / Caught " +
+                        std::to_string(dex.caught) + " / " + std::to_string(dex.total) : "Unavailable";
+                }
+            }
+            return {};
+        };
+        bool dividerDrawn = false;
+        for (const auto& placed : page.rows) {
+            const auto& c = placed.card;
+            const std::string label(Page::label(placed.row.field));
+            if (placed.row.editable) {
+                Panel::drawEditableRow(fb, c.x, c.y, c.w, c.h, label, value(placed.row.field),
+                                       screen.trainerSelectedRow == placed.row.touchId);
+                screen.touchButtons.push_back({placed.row.touchId, c.x, c.y, c.w, c.h});
+            } else {
+                if (!dividerDrawn) {
+                    Panel::drawDivider(fb, c.x, page.dividerY, c.w);
+                    dividerDrawn = true;
+                }
+                Panel::drawInfoRow(fb, c.x, c.y, c.w, c.h, label, value(placed.row.field));
+            }
+        }
+        drawGlyphButton(fb, page.review.x, page.review.y, page.review.w, page.review.h, "Y", "Review Changes");
+        screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
+            page.review.x, page.review.y, page.review.w, page.review.h});
+    }
+
+    // Trainer view (HOME-style ID card), reached from the HOME menu's Trainer icon. The first two
+    // rows (Name / Money) are editable; the rows below are informational -- editing TID/SID would
+    // re-own every Pokemon already in the save, so it is deliberately left out.
     static void drawTrainerView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
         Trainer::Trainer& t = screen.trainer;
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        if (generation >= 1 && generation <= 4) {
+            drawClassicTrainerView(screen, fb, x, y, w, h, generation);
+            return;
+        }
         fb.drawFilledRoundedRect(x, y, w, h, 16, Colors::Panel);
         fb.drawRoundedRect(x, y, w, h, 16, Colors::Border, 1);
         constexpr int hH = 46;
@@ -483,40 +562,17 @@ namespace UI {
 
         // --- Read-only rows (not selectable). ---
         auto infoRow = [&](const char* label, const std::string& value) {
-            fb.drawFilledRoundedRect(cardX, cy, cardW, 46, 12, Colors::PanelAlt);
-            fb.drawText(cardX + 24, cy + (46 - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
+            const int infoH = 46;
+            fb.drawFilledRoundedRect(cardX, cy, cardW, infoH, 12, Colors::PanelAlt);
+            fb.drawText(cardX + 24, cy + (infoH - fb.lineHeight(TextStyle::Body)) / 2, label, Colors::TextDim, TextStyle::Body);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Body);
-            fb.drawText(cardX + cardW - 24 - vw, cy + (46 - vh) / 2, value, Colors::Text, TextStyle::Body);
-            cy += 54;
+            fb.drawText(cardX + cardW - 24 - vw, cy + (infoH - vh) / 2, value, Colors::Text, TextStyle::Body);
+            cy += infoH + 8;
         };
-        const bool generationOne = screen.sourceGameId == "red_gb" ||
-                                   screen.sourceGameId == "blue_gb" ||
-                                   screen.sourceGameId == "yellow_gb";
-        if (generationOne) {
-            // Gen I stores one visible 16-bit Trainer ID. There is no SID or trainer-gender field
-            // to present here, so do not manufacture later-generation rows from neutral defaults.
-            infoRow("Trainer ID", std::to_string(t.TID16));
-        } else if (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
-                   screen.sourceGameId == "crystal_gbc") {
-            infoRow("Trainer ID", std::to_string(t.TID16));
-            if (screen.sourceGameId == "crystal_gbc")
-                infoRow("Gender", t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown");
-        } else if (screen.sourceGameId == "diamond_nds" ||
-                   screen.sourceGameId == "pearl_nds" ||
-                   screen.sourceGameId == "platinum_nds" ||
-                   screen.sourceGameId == "heartgold_nds" ||
-                   screen.sourceGameId == "soulsilver_nds") {
-            // Native Gen IV IDs are two separate 16-bit numbers. Do not
-            // mash them into one 'Trainer ID' row or repeat both as 'Full'.
-            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
-            infoRow("Trainer ID", std::to_string(t.TID16));
-            infoRow("Secret ID", std::to_string(t.SID16));
-        } else {
-            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
-            infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
-            infoRow("Full TID", std::to_string(t.TID));
-            infoRow("Full SID", std::to_string(t.SID));
-        }
+        infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+        infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
+        infoRow("Full TID", std::to_string(t.TID));
+        infoRow("Full SID", std::to_string(t.SID));
     }
 
     void TrainerViewScreen::captureInventorySourceBaseline() {
@@ -582,7 +638,7 @@ namespace UI {
             "pokebank=" + VERSION_STRING +
             " game=\"" + titleName + "\" gamever=" + (gameVersion.empty() ? "?" : gameVersion) +
             " src=" + std::string(legacyReadOnlySource()
-                                      ? legacyProviderLabel() + "_READ_ONLY"
+                                      ? PokeVault::Source::providerIdFor(sourceProviderLabel) + "_READ_ONLY"
                                       : this->sourceKind == PokeVault::Safety::SourceKind::InstalledGame
                                           ? "INSTALLED_READ_ONLY" : "BACKUP") +
             " gameid=" + (this->sourceGameId.empty() ? "?" : this->sourceGameId) +
@@ -595,7 +651,6 @@ namespace UI {
             " boxes=" + std::to_string(trainer.getBoxCount()) +
             " livewrites=LOCKED" +
             " illegal=" + (g_allowIllegalEdits ? "ON" : "OFF") +
-            " autobackup=" + (g_autoBackupEnabled ? "ON" : "OFF") +
             " movewarn=" + (g_moveWarn ? "ON" : "OFF") +
             " theme=" + std::string(themeModeKey(g_themeMode));
         Utils::logTestSession(sessionInfo);
@@ -1834,7 +1889,34 @@ namespace UI {
     }
 
     // Open the details modal on a storage slot (reuses the Box path for the save pane).
+    // ---- Gen I-V generic-UI router (QA CG11) ------------------------------------------------
+    // The ONE guard in front of every generic-UI open site in this file: the generic action
+    // sheet, the editable details modal, its pickers / stat dialog and the generic creator. A
+    // Gen I-V session presents Pokemon through its own generation surface instead; Gen VI+
+    // sessions are unaffected (genericUiAllowed() is true for them).
+    bool genericUiAllowedForSession(const TrainerViewScreen& screen,
+                                    PokeBank::UIModel::ClassicGenericUi::GenericUi kind) {
+        namespace Guard = PokeBank::UIModel::ClassicGenericUi;
+        return Guard::genericUiAllowed(Guard::classicSession(screen.sourceGameId), kind);
+    }
+
+    // Format generation of a record (1..5 for the classic groups, 0 otherwise).
+    int classicTargetGeneration(const Pokemon::Pokemon& pokemon) {
+        switch (pokemon.getGameGroup()) {
+            case GameVersion::RBY: return 1;
+            case GameVersion::GSC: return 2;
+            case GameVersion::FRLG: return 3;
+            case GameVersion::DP: case GameVersion::PT: case GameVersion::HGSS: return 4;
+            case GameVersion::BW: case GameVersion::B2W2: return 5;
+            default: return 0;
+        }
+    }
+
     void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {
+        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor)) {
+            postStatus(PokeBank::UIModel::ClassicGenericUi::kForeignPokemonRefusal, 260);
+            return;
+        }
         if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::Edit)) return;
         if (pane == 1) {
             details.source = EditSource::Bank;
@@ -1880,15 +1962,43 @@ namespace UI {
     }
 
     void TrainerViewScreen::openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target) {
+        namespace Guard = PokeBank::UIModel::ClassicGenericUi;
         actionSheet.open(target);
         const Pokemon::Pokemon* pokemon = actionSheetTargetPokemon();
-        if (!pokemon || pokemon->speciesID() == 0) actionSheet.close();
+        if (!pokemon || pokemon->speciesID() == 0) { actionSheet.close(); return; }
+        if (genericUiAllowedForSession(*this, Guard::GenericUi::ActionSheet)) return;
+        // Gen I-V: never the generic sheet. The session's own Pokemon open its generation's
+        // read-only View (adopted by the Gen I/II presenters or the shared Gen III/IV surface);
+        // a foreign Bank record is refused instead of reaching the modern editor.
+        using PokeVault::UIModel::PokemonLocation;
+        const bool bank = target.location == PokemonLocation::Bank;
+        const auto route = Guard::routeClassicTarget(Guard::classicGeneration(sourceGameId),
+                                                     classicTargetGeneration(*pokemon), bank);
+        if (route == Guard::TargetRoute::Refuse) {
+            actionSheet.close();
+            postStatus(Guard::kForeignPokemonRefusal, 260);
+            return;
+        }
+        if (target.location == PokemonLocation::Party && Guard::classicGeneration(sourceGameId) <= 3) {
+            const auto selected=target;
+            actionSheet.close();
+            if(!ClassicPartyActions::open(*this,selected.slot)) {
+                // Keep unsupported layouts' existing native read-only presentation accessible.
+                actionSheet.open(selected);
+                openActionSheetTargetDetails(true);
+                actionSheet.close();
+            }
+            return;
+        }
+        openActionSheetTargetDetails(true);
+        actionSheet.close();
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
         const auto& target = actionSheet.target();
         readOnly = readOnly || !pokemonTargetMutable(
-            target, PokeVault::Safety::SourceMutation::Edit);
+            target, PokeVault::Safety::SourceMutation::Edit) ||
+            !genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor);
         if (!actionSheetTargetPokemon()) return;
         using PokeVault::UIModel::PokemonLocation;
         if (target.location == PokemonLocation::Party) {
@@ -2504,6 +2614,7 @@ namespace UI {
             switch (cursorMode) {
                 case CursorMode::Menu:
                     if (pane == 0 && !isLocked(pane, box, slot)) {
+                        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Creator)) return;
                         if (!requireMutableWorkspace()) return;
                         // Empty save-pane slot: create a new Pokemon here (pick species, then edit).
                         creator.active = true; creator.pane = pane; creator.box = box; creator.slot = slot;
@@ -2519,6 +2630,22 @@ namespace UI {
                     break;
             }
         }
+    }
+
+    // The one painter for the transient status line (postStatus): centered above the footer.
+    // Every TrainerViewScreen::draw path calls it LAST (B08): the Gen II-V shared surfaces own
+    // their frames and return before the base draw, so an export result posted from their
+    // Review was never painted -- "Export does nothing".
+    void TrainerViewScreen::drawTransientStatus(PKSEFramebuffer& fb) {
+        if (storageStatusFrames <= 0 || storageStatus.empty() || helpOverlayActive) return;
+        const int footerY = fb.getHeight() - kNavBarH;
+        int tw, th; fb.measureText(storageStatus, tw, th);
+        const int padX = 18;
+        const int bw = std::min(tw + padX * 2, fb.getWidth() - 40), bh = th + 14;
+        const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
+        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
+        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
+        fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
     }
 
     void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
@@ -2578,6 +2705,23 @@ namespace UI {
         // posted from anywhere else (a save result, a box rename) would have stayed on screen
         // forever. update() runs every frame in every view, which is what a timer needs.
         if (storageStatusFrames > 0) --storageStatusFrames;
+
+        // Gen I-V routing (genericUiAllowedForSession): the generic details editor, its pickers,
+        // the stat dialog and the generic creator are never active in a Gen I-V session, whatever
+        // path set them; each generation edits through its own surface. Gen VI+ is untouched.
+        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) {
+            pickerActive = false;
+            statEdit.dialogActive = false;
+            creator.active = creator.editing = creator.keepConfirmActive = false;
+            if (details.active) details.readOnly = true;
+            if (actionSheet.isOpen()) {
+                // Reached only by a path that bypassed openPokemonActionSheet: hand the target to
+                // its generation's View or refuse, never draw the generic sheet.
+                const auto target = actionSheet.target();
+                actionSheet.close();
+                openPokemonActionSheet(target);
+            }
+        }
 
         // Defense in depth: immutable source sessions still block source-owned mutators, but
         // Bank targets are PokeBank-owned AppOwnedStorage and remain independently mutable.
@@ -2646,6 +2790,8 @@ namespace UI {
 
         if (helpOverlayActive) {
             if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) helpOverlayActive = false;
+            // 7D: a completed tap outside Help closes it like B; the return consumes it.
+            else if (SharedPopupDismiss::tappedOutside(touch)) helpOverlayActive = false;
             return;
         }
 
@@ -2690,9 +2836,18 @@ namespace UI {
             // Native list uses the same staged-picker contract as Gen I-IV:
             // contact may turn into a swipe, so it cannot retarget the choice
             // before release. A completed same-row tap selects and confirms.
+            // The shared scrollbar runs first: a held thumb or a track tap moves the window and
+            // owns the frame's touch, so no row under the finger can be tapped or swiped.
+            const int pickerRowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);
+            const auto pickerBar = SharedScrollbar::handleTouch(pickerScrollbar, SharedScrollbar::sample(touch),
+                SharedScrollbar::pixels(count * pickerRowH, pickerViewport.h,
+                    std::clamp(pickerSel - page / 2, 0, std::max(0, count - page)) * pickerRowH));
+            if (pickerBar.changed)
+                pickerSel = std::clamp((pickerBar.scroll + pickerRowH / 2) / pickerRowH + page / 2,
+                                       0, count - 1);
             const int ptb = touchedButtonId(touch);
-            if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
-            if (touch.justReleased() && touch.dragged() &&
+            if (!pickerBar.consumed && ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
+            if (!pickerBar.consumed && touch.justReleased() && touch.dragged() &&
                 pickerViewport.contains(touch.startX(), touch.startY()) &&
                 std::abs(touch.deltaY()) >= 24 &&
                 std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -2986,11 +3141,12 @@ namespace UI {
         // Handle save confirmation dialog
         if (saveConfirmActive) {
             if (exitingWithUnsavedChanges) {
+                const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(sourceGameId);
                 // Product Home -> Items has a dedicated escape-safe contract:
                 // mutable app-owned working copy: A saves that copy + Home, Y discards + Home,
                 // B keeps editing. Immutable external source: A discards + Home, B keeps editing.
                 // Neither discard path writes the live/source save.
-                if (itemsShortcutActive) {
+                if (itemsShortcutActive && generation > 4) {
                     const bool canSaveWorkingCopy = !sourceReadOnly();
                     const int td = touchedButtonId(touch);
                     if (td == 0) kDown |= HidNpadButton_B;
@@ -3028,6 +3184,30 @@ namespace UI {
                         exitingViaPlus = false;
                         exitAfterSave = false;
                         return;
+                    }
+                    return;
+                }
+                if (generation >= 1 && generation <= 4) {
+                    namespace Exit = PokeBank::UIModel::ClassicStagedExit;
+                    const auto action = Exit::choose(kDown & HidNpadButton_A, kDown & HidNpadButton_B,
+                        kDown & HidNpadButton_X, kDown & HidNpadButton_Y, touchedButtonId(touch));
+                    if (action == Exit::Action::Review || action == Exit::Action::ExportCopy) {
+                        if (!openStagedReview(action == Exit::Action::ExportCopy))
+                            postStatus("This source has no staged Review workspace", 300);
+                        return;
+                    }
+                    if (action == Exit::Action::ContinueEditing) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                    } else if (action == Exit::Action::DiscardExit) {
+                        // Closing disposes the app-owned staged session; no source is written.
+                        saveConfirmActive = false;
+                        goBack = true;
+                        if (exitingViaPlus) exitRequested = true;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
                     }
                     return;
                 }
@@ -3337,9 +3517,14 @@ namespace UI {
                 if (kDown & HidNpadButton_Down) ++details.legalityScroll;
                 if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);
                 if (kDown & HidNpadButton_R)    details.legalityScroll += 8;
+                const int reportRowH = Modals::ReportScrollViewport::RowHeight;
+                const auto legalityBar = SharedScrollbar::handleTouch(details.legalityScrollbar,
+                    SharedScrollbar::sample(touch), details.legalityScroll * reportRowH);
+                if (legalityBar.changed)
+                    details.legalityScroll = (legalityBar.scroll + reportRowH / 2) / reportRowH;
                 const auto reportViewport =
                     Modals::reportScrollViewport(1280, 720, 820);
-                if (touch.justReleased() && touch.dragged() &&
+                if (!legalityBar.consumed && touch.justReleased() && touch.dragged() &&
                     reportViewport.contains(touch.startX(), touch.startY()) &&
                     std::abs(touch.deltaY()) >= 24 &&
                     std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -3359,9 +3544,14 @@ namespace UI {
                 if (kDown & HidNpadButton_Down) ++details.ribbonScroll;
                 if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);
                 if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;
+                const int reportRowH = Modals::ReportScrollViewport::RowHeight;
+                const auto ribbonBar = SharedScrollbar::handleTouch(details.ribbonScrollbar,
+                    SharedScrollbar::sample(touch), details.ribbonScroll * reportRowH);
+                if (ribbonBar.changed)
+                    details.ribbonScroll = (ribbonBar.scroll + reportRowH / 2) / reportRowH;
                 const auto reportViewport =
                     Modals::reportScrollViewport(1280, 720, 860);
-                if (touch.justReleased() && touch.dragged() &&
+                if (!ribbonBar.consumed && touch.justReleased() && touch.dragged() &&
                     reportViewport.contains(touch.startX(), touch.startY()) &&
                     std::abs(touch.deltaY()) >= 24 &&
                     std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
@@ -3392,7 +3582,16 @@ namespace UI {
             // never activates whatever row happens to be under the release point.
             const bool gen2Passive = sourceGameId == "gold_gbc" || sourceGameId == "silver_gbc" ||
                                      sourceGameId == "crystal_gbc";
-            if (touch.justReleased() && touch.dragged()) {
+            // Shared scrollbar on that pane: a held thumb owns the touch and may never release
+            // onto a row. Dragging it is a manual scroll, like a finger drag on the content.
+            const auto leftBar = SharedScrollbar::handleTouch(details.leftScrollbar,
+                SharedScrollbar::sample(touch), details.leftScroll);
+            if (leftBar.changed) {
+                details.leftScroll = leftBar.scroll;
+                details.leftScrollManual = true;
+            }
+            if (leftBar.consumed) tb = -1;
+            if (!leftBar.consumed && touch.justReleased() && touch.dragged()) {
                 const bool inGen2Data = gen2Passive && touch.startX() >= 796 && touch.startX() < 1016 &&
                                         touch.startY() >= 393 && touch.startY() < 609;
                 const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
@@ -3811,6 +4010,7 @@ namespace UI {
                             [id](const Trainer::InventoryItem& v) { return v.itemId == id; });
                         if (e == pouch.end() || e->count == 0) pickerOrder.push_back(id);   // not currently held
                     }
+                    if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) return;
                     if (!pickerOrder.empty()) {
                         itemPickerReplace = true;
                         pickerKind = (trainer.getGameGroup() == GameVersion::FRLG)
@@ -3903,10 +4103,20 @@ namespace UI {
 
         // Handle storage release confirmation (single slot or the whole multi-selection).
         if (releaseConfirmActive) {
+            // Gen I-V: only Y releases; A and B (and Y+B together) cancel, the same rule as every
+            // other Gen I-V destructive confirm. Gen VI+ keeps A = Release.
+            namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
+            const bool yCommits = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId);
             int tb = touchedButtonId(touch);
-            if (tb == 1) kDown |= HidNpadButton_A;       // tap Release
-            else if (tb == 0) kDown |= HidNpadButton_B;  // tap Cancel
-            if (kDown & HidNpadButton_A) {
+            if (tb == 1) kDown |= yCommits ? HidNpadButton_Y : HidNpadButton_A;   // tap Release
+            else if (tb == 0) kDown |= HidNpadButton_B;                          // tap Cancel
+            const auto step = Presentation::destructiveConfirmStep(
+                (kDown & HidNpadButton_Y) != 0, (kDown & HidNpadButton_A) != 0, (kDown & HidNpadButton_B) != 0);
+            const bool commit = yCommits ? step == Presentation::DestructiveConfirm::Commit
+                                         : (kDown & HidNpadButton_A) != 0;
+            const bool cancel = yCommits ? step == Presentation::DestructiveConfirm::Cancel
+                                         : (kDown & HidNpadButton_B) != 0;
+            if (commit) {
                 if (releaseGroup) {
                     if (g_debugLogging) {
                         for (const auto& m : moveMon) {
@@ -3929,17 +4139,21 @@ namespace UI {
                 releaseConfirmActive = false;
                 return;
             }
-            if (kDown & HidNpadButton_B) { releaseConfirmActive = false; return; }
+            if (cancel) { releaseConfirmActive = false; return; }
             return;
         }
 
         // Item removal confirm: X in the Items list asks before deleting. A = Remove, B = Cancel.
         // Mirrors the storage release confirm; the delete matches the Edit Item dialog's Y-remove.
         if (itemRemoveConfirmActive) {
-            int tb = touchedButtonId(touch);
-            if (tb == 1) kDown |= HidNpadButton_A;       // tap Remove
-            else if (tb == 0) kDown |= HidNpadButton_B;  // tap Cancel
-            if (kDown & HidNpadButton_A) {
+            // Owner-directed Bag policy: A confirms this explicit question; B wins.
+            // Release and Backup Delete keep their separate Y-only confirmation handlers.
+            const int tb = touchedButtonId(touch);
+            if (tb == 1) kDown |= HidNpadButton_A;
+            else if (tb == 0) kDown |= HidNpadButton_B;
+            const bool commit = (kDown & HidNpadButton_A) && !(kDown & HidNpadButton_B);
+            const bool cancel = (kDown & HidNpadButton_B) != 0;
+            if (commit) {
                 if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
                     auto& pouch = trainer.items[selectedCategory];
                     std::vector<int> visible = visibleItemIndices();
@@ -3965,7 +4179,7 @@ namespace UI {
                 itemRemoveConfirmActive = false;
                 return;
             }
-            if (kDown & HidNpadButton_B) { itemRemoveConfirmActive = false; return; }
+            if (cancel) { itemRemoveConfirmActive = false; return; }
             return;
         }
 
@@ -3999,6 +4213,11 @@ namespace UI {
         // never holds a mutable Pokemon pointer. Opening, moving focus, B, and Cancel therefore have
         // no mutation path. Unsupported commands return one explicit result and remain on the sheet.
         if (actionSheet.isOpen()) {
+            // Round 7 C04: a completed tap outside the actions menu closes it like B (consumed here).
+            if (SharedPopupDismiss::tappedOutside(touch)) {
+                actionSheet.close();
+                return;
+            }
             constexpr int count = static_cast<int>(PokeVault::UIModel::POKEMON_ACTIONS.size());
             const int tb = touchedButtonId(touch);
             if (tb >= 0 && tb < count) {
@@ -4038,6 +4257,11 @@ namespace UI {
         // Handle the carried-block menu, opened with Minus (Release all / Return / Cancel). Moving a
         // block no longer needs a menu entry -- you carry it to where you want it and press A.
         if (groupMenuActive) {
+            // Round 7 C04: a tap outside the carried-block menu is Cancel (B), never Release all.
+            if (SharedPopupDismiss::tappedOutside(touch)) {
+                groupMenuActive = false;
+                return;
+            }
             constexpr int N = 3;
             int tb = touchedButtonId(touch);
             if (tb >= 0) { groupMenuIndex = tb; kDown |= HidNpadButton_A; }  // tap a row = select + confirm
@@ -4307,6 +4531,16 @@ namespace UI {
                         currentPage = 0;
                     }
 
+                    // Shared scrollbar first (R2-SCROLLBAR): a thumb drag or track tap changes the
+                    // page (selection lands on the page's first row, as Left/Right do) and owns the
+                    // frame's touch so no row underneath is swiped or tapped.
+                    const auto itemsBar = SharedScrollbar::handleTouch(itemsScrollbar, SharedScrollbar::sample(touch),
+                        SharedScrollbar::rows(totalItems, itemsPerPage, currentPage * itemsPerPage));
+                    if (itemsBar.changed && totalItems > 0) {
+                        currentPage = std::clamp((itemsBar.scroll + itemsPerPage / 2) / itemsPerPage,
+                                                 0, std::max(0, totalPages - 1));
+                        selectedItemIndex = std::min(currentPage * itemsPerPage, totalItems - 1);
+                    }
                     // Touch-down is provisional: a finger may drag to browse.
                     // Keep the prior semantic selection until a confirmed tap or
                     // a deliberate vertical swipe completes; neither may edit on down.
@@ -4315,7 +4549,7 @@ namespace UI {
                     // and dragging the neighboring categories/header must not move this list.
                     if (totalItems > 0 && touch.justReleased() && touch.dragged()) {
                         const int dy = touch.deltaY();
-                        if (std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                        if (!itemsBar.consumed && std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
                             // Only scan the small set of visible row rectangles on drag release,
                             // rather than rebuilding gesture ownership on every render/update frame.
                             const bool startedOnItem = std::any_of(
@@ -4333,7 +4567,7 @@ namespace UI {
                         }
                     }
                     int itemTap = touchedButtonId(touch);
-                    if (itemTap >= 0 && itemTap < totalItems) {
+                    if (!itemsBar.consumed && itemTap >= 0 && itemTap < totalItems) {
                         selectedItemIndex = itemTap;
                         currentPage = selectedItemIndex / itemsPerPage;
                         kDown |= HidNpadButton_A;
@@ -4390,6 +4624,7 @@ namespace UI {
                                 blockedByCapacity = true;
                             }
                         }
+                        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) return;
                         if (!pickerOrder.empty()) {
                             pickerKind = (trainer.getGameGroup() == GameVersion::FRLG)
                                        ? Dialogs::PickerKind::PouchItemG3
@@ -4536,6 +4771,7 @@ namespace UI {
                             // pick a species, edit it in the details modal, Keep/Discard on exit. The
                             // creator's species-pick handler drops it into boxes[box][slot] via
                             // storageSlot(0,...) and opens the editor with EditSource::Box.
+                            if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Creator)) return;
                             creator.active = true;
                             creator.pane = 0; creator.box = selectedBoxIndex; creator.slot = selectedItemIndex;
                             pickerKind = Dialogs::PickerKind::Species;
@@ -4663,21 +4899,21 @@ namespace UI {
                 }
             }
 
-            // Settings view: Up/Down select a row, A toggles it (0 = auto-backup, 1 = theme,
-            // 2 = allow illegal values, 3 = Let's Go move warning, 4 = live-write policy info,
-            // 5 = debug logging). Keep this in step with drawSettingsView's labels/values.
+            // Settings view: Up/Down select a row, A toggles it (0 = theme, 1 = allow illegal
+            // values, 2 = Let's Go move warning, 3 = live-write policy info, 4 = debug logging).
+            // Keep this in step with drawSettingsView's labels/values. There is no auto-backup
+            // row: opening a save never makes a backup; Save Backups -> "Create backup now" does.
             if (selectedMode == ViewMode::Settings) {
-                constexpr int kSettingsRows = 6;
+                constexpr int kSettingsRows = 5;
                 if (kDown & HidNpadButton_Up)   settingsSelectedRow = (settingsSelectedRow - 1 + kSettingsRows) % kSettingsRows;
                 if (kDown & HidNpadButton_Down) settingsSelectedRow = (settingsSelectedRow + 1) % kSettingsRows;
                 int st = touchedButtonId(touch);
                 if (st >= 0 && st < kSettingsRows) { settingsSelectedRow = st; kDown |= HidNpadButton_A; }
                 if (kDown & HidNpadButton_A) {
-                    if (settingsSelectedRow == 0)      g_autoBackupEnabled = !g_autoBackupEnabled;
-                    else if (settingsSelectedRow == 1) applyTheme(nextThemeMode(g_themeMode));
-                    else if (settingsSelectedRow == 2) g_allowIllegalEdits = !g_allowIllegalEdits;
-                    else if (settingsSelectedRow == 3) g_moveWarn = !g_moveWarn;
-                    else if (settingsSelectedRow == 4)
+                    if (settingsSelectedRow == 0)      applyTheme(nextThemeMode(g_themeMode));
+                    else if (settingsSelectedRow == 1) g_allowIllegalEdits = !g_allowIllegalEdits;
+                    else if (settingsSelectedRow == 2) g_moveWarn = !g_moveWarn;
+                    else if (settingsSelectedRow == 3)
                         postStatus("Locked for this alpha: installed game saves are read-only sources.", 300);
                     else {
                         // Off by default, so a normal run leaves nothing on the card. The status
@@ -4926,13 +5162,18 @@ namespace UI {
         // details/logs, not beside the game title on every screen.
         std::string subtitle = legacyReadOnlySource()
             ? legacyProviderLabel() + "  •  " + titleName + "  •  Read-only source"
-            : (sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — "
+            : (sourceKind==PokeVault::Safety::SourceKind::HistoricalBackup?"HISTORICAL BACKUP / READ ONLY — ":
+               sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — "
                                 : "BACKUP WORKSPACE — ") + titleName;
         if (!gameVersion.empty()) subtitle += "  v" + gameVersion;
         if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty() &&
             trainer.saveRevisionString != "Base") {
             subtitle += "  (" + trainer.saveRevisionString + ")";
         }
+        // Round 5 (#322): a session opened from a backup copy names that copy, not the live source.
+        if (!provenanceNotice.empty())
+            subtitle = (legacyReadOnlySource() ? legacyProviderLabel() + "  •  " : std::string()) +
+                       titleName + "  •  " + provenanceNotice;
         drawTitleBar(fb, subtitle);
 
         // Not entered -> the HOME main menu (replaces the old left trainer-info + mode-selector
@@ -4972,6 +5213,13 @@ namespace UI {
 
         // Draw instructions
         std::string instructions;
+        // Trainer page Name / Money editable in this session (a mutable workspace or a staged
+        // Trainer editor, Gen I-IV): exempts that page from the read-only footer override.
+        const auto trainerPageEditable = [&]() {
+            return PokeBank::UIModel::ClassicTrainerSession::trainerFieldsEditable(
+                trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit),
+                sourceGameId);
+        };
         if (actionSheet.isOpen()) {
             instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
         } else if (swapActive) {
@@ -4985,7 +5233,7 @@ namespace UI {
         } else if (itemEditDialogActive) {
             instructions = "Left/Right: +/-1  |  Up/Down: +/-10  |  ZL/ZR: +/-100  |  A: Confirm  |  B: Cancel";
         } else if (itemRemoveConfirmActive) {
-            instructions = "A: Remove  |  B: Cancel";
+            instructions.clear(); // The explicit Bag Remove dialog owns its A/B glyph buttons.
         } else if (saveConfirmActive) {
             if (exitingWithUnsavedChanges && itemsShortcutActive) {
                 instructions = sourceReadOnly()
@@ -4995,7 +5243,8 @@ namespace UI {
                 instructions = "A: Save Changes  |  B: Cancel";
             }
         } else if (releaseConfirmActive) {
-            instructions = "A: Release  |  B: Cancel";
+            instructions = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId)
+                ? "Y: Release  |  B: Cancel" : "A: Release  |  B: Cancel";
         } else if (details.active) {
             instructions = details.readOnly
                 ? "Arrows: Browse  |  Y: Ribbons  |  R: Legality  |  B: Back  |  Read Only"
@@ -5022,8 +5271,11 @@ namespace UI {
                                 PokeBank::UIModel::classicInventoryQuantityEditable(*game, *pocket, item.itemId);
                         }
                     }
+                    // Round 6: the staged Bag's + opens Review (ReviewEntry.h).
                     instructions = PokeBank::UIModel::inventoryFooter(
-                        true, pocket.has_value(), hasSelection, quantityEditable);
+                        true, pocket.has_value(), hasSelection, quantityEditable,
+                        PokeBank::UIModel::ReviewEntry::footerText(
+                            PokeBank::UIModel::ReviewEntry::Screen::Bag, reviewGeneration(sourceGameId)));
                 } else {
                     const bool categorySupported = selectedCategory >= 0 &&
                         selectedCategory < static_cast<int>(trainer.items.size());
@@ -5114,7 +5366,8 @@ namespace UI {
                 } else if (actionSheet.isOpen() || groupMenuActive) {
                     instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
                 } else if (releaseConfirmActive) {
-                    instructions = "A: Release  |  B: Cancel";
+                    instructions = PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId)
+                        ? "Y: Release  |  B: Cancel" : "A: Release  |  B: Cancel";
                 } else if (currentlySelecting) {
                     instructions = "Arrows: Size Selection  |  A: Grab Group  |  X: Copy Group  |  B: Cancel";
                 } else if (carrying()) {
@@ -5130,7 +5383,16 @@ namespace UI {
                 }
             } else if (selectedMode == ViewMode::Trainer) {
                 // X saves only from the HOME menu (see the X handler), so the flow is edit -> B -> X.
-                instructions = "Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App";
+                // "A: Edit" only where the FOCUSED field really can be edited in this session
+                // (R2-TRAINER / R2-BUG-001): a mutable workspace or a staged Trainer editor
+                // (Gen I-IV); a read-only Name row (Japanese save) shows no A.
+                namespace TrainerSession = PokeBank::UIModel::ClassicTrainerSession;
+                instructions = TrainerSession::trainerPageInstructions(
+                    TrainerSession::trainerFieldsEditable(
+                        trainer, PokeVault::Safety::canPerform(sourceKind, PokeVault::Safety::SourceMutation::Edit),
+                        sourceGameId) &&
+                    TrainerSession::focusedRowEditable(TrainerSession::trainerNameEditable(trainer, sourceGameId),
+                                                       trainerSelectedRow));
             }
         } else {
             // HOME main menu.
@@ -5145,10 +5407,13 @@ namespace UI {
             const bool stagedInventoryActionsAvailable =
                 detailViewActive && selectedMode == ViewMode::Items &&
                 ClassicInventory::stagedEditingAvailable(*this);
+            // R2-BUG-001: an editable Trainer page keeps its own footer on a read-only source.
             if (PokeBank::UIModel::useReadOnlyInventoryFooterOverride(
-                    sourceReadOnly(), details.active, selectedMode == ViewMode::Settings,
+                    PokeBank::UIModel::ClassicTrainerSession::readOnlyForFooterOverride(
+                        sourceReadOnly(), detailViewActive && selectedMode == ViewMode::Trainer,
+                        trainerPageEditable()),
+                    details.active, selectedMode == ViewMode::Settings,
                     stagedInventoryActionsAvailable)) {
-                instructions = "Arrows: Navigate  |  B: Back";
                 bool canOpen = !detailViewActive;
                 if (detailViewActive && selectedMode == ViewMode::Party)
                     canOpen = selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(trainer.party.size()) &&
@@ -5169,16 +5434,72 @@ namespace UI {
                      sourceGameId=="platinum_nds" ||
                      sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
                 if(gen4ItemView) {
-                    instructions = "D-pad/Stick: Items  |  L/R: Pocket  |  X: Add Item  |  B: Back";
-                    if(selectedCategory>=0 &&
-                       selectedCategory<static_cast<int>(trainer.items.size()) &&
-                       selectedItemIndex>=0 &&
-                       selectedItemIndex<static_cast<int>(visibleItemIndices().size()))
-                        instructions += "  |  A: Edit Quantity  |  Y: Remove...";
-                } else if (canOpen)
-                    instructions += "  |  A: View / Actions";
-                if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
-                    instructions += "  |  L/R: Box  |  ZL/ZR: Jump";
+                    // The Gen IV bag footer comes from the shared footer model and the ONE Gen IV
+                    // quantity query: A appears only for a quantity-editable item (QuantityPolicy),
+                    // never for a unique Key Item / HM.
+                    namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
+                    Presentation::Footer footer;
+                    footer.push("D-pad/Stick", "Items");
+                    footer.push("L/R", "Pocket");
+                    const auto visible = visibleItemIndices();
+                    const bool hasItem = selectedCategory >= 0 &&
+                        selectedCategory < static_cast<int>(trainer.items.size()) &&
+                        selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size());
+                    if (hasItem) {
+                        const auto& pouch = trainer.items[static_cast<size_t>(selectedCategory)];
+                        const auto raw = static_cast<size_t>(visible[static_cast<size_t>(selectedItemIndex)]);
+                        if (raw < pouch.size() &&
+                            PokeBank::UIModel::Gen4BagQuantity::rule(
+                                sourceGameId, static_cast<size_t>(selectedCategory), pouch[raw].itemId).editable)
+                            footer.push("A", "Edit Quantity");
+                    }
+                    footer.push("X", "Add Item");
+                    if (hasItem) footer.push("Y", "Remove");
+                    // Round 6 (B08): Review straight from the Bag (+; Y stays Remove).
+                    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
+                                      PokeBank::UIModel::ReviewEntry::Screen::Bag, 4).glyph[0] == '+');
+                    footer.push("+", "Review");
+                    footer.push("B", "Back");
+                    instructions.clear();
+                    for (const auto& hint : footer) {
+                        if (!instructions.empty()) instructions += "  |  ";
+                        instructions += std::string(hint.glyph) + ": " + hint.label;
+                    }
+                } else {
+                    // One fixed order for every Gen I-IV browse page, as in Gen V (E05).
+                    namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
+                    BrowseFooter::Spec spec;
+                    spec.canOpen = canOpen;
+                    spec.boxes = detailViewActive &&
+                        (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage);
+                    // Round 6 (B08 / P1-RETURN): the Review slot on Gen I-IV Party / Trainer (Y) and
+                    // Boxes (+), the keys openClassicBrowseReview handles (ReviewEntry.h). A Gen I-III
+                    // Bag lands here only when its inventory failed validation ("Inventory
+                    // unavailable"); its + still opens Review (ClassicInventory::handleInput tries
+                    // Review before the Bag backend), so the slot stays as on a valid Bag.
+                    const int reviewGen = reviewGeneration(sourceGameId);
+                    const bool classicBag = selectedMode == ViewMode::Items && reviewGen >= 1 && reviewGen <= 3 &&
+                        ClassicInventory::isClassicSource(*this);
+                    if (detailViewActive && reviewGen >= 1 && reviewGen <= 4 &&
+                        (selectedMode == ViewMode::Party || selectedMode == ViewMode::Boxes ||
+                         selectedMode == ViewMode::Trainer || classicBag)) {
+                        namespace Entry = PokeBank::UIModel::ReviewEntry;
+                        spec.review = true;
+                        spec.reviewGlyph = Entry::footerHint(
+                            selectedMode == ViewMode::Party ? Entry::Screen::Party
+                            : selectedMode == ViewMode::Boxes ? Entry::Screen::Boxes
+                            : classicBag ? Entry::Screen::Bag : Entry::Screen::Trainer,
+                            reviewGen).glyph;
+                    }
+                    // Round 7: the Gen V save hub's + opens Review (Gen5SharedReadOnlySurface browse
+                    // input, Help "+ Review staged ..."); its footer now shows that key too, so no
+                    // screen has a Review key its footer does not name.
+                    if (!detailViewActive && reviewGen == 5) {
+                        spec.review = true;
+                        spec.reviewGlyph = "+";
+                    }
+                    instructions = BrowseFooter::instructions(spec);
+                }
             }
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;
@@ -5214,6 +5535,8 @@ namespace UI {
             Dialogs::drawStatEditDialog(*this, fb);
         }
         if (saveConfirmActive) {
+            // Gen I-V: the dialog owns the touch layer and draws its own footer
+            // (Dialogs/SaveConfirmDialog.cpp). Gen VI+ keeps its original presentation.
             Dialogs::drawSaveConfirmDialog(*this, fb);
         }
         if (actionSheet.isOpen()) {
@@ -5244,16 +5567,22 @@ namespace UI {
         // Transient status line (a refused cross-game drop, a rejected name), centered above the footer.
         // Drawn LAST so it is not painted over: a message can be raised from inside the details modal
         // (a nickname Gen 3 can't store), and the modal is drawn after the main body.
-        if (storageStatusFrames > 0 && !storageStatus.empty()) {
-            int tw, th; fb.measureText(storageStatus, tw, th);
-            const int padX = 18, bw = tw + padX * 2, bh = th + 14;
-            const int bx = (fb.getWidth() - bw) / 2, by = footerY - bh - 12;
-            fb.drawFilledRoundedRect(bx, by, bw, bh, 8, Colors::Panel);
-            fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Accent, 2);
-            fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
-        }
+        (void)footerY;
+        drawTransientStatus(fb);
 
         if (helpOverlayActive) {
+            const int generation=PokeBank::UIModel::ClassicGenericUi::classicGeneration(sourceGameId);
+            if(generation>=1 && generation<=5) {
+                namespace Help=PokeBank::UIModel::ClassicHelp;
+                const auto page=!detailViewActive?Help::Page::Hub:
+                    selectedMode==ViewMode::Items?Help::Page::Items:
+                    selectedMode==ViewMode::Trainer?Help::Page::Trainer:
+                    selectedMode==ViewMode::Party?Help::Page::Party:Help::Page::Pokemon;
+                // Round 7 (B04): the Bag's Help is "Inventory Controls" in every generation.
+                drawInfoOverlay(fb,page==Help::Page::Items?PokeBank::UIModel::InventoryHelp::kTitle:"Game Browser Controls",
+                                Help::lines(page,generation));
+                return;
+            }
             drawInfoOverlay(fb, "Game Browser Controls", {
                 legacyReadOnlySource()
                     ? legacyProviderLabel() + " SOURCE: read-only browsing"

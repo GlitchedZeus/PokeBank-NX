@@ -1,5 +1,8 @@
+#include "Legacy/BackupReadOnlyTrainer.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <ctime>
 #include <sys/stat.h>
 #include <iomanip>
 #include <sstream>
@@ -10,7 +13,13 @@
 #include "UI/AppShellScreen.h"
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
+#include "UI/GameLauncher.h"
+#include "UI/WorkingCopyRefresh.h"
+#include "UI/ClassicSourceGuard.h"
+#include "UI/BackupHistoryPresentation.h"
+#include "UI/InputTrace.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
@@ -25,12 +34,149 @@
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
+#include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "Integration/Gen5/Gen5AssignedSource.h"
 
 using namespace Utils;
 using namespace Trainer;
 
 namespace UI {
     namespace {
+        // Round 4 (R2-EMUBACKUP / S05): opening an installed Switch save refreshes the single
+        // Working copy instead of adding a timestamped backup on every open. An earlier Working
+        // copy that holds edits is kept as a dated backup (WorkingCopyRefresh.h); an unchanged one
+        // leaves no backup behind. Deliberate backups come only from Save Backups -> Create.
+        std::string openWorkingCopy(AccountUid userUid, u64 titleId, const std::string& titleName) {
+            namespace W = PokeBank::UIModel::WorkingCopy;
+            const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+            const std::string working = identity
+                ? PokeBank::Paths::workspaceBackupPath(userUid, identity->id, "Working") : std::string{};
+            if (working.empty()) return backupSaveData(userUid, titleId, titleName, false); // refuses itself
+            const W::Result r = W::refresh(working, getTimestamp(), [&] {
+                return backupSaveData(userUid, titleId, titleName, false);
+            });
+            switch (r.outcome) {
+                case W::Outcome::Fresh:
+                case W::Outcome::UnchangedDropped:
+                    logInfoToFile("Opened installed save through the Working copy (no backup made)",
+                                  titleName.c_str());
+                    break;
+                case W::Outcome::EditsPreserved:
+                    logInfoToFile("Earlier Working copy held edits; kept as backup", r.preservedPath.c_str());
+                    break;
+                case W::Outcome::Failed:
+                    logErrorToFile("Working copy refresh failed", r.error.c_str());
+                    break;
+            }
+            return r.workingPath;
+        }
+
+        // Round 5 (#322): A on a Switch backup (owned, or a legacy title-only folder) opens a COPY
+        // of it in the isolated Opened-Backup workspace of this exact profile/game, a normal
+        // staged session: edits and saves land in that copy, never in the backup. The backup's
+        // contents are validated for this exact title first, and its snapshot (taken when A was
+        // pressed) must still match after the copy, so the session holds exactly what was listed.
+        std::string openBackupCopySession(AccountUid userUid, u64 titleId, const std::string& backupDir,
+                                          const PokeVault::Source::ImmutableSnapshot::Directory& listed,
+                                          std::string& error) {
+            namespace W = PokeBank::UIModel::WorkingCopy;
+            const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+            const std::string gameDir = identity
+                ? PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id) : std::string{};
+            if (gameDir.empty()) {
+                error = "No safe profile/exact-game folder to open a copy in.";
+                return {};
+            }
+            // A04b: reconcile any interrupted durable Move first. One may target the previous
+            // session workspace, which openBackupSession is about to set aside.
+            const auto moveRecovery =
+                PokeBank::Storage::MoveTx::Production::recoverPendingMoveTransactions();
+            if (moveRecovery.mutationLocked) {
+                error = moveRecovery.notice.empty()
+                    ? "An interrupted Pokemon Move needs attention before a backup can be opened."
+                    : moveRecovery.notice;
+                return {};
+            }
+            if (!Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)) return {};
+            if (!PokeBank::Paths::ensureDirectoryTree(gameDir, &error)) return {};
+            const W::Result r = W::openBackupSession(gameDir, backupDir, getTimestamp(),
+                [](const std::string& from, const std::string& to) {
+                    return copyDirectoryTransactional(from.c_str(), to.c_str());
+                });
+            if (r.outcome == W::Outcome::Failed) {
+                error = r.error.empty() ? "Couldn't copy the backup into a session." : r.error;
+                logErrorToFile("Backup session copy failed", error.c_str());
+                return {};
+            }
+            if (r.outcome == W::Outcome::EditsPreserved)
+                logInfoToFile("Earlier backup session held edits; kept as backup", r.preservedPath.c_str());
+            if (!PokeVault::Source::ImmutableSnapshot::unchanged(listed, error)) return {};
+            logInfoToFile("Opened a copy of the backup (backup unchanged)", backupDir.c_str());
+            return r.workingPath;
+        }
+
+        // Opt-in input trace (P0 #320): enabled only by config/input_trace.enable; bounded log
+        // logs/input-trace.log; buttons, screen tags and decision origins only.
+        PokeBank::Diagnostics::InputTrace::Recorder& inputTrace() {
+            return PokeBank::Diagnostics::InputTrace::recorder();
+        }
+        void traceScreenFrame(const char* screen, const PadState& pad, const std::string& state) {
+            auto& trace = inputTrace();
+            trace.tick();
+            if (trace.enabled())
+                trace.frame(screen, padGetButtonsDown(&pad), padGetButtons(&pad), 0, state);
+        }
+
+        // Launch/return: Product Home focus survives the emulator round trip (a new process).
+        SaveSelectScreen::SelectedSourceKind returnSourceKind(int value) {
+            using Kind = SaveSelectScreen::SelectedSourceKind;
+            switch (value) {
+                case static_cast<int>(Kind::SwitchTitle):      return Kind::SwitchTitle;
+                case static_cast<int>(Kind::RetroArchFRLG):    return Kind::RetroArchFRLG;
+                case static_cast<int>(Kind::Gen4AssignedFile): return Kind::Gen4AssignedFile;
+                case static_cast<int>(Kind::Gen5AssignedFile): return Kind::Gen5AssignedFile;
+                default:                                       return Kind::None;
+            }
+        }
+
+        void recordLaunchReturnSelection(const SaveSelectScreen::NavigationState& state) {
+            GameLaunchReturnSelection selection;
+            selection.profileIdentity = state.profileIdentity;
+            selection.gameId = state.gameId;
+            selection.sourceIdentity = state.sourceIdentity;
+            selection.sourceKind = static_cast<int>(state.sourceKind);
+            selection.titleId = state.titleId;
+            selection.userIndex = state.userIndex;
+            selection.titleIndex = state.titleIndex;
+            selection.classicGamesActive = state.classicGamesActive;
+            selection.savedAt = static_cast<int64_t>(std::time(nullptr));
+            std::string error;
+            if (!saveGameLaunchReturnSelection(selection, error))
+                logErrorToFile("Launch return selection not recorded", error.c_str());
+        }
+
+        bool restoreLaunchReturnSelection(SaveSelectScreen::NavigationState& state) {
+            GameLaunchReturnSelection selection;
+            if (!consumeGameLaunchReturnSelection(static_cast<int64_t>(std::time(nullptr)), selection))
+                return false;
+            if (!gameLaunchReturnSelectionUsable(selection, [](std::string_view id) {
+                    return PokeVault::Games::findGame(id) != nullptr;
+                }))
+                return false;
+            state = {};
+            state.profileIdentity = selection.profileIdentity;
+            state.gameId = selection.gameId;
+            state.sourceIdentity = selection.sourceIdentity;
+            state.sourceKind = returnSourceKind(selection.sourceKind);
+            state.titleId = selection.titleId;
+            state.userIndex = selection.userIndex;
+            state.titleIndex = selection.titleIndex;
+            state.classicGamesActive = selection.classicGamesActive;
+            return true;
+        }
+
         std::string profileIdentity(AccountUid uid) {
             std::ostringstream output;
             output << std::hex << std::setfill('0')
@@ -51,6 +197,12 @@ namespace UI {
         std::string pathError;
         if (!PokeBank::Paths::ensureConfigRoot(&pathError))
             logErrorToFile("Could not initialize PokeBank NX runtime root", pathError.c_str());
+        inputTrace().configure(PokeBank::Paths::configRoot() + "/input_trace.enable",
+                               PokeBank::Paths::logsRoot() + "/input-trace.log");
+        if (inputTrace().enabled()) {
+            PokeBank::Diagnostics::InputTrace::installTerminateRecorder();
+            logInfoToFile("Input trace enabled", "logs/input-trace.log");
+        }
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
 
@@ -105,6 +257,7 @@ namespace UI {
         while (!keyboard.finished && appletMainLoop()) {
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("keyboard", pad, "open");
             keyboard.update(pad, touch);
             if (keyboard.finished) break;
             drawKeyboardBackdrop();
@@ -123,6 +276,7 @@ namespace UI {
             fb.flush();
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("keyboard-release", pad, "wait");
             const bool buttonStillMoving = ((padGetButtons(&pad) | padGetButtonsUp(&pad)) & answeringButtons) != 0;
             if (!buttonStillMoving && !touch.isDown() && !touch.justReleased()) break;
         }
@@ -156,6 +310,7 @@ namespace UI {
             while (appletMainLoop() && running && shell.hasOverlay()) {
                 padUpdate(&pad);
                 touch.update();
+                traceScreenFrame("shell", pad, "section=" + std::to_string(static_cast<int>(destination)));
                 shell.update(pad, touch);
                 if (!shell.hasOverlay()) break;
                 shell.draw(fb);
@@ -170,6 +325,17 @@ namespace UI {
     // Product Home owns game/profile/save selection. Returning from a loaded backup/trainer
     // rebuilds it so newly-created saves stay visible; secondary destinations return here.
     SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
+        // First Home of this process: if the previous process handed off to a game, reopen on
+        // that exact game/source (identity first, indices only as SaveSelectScreen's fallback).
+        static bool launchReturnChecked = false;
+        if (!launchReturnChecked) {
+            launchReturnChecked = true;
+            if (!productHomeNavigationValid && restoreLaunchReturnSelection(productHomeNavigation)) {
+                productHomeNavigationValid = true;
+                logInfoToFile("Restored Product Home focus after emulator return",
+                              productHomeNavigation.gameId.c_str());
+            }
+        }
         while (running) {
             SaveSelectScreen selectScreen(
                 legacyFRLGSources, legacySourceBindings,
@@ -181,7 +347,16 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 keyboardBackdrop = &selectScreen;
+                inputTrace().tick();
                 selectScreen.update(pad, touch);
+                if (selectScreen.hasSelectedTitle())
+                    inputTrace().event("home", "open-title",
+                        "kind=" + std::to_string(static_cast<int>(selectScreen.getSelectedSourceKind())) +
+                        ",intent=" + std::to_string(static_cast<int>(selectScreen.getOpenIntent())));
+                else if (selectScreen.shouldExit())
+                    inputTrace().event("home", selectScreen.hasRequestedAppExit() ? "app-exit" : "destination",
+                        "dest=" + std::to_string(static_cast<int>(selectScreen.getRequestedMainMenuDestination())) +
+                        ",launch=" + std::to_string(gameLaunchHandoffRequested() ? 1 : 0));
 
                 // A screen that selected a destination or requested exit is already retired.
                 // Never paint one more stale frame after update() changes its terminal state.
@@ -194,7 +369,17 @@ namespace UI {
                 if (selectScreen.hasSelectedTitle()) {
                     productHomeNavigation = selectScreen.navigationState();
                     productHomeNavigationValid = true;
-                    if (selectScreen.getSelectedSourceKind() ==
+                    if(!selectScreen.getSelectedBackupSnapshot().path.empty()) {
+                        std::string error;
+                        if(!handleEmulatorBackupView(selectScreen.getSelectedUser(),
+                            selectScreen.getSelectedGameId(),selectScreen.getSelectedBackupSnapshot(),
+                            selectScreen.getSelectedBackupLabel(),
+                            selectScreen.getSelectedBackupProvider(),error)) {
+                            selectScreen.reportOpenFailure(error);
+                            fb.startFade();
+                            continue;
+                        }
+                    } else if (selectScreen.getSelectedSourceKind() ==
                         SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
                         std::string error;
                         if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
@@ -209,6 +394,19 @@ namespace UI {
                                             selectScreen.getSelectedGameId(),
                                             selectScreen.getOpenIntent(), error))
                             logErrorToFile("Generation IV assigned source refused open", error.c_str());
+                    } else if (selectScreen.getSelectedSourceKind() ==
+                               SaveSelectScreen::SelectedSourceKind::Gen5AssignedFile) {
+                        std::string error;
+                        if (!handleGen5View(selectScreen.getSelectedUser(),
+                                            selectScreen.getSelectedGameId(),
+                                            selectScreen.getOpenIntent(),
+                                            selectScreen.getSelectedGen5Copy(),
+                                            selectScreen.getSelectedGen5Fingerprint(), error)) {
+                            logErrorToFile("Generation V read-only source refused open", error.c_str());
+                            selectScreen.reportOpenFailure(error);
+                            fb.startFade();
+                            continue;
+                        }
                     } else {
                         if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items) {
                             handleItemsQuickOpen(selectScreen.getSelectedUser(),
@@ -242,6 +440,8 @@ namespace UI {
 
             if (!running) return SaveSelectScreen::MainMenuDestination::None;
             if (selectScreen.hasRequestedAppExit()) {
+                if (gameLaunchHandoffRequested())
+                    recordLaunchReturnSelection(selectScreen.navigationState());
                 running = false;
                 return SaveSelectScreen::MainMenuDestination::None;
             }
@@ -259,13 +459,11 @@ namespace UI {
                                            const std::string& titleName,
                                            std::string& error) {
         error.clear();
-        // Product Home Open is intentionally frictionless: create the same protected app-owned
-        // backup/working copy first, then enter the player/game workspace. Backup history is only
-        // shown when the user explicitly opens Current Game -> Backups.
-        logInfoToFile("Direct game open: creating protected backup/working copy first",
-                      titleName.c_str());
-        const std::string backupPath =
-            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        // Product Home Open is intentionally frictionless: read the installed save into the single
+        // Working copy (no new backup), then enter the player/game workspace. Backups are made only
+        // deliberately from Current Game -> Backups.
+        logInfoToFile("Direct game open: refreshing the Working copy", titleName.c_str());
+        const std::string backupPath = openWorkingCopy(userUid, titleId, titleName);
         if (backupPath.empty()) {
             logErrorToFile("Direct game open refused: backup creation failed",
                            titleName.c_str());
@@ -283,10 +481,8 @@ namespace UI {
 
     void UIManager::handleItemsQuickOpen(AccountUid userUid, u64 titleId,
                                          const std::string& titleName) {
-        logInfoToFile("Items quick-open: creating protected working backup first",
-                      titleName.c_str());
-        const std::string backupPath =
-            backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+        logInfoToFile("Items quick-open: refreshing the Working copy", titleName.c_str());
+        const std::string backupPath = openWorkingCopy(userUid, titleId, titleName);
         if (backupPath.empty()) {
             logErrorToFile("Items quick-open refused: backup creation failed",
                            titleName.c_str());
@@ -308,6 +504,7 @@ namespace UI {
         while (appletMainLoop() && running && !backupScreen.shouldExit()) {
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("backup", pad, "intent=" + std::to_string(static_cast<int>(intent)));
             backupScreen.update(pad, touch);
 
             // Selection/exit retires this chooser immediately; do not flash it again.
@@ -317,17 +514,27 @@ namespace UI {
                 fb.flush();
             }
 
+            if (backupScreen.takeCreateBackupRequest()) {
+                // The deliberate "Create backup now" row: a new timestamped copy of the installed
+                // save; the screen stays open and lists it.
+                logInfoToFile("Creating a backup on request for", titleName.c_str());
+                const std::string made = backupSaveData(userUid, titleId, titleName, true);
+                if (made.empty()) {
+                    logErrorToFile("Failed to back up save data");
+                    backupScreen.reportFailure("Couldn't create the backup. Check SD card space and try again.");
+                } else {
+                    backupScreen.reloadWithNotice("Backup created. The installed save was not changed.");
+                }
+                continue;
+            }
             if (backupScreen.hasSelectedBackup()) {
                 if (backupScreen.shouldCreateNewBackup()) {
-                    logInfoToFile("Creating new backup for", titleName.c_str());
-
-                    // Auto-backup ON -> new timestamped history folder (kept indefinitely; the user
-                    // decides when to delete backups, so we never prune). OFF -> reuse a single
-                    // "Working" copy so backups don't pile up.
-                    std::string backupPath = backupSaveData(userUid, titleId, titleName, g_autoBackupEnabled);
+                    // Browse the current save: the Working copy, never a new backup.
+                    logInfoToFile("Browsing the installed save through the Working copy", titleName.c_str());
+                    std::string backupPath = openWorkingCopy(userUid, titleId, titleName);
                     if (backupPath.empty()) {
-                        logErrorToFile("Failed to back up save data");
-                        backupScreen.reportFailure("Couldn't create the backup. Check SD card space and try again.");
+                        logErrorToFile("Failed to read the installed save");
+                        backupScreen.reportFailure("Couldn't read the save. Check SD card space and try again.");
                         continue;
                     }
                     std::string error;
@@ -339,8 +546,26 @@ namespace UI {
                     // Use existing backup
                     logInfoToFile("Loading existing backup", backupScreen.getSelectedBackupPath().c_str());
                     std::string error;
-                    if (!handleTrainerView(userUid, titleId, titleName,
-                                           backupScreen.getSelectedBackupPath(), false, intent, error)) {
+                    PokeVault::Source::ImmutableSnapshot::Directory historical;
+                    if(!PokeVault::Source::ImmutableSnapshot::readDirectory(
+                        backupScreen.getSelectedBackupPath(),backupScreen.getSelectedBackupRoot(),
+                        historical,error)) {
+                        backupScreen.reportFailure(error);continue;
+                    }
+                    if(historical.directories.empty() || historical.directories.front().second!=backupScreen.getSelectedBackupStamp()) {
+                        backupScreen.reportFailure("Backup changed since listing; refresh the browser.");continue;
+                    }
+                    const std::string session = openBackupCopySession(
+                        userUid, titleId, backupScreen.getSelectedBackupPath(), historical, error);
+                    if (session.empty()) {
+                        backupScreen.reportFailure(error);
+                        continue;
+                    }
+                    const std::string provenance = (backupScreen.selectedBackupIsLegacy()
+                        ? "Opened from legacy backup (owner unknown) - " : "Opened from backup - ") +
+                        backupScreen.getSelectedBackupLabel();
+                    if (!handleTrainerView(userUid, titleId, titleName, session, false, intent, error,
+                                           nullptr, provenance)) {
                         backupScreen.reportFailure(error);
                         continue;
                     }
@@ -353,7 +578,9 @@ namespace UI {
 
     bool UIManager::handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                       const std::string& backupDir, bool loadedFromCart,
-                                      SaveSelectScreen::OpenIntent intent, std::string& error) {
+                                      SaveSelectScreen::OpenIntent intent, std::string& error,
+                                      const PokeVault::Source::ImmutableSnapshot::Directory* historical,
+                                      const std::string& provenance) {
         logInfoToFile("Loading save from", backupDir.c_str());
 
         // A04b startup gate: reconcile any interrupted durable Move BEFORE parsing this workspace.
@@ -375,13 +602,16 @@ namespace UI {
         }
 
         TrainerVariant trainerVariant = readTrainerInfo(backupDir.c_str(), titleId);
+        if(historical && !PokeVault::Source::ImmutableSnapshot::unchanged(*historical,error))return false;
 
         std::visit([&](auto& trainer) {
             TrainerViewScreen trainerScreen(
                 trainer, titleName, backupDir, titleId, userUid,
-                loadedFromCart ? PokeVault::Safety::SourceKind::InstalledGame
-                               : PokeVault::Safety::SourceKind::BackupOrStaged);
+                historical?PokeVault::Safety::SourceKind::HistoricalBackup:
+                loadedFromCart?PokeVault::Safety::SourceKind::InstalledGame:
+                    PokeVault::Safety::SourceKind::BackupOrStaged);
             trainerScreen.setMoveRecoveryState(moveRecovery.mutationLocked, moveRecovery.notice);
+            trainerScreen.provenanceNotice = provenance;
             if (intent == SaveSelectScreen::OpenIntent::Items)
                 trainerScreen.openItemsShortcut();
             fb.startFade();
@@ -390,6 +620,7 @@ namespace UI {
                 padUpdate(&pad);
                 touch.update();
                 keyboardBackdrop = &trainerScreen;
+                traceScreenFrame("trainer", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
                 trainerScreen.update(pad, touch);
                 if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
                 trainerScreen.draw(fb);
@@ -398,8 +629,91 @@ namespace UI {
             }
             keyboardBackdrop = nullptr;
 
-            if (trainerScreen.hasRequestedExit()) running = false;
+            if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer", "app-exit", "origin=trainer-requested-exit");
+            running = false;
+        } else {
+            inputTrace().event("trainer", "back-to-home");
+        }
         }, trainerVariant);
+        return true;
+    }
+
+    bool UIManager::handleEmulatorBackupView(AccountUid userUid,const std::string& gameId,
+        const PokeVault::Source::ImmutableSnapshot::File& file,const std::string& label,
+        const std::string& provider,std::string& error) {
+        auto trainer=PokeVault::Legacy::openBackupTrainer(file,gameId,error);
+        const auto* identity=PokeVault::Games::findGame(gameId);
+        if(!trainer && identity && identity->dataGeneration==5) {
+            // Some archived SAVs contain two valid, DIFFERENT native copies.
+            // Reuse the real parser and shared glyph buttons to ask explicitly;
+            // neither a timestamp nor a checksum proves which copy is newest.
+            namespace G5=PokeVault::Integration::Gen5;
+            std::string primaryError,backupError;
+            auto primary=PokeVault::Legacy::openBackupTrainer(file,gameId,primaryError,G5::SaveCopySelection::Primary);
+            auto backup=PokeVault::Legacy::openBackupTrainer(file,gameId,backupError,G5::SaveCopySelection::Backup);
+            if(primary && backup) {
+                while(appletMainLoop() && running && !trainer) {
+                    drawAppBackdrop(fb);
+                    constexpr int x=200,y=190,w=880,h=280;
+                    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+                    fb.drawText(x+28,y+24,"Choose the native copy inside this backup",Colors::Text,TextStyle::Heading);
+                    fb.drawText(x+28,y+78,"Both copies validate and differ. Neither is assumed newest.",Colors::TextDim,TextStyle::Caption);
+                    fb.drawText(x+28,y+112,"Primary: "+primary->trainerName+" / Money "+std::to_string(primary->money),Colors::Text,TextStyle::Caption);
+                    fb.drawText(x+28,y+140,"Backup: "+backup->trainerName+" / Money "+std::to_string(backup->money),Colors::Text,TextStyle::Caption);
+                    SharedBoxedRows::drawGlyphChoices(fb,x+28,y+202,w-56,
+                        std::array<SharedBoxedRows::GlyphChoice,3>{{{"B","Cancel"},{"A","Primary Copy"},{"X","Backup Copy"}}});
+                    drawNavBar(fb,{{"A","Primary Copy"},{"X","Backup Copy"},{"B","Cancel"}});
+                    fb.flush();padUpdate(&pad);touch.update();
+                    const u64 down=padGetButtonsDown(&pad)|navTouchButton(touch);
+                    if(down&HidNpadButton_B){error="Backup copy selection cancelled";return false;}
+                    if(down&HidNpadButton_A)trainer=std::move(primary);
+                    else if(down&HidNpadButton_X)trainer=std::move(backup);
+                }
+                if(!PokeVault::Source::ImmutableSnapshot::unchanged(file,error))return false;
+            }
+        }
+        if(!trainer)return false;
+        error.clear();
+        const auto kind=identity->dataGeneration<=3?PokeVault::Safety::SourceKind::RetroArchLegacy:
+            PokeVault::Safety::SourceKind::ExternalLegacy;
+        // The card's own provider ("DraStic"), not a made-up label that would read as "Unknown
+        // provider"; the top bar names the copy (provenanceNotice) instead of the live source.
+        TrainerViewScreen screen(*trainer,"Pokemon "+std::string(identity->title),
+            file.path,0,userUid,kind,gameId,provider.empty() ? std::string("Manual") : provider);
+        const std::string when=PokeBank::UIModel::BackupHistory::date(label,0).label;
+        screen.provenanceNotice="Opened from backup - "+when;
+        if(identity->dataGeneration<=3)screen.classicSourceSnapshot=file;   // ClassicSourceGuard.h
+        if(identity->dataGeneration==4) {
+            // Same guard as the live Gen IV open: Export Copy re-reads this exact backup file and
+            // fails closed if it changed since it was opened (Gen4ExportRequest::sourceSnapshot).
+            namespace G4=PokeVault::Integration::Gen4;
+            const auto payload=G4::readSourcePayloadReadOnly(file.path);
+            if(!payload.ready()) {
+                error=payload.diagnostic.empty()?"Backup container changed during open":payload.diagnostic;
+                return false;
+            }
+            auto snapshot=G4::snapshotGen4Source(file.path,
+                payload.kind==G4::SourceContainerKind::DsvFooter?G4::Gen4SourceContainer::Dsv
+                                                               :G4::Gen4SourceContainer::Raw,
+                payload.bytes,&error);
+            if(!snapshot) {
+                if(error.empty())error="Backup snapshot failed";
+                return false;
+            }
+            screen.gen4SourceSnapshot=std::move(snapshot);
+        }
+        screen.postStatus("Opened from backup - "+when+". Export Copy only; the backup is not changed.",480);
+        fb.startFade();
+        while(appletMainLoop() && running && !screen.shouldExit() && !screen.hasRequestedExit()) {
+            padUpdate(&pad);touch.update();keyboardBackdrop=&screen;
+            traceScreenFrame("trainer:backup",pad,"game="+gameId);
+            screen.update(pad,touch);
+            if(screen.shouldExit() || screen.hasRequestedExit())break;
+            screen.draw(fb);fb.drawFadeOverlay();fb.flush();
+        }
+        keyboardBackdrop=nullptr;
+        if(screen.hasRequestedExit())running=false;
         return true;
     }
 
@@ -461,10 +775,16 @@ namespace UI {
             return false;
         }
 
+        // Round 6 (7E G5): the exact file at Open, proven to be the bytes discovery parsed; every
+        // Gen I-III Export Copy re-checks it (ClassicSourceGuard.h).
+        auto sourceSnapshot = PokeBank::UIModel::ClassicSourceGuard::snapshotAtOpen(
+            selected.path, selected.contentFingerprint, error);
+        if (!sourceSnapshot) return false;
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), selected.path, 0, userUid,
             PokeVault::Safety::SourceKind::RetroArchLegacy, selected.gameId,
             selected.providerLabel);
+        trainerScreen.classicSourceSnapshot = std::move(sourceSnapshot);
         if (intent == SaveSelectScreen::OpenIntent::Items)
             trainerScreen.openItemsShortcut();
         fb.startFade();
@@ -473,6 +793,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             keyboardBackdrop = &trainerScreen;
+            traceScreenFrame("trainer", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
             trainerScreen.update(pad, touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
@@ -480,9 +801,90 @@ namespace UI {
             fb.flush();
         }
         keyboardBackdrop = nullptr;
-        if (trainerScreen.hasRequestedExit()) running = false;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer", "app-exit", "origin=trainer-requested-exit");
+            running = false;
+        } else {
+            inputTrace().event("trainer", "back-to-home");
+        }
         return true;
     }
+    bool UIManager::handleGen5View(
+        AccountUid userUid, const std::string& gameId,
+        SaveSelectScreen::OpenIntent intent,
+        PokeVault::Integration::Gen5::SaveCopySelection selectedCopy,
+        std::string_view selectedFingerprint,
+        std::string& error) {
+        error.clear();
+        const auto* identity=PokeVault::Games::findGame(gameId);
+        if (!identity || identity->platform!=PokeVault::Games::Platform::NintendoDS ||
+            identity->dataGeneration!=5 ||
+            identity->support!=PokeVault::Games::SourceSupport::Planned ||
+            (intent!=SaveSelectScreen::OpenIntent::Default &&
+             intent!=SaveSelectScreen::OpenIntent::Items)) {
+            error="Gen V shared editor requires an exact title and validated external save";
+            return false;
+        }
+
+        // A Game/Save selection must carry the exact validated payload into
+        // Open; the path/inode can stay the same while an emulator rewrites it.
+        if(selectedFingerprint.empty()) {
+            error="Gen V save snapshot missing; choose a validated Save Instance again";
+            return false;
+        }
+        auto opened=PokeVault::Integration::Gen5::openAssignedSource(
+            legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy,
+            selectedFingerprint);
+        if (!opened.ready() || !opened.save ||
+            opened.instance.gameId!=gameId || !opened.instance.readOnly()) {
+            error=opened.diagnostic.empty()
+                ? "Generation V source changed or failed strict validation"
+                : opened.diagnostic;
+            return false;
+        }
+        auto trainer=PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*opened.save,gameId,error);
+        if (!trainer) {
+            if (error.empty())error="Generation V read-only presentation failed";
+            return false;
+        }
+        const std::string sourcePath=opened.source.binding.sourcePath;
+        logInfoToFile("Opening assigned Generation V source read-only",sourcePath.c_str());
+        TrainerViewScreen trainerScreen(
+            *trainer,"Pokemon "+std::string(identity->title),sourcePath,0,userUid,
+            PokeVault::Safety::SourceKind::ExternalLegacy,gameId,
+            opened.source.binding.sourceType);
+        // Gen V opens on the same loaded-game hub as Gen I-IV (Pokemon, Party,
+        // Storage, Items, Trainer). Gen5SharedReadOnlySurface intercepts only
+        // activation, Exit and Review on the hub, and owns the entered panels,
+        // so inherited Bank/source writers stay unreachable. The original
+        // emulator save remains immutable. Gen V reuses the
+        // shared View/Edit/Review field model with native staged PK5 records.
+        // Product Home Items opens the same session directly on the Gen V Bag.
+        if (intent==SaveSelectScreen::OpenIntent::Items)
+            trainerScreen.openItemsShortcut();
+        fb.startFade();
+        while (appletMainLoop() && running && !trainerScreen.shouldExit() &&
+               !trainerScreen.hasRequestedExit()) {
+            padUpdate(&pad);
+            touch.update();
+            keyboardBackdrop=&trainerScreen;
+            traceScreenFrame("trainer:gen5", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
+            trainerScreen.update(pad,touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit())break;
+            trainerScreen.draw(fb);
+            fb.drawFadeOverlay();
+            fb.flush();
+        }
+        keyboardBackdrop=nullptr;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer:gen5", "app-exit", "origin=trainer-requested-exit");
+            running=false;
+        } else {
+            inputTrace().event("trainer:gen5", "back-to-home");
+        }
+        return true;
+    }
+
     bool UIManager::handleGen4View(
         AccountUid userUid, const std::string& gameId,
         SaveSelectScreen::OpenIntent intent, std::string& error) {
@@ -512,11 +914,33 @@ namespace UI {
         }
 
         const std::string sourcePath = opened.source.binding.sourcePath;
+        // Snapshot the exact source FILE at Open from the same payload the staged editor holds.
+        // The container comes from the read-only adapter, never from a guess; a file that
+        // changed since the validated read is refused here, and export later refuses one that
+        // changed after this snapshot.
+        namespace G4 = PokeVault::Integration::Gen4;
+        const auto openedBytes = opened.save->sourceBytes();
+        const auto payload = G4::readSourcePayloadReadOnly(sourcePath);
+        if (!payload.ready() || payload.bytes.size() != openedBytes.size() ||
+            !std::equal(openedBytes.begin(), openedBytes.end(), payload.bytes.begin())) {
+            error = "Generation IV source changed while it was opened; reopen it";
+            return false;
+        }
+        auto snapshot = G4::snapshotGen4Source(
+            sourcePath,
+            payload.kind == G4::SourceContainerKind::DsvFooter ? G4::Gen4SourceContainer::Dsv
+                                                               : G4::Gen4SourceContainer::Raw,
+            openedBytes, &error);
+        if (!snapshot) {
+            if (error.empty()) error = "Generation IV source snapshot failed";
+            return false;
+        }
         logInfoToFile("Opening assigned Generation IV source read-only", sourcePath.c_str());
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
             PokeVault::Safety::SourceKind::ExternalLegacy, gameId,
             opened.source.binding.sourceType);
+        trainerScreen.gen4SourceSnapshot = std::move(snapshot);
         if (intent == SaveSelectScreen::OpenIntent::Items)
             trainerScreen.openItemsShortcut();
         fb.startFade();
@@ -525,6 +949,7 @@ namespace UI {
             padUpdate(&pad);
             touch.update();
             keyboardBackdrop = &trainerScreen;
+            traceScreenFrame("trainer", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
             trainerScreen.update(pad, touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
@@ -532,7 +957,12 @@ namespace UI {
             fb.flush();
         }
         keyboardBackdrop = nullptr;
-        if (trainerScreen.hasRequestedExit()) running = false;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer", "app-exit", "origin=trainer-requested-exit");
+            running = false;
+        } else {
+            inputTrace().event("trainer", "back-to-home");
+        }
         return true;
     }
 

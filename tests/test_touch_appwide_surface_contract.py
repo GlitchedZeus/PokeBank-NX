@@ -3,8 +3,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+# which a generation surface includes textually. Expand that one include so a
+# surface's contract covers the shared code it compiles.
+def _expand_surface_includes(text: str) -> str:
+    import re as _re
+    def inline(match):
+        name = match.group(1)
+        nested = ROOT / "src/UI" / name
+        return match.group(0) + ("\n" + _expand_surface_includes(nested.read_text(encoding="utf-8"))
+                                 if nested.is_file() else "")
+    return _re.sub(r'#include "(SharedPokemonEditorSurface\.inc)"', inline, text)
+
+
 def read(rel: str) -> str:
-    return (ROOT / rel).read_text(encoding="utf-8")
+    return _expand_surface_includes((ROOT / rel).read_text(encoding="utf-8"))
 
 
 def require_all(rel: str, *needles: str) -> None:
@@ -44,7 +57,7 @@ SURFACES = {
     ),
     "Classic inventory": (
         "src/UI/ClassicInventoryOverlay.cpp",
-        ("pickerScroll.updateVertical(", "reviewScroll.updateVertical(",
+        ("pickerScroll.updateVertical(", "screen.openStagedReview(false)",
          "touchedButtonId(touch)"),
     ),
     "Packed move selection": (
@@ -106,8 +119,8 @@ SURFACES = {
     "Gen III editor": (
         "src/UI/Gen3SharedPokemonSurface.inc",
         ("handleWorkspace", "touchedButtonId(touch)", "pickerScroll.updateVertical(",
-         "pickerScroll.offset()", "reviewTouchScroll.updateVertical(",
-         "reviewTouchScroll.offset()"),
+         "pickerScroll.offset()", "SharedEditorChrome::drawReviewPanel",
+         "Review::move(state.reviewScroll"),
     ),
     "Gen IV editor / party & storage views": (
         "src/UI/Gen4SharedPokemonSurface.inc",
@@ -132,8 +145,12 @@ if "touch.justTouchedDown()" in inventory_dispatch:
     raise AssertionError("Classic Inventory: Options/picker/review cannot focus on contact")
 if "state.optionsRow = touchId; down |= HidNpadButton_A;" not in inventory_dispatch:
     raise AssertionError("Classic Inventory: completed options tap must activate its row")
-require_all("src/UI/ClassicInventoryOverlay.cpp",
-            "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+require_all("src/UI/ClassicInventoryOverlay.cpp", "state.pickerRow = touchId;")
+# Round 5: the Bag's Review is the shared paged Review; a tap there never selects a row, a
+# completed vertical swipe turns one page (Gen I and Gen II alike).
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "PokeBank::UIModel::SharedReviewTouch::swipePage(")
+if "state.reviewRow = touchId;" in inventory_input:
+    raise AssertionError("Classic Inventory: the old private Review row tap must not return")
 # Gen I/II native action menus must wait until touch release too. A drag
 # across enabled/disabled choices cannot change the focused command.
 legacy_actions = read("src/UI/ClassicReleaseActionFix.inc")
@@ -194,7 +211,7 @@ require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)",
             "screen.selectedItemIndex = tapped;",
             "if (boxEntrySurface(screen)) {", "beginActions(screen);",
-            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;",
+            "screen.selectedMode == TrainerViewScreen::ViewMode::Party &&\n        screen.detailViewActive && touch.justTapped()", "screen.selectedPartyIndex = tapped - 6200;",
             "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())")
 
 # Empty box cells must enter the same guarded action popup as A, never
@@ -203,7 +220,7 @@ for rel, entry in (
     ("src/UI/Gen3SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
     ("src/UI/Gen4SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
 ):
-    code = read(rel).rsplit(entry, 1)[1].split("if (partyEntry && touch.justTapped())", 1)[0].split(
+    code = read(rel).rsplit(entry, 1)[1].split("screen.selectedMode == TrainerViewScreen::ViewMode::Party &&\n        screen.detailViewActive && touch.justTapped()", 1)[0].split(
         "const bool occupied = selectedOccupied(screen);", 1)[0]
     assert "beginActions(screen);" in code, f"{rel}: empty cell tap must open Actions"
     assert "if (selectedOccupied(screen)) beginActions(screen);" not in code
@@ -312,10 +329,11 @@ if "touch.justReleased() && touch.dragged()" in app_shell:
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerScroll.updateVertical(",
             "state.editorScroll.updateVertical(",
-            "state.reviewScroll.updateVertical(",
+            # Round 5: Review is the shared paged presenter; touch turns pages (no private scroll).
+            "PokeBank::UIModel::SharedReviewTouch::swipePage(",
             "state.pickerScroll.offset()",
             "state.editorScroll.offset()",
-            "state.reviewScroll.offset()")
+            "SharedEditorChrome::drawReviewPanel")
 # Gen I's three moving vertical surfaces share the same clipped-hitbox contract as
 # later generations. A row outside a framebuffer clip must not remain tappable.
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
@@ -323,8 +341,8 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "centerX + 8, listY, centerW - 16, viewportH",
             "appendClippedTouchButton(screen.touchButtons, 4000 + idx,",
             "x + 24, listTop, w - 48, visible * rowStep",
-            "appendClippedTouchButton(screen.touchButtons, 1300 + row,",
-            "x + 24, listTop, w - 48, h - 108")
+            "SharedEditorChrome::drawReviewPanel",
+            "SharedEditorChrome::drawReviewDiscardConfirm")
 
 # Long Gen I Species and Move pickers must not recenter on the contact edge.
 # Scrolling and tapping are separate gestures; only a clean release may select.
@@ -355,17 +373,15 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "TouchPickerViewport reviewViewport;",
             "state.reviewViewport.reset();")
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
-            "state.reviewViewport.ensure(state.reviewRow, count, visible);",
-            "const int start = state.reviewViewport.firstRow;",
-            "state.reviewViewport.firstRow,",
-            "maxFirst + 1);",
-            "state.reviewViewport.reveal(state.reviewRow, count, visible);")
-review_input = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
-    "} else if (state.mode == UX2Mode::Review) {", 1)[1].split(
-    "    return down;", 1)[0]
-assert "selectedId(1300, count, tapped)" in review_input
-assert "selectedId(1300, count, pressed)" not in review_input
-assert "touch, rx + 24, ry + 64, geometry.width - 48," in review_input
+            "SharedEditorChrome::drawReviewPanel",
+            "SharedEditorChrome::drawReviewDiscardConfirm",
+            "SharedReview::move(previousReviewPage,direction,rows.size())")
+# The shared page owns only its visible footer hitboxes. X exports, Y asks,
+# and B cancels; tapping semantic change cards cannot mutate a native record.
+shared_review = read("include/UI/SharedEditorChrome.h").split("inline void drawReviewPanel(",1)[1].split("inline void drawReviewDiscardConfirm",1)[0]
+assert "beginModal(buttons)" in shared_review and "R::footer(changed,rows.size())" in shared_review
+
+assert "SharedEditorChrome::drawReviewPanel" in read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc")
 
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.editorViewport.ensure(state.row, 14, visible);",
@@ -413,12 +429,12 @@ require_all("src/UI/Gen2PokemonPickerOverlay.inc",
             "appendClippedTouchButton(",
             "x + 20, listY - 5, panelW - 40, visible * rowStep + 8",
             "TouchPickerViewport locationViewport;",
-            "picker.locationViewport.ensure(picker.model.index, pickerCount, visible);",
+            "picker.locationViewport.ensure(picker.model.index, pickerCount, g.visible);",
             "picker.locationViewport.firstRow, maxFirst + 1",
-            "const int first = location ? overlay.locationViewport.firstRow :",
+            "const int first = overlay.locationViewport.firstRow;",
             "picker.locationViewport.reveal(picker.model.index, pickerCount, visible);",
             "!picker.locationViewport.containsSelection(",
-            "Focused encounter brought into view; press A again or tap a visible row")
+            "Location brought into view; press A again or tap it")
 picker_hit = read("src/UI/Gen2PokemonPickerOverlay.inc")
 assert "screen.touchButtons.push_back({2000 + i" not in picker_hit, (
     "Gen II picker should not publish unclipped hitboxes for hidden rows"
@@ -438,7 +454,7 @@ assert report_gestures.count(
 assert report_gestures.count("std::abs(touch.deltaY()) >= 24") == 3
 require_all("include/UI/SharedPokemonShell.h",
             "int pixelOffset = 0, int independentFirstRow = -1",
-            "const int yy = y + 224 + i * 38 + pixelOffset",
+            "const int yy = viewport.firstRowY + i * viewport.rowStep + pixelOffset",
             "independentFirstRow >= 0",
             "rowIndex < 0 || rowIndex >= static_cast<int>(total)")
 require_all("src/UI/Gen2HardwareFinalFix.inc",
@@ -501,7 +517,7 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc",
         "state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);",
         "const int first = state.pickerViewport.firstRow;",
         "const int firstRow = state.pickerViewport.firstRow;",
-        "const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;",
+        "const int firstVisibleItem = state.pickerViewport.firstRow * heldColumns + 1;",
         "const int lastVisibleItem = std::min(",
         "if (maxFirstRow == 0)",
         "state.pickerViewport.containsSelection(",
@@ -726,6 +742,17 @@ require_all("src/UI/BackupSelectionScreen.cpp",
             "if (touch.justTapped()) {",
             "if (in(deleteDeleteBtn))",
             "else if (in(deleteCancelBtn))")
+# Deleting a backup is irreversible, so it is never on A (P0 #320): the tapped Delete
+# button is Y, only the shared Y-confirms decision table deletes, and A/B cancel.
+require_all("src/UI/BackupSelectionScreen.cpp",
+            "if (in(deleteDeleteBtn))      kDown |= HidNpadButton_Y;",
+            "const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);",
+            "if (decision == Decision::Quit) {\n                deleteBackup(deleteConfirmationIndex);",
+            '"Delete this backup?"',
+            'confirmFooter(\n                                               "Y", "Delete", "A", "Cancel")',
+            'drawGlyphButton(fb, delX,    by, bw, bh, "Y", "Delete", Colors::Red, Colors::White);')
+backup_src = (ROOT / "src/UI/BackupSelectionScreen.cpp").read_text(encoding="utf-8")
+assert "kDown & HidNpadButton_A) {\n                // Confirm deletion" not in backup_src
 
 # All generations share one clipped Species-picker gesture origin. Horizontal drags
 # and drags starting on the preview panel cannot advance the species on release.
@@ -852,9 +879,12 @@ assert " GBC SOURCE / READ ONLY" in read("src/UI/ClassicReleaseActionFix.inc")
 gen3_readonly = read("src/UI/Gen3SharedPokemonSurface.inc")
 assert "const Pokemon::Pokemon* sourceBoxPokemon(" in gen3_readonly
 assert "model.append(\"Add Pokemon\"); // blocked" in gen3_readonly
-for disabled in ('model.append("Edit");', 'model.append("Clone");',
-                 'model.append("Release");'):
-    assert disabled in gen3_readonly
+# Without a validated staged workspace only read-only View exists: Edit / Clone / Release are
+# not offered at all (shared action sheet lists real commands only).
+readonly_menu = gen3_readonly.split("void drawActions(", 1)[1].split("if (!staged) {", 1)[1].split("return;", 1)[0]
+assert 'model.append("View", 0);' in readonly_menu
+for gone in ('"Edit"', '"Clone"', '"Release"', '"Make Shiny"'):
+    assert gone not in readonly_menu, gone
 assert "screen.openActionSheetTargetDetails(true);" in gen3_readonly
 assert "screen.actionSheet.close();" in gen3_readonly
 assert "if (!editor(screen)) return false; // Read-only source" not in gen3_readonly

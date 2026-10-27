@@ -1,5 +1,6 @@
 #include "Pokemon/Pokemon4Mutable.h"
 
+#include "Conversion/Gen3PidSearch.h"
 #include "Encryption/Encryption4.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/PersonalInfo4DP.h"
@@ -310,9 +311,23 @@ uint8_t Pokemon4Mutable::form() const noexcept {
     return static_cast<uint8_t>(byteAt(0x40) >> 3);
 }
 
+namespace {
+// Stored forms that the personal table cannot express: Unown's letters share one personal entry,
+// so PKHeX personal_dp/pt/hgss list formCount 1. Gen III+ Unown has 28 stored forms (A-Z, !, ?;
+// PKHeX FormConverter GetFormsUnown), kept in the PK4 form bits like every other Gen IV form.
+// Cherrim's personal entry is likewise single, but it has two forms, Overcast (0) and Sunshine (1)
+// (PKHeX 6501f0ab FormConverter GetFormsGen4). Counting both lets a stored Sunshine value be shown
+// and preserved; setForm still never writes it (battle-only, see setForm).
+uint8_t storedFormCount(uint16_t species, uint8_t personalCount) noexcept {
+    if (species == 201) return 28;
+    if (species == 421) return 2;
+    return personalCount;
+}
+} // namespace
+
 uint8_t Pokemon4Mutable::formCount() const noexcept {
     if (!valid_) return 0;
-    return personalFor(sourceGroup_, species(), 0).formCount;
+    return storedFormCount(species(), personalFor(sourceGroup_, species(), 0).formCount);
 }
 uint8_t Pokemon4Mutable::gender() const noexcept {
     return static_cast<uint8_t>((byteAt(0x40) >> 1) & 3u);
@@ -837,44 +852,43 @@ bool Pokemon4Mutable::rerollPid(
     int wantShiny, int wantGender, int wantNature, int wantAbilityBit) noexcept {
     if (!valid_) return false;
 
+    // Gen IV keeps the Gen III PID links for nature (PID % 25), gender (low byte vs. ratio),
+    // ability slot (bit 0), shininess (TID ^ SID ^ PID halves < 8) and the Wurmple-line
+    // evolution value; the Unown letter is a stored form here, not a PID field (PKHeX 6501f0ab
+    // PK4). The replacement PID is constructed to hold every pinned trait (Gen3PidSearch.h), so
+    // a shiny of an 87.5%-male dual-ability species keeps its shininess through a nature change
+    // instead of exhausting a filtered walk. A PID that already holds them all is kept.
+    namespace Search = Conversion::Gen3PidSearch;
+    Search::Wanted want;
+    want.shiny = wantShiny;
+    want.gender = wantGender;
+    want.nature = wantNature;
+    want.abilityBit = wantAbilityBit;
+    want.genderRatio = personalFor(sourceGroup_, species(), form()).genderRatio;
+    want.tid32 = static_cast<uint32_t>(tid()) | (static_cast<uint32_t>(sid()) << 16);
     const uint32_t original = pid();
-    const uint8_t ratio = personalFor(sourceGroup_, species(), form()).genderRatio;
-    if (wantGender >= 0) {
-        const uint8_t fixed = fixedGender(ratio);
-        if (fixed != 3 && wantGender != fixed) return false;
-        if (fixed == 3 && wantGender == 2) return false;
-    }
-
-    uint32_t walk = original;
-    for (int i = 0; i < 8000000; ++i) {
-        walk = walk * 0x41C64E6Du + 0x00006073u;
-        const uint32_t candidate = walk;
-        if (wantAbilityBit >= 0 &&
-            static_cast<int>(candidate & 1u) != wantAbilityBit)
-            continue;
-        if (wantNature >= 0 &&
-            static_cast<int>(candidate % 25u) != wantNature)
-            continue;
-        if (wantGender >= 0 &&
-            static_cast<int>(genderForPid(candidate)) != wantGender)
-            continue;
-        if (wantShiny >= 0) {
-            const uint16_t psv = static_cast<uint16_t>(
-                (candidate & 0xFFFFu) ^ (candidate >> 16));
-            const bool isShiny = static_cast<uint16_t>(tid() ^ sid() ^ psv) < 8u;
-            if (isShiny != (wantShiny != 0)) continue;
-        }
-        write32(0x00, candidate);
-        return true;
-    }
-    return false;
+    if (species() >= 265 && species() <= 269)
+        want.wurmpleEvo = Search::wurmpleEvo(original);
+    if (Search::satisfies(original, want)) return true;
+    const auto found = Search::construct(original, want);
+    if (!found) return false;
+    write32(0x00, *found);
+    return true;
 }
 
 bool Pokemon4Mutable::setForm(uint8_t value) noexcept {
     if (!valid_) return false;
     const auto& base = personalFor(sourceGroup_, species(), 0);
-    if (base.hp == 0 || base.formCount == 0 || value >= base.formCount) return false;
+    const uint8_t forms = storedFormCount(species(), base.formCount);
+    if (base.hp == 0 || forms == 0 || value >= forms) return false;
     if (value == form()) return true;
+
+    // Castform (351) and Cherrim (421) change form only inside battle: PKHeX FormInfo.BattleForms
+    // (6501f0ab, PKHeX.Core/Legality/Tables/FormInfo.cs; IsBattleForm => form != 0). The editor
+    // offers stored form 0 only; an existing non-zero value is left as-is (the early return above
+    // keeps re-selecting it a no-op) and can be set back to 0.
+    if ((species() == 351 || species() == 421) && value != 0)
+        return false;
 
     // Exact Gen IV legality/storage side effects pinned from PKHeX FormVerifier/FormItem.
     if (species() == 492 && value != 0 && !isParty())

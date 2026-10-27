@@ -56,11 +56,21 @@ namespace UI {
         void handleItemsQuickOpen(AccountUid userUid, u64 titleId, const std::string& titleName);
         bool handleTrainerView(AccountUid userUid, u64 titleId, const std::string& titleName,
                                const std::string& backupDir, bool loadedFromCart,
-                               SaveSelectScreen::OpenIntent intent, std::string& error);
+                               SaveSelectScreen::OpenIntent intent, std::string& error,
+                               const PokeVault::Source::ImmutableSnapshot::Directory* historical = nullptr,
+                               const std::string& provenance = {});
         bool handleLegacyFRLGView(AccountUid userUid, size_t sourceIndex, const std::string& gameId,
                                   SaveSelectScreen::OpenIntent intent, std::string& error);
+        bool handleEmulatorBackupView(AccountUid userUid,const std::string& gameId,
+            const PokeVault::Source::ImmutableSnapshot::File& file,const std::string& label,
+            const std::string& provider,std::string& error);
         bool handleGen4View(AccountUid userUid, const std::string& gameId,
                             SaveSelectScreen::OpenIntent intent, std::string& error);
+        bool handleGen5View(AccountUid userUid, const std::string& gameId,
+                            SaveSelectScreen::OpenIntent intent,
+                            PokeVault::Integration::Gen5::SaveCopySelection selectedCopy,
+                            std::string_view selectedFingerprint,
+                            std::string& error);
     };
 }
 

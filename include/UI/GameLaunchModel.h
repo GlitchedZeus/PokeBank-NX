@@ -10,6 +10,9 @@
 #include <string>
 #include <string_view>
 
+// Shared with the bundled return host so PokeBank and the host agree byte-for-byte on argv.
+#include "../../runtime/return_host/source/return_host_policy.h"
+
 namespace UI {
 
 enum class GameLaunchBackend : uint8_t {
@@ -182,6 +185,9 @@ struct GameLaunchDescriptor {
     std::string contentPath;
     std::string corePath;
     mutable std::string detail;
+    // Something the user must know before confirming this launch (for example that the
+    // RetroArch core could not be proven from the save). Shown with the quit-route notice.
+    std::string launchNotice;
 
     [[nodiscard]] bool ready() const {
         const bool nominallyReady = state == GameLaunchState::Ready ||
@@ -288,6 +294,15 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
     const std::string wanted = normalizedLaunchStem(savePath);
     const std::string candidate = normalizedLaunchStem(contentPath);
     if (candidate.empty()) return false;
+    // A Black/White ROM name never names Black 2/White 2 and vice versa, even by containment
+    // (a .zip has no readable cartridge header to catch the mix-up later).
+    // No-Intro names the sequels "Pokemon - Black Version 2"; others write "Pokemon Black 2".
+    const bool unovaSequelName = candidate.find("black2") != std::string::npos ||
+                                 candidate.find("white2") != std::string::npos ||
+                                 candidate.find("blackversion2") != std::string::npos ||
+                                 candidate.find("whiteversion2") != std::string::npos;
+    if ((gameId == "black_nds" || gameId == "white_nds") && unovaSequelName) return false;
+    if ((gameId == "black2_nds" || gameId == "white2_nds") && !unovaSequelName) return false;
     if (!wanted.empty() && candidate == wanted) return true;
 
     // Emulator saves often add/remove words such as "Pokemon", "Version", region tags, or archive
@@ -324,6 +339,9 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
     if (gameId == "platinum_nds") return officialRelease("platinum");
     if (gameId == "heartgold_nds") return officialRelease("heartgold");
     if (gameId == "soulsilver_nds") return officialRelease("soulsilver");
+    // The original/sequel split was already enforced by unovaSequelName above.
+    if (gameId == "black_nds" || gameId == "black2_nds") return officialRelease("black");
+    if (gameId == "white_nds" || gameId == "white2_nds") return officialRelease("white");
 
     const size_t underscore = gameId.find('_');
     const std::string_view identity = gameId.substr(0, underscore);
@@ -386,6 +404,11 @@ inline std::string_view gameLaunchRomHeaderGameId(std::string_view extension,
         if (code == "CPU") return "platinum_nds";
         if (code == "IPK") return "heartgold_nds";
         if (code == "IPG") return "soulsilver_nds";
+        // Unova cartridge codes (all regions share the first three characters).
+        if (code == "IRB") return "black_nds";
+        if (code == "IRA") return "white_nds";
+        if (code == "IRE") return "black2_nds";
+        if (code == "IRD") return "white2_nds";
         return {};
     }
     return {};
@@ -474,6 +497,405 @@ inline const char* gameLaunchActionLabel(GameLaunchState state) noexcept {
         case GameLaunchState::Unavailable:      return "Unavailable";
     }
     return "Unavailable";
+}
+
+// ---------------------------------------------------------------------------------------------
+// Chainload plan: exactly what PokeBank hands to envSetNextLoad() for a homebrew launch.
+//
+// hbloader keeps a 512-byte next path and a 2048-byte next argv, and libnx envSetNextLoad()
+// strcpy()s into them unchecked, so an over-long or unrepresentable path must be refused here,
+// before PokeBank exits (see return_host_policy.h for the pinned references).
+// ---------------------------------------------------------------------------------------------
+
+// Where the emulator's own quit action leads, so the UI can state it before launching.
+enum class GameLaunchQuitRoute : uint8_t {
+    None,              // no homebrew chain (Switch title or not launchable)
+    LoaderDefault,     // nothing scheduled after quit: hbloader loads sdmc:/hbmenu.nro, forwarders
+                       // usually end the process (HOME)
+    EmulatorLauncher,  // DraStic "Quit to launcher" reloads DrasticDS.nro (its launcher)
+    ReturnsToPokeBank, // bundled return host reloads this PokeBank NRO
+};
+
+struct GameLaunchReturnOptions {
+    std::string_view pokeBankNroPath;   // argv[0] of the running PokeBank (validated by caller)
+    std::string_view returnHostNroPath; // installed PokeBankReturnHost.nro
+    bool returnHostEnabled = false;
+};
+
+struct GameLaunchChainPlan {
+    bool ok = false;
+    std::string nroPath;
+    std::string argv;
+    bool viaReturnHost = false;
+    GameLaunchQuitRoute quitRoute = GameLaunchQuitRoute::None;
+    std::string error;
+    std::string returnHostSkipped; // why an enabled return host was not used (direct fallback)
+};
+
+inline bool gameLaunchPathFitsLoader(std::string_view path) noexcept {
+    if (path.empty() || path.size() >= RH_LOADER_PATH_CAP) return false;
+    for (unsigned char c : path)
+        if (c == '"' || c < 0x20 || c == 0x7F) return false;
+    return true;
+}
+
+// libnx argvSetup() has no escape character, so a value is either quoted verbatim or refused.
+inline bool gameLaunchAppendArg(std::string& argv, std::string_view value) {
+    if (value.empty()) return false;
+    for (unsigned char c : value)
+        if (c == '"' || c < 0x20 || c == 0x7F) return false;
+    if (!argv.empty()) argv.push_back(' ');
+    argv.push_back('"');
+    argv.append(value);
+    argv.push_back('"');
+    return true;
+}
+
+inline bool gameLaunchArgvFitsLoader(std::string_view argv) noexcept {
+    return !argv.empty() && argv.size() < RH_LOADER_ARGV_CAP;
+}
+
+// ---------------------------------------------------------------------------------------------
+// RetroArch core evidence from the save itself.
+//
+// A Nintendo DS save only loads in the core that wrote it, so the core is chosen from what the
+// discovered save proves, and the game-ID default is used only when it proves nothing.
+// Pinned references:
+//  - RetroArch b2538f1249e81d687dbcaece491674713a38ae68 runloop.c: with "sort saves by core"
+//    the save directory is <savefile_dir>[/<content dir>]/<library_name>/, so a save's parent
+//    folder is the writing core's library_name.
+//  - library_name: DeSmuME (libretro/desmume 95b4d798 frontend/libretro/libretro.cpp:517),
+//    melonDS (libretro/melonDS 66b5d263 src/libretro/libretro.cpp:114),
+//    Gambatte (libretro/gambatte-libretro d9d6cd06 libretro.cpp:1655),
+//    mGBA (libretro/mgba 7a12d6d4: library_name = projectName = CMake project "mGBA").
+//  - Battery file names: DeSmuME writes "<game>.dsv" (desmume mc.cpp:235); the melonDS core
+//    writes "<save dir>/<game>.sav" (melonDS libretro.cpp:895).
+// melonDS DS has no Nintendo Switch build (its README), so its folder is not mapped to a core.
+// ---------------------------------------------------------------------------------------------
+
+enum class RetroArchSaveCore : uint8_t { Unknown, DeSmuME, MelonDS, Gambatte, MGBA, Ambiguous };
+
+struct RetroArchSaveCoreEvidence {
+    RetroArchSaveCore core = RetroArchSaveCore::Unknown;
+    std::string reason; // why; empty for Unknown
+};
+
+inline const char* retroArchSaveCoreLabel(RetroArchSaveCore core) noexcept {
+    switch (core) {
+        case RetroArchSaveCore::DeSmuME:   return "DeSmuME";
+        case RetroArchSaveCore::MelonDS:   return "melonDS";
+        case RetroArchSaveCore::Gambatte:  return "Gambatte";
+        case RetroArchSaveCore::MGBA:      return "mGBA";
+        case RetroArchSaveCore::Unknown:
+        case RetroArchSaveCore::Ambiguous: break;
+    }
+    return "";
+}
+
+// Switch core NRO file name under sdmc:/retroarch/cores/ (libretro buildbot libnx naming, as
+// already used by defaultRetroArchCore()).
+inline const char* retroArchSaveCoreNroName(RetroArchSaveCore core) noexcept {
+    switch (core) {
+        case RetroArchSaveCore::DeSmuME:   return "desmume_libretro_libnx.nro";
+        case RetroArchSaveCore::MelonDS:   return "melonds_libretro_libnx.nro";
+        case RetroArchSaveCore::Gambatte:  return "gambatte_libretro_libnx.nro";
+        case RetroArchSaveCore::MGBA:      return "mgba_libretro_libnx.nro";
+        case RetroArchSaveCore::Unknown:
+        case RetroArchSaveCore::Ambiguous: break;
+    }
+    return "";
+}
+
+inline bool retroArchSaveCoreRunsGame(RetroArchSaveCore core, std::string_view gameId) noexcept {
+    const auto ends = [&](std::string_view suffix) {
+        return gameId.size() >= suffix.size() &&
+               gameId.substr(gameId.size() - suffix.size()) == suffix;
+    };
+    const bool gb = ends("_gb") || ends("_gbc");
+    switch (core) {
+        case RetroArchSaveCore::DeSmuME:
+        case RetroArchSaveCore::MelonDS:  return ends("_nds");
+        case RetroArchSaveCore::Gambatte: return gb;
+        case RetroArchSaveCore::MGBA:     return gb || ends("_gba");
+        case RetroArchSaveCore::Unknown:
+        case RetroArchSaveCore::Ambiguous: break;
+    }
+    return false;
+}
+
+inline RetroArchSaveCoreEvidence retroArchSaveCoreEvidence(std::string_view gameId,
+                                                           std::string_view savePath) {
+    RetroArchSaveCoreEvidence out;
+    const size_t slash = savePath.find_last_of("/\\");
+    if (slash == std::string_view::npos || slash == 0) return out;
+    const std::string_view file = savePath.substr(slash + 1);
+    const std::string_view parentPath = savePath.substr(0, slash);
+    const size_t parentSlash = parentPath.find_last_of("/\\:");
+    const std::string parent = compactLaunchProvider(
+        parentSlash == std::string_view::npos ? parentPath : parentPath.substr(parentSlash + 1));
+    const std::string ext = lowerLaunchExtension(file);
+    const bool nds = gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_nds";
+
+    RetroArchSaveCore byFolder = RetroArchSaveCore::Unknown;
+    if (parent == "desmume") byFolder = RetroArchSaveCore::DeSmuME;
+    else if (parent == "melonds") byFolder = RetroArchSaveCore::MelonDS;
+    else if (parent == "melondsds") {
+        out.core = RetroArchSaveCore::Ambiguous;
+        out.reason = "melonDS DS has no Switch core";
+        return out;
+    } else if (parent == "gambatte") byFolder = RetroArchSaveCore::Gambatte;
+    else if (parent == "mgba") byFolder = RetroArchSaveCore::MGBA;
+
+    RetroArchSaveCore byFile = RetroArchSaveCore::Unknown;
+    if (nds && ext == ".dsv") byFile = RetroArchSaveCore::DeSmuME;
+    else if (nds && ext == ".sav") byFile = RetroArchSaveCore::MelonDS;
+
+    if (byFolder != RetroArchSaveCore::Unknown && !retroArchSaveCoreRunsGame(byFolder, gameId)) {
+        out.core = RetroArchSaveCore::Ambiguous;
+        out.reason = std::string(retroArchSaveCoreLabel(byFolder)) + " folder can't run this game";
+        return out;
+    }
+    if (byFolder != RetroArchSaveCore::Unknown && byFile != RetroArchSaveCore::Unknown &&
+        byFolder != byFile) {
+        out.core = RetroArchSaveCore::Ambiguous;
+        out.reason = std::string(retroArchSaveCoreLabel(byFolder)) + " folder, " +
+                     retroArchSaveCoreLabel(byFile) + " " + ext;
+        return out;
+    }
+    if (byFolder != RetroArchSaveCore::Unknown) {
+        out.core = byFolder;
+        out.reason = std::string("RetroArch per-core save folder ") + retroArchSaveCoreLabel(byFolder);
+    } else if (byFile != RetroArchSaveCore::Unknown) {
+        out.core = byFile;
+        out.reason = std::string(ext) + " save written by the " + retroArchSaveCoreLabel(byFile) + " core";
+    }
+    return out;
+}
+
+inline GameLaunchProviderKind gameLaunchDescriptorKind(const GameLaunchDescriptor& d) {
+    if (d.backend == GameLaunchBackend::RetroArch) return GameLaunchProviderKind::RetroArch;
+    return gameLaunchProviderKind(d.providerId);
+}
+
+inline GameLaunchChainPlan buildGameLaunchChainPlan(const GameLaunchDescriptor& descriptor,
+                                                    const GameLaunchReturnOptions& options = {}) {
+    GameLaunchChainPlan plan;
+    if (descriptor.backend != GameLaunchBackend::RetroArch &&
+        descriptor.backend != GameLaunchBackend::HomebrewNro) {
+        plan.error = "This launch does not chain to a homebrew NRO.";
+        return plan;
+    }
+    const std::string& target = descriptor.backend == GameLaunchBackend::RetroArch &&
+                                        !descriptor.corePath.empty()
+                                    ? descriptor.corePath
+                                    : descriptor.launcherPath;
+    const bool withContent = descriptor.state != GameLaunchState::LauncherOnly &&
+                             !descriptor.contentPath.empty();
+    if (!gameLaunchPathFitsLoader(target)) {
+        plan.error = "The emulator path cannot be passed to the homebrew loader.";
+        return plan;
+    }
+    if (withContent && !gameLaunchPathFitsLoader(descriptor.contentPath)) {
+        plan.error = "The game file path cannot be passed to the emulator (too long or contains '\"').";
+        return plan;
+    }
+
+    const GameLaunchProviderKind kind = gameLaunchDescriptorKind(descriptor);
+    std::string direct;
+    gameLaunchAppendArg(direct, target);
+    if (withContent) gameLaunchAppendArg(direct, descriptor.contentPath);
+    if (!gameLaunchArgvFitsLoader(direct)) {
+        plan.error = "The emulator launch arguments are too long.";
+        return plan;
+    }
+
+    if (options.returnHostEnabled) {
+        const char* mode = kind == GameLaunchProviderKind::DraStic
+            ? RH_MODE_RETURN_ON_LAUNCHER : RH_MODE_RETURN_ON_EXIT;
+        std::string hosted;
+        if (!gameLaunchPathFitsLoader(options.pokeBankNroPath)) {
+            plan.returnHostSkipped = "PokeBank's own NRO path is unknown or cannot be passed back.";
+        } else if (!gameLaunchPathFitsLoader(options.returnHostNroPath)) {
+            plan.returnHostSkipped = "The return host is not installed.";
+        } else if (!gameLaunchAppendArg(hosted, options.returnHostNroPath) ||
+                   !gameLaunchAppendArg(hosted, options.pokeBankNroPath) ||
+                   !gameLaunchAppendArg(hosted, mode) ||
+                   !gameLaunchAppendArg(hosted, target) ||
+                   (withContent && !gameLaunchAppendArg(hosted, descriptor.contentPath)) ||
+                   !gameLaunchArgvFitsLoader(hosted)) {
+            plan.returnHostSkipped = "The return handoff arguments are too long.";
+        } else {
+            plan.ok = true;
+            plan.viaReturnHost = true;
+            plan.nroPath = std::string(options.returnHostNroPath);
+            plan.argv = std::move(hosted);
+            plan.quitRoute = GameLaunchQuitRoute::ReturnsToPokeBank;
+            return plan;
+        }
+    }
+
+    plan.ok = true;
+    plan.nroPath = target;
+    plan.argv = std::move(direct);
+    plan.quitRoute = kind == GameLaunchProviderKind::DraStic
+        ? GameLaunchQuitRoute::EmulatorLauncher : GameLaunchQuitRoute::LoaderDefault;
+    return plan;
+}
+
+inline const char* gameLaunchQuitRouteNotice(GameLaunchQuitRoute route) noexcept {
+    switch (route) {
+        case GameLaunchQuitRoute::ReturnsToPokeBank:
+            return "Quitting the emulator returns to PokeBank NX.";
+        case GameLaunchQuitRoute::EmulatorLauncher:
+            return "DraStic's Quit to launcher opens DraStic's launcher, not PokeBank NX.";
+        case GameLaunchQuitRoute::LoaderDefault:
+            return "Quitting returns to the Homebrew Menu (or HOME via a forwarder).";
+        case GameLaunchQuitRoute::None:
+            break;
+    }
+    return "";
+}
+
+// ---------------------------------------------------------------------------------------------
+// Return selection: Product Home's exact focus at the moment a launch handed off, so the next
+// PokeBank start (after the emulator quits) reopens on the same game instead of the first card.
+// Consumed once; text format, one key per line; values may not contain control characters.
+// ---------------------------------------------------------------------------------------------
+
+struct GameLaunchReturnSelection {
+    std::string profileIdentity;
+    std::string gameId;
+    std::string sourceIdentity;
+    int sourceKind = 0;
+    uint64_t titleId = 0;
+    int userIndex = 0;
+    int titleIndex = 0;
+    bool classicGamesActive = false;
+    int64_t savedAt = 0;
+};
+
+inline constexpr std::string_view kGameLaunchReturnSelectionHeader = "POKEBANK_LAUNCH_RETURN_V1";
+// A record older than this is from an abandoned session, not a return.
+inline constexpr int64_t kGameLaunchReturnSelectionMaxAgeSeconds = 7 * 24 * 60 * 60;
+
+inline bool gameLaunchReturnValueSafe(std::string_view value) noexcept {
+    if (value.size() > 512) return false;
+    for (unsigned char c : value)
+        if (c < 0x20 || c == 0x7F) return false;
+    return true;
+}
+
+inline bool serializeGameLaunchReturnSelection(const GameLaunchReturnSelection& selection,
+                                               std::string& out) {
+    out.clear();
+    if (selection.gameId.empty() || !gameLaunchReturnValueSafe(selection.gameId) ||
+        !gameLaunchReturnValueSafe(selection.profileIdentity) ||
+        !gameLaunchReturnValueSafe(selection.sourceIdentity))
+        return false;
+    char numbers[192];
+    std::snprintf(numbers, sizeof(numbers),
+                  "kind=%d\ntitle=%016llx\nuser=%d\nindex=%d\nclassic=%d\nsaved=%lld\n",
+                  selection.sourceKind, static_cast<unsigned long long>(selection.titleId),
+                  selection.userIndex, selection.titleIndex,
+                  selection.classicGamesActive ? 1 : 0,
+                  static_cast<long long>(selection.savedAt));
+    out.append(kGameLaunchReturnSelectionHeader);
+    out.append("\nprofile=").append(selection.profileIdentity);
+    out.append("\ngame=").append(selection.gameId);
+    out.append("\nsource=").append(selection.sourceIdentity);
+    out.push_back('\n');
+    out.append(numbers);
+    return true;
+}
+
+inline bool gameLaunchParseInt64(std::string_view text, int64_t& out, int base = 10) {
+    if (text.empty() || text.size() > 20) return false;
+    bool negative = false;
+    size_t i = 0;
+    if (base == 10 && text[0] == '-') { negative = true; i = 1; }
+    if (i >= text.size()) return false;
+    uint64_t value = 0;
+    for (; i < text.size(); ++i) {
+        const char c = text[i];
+        int digit = -1;
+        if (c >= '0' && c <= '9') digit = c - '0';
+        else if (base == 16 && c >= 'a' && c <= 'f') digit = c - 'a' + 10;
+        if (digit < 0 || digit >= base) return false;
+        if (value > (UINT64_MAX - static_cast<uint64_t>(digit)) / static_cast<uint64_t>(base))
+            return false;
+        value = value * static_cast<uint64_t>(base) + static_cast<uint64_t>(digit);
+    }
+    if (base == 10 && value > static_cast<uint64_t>(INT64_MAX)) return false;
+    out = negative ? -static_cast<int64_t>(value) : static_cast<int64_t>(value);
+    return true;
+}
+
+inline bool parseGameLaunchReturnSelection(std::string_view text, int64_t now,
+                                           GameLaunchReturnSelection& out) {
+    out = {};
+    GameLaunchReturnSelection parsed;
+    bool header = false, haveGame = false, haveSaved = false;
+    size_t pos = 0;
+    while (pos < text.size()) {
+        size_t end = text.find('\n', pos);
+        if (end == std::string_view::npos) end = text.size();
+        std::string_view line = text.substr(pos, end - pos);
+        pos = end + 1;
+        if (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+        if (!header) {
+            if (line != kGameLaunchReturnSelectionHeader) return false;
+            header = true;
+            continue;
+        }
+        if (line.empty()) continue;
+        const size_t eq = line.find('=');
+        if (eq == std::string_view::npos) return false;
+        const std::string_view key = line.substr(0, eq);
+        const std::string_view value = line.substr(eq + 1);
+        if (!gameLaunchReturnValueSafe(value)) return false;
+        int64_t number = 0;
+        if (key == "profile") parsed.profileIdentity = std::string(value);
+        else if (key == "game") { parsed.gameId = std::string(value); haveGame = !value.empty(); }
+        else if (key == "source") parsed.sourceIdentity = std::string(value);
+        else if (key == "title") {
+            if (value.size() != 16 || !gameLaunchParseInt64(value.substr(0, 8), number, 16)) return false;
+            int64_t low = 0;
+            if (!gameLaunchParseInt64(value.substr(8), low, 16)) return false;
+            parsed.titleId = (static_cast<uint64_t>(number) << 32) | static_cast<uint64_t>(low);
+        } else if (key == "kind" || key == "user" || key == "index" || key == "classic") {
+            if (!gameLaunchParseInt64(value, number) || number < 0 || number > 0xFFFF) return false;
+            if (key == "kind") parsed.sourceKind = static_cast<int>(number);
+            else if (key == "user") parsed.userIndex = static_cast<int>(number);
+            else if (key == "index") parsed.titleIndex = static_cast<int>(number);
+            else {
+                if (number > 1) return false;
+                parsed.classicGamesActive = number == 1;
+            }
+        } else if (key == "saved") {
+            if (!gameLaunchParseInt64(value, number)) return false;
+            parsed.savedAt = number;
+            haveSaved = true;
+        }
+        // Unknown keys are ignored so a newer writer never strands an older reader.
+    }
+    if (!header || !haveGame || !haveSaved) return false;
+    if (parsed.savedAt <= 0 || parsed.savedAt > now + 60 ||
+        now - parsed.savedAt > kGameLaunchReturnSelectionMaxAgeSeconds)
+        return false;
+    out = std::move(parsed);
+    return true;
+}
+
+// A parsed record is only a hint. If its game left the catalog (renamed id, removed support)
+// the restore is dropped silently and Product Home keeps its normal first focus; a game that
+// still exists but whose card or source vanished falls back inside SaveSelectScreen, which
+// matches identity first and clamps the recorded indices into range.
+template <class IsKnownGame>
+inline bool gameLaunchReturnSelectionUsable(const GameLaunchReturnSelection& selection,
+                                            IsKnownGame&& isKnownGame) {
+    if (selection.gameId.empty() || !isKnownGame(std::string_view(selection.gameId)))
+        return false;
+    return selection.userIndex >= 0 && selection.titleIndex >= 0 && selection.sourceKind >= 0;
 }
 
 } // namespace UI

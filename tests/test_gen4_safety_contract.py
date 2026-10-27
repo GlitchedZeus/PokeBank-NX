@@ -49,7 +49,8 @@ assert 'NINTENDO DS / SAVE INSTANCES / READ ONLY' in instances
 assert ' — Save Instances' in instances
 assert 'drawSaveInstanceRows(fb, gen4Instances' in instances
 shared_rows = select[select.index('void drawSaveInstanceRows('):select.index('SaveSelectScreen::SaveSelectScreen')]
-assert 'instance.providerLabel' in shared_rows
+# Provider text comes from Save Instance metadata via the shared row helper.
+assert 'PokeVault::Source::saveInstanceSourceLine(instance)' in shared_rows
 assert 'MOST RECENTLY MODIFIED' in shared_rows
 assert '{"A", "Open Read Only"}' in instances
 assert '{"Y", "Source Setup"}' in instances
@@ -68,7 +69,7 @@ assert 'instance.providerLabel' in select
 assert 'providerSummary(parent.legacyInstances)' in select
 assert '"Providers: "' in select
 assert '"Active root: " + sourceLeafName(legacyCatalog->activeRoot)' not in select
-assert 'drawLine("Provider", legacyDetailsInstance.providerLabel.empty()' in select
+assert 'PokeVault::Source::providerDisplayName(legacyDetailsInstance.providerLabel)' in select
 assert 'detailsProvider + " / SOURCE DIAGNOSTICS / READ ONLY"' in select
 assert '"RETROARCH / SOURCE DIAGNOSTICS / READ ONLY"' not in select
 assert 'discoverConfiguredRetroArchFRLGSaves()' not in select

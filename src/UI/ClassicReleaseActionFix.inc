@@ -1,3 +1,5 @@
+#include "UI/ClassicPokemonActionMenu.h"
+#include "UI/ClassicPackedMovePresentation.h"
 // Staged Release requires A -> Pokemon Actions -> Release and then an
 // explicit Y confirmation; A inside the confirmation itself is inert. No bulk-release path exists.
 
@@ -20,7 +22,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
         const auto pokemon = ux2SelectedPokemon(screen, error);
         const auto* staged = editor(screen);
         const auto actions = PokeBank::UIModel::Gen1Editor::actionsForSlot(
-            static_cast<bool>(pokemon), staged && !staged->pendingChanges().empty());
+            static_cast<bool>(pokemon), staged && !staged->pendingChanges().empty(),
+            boxMoveAvailable(screen));
         const int rows = static_cast<int>(actions.count);
         if (rows <= 0) return true;
         state.row = std::clamp(state.row, 0, rows - 1);
@@ -44,6 +47,15 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             case Action::View: state.mode = UX2Mode::View; break;
             case Action::Edit: state.mode = UX2Mode::Edit; state.row = 0; break;
             case Action::Clone: ux2OpenClone(screen); break;
+            case Action::Move: {
+                // R2-CHECK-009: the existing Boxes carry, picked up; Y drops, B cancels.
+                const int box = state.box, slot = state.slot;
+                ux2Close(state);
+                screen.controllerNavigation.reset();
+                if (!ClassicPackedMove::beginGen1FromAction(screen, box, slot))
+                    screen.postStatus("Move could not start from here", 240);
+                break;
+            }
             case Action::Remove: state.mode = UX2Mode::RemoveConfirm; break;
             case Action::LegalityProvenance: state.mode = UX2Mode::Provenance; break;
             case Action::AddPokemon: ux2BeginAdd(screen); break;
@@ -96,19 +108,19 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = ux2SelectedPokemon(screen, error);
     const auto* staged = editor(screen);
     const auto actions = PokeBank::UIModel::Gen1Editor::actionsForSlot(
-        static_cast<bool>(pokemon), staged && !staged->pendingChanges().empty());
+        static_cast<bool>(pokemon), staged && !staged->pendingChanges().empty(),
+        boxMoveAvailable(screen));
     state.row = std::clamp(state.row, 0, std::max(0, static_cast<int>(actions.count) - 1));
     // The composite has already drawn the box browser. Do not draw another
     // older wide panel behind this single, original narrow greyed-out sheet.
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row,
                             title,
                             screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
     return true;
 }
 
@@ -119,15 +131,16 @@ namespace {
 
 struct ReleaseConfirmState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     bool active = false;
 };
 
 ReleaseConfirmState& releaseConfirmStateFor(const TrainerViewScreen& screen) {
     static ReleaseConfirmState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -228,10 +241,8 @@ bool handlePassiveViewTouch(TrainerViewScreen& screen, const TouchInput& touch) 
             return true;
         }
 
-        const auto moveCell = Unified::moveRowFocus(rightW);
-        for (int slot = 0; slot < 4; ++slot) {
-            const int yy = contentY + 62 + slot * 32;
-            if (!inside(px, py, rightX + moveCell.x, yy - 5, moveCell.width, 28)) continue;
+        // Same rows the shared Moves panel draws (UI/Gen2MovesPanel.h).
+        if (const int slot = UI::Gen2MovesPanel::hitSlot(px, py, rightX, contentY, rightW); slot >= 0) {
             unified.focus = {Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
             return true;
         }
@@ -281,6 +292,9 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                               int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
     if (handlePassiveViewTouch(screen, touch)) return true;
+    // Defence in depth: never own input under the Clone or Provenance dialogs.
+    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
+        return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -340,6 +354,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             if (!pokemon) return true;
             editState.box = legacy.pokemonBox;
             editState.slot = legacy.pokemonSlot;
+            editState.party = legacy.pokemonParty;
             editState.begin(*pokemon, PokeBank::UIModel::Gen2PokemonEditor::SessionMode::View);
             dismissActionSheetForWorkspace(screen);
             screen.controllerNavigation.reset();
@@ -353,6 +368,10 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             auto& shared = sharedSurfaceStateFor(screen);
             shared.cloneActive = true;
             shared.cloneBox = legacy.pokemonBox;
+            // The Clone destination dialog owns input and the frame (as Legality & Provenance
+            // does). Leaving the action sheet "open" underneath kept this handler capturing
+            // every input, so Clone looked inert and B revealed the dialog instead of cancelling.
+            legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
         }
@@ -383,6 +402,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             screen.controllerNavigation.reset();
             return true;
         case Action::None:
+        case Action::Move: // Not offered by the Gen II action set.
             return true;
     }
     return true;
@@ -390,6 +410,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
 
 bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
+    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
+        return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -430,14 +452,13 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::max(0, static_cast<int>(actions.count) - 1));
     // This higher-priority composited draw must match the shared Gen II parity
     // sheet, or a 650px legacy popup hides the correct narrow grey/yellow menu.
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             title,
                             screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
     return true;
 }
 

@@ -28,9 +28,11 @@ GAME_CARDS = (
     "gold_gbc", "silver_gbc", "crystal_gbc",
     "ruby_gba", "sapphire_gba", "emerald_gba", "firered_gba", "leafgreen_gba",
     "diamond_nds", "pearl_nds", "platinum_nds", "heartgold_nds", "soulsilver_nds",
+    "black_nds", "white_nds", "black2_nds", "white2_nds",
 )
 TRAINER_PORTRAITS = (
     "red", "leaf", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra",
+    "hilbert", "hilda", "nate", "rosa",
     "chase", "elaine", "victor", "gloria", "rei", "akari", "florian", "juliana", "paxton",
     "harmony",
 )

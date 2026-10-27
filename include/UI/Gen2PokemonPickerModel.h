@@ -1,5 +1,6 @@
 #pragma once
 
+#include "UI/Gen12DVReroll.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
@@ -118,8 +119,18 @@ inline bool applySpeciesAppearance(Gen2PokemonEditor::Session& session, uint16_t
         session.working.dvs[0] = G::StagedEditor::derivedHPDV(dvs);
         session.working.shiny = G::StagedEditor::isShinyDVs(dvs);
         session.working.gender = static_cast<uint8_t>(G::genderFromAttackDV(species, dvs[0]));
+        session.working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
     }
     return true;
+}
+
+// Preview exactly what the real A action would create, on a COPY of the
+// editor session. Never change working DVs or source saves while browsing.
+[[nodiscard]] inline int previewUnownForm(const Gen2PokemonEditor::Session& session,
+                                          bool shiny, std::string_view sourceGameId = {}) noexcept {
+    Gen2PokemonEditor::Session hypothetical = session;
+    if (!applySpeciesAppearance(hypothetical, 201, shiny, sourceGameId)) return -1;
+    return static_cast<int>(hypothetical.working.form);
 }
 
 // Re-selecting the already stored move is intentionally a no-op. This preserves unusual existing
@@ -129,6 +140,53 @@ inline bool applyMoveChoice(Gen2PokemonEditor::Session& session, std::size_t slo
     if (!session.editable() || slot >= session.working.moves.size()) return false;
     if (session.working.moves[slot] == move) return true;
     return session.setMove(slot, move);
+}
+
+// The Crystal Met Location chooser is sized to its choices (most species have two to four
+// encounter templates): up to 9 rows of 44 px, never a fixed full-height window. Draw and input
+// both use this one geometry, so hit-testing always matches what is shown.
+struct LocationPickerGeometry {
+    int x = 0, y = 0, width = 640, height = 0;
+    int listX = 0, listY = 0, listWidth = 0;
+    int visible = 1;
+    static constexpr int rowStep = 44;
+    static constexpr int rowHeight = 40;
+    // NEW-10 (Round 3 L02 note): title + caption end at 72 px, rows start at 80; 16 px under them.
+    static constexpr int headerH = 80;
+    static constexpr int padBottom = 16;
+};
+
+constexpr LocationPickerGeometry locationPickerGeometry(int count, int screenW = 1280, int screenH = 720,
+                                                        int footerH = 56) noexcept {
+    LocationPickerGeometry g{};
+    g.visible = std::clamp(count, 1, 9);
+    g.height = LocationPickerGeometry::headerH + g.visible * LocationPickerGeometry::rowStep +
+               LocationPickerGeometry::padBottom;
+    g.x = (screenW - g.width) / 2;
+    g.y = (screenH - footerH - g.height) / 2;
+    g.listX = g.x + 20;
+    g.listY = g.y + LocationPickerGeometry::headerH;
+    g.listWidth = g.width - 40;
+    return g;
+}
+
+// One Crystal encounter row: the landmark name, then the method, level range and time of day in a
+// quieter caption. Names only; never a raw landmark index, method code or source tag.
+struct LocationRowText {
+    std::string place;
+    std::string detail;
+};
+
+inline LocationRowText locationRowText(const Encounter::EncounterTemplate& encounter) {
+    LocationRowText out;
+    out.place = Gen2Native::crystalCaughtLocationName(static_cast<uint8_t>(encounter.location));
+    out.detail = std::string(Encounter::methodName(encounter.method)) + " · Lv. " +
+                 std::to_string(encounter.minLevel);
+    if (encounter.maxLevel != encounter.minLevel)
+        out.detail += "–" + std::to_string(encounter.maxLevel);
+    const auto time = encounterTimeLabel(encounter.timeMask);
+    if (!time.empty()) out.detail += " · " + time;
+    return out;
 }
 
 } // namespace PokeBank::UIModel::Gen2PokemonPicker

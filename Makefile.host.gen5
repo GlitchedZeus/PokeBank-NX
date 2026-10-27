@@ -1,0 +1,441 @@
+# Gen V phase A: strictly read-only PK5 record foundation; no source writer.
+GEN5_PK5_TEST := $(HOST_BUILD)/test_gen5_pk5_readonly
+GEN5_PK5_SANITIZE := $(HOST_BUILD)/test_gen5_pk5_readonly_sanitize
+GEN5_PK5_INPUTS := tests/test_gen5_pk5_readonly.cpp \
+    include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h \
+    include/Integration/Gen5/Gen5MovePP.h \
+    include/Integration/Gen5/Gen5EncounterLocations.h \
+    include/Integration/Gen5/Gen5PersonalData.h \
+    include/Integration/Gen5/Gen5Progression.h \
+    include/Integration/Gen5/Gen5NativeText.h
+
+HOST_TESTS += $(GEN5_PK5_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_PK5_SANITIZE)
+host-test: $(GEN5_PK5_TEST)
+host-sanitize: $(GEN5_PK5_SANITIZE)
+
+$(GEN5_PK5_TEST): $(GEN5_PK5_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_pk5_readonly.cpp -o $@
+
+$(GEN5_PK5_SANITIZE): $(GEN5_PK5_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_pk5_readonly.cpp -o $@
+
+# Phase A tranche 2: strict BW/B2W2 battery save checksum & reader contracts.
+GEN5_SAVE_TEST := $(HOST_BUILD)/test_gen5_readonly_save
+GEN5_SAVE_SANITIZE := $(HOST_BUILD)/test_gen5_readonly_save_sanitize
+GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
+    src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp \
+    src/Games/GameIdentity.cpp include/Games/GameIdentity.h \
+    src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp \
+    include/Integration/Gen5/Gen5AssignedSource.h include/Legacy/LegacySourceBindings.h \
+    include/Integration/Gen5/Gen5SourceSelection.h \
+    include/Integration/Gen5/Gen5SourcePathIdentity.h \
+    include/Integration/Gen5/Gen5GameSourceCatalog.h \
+    include/Integration/Gen5/Gen5GameCardPreview.h \
+    include/Pokemon/Pokemon5ReadOnlyView.h include/Legacy/Gen5ReadOnlyTrainer.h \
+    src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp \
+    include/Enums/GameVersion.h \
+    include/Integration/Gen5/Gen5SharedPokemonSession.h \
+    include/Integration/Gen5/Gen5SharedEditorBridge.h \
+    include/Integration/Gen5/Gen5SharedScreenState.h \
+    include/Integration/Gen5/Gen5SharedReview.h \
+    include/Integration/Gen5/Gen5StagedSaveCandidate.h \
+    include/Integration/Gen5/Gen5TrainerName.h \
+    include/Integration/Gen5/Gen5SourceDiscovery.h \
+    include/Integration/Gen5/Gen5StagedPokemonWorkspace.h \
+    include/Integration/Gen5/Gen5ExactFormatEditorProvider.h \
+    include/UI/ExactSaveCapabilities.h include/UI/SharedPokemonEditorContract.h \
+    include/Integration/Gen5/Gen5SaveBlockLayout.h \
+    include/Integration/Gen5/Gen5ReadOnlySave.h \
+    include/Integration/Gen5/Gen5SaveInstanceAdapter.h \
+    include/Pokemon/Pokemon5ReadOnly.h include/Encryption/Encryption5.h include/Utils/CRC16.h
+
+HOST_TESTS += $(GEN5_SAVE_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_SAVE_SANITIZE)
+host-test: $(GEN5_SAVE_TEST)
+host-sanitize: $(GEN5_SAVE_SANITIZE)
+
+$(GEN5_SAVE_TEST): $(GEN5_SAVE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
+
+$(GEN5_SAVE_SANITIZE): $(GEN5_SAVE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
+
+# Generation V full-SAV export candidate: no source I/O or Inject.
+# Run independently from the broad save-discovery fixture in both modes.
+GEN5_EXPORT_TEST := $(HOST_BUILD)/test_gen5_staged_save_candidate
+GEN5_EXPORT_SANITIZE := $(HOST_BUILD)/test_gen5_staged_save_candidate_sanitize
+GEN5_EXPORT_INPUTS := tests/test_gen5_staged_save_candidate.cpp \
+    src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp \
+    include/Integration/Gen5/Gen5WorkingCopyExport.h \
+    include/Integration/Gen5/Gen5StagedSaveCandidate.h \
+    include/Integration/Gen5/Gen5SharedReview.h \
+    include/Integration/Gen5/Gen5StagedPokemonWorkspace.h \
+    include/Integration/Gen5/Gen5ReadOnlySave.h \
+    include/Integration/Gen5/Gen5SaveBlockLayout.h \
+    include/Integration/Gen5/Gen5PersonalData.h \
+    include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h
+
+HOST_TESTS += $(GEN5_EXPORT_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_EXPORT_SANITIZE)
+host-test: $(GEN5_EXPORT_TEST)
+host-sanitize: $(GEN5_EXPORT_SANITIZE)
+
+$(GEN5_EXPORT_TEST): $(GEN5_EXPORT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_staged_save_candidate.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
+$(GEN5_EXPORT_SANITIZE): $(GEN5_EXPORT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_staged_save_candidate.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
+# Gen V native Bag (Items block 25): strict decode, staged quantity/add/remove
+# and bag-inclusive export candidate + verified working copy. No source writes.
+GEN5_BAG_TEST := $(HOST_BUILD)/test_gen5_bag
+GEN5_BAG_SANITIZE := $(HOST_BUILD)/test_gen5_bag_sanitize
+GEN5_BAG_INPUTS := tests/test_gen5_bag.cpp include/Integration/Gen5/Gen5Bag.h \
+    $(GEN5_EXPORT_INPUTS)
+
+HOST_TESTS += $(GEN5_BAG_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_BAG_SANITIZE)
+host-test: $(GEN5_BAG_TEST)
+host-sanitize: $(GEN5_BAG_SANITIZE)
+
+$(GEN5_BAG_TEST): $(GEN5_BAG_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_bag.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
+$(GEN5_BAG_SANITIZE): $(GEN5_BAG_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_bag.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
+# Gen V Bag in the shared Items surface: host UI model (A/X/Y/L/R parity,
+# view-only Key Items/TMs, unavailable bag), Review rows and exports.
+GEN5_BAG_SCREEN_TEST := $(HOST_BUILD)/test_gen5_bag_screen
+GEN5_BAG_SCREEN_SANITIZE := $(HOST_BUILD)/test_gen5_bag_screen_sanitize
+GEN5_BAG_SCREEN_SOURCES := tests/test_gen5_bag_screen.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp \
+    src/Names/SpeciesNames.cpp src/Inventory/ItemQuantityPolicy.cpp \
+    src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
+    src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+GEN5_BAG_SCREEN_INPUTS := $(GEN5_BAG_SCREEN_SOURCES) include/Integration/Gen5/Gen5BagScreen.h \
+    include/UI/SharedBagAddFlow.h include/Inventory/ItemQuantityPolicy.h \
+    include/UI/InventoryUIContract.h include/Legacy/Gen5ReadOnlyTrainer.h \
+    include/Integration/Gen5/Gen5SharedScreenState.h $(GEN5_BAG_INPUTS)
+
+HOST_TESTS += $(GEN5_BAG_SCREEN_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_BAG_SCREEN_SANITIZE)
+host-test: $(GEN5_BAG_SCREEN_TEST)
+host-sanitize: $(GEN5_BAG_SCREEN_SANITIZE)
+
+$(GEN5_BAG_SCREEN_TEST): $(GEN5_BAG_SCREEN_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN5_BAG_SCREEN_SOURCES) -o $@
+
+$(GEN5_BAG_SCREEN_SANITIZE): $(GEN5_BAG_SCREEN_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_BAG_SCREEN_SOURCES) -o $@
+
+# Gen V Party/Box parity with the Gen IV shared editor (Move Pokemon,
+# party actions, party stat regeneration, read-only origin fields).
+GEN5_PARITY_TEST := $(HOST_BUILD)/test_gen5_party_box_parity
+GEN5_PARITY_SANITIZE := $(HOST_BUILD)/test_gen5_party_box_parity_sanitize
+GEN5_PARITY_INPUTS := tests/test_gen5_party_box_parity.cpp \
+    include/Integration/Gen5/Gen5OriginSummary.h include/UI/SharedPokemonEditorContract.h \
+    include/Integration/Gen5/Gen5SharedScreenState.h include/Integration/Gen5/Gen5SharedEditorBridge.h \
+    include/Pokemon/Pokemon5ReadOnly.h $(GEN5_EXPORT_INPUTS)
+
+HOST_TESTS += $(GEN5_PARITY_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_PARITY_SANITIZE)
+host-test: $(GEN5_PARITY_TEST)
+host-sanitize: $(GEN5_PARITY_SANITIZE)
+
+$(GEN5_PARITY_TEST): $(GEN5_PARITY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp -o $@
+
+$(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp -o $@
+
+# Round 3 Part 9: Gen V Clone / Move / Release on slots staged this session
+# (Create, Clone, field edit), the shared Move carry, neutral Origin & Legality.
+GEN5_STAGED_ACTIONS_TEST := $(HOST_BUILD)/test_gen5_staged_slot_actions
+GEN5_STAGED_ACTIONS_SANITIZE := $(HOST_BUILD)/test_gen5_staged_slot_actions_sanitize
+GEN5_STAGED_ACTIONS_INPUTS := tests/test_gen5_staged_slot_actions.cpp \
+    include/Integration/Gen5/Gen5StagedPokemonWorkspace.h include/Integration/Gen5/Gen5SharedScreenState.h \
+    include/Integration/Gen5/Gen5SharedEditorBridge.h src/UI/Gen5SharedReadOnlySurface.inc \
+    src/UI/ClassicPackedMoveOverlay.inc $(GEN5_EXPORT_INPUTS)
+
+HOST_TESTS += $(GEN5_STAGED_ACTIONS_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_STAGED_ACTIONS_SANITIZE)
+host-test: $(GEN5_STAGED_ACTIONS_TEST)
+host-sanitize: $(GEN5_STAGED_ACTIONS_SANITIZE)
+
+$(GEN5_STAGED_ACTIONS_TEST): $(GEN5_STAGED_ACTIONS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_staged_slot_actions.cpp -o $@
+
+$(GEN5_STAGED_ACTIONS_SANITIZE): $(GEN5_STAGED_ACTIONS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_staged_slot_actions.cpp -o $@
+
+# Gen V native Trainer (PlayerData 27 / Misc 52): staged Name/Money/Play
+# Time, read-only ownership rows, Review and verified export whitelist.
+GEN5_TRAINER_TEST := $(HOST_BUILD)/test_gen5_trainer
+GEN5_TRAINER_SANITIZE := $(HOST_BUILD)/test_gen5_trainer_sanitize
+GEN5_TRAINER_SOURCES := tests/test_gen5_trainer.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp \
+    src/Names/SpeciesNames.cpp
+GEN5_TRAINER_INPUTS := $(GEN5_TRAINER_SOURCES) include/Integration/Gen5/Gen5Trainer.h \
+    include/Integration/Gen5/Gen5TrainerScreen.h include/Integration/Gen5/Gen5Pokedex.h \
+    include/Integration/Gen5/Gen5HubRouting.h $(GEN5_BAG_SCREEN_INPUTS)
+
+HOST_TESTS += $(GEN5_TRAINER_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_TRAINER_SANITIZE)
+host-test: $(GEN5_TRAINER_TEST)
+host-sanitize: $(GEN5_TRAINER_SANITIZE)
+
+$(GEN5_TRAINER_TEST): $(GEN5_TRAINER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN5_TRAINER_SOURCES) -o $@
+
+$(GEN5_TRAINER_SANITIZE): $(GEN5_TRAINER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_TRAINER_SOURCES) -o $@
+
+# R2-BUG-001 parity: the Gen V Trainer page footer follows the Gen I-IV rules (A: Edit only on an
+# editable focused row, never on a new-game save; B Back; no read-only override).
+GEN5_TRAINER_FOOTER_TEST := $(HOST_BUILD)/test_gen5_trainer_footer
+GEN5_TRAINER_FOOTER_SANITIZE := $(HOST_BUILD)/test_gen5_trainer_footer_sanitize
+GEN5_TRAINER_FOOTER_INPUTS := tests/test_gen5_trainer_footer.cpp include/Integration/Gen5/Gen5TrainerScreen.h \
+    include/Integration/Gen5/Gen5Trainer.h src/UI/Gen5SharedReadOnlySurface.inc
+
+HOST_TESTS += $(GEN5_TRAINER_FOOTER_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_TRAINER_FOOTER_SANITIZE)
+host-test: $(GEN5_TRAINER_FOOTER_TEST)
+host-sanitize: $(GEN5_TRAINER_FOOTER_SANITIZE)
+
+$(GEN5_TRAINER_FOOTER_TEST): $(GEN5_TRAINER_FOOTER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_trainer_footer.cpp -o $@
+
+$(GEN5_TRAINER_FOOTER_SANITIZE): $(GEN5_TRAINER_FOOTER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_trainer_footer.cpp -o $@
+
+# Gen V end-to-end source flow: copy choice -> assign -> reopen -> stage ->
+# verified working-copy export; source immutable, stale source refused.
+GEN5_E2E_TEST := $(HOST_BUILD)/test_gen5_source_e2e
+GEN5_E2E_SANITIZE := $(HOST_BUILD)/test_gen5_source_e2e_sanitize
+GEN5_E2E_SOURCES := tests/test_gen5_source_e2e.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp \
+    src/Integration/Gen5/Gen5AssignedSource.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp \
+    src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Utils/SHA256.cpp \
+    src/Games/GameIdentity.cpp src/Names/SpeciesNames.cpp
+GEN5_E2E_INPUTS := $(GEN5_E2E_SOURCES) $(GEN5_TRAINER_INPUTS) $(GEN5_SAVE_INPUTS)
+
+HOST_TESTS += $(GEN5_E2E_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_E2E_SANITIZE)
+host-test: $(GEN5_E2E_TEST)
+host-sanitize: $(GEN5_E2E_SANITIZE)
+
+$(GEN5_E2E_TEST): $(GEN5_E2E_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN5_E2E_SOURCES) -o $@
+
+$(GEN5_E2E_SANITIZE): $(GEN5_E2E_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_E2E_SOURCES) -o $@
+
+# Gen V native record validation: randomized staged sequences; every export
+# strict-reparses, every block CRC verifies and only whitelisted bytes move.
+GEN5_EXPORT_VALIDATION_TEST := $(HOST_BUILD)/test_gen5_export_validation
+GEN5_EXPORT_VALIDATION_SANITIZE := $(HOST_BUILD)/test_gen5_export_validation_sanitize
+GEN5_EXPORT_VALIDATION_INPUTS := tests/test_gen5_export_validation.cpp \
+    include/Integration/Gen5/Gen5Trainer.h $(GEN5_EXPORT_INPUTS)
+
+HOST_TESTS += $(GEN5_EXPORT_VALIDATION_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_EXPORT_VALIDATION_SANITIZE)
+host-test: $(GEN5_EXPORT_VALIDATION_TEST)
+host-sanitize: $(GEN5_EXPORT_VALIDATION_SANITIZE)
+
+$(GEN5_EXPORT_VALIDATION_TEST): $(GEN5_EXPORT_VALIDATION_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_export_validation.cpp -o $@
+
+$(GEN5_EXPORT_VALIDATION_SANITIZE): $(GEN5_EXPORT_VALIDATION_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_export_validation.cpp -o $@
+
+# Gen V save diagnostics: blank/stale copy detection, copy states, report file.
+GEN5_DIAG_TEST := $(HOST_BUILD)/test_gen5_save_diagnostics
+GEN5_DIAG_SANITIZE := $(HOST_BUILD)/test_gen5_save_diagnostics_sanitize
+GEN5_DIAG_SOURCES := tests/test_gen5_save_diagnostics.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp \
+    src/Utils/SHA256.cpp src/Games/GameIdentity.cpp
+GEN5_DIAG_INPUTS := $(GEN5_DIAG_SOURCES) include/Integration/Gen5/Gen5SaveDiagnostics.h \
+    include/Integration/Gen5/Gen5TrainerScreen.h include/Integration/Gen5/Gen5SharedScreenState.h \
+    include/Integration/Gen5/Gen5TrainerName.h include/Integration/Gen5/Gen5GameCardPreview.h $(GEN5_SAVE_INPUTS)
+
+HOST_TESTS += $(GEN5_DIAG_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_DIAG_SANITIZE)
+host-test: $(GEN5_DIAG_TEST)
+host-sanitize: $(GEN5_DIAG_SANITIZE)
+
+$(GEN5_DIAG_TEST): $(GEN5_DIAG_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN5_DIAG_SOURCES) -o $@
+
+$(GEN5_DIAG_SANITIZE): $(GEN5_DIAG_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_DIAG_SOURCES) -o $@
+
+# Codex independently tested native PK5 Create foundation. These tests create
+# app-owned boxed records only; they do not enable staged Create, Inject or
+# source/emulator save writes. Preserve native exact-title provenance gates.
+GEN5_CREATE_TEST := $(HOST_BUILD)/test_gen5_native_create
+GEN5_CREATE_SANITIZE := $(HOST_BUILD)/test_gen5_native_create_sanitize
+GEN5_CREATE_INTEGRATION_TEST := $(HOST_BUILD)/test_gen5_create_integration
+GEN5_CREATE_INTEGRATION_SANITIZE := $(HOST_BUILD)/test_gen5_create_integration_sanitize
+GEN5_CREATE_INPUTS := include/Integration/Gen5/Gen5NativeCreate.h \
+    include/Integration/Gen5/Gen5CreateValidation.h \
+    include/Integration/Gen5/Gen5Progression.h \
+    include/Integration/Gen5/Gen5MovePP.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h \
+    include/Integration/Gen5/Gen5StagedSaveCandidate.h \
+    include/Integration/Gen5/Gen5SharedReview.h \
+    include/Pokemon/Pokemon5ReadOnly.h include/Encryption/Encryption5.h
+
+HOST_TESTS += $(GEN5_CREATE_TEST) $(GEN5_CREATE_INTEGRATION_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_CREATE_SANITIZE) $(GEN5_CREATE_INTEGRATION_SANITIZE)
+host-test: $(GEN5_CREATE_TEST) $(GEN5_CREATE_INTEGRATION_TEST)
+host-sanitize: $(GEN5_CREATE_SANITIZE) $(GEN5_CREATE_INTEGRATION_SANITIZE)
+
+$(GEN5_CREATE_TEST): tests/test_gen5_native_create.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_native_create.cpp -o $@
+
+$(GEN5_CREATE_SANITIZE): tests/test_gen5_native_create.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_native_create.cpp -o $@
+
+# The shared screen currently has an unused workspace parameter. Match the
+# save-reader host warning policy without modifying the editor lane.
+$(GEN5_CREATE_INTEGRATION_TEST): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_create_integration.cpp -o $@
+
+$(GEN5_CREATE_INTEGRATION_SANITIZE): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_create_integration.cpp -o $@
+
+# Host-only native Gen V box-grid touch, controller focus, and safety guard.
+GEN5_BOX_TOUCH_TEST := $(HOST_BUILD)/test_gen5_box_touch
+GEN5_BOX_TOUCH_SANITIZE := $(HOST_BUILD)/test_gen5_box_touch_sanitize
+GEN5_BOX_TOUCH_INPUTS := tests/test_gen5_box_touch.cpp include/Integration/Gen5/Gen5BoxTouchNavigation.h
+HOST_TESTS += $(GEN5_BOX_TOUCH_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_BOX_TOUCH_SANITIZE)
+host-test: $(GEN5_BOX_TOUCH_TEST)
+host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)
+
+$(GEN5_BOX_TOUCH_TEST): $(GEN5_BOX_TOUCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_box_touch.cpp -o $@
+
+$(GEN5_BOX_TOUCH_SANITIZE): $(GEN5_BOX_TOUCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_box_touch.cpp -o $@
+
+# The shared Gen I-IV Add flow's Gen V picker bounds are independently
+# compiled and exercised, including language, calendar, Move and EV input.
+GEN5_CREATE_INPUT_TEST := $(HOST_BUILD)/test_gen5_create_input_rules
+GEN5_CREATE_INPUT_SANITIZE := $(HOST_BUILD)/test_gen5_create_input_rules_sanitize
+GEN5_CREATE_INPUT_FILES := tests/test_gen5_create_input_rules.cpp include/Integration/Gen5/Gen5CreateInputRules.h
+HOST_TESTS += $(GEN5_CREATE_INPUT_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_CREATE_INPUT_SANITIZE)
+host-test: $(GEN5_CREATE_INPUT_TEST)
+host-sanitize: $(GEN5_CREATE_INPUT_SANITIZE)
+
+$(GEN5_CREATE_INPUT_TEST): $(GEN5_CREATE_INPUT_FILES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_create_input_rules.cpp -o $@
+
+$(GEN5_CREATE_INPUT_SANITIZE): $(GEN5_CREATE_INPUT_FILES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_create_input_rules.cpp -o $@
+
+# Gen V PID-linked Gender / Shiny / Ability coordination (PKHeX 6501f0ab rules).
+GEN5_PID_TEST := $(HOST_BUILD)/test_gen5_pid_coordination
+GEN5_PID_SANITIZE := $(HOST_BUILD)/test_gen5_pid_coordination_sanitize
+GEN5_PID_INPUTS := tests/test_gen5_pid_coordination.cpp include/Integration/Gen5/Gen5PidCoordination.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h
+
+HOST_TESTS += $(GEN5_PID_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_PID_SANITIZE)
+host-test: $(GEN5_PID_TEST)
+host-sanitize: $(GEN5_PID_SANITIZE)
+
+$(GEN5_PID_TEST): $(GEN5_PID_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_pid_coordination.cpp -o $@
+
+$(GEN5_PID_SANITIZE): $(GEN5_PID_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_pid_coordination.cpp -o $@
+
+# S04 owner hardware item: one end-to-end Gen V trace through the shared screen
+# state (Create/Edit/Clone/Move/Release/Held Item/Bag -> Review -> cancel ->
+# Discard All -> redo -> Export Copy -> reopen); source file byte-identical.
+GEN5_S04_TRACE_TEST := $(HOST_BUILD)/test_gen5_review_discard_export_trace
+GEN5_S04_TRACE_SANITIZE := $(HOST_BUILD)/test_gen5_review_discard_export_trace_sanitize
+GEN5_S04_TRACE_SOURCES := tests/test_gen5_review_discard_export_trace.cpp \
+    src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp \
+    src/Legacy/Gen5ReadOnlyTrainer.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
+    src/Names/SpeciesNames.cpp
+GEN5_S04_TRACE_INPUTS := $(GEN5_S04_TRACE_SOURCES) include/Integration/Gen5/Gen5BagScreen.h \
+    include/Integration/Gen5/Gen5SourceDiscovery.h $(GEN5_TRAINER_INPUTS) $(GEN5_SAVE_INPUTS)
+
+HOST_TESTS += $(GEN5_S04_TRACE_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_S04_TRACE_SANITIZE)
+host-test: $(GEN5_S04_TRACE_TEST)
+host-sanitize: $(GEN5_S04_TRACE_SANITIZE)
+
+$(GEN5_S04_TRACE_TEST): $(GEN5_S04_TRACE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN5_S04_TRACE_SOURCES) -o $@
+
+$(GEN5_S04_TRACE_SANITIZE): $(GEN5_S04_TRACE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN5_S04_TRACE_SOURCES) -o $@
+
+# Owner Round 4: Gen V Pokémon Language cycles in place on A/touch, not a modal picker.
+GEN5_LANGUAGE_CYCLE_TEST := $(HOST_BUILD)/test_gen5_language_cycle
+GEN5_LANGUAGE_CYCLE_SANITIZE := $(HOST_BUILD)/test_gen5_language_cycle_sanitize
+GEN5_LANGUAGE_CYCLE_INPUTS := tests/test_gen5_language_cycle.cpp include/UI/Gen5LanguageCycle.h src/UI/Gen5SharedReadOnlySurface.inc
+HOST_TESTS += $(GEN5_LANGUAGE_CYCLE_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_LANGUAGE_CYCLE_SANITIZE)
+host-test: $(GEN5_LANGUAGE_CYCLE_TEST)
+host-sanitize: $(GEN5_LANGUAGE_CYCLE_SANITIZE)
+$(GEN5_LANGUAGE_CYCLE_TEST): $(GEN5_LANGUAGE_CYCLE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(GEN5_LANGUAGE_CYCLE_SANITIZE): $(GEN5_LANGUAGE_CYCLE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Hardware Round 4: Gen V species-correct Pokémon Move chooser (not all 559).
+GEN5_MOVE_COMPAT_TEST := $(HOST_BUILD)/test_gen5_move_compatibility
+GEN5_MOVE_COMPAT_SANITIZE := $(HOST_BUILD)/test_gen5_move_compatibility_sanitize
+GEN5_MOVE_COMPAT_INPUTS := tests/test_gen5_move_compatibility.cpp include/Integration/Gen5/Gen5MoveFormData.inc include/Integration/Gen5/Gen5MoveCompatibility.h include/Integration/Gen4/Gen4MoveCompatibility.h
+HOST_TESTS += $(GEN5_MOVE_COMPAT_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_MOVE_COMPAT_SANITIZE)
+host-test: $(GEN5_MOVE_COMPAT_TEST)
+host-sanitize: $(GEN5_MOVE_COMPAT_SANITIZE)
+$(GEN5_MOVE_COMPAT_TEST): $(GEN5_MOVE_COMPAT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(GEN5_MOVE_COMPAT_SANITIZE): $(GEN5_MOVE_COMPAT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

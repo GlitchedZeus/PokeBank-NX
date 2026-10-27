@@ -1,3 +1,9 @@
+#include "UI/Gen2WorkspacePresentation.h"  // Round 6 7A: the shared Gen II Calculated cell
+#include "UI/SharedItemGridPicker.h"
+#include "Inventory/ClassicInventoryCatalog.h"
+#include "UI/SharedEditorChrome.h"
+#include "UI/ClassicFieldColor.h"
+#include "UI/ClassicGameContext.h"
 // Generation II shared DETAILS | VALUES | MOVES workspace.
 // This stays layered over the accepted GSC discovery/export/action-sheet implementation.
 // Browsing edits only a local session record; StagedEditor is touched solely by Add / Keep.
@@ -9,9 +15,13 @@
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/Gen2HeldItemPicker.h"
 #include "UI/ItemPickerSort.h"
+#include "UI/ItemPickerSearch.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/Gen2WorkspaceLayers.h"
+#include "UI/Gen12DVReroll.h"
+#include "UI/Gen2UnownLetter.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -24,6 +34,7 @@
 #include "UI/StatsRadar.h"
 #include "UI/ScreenChrome.h"
 #include "UI/TouchScroll.h"
+#include "UI/SharedHeldItemInput.h"
 #include "UI/Dialogs/DialogFrame.h"
 
 #include <algorithm>
@@ -48,9 +59,11 @@ using Mode = Rules::SessionMode;
 
 struct State : Rules::Session {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool itemPicker = false;
     int box = 0;
     int slot = 0;
+    bool party = false;
     Foundation::Panel panel = Foundation::Panel::Identity;
     int row = 0;
     int column = 0;
@@ -58,6 +71,8 @@ struct State : Rules::Session {
     std::vector<uint8_t> itemChoices;
     std::vector<uint8_t> itemNativeChoices;
     ItemPickerSort::Mode itemSort = ItemPickerSort::Mode::Native;
+    std::string itemQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedHeldItemSearch::State heldItemSearch;
     int itemChoiceIndex = 0;
     TouchScrollState itemScroll;
     TouchPickerViewport itemViewport;
@@ -70,9 +85,9 @@ struct State : Rules::Session {
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -93,6 +108,8 @@ void applyEditableDVs(Gen2::PokemonRecord& p, const std::array<uint8_t, 4>& dvs)
     p.dvs[0] = Gen2::StagedEditor::derivedHPDV(dvs);
     p.shiny = Gen2::StagedEditor::isShinyDVs(dvs);
     p.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(p.species, dvs[0]));
+    // The Unown letter also comes from these DVs (pokecrystal GetUnownLetter); keep the draft's form in step.
+    p.form = p.species == 201 ? static_cast<uint8_t>(PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs)) : 0;
 }
 
 void refreshDerived(Gen2::PokemonRecord& p) noexcept {
@@ -158,7 +175,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     Gen2::PokemonRecord p;
     p.species = 25;
     p.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel;
-    p.nickname = Names::getSpeciesName(p.species);
+    p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
     p.originalTrainer = editor.trainerName();
     p.trainerId = editor.trainerId();
     p.heldItem = 0;
@@ -169,7 +186,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     p.friendship = 70;
     p.pokerus = 0;
     p.caughtData = 0;
-    applyEditableDVs(p, {8, 8, 8, 8});
+    applyEditableDVs(p, {0, 0, 0, 0});
     p.experience = minimumExpFor(p);
     return p;
 }
@@ -182,11 +199,15 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.confirmExit = false;
     state.itemPicker = false;
     state.box = box;
+    state.party = false;
     state.slot = -1;
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
     state.column = 0;
     state.working = defaultCreateRecord(*editor);
+    // A new Pokemon starts with its species' native level-up moves, like a species change during
+    // Create and Gen I / III-V Create (Pikachu Lv 5: Thunder Shock, Growl).
+    Rules::seedNativeMoves(state.working, screen.sourceGameId);
     state.begin(state.working, Mode::Create);
     state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
     state.crystalMetTime = 0;
@@ -195,11 +216,12 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     return true;
 }
 
-bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
+bool beginEdit(TrainerViewScreen& screen, int box, int slot, bool party=false) {
     auto* editor = stagedEditor(screen);
     if (!editor) return false;
     std::string error;
-    auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error);
+    auto pokemon = party?editor->partyPokemon(static_cast<size_t>(slot),error):
+        editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error);
     if (!pokemon) {
         screen.postStatus(error.empty() ? "Selected Gen II slot is empty" : error, 300);
         return false;
@@ -210,6 +232,7 @@ bool beginEdit(TrainerViewScreen& screen, int box, int slot) {
     state.itemPicker = false;
     state.box = box;
     state.slot = slot;
+    state.party = party;
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
     state.column = 0;
@@ -233,6 +256,9 @@ void closeToActions(TrainerViewScreen& screen) {
     legacy.active = true;
     legacy.review = false;
     legacy.pokemonActions = true;
+    legacy.pokemonParty = state.party;
+    legacy.pokemonSlot = state.slot;
+    legacy.pokemonBox = state.box;
     legacy.pokemonFields = false;
     legacy.pokemonRow = 0;
     screen.controllerNavigation.reset();
@@ -290,7 +316,7 @@ bool stageCreate(TrainerViewScreen& screen) {
     }
 
     const std::string displayName = state.working.nickname.empty()
-        ? std::string(Names::getSpeciesName(state.working.species)) : state.working.nickname;
+        ? PokeBank::UIModel::classicDefaultNickname(state.working.species) : state.working.nickname;
     const int destinationBox = state.box;
     std::size_t slot = 0;
     std::string error;
@@ -322,7 +348,7 @@ bool stageEdit(TrainerViewScreen& screen) {
 
     std::string error;
     if (!state.keep(*editor, static_cast<std::size_t>(state.box),
-                                     static_cast<std::size_t>(state.slot), error)) {
+                                     static_cast<std::size_t>(state.slot), error,state.party)) {
         screen.postStatus(error.empty() ? "Gen II staged edit was rejected" : error, 300);
         return false;
     }
@@ -366,13 +392,55 @@ bool chooseGender(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
     return true;
 }
 
+// "Atk 7->10, Def 6->10": the Gen II DVs a shiny toggle rewrote, so the change is never silent
+// (gender, stats and Hidden Power all derive from these DVs).
+std::string describeDVChanges(const std::array<uint8_t, 4>& before, const std::array<uint8_t, 4>& after) {
+    static constexpr std::array<const char*, 4> names{"Atk", "Def", "Spe", "Spc"};
+    std::string out;
+    for (std::size_t i = 0; i < before.size(); ++i) {
+        if (before[i] == after[i]) continue;
+        if (!out.empty()) out += ", ";
+        out += std::string(names[i]) + " " + std::to_string(before[i]) + "->" + std::to_string(after[i]);
+    }
+    return out;
+}
+
+// Unown's letter is bits 1-2 of the same DVs, so a shiny toggle keeps it whenever the letter
+// allows (Gen2UnownLetter.h) and says so when it cannot.
+void toggleUnownShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
+    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    const auto before = editableDVs(p);
+    const int oldLetter = PokeBank::UIModel::Gen12DVReroll::unownLetter(before);
+    const auto toggled = Letter::toggleShiny(before);
+    applyEditableDVs(p, toggled.dvs);
+    const std::string changes = "DVs " + describeDVChanges(before, toggled.dvs);
+    if (!p.shiny) {
+        screen.postStatus("Shiny off: Unown " + std::string(1, Letter::letterChar(oldLetter)) +
+                          " kept; " + changes, 300);
+    } else if (toggled.letterChanged) {
+        screen.postStatus("Only Unown " + Letter::shinyLettersText() + " can be shiny: letter " +
+                          std::string(1, Letter::letterChar(oldLetter)) + " -> " +
+                          std::string(1, Letter::letterChar(p.form)) + "; " + changes, 420);
+    } else {
+        screen.postStatus("Shiny on: Unown " + std::string(1, Letter::letterChar(p.form)) +
+                          " kept; " + changes, 300);
+    }
+}
+
 void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
-    auto dvs = editableDVs(p);
+    if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {
+        toggleUnownShiny(screen, p);
+        return;
+    }
+    const auto before = editableDVs(p);
+    auto dvs = before;
     if (Gen2::StagedEditor::isShinyDVs(dvs)) {
         // Preserve Attack DV/gender when making normal; changing Defense alone breaks the shiny pattern.
         dvs[1] = dvs[1] == 10 ? 9 : dvs[1];
         if (Gen2::StagedEditor::isShinyDVs(dvs)) dvs[2] = 9;
         applyEditableDVs(p, dvs);
+        screen.postStatus("Shiny off: DVs " + describeDVChanges(before, dvs) +
+                          " (stats and Hidden Power follow)", 300);
         return;
     }
 
@@ -386,20 +454,35 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
         const int score = (sameGender ? 0 : 100) + std::abs(static_cast<int>(candidate) - static_cast<int>(dvs[0]));
         if (score < bestScore) { bestScore = score; best = candidate; }
     }
-    applyEditableDVs(p, {static_cast<uint8_t>(best), 10, 10, 10});
+    const std::array<uint8_t, 4> shiny{static_cast<uint8_t>(best), 10, 10, 10};
+    applyEditableDVs(p, shiny);
+    const std::string changes = "DVs " + describeDVChanges(before, shiny);
     if (Gen2::genderFromAttackDV(p.species, p.dvs[1]) != originalGender &&
         originalGender != Gen2::PokemonGender::Genderless)
-        screen.postStatus("Authentic shiny DVs changed gender for this species ratio", 300);
+        screen.postStatus("Authentic shiny DVs changed gender for this species ratio; " + changes, 360);
+    else
+        screen.postStatus("Shiny on: " + changes + " (stats and Hidden Power follow)", 300);
 }
 
-void randomizeDVs(State& state) {
-    applyEditableDVs(state.working, Foundation::randomDVs(state.rng));
+// Y Random DVs: a new roll that keeps shiny state, Gen II gender (Attack DV vs. ratio) and the
+// Unown letter. False when no other combination keeps them (the draft is unchanged).
+bool randomizeDVs(State& state) {
+    namespace Reroll = PokeBank::UIModel::Gen12DVReroll;
+    const uint16_t species = state.working.species;
+    const auto result = Reroll::reroll(editableDVs(state.working), state.rng,
+        [species](uint8_t attack) { return static_cast<int>(Gen2::genderFromAttackDV(species, attack)); },
+        species == 201);
+    if (!result.changed) return false;
+    applyEditableDVs(state.working, result.dvs);
+    return true;
 }
 
 void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
     state.itemNativeChoices = state.itemChoices;
     state.itemSort = ItemPickerSort::Mode::Native;
+    state.itemQuery.clear();
+    state.heldItemSearch={};
     state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemScroll.reset();
     state.itemViewport.reset();
@@ -416,12 +499,12 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
     switch (state.row) {
         case 0: {
             const uint16_t oldSpecies = p.species;
-            const std::string oldDefault = Names::getSpeciesName(oldSpecies);
+            const std::string oldDefault = PokeBank::UIModel::classicDefaultNickname(oldSpecies);
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
-                p.nickname = Names::getSpeciesName(p.species);
+                p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
             refreshDerived(p);
             break;
         }
@@ -527,32 +610,39 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
-    using PokeBank::UIModel::Gen2HeldItemPicker::move;
+    if (SharedPopupDismiss::tappedOutside(touch)) {
+        // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's
+        // return keeps the gesture from reaching the workspace underneath.
+        state.itemScroll.stop();
+        state.itemPicker = false;
+        screen.controllerNavigation.reset();
+        return true;
+    }
     namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
-    constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight, rowStep = Grid::rowPitch;
+    constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight;
     const int px = (1280 - pickerW) / 2;
     const int py = (720 - kNavBarH - pickerH) / 2;
+    const auto heldItemName=[](uint8_t id){return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id);};
+    const auto refilter=[&](const std::string& query) {
+        const int row=ItemPickerSearch::apply(state.itemChoices,state.itemNativeChoices,state.itemSort,
+            query,state.itemChoiceIndex,heldItemName,SharedSearchInput::searchKey);
+        state.itemQuery=query;
+        if(row>=0)state.itemChoiceIndex=row;
+        state.itemViewport.reset();
+        return row>=0;
+    };
+    const SharedSearchInput::Keys searchKeys{bool(nav&HidNpadButton_Up),bool(nav&HidNpadButton_Down),
+        bool(nav&HidNpadButton_Left),bool(nav&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+    if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
+        SharedSearchInput::sample(touch),px,py,refilter,
+        down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
+        state.itemScroll.stop();
+        state.itemViewport.reveal(state.itemChoiceIndex,static_cast<int>(state.itemChoices.size()),
+            Grid::rows,Grid::columnsForSearch(state.heldItemSearch.open()));
+        return true;
+    }
+    const int columns=Grid::columnsForSearch(state.heldItemSearch.open());
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, Model::columns);
-    const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, Model::columns);
-    if (maxFirstRow > 0) {
-        state.itemScroll.updateVertical(
-            touch, px + Grid::gridInsetX, py + Grid::gridInsetY - 3,
-            pickerW - 2 * Grid::gridInsetX, Model::rows * rowStep,
-            rowStep, state.itemViewport.firstRow, maxFirstRow + 1);
-    } else {
-        state.itemScroll.stop();
-    }
-
-    // Scrolling and semantic selection are independent. Touch-down is NOT
-    // a choice: it may become a held-item grid drag. Preserve controller focus
-    // until release confirms an actual tap on that choice.
-    const int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= 3000 && touchTap < 3000 + count) {
-        state.itemScroll.stop();
-        state.itemChoiceIndex = touchTap - 3000;
-        down |= HidNpadButton_A;
-    }
     if (down & HidNpadButton_X) {
         state.itemSort = ItemPickerSort::next(state.itemSort);
         state.itemChoiceIndex = ItemPickerSort::reorder(
@@ -560,39 +650,30 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
             state.itemChoiceIndex, [](uint8_t id) {
                 return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id);
             });
+        // NEW-06: a re-sort keeps the active search.
+        state.itemChoiceIndex = std::max(0, ItemPickerSearch::narrow(state.itemChoices, state.itemQuery,
+                                                                     state.itemChoiceIndex, heldItemName,SharedSearchInput::searchKey));
         state.itemScroll.stop();
         state.itemViewport.reset();
-        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+        state.itemViewport.reveal(state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()), Model::rows, columns);
         return true;
     }
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right) ||
-        down & (HidNpadButton_L | HidNpadButton_R))
-        state.itemScroll.stop();
-    if (nav & HidNpadButton_Up) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, -1);
-    if (nav & HidNpadButton_Down) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 1);
-    if (nav & HidNpadButton_Left) state.itemChoiceIndex = move(state.itemChoiceIndex, count, -1, 0);
-    if (nav & HidNpadButton_Right) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 1, 0);
-    if (down & HidNpadButton_L) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, -1);
-    if (down & HidNpadButton_R) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, 1);
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
-               HidNpadButton_Left | HidNpadButton_Right) ||
-        down & (HidNpadButton_L | HidNpadButton_R))
-        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
     if (down & HidNpadButton_B) {
         state.itemScroll.stop();
         state.itemPicker = false;
         screen.controllerNavigation.reset();
         return true;
     }
-    if (down & HidNpadButton_A) {
-        if (!state.itemViewport.containsSelection(
-                state.itemChoiceIndex, count, Model::rows, Model::columns)) {
-            state.itemScroll.stop();
-            state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
-            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
-            return true;
-        }
-        state.itemScroll.stop();
+    // L06: scrolling and semantic selection stay independent (touch-down is never a choice); a
+    // release-confirmed tap on a cell and A on the focus share one step and one commit.
+    const auto step = SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport,
+        state.itemChoiceIndex, count, state.heldItemSearch.open(), px, py,
+        {bool(nav & HidNpadButton_Up), bool(nav & HidNpadButton_Down), bool(nav & HidNpadButton_Left),
+         bool(nav & HidNpadButton_Right), bool(down & HidNpadButton_L), bool(down & HidNpadButton_R),
+         bool(down & HidNpadButton_A)});
+    if (step.revealed)
+        screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+    if (step.choose) {
         state.working.heldItem = state.itemChoices[static_cast<std::size_t>(state.itemChoiceIndex)];
         state.itemPicker = false;
         screen.controllerNavigation.reset();
@@ -601,23 +682,30 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
 }
 
 bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
+    // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
+    // One button acts per frame (Gen2WorkspaceLayers::exitConfirmStep): a Keep that fails to stage
+    // leaves the dialog open and never falls through to Discard or Back in the same frame.
+    // The local session still never mutates source bytes; only the PokeBank staged copy can change.
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
     const bool create = state.mode == Mode::Create;
-    if (down & HidNpadButton_A) {
-        if (create ? stageCreate(screen) : stageEdit(screen)) return true;
-    }
-    if (down & HidNpadButton_Y) {
-        // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
-        // The local session still never mutates source bytes; only the PokeBank staged copy can change.
-        screen.postStatus(create
-            ? "Create draft discarded; staged/source bytes unchanged"
-            : "This Edit session discarded; earlier staged work preserved", 300);
-        state.discard();
-        closeToActions(screen);
-        return true;
-    }
-    if (down & HidNpadButton_B) {
-        state.continueEditing();
-        screen.controllerNavigation.reset();
+    switch (Layers::exitConfirmStep((down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+                                    (down & HidNpadButton_Y) != 0)) {
+        case Layers::ExitChoice::Keep:
+            (void)(create ? stageCreate(screen) : stageEdit(screen));
+            return true;
+        case Layers::ExitChoice::Discard:
+            screen.postStatus(create
+                ? "Create draft discarded; staged/source bytes unchanged"
+                : "This Edit session discarded; earlier staged work preserved", 300);
+            state.discard();
+            closeToActions(screen);
+            return true;
+        case Layers::ExitChoice::Continue:
+            state.continueEditing();
+            screen.controllerNavigation.reset();
+            return true;
+        case Layers::ExitChoice::None:
+            return true;
     }
     return true;
 }
@@ -689,8 +777,15 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
 
     if (down & HidNpadButton_Y) {
-        randomizeDVs(state);
-        screen.postStatus("Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived", 240);
+        // Round 7 (B07): report what really happened; Unown names the kept letter / shiny state.
+        const auto before = editableDVs(state.working);
+        const bool rerolled = randomizeDVs(state);
+        if (state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies)
+            screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(
+                before, editableDVs(state.working), rerolled), 360);
+        else
+            screen.postStatus(rerolled ? "Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived"
+                                       : "No other DVs keep this Pokemon's gender and shiny state; DVs unchanged", 240);
     }
     if (down & HidNpadButton_A) activateField(screen, state);
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
@@ -725,12 +820,10 @@ Color statusColor(Rules::CompatibilityState status) {
 
 void drawIdentity(PKSEFramebuffer& fb, const State& state, int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "DETAILS",
-                state.panel == Foundation::Panel::Identity ? Colors::Accent : Colors::Text,
-                TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "DETAILS");
     const auto& p = state.working;
     const std::array<std::pair<std::string, std::string>, 8> rows{{
-        {"Species", std::to_string(p.species) + " - " + Names::getSpeciesName(p.species)},
+        {"Species", std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species)},
         {"Nickname", p.nickname},
         {"Level", std::to_string(p.level)},
         {"EXP", std::to_string(p.experience)},
@@ -778,14 +871,13 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
                     dvColor, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]),
                     statExpColor, TextStyle::Caption);
-        const std::string stat = i < 4
-            ? std::to_string(battle[static_cast<std::size_t>(i)])
-            : "SpA " + std::to_string(battle[4]) + " / SpD " + std::to_string(battle[5]);
-        fb.drawText(x + 286, yy, stat, Colors::Text, TextStyle::Caption);
+        // Round 7: the same plain-number Calculated cell model as every Gen II STATS painter.
+        fb.drawText(x + 286, yy, PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, i),
+                    Colors::Text, TextStyle::Caption);
     }
 
     const std::array<std::pair<std::string, std::string>, 3> extras{{
-        {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
+        {"Shiny", p.shiny ? "Yes" : "No"},
         {"Friendship", std::to_string(p.friendship)},
         {"Pokerus", pokerusText(p.pokerus)},
     }};
@@ -798,7 +890,8 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
                     state.panel == Foundation::Panel::Values && state.row == row
                         ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 130, yy, extras[static_cast<std::size_t>(i)].second,
-                    i == 0 && p.shiny ? Colors::ShinyStar : Colors::Text, TextStyle::Caption);
+                    ::UI::ClassicFieldColor::shinyValueColor(state.panel == Foundation::Panel::Values && state.row == row),
+                    TextStyle::Caption);
     }
     fb.drawText(x + 18, y + h - 27, "* HP DV derived; one Special DV feeds SpA + SpD",
                 Colors::TextDim, TextStyle::Caption);
@@ -807,9 +900,7 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
 void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                int x, int y, int w, int h) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, "MOVES",
-                state.panel == Foundation::Panel::Moves ? Colors::Accent : Colors::Text,
-                TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, "MOVES");
     fb.drawText(x + 198, y + 43, "PP", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 260, y + 43, "Ups", Colors::TextDim, TextStyle::Caption);
     for (int slot = 0; slot < 4; ++slot) {
@@ -833,7 +924,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     const auto battle = Gen2::calculateBattleStats(state.working.species, state.working.level,
                                                     editableDVs(state.working), state.working.statExperience).asArray();
     fb.drawFilledRect(x + 14, y + 286, w - 28, 1, Colors::Divider);
-    fb.drawText(x + 18, y + 304, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(x + 18, y + 304, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(x + 18, y + 332, "Game", Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 105, y + 332,
                 screen.sourceGameId == "gold_gbc" ? "Gold" : screen.sourceGameId == "silver_gbc" ? "Silver" : "Crystal",
@@ -860,44 +951,69 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
 
 void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
+    const int heldColumns=Grid::columnsForSearch(state.heldItemSearch.open());
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int w = Grid::modalWidth, h = Grid::modalHeight;
     const int x = (W - w) / 2;
     const int y = (H - kNavBarH - h) / 2;
+    // L06: the modal owns the frame's touch; covered workspace rows must not shadow its cells.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     SharedHeldItemPickerPresentation::drawHeading(
         fb, x, y, "Held Item — Generation II",
-        state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()));
+        state.itemChoiceIndex, state.heldItemSearch.noMatches?0:static_cast<int>(state.itemChoices.size()),state.heldItemSearch.open());
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
     fb.drawText(x + w - 250, y + 55,
                 std::string("Sort: ") + ItemPickerSort::label(state.itemSort),
                 Colors::TextDim, TextStyle::Caption);
+    if (const std::string tag = ItemPickerSearch::tag(state.itemQuery); !tag.empty()) {
+        // NEW-06: the active search, top right on the title line.
+        int tw = 0, th = 0;
+        fb.measureText(tag, tw, th, TextStyle::Caption);
+        fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+    }
+    // R2-BUG-005: a focused Gen II TM/HM shows its move (the GSC machine table is shared by
+    // Gold, Silver and Crystal; ClassicInventoryCatalog, pret/pokecrystal).
+    if (state.itemChoiceIndex >= 0 && state.itemChoiceIndex < static_cast<int>(state.itemChoices.size()))
+        UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, Enums::GameVersion::GSC,
+            PokeVault::Inventory::classicMachineMove(PokeVault::Inventory::ClassicGame::Gold,
+                state.itemChoices[static_cast<std::size_t>(state.itemChoiceIndex)]));
     const int count = static_cast<int>(state.itemChoices.size());
     const int firstRow = state.itemViewport.firstRow;
     const int liveOffset = state.itemScroll.offset();
     Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex,
-                                             firstRow, liveOffset);
+                                             firstRow, liveOffset,&state.heldItemSearch);
     const int gridX = x + Grid::gridInsetX, gridY = y + Grid::gridInsetY;
-    const int cellW = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
-    for (int i = std::max(0, (firstRow - 1) * Grid::columns);
-         i < std::min(count, (firstRow + Model::rows + 1) * Grid::columns); ++i) {
-        const int off = i - firstRow * Grid::columns;
-        const int cellX = gridX + (off % Grid::columns) * cellW;
-        const int cellY = gridY + (off / Grid::columns) * Grid::rowPitch + liveOffset;
+    const int cellW = Grid::cellWidth;
+    for (int i = std::max(0, (firstRow - 1) * heldColumns);
+         !state.heldItemSearch.noMatches && i < std::min(count, (firstRow + Model::rows + 1) * heldColumns); ++i) {
+        const int off = i - firstRow * heldColumns;
+        const int cellX = gridX + (off % heldColumns) * cellW;
+        const int cellY = gridY + (off / heldColumns) * Grid::rowPitch + liveOffset;
         appendClippedTouchButton(screen.touchButtons, 3000 + i,
             cellX, cellY - 3, cellW - 10, Grid::rowPitch - 4,
-            gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
+            gridX, gridY - 3, Grid::gridWidth(state.heldItemSearch.open()),
             Grid::rows * Grid::rowPitch);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                    {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
+    PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec footer;
+    footer.gridPaging = true;
+    footer.xLabel = "Sort";
+    footer.minusLabel = "Search";   // NEW-06
+    if(state.heldItemSearch.open() || state.heldItemSearch.noMatches)
+        SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);
+    else
+        UI::SharedEditorChrome::drawPickerFooter(fb,footer);
 }
 
-void drawConfirm(PKSEFramebuffer& fb, const State& state) {
+void drawConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     // Reuse PKSE's native creator/details confirmation chrome. Generation II keeps its
     // existing PokeBank staging semantics underneath; this changes presentation/input only.
+    // The dialog owns the frame's touch and draws its own footer (the shared confirm footer
+    // from Gen2WorkspaceLayers), so nothing underneath it stays tappable.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
     const bool create = state.mode == Mode::Create;
     const int w = create ? 540 : 560;
     constexpr int h = 226;
@@ -920,6 +1036,13 @@ void drawConfirm(PKSEFramebuffer& fb, const State& state) {
     drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
                     create ? "Keep" : "Save", Colors::PanelAlt);
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto footer = Layers::footer(Layers::Layer::ExitConfirm,
+                                       create ? Layers::Session::Create : Layers::Session::Edit);
+    std::vector<ControllerHint> hints;
+    for (std::size_t i = 0; i < footer.count; ++i)
+        hints.push_back({footer.hints[i].glyph, footer.hints[i].label});
+    drawNavBar(fb, hints);
 }
 
 } // namespace
@@ -943,8 +1066,15 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::string title = state.mode == Mode::Create ? "Create Pokemon — GEN II DRAFT"
                                                          : "Edit Pokemon — GEN II STAGED";
     fb.drawText(workspaceX + 24, workspaceY + 14, title, Colors::Text, TextStyle::Heading);
+    // Shared source-game context line (Gen III-V shape): Box / Slot • <Game> • Source save immutable • mode.
+    // A Create draft has no slot until it is added (the staged box assigns the next one).
+    namespace GameContext = PokeBank::UIModel::ClassicGameContext;
+    std::string record = state.party?"Party "+std::to_string(state.slot+1):"Box " + std::to_string(state.box + 1);
+    if (!state.party && state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
     fb.drawText(workspaceX + 24, workspaceY + 50,
-                "DETAILS | VALUES | MOVES  •  Source save immutable  •  Party mutation deferred",
+                GameContext::contextLine(record, screen.sourceGameId,
+                                         state.mode == Mode::Create ? GameContext::SurfaceMode::CreateDraft
+                                                                    : GameContext::SurfaceMode::EditStaged),
                 Colors::TextDim, TextStyle::Caption);
 
     constexpr int contentY = workspaceY + 78, contentH = 520;
@@ -964,7 +1094,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
     if (state.itemPicker) drawHeldItemPicker(screen, fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
 }
 
 } // namespace UI::Gen2PokemonEditor

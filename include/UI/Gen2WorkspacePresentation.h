@@ -1,19 +1,59 @@
 #include "UI/SharedPokemonShell.h"
 #pragma once
 #include "UI/Gen2NativePresentation.h"
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/SharedDataPaneLayout.h"
 #include "UI/StatsRadar.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include <algorithm>
+#include <array>
+#include <string>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen2Workspace {
 namespace G = PokeVault::Integration::Gen2;
 namespace Rules = Gen2PokemonEditor;
-inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p) {
-    if (p.partyRecord) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
+inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=false) {
+    if (p.partyRecord && !draft) return {p.maxHP, p.attack, p.defense, p.speed, p.specialAttack, p.specialDefense};
     return G::calculateBattleStats(p.species, p.level, Rules::storedDVs(p), p.statExperience).asArray();
 }
+// Gen II has one stored Special DV and Stat Exp but TWO derived Special stats (pret/pokecrystal
+// CalcMonStats); neither derived value is a second editable DV or Stat Exp.
+//
+// Round 7 (owner Round 6 A22 / C01, R2-SPECIAL): the Gen I calculated-Special presentation is the
+// reference. The STATS grid keeps plain numbers: HP, Attack, Defense and Speed show their
+// calculated stat in the Calculated column; the Special row has no single calculated value (Gen II
+// splits it), so its Calculated cell stays empty. The two derived values are explained in the
+// lower-middle of the STATS panel, below the grid and above Shiny, as Gen I shows its Special:
+// "CALCULATED SPECIAL STATS", then "Sp. Atk <n>   Sp. Def <n>", then one note line. No slash
+// display and no tags squeezed into the numeric column.
+inline constexpr int kSpecialRow = 4;
+// The Calculated column's value for a grid row ("" for the Special row and out of range).
+inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
+    if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);
+    return {};
+}
+// STATS geometry shared by every Gen II painter (relative to the STATS panel origin).
+struct StatsGrid {
+    static constexpr int kFirstRowY = 70, kRowStep = 34;
+    static constexpr int kCalculatedX = 292;  // the Calculated column (header "Calculated")
+    static constexpr int kPanelW = 398;       // the STATS panel width every Gen II painter passes
+    static constexpr int rowY(int row) noexcept { return kFirstRowY + row * kRowStep; }
+    static constexpr int kHpNoteY = 240;      // "* HP DV derived / read-only", directly below the grid
+    static constexpr int kShinyY = 366;       // the Shiny row (redrawGen2StatsSemantics)
+};
+// The lower-middle Special block (Gen I reference: Gen1PokemonEditorFoundationHardwareFix.inc).
+struct SpecialBlock {
+    static constexpr const char* kSpecialAttack = "Sp. Atk";
+    static constexpr const char* kSpecialDefense = "Sp. Def";
+    static constexpr const char* kNote = "one stored Special DV / Stat Exp";
+    static constexpr int kCaptionY = 270, kValuesY = 296, kNoteY = 322;  // below the HP note, above Shiny
+    static constexpr int kLabelX = 18;        // "Sp. Atk" (and caption, note)
+    static constexpr int kSpAValueX = 90;     // its number
+    static constexpr int kSpDLabelX = 200;    // "Sp. Def"
+    static constexpr int kSpDValueX = 272;    // its number
+};
 struct DataRow { std::string label, value; };
 inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {
     const auto* personal = G::personalRecord(p.species);
@@ -40,8 +80,18 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     } else {
         rows.push_back({"Caught history", "No caught data recorded"});
     }
+    // A level comparison is one native fact, not a complete legality verdict.
+    if(game==G::SourceGame::Crystal)
+        rows.push_back({"Level context",Gen2Native::caughtLevelLegalityText(
+            Gen2Native::caughtLevelLegality(p.level,caught))});
+    rows.push_back({"Legality",SharedEditorPresentation::legalityLabel(SharedEditorPresentation::LegalityState::NotChecked)});
     return rows;
 }
+
+// The Gen II Origin & Legality pane text is laid out by the ONE shared data-pane layout
+// (UI/SharedDataPaneLayout.h, SharedDataPane::layoutRows): "Label: value" when it fits, otherwise
+// the label then the value wrapped beneath it, "..." where the pane runs out, so caught-history
+// text never spills into the BATTLE STATS graph or past the panel.
 } // namespace PokeBank::UIModel::Gen2Workspace
 
 namespace UI::Gen2WorkspacePresentation {
@@ -59,7 +109,22 @@ inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
             return row.label == "HP" || row.label == "Status";
         }), rows.end());
     }
-    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", rows,
-        PokeBank::UIModel::Gen2Workspace::battleStats(p));
+    // The shared composition draws both panes, the title and the graph; the rows are laid out
+    // here so long caught-history values wrap inside the data pane instead of overflowing it.
+    namespace W = PokeBank::UIModel::Gen2Workspace;
+    // The pane title, as Gen III-V's adapters name it (A::kDataTitle): the shared heading.
+    constexpr const char* kDataTitle = PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading;
+    SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, kDataTitle, std::vector<W::DataRow>{},
+        W::battleStats(p));
+    namespace Pane = PokeBank::UIModel::SharedDataPane;
+    const auto lines = Pane::layoutRows(rows, Pane::kTextWidth,
+        h - Pane::kTextTop - Pane::kTextBottom, [&fb](const std::string& text) {
+            int tw = 0, th = 0;
+            fb.measureText(text, tw, th, TextStyle::Caption);
+            return tw;
+        });
+    for (const auto& line : lines)
+        fb.drawText(x + 12 + Pane::kTextInset, y + Pane::kTextTop + line.y, line.text,
+                    line.label ? Colors::TextDim : Colors::Text, TextStyle::Caption);
 }
 } // namespace UI::Gen2WorkspacePresentation

@@ -1,4 +1,5 @@
 #include "Utils/MoveTransactionProduction.h"
+#include "test_temp_dir.h"
 
 #include <cassert>
 #include <cstdio>
@@ -170,9 +171,8 @@ int main() {
     // transaction commits, and its before-fingerprints must be the first transaction's post-state.
     {
         using namespace PokeBank::Storage::MoveTx;
-        const std::string base = "/tmp/pokebank-a04b-bidir-" +
-            std::to_string(static_cast<long long>(getpid()));
-        ::mkdir(base.c_str(), 0777);
+        // Fresh per run: a recycled PID must never meet a previous run's transaction journal.
+        const std::string base = PokeBankTest::freshTempBase("pokebank-a04b-bidir");
 
         StoreDescriptor bankDesc;
         bankDesc.type = StoreType::Bank;
@@ -234,9 +234,8 @@ int main() {
         assert(readStore(bank) == bank2);
         assert(readStore(workspace) == workspace2);
 
-        std::remove((base + "/bank.dat").c_str());
-        std::remove((base + "/main").c_str());
-        // Transaction evidence is intentionally retained in product code; test cleanup is best-effort.
+        // Transaction evidence is intentionally retained in product code; the test removes its own run.
+        PokeBankTest::removeTempFamily(base);
         std::cout << "A04b bidirectional serialization: PASS\n";
     }
 

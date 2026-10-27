@@ -19,13 +19,16 @@ struct BoxPokemonEdit {
     std::optional<std::array<uint8_t,4>> moves, pp, ppUps, dvs;
     std::optional<std::array<uint16_t,5>> statExperience;
 };
+// Create default is #25 Pikachu at L5, the same default as the Gen II-V editors. Its moves are
+// Pikachu's pret/pokered base moves (data/pokemon/base_stats/pikachu.asm: THUNDERSHOCK, GROWL)
+// at their base PP (data/moves/moves.asm: Thunder Shock 30, Growl 40).
 struct BoxPokemonCreate {
-    uint16_t species = 1;
+    uint16_t species = 25;
     uint8_t level = 5;
     std::optional<uint32_t> experience;
     std::string nickname, otName;
     std::optional<uint16_t> trainerId;
-    std::array<uint8_t,4> moves{33,0,0,0}, pp{35,0,0,0}, ppUps{}, dvs{8,8,8,8};
+    std::array<uint8_t,4> moves{84,45,0,0}, pp{30,40,0,0}, ppUps{}, dvs{};
     std::array<uint16_t,5> statExperience{};
 };
 struct BattleStats {
@@ -40,7 +43,7 @@ struct BattleStats {
     }
 };
 
-// Owns boxed-Pokemon mutations only. No filesystem or source-write API.
+// Owns native party/boxed mutations in memory. No filesystem or source-write API.
 class StagedPokemonEditor final {
 public:
     static std::unique_ptr<StagedPokemonEditor> create(const ReadOnlySave&, std::string& error);
@@ -49,7 +52,9 @@ public:
     std::span<const uint8_t> originalBytes() const noexcept { return original_->sourceBytes(); }
     std::span<const uint8_t> stagedBytes() const noexcept { return view_->sourceBytes(); }
     std::optional<PokemonRecord> boxedPokemon(size_t box, size_t slot, std::string& error) const;
+    std::optional<PokemonRecord> partyPokemon(size_t slot, std::string& error) const;
     bool stageEdit(size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
+    bool stagePartyPokemonEdit(size_t slot, const BoxPokemonEdit&, std::string& error);
     // Resolve only this box: visual empty cells are not persistent sparse positions.
     std::optional<size_t> appendSlot(size_t box, std::string& error) const;
     // Explicit destination must be the first empty slot; boxes are contiguous lists.
@@ -74,9 +79,11 @@ public:
     void discard() noexcept;
     bool hasPendingChanges() const noexcept { return !changes_.empty(); }
     const std::vector<PokemonChange>& pendingChanges() const noexcept { return changes_; }
-    // Optional inventory candidate must have this exact baseline outside Bag/PC/checksum.
+    // Optional inventory candidate must have this exact baseline outside Bag/PC/checksum; an
+    // optional trainer candidate (Gen1StagedTrainerEditor) outside player name/money/checksum.
     std::vector<uint8_t> finalizedBytes(std::string& error,
-                                      std::span<const uint8_t> inventoryCandidate = {}) const;
+                                      std::span<const uint8_t> inventoryCandidate = {},
+                                      std::span<const uint8_t> trainerCandidate = {}) const;
     static uint8_t derivedHPDV(const std::array<uint8_t,4>& dvs) noexcept;
     static uint8_t moveBasePP(uint16_t move) noexcept;
     static uint8_t moveMaxPP(uint16_t move, uint8_t ups) noexcept;
@@ -103,6 +110,7 @@ private:
     explicit StagedPokemonEditor(std::shared_ptr<const ReadOnlySave> source);
     bool destination(size_t box, size_t slot, std::string& error) const;
     bool commit(std::vector<uint8_t> candidate, std::string& error);
+    bool stageRecordEdit(bool party, size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
     void rebuildChanges();
     std::shared_ptr<const ReadOnlySave> original_, view_;
     std::vector<PokemonChange> changes_;

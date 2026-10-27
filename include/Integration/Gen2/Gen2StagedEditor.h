@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 
 namespace PokeVault::Integration::Gen2 {
 
@@ -63,7 +64,7 @@ struct BoxPokemonCreate {
     std::array<uint8_t, 4> moves{};
     std::array<uint8_t, 4> pp{};
     std::array<uint8_t, 4> ppUps{};
-    std::array<uint8_t, 4> dvs{8, 8, 8, 8};
+    std::array<uint8_t, 4> dvs{};
     std::array<uint16_t, 5> statExperience{};
     uint8_t friendship = 70;
     uint8_t pokerus = 0;
@@ -87,6 +88,27 @@ public:
     bool stageTrainerEdit(std::string_view name, uint32_t money, std::string& error);
     bool stageTrainerName(std::string_view name, std::string& error);
     bool stageMoney(uint32_t money, std::string& error);
+
+    // P3 (Round 5): Play Time (Gold / Silver / Crystal) and Crystal Trainer Gender, staged in this
+    // image. Offsets are the ones Gen2ReadOnlySave already reads (PKHeX 6042efa241a9 SAV2Offsets):
+    // play time = big-endian u16 hours, then minutes and seconds bytes, at 0x2053 (international
+    // Gold / Silver) or 0x2052 (international Crystal), inside the checksummed main block (the
+    // checksum and backup mirror are repaired at finalize). Crystal gender = one byte at 0x3E3D,
+    // 0 male / 1 female. Gold / Silver have no gender byte. Hours are capped at 999 (the shared
+    // Gen III-V editor bound); the timer's other bytes are never touched.
+    struct PlayTime {
+        uint16_t hours = 0;
+        uint8_t minutes = 0;
+        uint8_t seconds = 0;
+        friend bool operator==(const PlayTime&, const PlayTime&) = default;
+    };
+    static constexpr uint16_t kMaxPlayedHours = 999;
+    PlayTime playTime() const noexcept;
+    bool playTimeEditable() const noexcept;
+    bool stagePlayTime(PlayTime time, std::string& error);
+    uint8_t trainerGender() const noexcept;
+    bool trainerGenderEditable() const noexcept;
+    bool stageTrainerGender(uint8_t gender, std::string& error);
     bool stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                            std::string& error);
 
@@ -100,6 +122,8 @@ public:
 
     std::optional<PokemonRecord> boxedPokemon(std::size_t box, std::size_t slot,
                                                std::string& error) const;
+    std::optional<PokemonRecord> partyPokemon(std::size_t slot, std::string& error) const;
+    bool stagePartyPokemonEdit(std::size_t slot, const BoxPokemonEdit& edit, std::string& error);
     bool stageBoxPokemonEdit(std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
                              std::string& error);
     bool stageBoxPokemonShiny(std::size_t box, std::size_t slot, bool shiny,
@@ -134,6 +158,9 @@ public:
     void discard() noexcept;
 
     std::vector<uint8_t> finalizedBytes(std::string& error) const;
+    // Display-only bytes: the staged image repaired for a strict reload, also while a packed move
+    // is carrying Pokemon (finalizedBytes refuses then). Never exported or written anywhere.
+    std::vector<uint8_t> presentationBytes(std::string& error) const;
 
 private:
     struct PokemonExpectation {
@@ -158,7 +185,11 @@ private:
                            std::string& error) const;
     bool encodePokemonName(std::string_view name, std::vector<uint8_t>& encoded,
                            std::string& error) const;
+    bool encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
+                      std::string& error) const;
     bool syncCurrentBoxCopy(std::size_t box, std::string& error);
+    bool stageRecordEdit(bool party, std::size_t box, std::size_t slot,
+                         const BoxPokemonEdit&, std::string& error);
     void rememberPokemonExpectation(std::size_t box, std::size_t slot,
                                     const PokemonRecord& expected);
     void setChange(std::string key, std::string label,
@@ -177,6 +208,7 @@ private:
     uint32_t money_ = 0;
     std::vector<StagedChange> changes_;
     std::vector<PokemonExpectation> pokemonExpectations_;
+    std::vector<std::pair<std::size_t, PokemonRecord>> partyExpectations_;
     PackedMoveState packedMove_;
 };
 

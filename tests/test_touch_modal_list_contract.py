@@ -156,18 +156,34 @@ inventory = read("src/UI/ClassicInventoryOverlay.cpp")
 require(inventory, "src/UI/ClassicInventoryOverlay.cpp",
         "bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch)",
         "pickerScroll.updateVertical(",
-        "reviewScroll.updateVertical(",
         "TouchPickerViewport pickerViewport;",
-        "TouchPickerViewport reviewViewport;",
         "state.pickerViewport.firstRow, maxFirstRow + 1",
-        "state.reviewViewport.firstRow, maxFirstRow + 1",
-        "state.pickerViewport.reveal(state.pickerRow, count, visibleRows)",
-        "state.reviewViewport.reveal(state.reviewRow, count, visibleRows)",
+        # Prefix: the round-3 Bag Add grid passes its column count as a fourth argument.
+        "state.pickerViewport.reveal(state.pickerRow, count, visibleRows",
         "state.pickerViewport.containsSelection(",
         "const int page = visibleRows;",
         "const int start = state.pickerViewport.firstRow;",
-        "const int start = state.reviewViewport.firstRow;",
-        "screen.touchButtons.push_back")
+        "screen.touchButtons.push_back",
+        # Round 5 (owner Oct 24): Bag -> Options -> Review opens the generation's ONE shared paged
+        # Review instead of a private scroll list. Its touch scrolling is re-pinned below.
+        "if (!screen.openStagedReview(false))")
+if "Pending Classic Save Changes" in inventory or "reviewScroll.updateVertical(" in inventory:
+    raise AssertionError("ClassicInventoryOverlay.cpp: the old private Bag review list must not return")
+
+# N03 / AUD-05 on the shared paged Review the Bag now opens: a completed vertical swipe that
+# starts and ends on the panel turns one page (taps never select a row), in both Gen I and Gen II.
+require(read("include/UI/SharedReviewTouch.h"), "include/UI/SharedReviewTouch.h",
+        "if (!justReleased || !dragged) return 0;",
+        "if (!panel.contains(startX, startY) || !panel.contains(endX, endY)) return 0;",
+        "if (ady < kMinSwipe || ady <= adx) return 0;")
+require(read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"), "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+        "PokeBank::UIModel::SharedReviewTouch::swipePage(",
+        "touch.justReleased(), touch.dragged(), touch.startX(), touch.startY(), touch.x(), touch.y());",
+        "state.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(")
+require(read("src/UI/Gen2HardwareWorkspaceFix.inc"), "src/UI/Gen2HardwareWorkspaceFix.inc",
+        "touch.justReleased() && touch.dragged() &&",
+        "pointInRect(touch.x(), touch.y(), x, y, w, h) &&",
+        "legacy.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(")
 
 save_confirm = read("src/UI/Dialogs/SaveConfirmDialog.cpp")
 require(save_confirm, "src/UI/Dialogs/SaveConfirmDialog.cpp",

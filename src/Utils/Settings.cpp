@@ -40,7 +40,8 @@ namespace Utils {
             if (strcmp(key, "theme") == 0) {
                 UI::applyTheme(UI::themeModeFromKey(val));
             } else if (strcmp(key, "autoBackup") == 0) {
-                g_autoBackupEnabled = (strcmp(val, "0") != 0);
+                // Retired setting. Opening a save never makes a backup now; backups are made only
+                // by the "Create backup now" rows. Old settings.cfg files may still carry the key.
             } else if (strcmp(key, "allowIllegal") == 0) {
                 g_allowIllegalEdits = (strcmp(val, "0") != 0);
             } else if (strcmp(key, "moveWarn") == 0 || strcmp(key, "lgpeMoveWarn") == 0) {
@@ -70,8 +71,6 @@ namespace Utils {
         text.reserve(160);
         text += "theme=";
         text.append(themeKey.data(), themeKey.size());
-        text += "\nautoBackup=";
-        text += g_autoBackupEnabled ? "1" : "0";
         text += "\nallowIllegal=";
         text += g_allowIllegalEdits ? "1" : "0";
         text += "\nmoveWarn=";

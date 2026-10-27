@@ -41,15 +41,15 @@ int main() {
     requireCleanPassiveSurface(gen2Final);
 
     // Pokémon-tab / Party Gen I View is no longer the old card renderer: it shares canonical
-    // type sprites, neutral panel headings, exact-game context, accent calculated stats, and
+    // type sprites, shared panel headings, exact-game context, accent calculated stats, and
     // a fixed far-right compatibility/status region.
     assert(gen1Presentation.find("ClassicTypeBadges::drawPairCentered") != std::string::npos);
     assert(gen1Presentation.find("passiveContextLine(p)") != std::string::npos);
-    assert(gen1Presentation.find("\"STATS\", Colors::Text") != std::string::npos);
+    // Round 7 P2 (owner Oct 26): panel headings use the one shared heading style (Gen IV / V).
+    assert(gen1Presentation.find("PanelHeading::draw(fb, midX, contentY, \"STATS\")") != std::string::npos);
     assert(gen1Presentation.find("\"VALUES\"") == std::string::npos);
     assert(gen1Presentation.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
-    assert(gen1Presentation.find("moveStatusRightPad") != std::string::npos);
-    assert(gen1Presentation.find("ppRightOffset") != std::string::npos);
+    assert(gen1Presentation.find("ClassicMovesPanel::draw(") != std::string::npos);
     assert(gen1Presentation.find("drawPanelSurface(fb, workspaceX") == std::string::npos);
     assert(gen1Modal.find("view.sourceGameLabel = sourceGameLabel(screen.sourceGameId)") != std::string::npos);
 
@@ -61,8 +61,11 @@ int main() {
     // Gen II View is informational only and the final repaint owns passive Party/Box details.
     assert(gen2Modal.find("Move compatibility") != std::string::npos);
     assert(gen2Modal.find("Unusual preserved") != std::string::npos);
-    assert(gen2Modal.find("Encounter legality") != std::string::npos);
-    assert(gen2Modal.find("Not checked") != std::string::npos);
+    assert(gen2Modal.find("kOriginLegalityHeading") != std::string::npos);
+    assert(gen2Modal.find("SharedEditorPresentation::legalityLabel(") != std::string::npos);
+    assert(gen2Modal.find("LegalityState::NotChecked") != std::string::npos);
+    const auto sharedLabels = readFile("include/UI/SharedEditorPresentation.h");
+    assert(sharedLabels.find("case LegalityState::NotChecked: return \"Not checked\";") != std::string::npos);
     assert(gen2Modal.find("Needs correction") == std::string::npos);
     assert(gen2Modal.find("{\"B\", \"Back\"}") != std::string::npos);
     assert(gen2Modal.find("drawSelectionHighlight(") == std::string::npos);
@@ -71,7 +74,8 @@ int main() {
     assert(gen2Modal.find("promptNumber(") == std::string::npos);
     assert(gen2Final.find("drawFullscreenGen2Passive") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
-    assert(gen2Final.find("x + w - 18 - statusW") != std::string::npos);
+    // Status is right-aligned by the shared Moves panel (UI/Gen2MovesPanel.h).
+    assert(gen2Final.find("drawGen2SharedMoveRows(") != std::string::npos);
 
     // Gen III read-only Party/Box View keeps navigation visible without enabling mutation.
     assert(gen3Surface.find("state.focus.panel == Shared::Panel::Details") != std::string::npos);

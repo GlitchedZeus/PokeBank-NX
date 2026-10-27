@@ -96,7 +96,9 @@ for trainer in ("Brendan", "May", "Red", "Leaf", "Lucas", "Dawn", "Ethan", "Lyra
     require(f'"{trainer}"' in source, f"trainer portrait mapping is missing {trainer}")
 require("trainerGenderKnown" in header and "previewTrainerGenderKnown" in header,
         "trainer portraits must distinguish proven gender from unknown appearance")
-require("opened.save->trainer().gender" in source,
+gen4_card_preview = (ROOT / "include/Integration/Gen4/Gen4GameCardPreview.h").read_text(encoding="utf-8")
+require("s.trainerGender=save.trainer().gender;" in gen4_card_preview and
+        "PokeVault::Integration::Gen4::homeCardSnapshot(" in source,
         "Gen IV portrait identity must use the parsed save gender")
 
 # Safe preview and launch boundaries remain unchanged.
@@ -182,7 +184,8 @@ require("The fifth field must consume the rest of the row" in launcher,
         "launch binding parser must reject extra fields")
 require("result.launcherPath = defaultLauncherPath" in launcher,
         "stored launch metadata must not choose an arbitrary launcher NRO")
-require("result.corePath = defaultRetroArchCore" in launcher,
+require("result.corePath = coreChoice.corePath" in launcher and "stored.corePath" not in launcher and
+        "retroArchCoreForSave(gameId, sourcePath)" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
 
 # Hardware safety: normal RetroArch startup must use the direct core + ROM handoff that was
@@ -193,21 +196,21 @@ require("setGameLaunchReturnPath(std::string_view path)" in launcher_header and
         "UI::setGameLaunchReturnPath(argv[0]);" in main_source and
         "int main(int argc, char** argv)" in main_source,
         "dormant return-host research must retain the exact PokeBank NRO return target")
-retro_start = launcher_source.index("if (descriptor.backend == GameLaunchBackend::RetroArch)")
-retro_end = launcher_source.index("if (descriptor.backend == GameLaunchBackend::HomebrewNro)", retro_start)
-retro_launch = launcher_source[retro_start:retro_end]
-require("envSetNextLoad(target.c_str(), argv.c_str())" in retro_launch and
-        "prepareRetroArchReturnHost" not in retro_launch and
-        "envSetNextLoad(returnHostPath.c_str(), argv.c_str())" not in retro_launch,
-        "hardware-critical RetroArch startup must chain directly to the resolved core + ROM")
+launch_request = launcher_source[launcher_source.index("bool requestGameLaunch("):]
+launch_request = launch_request[:launch_request.index("\n}\n")]
+require("planGameLaunchHandoff(descriptor, plan, error)" in launch_request and
+        "envSetNextLoad(plan.nroPath.c_str(), plan.argv.c_str())" in launch_request and
+        "if (!optedIn) return g_returnHost;" in launcher_source,
+        "hardware-critical RetroArch startup must chain directly to the resolved core + ROM "
+        "unless the owner explicitly opts in to the return host")
 require("RETURN_HOST_DIR := $(CURDIR)/runtime/return_host" in root_makefile and
         "$(BUILD): return-host" in root_makefile and
         "romfs/runtime/PokeBankReturnHost.nro" in root_makefile,
         "the native build must package the exact return host inside PokeBank RomFS")
 require("EntryType_NextLoadPath" in return_host_source and
         "nroEntrypointTrampoline" in return_host_source and
-        "envSetNextLoad(g_returnPath, returnArgv)" in return_host_source and
-        r"g_nextNroPath[0] == '\0'" in return_host_source,
+        "envSetNextLoad(g_state.returnPath, returnArgv)" in return_host_source and
+        "rh_next_action(&g_state, g_nextNroPath)" in return_host_source,
         "the return host must honor RetroArch child chaining and reload PokeBank only after normal final return")
 require("Copyright 2017-2018 nx-hbloader Authors" in return_host_license and
         "Permission to use, copy, modify" in return_host_license,
@@ -405,9 +408,51 @@ require('"Source Save Protection", "LOCKED"' in shell_source and
 require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
         "More screen must reserve truthful future-feature modules")
 
-require("handleDefaultQuickOpen" in ui_manager and "backupSaveData" in ui_manager and
+# Round 4 (R2-EMUBACKUP / S05): opening an unchanged installed save makes no backup. Open reads the
+# save into the single Working copy (WorkingCopyRefresh keeps an earlier copy only if it differs);
+# timestamped backups come only from Save Backups -> "Create backup now".
+def ui_fn(name):
+    start = ui_manager.index(name)
+    end = ui_manager.find("\n    }\n", start)
+    return ui_manager[start:end]
+quick_open = ui_fn("bool UIManager::handleDefaultQuickOpen")
+items_open = ui_fn("void UIManager::handleItemsQuickOpen")
+backup_flow = ui_fn("void UIManager::handleBackupSelection")
+require("openWorkingCopy(userUid, titleId, titleName)" in quick_open and "backupSaveData" not in quick_open and
         "SaveSelectScreen::OpenIntent::Backups" in ui_manager,
-        "normal Switch Open must auto-create a protected backup/working copy while Backups stays explicit")
+        "normal Switch Open must read the save into the Working copy without making a backup, while Backups stays explicit")
+require("g_autoBackupEnabled" not in ui_manager and
+        "W::refresh(working, getTimestamp()" in ui_manager and
+        "backupSaveData(userUid, titleId, titleName, false)" in ui_manager,
+        "no Switch open path may create a timestamped backup automatically")
+require("takeCreateBackupRequest()" in backup_flow and
+        "backupSaveData(userUid, titleId, titleName, true)" in backup_flow and
+        ui_manager.count("backupSaveData(userUid, titleId, titleName, true)") == 1,
+        "a timestamped Switch backup is made only by the explicit Create backup now row")
+# The Auto-Backup setting is retired with the automatic backup it used to control: a toggle that
+# does nothing would mislead. Old settings.cfg files may still carry autoBackup=; it is ignored.
+settings_source = (ROOT / "src/Utils/Settings.cpp").read_text(encoding="utf-8")
+trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
+globals_header = (ROOT / "include/Globals.h").read_text(encoding="utf-8")
+require(all("g_autoBackupEnabled" not in text
+            for text in (shell_source, settings_source, trainer_base, globals_header, ui_manager)) and
+        '"Auto-Backup"' not in shell_source and '"Auto-backup"' not in shell_source and
+        '"Auto-Backup on Load"' not in trainer_base and
+        "case 1: return 2;" in shell_source and "constexpr int kSettingsRows = 5;" in trainer_base and
+        "constexpr int kRows = 5;" in trainer_base and
+        '"\\nautoBackup="' not in settings_source,
+        "the retired Auto-Backup setting must not be shown, toggled, persisted or kept as a global")
+# Round 5 (#322): A on a Switch backup (owned or legacy) opens a COPY in the isolated Opened-Backup
+# session, a normal staged workspace; the backup is never the workspace, never edited in place.
+copy_session = ui_fn("std::string openBackupCopySession(")
+require("W::openBackupSession(gameDir, backupDir, getTimestamp()" in copy_session and
+        "Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)" in copy_session and
+        "ImmutableSnapshot::unchanged(listed, error)" in copy_session,
+        "a backup opens only through a validated, snapshot-checked isolated session copy")
+require("openBackupCopySession(\n                        userUid, titleId, backupScreen.getSelectedBackupPath(), historical, error)" in backup_flow and
+        "handleTrainerView(userUid, titleId, titleName, session, false, intent, error,\n                                           nullptr, provenance)" in backup_flow and
+        "backupScreen.getSelectedBackupPath(), false" not in backup_flow,
+        "the selected backup itself is never handed to the editor as its workspace")
 require("reportOpenFailure" in header and
         "selectScreen.reportOpenFailure(error);" in ui_manager and
         "bool UIManager::handleDefaultQuickOpen" in ui_manager,
@@ -420,8 +465,8 @@ require("Overlay::OpenFailure" in source and
         "failed native Open must show an explicit safe modal while SC details stay in diagnostics")
 require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
         "Current Game -> Backups must be the only normal route into backup history")
-require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
-        "Switch Backpack quick-open must create the normal protected backup before Items")
+require("openWorkingCopy(userUid, titleId, titleName)" in items_open and "backupSaveData" not in items_open,
+        "Switch Backpack quick-open reads the save through the Working copy, never a new backup")
 require("if (kDown & HidNpadButton_Plus) {\n        overlay = Overlay::Settings;" not in shell_source,
         "secondary menus must not expose a Plus-to-Settings shortcut")
 home_menu = (ROOT / "src/UI/Panels/HomeMenuPanel.cpp").read_text(encoding="utf-8")
@@ -538,8 +583,10 @@ require('"red"' in source and '"leaf"' in source and '"dawn"' in source and
         '"florian"' in source and '"juliana"' in source and '"paxton"' in source and
         '"harmony"' in source,
         "trainer portrait mapping must cover classic and supported Switch protagonists")
-require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source and
-        '"Choose save"' in source and '"Needs attention"' in source,
+provider_identity = (ROOT / "include/Source/SaveProviderIdentity.h").read_text(encoding="utf-8")
+require("productSourceLabel" in source and '"System save"' in provider_identity and
+        '"Linked save"' not in source and '"Linked save"' not in provider_identity and
+        '"Choose save"' in provider_identity and '"Needs attention"' in provider_identity,
         "Product Home must translate raw source-state diagnostics into consumer-facing labels")
 require('Truthful fallback: a Poké Ball identity badge' in source and
         'fake "character portrait"' in source,
@@ -594,7 +641,7 @@ require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not 
 # saves; Product Home refreshes the expensive trainer/party preview only when B leaves the browser.
 update_start = source.index("void SaveSelectScreen::update")
 classic_runtime = source.index("if (classicGamesActive)", update_start)
-root_runtime = source.index("// Games is now the app root", classic_runtime)
+root_runtime = source.index("// Games is the app root. B never quits", classic_runtime)
 classic_runtime_block = source[classic_runtime:root_runtime]
 require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block and
         "scrollClassicSelectionIntoView();" in classic_runtime_block,
@@ -650,10 +697,13 @@ require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
 require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,
         "ZR Launch must never become an automatic ROM-file browser")
-require("const std::string& target = descriptor.corePath.empty()" in launcher and
-        "result.corePath = defaultRetroArchCore" in launcher and
+launch_plan_model = (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8")
+require("const std::string& target = descriptor.backend == GameLaunchBackend::RetroArch &&" in launch_plan_model and
+        "? descriptor.corePath" in launch_plan_model and
+        "result.corePath = coreChoice.corePath;" in launcher and
+        "defaultRetroArchCore(gameId)" in launcher and
         "result.launcherPath = result.corePath;" in launcher and
-        'argv += " -L " + quoted(descriptor.corePath)' not in launcher,
+        '" -L "' not in launcher and '" -L "' not in launch_plan_model,
         "RetroArch games must preserve exact direct-core identity without frontend fallback")
 require("installedGameForwarderTitle" in launcher and
         '"Launch the installed HOME forwarder for this exact game."' in launcher,
@@ -710,3 +760,138 @@ require("case Overlay::GamesDrawer: break;" in drawer_down and
 portrait = source[source.index("void drawTrainerPortrait("):source.index("// Approved product-home layout")]
 require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrait,
         "Trainer cutouts must reveal region artwork on all game cards")
+
+# Thread L request (2R lane): before ZR hands off, a ready launch tells the user where the
+# emulator's Quit goes, from the same chain plan the launcher uses, cached per launch target
+# (never recomputed per frame) and drawn only inside the detail panel's two caption rows.
+quit_notice = source[source.index("const std::string& SaveSelectScreen::currentLaunchQuitNotice()"):
+                     source.index("bool SaveSelectScreen::launchCurrentTitle()")]
+require("gameLaunchDialogNotice(d)" in quit_notice and
+        "if (key != launchQuitNoticeKey)" in quit_notice,
+        "Launch notice must show the cached quit-route notice from the launcher's chain plan")
+hub_caption = source[source.index("// Caption rows under the buttons (inside the panel)"):
+                     source.index("// The whole selected-game panel remains one safe A/Open touch target")]
+require("launchDescriptor.ready() ? currentLaunchQuitNotice() : std::string()" in hub_caption and
+        "HUB_Y + 505" in hub_caption and "HUB_Y + 525" in hub_caption and
+        "HUB_Y + 527" not in hub_caption and "HUB_Y + 547" not in hub_caption,
+        "Quit-route notice must stay in the two caption rows inside the hub panel")
+require("std::string launchQuitNoticeKey;" in header,
+        "Quit-route notice must be cached per resolved launch target")
+
+# P0 #320: no single press ever leaves PokeBank NX. B at the root, the legacy Options Exit, ZR /
+# Launch taps and the legacy-instance A launch only OPEN the one visible leave decision; only an
+# explicit Y there quits or hands off to the emulator, A and B stay.
+def body(name):
+    start = source.index(name)
+    return source[start:source.index("\n    }\n", start)]
+root_b = source[source.index("// Games is the app root. B never quits"):]
+root_b = root_b[:root_b.index("return;")]
+require('openLeaveDecision(LeaveKind::Quit, "origin=home-root-b");' in root_b and "appExitRequested" not in root_b,
+        "Home root B must open the quit decision, never exit directly")
+options = source[source.index("if (overlay == Overlay::Options) {"):]
+options = options[:options.index("if (overlay == Overlay::LegacyInstances)")]
+require('openLeaveDecision(LeaveKind::Quit, "origin=options-exit");' in options and "appExitRequested" not in options,
+        "The Options Exit row must route through the same quit decision")
+for launcher, call in (("bool SaveSelectScreen::launchCurrentTitle()", "openLaunchDecision(LeaveKind::LaunchTitle"),
+                       ("bool SaveSelectScreen::launchCurrentLegacyInstance()", "openLaunchDecision(LeaveKind::LaunchLegacyInstance")):
+    fn = body(launcher)
+    require(call in fn and "requestGameLaunch" not in fn and "appExitRequested" not in fn,
+            launcher + " must open the launch decision, never hand off on the press itself")
+leave = source[source.index("if (overlay == Overlay::QuitConfirm) {\n            using"):]
+leave = leave[:leave.index("            return;\n        }\n")]
+require("PokeBank::UIModel::HomeQuit::decide(kDown)" in leave and "Decision::Quit" in leave and
+        "requestGameLaunch(pendingLaunch, error)" in leave and "appExitRequested = true;" in leave,
+        "Only the leave decision's explicit Y may quit or start the launch handoff")
+require(source.count("appExitRequested = true;") == 1 and source.count("requestGameLaunch(") == 1,
+        "App exit and launch handoff each have exactly one site: the leave decision's Y")
+# R2-LAUNCH: the leave decision is sized by SharedMenuGeometry::LaunchConfirm, its text comes from
+# LeaveDecisionLayout (word-wrapped, quit-route notice kept), and it shows real coloured B / A / Y
+# buttons plus the shared confirm footer. Only Y commits.
+layout_header = (ROOT / "include/UI/LeaveDecisionLayout.h").read_text(encoding="utf-8")
+leave_draw = source[source.index("        if (overlay == Overlay::QuitConfirm) {\n            // R2-LAUNCH"):]
+leave_draw = leave_draw[:leave_draw.index("        } else if (overlay == Overlay::OpenFailure) {")]
+require('"Quit PokeBank NX?"' in layout_header and '"Launch " + std::string(gameName) + "?"' in layout_header and
+        "G::layout(G::MenuType::LaunchConfirm" in leave_draw and
+        "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice, pendingLaunchStarter)" in leave_draw and
+        'drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");' in leave_draw and
+        'drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");' in leave_draw and
+        'quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);' in leave_draw and
+        'confirmFooter(\n                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay")' in leave_draw,
+        "The leave decision is visible, names Y as the only commit and shows the quit-route notice")
+require("inputTrace().frame(\"home\", padGetButtonsDown(&pad), padGetButtons(&pad), kDown," in source,
+        "Product Home records raw edges, held state and the logical mask in the opt-in input trace")
+# Footer hints match the bindings: B is labelled Quit because it opens the quit decision, and
+# Settings + A (button or tap) is a Settings destination that leaves Home, never the app.
+require('{"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});' in source and '{"B", "Exit"}' not in source,
+        "The Product Home footer names B as Quit (the decision), never a direct Exit")
+header = source[source.index("        if (headerActionIndex >= 0) {\n            if (kDown & (HidNpadButton_Left"):]
+header = header[:header.index("        if (hubDockFocused) {")]
+require("requestedMainMenuDestination = MainMenuDestination::Settings;" in header and
+        "appExitRequested" not in header, "Settings + A reaches Settings and never exits the app")
+taps = source[source.index("        if (touch.justTapped()) {\n            for (const auto& r : headerRects)"):]
+taps = taps[:taps.index("// L/R changes the selected game from anywhere on Product Home")]
+require("MainMenuDestination::Settings" in taps and "appExitRequested" not in taps,
+        "A Settings tap reaches Settings and never exits the app")
+# Overlay layering (P0 #320, the Gen II Create class of bug): while any Home modal is open the
+# covered footer/hero glyphs are dropped, and every modal draws its OWN footer, so a tap can only
+# inject a button the topmost layer visibly offers.
+chrome = (ROOT / "include/UI/ScreenChrome.h").read_text(encoding="utf-8")
+top = chrome[chrome.index("inline void beginTopTouchLayer()"):]
+top = top[:top.index("\n    }\n")]
+for cleared in ("g_touchGlyphAccum.clear();", "g_touchGlyphHits.clear();", "g_navHits.clear();",
+                "g_navGestureHits.clear();", "g_productHeroSwipeRegistered = false;"):
+    require(cleared in top, "beginTopTouchLayer must drop the covered layer's " + cleared)
+modals = source[source.index("        if (overlay != Overlay::None) beginTopTouchLayer();"):]
+modals = modals[:modals.index("\n    }\n}")]
+branches = modals.split("} else if (overlay == Overlay::")
+require(len(branches) == 18 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
+        "all 18 Home modals render in the layered overlay section")
+branches[0] = branches[0][branches[0].index("if (overlay == Overlay::QuitConfirm)") + len("if (overlay == Overlay::"):]
+for branch in branches:
+    name = branch[:branch.index(")")].split(" ")[0]
+    require("drawNavBar(" in branch or "drawProductHelpOverlay(" in branch or
+            "SharedEditorChrome::drawPickerFooter(" in branch or "SharedEditorChrome::drawFooter(" in branch,
+            "Home modal " + name + " must draw its own footer above the covered Home footer")
+require("{\"B\", \"Quit PokeBank NX (asks first; Y confirms)\"}" in source and
+        "Exit PokeBank NX from Product Home" not in source,
+        "Home Help states that B asks before quitting")
+# The full Games browser binds L/R to profile switching (Home binds it to Change Game); its
+# footer must name that whenever it applies, so the role never surprises the user.
+classic_draw = body("void SaveSelectScreen::drawClassicGameSources")
+require('if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L/R", "Profile"});' in classic_draw,
+        "The full Games browser footer shows L/R Profile when more than one profile exists")
+classic_lr = source[source.index("            if (users.size() > 1) {\n                if (kDown & HidNpadButton_L) setUser(userIndex - 1);"):]
+require("setUser(userIndex + 1)" in classic_lr[:300], "L/R in the full Games browser switches profile only")
+# Round 2 phase 7: + -> Backups for an emulator game lists app-owned export records by exact
+# SOURCE_PATH (SourceBackupClassification.h); the original emulator save is read-only and the only
+# deletion is one whole export record behind an explicit Y (HomeQuit::decide).
+workspace = body("void SaveSelectScreen::activateGameWorkspace()")
+require("openEmulatorBackups();" in workspace and "External emulator sources stay read-only" not in source,
+        "+ -> Backups opens the emulator backups list instead of a dead-end notice")
+opener = body("void SaveSelectScreen::openEmulatorBackups(")
+# Round 7 (7E G1): the listing also carries the current profile, so that profile's Gen V export
+# records (exports/gen5/account-<profile>/) are listed and no other profile's.
+require("SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot, profile)" in opener and "instance.path()" in opener and
+        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener and
+        "const std::string profile=currentProfileIdentity();" in opener and
+        "SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId,profile)" in opener,
+        "Emulator backups come only from exact validated / assigned source paths (and the current profile's Gen V records)")
+# Round 4 (R2-EMUBACKUP / C07 / S05): a backup is made only by the deliberate "Create backup now" row,
+# never by opening a save; browsing the save is the normal read-only open.
+creator = body("void SaveSelectScreen::createEmulatorBackup(")
+require("SB::createBackup(" in creator and source.count("SB::createBackup(") == 1,
+        "emulator save backups are created only by the explicit Create backup action")
+require("createEmulatorBackup(row.listing)" in source and "kCreateRowEntry" in opener,
+        "the Backups list offers Create backup now for each existing save")
+browse_backup_source = body("void SaveSelectScreen::browseEmulatorSource(")
+require("browseEmulatorSource(listing.sourcePath)" in source and
+        "title.legacyInstances[i].path() != source" in browse_backup_source and
+        "selectCurrentLegacyInstance();" in browse_backup_source and "selectCurrentTitle();" in browse_backup_source,
+        "A on an original save opens that exact validated row, never a different preferred source")
+delete_block = source[source.index("if (overlay == Overlay::EmulatorBackupDeleteConfirm) {"):]
+delete_block = delete_block[:delete_block.index("            return;\n        }\n")]
+require("PokeBank::UIModel::HomeQuit::decide(kDown)" in delete_block and "Decision::Quit" in delete_block and
+        "SB::deleteRecord(" in delete_block, "Deleting an export record needs the explicit-Y decision")
+require(source.count("SB::deleteRecord(") == 1, "Export records are deleted only from the Y-confirmed decision")
+require('confirmFooter(\n                                                   "Y", "Delete", "A", "Cancel")' in source,
+        "The export-record delete decision uses the shared confirm footer")

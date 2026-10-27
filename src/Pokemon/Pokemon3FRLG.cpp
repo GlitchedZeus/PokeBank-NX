@@ -11,6 +11,7 @@
 #include "Pokemon/PersonalInfoTable.h"  // getPersonalInfo (gender ratio) / getPersonalInfoG3
 #include "Pokemon/Experience.h"         // getLevelFromExp / getExpForLevel / getGrowthRate
 #include "Utils/Gen3Text.h"             // the Gen 3 character set, shared with Trainer3FRLG + Convert
+#include "Conversion/Gen3PidSearch.h"   // PID-derived trait construction (nature/gender/shiny/ability/Unown)
 
 namespace Pokemon {
 
@@ -189,89 +190,55 @@ namespace Pokemon {
         refreshChecksum();
     }
 
-    namespace {
-        // Unown's LETTER is PID-derived too: four 2-bit fields (bits 0-1, 8-9, 16-17, 24-25) form an
-        // 8-bit value, and the letter is that value % 28.
-        constexpr uint32_t UNOWN_FORM_BITS = 0x03030303u;
-        [[maybe_unused]] inline uint32_t unownFormValue(uint32_t p) noexcept {
-            return ((p & 0x03000000u) >> 18) | ((p & 0x00030000u) >> 12)
-                 | ((p & 0x00000300u) >> 6)  | (p & 0x00000003u);
-        }
-        // Inverse: scatter an 8-bit value back into those four fields.
-        inline uint32_t withUnownFormValue(uint32_t p, uint32_t v) noexcept {
-            return (p & ~UNOWN_FORM_BITS)
-                 | ((v & 0xC0u) << 18) | ((v & 0x30u) << 12) | ((v & 0x0Cu) << 6) | (v & 0x03u);
-        }
+    void Pokemon3FRLG::rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit,
+                                 int letterOverride) noexcept {
+        // Nature, gender, shininess, the ability bit, the Unown letter and the Wurmple-line
+        // evolution value all live in the PID (Conversion/Gen3PidSearch.h cites pokeemerald and
+        // PKHeX 6501f0ab for each). The replacement is CONSTRUCTED to hold every pinned trait, so
+        // the search cannot run out of budget and quietly drop one: it fails only when the format
+        // has no such PID at all, and then the record is left exactly as it was.
+        namespace Search = Conversion::Gen3PidSearch;
+        Search::Wanted want;
+        want.shiny = wantShiny;
+        want.gender = wantGender;
+        want.nature = wantNature;
+        want.abilityBit = wantAbilityBit;
+        want.genderRatio = getPersonalInfo(speciesID(), form()).genderRatio;
+        want.tid32 = id32();
+        const uint32_t current = pid();
+        // Unown: the letter is part of the PID, so an unconstrained reroll would silently rename
+        // the Pokemon (UNOWN A -> UNOWN F). It is always preserved unless a caller asks for another.
+        if (speciesID() == 201)
+            want.unownForm = (letterOverride >= 0 && letterOverride < 28) ? letterOverride
+                                                                          : static_cast<int>(form());
+        // Wurmple / Silcoon / Beautifly / Cascoon / Dustox: which cocoon a Wurmple becomes, and
+        // which one an evolved record is consistent with, is (PID >> 16) % 10 < 5.
+        if (speciesID() >= 265 && speciesID() <= 269)
+            want.wurmpleEvo = Search::wurmpleEvo(current);
+        // Already holding every wanted trait: nothing was asked to change, so nothing changes.
+        if (Search::satisfies(current, want)) return;
+        const auto found = Search::construct(current, want);
+        if (!found) return;
+        wr32(0x00, *found); recalculateStats(); refreshChecksum();
     }
 
-    void Pokemon3FRLG::rerollPID(int wantShiny, int wantGender, int wantNature, int wantAbilityBit) noexcept {
-        const uint32_t tid = id32();
-        const uint16_t tsv = static_cast<uint16_t>((tid & 0xFFFF) ^ (tid >> 16));
-        const uint8_t  gr  = getPersonalInfo(speciesID(), form()).genderRatio;
-        uint32_t p = pid();
-
-        // Unown: the letter is part of the PID, so a reroll silently renamed the Pokemon -- editing
-        // shininess or nature turned an UNOWN A into an UNOWN F. It is always preserved; no caller
-        // wants it changed (setForm is a no-op in Gen 3 precisely because the PID owns it).
-        //
-        // CONSTRUCTED, not filtered. Rejecting 27 of every 28 candidates would multiply an already
-        // expensive search (a shiny nature change is ~1 PID in 819k) by 28 and blow the budget. Instead
-        // the letter's bits are overwritten on each candidate with a pattern that already yields the
-        // wanted letter, so every candidate tested is a letter match and the search costs what it did
-        // before. The other 24 bits still come from the walk, so nature/gender/shiny stay uniform.
-        const bool isUnown = (speciesID() == 201);
-        const int  wantLetter = isUnown ? static_cast<int>(form()) : -1;
-        uint32_t letterPatterns[10] = {};   // 8-bit values v with v % 28 == wantLetter (at most 10)
-        int letterPatternCount = 0;
-        if (isUnown) {
-            for (uint32_t v = static_cast<uint32_t>(wantLetter); v <= 0xFFu; v += 28)
-                letterPatterns[letterPatternCount++] = v;
-            // Every valid pattern shares the letter's parity (28 is even), so bit 0 -- and with it the
-            // Gen 3 ability bit -- is decided by the letter. Preserving both is therefore consistent by
-            // construction: the current PID already satisfies it. Nothing to reconcile.
-        }
-        // Budget: the hardest real case is a SHINY mon of a dual-ability species having its nature
-        // changed -- shiny (1/8192) x nature (1/25) x gender (1/2) x ability bit (1/2) is roughly one
-        // PID in 819k. Measured over 80 random shiny mons, 2M candidates left 10% of them unable to
-        // stay shiny while 8M left none (worst successful search: 3.45M). A miss is only ever paid
-        // once, on a button press, and each step is a multiply-add plus a few compares.
-        uint32_t walk = p;
-        for (int i = 0; i < 8000000; ++i) {
-            walk = walk * 0x41C64E6Du + 0x00006073u;                        // walk candidate PIDs
-            p = walk;
-            // Stamp in a letter-preserving bit pattern before ANY test -- every constraint below reads
-            // the whole PID, so this has to happen first or they would be judging a PID we won't store.
-            if (letterPatternCount > 0)
-                p = withUnownFormValue(p, letterPatterns[(walk >> 2) % static_cast<uint32_t>(letterPatternCount)]);
-            // Cheapest reject first: this LCG's low bit flips every step, so half the walk is
-            // discarded by an AND before the nature modulo runs.
-            if (wantAbilityBit >= 0 && static_cast<int>(p & 1u) != wantAbilityBit) continue;
-            if (wantNature >= 0 && static_cast<int>(p % 25) != wantNature) continue;
-            if (wantGender >= 0) {
-                const int g = (gr == 255) ? 2 : (gr == 254) ? 1 : (gr == 0) ? 0 : ((p & 0xFF) < gr ? 1 : 0);
-                if (g != wantGender) continue;
-            }
-            if (wantShiny >= 0) {
-                const uint16_t psv = static_cast<uint16_t>((p & 0xFFFF) ^ (p >> 16));
-                const bool sh = ((tsv ^ psv) < 8);
-                if (sh != (wantShiny != 0)) continue;
-            }
-            wr32(0x00, p); recalculateStats(); refreshChecksum();
-            return;
-        }
-        // no PID satisfied the constraints within the budget -> leave the mon unchanged
+    bool Pokemon3FRLG::setUnownLetter(uint8_t letter, uint32_t trainerID32) noexcept {
+        if (speciesID() != 201 || letter >= 28) return false;
+        if (form() == letter) return true;
+        // Unown is genderless and has one ability; nature and shininess are the traits to keep.
+        const int shiny = isShiny(trainerID32, "") ? 1 : 0;
+        const uint32_t before = pid();
+        rerollPID(shiny, -1, static_cast<int>(before % 25), -1, letter);
+        return form() == letter;
     }
 
     void Pokemon3FRLG::rerollPreservingShiny(int wantGender, int wantNature, int wantAbilityBit) noexcept {
-        const int wasShiny = isShiny(id32(), "") ? 1 : 0;
-        const uint32_t before = pid();
-        rerollPID(wasShiny, wantGender, wantNature, wantAbilityBit);
-        // The walk steps before its first test and this LCG is full-period, so it cannot return to
-        // its own start inside the budget: an unchanged PID means the search failed, not that it
-        // found the PID we already had. Shininess is far and away the most expensive constraint, so
-        // it is the one dropped on the retry -- the edit the user actually asked for still lands.
-        if (pid() == before)
-            rerollPID(-1, wantGender, wantNature, wantAbilityBit);
+        // Shininess is never the constraint that yields. The constructive search succeeds for every
+        // combination the format can hold, and a record that is shiny now proves its letter / gender
+        // / ability combination is reachable, so the only way to fail is an impossible request
+        // (a gender the species cannot have); that leaves the record unchanged rather than landing
+        // the edit on a Pokemon that quietly stopped being shiny.
+        rerollPID(isShiny(id32(), "") ? 1 : 0, wantGender, wantNature, wantAbilityBit);
     }
 
     // Ability slot 1/2. Gen 3 keeps the choice in IV32 bit 31, but legality also wants the

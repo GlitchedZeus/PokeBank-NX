@@ -22,11 +22,12 @@ mkdir -p romfs
   [ -e "romfs/$f" ] || cp -p "$snapshot/$f" "romfs/$f"
 done
 
-# Every Gen I-IV cover is a branch asset; the snapshot copies may be stale.
+# Every Gen I-V cover is a branch asset; the snapshot copies may be stale.
 mkdir -p romfs/game_cards
 for f in red_gb blue_gb yellow_gb gold_gbc silver_gbc crystal_gbc \
          ruby_gba sapphire_gba emerald_gba firered_gba leafgreen_gba \
-         diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
+         diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds \
+         black_nds white_nds black2_nds white2_nds; do
   test -s "assets/game_cards/$f.png"
   cp -f "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
 done

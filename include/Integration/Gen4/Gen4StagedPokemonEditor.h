@@ -98,6 +98,30 @@ public:
     bool stageBagAdd(size_t pocket,uint16_t itemId,uint16_t quantity,
                      std::string* error=nullptr);
 
+    // R2-BUG-002: the Trainer page's Name / Money, staged in the SAME app-owned image as every
+    // other Gen IV edit (selected General block only; its CRC refreshed; the other General copy
+    // and the source are never touched). Trainer struct offsets as read by Gen4ReadOnlySave
+    // (PKHeX SAV4DP / SAV4Pt / SAV4HGSS Trainer1): name +0x00 (8 u16, max 7 characters,
+    // ClearZero), money +0x14 (u32, PKHeX MaxMoney 999999).
+    static constexpr uint32_t kMaxMoney = 999999;
+    static constexpr size_t kTrainerNameMax = 7;
+    [[nodiscard]] std::optional<TrainerReadOnly> stagedTrainer(std::string* error = nullptr) const;
+    // Name editing is offered only for the international languages whose 7-character keyboard
+    // the field matches; Japanese / Korean names stay read-only (money is still editable).
+    [[nodiscard]] bool trainerNameEditable() const;
+    bool stageTrainerName(const std::u16string& name, std::string* error = nullptr);
+    bool stageTrainerMoney(uint32_t money, std::string* error = nullptr);
+    // P3 (Round 5): Trainer Gender +0x18 (u8 0 / 1) and Play Time +0x22 (u16 hours, u8 minutes,
+    // u8 seconds), the offsets pinned PKSM-Core aa22d7a Sav4::gender / playedHours /
+    // playedMinutes / playedSeconds read and write (vendor/PKSM-Core/source/sav/Sav4.cpp). Same
+    // staged image, General CRC refresh and strict reparse as Name / Money. Gender is offered only
+    // when the stored byte is a native 0 / 1. Hours are capped at 999 (the shared Gen V editor bound).
+    static constexpr uint16_t kMaxPlayedHours = 999;
+    [[nodiscard]] bool trainerGenderEditable() const;
+    bool stageTrainerGender(uint8_t gender, std::string* error = nullptr);
+    bool stageTrainerPlayTime(uint16_t hours, uint8_t minutes, uint8_t seconds,
+                              std::string* error = nullptr);
+
     void discard() noexcept { staged_ = original_; }
 
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string* error = nullptr) const;
@@ -109,12 +133,22 @@ private:
 
     [[nodiscard]] std::optional<size_t> boxRecordOffset(
         const Gen4ReadOnlySave& parsed, size_t box, size_t slot) const noexcept;
+    // True when the source held a valid empty record at this box slot, at the same offset in the
+    // same selected Storage copy as the staged parse.
+    [[nodiscard]] bool originalEmptyRecordAt(const Gen4ReadOnlySave& stagedParse, size_t box,
+                                             size_t slot, size_t offset) const;
     [[nodiscard]] std::optional<size_t> partyRecordOffset(
         const Gen4ReadOnlySave& parsed, size_t slot) const noexcept;
     [[nodiscard]] std::optional<Gen4ReadOnlySave> reparse(
         std::string* error = nullptr) const;
     bool refreshStorageCrc(const Gen4ReadOnlySave& parsed, std::string* error = nullptr);
     bool refreshGeneralCrc(const Gen4ReadOnlySave& parsed, std::string* error = nullptr);
+    [[nodiscard]] std::optional<size_t> trainerRecordOffset(const Gen4ReadOnlySave& parsed) const noexcept;
+    // Writes `bytes` at the selected General block's trainer struct + `field`, refreshes the
+    // General CRC, strictly reparses and checks `verify`; restores the previous image on failure.
+    template <class Verify>
+    bool stageTrainerBytes(size_t field, std::span<const uint8_t> bytes, Verify&& verify,
+                           std::string* error);
 
     std::vector<uint8_t> original_;
     std::vector<uint8_t> staged_;

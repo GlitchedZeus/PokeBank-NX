@@ -115,8 +115,31 @@ void exportCase(const fs::path& root, const std::string& gameId,
     assert(!Common::publishVerifiedStagedExport(faulty).success);
     assert(fs::is_empty(root));
 
+    // QA-F3: a destination that appears just before publication (empty
+    // directory or plain file) is never replaced; nothing else is left behind.
+    auto racedDir = request;
+    racedDir.failurePoint = Common::ExportFailurePoint::DestinationAppearsAsEmptyDirectory;
+    const auto refusedDir = Common::publishVerifiedStagedExport(racedDir);
+    assert(!refusedDir.success && refusedDir.error.find("appeared before publication") != std::string::npos);
+    assert(fs::is_directory(root / request.directoryStem) && fs::is_empty(root / request.directoryStem));
+    fs::remove(root / request.directoryStem);
+    assert(fs::is_empty(root));
+    auto racedFile = request;
+    racedFile.failurePoint = Common::ExportFailurePoint::DestinationAppearsAsFile;
+    assert(!Common::publishVerifiedStagedExport(racedFile).success);
+    assert(fs::is_regular_file(root / request.directoryStem) && fs::file_size(root / request.directoryStem) == 0);
+    fs::remove(root / request.directoryStem);
+    assert(fs::is_empty(root));
+    auto midPublish = request;
+    midPublish.failurePoint = Common::ExportFailurePoint::AfterFirstPublishedFile;
+    assert(!Common::publishVerifiedStagedExport(midPublish).success);
+    assert(fs::is_empty(root));
+
     const auto result = Common::publishVerifiedStagedExport(request);
     assert(result.success && result.changedBytes > 0);
+    assert(fs::exists(fs::path(result.directory) / "EDIT_MANIFEST.txt"));
+    for (const auto& entry : fs::directory_iterator(root))
+        assert(entry.path().string().find(".tmp") == std::string::npos);
     const fs::path dir(result.directory);
     assert(slurp(dir / "original_backup.srm") == original);
     assert(slurp(dir / "edited.srm") == edited);

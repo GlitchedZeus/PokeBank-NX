@@ -8,12 +8,12 @@ namespace PokeBank::UIModel::PokemonEditorFoundation {
 // Format is the current serialization layout, never the Pokemon's origin game.
 enum class SaveFormat : uint8_t {
     Unknown, RBYInternational, RBYJapanese, GSCInternational, GSCJapanese,
-    PK3GBA, PK4, PB7, PA8, PK9
+    PK3GBA, PK4, PB7, PA8, PK9, PK5
 };
 enum class SaveFamily : uint8_t {
     RBY, GoldSilver, Crystal, RubySapphire, Emerald, FireRedLeafGreen,
     DiamondPearl, Platinum, HeartGoldSoulSilver,
-    LetsGo, LegendsArceus, ScarletViolet
+    LetsGo, LegendsArceus, ScarletViolet, BlackWhite, Black2White2
 };
 enum class StatModel : uint8_t { DVStatExpSingleSpecial, DVStatExpSplitSpecial, IVAwakening, IVEffortLevel, IVEV };
 struct ExactSaveIdentity {
@@ -83,6 +83,19 @@ constexpr std::optional<ExactSaveCapabilities> exactSaveCapabilities(const Exact
         return ExactSaveCapabilities{id, family, StatModel::IVEV, fields,
                                      31, 255, true, false};
     }
+    if (game == "black_nds" || game == "white_nds" ||
+        game == "black2_nds" || game == "white2_nds") {
+        if (id.platform != Platform::NintendoDS || id.generation != Generation::Gen5 ||
+            id.format != SaveFormat::PK5) return std::nullopt;
+        auto fields = capabilitiesForGeneration(Generation::Gen5);
+        // Format capability is descriptive only; the Gen V editor provider
+        // gates staged mutations to four actually audited PK5 field types.
+        fields.supportsRibbons = false;
+        const auto family = game == "black2_nds" || game == "white2_nds" ?
+            SaveFamily::Black2White2 : SaveFamily::BlackWhite;
+        return ExactSaveCapabilities{id,family,StatModel::IVEV,fields,
+                                     31,255,true,false};
+    }
     if (id.platform != Platform::NintendoSwitch) return std::nullopt;
     if (game == "letsgo_pikachu_switch" || game == "letsgo_eevee_switch") {
         if (id.generation != Generation::Gen7 || id.format != SaveFormat::PB7) return std::nullopt;
@@ -119,6 +132,9 @@ constexpr std::optional<ExactSaveCapabilities> capabilitiesForSourceId(std::stri
     if (id == "diamond_nds" || id == "pearl_nds" || id == "platinum_nds" ||
         id == "heartgold_nds" || id == "soulsilver_nds")
         return exactSaveCapabilities({id,Platform::NintendoDS,Generation::Gen4,SaveFormat::PK4});
+    if (id == "black_nds" || id == "white_nds" ||
+        id == "black2_nds" || id == "white2_nds")
+        return exactSaveCapabilities({id,Platform::NintendoDS,Generation::Gen5,SaveFormat::PK5});
     if (id == "letsgo_pikachu_switch" || id == "letsgo_eevee_switch")
         return exactSaveCapabilities({id,Platform::NintendoSwitch,Generation::Gen7,SaveFormat::PB7});
     if (id == "legends_arceus_switch")

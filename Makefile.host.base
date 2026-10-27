@@ -62,12 +62,12 @@ RETROARCH_FRLG_SOURCES := tests/test_retroarch_frlg_discovery.cpp \
 # Trainers with staged classic-inventory sidecars pull these implementation dependencies into
 # every host executable that instantiates them. ItemNames.cpp is already present in both trainer
 # source groups below, so this list intentionally contains only the additional shared catalog pieces.
-CLASSIC_INVENTORY_CATALOG_LINK_SOURCES := src/Inventory/ClassicInventoryCatalog.cpp \
+CLASSIC_INVENTORY_CATALOG_LINK_SOURCES := src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GEN3_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
 GEN3_STAGED_POKEMON_LINK_SOURCES := src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
-	src/Names/MoveInfo.cpp
+	src/Names/MoveInfo.cpp src/Names/LocationNames.cpp
 GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
 	src/Legality/Legality.cpp src/Pokemon/Pokemon3FRLG.cpp src/Encryption/Encryption3FRLG.cpp \
 	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/Experience.cpp \
@@ -158,11 +158,11 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_legality_context_sanitize
 .PHONY: host-test host-sanitize host-clean
 
 host-test: $(HOST_TESTS)
-	@set -e; for test_bin in $(HOST_TESTS); do ./$$test_bin; done
+	@set -e; for test_bin in $(HOST_TESTS); do $$test_bin; done
 
 host-sanitize: $(HOST_SANITIZE_TESTS)
 	# Local/sandbox default disables LeakSanitizer; unrestricted CI supplies ASAN_OPTIONS=detect_leaks=1.
-	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
+	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" $$test_bin; done
 
 $(HOST_BUILD)/test_classic_inventory_ui_model: $(CLASSIC_UI_MODEL_SOURCES)
 	@mkdir -p $(HOST_BUILD)
@@ -415,13 +415,13 @@ $(HOST_BUILD)/test_legacy_frlg_browse_sanitize: $(LEGACY_FRLG_BROWSE_SOURCES) $(
 	$(CXX) $(CXXFLAGS) $(LEGACY_FRLG_BROWSE_FLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude \
 		$(LEGACY_FRLG_BROWSE_SOURCES) -o $@
 
-$(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
+$(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Integration/Gen5/Gen5SourcePathIdentity.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $(filter %.cpp,$^) -o $@
 
-$(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
+$(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Integration/Gen5/Gen5SourcePathIdentity.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(filter %.cpp,$^) -o $@
 
 $(HOST_BUILD)/test_rby_gen1_adapter: $(GEN1_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT)
 	@mkdir -p $(HOST_BUILD)
