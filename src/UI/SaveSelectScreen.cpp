@@ -145,7 +145,9 @@ namespace UI {
             return 6;
         }
 
-        int gameReleaseDateKey(std::string_view id) noexcept {
+        int gameReleaseDateKey(std::string_view exactId) noexcept {
+            // Localized FireRed/LeafGreen Switch releases sort with the English release (Q04).
+            const std::string_view id = PokeVault::Games::switchReleaseFamily(exactId);
             // "Release Date" means oldest -> newest, matching the natural hardware progression:
             // GB -> GBC -> GBA -> DS -> 3DS (when surfaced) -> Switch. Paired versions get a
             // deterministic within-day suffix so Red precedes Blue, Gold precedes Silver, etc.
@@ -184,8 +186,8 @@ namespace UI {
             if (id == "scarlet_switch") return 202211180;
             if (id == "violet_switch") return 202211181;
             if (id == "legends_za_switch") return 202510160;
-            if (PokeVault::Games::switchReleaseFamily(id) == "firered_switch") return 202602270;
-            if (PokeVault::Games::switchReleaseFamily(id) == "leafgreen_switch") return 202602271;
+            if (id == "firered_switch") return 202602270;
+            if (id == "leafgreen_switch") return 202602271;
             // Unknown/future identities sort after known releases instead of jumping in front.
             return 999999999;
         }
