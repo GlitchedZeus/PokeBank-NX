@@ -1,5 +1,7 @@
 # PKSE 1.2.0, 1.2.1 and 1.2.2 compared with PokeBank NX for Gen I–V (source level)
 
+> **Update, 2026-10-27:** the repair campaign is reported in [`PKSE_UPSTREAM_REPAIR_CAMPAIGN_2026-10-27.md`](PKSE_UPSTREAM_REPAIR_CAMPAIGN_2026-10-27.md). That report supersedes the rows marked "Superseded" or "FIXED" here, and adds Q01 (Bank) and Q07 (Bag byte fidelity).
+
 **Scope.** This audit compares the commits in Kiasta's PKSE (AGPL-3.0) from v1.1.3 up to the current `version-1.2.2` development branch with PokeBank NX for Gen I–V only. Every row comes from reading both trees, not from release notes. Our earlier save-safety audit covered PKSE 1.1.3 only (`docs/audits/ROUND6_SAVE_SAFETY_PKSE.md`).
 
 ## Pinned sources
@@ -38,7 +40,7 @@ Severity is H/M/L. **FIXED (wip)** means the fix is implemented on the WIP branc
 |---|---|---|---|---|---|
 | `0c993bc` | Try all four GSC layouts (international/Japanese × GS/C) at either file size, so a Japanese GSC in a 32 KiB file opens | `src/Integration/Gen2/Gen2ReadOnlySave.cpp` `kLayouts` loop. Checksum, structural probe and ambiguity refusal are all stricter than upstream. Tests: `test_gsc_gen2_adapter.cpp` (Japanese GS at 0x8000, Japanese Crystal at 0x10000) | ALREADY IMPLEMENTED | – | – |
 | `9a9a731` | GSC padded to 128 KiB is unwrapped, trying 32 KiB before 64 KiB | Was refused with `WrongSize` | NOT YET INTEGRATED → **FIXED (wip) `cd5eabfe`** | M | `splitPaddedSave`: only a 0x20000 file with a uniform 0x00/0xFF tail. Recorded as `Metadata::paddingSize`, separate from the RTC footer. The export guard now checks every byte after the payload. Discovery lists 0x20000. Tests: adapter (0x00 and 0xFF fills, padded Japanese Crystal, stray-byte and 96 KiB refusals), staged editor round trip, discovery, and the fuzz invariant |
-| `9a9a731` comment | "A Japanese cartridge's SRAM is 32 KiB" | Japanese Crystal keeps its gender byte at 0x8000 (`kJpnC`), so a 32 KiB Japanese Crystal file is refused | NOT APPLICABLE (deliberate) | – | Japanese Crystal uses 64 KiB SRAM, so a 32 KiB file has lost bank 4. Upstream would open it without its gender. **Pinned by a test.** |
+| `9a9a731` comment | "A Japanese cartridge's SRAM is 32 KiB" | Japanese Crystal keeps its gender byte at 0x8000 (`kJpnC`), so a 32 KiB Japanese Crystal file is refused | **Superseded:** owner directive, then **FIXED (wip) `6741e00c`** | P1 | The gender is optional: it is read only when in bounds and otherwise left unspecified. Japanese Gen II stays read-only. See the campaign report, Q02. |
 | `9a9a731` | Gen II pouch table: Key Items capacity 26 | Writer 25; reader accepts a count up to 26 (`Gen2ReadOnlyInventory.cpp:151`) | NOT APPLICABLE (do not port 26) | L | Upstream's 26-entry writer would overwrite the Balls count byte. Our writer's 25 is right. Tightening the reader to 25 is optional. |
 
 ## 2. Emulator save compatibility (VBA-M FireRed and others)
@@ -51,7 +53,7 @@ Severity is H/M/L. **FIXED (wip)** means the fix is implemented on the WIP branc
 | `292fd5e` | libretro VBA Next / Beetle GBA 0x22000 (flash + 0x2000 EEPROM) | Refused | NOT YET INTEGRATED | M | Backlog B-03 |
 | `292fd5e` | TGB Dual +4, MiSTer +0x200, Meteor +4, no$gba / BizHawk headers, YSMenu trailer | Gen I needs exactly 0x8000; Gen IV exactly 0x80000 | NOT YET INTEGRATED | L | Backlog B-06 |
 | `292fd5e` | DeSmuME `.dsv` footer | Gen IV/V discovery reads the last 40 bytes; export keeps the original `.dsv` verbatim | ALREADY IMPLEMENTED | – | Optional: a real 0x7A-footer fixture |
-| `d3e3e29` | All 12 Switch FireRed/LeafGreen title ids (JP/EN/FR/IT/DE/ES) | Only the English ids (`include/Enums/GameVersion.h:84-85`, `src/Games/GameIdentity.cpp:35-36`) | NOT YET INTEGRATED | M | Backlog B-02. It touches `GameIdentity` and backup-folder identity, so it needs owner approval. The ids are pinned in upstream `GameVersion.h:163-174` at `a79fe61`. |
+| `d3e3e29` | All 12 Switch FireRed/LeafGreen title ids (JP/EN/FR/IT/DE/ES) | Only the English ids (`include/Enums/GameVersion.h:84-85`, `src/Games/GameIdentity.cpp:35-36`) | **FIXED (wip) `2f873855`, `aee0937b`** (owner directive Q04) | P1 | Ten exact identities, each with its own backup namespace. English ids are unchanged. True Move stays limited to English. |
 | — | 64 KiB "half" Gen III file | Refused, as upstream does | NOT APPLICABLE | – | Wrong-flash-size emulation mirrors one slot over the other |
 
 ## 3. Bag capacity, quantity and pouch navigation
@@ -65,7 +67,7 @@ Our per-pouch numbers match PKHeX (`6501f0ab`) and PKSM-Core (`aa22d7a`) whereve
 | `9a9a731` / `d2ad323` | RSE stack limit 999 upstream | Ours is 99 (`ItemQuantityPolicy.cpp:206`), which equals PKHeX `PlayerBag3RS/3E` | NOT APPLICABLE (upstream is wrong) | – | Do not port |
 | `d2ad323` | HMs 1 (Gens 2–4); key items 1 | `ItemQuantityPolicy.cpp:193,230,311,314`; `Gen4BagCatalog.h:64` | ALREADY IMPLEMENTED | – | – |
 | `d2ad323` | Gen I key-item list (pret `key_items.asm` plus HM01–05, 36 items) excludes Exp. All (75) | Our `kG1Keys` includes 75, so it is capped at 1. pret and PKHeX allow 99 | NEEDS FIX (policy) | L | Backlog B-08: owner decides (stricter, not unsafe) |
-| `d2ad323` | FRLG key pouch adds Meteorite (280), from PKHeX after our pin | Missing from `kG3KeysFRLG` | NOT YET INTEGRATED | L | Backlog B-09: bump the PKHeX pin first |
+| `d2ad323` | FRLG key pouch adds Meteorite (280), from PKHeX after our pin | Missing from `kG3KeysFRLG` | **FIXED (wip) `cfcc5f98`** (Q06) | P1 | pret items.json plus PKHeX 8e3eb3d4 `ItemStorage3FRLG.Key` |
 | `d2ad323` | "Add All Items" bulk operation | – | NOT APPLICABLE (policy) | – | Key items or HMs added early can break story events. A safe subset ("top up existing stacks to the cap", no new slots, no key items or HMs) is backlog B-10 |
 | `620c5f6` | `isNew`/`isFavorite` initialised | Already `= false` (`include/Trainer/Inventory.h:10-11`); only Gen 9 reads them | ALREADY IMPLEMENTED / NOT APPLICABLE | – | – |
 
