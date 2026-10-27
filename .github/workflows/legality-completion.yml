@@ -18,6 +18,7 @@ on:
       - 'tests/test_gen5_gift_receivability.cpp'
       - 'tests/test_gen4_ground_tile.cpp'
       - 'tests/test_gen5_app_context.cpp'
+      - 'tests/test_gen35_release_rules.cpp'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
@@ -45,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -53,6 +54,34 @@ jobs:
             "build-completion/$name" 2>&1 | tee "build-completion/$name.log"
             "build-completion/${name}_sanitize" 2>&1 | tee "build-completion/${name}_sanitize.log"
           done
+      - name: Reproduce source-pinned release counterexample and catalog pairing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
+          for profile in normal sanitize; do
+            flags=()
+            if [ "$profile" = sanitize ]; then flags+=(--sanitize); fi
+            python3 tools/legality_completion/ev_exp_native_witness.py \
+              --source build-completion/native-hgss --fetch \
+              --work "build-completion/native-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-ev-$profile.log"
+          done
+      - name: Preserve official release and native EV witness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-release-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen35_release_rules*.log
+            build-completion/global-link-generator.log
+            build-completion/native-ev-*.log
+            tests/fixtures/gen15_session2/global_link.txt
+            tests/fixtures/gen15_session2/ev_exp.txt
+            docs/legality/hardening-20261027/*PINS.json
+            docs/legality/hardening-20261027/GLOBAL_LINK_PAIRING.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Preserve native terrain boundary regressions
         if: always()
         uses: actions/upload-artifact@v4

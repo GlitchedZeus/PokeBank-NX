@@ -78,7 +78,8 @@ Result analyze(std::span<const uint8_t> record, std::string_view sourceGameId, c
         const auto end = std::find_if(trainer.ot.begin(), trainer.ot.end(),
             [](uint16_t ch) { return ch == 0 || ch == 0xFFFF; });
         const bool trainerKnown = trainer.present && end != trainer.ot.begin() && end != trainer.ot.end() &&
-            trainer.language >= 1 && trainer.language <= 7 && trainer.language != 6;
+            trainer.language >= 1 && trainer.language <= 8 && trainer.language != 6 &&
+            ((trainer.language != 1 && trainer.language != 8) || end - trainer.ot.begin() <= 5);
         if (!trainerKnown)
             unknown(result.report.coverage.sourceGame, CheckIdentifier::SourceGame,
                 "Save trainer context is missing or malformed; source identity is unresolved");

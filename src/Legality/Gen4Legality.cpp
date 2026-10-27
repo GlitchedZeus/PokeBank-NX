@@ -19,6 +19,7 @@
  * (coverage stays partial) because the Orre encounter tables are not ported.
  */
 #include "Gen4LegalityInternal.h"
+#include "Legality/Gen4RanchIV.h"
 
 #include <algorithm>
 #include <cstring>
@@ -962,6 +963,11 @@ void Analyzer::verifyTrainerId() {
 
 // ----------------------------------------------------------------------- IVs / EVs / level
 void Analyzer::verifyIvs() {
+    if (enc_.kind == EncKind::Ranch && !Gen4RanchIV::hasState(pk_.ivs))
+        // The represented Ranch model excludes these IVs. No native Wii
+        // executable/capture authenticates that model here, so do not turn
+        // missing original-game evidence into a definitive Invalid verdict.
+        fishy(CheckIdentifier::PidRng, "Ranch IVs have no state under the pinned Ranch RNG model; original Wii generation evidence is unresolved");
     if (enc_.kind == EncKind::Pcd && (enc_.gift.pk.iv32 & 0x3FFFFFFFu) != 0) {
         if (enc_.gift.pk.ivs != pk_.ivs) invalid(CheckIdentifier::EventGift, "IVs do not match the Mystery Gift's fixed IVs");
     }

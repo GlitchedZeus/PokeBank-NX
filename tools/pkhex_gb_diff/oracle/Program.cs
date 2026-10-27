@@ -5,6 +5,8 @@
 using PKHeX.Core;
 
 ParseSettings.AllowEraCartGB = true;
+var includeFishy = args.Length == 1 && args[0] == "--fishy";
+if (args.Length != 0 && !includeFishy) return 2;
 
 // A line the corpus protocol does not allow is an error, never a silent skip: compare.py
 // must see a verdict for every corpus record or fail the run.
@@ -34,7 +36,8 @@ while ((line = Console.ReadLine()) is not null)
     var la = new LegalityAnalysis(pk);
     var enc = la.EncounterMatch;
     // Move verdicts live in Info.Moves, not in Results.
-    var invalid = la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}:{r.Result}")
+    var invalid = la.Results.Where(r => !r.Valid || (includeFishy && r.Judgement == Severity.Fishy))
+        .Select(r => $"{(r.Judgement == Severity.Fishy ? "~" : "")}{r.Identifier}:{r.Result}")
         .Concat(la.Info.Moves.Select((m, i) => (m, i)).Where(x => !x.m.Valid)
             .Select(x => $"Move{x.i + 1}:{x.m.Info.Method}"));
     Console.WriteLine($"{parts[0]} {(la.Valid ? "VALID" : "INVALID")} {enc.GetType().Name}:{enc.Species}:{enc.Version}:{enc.LevelMin} ; {string.Join(' ', invalid)}");

@@ -1,0 +1,22 @@
+{
+  "declared_before_generation": true,
+  "reference_release": "26.10.18",
+  "reference_commit": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "seeds": {
+    "gen1": 2026102701,
+    "gen2": 2026102702,
+    "gen34": 2026102703,
+    "gen5": 2026102704,
+    "correlated_context": 2026102705
+  },
+  "gb_records_per_generation": 30000,
+  "gen34_mutations": 4,
+  "gen5_mutations": 4,
+  "purpose": "Independent holdout after the production milestone is frozen; never used for tuning. Any finding requires reporting this entire raw run and a separately declared new holdout.",
+  "development_inputs": [
+    "existing CURRENT_GEN5_FALSE_CLEAN.json",
+    "existing retained regression corpora",
+    "development seeds explicitly separate from these seeds"
+  ],
+  "claims": "synthetic validation, not authenticated historical specimens"
+}

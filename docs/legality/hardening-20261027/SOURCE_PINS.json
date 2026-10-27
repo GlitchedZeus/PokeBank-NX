@@ -11,7 +11,15 @@
       "PKHeX.Core/Legality/Verifiers/EffortExpLegality.cs": "9927d07a68a78dc43a6ff858273cd2e7100c672fff224820d135abca6fe6f26c",
       "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs": "47cdded6905c343776b6f7b6ffb4f0cfe64285b7479209bd118ae9aa5e5bc9c1",
       "PKHeX.Core/Legality/Verifiers/IndividualValueVerifier.cs": "1dc575b17496a0adbd3c008a4b4dd3135b57d2d068ee8b30325d62fa3be98a78",
-      "PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterTrade4RanchGift.cs": "0eb7fdf1b45c850a025776438cb8b08a2c1c314815e795f67accbb4217a511c0"
+      "PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterTrade4RanchGift.cs": "0eb7fdf1b45c850a025776438cb8b08a2c1c314815e795f67accbb4217a511c0",
+      "PKHeX.Core/Game/Enums/LanguageID.cs": "235caa5964175f7a04cd26cf9f6b04f99f7b018445316f30abd7c714210fbb2d",
+      "PKHeX.Core/Legality/Encounters/Templates/Gen5/GlobalLinkPromotion.cs": "3556af2b8500c20efa255f928fa85f08181043d13b91c0c0f34977db19532990",
+      "PKHeX.Core/Legality/Encounters/Templates/Gen5/EncounterStatic5Entree.cs": "c242753c71aa8a57efdd2ec2af258fe57b1a4a4298c37e5a6cbf6be5481c2459",
+      "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5BW.cs": "a633c1f142376e3d72e92edc3fabf26a635f6fcb2d5305bca5ddbea4f65741aa",
+      "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5B2W2.cs": "15c5337f6cb886b76f4a8b5f950264b552f1d97a49479e26fba7c0e6c3ab0833",
+      "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5DR.cs": "8c22dc3b2abc1d508edbbbfd74f629100620dadcd24c9c78bcbd498241ed1d3e",
+      "PKHeX.Core/Legality/RNG/Algorithms/MRNG.cs": "f95e0a85d13fa7defb0b0b8094a8f6e7a626c6b7ffacadf30530054fb84413fd",
+      "PKHeX.Core/Legality/RNG/Algorithms/MRNGReversal.cs": "5ceeddcccb5a19f9290936713cb4038923ca7511df0859f4ca2eec202b7620b3"
     }
   },
   "application": {
@@ -26,10 +34,21 @@
   },
   "validation": {
     "gcc_adapter_previous": 5069,
-    "gcc_context": 239,
+    "gcc_context": 247,
     "gcc_current_app_bridge": 84,
     "gcc_presentation": 59049,
-    "sanitizers": "pending",
-    "ci": "pending"
+    "sanitizers": "pending fresh rebuild",
+    "ci": "pending exact published head",
+    "gcc_release_rules": 59,
+    "gcc_ranch_generated_states": 256,
+    "gcc_gen4": {
+      "cases": 249,
+      "fuzz": 40000
+    },
+    "gcc_gen5": {
+      "cases": 207,
+      "fuzz": 40000
+    },
+    "native_ev_source_replay": "GCC PASS, original body and EXP split; not hardware"
   }
 }

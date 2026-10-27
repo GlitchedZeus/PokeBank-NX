@@ -1,0 +1,29 @@
+{
+  "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+  "files": [
+    {
+      "path": "src/battle/battle_command.c",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/battle/battle_command.c",
+      "git_blob": "a3d46b1569187973a0f042357154d92d972a0317",
+      "sha256": "6b1d9f5fcac3acb449dd7559f46cda212683e61a89e207b47e6853d08f4633bb"
+    },
+    {
+      "path": "files/itemtool/itemdata/item_data.csv",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/files/itemtool/itemdata/item_data.csv",
+      "git_blob": "31bc621925074ed0d8e862108f8cc2733c92b473",
+      "sha256": "d4f1f80e8a79504599837912c59f18acd77c3c111d892dfa094f6d0a7c455ac1"
+    },
+    {
+      "path": "files/fielddata/encountdata/gs_enc_data.json",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/files/fielddata/encountdata/gs_enc_data.json",
+      "git_blob": "bb3d4a421f4f53dc80126fde7e1dff79ed012a1f",
+      "sha256": "ae0895407231448bbf12be33480e534e5ca812d9f172ffd0b0918c29070f4ab1"
+    },
+    {
+      "path": "include/constants/items.h",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/include/constants/items.h",
+      "git_blob": "1464215e7cc735ca1ec630ef76793c3c9fb12128",
+      "sha256": "20576a5dc04bd40cb1d212f1dad2de8e0083cf966e9535e3c10baac36cbd7193"
+    }
+  ]
+}

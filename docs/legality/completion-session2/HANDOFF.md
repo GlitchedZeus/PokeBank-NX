@@ -1,3 +1,13 @@
+# October27 official release rule milestone
+
+Official release26.10.18 bfe89c74… is pinned. Global Link catalog metadata774 rows is paired to all762 frozen Entree rows, with3 additional represented encounter variants. Unsupported recipient claims stay Incomplete; supported alternative histories take precedence, including moves. All38 retained native PGL false-clean disagreements now stay Incomplete. The nine Gen V chain cases, one Gen IV-origin disagreement and five reference analysis errors remain unresolved. Raw input IDs and bytes are retained.
+
+Ranch IV reachability is now exhaustively checked over the16-bit unknown first-output state in native PK4 and transferred PK5. An excluded profile stays Incomplete because original Wii generation evidence is not authenticated. PID remains independent. The existing Ranch positive and its derived transfer pass; unreachable IV controls are uncertain. No new Invalid predicate is introduced by these catalog/model uncertainties.
+
+A native-source HGSS replay proves a reachable EV result (HP101/ATK104 after100 vitamins each) with only1 gained EXP, from one level2 Hoothoot battle with Power Bracer and6 participants/5 Exp Shares. Official PKHeX rejects it with EffortUntrainedMoreEXP_0 (delta4). Existing production correctly accepts it and still rejects the zero-EXP control. The release's independent per-stat EXP sum was deliberately not copied. Source/replay/fixtures are permanent; this is not hardware evidence.
+
+Two formerly clean English Kanto promotion fixtures are retained as Incomplete; their positive assertions remain with source-compatible Japanese constructions. Hidden-ability mismatches no longer become clean merely because candidate selection finds a current-species fixed-slot template. GCC Gen4:249+40000, Gen5:207+40000, app context247, release59+256RNG witnesses PASS. Fresh sanitizer/compiler, release holdout, all gates and current-app rehearsal are pending. See hardening-20261027. PR307 untouched.
+
 # October 27 production boundary and current-release audit
 
 The working checkpoint hardens the Gen V app adapter: exact source title, Party/Box geometry, trainer context and original/staged provenance are required before a nonempty app record can be certified. Current staged trainer changes are read from `trainerPresentation()`. Record identity is returned only after size/checksum/sanity checks. A species-zero nonblank PK5 remains Incomplete. The low-level detached-record API retains its optional context contract.

@@ -89,8 +89,13 @@ int main() {
         // Different trainers and languages are legitimate trades, including
         // a changed SID with the same TID. No context shortcut rejects them.
         auto trade = complete; trade.trainer.sid ^= 1; trade.trainer.ot[0] = u'X';
+        trade.trainer.ot[4] = 0xFFFF;
         trade.trainer.language = 1;
         check(positive, game, trade, Verdict::NoProblemsFound);
+        trade.trainer.language = 8; // Korean is8; Spanish is7.
+        check(positive, game, trade, Verdict::NoProblemsFound);
+        trade.trainer.ot = pk.ot; // A six-unit JP/KR save trainer is unverified.
+        check(positive, game, trade, Verdict::Incomplete);
         auto broken = positive; broken[0x40] ^= 1;
         assert(!check(broken, game, complete, Verdict::Invalid).identity);
         broken = positive; broken[4] = 1;

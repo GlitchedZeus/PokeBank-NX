@@ -18,8 +18,8 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_sanitize
 host-test: $(HOST_BUILD)/test_legality_gen5
 host-sanitize: $(HOST_BUILD)/test_legality_gen5_sanitize
 
-GEN5_FULL_CARD_HEADERS := include/Legality/Gen5FullWonderCard.h include/Legality/Gen5FullCardCatalog.h
-GEN5_ORIGIN_HEADERS := src/Legality/Gen4LegalityInternal.h include/Legality/Gen4Legality.h include/Legality/Gen4LegalityData.h
+GEN5_FULL_CARD_HEADERS := include/Legality/Gen5FullWonderCard.h include/Legality/Gen5FullCardCatalog.h include/Legality/Gen5GlobalLinkCatalog.h
+GEN5_ORIGIN_HEADERS := src/Legality/Gen4LegalityInternal.h include/Legality/Gen4Legality.h include/Legality/Gen4LegalityData.h include/Legality/Gen4RanchIV.h
 
 # Shared Gen IV terrain verification also applies to origins retained in a PK5.
 GEN4_GROUND_TILE_SOURCES := tests/test_gen4_ground_tile.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
@@ -107,3 +107,15 @@ $(HOST_BUILD)/test_gen5_full_card_evidence: $(GEN5_FULL_CARD_TEST_SOURCES) $(GEN
 $(HOST_BUILD)/test_gen5_full_card_evidence_sanitize: $(GEN5_FULL_CARD_TEST_SOURCES) $(GEN5_FULL_CARD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_FULL_CARD_TEST_SOURCES) -o $@
+
+GEN35_RELEASE_SOURCES := tests/test_gen35_release_rules.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen35_release_rules
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen35_release_rules_sanitize
+host-test: $(HOST_BUILD)/test_gen35_release_rules
+host-sanitize: $(HOST_BUILD)/test_gen35_release_rules_sanitize
+$(HOST_BUILD)/test_gen35_release_rules: $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@
+$(HOST_BUILD)/test_gen35_release_rules_sanitize: $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@

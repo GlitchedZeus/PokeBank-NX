@@ -21,6 +21,7 @@
 #include "Legality/Gen5Legality.h"
 #include "Legality/Gen5GiftReceivability.h"
 #include "Legality/Gen5FullCardCatalog.h"
+#include "Legality/Gen5GlobalLinkCatalog.h"
 
 #include <algorithm>
 #include <array>
@@ -590,6 +591,7 @@ struct Template {
     bool egg = false;      // PKHeX IEncounterTemplate.IsEgg
     std::array<uint16_t, 4> moves{};
     bool receivingUnverified = false;
+    bool catalogOnly = false;
     bool archivedFullCard = false;
     bool archivedReceivingClaim = false;
     const uint8_t* card = nullptr; // PGF
@@ -1028,11 +1030,9 @@ void Gen5Analyzer::abilities() {
     // PID decide (PKHeX VerifyAbility5 / CheckMatch). Fixed-slot templates and
     // event cards are checked by the encounter match itself.
     if (!matched_ || match_.kind == Kind::Gift) return;
-    if (match_.ability > 0 && match_.species == p_.species) return;
     const uint8_t number = abilityNumber(p_);
     const uint8_t expected = number == 4 ? ah : number == 2 ? a1 : a0;
-    if (p_.ability == expected || (number != 4 && a0 == a1 && p_.ability == a0)) return;
-    if (number == 4 && match_.ability == OnlyHidden) {
+    if (number == 4 && match_.ability == OnlyHidden && p_.ability != ah) {
         // A hidden-ability-only template (Entree Forest, Hidden Grotto, Dream Radar...),
         // evolved since. No Gen V game is known to keep the flag with a slot 1/2 ability,
         // but nothing from the games proves it (no Gen V decompilation), and PKHeX accepts
@@ -1043,6 +1043,8 @@ void Gen5Analyzer::abilities() {
                                           "(not shown impossible in Gen V; not treated as Invalid)");
         return;
     }
+    if (match_.ability > 0 && match_.species == p_.species) return;
+    if (p_.ability == expected || (number != 4 && a0 == a1 && p_.ability == a0)) return;
     a_.invalid(CheckIdentifier::Ability, number == 4
         ? "Hidden ability flag is set but the ability is not the hidden ability"
         : "Ability does not match the PID's ability slot");
@@ -1258,8 +1260,9 @@ void Gen5Analyzer::slotCandidates(std::vector<Candidate>& out) {
 
 void Gen5Analyzer::staticCandidates(std::vector<Candidate>& out) {
     const uint8_t bit = versionBit(p_.version);
-    for (std::size_t i = 0; i < D::kStaticCount; ++i) {
-        const auto& s = D::kStatics[i];
+    for (std::size_t i = 0; i < D::kStaticCount + std::size(Gen5GlobalLink::kAdditionalEntree); ++i) {
+        const auto& s = i < D::kStaticCount ? D::kStatics[i]
+            : Gen5GlobalLink::kAdditionalEntree[i - D::kStaticCount];
         if (!(s.versions & bit) || !inChain(chain_, s.species)) continue;
         const auto kind = static_cast<D::StaticKind>(s.kind);
         Candidate c;
@@ -1307,6 +1310,10 @@ void Gen5Analyzer::staticCandidates(std::vector<Candidate>& out) {
                 break;
         }
         if (!applies) continue;
+        if (kind == D::StaticKind::Entree) {
+            c.t.catalogOnly = i >= D::kStaticCount;
+            c.t.receivingUnverified = c.t.catalogOnly || !Gen5GlobalLink::supports(s, p_.version, p_.language);
+        }
         if (kind == D::StaticKind::Radar && s.level == 0) {
             if (p_.metLevel % 5 != 0 || p_.metLevel < 5 || p_.metLevel > 40)
                 c.fails.push_back("Dream Radar met level must be a multiple of 5 from 5 to 40");
@@ -1537,7 +1544,22 @@ void Gen5Analyzer::encounterGen5() {
     }
     // Prefer a fully supported alternative over a template whose receipt
     // constraints cannot certify this record. Do not stop at the first PGF.
-    for(const auto& c:all)if(c.fails.empty()&&!c.t.receivingUnverified){best=&c;break;}
+    const Candidate* unverifiedMoves = nullptr;
+    bool supportedMoves = false;
+    for (const auto& c : all) {
+        if (!c.fails.empty()) continue;
+        const auto pool = movesFor(&c.t);
+        const bool learnable = std::all_of(p_.moves.begin(), p_.moves.end(), [&](uint16_t move) {
+            return move == 0 || (move <= kMaxMove && pool.test(move)) ||
+                (inChain(chain_, 235) && move <= kMaxMove && move != 165 && move != 448);
+        });
+        if (!learnable) continue;
+        if (!c.t.receivingUnverified) { best = &c; supportedMoves = true; break; }
+        if (!unverifiedMoves) unverifiedMoves = &c;
+    }
+    // Do not discard a possible uncertain history merely because an earlier
+    // supported template matches the identity but cannot supply its moves.
+    if (!supportedMoves && unverifiedMoves) best = unverifiedMoves;
     if (best && best->fails.empty()) {
         matched_ = true;
         match_ = best->t;
@@ -1563,7 +1585,11 @@ void Gen5Analyzer::encounterGen5() {
             // Catalog metadata alone is not an exhaustive authenticated event
             // history. Missing receipt proof cannot establish an impossible origin.
             cov.eventGift=CoverageLevel::Partial;
-            a_.warn(CheckIdentifier::EventGift,"PGF receiving language/game is unsupported by the newer event catalog; original distribution evidence is required");
+            a_.warn(CheckIdentifier::EventGift, match_.catalogOnly
+                ? "Global Link encounter is present only in the newer catalog; original distribution evidence is required"
+                : match_.kind == Kind::Entree
+                ? "Global Link promotion language/game is unsupported by the pinned catalog; original distribution evidence is required"
+                : "PGF receiving language/game is unsupported by the newer event catalog; original distribution evidence is required");
         }
         if(match_.archivedFullCard) {
             a_.info(CheckIdentifier::EventGift,
