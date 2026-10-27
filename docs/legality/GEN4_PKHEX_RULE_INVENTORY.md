@@ -1,5 +1,7 @@
 # PKHeX Gen IV (PK4) legality rule inventory
 
+> Historical baseline only. Current release comparison, gaps and application wiring: [October27 audit](hardening-20261027/RULE_GAPS.md). Historical “implemented/complete” and corpus totals below do not certify PKHeX26.10.18 parity or PR307 deployment.
+
 Reference for the Gen IV analyzer (`src/Legality/Gen4Legality*.cpp`, `include/Legality/Gen4Legality.h`).
 It is a port of PKHeX.Core at kwsch/PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722 (GPL-3.0) for
 PK4 records whose origin is Diamond, Pearl, Platinum, HeartGold or SoulSilver, or Ruby, Sapphire,

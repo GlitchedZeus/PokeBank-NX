@@ -40,6 +40,7 @@ def collect(root,pin):
 def generate(pinned,current,repo):
  snapshots={}
  for label,root in [('pinned',pinned),('current',current)]:
+  assert sha(root)==PINS[label], f'{label}: checkout does not match declared reference pin'
   rows,files=collect(root,PINS[label]);snapshots[label]={'commit':PINS[label],'source_sites':rows,'files':files}
  a=snapshots['pinned']['files'];b=snapshots['current']['files'];drift={'added':sorted(b.keys()-a.keys()),'removed':sorted(a.keys()-b.keys()),'changed':sorted(k for k in a.keys()&b.keys() if a[k]!=b[k])}
  source_groups={category:[r['id'] for r in snapshots['pinned']['source_sites'] if search.casefold() in r['path'].casefold()] for category,(search,area) in CATEGORIES.items()}
@@ -57,4 +58,6 @@ def generate(pinned,current,repo):
  'games':GAMES,'regional_variants':['Japanese Red/Green/Blue/Yellow','Japanese G/S/C','Korean Gold/Silver','international language variants'],
  'pkhex_source_groups':source_groups,'snapshots':snapshots,'upstream_drift':drift,'coverage':coverage,'metrics':{str(g):{'rule_coverage':None,'production_wired_rule_coverage':None,'invalid_detection':None,'valid_certification':None,'exact_verdict_agreement':None,'historical_provenance':None,'original_source_evidence':None,'unresolved_rule_count':None} for g in GAMES}}
 if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('pinned',type=pathlib.Path);p.add_argument('current',type=pathlib.Path);p.add_argument('output',type=pathlib.Path);a=p.parse_args();a.output.write_text(json.dumps(generate(a.pinned,a.current,pathlib.Path(__file__).resolve().parents[2]),indent=2)+'\n')
+ p=argparse.ArgumentParser();p.add_argument('pinned',type=pathlib.Path);p.add_argument('current',type=pathlib.Path);p.add_argument('output',type=pathlib.Path)
+ p.add_argument('--current-commit',default=PINS['current']);a=p.parse_args();PINS['current']=a.current_commit
+ a.output.write_text(json.dumps(generate(a.pinned,a.current,pathlib.Path(__file__).resolve().parents[2]),indent=2)+'\n')

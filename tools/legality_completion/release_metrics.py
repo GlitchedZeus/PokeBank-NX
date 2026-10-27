@@ -19,15 +19,15 @@ def read(root, group):
         a=line.split();b=native.split()
         assert a[0]==b[0] and a[0] not in seen, (group,a[0],b[0])
         seen.add(a[0])
-        gen=int(group[-1]) if group!='gen34' else (3 if len(a[2])==160 else 4)
-        verdict=a[3] if group=='gen34' else a[2] if group=='gen5' else a[1]
+        gen=5 if group.startswith('gen5') else int(group[-1]) if group!='gen34' else (3 if len(a[2])==160 else 4)
+        verdict=a[3] if group=='gen34' else a[2] if group.startswith('gen5') else a[1]
         actual={'VALID':'NOPROBLEMS','UNCERTAIN':'INCOMPLETE'}.get(b[1],b[1])
         assert verdict in ('VALID','INVALID'), (group,line)
         assert actual in ('NOPROBLEMS','INVALID','INCOMPLETE','LOADFAIL'), (group,native)
         fishy=bool('~' in line.partition(';')[2])
         yield {'group':group,'generation':gen,'id':a[0],'reference':verdict,'nx':actual,
                'fishy':fishy,'misc_error':'Misc:Error' in line,
-               'game':a[1] if group=='gen34' else a[6] if group=='gen5' else 'no source save title',
+               'game':a[1] if group=='gen34' else a[6] if group.startswith('gen5') else 'no source save title',
                'reference_line':line,'production_line':native}
 
 def metric(rows):
@@ -54,12 +54,16 @@ if __name__=='__main__':
         subset=[r for r in rows if r['generation']==gen]
         report['generations'][str(gen)]={**metric(subset),'by_game_or_origin':{g:metric([r for r in subset if r['game']==g]) for g in sorted({r['game'] for r in subset})}}
     report['total']=metric(rows)
+    extra=[]
+    if (a.root/'gen5-correlated-reference.txt').exists():
+        groups.append('gen5-correlated');extra=list(read(a.root,'gen5-correlated'))
+        report['correlated_gen5']=metric(extra)
     for group in groups:
         for side in ['reference','production']:
             path=a.root/f'{group}-{side}.txt';report['files'][path.name]={'sha256':digest(path),'bytes':path.stat().st_size}
     a.output.write_text(json.dumps(report,indent=2)+'\n')
     with a.output.with_suffix('.differences.csv').open('w') as f:
         w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader()
-        w.writerows(r for r in rows if r['nx']!=('INVALID' if r['reference']=='INVALID' else 'NOPROBLEMS'))
+        w.writerows(r for r in rows+extra if r['nx']!=('INVALID' if r['reference']=='INVALID' else 'NOPROBLEMS'))
     for gen,info in report['generations'].items():
         print(gen,{k:v for k,v in info.items() if k!='by_game_or_origin'})

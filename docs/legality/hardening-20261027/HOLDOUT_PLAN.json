@@ -31,5 +31,15 @@
     "gb_records_per_generation": 30000,
     "mutations_per_base": 4,
     "reason": "Berry Fix bound was found by source audit after the first holdout was generated, before its aggregate metrics were inspected. Preserve and report that entire run, then generate this additional independent set after the repair is committed. Neither set may be dropped or used for tuning."
+  },
+  "post_public_fixture_repairs": {
+    "declared_before_generation": true,
+    "seeds": {
+      "gen34": 2026102723,
+      "gen5": 2026102724,
+      "correlated": 2026102725
+    },
+    "mutations_per_base": 4,
+    "reason": "Public (not holdout) fixtures identified two false Invalid defects: GenIV traded hatch-game ball writer and GenV evolved fixed-slot ability. All prior raw results remain reported. Generate an additional independent affected-generation comparison only after the fixes are committed. GB code unchanged; its post-repair holdout remains the exact implementation measured."
   }
 }

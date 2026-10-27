@@ -683,14 +683,19 @@ void checkCommon(const Pk5& p, const Template& t, const Personal& cur, std::vect
             break;
         case OnlyFirst:
             if (number == 4) fails.push_back("has its hidden ability, which this encounter cannot give");
-            else if (number != 1 && index != 0) fails.push_back("ability slot is not the fixed first slot");
+            else if (t.species == p.species && number != 1 && index != 0)
+                fails.push_back("ability slot is not the fixed first slot");
             break;
         case OnlySecond:
             if (number == 4) fails.push_back("has its hidden ability, which this encounter cannot give");
-            else if (number != 2 && index != 1) fails.push_back("ability slot is not the fixed second slot");
+            else if (t.species == p.species && number != 2 && index != 1)
+                fails.push_back("ability slot is not the fixed second slot");
             break;
         default: break;
     }
+    // Released VerifyFixedAbility: after a Gen V evolution, the current ability
+    // must match its PID (abilities()), rather than the original fixed slot.
+    // Hidden permission is still checked above for every species.
     const bool shiny = Gen5::isShiny(p.pid, p.tid, p.sid);
     if (t.shiny == 1 && shiny) fails.push_back("is shiny, but this encounter is shiny-locked");
     if (t.shiny == 2 && !shiny) fails.push_back("is not shiny, but this encounter is always shiny");

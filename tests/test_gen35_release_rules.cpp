@@ -74,6 +74,19 @@ int main() {
         ++cases;
     }
     assert(berry.eof()&&berryClean==30&&berryInvalid==42&&cases==132);
+    std::ifstream context("tests/fixtures/gen15_session2/evolved_trade_hatch.txt");assert(context);
+    size_t contextClean=0,contextInvalid=0;
+    std::string game;
+    while(context>>id>>format>>game>>expected>>hex) {
+        const auto bytes=fromHex(hex.c_str()),original=bytes;
+        const auto report=format==4?Legality::analyzePk4(bytes,game)
+            :Legality::analyzePk5(bytes,{.encrypted=false});
+        assert(report.verdict()==(expected=="NOPROBLEMS"?Verdict::NoProblemsFound:Verdict::Invalid));
+        assert(bytes==original);
+        if(expected=="NOPROBLEMS")++contextClean;else ++contextInvalid;
+        ++cases;
+    }
+    assert(context.eof()&&contextClean==4&&contextInvalid==4&&cases==140);
     // A known full RNG state must survive reversal for both sign-bit aliases.
     uint32_t seed=0x20261027;
     for(size_t i=0;i<256;++i) {

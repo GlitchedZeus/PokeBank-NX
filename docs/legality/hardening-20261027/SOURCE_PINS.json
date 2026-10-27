@@ -22,7 +22,10 @@
       "PKHeX.Core/Legality/RNG/Algorithms/MRNGReversal.cs": "5ceeddcccb5a19f9290936713cb4038923ca7511df0859f4ca2eec202b7620b3",
       "PKHeX.Core/Legality/Encounters/Templates/Gen3/Gifts/EncounterGift3.cs": "da0ed185e28985f704cf66784e3ac11771f57c3ac710ae6e529d3e6760052dfb",
       "PKHeX.Core/Legality/RNG/ClassicEra/Gen3/CommonEvent3Checker.cs": "5c9e4a640e6f3b716ab91d066dddd09f97c2c39ea1bcab2f9f32d9f6413821e7",
-      "PKHeX.Core/Legality/Encounters/Data/Gen3/EncountersWC3.cs": "b0cf5e9ee856764d994df5638752d530f5cc01e30254d6f2a4b0bb5436eb91cd"
+      "PKHeX.Core/Legality/Encounters/Data/Gen3/EncountersWC3.cs": "b0cf5e9ee856764d994df5638752d530f5cc01e30254d6f2a4b0bb5436eb91cd",
+      "PKHeX.Core/Legality/Verifiers/Ability/AbilityVerifier.cs": "1f3fa95759acfec89885d20bfd89a01dc63f2b579095de7816538f42b80bbbdb",
+      "PKHeX.Core/Legality/Verifiers/Misc/MiscVerifierG4.cs": "974fbb9135a01a35011fc3ab4359721ee016d5e7e46cdc5fd05446e813f4ad25",
+      "PKHeX.Core/Legality/Encounters/Verifiers/EggHatchLocation4.cs": "784a1dbc3396129e0f658e09a2dd3d45bcb6b0a3eab9ef66120aa44e1f9b4a13"
     }
   },
   "application": {
@@ -42,7 +45,7 @@
     "gcc_presentation": 59049,
     "sanitizers": "pending fresh rebuild",
     "ci": "pending exact published head",
-    "gcc_release_rules": 132,
+    "gcc_release_rules": 140,
     "gcc_ranch_generated_states": 256,
     "gcc_gen4": {
       "cases": 249,
@@ -53,6 +56,7 @@
       "fuzz": 40000
     },
     "native_ev_source_replay": "GCC PASS, original body and EXP split; not hardware",
-    "berry_fix": "72 reference-model constructions; 30 clean and42 negative across formats3,4,5. No acquired specimen or original distribution binary authenticated."
+    "berry_fix": "72 reference-model constructions; 30 clean and42 negative across formats3,4,5. No acquired specimen or original distribution binary authenticated.",
+    "pre_hatch_matrix": "GCC/Clang normal and leak-enabled ASan/UBSan seven affected suites passed before the final two source repairs. Final exact-head rebuild pending."
   }
 }

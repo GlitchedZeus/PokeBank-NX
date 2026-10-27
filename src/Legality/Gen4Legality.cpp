@@ -148,7 +148,7 @@ constexpr uint8_t kHatch4[] = {
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 7, 3, 3, 3, 3, 2, 0, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 6, 6, 6, 6, 6, 2, 6, 2,
-    2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    2, 6, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4,
@@ -1433,7 +1433,16 @@ void Analyzer::verifyMisc() {
     if (pk_.ballDPPt > kBallCherish) invalid(CheckIdentifier::Items, "D/P/Pt ball value is above the Cherish Ball");
     {
         // MiscVerifierG4.IsValidBallHGSS: HG/SS-created records (including Pal Park into Pt/HG/SS) set this byte.
-        const bool createdHGSS = isHGSS(pk_.version) ? enc_.kind != EncKind::Pcd : palParkPtHGSS;
+        // Hatching rebuilds the mon and sets its ball in the hatch game, while
+        // retaining MET_GAME (native get_egg.c / overlay005/daycare.c). A traded
+        // egg's origin version therefore cannot identify this byte's writer.
+        bool createdHGSS = palParkPtHGSS;
+        if (!createdHGSS && enc_.kind != EncKind::Pcd) {
+            if (!pk_.isEgg && pk_.eggLocation() == kLocLinkTrade4)
+                createdHGSS = pk_.ballHGSS != 0 && hatchFlag(pk_.metLocationExtended, 4);
+            else
+                createdHGSS = isHGSS(pk_.version);
+        }
         bool ok;
         if (!createdHGSS) ok = pk_.ballHGSS == 0;
         else if (palParkPtHGSS && pk_.ballHGSS == 0) ok = true; // could be a Platinum transfer

@@ -1,5 +1,7 @@
 # Gen I-V legality: rule coverage, detection rates and test counts
 
+> Historical baseline only. Current release comparison, gaps and application wiring: [October27 audit](hardening-20261027/RULE_GAPS.md). Historical “implemented/complete” and corpus totals below do not certify PKHeX26.10.18 parity or PR307 deployment.
+
 Three separate measures, kept apart on purpose (owner priority 7):
 
 1. **Production-wired rule coverage**: which rules the app actually runs when it shows a
