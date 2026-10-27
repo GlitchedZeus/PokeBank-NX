@@ -3404,9 +3404,12 @@ def round7_contracts(sources):
                                 "Gen V Party opens Review on + although its footer shows Y")
     co = src("src/UI/TrainerViewScreenCompositeOverlay.cpp")
     bf = body_of(co, "drawGen2ClassicBoxFooter")
-    if co and bf and re.search(r"drawNavBar", bf) and not re.search(r"Review|footerHint", bf):
-        r.violations.append("src/UI/TrainerViewScreenCompositeOverlay.cpp: Gen II Boxes footer hides the + Review "
-                            "that the Boxes screen opens")
+    # Every footer variant (occupied slot / empty slot) names the + Review the Boxes screen opens.
+    for nb in re.finditer(r"drawNavBar\s*\(\s*fb\s*,\s*\{(.*?)\}\s*\)\s*;", bf or "", re.S):
+        if not re.search(r'\{\s*"\+"\s*,\s*"Review"\s*\}|footerHint\s*\(', nb.group(1)):
+            r.violations.append("src/UI/TrainerViewScreenCompositeOverlay.cpp: Gen II Boxes footer hides the + Review "
+                                "that the Boxes screen opens")
+            break
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
