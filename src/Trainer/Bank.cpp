@@ -1,5 +1,6 @@
 #include "Trainer/Bank.h"
 #include "Trainer/BankRecordValidation.h"
+#include "Trainer/BankLoadPolicy.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -252,15 +253,29 @@ namespace Trainer {
         writeBlockReasonText.clear();
 
         const std::string path = filePath();
-        size_t fileSize = 0;
-        uint8_t* file = readAllBytes(path.c_str(), &fileSize);
-        if (!file) {
+        // Only a genuinely absent bank.dat with no preserved generation is a first run. A missing
+        // target with a validating .previous.N (interrupted save) is restored first; anything that
+        // cannot be inspected opens empty and write-blocked, never migrated over.
+        const auto start = BankLoadPolicy::decide(path, &Bank::validateStorageImage);
+        if (start.start == BankLoadPolicy::Start::Blocked) {
+            writeBlocked = true;
+            writeBlockReasonText = start.detail;
+            savedImage = serialize();
+            logErrorToFile("Bank: load blocked; no migration, writes blocked", start.detail.c_str());
+            return;
+        }
+        if (start.start == BankLoadPolicy::Start::FirstRun) {
             // No unified bank yet: one-time import of any legacy per-group bank files, then snapshot.
             migrateLegacyBanks();
             savedImage = serialize();
             logInfoToFile("Bank: no unified bank file; migrated legacy banks if present", path.c_str());
             return;
         }
+        if (start.restored)
+            logInfoToFile("Bank: interrupted save recovered", start.detail.c_str());
+
+        size_t fileSize = 0;
+        uint8_t* file = readAllBytes(path.c_str(), &fileSize);
 
         const size_t payload = maxPayloadSize();
         const size_t recSize = 4 + payload;
@@ -285,6 +300,13 @@ namespace Trainer {
             delete[] file;
             savedImage = serialize();
         };
+
+        if (!file) {
+            // bank.dat exists but could not be read (I/O error, out of memory, short read). It is
+            // still the user's only copy: never a first run, never migrated over.
+            abandonFile("existing bank file could not be read");
+            return;
+        }
 
         if (fileSize < HEADER_SIZE || std::memcmp(file, BANK_MAGIC, 8) != 0) {
             abandonFile("bad magic or truncated header");

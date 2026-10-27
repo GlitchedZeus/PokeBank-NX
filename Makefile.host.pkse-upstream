@@ -1,0 +1,21 @@
+# PKSE 1.2.x upstream-parity regressions (docs/audits/PKSE_1_2_X_GEN15_GAP_MATRIX.md).
+PKSE_UPSTREAM_HOST_TESTS := \
+	$(HOST_BUILD)/test_bank_load_policy
+
+PKSE_UPSTREAM_SANITIZE_TESTS := \
+	$(HOST_BUILD)/test_bank_load_policy_sanitize
+
+HOST_TESTS += $(PKSE_UPSTREAM_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(PKSE_UPSTREAM_SANITIZE_TESTS)
+host-test: $(PKSE_UPSTREAM_HOST_TESTS)
+host-sanitize: $(PKSE_UPSTREAM_SANITIZE_TESTS)
+
+BANK_LOAD_POLICY_SOURCES := tests/test_bank_load_policy.cpp src/Utils/DurableFile.cpp
+
+$(HOST_BUILD)/test_bank_load_policy: $(BANK_LOAD_POLICY_SOURCES) include/Trainer/BankLoadPolicy.h include/Utils/DurableFile.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(BANK_LOAD_POLICY_SOURCES) -o $@
+
+$(HOST_BUILD)/test_bank_load_policy_sanitize: $(BANK_LOAD_POLICY_SOURCES) include/Trainer/BankLoadPolicy.h include/Utils/DurableFile.h src/Trainer/Bank.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(BANK_LOAD_POLICY_SOURCES) -o $@

@@ -22,6 +22,7 @@ include Makefile.host.round4-r
 include Makefile.host.round4-codex
 include Makefile.host.host-ui
 include Makefile.host.review-entry
+include Makefile.host.pkse-upstream
 
 include Makefile.host.machine
 
