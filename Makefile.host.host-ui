@@ -120,7 +120,6 @@ $(HOST_UI_QUICK_GAMES_SANITIZE): $(HOST_UI_QUICK_GAMES_INPUTS) $(HOST_UI_SANITIZ
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_quick_games_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 
-endif
 
 # Round 7 B07 / C09 (lane R): Gen II Unown Letter grid, Shiny questions and Reroll through the real
 # TrainerViewScreen input (Silver save with an Unown in Box 2).
@@ -138,3 +137,5 @@ $(HOST_UI_UNOWN_TEST): $(HOST_UI_UNOWN_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_UNOWN_SANITIZE): $(HOST_UI_UNOWN_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_unown_letter_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+endif
