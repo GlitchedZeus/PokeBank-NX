@@ -106,14 +106,22 @@ bool familyMatches(SourceGame hint, VersionFamily family) noexcept {
     return (hint == SourceGame::Crystal) == (family == VersionFamily::Crystal);
 }
 
-std::optional<std::pair<std::size_t, std::size_t>> splitPayload(std::span<const uint8_t> raw) noexcept {
+struct PayloadSplit {
+    std::size_t payload = 0;
+    std::size_t footer = 0;
+    std::size_t padding = 0;
+};
+
+std::optional<PayloadSplit> splitPayload(std::span<const uint8_t> raw) noexcept {
     if (raw.size() == kRawSaveSize32K || raw.size() == kRawSaveSize64K)
-        return std::pair{raw.size(), std::size_t{0}};
+        return PayloadSplit{raw.size(), 0, 0};
     for (const std::size_t base : {kRawSaveSize32K, kRawSaveSize64K}) {
         if (raw.size() <= base) continue;
         const std::size_t footer = raw.size() - base;
-        if (isKnownRTCFooterSize(footer)) return std::pair{base, footer};
+        if (isKnownRTCFooterSize(footer)) return PayloadSplit{base, footer, 0};
     }
+    std::size_t padded = 0;
+    if (splitPaddedSave(raw, padded)) return PayloadSplit{padded, 0, raw.size() - padded};
     return std::nullopt;
 }
 
@@ -264,6 +272,25 @@ bool isKnownRTCFooterSize(std::size_t size) noexcept {
     return PokeVault::Save::isKnownRtcFooterSize(size);
 }
 
+bool splitPaddedSave(std::span<const uint8_t> raw, std::size_t& payloadSize) noexcept {
+    payloadSize = 0;
+    if (raw.size() != kPaddedSaveSize128K) return false;
+    // Smallest first, as upstream PKSE 9a9a731: every layout is probed at either size, so trying
+    // 64 KiB first would take an international save with 32 KiB of padding inside its payload.
+    // A real Japanese Crystal (64 KiB SRAM) fails the uniform-tail test at 32 KiB and lands here
+    // at 64 KiB with its bank-4 gender byte intact.
+    for (const std::size_t base : {kRawSaveSize32K, kRawSaveSize64K}) {
+        const uint8_t fill = raw[base];
+        if (fill != 0x00 && fill != 0xFF) continue;
+        if (std::all_of(raw.begin() + static_cast<std::ptrdiff_t>(base), raw.end(),
+                        [fill](uint8_t b) { return b == fill; })) {
+            payloadSize = base;
+            return true;
+        }
+    }
+    return false;
+}
+
 uint16_t calculateChecksum(
     std::span<const uint8_t> payload, RegionLayout region, VersionFamily family) noexcept {
     const Layout* chosen = nullptr;
@@ -352,10 +379,12 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     const auto split = splitPayload(raw);
     if (!split) {
         result.error = SaveError::WrongSize;
-        result.detail = "Gen II battery save must be 0x8000/0x10000 bytes, optionally plus a known RTC footer";
+        result.detail = "Gen II battery save must be 0x8000/0x10000 bytes, optionally plus a known RTC footer, "
+                        "or padded to 0x20000 with uniform 0x00/0xFF bytes";
         return result;
     }
-    const auto [payloadSize, footerSize] = *split;
+    const std::size_t payloadSize = split->payload;
+    const std::size_t footerSize = split->footer;
     const auto payload = raw.first(payloadSize);
 
     std::vector<const Layout*> candidates;
@@ -397,6 +426,7 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     save->metadata_.boxCapacity = l.boxCapacity;
     save->metadata_.payloadSize = payloadSize;
     save->metadata_.rtcFooterSize = footerSize;
+    save->metadata_.paddingSize = split->padding;
 
     save->trainer_.trainerId = readBE16(payload, l.tid);
     // PKHeX SAV2Offsets.JohtoBadges: little-endian Johto + Kanto masks.

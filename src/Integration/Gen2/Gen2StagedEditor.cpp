@@ -1375,13 +1375,13 @@ std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
         error = "final staged Gen II export changed save size";
         return {};
     }
-    if (metadata_.rtcFooterSize != 0) {
-        const auto footerStart = metadata_.payloadSize;
-        if (!std::equal(original_.begin() + static_cast<std::ptrdiff_t>(footerStart), original_.end(),
-                        result.begin() + static_cast<std::ptrdiff_t>(footerStart))) {
-            error = "final staged Gen II export changed the RTC footer";
-            return {};
-        }
+    // Everything after the payload (an RTC footer or 128 KiB padding) is carried verbatim.
+    if (metadata_.payloadSize > original_.size() ||
+        !std::equal(original_.begin() + static_cast<std::ptrdiff_t>(metadata_.payloadSize), original_.end(),
+                    result.begin() + static_cast<std::ptrdiff_t>(metadata_.payloadSize))) {
+        error = metadata_.paddingSize != 0 ? "final staged Gen II export changed the save padding"
+                                           : "final staged Gen II export changed the RTC footer";
+        return {};
     }
     return result;
 }

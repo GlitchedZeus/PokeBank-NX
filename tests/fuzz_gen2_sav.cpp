@@ -27,7 +27,7 @@ void runOne(std::span<const uint8_t> data) {
         const auto& save = *parsed.save;
         const auto& meta = save.metadata();
         QA_CHECK(std::equal(save.sourceBytes().begin(), save.sourceBytes().end(), data.begin(), data.end()));
-        QA_CHECK(meta.payloadSize <= data.size() && meta.payloadSize + meta.rtcFooterSize == data.size());
+        QA_CHECK(meta.payloadSize <= data.size() && meta.payloadSize + meta.rtcFooterSize + meta.paddingSize == data.size());
         const auto again = G2::parse(save.sourceBytes(), game);
         QA_CHECK(again && again.save->party().size() == save.party().size() &&
                  again.save->boxes().size() == save.boxes().size() &&

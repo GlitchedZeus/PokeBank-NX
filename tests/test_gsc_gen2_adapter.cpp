@@ -101,6 +101,40 @@ int main(){
         auto d=fixture(IGS);for(int i=0;i<7;i++)d.push_back(0);auto r=parse(d,SourceGame::Gold);
         assert(r&&r.save->metadata().rtcFooterSize==7&&r.save->sourceBytes().size()==0x8007);
     }
+    // 128 KiB padded files (upstream PKSE 9a9a731): sizes tried smallest first, uniform tail only.
+    for(const uint8_t fill:{uint8_t{0x00},uint8_t{0xFF}}){
+        auto d=fixture(IGS);d.resize(kPaddedSaveSize128K,fill);const auto before=d;
+        auto r=parse(d,SourceGame::Gold);assert(r);
+        assert(r.save->metadata().payloadSize==0x8000&&r.save->metadata().paddingSize==0x18000);
+        assert(r.save->metadata().rtcFooterSize==0&&r.save->sourceBytes().size()==kPaddedSaveSize128K);
+        assert(r.save->party().size()==1&&d==before);
+    }
+    {
+        // A real 64 KiB Japanese Crystal padded to 128 KiB opens at 64 KiB with its gender byte.
+        auto d=fixture(JC,201,false);d.resize(kPaddedSaveSize128K,0xFF);
+        auto r=parse(d,SourceGame::Crystal);assert(r);
+        assert(r.save->metadata().payloadSize==0x10000&&r.save->metadata().paddingSize==0x10000);
+        assert(r.save->trainer().gender&&*r.save->trainer().gender==1);
+    }
+    {
+        // Not padding: one stray byte in the tail, or a padded size other than 128 KiB.
+        auto d=fixture(IGS);d.resize(kPaddedSaveSize128K,0xFF);d[0x1FFFF]=0x01;
+        auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::WrongSize);
+        // Mixed past 32 KiB but uniform past 64 KiB is a 64 KiB image plus padding, exactly as
+        // the same 64 KiB image is accepted unpadded.
+        auto mixed=fixture(IGS);mixed.resize(kPaddedSaveSize128K,0x00);mixed[0x8000]=0xFF;
+        auto m=parse(mixed,SourceGame::Gold);
+        assert(m&&m.save->metadata().payloadSize==0x10000&&m.save->metadata().paddingSize==0x10000);
+        auto unpadded=mixed;unpadded.resize(0x10000);assert(parse(unpadded,SourceGame::Gold));
+        auto odd=fixture(IGS);odd.resize(0x18000,0xFF);
+        auto o=parse(odd,SourceGame::Gold);assert(!o&&o.error==SaveError::WrongSize);
+    }
+    {
+        // Policy pin: Japanese Crystal has 64 KiB SRAM; a 32 KiB file has lost bank 4 (gender) and
+        // is refused rather than opened without it.
+        auto d=fixture(JC,201,false);d.resize(0x8000);
+        assert(!parse(d,SourceGame::Crystal));
+    }
     {
         auto d=fixture(IGS);
         d[IGS.party+3]=25;

@@ -16,6 +16,8 @@ namespace PokeVault::Integration::Gen2 {
 
 constexpr std::size_t kRawSaveSize32K = 0x8000;
 constexpr std::size_t kRawSaveSize64K = 0x10000;
+// A battery save padded up to 128 KiB by some emulators/flash carts (upstream PKSE 9a9a731).
+constexpr std::size_t kPaddedSaveSize128K = 0x20000;
 
 enum class RegionLayout : uint8_t { International, Japanese };
 enum class VersionFamily : uint8_t { GoldSilver, Crystal };
@@ -96,6 +98,8 @@ struct Metadata {
     uint8_t boxCapacity = 0;
     std::size_t payloadSize = 0;
     std::size_t rtcFooterSize = 0;
+    // Uniform 0x00/0xFF bytes after the payload of a 128 KiB padded file; kept verbatim.
+    std::size_t paddingSize = 0;
 };
 
 class ReadOnlySave;
@@ -140,6 +144,9 @@ uint16_t calculateChecksum(
     std::span<const uint8_t> payload, RegionLayout region, VersionFamily family) noexcept;
 std::string decodeGen2String(std::span<const uint8_t> bytes, RegionLayout region);
 bool isKnownRTCFooterSize(std::size_t size) noexcept;
+// True when `raw` is a 128 KiB file holding a 32 KiB (tried first) or 64 KiB save followed by
+// uniform 0x00/0xFF padding; `payloadSize` names which.
+bool splitPaddedSave(std::span<const uint8_t> raw, std::size_t& payloadSize) noexcept;
 
 } // namespace PokeVault::Integration::Gen2
 #endif

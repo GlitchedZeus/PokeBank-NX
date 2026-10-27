@@ -162,6 +162,23 @@ int main(){
         assert(std::equal(editor->stagedBytes().begin(),editor->stagedBytes().end(),original.begin()));
     }
     {
+        // A 32 KiB international save padded to 128 KiB (upstream PKSE 9a9a731): edited in the
+        // 32 KiB payload, the 0xFF padding comes back byte for byte and the copy reparses.
+        auto base=fixture(GS,true);base.resize(0x8000);
+        auto raw=base;raw.resize(kPaddedSaveSize128K,0xFF);const auto original=raw;
+        auto parsed=parse(raw,SourceGame::Gold);assert(parsed);
+        assert(parsed.save->metadata().payloadSize==0x8000);
+        assert(parsed.save->metadata().paddingSize==0x18000&&parsed.save->metadata().rtcFooterSize==0);
+        std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor&&error.empty());
+        assert(editor->stageTrainerName("PAD",error)&&editor->stageMoney(4321,error));
+        auto out=editor->finalizedBytes(error);assert(!out.empty()&&error.empty());
+        assert(out.size()==original.size());
+        assert(std::all_of(out.begin()+0x8000,out.end(),[](uint8_t b){return b==0xFF;}));
+        auto reload=parse(out,SourceGame::Gold);assert(reload);
+        assert(reload.save->trainer().name=="PAD"&&reload.save->trainer().money==4321);
+        assert(raw==original);
+    }
+    {
         auto raw=fixture(C);auto parsed=parse(raw,SourceGame::Crystal);assert(parsed);
         std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor);
         assert(editor->stageTrainerName("CRYS",error));assert(editor->stageMoney(543210,error));
