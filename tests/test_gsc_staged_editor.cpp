@@ -179,6 +179,21 @@ int main(){
         assert(raw==original);
     }
     {
+        // A 64 KiB core padded to 128 KiB: edits land in the core; both the core's upper half and
+        // the 0x00 padding come back byte for byte.
+        auto base=fixture(GS,true);base.resize(0x10000,0x00);base[0x9000]=0x5C;
+        auto raw=base;raw.resize(kPaddedSaveSize128K,0x00);const auto original=raw;
+        auto parsed=parse(raw,SourceGame::Gold);assert(parsed);
+        assert(parsed.save->metadata().payloadSize==0x10000&&parsed.save->metadata().paddingSize==0x10000);
+        std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor&&error.empty());
+        assert(editor->stageMoney(777,error));
+        auto out=editor->finalizedBytes(error);assert(!out.empty()&&error.empty());
+        assert(out.size()==original.size()&&out[0x9000]==0x5C);
+        assert(std::all_of(out.begin()+0x10000,out.end(),[](uint8_t b){return b==0x00;}));
+        auto reload=parse(out,SourceGame::Gold);assert(reload&&reload.save->trainer().money==777);
+        assert(raw==original);
+    }
+    {
         auto raw=fixture(C);auto parsed=parse(raw,SourceGame::Crystal);assert(parsed);
         std::string error;auto editor=StagedEditor::create(*parsed.save,error);assert(editor);
         assert(editor->stageTrainerName("CRYS",error));assert(editor->stageMoney(543210,error));

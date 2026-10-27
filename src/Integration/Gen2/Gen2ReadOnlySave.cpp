@@ -126,7 +126,8 @@ std::optional<PayloadSplit> splitPayload(std::span<const uint8_t> raw) noexcept 
 }
 
 bool fitsLayout(std::span<const uint8_t> payload, const Layout& l) noexcept {
-    if (l.gender != kNoOffset && l.gender >= payload.size()) return false;
+    // The trainer gender is optional: Japanese Crystal keeps it at 0x8000, just past a 32 KiB image
+    // (independent QA 2026-10-27 Q02; upstream PKSE 0c993bc). Every required field is checked here.
     if (l.checksumPrimary + 1 >= payload.size()) return false;
     if (l.currentBoxCopy + storedBoxListLength(l) > payload.size()) return false;
     if (l.party + listLength(kPartyCapacity, kPartyBody, l.stringLength) > payload.size()) return false;
@@ -278,7 +279,8 @@ bool splitPaddedSave(std::span<const uint8_t> raw, std::size_t& payloadSize) noe
     // Smallest first, as upstream PKSE 9a9a731: every layout is probed at either size, so trying
     // 64 KiB first would take an international save with 32 KiB of padding inside its payload.
     // A real Japanese Crystal (64 KiB SRAM) fails the uniform-tail test at 32 KiB and lands here
-    // at 64 KiB with its bank-4 gender byte intact.
+    // at 64 KiB with its bank-4 gender byte intact. One whose upper half is uniform opens at 32 KiB
+    // with its gender unspecified, and the padding is still kept byte for byte.
     for (const std::size_t base : {kRawSaveSize32K, kRawSaveSize64K}) {
         const uint8_t fill = raw[base];
         if (fill != 0x00 && fill != 0xFF) continue;
@@ -447,7 +449,8 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
         result.detail = "Gen II money exceeds retail maximum 999999";
         return result;
     }
-    if (l.family == VersionFamily::Crystal) {
+    // An out-of-range gender (32 KiB Japanese Crystal) stays unspecified; nothing is invented.
+    if (l.family == VersionFamily::Crystal && l.gender != kNoOffset && l.gender < payload.size()) {
         const uint8_t g = payload[l.gender];
         if (g > 1) {
             result.error = SaveError::InvalidTrainerData;

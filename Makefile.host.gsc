@@ -1,6 +1,10 @@
 # Generation II GSC permanent host gates.
 GEN2_ADAPTER_SOURCES := tests/test_gsc_gen2_adapter.cpp \
-	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2UniversalInventory.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp src/Names/ItemNames.cpp \
+	src/Names/MoveNames.cpp src/Names/SpeciesNames.cpp src/Pokemon/Experience.cpp
 GSC_INVENTORY_SOURCES := tests/test_gsc_inventory.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GSC_PERSONAL_SOURCES := tests/test_gsc_gen2_personal.cpp \
