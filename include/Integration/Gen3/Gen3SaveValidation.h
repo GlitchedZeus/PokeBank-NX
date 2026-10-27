@@ -73,6 +73,10 @@ namespace PokeVault::Integration::Gen3::Detail {
                 result.error = SaveError::DuplicateSector;
                 return result;
             }
+            // Deliberately kept (Q05; upstream PKSE 0c993bc dropped it): the games count a sector
+            // only with this signature and a matching checksum, and write the signature's low byte
+            // last as the commit marker of a save (pret pokefirered src/save.c GetSaveValidStatus,
+            // WriteSectorSignatureByte). Without it a torn newer slot would win over the good one.
             if (read32(bytes, offset + 0xFF8) != kSectorSignature) {
                 result.error = SaveError::BadSectorSignature;
                 return result;
