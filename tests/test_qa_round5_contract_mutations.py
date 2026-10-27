@@ -113,6 +113,11 @@ MUTATIONS = [
      "include/UI/SourceBackupClassification.h",
      "    if (!m.ok || m.sourcePath != listing.sourcePath) return Refusal::NotAnExportRecord;\n    for (const std::string& name : detail::children(dir))\n        if (name != manifestName",
      "    if (!m.ok) return Refusal::NotAnExportRecord;\n    for (const std::string& name : detail::children(dir))\n        if (name != manifestName"),
+    ("Gen II Boxes occupied-slot footer drops + Review", "CG81-one-review-key-per-screen",
+     "src/UI/TrainerViewScreenCompositeOverlay.cpp",
+     '{{"A", "Actions"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}}', '{{"A", "Actions"}, {"L/R", "Box"}, {"B", "Back"}}'),
+    ("Gen I-IV Trainer takes + as well as Y again", "CG81-one-review-key-per-screen",
+     "include/UI/ReviewEntry.h", "&& !yOpensReview(screen, generation)", ""),
     ("Quick Games stops publishing its frame", "CG88-quick-games-tap-outside", "src/UI/SaveSelectScreen.cpp",
      "SharedPopupDismiss::publish(x + offset, 0, w, h);", "(void)offset;"),
 ]
@@ -123,7 +128,8 @@ def main() -> int:
     base = {r.cid: r for r in qa.contracts(SOURCES)}
     for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged", "CG76-gen2-unown-letter-from-dvs",
                 "CG74-create-review-details", "CG87-event-locations-described", "CG88-quick-games-tap-outside",
-                "CG85-unown-letter-shiny-confirmed", "CG80-gen2-create-review-visible", "CG82-gen5-exports-in-save-backups"):
+                "CG85-unown-letter-shiny-confirmed", "CG80-gen2-create-review-visible", "CG82-gen5-exports-in-save-backups",
+                "CG81-one-review-key-per-screen"):
         if base[cid].violations:
             print(f"FAIL  unmutated tree: {cid}: {base[cid].violations[:2]}")
             failures += 1
