@@ -2,6 +2,7 @@
 // All fixture provenance is explicit; none is an authenticated distribution receipt.
 #include "Legality/Gen5Legality.h"
 #include "Legality/Gen4Legality.h"
+#include "Legality/Gen3Legality.h"
 #include "Legality/Gen5GlobalLinkCatalog.h"
 #include "Legality/Gen4RanchIV.h"
 #include "legality_gen5_test_helpers.h"
@@ -44,7 +45,7 @@ int main() {
         if(id=="no-exp")assert(hasText(report,Legality::Severity::Invalid,"gained no EXP"));
         ++cases;
     }
-    assert(evs.eof()&&cases==55);
+    assert(evs.eof()&&cases==56);
     std::ifstream ranch("tests/fixtures/gen15_session2/ranch_iv.txt");assert(ranch);
     int format=0;
     while(ranch>>id>>format>>expected>>hex) {
@@ -56,7 +57,23 @@ int main() {
         if(expected=="INCOMPLETE")assert(hasText(report,Legality::Severity::Warning,"Ranch IVs have no state"));
         ++cases;
     }
-    assert(ranch.eof()&&cases==59);
+    assert(ranch.eof()&&cases==60);
+    // Published reference-model constructions, not acquired event specimens.
+    // Retain both correct and contradictory dual-OT genders, the old endpoints,
+    // the newly accepted midnight seeds, and seed214 across PK3->PK4->PK5.
+    std::ifstream berry("tests/fixtures/gen15_session2/berry_fix.txt");assert(berry);
+    size_t berryClean=0,berryInvalid=0;
+    while(berry>>id>>format>>expected>>hex) {
+        const auto bytes=fromHex(hex.c_str()),original=bytes;
+        const auto report=format==3?Legality::analyzePk3(bytes,"sapphire_gba")
+            :format==4?Legality::analyzePk4(bytes,"diamond_nds")
+            :Legality::analyzePk5(bytes,{.encrypted=false});
+        assert(report.verdict()==(expected=="NOPROBLEMS"?Verdict::NoProblemsFound:Verdict::Invalid));
+        assert(bytes==original);
+        if(expected=="NOPROBLEMS")++berryClean;else ++berryInvalid;
+        ++cases;
+    }
+    assert(berry.eof()&&berryClean==30&&berryInvalid==42&&cases==132);
     // A known full RNG state must survive reversal for both sign-bit aliases.
     uint32_t seed=0x20261027;
     for(size_t i=0;i<256;++i) {
@@ -71,5 +88,5 @@ int main() {
         assert(Legality::Gen4RanchIV::hasState(ivs));
     }
     std::cout<<"Official release rules: "<<cases<<" cases; 40 unsupported PGL histories, supported regional controls, "
-        "native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5 and256 RNG states PASS\n";
+        "native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS\n";
 }

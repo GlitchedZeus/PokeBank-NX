@@ -19,7 +19,10 @@
       "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5B2W2.cs": "15c5337f6cb886b76f4a8b5f950264b552f1d97a49479e26fba7c0e6c3ab0833",
       "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5DR.cs": "8c22dc3b2abc1d508edbbbfd74f629100620dadcd24c9c78bcbd498241ed1d3e",
       "PKHeX.Core/Legality/RNG/Algorithms/MRNG.cs": "f95e0a85d13fa7defb0b0b8094a8f6e7a626c6b7ffacadf30530054fb84413fd",
-      "PKHeX.Core/Legality/RNG/Algorithms/MRNGReversal.cs": "5ceeddcccb5a19f9290936713cb4038923ca7511df0859f4ca2eec202b7620b3"
+      "PKHeX.Core/Legality/RNG/Algorithms/MRNGReversal.cs": "5ceeddcccb5a19f9290936713cb4038923ca7511df0859f4ca2eec202b7620b3",
+      "PKHeX.Core/Legality/Encounters/Templates/Gen3/Gifts/EncounterGift3.cs": "da0ed185e28985f704cf66784e3ac11771f57c3ac710ae6e529d3e6760052dfb",
+      "PKHeX.Core/Legality/RNG/ClassicEra/Gen3/CommonEvent3Checker.cs": "5c9e4a640e6f3b716ab91d066dddd09f97c2c39ea1bcab2f9f32d9f6413821e7",
+      "PKHeX.Core/Legality/Encounters/Data/Gen3/EncountersWC3.cs": "b0cf5e9ee856764d994df5638752d530f5cc01e30254d6f2a4b0bb5436eb91cd"
     }
   },
   "application": {
@@ -39,7 +42,7 @@
     "gcc_presentation": 59049,
     "sanitizers": "pending fresh rebuild",
     "ci": "pending exact published head",
-    "gcc_release_rules": 59,
+    "gcc_release_rules": 132,
     "gcc_ranch_generated_states": 256,
     "gcc_gen4": {
       "cases": 249,
@@ -49,6 +52,7 @@
       "cases": 207,
       "fuzz": 40000
     },
-    "native_ev_source_replay": "GCC PASS, original body and EXP split; not hardware"
+    "native_ev_source_replay": "GCC PASS, original body and EXP split; not hardware",
+    "berry_fix": "72 reference-model constructions; 30 clean and42 negative across formats3,4,5. No acquired specimen or original distribution binary authenticated."
   }
 }

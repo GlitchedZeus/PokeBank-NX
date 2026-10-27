@@ -78,6 +78,8 @@ jobs:
             build-completion/native-ev-*.log
             tests/fixtures/gen15_session2/global_link.txt
             tests/fixtures/gen15_session2/ev_exp.txt
+            tests/fixtures/gen15_session2/ranch_iv.txt
+            tests/fixtures/gen15_session2/berry_fix.txt
             docs/legality/hardening-20261027/*PINS.json
             docs/legality/hardening-20261027/GLOBAL_LINK_PAIRING.json
           if-no-files-found: warn

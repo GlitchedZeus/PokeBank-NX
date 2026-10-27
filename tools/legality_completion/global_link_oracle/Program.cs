@@ -4,6 +4,32 @@ using System.Collections;
 using System.Reflection;
 using System.Text.Json;
 using PKHeX.Core;
+if(args.Length==1 && args[0]=="berry-fix") {
+    var type=typeof(PKM).Assembly.GetType("PKHeX.Core.EncountersWC3") ?? throw new Exception("WC3 source");
+    var templates=type.GetFields(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static)
+        .Where(f=>f.FieldType.IsArray).SelectMany(f=>((IEnumerable)f.GetValue(null)!).Cast<object>())
+        .OfType<EncounterGift3>().Where(e=>e.Method==PIDType.BACD_RBCD).Distinct().ToArray();
+    if(templates.Length!=4)throw new Exception("Unexpected Berry Fix catalog");
+    int index=0;
+    foreach(var template in templates) {
+        foreach(uint seed in new uint[]{0,1,2,3,213,214}) {
+            var p=template.ConvertToPKM(new SimpleTrainerInfo(GameVersion.S){OT="Tester",Language=template.Language});
+            if(!template.GenerateSeed32(p,seed))throw new Exception("Seed construction");
+            p.RefreshAbility((int)(p.PID&1));p.RefreshChecksum();
+            var p4=p.ConvertToPK4();p4.MetDate=new DateOnly(2026,10,18);p4.RefreshChecksum();
+            var p5=p4.ConvertToPK5();p5.MetDate=new DateOnly(2026,10,18);p5.RefreshChecksum();
+            foreach(PKM entity in new PKM[]{p,p4,p5}) {
+                var analysis=new LegalityAnalysis(entity);
+                Console.WriteLine(JsonSerializer.Serialize(new{id=$"berry-{index}-s{seed}-f{entity.Format}",seed,
+                    format=entity.Format,language=entity.Language,ot=entity.OriginalTrainerName,
+                    hex=Convert.ToHexString(entity.Data[..(entity.Format==3?80:136)]),valid=analysis.Valid,
+                    problems=analysis.Results.Where(r=>!r.Valid).Select(r=>$"{r.Identifier}:{r.Result}").ToArray()}));
+            }
+        }
+        ++index;
+    }
+    return;
+}
 if(args.Length==2 && args[0]=="convert4") {
     var p=new PK4(Convert.FromHexString(args[1])).ConvertToPK5();
     p.MetDate=new DateOnly(2026,10,18);p.RefreshChecksum();
@@ -20,10 +46,15 @@ if(args.Length==2 && args[0]=="read-fixture") {
     PKM p=entity switch {CK3 c=>c.ConvertToPK3(),XK3 x=>x.ConvertToPK3(),_=>entity};
     if(p.Format is <1 or >5)throw new Exception("Outside Gen I-V");
     var size=p.Format==1?44:p.Format==2?48:p.Format==3?80:136;
+    var analysis=new LegalityAnalysis(p);
     Console.WriteLine(JsonSerializer.Serialize(new {format=p.Format,sourceType=originalType,version=p.Version.ToString(),species=p.Species,
         hex=Convert.ToHexString(p.Data[..size]),ot=p.Format<=2?Convert.ToHexString(p.OriginalTrainerTrash):"",
-        nickname=p.Format<=2?Convert.ToHexString(p.NicknameTrash):"",language=p.Japanese?1:p is PK2 {Korean:true}?8:0,egg=p.IsEgg}));return;
+        nickname=p.Format<=2?Convert.ToHexString(p.NicknameTrash):"",language=p.Japanese?1:p is PK2 {Korean:true}?8:0,egg=p.IsEgg,
+        referenceValid=analysis.Valid,
+        findings=analysis.Results.Where(r=>!r.Valid||r.Judgement==Severity.Fishy).Select(r=>$"{r.Judgement}:{r.Identifier}:{r.Result}").ToArray(),
+        moves=analysis.Info.Moves.Select((m,i)=>new{slot=i,valid=m.Valid,method=m.Info.Method.ToString()}).ToArray()}));return;
 }
+if(args.Length!=0)throw new ArgumentException("Unknown source-export mode");
 var rows = new List<object>();
 foreach (var name in new[]{"Encounters5BW","Encounters5B2W2","Encounters5DR"}) {
     var type=typeof(PKM).Assembly.GetType("PKHeX.Core."+name) ?? throw new Exception(name);

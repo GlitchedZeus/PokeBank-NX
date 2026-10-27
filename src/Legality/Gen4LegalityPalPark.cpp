@@ -468,7 +468,8 @@ bool gift3Revise(const D::Gift3& g, const Pk4& pk, const PidIv& pidiv, PidType& 
         mutated = PidType::BACD_R;
         return true;
     case kBACD_RBCD:
-        if (type != PidType::BACD_S || seed < 3 || seed > 213) return false;
+        // Same Berry Fix RTC range as native PK3, including midnight0..2.
+        if (type != PidType::BACD_S || seed > 213) return false;
         mutated = PidType::BACD_R;
         return true;
     case kBACD_M:

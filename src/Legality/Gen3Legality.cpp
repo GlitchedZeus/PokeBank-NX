@@ -2808,7 +2808,9 @@ uint8_t giftRevise(const Pk3& pk, const D::Gift& g, PidIv& v, bool& capped) noex
             result = (type == BACD_S || type == BACD_ES) && restrictedTableMatch(v, g.species, wish, true);
             break;
         case BACD_RBCD:
-            if (type == BACD_S && v.originSeed >= 3 && v.originSeed <= 213) { v.mutated = BACD_R; result = true; }
+            // PKHeX26.10.18 CommonEvent3Checker: the BCD RTC sum includes
+            // midnight seeds0..2. Keep the independent dual-OT/gender check above.
+            if (type == BACD_S && v.originSeed <= 213) { v.mutated = BACD_R; result = true; }
             break;
         case BACD_M: result = mystryMewMatch(v, type); break;
         case ChannelT:

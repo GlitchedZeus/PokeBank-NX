@@ -18,5 +18,18 @@
     "existing retained regression corpora",
     "development seeds explicitly separate from these seeds"
   ],
-  "claims": "synthetic validation, not authenticated historical specimens"
+  "claims": "synthetic validation, not authenticated historical specimens",
+  "post_repair_holdout": {
+    "declared_before_generation": true,
+    "seeds": {
+      "gen1": 2026102711,
+      "gen2": 2026102712,
+      "gen34": 2026102713,
+      "gen5": 2026102714,
+      "correlated": 2026102715
+    },
+    "gb_records_per_generation": 30000,
+    "mutations_per_base": 4,
+    "reason": "Berry Fix bound was found by source audit after the first holdout was generated, before its aggregate metrics were inspected. Preserve and report that entire run, then generate this additional independent set after the repair is committed. Neither set may be dropped or used for tuning."
+  }
 }
