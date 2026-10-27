@@ -17,6 +17,7 @@ on:
       - 'tests/test_gen3_workspace_legality.cpp'
       - 'tests/test_gen5_gift_receivability.cpp'
       - 'tests/test_gen4_ground_tile.cpp'
+      - 'tests/test_gen5_app_context.cpp'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
@@ -44,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -61,6 +62,18 @@ jobs:
             build-completion/test_gen4_ground_tile*.log
             tests/fixtures/gen15_session2/ground_tile.txt
             docs/legality/native-terrain-20261025/SOURCE_PINS.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Preserve Gen V source-context evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-gen5-boundary-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen5_app_context*.log
+            build-completion/test_legality_gen5_adapter*.log
+            tests/test_gen5_app_context.cpp
+            docs/legality/hardening-20261027/SOURCE_PINS.json
           if-no-files-found: warn
           retention-days: 30
       - name: Original full-card corpus and provenance negative controls
@@ -98,9 +111,21 @@ jobs:
           path: engine
       - uses: actions/checkout@v4
         with:
-          ref: c3b0ac4812ef9d584de5d74109189c3ac897fe24
+          ref: d6cc878a9652b78a6cdfd8a31cdb5797172d6c9d
           path: app
       - name: Verify current app patch and actual staged workspace boundary
         run: |
-          git -C app apply --check "$PWD/engine/docs/legality/completion-session2/app-integration.patch"
-          bash engine/tools/legality_completion/test_app_bridge.sh app
+          git -C app apply --check "$PWD/engine/docs/legality/hardening-20261027/app-presentation.patch"
+          set -o pipefail
+          bash engine/tools/legality_completion/test_app_bridge.sh app 2>&1 | tee app-bridge.log
+      - name: Preserve current application boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-app-boundary-evidence
+          path: |
+            app-bridge.log
+            engine/tests/app/test_gen5_workspace_legality.cpp
+            engine/docs/legality/hardening-20261027/SOURCE_PINS.json
+          if-no-files-found: warn
+          retention-days: 30

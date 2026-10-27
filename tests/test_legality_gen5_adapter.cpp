@@ -76,6 +76,17 @@ int main() {
     const uint8_t version = bulbasaur[0x5F];
     const char* exact = version == 20 ? "white_nds" : version == 21 ? "black_nds" : version == 22 ? "white2_nds" : "black2_nds";
     const char* other = version == 23 ? "white_nds" : "black2_nds";
+    App::Options context;
+    context.encrypted = false;
+    context.slot = Legality::Pk5Slot::Box;
+    context.source = App::RecordSource::OriginalSlot;
+    context.trainer.present = true;
+    context.trainer.tid = static_cast<uint16_t>(bulbasaur[0x0C] | (bulbasaur[0x0D] << 8));
+    context.trainer.sid = static_cast<uint16_t>(bulbasaur[0x0E] | (bulbasaur[0x0F] << 8));
+    for (std::size_t i = 0; i < 8; ++i)
+        context.trainer.ot[i] = static_cast<uint16_t>(bulbasaur[0x68 + 2*i] | (bulbasaur[0x69 + 2*i] << 8));
+    context.trainer.female = (bulbasaur[0x84] & 0x80) != 0;
+    context.trainer.language = bulbasaur[0x17];
 
     // Game id mapping.
     if (App::versionFromSourceGameId("white_nds") != 20 || App::versionFromSourceGameId("black_nds") != 21 ||
@@ -87,30 +98,34 @@ int main() {
 
     // Decrypted record, exact game: complete.
     {
-        auto r = App::analyze(bulbasaur, exact, {.encrypted = false});
+        auto r = App::analyze(bulbasaur, exact, context);
         checkRendering("decrypted exact", r);
         if (r.verdict != Verdict::NoProblemsFound || !r.knownGame || r.lines().size() != 1) fail("decrypted exact: expected one complete line", r);
         // The record was only read.
         auto copy = bulbasaur;
-        r = App::analyze(copy, exact, {.encrypted = false});
+        r = App::analyze(copy, exact, context);
         if (copy != bulbasaur) fail("input was modified", r);
         // Stored (encrypted) form: the same report.
         const auto stored = PokeVault::Integration::Gen5::Crypto::encryptCandidate(bulbasaur);
-        const auto e = App::analyze(stored, exact);
+        auto storedContext = context;
+        storedContext.encrypted = true;
+        const auto e = App::analyze(stored, exact, storedContext);
         checkRendering("encrypted exact", e);
         if (!sameReport(e.report, r.report)) fail("encrypted form differs", e);
         // Party-sized record (220 bytes) with the level byte: still complete.
         auto party = bulbasaur;
         party.resize(220, 0);
         party[0x8C] = 1;
-        const auto p = App::analyze(party, exact, {.encrypted = false, .slot = Legality::Pk5Slot::Party});
+        auto partyContext = context;
+        partyContext.slot = Legality::Pk5Slot::Party;
+        const auto p = App::analyze(party, exact, partyContext);
         checkRendering("party record", p);
         if (p.verdict != Verdict::NoProblemsFound) fail("party record: expected complete", p);
         checked += 3;
     }
     // Another Gen V game: traded in, information only, still complete.
     {
-        const auto r = App::analyze(bulbasaur, other, {.encrypted = false});
+        const auto r = App::analyze(bulbasaur, other, context);
         checkRendering("other Gen V game", r);
         if (r.verdict != Verdict::NoProblemsFound || !r.knownGame) fail("other Gen V game: expected complete", r);
         if (!std::any_of(r.report.issues.begin(), r.report.issues.end(),
@@ -120,18 +135,19 @@ int main() {
     }
     // Unknown id: never complete.
     for (const char* id : {"diamond_nds", "red_gb", "Black2_nds", "black2"}) {
-        const auto r = App::analyze(bulbasaur, id, {.encrypted = false});
+        const auto r = App::analyze(bulbasaur, id, context);
         checkRendering(std::string("unknown id ") + id, r);
         if (r.verdict != Verdict::Incomplete || r.knownGame || r.verdictLine == kComplete) fail(std::string("unknown id ") + id, r);
         if (!anyLine(r.issueLines, "is not a Gen V game")) fail(std::string("unknown id ") + id + ": expected the game Warning", r);
         if (r.report.coverage.sourceGame != Legality::CoverageLevel::Partial) fail("unknown id: source game coverage", r);
         ++checked;
     }
-    // Empty id: unknown game, nothing added.
+    // Empty id: missing source identity is never silently complete.
     {
-        const auto r = App::analyze(bulbasaur, "", {.encrypted = false});
+        const auto r = App::analyze(bulbasaur, "", context);
         checkRendering("empty id", r);
-        if (r.verdict != Verdict::NoProblemsFound || r.knownGame) fail("empty id: expected complete without game context", r);
+        if (r.verdict != Verdict::Incomplete || r.knownGame || !anyLine(r.issueLines, "Source game is missing"))
+            fail("empty id: source context must remain incomplete", r);
         ++checked;
     }
     // Box slot: PP must be full; party slot: any PP.
@@ -139,14 +155,22 @@ int main() {
         auto used = bulbasaur;
         used[0x30] = static_cast<uint8_t>(used[0x30] - 1);  // first move's PP
         refreshChecksum(used);
-        const auto box = App::analyze(used, exact, {.encrypted = false, .slot = Legality::Pk5Slot::Box});
+        const auto box = App::analyze(used, exact, context);
         checkRendering("box slot used PP", box);
         if (box.verdict != Verdict::Invalid || !anyLine(box.issueLines, "boxed Pokemon")) fail("box slot: expected Invalid PP", box);
-        const auto party = App::analyze(used, exact, {.encrypted = false, .slot = Legality::Pk5Slot::Party});
+        auto partyBytes = used;
+        partyBytes.resize(220, 0);
+        partyBytes[0x8C] = 1;
+        auto partyContext = context;
+        partyContext.slot = Legality::Pk5Slot::Party;
+        const auto party = App::analyze(partyBytes, exact, partyContext);
         checkRendering("party slot used PP", party);
         if (party.verdict != Verdict::NoProblemsFound) fail("party slot: used PP is allowed", party);
-        const auto unknown = App::analyze(used, exact, {.encrypted = false});
-        if (unknown.verdict != Verdict::NoProblemsFound) fail("unknown slot: used PP is allowed", unknown);
+        auto unknownContext = context;
+        unknownContext.slot = Legality::Pk5Slot::Unknown;
+        const auto unknown = App::analyze(used, exact, unknownContext);
+        if (unknown.verdict != Verdict::Incomplete || !anyLine(unknown.issueLines, "source slot is unknown"))
+            fail("unknown slot: context is incomplete", unknown);
         checked += 3;
     }
     // Save trainer context: the save's own trainer is information; its ID with another name is a Warning.
@@ -158,16 +182,20 @@ int main() {
         for (std::size_t i = 0; i < 8; ++i) tr.ot[i] = static_cast<uint16_t>(bulbasaur[0x68 + 2 * i] | (bulbasaur[0x69 + 2 * i] << 8));
         tr.female = (bulbasaur[0x84] & 0x80) != 0;
         tr.language = bulbasaur[0x17];
-        auto own = App::analyze(bulbasaur, exact, {.encrypted = false, .trainer = tr});
+        auto trainerContext = context;
+        trainerContext.trainer = tr;
+        auto own = App::analyze(bulbasaur, exact, trainerContext);
         checkRendering("own trainer", own);
         if (own.verdict != Verdict::NoProblemsFound) fail("own trainer: expected complete", own);
         tr.ot[0] = u'X';
-        const auto renamed = App::analyze(bulbasaur, exact, {.encrypted = false, .trainer = tr});
+        trainerContext.trainer = tr;
+        const auto renamed = App::analyze(bulbasaur, exact, trainerContext);
         checkRendering("same ID other OT", renamed);
         if (renamed.verdict != Verdict::Incomplete || !anyLine(renamed.issueLines, "suspicious provenance"))
             fail("same ID other OT: expected a Warning", renamed);
         tr.tid ^= 1;
-        const auto traded = App::analyze(bulbasaur, exact, {.encrypted = false, .trainer = tr});
+        trainerContext.trainer = tr;
+        const auto traded = App::analyze(bulbasaur, exact, trainerContext);
         checkRendering("other trainer", traded);
         if (traded.verdict != Verdict::NoProblemsFound) fail("other trainer: trades are normal", traded);
         checked += 3;
@@ -186,7 +214,7 @@ int main() {
     {
         auto broken = bulbasaur;
         broken[0x40] ^= 1;  // changed without a checksum refresh
-        const auto r = App::analyze(broken, exact, {.encrypted = false});
+        const auto r = App::analyze(broken, exact, context);
         checkRendering("broken checksum", r);
         if (r.verdict != Verdict::Invalid || !anyLine(r.issueLines, "checksum")) fail("broken checksum: expected Invalid", r);
         const std::vector<uint8_t> zero(136, 0);
@@ -201,7 +229,7 @@ int main() {
     // a Gen III-origin record (Poke Transfer) keeps the egg/breeding area Partial by design.
     {
         const auto g3 = fromHex("3F6F8F0A0000D8E5B6010000FF82D3E9000000000A2200030000000000000000000000000000000021000000000000000800000000000000D3B8AE5700000000000F000000000000530065006500640006FFFF000000000000000000000400000000000000005400650073007400650075007200FFFF00000000001A0A0F00000000030A0101");
-        auto r = App::analyze(g3, exact, {.encrypted = false});
+        auto r = App::analyze(g3, exact, context);
         checkRendering("Gen III origin", r);
         if (r.verdictLine == kComplete) fail("Gen III origin must not read as complete", r);
         ++checked;

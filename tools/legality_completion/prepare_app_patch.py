@@ -2,7 +2,7 @@
 """Prepare a narrow UI patch from a verified #307 snapshot, never modify that checkout."""
 import argparse, difflib, hashlib, json, pathlib, subprocess
 PIN = '9d4b8b71befea78c76802c15f1911a0ca24e775c'
-p = argparse.ArgumentParser(); p.add_argument('app', type=pathlib.Path); p.add_argument('output', type=pathlib.Path); p.add_argument('--head', default=PIN); p.add_argument('--gen3-provider', action='store_true'); a=p.parse_args(); PIN=a.head
+p = argparse.ArgumentParser(); p.add_argument('app', type=pathlib.Path); p.add_argument('output', type=pathlib.Path); p.add_argument('--head', default=PIN); p.add_argument('--gen3-provider', action='store_true'); p.add_argument('--presentation-only', action='store_true', help='Only the shared report/modal patch; leave the current Gen V renderer to its owner'); a=p.parse_args(); PIN=a.head
 assert subprocess.check_output(['git','-C',str(a.app),'rev-parse','HEAD'], text=True).strip()==PIN
 changes={}
 def read(path):
@@ -29,54 +29,55 @@ s=replace(s,'if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()
                     ? std::string_view{} : std::string_view(sourceGameId);
                 if (pokemon && Legality::analyze(*pokemon, pokemon->getGameGroup(), legalitySource)
                         .verdict() != Legality::Verdict::NoProblemsFound) {'''); changes[path][1]=s
-path='src/UI/Gen5SharedReadOnlySurface.inc'; s=read(path)
-s=replace(s,'#include "Inventory/ItemQuantityPolicy.h"','#include "Inventory/ItemQuantityPolicy.h"\n#include "Legality/Gen5WorkspaceAdapter.h"')
-s=replace(s,'case Surface::Legality:\n            if(keys&HidNpadButton_B)(void)state.back();', '''case Surface::Legality:
-            if((keys&HidNpadButton_Up) || tap==78101)
-                screen.details.legalityScroll=std::max(0,screen.details.legalityScroll-1);
-            if((keys&HidNpadButton_Down) || tap==78102)++screen.details.legalityScroll;
-            if((keys&HidNpadButton_B) || tap==78103)(void)state.back();''')
-s=replace(s,'} else if(state.surface()==Surface::CloneDestination)\n                    stageCloneOrMoveByKeypad(screen);','''} else if(state.surface()==Surface::CloneDestination)
-                    stageCloneOrMoveByKeypad(screen);
-                if(state.surface()==Surface::Legality)screen.details.legalityScroll=0;''')
-start=s.index('// Origin & Legality (Round 3 Part 9)'); end=s.index('void drawLegality5',start)
-s=s[:start]+'''// The current staged PK5 is checked through the common engine verdict model.
-// Save identity/trainer/slot context comes from the validated workspace.
-'''+s[end:]
-s=replace(s,'fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",\n                Colors::TextDim,TextStyle::Caption);','''const auto result=Legality::Gen5App::analyzeWorkspace(workspace,state.target());
-    if(result)fb.drawText(x+24,y+52,result->verdictLine,
-        result->verdict==Legality::Verdict::Invalid?Colors::Warning:
-        result->verdict==Legality::Verdict::Incomplete?Colors::Orange:Colors::Success,
-        TextStyle::Caption);''')
-s=replace(s,'if(!pk || !pk->valid() || pk->empty()) {','if(!pk || !pk->valid() || pk->empty() || !result) {')
-s=replace(s,'const std::pair<std::string,std::string> rows[]={','std::vector<std::pair<std::string,std::string>> rows={')
-s=replace(s,'{"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},\n        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},','''{"Encounter check",Legality::Presentation::coverageLabel(result->report.coverage.encounter)},
-        {"Legality",result->verdict==Legality::Verdict::Invalid?"Invalid":
-            result->verdict==Legality::Verdict::Incomplete?"Incomplete / Unknown":"No problems found"},''')
-s=replace(s,'#include "Legality/Gen5WorkspaceAdapter.h"','#include "Legality/Gen5WorkspaceAdapter.h"\n#include "Legality/ReportPresentation.h"')
-start=s.index('    int rowY=y+96;',s.index('void drawLegality5')); end=s.index('\n}\nvoid drawDecision', start)
-s=s[:start]+'''    for(const auto& line:result->coverageLines)rows.emplace_back("",line);
-    for(const auto& line:result->issueLines)rows.emplace_back("",line);
-    constexpr int visible=12,rowHeight=28;
-    const int maxScroll=std::max(0,static_cast<int>(rows.size())-visible);
-    auto& scroll=screen.details.legalityScroll;
-    scroll=std::clamp(scroll,0,maxScroll);
-    fb.setClipRect(x+24,y+92,w-48,visible*rowHeight);
-    for(int i=scroll;i<std::min(static_cast<int>(rows.size()),scroll+visible);++i) {
-        const auto& [label,value]=rows[static_cast<size_t>(i)];
-        const int rowY=y+96+(i-scroll)*rowHeight;
-        fb.drawText(x+34,rowY,label,Colors::TextDim,TextStyle::Caption);
-        fb.drawText(x+(label.empty()?34:290),rowY,value,Colors::Text,TextStyle::Caption);
-    }
-    fb.clearClip();
-    drawGlyphButton(fb,x+24,y+h-56,140,40,"Up","Previous");
-    drawGlyphButton(fb,x+180,y+h-56,140,40,"Down","Next");
-    drawGlyphButton(fb,x+w-170,y+h-56,146,40,"B","Close");
-    screen.touchButtons.push_back({78101,x+24,y+h-56,140,40});
-    screen.touchButtons.push_back({78102,x+180,y+h-56,140,40});
-    screen.touchButtons.push_back({78103,x+w-170,y+h-56,146,40});
-    drawNavBar(fb,{{"Up/Down","Scroll"},{"B","Back"}});'''+s[end:]
-changes[path][1]=s
+if not a.presentation_only:
+    path='src/UI/Gen5SharedReadOnlySurface.inc'; s=read(path)
+    s=replace(s,'#include "Inventory/ItemQuantityPolicy.h"','#include "Inventory/ItemQuantityPolicy.h"\n#include "Legality/Gen5WorkspaceAdapter.h"')
+    s=replace(s,'case Surface::Legality:\n            if(keys&HidNpadButton_B)(void)state.back();', '''case Surface::Legality:
+                if((keys&HidNpadButton_Up) || tap==78101)
+                    screen.details.legalityScroll=std::max(0,screen.details.legalityScroll-1);
+                if((keys&HidNpadButton_Down) || tap==78102)++screen.details.legalityScroll;
+                if((keys&HidNpadButton_B) || tap==78103)(void)state.back();''')
+    s=replace(s,'} else if(state.surface()==Surface::CloneDestination)\n                    stageCloneOrMoveByKeypad(screen);','''} else if(state.surface()==Surface::CloneDestination)
+                        stageCloneOrMoveByKeypad(screen);
+                    if(state.surface()==Surface::Legality)screen.details.legalityScroll=0;''')
+    start=s.index('// Origin & Legality (Round 3 Part 9)'); end=s.index('void drawLegality5',start)
+    s=s[:start]+'''// The current staged PK5 is checked through the common engine verdict model.
+    // Save identity/trainer/slot context comes from the validated workspace.
+    '''+s[end:]
+    s=replace(s,'fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",\n                Colors::TextDim,TextStyle::Caption);','''const auto result=Legality::Gen5App::analyzeWorkspace(workspace,state.target());
+        if(result)fb.drawText(x+24,y+52,result->verdictLine,
+            result->verdict==Legality::Verdict::Invalid?Colors::Warning:
+            result->verdict==Legality::Verdict::Incomplete?Colors::Orange:Colors::Success,
+            TextStyle::Caption);''')
+    s=replace(s,'if(!pk || !pk->valid() || pk->empty()) {','if(!pk || !pk->valid() || pk->empty() || !result) {')
+    s=replace(s,'const std::pair<std::string,std::string> rows[]={','std::vector<std::pair<std::string,std::string>> rows={')
+    s=replace(s,'{"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},\n        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},','''{"Encounter check",Legality::Presentation::coverageLabel(result->report.coverage.encounter)},
+            {"Legality",result->verdict==Legality::Verdict::Invalid?"Invalid":
+                result->verdict==Legality::Verdict::Incomplete?"Incomplete / Unknown":"No problems found"},''')
+    s=replace(s,'#include "Legality/Gen5WorkspaceAdapter.h"','#include "Legality/Gen5WorkspaceAdapter.h"\n#include "Legality/ReportPresentation.h"')
+    start=s.index('    int rowY=y+96;',s.index('void drawLegality5')); end=s.index('\n}\nvoid drawDecision', start)
+    s=s[:start]+'''    for(const auto& line:result->coverageLines)rows.emplace_back("",line);
+        for(const auto& line:result->issueLines)rows.emplace_back("",line);
+        constexpr int visible=12,rowHeight=28;
+        const int maxScroll=std::max(0,static_cast<int>(rows.size())-visible);
+        auto& scroll=screen.details.legalityScroll;
+        scroll=std::clamp(scroll,0,maxScroll);
+        fb.setClipRect(x+24,y+92,w-48,visible*rowHeight);
+        for(int i=scroll;i<std::min(static_cast<int>(rows.size()),scroll+visible);++i) {
+            const auto& [label,value]=rows[static_cast<size_t>(i)];
+            const int rowY=y+96+(i-scroll)*rowHeight;
+            fb.drawText(x+34,rowY,label,Colors::TextDim,TextStyle::Caption);
+            fb.drawText(x+(label.empty()?34:290),rowY,value,Colors::Text,TextStyle::Caption);
+        }
+        fb.clearClip();
+        drawGlyphButton(fb,x+24,y+h-56,140,40,"Up","Previous");
+        drawGlyphButton(fb,x+180,y+h-56,140,40,"Down","Next");
+        drawGlyphButton(fb,x+w-170,y+h-56,146,40,"B","Close");
+        screen.touchButtons.push_back({78101,x+24,y+h-56,140,40});
+        screen.touchButtons.push_back({78102,x+180,y+h-56,140,40});
+        screen.touchButtons.push_back({78103,x+w-170,y+h-56,146,40});
+        drawNavBar(fb,{{"Up/Down","Scroll"},{"B","Back"}});'''+s[end:]
+    changes[path][1]=s
 if a.gen3_provider:
     path='include/Legacy/FRLGReadOnlyTrainer.h'; v=read(path)
     v=replace(v,'#include "Trainer/Trainer.h"','#include "Trainer/Trainer.h"\n#include "Legality/Gen3BerryContext.h"\n#include "Legality/Legality.h"')

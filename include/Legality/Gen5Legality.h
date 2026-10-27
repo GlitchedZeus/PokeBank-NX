@@ -117,7 +117,8 @@ struct Pk5Input {
 /// touched, and the same input always gives the same Report. Any other size, an
 /// undecryptable record, a bad checksum or a set sanity (bad egg) field is reported in
 /// the Report (structure coverage None / Partial), never thrown. An all-zero or
-/// species-0 record returns an empty report (an empty slot is not a Pokemon).
+/// decoded all-zero record returns an empty report (an empty slot is not a Pokemon).
+/// Species zero with a nonzero payload is ambiguous and remains Incomplete.
 Report analyzePk5(std::span<const uint8_t> record, const Pk5Input& input = {});
 
 } // namespace Legality

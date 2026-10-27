@@ -1,3 +1,11 @@
+# October 27 production boundary and current-release audit
+
+The working checkpoint hardens the Gen V app adapter: exact source title, Party/Box geometry, trainer context and original/staged provenance are required before a nonempty app record can be certified. Current staged trainer changes are read from `trainerPresentation()`. Record identity is returned only after size/checksum/sanity checks. A species-zero nonblank PK5 remains Incomplete. The low-level detached-record API retains its optional context contract.
+
+Normal GCC: adapter5069, new context239, presentation59049, actual app d6cc878a bridge84 cases PASS. Clang, sanitizers, fresh release holdouts and exact-head CI are pending at this checkpoint. Current app branch is untouched; the two-file proposed presentation patch applies to d6cc878a. The older five-file app patch no longer applies to the current UI and remains historical evidence only.
+
+Official PKHeX26.10.18 is pinned to bfe89c74a3f5265805e364b79bc04ad38ebbc5ea. The previous6501 and6042 references remain retained; no current-release parity claim is made. Audit priorities: EV/EXP sufficiency, recursive Gen III–V ancestry, Ranch MRNG IV reachability, Global Link language restrictions and other changed shared verifiers. Detailed source review and fresh measurements are in progress. No new historical receipt was authenticated.
+
 # October 25 native terrain continuation
 
 The next repair rejects wrapped Gen IV terrain bytes in both encounter selection and final verification, including Gen IV origins in PK5. See [native terrain evidence](../native-terrain-20261025/README.md). All 20 affected compiler/mode configurations pass; 212,187 retained outputs are byte-identical, and the current-app read-only bridge passes four titles. Two fresh pinned PKHeX references share the documented 63-case corruption blind spot; raw results are retained and no oracle exception is added. Published code `892b0622695563d478b73c3d4425030aad1208a9` passes all 49 checks across 24 workflows. The downloaded CI ZIP digests and contents are verified. Final results are retained in the linked native terrain handoff; later WIP-only documentation leaves the PR at its passing code head. Application PR #307 and main are unchanged.

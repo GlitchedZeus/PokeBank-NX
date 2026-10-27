@@ -2458,7 +2458,17 @@ Report analyzePk5(std::span<const uint8_t> record, const Pk5Input& input) {
         report.issues.push_back({Severity::Invalid, "PK5 sanity field is set (bad egg)", CheckIdentifier::Structure});
         return report;
     }
-    if (p.species == 0) return report;
+    if (p.species == 0) {
+        // A cleared PK5 is all zero after decoding (SaveFile.BlankPKM /
+        // ClearBoxes in the pinned reference). A nonzero payload with species
+        // zero is ambiguous, not evidence of a native blank slot.
+        if (std::any_of(plain.begin(), plain.end(), [](uint8_t b) { return b != 0; })) {
+            report.coverage.structure = CoverageLevel::Partial;
+            report.issues.push_back({Severity::Warning, "Species is zero but the PK5 payload is not a native blank slot",
+                                     CheckIdentifier::Structure});
+        }
+        return report;
+    }
     return Gen5Analyzer(p, plain, input).run();
 }
 

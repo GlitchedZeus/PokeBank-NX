@@ -19,15 +19,28 @@ std::optional<Result> analyzeWorkspace(const Workspace& workspace,
     Options options;
     options.encrypted = false;
     options.slot = party ? Pk5Slot::Party : Pk5Slot::Box;
-    const auto trainer = workspace.sourceSave().trainer();
-    options.trainer.present = true;
-    options.trainer.tid = trainer.tid;
-    options.trainer.sid = trainer.sid;
-    options.trainer.female = trainer.gender != 0;
-    options.trainer.language = trainer.language;
-    options.trainer.ot.fill(0xFFFF);
-    std::copy_n(trainer.rawName.begin(), std::min(trainer.rawName.size(), size_t{7}),
-                options.trainer.ot.begin());
+    const auto original = party ? workspace.sourceSave().partyPokemon(slot.slot)
+                               : workspace.sourceSave().boxPokemon(slot.box, slot.slot);
+    if (!original) return std::nullopt;
+    options.source = std::equal(pk->decodedBytes().begin(), pk->decodedBytes().end(),
+                                original->decodedBytes().begin(), original->decodedBytes().end())
+        ? RecordSource::OriginalSlot : RecordSource::StagedSlot;
+    // Trainer edits and Pokemon edits belong to the same current workspace.
+    // Do not silently fall back to the original trainer if its current view
+    // cannot be decoded, or normalize an invalid native gender to "female".
+    const auto trainer = workspace.trainerPresentation();
+    options.stagedTrainer = workspace.trainerDirty();
+    if (trainer) {
+        options.trainer.present = trainer->gender <= 1 && trainer->rawName.size() <= 7 &&
+            trainer->game == versionFromSourceGameId(workspace.sourceSave().exactGameId());
+        options.trainer.tid = trainer->tid;
+        options.trainer.sid = trainer->sid;
+        options.trainer.female = trainer->gender == 1;
+        options.trainer.language = trainer->language;
+        options.trainer.ot.fill(0xFFFF);
+        std::copy_n(trainer->rawName.begin(), std::min(trainer->rawName.size(), size_t{7}),
+                    options.trainer.ot.begin());
+    }
     return analyze(pk->decodedBytes(), workspace.sourceSave().exactGameId(), options);
 }
 } // namespace Legality::Gen5App

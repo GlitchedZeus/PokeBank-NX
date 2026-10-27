@@ -60,6 +60,18 @@ $(HOST_BUILD)/test_legality_gen5_adapter_sanitize: $(GEN5_ADAPTER_SOURCES) inclu
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
 
+GEN5_APP_CONTEXT_SOURCES := tests/test_gen5_app_context.cpp $(filter-out tests/test_legality_gen5_adapter.cpp,$(GEN5_ADAPTER_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen5_app_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_app_context_sanitize
+host-test: $(HOST_BUILD)/test_gen5_app_context
+host-sanitize: $(HOST_BUILD)/test_gen5_app_context_sanitize
+$(HOST_BUILD)/test_gen5_app_context: $(GEN5_APP_CONTEXT_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_APP_CONTEXT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_app_context_sanitize: $(GEN5_APP_CONTEXT_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_APP_CONTEXT_SOURCES) -o $@
+
 GEN5_GIFT_RECEIPT_SOURCES := tests/test_gen5_gift_receivability.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
 HOST_TESTS += $(HOST_BUILD)/test_gen5_gift_receivability
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_gift_receivability_sanitize

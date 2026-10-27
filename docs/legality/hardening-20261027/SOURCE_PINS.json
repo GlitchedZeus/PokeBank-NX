@@ -1,0 +1,35 @@
+{
+  "reference": {
+    "release": "26.10.18",
+    "commit": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+    "url": "https://github.com/kwsch/PKHeX/releases/tag/26.10.18",
+    "files": {
+      "PKHeX.Core/PKM/PK5.cs": "f34a608897d7efb0484223fb77a32bb87175a171478484c3be8b7fb74885afe7",
+      "PKHeX.Core/PKM/Strings/StringConverter5.cs": "81a04b7b89f38f7d943adcd942bf7773b2bab9f99402b93d2898e95b1020b338",
+      "PKHeX.Core/Saves/SAV5.cs": "1bdd58d9e9326ad91bc4cdda83f288fd27f8c5334ba9a036f150297d6e4adec9",
+      "PKHeX.Core/Saves/SaveFile.cs": "1fd011a6aec477a1dd1adbf1523bd9941be50f7dffd62be802f05d47260dbdad",
+      "PKHeX.Core/Legality/Verifiers/EffortExpLegality.cs": "9927d07a68a78dc43a6ff858273cd2e7100c672fff224820d135abca6fe6f26c",
+      "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs": "47cdded6905c343776b6f7b6ffb4f0cfe64285b7479209bd118ae9aa5e5bc9c1",
+      "PKHeX.Core/Legality/Verifiers/IndividualValueVerifier.cs": "1dc575b17496a0adbd3c008a4b4dd3135b57d2d068ee8b30325d62fa3be98a78",
+      "PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterTrade4RanchGift.cs": "0eb7fdf1b45c850a025776438cb8b08a2c1c314815e795f67accbb4217a511c0"
+    }
+  },
+  "application": {
+    "head": "d6cc878a9652b78a6cdfd8a31cdb5797172d6c9d",
+    "files": {
+      "include/Integration/Gen5/Gen5StagedPokemonWorkspace.h": "67d17e6da8925b3bcb8087d17711c9979799210799b796d4ad207e1536b26b3b",
+      "include/Integration/Gen5/Gen5Trainer.h": "ce037eb55549059b0ef8249d9e1e744c483bf679e47af03e3358ece2e08e01d9",
+      "include/Integration/Gen5/Gen5ReadOnlySave.h": "302ad23108f5b9f3e3ede3d952834082f24adfd37554b4a3daf7ec7f038539db",
+      "src/UI/Modals/PokemonDetailsModal.cpp": "3fd67730ea5777dd6cf01940fca28533f5d13b8d851e93b4fde17bdc6a12ee65",
+      "src/UI/Gen5SharedReadOnlySurface.inc": "11837da01e917b3fec3945a7b84b53d5f1b1005bdc2167bf7caf25261d96d37a"
+    }
+  },
+  "validation": {
+    "gcc_adapter_previous": 5069,
+    "gcc_context": 239,
+    "gcc_current_app_bridge": 84,
+    "gcc_presentation": 59049,
+    "sanitizers": "pending",
+    "ci": "pending"
+  }
+}

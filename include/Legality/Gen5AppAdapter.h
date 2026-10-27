@@ -20,12 +20,13 @@
  *   Verdict::Incomplete, Warnings
  *                             "Incomplete / Unknown: N warning(s)." then the issues
  *   Verdict::Invalid          "Invalid: N issue(s)." then the issues
- *   empty slot                "Empty slot." (an all-zero or species-0 record has no verdict)
+ *   native blank slot         "Empty slot." (no Pokemon to judge)
  * Info issues are never rendered as problems.
  */
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -35,11 +36,24 @@
 
 namespace Legality::Gen5App {
 
+/// Caller-owned source of the selected snapshot. This describes workspace
+/// provenance, not authentication of a historical encounter or distribution.
+enum class RecordSource : uint8_t { Unknown, OriginalSlot, StagedSlot };
+
+struct RecordIdentity {
+    uint32_t pid = 0;
+    uint16_t species = 0, tid = 0, sid = 0, checksum = 0;
+    uint8_t originGame = 0, language = 0, gender = 0;
+    bool party = false;
+    bool operator==(const RecordIdentity&) const = default;
+};
+
 /// PKHeX GameVersion id for the app's source game id: "white_nds" 20, "black_nds" 21,
 /// "white2_nds" 22, "black2_nds" 23. Any other id gives 0 (not a Gen V game).
 uint8_t versionFromSourceGameId(std::string_view sourceGameId) noexcept;
 
-/// Optional context beyond the record and the game id.
+/// Save-side context. Missing context leaves a nonempty app report Incomplete.
+/// Detached PK5 analysis without a save remains available through analyzePk5.
 struct Options {
     /// True for the slot's stored bytes (encrypted and shuffled); false for a record the
     /// caller already decrypted.
@@ -48,13 +62,20 @@ struct Options {
     Pk5Slot slot = Pk5Slot::Unknown;
     /// The save's trainer, when the caller has it (set `present`).
     Pk5Trainer trainer{};
+    RecordSource source = RecordSource::Unknown;
+    bool stagedTrainer = false;
 };
 
 struct Result {
     Report report;
     Verdict verdict = Verdict::Incomplete;
     bool knownGame = false;                   // the source game id named a Gen V game
-    bool emptySlot = false;                   // all-zero or species-0 record: nothing to judge
+    bool emptySlot = false;                   // native blank record: nothing to judge
+    RecordSource source = RecordSource::Unknown;
+    bool stagedTrainer = false;
+    /// Identity of the checked snapshot, only after its size/checksum/sanity
+    /// pass. It never substitutes for the original save or an event receipt.
+    std::optional<RecordIdentity> identity;
     std::string verdictLine;                  // first overlay line, see the header comment
     std::vector<std::string> coverageLines;   // "<area>: Complete|Partial|None", every area
     std::vector<std::string> issueLines;      // "Invalid: ..." / "Warning: ...", in report order
@@ -65,11 +86,12 @@ struct Result {
 };
 
 /// Analyze one PK5 record from a save whose game is `sourceGameId`. A source game id that
-/// is not a Gen V game adds a Warning (source game coverage Partial) so the report is
-/// Incomplete rather than silently complete; an empty id means "unknown" and adds nothing.
+/// is missing or not a Gen V game adds a Warning (source game coverage Partial).
+/// Unknown slot, missing/malformed trainer or unknown record source likewise
+/// leave the report Incomplete. Context failures never make a Pokemon Invalid.
 Result analyze(std::span<const uint8_t> record, std::string_view sourceGameId, const Options& options = {});
 
-/// True for the empty Report analyzePk5 returns for an all-zero or species-0 record.
+/// True for the empty Report analyzePk5 returns for a native blank record.
 bool isEmptySlot(const Report& report);
 
 /// The verdict line for any Report (see the header comment); "Empty slot." for an empty slot.

@@ -1,7 +1,9 @@
 // Gen5AppAdapter.cpp - see include/Legality/Gen5AppAdapter.h.
 #include "Legality/Gen5AppAdapter.h"
 #include "Legality/ReportPresentation.h"
+#include "Encryption/Encryption5.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace Legality::Gen5App {
@@ -44,20 +46,54 @@ Result analyze(std::span<const uint8_t> record, std::string_view sourceGameId, c
     Pk5Input input;
     input.encrypted = options.encrypted;
     input.game = versionFromSourceGameId(sourceGameId);
-    input.slot = options.slot;
+    const bool shape = (options.slot == Pk5Slot::Box && record.size() == 136) ||
+                       (options.slot == Pk5Slot::Party && record.size() == 220);
+    // Do not manufacture a boxed-PP/form failure by trusting a contradictory
+    // Box label on an actual native party record. The context still warns.
+    input.slot = shape ? options.slot : Pk5Slot::Unknown;
     input.trainer = options.trainer;
     Result result;
     result.knownGame = input.game != 0;
+    result.source = options.source == RecordSource::OriginalSlot || options.source == RecordSource::StagedSlot
+        ? options.source : RecordSource::Unknown;
+    result.stagedTrainer = options.stagedTrainer;
     result.report = analyzePk5(record, input);
     result.emptySlot = isEmptySlot(result.report);
-    if (!sourceGameId.empty() && !result.knownGame && !result.emptySlot) {
-        // Not a Gen V save: the record was still checked as a PK5, but the save context is
-        // missing, so the report must not read as complete. An empty report is an empty
-        // slot and stays empty.
-        result.report.coverage.sourceGame = CoverageLevel::Partial;
-        result.report.issues.push_back({Severity::Warning,
-                                        "Source game \"" + std::string(sourceGameId) + "\" is not a Gen V game; the save context was not used",
-                                        CheckIdentifier::SourceGame});
+    if (!result.emptySlot) {
+        auto unknown = [&](CoverageLevel& coverage, CheckIdentifier area, std::string text) {
+            // A context warning must not hide a stronger existing format failure.
+            if (coverage == CoverageLevel::Complete) coverage = CoverageLevel::Partial;
+            result.report.issues.push_back({Severity::Warning, std::move(text), area});
+        };
+        if (!result.knownGame) {
+            unknown(result.report.coverage.sourceGame, CheckIdentifier::SourceGame,
+                sourceGameId.empty() ? "Source game is missing; the save context is unresolved"
+                    : "Source game \"" + std::string(sourceGameId) + "\" is not a Gen V game; the save context was not used");
+        }
+        if (!shape)
+            unknown(result.report.coverage.structure, CheckIdentifier::Structure,
+                options.slot == Pk5Slot::Unknown ? "Party or Box source slot is unknown"
+                    : "Source slot and native PK5 record size disagree");
+        const auto& trainer = options.trainer;
+        const auto end = std::find_if(trainer.ot.begin(), trainer.ot.end(),
+            [](uint16_t ch) { return ch == 0 || ch == 0xFFFF; });
+        const bool trainerKnown = trainer.present && end != trainer.ot.begin() && end != trainer.ot.end() &&
+            trainer.language >= 1 && trainer.language <= 7 && trainer.language != 6;
+        if (!trainerKnown)
+            unknown(result.report.coverage.sourceGame, CheckIdentifier::SourceGame,
+                "Save trainer context is missing or malformed; source identity is unresolved");
+        if (options.source != RecordSource::OriginalSlot && options.source != RecordSource::StagedSlot)
+            unknown(result.report.coverage.sourceGame, CheckIdentifier::SourceGame,
+                "Original or staged record provenance is unknown");
+        if (record.size() == 136 || record.size() == 220) {
+            const auto plain = options.encrypted ? PokeVault::Integration::Gen5::Crypto::decrypt(record)
+                                                 : std::vector<uint8_t>(record.begin(), record.end());
+            Gen5::Pk5 pk;
+            if (Gen5::read(plain, pk) && pk.species > 0 && pk.species <= 649 && pk.sanity == 0 &&
+                Gen5::checksum(plain) == pk.checksum)
+                result.identity = RecordIdentity{pk.pid, pk.species, pk.tid, pk.sid, pk.checksum,
+                    pk.version, pk.language, pk.gender, pk.party};
+        }
     }
     result.verdict = result.report.verdict();
     result.verdictLine = Gen5App::verdictLine(result.report);
