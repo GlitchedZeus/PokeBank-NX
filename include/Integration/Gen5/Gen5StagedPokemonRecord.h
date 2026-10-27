@@ -127,7 +127,11 @@ public:
                     return fail("Gen V target species cannot preserve this Pokémon gender");
                 // The PID is kept, and Gen V reads gender from its low byte against the
                 // species' ratio (PKSE 620c5f6: never a PID that contradicts stored gender).
-                if(genderFromPid5(Crypto::read32(candidate,0),target.info->genderRatio)!=gender)
+                // Refuse a change that would create that contradiction; a record that
+                // already carries one is left as found, never silently "repaired".
+                const uint32_t pid=Crypto::read32(candidate,0);
+                if(genderFromPid5(pid,personal.info->genderRatio)==gender &&
+                   genderFromPid5(pid,target.info->genderRatio)!=gender)
                     return fail("Gen V target species would read this PID as the other gender");
                 const uint8_t slot=(candidate[0x42]&1)?2:
                     static_cast<uint8_t>((Crypto::read32(candidate,0)>>16)&1);

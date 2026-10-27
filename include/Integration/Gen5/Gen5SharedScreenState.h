@@ -482,7 +482,8 @@ public:
             return "That species uses a different EXP growth group; its level would change";
         if(!genderAllowed5(target.info->genderRatio,current->gender()))
             return "That species cannot have this Pokemon's gender";
-        if(genderFromPid5(current->pid(),target.info->genderRatio)!=current->gender())
+        if(genderFromPid5(current->pid(),source.info->genderRatio)==current->gender() &&
+           genderFromPid5(current->pid(),target.info->genderRatio)!=current->gender())
             return "That species would read this Pokemon's PID as the other gender";
         const uint8_t slot=current->hiddenAbility()?2:
             static_cast<uint8_t>((current->pid()>>16)&1);

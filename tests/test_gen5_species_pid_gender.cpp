@@ -118,5 +118,17 @@ int main() {
         assert(r.pid == pid && G::shinyPid5(r.pid, kTid, kSid) && G::abilityBit5(r.pid) == 1);
     }
 
+    // A record that already disagrees (low byte 0xDF reads male as Pikachu, stored female) is
+    // left as found: the species change neither refuses nor "repairs" the PID.
+    {
+        const uint32_t pid = 0x13579BDFu;
+        assert(G::genderFromPid5(pid, 127) == 0);
+        std::string error;
+        auto record = G::StagedPokemon5Record::create(pikachu(pid, 1), &error, false);
+        assert(record && record->stageName(true, "SPARK", &error));
+        assert(record->stage(F::Species, 0, 26, &error));
+        assert(record->current().pid() == pid && record->current().gender() == 1);
+    }
+
     std::cout << "Gen V species change keeps PID gender consistent (PKSE 620c5f6 invariant): PASS\n";
 }
