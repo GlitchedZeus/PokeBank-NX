@@ -294,45 +294,64 @@ bool StagedInventoryEditor::stageInventoryQuantity(
 
     std::vector<InventoryItemRecord> entries;
     if (!decodePouch(staged_, sourceGame_, sectorOffsets_, *definition, entries, error)) return false;
-    const uint16_t before = stagedInventoryQuantity(pouch, itemId);
-
-    const auto first = std::find_if(entries.begin(), entries.end(),
-        [itemId](const InventoryItemRecord& item) { return item.itemId == itemId; });
-    if (quantity == 0) {
-        entries.erase(std::remove_if(entries.begin(), entries.end(),
-            [itemId](const InventoryItemRecord& item) { return item.itemId == itemId; }), entries.end());
-    } else if (first != entries.end()) {
-        first->count = quantity;
-        entries.erase(std::remove_if(std::next(first), entries.end(),
-            [itemId](const InventoryItemRecord& item) { return item.itemId == itemId; }), entries.end());
-    } else {
-        if (entries.size() >= definition->capacity) {
-            error = "No free slots in this Generation III inventory pocket";
-            return false;
-        }
-        entries.push_back({itemId, quantity});
+    if (quantity != 0 && stagedInventoryQuantity(pouch, itemId) == 0 && entries.size() >= definition->capacity) {
+        error = "No free slots in this Generation III inventory pocket";
+        return false;
     }
 
+    // Byte-surgical, following the game's own bag routines (pret pokefirered ce6406d8 / pokeemerald
+    // 731ad5bf src/item.c): a quantity change rewrites that slot's quantity only; a new item goes into
+    // the first slot whose item id is ITEM_NONE (BagPocketGetFirstEmptySlot); a removal sets that
+    // slot's quantity to 0 and its id to ITEM_NONE in place, with no compaction (RemoveBagItem).
+    // Further stacks of the same item are cleared in place, so the item ends with exactly
+    // `quantity`. Every other slot keeps its bytes (independent QA 2026-10-27 Q07).
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
     const uint16_t key16 = definition->keyed ? securityKey16(staged_, sourceGame_, sectorOffsets_) : 0;
     std::set<uint8_t> touched;
-    for (uint16_t slot = 0; slot < definition->capacity; ++slot) {
+    auto slotAt = [&](uint16_t slot, std::array<uint8_t, 4>& raw) {
+        return readLogical(staged_, sectorOffsets_, 1,
+                           definition->offset + static_cast<std::size_t>(slot) * 4, raw);
+    };
+    auto writeSlot = [&](uint16_t slot, uint16_t id, uint16_t count) {
         std::array<uint8_t, 4> raw{};
-        if (slot < entries.size()) {
-            write16(raw, 0, entries[slot].itemId);
-            write16(raw, 2, static_cast<uint16_t>(entries[slot].count ^ key16));
+        write16(raw, 0, id);
+        write16(raw, 2, static_cast<uint16_t>(count ^ key16));
+        std::array<uint8_t, 4> current{};
+        if (!slotAt(slot, current)) return false;
+        if (current == raw) return true;  // already exactly these bytes
+        return writeLogical(staged_, sectorOffsets_, 1,
+                            definition->offset + static_cast<std::size_t>(slot) * 4, raw, touched);
+    };
+    bool placed = false;
+    long firstFree = -1;
+    bool ok = true;
+    for (uint16_t slot = 0; ok && slot < definition->capacity; ++slot) {
+        std::array<uint8_t, 4> raw{};
+        if (!slotAt(slot, raw)) { ok = false; break; }
+        const uint16_t id = read16(raw, 0);
+        const uint16_t count = static_cast<uint16_t>(read16(raw, 2) ^ key16);
+        if (id == 0 && firstFree < 0) firstFree = slot;
+        if (id != itemId || count == 0) continue;
+        if (!placed && quantity != 0) {
+            if (count != quantity) ok = writeSlot(slot, itemId, quantity);
+            placed = true;
         } else {
-            write16(raw, 0, 0);
-            write16(raw, 2, key16); // semantic quantity zero for keyed empty slots
+            ok = writeSlot(slot, 0, 0);  // RemoveBagItem: quantity 0, ITEM_NONE, in place
         }
-        if (!writeLogical(staged_, sectorOffsets_, 1,
-                          definition->offset + static_cast<std::size_t>(slot) * 4,
-                          raw, touched)) {
+    }
+    if (ok && !placed && quantity != 0) {
+        if (firstFree < 0) {
             staged_ = stagedBackup;
-            error = "Generation III inventory write crossed an invalid logical sector";
+            error = "No free slots in this Generation III inventory pocket";
             return false;
         }
+        ok = writeSlot(static_cast<uint16_t>(firstFree), itemId, quantity);
+    }
+    if (!ok) {
+        staged_ = stagedBackup;
+        error = "Generation III inventory write crossed an invalid logical sector";
+        return false;
     }
     repairChecksums(staged_, sectorOffsets_, touched);
 
@@ -352,7 +371,18 @@ bool StagedInventoryEditor::stageInventoryQuantity(
             return std::to_string(static_cast<unsigned>(change.pouch)) + ":" +
                    std::to_string(change.itemId) == key;
         }), changes_.end());
-    if (before != quantity) changes_.push_back({pouch, itemId, before, quantity, label});
+    // Compare with the opened save, not the previous staged value: 3 -> 5 -> 3 is no change.
+    uint16_t originalQuantity = 0;
+    {
+        std::vector<InventoryItemRecord> originalEntries;
+        std::string ignored;
+        if (decodePouch(original_, sourceGame_, sectorOffsets_, *definition, originalEntries, ignored)) {
+            const auto it = std::find_if(originalEntries.begin(), originalEntries.end(),
+                [itemId](const InventoryItemRecord& item) { return item.itemId == itemId; });
+            if (it != originalEntries.end()) originalQuantity = it->count;
+        }
+    }
+    if (originalQuantity != quantity) changes_.push_back({pouch, itemId, originalQuantity, quantity, label});
     return true;
 }
 

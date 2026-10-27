@@ -1,4 +1,5 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
+#include "Integration/Gen2/Gen2NativeItemList.h"
 
 #include "Inventory/ClassicInventoryCatalog.h"
 
@@ -90,18 +91,6 @@ bool readPairs(std::span<const uint8_t> bytes, std::size_t offset, std::size_t c
     return true;
 }
 
-void writePairs(std::vector<uint8_t>& bytes, std::size_t offset, std::size_t capacity,
-                std::span<const PairEntry> entries) {
-    bytes[offset] = static_cast<uint8_t>(entries.size());
-    std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
-              bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + capacity * 2 + 1), 0);
-    for (std::size_t i = 0; i < entries.size(); ++i) {
-        bytes[offset + 1 + i * 2] = entries[i].id;
-        bytes[offset + 2 + i * 2] = entries[i].quantity;
-    }
-    bytes[offset + 1 + entries.size() * 2] = 0xFF;
-}
-
 constexpr std::size_t kKeyItemCapacity = 25;
 
 bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<uint8_t>& out) noexcept {
@@ -112,15 +101,6 @@ bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<ui
     out.assign(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
                bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + count));
     return std::none_of(out.begin(), out.end(), [](uint8_t id) { return id == 0 || id == 0xFF; });
-}
-
-void writeKeys(std::vector<uint8_t>& bytes, std::size_t offset, std::span<const uint8_t> entries) {
-    constexpr std::size_t capacity = kKeyItemCapacity;
-    bytes[offset] = static_cast<uint8_t>(entries.size());
-    std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
-              bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + capacity + 1), 0);
-    std::copy(entries.begin(), entries.end(), bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1));
-    bytes[offset + 1 + entries.size()] = 0xFF;
 }
 
 Inventory::ClassicPocket semanticPocket(Inventory::ClassicGame game, InventoryPocket physical,
@@ -219,17 +199,14 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
             error = "Generation II staged Key Items list is malformed";
             return false;
         }
-        auto it = std::find(entries.begin(), entries.end(), itemId);
-        if (quantity == 0) {
-            if (it != entries.end()) entries.erase(it);
-        } else if (it == entries.end()) {
-            if (entries.size() >= kKeyItemCapacity) {
-                error = "No free slots in this Key Items pocket";
-                return false;
-            }
-            entries.push_back(itemId);
+        if (quantity != 0 && entries.size() >= kKeyItemCapacity &&
+            std::find(entries.begin(), entries.end(), itemId) == entries.end()) {
+            error = "No free slots in this Key Items pocket";
+            return false;
         }
-        writeKeys(staged_, layout.keyItems, entries);
+        // Byte-surgical (Q07): a key item is present (1) or absent (0).
+        if (!NativeItemList::set(staged_, layout.keyItems, kKeyItemCapacity, 1, itemId,
+                                 quantity != 0 ? 1 : 0, error)) return false;
     } else {
         const std::size_t offset = pairOffset(layout, pocket);
         const std::size_t capacity = pairCapacity(pocket);
@@ -238,20 +215,14 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
             error = "Generation II staged inventory pair-list is malformed";
             return false;
         }
-        auto it = std::find_if(entries.begin(), entries.end(),
+        const bool present = std::any_of(entries.begin(), entries.end(),
             [itemId](const PairEntry& entry) { return entry.id == itemId; });
-        if (quantity == 0) {
-            if (it != entries.end()) entries.erase(it);
-        } else if (it != entries.end()) {
-            it->quantity = quantity;
-        } else {
-            if (entries.size() >= capacity) {
-                error = "No free slots in this Generation II pocket";
-                return false;
-            }
-            entries.push_back({itemId, quantity});
+        if (quantity != 0 && !present && entries.size() >= capacity) {
+            error = "No free slots in this Generation II pocket";
+            return false;
         }
-        writePairs(staged_, offset, capacity, entries);
+        // Byte-surgical (Q07): only the entry, the shifted tail and the count change.
+        if (!NativeItemList::set(staged_, offset, capacity, 2, itemId, quantity, error)) return false;
     }
 
     const auto record = decodeInventory(std::span<const uint8_t>(staged_).first(metadata_.payloadSize),

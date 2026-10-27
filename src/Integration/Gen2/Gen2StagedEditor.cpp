@@ -1,4 +1,5 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
+#include "Integration/Gen2/Gen2NativeItemList.h"
 
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
@@ -176,18 +177,6 @@ bool readPairPocket(std::span<const uint8_t> bytes, std::size_t offset, std::siz
         entries.push_back({id, qty});
     }
     return true;
-}
-
-void writePairPocket(std::vector<uint8_t>& bytes, std::size_t offset, std::size_t capacity,
-                     std::span<const PairEntry> entries) noexcept {
-    bytes[offset] = static_cast<uint8_t>(entries.size());
-    std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
-              bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + 2 * capacity + 1), 0);
-    for (std::size_t i = 0; i < entries.size(); ++i) {
-        bytes[offset + 1 + i * 2] = entries[i].id;
-        bytes[offset + 2 + i * 2] = entries[i].quantity;
-    }
-    bytes[offset + 1 + 2 * entries.size()] = 0xFF;
 }
 
 uint8_t quantityInPairPocket(std::span<const uint8_t> bytes, std::size_t offset,
@@ -689,20 +678,9 @@ bool StagedEditor::stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uin
         return false;
     }
     const uint8_t originalQuantity = quantityInPairPocket(original_, offset, capacity, itemId);
-    auto it = std::find_if(entries.begin(), entries.end(),
-        [itemId](const PairEntry& entry) { return entry.id == itemId; });
-    if (quantity == 0) {
-        if (it != entries.end()) entries.erase(it);
-    } else if (it != entries.end()) {
-        it->quantity = quantity;
-    } else {
-        if (entries.size() >= capacity) {
-            error = "Generation II pocket is full; cannot add another item";
-            return false;
-        }
-        entries.push_back({itemId, quantity});
-    }
-    writePairPocket(staged_, offset, capacity, entries);
+    // Byte-surgical, as the game edits its own lists (Q07): only the entry, the shifted tail and
+    // the count change; unrelated bytes after the terminator keep their values.
+    if (!NativeItemList::set(staged_, offset, capacity, 2, itemId, quantity, error)) return false;
 
     const std::string key = "item:" + std::to_string(static_cast<unsigned>(pocket)) +
                             ":" + std::to_string(itemId);
