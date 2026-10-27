@@ -281,6 +281,61 @@ void japaneseNameReadOnly() {
 
 } // namespace
 
+// An emulator RTC footer after the 128 KiB flash image (mGBA/VBA-M 16 bytes) no longer locks the
+// Bag and Trainer editors (they required exactly 0x20000 while the Pokemon editor and discovery
+// accepted a footer; cf. upstream PKSE 292fd5e). The footer is carried verbatim through a
+// combined Bag + Trainer + Pokemon export, and an edit that changes it is refused.
+void rtcFooterExport(SourceGame game, Family family, const std::filesystem::path& root) {
+    namespace fs = std::filesystem;
+    auto source = fixture(family);
+    const std::array<uint8_t, 16> footer{{0x52, 0x54, 0x43, 0x01, 0x02, 0x03, 0x04, 0x05,
+                                          0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D}};
+    source.insert(source.end(), footer.begin(), footer.end());
+    const auto original = source;
+    std::string error;
+    auto pokemon = StagedPokemonEditor::create(source, game, error);
+    assert(pokemon && error.empty());
+    auto trainer = Gen3StagedTrainerEditor::create(source, game, error);
+    assert(trainer && error.empty());
+    auto bag = StagedInventoryEditor::create(source, game, error);
+    assert(bag && error.empty());
+
+    // A footer that is not a known RTC size is still refused by all three.
+    auto odd = fixture(family);
+    odd.push_back(0x00);
+    assert(!StagedInventoryEditor::create(odd, game, error) && !error.empty());
+    assert(!Gen3StagedTrainerEditor::create(odd, game, error) && !error.empty());
+    assert(!StagedPokemonEditor::create(odd, game, error));
+
+    // An unedited Bag finalizes to the exact source, footer included.
+    assert(bag->finalizedBytes(error) == original);
+
+    assert(bag->stageInventoryQuantity(InventoryPouch::Items, 13, 7, error) && error.empty());
+    assert(trainer->stage("ASH", 123456, error) && error.empty());
+    Gen3ExportRequest request;
+    request.rootDirectory = root.string();
+    request.directoryStem = std::string(gameId(game)) + "_rtc_bag_trainer";
+    request.sourcePath = "sdmc:/retroarch/saves/fixture.srm";
+    request.timestamp = "20261027-120000";
+    auto both = publishVerifiedGen3Export(*pokemon, request, bag.get(), trainer.get());
+    if (!both.success) std::cerr << "rtc export error: " << both.error << "\n";
+    assert(both.success && both.error.empty());
+    const auto bytes = slurp(fs::path(both.directory) / "edited.sav");
+    assert(bytes.size() == original.size());
+    assert(std::equal(footer.begin(), footer.end(), bytes.end() - static_cast<std::ptrdiff_t>(footer.size())));
+    assert(slurp(fs::path(both.directory) / "original_backup.sav") == original);
+    assert(source == original);
+    auto parsed = parse(bytes, game);
+    assert(parsed && parsed.save->trainer().money == 123456 && parsed.save->trainer().name == "ASH");
+    auto reopened = StagedInventoryEditor::create(bytes, game, error);
+    assert(reopened && reopened->stagedInventoryQuantity(InventoryPouch::Items, 13) == 7);
+
+    // A staged image whose footer changed cannot take the Trainer edit.
+    auto tampered = original;
+    tampered.back() ^= 0xFF;
+    assert(!trainer->applyTo(tampered, error) && error.find("RTC footer") != std::string::npos);
+}
+
 int main() {
     namespace fs = std::filesystem;
     const fs::path root = fs::temp_directory_path() / ("pokebank-g3-trainer-" + std::to_string(::getpid()));
@@ -291,6 +346,9 @@ int main() {
     runGame(SourceGame::FireRedGBA, Family::FRLG, root);
     runGame(SourceGame::LeafGreenGBA, Family::FRLG, root);
     japaneseNameReadOnly();
+    rtcFooterExport(SourceGame::EmeraldGBA, Family::Emerald, root);
+    rtcFooterExport(SourceGame::FireRedGBA, Family::FRLG, root);
+    rtcFooterExport(SourceGame::RubyGBA, Family::RS, root);
     genderPlayTime(SourceGame::RubyGBA, Family::RS, root);
     genderPlayTime(SourceGame::SapphireGBA, Family::RS, root);
     genderPlayTime(SourceGame::EmeraldGBA, Family::Emerald, root);

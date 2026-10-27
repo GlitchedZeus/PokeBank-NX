@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Save/RtcFooter.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
@@ -66,8 +67,10 @@ public:
     static std::unique_ptr<Gen3StagedTrainerEditor> create(std::span<const uint8_t> source, SourceGame game,
                                                            std::string& error) {
         error.clear();
-        if (source.size() != Detail::kSaveSize || !Detail::sourceGameSupported(game)) {
-            error = "Generation III Trainer editing needs an exact 128 KiB Gen III save";
+        std::size_t rtcFooterSize = 0;
+        if (!PokeVault::Save::splitRtcPayloadSize(source.size(), Detail::kSaveSize, rtcFooterSize) ||
+            !Detail::sourceGameSupported(game)) {
+            error = "Generation III Trainer editing needs a 128 KiB Gen III save (an RTC footer is kept)";
             return nullptr;
         }
         const Detail::SlotValidation slots[2] = {Detail::validateSlot(source, 0), Detail::validateSlot(source, 1)};
@@ -220,6 +223,11 @@ public:
         if (!hasPendingChanges()) return true;
         if (bytes.size() != original_.size()) {
             error = "Gen III Trainer edit cannot be applied to a different-size image";
+            return false;
+        }
+        if (!std::equal(original_.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize), original_.end(),
+                        bytes.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize), bytes.end())) {
+            error = "Gen III Trainer edit: the staged image changed the emulator RTC footer";
             return false;
         }
         const Detail::SlotValidation slots[2] = {Detail::validateSlot(bytes, 0), Detail::validateSlot(bytes, 1)};

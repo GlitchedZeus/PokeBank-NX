@@ -1,4 +1,8 @@
 #include "Integration/Gen3/Gen3ExportTransaction.h"
+#include "Integration/Gen3/Gen3SaveValidation.h"
+
+#include <algorithm>
+#include <span>
 
 namespace PokeVault::Integration::Gen3 {
 
@@ -29,11 +33,31 @@ Common::VerifiedExportResult publishVerifiedGen3Export(
             result.error = finalizeError.empty() ? "Staged Gen III Bag finalization failed" : finalizeError;
             return result;
         }
-        edited = Common::mergeDisjointBlocks(editor.originalBytes(), edited, bag, 0x1000, finalizeError);
-        if (edited.empty()) {
+        // Merge the 128 KiB flash image by 4 KiB sector; an emulator RTC footer after it is not a
+        // sector and must come through both workspaces unchanged.
+        const auto& original = editor.originalBytes();
+        if (original.size() < Detail::kSaveSize || bag.size() != original.size() ||
+            edited.size() != original.size() ||
+            !std::equal(original.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize), original.end(),
+                        edited.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize)) ||
+            !std::equal(original.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize), original.end(),
+                        bag.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize))) {
+            result.error = "Bag and Pokemon workspaces do not share the original save container";
+            return result;
+        }
+        const std::span<const uint8_t> originalSpan(original);
+        const std::span<const uint8_t> editedSpan(edited);
+        const std::span<const uint8_t> bagSpan(bag);
+        auto merged = Common::mergeDisjointBlocks(originalSpan.first(Detail::kSaveSize),
+                                                  editedSpan.first(Detail::kSaveSize),
+                                                  bagSpan.first(Detail::kSaveSize), 0x1000, finalizeError);
+        if (merged.empty()) {
             result.error = finalizeError;
             return result;
         }
+        merged.insert(merged.end(), original.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize),
+                      original.end());
+        edited = std::move(merged);
     }
     if (trainerPending) {
         if (trainer->sourceGame() != editor.sourceGame() ||

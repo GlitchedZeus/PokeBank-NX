@@ -1,4 +1,5 @@
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
+#include "Save/RtcFooter.h"
 
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Inventory/ClassicInventoryCatalog.h"
@@ -208,8 +209,11 @@ StagedInventoryEditor::StagedInventoryEditor(
 std::unique_ptr<StagedInventoryEditor> StagedInventoryEditor::create(
     std::span<const uint8_t> source, SourceGame game, std::string& error) {
     error.clear();
-    if (source.size() != Detail::kSaveSize) {
-        error = "Generation III staged save must be exactly 128 KiB";
+    // Same container rule as the Pokemon editor and discovery: 128 KiB, optionally followed by an
+    // emulator RTC footer that is carried verbatim and never edited.
+    std::size_t rtcFooterSize = 0;
+    if (!PokeVault::Save::splitRtcPayloadSize(source.size(), Detail::kSaveSize, rtcFooterSize)) {
+        error = "Generation III staged save must be 128 KiB with only a recognized RTC footer";
         return nullptr;
     }
     if (!Detail::sourceGameSupported(game)) {
@@ -378,6 +382,11 @@ bool StagedInventoryEditor::validateStaged(std::string& error) const {
                     original_.begin() + static_cast<std::ptrdiff_t>(inactiveBase + inactiveLength),
                     staged_.begin() + static_cast<std::ptrdiff_t>(inactiveBase))) {
         error = "Generation III staged edit modified the inactive save slot";
+        return false;
+    }
+    if (!std::equal(original_.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize), original_.end(),
+                    staged_.begin() + static_cast<std::ptrdiff_t>(Detail::kSaveSize), staged_.end())) {
+        error = "Generation III staged edit modified the emulator RTC footer";
         return false;
     }
     return true;
