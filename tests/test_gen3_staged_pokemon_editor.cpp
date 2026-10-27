@@ -70,6 +70,9 @@ const char* exactSourceGameId(SourceGame game) {
     return "";
 }
 
+// When set, samplePokemon (and so fixture()) stores the sample as an Egg.
+bool gSampleIsEgg = false;
+
 std::array<uint8_t,80> samplePokemon(SourceGame game) {
     std::array<uint8_t,80> blank{};
     Pokemon::Pokemon3FRLG p(std::span<const std::byte>(
@@ -95,6 +98,7 @@ std::array<uint8_t,80> samplePokemon(SourceGame game) {
         p.setIV(i, static_cast<uint8_t>(10 + i));
         p.setEV(i, static_cast<uint8_t>(20 + i));
     }
+    if (gSampleIsEgg) p.setEgg(true);
     auto* encrypted = Encryption::encryptArray3FRLG(p.getData());
     std::array<uint8_t,80> out{};
     std::memcpy(out.data(), encrypted, out.size());
@@ -959,9 +963,50 @@ int main() {
         assert((egg.rd8(0x13)&0x04)!=0);
         assert(egg.language()==1);
         assert(egg.nickname()==u"\u30bf\u30de\u30b4");
+        // Upstream PKSE 9a9a731 / PKHeX PK3.Nickname: while the egg bit is set the name stays
+        // the placeholder, whatever is written.
+        egg.setNickname(u"BOB");
+        assert(egg.nickname()==u"\u30bf\u30de\u30b4");
+        assert(egg.language()==1);
         egg.setEgg(false);
         assert(!egg.isEgg());
         assert((egg.rd8(0x13)&0x04)==0);
+        egg.setNickname(u"\u30dc\u30d6");
+        assert(egg.nickname()==u"\u30dc\u30d6");
+    }
+
+    // A staged edit may not rename an Egg or change its language; the save stays unchanged.
+    for (const auto& [game, family] : {std::pair{SourceGame::FireRedGBA, Family::FRLG},
+                                       std::pair{SourceGame::EmeraldGBA, Family::Emerald}}) {
+        gSampleIsEgg = true;
+        const auto source = fixture(family, game);
+        gSampleIsEgg = false;
+        std::string error;
+        auto editor = StagedPokemonEditor::create(source, game, error);
+        assert(editor && error.empty());
+        const auto before = editor->stagedBytes();
+
+        BoxPokemonEdit rename;
+        rename.nickname = "BOB";
+        assert(!editor->stageBoxPokemonEdit(0, 0, rename, error));
+        assert(error.find("Egg") != std::string::npos);
+        assert(editor->stagedBytes() == before && !editor->hasPendingChanges());
+
+        BoxPokemonEdit relanguage;
+        relanguage.language = 2;
+        error.clear();
+        assert(!editor->stageBoxPokemonEdit(0, 0, relanguage, error));
+        assert(error.find("Egg") != std::string::npos);
+        assert(editor->stagedBytes() == before && !editor->hasPendingChanges());
+
+        // Restating the Egg's own name and language alongside another field is not a change.
+        BoxPokemonEdit unchangedName;
+        unchangedName.nickname = "\xE3\x82\xBF\xE3\x83\x9E\xE3\x82\xB4";  // タマゴ in UTF-8
+        unchangedName.language = 1;
+        unchangedName.friendship = 120;
+        error.clear();
+        assert(editor->stageBoxPokemonEdit(0, 0, unchangedName, error));
+        assert(error.empty());
     }
     runGame(SourceGame::RubyGBA, Family::RS);
     runGame(SourceGame::SapphireGBA, Family::RS);

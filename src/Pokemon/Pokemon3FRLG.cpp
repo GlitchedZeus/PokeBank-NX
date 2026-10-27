@@ -112,8 +112,12 @@ namespace Pokemon {
         return true;
     }
 
+    // While the egg bit is set the games keep the Japanese word for egg as the nickname, and
+    // PKHeX's PK3 Nickname setter writes that placeholder whatever it is given (upstream PKSE
+    // 9a9a731). Clear the egg bit before naming a hatched Pokemon.
     void Pokemon3FRLG::setNickname(const std::u16string& value) noexcept {
-        g3EncodeName(data.data(), 0x08, value, 10, language());
+        const std::u16string stored = isEgg() ? std::u16string(EGG_NICKNAME_JAPANESE) : value;
+        g3EncodeName(data.data(), 0x08, stored, 10, language());
         refreshChecksum();
     }
 

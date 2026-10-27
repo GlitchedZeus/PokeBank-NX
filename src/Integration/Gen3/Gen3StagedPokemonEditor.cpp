@@ -414,6 +414,20 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
     const uint16_t originalTid = pokemon.tid16();
     const uint16_t originalSid = pokemon.sid16();
 
+    // An Egg has no name of its own: the games store the Japanese word for egg with language
+    // Japanese until it hatches (PKHeX PK3.Nickname; upstream PKSE 9a9a731). Refuse a change
+    // rather than silently writing something else.
+    if (pokemon.isEgg()) {
+        if (edit.nickname && Utils::utf8ToUtf16(*edit.nickname) != pokemon.nickname()) {
+            error = "An Egg's nickname is fixed by the game until it hatches";
+            return false;
+        }
+        if (edit.language && *edit.language != pokemon.language()) {
+            error = "An Egg's language is fixed by the game until it hatches";
+            return false;
+        }
+    }
+
     if (edit.species) {
         if (*edit.species == 0 || *edit.species > 386) {
             error = "Generation III species must be in the National Dex range 1-386";
