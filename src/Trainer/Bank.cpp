@@ -243,6 +243,12 @@ namespace Trainer {
         return buf;
     }
 
+    void Bank::blockWrites(LoadOutcome outcome, std::string reason) {
+        loadOutcome = outcome;
+        writeBlocked = true;
+        writeBlockReasonText = std::move(reason);
+    }
+
     void Bank::load() {
         // Reset every slot first so this is a true reload -- also the "discard changes" path.
         for (auto& box : boxes)
@@ -251,6 +257,8 @@ namespace Trainer {
         for (auto& n : boxNames) n.clear();   // names revert on reload/discard too
         writeBlocked = false;
         writeBlockReasonText.clear();
+        loadRejects = 0;
+        loadOutcome = LoadOutcome::Loaded;
 
         const std::string path = filePath();
         // Only a genuinely absent bank.dat with no preserved generation is a first run. A missing
@@ -258,21 +266,23 @@ namespace Trainer {
         // cannot be inspected opens empty and write-blocked, never migrated over.
         const auto start = BankLoadPolicy::decide(path, &Bank::validateStorageImage);
         if (start.start == BankLoadPolicy::Start::Blocked) {
-            writeBlocked = true;
-            writeBlockReasonText = start.detail;
+            blockWrites(LoadOutcome::Blocked, start.detail);
             savedImage = serialize();
             logErrorToFile("Bank: load blocked; no migration, writes blocked", start.detail.c_str());
             return;
         }
         if (start.start == BankLoadPolicy::Start::FirstRun) {
             // No unified bank yet: one-time import of any legacy per-group bank files, then snapshot.
+            loadOutcome = LoadOutcome::FirstRun;
             migrateLegacyBanks();
             savedImage = serialize();
             logInfoToFile("Bank: no unified bank file; migrated legacy banks if present", path.c_str());
             return;
         }
-        if (start.restored)
+        if (start.restored) {
+            loadOutcome = LoadOutcome::Restored;
             logInfoToFile("Bank: interrupted save recovered", start.detail.c_str());
+        }
 
         size_t fileSize = 0;
         uint8_t* file = readAllBytes(path.c_str(), &fileSize);
@@ -289,12 +299,17 @@ namespace Trainer {
             if (!aside.empty() && std::rename(path.c_str(), aside.c_str()) == 0) {
                 logErrorToFile("Bank: unreadable file preserved as unique recovery generation",
                                aside.c_str());
+                // Preserved, but still the user's Bank: an empty replacement is not committed
+                // until the owner resolves the set-aside copy (BankLoadPolicy keeps blocking).
+                const std::string name = aside.substr(aside.find_last_of('/') + 1);
+                blockWrites(LoadOutcome::Quarantined,
+                    "The Bank file could not be read (" + std::string(why) + ") and was kept as " + name +
+                    ". Saving the Bank is blocked until that file is restored or removed from the Bank folder.");
             } else {
                 // The authoritative bad file is still in place. Never allow a later
                 // empty-bank save to overwrite it merely because quarantine failed.
-                writeBlocked = true;
-                writeBlockReasonText =
-                    "Unreadable Bank could not be preserved safely; original file left untouched.";
+                blockWrites(LoadOutcome::Quarantined,
+                    "Unreadable Bank could not be preserved safely; original file left untouched.");
                 logErrorToFile("Bank: unreadable file could NOT be preserved; writes blocked", why);
             }
             delete[] file;
@@ -302,9 +317,14 @@ namespace Trainer {
         };
 
         if (!file) {
-            // bank.dat exists but could not be read (I/O error, out of memory, short read). It is
-            // still the user's only copy: never a first run, never migrated over.
-            abandonFile("existing bank file could not be read");
+            // bank.dat exists but could not be read (open/permission, I/O, out of memory, short
+            // read). It may be a transient fault, so it is neither renamed nor replaced: left exactly
+            // where it is, never a first run, never migrated over, and never saved over.
+            blockWrites(LoadOutcome::ReadFailed,
+                "The Bank file exists but could not be read. It was left untouched; saving the Bank "
+                "is blocked. Restart PokeBank NX or check the SD card.");
+            savedImage = serialize();
+            logErrorToFile("Bank: existing file could not be read; left in place, writes blocked", path.c_str());
             return;
         }
 
@@ -334,9 +354,8 @@ namespace Trainer {
             // Load only the prefix this build understands for inspection/export, but NEVER allow
             // this process to overwrite the authoritative file: doing so would truncate every
             // unseen box. A future explicit migration must preserve the full original generation.
-            writeBlocked = true;
-            writeBlockReasonText =
-                "This Bank was created with more boxes than this build supports; migration is required.";
+            blockWrites(LoadOutcome::NewerLayout,
+                "This Bank was created with more boxes than this build supports; migration is required.");
             logErrorToFile("Bank: newer/larger layout opened read-only; migration required",
                            std::to_string(fileBoxes).c_str());
         }
@@ -346,7 +365,9 @@ namespace Trainer {
         // complete one, which is what keeps the span below inside the buffer.
         const size_t avail = (fileSize > HEADER_SIZE) ? (fileSize - HEADER_SIZE) / recSize : 0;
         const size_t count = std::min({ total, fileTotal, avail });
-        loadRejects = 0;
+        // A record table shorter than the header promises lost its tail. Saving would commit that
+        // loss as the new authoritative Bank, so it is inspectable only.
+        const bool truncated = avail < fileTotal;
         for (size_t n = 0; n < count; ++n) {
             const size_t recOff = HEADER_SIZE + n * recSize;
             const uint32_t tag = readUInt32LittleEndian(file + recOff);
@@ -390,9 +411,20 @@ namespace Trainer {
 
         delete[] file;
         savedImage = serialize();  // baseline snapshot of the just-loaded state
-        if (loadRejects > 0)
+        if (truncated && !writeBlocked) {
+            blockWrites(LoadOutcome::Truncated,
+                "The Bank file is shorter than its header says (truncated). It was opened for viewing "
+                "only; saving is blocked so the missing records are not made permanent.");
+            logErrorToFile("Bank: truncated record table; writes blocked", path.c_str());
+        }
+        if (loadRejects > 0) {
             logErrorToFile("Bank: dropped damaged slot records on load",
                            std::to_string(loadRejects).c_str());
+            if (!writeBlocked)
+                blockWrites(LoadOutcome::DamagedRecords,
+                    std::to_string(loadRejects) + " damaged Bank record(s) could not be read. The Bank was "
+                    "opened for viewing only; saving is blocked so they are not overwritten.");
+        }
         logInfoToFile("Bank: loaded unified bank", path.c_str());
     }
 
@@ -593,7 +625,7 @@ namespace Trainer {
 
     bool Bank::save() const {
         if (writeBlocked) {
-            logErrorToFile("Bank: save blocked to prevent truncating a newer/larger layout",
+            logErrorToFile("Bank: save blocked; the existing Bank is preserved",
                            writeBlockReasonText.c_str());
             return false;
         }

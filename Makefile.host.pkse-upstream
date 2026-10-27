@@ -1,11 +1,13 @@
 # PKSE 1.2.x upstream-parity regressions (docs/audits/PKSE_1_2_X_GEN15_GAP_MATRIX.md).
 PKSE_UPSTREAM_HOST_TESTS := \
 	$(HOST_BUILD)/test_bank_load_policy \
-	$(HOST_BUILD)/test_gen5_species_pid_gender
+	$(HOST_BUILD)/test_gen5_species_pid_gender \
+	$(HOST_BUILD)/test_bank_fault_injection
 
 PKSE_UPSTREAM_SANITIZE_TESTS := \
 	$(HOST_BUILD)/test_bank_load_policy_sanitize \
-	$(HOST_BUILD)/test_gen5_species_pid_gender_sanitize
+	$(HOST_BUILD)/test_gen5_species_pid_gender_sanitize \
+	$(HOST_BUILD)/test_bank_fault_injection_sanitize
 
 HOST_TESTS += $(PKSE_UPSTREAM_HOST_TESTS)
 HOST_SANITIZE_TESTS += $(PKSE_UPSTREAM_SANITIZE_TESTS)
@@ -31,3 +33,14 @@ $(HOST_BUILD)/test_gen5_species_pid_gender: $(GEN5_SPECIES_PID_GENDER_DEPS)
 $(HOST_BUILD)/test_gen5_species_pid_gender_sanitize: $(GEN5_SPECIES_PID_GENDER_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_species_pid_gender.cpp -o $@
+
+# Q01: the production Bank linked with the real DurableFile and a fault-injecting readAllBytes.
+BANK_FAULT_INJECTION_SOURCES := tests/test_bank_fault_injection.cpp src/Trainer/Bank.cpp src/Utils/DurableFile.cpp src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon7LGPE.cpp src/Pokemon/Pokemon8SWSH.cpp src/Pokemon/Pokemon8BDSP.cpp src/Pokemon/Pokemon8LA.cpp src/Pokemon/Pokemon9SV.cpp src/Pokemon/Pokemon9LZA.cpp src/Pokemon/BaseStatsGen7.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/PokemonTypes.cpp src/Pokemon/LearnsetTable.cpp src/Pokemon/Experience.cpp src/Pokemon/FormInfo.cpp src/Encryption/Encryption.cpp src/Save/Block.cpp src/Enums/SCTypeCode.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption7LGPE.cpp src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption8BDSP.cpp src/Encryption/Encryption8LA.cpp src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp src/Names/ItemNames.cpp src/Names/ItemPresence.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp
+
+$(HOST_BUILD)/test_bank_fault_injection: $(BANK_FAULT_INJECTION_SOURCES) include/Trainer/Bank.h include/Trainer/BankLoadPolicy.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(BANK_FAULT_INJECTION_SOURCES) -o $@
+
+$(HOST_BUILD)/test_bank_fault_injection_sanitize: $(BANK_FAULT_INJECTION_SOURCES) include/Trainer/Bank.h include/Trainer/BankLoadPolicy.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(BANK_FAULT_INJECTION_SOURCES) -o $@

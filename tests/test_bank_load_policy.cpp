@@ -65,6 +65,13 @@ int main() {
         assert(!exists(dir + "/bank.dat"));
     }
 
+    // 1b. A brand-new install: not even the Bank folder exists yet. A first run, never blocked.
+    {
+        const auto dir = freshDir("no-folder");
+        const auto d = P::decide(dir + "/not-created-yet/bank.dat", validBank);
+        assert(d.start == P::Start::FirstRun);
+    }
+
     // 2. Interrupted save: target moved to .previous.N, new temp never promoted.
     //    The validating generation is restored and read; no migration.
     {
@@ -91,6 +98,22 @@ int main() {
         assert(!d.detail.empty());
         assert(!exists(dir + "/bank.dat"));
         assert(readText(dir + "/bank.dat.previous.2") == "garbage");
+    }
+
+    // 3b. Missing target next to a quarantined copy (bank.dat.unreadable.N): the user's set-aside
+    //     Bank, not a first run. Blocked, and the copy is left as found.
+    {
+        const auto dir = freshDir("set-aside");
+        writeText(dir + "/bank.dat.unreadable.0", "corrupt-but-precious");
+        const auto d = P::decide(dir + "/bank.dat", validBank);
+        assert(d.start == P::Start::Blocked);
+        assert(d.detail.find("unreadable") != std::string::npos);
+        assert(readText(dir + "/bank.dat.unreadable.0") == "corrupt-but-precious");
+        assert(!exists(dir + "/bank.dat"));
+        // A validating .previous.N still wins: a real interrupted save is restored.
+        writeText(dir + "/bank.dat.previous.1", "BANKMAGIC-good");
+        const auto r = P::decide(dir + "/bank.dat", validBank);
+        assert(r.start == P::Start::ReadExisting && r.restored);
     }
 
     // 4. bank.dat exists but is not a regular file: blocked, untouched.
@@ -134,11 +157,14 @@ int main() {
         const auto nullRead = body.find("if (!file) {", read);
         assert(nullRead != std::string::npos);
         const auto nullBlock = body.substr(nullRead, body.find("return;", nullRead) - nullRead);
-        assert(nullBlock.find("abandonFile(") != std::string::npos);
+        // A read failure leaves the file exactly in place: no rename, no migration, writes blocked.
+        assert(nullBlock.find("blockWrites(LoadOutcome::ReadFailed") != std::string::npos);
+        assert(nullBlock.find("abandonFile(") == std::string::npos);
+        assert(nullBlock.find("std::rename(") == std::string::npos);
         assert(nullBlock.find("migrateLegacyBanks") == std::string::npos);
         const auto blocked = body.find("if (start.start == BankLoadPolicy::Start::Blocked)");
         assert(blocked != std::string::npos && blocked < read);
-        assert(body.find("writeBlocked = true;", blocked) < firstRun);
+        assert(body.find("blockWrites(LoadOutcome::Blocked", blocked) < firstRun);
     }
 
     std::cout << "Bank load policy (PKSE 620c5f6 parity: unreadable/interrupted bank never a first run): PASS\n";

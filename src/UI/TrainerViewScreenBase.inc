@@ -626,7 +626,11 @@ int reviewGeneration(const std::string& gameId) {
         bank = std::make_unique<Trainer::Bank>();
         // A damaged bank file drops slots silently otherwise -- the user would just find Pokemon
         // missing with no explanation.
-        if (bank && bank->lastLoadRejects() > 0) {
+        // An existing Bank that could not be used opens write-blocked with a reason (Q01): say so
+        // up front rather than only when a save is refused.
+        if (bank && bank->isWriteBlocked() && !bank->writeBlockReason().empty()) {
+            postStatus(bank->writeBlockReason(), 600);
+        } else if (bank && bank->lastLoadRejects() > 0) {
             postStatus(std::to_string(bank->lastLoadRejects()) +
                        " damaged bank slot(s) could not be read and were skipped.", 480);
         }
