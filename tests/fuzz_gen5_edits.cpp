@@ -193,7 +193,9 @@ void runOne(std::span<const uint8_t> data) {
             QA_CHECK(afterView->shiny() == beforeView->shiny());
         const uint8_t ratioBefore = genderRatio(*beforeView, b2w2);
         const uint8_t ratioAfter = genderRatio(*afterView, b2w2);
-        if (G5::gen5Origin5(origin) && G5::variableGenderRatio5(ratioBefore) && ratioBefore == ratioAfter &&
+        // Species edits may change the ratio; the kept PID must still read as the stored gender.
+        if (G5::gen5Origin5(origin) && G5::variableGenderRatio5(ratioBefore) &&
+            G5::variableGenderRatio5(ratioAfter) &&
             G5::genderFromPid5(pidBefore, ratioBefore) == beforeView->gender())
             QA_CHECK(G5::genderFromPid5(pidAfter, ratioAfter) == afterView->gender());
     }
