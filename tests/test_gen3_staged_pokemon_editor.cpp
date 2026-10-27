@@ -72,6 +72,8 @@ const char* exactSourceGameId(SourceGame game) {
 
 // When set, samplePokemon (and so fixture()) stores the sample as an Egg.
 bool gSampleIsEgg = false;
+// The sample's held item (13 = Ether by default).
+uint16_t gSampleHeldItem = 13;
 
 std::array<uint8_t,80> samplePokemon(SourceGame game) {
     std::array<uint8_t,80> blank{};
@@ -84,7 +86,7 @@ std::array<uint8_t,80> samplePokemon(SourceGame game) {
     p.setLanguage(2);
     p.setOTName(u"RED");
     p.setNickname(u"PIKACHU");
-    p.setHeldItem(13);
+    p.setHeldItem(gSampleHeldItem);
     p.setFriendship(70);
     p.setOriginGame(origin(game));
     p.setBall(4);
@@ -973,6 +975,35 @@ int main() {
         assert((egg.rd8(0x13)&0x04)==0);
         egg.setNickname(u"\u30dc\u30d6");
         assert(egg.nickname()==u"\u30dc\u30d6");
+    }
+
+    // Phase 3 #7: a Pokemon that already holds an item that was never released as a held item
+    // (Safari Ball 5 / Berry Juice 44, PKHeX ItemStorage3RS.Unreleased) keeps it through an
+    // unrelated edit on the real Edit -> Keep route; only choosing it anew is refused.
+    for (const uint16_t unreleased : {uint16_t{5}, uint16_t{44}}) {
+        gSampleHeldItem = unreleased;
+        const auto source = fixture(Family::FRLG, SourceGame::FireRedGBA);
+        gSampleHeldItem = 13;
+        std::string error;
+        auto editor = StagedPokemonEditor::create(source, SourceGame::FireRedGBA, error);
+        assert(editor && error.empty());
+        const auto record = editor->boxedPokemon(0, 0, error);
+        assert(record && record->heldItem == unreleased);
+        PokeBank::UIModel::Gen3SharedEditor::Session draft;
+        draft.begin(*record, PokeBank::UIModel::Gen3SharedEditor::Mode::Edit);
+        draft.working.nickname = "SAFARI";
+        assert(draft.keep(*editor, 0, 0, error));
+        const auto bytes = editor->finalizedBytes(error);
+        assert(!bytes.empty());
+        auto reopened = StagedPokemonEditor::create(bytes, SourceGame::FireRedGBA, error);
+        assert(reopened);
+        const auto kept = reopened->boxedPokemon(0, 0, error);
+        assert(kept && kept->nickname == "SAFARI" && kept->heldItem == unreleased);
+        // Choosing it as a new held item is still refused, and refusal changes nothing.
+        auto picker = StagedPokemonEditor::create(source, SourceGame::FireRedGBA, error);
+        BoxPokemonEdit pick;
+        pick.heldItem = unreleased;
+        assert(!picker->stageBoxPokemonEdit(0, 0, pick, error) && picker->stagedBytes() == source);
     }
 
     // A staged edit may not rename an Egg or change its language; the save stays unchanged.

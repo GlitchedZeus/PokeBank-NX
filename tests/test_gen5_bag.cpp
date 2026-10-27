@@ -233,7 +233,35 @@ void unrecognizedBagFailsClosed() {
 
 } // namespace
 
+// Phase 3 #6 / Q09 boundary: Gen V pockets have exactly as many native slots as legal items
+// (PKHeX pouch lists; bagPocketLayout5). Medicine at capacity - 1 accepts the last legal item;
+// at capacity every add is refused (duplicates) and refusal changes nothing; stack max 999.
+void medicineCapacityBoundary(G::SaveFamily family, std::string_view game, uint8_t version) {
+    const auto& medicine = G::BagCatalog5::kMedicine;
+    std::vector<Stack> stacks;
+    for (size_t i = 0; i + 1 < medicine.size(); ++i) stacks.push_back({3, medicine[i], 1});
+    const auto input = fixture(family, version, false, stacks);
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(input, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    auto* staged = ws.stagedBag(&error);
+    assert(staged);
+    assert(G::bagPocketLayout5(family, 3).slots == medicine.size());
+    assert(staged->add(3, medicine.back(), 1, &error));            // capacity - 1 -> capacity
+    assert(staged->current()[3].size() == medicine.size());
+    const std::vector<uint8_t> full(staged->staged().begin(), staged->staged().end());
+    for (const uint16_t id : {medicine.front(), medicine.back()})
+        assert(!staged->add(3, id, 1, &error));                    // at capacity: refused
+    assert(std::equal(full.begin(), full.end(), staged->staged().begin(), staged->staged().end()));
+    assert(staged->setQuantity(3, 0, 999, &error));                // native stack maximum
+    assert(!staged->setQuantity(3, 0, 1000, &error));
+    assert(staged->current()[3][0].count == 999);
+}
+
 int main() {
+    medicineCapacityBoundary(G::SaveFamily::BlackWhite, "white_nds", 20);
+    medicineCapacityBoundary(G::SaveFamily::Black2White2, "white2_nds", 22);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20, false);
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21, true);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22, false);
