@@ -305,8 +305,9 @@ bool stagePokemonFieldEdit(TrainerViewScreen& screen, int row) {
             break;
         }
         case 22: {
-            const auto r = Utils::promptText("Gen II OT Name", "1-10 Gen II characters",
-                                             pokemon->originalTrainer, 10);
+            const auto r = Utils::promptText("Gen II OT Name", "1-7 Gen II characters",
+                                             pokemon->originalTrainer,
+                                             static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
             if (!r.accepted) return false;
             edit.otName = r.text;
             break;

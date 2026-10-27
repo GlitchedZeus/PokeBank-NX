@@ -525,7 +525,8 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             break;
         }
         case 4: {
-            const auto result = Utils::promptText("Gen II OT Name", "1-10 Gen II characters", p.originalTrainer, 10);
+            const auto result = Utils::promptText("Gen II OT Name", "1-7 Gen II characters", p.originalTrainer,
+                                                  static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
             if (result.accepted) p.originalTrainer = result.text;
             break;
         }

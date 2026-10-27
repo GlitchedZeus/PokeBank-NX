@@ -513,8 +513,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 4) {
-            const auto result = Utils::promptText("OT Name", "1-10 Generation II characters",
-                                                  p.originalTrainer, 10);
+            // An OT is a player name: 7 international characters (the staged editor enforces it).
+            const auto result = Utils::promptText("OT Name", "1-7 Generation II characters",
+                                                  p.originalTrainer,
+                                                  static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
             if (result.accepted) p.originalTrainer = result.text;
             return true;
         }
