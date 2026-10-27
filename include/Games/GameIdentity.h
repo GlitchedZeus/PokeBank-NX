@@ -36,6 +36,13 @@ namespace PokeVault::Games {
     std::span<const GameDescriptor> allGameDescriptors() noexcept;
     const GameDescriptor* findGame(std::string_view id) noexcept;
     const GameDescriptor* findSwitchGame(uint64_t titleId) noexcept;
+    // Localized FireRed/LeafGreen Switch releases share the English release's behaviour (forwarder
+    // save binding, artwork, portrait, sort order) but never its storage: backups and workspaces are
+    // keyed by the exact id. Any other id is returned unchanged.
+    std::string_view switchReleaseFamily(std::string_view id) noexcept;
+    // PKHeX LanguageID of a FireRed/LeafGreen Switch release (1 JPN, 2 ENG, 3 FRA, 4 ITA, 5 DEU,
+    // 7 ESP); 0 for every other game.
+    uint8_t switchReleaseLanguage(std::string_view id) noexcept;
     std::string_view platformName(Platform platform) noexcept;
     // Compact platform label for a supported read-only legacy source. Planned sources intentionally
     // return empty so this helper cannot accidentally activate later roadmap support.

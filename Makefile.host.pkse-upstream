@@ -4,14 +4,16 @@ PKSE_UPSTREAM_HOST_TESTS := \
 	$(HOST_BUILD)/test_gen5_species_pid_gender \
 	$(HOST_BUILD)/test_bank_fault_injection \
 	$(HOST_BUILD)/test_gen2_inventory_byte_fidelity \
-	$(HOST_BUILD)/test_gen3_inventory_byte_fidelity
+	$(HOST_BUILD)/test_gen3_inventory_byte_fidelity \
+	$(HOST_BUILD)/test_frlg_switch_releases
 
 PKSE_UPSTREAM_SANITIZE_TESTS := \
 	$(HOST_BUILD)/test_bank_load_policy_sanitize \
 	$(HOST_BUILD)/test_gen5_species_pid_gender_sanitize \
 	$(HOST_BUILD)/test_bank_fault_injection_sanitize \
 	$(HOST_BUILD)/test_gen2_inventory_byte_fidelity_sanitize \
-	$(HOST_BUILD)/test_gen3_inventory_byte_fidelity_sanitize
+	$(HOST_BUILD)/test_gen3_inventory_byte_fidelity_sanitize \
+	$(HOST_BUILD)/test_frlg_switch_releases_sanitize
 
 HOST_TESTS += $(PKSE_UPSTREAM_HOST_TESTS)
 HOST_SANITIZE_TESTS += $(PKSE_UPSTREAM_SANITIZE_TESTS)
@@ -70,3 +72,14 @@ $(HOST_BUILD)/test_gen3_inventory_byte_fidelity: $(GEN3_INVENTORY_FIDELITY_SOURC
 $(HOST_BUILD)/test_gen3_inventory_byte_fidelity_sanitize: $(GEN3_INVENTORY_FIDELITY_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_INVENTORY_FIDELITY_SOURCES) -o $@
+
+# Q04: all twelve FireRed/LeafGreen Switch releases, exact identities and backup namespaces.
+FRLG_SWITCH_RELEASES_SOURCES := tests/test_frlg_switch_releases.cpp src/Games/GameIdentity.cpp
+
+$(HOST_BUILD)/test_frlg_switch_releases: $(FRLG_SWITCH_RELEASES_SOURCES) include/Enums/GameVersion.h include/Games/GameIdentity.h include/Utils/MoveTransactionProduction.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(FRLG_SWITCH_RELEASES_SOURCES) -o $@
+
+$(HOST_BUILD)/test_frlg_switch_releases_sanitize: $(FRLG_SWITCH_RELEASES_SOURCES) include/Enums/GameVersion.h include/Games/GameIdentity.h include/Utils/MoveTransactionProduction.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(FRLG_SWITCH_RELEASES_SOURCES) -o $@

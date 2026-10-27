@@ -121,7 +121,8 @@ namespace UI {
         // HOME forwarders are launch identities, not native Pokemon save containers. Keep the
         // installed Switch title ID for ZR launch, but bind preview/open to the real GBA battery
         // save assigned to the same profile.
-        std::string_view legacySaveGameIdForForwarder(std::string_view gameId) noexcept {
+        std::string_view legacySaveGameIdForForwarder(std::string_view exactGameId) noexcept {
+            const std::string_view gameId = PokeVault::Games::switchReleaseFamily(exactGameId);
             if (gameId == "firered_switch") return "firered_gba";
             if (gameId == "leafgreen_switch") return "leafgreen_gba";
             return {};
@@ -183,8 +184,8 @@ namespace UI {
             if (id == "scarlet_switch") return 202211180;
             if (id == "violet_switch") return 202211181;
             if (id == "legends_za_switch") return 202510160;
-            if (id == "firered_switch") return 202602270;
-            if (id == "leafgreen_switch") return 202602271;
+            if (PokeVault::Games::switchReleaseFamily(id) == "firered_switch") return 202602270;
+            if (PokeVault::Games::switchReleaseFamily(id) == "leafgreen_switch") return 202602271;
             // Unknown/future identities sort after known releases instead of jumping in front.
             return 999999999;
         }
@@ -462,7 +463,8 @@ namespace UI {
                 ? TrainerPortraitPresentation{female ? "May" : "Brendan", female ? "may" : "brendan", female, true}
                 : TrainerPortraitPresentation{"Hoenn Trainer", "", false, false};
         if (gameId == "firered_gba" || gameId == "leafgreen_gba" ||
-            gameId == "firered_switch" || gameId == "leafgreen_switch")
+            PokeVault::Games::switchReleaseFamily(gameId) == "firered_switch" ||
+            PokeVault::Games::switchReleaseFamily(gameId) == "leafgreen_switch")
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Leaf" : "Red", female ? "leaf" : "red", female, true}
                 : TrainerPortraitPresentation{"Kanto Trainer", "red", false, true};

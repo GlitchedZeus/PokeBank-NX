@@ -8,7 +8,7 @@ using namespace PokeVault::Games;
 
 int main() {
     const auto games = allGameDescriptors();
-    assert(games.size() == 32);
+    assert(games.size() == 42);  // 32 + ten localized FireRed/LeafGreen Switch releases (Q04)
 
     std::set<std::string> ids;
     std::set<uint64_t> switchIds;
