@@ -7,6 +7,9 @@
 // vacant slot also holds distinctive 0x55AA bytes, as an unrelated record would.
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
+#include "Inventory/ClassicInventoryCatalog.h"
+#include "Inventory/ItemQuantityPolicy.h"
+#include "UI/SharedBagAddFlow.h"
 
 #include <algorithm>
 #include <array>
@@ -62,6 +65,11 @@ LogicalSectors makeLogical(Family family) {
     write16(logical[1], items + 8, kSuperPotion);
     write16(logical[1], items + 10, static_cast<uint16_t>(4 ^ key16(family)));
     write16(logical[1], items + 5 * 4 + 2, 0x55AA);
+    if (family == Family::FRLG) {
+        // Key Items (0x03B8): Meteorite x1 in slot 0, as a save that already holds one.
+        write16(logical[1], 0x03B8, 280);
+        write16(logical[1], 0x03BA, static_cast<uint16_t>(1 ^ key16(family)));
+    }
     return logical;
 }
 
@@ -185,9 +193,54 @@ void runFamily(SourceGame game, Family family) {
     assert(stagedAt() == source && !editor->hasPendingChanges());
 }
 
+// Q06 (independent QA 2026-10-27): Meteorite (280) is an FRLG Key Item. pret pokefirered ce6406d8
+// src/data/items.json: POCKET_KEY_ITEMS, importance 1; PKHeX 8e3eb3d4 ItemStorage3FRLG.Key;
+// upstream PKSE d2ad323.
+void meteorite(SourceGame game) {
+    namespace C = PokeVault::Inventory;
+    namespace QP = PokeVault::Inventory::QuantityPolicy;
+    const auto classic = game == SourceGame::FireRedGBA ? C::ClassicGame::FireRed : C::ClassicGame::LeafGreen;
+    const auto policy = game == SourceGame::FireRedGBA ? QP::Game::FireRed : QP::Game::LeafGreen;
+    // Catalog and policy: a unique Key Item, only in Key Items, with the story-item warning.
+    assert(C::isAddableItem(classic, C::ClassicPocket::KeyItems, 280));
+    assert(!C::isAddableItem(classic, C::ClassicPocket::Items, 280));
+    const auto rule = QP::quantityRule(policy, QP::Pocket::KeyItems, 280);
+    assert(rule.valid && rule.maximum == 1 && rule.kind == QP::ItemKind::KeyItem);
+    assert(PokeBank::UIModel::BagAdd::needsKeyItemWarning(rule));
+    assert(!QP::quantityRule(policy, QP::Pocket::Items, 280).valid);
+    // Ruby/Sapphire/Emerald keep their own Meteorite entry; nothing else moved.
+    assert(C::isAddableItem(C::ClassicGame::Emerald, C::ClassicPocket::KeyItems, 280));
+
+    // An existing Meteorite is recognised and can be kept, refused above 1, and removed in place.
+    const auto source = fixture(Family::FRLG);
+    std::string error;
+    auto editor = StagedInventoryEditor::create(source, game, error);
+    assert(editor && error.empty());
+    assert(editor->stagedInventoryQuantity(InventoryPouch::KeyItems, 280) == 1);
+    assert(editor->stageInventoryQuantity(InventoryPouch::KeyItems, 280, 1, error));
+    assert(std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end()) == source);
+    assert(!editor->stageInventoryQuantity(InventoryPouch::KeyItems, 280, 2, error));
+    assert(!editor->stageInventoryQuantity(InventoryPouch::Items, 280, 1, error));
+    assert(std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end()) == source);
+    assert(editor->stageInventoryQuantity(InventoryPouch::KeyItems, 280, 0, error));
+    const std::vector<uint8_t> removed(editor->stagedBytes().begin(), editor->stagedBytes().end());
+    const std::size_t sector = activeSector1(removed);
+    for (const std::size_t at : diff(source, removed))
+        assert((at >= sector + 0x03B8 && at < sector + 0x03BC) || at == sector + 0xFF6 || at == sector + 0xFF7);
+    // Verified round trip: strict reparse, and the item can be put back.
+    const auto finalized = editor->finalizedBytes(error);
+    assert(!finalized.empty());
+    auto reopened = StagedInventoryEditor::create(finalized, game, error);
+    assert(reopened && reopened->stagedInventoryQuantity(InventoryPouch::KeyItems, 280) == 0);
+    assert(reopened->stageInventoryQuantity(InventoryPouch::KeyItems, 280, 1, error));
+    assert(reopened->stagedInventoryQuantity(InventoryPouch::KeyItems, 280) == 1);
+}
+
 }  // namespace
 
 int main() {
+    meteorite(SourceGame::FireRedGBA);
+    meteorite(SourceGame::LeafGreenGBA);
     runFamily(SourceGame::RubyGBA, Family::RS);
     runFamily(SourceGame::EmeraldGBA, Family::Emerald);
     runFamily(SourceGame::FireRedGBA, Family::FRLG);

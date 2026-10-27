@@ -110,8 +110,10 @@ constexpr std::array<uint16_t, 29> kG3KeysRS{{
 constexpr std::array<uint16_t, 32> kG3KeysE{{
     259,260,261,262,263,264,265,266,268,269,270,271,272,273,274,275,278,279,280,281,282,283,284,285,286,287,288,370,371,372,375,376,
 }};
-constexpr std::array<uint16_t, 32> kG3KeysFRLG{{
-    260,261,262,263,264,265,349,350,351,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,
+// 280 Meteorite (Q06): pret pokefirered ce6406d8 src/data/items.json puts ITEM_METEORITE in
+// POCKET_KEY_ITEMS (importance 1); PKHeX 8e3eb3d4 ItemStorage3FRLG.Key lists it; upstream PKSE d2ad323.
+constexpr std::array<uint16_t, 33> kG3KeysFRLG{{
+    260,261,262,263,264,265,280,349,350,351,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,
 }};
 
 constexpr std::array<uint16_t, 55> kG1MachineMoves{{
