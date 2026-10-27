@@ -477,6 +477,38 @@ B08 was two separate defects; they are B06 and B07 here.
 - **Comment:**
 - **Screenshots sent separately:**
 
+### C06 · Gen V Trainer: Review button overlaps nothing
+- **Steps:** Black, White, Black 2 or White 2 → Trainer. Look at the bottom rows (Badges, Game language) and the Y Review Changes button.
+- **Expected:** The button sits below the last row; Badges and the Game language line are fully visible and nothing overlaps.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Game / save used:**
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C07 · Gen I/II "Origin & Legality" panel
+- **Steps:** Red/Blue/Yellow and Gold/Silver/Crystal → open a Pokémon in View.
+- **Expected:** The provenance panel is titled "Origin & Legality" (not "GEN I DATA" / "GEN II DATA"), in the same heading style as Gen III–V, and the title is not repeated inside the panel.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Game / save used:**
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C08 · Create Review rows look the same in Gen I–V
+- **Steps:** In each generation, Create a Pokémon with moves → Keep → Review.
+- **Expected:** A header "<slot> / Add Pokémon: Empty → <Species> Lv n", then named rows (Moves, OT / TID (/ SID), and the fields the game stores). No empty "Moves: (none)" rows; Gen III shows the save's trainer name as OT.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Game / save used:**
+- **Comment:**
+- **Screenshots sent separately:**
+
+### C09 · Met Location: focused event row shows its detail line
+- **Steps:** Black 2 → Edit a Pokémon → Met Location → Other histories → move through POKÉPARK, Pokémon Festa, Movie, WCS, VGE, Worlds and PC rows.
+- **Expected:** Each row shows a short kind (e.g. "Event: World Championship (WCS)"); the header shows the focused row's detail with its native #id. Unknown markers say "meaning not documented"; no dates, recipients or legality are claimed. The popup stays compact.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Game / save used:**
+- **Comment:**
+- **Screenshots sent separately:**
+
 ---
 
 ## Group D: still untested

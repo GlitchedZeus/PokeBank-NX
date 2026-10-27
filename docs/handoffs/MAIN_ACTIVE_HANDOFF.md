@@ -22,6 +22,52 @@ Last updated: 2026-10-26 UTC, by Claude (Lane P, Round 7).
 - Gates: GCC host-test 199 PASS, GCC ASan 199 PASS, Python contracts PASS, cross-gen 0 failing.
 - NOT DEVICE TESTED. Remaining E05 sweep items need hardware screenshots to locate overlaps.
 
+## Round 7: candidate bound (Oct 27 2026, coordinator session_01AnyHUH96AxxgM3qguezsET)
+
+Owner Round 6 results: `docs/hardware/ROUND6_RESULTS_26186464.md`, 49 PASS / 9 FAIL / 1 NOT TESTED. The owner's original report file and screenshots have not been added to the repo yet.
+
+### Final code head
+
+| Field | Value |
+| --- | --- |
+| Code SHA | `e88957f22a5b6432b56f91ef62e1f1938d391a96` |
+| Tree SHA | `4a243500b6b6fa79a10ff93cd06b21cbc6d9df79` |
+
+- Every Round 7 contract (CG80–CG90) is ENFORCED.
+- Gate: 301 guards.
+
+### NRO
+
+| Field | Value |
+| --- | --- |
+| File | `PokeBank-NX-Gen1-5-Candidate-e88957f2.nro` |
+| Build run | 40429278048 (workflow_dispatch; see the CI note below) |
+| Artifact | 12700694069 |
+| SHA-256 | `9e1b6a314fd7643901b6bb157dc69bfa82de61b9b4c45dc97214021f3db813b5` |
+| Size | 176869041 bytes |
+
+- Checklist: `docs/hardware/RETEST_e88957f2.md`, 66 items from `RETEST_ROUND7_TEMPLATE.md`. Items C06–C09 were added for late changes.
+- CI note: pull_request workflows stopped triggering after `ab46883e` (22:58 UTC Oct 26), so the final head's checks were started manually with workflow_dispatch. GCC host-sanitize ran locally because host-tests.yml has no dispatch trigger.
+
+### What landed, by lane
+
+| Lane | Changes |
+| --- | --- |
+| L | B08(1): Gen II Create/Edit Review drawn on top. B08(2): one Review key per screen (Y on Party/Trainer/Gen V Boxes, + on Bag/Gen I–IV Boxes/Create/Edit/Gen V hub). G1: Gen V exports in Save Backups. |
+| R | B07/C09: Unown letter grid, confirmations and Reroll status. B04: InventoryHelp.h, titled "Inventory Controls". |
+| C | B06/C06: SharedTrainerPanel and ClassicTrainerPage for Gen I–V, including the Gen V measured Review slot. A22/C01: Gen II CALCULATED SPECIAL STATS block. |
+| P | B05: SpecialMetLocationNotes.h. C04: Quick Games and Home popups close on an outside tap. |
+| S | SharedPanelHeading.h typography; Gen I/II "Origin & Legality"; Create Review shape for Gen III/IV/V; Gen IV View fixture. |
+| QA | CG80–CG90, Round 7 guards, and audits of every re-pin. |
+
+### Outstanding
+
+- 7E G2–G4 are documented only.
+- Gen I/II have no View-mode notice.
+- The generic actions sheet and carried-block menus are source-pinned only; they are not reachable from Gen I–V.
+
+NOT DEVICE TESTED.
+
 ## Round 6: candidate bound (Oct 26 2026, coordinator session_01AnyHUH96AxxgM3qguezsET)
 
 ### Final code head
