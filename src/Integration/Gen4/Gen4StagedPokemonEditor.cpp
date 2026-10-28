@@ -67,6 +67,39 @@ void setError(std::string* error, std::string value) {
     if (error) *error = std::move(value);
 }
 
+uint16_t slot16(const std::vector<uint8_t>& bytes, size_t offset) noexcept {
+    return static_cast<uint16_t>(bytes[offset] | (static_cast<uint16_t>(bytes[offset + 1]) << 8));
+}
+
+// The games list a pocket up to its FIRST slot with no item or a zero quantity
+// (pret pokediamond arm9/src/bag.c, pokeplatinum and pokeheartgold src/bag.c and
+// their bag list builders). `listed` counts those leading slots. `consistent` is
+// false when the app's list (decodeReadOnlyBag: id not 0 / 0xFFFF, quantity not
+// 0) differs from the game's: a stack after an empty or zero-quantity slot, or an
+// item ID 0xFFFF stack inside the list. Such a pocket is pre-existing native
+// damage; Bag edits refuse it rather than rearrange it or hide items in game.
+struct NativePocketList {
+    size_t listed = 0;
+    bool consistent = true;
+};
+
+NativePocketList nativePocketList(const std::vector<uint8_t>& bytes, size_t start, size_t slots) noexcept {
+    NativePocketList out;
+    while (out.listed < slots && slot16(bytes, start + out.listed * 4) != 0 &&
+           slot16(bytes, start + out.listed * 4 + 2) != 0)
+        ++out.listed;
+    for (size_t slot = 0; slot < slots; ++slot) {
+        const uint16_t id = slot16(bytes, start + slot * 4);
+        const uint16_t quantity = slot16(bytes, start + slot * 4 + 2);
+        const bool appVisible = id != 0 && id != 0xFFFF && quantity != 0;
+        if ((slot < out.listed) != appVisible) out.consistent = false;
+    }
+    return out;
+}
+
+constexpr const char* kDamagedPocketMessage =
+    "this pocket already has an empty or unreadable slot before other items. It is left unchanged.";
+
 const char* layoutGameName(Layout layout) noexcept {
     switch (layout) {
         case Layout::DiamondPearl: return "Diamond/Pearl";
@@ -983,30 +1016,16 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         setError(error,"Gen IV selected General pocket geometry is invalid");
         return false;
     }
-    // The game lists a pocket up to its FIRST slot with no item or a zero quantity
-    // (pret pokediamond/pokeplatinum/pokeheartgold bag list builders) and removal
-    // packs the pocket (PocketCompaction / Pocket_SortEmpty). Packing is only safe
-    // when the app's list and the game's list are the same stacks: a pocket whose
-    // stacks sit after an empty slot, or that holds an item ID 0xFFFF stack, is
-    // pre-existing native damage. Refuse rather than rearrange it.
+    // Removal packs the pocket natively (PocketCompaction / Pocket_SortEmpty).
+    // Packing is only safe when the app's list and the game's list agree.
     const auto slotAt=[&](size_t slot){ return base+spec.offset+slot*4; };
-    const auto read16=[&](size_t at){
-        return uint16_t(uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8));
-    };
-    size_t gameListed=0;
-    while(gameListed<spec.slots &&
-          read16(slotAt(gameListed))!=0 && read16(slotAt(gameListed)+2)!=0)++gameListed;
-    for(size_t slot=0;slot<spec.slots;++slot) {
-        const uint16_t id=read16(slotAt(slot));
-        const uint16_t quantity=read16(slotAt(slot)+2);
-        const bool inGameList=slot<gameListed;
-        const bool appVisible=id!=0 && id!=0xFFFF && quantity!=0;
-        if(inGameList!=appVisible) {
-            setError(error,"Gen IV Remove refused: this pocket already has an empty or "
-                           "unreadable slot before other items. It is left unchanged.");
-            return false;
-        }
+    const auto read16=[&](size_t at){ return slot16(staged_,at); };
+    const auto native=nativePocketList(staged_,slotAt(0),spec.slots);
+    if(!native.consistent) {
+        setError(error,std::string("Gen IV Remove refused: ")+kDamagedPocketMessage);
+        return false;
     }
+    const size_t gameListed=native.listed;
     size_t foundAt=0;
     size_t populated=0;
     bool found=false;
@@ -1037,6 +1056,12 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
     for(size_t at=foundAt;at+4<listEnd;at+=4)
         for(size_t k=0;k<4;++k)staged_[at+k]=staged_[at+4+k];
     for(size_t k=0;k<4;++k)staged_[listEnd-4+k]=0;
+    const auto post=nativePocketList(staged_,slotAt(0),spec.slots);
+    if(!post.consistent || post.listed+1!=gameListed) {
+        staged_=std::move(backup);
+        setError(error,"Gen IV removal would leave the native pocket inconsistent");
+        return false;
+    }
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
         return false;
@@ -1112,68 +1137,66 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
         setError(error,"Gen IV Add selected native pocket geometry is invalid");
         return false;
     }
-    // Append after the last occupied native slot so the shared visible item
-    // order remains stable. Never reuse nonzero-ID/zero-quantity ghost slots
-    // or overwrite a slot whose bytes are not a native blank sentinel.
-    size_t afterLast=0;
-    for(size_t slot=0;slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if(id!=0 && id!=0xFFFF && count!=0)afterLast=slot+1;
+    // Native Add (pret Bag_AddItem / Bag_TryAddItem) uses the first blank slot,
+    // then sorts the Berries and TM/HM pockets by ascending item ID (SortPocket /
+    // Pocket_Sort); other pockets keep their order. The new stack must land in
+    // the slot right after the game's list, or the game would not show it.
+    const size_t regionLo=base+spec.offset;
+    const auto native=nativePocketList(staged_,regionLo,spec.slots);
+    if(!native.consistent) {
+        setError(error,std::string("Gen IV Add refused: ")+kDamagedPocketMessage);
+        return false;
     }
-    size_t target=0;
-    bool found=false;
-    for(size_t slot=afterLast;slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if((id==0 && count==0) ||
-           (id==0xFFFF && count==0xFFFF)) {
-            target=at;
-            found=true;
-            break;
-        }
-    }
-    if(!found) {
+    const size_t listed=native.listed;
+    if(listed>=spec.slots) {
         setError(error,"Gen IV Add refused: native pouch has no verified trailing empty slot");
         return false;
     }
-
-    // Native behavior (pret/pokeplatinum Bag_TryAddItem, pret/pokeheartgold
-    // Bag_AddItem): after an Add the Berry and TM/HM pockets are sorted by
-    // ascending item ID. Other pockets append. Only a well-formed pocket (all
-    // occupied slots form a packed prefix, remaining slots are native blanks,
-    // no ghost/odd slots) is reordered; anything unusual keeps the append
-    // behaviour so malformed native slots are never silently rewritten.
+    {
+        const uint16_t id=slot16(staged_,regionLo+listed*4);
+        const uint16_t count=slot16(staged_,regionLo+listed*4+2);
+        // Never reuse a ghost (item, zero quantity) or other leftover record. (A
+        // 0xFFFF/0xFFFF slot here would be game-listed, so nativePocketList has
+        // already refused it.)
+        if(id!=0 || count!=0) {
+            setError(error,"Gen IV Add refused: the slot after the last item holds leftover "
+                           "native data. It is left unchanged.");
+            return false;
+        }
+    }
+    // Insert in ID order only when the pocket is already in the native order
+    // (strictly ascending, as every native Add leaves it). A pocket in some other
+    // order is not re-sorted here: the new stack is appended and the existing
+    // stacks keep their slots.
     const bool nativeSorted=pocket==static_cast<size_t>(BagPocket::Berries) ||
                             pocket==static_cast<size_t>(BagPocket::Machines);
-    bool sortPocket=nativeSorted && target==base+spec.offset+afterLast*4 &&
-                    afterLast==prior.size();
-    for(size_t slot=afterLast;sortPocket && slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if(!((id==0 && count==0) || (id==0xFFFF && count==0xFFFF)))sortPocket=false;
+    bool ascending=true;
+    for(size_t n=1;n<prior.size();++n)
+        if(prior[n-1].itemId>=prior[n].itemId)ascending=false;
+    size_t insertAt=listed;
+    if(nativeSorted && ascending) {
+        insertAt=0;
+        while(insertAt<prior.size() && prior[insertAt].itemId<itemId)++insertAt;
     }
     std::vector<Trainer::InventoryItem> expectedPocket(prior.begin(),prior.end());
-    expectedPocket.push_back(Trainer::InventoryItem{itemId,quantity,false,false});
-    if(sortPocket) {
-        std::stable_sort(expectedPocket.begin(),expectedPocket.end(),
-            [](const auto& l,const auto& r){return l.itemId<r.itemId;});
-    }
-    const size_t regionLo=base+spec.offset;
-    const size_t regionHi=regionLo+spec.slots*4;
+    expectedPocket.insert(expectedPocket.begin()+static_cast<std::ptrdiff_t>(insertAt),
+                          Trainer::InventoryItem{itemId,quantity,false,false});
+    const size_t changedLo=regionLo+insertAt*4;
+    const size_t changedHi=regionLo+(listed+1)*4;
 
     auto backup=staged_;
-    if(sortPocket) {
-        for(size_t n=0;n<expectedPocket.size();++n) {
-            write16(staged_,regionLo+n*4,expectedPocket[n].itemId);
-            write16(staged_,regionLo+n*4+2,expectedPocket[n].count);
-        }
-    } else {
-        write16(staged_,target,itemId);
-        write16(staged_,target+2,quantity);
+    for(size_t at=changedHi-4;at>changedLo;at-=4)
+        for(size_t k=0;k<4;++k)staged_[at+k]=staged_[at-4+k];
+    write16(staged_,changedLo,itemId);
+    write16(staged_,changedLo+2,quantity);
+    // Filling the blank slot must not bring leftover data behind it into the
+    // game's list (e.g. 0xFFFF/0xFFFF filler that the game would show).
+    const auto post=nativePocketList(staged_,regionLo,spec.slots);
+    if(!post.consistent || post.listed!=expectedPocket.size()) {
+        staged_=std::move(backup);
+        setError(error,"Gen IV Add refused: leftover native data after the last item would "
+                       "appear in game. It is left unchanged.");
+        return false;
     }
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
@@ -1209,7 +1232,7 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
     }
     const size_t crcAt=base+blockSize-2;
     for(size_t i=0;i<staged_.size();++i) {
-        if(sortPocket?(i>=regionLo && i<regionHi):(i>=target && i<target+4))continue;
+        if(i>=changedLo && i<changedHi)continue;
         if(i==crcAt || i==crcAt+1)continue;
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
