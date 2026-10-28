@@ -26,6 +26,7 @@ include Makefile.host.pkse-upstream
 include Makefile.host.multilingual
 include Makefile.host.pkse-october
 include Makefile.host.pkse-october-pid
+include Makefile.host.jp-gen12
 
 include Makefile.host.machine
 

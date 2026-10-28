@@ -1,0 +1,20 @@
+# Japanese Gen I / II editing (owner Oct 28). Writers and text are tested here; the UI keeps Japanese
+# saves read-only until the owner opens include/Integration/Common/JapaneseEditingGate.h.
+# Real-save evidence is opt-in: POKEBANK_JP_FIXTURES=<folder with saves/ and pokemon/> (never committed).
+# Included by Makefile.host after the Feature A fragments.
+
+JP_KANA_SOURCES := tests/test_gen12_kana_text.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Names/SpeciesNames.cpp
+JP_GEN12_HOST_TESTS := $(HOST_BUILD)/test_gen12_kana_text
+JP_GEN12_SANITIZE_TESTS := $(HOST_BUILD)/test_gen12_kana_text_sanitize
+
+HOST_TESTS += $(JP_GEN12_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(JP_GEN12_SANITIZE_TESTS)
+host-test: $(JP_GEN12_HOST_TESTS)
+host-sanitize: $(JP_GEN12_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gen12_kana_text: $(JP_KANA_SOURCES) include/Utils/Gen12KanaText.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(JP_KANA_SOURCES) -o $@
+$(HOST_BUILD)/test_gen12_kana_text_sanitize: $(JP_KANA_SOURCES) include/Utils/Gen12KanaText.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(JP_KANA_SOURCES) -o $@
