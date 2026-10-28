@@ -49,10 +49,10 @@ int main() {
     auto rby = PokeVault::Legacy::RBYReadOnlyTrainer::create(*parsed.save, error);
     check(rby && rby->japaneseLayout(), "Japanese Red trainer opens");
     if (!rby) return 1;
-    check(Names::japaneseSave(*rby), "a Japanese Gen I save is recognised");
+    check(Names::japaneseSave(*rby, "red_gb"), "a Japanese Gen I save is recognised");
 
     HostUi::textAnswers.push_back({true, "ピカ"});
-    const auto kana = Names::prompt(*rby, "Generation I Nickname", "1-10 supported Gen I characters", "", 10);
+    const auto kana = Names::prompt(*rby, "red_gb", "Generation I Nickname", "1-10 supported Gen I characters", "", 10);
     check(HostUi::japanesePromptCount == 1 && HostUi::lastJapaneseMaxChars == 5,
           "Japanese save: Nickname opens the kana prompt capped at 5 (cap " +
               std::to_string(HostUi::lastJapaneseMaxChars) + ")");
@@ -65,10 +65,10 @@ int main() {
     auto black = g5 ? PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*g5, "black_nds", error) : nullptr;
     check(black != nullptr, "Gen V fixture opens");
     if (black) {
-        check(!Names::japaneseSave(*black), "a non-Gen I/II save is not treated as Japanese Gen I/II");
+        check(!Names::japaneseSave(*black, "black_nds"), "a non-Gen I/II save is not treated as Japanese Gen I/II");
         const int before = HostUi::promptCount;
         HostUi::textAnswers.push_back({true, "ASH"});
-        const auto latin = Names::prompt(*black, "Nickname", "guide", "", 10);
+        const auto latin = Names::prompt(*black, "black_nds", "Nickname", "guide", "", 10);
         check(HostUi::japanesePromptCount == 1 && HostUi::promptCount == before + 1 && latin.text == "ASH",
               "other saves keep the ordinary prompt");
     }
@@ -87,8 +87,8 @@ int main() {
     const auto session = read("include/UI/ClassicTrainerSessionInput.h");
     check(session.find("fields.nameJapanese\n            ? Utils::promptJapaneseName(\"Trainer Name\"") != std::string::npos,
           "Trainer page name prompt switches to kana on Japanese saves");
-    check(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find("fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer);") != std::string::npos &&
-              read("src/UI/Gen2TrainerSessionOverlay.inc").find("fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer);") != std::string::npos,
+    check(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find("fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId);") != std::string::npos &&
+              read("src/UI/Gen2TrainerSessionOverlay.inc").find("fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId);") != std::string::npos,
           "Gen I and Gen II Trainer pages set nameJapanese from the save");
 
     if (failures) { std::cerr << failures << " Japanese name prompt check(s) failed\n"; return 1; }

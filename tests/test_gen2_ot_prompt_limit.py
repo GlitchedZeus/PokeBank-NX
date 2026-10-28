@@ -17,7 +17,7 @@ FILES = [
 ]
 # Owner Oct 28: the prompt may go through UI::ClassicJapaneseNames::prompt(screen.trainer, ...), which
 # opens the kana keyboard on Japanese saves and is the ordinary promptText otherwise; same limit rule.
-PROMPT = re.compile(r'(?:promptText\(|ClassicJapaneseNames::prompt\(\s*screen\.trainer\s*,)'
+PROMPT = re.compile(r'(?:promptText\(|ClassicJapaneseNames::prompt\(\s*screen\.trainer\s*,\s*screen\.sourceGameId\s*,)'
                     r'\s*"(?:Gen II )?OT Name"\s*,\s*"([^"]*)"\s*,\s*[^,]+,\s*([^;]+?)\)\s*;', re.S)
 
 

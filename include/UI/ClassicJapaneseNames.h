@@ -12,24 +12,34 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 
 namespace UI::ClassicJapaneseNames {
 
-[[nodiscard]] inline bool japaneseSave(const Trainer::Trainer& trainer) noexcept {
-    if (const auto* rby = dynamic_cast<const PokeVault::Legacy::RBYReadOnlyTrainer*>(&trainer))
-        return rby->japaneseLayout();
-    if (const auto* gsc = dynamic_cast<const PokeVault::Legacy::GSCReadOnlyTrainer*>(&trainer))
-        return gsc->japaneseLayout();
+// The device build has no RTTI (-fno-rtti), so the trainer's type comes from the source game id,
+// exactly as rbyTrainer() / gscTrainer() decide it, and is then reached with static_cast.
+[[nodiscard]] inline bool gen1Id(std::string_view id) noexcept {
+    return id == "red_gb" || id == "blue_gb" || id == "yellow_gb";
+}
+[[nodiscard]] inline bool gen2Id(std::string_view id) noexcept {
+    return id == "gold_gbc" || id == "silver_gbc" || id == "crystal_gbc";
+}
+[[nodiscard]] inline bool japaneseSave(const Trainer::Trainer& trainer, std::string_view sourceGameId) noexcept {
+    if (gen1Id(sourceGameId))
+        return static_cast<const PokeVault::Legacy::RBYReadOnlyTrainer&>(trainer).japaneseLayout();
+    if (gen2Id(sourceGameId))
+        return static_cast<const PokeVault::Legacy::GSCReadOnlyTrainer&>(trainer).japaneseLayout();
     return false;
 }
 
 // The guide a Japanese prompt shows instead of the Latin "1-10 ... characters" text.
 inline constexpr const char* kKanaGuide = "1-5 kana (あ / ア / １２３ pages)";
 
-[[nodiscard]] inline Utils::KeyboardResult prompt(const Trainer::Trainer& trainer, const std::string& header,
+[[nodiscard]] inline Utils::KeyboardResult prompt(const Trainer::Trainer& trainer, std::string_view sourceGameId,
+                                                  const std::string& header,
                                                   const std::string& guide, const std::string& initial,
                                                   int maxChars) {
-    if (!japaneseSave(trainer)) return Utils::promptText(header, guide, initial, maxChars);
+    if (!japaneseSave(trainer, sourceGameId)) return Utils::promptText(header, guide, initial, maxChars);
     return Utils::promptJapaneseName(header, initial,
                                      std::min<int>(maxChars, static_cast<int>(Utils::Gen12Kana::kMaxNameChars)));
 }

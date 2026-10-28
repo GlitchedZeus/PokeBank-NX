@@ -509,7 +509,7 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             break;
         }
         case 1: {
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Gen II Nickname", "1-10 Gen II characters", p.nickname, 10);
+            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Gen II Nickname", "1-10 Gen II characters", p.nickname, 10);
             if (result.accepted) p.nickname = result.text;
             break;
         }
@@ -525,7 +525,7 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             break;
         }
         case 4: {
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Gen II OT Name", "1-7 Gen II characters", p.originalTrainer,
+            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Gen II OT Name", "1-7 Gen II characters", p.originalTrainer,
                                                   static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
             if (result.accepted) p.originalTrainer = result.text;
             break;
