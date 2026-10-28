@@ -1,5 +1,6 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2NativeItemList.h"
+#include "Utils/Gen12AccentText.h"
 
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
@@ -302,6 +303,15 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
                     error = std::string(fieldLabel) +
                         " contains a character not representable by the conservative Gen II encoder";
                     return false;
+            }
+        } else if (const auto accent = Utils::gen12AccentByte(name, input, true, value, consumed);
+                   accent != Utils::Gen12AccentResult::NotAccent) {
+            // M1 D4: only accents with one byte in every European release (Utils/Gen12AccentText.h).
+            if (accent == Utils::Gen12AccentResult::ReleaseDependent) {
+                error = std::string(fieldLabel) +
+                    " uses an accent whose byte differs between European releases of Gold, Silver and"
+                    " Crystal; it is not written until the save's language is known";
+                return false;
             }
         } else if (input + 2 < name.size() &&
                    static_cast<unsigned char>(name[input]) == 0xE2 &&

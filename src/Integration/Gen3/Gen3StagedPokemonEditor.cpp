@@ -6,6 +6,7 @@
 #include "Enums/GameVersion.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
+#include "Names/DefaultSpeciesName.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Save/RtcFooter.h"
 #include "Inventory/ClassicInventoryCatalog.h"
@@ -100,15 +101,10 @@ uint8_t originVersion(SourceGame game) noexcept {
     return 0;
 }
 
-// Name of an un-nicknamed Pokemon. English Gen III stores species names in upper case
-// (pret/pokeemerald gSpeciesNames, pokefirered likewise) and evolution renames only a name equal
-// to the old species name. Other record languages keep the existing English default until their
-// localized retail names are pinned.
+// Name of an un-nicknamed Pokemon, in the record's own language (M1 D2): Japanese as listed, other
+// languages upper case with the French E/I accents stripped (PKHeX GetSpeciesNameGeneration, 3).
 std::string defaultNickname(uint16_t species, uint8_t language) {
-    std::string name = Names::getSpeciesName(species);
-    if (language == 2)
-        for (auto& ch : name) if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
-    return name;
+    return Utils::utf16ToUtf8(Names::defaultSpeciesName(species, language, 3));
 }
 
 // A Pokerus byte is strain (high nibble) and days (low nibble); 0 is "never infected". Strain 0
@@ -435,6 +431,33 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
         }
         pokemon.setSpecies(*edit.species);
     }
+    // M1 D1: the nickname is stored in the table of the record's language, so a language change is
+    // applied first and the name is then written in the NEW language. A language-only change keeps
+    // the visible name: an un-nicknamed (default) name becomes the new language's default; a custom
+    // name is re-stored unchanged, or the edit is refused when that language cannot hold it.
+    if (edit.language && *edit.language != pokemon.language()) {
+        if (!validLanguage(*edit.language)) {
+            error = "Unsupported Generation III language id";
+            return false;
+        }
+        const std::u16string shown = pokemon.nickname();
+        const bool wasDefault =
+            Utils::utf16ToUtf8(shown) == defaultNickname(pokemon.speciesID(), pokemon.language());
+        pokemon.setLanguage(*edit.language);
+        if (!edit.nickname) {
+            const std::u16string kept = wasDefault
+                ? Utils::utf8ToUtf16(defaultNickname(pokemon.speciesID(), *edit.language)) : shown;
+            if (!pokemon.canStoreNickname(kept)) {
+                error = "This nickname cannot be written in the new language; change the nickname too";
+                return false;
+            }
+            pokemon.setNickname(kept);
+            if (pokemon.nickname() != kept) {
+                error = "This nickname cannot be kept unchanged in the new language; change the nickname too";
+                return false;
+            }
+        }
+    }
     if (edit.nickname) {
         const auto value = Utils::utf8ToUtf16(*edit.nickname);
         if (value.size() > 10 || !pokemon.canStoreNickname(value)) {
@@ -442,6 +465,10 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             return false;
         }
         pokemon.setNickname(value);
+        if (pokemon.nickname() != value) {
+            error = "Nickname would not read back unchanged in this record's language";
+            return false;
+        }
     }
     if (edit.level && edit.experience) {
         error = "Edit either Level or Experience in one staged operation, not both";
@@ -499,13 +526,7 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
         }
         pokemon.setOTName(value);
     }
-    if (edit.language) {
-        if (!validLanguage(*edit.language)) {
-            error = "Unsupported Generation III language id";
-            return false;
-        }
-        pokemon.setLanguage(*edit.language);
-    }
+    // (A language change was applied above, before the nickname.)
     if (edit.friendship) pokemon.setFriendship(*edit.friendship);
     if (edit.pokerus) {
         if (!validPokerus(*edit.pokerus)) {

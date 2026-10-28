@@ -104,6 +104,28 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
         assert(languageParsed && languageParsed->partyPokemon(0)->language()==8 && languageParsed->boxPokemon(0,0)->language()==8);
         languageWs.discardAll();
         assert(languageWs.pendingReview().empty());
+        // M1 D3: one draft that changes language AND sets an explicit nickname, in both orders.
+        // Keep/Review replay language first (its derived default name is not a name edit), then
+        // the explicit nickname; the result must match the draft byte for byte.
+        for (const bool nameFirst : {false,true}) {
+            const G::Gen5StagedPokemonWorkspace::Slot location{G::Gen5StagedPokemonWorkspace::Region::Box,0,0};
+            G::Gen5SharedPokemonSession draft;
+            assert(draft.begin(languageWs,location,G::Gen5SharedPokemonSession::Mode::Edit,error));
+            if (nameFirst) assert(draft.stageName(Field::NicknameText,"SPARKY",error));
+            assert(draft.stage(Field::Language,0,1,error));
+            if (!nameFirst) assert(draft.stageName(Field::NicknameText,"SPARKY",error));
+            assert(!draft.back() && draft.confirmExit());
+            draft.continueEditing();
+            assert(draft.keep(languageWs,error));
+            const auto kept=languageWs.viewBox(0,0);
+            assert(kept && kept->language()==1 && G::asciiName5(kept->decodedBytes(),true)=="SPARKY");
+            const auto pending=languageWs.pendingReview();
+            assert(pending.size()==1);
+            const auto verified=G::verifyStagedReview(pending[0],&error);
+            assert(verified && verified->fields.size()==2);
+            assert(verified->fields[0].field==Field::Language && verified->fields[1].field==Field::NicknameText);
+            languageWs.discardAll();
+        }
         assert(std::equal(input.begin(),input.end(),languageWs.sourceSave().sourceBytes().begin()));
     }
     assert(ws.stageParty(0,Field::Nature,0,22,&error));

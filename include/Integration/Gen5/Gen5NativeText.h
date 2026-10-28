@@ -69,5 +69,32 @@ namespace PokeVault::Integration::Gen5 {
     }
     return true;
 }
+// A Unicode name written as PKHeX 8e3eb3d4 StringConverter5.SetString does for PK5.Nickname /
+// OriginalTrainerName (StringConverterOption.None): one UTF-16 unit per character, a 0xFFFF
+// terminator, and the units after it left as they are. Text that is not full width (or any Korean
+// text) stores ♂/♀ as the game's half-width U+246D/U+246E (StringConverter4Util.UnNormalizeGender-
+// Symbol). Does not touch the nickname flag. Used for language-default names (M1 D3); free Unicode
+// entry waits for the verified Gen V glyph rules.
+[[nodiscard]] inline bool writeUnicodeName5(std::vector<uint8_t>& plain, bool nickname,
+                                            std::u16string_view text, uint8_t language) {
+    const size_t off=nameOffset5(nickname),cap=nameCapacity5(nickname);
+    if(plain.size()<off+cap*2 || text.empty() || text.size()>nameMaxLength5(nickname))return false;
+    bool fullWidth=false;
+    for(const char16_t c:text) {
+        if((c>>12)==0 || (c>>12)==0xE || c==u'\u2640' || c==u'\u2642')continue;
+        fullWidth=true;
+        break;
+    }
+    const bool halfWidth=language==8 || !fullWidth;
+    for(size_t i=0;i<text.size();++i) {
+        char16_t c=text[i];
+        if(c==0 || c==0xFFFF)return false;
+        if(halfWidth && c==u'\u2642')c=u'\u246D';
+        if(halfWidth && c==u'\u2640')c=u'\u246E';
+        Crypto::write16(plain,off+2*i,static_cast<uint16_t>(c));
+    }
+    if(text.size()<cap)Crypto::write16(plain,off+2*text.size(),0xFFFF);
+    return true;
+}
 } // namespace PokeVault::Integration::Gen5
 #endif

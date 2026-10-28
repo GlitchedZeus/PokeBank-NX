@@ -130,7 +130,8 @@ void run(SourceGame game) {
     edit.dvs=std::array<uint8_t,4>{16,0,0,0};assert(!e->stageEdit(2,0,edit,error));
     edit={};edit.statExperience=std::array<uint16_t,5>{0,1,255,256,65535};assert(e->stageEdit(2,0,edit,error));assert(p().statExperience==*edit.statExperience);
     edit={};edit.otName="Will";edit.trainerId=65535;assert(e->stageEdit(2,0,edit,error));assert(p().originalTrainer=="Will" && p().trainerId==65535);
-    edit={};edit.nickname="ABCDEFGHIJK";assert(!e->stageEdit(2,0,edit,error));edit.nickname="Poké";assert(!e->stageEdit(2,0,edit,error));
+    edit={};edit.nickname="ABCDEFGHIJK";assert(!e->stageEdit(2,0,edit,error));edit.nickname="Pok\xC3\x9F";assert(!e->stageEdit(2,0,edit,error));
+    edit.nickname="Poké";assert(e->stageEdit(2,0,edit,error));assert(p().nickname=="Poké"); // M1 D4: é is 0xBC (StringConverter1.TableEN)
     auto output=e->finalizedBytes(error);assert(!output.empty() && parse(output,game));
     assert(output[0x3523]==sum(output,0x2598,0xF8B));
     for(size_t b:{size_t(0x4000),size_t(0x6000)}) {
@@ -245,6 +246,18 @@ int main() {
         assert(StagedPokemonEditor::encodeName(text,10,encoded,error));assert(decodeGen1String(encoded,RegionLayout::International)==text);
     }
     assert(!StagedPokemonEditor::encodeName("12345678",7,encoded,error));
+    // M1 D4: Gen I has one international table (PKHeX StringConverter1.TableEN), so every European
+    // accent has exactly one byte. Length counts characters, not UTF-8 bytes.
+    for(const auto text:{"M\xC3\xBCller","\xC3\x89mile","\xC3\x91" "and\xC3\xBA",
+                         "\xC3\xA0\xC3\xA8\xC3\xA9\xC3\xB9\xC3\x80\xC3\x81\xC3\x84\xC3\x96\xC3\x9C\xC3\xA4",
+                         "\xC3\xB6\xC3\xBC\xC3\x88\xC3\x89\xC3\x8C\xC3\x8D\xC3\x91\xC3\x92\xC3\x93\xC3\x99",
+                         "\xC3\x9A\xC3\xA1\xC3\xAC\xC3\xAD\xC3\xB1\xC3\xB2\xC3\xB3\xC3\xBA"}) {
+        assert(StagedPokemonEditor::encodeName(text,10,encoded,error));assert(decodeGen1String(encoded,RegionLayout::International)==text);
+    }
+    assert(StagedPokemonEditor::encodeName("M\xC3\xBCllers",7,encoded,error));
+    assert(encoded[0]==0x8C && encoded[1]==0xC5 && encoded[6]==0xB2 && encoded[7]==0x50);
+    assert(!StagedPokemonEditor::encodeName("M\xC3\xBCllerin",7,encoded,error));
+    assert(!StagedPokemonEditor::encodeName("Stra\xC3\x9F" "e",10,encoded,error));  // not in the Gen I table
     auto raw=fixture(SourceGame::Red,false);auto p=parse(raw,SourceGame::Red);assert(p);
     auto e=StagedPokemonEditor::create(*p.save,error);BoxPokemonCreate create;
     assert(e->stageAdd(11,0,create,error));auto output=e->finalizedBytes(error);assert(!output.empty());
