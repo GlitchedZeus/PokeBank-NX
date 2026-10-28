@@ -17,118 +17,127 @@ NRO identity filled in, and uploaded as a CI artifact. Until then the identity t
 | NRO SHA-256 | (filled in at binding) |
 | QA-F9 audit run / job | (filled in at binding) |
 
-## How to use this file
+## How this round is split
+
+1. **Group H — owner hardware testing (this is your part).** Ten short checks with your own ordinary Gen I–V
+   saves on your Switch. Round 8 hardware acceptance is decided on Group H only.
+2. **Group A — automated compatibility and safety testing (the development team's part).** Japanese saves,
+   padded emulator formats, non-English Switch releases, unreadable Banks, RTC wrappers, special items and
+   deliberately corrupted data. These run on synthetic fixtures in CI and on the host, not on your Switch.
+   The evidence is in `docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md`. **You do not need these saves.**
+
+## How to fill in Group H
 
 1. Check the downloaded NRO's SHA-256 against the table before testing. Write it here: `________________`
-2. Each item has the same fields. Tick one result box by replacing `[ ]` with `[x]`:
-   - **Steps** and **Expected**: what to do and what you should see.
-   - **Result**: `[ ] PASS  [ ] FAIL  [ ] NOT TESTED`.
-   - **Game / save used**: e.g. `Crystal, emulator archive 2026-10-20`.
-   - **Comment**: anything not PASS, or a request. A PASS can still carry a request.
-   - **Screenshots sent separately**: the file names, e.g. `IMG_0412.jpg, IMG_0413.jpg`.
-3. Back up the SD card first. Never overwrite an installed or emulator source save. Every edit exports to a separate
-   verified copy. Loading an export in an emulator is optional and never means direct writing or injection.
-4. Skip any item you have no save for; mark it NOT TESTED. Please do not upload private saves to GitHub.
+2. Tick one result box per item by replacing `[ ]` with `[x]`:
+   - **PASS**: it did what Expected says.
+   - **FAIL**: it did something else. Say what in Comment.
+   - **NOT TESTED / NO FIXTURE**: you skipped it, or you have no save or Pokémon for it. This is never a FAIL
+     and never blocks acceptance.
+3. Fill in **Game / save used**, **Comment** and **Screenshots sent separately** as you like.
+4. Back up the SD card first. Never overwrite an installed or emulator source save: every edit exports to a
+   separate verified copy. Loading an export in an emulator is optional and never means direct writing.
+5. Please do not upload private saves to GitHub. If a real sample would help, the team will ask for a
+   specific one.
 
 Host and CI results never fill in a box here.
 
-Summary (fill in at the end): PASS ____ / FAIL ____ / NOT TESTED ____
+Summary (fill in at the end): PASS ____ / FAIL ____ / NOT TESTED / NO FIXTURE ____
 
 ---
 
-## Group S: safety repairs in this candidate
+## Group H: owner hardware testing (ordinary saves)
 
-### S01 · Q01 · Bank: fresh install
-- **Steps:** Back up the SD card first. Install this NRO where no `sdmc:/switch/PokeBank-NX/banks/` folder exists (or temporarily move that folder away). Open Storage, deposit one Pokémon, save the Bank.
-- **Expected:** Storage opens with no warning. The Bank saves, and reopening the app shows the deposited Pokémon.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H01 · Install · Install and open
+- **Steps:** Copy this NRO to the SD card (back up the SD card first). Check its SHA-256 against the table. Open it from the Homebrew Menu.
+- **Expected:** The app opens to Product Home. Each Pokémon game you have on the Switch, and each emulator save it already knew, appears once. Nothing asks to write a save.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S02 · Q01 · Bank: unreadable file is kept, never replaced
-- **Steps:** Copy any junk file over `banks/legacy-pkse/bank.dat` (keep your real Bank elsewhere). Open Storage. Try to save.
-- **Expected:** Storage says the Bank could not be read and was kept as `bank.dat.unreadable.N`. Saving the Bank is refused with a reason. The junk file is byte-identical afterwards. Restoring your real Bank brings normal use back.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H02 · Navigation · Moving around
+- **Steps:** Use the D-pad, left stick and touch on Product Home, a save's main menu, Pokémon, Bag and Trainer. Press B to go back each time. Open Help (−) and Quick Games (Y) and close them.
+- **Expected:** Every screen responds to all three inputs. B always goes back one step. Nothing freezes or exits unexpectedly.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S03 · Q03 · Gen II padded 128 KiB save
-- **Steps:** Use a copy of a 128 KiB padded Gold/Silver/Crystal `.srm`. Open it, change money, Export Copy.
-- **Expected:** The save is found and opens. The export is 128 KiB with the same padding, and opens in an emulator. The original is unchanged (same SHA-256).
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H03 · Open saves · Open one save per generation you own
+- **Steps:** Open one ordinary save for each generation you have (I, II, III, IV, V). Look at the trainer card, the party and one box. Leave without changing anything.
+- **Expected:** Names, money, badges, party and boxes match what the game shows. Leaving asks nothing, because nothing changed.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S04 · Q02 · Japanese Crystal 32 KiB is read-only
-- **Steps:** Open a copy of a 32 KiB Japanese Crystal save.
-- **Expected:** It opens read-only. No trainer gender is invented. Edit is refused with the Japanese read-only message.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H04 · Bank · Bank storage
+- **Steps:** Open Storage. Put one Pokémon into the Bank, then save the Bank. Close the app completely and open it again. Open Storage.
+- **Expected:** The Pokémon is still in the Bank after the restart. No warning appears.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S05 · Q04 · Localized FireRed/LeafGreen on Switch
-- **Steps:** With any non-English FireRed or LeafGreen release installed, open the game list.
-- **Expected:** Each installed release shows as its own card and gets its own backup folder. Opening it never writes to the console save.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H05 · Bag · Ordinary Bag editing
+- **Steps:** In any save you own: Bag → change one item's quantity → change it back to the original number → open Review. Then change it to a new number and open Review again.
+- **Expected:** After changing it back, Review shows no pending change. After the real change, Review lists exactly that one item.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S06 · Q07 · Gen III Bag byte fidelity
-- **Steps:** Gen III save → Bag. Set an item to the same quantity; then change it and change it back.
-- **Expected:** Review shows no pending change. If you export after a real change, only that slot (and the checksum) differs from the original.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H06 · Pokémon · Ordinary Pokémon editing
+- **Steps:** Pick any Pokémon. Change its nickname, level and held item → Keep → open Review.
+- **Expected:** Review lists exactly those three changes, in words. Other values are unchanged.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S07 · Q07 · Gen II Bag byte fidelity
-- **Steps:** Gen II save → Bag. Same steps as S06.
-- **Expected:** Review shows no pending change for the same value. A real change touches only that pocket list.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H07 · Name limit · Gen II OT name length
+- **Steps:** In a Gold, Silver or Crystal save, edit a Pokémon's OT name.
+- **Expected:** The keyboard accepts up to 7 characters and no more.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S08 · Q06 · FireRed/LeafGreen Meteorite
-- **Steps:** On a save that holds the Meteorite, remove it (accept the key-item warning), then add it back.
-- **Expected:** Both work. Quantity 2 is refused. The export reopens with the Meteorite in Key Items.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H08 · Discard · Discard leaves the save untouched
+- **Steps:** Make any change, then choose Discard (Y on the exit prompt).
+- **Expected:** Reopening the save shows the original values. No file is written.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S09 · 9c275755 · Gen III Egg names
-- **Steps:** Gen III save → open an Egg → try to change its Nickname and Language.
-- **Expected:** Both edits are refused with the Egg message. The Egg keeps its name.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+### H09 · Export Copy · Export Copy writes a separate file
+- **Steps:** Make one change → Review → Export Copy. Note the export's file name. Then look at your original save (date, size, and if you can, its SHA-256).
+- **Expected:** A new export file appears. The original save is unchanged. Optional: the export loads in your emulator and shows the change.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
-### S10 · 2ab98df6 · Gen V species change keeps gender consistent
-- **Steps:** Gen V save → a female Pokémon whose species change would flip its gender (e.g. a female Pikachu whose PID gender byte is 31 or more → Eevee).
-- **Expected:** The change is refused with the "other gender" message. A change that keeps the gender works.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
-- **Game / save used:**
-- **Comment:**
-- **Screenshots sent separately:**
-### S11 · e13ced8e · Gen III emulator save with RTC footer
-- **Steps:** Copy of an mGBA/VBA-M Gen III save with an RTC footer → edit Bag and Trainer → Export Copy.
-- **Expected:** Both editors open the save. The export keeps the footer byte-for-byte and opens in the emulator.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
-- **Game / save used:**
-- **Comment:**
-- **Screenshots sent separately:**
-### S12 · 0489dd20 · Gen II OT name length
-- **Steps:** Gen II save → Pokémon → OT name.
-- **Expected:** The keyboard allows up to 7 characters; an 8th is not accepted.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
-- **Game / save used:**
-- **Comment:**
-- **Screenshots sent separately:**
-
-## Group R: regression
-
-### R01 · Round 7 · Round 7 smoke check
-- **Steps:** Repeat a few of your favourite round 7 items (one save per generation: open, browse, edit, Export Copy).
+### H10 · Round 7 · Round 7 smoke check
+- **Steps:** Repeat a few of your favourite round 7 checks.
 - **Expected:** Nothing behaves worse than the round 7 candidate. Note anything different in Comment.
-- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**
 - **Screenshots sent separately:**
+
+---
+
+## Group A: automated compatibility and safety testing (no owner action)
+
+These cases need saves or releases you are not expected to own. The development team tests them with
+synthetic fixtures under GCC, GCC AddressSanitizer/UBSan and Clang, with successful and deliberately failing
+cases. **Synthetic evidence shows the app's logic handles these inputs; it does not prove real Switch or
+emulator compatibility.** Each row's evidence class (synthetic / public fixture / real save) is recorded in
+`docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md`. Every row is NOT TESTED / NO FIXTURE on hardware unless
+you happen to have such a save and choose to report it in the Comment column; that never blocks acceptance.
+
+| Scenario | Repair | Hardware status | Comment (optional) |
+| --- | --- | --- | --- |
+| Bank missing, unreadable/corrupt, truncated, damaged, newer layout, interrupted save | Q01, S01–S02 | NOT TESTED / NO FIXTURE | |
+| Gen II battery saves padded to 128 KiB (0x00 / 0xFF fill) | Q03 | NOT TESTED / NO FIXTURE | |
+| Japanese Crystal 32 KiB opens read-only; Japanese Gen II editing refused | Q02, Q08 | NOT TESTED / NO FIXTURE | |
+| Non-English FireRed/LeafGreen Switch releases (10 localized title ids) discovered once each | Q04 | NOT TESTED / NO FIXTURE | |
+| Gen III emulator saves with an RTC footer (mGBA / VBA-M), Bag and Trainer editors | e13ced8e | NOT TESTED / NO FIXTURE | |
+| Gen III torn or signature-free save slots | Q05 | NOT TESTED / NO FIXTURE | |
+| FireRed/LeafGreen Meteorite (280) and unreleased held items | Q06, b80137df | NOT TESTED / NO FIXTURE | |
+| Gen II/III Bag byte fidelity (only the edited slot and checksum change) | Q07 | NOT TESTED / NO FIXTURE | |
+| Gen III Egg names; Gen V species change keeps PID gender | 9c275755, 2ab98df6 | NOT TESTED / NO FIXTURE | |

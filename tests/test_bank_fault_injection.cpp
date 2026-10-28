@@ -5,6 +5,7 @@
 // with a readable reason.
 //
 // Runs in a private temporary working directory: the Bank's relative sdmc:/ root lands there.
+#include "test_temp_dir.h"
 #include "Trainer/Bank.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Utils/PokeBankPaths.h"
@@ -98,16 +99,19 @@ std::unique_ptr<Pokemon::Pokemon3FRLG> knownPokemon(uint16_t species) {
     return pk;
 }
 
-// A fresh empty working directory for each scenario.
+// A fresh, private, empty working directory for each scenario (mkdtemp: never reused, never a real
+// SD card path; the Bank's relative sdmc:/ root lands inside it). All are removed at the end.
+std::vector<fs::path> gScenarioDirs;
 void freshRoot() {
-    static int n = 0;
-    const fs::path dir = fs::temp_directory_path() /
-        ("pokebank-bank-fault-" + std::to_string(::getpid()) + "-" + std::to_string(n++));
-    fs::remove_all(dir);
-    fs::create_directories(dir);
+    const fs::path dir = PokeBankTest::freshTempBase("pokebank-bank-fault");
+    gScenarioDirs.push_back(dir);
     assert(::chdir(dir.c_str()) == 0);
     fs::create_directory("sdmc:");  // the SD mount the console provides
     gFault = ReadFault::None;
+}
+void removeScenarioDirs() {
+    assert(::chdir(fs::temp_directory_path().c_str()) == 0);
+    for (const auto& dir : gScenarioDirs) fs::remove_all(dir);
 }
 
 // Writes a real Bank holding two known Pokemon through the production save path.
@@ -287,5 +291,6 @@ int main() {
     }
 
     assert(::chdir(start.c_str()) == 0);
+    removeScenarioDirs();
     std::cout << "Bank fault injection (missing vs existing-unusable; production Bank): PASS\n";
 }
