@@ -1135,8 +1135,21 @@ void testNativeGen4Bag() {
                (*removedBag)[kMedicine][0].count==7);
         assert(removed->box(0,0).species()==25);
         const size_t removedAt=PARTITION+native[kBalls].offset;
+        const size_t removedEnd=removedAt+native[kBalls].slots*4;
+        // Regression (QA, pret/pokeplatinum bag.c): the in-game bag list stops at the FIRST empty
+        // slot and the game's own removal packs empties to the end. Removing slot 0 must therefore
+        // shift the next stack into slot 0 instead of leaving a hole that hides it in game.
+        auto r16=[&](size_t o){return uint16_t(removedOutput[o]|(removedOutput[o+1]<<8));};
+        assert(r16(removedAt)==1 && r16(removedAt+2)==3);
+        for(size_t o=removedAt+4;o<removedEnd;o+=4) assert(r16(o)==0 && r16(o+2)==0);
+        size_t gameVisible=0;
+        for(size_t o=removedAt;o<removedEnd;o+=4) {
+            if(r16(o)==0 || r16(o+2)==0)break;
+            ++gameVisible;
+        }
+        assert(gameVisible==(*removedBag)[kBalls].size());
         for(size_t i=0;i<removedOutput.size();++i) {
-            if(i>=removedAt && i<removedAt+4)continue;
+            if(i>=removedAt && i<removedEnd)continue;
             if(i==crcAt || i==crcAt+1)continue;
             assert(removedOutput[i]==beforeRemove[i]);
         }
@@ -1174,7 +1187,7 @@ void testNativeGen4Bag() {
         const auto reBag=G4::decodeReadOnlyBag(*reparsedAdd);
         assert(reBag && (*reBag)[kBalls].size()==2);
         assert(reparsedAdd->box(0,0).species()==25);
-        const size_t addedAt=PARTITION+native[kBalls].offset+2*4;
+        const size_t addedAt=PARTITION+native[kBalls].offset+1*4; // packed after Remove (no hole)
         for(size_t i=0;i<added.size();++i) {
             if(i>=addedAt && i<addedAt+4)continue;
             if(i==crcAt || i==crcAt+1)continue;

@@ -1006,8 +1006,13 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         return false;
     }
     auto backup=staged_;
-    write16(staged_,foundAt,0);
-    write16(staged_,foundAt+2,0);
+    // Native behaviour (pret/pokeplatinum Bag_TryRemoveItem -> Pocket_SortEmpty): a removed stack
+    // never leaves a hole. The in-game bag list stops at the first empty slot, so a hole would hide
+    // every later stack. Erase the slot by shifting the following slots up and blanking the last.
+    const size_t pocketEnd=base+spec.offset+spec.slots*4;
+    for(size_t at=foundAt;at+4<pocketEnd;at+=4)
+        for(size_t k=0;k<4;++k)staged_[at+k]=staged_[at+4+k];
+    for(size_t k=0;k<4;++k)staged_[pocketEnd-4+k]=0;
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
         return false;
@@ -1042,7 +1047,7 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
     // four-byte item slot and the verified General CRC may change.
     const size_t crcAt=base+blockSize-2;
     for(size_t i=0;i<staged_.size();++i) {
-        if(i>=foundAt && i<foundAt+4)continue;
+        if(i>=foundAt && i<pocketEnd)continue;
         if(i==crcAt || i==crcAt+1)continue;
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
