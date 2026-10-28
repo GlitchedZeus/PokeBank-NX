@@ -1,4 +1,5 @@
 #include "Legacy/GSCReadOnlyTrainer.h"
+#include "Integration/Common/JapaneseEditingGate.h"
 
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
@@ -280,6 +281,10 @@ int main(){
         assert(!trainer->hasTrainerGender()); // Gold / Silver: no stored gender (round 6)
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
         assert(trainer->getBoxCount()==9&&trainer->getSlotsPerBox()==30&&trainer->boxNames.size()==9);
+        // The Gen II writer handles Japanese layouts, but the closed owner gate
+        // (JapaneseEditingGate.h) keeps the app's Japanese saves read-only: no staged editor.
+        static_assert(!Integration::Common::kJapaneseClassicEditingEnabled);
+        assert(!trainer->stagedEditor()&&trainer->stagedEditingUnavailableReason()=="Japanese Generation II saves are read-only");
     }
     {
         auto bytes=fixture(IGS,1,25,201);
