@@ -21,7 +21,7 @@ Test only the file whose SHA-256 matches the table. Every other build is not thi
 | Artifact | `PokeBank-NX-Gen1-5-Candidate-d6a20a2a` (id `12811726719`) |
 | NRO SHA-256 | `57b2c1186942473ee53f78df6f44bc5ab430acb0b86f26ecddc8326c87c0494a` |
 | NRO size | 177155761 bytes |
-| QA-F9 audit run / job | (recorded by the coordinator after the audit passes) |
+| QA-F9 audit run / job | https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40681252271 (job `122792218808`): `NRO AUDIT: PASS`; record artifact `app-qa-nro-audit-d6a20a2a` (id `12812467930`) |
 
 ## How this round is split
 
