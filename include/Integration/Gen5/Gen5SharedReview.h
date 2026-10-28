@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5BlankSlot.h"
+#include "Integration/Gen5/Gen5ImportRecord.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -56,19 +57,41 @@ struct VerifiedSlotReview {
         const Pokemon5ReadOnly afterBox(std::span<const uint8_t>(change.after));
         VerifiedSlotReview result;
         result.location=change.location;
-        if(change.kind==Kind::CreateBox) {
-            if(!change.createRequest ||
-               !change.cloneSourceOriginal.empty() ||
-               !beforeBox.valid() || !beforeBox.empty() ||
-               !nativeBlankSlot5(change.before) ||
-               !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
-                return fail("Gen V Create needs an empty original and explicit native request");
-            const auto rebuilt=createNative5(*change.createRequest);
-            if(!rebuilt || rebuilt.encrypted!=change.replacementOriginal ||
-               afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
-                return fail("Gen V Create certificate disagrees with the native PK5 baseline");
-            result.fields.push_back({Field::CreateBox,0,0,afterBox.species()});
-            // Created values, one per row: moves, held item and Ball, OT IDs, met data, nature,
+        // Only an Import carries an imported record; it never rides along with another kind.
+        if(change.kind!=Kind::ImportBox && !change.importedRecord.empty())
+            return fail("Gen V box operation carried an unrelated imported record");
+        if(change.kind==Kind::CreateBox || change.kind==Kind::ImportBox) {
+            if(change.kind==Kind::CreateBox) {
+                if(!change.createRequest ||
+                   !change.cloneSourceOriginal.empty() ||
+                   !beforeBox.valid() || !beforeBox.empty() ||
+                   !nativeBlankSlot5(change.before) ||
+                   !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
+                    return fail("Gen V Create needs an empty original and explicit native request");
+                const auto rebuilt=createNative5(*change.createRequest);
+                if(!rebuilt || rebuilt.encrypted!=change.replacementOriginal ||
+                   afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
+                    return fail("Gen V Create certificate disagrees with the native PK5 baseline");
+            } else {
+                // Feature A Import: the slot was a native blank, and the baseline is exactly the
+                // imported file's stored record re-encrypted, byte for byte (decrypting it gives the
+                // file's plaintext back). The record is re-judged against the title here, independently
+                // of the workspace that staged it.
+                if(change.createRequest || !change.cloneSourceOriginal.empty() ||
+                   !beforeBox.valid() || !beforeBox.empty() ||
+                   !nativeBlankSlot5(change.before) ||
+                   !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
+                    return fail("Gen V Import needs an empty original slot and only its imported record");
+                if(change.importedRecord.size()!=Crypto::StoredSize ||
+                   importRecordRefusal5(change.importedRecord,change.black2White2))
+                    return fail("Gen V Import record is not a valid PK5 for this title");
+                if(Crypto::encryptCandidate(change.importedRecord)!=change.replacementOriginal ||
+                   Crypto::decrypt(change.replacementOriginal)!=change.importedRecord)
+                    return fail("Gen V Import baseline differs from the imported record");
+            }
+            result.fields.push_back({change.kind==Kind::ImportBox?Field::ImportBox:Field::CreateBox,
+                                     0,0,afterBox.species()});
+            // Created (or imported) values, one per row: moves, held item and Ball, OT IDs, met data, nature,
             // gender, ability, language; IVs / EVs / Pokerus / Friendship only when not default.
             auto& created=result.created;
             const auto moves=afterBox.moves();
@@ -122,7 +145,8 @@ struct VerifiedSlotReview {
         // A newly cloned/created Pokemon can be edited through the SAME
         // shared field model. Keep its immutable origin certificate, then
         // independently replay every additional field from that baseline.
-        if(change.kind==Kind::CreateBox || change.kind==Kind::CloneBox) {
+        if(change.kind==Kind::CreateBox || change.kind==Kind::CloneBox ||
+           change.kind==Kind::ImportBox) {
             if(change.replacementOriginal.size()!=Crypto::StoredSize)
                 return fail("Gen V box operation lacks native baseline");
             if(change.after!=change.replacementOriginal) {
@@ -132,6 +156,7 @@ struct VerifiedSlotReview {
                 fieldsOnly.cloneSourceOriginal.clear();
                 fieldsOnly.createRequest.reset();
                 fieldsOnly.replacementOriginal.clear();
+                fieldsOnly.importedRecord.clear();
                 const auto verified=verifyStagedReview(fieldsOnly,error);
                 if(!verified)
                     return fail("Gen V staged box edits failed independent field replay");
@@ -144,8 +169,8 @@ struct VerifiedSlotReview {
         return result;
     }
     if(change.createRequest || !change.cloneSourceOriginal.empty() ||
-       !change.replacementOriginal.empty())
-        return fail("Gen V field edit contained unrelated Create/Clone evidence");
+       !change.replacementOriginal.empty() || !change.importedRecord.empty())
+        return fail("Gen V field edit contained unrelated Create/Clone/Import evidence");
     const Pokemon5ReadOnly before(std::span<const uint8_t>(change.before));
     const Pokemon5ReadOnly after(std::span<const uint8_t>(change.after));
     if(!before.valid() || before.empty() || !after.valid() || after.empty() ||

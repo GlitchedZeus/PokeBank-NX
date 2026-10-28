@@ -92,6 +92,7 @@ struct Gen5StagedSaveCandidate {
         if (!sourceRecord || !sourceRecord->valid() ||
             (change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::CloneBox &&
              change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::CreateBox &&
+             change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::ImportBox &&
              sourceRecord->empty()))
             return fail("Gen V export source slot is absent or invalid");
         const auto bytes = sourceRecord->originalEncryptedBytes();
@@ -109,6 +110,17 @@ struct Gen5StagedSaveCandidate {
             const auto created=createNative5(*request);
             if(!created || created.encrypted!=change.replacementOriginal)
                 return fail("Gen V exported Create did not reverify native baseline");
+        }
+        if(change.kind==Gen5StagedPokemonWorkspace::ChangeKind::ImportBox) {
+            // Feature A Import: the immutable selected copy's slot must be a native blank, and the
+            // imported record is judged against the SOURCE save's title, not a flag the staged
+            // change carries about itself.
+            if(!sourceRecord->empty() || !nativeBlankSlot5(bytes) ||
+               change.black2White2!=(source.family()==SaveFamily::Black2White2) ||
+               importRecordRefusal5(change.importedRecord,
+                                    source.family()==SaveFamily::Black2White2) ||
+               Crypto::encryptCandidate(change.importedRecord)!=change.replacementOriginal)
+                return fail("Gen V Import requires an empty source slot and a record valid for this title");
         }
         if(change.kind==Gen5StagedPokemonWorkspace::ChangeKind::CloneBox) {
             const auto& id=change.cloneSource;
