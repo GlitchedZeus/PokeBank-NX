@@ -1010,6 +1010,207 @@ bool StagedPokemonEditor::stageReleaseBoxPokemon(
     return true;
 }
 
+namespace {
+
+// PKHeX plaintext of a stored (80) or party (100) PK3 as held in a save: the 0x20-0x4F block is
+// XOR-decrypted and un-shuffled into canonical G/A/E/M order (PKHeX PokeCrypto.Decrypt3); the
+// header and the party-only tail are copied unchanged, since Gen III never encrypts them
+// (pret pokeemerald src/pokemon.c DecryptBoxMon touches only secure.raw; PKHeX PK3.EncryptParty
+// is a no-op).
+std::vector<uint8_t> pk3Plaintext(std::span<const uint8_t> raw) {
+    std::byte* decrypted = Encryption::decryptArray3FRLG(std::as_bytes(raw));
+    std::vector<uint8_t> out(raw.size());
+    std::memcpy(out.data(), decrypted, out.size());
+    delete[] decrypted;
+    return out;
+}
+
+// The field checks Create applies to its own draft (stageAddBoxPokemon / validPpForMoves), applied
+// to an imported record as it is. A failure refuses the import; nothing is repaired. Language: any
+// PK3 language is accepted in every R/S/E/FR/LG save, as Clone does: the record carries its own
+// language byte (pret struct BoxPokemon `language`) and only name display depends on it. The EV cap
+// is pret include/constants/pokemon.h MAX_TOTAL_EVS (510). Held items follow validHeldItem, so the
+// two never-released held items (Gen3HeldItems.h kUnreleasedHeldItems) are refused like in Create.
+bool validateImportedRecord(const Pokemon::Pokemon3FRLG& pokemon, std::string& error) {
+    if (pokemon.speciesID() == 0 || pokemon.speciesID() > 386) {
+        error = "The file holds no valid Generation III species";
+        return false;
+    }
+    if (pokemon.heldItem() != 0 && storedUnreleasedHeldItem(pokemon.heldItem())) {
+        error = "The file's held item (" + std::string(Names::getItemNameG3(pokemon.heldItem())) +
+                ") was never released as a held item in Generation III";
+        return false;
+    }
+    if (!validHeldItem(SourceGame::FireRedGBA, pokemon.heldItem())) {
+        error = "The file's held item id " + std::to_string(pokemon.heldItem()) +
+                " is not a Generation III held item";
+        return false;
+    }
+    if (!validLanguage(pokemon.language())) {
+        error = "The file's language id " + std::to_string(pokemon.language()) +
+                " is not a Generation III language";
+        return false;
+    }
+    if (!validPokerus(pokemon.pokerus())) {
+        error = "The file's Pokerus byte has days remaining with strain 0";
+        return false;
+    }
+    if (pokemon.ball() < 1 || pokemon.ball() > 12) {
+        error = "The file's Ball is not one of the Generation III Master-through-Premier ids";
+        return false;
+    }
+    if (pokemon.metLevel() > 100) {
+        error = "The file's met level is above 100";
+        return false;
+    }
+    unsigned evTotal = 0;
+    for (const uint8_t value : evs(pokemon)) evTotal += value;
+    if (evTotal > 510) {
+        error = "The file's EV total is above the Generation III limit of 510";
+        return false;
+    }
+    std::array<uint8_t, 4> pp{}, ppUps{};
+    for (int i = 0; i < 4; ++i) {
+        pp[static_cast<std::size_t>(i)] = pokemon.movePP(i);
+        ppUps[static_cast<std::size_t>(i)] = pokemon.movePPUps(i);
+    }
+    if (!validPpForMoves(pokemon, pp, ppUps, error)) {
+        error = "The file's moves are refused: " + error;
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+bool StagedPokemonEditor::stageImportBoxPokemon(
+    std::size_t box, std::size_t slot, const PokeBank::PokemonFile::Decoded& file,
+    std::string& error) {
+    error.clear();
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
+    if (file.generation != 3 || file.format != PokeBank::PokemonFile::Format::PK3) {
+        error = "This is a Generation " + std::to_string(file.generation) +
+                " Pokemon file; a Generation III save takes only .pk3 / .ek3 records";
+        return false;
+    }
+    if (file.plain.size() != (file.party ? Encryption::SIZE_PARTY3_FRLG : Encryption::SIZE_STORED3_FRLG)) {
+        error = "A Generation III Pokemon file is an 80-byte stored or 100-byte party record";
+        return false;
+    }
+    if (box >= boxCount() || slot >= boxCapacity()) {
+        error = "Generation III box/slot is outside the native 14 x 30 storage";
+        return false;
+    }
+    std::string readError;
+    if (boxedPokemon(box, slot, readError)) {
+        error = "Import needs an empty box slot; this slot already holds a Pokemon";
+        return false;
+    }
+    if (!readError.empty()) {
+        error = readError;
+        return false;
+    }
+    // boxedPokemon reads a record whose internal species index has no National Dex number (unused
+    // 252-276, or past 411) as "no Pokemon". Import does not write over such bytes: the slot must
+    // hold no species index at all (pret ZeroBoxMonData leaves a released slot all zero).
+    {
+        bool slotOk = false;
+        const auto current = pk3Plaintext(readBoxRaw(box, slot, slotOk));
+        if (!slotOk || current[0x20] != 0 || current[0x21] != 0) {
+            error = "Import needs an empty box slot; this slot holds an unreadable record";
+            return false;
+        }
+    }
+
+    // The box slot takes the stored part; a party file's 20 battle-stat bytes are not part of it
+    // (the game itself copies only `mon->box` into the PC: pret pokeemerald src/pokemon.c
+    // CopyMonToPC, pokefirered src/pokemon.c SendMonToPC).
+    std::array<uint8_t, 80> plain{};
+    std::copy_n(file.plain.begin(), plain.size(), plain.begin());
+    const uint16_t storedChecksum = static_cast<uint16_t>(plain[0x1C] | (plain[0x1D] << 8));
+    if (Encryption::checksum3FRLG(std::as_bytes(std::span<const uint8_t>(plain))) != storedChecksum) {
+        error = "The file's checksum does not match its data";
+        return false;
+    }
+    if (plain[0x13] & 0x01) {
+        error = "The file is marked as a Bad Egg";
+        return false;
+    }
+    std::array<uint8_t, 80> raw{};
+    {
+        std::byte* encrypted = Encryption::encryptArray3FRLG(std::as_bytes(std::span<const uint8_t>(plain)));
+        std::memcpy(raw.data(), encrypted, raw.size());
+        delete[] encrypted;
+    }
+    {
+        const Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+        if (!validateImportedRecord(pokemon, error)) return false;
+    }
+
+    const auto backup = staged_;
+    const auto changesBackup = changes_;
+    if (!writeBoxRaw(box, slot, raw, error) || !validateStaged(error)) {
+        staged_ = backup;
+        changes_ = changesBackup;
+        return false;
+    }
+    auto imported = boxedPokemon(box, slot, error);
+    bool readOk = false;
+    const auto stored = readBoxRaw(box, slot, readOk);
+    const auto storedPlain = pk3Plaintext(stored);
+    if (!imported || !readOk || stored != raw ||
+        !std::equal(plain.begin(), plain.end(), storedPlain.begin(), storedPlain.end())) {
+        staged_ = backup;
+        changes_ = changesBackup;
+        if (error.empty()) error = "Generation III import failed byte-identical reparse";
+        return false;
+    }
+
+    // Review: a header row in the Create shape ("<loc> / Import Pokémon", "Empty -> SPECIES Lv n"),
+    // then the identity of what arrived, read back from the staged record.
+    namespace C = PokeVault::Integration::Gen12CreateReview;
+    const std::string loc = recordLabel(box, slot) + " / ";
+    changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
+                        loc + "Import Pokémon", "Empty",
+                        C::header(Names::getSpeciesName(imported->species), imported->level)});
+    const auto detail = [&](const std::string& label, const std::string& value) {
+        changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
+                            loc + label, "", value, false, true});
+    };
+    detail("Nickname", imported->nickname);
+    detail("OT / TID / SID", (imported->otName.empty() ? std::string("(none)") : imported->otName) +
+           " / " + std::to_string(imported->tid) + " / " + std::to_string(imported->sid));
+    detail("Language", Enums::getLanguageName(imported->language));
+    detail("Source", std::string(file.wasEncrypted ? "Encrypted" : "Plain") +
+           (file.party ? " party" : " stored") + " Generation III file, kept byte for byte");
+    return true;
+}
+
+std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportBoxPokemonFile(
+    std::size_t box, std::size_t slot, std::string& error) const {
+    const auto record = boxedPokemon(box, slot, error);
+    if (!record) {
+        if (error.empty()) error = "This box slot is empty; there is no Pokemon to export";
+        return std::nullopt;
+    }
+    return pk3Plaintext(record->encryptedBytes);
+}
+
+std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportPartyPokemonFile(
+    std::size_t slot, std::string& error) const {
+    const auto raw = readPartyRaw(slot, error);
+    if (raw.size() != Encryption::SIZE_PARTY3_FRLG) {
+        if (error.empty()) error = "Generation III Party slot is empty or out of range";
+        return std::nullopt;
+    }
+    if (!partyPokemon(slot, error)) {
+        if (error.empty()) error = "This Party slot is empty; there is no Pokemon to export";
+        return std::nullopt;
+    }
+    return pk3Plaintext(raw);
+}
+
 bool StagedPokemonEditor::validateStaged(std::string& error) const {
     error.clear();
     const auto selected = Detail::validateSlot(staged_, activeSlot_);
