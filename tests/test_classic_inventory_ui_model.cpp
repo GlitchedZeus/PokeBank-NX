@@ -228,14 +228,15 @@ int main() {
         }
         std::ifstream in("src/UI/ClassicInventoryOverlay.cpp", std::ios::binary);
         const std::string overlay((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        const auto help = overlay.find("if (state.helpActive) {\n        // Round 7 (B04)");
-        const auto helpEnd = overlay.find("if (state.optionsActive) {", help);
+        // Owner Oct 28 (Bag Help #2): the Gen I-III Help draws the shared rows in the shared,
+        // content-sized Help modal (ScreenChrome::drawInfoOverlay), exactly as Gen IV / V do.
+        const auto help = overlay.find("if (state.helpActive && !state.pickerActive && !state.discardConfirmActive) {");
+        const auto helpEnd = overlay.find("return;", help);
         assert(help != std::string::npos && helpEnd != std::string::npos);
         const auto body = overlay.substr(help, helpEnd - help);
-        assert(body.find("fb.drawText(x + 30, y + 20, InvHelp::kTitle,") != std::string::npos);
-        assert(body.find("for (const auto& line : InvHelp::lines(generation))") != std::string::npos);
-        assert(body.find("drawGlyphHelpLine(fb, x + 34, rowY, line,") != std::string::npos);
-        assert(body.find("\"Inventory Help\"") == std::string::npos);
+        assert(body.find("drawInfoOverlay(fb, InvHelp::kTitle, InvHelp::lines(generation));") != std::string::npos);
+        assert(overlay.find("\"Inventory Help\"") == std::string::npos);
+        assert(overlay.find("drawGlyphHelpLine(fb, x + 34, rowY, line,") == std::string::npos);   // no private panel
         assert(std::string(InvHelp::kTitle) == "Inventory Controls");
     }
 
