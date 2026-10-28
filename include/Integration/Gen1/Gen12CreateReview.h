@@ -14,6 +14,8 @@
 namespace PokeVault::Integration::Gen12CreateReview {
 
 inline constexpr std::string_view kAddPokemon = "Add Pokémon";
+// A Pokemon placed from a native file (Gen I .pk1; Gen II says "Imported" in its own rows).
+inline constexpr std::string_view kImported = "Imported";
 
 inline std::string header(std::string_view species, unsigned level) {
     return std::string(species) + " Lv " + std::to_string(level);

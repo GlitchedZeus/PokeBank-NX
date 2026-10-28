@@ -87,7 +87,9 @@ Common::VerifiedExportResult publishVerifiedGen1Export(
     transaction.fileExtension = ".srm";
     transaction.sourcePath = request.sourcePath;
     transaction.gameId = sourceGameId(game);
-    transaction.saveFormat = "International R/B/Y SRAM (Party edit deferred)";
+    transaction.saveFormat = editor.metadata().region == RegionLayout::Japanese
+        ? "Japanese R/G/B/Y SRAM (8 boxes x 30)"
+        : "International R/B/Y SRAM (Party edit deferred)";
     transaction.timestamp = request.timestamp;
     transaction.applicationSha = request.applicationSha;
     transaction.originalBytes = editor.originalBytes();

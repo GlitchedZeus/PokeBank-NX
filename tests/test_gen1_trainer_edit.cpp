@@ -173,8 +173,10 @@ void japaneseLayout(SourceGame game) {
     std::string error;
     auto trainer = StagedTrainerEditor::create(*parsed.save, error);
     assert(trainer && trainer->money() == 3141 && trainer->nameMax() == 5);
-    // No kana encoder: Japanese names stay read-only, honestly refused.
-    assert(!trainer->nameEditable() && !trainer->stageTrainerName("ASH", error) && !error.empty());
+    // Japanese names take kana (Utils/Gen12KanaText.h); Latin letters are refused (no region
+    // conversion). Kana writing itself: tests/test_gen1_japanese_writer.cpp.
+    assert(trainer->nameEditable() && !trainer->stageTrainerName("ASH", error) && error.find("Latin") != std::string::npos);
+    assert(!trainer->hasPendingChanges());
     assert(trainer->stageMoney(271828, error));
     assert(trainer->stagedBytes()[0x25EE] == 0x27 && trainer->stagedBytes()[0x25EF] == 0x18 &&
            trainer->stagedBytes()[0x25F0] == 0x28);
@@ -209,7 +211,8 @@ void trainerPage() {
     assert(base.find("ClassicTrainerSession::readOnlyForFooterOverride(") != std::string::npos);
     assert(base.find("sourceReadOnly(), detailViewActive && selectedMode == ViewMode::Trainer,") != std::string::npos);
     // A: Edit for the FOCUSED row only: Money always on an editable page; Name only when the
-    // save's name can be staged (international Gen I yes, Japanese Gen I no).
+    // save's name can be staged (international and Japanese Gen I: the kana encoder; the app keeps a
+    // Japanese save read-only through stagedTrainerEditable(), see test_rby_readonly_bridge.cpp).
     for (auto game : {SourceGame::Red, SourceGame::Yellow}) {
         std::string error;
         auto intl = parse(international(game), game);
@@ -220,7 +223,7 @@ void trainerPage() {
         assert(intlEditor && jpEditor);
         assert(T::focusedRowEditable(intlEditor->nameEditable(), 0));
         assert(T::focusedRowEditable(intlEditor->nameEditable(), 1));
-        assert(!T::focusedRowEditable(jpEditor->nameEditable(), 0));
+        assert(T::focusedRowEditable(jpEditor->nameEditable(), 0));
         assert(T::focusedRowEditable(jpEditor->nameEditable(), 1));
     }
     assert(base.find("instructions = \"Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App\";") == std::string::npos);

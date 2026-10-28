@@ -133,5 +133,18 @@ int main(){
     auto yp=parse(yellowRaw,SourceGame::Yellow);assert(yp);std::string ye;auto yt=RBYReadOnlyTrainer::create(*yp.save,ye);
     assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==6);
     assert(yt->items[1][0].itemId==0x14&&yt->items[4][0].itemId==0xC9&&yt->items[5][0].itemId==0x2D);
+    {
+        // Japanese Gen I: the writers handle the layout, but the app keeps the save read-only while
+        // Integration/Common/JapaneseEditingGate.h is closed (no staged Pokemon workspace, so no
+        // Trainer / Bag edit and no export either).
+        std::vector<uint8_t> jp(0x8000,0);std::fill(jp.begin()+MAIN,jp.begin()+MAIN+6,0x50);
+        jp[0x2ED6]=0xFF;jp[0x302E]=0xFF;jp[0x25C5]=0xFF;jp[0x27DD]=0xFF;
+        jp[0x3594]=diff8(std::span<const uint8_t>(jp).subspan(MAIN,0x0FFC));
+        auto jpParsed=parse(jp,SourceGame::Red);assert(jpParsed);std::string je;
+        auto jt=RBYReadOnlyTrainer::create(*jpParsed.save,je);
+        assert(jt&&jt->japaneseLayout()&&jt->getBoxCount()==8&&jt->getSlotsPerBox()==30);
+        assert(!jt->stagedPokemon()&&!jt->stagedTrainerEditable());
+        assert(jt->stagedPokemonUnavailableReason()=="Japanese Generation I saves are read-only");
+    }
     std::cout<<"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\n";return 0;
 }

@@ -239,8 +239,16 @@ void japaneseSave() {
     const auto parsed = G1::parse(raw, G1::SourceGame::Red);
     assert(parsed && parsed.save->metadata().region == G1::RegionLayout::Japanese);
     std::string error;
-    // Japanese Gen I saves stay read-only: no staged editor, so nothing can be imported.
-    assert(!G1::StagedPokemonEditor::create(*parsed.save, error) && !error.empty());
+    // Japanese Gen I saves have a staged editor (the app gates it: JapaneseEditingGate.h). An
+    // international .pk1 is refused with no region conversion; Japanese files are covered by
+    // tests/test_gen1_japanese_writer.cpp.
+    auto e = G1::StagedPokemonEditor::create(*parsed.save, error);
+    assert(e && error.empty());
+    const auto intlFile = [] {
+        Bytes f(69, 0x50); f[0] = 1; f[1] = 0x54; f[2] = 0xFF; std::fill_n(f.begin() + 3, 44, 0); f[3] = 0x54;
+        return f;
+    }();
+    refuse(*e, 0, 0, decoded(intlFile, "intl.pk1"), "international game");
 }
 }  // namespace rby
 

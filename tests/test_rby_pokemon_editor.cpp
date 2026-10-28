@@ -264,9 +264,13 @@ int main() {
     assert(parse(output,SourceGame::Red).save->metadata().boxesInitialized);
     assert(parse(output,SourceGame::Red).save->boxes()[2].slots[0]->nickname=="PIKA");
     assert(e->stageRemove(11,0,error));assert(bytes(*e)==raw);
-    // Japanese layout remains browsable but is capability-gated for mutation.
+    // Japanese layout: the staged editor now writes it (8 x 30, kana; tests/test_gen1_japanese_writer.cpp).
+    // The app keeps Japanese saves read-only behind Integration/Common/JapaneseEditingGate.h
+    // (src/Legacy/RBYReadOnlyTrainer.cpp; pinned by tests/test_rby_readonly_bridge.cpp).
     std::vector<uint8_t> jp(0x8000);jp[0x2ED6]=jp[0x302E]=0xFF;jp[0x3594]=sum(jp,0x2598,0xFFC);
-    auto j=parse(jp,SourceGame::Red);assert(j);assert(!StagedPokemonEditor::create(*j.save,error));
+    auto j=parse(jp,SourceGame::Red);assert(j);
+    {auto je=StagedPokemonEditor::create(*j.save,error);assert(je&&je->view().boxes().size()==8&&je->view().boxes()[0].slots.size()==30);
+     std::vector<uint8_t> jpOut=je->finalizedBytes(error);assert(jpOut==jp);}
     {
         // Create default matches Gen II-V (#25 L5) with Pikachu's pokered base moves at base PP.
         const PokeVault::Integration::Gen1::BoxPokemonCreate defaults{};
