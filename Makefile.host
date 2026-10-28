@@ -31,6 +31,7 @@ include Makefile.host.pkfile-gen3
 include Makefile.host.pkfile-gen4
 include Makefile.host.pkfile-gen5
 include Makefile.host.pokemon-file-ui
+include Makefile.host.recovery-view
 
 include Makefile.host.machine
 

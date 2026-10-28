@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 #include "UI/SourceBackupClassification.h"
+#include "UI/RecoveryManagementFs.h"
 #include <string>
 
 #include <switch.h>
@@ -252,7 +253,8 @@ namespace UI {
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
                              Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
                              Gen5Candidates, GameFilePicker, QuitConfirm,
-                             EmulatorBackups, EmulatorBackupDeleteConfirm };
+                             EmulatorBackups, EmulatorBackupDeleteConfirm,
+                             RecoveryFiles, RecoveryConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         Overlay leaveReturnOverlay = Overlay::None; // where A/B "Stay" returns from the leave decision
@@ -268,6 +270,22 @@ namespace UI {
         void openEmulatorBackups(const std::string& notice = {});
         void createEmulatorBackup(int listing);
         void browseEmulatorSource(const std::string& source);
+        // Owner item #10: Backups -> X "Recovery files". Review older copies and DurableFile
+        // leftovers (UI/RecoveryManagementModel.h decides what may go), select with A, Y opens a
+        // confirmation that lists every file and its size, Y there removes, A/B keep. Nothing is
+        // selected by default and nothing is removed on a single press.
+        PokeBank::UIModel::RecoveryManagement::Fs::Request recoveryRequest;
+        PokeBank::UIModel::RecoveryManagement::Fs::Listing recoveryListing;
+        PokeBank::UIModel::RecoveryManagement::Selection recoverySelection;
+        PokeBank::UIModel::RecoveryManagement::Plan recoveryPlan;
+        std::vector<PokeBank::UIModel::RecoveryManagement::Row> recoveryRows;
+        int recoveryIndex = 0;
+        int recoveryScroll = 0;
+        int recoveryConfirmScroll = 0;   // first file line shown in the confirmation
+        std::string recoveryNotice;
+        SharedScrollbar::State recoveryScrollbar;
+        void openRecoveryFiles(const std::string& notice = {});
+        void rebuildRecoveryRows();
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;
