@@ -5,6 +5,7 @@
 #include "Names/MoveNames.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen1/Gen1Shiny.h"
+#include "PokemonFile/NativePokemonFile.h"
 #include <algorithm>
 
 namespace PokeVault::Integration::Gen1 {
@@ -88,6 +89,18 @@ uint16_t maxHP(uint16_t species,uint8_t level,uint8_t hpDV,uint16_t hpStatExp) n
 }
 bool sameRecord(const PokemonRecord& a,const PokemonRecord& b) {
     return a.rawBody==b.rawBody && a.nickname==b.nickname && a.originalTrainer==b.originalTrainer;
+}
+// PKHeX 8e3eb3d4 PokeCrypto.cs SIZE_1LIST / PokeList1 single entry: count 1, species, 0xFF, the
+// 44-byte party body, 11-byte OT, 11-byte nickname (international).
+constexpr size_t FileSize=3+44+11+11, FileBody=3, FileOT=FileBody+44, FileNick=FileOT+11;
+std::vector<uint8_t> pk1List(const std::array<uint8_t,44>& body,std::span<const uint8_t> ot,
+                             std::span<const uint8_t> nick) {
+    std::vector<uint8_t> out(FileSize,0x50);
+    out[0]=1;out[1]=body[0];out[2]=0xFF;
+    std::copy(body.begin(),body.end(),out.begin()+FileBody);
+    std::copy_n(ot.begin(),11,out.begin()+FileOT);
+    std::copy_n(nick.begin(),11,out.begin()+FileNick);
+    return out;
 }
 }
 
@@ -410,6 +423,87 @@ bool StagedPokemonEditor::revertPokemon(size_t b,size_t s,std::string& error) {
     std::copy_n(originalBytes().begin()+box,BoxSize,bytes.begin()+box);
     if(b==metadata().currentBox && (bytes[0x284C]&0x80)) std::copy_n(bytes.begin()+Current,BoxSize,bytes.begin()+bankOffset(b));
     return commit(std::move(bytes),error);
+}
+bool StagedPokemonEditor::stageImport(size_t b,size_t s,const PokeBank::PokemonFile::Decoded& file,std::string& error) {
+    error.clear();
+    if(packedMove_.active) {error="Place or cancel carried Pokemon before importing a file";return false;}
+    if(metadata().region!=RegionLayout::International) {error="Japanese Generation I saves are read-only";return false;}
+    if(file.generation!=1 || file.format!=PokeBank::PokemonFile::Format::PK1) {
+        error="Only a .pk1 file can go into a Generation I save; Pokemon are not converted between generations";
+        return false;
+    }
+    if(file.japanese) {
+        error="This .pk1 comes from a Japanese game; it cannot go into an international save (no region conversion)";
+        return false;
+    }
+    const std::span<const uint8_t> f(file.plain);
+    if(f.size()!=FileSize || f[0]!=1 || f[2]!=0xFF || f[1]!=f[FileBody]) {error="The .pk1 file is not a single-Pokemon list";return false;}
+    if(b>=12 || s>=Capacity) {error="Box or slot is out of range";return false;}
+    const auto& slots=view_->boxes()[b].slots;
+    if(std::all_of(slots.begin(),slots.end(),[](const auto& p){return bool(p);})) {error="This Generation I box is full";return false;}
+    if(!destination(b,s,error)) return false;
+    std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());
+    if(b!=metadata().currentBox) initializeBanks(bytes,metadata());
+    const auto box=boxOffset(metadata(),b),o=bodyOffset(box,s);
+    std::copy_n(f.begin()+FileBody,33,bytes.begin()+o);
+    // pokered engine/pokemon/add_mon.asm _MoveMon (PARTY_TO_BOX) copies the party level into the
+    // box level byte. A zero party block (a box-origin file, aa4b72e) keeps the stored box level.
+    if(f[FileBody+0x21]!=0) bytes[o+3]=f[FileBody+0x21];
+    bytes[box]=s+1;bytes[box+1+s]=f[FileBody];bytes[box+2+s]=0xFF;
+    std::copy_n(f.begin()+FileOT,11,bytes.begin()+otOffset(box,s));
+    std::copy_n(f.begin()+FileNick,11,bytes.begin()+nickOffset(box,s));
+    if(b==metadata().currentBox && (bytes[0x284C]&0x80)) std::copy_n(bytes.begin()+Current,BoxSize,bytes.begin()+bankOffset(b));
+    {
+        // The strict parser and this editor's own validators decide before anything is staged.
+        auto check=bytes; repair(check);
+        const auto parsed=parse(check,metadata().sourceGame);
+        if(!parsed || !parsed.save->boxes()[b].slots[s]) {
+            error="The .pk1 record is not a valid Generation I box Pokemon"+(parsed?std::string():": "+parsed.detail);
+            return false;
+        }
+        if(!validPokemon(*parsed.save->boxes()[b].slots[s],error)) return false;
+    }
+    std::array<uint8_t,33> expected{};
+    std::copy_n(bytes.begin()+o,33,expected.begin());
+    const auto viewBefore=view_; const auto changesBefore=changes_;
+    if(!commit(std::move(bytes),error)) return false;
+    const auto& placed=view_->boxes()[b].slots[s];
+    const auto staged=stagedBytes(); const auto at=boxOffset(metadata(),b);
+    if(!placed || !std::equal(expected.begin(),expected.end(),placed->rawBody.begin()) ||
+       !std::equal(f.begin()+FileOT,f.begin()+FileOT+11,staged.begin()+otOffset(at,s)) ||
+       !std::equal(f.begin()+FileNick,f.begin()+FileNick+11,staged.begin()+nickOffset(at,s))) {
+        view_=viewBefore; changes_=changesBefore;
+        error="Imported Generation I Pokemon failed its byte round trip";
+        return false;
+    }
+    return true;
+}
+std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportBoxPokemonFile(size_t b,size_t s,std::string& error) const {
+    error.clear();
+    if(packedMove_.active) {error="Place or cancel carried Pokemon before exporting a file";return {};}
+    const auto p=boxedPokemon(b,s,error);
+    if(!p) {if(error.empty())error="Box slot is empty";return {};}
+    if(p->rawBodySize!=33 || p->species<1 || p->species>151) {error="Box record is not a Generation I stored Pokemon";return {};}
+    std::array<uint8_t,44> body{};
+    std::copy_n(p->rawBody.begin(),33,body.begin());
+    // pokered _MoveMon (BOX_TO_PARTY): CalcLevelFromExperience into the party level, then
+    // CalcStats with b=1 (Stat Exp counted). Current HP and status are copied unchanged.
+    const uint8_t level=Pokemon::getLevelFromExp(p->experience,growthRate(p->species));
+    body[0x21]=level;
+    const auto stats=calculateBattleStats(p->species,level,{p->dvs[1],p->dvs[2],p->dvs[3],p->dvs[4]},
+                                          p->statExperience).asArray();
+    for(size_t i=0;i<stats.size();++i) {body[0x22+i*2]=stats[i]>>8;body[0x23+i*2]=stats[i]&255;}
+    const auto staged=stagedBytes(); const auto box=boxOffset(metadata(),b);
+    return pk1List(body,staged.subspan(otOffset(box,s),11),staged.subspan(nickOffset(box,s),11));
+}
+std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportPartyPokemonFile(size_t s,std::string& error) const {
+    error.clear();
+    if(packedMove_.active) {error="Place or cancel carried Pokemon before exporting a file";return {};}
+    const auto p=partyPokemon(s,error);
+    if(!p) return {};
+    if(p->rawBodySize!=44) {error="Party record is not a Generation I party Pokemon";return {};}
+    const auto staged=stagedBytes();
+    return pk1List(p->rawBody,staged.subspan(PartyOT+s*11,11),staged.subspan(PartyNick+s*11,11));
 }
 void StagedPokemonEditor::discard() noexcept {view_=original_;changes_.clear();}
 std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std::span<const uint8_t> inventory,std::span<const uint8_t> trainer) const {

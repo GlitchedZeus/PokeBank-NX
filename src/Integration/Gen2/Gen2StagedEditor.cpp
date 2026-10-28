@@ -10,6 +10,7 @@
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "UI/Gen2NativePresentation.h"
 #include "Pokemon/Experience.h"
+#include "PokemonFile/NativePokemonFile.h"
 
 #include <algorithm>
 #include <array>
@@ -454,6 +455,61 @@ void writePokemonBody(std::vector<uint8_t>& bytes, std::size_t offset,
 
 std::array<uint8_t, 4> editableDVs(const PokemonRecord& p) noexcept {
     return {p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
+}
+
+// PKHeX 8e3eb3d4 PokeCrypto.cs SIZE_2LIST / PokeList2 single entry: count 1, list species (0xFD
+// for an Egg), 0xFF, the 48-byte party body, 11-byte OT, 11-byte nickname (international).
+constexpr std::size_t kFileBody = 3, kFilePartyBody = 48, kFileString = 11;
+constexpr std::size_t kFileOT = kFileBody + kFilePartyBody, kFileNick = kFileOT + kFileString;
+constexpr std::size_t kFileSize = kFileNick + kFileString;
+constexpr uint8_t kEggMarker = 0xFD; // pret/pokecrystal constants/pokemon_constants.asm EGG
+
+std::vector<uint8_t> pk2List(uint8_t marker, const std::array<uint8_t, kFilePartyBody>& body,
+                             std::span<const uint8_t> ot, std::span<const uint8_t> nick) {
+    std::vector<uint8_t> out(kFileSize, 0x50);
+    out[0] = 1;
+    out[1] = marker;
+    out[2] = 0xFF;
+    std::copy(body.begin(), body.end(), out.begin() + kFileBody);
+    std::copy_n(ot.begin(), kFileString, out.begin() + kFileOT);
+    std::copy_n(nick.begin(), kFileString, out.begin() + kFileNick);
+    return out;
+}
+
+// The checks the staged editor applies to a record it writes (stageAddBoxPokemon / stageRecordEdit),
+// applied to an imported stored record as a whole.
+bool validStoredRecord(const PokemonRecord& p, std::string& error) {
+    const auto* personal = personalRecord(p.species);
+    if (p.species == 0 || p.species > kMaxGen2Species || !personal) {
+        error = "species is not a valid Generation II species";
+        return false;
+    }
+    if (p.level < 1 || p.level > 100 ||
+        p.experience > Pokemon::getExpForLevel(100, personal->experienceGrowth) ||
+        Pokemon::getLevelFromExp(p.experience, personal->experienceGrowth) != p.level) {
+        error = "species, level and experience do not form a valid Generation II combination";
+        return false;
+    }
+    if (!validHeldItem(p.heldItem)) {
+        error = "held item is not a usable Generation II item id";
+        return false;
+    }
+    for (std::size_t i = 0; i < 4; ++i) {
+        if (p.moves[i] > kMaxGen2Move) {
+            error = "move id is outside the Generation II move range";
+            return false;
+        }
+        if (p.moves[i] == 0 ? (p.pp[i] != 0 || p.ppUps[i] != 0)
+                            : p.pp[i] > maxPP(p.moves[i], p.ppUps[i])) {
+            error = "move PP is outside the Generation II range for its move/PP-Up state";
+            return false;
+        }
+    }
+    if (p.pokerus != 0 && (p.pokerus >> 4) == 0) {
+        error = "Pokerus strain 0 cannot have days remaining";
+        return false;
+    }
+    return true;
 }
 
 void putEditableDVs(PokemonRecord& p, const std::array<uint8_t, 4>& dvs) noexcept {
@@ -1287,6 +1343,144 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
                           PokeBank::UIModel::Gen2Native::crystalCaughtLevelText(caught));
     }
     return true;
+}
+
+bool StagedEditor::stageImportBoxPokemon(std::size_t box, std::size_t slot,
+                                         const PokeBank::PokemonFile::Decoded& file,
+                                         std::string& error) {
+    error.clear();
+    if (packedMove_.active) {
+        error = "Place or cancel carried Pokemon before importing a file";
+        return false;
+    }
+    if (metadata_.region != RegionLayout::International) {
+        error = "Japanese Generation II saves are read-only";
+        return false;
+    }
+    if (file.generation != 2 || file.format != PokeBank::PokemonFile::Format::PK2) {
+        error = "Only a .pk2 file can go into a Generation II save; Pokemon are not converted between generations";
+        return false;
+    }
+    if (file.japanese) {
+        error = "This .pk2 comes from a Japanese game; it cannot go into an international save (no region conversion)";
+        return false;
+    }
+    const std::span<const uint8_t> f(file.plain);
+    if (f.size() != kFileSize || f[0] != 1 || f[2] != 0xFF ||
+        (f[1] != f[kFileBody] && f[1] != kEggMarker)) {
+        error = "The .pk2 file is not a single-Pokemon list";
+        return false;
+    }
+    const auto& layout = layoutFor(metadata_.family);
+    if (!validBoxLocation(metadata_, layout, box, slot, error)) return false;
+    const std::size_t list = boxStart(layout, box);
+    const uint8_t count = staged_[list];
+    if (count >= layout.boxCapacity) {
+        error = "This Generation II box is full";
+        return false;
+    }
+    if (slot != count) {
+        error = slot < count ? "Destination slot is occupied"
+                             : "Select the first empty slot; Gen II boxes are contiguous";
+        return false;
+    }
+
+    const auto stagedBackup = staged_;
+    const auto changesBackup = changes_;
+    const auto expectationsBackup = pokemonExpectations_;
+    const auto restore = [&] {
+        staged_ = stagedBackup;
+        changes_ = changesBackup;
+        pokemonExpectations_ = expectationsBackup;
+    };
+    const std::size_t bodyAt = boxBodyStart(layout, box) + slot * kStoredBodySize;
+    const std::size_t otAt = boxOTStart(layout, box) + slot * layout.stringLength;
+    const std::size_t nickAt = boxNicknameStart(layout, box) + slot * layout.stringLength;
+    staged_[list] = static_cast<uint8_t>(count + 1);
+    staged_[list + 1 + slot] = f[1];
+    staged_[list + 1 + slot + 1] = 0xFF;
+    std::copy_n(f.begin() + kFileBody, kStoredBodySize, staged_.begin() + static_cast<std::ptrdiff_t>(bodyAt));
+    std::copy_n(f.begin() + kFileOT, kFileString, staged_.begin() + static_cast<std::ptrdiff_t>(otAt));
+    std::copy_n(f.begin() + kFileNick, kFileString, staged_.begin() + static_cast<std::ptrdiff_t>(nickAt));
+    if (!syncCurrentBoxCopy(box, error)) {
+        restore();
+        return false;
+    }
+    std::string why;
+    auto verified = boxedPokemon(box, slot, why);
+    if (!verified || !validStoredRecord(*verified, why)) {
+        restore();
+        error = "The .pk2 record is not a valid Generation II box Pokemon: " + why;
+        return false;
+    }
+    if (!std::equal(f.begin() + kFileBody, f.begin() + kFileBody + kStoredBodySize, verified->rawBody.begin()) ||
+        verified->isEgg != (f[1] == kEggMarker)) {
+        restore();
+        error = "Imported Generation II Pokemon failed its byte round trip";
+        return false;
+    }
+    rememberPokemonExpectation(box, slot, *verified);
+    setChange("box:" + std::to_string(box) + ":" + std::to_string(slot) + ":import",
+              "Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1), "Empty",
+              verified->isEgg ? "Imported Egg (" + std::string(Names::getSpeciesName(verified->species)) + ")"
+                              : "Imported " + verified->nickname + " Lv. " + std::to_string(verified->level));
+    return true;
+}
+
+std::optional<std::vector<uint8_t>> StagedEditor::exportBoxPokemonFile(std::size_t box, std::size_t slot,
+                                                                      std::string& error) const {
+    error.clear();
+    if (packedMove_.active) {
+        error = "Place or cancel carried Pokemon before exporting a file";
+        return std::nullopt;
+    }
+    const auto p = boxedPokemon(box, slot, error);
+    if (!p) return std::nullopt;
+    const auto* personal = personalRecord(p->species);
+    if (p->rawBodySize != kStoredBodySize || !personal) {
+        error = "Box record is not a Generation II stored Pokemon";
+        return std::nullopt;
+    }
+    std::array<uint8_t, kFilePartyBody> body{};
+    std::copy_n(p->rawBody.begin(), kStoredBodySize, body.begin());
+    // pokecrystal SendGetMonIntoFromBox (PC_WITHDRAW): CalcLevel into MON_LEVEL, CalcMonStats with
+    // Stat Exp into MON_MAXHP.., MON_STATUS = 0, MON_HP = max HP, or 0 when the species is EGG.
+    const uint8_t level = Pokemon::getLevelFromExp(p->experience, personal->experienceGrowth);
+    body[31] = level;
+    const auto stats = calculateBattleStats(p->species, level, editableDVs(*p), p->statExperience).asArray();
+    const auto put = [&](std::size_t o, uint16_t v) {
+        body[o] = static_cast<uint8_t>(v >> 8);
+        body[o + 1] = static_cast<uint8_t>(v & 0xFF);
+    };
+    put(34, p->isEgg ? 0 : stats[0]);
+    for (std::size_t i = 0; i < stats.size(); ++i) put(36 + i * 2, stats[i]);
+    const auto& layout = layoutFor(metadata_.family);
+    const std::span<const uint8_t> staged(staged_);
+    return pk2List(p->isEgg ? kEggMarker : static_cast<uint8_t>(p->species), body,
+                   staged.subspan(boxOTStart(layout, box) + slot * layout.stringLength, kFileString),
+                   staged.subspan(boxNicknameStart(layout, box) + slot * layout.stringLength, kFileString));
+}
+
+std::optional<std::vector<uint8_t>> StagedEditor::exportPartyPokemonFile(std::size_t slot,
+                                                                        std::string& error) const {
+    error.clear();
+    if (packedMove_.active) {
+        error = "Place or cancel carried Pokemon before exporting a file";
+        return std::nullopt;
+    }
+    const auto p = partyPokemon(slot, error);
+    if (!p) return std::nullopt;
+    if (p->rawBodySize != kFilePartyBody) {
+        error = "Party record is not a Generation II party Pokemon";
+        return std::nullopt;
+    }
+    // PKHeX SAV2 / PokeList2 international Party list: count, 7 species bytes, six 48-byte bodies,
+    // six 11-byte OT names, six 11-byte nicknames.
+    const std::size_t names = partyStart(metadata_.family) + 8 + 6 * kFilePartyBody;
+    const std::span<const uint8_t> staged(staged_);
+    return pk2List(p->isEgg ? kEggMarker : static_cast<uint8_t>(p->species), p->rawBody,
+                   staged.subspan(names + slot * kFileString, kFileString),
+                   staged.subspan(names + 6 * kFileString + slot * kFileString, kFileString));
 }
 
 void StagedEditor::discard() noexcept {
