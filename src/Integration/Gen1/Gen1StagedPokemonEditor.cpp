@@ -1,4 +1,5 @@
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
+#include "Utils/Gen12AccentText.h"
 #include "Pokemon/Experience.h"
 #include "Names/SpeciesNames.h"
 #include "Names/MoveNames.h"
@@ -136,19 +137,27 @@ uint8_t StagedPokemonEditor::derivedHPDV(const std::array<uint8_t,4>& d) noexcep
 bool StagedPokemonEditor::encodeName(std::string_view text,size_t maximum,
                                      std::array<uint8_t,11>& out,std::string& error) {
     error.clear(); out.fill(0x50);
-    // Conservative shared English glyph subset; accents/language-specific glyphs remain read-only.
-    if(text.empty() || text.size()>maximum || maximum>10) { error="Name is empty or exceeds Gen I length"; return false; }
-    for(size_t i=0;i<text.size();++i) {
+    // Shared English glyph subset plus the European accents of PKHeX StringConverter1.TableEN
+    // (M1 D4); other language-specific glyphs remain read-only. The limit counts characters.
+    if(text.empty() || maximum>10) { error="Name is empty or exceeds Gen I length"; return false; }
+    size_t count=0;
+    for(size_t i=0;i<text.size();) {
+        if(count>=maximum) { error="Name is empty or exceeds Gen I length"; return false; }
         const auto c=text[i];
-        if(c>='A' && c<='Z') out[i]=0x80+c-'A';
-        else if(c>='a' && c<='z') out[i]=0xA0+c-'a';
-        else if(c>='0' && c<='9') out[i]=0xF6+c-'0';
-        else if(c==' ') out[i]=0x7F;
-        else if(c=='-') out[i]=0xE3;
-        else if(c=='.') out[i]=0xF2;
-        else if(c=='?') out[i]=0xE6;
-        else if(c=='!') out[i]=0xE7;
-        else { error="Supported names use A-Z, a-z, 0-9, space, -, ., ? and !"; return false; }
+        uint8_t accent=0; size_t consumed=0;
+        if(c>='A' && c<='Z') out[count]=0x80+c-'A';
+        else if(c>='a' && c<='z') out[count]=0xA0+c-'a';
+        else if(c>='0' && c<='9') out[count]=0xF6+c-'0';
+        else if(c==' ') out[count]=0x7F;
+        else if(c=='-') out[count]=0xE3;
+        else if(c=='.') out[count]=0xF2;
+        else if(c=='?') out[count]=0xE6;
+        else if(c=='!') out[count]=0xE7;
+        else if(Utils::gen12AccentByte(text,i,false,accent,consumed)==Utils::Gen12AccentResult::Encoded) {
+            out[count++]=accent; i+=consumed; continue;
+        }
+        else { error="Supported names use A-Z, a-z, accented letters, 0-9, space, -, ., ? and !"; return false; }
+        ++count; ++i;
     }
     if(decodeGen1String(out,RegionLayout::International)!=text) { error="Gen I name round trip failed"; return false; }
     return true;

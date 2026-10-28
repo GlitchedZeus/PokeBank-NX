@@ -254,6 +254,26 @@ void runFamily(const L& l,SourceGame game){
     genderGlyph.nickname="NIDORAN\xE2\x99\x82";
     assert(editor->stageBoxPokemonEdit(5,0,genderGlyph,error));
     glyphMon=editor->boxedPokemon(5,0,error);assert(glyphMon&&glyphMon->nickname=="NIDORAN\xE2\x99\x82");
+    // M1 D4: European accents. PKHeX StringConverter2 has three international tables (EN, FRE for
+    // French/German, ITA for Italian/Spanish); a Gen II save does not say which one wrote it. Accents
+    // with the same byte in all three are written; the rest are refused, never guessed.
+    for(const char* accented:{"M\xC3\xBCller","\xC3\x84\xC3\x96\xC3\x9C\xC3\xA4\xC3\xB6\xC3\xBC\xC3\xA0\xC3\xA8\xC3\xA9\xC3\xB9",
+                              "\xC3\x99\xC3\x9A\xC3\xA1"}) {
+        BoxPokemonEdit accent;accent.nickname=accented;
+        assert(editor->stageBoxPokemonEdit(5,0,accent,error));
+        auto accentMon=editor->boxedPokemon(5,0,error);assert(accentMon&&accentMon->nickname==accented);
+        BoxPokemonEdit accentOt;accentOt.otName="J\xC3\xBCrgen";
+        assert(editor->stageBoxPokemonEdit(5,0,accentOt,error));
+        accentMon=editor->boxedPokemon(5,0,error);assert(accentMon&&accentMon->originalTrainer=="J\xC3\xBCrgen");
+    }
+    for(const char* releaseDependent:{"\xC3\x89mile","\xC3\x91" "and\xC3\xBA","\xC3\x80","\xC3\xB3"}) {
+        const auto before=std::vector<uint8_t>(editor->stagedBytes().begin(),editor->stagedBytes().end());
+        BoxPokemonEdit accent;accent.nickname=releaseDependent;
+        assert(!editor->stageBoxPokemonEdit(5,0,accent,error));
+        assert(error.find("European release")!=std::string::npos);
+        assert(std::equal(before.begin(),before.end(),editor->stagedBytes().begin()));
+    }
+    { BoxPokemonEdit sharp;sharp.nickname="Stra\xC3\x9F" "e";assert(!editor->stageBoxPokemonEdit(5,0,sharp,error)); }
 
     // Full box refuses add/clone and never overwrites.
     auto fullRaw=fixture(l);fullBox(fullRaw,4);checksum(fullRaw,l);
