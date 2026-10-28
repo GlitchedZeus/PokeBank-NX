@@ -228,6 +228,29 @@ void gen5CreatePokerus() {
     d.frame(); d.frame();
     check(!state.createNeedsMetLocation(), "Gen V Create: picking a location satisfies the choice");
 
+    // Owner Oct 28 (#6): Gender is an inline Male / Female toggle. A tap on the Gender row (PID panel
+    // row 7) flips it at once; no "Change PID?" dialog opens; the status line states the PID change.
+    {
+        constexpr int kGenderPidRow = 7;
+        const auto genderNow = [&] { const auto p = state.draft().current(); return p ? int(p->gender()) : -1; };
+        const auto pidNow = [&] { const auto p = state.draft().current(); return p ? p->pid() : 0u; };
+        const int before = genderNow();
+        const uint32_t pidBefore = pidNow();
+        check(before == 0 || before == 1, "Gen V Create: Pikachu has a Male / Female gender");
+        check(d.tap(Workspace::kPidTouchBase + kGenderPidRow), "Gen V Create: Gender row publishes a touch target");
+        d.frame();
+        check(genderNow() == 1 - before, "Gen V Create: Gender flips inline (got " + std::to_string(genderNow()) + ")");
+        check(pidNow() != pidBefore, "Gen V Create: the PID follows the new gender");
+        check(std::none_of(HostUi::texts.begin(), HostUi::texts.end(),
+                           [](const std::string& t) { return t == "Change PID?"; }),
+              "Gen V Create: no separate Change PID dialog for Gender");
+        check(screen.storageStatus.find("PID") != std::string::npos &&
+                  screen.storageStatus.find("Gender") != std::string::npos,
+              "Gen V Create: the PID change is stated inline (" + screen.storageStatus + ")");
+        d.press(HidNpadButton_A);   // A on the focused Gender row flips it back
+        check(genderNow() == before, "Gen V Create: A flips Gender back inline");
+    }
+
     // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
     d.press(HidNpadButton_X);   // Keep
     check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Create");

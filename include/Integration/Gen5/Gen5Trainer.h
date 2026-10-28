@@ -26,8 +26,12 @@ namespace PokeVault::Integration::Gen5 {
 //   Saves/Substructures/Gen5/Misc5.cs: Money u32 0x00, Badges byte 0x04.
 //   Saves/SAV5.cs: MaxStringLengthTrainer 7; Saves/SaveFile.cs: MaxMoney 9999999.
 //   PKM/Strings/StringConverter5.cs: UTF-16LE, 0xFFFF terminator, ClearZero.
-// Only Name, Money and Play Time are staged. TID/SID, gender, language,
-// game and badges stay read-only (they gate ownership and story flags).
+// Name, Money, Play Time and (owner Oct 28) Gender are staged. Gender is the PlayerData byte 0x21
+// (0 male / 1 female); it is offered only when the stored byte is one of those two, the same rule
+// as Gen III / IV. The game's ownership test does not use the player's gender (pret pokeemerald
+// src/pokemon.c IsOtherTrainer compares OT ID and name only; Gen V has no decompilation, so this is
+// Gen III evidence, recorded as such). TID/SID, language, game and badges stay read-only (they gate
+// ownership and story flags).
 // Both blocks' CRCs are recomputed by the verified export candidate only.
 namespace TrainerLayout5 {
 inline constexpr size_t PlayerBlockIndex = 27;
@@ -149,7 +153,7 @@ namespace detail5trainer {
 }
 
 struct TrainerChange5 {
-    enum class Field : uint8_t { Name, Money, PlayTime };
+    enum class Field : uint8_t { Name, Money, PlayTime, Gender };
     Field field = Field::Money;
     std::string before;
     std::string after;
@@ -228,6 +232,17 @@ public:
         return commitPlayer(std::move(next), HoursOffset, 4, error);
     }
 
+    // The stored byte decides whether Gender is offered: anything but 0 / 1 stays read-only.
+    [[nodiscard]] bool genderEditable() const { return baseline().gender <= 1; }
+    [[nodiscard]] bool setGender(uint8_t gender, std::string* error = nullptr) {
+        using namespace TrainerLayout5;
+        if (!genderEditable()) return fail(error, "Gen V trainer gender has an unrecognized stored value; read-only");
+        if (gender > 1) return fail(error, "Gen V trainer gender must be Male or Female");
+        auto next = player_;
+        next[GenderOffset] = gender;
+        return commitPlayer(std::move(next), GenderOffset, 1, error);
+    }
+
     [[nodiscard]] std::vector<TrainerChange5> changes() const {
         std::vector<TrainerChange5> out;
         const auto a = baseline(), b = current();
@@ -239,13 +254,17 @@ public:
         if (a.hours != b.hours || a.minutes != b.minutes || a.seconds != b.seconds)
             out.push_back({TrainerChange5::Field::PlayTime, playTime5(a.hours, a.minutes, a.seconds),
                            playTime5(b.hours, b.minutes, b.seconds)});
+        if (a.gender != b.gender)
+            out.push_back({TrainerChange5::Field::Gender, a.gender == 0 ? "Male" : "Female",
+                           b.gender == 0 ? "Male" : "Female"});
         return out;
     }
 
     // Whitelisted byte ranges within each block (for the export auditor).
     struct Range { size_t offset; size_t length; };
-    static constexpr std::array<Range, 2> kPlayerRanges{{
-        {TrainerLayout5::NameOffset, TrainerLayout5::NameBytes}, {TrainerLayout5::HoursOffset, 4}}};
+    static constexpr std::array<Range, 3> kPlayerRanges{{
+        {TrainerLayout5::NameOffset, TrainerLayout5::NameBytes}, {TrainerLayout5::GenderOffset, 1},
+        {TrainerLayout5::HoursOffset, 4}}};
     static constexpr std::array<Range, 1> kMiscRanges{{{TrainerLayout5::MoneyOffset, 4}}};
 
 private:

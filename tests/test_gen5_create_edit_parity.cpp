@@ -145,16 +145,16 @@ int main() {
     }
 
     // R2-BUG-003: the Gen V Trainer page uses the Gen I-IV hierarchy: selectable cards first (the
-    // staged Name / Money / Play Time and the Pokedex view), a divider, then compact read-only
-    // identity rows (Gender, Trainer ID and Secret ID as separate native numbers, Badges); the raw
-    // language id is one secondary detail line. No row is merged or recomputed.
+    // staged Name / Money / Play Time and, owner Oct 28 #5, Gender), a divider, then compact
+    // read-only rows (the Pokedex summary, Trainer ID and Secret ID as separate native numbers,
+    // Badges); the raw language id is one secondary detail line. No row is merged or recomputed.
     {
         const auto at = gen5.find("void drawTrainerEditor(");
         const std::string trainer = gen5.substr(at, gen5.find("\n}\n", at) - at);
-        const auto cards = trainer.find("for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex})");
+        const auto cards = trainer.find("for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Gender})");
         // Round 7: the divider is painted by the shared Trainer painter (UI/SharedTrainerPanel.h).
         const auto divider = trainer.find("TPanel::drawDivider(fb,cardX,cy,cardW);");
-        const auto info = trainer.find("for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges})");
+        const auto info = trainer.find("for(const TRow row:{TRow::Pokedex,TRow::TrainerId,TRow::SecretId,TRow::Badges})");
         const auto language = trainer.find("\"Game language: \"");
         require(cards != std::string::npos && divider != std::string::npos && info != std::string::npos &&
                 language != std::string::npos && cards < divider && divider < info && info < language,
@@ -163,9 +163,12 @@ int main() {
         require(cards!=std::string::npos && divider!=std::string::npos &&
                 count(trainer.substr(cards,divider-cards), "screen.touchButtons.push_back(")==1,
                 "R2-BUG-003 selectable cards publish their touch targets");
+        // The only target below the divider is the read-only Pokedex list (a view, never an edit);
+        // the identity rows themselves stay untappable.
         require(info!=std::string::npos && language!=std::string::npos &&
-                count(trainer.substr(info,language-info),"screen.touchButtons.push_back(")==0,
-                "R2-BUG-003 locked identity rows publish no touch targets");
+                count(trainer.substr(info,language-info),"screen.touchButtons.push_back(")==1 &&
+                trainer.substr(info,language-info).find("if(row==TRow::Pokedex) {")!=std::string::npos,
+                "R2-BUG-003 locked identity rows publish no touch targets (only the Pokedex view does)");
         require(language!=std::string::npos &&
                 count(trainer.substr(language),"screen.touchButtons.push_back(")==1 &&
                 trainer.find("ClassicTrainerSession::kReviewTouchId")!=std::string::npos,
