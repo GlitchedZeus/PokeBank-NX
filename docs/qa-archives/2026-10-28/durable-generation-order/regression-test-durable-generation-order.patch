@@ -1,0 +1,94 @@
+diff --git a/Makefile.host.hardware-fixes b/Makefile.host.hardware-fixes
+index 1bfbb10e..85c1c848 100644
+--- a/Makefile.host.hardware-fixes
++++ b/Makefile.host.hardware-fixes
+@@ -147,6 +147,24 @@ $(DURABLE_FILE_SANITIZE): $(DURABLE_FILE_SOURCES) include/Utils/DurableFile.h
+ 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(DURABLE_FILE_SOURCES) -o $@
+ 
+ 
++# QA2: .previous.N generation numbers stay monotonic so recovery restores the newest generation.
++DURABLE_GENORDER_TEST := $(HOST_BUILD)/test_durable_generation_order
++DURABLE_GENORDER_SANITIZE := $(HOST_BUILD)/test_durable_generation_order_sanitize
++DURABLE_GENORDER_SOURCES := tests/test_durable_generation_order.cpp src/Utils/DurableFile.cpp
++
++HOST_TESTS += $(DURABLE_GENORDER_TEST)
++HOST_SANITIZE_TESTS += $(DURABLE_GENORDER_SANITIZE)
++host-test: $(DURABLE_GENORDER_TEST)
++host-sanitize: $(DURABLE_GENORDER_SANITIZE)
++
++$(DURABLE_GENORDER_TEST): $(DURABLE_GENORDER_SOURCES) include/Utils/DurableFile.h
++	@mkdir -p $(HOST_BUILD)
++	$(CXX) $(CXXFLAGS) -Iinclude $(DURABLE_GENORDER_SOURCES) -o $@
++
++$(DURABLE_GENORDER_SANITIZE): $(DURABLE_GENORDER_SOURCES) include/Utils/DurableFile.h
++	@mkdir -p $(HOST_BUILD)
++	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(DURABLE_GENORDER_SOURCES) -o $@
++
+ # A09: mutable backup workspaces must not overwrite their authoritative files in place.
+ BACKUP_WORKSPACE_DURABILITY_TEST := $(HOST_BUILD)/test_backup_workspace_durability
+ BACKUP_WORKSPACE_DURABILITY_SANITIZE := $(HOST_BUILD)/test_backup_workspace_durability_sanitize
+diff --git a/tests/test_durable_generation_order.cpp b/tests/test_durable_generation_order.cpp
+new file mode 100644
+index 00000000..394fb7ed
+--- /dev/null
++++ b/tests/test_durable_generation_order.cpp
+@@ -0,0 +1,59 @@
++// Regression: recoverMissingTarget must restore the NEWEST previous generation even after
++// lower-numbered generations were pruned (Recovery management removes older .previous.N files),
++// which used to let the next replace() reuse a low number for newer content.
++#include "Utils/DurableFile.h"
++
++#include <cassert>
++#include <cstdio>
++#include <fstream>
++#include <iostream>
++#include <iterator>
++#include <string>
++#include <vector>
++#include <unistd.h>
++
++using namespace PokeBank::Storage::DurableFile;
++namespace {
++std::vector<uint8_t> readFile(const std::string& path) {
++    std::ifstream in(path, std::ios::binary);
++    assert(in);
++    return {std::istreambuf_iterator<char>(in), {}};
++}
++void writeFile(const std::string& path, const std::vector<uint8_t>& b) {
++    std::ofstream out(path, std::ios::binary | std::ios::trunc);
++    out.write(reinterpret_cast<const char*>(b.data()), static_cast<std::streamsize>(b.size()));
++}
++Result put(const std::string& t, uint8_t v, const Validator& val) {
++    const std::vector<uint8_t> bytes{v};
++    return replace(t, std::span<const uint8_t>(bytes), val);
++}
++}
++
++int main() {
++    const std::string dir = "/tmp/pokebank-genorder-" + std::to_string(static_cast<long long>(getpid()));
++    assert(system(("rm -rf " + dir + " && mkdir -p " + dir).c_str()) == 0);
++    const std::string target = dir + "/bank.dat";
++    const auto any = [](std::span<const uint8_t>, std::string&) { return true; };
++
++    writeFile(target, {0});
++    for (uint8_t v = 1; v <= 4; ++v) assert(put(target, v, any).ok);   // previous.0..3 = v0..v3, target=v4
++    for (int n = 0; n < 3; ++n) assert(std::remove((target + ".previous." + std::to_string(n)).c_str()) == 0);
++    assert(readFile(target + ".previous.3") == std::vector<uint8_t>{3});
++    assert(put(target, 5, any).ok);                                    // v4 preserved as a NEWER generation
++    // Interrupted write: the target vanished after the old file was moved aside.
++    assert(std::remove(target.c_str()) == 0);
++
++    const auto rec = recoverMissingTarget(target, any);
++    assert(rec.ok && rec.restored);
++    const auto restored = readFile(target);
++    std::cout << "restored from " << rec.restoredFrom << " value=" << int(restored[0]) << " (newest is 4)\n";
++    assert(restored == std::vector<uint8_t>{4});
++
++    // Normal sequences are unchanged: numbers still start at 0 and increase.
++    const std::string t2 = dir + "/b2.dat";
++    writeFile(t2, {0});
++    assert(put(t2, 1, any).previousPath == t2 + ".previous.0");
++    assert(put(t2, 2, any).previousPath == t2 + ".previous.1");
++    assert(system(("rm -rf " + dir).c_str()) == 0);
++    std::cout << "durable generation order: PASS\n";
++}
