@@ -73,27 +73,51 @@ int main() {
     check(K::encode("漢", 5, out, &bad) == K::Result::Unsupported && bad == "漢", "kanji refused");
     check(K::encode("ヴ", 5, out) == K::Result::Unsupported, "ヴ is not in the Gen I/II font");
 
-    // Keyboard pages.
-    check(K::nextMode(K::KeyboardMode::Latin, false) == K::KeyboardMode::Latin, "no kana pages for other languages");
-    check(K::nextMode(K::KeyboardMode::Latin, true) == K::KeyboardMode::Hiragana &&
-              K::nextMode(K::KeyboardMode::Hiragana, true) == K::KeyboardMode::Katakana &&
-              K::nextMode(K::KeyboardMode::Katakana, true) == K::KeyboardMode::Latin,
-          "ABC -> あ -> ア -> ABC");
-    for (const auto mode : {K::KeyboardMode::Hiragana, K::KeyboardMode::Katakana}) {
-        const auto page = K::keyboardPage(mode);
-        check(page.size() > 60, "kana page is populated");
-        for (const auto key : page)
-            check(K::encode(key, 5, out) == K::Result::Ok, "every key encodes: " + std::string(key));
+    // Keyboard pages: three rows of at most ten keys; every character key encodes; every modifier
+    // result is in the font; the mode key cycles あ -> ア -> １２３ and each script has two halves.
+    using P = K::Page;
+    for (const auto page : {P::HiraganaA, P::HiraganaB, P::KatakanaA, P::KatakanaB, P::Symbols}) {
+        const auto rows = K::pageRows(page);
+        check(rows.size() == K::kPageRows, "three key rows per page");
+        for (const auto& r : rows) {
+            check(!r.empty() && r.size() <= 10, "a row holds at most ten keys");
+            for (const auto& key : r)
+                if (key.modifier == K::Modifier::None)
+                    check(K::encode(key.text, 5, out) == K::Result::Ok, "key encodes: " + std::string(key.text));
+        }
     }
-    const auto hira = K::keyboardPage(K::KeyboardMode::Hiragana);
-    const auto kata = K::keyboardPage(K::KeyboardMode::Katakana);
-    const auto has = [](const std::vector<std::string_view>& p, std::string_view s) {
-        for (auto k : p) if (k == s) return true;
-        return false;
-    };
-    check(has(hira, "べ") && !has(hira, "ベ") && has(hira, "あ") && !has(hira, "ア"), "Hiragana page");
-    check(has(kata, "ベ") && !has(kata, "べ") && has(kata, "ア") && !has(kata, "あ"), "Katakana page");
-    check(has(hira, "ー") && has(kata, "ー") && has(hira, "０") && has(kata, "♀"), "symbols on both pages");
+    check(K::nextMode(P::HiraganaA) == P::KatakanaA && K::nextMode(P::KatakanaB) == P::Symbols &&
+              K::nextMode(P::Symbols) == P::HiraganaA && K::nextModeLabel(P::HiraganaB) == "ア" &&
+              K::nextModeLabel(P::KatakanaA) == "１２３" && K::nextModeLabel(P::Symbols) == "あ",
+          "mode key あ -> ア -> １２３");
+    check(K::otherHalf(P::HiraganaA) == P::HiraganaB && K::otherHalf(P::KatakanaB) == P::KatakanaA &&
+              !K::hasOtherHalf(P::Symbols), "each script has two halves");
+    // Every base kana of the font is reachable: on a page directly, or through one modifier.
+    for (std::size_t i = 0; i < K::kGlyphCount; ++i) {
+        const auto text = K::kGlyphs[i].text;
+        bool reachable = false;
+        for (const auto page : {P::HiraganaA, P::HiraganaB, P::KatakanaA, P::KatakanaB, P::Symbols})
+            for (const auto& r : K::pageRows(page))
+                for (const auto& key : r) {
+                    if (key.modifier != K::Modifier::None) continue;
+                    if (key.text == text) reachable = true;
+                    for (const auto m : {K::Modifier::Dakuten, K::Modifier::Handakuten, K::Modifier::Small})
+                        if (K::applyModifier(m, key.text) == text) reachable = true;
+                }
+        // ﾟ ﾞ (half-width marks) are typed with the ゛゜ keys only as combining marks, never alone.
+        if (text != "ﾟ" && text != "ﾞ") check(reachable, "reachable from the keyboard: " + std::string(text));
+    }
+    check(K::applyModifier(K::Modifier::Dakuten, "か") == "が" && K::applyModifier(K::Modifier::Dakuten, "が") == "か",
+          "゛ voices and un-voices");
+    check(K::applyModifier(K::Modifier::Handakuten, "ば") == "ぱ" && K::applyModifier(K::Modifier::Dakuten, "ぱ") == "ば",
+          "゜ / ゛ switch between ば and ぱ");
+    check(K::applyModifier(K::Modifier::Small, "ツ") == "ッ" && K::applyModifier(K::Modifier::Small, "ッ") == "ツ",
+          "小 toggles the small form");
+    check(K::applyModifier(K::Modifier::Dakuten, "う").empty() && K::applyModifier(K::Modifier::Dakuten, "ウ").empty(),
+          "ヴ / ゔ are not in the font: ゛ on う changes nothing");
+    for (const auto& p : K::detail::kDakuten) check(K::encode(p.to, 5, out) == K::Result::Ok, "voiced form encodes");
+    for (const auto& p : K::detail::kHandakuten) check(K::encode(p.to, 5, out) == K::Result::Ok, "semi-voiced form encodes");
+    for (const auto& p : K::detail::kSmall) check(K::encode(p.to, 5, out) == K::Result::Ok, "small form encodes");
 
     // Opt-in real-save evidence.
     const char* dir = std::getenv("POKEBANK_JP_FIXTURES");

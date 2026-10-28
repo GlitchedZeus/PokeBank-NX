@@ -41,6 +41,9 @@ namespace Utils {
         int maxChars = 0;           ///< characters, not bytes -- one character is up to 4 UTF-8 bytes
         bool digitsOnly = false;    ///< a number pad rather than a keyboard
         bool allowNegative = false; ///< digitsOnly only: offer a sign key
+        /// A Japanese Gen I / II name: the card opens on kana pages (あ -> ア -> １２３, with ゛ ゜ 小
+        /// modifier keys, Utils/Gen12KanaText.h) and Space types the full-width space the font has.
+        bool japaneseKana = false;
         /// Runs after every edit while the keyboard is open, with the text as it now stands -- how a
         /// search re-filters under the keyboard. Empty when the caller only wants the final answer.
         std::function<void(const std::string &)> textChanged;
@@ -64,6 +67,11 @@ namespace Utils {
         int value = 0;
     };
     NumberResult promptNumber(const std::string& header, int initial, int minValue, int maxValue);
+
+    /// A Japanese Gen I / II name prompt: the in-app keyboard on its kana pages. The caller still
+    /// encodes the answer with Utils::Gen12Kana::encode, which is the rule; the keyboard only offers
+    /// keys that encoder accepts. Falls back to the console keyboard when no presenter is registered.
+    KeyboardResult promptJapaneseName(const std::string& header, const std::string& initial, int maxChars);
 
     /// The console's own keyboard, whatever presenter is registered. It is the only way to type
     /// Japanese, Chinese or Korean -- PKSE's keyboard carries no input method -- and it is a library

@@ -16,6 +16,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -97,53 +98,132 @@ enum class Result : uint8_t { Ok, Empty, TooLong, Unsupported };
     return "";
 }
 
-// Keyboard pages for the Japanese mode switch (ABC -> Hiragana -> Katakana). Each lists only glyphs
-// the table above encodes; the shared べぺへり appear on the Hiragana page in hiragana form.
-enum class KeyboardMode : uint8_t { Latin, Hiragana, Katakana };
+// ---- Keyboard layout for Japanese Gen I / II name prompts ----------------------------------------
+// The in-app keyboard has three rows of ten character keys, so each script uses two pages of base
+// kana (gojuon order) and modifier keys, the way phone kana keyboards work:
+//   ゛ voices the character before the caret (か -> が), ゜ makes は-row semi-voiced (は -> ぱ),
+//   小 toggles the small form (つ <-> っ, や <-> ゃ). A modifier that has no result in the Gen I / II
+//   font (e.g. う + ゛ = ヴ, not in the font) changes nothing.
+// The mode key cycles あ -> ア -> １２３. There is no ABC page: the Japanese Gen I / II font has no
+// Latin letters, so anything typed there could never be stored.
+enum class Page : uint8_t { HiraganaA, HiraganaB, KatakanaA, KatakanaB, Symbols };
+enum class Modifier : uint8_t { None, Dakuten, Handakuten, Small };
 
-[[nodiscard]] inline KeyboardMode nextMode(KeyboardMode m, bool japanese) noexcept {
-    if (!japanese) return KeyboardMode::Latin;
-    return m == KeyboardMode::Latin ? KeyboardMode::Hiragana
-         : m == KeyboardMode::Hiragana ? KeyboardMode::Katakana : KeyboardMode::Latin;
+struct Key { std::string_view text; Modifier modifier = Modifier::None; };
+inline constexpr std::size_t kPageRows = 3;
+
+// Rows of each page (character / modifier keys only; the dialog adds Backspace and the bottom row).
+[[nodiscard]] inline std::vector<std::vector<Key>> pageRows(Page page) {
+    const auto row = [](std::initializer_list<std::string_view> keys) {
+        std::vector<Key> out;
+        for (auto k : keys) out.push_back({k, Modifier::None});
+        return out;
+    };
+    const auto withModifiers = [](std::vector<Key> keys) {
+        keys.push_back({"゛", Modifier::Dakuten});
+        keys.push_back({"゜", Modifier::Handakuten});
+        keys.push_back({"小", Modifier::Small});
+        return keys;
+    };
+    switch (page) {
+        case Page::HiraganaA: return {row({"あ","い","う","え","お","か","き","く","け","こ"}),
+                                      row({"さ","し","す","せ","そ","た","ち","つ","て","と"}),
+                                      row({"な","に","ぬ","ね","の","は","ひ","ふ","へ","ほ"})};
+        case Page::HiraganaB: return {row({"ま","み","む","め","も","や","ゆ","よ","わ","を"}),
+                                      withModifiers(row({"ら","り","る","れ","ろ","ん","ー"})),
+                                      row({"？","！","。","・","「","」","『","』","⋯","　"})};
+        case Page::KatakanaA: return {row({"ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ"}),
+                                      row({"サ","シ","ス","セ","ソ","タ","チ","ツ","テ","ト"}),
+                                      row({"ナ","ニ","ヌ","ネ","ノ","ハ","ヒ","フ","ヘ","ホ"})};
+        case Page::KatakanaB: return {row({"マ","ミ","ム","メ","モ","ヤ","ユ","ヨ","ワ","ヲ"}),
+                                      withModifiers(row({"ラ","リ","ル","レ","ロ","ン","ー"})),
+                                      row({"？","！","。","・","「","」","『","』","⋯","　"})};
+        case Page::Symbols:   return {row({"１","２","３","４","５","６","７","８","９","０"}),
+                                      row({"？","！","。","・","ー","⋯","「","」","『","』"}),
+                                      row({"♂","♀","×","．","／","¥","　"})};
+    }
+    return {};
 }
 
-[[nodiscard]] inline std::string_view modeLabel(KeyboardMode m) noexcept {
-    return m == KeyboardMode::Hiragana ? "あ" : m == KeyboardMode::Katakana ? "ア" : "ABC";
+// Mode key: あ -> ア -> １２３ -> あ. Each page's mode key names the NEXT mode.
+[[nodiscard]] inline Page nextMode(Page p) noexcept {
+    return p == Page::HiraganaA || p == Page::HiraganaB ? Page::KatakanaA
+         : p == Page::KatakanaA || p == Page::KatakanaB ? Page::Symbols : Page::HiraganaA;
+}
+[[nodiscard]] inline std::string_view nextModeLabel(Page p) noexcept {
+    const Page n = nextMode(p);
+    return n == Page::KatakanaA ? "ア" : n == Page::Symbols ? "１２３" : "あ";
+}
+// The second page of a script, and back (none for Symbols).
+[[nodiscard]] inline bool hasOtherHalf(Page p) noexcept { return p != Page::Symbols; }
+[[nodiscard]] inline Page otherHalf(Page p) noexcept {
+    switch (p) {
+        case Page::HiraganaA: return Page::HiraganaB;
+        case Page::HiraganaB: return Page::HiraganaA;
+        case Page::KatakanaA: return Page::KatakanaB;
+        case Page::KatakanaB: return Page::KatakanaA;
+        case Page::Symbols: return Page::Symbols;
+    }
+    return p;
+}
+[[nodiscard]] inline std::string_view otherHalfLabel(Page p) noexcept {
+    switch (p) {
+        case Page::HiraganaA: return "ま…";
+        case Page::HiraganaB: return "あ…";
+        case Page::KatakanaA: return "マ…";
+        case Page::KatakanaB: return "ア…";
+        case Page::Symbols: return "";
+    }
+    return "";
 }
 
 namespace detail {
-inline bool isHiragana(std::string_view t) {
-    // U+3041..U+3096 encode as E3 81 81..E3 82 96.
-    if (t.size() != 3 || static_cast<unsigned char>(t[0]) != 0xE3) return false;
-    const unsigned b1 = static_cast<unsigned char>(t[1]), b2 = static_cast<unsigned char>(t[2]);
-    const unsigned cp = 0x3000 + ((b1 & 0x3F) << 6) + (b2 & 0x3F);
-    return cp >= 0x3041 && cp <= 0x3096;
-}
-inline bool isKatakana(std::string_view t) {
-    if (t.size() != 3 || static_cast<unsigned char>(t[0]) != 0xE3) return false;
-    const unsigned b1 = static_cast<unsigned char>(t[1]), b2 = static_cast<unsigned char>(t[2]);
-    const unsigned cp = 0x3000 + ((b1 & 0x3F) << 6) + (b2 & 0x3F);
-    return cp >= 0x30A1 && cp <= 0x30FA;
-}
+struct Pair { std::string_view from, to; };
+// Voiced / semi-voiced / small pairs, hiragana and katakana, limited to the Gen I / II font.
+inline constexpr Pair kDakuten[] = {
+    {"か","が"},{"き","ぎ"},{"く","ぐ"},{"け","げ"},{"こ","ご"},{"さ","ざ"},{"し","じ"},{"す","ず"},{"せ","ぜ"},{"そ","ぞ"},
+    {"た","だ"},{"ち","ぢ"},{"つ","づ"},{"て","で"},{"と","ど"},{"は","ば"},{"ひ","び"},{"ふ","ぶ"},{"へ","べ"},{"ほ","ぼ"},
+    {"カ","ガ"},{"キ","ギ"},{"ク","グ"},{"ケ","ゲ"},{"コ","ゴ"},{"サ","ザ"},{"シ","ジ"},{"ス","ズ"},{"セ","ゼ"},{"ソ","ゾ"},
+    {"タ","ダ"},{"チ","ヂ"},{"ツ","ヅ"},{"テ","デ"},{"ト","ド"},{"ハ","バ"},{"ヒ","ビ"},{"フ","ブ"},{"ヘ","ベ"},{"ホ","ボ"},
+};
+inline constexpr Pair kHandakuten[] = {
+    {"は","ぱ"},{"ひ","ぴ"},{"ふ","ぷ"},{"へ","ぺ"},{"ほ","ぽ"},
+    {"ハ","パ"},{"ヒ","ピ"},{"フ","プ"},{"ヘ","ペ"},{"ホ","ポ"},
+};
+inline constexpr Pair kSmall[] = {
+    {"あ","ぁ"},{"い","ぃ"},{"う","ぅ"},{"え","ぇ"},{"お","ぉ"},{"つ","っ"},{"や","ゃ"},{"ゆ","ゅ"},{"よ","ょ"},
+    {"ア","ァ"},{"イ","ィ"},{"ウ","ゥ"},{"エ","ェ"},{"オ","ォ"},{"ツ","ッ"},{"ヤ","ャ"},{"ユ","ュ"},{"ヨ","ョ"},
+};
 }  // namespace detail
 
-// Characters of one keyboard page, in table order. Symbols and digits are on both kana pages.
-[[nodiscard]] inline std::vector<std::string_view> keyboardPage(KeyboardMode mode) {
-    std::vector<std::string_view> out;
-    if (mode == KeyboardMode::Latin) return out;   // the existing Latin keyboard is used as is
-    for (std::size_t i = 0; i < kGlyphCount; ++i) {
-        const auto& g = kGlyphs[i];
-        const bool hira = detail::isHiragana(g.text), kata = detail::isKatakana(g.text);
-        const bool remapEntry = i >= kGlyphCount - kRemapCount;
-        const bool symbol = !hira && !kata;
-        if (mode == KeyboardMode::Hiragana) {
-            // The shared bytes are katakana in the table; the page offers their hiragana remaps.
-            if (hira || (symbol && !remapEntry)) out.push_back(g.text);
-        } else if (kata || symbol) {
-            out.push_back(g.text);
+// The character a modifier turns `previous` into, or empty when it has none in the font. Pressing ゛
+// on a voiced character (or ゜ on a semi-voiced one) returns the plain form; 小 toggles both ways.
+[[nodiscard]] inline std::string_view applyModifier(Modifier m, std::string_view previous) noexcept {
+    const auto lookup = [&](const auto& table) -> std::string_view {
+        for (const auto& p : table) {
+            if (p.from == previous) return p.to;
+            if (p.to == previous) return p.from;
         }
+        return {};
+    };
+    switch (m) {
+        case Modifier::Dakuten: {
+            // ぱ + ゛ -> ば (semi-voiced to voiced), as phone keyboards do.
+            for (const auto& p : detail::kHandakuten)
+                if (p.to == previous)
+                    for (const auto& d : detail::kDakuten) if (d.from == p.from) return d.to;
+            return lookup(detail::kDakuten);
+        }
+        case Modifier::Handakuten: {
+            for (const auto& d : detail::kDakuten)
+                if (d.to == previous)
+                    for (const auto& p : detail::kHandakuten) if (p.from == d.from) return p.to;
+            return lookup(detail::kHandakuten);
+        }
+        case Modifier::Small: return lookup(detail::kSmall);
+        case Modifier::None: return {};
     }
-    return out;
+    return {};
 }
 
 }  // namespace Utils::Gen12Kana
