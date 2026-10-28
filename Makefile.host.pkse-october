@@ -80,3 +80,16 @@ $(HOST_BUILD)/test_bulk_item_apply: $(BULK_ITEM_APPLY_SOURCES) include/Inventory
 $(HOST_BUILD)/test_bulk_item_apply_sanitize: $(BULK_ITEM_APPLY_SOURCES) include/Inventory/BulkItemPlan.h include/Inventory/BulkItemApply.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(BULK_ITEM_APPLY_SOURCES) -o $@
+
+NATIVE_POKEMON_FILE_SOURCES := tests/test_native_pokemon_file.cpp src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_native_pokemon_file
+HOST_TESTS += $(HOST_BUILD)/test_native_pokemon_file
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_native_pokemon_file_sanitize
+host-test: $(HOST_BUILD)/test_native_pokemon_file
+host-sanitize: $(HOST_BUILD)/test_native_pokemon_file_sanitize
+$(HOST_BUILD)/test_native_pokemon_file: $(NATIVE_POKEMON_FILE_SOURCES) include/PokemonFile/NativePokemonFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(NATIVE_POKEMON_FILE_SOURCES) -o $@
+$(HOST_BUILD)/test_native_pokemon_file_sanitize: $(NATIVE_POKEMON_FILE_SOURCES) include/PokemonFile/NativePokemonFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(NATIVE_POKEMON_FILE_SOURCES) -o $@
