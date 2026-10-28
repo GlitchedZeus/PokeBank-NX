@@ -5,6 +5,9 @@
 //  - Gen II Species row tap opens the picker exactly like A; the Move editor's picker entry uses
 //    the same normalization as the controller path.
 #include "UI/Gen12ReviewDiscardConfirm.h"
+#include "UI/SharedReviewPresentation.h"
+#include "UI/ClassicStagedExit.h"
+#include "UI/ClassicReviewOrigin.h"
 
 #include <cassert>
 #include <fstream>
@@ -74,11 +77,22 @@ void gen2Routes() {
     has(confirmed, "editor->discard();");
     assert(review.find("editor->discard();") == review.find("editor->discard();", 0) &&
            review.find("editor->discard();", review.find("editor->discard();") + 1) == std::string::npos);
-    assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_A)"));
+    has(review, "if (down & HidNpadButton_X)");
+    assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_X)"));
     const auto parity = read("src/UI/Gen2SharedSurfaceParity.inc");
     const auto draw = between(parity, "void drawParityGen2Review(", "void drawParityGen2Clone(");
-    has(draw, "reviewDiscard.confirming");
-    has(draw, "drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"Y\", \"Discard\"}});");
+    has(draw, "drawSharedReviewSurface(screen,fb)");
+    const auto sharedDraw=between(surface,"void drawSharedReviewSurface(","void drawSharedDetails(");
+    has(sharedDraw,"reviewDiscard.confirming");
+    has(sharedDraw,"SharedEditorChrome::drawReviewPanel");
+    has(sharedDraw,"SharedEditorChrome::drawReviewDiscardConfirm");
+    // Gen II Review touch: reviewRow is the shared presenter's PAGE. A swipe turns one page; a tap
+    // never writes a row index into it (that jumped pages on hardware).
+    const auto touch = read("src/UI/Gen2HardwareWorkspaceFix.inc");
+    const auto reviewTouch = between(touch, "    // The shared paged Review (round 5)", "\n}\n");
+    has(reviewTouch, "PokeBank::UIModel::SharedReview::move(");
+    has(reviewTouch, "!sharedSurfaceStateFor(screen).reviewDiscard.confirming");
+    lacks(touch, "legacy.reviewRow = i;");
 
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     // The editable (Edit/Create) route, after the item/confirm/move-editor modals.
@@ -99,12 +113,28 @@ void gen1Routes() {
     has(confirmed, "discardAll(screen);");
     assert(review.find("discardAll(screen);") == review.find("discardAll(screen);", 0) &&
            review.find("discardAll(screen);", review.find("discardAll(screen);") + 1) == std::string::npos);
-    assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_A)"));
+    has(review, "if (down & HidNpadButton_X)");
+    assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_X)"));
 
     const auto ux3 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
+    const auto sharedDraw=between(ux3,"void ux3DrawReview(","void ux3DrawStagedView(");
+    has(sharedDraw,"SharedEditorChrome::drawReviewPanel");
+    has(sharedDraw,"SharedEditorChrome::drawReviewDiscardConfirm");
+    // The confirmation stays modal on touch (only its own B / Y act) ...
     has(ux3, "} else if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {");
-    has(ux3, "if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {");
-    has(ux3, "drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"Y\", \"Discard\"}}); return;");
+    // ... and only the shared presenter paints Review: no older confirm panel or footer is drawn
+    // over drawReviewPanel / drawReviewDiscardConfirm (round 5, owner Oct 24 "Gen I/II use
+    // outdated, different Review screens").
+    lacks(ux3, "Gen12ReviewDiscard::kTitle");
+    lacks(ux3, "{\"A\", \"Export Copy\"}");
+    const auto navBar = between(ux3, "        case UX2Mode::Review:\n            // The shared Review panel", "case UX2Mode::Closed: return;");
+    lacks(navBar, "drawNavBar(");
+    // Gen I Review touch: rows are informational; only a completed swipe pages (no row tap).
+    const auto reviewTouch = between(ux3, "    } else if (state.mode == UX2Mode::Review) {\n        // Round 5: the shared paged Review.",
+                                     "    return down;\n}");
+    has(reviewTouch, "PokeBank::UIModel::SharedReviewTouch::swipePage(");
+    lacks(reviewTouch, "selectedId(1300");
+    lacks(reviewTouch, "state.reviewRow = row");
 
     // Exit dialog footer: only the dialog's actions while it is open.
     const auto fix = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
@@ -156,7 +186,66 @@ void lowSeverityRoutes() {
 
 } // namespace
 
+// Round 5: a Review opened outside Box Actions (staged-exit menu, Bag, Trainer card) closes back
+// to the screen underneath; only Box Actions -> Review Changes returns to an Actions sheet.
+struct FakeScreen { std::string sourceGameId; };
+void reviewOriginContract() {
+    namespace Origin = PokeBank::UIModel::ClassicReviewOrigin;
+    FakeScreen red{"red_gb"}, crystal{"crystal_gbc"};
+    assert(!Origin::takeStandalone(red));          // Box Actions -> Review: back to Actions
+    Origin::markStandalone(red);
+    assert(Origin::takeStandalone(red));           // standalone: B closes to the screen beneath
+    assert(!Origin::takeStandalone(red));          // taken once; the next Review is unmarked
+    Origin::markStandalone(red);
+    assert(!Origin::takeStandalone(crystal));      // another screen/game never inherits the mark
+    assert(!Origin::takeStandalone(red));
+
+    const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    const auto open = between(composite, "bool TrainerViewScreen::openStagedReview(", "namespace {");
+    has(open, "PokeBank::UIModel::ClassicReviewOrigin::markStandalone(*this);");
+    const std::pair<const char*, int> exits[] = {
+        {"src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", 1}, {"src/UI/Gen2SharedPokemonSurface.inc", 2},
+        {"src/UI/Gen3SharedPokemonSurface.inc", 2}, {"src/UI/Gen4SharedPokemonSurface.inc", 2}};
+    for (const auto& [file, expected] : exits) {
+        const auto text = read(file);
+        int uses = 0;
+        for (auto at = text.find("ClassicReviewOrigin::takeStandalone(screen)"); at != std::string::npos;
+             at = text.find("ClassicReviewOrigin::takeStandalone(screen)", at + 1)) ++uses;
+        if (uses != expected) std::cerr << file << ": takeStandalone uses " << uses << '\n';
+        assert(uses == expected); // every Review B / closing Discard All consults the origin
+    }
+}
+
 int main() {
+    reviewOriginContract();
+    namespace Review=PokeBank::UIModel::SharedReview;
+    const auto rows=Review::fromLines({"Party Slot 1: Move 1: Thunder Shock -> Thunderbolt",
+        "Bag / Potion: 1 -> 2", "Trainer Name: RED -> BLUE", "Unstructured native note"});
+    assert(rows.size()==4 && rows[0].first=="Party Slot 1");
+    assert(rows[0].second=="Move 1: Thunder Shock -> Thunderbolt");
+    assert(rows[1].second=="1 -> 2" && rows[3].second=="Unstructured native note");
+    for(size_t count=0;count<50;++count) {
+        assert(Review::pages(count)>=1);
+        size_t page=0;
+        for(size_t i=0;i<100;++i)page=Review::move(page,1,count);
+        assert(page+1==Review::pages(count));
+        for(size_t i=0;i<100;++i)page=Review::move(page,-1,count);
+        assert(page==0);
+    }
+    namespace Exit=PokeBank::UIModel::ClassicStagedExit;
+    for(int touch=0;touch<4;++touch) {
+        const auto expected=touch==0?Exit::Action::ContinueEditing:touch==1?Exit::Action::DiscardExit:
+            touch==2?Exit::Action::Review:Exit::Action::ExportCopy;
+        assert(Exit::choose(false,false,false,false,touch)==expected);
+        assert(Exit::choose(true,true,true,true,touch)==Exit::Action::ContinueEditing);
+    }
+    for(const char* path:{"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+        "src/UI/Gen2SharedPokemonSurface.inc","src/UI/Gen3SharedPokemonSurface.inc",
+        "src/UI/Gen4SharedPokemonSurface.inc","src/UI/Gen5SharedReadOnlySurface.inc"}) {
+        const auto surface=read(path);
+        has(surface,"SharedEditorChrome::drawReviewPanel");
+        has(surface,"SharedEditorChrome::drawReviewDiscardConfirm");
+    }
     modelContract();
     gen2Routes();
     gen1Routes();

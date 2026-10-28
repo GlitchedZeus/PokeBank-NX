@@ -161,7 +161,8 @@ int main() {
     const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
     assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
-    assert(shared.find("kOriginLegalityHeading, \"Not checked") != std::string::npos);
+    assert(shared.find("UI::SharedEditorChrome::drawOriginLegalityPanel(") != std::string::npos);
+    assert(shared.find("rows,P::LegalityState::NotChecked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
     // The established inline page owns rendering and exactly two cursor rows.
@@ -189,12 +190,20 @@ int main() {
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
-    assert(unified.find("\"SPECIAL\"") != std::string::npos);
-    assert(unified.find("\"Sp. Atk\"") != std::string::npos);
-    assert(unified.find("\"Sp. Def\"") != std::string::npos);
-    assert(unified.find("One Gen II Special DV / Stat Exp feeds both") != std::string::npos);
+    // Round 7 (owner Round 6 A22 / C01): the owner rejected squeezing the calculated Special
+    // values into the numeric STATS column. Gen I is the reference: plain numbers in the columns
+    // (the Special row's Calculated cell is empty), and SpA / SpD in the lower-middle "CALCULATED
+    // SPECIAL STATS" block below the grid. No off-grid SpD line, no tags in the column.
+    assert(unified.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+    assert(unified.find("drawGen2SpecialBlock(fb, battle, x, y);") != std::string::npos);
+    assert(unified.find("y + 246") == std::string::npos);
+    assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") == std::string::npos);
+    const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
+    assert(gen2Presentation.find("if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);") !=
+           std::string::npos);
+    assert(unified.find("y + B::kCaptionY, \"CALCULATED SPECIAL STATS\"") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
-    assert(unified.find("fb.drawText(x + 282, yy, stat, gen2StatCellColor(r, 2)") != std::string::npos);
+    assert(unified.find("gen2StatCellColor(row, 2), TextStyle::Caption);") != std::string::npos);
     const auto valuesBegin = unified.find("void drawUnifiedValues");
     const auto valuesEnd = unified.find("void drawUnifiedMoveEditor", valuesBegin);
     assert(valuesBegin != std::string::npos && valuesEnd != std::string::npos && valuesEnd > valuesBegin);
@@ -204,7 +213,7 @@ int main() {
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
-    // Origin & Legality moved from under the move rows into the GEN II DATA pane.
+    // Origin & Legality moved from under the move rows into the Gen II Origin & Legality pane.
     assert(unified.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
     // Touching a visually scrolled Details row must not invoke the old
@@ -229,9 +238,9 @@ int main() {
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
     assert(unified.find("focus.row == 10 && !caught.present") != std::string::npos);
-    // OT gender / Met Time use the shared selector (owner directive); the pending/recorded split
-    // and the encounter's allowed-time mask are unchanged.
-    assert(unified.find("Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)") != std::string::npos);
+    // OT gender / Met Time cycle inline over the shared selector's choices (Round 3 NEW-07);
+    // the pending/recorded split and the encounter's allowed-time mask are unchanged.
+    assert(unified.find("Selector::nextOtGender(state.crystalOtGender, caught.present)") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
     assert(unified.find("Pending Met Time is") != std::string::npos);
     assert(unified.find("crystalAllowedTimeMask") != std::string::npos);
@@ -352,21 +361,31 @@ int main() {
     assert(workspaceFix.find("state.working.moves[static_cast<std::size_t>(slot)] != 0") != std::string::npos);
     assert(workspaceFix.find("rightX + 184") != std::string::npos);
 
-    // Panel titles are neutral; only the actual field/cell carries focus. The stray scroll glyph is erased.
+    // Panel titles never carry focus; only the actual field/cell does. Round 7 P2 (owner Oct 26):
+    // they are the one shared Gen IV / V heading style. The stray scroll glyph is erased.
     assert(workspaceFix.find("clearHardwarePanelHeading") != std::string::npos);
-    assert(workspaceFix.find("\"DETAILS\", TextStyle::Caption") != std::string::npos);
-    assert(workspaceFix.find("\"STATS\", TextStyle::Heading") != std::string::npos);
-    assert(workspaceFix.find("\"MOVES\", TextStyle::Heading") != std::string::npos);
+    assert(workspaceFix.find("PokeBank::UIModel::PanelHeading::draw(fb, x, y, text)") != std::string::npos);
+    assert(workspaceFix.find("clearHardwarePanelHeading(fb, leftX, contentY, 120, \"DETAILS\")") != std::string::npos);
+    assert(workspaceFix.find("clearHardwarePanelHeading(fb, midX, contentY, 120, \"STATS\")") != std::string::npos);
+    assert(workspaceFix.find("clearHardwarePanelHeading(fb, rightX, contentY, 120, \"MOVES\")") != std::string::npos);
     assert(workspaceFix.find("stray bottom glyph") != std::string::npos);
     assert(workspaceFix.find("contentY + contentH - 34") != std::string::npos);
 
-    // Gold/Silver receive the same informational Gender row that Crystal already renders;
-    // the established Name/Money two-row cursor contract above is unchanged.
-    assert(finalFix.find("gold_gbc") != std::string::npos);
-    assert(finalFix.find("silver_gbc") != std::string::npos);
-    assert(finalFix.find("hasTrainerGender()") != std::string::npos);
-    assert(finalFix.find("\"Gender\"") != std::string::npos);
-    assert(finalFix.find("trainerGender == 0 ? \"Male\"") != std::string::npos);
+    // Round 6 P2 (owner Oct 25, R2-TRAINER / NEW-18): Gold / Silver store no trainer gender, and the
+    // separate Gold / Silver Gender card painted over the Trainer rows ("Male" under the new row).
+    // The owner's rule is "no invented Gen I or Gold / Silver gender": the second renderer is gone
+    // and the one Trainer model gives Gold / Silver no Gender row; Crystal keeps its stored gender.
+    // The established Name/Money two-row cursor contract above is unchanged.
+    assert(finalFix.find("drawGoldSilverTrainerGender") == std::string::npos);
+    assert(finalFix.find("trainerGender == 0 ? \"Male\"") == std::string::npos);
+    // The row model itself is exercised for Gold / Silver / Crystal under every writer set by
+    // tests/test_classic_trainer_page.cpp. This contract is built without -Iinclude
+    // (touch-input-gating.yml), so it pins the model's native rule as source.
+    const auto page = readFile("include/UI/ClassicTrainerPage.h");
+    assert(page.find("const bool genderStored = in.generation >= 3 || (in.generation == 2 && in.crystal);") !=
+           std::string::npos);
+    assert(page.find("if (genderStored && !genderEditable) out.push_back({Field::Gender, false, -1});") !=
+           std::string::npos);
 
     std::cout << "GSC shared editor Trainer/field-layout/session/export + hardware regression contract: PASS\n";
     return 0;

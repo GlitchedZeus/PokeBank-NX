@@ -101,6 +101,7 @@ bool Gen5ReadOnlyTrainer::rebuildPresentation(std::string& error) {
     if(const auto shown=staged_.trainerPresentation()) {
         trainerName=Gen5::displayTrainerName(shown->rawName).value_or("Unknown");
         money=shown->money;
+        nativeBadges={shown->badges,8};
     }
     return true;
 }

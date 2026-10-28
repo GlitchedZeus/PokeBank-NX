@@ -408,9 +408,51 @@ require('"Source Save Protection", "LOCKED"' in shell_source and
 require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
         "More screen must reserve truthful future-feature modules")
 
-require("handleDefaultQuickOpen" in ui_manager and "backupSaveData" in ui_manager and
+# Round 4 (R2-EMUBACKUP / S05): opening an unchanged installed save makes no backup. Open reads the
+# save into the single Working copy (WorkingCopyRefresh keeps an earlier copy only if it differs);
+# timestamped backups come only from Save Backups -> "Create backup now".
+def ui_fn(name):
+    start = ui_manager.index(name)
+    end = ui_manager.find("\n    }\n", start)
+    return ui_manager[start:end]
+quick_open = ui_fn("bool UIManager::handleDefaultQuickOpen")
+items_open = ui_fn("void UIManager::handleItemsQuickOpen")
+backup_flow = ui_fn("void UIManager::handleBackupSelection")
+require("openWorkingCopy(userUid, titleId, titleName)" in quick_open and "backupSaveData" not in quick_open and
         "SaveSelectScreen::OpenIntent::Backups" in ui_manager,
-        "normal Switch Open must auto-create a protected backup/working copy while Backups stays explicit")
+        "normal Switch Open must read the save into the Working copy without making a backup, while Backups stays explicit")
+require("g_autoBackupEnabled" not in ui_manager and
+        "W::refresh(working, getTimestamp()" in ui_manager and
+        "backupSaveData(userUid, titleId, titleName, false)" in ui_manager,
+        "no Switch open path may create a timestamped backup automatically")
+require("takeCreateBackupRequest()" in backup_flow and
+        "backupSaveData(userUid, titleId, titleName, true)" in backup_flow and
+        ui_manager.count("backupSaveData(userUid, titleId, titleName, true)") == 1,
+        "a timestamped Switch backup is made only by the explicit Create backup now row")
+# The Auto-Backup setting is retired with the automatic backup it used to control: a toggle that
+# does nothing would mislead. Old settings.cfg files may still carry autoBackup=; it is ignored.
+settings_source = (ROOT / "src/Utils/Settings.cpp").read_text(encoding="utf-8")
+trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
+globals_header = (ROOT / "include/Globals.h").read_text(encoding="utf-8")
+require(all("g_autoBackupEnabled" not in text
+            for text in (shell_source, settings_source, trainer_base, globals_header, ui_manager)) and
+        '"Auto-Backup"' not in shell_source and '"Auto-backup"' not in shell_source and
+        '"Auto-Backup on Load"' not in trainer_base and
+        "case 1: return 2;" in shell_source and "constexpr int kSettingsRows = 5;" in trainer_base and
+        "constexpr int kRows = 5;" in trainer_base and
+        '"\\nautoBackup="' not in settings_source,
+        "the retired Auto-Backup setting must not be shown, toggled, persisted or kept as a global")
+# Round 5 (#322): A on a Switch backup (owned or legacy) opens a COPY in the isolated Opened-Backup
+# session, a normal staged workspace; the backup is never the workspace, never edited in place.
+copy_session = ui_fn("std::string openBackupCopySession(")
+require("W::openBackupSession(gameDir, backupDir, getTimestamp()" in copy_session and
+        "Save::validateTrainerSaveForOpen(backupDir.c_str(), titleId, error)" in copy_session and
+        "ImmutableSnapshot::unchanged(listed, error)" in copy_session,
+        "a backup opens only through a validated, snapshot-checked isolated session copy")
+require("openBackupCopySession(\n                        userUid, titleId, backupScreen.getSelectedBackupPath(), historical, error)" in backup_flow and
+        "handleTrainerView(userUid, titleId, titleName, session, false, intent, error,\n                                           nullptr, provenance)" in backup_flow and
+        "backupScreen.getSelectedBackupPath(), false" not in backup_flow,
+        "the selected backup itself is never handed to the editor as its workspace")
 require("reportOpenFailure" in header and
         "selectScreen.reportOpenFailure(error);" in ui_manager and
         "bool UIManager::handleDefaultQuickOpen" in ui_manager,
@@ -423,8 +465,8 @@ require("Overlay::OpenFailure" in source and
         "failed native Open must show an explicit safe modal while SC details stay in diagnostics")
 require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
         "Current Game -> Backups must be the only normal route into backup history")
-require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
-        "Switch Backpack quick-open must create the normal protected backup before Items")
+require("openWorkingCopy(userUid, titleId, titleName)" in items_open and "backupSaveData" not in items_open,
+        "Switch Backpack quick-open reads the save through the Working copy, never a new backup")
 require("if (kDown & HidNpadButton_Plus) {\n        overlay = Overlay::Settings;" not in shell_source,
         "secondary menus must not expose a Plus-to-Settings shortcut")
 home_menu = (ROOT / "src/UI/Panels/HomeMenuPanel.cpp").read_text(encoding="utf-8")
@@ -827,9 +869,25 @@ workspace = body("void SaveSelectScreen::activateGameWorkspace()")
 require("openEmulatorBackups();" in workspace and "External emulator sources stay read-only" not in source,
         "+ -> Backups opens the emulator backups list instead of a dead-end notice")
 opener = body("void SaveSelectScreen::openEmulatorBackups(")
-require("SB::list(PokeBank::Paths::exportsRoot(), source)" in opener and "instance.path()" in opener and
-        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener,
-        "Emulator backups come only from exact validated / assigned source paths")
+# Round 7 (7E G1): the listing also carries the current profile, so that profile's Gen V export
+# records (exports/gen5/account-<profile>/) are listed and no other profile's.
+require("SB::list(PokeBank::Paths::exportsRoot(), source, manualRoot, profile)" in opener and "instance.path()" in opener and
+        "resolveFileForGame(currentProfileIdentity(), title.gameId)" in opener and
+        "const std::string profile=currentProfileIdentity();" in opener and
+        "SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId,profile)" in opener,
+        "Emulator backups come only from exact validated / assigned source paths (and the current profile's Gen V records)")
+# Round 4 (R2-EMUBACKUP / C07 / S05): a backup is made only by the deliberate "Create backup now" row,
+# never by opening a save; browsing the save is the normal read-only open.
+creator = body("void SaveSelectScreen::createEmulatorBackup(")
+require("SB::createBackup(" in creator and source.count("SB::createBackup(") == 1,
+        "emulator save backups are created only by the explicit Create backup action")
+require("createEmulatorBackup(row.listing)" in source and "kCreateRowEntry" in opener,
+        "the Backups list offers Create backup now for each existing save")
+browse_backup_source = body("void SaveSelectScreen::browseEmulatorSource(")
+require("browseEmulatorSource(listing.sourcePath)" in source and
+        "title.legacyInstances[i].path() != source" in browse_backup_source and
+        "selectCurrentLegacyInstance();" in browse_backup_source and "selectCurrentTitle();" in browse_backup_source,
+        "A on an original save opens that exact validated row, never a different preferred source")
 delete_block = source[source.index("if (overlay == Overlay::EmulatorBackupDeleteConfirm) {"):]
 delete_block = delete_block[:delete_block.index("            return;\n        }\n")]
 require("PokeBank::UIModel::HomeQuit::decide(kDown)" in delete_block and "Decision::Quit" in delete_block and

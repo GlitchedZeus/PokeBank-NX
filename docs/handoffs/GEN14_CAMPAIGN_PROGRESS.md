@@ -116,3 +116,113 @@ Coordinator: C FINAL head goes into the candidate NRO; add nothing after it unle
 Party check (S 647917e): Gen I/II staged editors are box-only, so Party → View loses nothing.
 
 Continue the Gen I–IV audit; Gen IV `.dsv` container once the owner decides; watch PR #318 CI.
+
+## Round 3 (Lane C) — checkpoint
+
+Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
+
+| Item | Commit | State |
+| --- | --- | --- |
+| R2-BUG-002 Gen IV Trainer Name / Money (D, P, Pt, HG, SS) | e5dec3a2, 8dca7d07 | gated green |
+| R2-BUG-002 Gen III Trainer Name / Money (R, S, E, FR, LG) | 02cf6d1a, ea1a7a4a | gated green |
+| R2-BUG-001 Trainer footer on a read-only source (Gen I-IV) | cccec27b | gated green |
+| QA Part 9 Gen IV Storage save-pane Move / Y | c6f9011c, reverted | moved to Lane S (83e3d00, integrated); C copy reverted to avoid a ClassicPackedMoveOverlay conflict |
+| R2-CHECK-009 Yellow Box Actions (no Move / Review) | this unit | coordinator ruling 2026-10-19: Move added to Gen I Box Actions |
+| R2-BUG-008 Ruby Pikachu Lv. 5 Met Location | this unit | see below |
+
+### R2-CHECK-009 — findings and fix
+
+- Gen I Move was supported (the Boxes-view hold-Y carry, ClassicPackedMove beginGen1) but absent
+  from Box Actions, while Gen II-V list it in the shared E02 order. Per the owner directive
+  ("repair the actual action routing" when supported but absent), Gen I Box Actions now lists
+  View, Edit, Clone, Move, Release, Origin & Legality (+ Review while staged changes exist),
+  Cancel. Move starts the SAME Boxes carry with the Pokemon picked up
+  (ClassicPackedMove::beginGen1FromAction): Y drops, B cancels.
+- No Move in the read-only Storage pane or on an empty slot (actionsForSlot boxMove = false);
+  every sheet / hit-test / dispatch uses the same flag, so rows, touch ids and actions line up.
+- "Review Pending Changes" appears only while staged changes exist (same rule as Gen II-IV); the
+  hardware screenshot had nothing staged.
+- Test: test_gen12_packed_move (now in host-test): the sheet order with / without Move, Move ->
+  drop stages one verified move of the same record, B leaves the staged box byte-identical, and
+  the production routing. QA owns the E02 Gen I literal (test_classic_pokemon_action_menu); its
+  default (Storage / boxMove false) sheet is unchanged.
+
+### R2-BUG-008 — findings
+
+- Data is correct: in Ruby / Sapphire / Emerald, Pikachu's only exact-game template is the Hoenn
+  Safari Zone (location 57), Wild Lv. 25-27 (EncounterGuardrailsData). So a Lv. 5 / Met Lv. 5
+  Pikachu did not come from a wild Hoenn encounter: it was traded in, hatched and evolved,
+  received from an event, or has another origin the template data does not model. The repo
+  cannot tell which, so it must not claim one.
+- Demonstrated defects: (1) the picker listed only the Safari template and focused it as if it
+  were the record's origin (selectedRow falls back to row 0 when the stored location is not a
+  template); (2) choosing it silently rewrote Met Lv. 5 to 25 and raised the Pokemon to Lv. 25
+  (setEncounterMetLevel), with nothing saying the template does not match the record.
+- Fix: the stored location is offered first as "Keep stored: <location>, Met Lv. N as stored";
+  choosing it changes nothing, and the picker opens on it. A template whose range excludes the
+  stored met level is labelled "not stored Met Lv. N". Templates stay choosable (a deliberate
+  re-origin is still an edit the user can make); no origin is judged legal or illegal here.
+- Test: test_gen3_encounter_keep_stored (real R / S / E template data).
+
+## Round 4 (Lane C) — checkpoint
+
+Base: #307 `c2287f50` (fast-forward). Branch `claude/gen14-campaign-20261015`.
+
+| Item | Commit | State |
+| --- | --- | --- |
+| NEW-04 (P0) Gen II PC box Move fails at pickup | c3807c63 | gated green (GCC / Clang host-test + sanitize, qa x2, qa-tools, py contracts, CG 0 failing, native) |
+| NEW-19 + R2-TRAINER + R2-BUG-002 staged exit menu (Gen I-IV) | — | next |
+| R2-REVIEWMOVE readable Review rows | — | pending |
+| NEW-18 Play Time / Pokedex seen-caught | — | pending |
+
+### NEW-04 — root cause and fix
+
+- Pickup: ClassicPackedMove beginGen2 -> StagedEditor::beginPackedMove -> refreshGen2 ->
+  GSCReadOnlyTrainer::refreshStagedBoxPresentation, which rebuilt the grid from finalizedBytes().
+  finalizedBytes() refuses while a carry is active ("Place or cancel carried Pokemon before
+  finalizing"), so every pickup failed its refresh and the carry was cancelled. The editor-level
+  move was already correct (test_gen12_packed_move).
+- Fix: StagedEditor::presentationBytes() (staged image repaired for a strict reload, display
+  only, never exported); the grid uses it while a carry is active. finalizedBytes() still refuses
+  mid-carry, so nothing can be exported with Pokemon in hand.
+- Test: test_gen2_box_move_presentation (Gold, Silver, Crystal; real GSCReadOnlyTrainer): pickup,
+  same-box drop, other-box drop, cancel, finalize + verified export, source unchanged. Fails
+  without the fix.
+
+## Round 6 (Lane C) — checkpoint
+
+Base: #307 `a96a9559` merged forward. Branch HEAD `cd6d89ff` (verified with ls-remote).
+
+| Item | Commit | State |
+| --- | --- | --- |
+| P2 / R2-TRAINER / NEW-18 Trainer Info in Gen V design, no overlap | eb0ae8ee | integrated (#307 1dd0a338) |
+| 7A Gen II Special SpA/SpD on the STATS grid | e39a92e2 | integrated (#307 a96a9559) |
+| CG72 Gold / Silver report no trainer gender; XFAIL dropped | d2a7f7d9 | gated green |
+| P3 Gen I/II Create Review details (CG74, lane S shape) | f082ac1d | gated green |
+| "Native touch contracts" fix: GSC surface contract builds without -Iinclude | 1208301b | gated green |
+| Gen II Create seeds native level-up moves (seedNativeMoves, R2-BUG-004 data) | 48fbf94b | host-test x2, py, CG, native green; qa targets pending |
+
+Gate for f082ac1d + 1208301b: GCC and Clang host-test and host-sanitize; qa-fuzz-smoke /
+qa-contracts / qa-matrix for both compilers; qa-tools-test; py contracts (fail=0); cross-gen
+contract (78 PASS; CG74 keeps only the Gen III / Gen V violations, which other lanes own);
+`git diff --check`; native objs + NRO. NOT DEVICE TESTED.
+
+Remaining: nothing assigned. Not mine, reported: #307 head Clang host-ui build error in
+`src/Save/GetSaveFileContents.cpp` (ambiguous `Trainer`).
+
+## Round 7 (Lane C) — checkpoint
+
+Base: #307 `6ec8dc53` merged forward (fast-forward). Owner results:
+`docs/hardware/ROUND6_RESULTS_26186464.md`.
+
+| Item | Commit | State |
+| --- | --- | --- |
+| P1 B06 / C06: Gen I-IV Trainer painted by Gen V's Trainer painter (UI/SharedTrainerPanel.h); neutral values; Gen V row heights; 200 x 36 Review in a measured slot | 7eab05cf | gated green, pushed, reported |
+| P1 A22 / C01: Gen II Special like Gen I (plain STATS columns, lower-middle CALCULATED SPECIAL STATS block) | 0e58157b | gated green (with 4f549775) |
+| Merge #307 ab46883e (HostUi recorders reconciled with S's d88056c) | 67c9b0f5 | gated green (with 4f549775) |
+| Gen V Trainer on the same page model (measured Review slot, language line in the model's detail slot); CG83 / CG84 / CG90 XFAIL dropped | 4f549775 | gated green: host x2, sanitize x2, qa x2, qa-tools, py, CG 0 failing, native |
+
+Tests: test_ui_layout_host compares the visible Gen I-IV Trainer frame against Black's (HostUi now
+records text colour and rounded fills, additively) and checks the Gen II STATS capture against the
+new layout; test_classic_trainer_page; test_gen2_special_stat. Re-pins: test_gen5_create_edit_parity
+(R2-BUG-003 divider call), and the Gen II Special pins in five tests now follow the owner's rule.

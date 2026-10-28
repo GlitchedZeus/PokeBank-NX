@@ -161,7 +161,7 @@ void namesFit() {
                     widest = std::max(widest, G::textWidth(name, l.rule.label));
                 }
             }
-        // The 900 px location window is the accepted L03/L04 layout (method / level on the right).
+        // October 24: the 620 px location window retains native names and source context.
         // PKHeX keeps BW2 id 3 as the game's text-variable escapes; id 0 is the dash sentinel.
         require(Names::getMetLocationDisplayName(22, 3) == "Unknown location", "no raw text-variable escapes");
         require(Names::getMetLocationDisplayName(20, 0) == "None" &&
@@ -177,7 +177,10 @@ void editorValueLists() {
         for (int n = 1; n <= 30; ++n) {
             const auto l = G::layout(type, n);
             const int visible = std::min(8, n);
-            require(l.frame.h == 125 + visible * 42, "value list keeps the accepted height");
+            // NEW-10: Met Location drops the unused band under its last row (14 px, matching Move).
+            const int pad = type == G::MenuType::LocationPicker ? 86 + 14 : 125;
+            require(l.frame.h == pad + visible * 42, "value list keeps the accepted height");
+            require(l.frame.bottom() - (l.frame.y + 86 + (visible - 1) * 42 + 38) >= 16, "last row clear of the frame edge");
             for (int i = 0; i < visible; ++i) {
                 const auto c = G::cellRect(l, i);
                 require(c.x == l.frame.x + 22 && c.w == l.frame.w - 44 && c.y == l.frame.y + 86 + i * 42 &&

@@ -419,9 +419,11 @@ namespace UI
         {
             // A small centered popup menu (scrim + card + title + item list). Each row is registered as
             // a touch button (id = item index) so a tap selects + confirms it.
+            // `dismissible`: an ordinary menu (Pokémon actions, the carried-block menu) closes on a tap
+            // outside it (Round 7 C04); a confirmation ("Save bank changes?") never passes it.
             void drawPopupMenu(TrainerViewScreen &screen, PKSEFramebuffer &fb, const std::string &title,
                                const char *const *items, int count, int sel, uint32_t disabledMask = 0,
-                               const std::string &eyebrow = {})
+                               const std::string &eyebrow = {}, bool dismissible = false)
             {
                 // Touch-friendly sizing: 56px rows (TouchTargetMin) and a wide card so rows are easy to tap.
                 constexpr int w = 440, rowH = TouchTargetMin;
@@ -431,6 +433,8 @@ namespace UI
                 const int y = (fb.getHeight() - h) / 2;
                 constexpr int r = Dialogs::kDialogRadius; // same card shape as every other modal
                 drawModalSurface(fb, x, y, w, h, r);
+                if (dismissible) SharedPopupDismiss::publish(x, y, w, h);
+                else SharedPopupDismiss::clear();
                 if (!eyebrow.empty()) {
                     fb.drawText(x + 22, y + 13, eyebrow, Colors::Accent, TextStyle::Caption);
                     fb.drawText(x + 22, y + 36, title, Colors::TextPrimary, TextStyle::Heading);
@@ -474,7 +478,8 @@ namespace UI
                           screen.actionSheet.selectedIndex(), disabled,
                           screen.legacyReadOnlySource() ? "RETROARCH GBA SOURCE / READ ONLY"
                               : screen.sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY"
-                                                        : "BACKUP / LEGACY STORAGE ACTIONS");
+                                                        : "BACKUP / LEGACY STORAGE ACTIONS",
+                          true);
             drawNavBar(fb, controllerHints(PokeBank::UIModel::ControllerContext::PokemonActionSheet));
         }
 
@@ -485,7 +490,7 @@ namespace UI
             const int n = screen.carriedCount();
             const std::string title = std::to_string(n) + (n == 1 ? " in hand" : " Pokemon in hand");
             static const char *const items[] = {"Release all", "Put back where they came from", "Cancel"};
-            drawPopupMenu(screen, fb, title, items, 3, screen.groupMenuIndex);
+            drawPopupMenu(screen, fb, title, items, 3, screen.groupMenuIndex, 0, {}, true);
         }
 
         void drawStorageReleaseConfirm(TrainerViewScreen &screen, PKSEFramebuffer &fb)

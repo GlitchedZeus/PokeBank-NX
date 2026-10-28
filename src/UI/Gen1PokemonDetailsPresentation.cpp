@@ -1,3 +1,4 @@
+#include "UI/SharedPanelHeading.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 
@@ -117,7 +118,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
 
     // DETAILS — neutral heading and the same canonical ROMFS type sprites used by
     // fullscreen Edit/Create. Gen I intentionally does not invent native gender.
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Text, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     constexpr int renderSize = 174;
     if (auto* sprite = SpriteManager::getSprite(p.species, p.shiny); sprite && sprite->data) {
         fb.drawSpriteStaticContained(leftX + 63, contentY + 34, renderSize, 136,
@@ -138,7 +139,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     // STATS — same field-state contract as the Gen I editor (UI/ClassicStatFieldState.h): stored
     // DV / Stat Exp Text, derived HP DV and calculated Stat ReadOnly gold (R2-GOLD). The HP DV
     // shown is always the one derived from the four stored DVs, as in Create / Edit.
-    fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, midX, contentY, "STATS");
     fb.drawText(midX + 104, contentY + 48, "DV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 310, contentY + 48, "Stat", Colors::TextDim, TextStyle::Caption);
@@ -184,7 +185,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
 
     // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V and the
     // Gen I editor. Status is shown only when compatibility was checked; empty slots show no PP.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     {
         std::array<int, 4> maxPP{};
         std::array<ClassicMovesPanel::Status, 4> status{};
@@ -218,7 +219,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     const uint32_t toNextLevel = p.level < 100 && nextLevelExp > p.experience
         ? nextLevelExp - p.experience : 0;
 
-    fb.drawText(leftPaneX + 10, splitY + 10, "GEN I DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 10, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 38, "Game / record", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 56,
                 p.sourceGameLabel + " / " + shortRecordLabel(p.recordLabel), Colors::Text, TextStyle::Caption);
@@ -232,7 +233,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
     fb.drawText(leftPaneX + 10, splitY + 182, std::to_string(p.catchRate), Colors::Text, TextStyle::Caption);
     // Origin & Legality (formerly under the move rows): Gen I records no origin to check.
     fb.drawText(leftPaneX + 10, splitY + 206, "Legality", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftPaneX + 10, splitY + 224, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 224, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
 
     fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     if (p.hasBattleStats)

@@ -124,6 +124,106 @@ Host tests cover all four decisions. Only the device can prove the emulator actu
 
 So the launch dialog shows the core notice, replace the two `gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(...))` calls (`openLaunchDecision` and `currentLaunchQuitNotice`) with `gameLaunchDialogNotice(...)`. Its quit-route text is identical when there is no notice.
 
+## Round 4 (2026-10-20): Save / Backup browser (R2-EMUBACKUP, C07, S05)
+
+**Base:** #307 `c2287f50`. Owner results are in `docs/hardware/ROUND3_RESULTS_62a2f8c3.md`.
+
+**Owner finding (screenshot 1):** Pokémon Black's "+ → Backups" showed only "Original DraStic save — READ ONLY" and "Staged edits — IN EDITOR", with no usable action. The list was built only from export records, and export (B08) has not produced any yet.
+
+**Repair (emulator saves: RetroArch, DraStic and melonDS):**
+
+| Owner flow | Now |
+|---|---|
+| Pick a game | Home card → + → Backups. One section per exact assigned or validated save. |
+| List saves and existing backups | The original save, then this save's backups (deliberate copies and export records), newest first, matched by exact `SOURCE_PATH`. |
+| Browse the current save | A on the original save runs the normal read-only open (`selectCurrentTitle`). It never makes a backup. |
+| Deliberately create a backup | A on "Create backup now" (`SourceBackups::createBackup`) copies the save byte for byte into `backups/emulator-saves/<game>/<timestamp>/save<ext>`. It reads the copy back and compares, then writes `BACKUP_MANIFEST.txt` last. This is the only place an emulator backup is made. |
+| Delete a backup | Y opens the confirmation. Only an explicit Y deletes that one backup. It is refused for foreign files or a forged path, and the last remaining copy is kept when the emulator file is gone. |
+| Never write the emulator's save | The source is only ever opened `"rb"`. Tests check that it stays byte- and mtime-identical. |
+
+**Tests:**
+- `test_emulator_backup_access`: create, list and delete for RetroArch `.srm`, DraStic `.dsv` and melonDS `.sav`; nothing is made on list or open; same-second backups get distinct records; other saves are excluded; foreign, forged and last-copy cases are refused; refusals create nothing.
+- `test_emulator_backup_layout`: Create, Browse and Details actions; all copy fits the BackupMenu rows and toast.
+- `test_game_hub_contract`: create-only-on-action and browse-is-read-only.
+
+**Installed Switch titles (SwSh/BDSP/LA/SV): no automatic backup on open (coordinator-confirmed).**
+- `handleDefaultQuickOpen`, `handleItemsQuickOpen` and the Backups "Browse current save" row now call `openWorkingCopy`. It reads the installed save into the single reusable "Working" copy through `WorkingCopyRefresh::refresh`.
+- If an earlier Working copy is byte-identical to the fresh one, it is deleted and no backup appears. If it differs, it holds PKSE edits, so it is kept as a dated backup folder and never discarded. If the fresh copy fails, the earlier one is put back.
+- A timestamped backup is made only by Save Backups → "Create backup now" (`backupSaveData(..., true)`, called exactly once in `UI.cpp`). Delete stays X, then Y confirmation.
+- The Settings **Auto-Backup** toggle is retired, in both the Product Home settings and the in-editor settings panel, along with the `g_autoBackupEnabled` global. A toggle that did nothing would mislead. An old `autoBackup=` line in `settings.cfg` is read and ignored, and no longer written.
+- Tests: `test_emulator_backup_access` `workingCopyRefresh` (fresh / unchanged dropped / edits preserved / failure restores); `test_game_hub_contract` pins the open paths, the single create call and the retired setting.
+
+**Device checks for round 4 (add to the checklist):**
+- **R4-1:** Black (DraStic): + → Backups shows "Create backup now", the original DraStic save and the staged-edits note.
+- **R4-2:** A on "Create backup now": a "Backup created" notice; a new "Backup · <date>" row is focused; the `.dsv` on the SD card is unchanged (SHA-256 before and after).
+- **R4-3:** Y on that backup, then Y: deleted. Y, then A or B: kept.
+- **R4-4:** A on the original save opens the game read-only. Back in Backups, no new backup appeared.
+- **R4-5:** Repeat with a RetroArch Gen I–III save and a melonDS save.
+- **R4-6:** Switch title (e.g. SwSh): open, close, open again. No new dated backup appears in Save Backups. "Create backup now" adds exactly one.
+- **R4-7:** Settings (Product Home → System, and the in-editor panel) shows no Auto-Backup row. The other toggles still work by controller and touch.
+
+## Round 5 (#322): open a backup as a staged copy (verified against Codex 80377153 / 8d482845 / f3bbd43f)
+
+Already correct in #307 (Codex):
+- Emulator Save Backups: full-screen card (background cleared), rows with date, provider, path and type, newest first, the current save marked read-only, unassigned recovery history marked read-only.
+- A on an emulator copy opens THAT file through the strict Gen I-V parsers from an immutable snapshot (`openBackupTrainer`). Export Copy only; no backup on open; Y delete keeps the record and last-copy guards.
+- Native rows lead with the date and badge legacy folders "ownership unknown"; legacy is never deletable.
+
+Fixed here:
+- **Native Switch backups no longer open as a read-only preview.** A copies the selected backup (owned or legacy) into the isolated `Opened-Backup` workspace of the exact profile/game (`WorkingCopy::openBackupSession`) and opens that as a normal staged session. The backup's contents are validated for the exact title first, and its listing snapshot must still match after the copy. Edits saved in an earlier session are kept as a dated backup, never overwritten. The backup itself stays byte-identical.
+- The editor's top bar names the copy: "Opened from backup - <date>" (legacy: "Opened from legacy backup (owner unknown) - <date>").
+- Gen IV emulator copies get the Open snapshot, so Export Copy fails closed if the backup file changed after it was opened.
+- Emulator copies show the card's real provider instead of "Unknown provider".
+
+Device checks:
+- **R5-1:** SwSh/BDSP: Save Backups, A on an owned backup opens it in the editor (title bar says "Opened from backup"). Edit, save, back out: the backup folder is unchanged and a "Opened-Backup" row never appears.
+- **R5-2:** Same with a legacy PKSE folder: opens, never offers delete, the legacy folder is unchanged.
+- **R5-3:** Open backup A, edit and save, then open backup B: the edits from A appear as a new dated backup.
+- **R5-4:** DraStic Platinum: A on a backup opens it; Export Copy succeeds; the backup `.dsv` is unchanged.
+
+## Round 6: Review entry and return in Gen I–V (B08, P1-RETURN, AUD-01, 4D-HELP follow-up)
+
+The four-option staged exit is unchanged. One rule for the Review button (`include/UI/ReviewEntry.h`):
+
+| Screen | Gen I–IV | Gen V | Why |
+|---|---|---|---|
+| Trainer Info | Y (and +) | Y (and +) | Y was already Review, as on Gen V's Trainer page. |
+| Party | **Y** or + | **Y** or + | Y had no job on Party. |
+| Boxes | **+** | **Y** or + | Gen I–IV Y is Move / hold for Multi; Gen V Browse Y was free. |
+| Bag | **+** | **+** | Y is Remove Item. In the Gen I–III Bag, + used to open an Options menu whose Review was a row ("buried", B08). + now opens the shared Review directly; the menu's Export and Discard are X and Y inside Review (Bag changes included in Gen I, II and III). The menu remains only as the fallback when a source has no Review workspace. |
+| Create / Edit | **+** | **+** | Y is re-roll, and Discard inside the exit confirmation. |
+
+How Review returns to the screen it was opened from:
+- **Gen I–IV Party / Boxes / Bag / Trainer:** `openStagedReview` marks the Review standalone (`ClassicReviewOrigin`). Its B, or a closing Discard All, returns to the screen underneath. Cursor, box and page are untouched while Review is open. Party and Boxes go through one router (`ClassicBrowseReview.h`) that only acts on the plain grid: no overlay, Actions sheet, carry or modal.
+- **Gen I Create / Edit:** `UX2State::reviewReturn` restores the workspace mode. The draft and focus survive, because `foundationSyncMainMode` leaves them alone for the same mode. A Discard All closes the workspace instead, since the draft's baseline is gone.
+- **Gen II Create / Edit:** Review is routed and drawn ahead of the still-open workspace. B closes it back to the workspace.
+- **Gen III / IV Create / Edit:** Review is already handled and drawn before the workspace, so B returns to it.
+- **Gen V:** `Gen5SharedScreenState::openReviewFrom` records the return surface (Browse or Edit). B returns there with the draft, and Create's staged record, intact. Discard All lands on Browse and clears the draft.
+- **Footers** advertise the entry (`footerHint`), and the Help pages' Review lines now match the code.
+
+Tests:
+- `test_review_entry`: the button rule over 5 generations × 6 screens, and the real Gen I–IV router plus Review origin on a stub screen: open, close, same screen, cursor, box and page.
+- `test_gen5_review_discard_export_trace` `workspaceReviewReturn`: the real Gen V reader, Trainer bridge and state machine (Browse / Edit / Create return; Discard All).
+- `test_classic_help_accuracy` re-pinned to the new claims.
+- `test_ui_review_entry_host` (Lane S's real-input harness, `tests/host-ui`): the REAL `TrainerViewScreen::update`/`draw`. Covers:
+  - Gen I, II, III, IV and V Trainer, Party, Boxes and Bag: the Review key opens the shared Review, and B returns to the same screen and cursor.
+  - Gen III and Gen V Edit and Create: `+` opens Review, and B returns to the draft.
+  - Gen III Export Copy is refused once the source changed since Open.
+  - Disabling the Gen I–IV router makes 24 checks fail.
+- Merged into #307: Party / Boxes / Trainer use Lane R's `ClassicBrowseFooter` `spec.review` (glyph from `ReviewEntry::footerHint`). CG63 was retargeted, because `+` now opens Review on Gen I–IV editor pages, but never on the save hub. The Gen I Edit row "Review / Stage Add" now returns to Edit, not Actions.
+- **7E G5 closed:** Gen I–III Open takes the exact file's snapshot (`ClassicSourceGuard::snapshotAtOpen`). The file must still be the bytes discovery parsed. Every Gen I–III Export Copy re-checks it and refuses a changed source (`unchangedSinceOpen`), as Gen IV / V already do.
+
+Save safety (7E): `docs/audits/ROUND6_SAVE_SAFETY_PKSE.md` (audit only; no save-path change).
+
+Device checks:
+- **R6-1:** Each generation, Party: Y opens Review; B returns to Party on the same slot. + does the same.
+- **R6-2:** Gen I–IV Boxes: + opens Review; B returns to the same box and slot. Y still moves and holds for Multi. Gen V Boxes: Y and + open Review.
+- **R6-3:** Each generation, Bag: + opens the shared Review directly (no Options menu); B returns to the same pocket and row. Y still asks to remove.
+- **R6-4:** Each generation, Edit a Pokémon, change a field, press +: Review opens. B returns to Edit with the change still in the draft. Same from Create.
+- **R6-5:** Gen I and Gen V: in a Review opened from Create/Edit, choose Discard All: you land outside the workspace, never back in a stale draft.
+- **R6-6:** Trainer Info: Y and + open Review; the four-option exit (B with staged changes) is unchanged.
+- **R6-7:** Gen I–III: open a save, edit, then let the emulator save over it (or replace the file). Export Copy is refused with "the save file changed since it was opened"; nothing is written.
+
 ## Opt-in for the device test
 
 The default remains the hardware-accepted direct handoff. To test the return host, create an empty file:
@@ -133,6 +233,34 @@ sdmc:/switch/PokeBank-NX/config/experimental_return_host.enable
 ```
 
 Delete it to go back to the direct path. No other behaviour depends on it.
+
+## Round 7: B08 (P1-RETURN) repairs and 7E G1
+
+Base: #307 `6ec8dc53` (owner Round 6 results on `26186464`: 49 PASS / 9 FAIL), merged forward as a fast-forward. Every NRO is **NOT DEVICE TESTED**.
+
+| Item | Commit | What changed | Test |
+|---|---|---|---|
+| B08 (1), P0: the Gen II Create → Review screen looked invisible | `146511e2` | Not Unown-specific: any Gen II Create or Edit draft was affected. + opened Review and input went to it, but the outermost draw (`Gen2HardwareFinalFix` → `SharedSurfaceParity`) painted the workspace and then the full-screen editor on top of it. Review now owns the frame while it is open over a workspace (`gen2WorkspaceReviewOpen`, one predicate for input and draw). | `test_ui_gen2_create_review_host`, 76 checks, Silver and Crystal, Unown (real picker) and Pikachu:<ul><li>the title, count and rows are visible;</li><li>no draft is painted;</li><li>Y Discard is a question and B keeps everything;</li><li>X Export leaves the source and the staged changes;</li><li>B returns to the same draft;</li><li>Y never opens Review.</li></ul>36 checks fail without the fix. |
+| B08 (2), P0: + opened Review from Party | `acc0b772` | One Review key per screen, the one its footer shows (`ReviewEntry.h`). The staged exit's four choices are unchanged. | `test_review_entry`, `test_ui_review_entry_host` (243 checks; 25 fail with the old rule), `test_classic_help_accuracy` |
+| 7E G1, P1: Gen V exports were missing from Save Backups | `55635234` | `SourceBackups` lists, opens and deletes the current profile's `exports/gen5/account-<p>/` records (see the audit's G1 row). | `test_gen5_backup_listing_host` (87 checks, real `publishGen5WorkingCopy` records) |
+
+Review key per screen:
+
+| Screen | Gen I | Gen II | Gen III | Gen IV | Gen V |
+|---|---|---|---|---|---|
+| Trainer | Y | Y | Y | Y | Y |
+| Party | Y | Y | Y | Y | Y |
+| Boxes | + (Y is Move / Multi) | + | + | + | Y |
+| Bag | + (Y is Remove) | + | + | + | + |
+| Create / Edit | + (Y is re-roll) | + | + | + | + |
+| Save hub | B, then A in the exit menu | same | same | same | + |
+
+The other key never opens Review on these screens.
+
+Device checks for the owner:
+- **R7-1:** Gen II (Gold, Silver or Crystal): Boxes → empty slot → Create Unown → +. Review is visible with its rows. B returns to the Unown draft, and the draft still responds to its keys.
+- **R7-2:** on each screen in the table, the footer's key opens Review and the other key does not. Party + does nothing.
+- **R7-3:** export an edited Gen V save, then open Save Backups for that game. The export is listed with its date. A opens it with the edit present. Y deletes only that record.
 
 ## Final Switch checklist — owner A/B procedure (exact integrated NRO)
 

@@ -255,6 +255,10 @@ static void testFooterAndToggles() {
         require(language >= 1 && language <= 7 && language != 6, "Gen III language ids");
     }
     require(P::nextGen3Language(5) == 7 && P::nextGen3Language(7) == 1, "Gen III language order");
+    require(std::string(P::legalityLabel(P::LegalityState::Invalid))=="Invalid" &&
+            std::string(P::legalityLabel(P::LegalityState::Verified))=="No problems found" &&
+            std::string(P::legalityLabel(P::LegalityState::NotChecked))=="Not checked",
+            "invalid, evaluated clean and not checked stay distinct");
     require(std::string(P::legalityLabel(P::LegalityState::Unknown)) == "Unknown" &&
             std::string(P::legalityLabel(P::LegalityState::Incomplete)) == "Incomplete", "honest legality labels");
 }
@@ -344,11 +348,11 @@ static void testFieldAccessParity() {
     for (const auto gen : {SE::Generation::Gen1, SE::Generation::Gen2})
         for (const auto field : {FI::Move, FI::MovePP, FI::MovePPUps})
             require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable, "Gen I/II moves editable");
-    // The PID itself is never typed in; Gen V language has no verified native mutation.
+    // PID is never typed in; Language now has native replay/checksum/export tests.
     for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
         require(SE::fieldAccessForGeneration(gen, FI::PersonalityId) == SE::FieldAccess::ReadOnly, "PID read-only");
-    require(SE::fieldAccessForGeneration(SE::Generation::Gen5, FI::Language) == SE::FieldAccess::ReadOnly,
-            "Gen V language read-only with a reason");
+    require(SE::fieldAccessForGeneration(SE::Generation::Gen5, FI::Language) == SE::FieldAccess::Editable,
+            "Gen V language editable through the verified staged native path");
 }
 
 static void testLocationNames() {
@@ -466,7 +470,12 @@ static void testRealSourcesUseSharedUnit() {
         const std::string body = text.substr(at, next == std::string::npos ? std::string::npos : next - at);
         require(body.find("SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos &&
                 (body.find("drawNavBar(fb,") != std::string::npos ||
-                 body.find("SharedEditorChrome::drawFooter(fb,") != std::string::npos),
+                 body.find("SharedEditorChrome::drawFooter(fb,") != std::string::npos ||
+                 (std::string(fn)=="void drawItemRemoveConfirm(" &&
+                  body.find("drawGlyphButton(fb, cancelX,")!=std::string::npos &&
+                  body.find("drawGlyphButton(fb, remX,")!=std::string::npos &&
+                  body.find("\"A\", \"Remove\"")!=std::string::npos &&
+                  body.find("\"B\", \"Cancel\"")!=std::string::npos)),
                 std::string("modal owns the touch layer and its footer: ") + fn);
     }
     // Gen I-V destructive confirms: only Y commits; A, B and Y+B cancel; the button taps as Y.
@@ -478,7 +487,7 @@ static void testRealSourcesUseSharedUnit() {
         require(P::destructiveConfirmStep(true, false, true) == P::DestructiveConfirm::Cancel, "Y+B cancels");
         require(P::destructiveConfirmStep(true, true, false) == P::DestructiveConfirm::Cancel, "Y+A cancels");
         require(P::destructiveConfirmStep(false, false, false) == P::DestructiveConfirm::None, "idle");
-        for (const char* handler : {"        if (releaseConfirmActive) {\n", "        if (itemRemoveConfirmActive) {\n"}) {
+        for (const char* handler : {"        if (releaseConfirmActive) {\n"}) {
             const std::size_t at = base.find(handler);
             require(at != std::string::npos, std::string("confirm handler: ") + handler);
             const std::string body = base.substr(at, 1600);
@@ -487,17 +496,25 @@ static void testRealSourcesUseSharedUnit() {
                     body.find("ClassicGenericUi::classicSession(sourceGameId)") != std::string::npos,
                     std::string("Gen I-V confirm commits on Y only: ") + handler);
         }
-        require(read("src/UI/Panels/StoragePanel.cpp").find("confirmFooter(\"Y\", \"Release\")") != std::string::npos &&
-                read("src/UI/Dialogs/ItemEditDialog.cpp").find("confirmFooter(\"Y\", \"Remove\")") != std::string::npos,
-                "Release / Remove footers name Y");
+        require(read("src/UI/Panels/StoragePanel.cpp").find("confirmFooter(\"Y\", \"Release\")") != std::string::npos,
+                "Release footer still names Y");
+        const auto bagAt=base.find("        if (itemRemoveConfirmActive) {\n");
+        require(bagAt!=std::string::npos,"explicit Bag Remove confirm handler exists");
+        const auto bagBody=base.substr(bagAt,800);
+        require(bagBody.find("if (tb == 1) kDown |= HidNpadButton_A;")!=std::string::npos &&
+                bagBody.find("(kDown & HidNpadButton_A) && !(kDown & HidNpadButton_B)")!=std::string::npos,
+                "owner Bag exception: A confirms, B wins, touch uses A");
+        const auto bagDialog=read("src/UI/Dialogs/ItemEditDialog.cpp");
+        require(bagDialog.find("\"A\", \"Remove\"")!=std::string::npos &&
+                bagDialog.find("confirmFooter(\"Y\", \"Remove\")")==std::string::npos,
+                "Bag Remove choices are inside the dialog without a duplicate Y footer");
     }
     require(read("src/UI/Dialogs/SaveConfirmDialog.cpp").find(
                 "SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));") != std::string::npos,
             "exit save dialog draws its own Gen I-V footer");
     for (const auto* text : {&gen3, &gen4}) {
-        require(text->find("void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {\n"
-                           "    SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos,
-                "Discard All confirm owns the touch layer");
+        require(text->find("SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons)") != std::string::npos,
+                "Discard All uses the shared confirmation and its top touch layer");
         require(text->find("{\"A\", \"Select\"}") == std::string::npos, "action menus use the shared footer");
     }
     require(gen5.find("dimShared(screen,fb);\n    // The decision owns the frame's touch; the covered hub's footer is never tappable.\n"

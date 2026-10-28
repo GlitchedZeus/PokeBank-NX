@@ -1,3 +1,7 @@
+#include "Source/ImmutableSourceSnapshot.h"
+#include "UI/BackupHistoryPresentation.h"
+#include "UI/BackupBrowserChrome.h"
+#include "UI/WorkingCopyRefresh.h"
 #include <algorithm>
 #include <cstdio>
 
@@ -62,12 +66,18 @@ namespace UI {
 
         BackupInfo newBackupOption;
         newBackupOption.timestamp = "";
+        // Round 4: browsing never makes a backup (single Working copy); backups are made only by
+        // the explicit "Create backup now" row below.
         newBackupOption.displayName = namespaceReady
-            ? (g_autoBackupEnabled
-                ? "Browse installed source (read-only / new backup)"
-                : "Browse installed source (read-only / working copy)")
+            ? "Browse current save (read-only working copy)"
             : "Backup namespace unavailable (profile/game identity required)";
         backups.push_back(std::move(newBackupOption));
+        if (namespaceReady) {
+            BackupInfo create;
+            create.displayName = "Create backup now (copy of the installed save)";
+            create.createAction = true;
+            backups.push_back(std::move(create));
+        }
 
         if (namespaceReady) {
             for (const auto& name : listBackupDirectories(gameDirectory.c_str())) {
@@ -75,11 +85,17 @@ namespace UI {
                 // profile/exact-game-scoped root, so preserve it verbatim after rejecting traversal.
                 if (name.empty() || name == "." || name == ".." ||
                     name.find('/') != std::string::npos) continue;
+                // Round 5 (#322): the open-backup session is a staging copy, not a backup.
+                if (name == PokeBank::UIModel::WorkingCopy::kBackupSessionName) continue;
                 const std::string path = gameDirectory + "/" + name;
                 if (!PokeBank::Paths::isOwnedPath(path)) continue;
                 BackupInfo info;
-                info.timestamp = name;
-                info.displayName = "Edit backup workspace: " + formatTimestamp(name);
+                const auto date=PokeBank::UIModel::BackupHistory::dateForDirectory(name,path);
+                info.timestamp=date.order;
+                info.physicalStamp=PokeVault::Source::ImmutableSnapshot::directoryStamp(path);
+                info.displayName=date.label;
+                info.detail=titleName+" / "+name;
+                info.badge="Backup / read-only source";
                 info.path = path;
                 backups.push_back(std::move(info));
             }
@@ -96,13 +112,21 @@ namespace UI {
             const std::string path = legacyGameDirectory + "/" + name;
             if (!PokeBank::Paths::isOwnedPath(path)) continue;
             BackupInfo info;
-            info.timestamp = name;
-            info.path = path;
-            info.legacyUnscoped = true;
-            info.displayName = "LEGACY UNSCOPED / OWNERSHIP UNKNOWN — " +
-                (name == "Working" ? std::string("Working workspace") : formatTimestamp(name));
+            const auto date=PokeBank::UIModel::BackupHistory::dateForDirectory(name,path);
+            info.timestamp=date.order;
+            info.path=path;
+            info.legacyUnscoped=true;
+            info.physicalStamp=PokeVault::Source::ImmutableSnapshot::directoryStamp(path);
+            info.displayName=date.label;
+            info.detail=titleName+" / "+name+" / ownership unknown";
+            info.badge="Legacy / read-only";
             backups.push_back(std::move(info));
         }
+        const auto first=backups.begin()+static_cast<std::ptrdiff_t>(namespaceReady?2:1);
+        std::stable_sort(first,backups.end(),[](const BackupInfo& a,const BackupInfo& b) {
+            return a.timestamp!=b.timestamp?a.timestamp>b.timestamp:a.path<b.path;
+        });
+        if(first!=backups.end() && !first->timestamp.empty())first->badge+=" / Newest";
     }
 
     std::string BackupSelectionScreen::formatTimestamp(const std::string& timestamp) {
@@ -239,7 +263,7 @@ namespace UI {
         // Never select or delete a highlighted backup that is no longer on screen.
         // A real tile tap already sets selectedIndex to a visible row above; controller
         // A/X must first reveal the prior focus without changing backup identity.
-        if ((kDown & (HidNpadButton_A | HidNpadButton_X)) && count > 0 &&
+        if ((kDown & (HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y)) && count > 0 &&
             (selectedIndex < backupFirstRow ||
              selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)) {
             backupScroll.stop();
@@ -250,14 +274,15 @@ namespace UI {
             return;
         }
 
-        if (kDown & HidNpadButton_X) {
+        if (kDown & (HidNpadButton_X|HidNpadButton_Y)) {
             // Modal entry freezes the underlying list. Never suspend a coasting scroll and then
             // resume that stale momentum after the confirmation closes.
             if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
-                !backups[selectedIndex].legacyUnscoped) {
+                !backups[selectedIndex].legacyUnscoped && !backups[selectedIndex].createAction) {
                 backupScroll.stop();
                 showDeleteConfirmation = true;
                 deleteConfirmationIndex = selectedIndex;
+                return; // A simultaneous A cannot also open the covered row.
             }
         }
 
@@ -287,13 +312,21 @@ namespace UI {
                 }
                 createNewBackup = true;
                 backupSelected = true;
+            } else if (backups[selectedIndex].createAction) {
+                createBackupRequested = true;
             } else {
                 const auto& chosen = backups[selectedIndex];
-                if (chosen.legacyUnscoped) {
-                    reportFailure(
-                        "Legacy backup ownership is unknown; explicit import/assignment is required.");
+                // Unknown ownership never grants mutation, injection or deletion permission.
+                // Round 5 (#322): A opens a COPY of this backup in the isolated Opened-Backup
+                // session (UIManager); the backup itself, owned or legacy, stays byte-identical.
+                if (!namespaceReady) {
+                    reportFailure("No safe profile/exact-game folder to open a copy in.");
                     return;
                 }
+                selectedLegacy=chosen.legacyUnscoped;
+                selectedBackupLabel=chosen.displayName;
+                selectedBackupRoot=chosen.legacyUnscoped?legacyGameDirectory:gameDirectory;
+                selectedBackupStamp=chosen.physicalStamp;
                 if (chosen.path.empty() || !PokeBank::Paths::isOwnedPath(chosen.path)) {
                     reportFailure("Backup path failed the PokeBank-owned path policy.");
                     return;
@@ -320,10 +353,13 @@ namespace UI {
 
         if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
             backups[selectedIndex].legacyUnscoped) {
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Ownership Info"}, {"B", "Back"}});
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open copy"}, {"B", "Back"}});
+        } else if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
+                   backups[selectedIndex].createAction) {
+            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Create backup"}, {"B", "Back"}});
         } else if (selectedIndex > 0) {
             // The shared green-A Select / red-B Cancel picker footer (SharedEditorChrome).
-            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false, .xLabel = "Delete"});
+            drawNavBar(fb,{{"Up/Down","Choose"},{"A","Open copy"},{"Y","Delete"},{"B","Back"}});
         } else {
             SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         }
@@ -357,8 +393,9 @@ namespace UI {
             const int itemY = startY + (i - first) * LIST_ROW_H + liveOffset;
             const bool selected = (i == selectedIndex);
             // The first row is the "create new backup" action — accent it to stand out.
-            drawHomeTile(fb, LIST_X, itemY, LIST_W, LIST_ROW_H - 10,
-                         backups[i].displayName, selected, (i == 0));
+            const auto& backup=backups[i];
+            BackupBrowserChrome::drawRow(fb,LIST_X,itemY,LIST_W,LIST_ROW_H-10,
+                backup.displayName,backup.detail,backup.badge,selected);
         }
         fb.clearClip();
         // Shared draggable scrollbar; follows the exact residual pixel offset, not whole rows.
@@ -393,14 +430,30 @@ namespace UI {
     }
 
     void BackupSelectionScreen::deleteBackup(int index) {
-        if (index <= 0 || index >= (int)backups.size() || backups[index].legacyUnscoped) {
+        if (index <= 0 || index >= (int)backups.size() || backups[index].legacyUnscoped ||
+            backups[index].createAction) {
             return;  // Action row, invalid entry, or ownership-unknown legacy evidence.
         }
 
         const std::string& backupPath = backups[index].path;
         if (backupPath.empty() || !PokeBank::Paths::isOwnedPath(backupPath)) return;
 
-        // Delete only a profile/exact-game scoped workspace selected through normal navigation.
+        // A legacy folder never gains deletion authority. Keep a final owned
+        // snapshot even when a current installed source has disappeared.
+        int owned=0;
+        for(const auto& backup:backups)
+            if(!backup.path.empty() && !backup.legacyUnscoped)++owned;
+        if(owned<=1) {
+            statusMessage="Kept: this is the last app-owned backup. Create another copy first.";
+            statusFrames=360;return;
+        }
+        PokeVault::Source::ImmutableSnapshot::Directory observed;
+        std::string error;
+        if(!PokeVault::Source::ImmutableSnapshot::readDirectory(backupPath,gameDirectory,observed,error) ||
+           !PokeVault::Source::ImmutableSnapshot::unchanged(observed,error)) {
+            statusMessage=error;statusFrames=360;return;
+        }
+        // Delete only the explicitly confirmed, profile/exact-game scoped record.
         if (deleteDirectoryRecursive(backupPath.c_str())) {
             // Remove from backups list
             backups.erase(backups.begin() + index);

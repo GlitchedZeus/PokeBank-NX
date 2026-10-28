@@ -21,8 +21,25 @@ namespace UI {
         bool shouldExit() const override { return goBack; }
 
         bool hasSelectedBackup() const { return backupSelected; }
+        // One-shot: the user pressed A on "Create backup now" (the only way a backup is made here).
+        bool takeCreateBackupRequest() {
+            const bool requested = createBackupRequested;
+            createBackupRequested = false;
+            return requested;
+        }
+        // After a backup was made: list it and say so, keeping the screen open.
+        void reloadWithNotice(const std::string& message) {
+            loadBackups();
+            statusMessage = message;
+            statusFrames = 300;
+        }
         bool shouldCreateNewBackup() const { return createNewBackup; }
         const std::string& getSelectedBackupPath() const { return selectedBackupPath; }
+        bool selectedBackupIsLegacy() const { return selectedLegacy; }
+        const std::string& getSelectedBackupRoot() const { return selectedBackupRoot; }
+        const std::string& getSelectedBackupStamp() const { return selectedBackupStamp; }
+        // The selected copy's date line ("2026-10-23 12:00:00"), for the editor's provenance banner.
+        const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
 
         /**
          * Report that acting on the selection failed, so the screen can say so and take the choice
@@ -45,7 +62,11 @@ namespace UI {
             std::string timestamp;
             std::string displayName;
             std::string path;
+            std::string detail;
+            std::string badge;
+            std::string physicalStamp;
             bool legacyUnscoped = false;
+            bool createAction = false;   // the "Create backup now" row
         };
 
         AccountUid userUid{};
@@ -59,9 +80,14 @@ namespace UI {
         int selectedIndex;
         int backupFirstRow = 0;  // Physical viewport; never reuse the action cursor as scroll position.
         bool backupSelected;
-        bool createNewBackup;  // True if user wants to load from title directly
+        bool createNewBackup;  // True if user wants to browse the installed save (Working copy)
+        bool createBackupRequested = false;
         bool goBack;
         std::string selectedBackupPath;
+        std::string selectedBackupRoot;
+        std::string selectedBackupStamp;
+        bool selectedLegacy=false;
+        std::string selectedBackupLabel;
         bool showDeleteConfirmation;
         int deleteConfirmationIndex;
         // Delete-confirm button rects, captured during draw and hit-tested next frame (this screen

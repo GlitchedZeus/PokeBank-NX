@@ -28,7 +28,7 @@ public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
                                 Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species, CloneBox, RemoveBox, CreateBox,
-                                Shiny, Personality };
+                                Shiny, Personality, Language };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -43,6 +43,12 @@ public:
                                     black2White2);
     }
 
+    // Round 6 L06: an editor draft opened on an already-staged slot is a NEW record whose own
+    // original is the staged byte, while Keep and Review replay Pokerus on the workspace record,
+    // whose baseline is the SOURCE byte. The draft takes that same restore baseline, so both make
+    // the identical choice (restore the exact source strain/days, or keep / introduce strain 1)
+    // and Keep's byte-exact check cannot refuse a cycle through None.
+    void setPokerusRestoreBaseline(uint8_t sourceByte) noexcept { pokerusBaseline_=sourceByte; }
     [[nodiscard]] std::span<const uint8_t> originalBytes() const noexcept { return original_; }
     [[nodiscard]] std::span<const uint8_t> stagedBytes() const noexcept { return staged_; }
     [[nodiscard]] bool dirty() const noexcept { return staged_ != original_; }
@@ -289,6 +295,14 @@ public:
                     return fail("Gen V friendship must be in [0,255]");
                 candidate[0x14] = static_cast<uint8_t>(value);
                 break;
+            case Field::Language:
+                // PKHeX 6501f0ab PK5.Language: byte 0x17. Gen V supports Japanese, English,
+                // French, Italian, German, Spanish and Korean; 0/6 and later IDs are not choices.
+                if (stat != 0 || !(value == 1 || value == 2 || value == 3 || value == 4 ||
+                                   value == 5 || value == 7 || value == 8))
+                    return fail("Gen V language must be a supported native language ID");
+                candidate[0x17] = static_cast<uint8_t>(value);
+                break;
             case Field::IV: {
                 if (stat >= 6 || value > 31)
                     return fail("Gen V IV stat/value is out of native range");
@@ -362,7 +376,7 @@ public:
                     return fail("Gen V Pokerus mode must be None/Cured/Infected");
                 const uint8_t old=candidate[0x82];
                 const auto originalDecoded=Crypto::decrypt(original_);
-                const uint8_t baseline=originalDecoded[0x82];
+                const uint8_t baseline=pokerusBaseline_?*pokerusBaseline_:originalDecoded[0x82];
                 const uint8_t baselineMode=baseline==0?0:((baseline&0x0F)?2:1);
                 const uint8_t mode=old==0?0:((old&0x0F)?2:1);
                 // If a user toggles back to the original mode, restore the
@@ -375,7 +389,10 @@ public:
                     else {
                         // Preserve existing strain; brand-new infections
                         // receive strain 1, days=1 (within native maximum).
-                        const uint8_t strain=(old&0xF0)?(old&0xF0):0x10;
+                        // A strain passed through None comes back from the baseline, so
+                        // the result never depends on the toggle path (Keep replays the final
+                        // mode in one step and must reach the same byte).
+                        const uint8_t strain=(old&0xF0)?(old&0xF0):(baseline&0xF0)?(baseline&0xF0):0x10;
                         candidate[0x82]=static_cast<uint8_t>(
                             strain | (value==2?1:0));
                     }
@@ -460,6 +477,7 @@ private:
     std::vector<uint8_t> original_;
     std::vector<uint8_t> staged_;
     bool black2White2_=false;
+    std::optional<uint8_t> pokerusBaseline_;
 };
 
 } // namespace PokeVault::Integration::Gen5

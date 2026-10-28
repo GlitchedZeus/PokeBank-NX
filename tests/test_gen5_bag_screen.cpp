@@ -1,6 +1,6 @@
 // Gen V Bag in the shared Items/Inventory surface: host UI-model contract.
 // Same A/X/Y/L/R rules as the Gen III/IV inventory contract; Key Items and
-// TMs/HMs are view-only; an unrecognized bag is unavailable; Review lists Bag
+// TMs/HMs are unique and staged; an unrecognized bag is unavailable; Review lists Bag
 // changes; exports carry Bag edits alone and combined with PK5 edits.
 #include "Integration/Gen5/Gen5BagScreen.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
@@ -140,17 +140,18 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     bag.changePocket(1);
     assert(bag.pocket() == 0);
 
-    // Key Items and TMs/HMs: view only, never added or removed.
+    // Unique pockets offer Add / Remove, without a meaningless quantity keypad.
     for (size_t pocket : {size_t{1}, size_t{2}}) {
         while (bag.pocket() != pocket) bag.changePocket(1);
         can = bag.availability(ws);
-        assert(!can.editAmount && !can.addItem && !can.removeItem);
+        assert(!can.editAmount && can.addItem && can.removeItem);
         footer = bag.footer(ws);
-        assert(!hasGlyph(footer, "A") && !hasGlyph(footer, "X") && !hasGlyph(footer, "Y"));
-        assert(bag.status(ws).find("view only") != std::string::npos);
-        assert(!bag.openAdd(ws, error) && error.find("cannot be added") != std::string::npos);
-        assert(!bag.requestRemove(ws, error) && error.find("cannot be removed") != std::string::npos);
+        assert(!hasGlyph(footer, "A") && hasGlyph(footer, "X") && hasGlyph(footer, "Y"));
         assert(!bag.beginQuantity(ws, error));
+        assert(bag.openAdd(ws, error));
+        bag.cancel();
+        assert(bag.requestRemove(ws, error));
+        bag.cancel();
         assert(bag.surface() == Surface::Browse && !ws.hasChanges());
     }
     while (bag.pocket() != 0) bag.changePocket(1);
@@ -226,11 +227,11 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(bag.surface() == Surface::Browse && bag.row() == 2);
     assert(trainer->items[3].size() == 3 && trainer->items[3][2].itemId == 591 && trainer->items[3][2].count == 4);
 
-    // Y = Remove with confirmation. B cancels; a second Y stages the removal.
+    // Y = Remove with confirmation. B cancels; A in that explicit dialog confirms (owner Round 4).
     bag.moveRow(-2, ws);
     assert(bag.requestRemove(ws, error) && bag.surface() == Surface::ConfirmRemove);
     assert(bag.pendingRemove() && bag.pendingRemove()->itemId == 17);
-    assert(hasGlyph(bag.footer(ws), "Y") && hasGlyph(bag.footer(ws), "B"));
+    assert(hasGlyph(bag.footer(ws), "A") && hasGlyph(bag.footer(ws), "B") && !hasGlyph(bag.footer(ws), "Y"));
     bag.cancel();
     assert(trainer->items[3].size() == 3);
     assert(bag.requestRemove(ws, error));
@@ -291,6 +292,59 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(trainer->refreshStagedPokemonPresentation(why));
     assert(!ws.hasChanges() && trainer->items[0][0].count == 30 && trainer->items[3].size() == 2);
     assert(!shared.openReviewFromBrowse(ws));
+    // Key Item Add cannot stage until its warning is confirmed. B cancels
+    // atomically; existing unique items focus without a warning or duplicate.
+    namespace QP = PokeVault::Inventory::QuantityPolicy;
+    QP::Game policyGame{};
+    assert(QP::gameFromId(game, policyGame));
+    bag.reset(); bag.changePocket(1);
+    assert(bag.openAdd(ws, error));
+    while(bag.chosenAddItem()!=key)bag.moveAddCursor(1);
+    auto keyRule=QP::quantityRule(policyGame, QP::Pocket::KeyItems, key);
+    assert(!bag.requestAddWarning(ws,keyRule));
+    assert(bag.pickAdd(ws,keyRule,refresh,error).outcome==PokeBank::UIModel::BagAdd::PickOutcome::FocusExisting);
+    assert(!ws.hasChanges());
+    assert(bag.openAdd(ws,error));
+    while(bag.chosenAddItem()!=447)bag.moveAddCursor(1);
+    keyRule=QP::quantityRule(policyGame, QP::Pocket::KeyItems, 447);
+    assert(!bag.confirmAdd(ws,447,1,refresh,error) && !ws.hasChanges());
+    assert(bag.requestAddWarning(ws,keyRule) && bag.surface()==Surface::KeyItemAddWarning);
+    assert(!ws.hasChanges());
+    bag.cancel();
+    assert(!ws.hasChanges());
+    assert(bag.openAdd(ws,error));
+    while(bag.chosenAddItem()!=447)bag.moveAddCursor(1);
+    assert(bag.requestAddWarning(ws,keyRule));
+    assert(bag.pickAdd(ws,keyRule,refresh,error).outcome==PokeBank::UIModel::BagAdd::PickOutcome::StageNew);
+    assert(error.empty() && trainer->items[1].size()==2 && trainer->items[1][1].count==1);
+    assert(bag.tapRow(0,ws) && bag.requestRemove(ws,error));
+    bag.cancel();
+    assert(trainer->items[1].size()==2);
+    assert(bag.requestRemove(ws,error) && bag.confirmRemove(ws,refresh,error));
+    assert(trainer->items[1].size()==1 && trainer->items[1][0].itemId==447);
+    bag.changePocket(1);
+    assert(bag.openAdd(ws,error));
+    while(bag.chosenAddItem()!=618)bag.moveAddCursor(1);
+    const auto tmRule=QP::quantityRule(policyGame,QP::Pocket::TMHM,618);
+    assert(!bag.requestAddWarning(ws,tmRule));
+    assert(!bag.confirmAdd(ws,618,2,refresh,error));
+    assert(bag.pickAdd(ws,tmRule,refresh,error).outcome==PokeBank::UIModel::BagAdd::PickOutcome::StageNew);
+    assert(trainer->items[2].size()==2 && trainer->items[2][1].count==1);
+    assert(bag.tapRow(0,ws) && bag.requestRemove(ws,error) && bag.confirmRemove(ws,refresh,error));
+    const auto uniqueChanges=ws.bagReviewChanges();
+    assert(uniqueChanges.size()==4);
+    assert(G::Gen5SharedScreenState::reviewRowCount(ws)==4);
+    const auto uniqueOut=G::buildStagedSaveCandidate(ws,&error);
+    assert(uniqueOut && uniqueOut->bagChanged);
+    const auto uniqueSave=G::Gen5ReadOnlySave::parse(uniqueOut->bytes,game,&error,G::SaveCopySelection::Primary);
+    assert(uniqueSave);
+    const auto uniqueBag=G::decodeBag5(*uniqueSave);
+    assert(uniqueBag && (*uniqueBag)[1].size()==1 && (*uniqueBag)[1][0].itemId==447);
+    assert((*uniqueBag)[2].size()==1 && (*uniqueBag)[2][0].itemId==618);
+    assert(input==pristine);
+    ws.discardAll();
+    assert(trainer->refreshStagedPokemonPresentation(why));
+    assert(!ws.hasChanges() && trainer->items[1][0].itemId==key && trainer->items[2][0].itemId==328);
     bag.reset();
     assert(bag.pocket() == 0 && bag.row() == 0 && bag.surface() == Surface::Browse);
 }
@@ -336,6 +390,6 @@ int main() {
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);
     exercise(G::SaveFamily::Black2White2, "black2_nds", 23);
     fullPocketRefusesAdd();
-    std::cout << "Gen V Bag shared Items surface: pockets, A/X/Y parity, view-only story pockets, "
+    std::cout << "Gen V Bag shared Items surface: pockets, A/X/Y parity, unique story pockets, "
                  "Review and export PASS\n";
 }

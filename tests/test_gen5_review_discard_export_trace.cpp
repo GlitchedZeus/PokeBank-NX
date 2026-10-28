@@ -451,6 +451,13 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
     ui.moveReviewPage(1, ws);
     require(ui.reviewPage() == 2, T + "Review paging clamps");
     ui.moveReviewPage(-1, ws);
+    // Expanded semantic-field rows may outnumber grouped records; paging uses
+    // the presented row count without changing any native or staged byte.
+    for(int i=0;i<10;++i)ui.moveReviewPage(1,ws,25);
+    require(ui.reviewPage()==6,T+"all 25 semantic rows are reachable on 7 pages");
+    for(int i=0;i<10;++i)ui.moveReviewPage(-1,ws,25);
+    require(ui.reviewPage()==0,T+"semantic Review pages clamp at the first page");
+    require(stagedFingerprint(ws)==staged1,T+"semantic paging is byte-immutable");
 
     // ---- 3. Cancel paths: nothing changes -----------------------------------
     {
@@ -630,6 +637,96 @@ void trace(const std::string& dir, G::SaveFamily family, const char* game, uint8
 
 } // namespace
 
+// Round 6 (P1-RETURN): Review opened from Party/Boxes Browse, the Edit workspace or the Create
+// workspace returns to that surface on B, with the draft (and Create's staged record) intact;
+// Discard All from a workspace Review never returns into a record it just removed. Same real
+// reader, shared Trainer bridge and shared screen state machine as the trace above.
+void workspaceReviewReturn(const std::string& dir, G::SaveFamily family, const char* game, uint8_t version,
+                           bool backup) {
+    const std::string T = std::string("R6 [") + game + "] ";
+    const size_t copySize = copySizeFor(family);
+    const size_t base = backup ? copySize : 0;
+    const size_t otherBase = backup ? 0 : copySize;
+    Bytes raw(L::FullSaveSize, 0);
+    writeCopy(raw, base, family, version, 'S', kPotions, true);
+    writeCopy(raw, otherBase, family, version, 'O', 9, false);
+    fs::create_directories(dir + "/r6");
+    const std::string sourcePath = dir + "/r6/" + game + ".sav";
+    require(writeFile(sourcePath, raw), T + "fixture written");
+    const Bytes sourceBefore = diskBytes(sourcePath);
+    Bytes payload;
+    std::string error;
+    require(G::readNormalizedSourceReadOnly(sourcePath, payload, error), T + "opens read-only: " + error);
+    const auto save = G::Gen5ReadOnlySave::parse(payload, game, &error,
+                                                 backup ? G::SaveCopySelection::Backup : G::SaveCopySelection::Primary);
+    require(save.has_value(), T + "validates: " + error);
+    if (!save) return;
+    auto trainer = B::Gen5ReadOnlyTrainer::create(*save, game, error);
+    require(trainer != nullptr, T + "Trainer bridge: " + error);
+    if (!trainer) return;
+    auto& ws = trainer->stagedPokemon();
+    auto& ui = trainer->sharedScreen();
+    const auto refresh = [&](std::string& why) { return trainer->refreshStagedPokemonPresentation(why); };
+    std::string e;
+
+    // Nothing staged: no workspace can open Review either.
+    require(ui.openActions(ws, {Region::Box, 0, 0}, e) && ui.activate(ws, Action::Edit, e) && ui.isEditing(),
+            T + "Edit opens: " + e);
+    require(!ui.openReviewFrom(ws) && ui.surface() == Surface::Edit, T + "no Review with nothing staged");
+    require(G::stageSharedField(ui.editDraft(), FieldId::Level, 0, kEditLevel, e) &&
+            ui.keepWithPresentation(ws, refresh, e) && ui.surface() == Surface::Browse && ws.hasChanges(),
+            T + "one staged edit: " + e);
+
+    // Browse (Party / Boxes): Review, then B, back on Browse.
+    require(ui.openReviewFrom(ws) && ui.surface() == Surface::Review && ui.reviewReturn() == Surface::Browse,
+            T + "Review from Browse");
+    (void)ui.back();
+    require(ui.surface() == Surface::Browse, T + "B returns to Browse");
+
+    // Edit workspace with an unsaved draft: Review, then B, back in Edit with the draft as it was.
+    require(ui.openActions(ws, {Region::Party, 0, 0}, e) && ui.activate(ws, Action::Edit, e) && ui.isEditing(),
+            T + "Edit Party 1: " + e);
+    require(G::stageSharedField(ui.editDraft(), FieldId::HeldItem, 0, kHeldItem, e), T + "draft change: " + e);
+    require(ui.editDraft().dirty(), T + "draft is dirty");
+    const auto draftItem = ui.editDraft().current()->heldItem();
+    require(ui.openReviewFrom(ws) && ui.surface() == Surface::Review && ui.reviewReturn() == Surface::Edit,
+            T + "Review from the Edit workspace");
+    require(!ws.viewParty(0) || ws.viewParty(0)->heldItem() != kHeldItem,
+            T + "opening Review stages nothing from the draft");
+    (void)ui.back();
+    require(ui.surface() == Surface::Edit && ui.isEditing() && ui.editDraft().dirty() &&
+            ui.editDraft().current()->heldItem() == draftItem && ui.reviewReturn() == Surface::Browse,
+            T + "B returns to Edit with the draft intact");
+    require(ui.keepWithPresentation(ws, refresh, e) && ws.viewParty(0)->heldItem() == kHeldItem,
+            T + "the kept draft still stages normally: " + e);
+
+    // Create workspace: the created record is staged; Review, then B, back in Create.
+    const auto r = createRequest(version);
+    require(ui.openActions(ws, {Region::Box, 0, 5}, e) && ui.activate(ws, Action::Add, e) &&
+            ui.surface() == Surface::ConfirmCreateBox && ui.beginCreateDraft(ws, r, refresh, e) &&
+            ui.surface() == Surface::Edit && ui.createPending(), T + "Create opens its workspace: " + e);
+    require(ui.openReviewFrom(ws) && ui.reviewReturn() == Surface::Edit, T + "Review from Create");
+    (void)ui.back();
+    require(ui.surface() == Surface::Edit && ui.createPending() && !ws.viewBox(0, 5)->empty(),
+            T + "B returns to Create with its staged record");
+
+    // Discard All from that Review: everything goes, and Review never returns into the removed record.
+    require(ui.openReviewFrom(ws), T + "Review from Create again");
+    ui.requestDiscardAll();
+    require(ui.surface() == Surface::ConfirmDiscardAll, T + "Discard All asks first");
+    (void)ui.back();
+    require(ui.surface() == Surface::Review && ui.reviewReturn() == Surface::Edit,
+            T + "B on the confirmation keeps Review and its return");
+    ui.requestDiscardAll();
+    require(ui.discardAllWithPresentation(ws, refresh, e) && ui.surface() == Surface::Browse &&
+            !ui.createPending() && !ui.isEditing() && !ws.hasChanges() && ws.viewBox(0, 5)->empty(),
+            T + "Discard All from a workspace Review lands on Browse with no draft: " + e);
+    (void)ui.back();
+    require(ui.surface() == Surface::Browse, T + "a later B stays on Browse");
+
+    require(diskBytes(sourcePath) == sourceBefore, T + "source file untouched");
+}
+
 int main() {
     char pattern[] = "/tmp/pokebank_s04_trace_XXXXXX";
     const char* root = ::mkdtemp(pattern);
@@ -645,6 +742,7 @@ int main() {
         const std::string dir = std::string(root) + "/" + g.id;
         fs::create_directories(dir);
         trace(dir, g.family, g.id, g.version, g.backup);
+        workspaceReviewReturn(dir, g.family, g.id, g.version, g.backup);
     }
     std::error_code ec;
     fs::remove_all(root, ec);

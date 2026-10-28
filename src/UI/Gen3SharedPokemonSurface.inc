@@ -1,7 +1,14 @@
+#include "UI/ClassicSourceGuard.h"
+#include "UI/ReviewEntry.h"
+#include "UI/SharedViewOnlyNotice.h"
+#include "UI/SharedPanelHeading.h"
+#include "UI/SharedAbilityPicker.h"
+#include "Integration/Gen3/Gen3HeldItems.h"
 #include "UI/SharedItemGridPicker.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/ClassicTrainerSessionInput.h"
+#include "UI/ClassicReviewOrigin.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
@@ -32,8 +39,11 @@
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
+#include "UI/NatureStatPresentation.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
+#include "UI/ItemPickerSearch.h"
+#include "UI/AbilityEffects.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedBoxedRows.h"
@@ -42,6 +52,7 @@
 #include "UI/SharedStatReroll.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemInput.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/TouchScroll.h"
@@ -87,6 +98,7 @@ enum class PickerTarget : uint8_t {
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool passive = false;
     int detailsFocus = 0;
     TouchScrollState detailsTouchScroll;
@@ -123,6 +135,8 @@ struct State {
     std::vector<uint16_t> pickerValues;
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
+    std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedHeldItemSearch::State heldItemSearch;
     std::vector<Encounter::EncounterProvenanceChoice> encounterChoices;
     std::optional<Encounter::EncounterProvenanceChoice> selectedEncounter;
     int actionRow = 0;
@@ -132,13 +146,14 @@ struct State {
     bool speciesPreviewShiny = false;
     Shared::Focus focus{};
     SessionModel::Session session{};
+    bool party = false;
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
     static State state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -168,6 +183,7 @@ struct ReviewRow {
     std::string label;
     std::string beforeValue;
     std::string afterValue;
+    bool createdDetail = false;   // CG74: shown as the value alone
 };
 
 std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
@@ -178,7 +194,10 @@ std::vector<ReviewRow> reviewRows(TrainerViewScreen& screen) {
             rows.push_back({change.label, change.before, change.after});
     if (const auto* staged = editor(screen))
         for (const auto& change : staged->pendingChanges())
-            rows.push_back({change.label, change.beforeValue, change.afterValue});
+            rows.push_back({change.label, change.beforeValue, change.afterValue, change.createdDetail});
+    if (const auto* inventory = bridge(screen).stagedInventory())
+        for (const auto& change : inventory->pendingChanges())
+            rows.push_back({change.label, std::to_string(change.before), std::to_string(change.after)});
     return rows;
 }
 
@@ -285,6 +304,8 @@ void beginActions(TrainerViewScreen& screen) {
     const bool storage = storageEntrySurface(screen);
     state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    state.party = screen.selectedMode==TrainerViewScreen::ViewMode::Party;
+    if(state.party) {state.box=0;state.slot=screen.selectedPartyIndex;}
     screen.controllerNavigation.reset();
 }
 
@@ -293,7 +314,8 @@ bool beginViewOrEdit(TrainerViewScreen& screen, SessionModel::Mode mode) {
     auto* staged = editor(screen);
     if (!staged) return false;
     std::string error;
-    auto pokemon = staged->boxedPokemon(static_cast<std::size_t>(state.box),
+    auto pokemon = state.party?staged->partyPokemon(static_cast<size_t>(state.slot),error):
+        staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                         static_cast<std::size_t>(state.slot), error);
     if (!pokemon) {
         screen.postStatus(error.empty() ? "Selected Generation III slot is empty" : error, 300);
@@ -332,6 +354,7 @@ bool beginCreate(TrainerViewScreen& screen, int box, int slot) {
     auto& state = stateFor(screen);
     state.box = box;
     state.slot = slot;
+    state.party = false;
     state.actions = false;
     state.review = false;
     state.legality = false;
@@ -356,7 +379,7 @@ bool keepWorkspace(TrainerViewScreen& screen) {
     bool ok = false;
     if (state.session.mode == SessionModel::Mode::Edit) {
         ok = state.session.keep(*staged, static_cast<std::size_t>(state.box),
-                                static_cast<std::size_t>(state.slot), error);
+                                static_cast<std::size_t>(state.slot), error,state.party);
     } else if (state.session.mode == SessionModel::Mode::Create) {
         ok = state.session.add(*staged, static_cast<std::size_t>(state.box),
                                static_cast<std::size_t>(state.slot), error);
@@ -366,8 +389,8 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     refreshPresentation(screen);
-    screen.selectedBoxIndex = state.box;
-    screen.selectedItemIndex = state.slot;
+    if(state.party) screen.selectedPartyIndex=state.slot;
+    else {screen.selectedBoxIndex = state.box;screen.selectedItemIndex = state.slot;}
     screen.postStatus("Generation III Pokemon change staged; source save unchanged", 300);
     return true;
 }
@@ -388,7 +411,7 @@ std::string metLocationText(const Gen3::StagedPokemonRecord& p) {
 
 // The Met Location picker is wider than the other compact pickers so the place name and its
 // method / level fit on one readable row.
-constexpr int kMetLocationPickerWidth = 900;
+constexpr int kMetLocationPickerWidth = 620;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
@@ -431,14 +454,17 @@ std::string gen3FormLabel(uint16_t species, uint8_t form) {
 std::string detailsValue(const TrainerViewScreen& screen,
                          const Gen3::StagedPokemonRecord& p, int row) {
     switch (row) {
-        case 0: return std::to_string(p.species) + " - " + Names::getSpeciesName(p.species);
+        case 0: return std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species);
         case 1: return p.nickname.empty() ? "(none)" : p.nickname;
         case 2: return std::to_string(p.level);
         case 3: return std::to_string(p.experience);
         case 4: return p.otName.empty() ? "(none)" : p.otName;
         case 5: return std::to_string(p.tid);
         case 6: return std::to_string(p.sid);
-        case 7: return Names::getItemNameG3(p.heldItem);
+        // CG71: a stored Safari Ball / Berry Juice held item is kept and labelled honestly
+        // ("unreleased as held item"); the picker never offers it.
+        case 7: return std::string(Names::getItemNameG3(p.heldItem)) +
+                       (Gen3::storedUnreleasedHeldItem(p.heldItem) ? Gen3::kUnreleasedHeldItemShortSuffix : "");
         case 8: return std::to_string(p.friendship);
         case 9: return Enums::getLanguageName(p.language);
         case 10: return exactOriginText(screen, p);
@@ -467,9 +493,11 @@ bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
     if (row == 15) return state.session.working.species == 201; // Unown letter (PID-derived)
     if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;
+    // L06 (Round 6): Pokérus (14) is editable in Create too, as in Gen IV. The Create backend
+    // validates, writes and verifies create.pokerus (Gen3StagedPokemonEditor::stageAddBoxPokemon).
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
-               row == 8 || row == 9 || row == 11 || row == 12 || row == 13;
+               row == 8 || row == 9 || row == 11 || row == 12 || row == 13 || row == 14;
     return row == 0 || row == 1 || row == 2 || row == 3 || row == 4 ||
            row == 7 || row == 8 || row == 9 || row == 11 || row == 12 ||
            row == 13 || row == 14;
@@ -486,6 +514,33 @@ bool pidLinkedRowEditable(const State& state, int row) noexcept {
     if (row == 7) return variableGenderSpecies(state.session.working.species);
     if (row == 9) return true;
     return false; // PID itself is always derived/read-only.
+}
+
+// View (passive): A or a completed tap on a field says why nothing changes (owner Oct 25 L06),
+// with the Gen IV / V wording (UI/SharedViewOnlyNotice.h). Rows Edit cannot change either (SID,
+// Origin, a non-Unown Form, PID, a fixed Gender) never point at Edit.
+void viewOnlyActivate(TrainerViewScreen& screen, const State& state) {
+    namespace Notice = PokeBank::UIModel::ViewOnlyNotice;
+    constexpr std::array<const char*,5> pidLabels{{"Nature", "Gender", "Shiny", "Ability", "PID"}};
+    const auto& focus = state.focus;
+    const int row = focus.row;
+    std::string field;
+    bool locked = false;
+    if (focus.panel == Shared::Panel::Details) {
+        if (row < 0 || row >= static_cast<int>(detailLabels.size())) return;
+        field = detailLabels[static_cast<size_t>(row)];
+        locked = row == 6 || row == 10 || (row == 15 && state.session.working.species != 201);
+    } else if (focus.panel == Shared::Panel::Moves) {
+        field = "moves";
+    } else if (row < 6) {
+        field = focus.column == 0 ? "IVs" : "EVs";
+    } else if (row <= 10) {
+        field = pidLabels[static_cast<size_t>(row - 6)];
+        locked = row == 10 || (row == 7 && !variableGenderSpecies(state.session.working.species));
+    } else {
+        return;
+    }
+    screen.postStatus(locked ? Notice::lockedHint(field) : Notice::editHint(field), Notice::kFrames);
 }
 
 void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelChanged = false) {
@@ -543,28 +598,41 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
 
 // One encounter choice as {place, "method · level [· origin species]"} for the picker row.
 std::pair<std::string, std::string> metLocationChoiceText(const State& state, uint16_t value) {
+    const auto& stored = state.session.working;
+    if (value == EncounterPicker::kKeepStoredRow) {
+        // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
+        return {"Keep stored: " + Names::getMetLocationDisplayName(stored.originGame, stored.metLocation),
+                "Met Lv. " + std::to_string(stored.metLevel)};   // the name already says "Keep stored"
+    }
     const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
     if (!selected) return {"Unknown location", {}};
     const auto& encounter = selected->encounter;
     std::string place = Names::getMetLocationDisplayName(state.session.working.originGame, encounter.location);
+    // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
+    // (tests/test_met_location_fit.cpp).
     std::string detail = std::string(Encounter::methodName(encounter.method)) +
-                         " \xE2\x80\xA2 Lv. " + std::to_string(encounter.minLevel);
+                         " Lv. " + std::to_string(encounter.minLevel);
     if (encounter.maxLevel != encounter.minLevel)
         detail += "–" + std::to_string(encounter.maxLevel);
     if (selected->evolved) {
-        detail += " \xE2\x80\xA2 met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
+        detail += ", met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
         if (selected->minimumEvolutionLevel != 0)
-            detail += " (evolves Lv. " + std::to_string(selected->minimumEvolutionLevel) + ")";
+            detail += " (evo. " + std::to_string(selected->minimumEvolutionLevel) + ")";
     }
+    // R2-BUG-008: the save's own met data is the "Keep stored" row; candidate rows show only the
+    // encounter itself (NEW-10 / Round 3 L03: no "not stored" filler on every other row).
     return {std::move(place), std::move(detail)};
 }
 
 std::string pickerValueLabel(const State& state, uint16_t value) {
     switch (state.pickerTarget) {
         case PickerTarget::HeldItem:
+            // CG71: a stored unreleased item is listed only so it can be kept (the stored value is
+            // appended); it carries the same honest label as the DETAILS row.
             return value == 0 ? "None" :
                 Names::machineDisplayLabel(Enums::GameVersion::FRLG, value,
-                                           Names::getItemNameG3(value));
+                                           Names::getItemNameG3(value)) +
+                (Gen3::storedUnreleasedHeldItem(value) ? Gen3::kUnreleasedHeldItemShortSuffix : "");
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
         case PickerTarget::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
@@ -572,7 +640,8 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         case PickerTarget::Ability: {
             const auto& personal = Pokemon::getPersonalInfoG3(state.session.working.species);
             const uint16_t ability = value == 2 ? personal.ability2 : personal.ability1;
-            return "Slot " + std::to_string(value) + " - " + Trainer::getAbilityName(ability);
+            // NEW-13: the ability's name and short effect, not "Slot 1 / Slot 2".
+            return UI::AbilityEffects::row(Trainer::getAbilityName(ability), ability, 3);
         }
         case PickerTarget::MetLocation: {
             const auto row = metLocationChoiceText(state, value);
@@ -591,9 +660,12 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    if(target==PickerTarget::Ability)return SharedAbilityPicker::layout(count);
+    // Met Location retains its bounded source-context columns.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation ? G::MenuType::LocationPicker
-                                                           : G::MenuType::ChoicePicker, count);
+                     : target == PickerTarget::MetLocation
+                         ? G::MenuType::LocationPicker
+                         : G::MenuType::ChoicePicker, count);
 }
 
 const char* pickerTitle(PickerTarget target) noexcept {
@@ -633,6 +705,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     state.pickerScroll.reset();
     state.pickerViewport.reset();
     state.pickerTarget = target;
+    if(target==PickerTarget::HeldItem)state.heldItemSearch={};
     state.pickerMoveSlot = moveSlot;
     state.pickerValues.clear();
     state.encounterChoices.clear();
@@ -642,7 +715,8 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.pickerValues.reserve(count);
         for (std::size_t id = 0; id < count; ++id) {
             const char* name = Names::getItemNameG3(static_cast<uint16_t>(id));
-            if (id == 0 || (name && *name && std::string(name) != "???"))
+            if (Gen3::releasedHeldItem(static_cast<uint16_t>(id)) &&
+                (id == 0 || (name && *name && std::string(name) != "???")))
                 state.pickerValues.push_back(static_cast<uint16_t>(id));
         }
     } else if (target == PickerTarget::Language) {
@@ -658,9 +732,12 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
             screen.postStatus("No supported exact-game encounter templates for this Pokemon", 300);
             return;
         }
-        state.pickerValues = EncounterPicker::rowValues(state.encounterChoices.size());
-        state.pickerRow = EncounterPicker::selectedRow(
-            state.encounterChoices, state.session.working.metLocation, state.session.working.metLevel);
+        // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
+        state.pickerValues = EncounterPicker::rowValuesWithStored(
+            state.encounterChoices, state.session.working.metLocation);
+        state.pickerRow = EncounterPicker::selectedRowWithStored(
+            state.encounterChoices, state.pickerValues, state.session.working.metLocation,
+            state.session.working.metLevel);
         state.valuePicker = true;
         screen.controllerNavigation.reset();
         return;
@@ -709,6 +786,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
     if (target == PickerTarget::HeldItem || target == PickerTarget::Move) {
         state.pickerNativeValues = state.pickerValues;
         state.pickerSort = ItemPickerSort::Mode::Native;
+        state.pickerQuery.clear();
     }
     state.pickerRow = 0;
     for (int i = 0; i < static_cast<int>(state.pickerValues.size()); ++i) {
@@ -818,7 +896,13 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
 
-    if (row == 7) { openValuePicker(screen, state, PickerTarget::HeldItem); return; }
+    if (row == 7) {
+        openValuePicker(screen, state, PickerTarget::HeldItem);
+        if (Gen3::storedUnreleasedHeldItem(p.heldItem))
+            screen.postStatus(std::string(Names::getItemNameG3(p.heldItem)) +
+                " is unreleased as a held item in Gen III; it is kept unless you choose another", 360);
+        return;
+    }
     if (row == 15) { openValuePicker(screen, state, PickerTarget::Form); return; }
     if (row == 9) {
         // Inline toggle: A cycles Japanese / English / French / Italian / German / Spanish in
@@ -1009,9 +1093,41 @@ PokeBank::UIModel::SharedPickerPaging::Keys gen3PickerKeys(u64 down) noexcept {
 
 bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
+    // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's return
+    // keeps the gesture from reaching the workspace underneath.
+    if (SharedPopupDismiss::tappedOutside(touch)) {
+        state.pickerScroll.stop();
+        screen.controllerNavigation.reset();
+        state.valuePicker = false;
+        state.pickerTarget = PickerTarget::None;
+        state.pickerValues.clear();
+        return true;
+    }
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
-    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const auto heldItemName=[&](uint16_t id){return pickerValueLabel(state, id);};
+    if(gridPicker) {
+        const auto refilter=[&](const std::string& query) {
+            const int row=ItemPickerSearch::apply(state.pickerValues,state.pickerNativeValues,
+                state.pickerSort,query,state.pickerRow,heldItemName,SharedSearchInput::searchKey);
+            state.pickerQuery=query;
+            if(row>=0)state.pickerRow=row;
+            state.pickerViewport.reset();
+            return row>=0;
+        };
+        const int px=(1280-HeldItemGrid::modalWidth)/2,py=(720-kNavBarH-HeldItemGrid::modalHeight)/2;
+        const SharedSearchInput::Keys searchKeys{bool(down&HidNpadButton_Up),bool(down&HidNpadButton_Down),
+            bool(down&HidNpadButton_Left),bool(down&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+        if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
+            SharedSearchInput::sample(touch),px,py,refilter,
+            down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
+            state.pickerScroll.stop();
+            state.pickerViewport.reveal(state.pickerRow,static_cast<int>(state.pickerValues.size()),
+                HeldItemGrid::rows,HeldItemGrid::columnsForSearch(state.heldItemSearch.open()));
+            return true;
+        }
+    }
+    const int columns = gridPicker ? HeldItemGrid::columnsForSearch(state.heldItemSearch.open()) : 1;
     const int compactCount = std::max(0, count);
     const bool nature = state.pickerTarget == PickerTarget::Nature;
     const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
@@ -1043,16 +1159,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         state.pickerScroll.stop();
     } else if (count > 0 && maxFirstRow > 0) {
         if (state.pickerTarget == PickerTarget::HeldItem) {
-  constexpr int pickerW = HeldItemGrid::modalWidth;
-  constexpr int pickerH = HeldItemGrid::modalHeight;
-  constexpr int rowStep = HeldItemGrid::rowPitch;
-  const int px = (1280 - pickerW) / 2;
-  const int py = (720 - kNavBarH - pickerH) / 2;
-  state.pickerScroll.updateVertical(
-      touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
-      pickerW - 2 * HeldItemGrid::gridInsetX,
-      HeldItemGrid::rows * rowStep, rowStep,
-      state.pickerViewport.firstRow, maxFirstRow + 1);
+  // L06: SharedHeldItemInput::update below owns the grid's scroll, tap and A.
         } else if (state.pickerTarget == PickerTarget::Move) {
   constexpr auto pickerLayout = MoveUI::compactPickerLayout();
   const int px = (1280 - pickerLayout.width) / 2;
@@ -1066,7 +1173,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
   const auto valueList = valueListLayout(state.pickerTarget, count);
   const int pickerW = nature ? natureLayout.width : compact ? valueList.frame.w : 680;
   const int pickerH = nature ? natureLayout.height : compact ? valueList.frame.h : 560;
-  const int rowStep = nature ? natureLayout.rowStep : 42;
+  const int rowStep = nature ? natureLayout.rowStep : compact ? valueList.rule.rowHeight : 42;
   const int px = (1280 - pickerW) / 2;
   const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
@@ -1079,9 +1186,12 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     // Do not retarget on contact: the same finger may scroll the picker.
     // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
-    if (!pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
+    bool tappedChoice = false;
+    // The Held Item grid resolves its own taps (SharedHeldItemInput::update below).
+    if (!gridPicker && !pickerBar.consumed && touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
         down |= HidNpadButton_A;
+        tappedChoice = true;
     }
     if (count <= 0) {
         state.valuePicker = false;
@@ -1098,9 +1208,27 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
                     return id == 0 ? std::string() : std::string(Names::getMoveName(id));
                 return pickerValueLabel(state, id);
             });
+        if (gridPicker)   // NEW-06: a re-sort keeps the active search
+            state.pickerRow = std::max(0, ItemPickerSearch::narrow(state.pickerValues, state.pickerQuery,
+                                                                   state.pickerRow, heldItemName,SharedSearchInput::searchKey));
         state.pickerScroll.stop();
         state.pickerViewport.reset();
-        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        state.pickerViewport.reveal(state.pickerRow, static_cast<int>(state.pickerValues.size()), visibleRows, columns);
+        return true;
+    }
+
+    if (gridPicker && !(down & HidNpadButton_B)) {
+        // L06: tap and A share one step and one commit (UI/SharedHeldItemInput.h).
+        const int px = (1280 - HeldItemGrid::modalWidth) / 2;
+        const int py = (720 - kNavBarH - HeldItemGrid::modalHeight) / 2;
+        const auto held = SharedHeldItemInput::update(touch, state.pickerScroll, state.pickerViewport,
+            state.pickerRow, count, state.heldItemSearch.open(), px, py,
+            {bool(down & HidNpadButton_Up), bool(down & HidNpadButton_Down), bool(down & HidNpadButton_Left),
+             bool(down & HidNpadButton_Right), bool(down & HidNpadButton_L), bool(down & HidNpadButton_R),
+             bool(down & HidNpadButton_A)});
+        if (held.revealed)
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+        if (held.choose) applyValuePicker(state);
         return true;
     }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
@@ -1138,13 +1266,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (down & HidNpadButton_A) {
         // The finger can browse far away from the highlighted controller choice. A must never
         // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
-        if (!state.pickerViewport.containsSelection(
+        // L06 (Round 6): a completed tap on a partly visible cell (the clipped row a finger
+        // scroll leaves at the grid's edge) is revealed AND chosen, exactly like A on a visible
+        // cell. Only a controller A on a choice scrolled out of sight stops to reveal it.
+        if (!tappedChoice && !state.pickerViewport.containsSelection(
                 state.pickerRow, count, visibleRows, columns)) {
             state.pickerScroll.stop();
             state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
             screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
             return true;
         }
+        if (tappedChoice) state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         state.pickerScroll.stop();
         applyValuePicker(state);
         return true;
@@ -1158,6 +1290,10 @@ constexpr auto gen3SpeciesName = [](uint16_t species) { return std::string(Names
 
 bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.speciesPicker) return false;
+    if (SharedPopupDismiss::tappedOutside(touch)) {   // 7D: like B, never a tap-through
+        state.speciesPicker = false;
+        return true;
+    }
     // R2-SEARCH: the search key grid and the list scrollbar take their touches first; X / Minus
     // toggle the grid, and while it is open the D-pad / stick, A and B type into it.
     uint16_t chosen = std::clamp<uint16_t>(state.speciesPreview, 1, 386);
@@ -1319,6 +1455,20 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         return true;
     }
 
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays re-roll). Review
+    // is handled and drawn before this workspace, and its B returns here with the draft and focus
+    // untouched. A passive View keeps its read-only controls.
+    if (state.session.mode != SessionModel::Mode::View) {
+        namespace Entry = PokeBank::UIModel::ReviewEntry;
+        if ((down & HidNpadButton_Plus) &&
+            Entry::plusOpensReview(state.session.mode == SessionModel::Mode::Create ? Entry::Screen::Create
+                                                                                    : Entry::Screen::Edit, 3)) {
+            if (!screen.openStagedReview(false))
+                screen.postStatus("No staged Generation III changes to review", 220);
+            return true;
+        }
+    }
+
     const auto panelBeforeNavigation = state.focus.panel;
     const bool passiveView = state.session.mode == SessionModel::Mode::View;
     // Drag scrolls the visible left-side rows without changing the selected
@@ -1396,6 +1546,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
             if (!(passiveView || detailEditable(state, row))) return false;
             state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
             state.detailsFocus = row;
+            // CG69 (Round 6 L06): reveal the tapped row first, as the Gen IV / V
+            // Workspace::focusCompletedTap does, so a FIRST tap on the partly visible row
+            // (Pokérus, row 14 of 16 with 8 visible) passes the A gate and acts like A.
+            state.detailsTouchScroll.stop();
+            state.detailsViewport.reveal(row, static_cast<int>(detailLabels.size()), visibleDetailRows);
             return true;
         }
         if (id >= 31100 && id < 31106) {
@@ -1418,7 +1573,10 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
     // A touch-down can still become a swipe. Never retarget semantic focus
     // before the release confirms a tap inside the same clipped row.
     const int directTap = screen.touchedButtonId(touch);
-    if (applyDirectFocus(directTap) && state.session.editable()) down |= HidNpadButton_A;
+    if (applyDirectFocus(directTap)) {
+        if (state.session.editable()) down |= HidNpadButton_A;
+        else if (passiveView) viewOnlyActivate(screen, state);
+    }
     if (touch.justReleased() && touch.dragged()) {
         const int dx = touch.deltaX(), dy = touch.deltaY();
         if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
@@ -1454,6 +1612,10 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         w.evs = next.evs;
         state.previewValid = false;
         screen.postStatus(Reroll::kRerollStatus, 200);
+        return true;
+    }
+    if ((down & HidNpadButton_A) && passiveView) {
+        viewOnlyActivate(screen, state);
         return true;
     }
     if (!(down & HidNpadButton_A) || !state.session.editable()) return true;
@@ -1606,6 +1768,11 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
         return;
     }
     std::string error;
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error)) {
+        screen.postStatus(error, 480);
+        return;
+    }
     const std::string root = PokeBank::Paths::gen3ExportsRoot();
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
@@ -1652,31 +1819,17 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         return true;
     }
     const auto rows = reviewRows(screen);
-    const int reviewCount = static_cast<int>(rows.size());
-    const int reviewMax = std::max(0, reviewCount - 7);
-    // Pending Changes is a real touch scroll view: the cards follow the finger on every frame,
-    // cross row boundaries while the finger is still down, and retain a small controlled coast.
-    // reviewScroll remains the first visible semantic row, so controller behavior is unchanged.
-    const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar, SharedScrollbar::sample(touch),
-        SharedScrollbar::rows(reviewCount, 7, state.reviewScroll));
-    if (reviewBar.changed) {
-        state.reviewScroll = reviewBar.scroll;
-        state.reviewTouchScroll.stop();
-    }
-    if (reviewBar.consumed)
-        state.reviewTouchScroll.stop();
-    else
-        state.reviewTouchScroll.updateVertical(
-            touch, 44, 112, 1280 - 88, 482, 72,
-            state.reviewScroll, reviewMax + 1);
-    if (down & (HidNpadButton_Up | HidNpadButton_Down))
-        state.reviewTouchScroll.stop();
-    if (down & HidNpadButton_Up) state.reviewScroll = std::max(0, state.reviewScroll - 1);
-    if (down & HidNpadButton_Down) state.reviewScroll = std::min(reviewMax, state.reviewScroll + 1);
+    (void)touch;
+    namespace Review=PokeBank::UIModel::SharedReview;
+    if(down&(HidNpadButton_Left|HidNpadButton_Up|HidNpadButton_L))
+        state.reviewScroll=static_cast<int>(Review::move(state.reviewScroll,-1,rows.size()));
+    if(down&(HidNpadButton_Right|HidNpadButton_Down|HidNpadButton_R))
+        state.reviewScroll=static_cast<int>(Review::move(state.reviewScroll,1,rows.size()));
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
-        state.actions = true; // Restore the same popup and focused Review command.
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
         return true;
     }
@@ -1694,15 +1847,20 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         state.confirmDiscardAll = false;
         state.reviewTouchScroll.reset();
         staged->discard();
+        if (auto* inventory = bridge(screen).stagedInventory()) {
+            inventory->discard();
+            (void)ClassicInventory::refreshPresentation(screen);
+        }
         if (auto* trainer = bridge(screen).stagedTrainer()) {
             trainer->discard();
             bridge(screen).refreshStagedTrainerPresentation();
         }
         refreshPresentation(screen);
         state.review = false;
-        state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
+        state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+        if (PokeBank::UIModel::ClassicReviewOrigin::takeStandalone(screen)) state.actions = false; // standalone Review: back to the screen underneath
         screen.controllerNavigation.reset();
-        screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
+        screen.postStatus("All staged changes discarded - still editing; the original save is unchanged", 360);
         return true;
     }
     return true;
@@ -1743,14 +1901,15 @@ std::string surfaceContext(const TrainerViewScreen& screen, const State& state) 
         return "Legacy Storage / Slot " + std::to_string(screen.selectedItemIndex + 1);
     }
     return Context::contextLine(
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
+        state.party?"Party "+std::to_string(state.slot+1):
+            "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         screen.sourceGameId, mode);
 }
 
 void drawPanel(PKSEFramebuffer& fb, int x, int y, int w, int h, const char* title) {
-    fb.drawFilledRoundedRect(x, y, w, h, 14, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 14, Colors::Border, 1);
-    fb.drawText(x + 14, y + 12, title, Colors::Text, TextStyle::Heading);
+    // Round 7 P2: the shared Gen IV / V panel and heading (UI/SharedPanelHeading.h).
+    drawPanelSurface(fb, x, y, w, h, false, 14);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, title);
 }
 
 void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
@@ -1781,6 +1940,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         naturePicker ? natureLayout.height : compactChoices ? valueList.frame.h : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
 
     // Keep every Gen III picker in the same dark modal family as Gen I/II.
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
@@ -1799,6 +1959,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, kGen3MoveGame);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
+        // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+        // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+        state.pickerViewport.ensure(state.pickerRow, count, visible);
         const int first = state.pickerViewport.firstRow;
         const int last = std::min(count, first + visible);
         const int viewportTop = y + moveLayout.rowStart;
@@ -1826,11 +1989,19 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
 
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
+        const int heldColumns=HeldItemGrid::columnsForSearch(state.heldItemSearch.open());
+        state.pickerViewport.ensure(state.pickerRow, count, HeldItemGrid::rows, heldColumns);   // see the list draws below
         SharedHeldItemPickerPresentation::drawHeading(
-            fb, x, y, "Held Item — Generation III", state.pickerRow, count);
+            fb, x, y, "Held Item — Generation III", state.pickerRow, state.heldItemSearch.noMatches?0:count,state.heldItemSearch.open());
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
+        if (const std::string tag = ItemPickerSearch::tag(state.pickerQuery); !tag.empty()) {
+            // NEW-06: the active search, top right on the title line.
+            int tw = 0, th = 0;
+            fb.measureText(tag, tw, th, TextStyle::Caption);
+            fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+        }
         // R2-BUG-005: a focused Gen III TM/HM shows its move. TM01-50 / HM01-08 teach the same
         // moves in Ruby/Sapphire/Emerald and FireRed/LeafGreen (pret pokeemerald / pokefirered),
         // so the FireRed catalog row is exact for every Gen III game.
@@ -1846,28 +2017,32 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     screen.trainer.getGameGroup(), value);
                 return disc.empty() ? Names::getItemNameG3(value) : disc;
             },
-            state.pickerViewport.firstRow, state.pickerScroll.offset());
+            state.pickerViewport.firstRow, state.pickerScroll.offset(),&state.heldItemSearch);
         const int gridX = x + HeldItemGrid::gridInsetX;
         const int gridY = y + HeldItemGrid::gridInsetY;
         const int cellHeight = HeldItemGrid::rowPitch;
-        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int cellW = HeldItemGrid::cellWidth;
         const int firstRow = state.pickerViewport.firstRow;
-        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int firstVisibleItem = state.pickerViewport.firstRow * heldColumns + 1;
         const int lastVisibleItem = std::min(count,
-            firstVisibleItem + HeldItemGrid::pageSize - 1);
+            firstVisibleItem + HeldItemGrid::pageSizeForSearch(state.heldItemSearch.open()) - 1);
         (void)lastVisibleItem;
-        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
-             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
-            const int offset = i - firstRow * HeldItemGrid::columns;
-            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
-            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+        for (int i = std::max(0, (firstRow - 1) * heldColumns);
+             !state.heldItemSearch.noMatches && i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * heldColumns); ++i) {
+            const int offset = i - firstRow * heldColumns;
+            const int cellX = gridX + offset % heldColumns * cellW;
+            const int cellY = gridY + offset / heldColumns * cellHeight + state.pickerScroll.offset();
             appendClippedTouchButton(screen.touchButtons, 4000 + i,
                 cellX, cellY - 3, cellW - 10, cellHeight - 4,
-                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+                gridX, gridY - 3, HeldItemGrid::gridWidth(state.heldItemSearch.open()), HeldItemGrid::rows * cellHeight);
         }
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;
         footer.xLabel = "Sort";
+        footer.minusLabel = "Search";   // NEW-06
+        if(state.heldItemSearch.open() || state.heldItemSearch.noMatches)
+            SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);
+        else
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
@@ -1879,35 +2054,57 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
     const int visible = compactChoices ? visibleChoices : 10;
+    // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+    // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+    state.pickerViewport.ensure(state.pickerRow, count, visible);
     const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
-    const int rowStep = naturePicker ? natureLayout.rowStep : 42;
+    const int rowStep = naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42;
+    const int choiceHeight=naturePicker? natureLayout.highlightHeight : rowStep-4;
     const int viewportTop = y + 90;
-    fb.setClipRect(x + 22, viewportTop - 4, w - 44, visible * rowStep);
+    // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
+    // (rows, clip, touch boxes and the boxed highlight all use rowW).
+    const int scrollbarGap = SharedScrollbar::kTouchSlop + 4;
+    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + scrollbarGap : 0;
+    const int rowW = w - 44 - barGutter;
+    fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
         const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
         appendClippedTouchButton(screen.touchButtons, 4000 + i,
-            x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38,
-            x + 22, viewportTop - 4, w - 44, visible * rowStep);
+            x + 22, yy - 4, rowW, choiceHeight,
+            x + 22, viewportTop - 4, rowW, visible * rowStep);
         const bool selected = i == state.pickerRow;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, choiceHeight), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         if (state.pickerTarget == PickerTarget::MetLocation) {
             // Bright place name on the left, method / level on the right; nothing overlaps.
             const auto row = metLocationChoiceText(state, value);
-            int dw = 0, dh = 0;
-            const std::string detail = SharedMovesPanel::fit(fb, row.second, (w - 76) / 2);
+            int nw = 0, nh = 0, dw = 0, dh = 0;
+            fb.measureText(row.first, nw, nh, TextStyle::Body);
+            // Round 5 NEW-10: the detail gets what the measured name leaves, so at 620 px every
+            // real row shows both in full (tests/test_met_location_fit.cpp).
+            const std::string detail = SharedMovesPanel::fit(fb, row.second, std::max(0, rowW - 32 - nw - 20));
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7,
-                        SharedMovesPanel::fit(fb, row.first, w - 76 - dw - 20, TextStyle::Body),
+                        SharedMovesPanel::fit(fb, row.first, rowW - 32 - dw - 20, TextStyle::Body),
                         Colors::Text, TextStyle::Body);
-            fb.drawText(x + w - 38 - dw, yy + 10, detail,
+            fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+            continue;
+        }
+        if (naturePicker) {
+            fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value), Colors::Text, TextStyle::Body);
+            NatureStats::drawEffect(fb, x + 166, yy + 10, value);
+            continue;
+        }
+        if (state.pickerTarget == PickerTarget::Ability) {
+            SharedAbilityPicker::drawRow(fb,x+22,yy-4,rowW,choiceHeight,
+                pickerValueLabel(state,value),selected);
             continue;
         }
         if (state.pickerTarget == PickerTarget::Ball) {
             // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
-            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, w - 44, 38};
+            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, rowW, 38};
             const auto sprite = PokeBank::UIModel::SharedMenuGeometry::spriteRect(valueList, cell);
             ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,
                                     Enums::getBallName(static_cast<uint8_t>(value)));
@@ -1919,7 +2116,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     Colors::Text, TextStyle::Body);
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 14, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + scrollbarGap, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
@@ -1983,6 +2180,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         if (auto* staged = editor(screen)) {
             auto preview = state.session.mode == SessionModel::Mode::Create
                 ? staged->previewCreate(state.box, state.slot, state.session.createRequest(), state.previewError)
+                : state.party?staged->previewPartyEdit(state.slot,state.session.editRequest(),state.previewError)
                 : staged->previewEdit(state.box, state.slot, state.session.editRequest(), state.previewError);
             if (preview) {
                 state.previewRecord = *preview;
@@ -2002,7 +2200,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.session.mode == SessionModel::Mode::Create) mode = Context::SurfaceMode::CreateDraft;
     SharedPokemonShell::drawChrome(fb, p.species, p.nickname, p.level, p.gender, p.shiny,
         mode, state.passive ? surfaceContext(screen, state) :
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
+        state.party?"Party "+std::to_string(state.slot+1):
+            "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1), screen.sourceGameId);
     const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
     const int y = geometry.y, h = geometry.h;
     const int leftX = geometry.leftX, leftW = geometry.leftW;
@@ -2070,7 +2269,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             drawFocus(fb, midX + cell.x, yy - 5, cell.width, 30, true);
         }
         fb.drawText(midX + 18, yy, statLabels[static_cast<std::size_t>(row)],
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+                    NatureStats::statColor(p.nature, row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(midX + 126, yy, std::to_string(p.ivs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 190, yy, std::to_string(p.evs[static_cast<std::size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(midX + 274, yy, state.previewError.empty() ? std::to_string(p.calculatedStats[static_cast<std::size_t>(row)]) : "—",
@@ -2182,11 +2381,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     } else if (state.session.mode == SessionModel::Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Add"}, {"B", "Exit"}});
+                        {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", "Keep"}, {"B", "Exit"}});
+                        {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 
     if (state.session.confirmExit) {
@@ -2223,6 +2422,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.speciesPicker) {
         SharedEditorChrome::beginModal(screen.touchButtons);
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedPopupDismiss::publish(modal.x, modal.y, modal.width, modal.height);   // 7D
         SharedSpeciesPicker::refilter(state.speciesChooser, 386, gen3SpeciesAvailable, gen3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.speciesPreview, 386, state.speciesPreviewShiny,
@@ -2230,7 +2430,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                 return std::to_string(species) + "  " + Names::getSpeciesName(species);
             },
             [](uint16_t species) {
-                return std::string(Names::getSpeciesName(species));
+                return SharedSpeciesPicker::selectedTitle(species, Names::getSpeciesName(species));
             },
             &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
         // Touch ids stay 31500 + species; the chooser publishes the rows it actually drew
@@ -2251,26 +2451,27 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 }
 
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.drawGSCOverlay(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 120));
-    constexpr int x = 220, y = 92, w = 840, h = 480;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, Presentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
-                Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
-    fb.drawText(x + 270, y + 112, std::string(Context::exactGameName(screen.sourceGameId)), Colors::Text);
-    fb.drawText(x + 34, y + 158, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
-    fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
-    fb.drawText(x + 34, y + 250, "PID", Colors::TextDim);
-    fb.drawText(x + 270, y + 250, "Derived from Nature / Gender / Shiny / Ability", Colors::Text);
-    fb.drawText(x + 34, y + 296, "Legality", Colors::TextDim);
-    fb.drawText(x + 270, y + 296, Presentation::legalityLabel(Presentation::LegalityState::NotChecked),
-                Colors::Warning);
-    drawNavBar(fb, {{"B", "Back"}});
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    screen.drawGSCOverlay(fb);std::string error;
+    auto* staged=editor(screen);
+    const auto p=!staged?std::nullopt:state.party?staged->partyPokemon(static_cast<size_t>(state.slot),error):
+        staged->boxedPokemon(static_cast<size_t>(state.box),static_cast<size_t>(state.slot),error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",std::string(Context::exactGameName(screen.sourceGameId))},
+        {"Native format","PK3 checksum verified; save sections checked on export"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->otName});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid)+" / "+std::to_string(p->sid)});
+        rows.push_back({"Origin game",Enums::getOriginGameName(p->originGame)});
+        rows.push_back({"Met location",metLocationText(*p)});
+        rows.push_back({"Met level",std::to_string(p->metLevel)});
+        rows.push_back({"PID",std::to_string(p->pid)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
+    }
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -2318,71 +2519,21 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 
 // Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
 // The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
-void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
-    SharedEditorChrome::beginModal(screen.touchButtons);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-    constexpr int w = 760, h = 240;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 34, y + 96,
-                std::string("Every pending ") + generation + " edit in this workspace is lost.",
-                Colors::Text, TextStyle::Body);
-    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
-                Colors::TextDim, TextStyle::Caption);
-    // R2-BUG-012: each choice is its own boxed row; a tap presses that button (Y discards).
-    SharedBoxedRows::drawGlyphChoices(fb, x + 34, y + h - SharedBoxedRows::kChoiceHeight - 18, w - 68,
-        std::array<SharedBoxedRows::GlyphChoice, 2>{{{"B", "Keep Changes"}, {"Y", "Discard All"}}});
-    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char*) {
+    SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.touchButtons.clear();
-    auto* staged = editor(screen);
-    if (!staged) return;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
-    fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
-    fb.drawText(32, 62, "Generation III staged workspace • original source bytes unchanged",
-                Colors::TextDim, TextStyle::Caption);
-    constexpr int viewportY = 112;
-    constexpr int viewportH = 482;
-    constexpr int rowStep = 72;
-    const auto changes = reviewRows(screen);
-    if (changes.empty()) {
-        state.reviewScroll = 0;
-        state.reviewTouchScroll.reset();
-        fb.drawText(50, viewportY, "No pending changes.", Colors::TextDim, TextStyle::Body);
-    } else {
-        constexpr int visible = 7;
-        const int count = static_cast<int>(changes.size());
-        state.reviewScroll = std::clamp(state.reviewScroll, 0, std::max(0, count - visible));
-        const int first = state.reviewScroll;
-        const int drawFirst = std::max(0, first - 1);
-        const int drawLast = std::min(count, first + visible + 1);
-        const int liveOffset = state.reviewTouchScroll.offset();
-        fb.setClipRect(44, viewportY, fb.getWidth() - 88, viewportH);
-        for (int i = drawFirst; i < drawLast; ++i) {
-            const int rowY = viewportY + (i - first) * rowStep + liveOffset;
-            const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawFilledRoundedRect(44, rowY, fb.getWidth() - 88, 62, 10, Colors::Panel);
-            fb.drawText(62, rowY + 10, change.label, Colors::Text, TextStyle::Caption);
-            fb.drawText(62, rowY + 34, change.beforeValue + "  ->  " + change.afterValue,
-                        Colors::TextDim, TextStyle::Caption);
-        }
-        fb.clearClip();
-        SharedScrollbar::drawAndPublish(fb, state.reviewScrollbar, fb.getWidth() - 28, viewportY,
-            SharedScrollbar::kTrackWidth, viewportH,
-            SharedScrollbar::rows(count, visible, state.reviewScroll));
-    }
-    if (state.confirmDiscardAll && !changes.empty()) {
-        drawDiscardAllConfirm(screen, fb, "Generation III");
-    } else if (changes.empty())
-        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
-    else
-        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"X", "Export Copy"},
-                        {"Y", "Discard All Staged"}, {"B", "Back"}});
+    auto* staged=editor(screen);
+    if(!staged)return;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    for(const auto& change:reviewRows(screen))
+        rows.emplace_back(change.label,change.createdDetail?change.afterValue:
+                          change.beforeValue+" -> "+change.afterValue);
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(state.reviewScroll),!rows.empty(),"Generation III");
+    if(state.confirmDiscardAll)
+        drawDiscardAllConfirm(screen,fb,"Generation III");
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -2451,7 +2602,7 @@ bool trainerMainPage(const TrainerViewScreen& screen, const State& state) noexce
         !screen.carrying() && !screen.currentlySelecting;
 }
 
-bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 down, u64 held,
+bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64 held,
                           int stickX, int stickY, const TouchInput& touch) {
     if (!trainerMainPage(screen, state)) return false;
     auto& trainerBridge = bridge(screen);
@@ -2465,11 +2616,33 @@ bool handleTrainerSession(TrainerViewScreen& screen, const State& state, u64 dow
     fields.nameGuide = "1-7 characters the game can store";
     fields.nameEditable = trainer->nameEditable();
     fields.nameReadOnlyReason = "Japanese Gen III trainer names are read-only here";
+    // P3: native Play Time and Trainer Gender (SaveBlock2), applied to the verified export copy.
+    if (trainer->playTimeEditable()) {
+        const auto time = trainer->playTime();
+        fields.playTime = PokeVault::Integration::Common::NativePlayTime{time.hours, time.minutes, time.seconds, false};
+        fields.playTimeMaxHours = Gen3::Gen3StagedTrainerEditor::kMaxPlayedHours;
+        fields.stagePlayTime = [&](const PokeVault::Integration::Common::NativePlayTime& next, std::string& error) {
+            if (!trainer->stagePlayTime({next.hours, next.minutes, next.seconds}, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        };
+    }
+    fields.gender = trainer->gender();
+    if (trainer->genderEditable())
+        fields.stageGender = [&](uint8_t gender, std::string& error) {
+            if (!trainer->stageGender(gender, error)) return false;
+            trainerBridge.refreshStagedTrainerPresentation();
+            return true;
+        };
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             if (!trainer->stage(name, money, error)) return false;
             trainerBridge.refreshStagedTrainerPresentation();
             return true;
+        }, [&] {
+            state.review = true;
+            state.reviewScroll = 0;
+            state.reviewTouchScroll.reset();
         });
 }
 

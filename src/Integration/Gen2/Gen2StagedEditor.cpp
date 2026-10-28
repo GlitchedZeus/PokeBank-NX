@@ -2,7 +2,11 @@
 
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
+#include "Integration/Gen2/Gen2BattleStats.h"
 #include "Names/SpeciesNames.h"
+#include "Names/MoveNames.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
+#include "UI/Gen2NativePresentation.h"
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
@@ -41,6 +45,10 @@ constexpr Layout kIntlCrystal{
 
 const Layout& layoutFor(VersionFamily family) noexcept {
     return family == VersionFamily::Crystal ? kIntlCrystal : kIntlGS;
+}
+// PKHeX SAV2 / PokeList2 international native Party list, six 48-byte bodies.
+std::size_t partyStart(VersionFamily family) noexcept {
+    return family == VersionFamily::Crystal ? 0x2865 : 0x288A;
 }
 
 constexpr std::size_t kStoredBodySize = 32;
@@ -580,6 +588,74 @@ bool StagedEditor::stageMoney(uint32_t value, std::string& error) {
     return true;
 }
 
+namespace {
+// P3: the native clock and Crystal gender offsets (international layouts only; the staged editor
+// refuses Japanese saves). Same values Gen2ReadOnlySave reads.
+std::size_t playTimeOffset(VersionFamily family) noexcept {
+    return family == VersionFamily::Crystal ? 0x2052 : 0x2053;
+}
+constexpr std::size_t kCrystalGenderOffset = 0x3E3D;
+StagedEditor::PlayTime readPlayTime(std::span<const uint8_t> bytes, std::size_t at) noexcept {
+    return {static_cast<uint16_t>((bytes[at] << 8) | bytes[at + 1]), bytes[at + 2], bytes[at + 3]};
+}
+std::string playTimeLabel(const StagedEditor::PlayTime& t) {
+    const auto two = [](unsigned v) { return (v < 10 ? "0" : "") + std::to_string(v); };
+    return std::to_string(t.hours) + ":" + two(t.minutes) + ":" + two(t.seconds);
+}
+std::string genderLabel(uint8_t gender) { return gender == 0 ? "Male" : gender == 1 ? "Female" : "Unknown"; }
+} // namespace
+
+StagedEditor::PlayTime StagedEditor::playTime() const noexcept {
+    return readPlayTime(staged_, playTimeOffset(metadata_.family));
+}
+
+bool StagedEditor::playTimeEditable() const noexcept {
+    const auto original = readPlayTime(original_, playTimeOffset(metadata_.family));
+    return original.minutes <= 59 && original.seconds <= 59;
+}
+
+bool StagedEditor::stagePlayTime(PlayTime time, std::string& error) {
+    error.clear();
+    if (!playTimeEditable()) {
+        error = "This save's play time clock is not a native value; it stays read-only";
+        return false;
+    }
+    if (time.hours > kMaxPlayedHours || time.minutes > 59 || time.seconds > 59) {
+        error = "Gen II play time must be 0:00:00-999:59:59";
+        return false;
+    }
+    const std::size_t at = playTimeOffset(metadata_.family);
+    staged_[at] = static_cast<uint8_t>(time.hours >> 8);
+    staged_[at + 1] = static_cast<uint8_t>(time.hours);
+    staged_[at + 2] = time.minutes;
+    staged_[at + 3] = time.seconds;
+    setChange("play_time", "Play Time", playTimeLabel(readPlayTime(original_, at)), playTimeLabel(time));
+    return true;
+}
+
+uint8_t StagedEditor::trainerGender() const noexcept {
+    return metadata_.family == VersionFamily::Crystal ? staged_[kCrystalGenderOffset] : 0;
+}
+
+bool StagedEditor::trainerGenderEditable() const noexcept {
+    return metadata_.family == VersionFamily::Crystal && original_.size() > kCrystalGenderOffset &&
+           original_[kCrystalGenderOffset] <= 1;
+}
+
+bool StagedEditor::stageTrainerGender(uint8_t gender, std::string& error) {
+    error.clear();
+    if (!trainerGenderEditable() || gender > 1) {
+        error = metadata_.family == VersionFamily::Crystal
+            ? "This save's trainer gender byte is not a native Male / Female value"
+            : "Gold and Silver store no trainer gender";
+        return false;
+    }
+    staged_[kCrystalGenderOffset] = gender;
+    setChange("trainer_gender", "Trainer Gender", genderLabel(original_[kCrystalGenderOffset]),
+              genderLabel(gender));
+    return true;
+}
+
 uint8_t StagedEditor::itemQuantity(InventoryPocket pocket, uint8_t itemId) const noexcept {
     const auto& layout = layoutFor(metadata_.family);
     const auto offset = pocketOffset(layout, pocket);
@@ -701,11 +777,30 @@ void StagedEditor::rememberPokemonExpectation(std::size_t box, std::size_t slot,
     if (it == pokemonExpectations_.end()) pokemonExpectations_.push_back({box, slot, expected});
     else it->expected = expected;
 }
+std::optional<PokemonRecord> StagedEditor::partyPokemon(std::size_t slot,std::string& error) const {
+    const auto bytes=presentationBytes(error);
+    if(bytes.empty()) return {};
+    const auto parsed=parse(bytes,sourceGame_);
+    if(!parsed || slot>=parsed.save->party().size()) {
+        error=parsed?"Party slot is empty or out of range":parsed.detail;return {};
+    }
+    auto record=parsed.save->party()[slot];
+    record.gender=semanticGender(record);
+    return record;
+}
+bool StagedEditor::stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit& edit,std::string& error) {
+    if(packedMove_.active) {error="Place or cancel carried Pokemon before editing the Party";return false;}
+    return stageRecordEdit(true,0,slot,edit,error);
+}
 
 bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
                                        const BoxPokemonEdit& edit, std::string& error) {
+    return stageRecordEdit(false,box,slot,edit,error);
+}
+bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
+                                  const BoxPokemonEdit& edit,std::string& error) {
     error.clear();
-    auto currentOpt = boxedPokemon(box, slot, error);
+    auto currentOpt = party?partyPokemon(slot,error):boxedPokemon(box, slot, error);
     if (!currentOpt) return false;
     const PokemonRecord before = *currentOpt;
     if (before.isEgg) {
@@ -839,8 +934,8 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
         (otChanged && !encodeOTName(after.originalTrainer, otBytes, error))) return false;
 
     const auto& layout = layoutFor(metadata_.family);
-    if (!validBoxLocation(metadata_, layout, box, slot, error)) return false;
-    const std::size_t list = boxStart(layout, box);
+    if (!party && !validBoxLocation(metadata_, layout, box, slot, error)) return false;
+    const std::size_t list = party?partyStart(metadata_.family):boxStart(layout, box);
     const uint8_t count = staged_[list];
     if (slot >= count) {
         error = "cannot edit an empty Generation II box slot";
@@ -850,21 +945,30 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
     const auto expectationsBackup = pokemonExpectations_;
-    const std::size_t body = boxBodyStart(layout, box) + slot * kStoredBodySize;
+    const std::size_t body = party?list+8+slot*48:boxBodyStart(layout, box) + slot * kStoredBodySize;
+    const std::size_t otAt=party?list+8+6*48+slot*11:boxOTStart(layout,box)+slot*layout.stringLength;
+    const std::size_t nickAt=party?list+8+6*48+6*11+slot*11:boxNicknameStart(layout,box)+slot*layout.stringLength;
     writePokemonBody(staged_, body, after);
+    if(party && (before.species!=after.species || before.level!=after.level ||
+        before.dvs!=after.dvs || before.statExperience!=after.statExperience)) {
+        const auto stats=calculateBattleStats(after.species,after.level,editableDVs(after),after.statExperience).asArray();
+        const auto newHP=before.currentHP==0?0:before.currentHP>=before.maxHP?stats[0]:std::min(before.currentHP,stats[0]);
+        writeBE16(staged_,body+34,static_cast<uint16_t>(newHP));
+        for(size_t i=0;i<stats.size();++i) writeBE16(staged_,body+36+i*2,stats[i]);
+    }
     staged_[list + 1 + slot] = static_cast<uint8_t>(after.species);
     if (otChanged)
         std::copy(otBytes.begin(), otBytes.end(), staged_.begin() +
-                  static_cast<std::ptrdiff_t>(boxOTStart(layout, box) + slot * layout.stringLength));
+                  static_cast<std::ptrdiff_t>(otAt));
     if (nicknameChanged)
         std::copy(nicknameBytes.begin(), nicknameBytes.end(), staged_.begin() +
-                  static_cast<std::ptrdiff_t>(boxNicknameStart(layout, box) + slot * layout.stringLength));
-    if (!syncCurrentBoxCopy(box, error)) {
+                  static_cast<std::ptrdiff_t>(nickAt));
+    if (!party && !syncCurrentBoxCopy(box, error)) {
         staged_ = stagedBackup;
         return false;
     }
 
-    auto verified = boxedPokemon(box, slot, error);
+    auto verified = party?partyPokemon(slot,error):boxedPokemon(box, slot, error);
     if (!verified || !samePokemon(*verified, after)) {
         if (error.empty()) {
             const std::string mismatch = verified ? pokemonMismatchDetail(*verified, after)
@@ -877,12 +981,17 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
         pokemonExpectations_ = expectationsBackup;
         return false;
     }
-    rememberPokemonExpectation(box, slot, *verified);
+    if(party) {
+        const auto it=std::find_if(partyExpectations_.begin(),partyExpectations_.end(),
+            [slot](const auto& p){return p.first==slot;});
+        if(it==partyExpectations_.end()) partyExpectations_.push_back({slot,*verified});
+        else it->second=*verified;
+    } else rememberPokemonExpectation(box, slot, *verified);
 
-    const std::string prefix = "box:" + std::to_string(box) + ":" + std::to_string(slot) + ":";
-    const std::string labelPrefix = "Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) + " ";
+    const std::string prefix = party?"party:"+std::to_string(slot)+":":"box:" + std::to_string(box) + ":" + std::to_string(slot) + ":";
+    const std::string labelPrefix = party?"Party "+std::to_string(slot+1)+" ":"Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) + " ";
     if (before.species != verified->species)
-        setChange(prefix + "species", labelPrefix + "Species", std::to_string(before.species), std::to_string(verified->species));
+        setChange(prefix + "species", labelPrefix + "Species", Names::getSpeciesName(before.species), Names::getSpeciesName(verified->species));
     if (before.nickname != verified->nickname)
         setChange(prefix + "nickname", labelPrefix + "Nickname", before.nickname, verified->nickname);
     if (before.level != verified->level || before.experience != verified->experience)
@@ -892,12 +1001,21 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     if (before.heldItem != verified->heldItem)
         setChange(prefix + "held", labelPrefix + "Held Item", std::string(gen2ItemName(before.heldItem)),
                   verified->heldItem == 0 ? "NONE" : std::string(gen2ItemName(verified->heldItem)));
-    if (before.moves != verified->moves)
-        setChange(prefix + "moves", labelPrefix + "Moves", array4(before.moves), array4(verified->moves));
+    for (size_t i = 0; i < before.moves.size(); ++i)
+        if (before.moves[i] != verified->moves[i])
+            setChange(prefix + "move" + std::to_string(i), labelPrefix + "Move " + std::to_string(i + 1),
+                Names::getMoveName(before.moves[i]), Names::getMoveName(verified->moves[i]));
     if (before.pp != verified->pp || before.ppUps != verified->ppUps)
         setChange(prefix + "pp", labelPrefix + "Move PP", array4(before.pp), array4(verified->pp));
     if (editableDVs(before) != editableDVs(*verified))
         setChange(prefix + "dvs", labelPrefix + "DVs", array4(editableDVs(before)), array4(editableDVs(*verified)));
+    // Unown's letter is derived from the DVs on reparse (pokecrystal GetUnownLetter); Review names
+    // the letter the staged bytes actually produce, the same one the sprite shows.
+    if (verified->species == 201 && (before.species != 201 || before.form != verified->form)) {
+        const auto letter = [](uint8_t form) { return std::string("Unown ") + static_cast<char>('A' + (form > 25 ? 25 : form)); };
+        setChange(prefix + "unown_letter", labelPrefix + "Unown Letter",
+                  before.species == 201 ? letter(before.form) : "-", letter(verified->form));
+    }
     if (before.statExperience != verified->statExperience)
         setChange(prefix + "statexp", labelPrefix + "Stat Experience",
                   statExpText(before.statExperience), statExpText(verified->statExperience));
@@ -1151,9 +1269,35 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
         return false;
     }
     rememberPokemonExpectation(destinationBox, destinationSlot, *verified);
-    setChange("box:" + std::to_string(destinationBox) + ":" + std::to_string(destinationSlot) + ":add",
-              "Box " + std::to_string(destinationBox + 1) + " Slot " + std::to_string(destinationSlot + 1),
-              "Empty", "Added " + verified->nickname + " Lv. " + std::to_string(verified->level));
+    // Round 6 P3 (CG74): the Review of a created Pokemon lists what was created. The header row,
+    // then one named row per stored, non-default value of the VERIFIED record (an empty "before"
+    // is a new value). Gen II stores no nature, ability, ball or Secret ID.
+    namespace C = Gen12CreateReview;
+    const std::string key = "box:" + std::to_string(destinationBox) + ":" + std::to_string(destinationSlot) + ":add";
+    const std::string where = "Box " + std::to_string(destinationBox + 1) + " Slot " + std::to_string(destinationSlot + 1);
+    setChange(key, where + " / " + std::string(C::kAddPokemon), "Empty",
+              C::header(Names::getSpeciesName(verified->species), verified->level));
+    const auto detail = [&](const char* field, const std::string& value) {
+        if (!value.empty()) setChange(key + ":" + field, where + " / " + field, "", value);
+    };
+    const BoxPokemonCreate defaults{};
+    detail("Moves", C::moves(verified->moves, Names::getMoveName));
+    if (verified->heldItem) detail("Held Item", itemLabel(verified->heldItem));
+    detail("OT / TID", C::trainer(verified->originalTrainer, verified->trainerId));
+    const std::array<uint8_t, 4> dvs{verified->dvs[1], verified->dvs[2], verified->dvs[3], verified->dvs[4]};
+    detail("DVs", C::nonZero(std::array<const char*, 4>{"Atk", "Def", "Spe", "Spc"}, dvs));
+    if (isShinyDVs(dvs)) detail("Shiny", "Yes");
+    detail("Stat Exp", C::nonZero(std::array<const char*, 5>{"HP", "Atk", "Def", "Spe", "Spc"},
+                                  verified->statExperience));
+    if (verified->friendship != defaults.friendship) detail("Friendship", std::to_string(verified->friendship));
+    if (verified->pokerus != defaults.pokerus) detail("Pokérus", PokeBank::UIModel::Gen2Native::pokerusText(verified->pokerus));
+    // Crystal alone stores caught data (Gen2NativePresentation.h: PKHeX PK2 / pret SetCaughtData).
+    const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
+    if (sourceGame_ == SourceGame::Crystal && caught.present) {
+        detail("OT Gender", PokeBank::UIModel::Gen2Native::crystalOriginalTrainerGenderText(caught));
+        detail("Met", std::string(PokeBank::UIModel::Gen2Native::crystalCaughtLocationName(caught.location)) + ", " +
+                          PokeBank::UIModel::Gen2Native::crystalCaughtLevelText(caught));
+    }
     return true;
 }
 
@@ -1163,6 +1307,14 @@ void StagedEditor::discard() noexcept {
     money_ = originalMoney_;
     changes_.clear();
     pokemonExpectations_.clear();
+    partyExpectations_.clear();
+}
+
+std::vector<uint8_t> StagedEditor::presentationBytes(std::string& error) const {
+    error.clear();
+    std::vector<uint8_t> result = staged_;
+    if (!repairForStrictReload(result, metadata_, error)) return {};
+    return result;
 }
 
 std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
@@ -1192,6 +1344,18 @@ std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
         error = "final staged Gen II export did not round-trip trainer fields";
         return {};
     }
+    // P3: the staged clock and Crystal gender must read back exactly through the strict parser.
+    const auto clock = playTime();
+    const auto& parsedClock = reparsed.save->trainer().playTime;
+    if (playTimeEditable() && (!parsedClock || parsedClock->hours != clock.hours ||
+                               parsedClock->minutes != clock.minutes || parsedClock->seconds != clock.seconds)) {
+        error = "final staged Gen II export did not round-trip play time";
+        return {};
+    }
+    if (trainerGenderEditable() && reparsed.save->trainer().gender != trainerGender()) {
+        error = "final staged Gen II export did not round-trip trainer gender";
+        return {};
+    }
     for (const auto& expectation : pokemonExpectations_) {
         if (expectation.box >= reparsed.save->boxes().size() ||
             expectation.slot >= reparsed.save->boxes()[expectation.box].slots.size() ||
@@ -1201,6 +1365,12 @@ std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
             return {};
         }
     }
+    for(const auto& [slot,expected]:partyExpectations_)
+        if(slot>=reparsed.save->party().size() ||
+            reparsed.save->party()[slot].rawBody!=expected.rawBody ||
+            !samePokemon(reparsed.save->party()[slot],expected)) {
+            error="final staged Gen II Party edit did not round-trip";return {};
+        }
     if (result.size() != original_.size()) {
         error = "final staged Gen II export changed save size";
         return {};

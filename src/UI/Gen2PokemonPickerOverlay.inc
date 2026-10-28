@@ -19,6 +19,7 @@ namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 struct PickerOverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     Gen2Picker::Model model;
     TouchScrollState scroll;
     TouchScrollState moveScroll;
@@ -35,9 +36,9 @@ constexpr auto gen2SpeciesName = [](uint16_t species) { return std::string(Names
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
     static PickerOverlayState picker;
-    if (picker.owner != &screen) {
+    if ((picker.owner != &screen || picker.ownerSerial != screen.instanceSerial)) {
         picker = {};
-        picker.owner = &screen;
+        picker.owner = &screen; picker.ownerSerial = screen.instanceSerial;
     }
     return picker;
 }
@@ -156,7 +157,10 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     auto& overlay = pickerStateFor(screen);
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedPopupDismiss::publish(modal.x, modal.y, modal.width, modal.height);   // 7D
         SharedSpeciesPicker::refilter(overlay.speciesChooser, 251, gen2SpeciesAvailable, gen2SpeciesName);
+        const int unownForm = Gen2Picker::previewUnownForm(
+            state, model.previewShiny, screen.sourceGameId);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
@@ -164,8 +168,13 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
                 return std::string(prefix) + Names::getSpeciesName(species);
             },
-            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
-            &latestTouchGesture(), true, {0xFF, 0xFF}, &overlay.speciesChooser);
+            [unownForm](uint16_t species) {
+                std::string name = Names::getSpeciesName(species);
+                if (species == 201 && unownForm >= 0 && unownForm < 26)
+                    name += " " + std::string(1, static_cast<char>('A' + unownForm));
+                return SharedSpeciesPicker::selectedTitle(species, name);
+            },
+            &latestTouchGesture(), true, {0xFF, 0xFF}, &overlay.speciesChooser, unownForm);
         // Touch ids stay 2000 + species; the chooser publishes the rows it actually drew.
         for (int i = 0; i < overlay.speciesChooser.rowCount; ++i) {
             const auto& row = overlay.speciesChooser.rows[static_cast<std::size_t>(i)];
@@ -183,6 +192,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         const auto g = Gen2Picker::locationPickerGeometry(count, fb.getWidth(), fb.getHeight());
         fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
         drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18);
+        SharedPopupDismiss::publish(g.x, g.y, g.width, g.height);   // 7D
         fb.drawText(g.x + 24, g.y + 18, "Met Location", Colors::Text, TextStyle::Heading);
         fb.drawText(g.x + 24, g.y + 52, "Where this Pokémon was caught in Crystal",
                     Colors::TextDim, TextStyle::Caption);
@@ -215,6 +225,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
+    SharedPopupDismiss::publish(x, y, panelW, panelH);   // 7D
 
     const bool species = model.kind == Gen2Picker::Kind::Species;
     fb.drawText(x + 24, y + 18, species ? "Species — Generation II" : "Move — Generation II",

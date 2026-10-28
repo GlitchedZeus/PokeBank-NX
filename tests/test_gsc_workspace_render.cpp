@@ -1,6 +1,8 @@
 #include <iterator>
 #include <fstream>
 #include "UI/Gen2WorkspacePresentation.h"
+#include "UI/NatureStatPresentation.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
 #include <algorithm>
@@ -12,6 +14,7 @@ namespace {
 struct Text { int x, y, w, h; std::string value; UI::Color color; };
 std::vector<Text> texts;
 std::vector<std::pair<uint16_t, bool>> sprites;
+std::vector<uint8_t> spriteForms;
 // The native framebuffer clips extra rows for smooth touch scrolling. The
 // renderer test double must record only visible pixels, not every drawText call.
 bool clipActive = false;
@@ -21,7 +24,8 @@ bool intersects(const Text& a, const Text& b) {
 }
 }
 namespace UI {
-PKSEFramebuffer::PKSEFramebuffer() = default;
+const TouchGestureSnapshot& latestTouchGesture() noexcept {static const TouchGestureSnapshot value{};return value;}
+PKSEFramebuffer::PKSEFramebuffer() : width(1280),height(720) {}
 PKSEFramebuffer::~PKSEFramebuffer() = default;
 void PKSEFramebuffer::measureText(const std::string& s, int& w, int& h, TextStyle) { w = s.size()*9; h = 18; }
 void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyle style) {
@@ -38,6 +42,11 @@ void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyl
 }
 void PKSEFramebuffer::drawText(int x,int y,const char* s,Color c,TextStyle style) { drawText(x,y,std::string(s),c,style); }
 void PKSEFramebuffer::drawFilledRect(int,int,int,int,Color) {}
+void PKSEFramebuffer::drawSoftShadow(int,int,int,int,int) {}
+void PKSEFramebuffer::drawHDivider(int,int,int) {}
+void PKSEFramebuffer::popTransform() {}
+void PKSEFramebuffer::drawSymbol(int x,int y,const std::string& s,Color c,TextStyle style) {drawText(x,y,s,c,style);}
+int PKSEFramebuffer::lineHeight(TextStyle) const {return 18;}
 void PKSEFramebuffer::drawFilledCircle(int,int,int,Color) {}
 void PKSEFramebuffer::drawFilledRoundedRect(int,int,int,int,int,Color) {}
 void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
@@ -50,6 +59,9 @@ void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
+Sprite* SpriteManager::getSprite(uint16_t species, uint8_t form, bool shiny) {
+    sprites.emplace_back(species,shiny); spriteForms.push_back(form); return nullptr;
+}
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 // Shared Gen II held-item picker optionally renders matching ROMFS artwork.
 // This isolated render host test deliberately has no image/assets backend.
@@ -57,9 +69,64 @@ Sprite* SpriteManager::getItemSprite(const std::string&) { return nullptr; }
 // The shared species chooser (SharedSpeciesPicker::drawContent) previews the box icon; no
 // assets backend here either, so the chooser draws its text-only fallback.
 Sprite* SpriteManager::getIconSprite(uint16_t, bool) { return nullptr; }
+Sprite* SpriteManager::getIconSprite(uint16_t, uint8_t, bool) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    for(int rowCount=1;rowCount<=20;++rowCount) {
+        std::vector<std::pair<std::string,std::string>> rows;
+        for(int i=0;i<rowCount;++i)rows.push_back({"Native field "+std::to_string(i),
+            i==0?"A deliberately long stored value that must stay inside its own column without overlapping the next column":
+            "Native value "+std::to_string(i)});
+        std::vector<int> touchButtons{1,2,3};texts.clear();
+        UI::SharedEditorChrome::drawOriginLegalityPanel(fb,touchButtons,rows,P::LegalityState::NotChecked);
+        assert(touchButtons.empty());
+        assert(UI::g_navHits.size()==1); // Only the visible B Back footer remains.
+        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value=="Not checked";}));
+        for(size_t i=0;i<texts.size();++i) {
+            const auto& t=texts[i];
+            assert(t.x>=0 && t.y>=0 && t.x+t.w<=1280 && t.y+t.h<=720);
+            for(size_t j=i+1;j<texts.size();++j)assert(!intersects(t,texts[j]));
+        }
+    }
+    for(size_t count=0;count<=20;++count) {
+        PokeBank::UIModel::SharedReview::Rows rows;
+        for(size_t i=0;i<count;++i)rows.push_back({"Box 1 / Slot "+std::to_string(i+1),"Move 1: Thunder Shock -> Thunderbolt"});
+        for(size_t page=0;page<PokeBank::UIModel::SharedReview::pages(count);++page) {
+            std::vector<int> touchButtons{1,2};texts.clear();
+            UI::SharedEditorChrome::drawReviewPanel(fb,touchButtons,rows,page,count!=0,"Generation V");
+            assert(touchButtons.empty() && UI::g_navHits.size()==(count?3u:1u));
+            for(size_t i=0;i<texts.size();++i) {
+                const auto& t=texts[i];assert(t.x>=0 && t.y>=0 && t.x+t.w<=1280 && t.y+t.h<=720);
+                for(size_t j=i+1;j<texts.size();++j)assert(!intersects(t,texts[j]));
+            }
+            const size_t visible=std::count_if(texts.begin(),texts.end(),[](const Text& t){return t.value=="Move 1: Thunder Shock -> Thunderbolt";});
+            assert(visible==std::min(size_t{4},count-page*4));
+        }
+    }
+    texts.clear();
+    UI::SharedPokemonShell::drawPortrait(fb,0,0,201,true,23);
+    assert(sprites.back() == std::make_pair(uint16_t{201},true) && spriteForms.back() == 23);
+    UI::SharedPokemonShell::drawPortrait(fb,0,0,25,false);
+    assert(spriteForms.back() == 0);
+    sprites.clear(); spriteForms.clear(); texts.clear();
+    const auto sameColor = [](UI::Color a, UI::Color b) {
+        return a.r==b.r && a.g==b.g && a.b==b.b && a.a==b.a;
+    };
+    for (unsigned nature=0;nature<25;++nature) {
+        texts.clear();
+        UI::NatureStats::drawEffect(fb,0,0,nature);
+        if (PokeBank::UIModel::NatureStatEffect::neutral(nature)) {
+            assert(texts.size()==1 && texts[0].value.find("Neutral")!=std::string::npos);
+        } else {
+            assert(texts.size()==2 && texts[0].value.starts_with("+10%") && texts[1].value.starts_with("-10%"));
+            assert(sameColor(texts[0].color,UI::Colors::Success) && sameColor(texts[1].color,UI::Colors::Error));
+            assert(!intersects(texts[0],texts[1]));
+        }
+        assert(sameColor(UI::NatureStats::statColor(nature,0,UI::Colors::TextDim),UI::Colors::TextDim));
+    }
+    texts.clear();
     namespace G = PokeVault::Integration::Gen2;
     namespace W = PokeBank::UIModel::Gen2Workspace;
     G::PokemonRecord p{};
@@ -74,12 +141,13 @@ int main() {
                     p.caughtData = static_cast<uint16_t>(0xFFFF & (0xFF80 | location));
                     texts.clear();
                     UI::Gen2WorkspacePresentation::drawDataAndGraph(fb, 0, 0, 438, 260, p, game);
+                    // Round 7 (owner E03 wording): the pane is the shared "Origin & Legality" pane.
                     const auto gen2TitleCount = std::count_if(texts.begin(), texts.end(), [](const Text& t) {
-                        return t.value == "GEN II DATA";
+                        return t.value == PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading;
                     });
                     assert(gen2TitleCount == 1);
                     assert(std::none_of(texts.begin(), texts.end(), [](const Text& t) {
-                        return t.value == "GEN I DATA";
+                        return t.value == "GEN I DATA" || t.value == "GEN II DATA";
                     }));
                     for (std::size_t i = 0; i < texts.size(); ++i) {
                         const auto& t = texts[i];
@@ -88,7 +156,7 @@ int main() {
                             assert(false);
                         }
                         for (std::size_t j=i+1;j<texts.size();++j) assert(!intersects(t,texts[j]));
-                        // Phase 9: text in the GEN II DATA pane (x 12..210) stays inside it and
+                        // Phase 9: text in the Gen II Origin & Legality pane (x 12..210) stays inside it and
                         // never reaches the BATTLE STATS pane that starts at x 220.
                         if (t.x < 12 + 198) {
                             if (t.x + t.w > 12 + 198 - 10) {

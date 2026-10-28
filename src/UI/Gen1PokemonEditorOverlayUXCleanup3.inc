@@ -7,8 +7,11 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/Gen1SpeciesChangeMoves.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
+#include "UI/SharedReviewTouch.h"
+#include "UI/Gen1ReviewRows.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen13PickerPaging.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
@@ -26,6 +29,7 @@ using PokeVault::Integration::Gen1::ShinyDVs;
 
 struct UX3State {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     PokeBank::UIModel::ControllerNavigation navigation;
     bool pickerPreviewShiny = false;
@@ -35,9 +39,9 @@ struct UX3State {
 
 UX3State& ux3StateFor(const TrainerViewScreen& screen) {
     static UX3State state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -175,6 +179,14 @@ void ux3OpenSpeciesPicker(TrainerViewScreen& screen, uint16_t current, bool shin
 constexpr auto ux3SpeciesAvailable = [](uint16_t) { return true; };
 constexpr auto ux3SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
+// R2-BUG-004: a real species change replaces all four moves with the new species' native
+// Gen I default moveset at the draft level (base moves + evos_moves, pret WriteMonMoves; Yellow
+// has its own table), base PP and no PP Ups. The old species' moves are never kept.
+PokeBank::UIModel::SpeciesMoveDefaults::Slots ux3SpeciesChangeMoves(TrainerViewScreen& screen,
+                                                                   uint16_t species, uint8_t level) {
+    return PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), species, level);
+}
+
 bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
@@ -185,9 +197,12 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
             state.draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
             state.draft.experience.reset();
+            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(
+                ux3SpeciesChangeMoves(screen, species, state.draft.level),
+                state.draft.moves, state.draft.pp, state.draft.ppUps);
         }
         state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
-        state.draft.species = species; // Moves stay intact and are revalidated visibly below.
+        state.draft.species = species;
         if (beforeShiny != ux3.pickerPreviewShiny)
             ux3SetDraftShiny(screen, ux3.pickerPreviewShiny);
         state.picker = UX2Picker::None;
@@ -202,9 +217,12 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         const bool beforeShiny = ShinyDVs::isShiny(oldDVs);
         BoxPokemonEdit edit;
         edit.species = species;
-        if (species != pokemon->species)
+        if (species != pokemon->species) {
             edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
+                ux3SpeciesChangeMoves(screen, species, *edit.level), edit);
+        }
         const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
         if (nickname != pokemon->nickname) edit.nickname = nickname;
         if (beforeShiny != ux3.pickerPreviewShiny) {
@@ -418,7 +436,7 @@ std::string ux3MainRowValue(TrainerViewScreen& screen, int row, bool add, const 
     auto* e = editor(screen);
     if (!e) return {};
     const auto& d = state.draft;
-    if (row == 0) return speciesCompact(add ? d.species : p->species);
+    if (row == 0) return speciesHeading(add ? d.species : p->species);
     if (row == 1) return add ? (d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname) : p->nickname;
     if (row == 2) return add ? ("Lv " + std::to_string(d.level) + " • EXP " + std::to_string(draftExperience(d)))
                               : ("Lv " + std::to_string(p->level) + " • EXP " + std::to_string(p->experience));
@@ -480,7 +498,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawSpriteStaticContained(leftX + 45, contentY + 18, 210, 190,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(leftX + 80, contentY + 105, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftX + 18, contentY + 220, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(leftX + 18, contentY + 220, speciesHeading(species), Colors::Text, TextStyle::Heading);
     const std::string nickname = add
         ? (state.draft.nickname.empty() ? std::string(Names::getSpeciesName(species)) : state.draft.nickname)
         : pokemon->nickname;
@@ -524,7 +542,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(rightX + rightW - 96, contentY + 54, badMove ? "Needs attention" : "OK",
                 badMove ? Colors::Warning : Colors::Accent, TextStyle::Caption);
     fb.drawText(rightX + 18, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 108, contentY + 80, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(rightX + rightW - 108, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
     fb.drawHDivider(rightX + 16, contentY + 116, rightW - 32);
     fb.drawText(rightX + 18, contentY + 132, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
     ux2DrawRadar(fb, rightX + rightW / 2, contentY + 250, 88, stats);
@@ -547,11 +565,12 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     if (speciesPicker) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedPopupDismiss::publish(modal.x, modal.y, modal.width, modal.height);   // 7D
         SharedSpeciesPicker::refilter(state.speciesChooser, 151, ux3SpeciesAvailable, ux3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
-            [](uint16_t species) { return speciesCompact(species); },
+            [](uint16_t species) { return SharedSpeciesPicker::selectedTitle(species, Names::getSpeciesName(species)); },
             &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
         // Touch ids stay 3000 + species; the chooser publishes the rows it actually drew.
         for (int i = 0; i < state.speciesChooser.rowCount; ++i) {
@@ -563,6 +582,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     ux2DrawPanel(fb, x, y, w, h);
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
     fb.drawText(x + 24, y + 18, "Move \xE2\x80\x94 Generation I", Colors::Text, TextStyle::Heading);
 
     const auto choices = ux3MoveChoices(screen);
@@ -644,34 +664,13 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
     }
 }
 
-void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto& state = ux2StateFor(screen);
-    const auto lines = ux3PendingLines(screen);
-    fb.drawText(x + 24, y + 18, "Generation I Pending Changes", Colors::Text, TextStyle::Heading);
-    if (lines.empty()) {
-        fb.drawText(x + 28, y + 82, "No staged changes.", Colors::TextDim);
-        return;
-    }
-    const int visible = std::max(1, std::min(UX3Contract::pendingGeometry(lines.size()).visibleRows,
-                                             static_cast<int>(lines.size())));
-    const int count = static_cast<int>(lines.size());
-    state.reviewViewport.ensure(state.reviewRow, count, visible);
-    const int start = state.reviewViewport.firstRow;
-    const int drawFirst = std::max(0, start - 1);
-    const int drawLast = std::min(count, start + visible + 1);
-    const int listTop = y + 64;
-    const int liveOffset = state.reviewScroll.offset();
-    fb.setClipRect(x + 24, listTop, w - 48, h - 108);
-    for (int row = drawFirst; row < drawLast; ++row) {
-        const int rowY = y + 70 + (row - start) * 48 + liveOffset;
-        ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
-                          lines[static_cast<size_t>(row)], row == state.reviewRow);
-        if (rowY + 44 > listTop && rowY < listTop + h - 108)
-            appendClippedTouchButton(screen.touchButtons, 1300 + row,
-                x + 24, rowY, w - 48, 44,
-                x + 24, listTop, w - 48, h - 108);
-    }
-    fb.clearClip();
+void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, int, int) {
+    auto& state=ux2StateFor(screen);
+    const auto rows=PokeBank::UIModel::Gen1ReviewRows::fromChangeLines(ux3PendingLines(screen));
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,
+        static_cast<size_t>(state.reviewRow),hasPending(screen),"Generation I");
+    if(state.reviewDiscard.confirming)
+        SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
 }
 
 void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -721,7 +720,7 @@ std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state
         case UX2Mode::StatExpEditor: return "D-pad/Stick: Navigate | A: Edit / Apply | B: Cancel";
         case UX2Mode::CloneDestination: return "D-pad/Stick: Slot | L/R: Box | A: Stage Clone | B: Cancel";
         case UX2Mode::RemoveConfirm: return "A: Confirm Remove | B: Cancel";
-        case UX2Mode::Review: return "D-pad/Stick: Navigate | A: Export Copy | Y: Discard Staged | B: Back";
+        case UX2Mode::Review: return "L/R: Review Pages | X: Export Copy | Y: Discard All | B: Back";
         case UX2Mode::Provenance: return "B: Back";
         case UX2Mode::Closed: break;
     }
@@ -744,9 +743,9 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::View:
         case UX2Mode::Provenance: drawNavBar(fb, {{"B", "Back"}}); return;
         case UX2Mode::Edit:
-            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"B", "Exit"}}); return;
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"+", "Review"}, {"B", "Exit"}}); return;
         case UX2Mode::AddDraft:
-            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}}); return;
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}}); return;
         case UX2Mode::Actions:
             UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); return; // Browse, A Select, B Cancel
         case UX2Mode::LevelExpEditor:
@@ -759,10 +758,10 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::RemoveConfirm:
             drawNavBar(fb, {{"A", "Confirm Remove"}, {"B", "Cancel"}}); return;
         case UX2Mode::Review:
-            if (state.reviewDiscard.confirming) {
-                drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Discard"}}); return;
-            }
-            drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Copy"}, {"Y", "Discard Staged"}, {"B", "Back"}}); return;
+            // The shared Review panel and its Discard All confirmation draw their own footers
+            // (L/R pages, X Export Copy, Y Discard All, B Back / Y Discard All, B Keep Changes).
+            // Painting a second, older footer over them would show A as Export Copy.
+            return;
         case UX2Mode::Closed: return;
     }
 }
@@ -872,7 +871,8 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
     } else if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
-        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
+        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen),
+                                                boxMoveAvailable(screen));
         // A finger-down may become a swipe; only its completed tap can
         // change the active command or synthesize A.
         const int row = selectedId(1000, static_cast<int>(actions.count), tapped);
@@ -895,31 +895,13 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         // The discard confirmation is modal; only its nav-bar B/Y act.
         state.reviewScroll.stop();
     } else if (state.mode == UX2Mode::Review) {
-        const auto lines = ux3PendingLines(screen);
-        const int count = static_cast<int>(lines.size());
-        // Touching a row can focus it on a clean release. Scrolling the
-        // pending list must never navigate the semantic review cursor.
-        const int row = selectedId(1300, count, tapped);
-        if (row >= 0) state.reviewRow = row;
-        if (count > 0) {
-            const auto geometry = UX3Contract::pendingGeometry(lines.size());
-            const int visible = std::max(1, std::min(geometry.visibleRows, count));
-            state.reviewViewport.ensure(state.reviewRow, count, visible);
-            const int rx = (1280 - geometry.width) / 2;
-            const int ry = (672 - geometry.height) / 2;
-            const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
-            if (maxFirst > 0)
-                state.reviewScroll.updateVertical(
-                    touch, rx + 24, ry + 64, geometry.width - 48,
-                    geometry.height - 108, 48, state.reviewViewport.firstRow,
-                    maxFirst + 1);
-            else
-                state.reviewScroll.stop();
-        } else {
-            state.reviewScroll.stop();
-        }
-        if (down & (HidNpadButton_Up | HidNpadButton_Down))
-            state.reviewScroll.stop();
+        // Round 5: the shared paged Review. Rows are informational (a tap selects nothing); a
+        // completed vertical swipe on the panel turns one page, like L/R and Gen II's Review.
+        const int page = PokeBank::UIModel::SharedReviewTouch::swipePage(
+            touch.justReleased(), touch.dragged(), touch.startX(), touch.startY(), touch.x(), touch.y());
+        if (page != 0)
+            state.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(
+                static_cast<size_t>(std::max(0, state.reviewRow)), page, ux3PendingLines(screen).size()));
     }
     return down;
 }
@@ -956,17 +938,16 @@ void ux3HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
-    const bool reviewNavigation = state.mode == UX2Mode::Review &&
-        (down & (HidNpadButton_Up | HidNpadButton_Down));
+    const bool reviewNavigation=state.mode==UX2Mode::Review &&
+        (down&(HidNpadButton_Up|HidNpadButton_Down|HidNpadButton_Left|HidNpadButton_Right|HidNpadButton_L|HidNpadButton_R));
+    const int previousReviewPage=state.reviewRow;
     const bool manualDVApply = state.mode == UX2Mode::DVEditor && state.subRow == 5 && (down & HidNpadButton_A);
     ux2HandleActiveInput(screen, down);
-    if (reviewNavigation && state.mode == UX2Mode::Review) {
-        const auto lines = ux3PendingLines(screen);
-        const auto geometry = UX3Contract::pendingGeometry(lines.size());
-        const int count = static_cast<int>(lines.size());
-        const int visible = std::max(1, std::min(geometry.visibleRows, std::max(1, count)));
+    if(reviewNavigation && state.mode==UX2Mode::Review) {
+        const auto rows=ux3PendingLines(screen);
+        const int direction=down&(HidNpadButton_Up|HidNpadButton_Left|HidNpadButton_L)?-1:1;
+        state.reviewRow=static_cast<int>(PokeBank::UIModel::SharedReview::move(previousReviewPage,direction,rows.size()));
         state.reviewScroll.stop();
-        state.reviewViewport.reveal(state.reviewRow, count, visible);
     }
     if (manualDVApply) {
         auto& ux3 = ux3StateFor(screen);
@@ -1000,6 +981,16 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
 
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
                    const TouchInput& touch) {
+    // 7D: a completed tap outside the species / move picker closes it like B; returning here
+    // keeps the tap from reaching the editor underneath.
+    if (isGen1SourceUX(screen) && ux2StateFor(screen).picker != UX2Picker::None &&
+        SharedPopupDismiss::tappedOutside(touch)) {
+        auto& state = ux2StateFor(screen);
+        state.pickerScroll.reset();
+        state.pickerViewport.reset();
+        state.picker = UX2Picker::None;
+        return true;
+    }
     uint64_t input = ux3DirectTouchInput(screen, down, touch);
     // Touch and A must reach the same native staged Pokémon menu. The legacy
     // box handler otherwise opens the old generic action sheet when the finger
@@ -1035,6 +1026,10 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
+    if (state.mode == UX2Mode::Review) {
+        ux3DrawReview(screen,fb,0,0,0,0);
+        return; // Shared panel owns its footer and top touch layer.
+    }
     screen.touchButtons.clear();
     int x = 0, y = 0, w = 0, h = 0;
     ux3DialogGeometry(screen, x, y, w, h);
@@ -1061,25 +1056,6 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         case UX2Mode::View:
         case UX2Mode::Closed: break;
     }
-    if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
-        // Second step of Discard Staged, drawn over the review list; nothing changes until Y.
-        screen.touchButtons.clear();
-        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
-        constexpr int cw = 760, ch = 240;
-        constexpr int cx = (1280 - cw) / 2;
-        constexpr int cy = (672 - ch) / 2;
-        ux2DrawPanel(fb, cx, cy, cw, ch);
-        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
-                    Colors::Text, TextStyle::Heading);
-        fb.drawText(cx + 34, cy + 96,
-                    std::to_string(ux3PendingLines(screen).size()) +
-                        " pending Generation I change(s), Pokemon and Bag, are lost.",
-                    Colors::Text, TextStyle::Body);
-        fb.drawText(cx + 34, cy + 140,
-                    "Export Copy first to keep them. The original .srm is never written.",
-                    Colors::TextDim, TextStyle::Caption);
-    }
-
     if (state.picker != UX2Picker::None) {
         const int pw = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
         const int ph = 520;

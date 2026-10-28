@@ -98,10 +98,10 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version, bool
     assert(G::gen5BagItemInPocket(family, 1, 627) == b2w2);
     assert(!G::gen5BagItemInPocket(family, 0, 17));       // Potion is Medicine
     assert(!G::gen5BagItemAddable(family, 0, 5));         // Safari Ball unreleased
-    assert(!G::gen5BagItemAddable(family, 1, key));       // story items never added
-    assert(!G::gen5BagItemAddable(family, 2, 328));
+    assert(G::gen5BagItemAddable(family, 1, key));        // warning belongs to the UI
+    assert(G::gen5BagItemAddable(family, 2, 328));
     assert(G::gen5BagItemAddable(family, 3, 591));
-    assert(!G::gen5BagChoices(family, 0).empty() && G::gen5BagChoices(family, 1).empty());
+    assert(!G::gen5BagChoices(family, 0).empty() && !G::gen5BagChoices(family, 1).empty());
 
     G::Gen5StagedPokemonWorkspace ws(*parsed);
     auto* staged = ws.stagedBag(&error);
@@ -113,15 +113,21 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version, bool
     assert(!staged->setQuantity(1, 0, 2, &error));        // Key Item max 1
     assert(!staged->setQuantity(0, 9, 5, &error));        // missing row
     assert(!staged->setQuantity(7, 0, 5, &error));        // missing pocket
-    assert(!staged->remove(1, 0, &error));                // story item
-    assert(!staged->remove(2, 0, &error));
+    assert(!staged->add(1, key, 1, &error));              // unique duplicate
+    assert(!staged->add(2, 328, 1, &error));
+    assert(!staged->add(1, 447, 2, &error));
+    assert(!staged->add(2, 618, 2, &error));
     assert(!staged->add(0, 4, 1, &error));                // duplicate stack
     assert(!staged->add(0, 17, 1, &error));               // wrong pocket
     assert(!staged->add(0, 5, 1, &error));                // unreleased
     assert(!staged->add(3, 17, 1000, &error));
     assert(!staged->dirty());
 
-    // Accepted edits.
+    // Accepted edits, including unique Key Item and reusable-machine ownership.
+    assert(staged->remove(1, 0, &error));
+    assert(staged->add(1, 447, 1, &error));
+    assert(staged->remove(2, 0, &error));
+    assert(staged->add(2, 618, 1, &error));
     assert(staged->setQuantity(0, 0, 99, &error) && error.empty());
     assert(staged->remove(3, 0, &error));
     assert(staged->add(4, 150, 7, &error));
@@ -157,6 +163,8 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version, bool
     assert(reopened);
     const auto exportedBag = G::decodeBag5(*reopened);
     assert(exportedBag && (*exportedBag)[0][0].count == 99 && (*exportedBag)[4].size() == 2);
+    assert((*exportedBag)[1].size() == 1 && (*exportedBag)[1][0].itemId == 447 && (*exportedBag)[1][0].count == 1);
+    assert((*exportedBag)[2].size() == 1 && (*exportedBag)[2][0].itemId == 618 && (*exportedBag)[2][0].count == 1);
     assert(reopened->partyCount() == 1);
     // A stale observed source is refused.
     auto stale = input;

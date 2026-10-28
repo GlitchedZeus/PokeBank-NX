@@ -1,3 +1,5 @@
+#include "Integration/Gen3/Gen3HeldItems.h"
+#include "UI/Gen3SharedPokemonSession.h"
 #include "Integration/Gen3/Gen3ExportTransaction.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
 #include <filesystem>
@@ -10,6 +12,11 @@
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Names/PokemonNames.h"
+#include "Names/ItemNames.h"
+#include "Names/MoveNames.h"
+#include "Enums/Ball.h"
+#include "Names/LocationDisplayNames.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -116,6 +123,16 @@ LogicalSectors makeLogical(Family family, SourceGame game) {
     write16(logical[0], 0x0A, 12345);
     write16(logical[0], 0x0C, 54321);
 
+    // Pinned PKHeX SaveBlock3LargeRS/E/FRLG badge flags (not an assumed
+    // byte at the start of the event array). These straddle logical chunks.
+    const size_t flags=family==Family::FRLG?0xee0:family==Family::Emerald?0x1270:0x1220;
+    const unsigned firstBadge=family==Family::FRLG?0x820:family==Family::Emerald?0x867:0x807;
+    for(unsigned i=0;i<8;++i)if((0xa5u>>i)&1u) {
+        const auto position=flags+(firstBadge+i)/8;
+        logical[1+position/Detail::kSectorDataSize][position%Detail::kSectorDataSize]|=
+            static_cast<uint8_t>(1u<<((firstBadge+i)%8));
+    }
+
     const auto mon = samplePokemon(game);
     const std::size_t logicalOffset = 4;
     for (std::size_t i = 0; i < mon.size(); ++i) {
@@ -153,6 +170,80 @@ std::vector<uint8_t> fixture(Family family, SourceGame game) {
 }
 
 void runGame(SourceGame game, Family family) {
+    { // Real 100-byte Party records in the selected rotating slot, for all five titles.
+        auto source=fixture(family,game);
+        const auto selected=Detail::validateSlot(source,1);assert(selected.valid);
+        const auto sector=selected.logicalSectorOffsets[1];
+        const auto body=sector+Detail::partyDataOffset(game);
+        source[sector+Detail::partyCountOffset(game)]=1;
+        const auto boxed=samplePokemon(game);
+        std::copy(boxed.begin(),boxed.end(),source.begin()+body);
+        Pokemon::Pokemon3FRLG native(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(source.data()+body),100));
+        native.recalculateStats();native.setStatHPCurrent(native.statHPMax()-7);
+        auto* encoded=Encryption::encryptArray3FRLG(native.getData());
+        std::memcpy(source.data()+body,encoded,100);delete[] encoded;
+        source[body+0x50]=8;source[body+0x55]=0xA5; // status and mail id
+        write16(source,sector+0xFF6,Detail::sectorChecksum(std::span<const uint8_t>(source).subspan(sector,Detail::kChunkLengths[1])));
+        const auto immutable=source;
+        std::string error;auto editor=StagedPokemonEditor::create(source,game,error);assert(editor);
+        const auto before=editor->partyPokemon(0,error);assert(before);
+        {
+            auto reviewed=StagedPokemonEditor::create(source,game,error);assert(reviewed);
+            BoxPokemonEdit request;request.nature=static_cast<uint8_t>((before->nature+1)%25);
+            request.language=3;request.ball=2;request.metLocation=2;request.metLevel=19;
+            request.friendship=99;request.pokerus=0x13;request.otName="WILL";
+            assert(reviewed->stagePartyPokemonEdit(0,request,error));
+            const auto expectedLocation=Names::getMetLocationDisplayName(before->originGame,2);
+            size_t named=0;
+            for(const auto& row:reviewed->pendingChanges()) {
+                assert(row.beforeValue!=row.afterValue && row.party);
+                assert(row.label.find("Pokemon edit")==std::string::npos);
+                if(row.label=="Party 1 Nature") {assert(row.afterValue==Names::getNatureName(*request.nature));++named;}
+                if(row.label=="Party 1 Language") {assert(row.afterValue=="French");++named;}
+                if(row.label=="Party 1 Ball") {assert(row.afterValue=="Ultra Ball");++named;}
+                if(row.label=="Party 1 Met Location") {assert(row.afterValue==expectedLocation);++named;}
+                if(row.label=="Party 1 OT Name") {assert(row.afterValue=="WILL");++named;}
+                if(row.label=="Party 1 Pokérus") {assert(row.afterValue.find("Infected")!=std::string::npos);++named;}
+            }
+            assert(named==6 && reviewed->originalBytes()==immutable && source==immutable);
+        }
+        {
+            auto unusual=source;unusual[body+0x54]=77;
+            unusual[body+0x56]=3;unusual[body+0x57]=0;
+            unusual[body+0x58]=0;unusual[body+0x59]=0;
+            write16(unusual,sector+0xFF6,Detail::sectorChecksum(std::span<const uint8_t>(unusual).subspan(sector,Detail::kChunkLengths[1])));
+            auto metadataOnly=StagedPokemonEditor::create(unusual,game,error);assert(metadataOnly);
+            BoxPokemonEdit friendship;friendship.friendship=99;
+            assert(metadataOnly->stagePartyPokemonEdit(0,friendship,error));
+            const auto bytes=metadataOnly->finalizedBytes(error);assert(!bytes.empty());
+            assert(std::equal(unusual.begin()+body+80,unusual.begin()+body+100,bytes.begin()+body+80));
+        }
+        BoxPokemonEdit edit;edit.level=50;edit.nickname="PARTY";edit.ivs=std::array<uint8_t,6>{31,30,29,28,27,26};
+        edit.moves=std::array<uint16_t,4>{85,0,0,0};
+        edit.pp=std::array<uint8_t,4>{15,0,0,0};edit.ppUps=std::array<uint8_t,4>{0,0,0,0};
+        const auto preview=editor->previewPartyEdit(0,edit,error);assert(preview && editor->stagedBytes()==immutable);
+        assert(editor->stagePartyPokemonEdit(0,edit,error));
+        bool reviewedMove=false;
+        for(const auto& row:editor->pendingChanges())if(row.party && row.label=="Party 1 Move 1") {
+            assert(row.afterValue=="Thunderbolt");reviewedMove=true;
+        }
+        assert(reviewedMove);
+        const auto after=editor->partyPokemon(0,error);assert(after && after->level==50 && after->nickname=="PARTY");
+        const auto candidate=editor->finalizedBytes(error);assert(!candidate.empty());
+        Pokemon::Pokemon3FRLG reload(std::span<const std::byte>(reinterpret_cast<const std::byte*>(candidate.data()+body),100));
+        assert(reload.checksumValid() && reload.getData()[0x54]==std::byte{50});
+        assert(reload.getData()[0x50]==std::byte{8} && reload.getData()[0x55]==std::byte{0xA5});
+        assert(reload.statHPCurrent()==native.statHPCurrent());
+        assert((std::array<uint16_t,6>{reload.statHPMax(),reload.statATK(),reload.statDEF(),reload.statSPE(),reload.statSPA(),reload.statSPD()})==after->calculatedStats);
+        for(size_t i=0;i<source.size();++i)
+            if(source[i]!=candidate[i])assert((i>=body && i<body+100) || i==sector+0xFF6 || i==sector+0xFF7);
+        edit.level=0;const auto staged=editor->stagedBytes();
+        assert(!editor->stagePartyPokemonEdit(0,edit,error) && editor->stagedBytes()==staged);
+        assert(!editor->stagePartyPokemonEdit(1,{},error) && editor->stagedBytes()==staged);
+        assert(source==immutable && editor->originalBytes()==immutable);
+        editor->discard();assert(editor->stagedBytes()==immutable && !editor->hasPendingChanges());
+    }
     auto source = fixture(family, game);
     const auto immutableSource = source;
     std::string error;
@@ -163,11 +254,51 @@ void runGame(SourceGame game, Family family) {
                   << static_cast<unsigned>(family) << " error=" << error << "\\n";
     }
     assert(editor && error.empty());
+    assert(editor->trainer().badges==0xa5);
     assert(editor->boxCount() == 14);
     assert(editor->boxCapacity() == 30);
     assert(StagedPokemonEditor::pidCorrelatedEditingEnabled());
     assert(!StagedPokemonEditor::moveSelectionEditingEnabled());
 
+    // October 24 R2-REVIEWMOVE: actual Create -> Pikachu -> Safari Ball -> Keep.
+    // Exercise BOTH caught-Ball and Held Item choices; their numeric IDs must
+    // never be confused. Reparse the native encrypted record and sector checksums.
+    assert(std::string(Names::getItemNameG3(21))=="Hyper Potion");
+    // Owner Oct 25: PKHeX ItemStorage3RS.Unreleased (Safari Ball 5, Berry
+    // Juice 44) are never released held items, so they are refused below.
+    for(const uint16_t held : {uint16_t{0},uint16_t{14},uint16_t{21}}) {
+        for(uint8_t ball=1;ball<=12;++ball) {
+            auto createEditor=StagedPokemonEditor::create(source,game,error); assert(createEditor);
+            PokeBank::UIModel::Gen3SharedEditor::Session draft;
+            draft.beginCreate(createEditor->trainer(),createEditor->originGame());
+            assert(draft.working.species==25);
+            draft.working.heldItem=held;draft.working.ball=ball;
+            if(!draft.add(*createEditor,0,1,error)) { std::cerr<<"Create ball="<<int(ball)<<" held="<<held<<": "<<error<<"\n";assert(false); }
+            const auto created=createEditor->boxedPokemon(0,1,error);
+            assert(created && created->heldItem==held && created->ball==ball);
+            const auto bytes=createEditor->finalizedBytes(error);assert(!bytes.empty());
+            const auto reopened=StagedPokemonEditor::create(bytes,game,error);assert(reopened);
+            const auto persisted=reopened->boxedPokemon(0,1,error);
+            assert(persisted && persisted->heldItem==held && persisted->ball==ball);
+            assert(createEditor->originalBytes()==immutableSource && source==immutableSource);
+            createEditor->discard();assert(createEditor->stagedBytes()==immutableSource);
+        }
+    }
+    assert(nativeHeldItemSupported(5) && nativeHeldItemSupported(44));
+    assert(!releasedHeldItem(5) && !releasedHeldItem(44));
+    assert(releasedHeldItem(0) && releasedHeldItem(4) && releasedHeldItem(43));
+    for(uint16_t invalid : {uint16_t{5},uint16_t{44},uint16_t{259},uint16_t{339},uint16_t{377},uint16_t{65535}}) {
+        auto rejected=StagedPokemonEditor::create(source,game,error);assert(rejected);
+        BoxPokemonCreate bad;bad.heldItem=invalid;
+        assert(!rejected->stageAddBoxPokemon(0,1,bad,error));
+        assert(rejected->stagedBytes()==immutableSource && rejected->pendingChanges().empty());
+    }
+    for(uint8_t invalid : {uint8_t{0},uint8_t{13},uint8_t{255}}) {
+        auto rejected=StagedPokemonEditor::create(source,game,error);assert(rejected);
+        BoxPokemonCreate bad;bad.ball=invalid;
+        assert(!rejected->stageAddBoxPokemon(0,1,bad,error));
+        assert(rejected->stagedBytes()==immutableSource && rejected->pendingChanges().empty());
+    }
     auto before = editor->boxedPokemon(0, 0, error);
     assert(before && error.empty());
     // Left-panel edits round-trip for every exact Gen III game without source writes.
@@ -188,7 +319,51 @@ void runGame(SourceGame game, Family family) {
         const auto added = identity->boxedPokemon(0, 1, error); assert(added);
         assert(added->nickname == "DRAFT" && added->level == 50 && added->otName == "BLUE" && added->tid == 0);
         assert(identity->originalBytes() == immutableSource);
+        // CG74 (owner Oct 25 P3): Review lists the created record's values, not only the species.
+        {
+            const auto& rows = identity->pendingChanges();
+            const auto row = [&](const std::string& name) -> const StagedPokemonChange* {
+                for (const auto& r : rows)
+                    if (r.label == "Box 1 / Slot 2 / " + name) return &r;
+                return nullptr;
+            };
+            // The shared Gen I-V Create Review shape (Gen12CreateReview.h).
+            assert(row("Add Pok\xC3\xA9mon") && !row("Add Pok\xC3\xA9mon")->createdDetail &&
+                   row("Add Pok\xC3\xA9mon")->beforeValue == "Empty" &&
+                   row("Add Pok\xC3\xA9mon")->afterValue == "Pikachu Lv 50");
+            for (const char* name : {"Nickname", "Ball", "OT / TID / SID", "Met", "Nature", "Gender", "Ability",
+                                     "Language"})
+                assert(row(name) && row(name)->createdDetail && row(name)->beforeValue.empty() &&
+                       !row(name)->afterValue.empty());
+            assert(row("Ball")->afterValue == Enums::getBallName(4));
+            assert(row("Nickname")->afterValue == "DRAFT");
+            assert(row("OT / TID / SID")->afterValue == "BLUE / 0 / " + std::to_string(added->sid));
+            // Empty rows and Create defaults add no noise (this draft has no moves).
+            for (const char* name : {"Moves", "Held Item", "Shiny", "Pokérus", "Friendship", "IVs", "EVs"})
+                assert(!row(name) || (std::string(name) == "Shiny" && added->shiny));
+        }
         identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        {
+            BoxPokemonCreate full = create;
+            full.moves = {85, 98, 0, 0};
+            full.pp = {15, 30, 0, 0};
+            full.heldItem = 13;
+            full.ivs = {31, 0, 0, 0, 0, 1};
+            full.pokerus = 0x21;
+            full.friendship = 255;
+            assert(identity->stageAddBoxPokemon(0, 1, full, error));
+            std::vector<std::string> details;
+            for (const auto& r : identity->pendingChanges())
+                if (r.createdDetail) details.push_back(r.label.substr(std::string("Box 1 / Slot 2 / ").size()) + "=" + r.afterValue);
+            const auto has = [&](const std::string& entry) {
+                return std::find(details.begin(), details.end(), entry) != details.end();
+            };
+            assert(has("Moves=" + std::string(Names::getMoveName(85)) + ", " + Names::getMoveName(98)));
+            assert(has("Held Item=" + std::string(Names::getItemNameG3(13))));
+            assert(has("IVs=HP 31, SpD 1"));
+            assert(has("Pokérus=Infected (33)") && has("Friendship=255"));
+            identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        }
         // A blank English nickname defaults to the upper-case retail species name.
         BoxPokemonCreate unnamed; unnamed.species = 25; unnamed.level = 5; unnamed.language = 2;
         unnamed.otName = "BLUE";
@@ -285,6 +460,13 @@ void runGame(SourceGame game, Family family) {
     assert(editor->originalBytes() == immutableSource && source == immutableSource);
     before = editor->boxedPokemon(0, 0, error);
     assert(before && before->species == 25 && before->level == 20);
+
+    for (const uint16_t unreleased : {uint16_t{5}, uint16_t{44}}) {
+        BoxPokemonEdit bad; bad.heldItem = unreleased;
+        assert(!editor->stageBoxPokemonEdit(0, 0, bad, error));
+        assert(editor->stagedBytes() == immutableSource);
+    }
+    error.clear();
 
     BoxPokemonEdit edit;
     edit.nickname = "SPARKY";

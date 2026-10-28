@@ -3,7 +3,9 @@
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Names/MoveInfo.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 
 #include <algorithm>
@@ -122,7 +124,17 @@ struct Session {
             requestedAbilityNumber.reset();
         if (species != 201) requestedForm.reset();
         normalizeRequests();
-        return setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species));
+        if (!setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species))) return false;
+        // R2-BUG-004: the new species' native default moveset at the new level for this exact
+        // game (pret pokeruby / pokeemerald / pokefirered GiveMonInitialMoveset; FireRed and
+        // LeafGreen differ), base PP, no PP Ups. The editing game comes from the source id; a
+        // draft with none uses its own origin game. No game: the slots are cleared.
+        SpeciesMoveDefaults::refreshArrays(::PokeBank::Moves::levelUpTableForGen3Version(
+                SpeciesMoveDefaults::gen3VersionForSourceId(sourceGameId, working.originGame)),
+            species, 0, working.level,
+            [](uint16_t move) { return ::Names::getMoveBasePP(move, ::Enums::GameVersion::FRLG); },
+            working.moves, working.pp, working.ppUps);
+        return true;
     }
 
     // Trainer ID is part of the Gen III shiny check. Changing it alone must not silently flip
@@ -310,12 +322,13 @@ struct Session {
     }
 
     bool keep(Gen3::StagedPokemonEditor& editor, std::size_t box, std::size_t slot,
-              std::string& error) {
+              std::string& error,bool party=false) {
         if (mode != Mode::Edit) {
             error = "Generation III Keep is only available for an edit draft";
             return false;
         }
-        if (!editor.stageBoxPokemonEdit(box, slot, editRequest(), error)) return false;
+        if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
+                    editor.stageBoxPokemonEdit(box, slot, editRequest(), error))) return false;
         mode = Mode::None;
         confirmExit = false;
         return true;

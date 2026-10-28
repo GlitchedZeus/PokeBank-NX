@@ -144,6 +144,7 @@ inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";
         case A::View: return "View";
         case A::Edit: return "Edit";
         case A::Clone: return "Clone";
+        case A::Move: return "Move";
         case A::Remove: return "Release";
         case A::LegalityProvenance: return kOriginLegalityLabel;
         case A::AddPokemon: return "Add Pokemon";

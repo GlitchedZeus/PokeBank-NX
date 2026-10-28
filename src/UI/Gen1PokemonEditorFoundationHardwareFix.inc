@@ -112,12 +112,13 @@ void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
     constexpr int midX = leftX + leftW + 14;
     constexpr int midW = 398;
     constexpr int rightX = midX + midW + 14;
-    const auto redraw = [&fb](int x, const char* text, TextStyle style) {
-        fb.drawText(x + 14, contentY + 10, text, Colors::Text, style);
+    // Round 7 P2: the one shared heading style (UI/SharedPanelHeading.h), as Gen IV / V.
+    const auto redraw = [&fb](int x, const char* text) {
+        PokeBank::UIModel::PanelHeading::draw(fb, x, contentY, text);
     };
-    redraw(leftX, "DETAILS", TextStyle::Caption);
-    redraw(midX, "STATS", TextStyle::Heading);
-    redraw(rightX, "MOVES", TextStyle::Heading);
+    redraw(leftX, "DETAILS");
+    redraw(midX, "STATS");
+    redraw(rightX, "MOVES");
 }
 
 void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb, UX2Mode workspaceMode) {
@@ -200,7 +201,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // DETAILS — heading remains neutral; Gen I intentionally shows no native gender.
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Text, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     if (auto* sprite = SpriteManager::getSprite(species, presentation.shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(leftX + 75, contentY + 34, 150, 136,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
@@ -210,7 +211,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     const std::array<std::string, 6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
     const std::array<std::string, 6> leftValues{
-        speciesCompact(species),
+        speciesHeading(species),
         name,
         std::to_string(level),
         std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
@@ -230,7 +231,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     // STATS — the shared field-state contract (UI/ClassicStatFieldState.h): stored DV / Stat Exp
     // are Editable (Text), the derived HP DV and the calculated Stat column are ReadOnly (gold) in
     // View, Create and Edit alike (R2-GOLD).
-    fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, midX, contentY, "STATS");
     constexpr int labelW = 76;
     constexpr int cellW = 96;
     const int gridX = midX + 10;
@@ -287,7 +288,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V.
     // An unlearnable move is Invalid in Create (it must be fixed) and Preserved in Edit.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     {
         const auto& ups = add ? state.draft.ppUps : pokemon->ppUps;
         std::array<int, 4> maxPP{};
@@ -321,7 +322,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const uint8_t growth = Editor::growthRate(species);
     const uint32_t nextLevelExp = level < 100 ? Pokemon::getExpForLevel(static_cast<uint8_t>(level + 1), growth) : experience;
     const uint32_t toNextLevel = level < 100 && nextLevelExp > experience ? nextLevelExp - experience : 0;
-    fb.drawText(leftPaneX + 10, splitY + 10, "GEN I DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 10, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 38, "Game", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 56, foundationExactGameName(screen, e->metadata().sourceGame), Colors::Text, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 80, "Growth", Colors::TextDim, TextStyle::Caption);
@@ -334,23 +335,23 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
                 add ? std::string("Species default") : std::to_string(pokemon->catchRate), Colors::Text, TextStyle::Caption);
     // Origin & Legality (formerly under the move rows): Gen I records no origin to check.
     fb.drawText(leftPaneX + 10, splitY + 206, "Legality", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(leftPaneX + 10, splitY + 224, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 224, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
 
     fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);
 
     if (view) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     } else if (foundationStateFor(screen).editExitConfirm) {
         // The exit dialog is modal: its footer offers exactly the dialog's own B/Y/A, so a
         // footer tap (mapped to that button) never reads as a workspace edit shortcut.
         drawNavBar(fb, {{"B", "Back"}, {"Y", "Discard"}, {"A", add ? "Keep" : "Save"}});
     } else if (add) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Keep"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 }
 

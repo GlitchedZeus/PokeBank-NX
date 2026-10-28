@@ -36,7 +36,13 @@ namespace Dialogs {
         PokeBank::UIModel::SharedEditorPresentation::Footer classicSaveConfirmFooter(
             const TrainerViewScreen& screen) {
             PokeBank::UIModel::SharedEditorPresentation::Footer footer;
-            if (screen.exitingWithUnsavedChanges && screen.itemsShortcutActive) {
+            const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+            if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+                footer.push("A", "Review Changes");
+                footer.push("B", "Continue Editing");
+                footer.push("Y", "Discard & Exit");
+                footer.push("X", "Export Copy");
+            } else if (screen.exitingWithUnsavedChanges && screen.itemsShortcutActive) {
                 footer.push("B", "Keep Editing");
                 if (!screen.sourceReadOnly()) {
                     footer.push("Y", "Discard & Home");
@@ -70,6 +76,11 @@ namespace Dialogs {
     namespace {
     void paintSaveConfirmContents(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         constexpr int w = kSaveDiscard.width;
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        if (screen.exitingWithUnsavedChanges && generation >= 1 && generation <= 4) {
+            SharedEditorChrome::drawStagedExitPanel(fb,screen.touchButtons);
+            return;
+        }
 
         // Exiting with unsaved changes is a different question ("throw these away?"), not a
         // destination choice, so it keeps the plain two-button form. Any nonzero titleId is a native

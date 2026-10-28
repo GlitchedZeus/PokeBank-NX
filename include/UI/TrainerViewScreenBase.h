@@ -1,6 +1,7 @@
 #ifndef UI_TRAINER_VIEW_SCREEN_H
 #define UI_TRAINER_VIEW_SCREEN_H
 
+#include <atomic>
 #include <cstddef>   // std::byte (details.editSnapshot)
 #include <memory>
 #include <optional>
@@ -65,6 +66,15 @@ namespace UI {
                           std::string sourceProviderLabel = {});
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
+        // Round 6 state-leak fix: unique per constructed screen and never reused. A screen is built
+        // on the stack for each opened game, so the next game's screen usually gets the SAME
+        // address; the generation surfaces' per-screen statics compare this serial, never the
+        // address alone, so no draft, editor or picker carries over to another save.
+        const uint64_t instanceSerial = nextInstanceSerial();
+        static uint64_t nextInstanceSerial() noexcept {
+            static std::atomic<uint64_t> counter{0};
+            return ++counter;
+        }
         bool shouldExit() const override { return goBack; }
         bool hasRequestedExit() const { return exitRequested; }
 
@@ -90,6 +100,7 @@ namespace UI {
         bool genderEditable(const Pokemon::Pokemon& p) const;  // false -> the Gender row is read-only (nothing to change it TO)
         void openStorageEditor(int pane, int box, int slot);   // open the details modal on a storage slot
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
+        bool openStagedReview(bool exportCopy = false);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
         void openItemsShortcut() {
@@ -152,6 +163,12 @@ namespace UI {
         // Gen IV only: the exact source FILE (raw or .dsv) at Open. Export refuses a file
         // that changed since (Gen4ExportRequest::sourceSnapshot).
         std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;
+        // Round 5 (#322): "Opened from backup - <date>" when this session was opened from a backup
+        // copy (Save Backups -> A). Shown in the top bar; empty for the live source.
+        std::string provenanceNotice;
+        // Round 6 (7E G5): Gen I-III only: the exact source FILE at Open (ClassicSourceGuard.h).
+        // Every Gen I-III Export Copy refuses a file that changed since.
+        std::optional<PokeVault::Source::ImmutableSnapshot::File> classicSourceSnapshot;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;
@@ -184,6 +201,11 @@ namespace UI {
         // -1 = nothing pending.
         int trainerSelectedRow = 0;
         int pendingTrainerEdit = -1;
+        // P3 (Round 5): a classic staged Trainer session (UI/ClassicTrainerSessionInput.h) mirrors
+        // which extra rows it can stage this frame: 2 Play Time, then Gender. The page draws them
+        // as editable rows instead of read-only info rows.
+        bool trainerPlayTimeEditable = false;
+        bool trainerGenderEditable = false;
         void editTrainerName();     // swkbd edit of the OT name (charset-validated, per-game length cap)
         void editTrainerMoney();    // numpad edit of money (clamped to the game's max)
         // After a name edit, re-stamp the trainer identity your Pokemon store so they stay
@@ -221,6 +243,8 @@ namespace UI {
             storageStatus = msg;
             storageStatusFrames = frames;
         }
+        // Paints the postStatus line on top of whatever owns the frame (see draw()).
+        void drawTransientStatus(PKSEFramebuffer& fb);
         // --- The carried block ---
         // Cells of the rectangle currently in hand, row-major over selectDimensions (w x h). A null
         // cell is a hole -- the source slot was empty, or it was locked and deliberately left behind.

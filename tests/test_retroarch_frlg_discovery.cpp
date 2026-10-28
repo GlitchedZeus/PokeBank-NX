@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -78,7 +79,8 @@ int main() {
     const fs::path core = saves / "mGBA";
     fs::create_directories(core);
 
-    const auto fixture = readFile("build-host/frlg_fixture.sav");
+    const char* fixturePath = std::getenv("POKEBANK_QA_GEN3_FIXTURE");
+    const auto fixture = readFile(fixturePath ? fixturePath : "build-host/frlg_fixture.sav");
     assert(fixture.size() == 0x20000);
     const fs::path fireRedPath = core / "Pokemon FireRed.sav";
     const fs::path leafGreenPath = saves / "Pokemon LeafGreen.srm";

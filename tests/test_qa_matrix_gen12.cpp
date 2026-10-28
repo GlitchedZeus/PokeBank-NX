@@ -1,3 +1,4 @@
+#include "test_backup_session_trace.h"
 // PokeBank NX application QA: Gen I / Gen II rows of the Gen I-V acceptance matrix (Thread 4,
 // QA-owned). Versions: red, blue, yellow, gold, silver, crystal.
 //
@@ -561,7 +562,7 @@ std::string partySummary(size_t count) { return "party " + std::to_string(count)
 //                 Gen2::StagedEditor GSCReadOnlyTrainer holds, stageInventoryQuantity)
 //   trainer-edit  RBYReadOnlyTrainer::stagedTrainer() (Gen1StagedTrainerEditor) and
 //                 ClassicTrainerSession::trainerFieldsEditable (tests/test_gen1_trainer_edit.cpp)
-//   special-stat  Gen2Workspace::battleStats / calculatedCell (tests/test_gen2_special_stat.cpp)
+//   special-stat  Gen2Workspace::battleStats / calculatedCell / SpecialBlock (tests/test_gen2_special_stat.cpp)
 //   met-time      Gen2FieldSelector::nextMetTime + Gen2Native caught-data codec, staged through
 //                 Gen2::StagedEditor::stageBoxPokemonEdit (tests/test_crystal_met_time_inline.cpp)
 //   reroll        Gen12DVReroll::reroll (the Y handler of Gen1PokemonEditorOverlayFoundation.inc /
@@ -794,8 +795,8 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
 
     r2cell(row, "special-stat",
            "Gen2Workspace::battleStats / calculatedCell on box Pikachu (stored, and with a staged Special DV 13 / "
-           "Stat Exp 40000): Special row shows \"SpA/SpD\" numbers equal to the CalcMonStats formula (base 50/40), "
-           "never a dash",
+           "Stat Exp 40000): separate Sp. Atk/Sp. Def values equal the CalcMonStats formula (base 50/40); "
+           "the old combined Special cell is empty (actual renderer layout is tested separately)",
            [&](Checks& c) {
         std::string error;
         auto editor = G2::StagedEditor::create(save, error);
@@ -831,11 +832,13 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
             c.expect(battle[4] == spa && battle[5] == spd,
                      "SpA/SpD " + std::to_string(battle[4]) + "/" + std::to_string(battle[5]) + " != formula " +
                          std::to_string(spa) + "/" + std::to_string(spd));
-            const auto cell = W::calculatedCell(battle, 4);
-            c.expect(cell == std::to_string(spa) + "/" + std::to_string(spd), "Special cell '" + cell + "'");
-            c.expect(cell.find("\xE2\x80\x94") == std::string::npos && cell.find("--") == std::string::npos,
-                     "Special cell shows a placeholder");
-            for (int r = 0; r < 4; ++r)
+            // Round 7 (owner A22 / C01, Gen I reference): the numeric STATS columns hold plain
+            // numbers; the Special row's Calculated cell is empty and SpA / SpD (battle[4] /
+            // battle[5], checked against the formula above) are shown in the Special block below
+            // the grid. Neither value is a second DV or Stat Exp input.
+            c.expect(W::calculatedCell(battle, W::kSpecialRow).empty(),
+                     "the Special row's Calculated cell holds no squeezed SpA / SpD value");
+            for (int r = 0; r < W::kSpecialRow; ++r)
                 c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
                          "calculated row " + std::to_string(r));
         }
@@ -978,6 +981,10 @@ void runGen1Version(Matrix& m, const Spec& spec) {
         const Bytes original = spec.build(15);
         qacontract::writeSource(source, original);
         const auto sourceBefore = qacontract::fileState(source);
+        std::string backupError;
+        const bool backupOk=verifyBackupSessionTrace(original,spec.gameId,backupError);
+        row.check("backup-session",backupOk,backupError,
+            "Historical copy opens, stages, separately exports, strictly reparses and Discards without source mutation");
 
         stage = "discovery";
         const auto instance = runSourceCells(row, spec, env, source);
@@ -1342,6 +1349,10 @@ void runGen2Version(Matrix& m, const Spec& spec) {
         const Bytes original = spec.build(15);
         qacontract::writeSource(source, original);
         const auto sourceBefore = qacontract::fileState(source);
+        std::string backupError;
+        const bool backupOk=verifyBackupSessionTrace(original,spec.gameId,backupError);
+        row.check("backup-session",backupOk,backupError,
+            "Historical copy opens, stages, separately exports, strictly reparses and Discards without source mutation");
 
         stage = "discovery";
         const auto instance = runSourceCells(row, spec, env, source);

@@ -1,3 +1,4 @@
+#include "UI/ReviewEntry.h"
 #include "UI/ClassicTrainerSessionInput.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
@@ -20,6 +21,7 @@ namespace ExitGuard = PokeBank::UIModel::PokemonEditorExitGuard;
 
 struct FoundationState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Foundation::Focus focus{};
     PokeBank::UIModel::ControllerNavigation navigation;
@@ -31,9 +33,9 @@ struct FoundationState {
 
 FoundationState& foundationStateFor(const TrainerViewScreen& screen) {
     static FoundationState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -156,12 +158,15 @@ bool foundationCommitEditDraft(TrainerViewScreen& screen) {
         screen.postStatus(error.empty() ? "Generation I edit draft is unavailable" : error, 360);
         return false;
     }
-    if (!real->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
-                         PokeBank::UIModel::Gen1EditDraft::editFromRecord(*drafted), error)) {
+    const auto request=PokeBank::UIModel::Gen1EditDraft::editFromRecord(*drafted);
+    const bool kept=state.party?real->stagePartyPokemonEdit(static_cast<size_t>(state.slot),request,error):
+        real->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),request,error);
+    if (!kept) {
         screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 360);
         return false;
     }
-    const auto staged = real->boxedPokemon(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), error);
+    const auto staged = state.party?real->partyPokemon(static_cast<size_t>(state.slot),error):
+        real->boxedPokemon(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), error);
     if (!staged || !foundationSameEditablePokemon(*staged, *drafted)) {
         screen.postStatus("Kept Pokemon did not match the edit draft; review the staged copy", 420);
         return false;
@@ -382,6 +387,16 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays Random DVs); B
+    // there returns to this workspace with its draft and focus. A passive View keeps its controls.
+    if (editable && (down & HidNpadButton_Plus) && PokeBank::UIModel::ReviewEntry::plusOpensReview(
+            add ? PokeBank::UIModel::ReviewEntry::Screen::Create : PokeBank::UIModel::ReviewEntry::Screen::Edit, 1)) {
+        const UX2Mode back = state.mode;
+        if (screen.openStagedReview(false)) state.reviewReturn = back;
+        else screen.postStatus("No staged Generation I changes to review", 220);
+        return;
+    }
+
     if (editable && (down & HidNpadButton_Y)) {
         // Y Random DVs re-rolls the draft at once: no prompt, a new roll on every press.
         foundationRandomizeDVs(screen, add);
@@ -540,8 +555,8 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto surfaceMode = add ? GameContext::SurfaceMode::CreateDraft
         : state.mode == UX2Mode::Edit ? GameContext::SurfaceMode::EditStaged : GameContext::SurfaceMode::ViewReadOnly;
     fb.drawText(x + 24, y + 46,
-                GameContext::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
-                                             std::to_string(state.slot + 1),
+                GameContext::contextLine(state.party?"Party "+std::to_string(state.slot+1):
+                    "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
                                          screen.sourceGameId, surfaceMode),
                 Colors::TextDim, TextStyle::Caption);
 
@@ -555,7 +570,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // LEFT — identity/details. Every row below the artwork is focusable in all three modes.
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     if (auto* sprite = SpriteManager::getSprite(species, shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(leftX + 63, contentY + 34, 174, 146,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
@@ -571,7 +586,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     const std::array<std::string,6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
     const std::array<std::string,6> leftValues{
-        speciesCompact(species),
+        speciesHeading(species),
         foundationNickname(state, pokemon ? &*pokemon : nullptr, add, species),
         std::to_string(level),
         std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
@@ -622,7 +637,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(gridX + 12, gridY + 406, "Calculated Stat cells are read-only", Colors::TextDim, TextStyle::Caption);
 
     // RIGHT — four real Move rows, semantic compatibility status, then PokeBank's five-axis radar.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     for (int i = 0; i < 4; ++i) {
         const int rowY = contentY + 44 + i * 40;
         const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
@@ -649,7 +664,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const Color compatibilityColor = !badMove ? Colors::Success : (add ? Colors::Error : Colors::Warning);
     fb.drawText(rightX + rightW - 148, statusY, compatibilityText, compatibilityColor, TextStyle::Caption);
     fb.drawText(rightX + 18, statusY + 26, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 118, statusY + 26, "Not checked", Colors::Text, TextStyle::Caption);
+    fb.drawText(rightX + rightW - 118, statusY + 26, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
     if (badMove) {
         const std::string warning = add ? "Change marked move before Stage Add" : "Legacy/unusual move kept unless you replace it";
         fb.drawText(rightX + 18, statusY + 54, warning, compatibilityColor, TextStyle::Caption);
@@ -767,6 +782,10 @@ bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t
             if (name != editor->trainerName() && !editor->stageTrainerName(name, error)) return false;
             if (money != editor->money() && !editor->stageMoney(money, error)) return false;
             return true;
+        }, [&] {
+            auto& state = ux2StateFor(screen);
+            state.mode = UX2Mode::Review;
+            state.reviewRow = 0;
         });
 }
 

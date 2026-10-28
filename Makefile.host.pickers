@@ -22,6 +22,78 @@ ITEM_GRID_SOURCES := tests/test_item_grid_picker.cpp src/Names/MoveNames.cpp
 ITEM_GRID_INPUTS := $(ITEM_GRID_SOURCES) include/UI/SharedItemGridPicker.h include/UI/ClassicTypeBadges.h \
     include/UI/SharedMenuGeometry.h include/UI/SharedMoveFacts.h include/UI/SharedScrollbar.h
 
+# NEW-06: Held Item search (ItemPickerSearch.h) and its Gen II / III / IV-V wiring.
+ITEM_SEARCH_TEST := $(HOST_BUILD)/test_item_picker_search
+ITEM_SEARCH_SANITIZE := $(HOST_BUILD)/test_item_picker_search_sanitize
+ITEM_SEARCH_INPUTS := tests/test_item_picker_search.cpp include/UI/ItemPickerSearch.h include/UI/ItemPickerSort.h \
+    src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+    src/UI/SharedPokemonEditorSurface.inc include/UI/SharedEditorPresentation.h
+
+# NEW-13: Ability names + short effects (AbilityEffects.h) and the Gen III / IV / V wiring.
+ABILITY_EFFECTS_TEST := $(HOST_BUILD)/test_ability_effects
+ABILITY_EFFECTS_SANITIZE := $(HOST_BUILD)/test_ability_effects_sanitize
+ABILITY_EFFECTS_SOURCES := tests/test_ability_effects.cpp src/Names/AbilityNames.cpp
+ABILITY_EFFECTS_INPUTS := $(ABILITY_EFFECTS_SOURCES) include/UI/AbilityEffects.h include/UI/SharedMenuGeometry.h \
+    src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc \
+    src/UI/Gen5SharedReadOnlySurface.inc src/UI/SharedPokemonEditorSurface.inc
+
+# Round 5 NEW-10: every Gen III-V Met Location row fits the compact 620 px window unclipped.
+MET_LOCATION_FIT_TEST := $(HOST_BUILD)/test_met_location_fit
+MET_LOCATION_FIT_SANITIZE := $(HOST_BUILD)/test_met_location_fit_sanitize
+MET_LOCATION_FIT_SOURCES := tests/test_met_location_fit.cpp src/Names/LocationNames.cpp src/Names/SpeciesNames.cpp
+MET_LOCATION_FIT_INPUTS := $(MET_LOCATION_FIT_SOURCES) include/UI/SharedMenuGeometry.h \
+    include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc \
+    include/Integration/Encounter/EncounterGuardrails.h include/Names/LocationDisplayNames.h \
+    src/UI/SharedPokemonEditorSurface.inc src/UI/Gen3SharedPokemonSurface.inc
+
+# Round 5 4D: Gen I-V Help pages name only working controls.
+HELP_ACCURACY_TEST := $(HOST_BUILD)/test_classic_help_accuracy
+HELP_ACCURACY_SANITIZE := $(HOST_BUILD)/test_classic_help_accuracy_sanitize
+HELP_ACCURACY_INPUTS := tests/test_classic_help_accuracy.cpp include/UI/ClassicHelpPresentation.h \
+    src/UI/Gen5SharedReadOnlySurface.inc src/UI/ClassicInventoryOverlay.cpp src/UI/TrainerViewScreenBase.inc \
+    include/UI/ClassicTrainerSessionInput.h src/UI/ClassicPackedMoveOverlay.inc
+
+# Round 5 6B: Gen IV / V event-year labels only where the native PKHeX name carries the year.
+EVENT_YEAR_TEST := $(HOST_BUILD)/test_event_year_source
+EVENT_YEAR_SANITIZE := $(HOST_BUILD)/test_event_year_source_sanitize
+EVENT_YEAR_SOURCES := tests/test_event_year_source.cpp src/Names/LocationNames.cpp
+EVENT_YEAR_INPUTS := $(EVENT_YEAR_SOURCES) include/Names/LocationDisplayNames.h include/Names/LocationNames.h
+
+# Round 6 L06: Gen II-V Held Item grid input (tap and A commit the same item; taps never lost).
+HELD_ITEM_INPUT_TEST := $(HOST_BUILD)/test_held_item_input
+HELD_ITEM_INPUT_SANITIZE := $(HOST_BUILD)/test_held_item_input_sanitize
+HELD_ITEM_INPUT_INPUTS := tests/test_held_item_input.cpp include/UI/SharedHeldItemInput.h \
+    include/UI/SharedHeldItemPicker.h include/UI/TouchScroll.h include/UI/TouchGesture.h \
+    include/UI/ItemPickerSearch.h include/UI/ItemPickerSort.h tests/touch_fakes/UI/TouchInput.h \
+    src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+    src/UI/SharedPokemonEditorSurface.inc include/UI/Gen2PokemonEditorRules.h \
+    include/Integration/Gen5/Gen5EditorFields.h
+
+# Round 6 7D: tap outside a non-destructive editor picker closes it like B, with no tap-through.
+POPUP_DISMISS_TEST := $(HOST_BUILD)/test_popup_dismiss
+POPUP_DISMISS_SANITIZE := $(HOST_BUILD)/test_popup_dismiss_sanitize
+POPUP_DISMISS_INPUTS := tests/test_popup_dismiss.cpp include/UI/SharedPopupDismiss.h \
+    include/UI/SharedEditorChrome.h tests/touch_fakes/UI/TouchInput.h \
+    src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+    src/UI/SharedPokemonEditorSurface.inc
+
+# Round 6 P5: no two identical rows in any Gen IV / V Met Location list (POKÉPARK / Festa / twins).
+MET_ROWS_DISTINCT_TEST := $(HOST_BUILD)/test_met_location_rows_distinct
+MET_ROWS_DISTINCT_SANITIZE := $(HOST_BUILD)/test_met_location_rows_distinct_sanitize
+MET_ROWS_DISTINCT_SOURCES := tests/test_met_location_rows_distinct.cpp src/Names/LocationNames.cpp src/Names/SpeciesNames.cpp
+MET_ROWS_DISTINCT_INPUTS := $(MET_ROWS_DISTINCT_SOURCES) include/Names/LocationDisplayNames.h \
+    include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc \
+    include/Integration/Gen5/Gen5EncounterLocations.h src/UI/Gen4SharedPokemonSurface.inc \
+    src/UI/Gen5SharedReadOnlySurface.inc src/UI/SharedPokemonEditorSurface.inc
+
+# Round 7 B05: Gen IV / V event, transfer, trade and egg met locations say what pinned tables show.
+SPECIAL_MET_NOTES_TEST := $(HOST_BUILD)/test_special_met_location_notes
+SPECIAL_MET_NOTES_SANITIZE := $(HOST_BUILD)/test_special_met_location_notes_sanitize
+SPECIAL_MET_NOTES_SOURCES := tests/test_special_met_location_notes.cpp src/Names/LocationNames.cpp
+SPECIAL_MET_NOTES_INPUTS := $(SPECIAL_MET_NOTES_SOURCES) include/Names/SpecialMetLocationNotes.h \
+    include/Names/LocationDisplayNames.h include/Integration/Encounter/EncounterContext45.h \
+    include/UI/SharedMenuGeometry.h src/UI/SharedPokemonEditorSurface.inc
+
 # tests/test_touch_scroll_state.cpp (TouchScroll.h, Lane P) was only built by the touch-input
 # workflow; QA Part 9 found no host Makefile ran it. It runs in host-test / host-sanitize here.
 TOUCH_SCROLL_STATE_TEST := $(HOST_BUILD)/test_touch_scroll_state
@@ -29,10 +101,50 @@ TOUCH_SCROLL_STATE_SANITIZE := $(HOST_BUILD)/test_touch_scroll_state_sanitize
 TOUCH_SCROLL_STATE_INPUTS := tests/test_touch_scroll_state.cpp include/UI/TouchScroll.h \
     include/UI/TouchGesture.h tests/touch_fakes/UI/TouchInput.h
 
-HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST)
-HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE)
-host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST)
-host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE)
+HOST_TESTS += $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST) $(HELD_ITEM_INPUT_TEST) $(POPUP_DISMISS_TEST) $(MET_ROWS_DISTINCT_TEST) $(SPECIAL_MET_NOTES_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE) $(HELD_ITEM_INPUT_SANITIZE) $(POPUP_DISMISS_SANITIZE) $(MET_ROWS_DISTINCT_SANITIZE) $(SPECIAL_MET_NOTES_SANITIZE)
+host-test: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST) $(MOVE_TYPE_BADGES_TEST) $(ITEM_GRID_TEST) $(TOUCH_SCROLL_STATE_TEST) $(ITEM_SEARCH_TEST) $(ABILITY_EFFECTS_TEST) $(MET_LOCATION_FIT_TEST) $(HELP_ACCURACY_TEST) $(EVENT_YEAR_TEST) $(HELD_ITEM_INPUT_TEST) $(POPUP_DISMISS_TEST) $(MET_ROWS_DISTINCT_TEST) $(SPECIAL_MET_NOTES_TEST)
+host-sanitize: $(SHARED_SCROLLBAR_SANITIZE) $(SPECIES_SEARCH_SANITIZE) $(MOVE_TYPE_BADGES_SANITIZE) $(ITEM_GRID_SANITIZE) $(TOUCH_SCROLL_STATE_SANITIZE) $(ITEM_SEARCH_SANITIZE) $(ABILITY_EFFECTS_SANITIZE) $(MET_LOCATION_FIT_SANITIZE) $(HELP_ACCURACY_SANITIZE) $(EVENT_YEAR_SANITIZE) $(HELD_ITEM_INPUT_SANITIZE) $(POPUP_DISMISS_SANITIZE) $(MET_ROWS_DISTINCT_SANITIZE) $(SPECIAL_MET_NOTES_SANITIZE)
+
+$(ITEM_SEARCH_TEST): $(ITEM_SEARCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_item_picker_search.cpp -o $@
+
+$(ITEM_SEARCH_SANITIZE): $(ITEM_SEARCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_item_picker_search.cpp -o $@
+
+$(ABILITY_EFFECTS_TEST): $(ABILITY_EFFECTS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(ABILITY_EFFECTS_SOURCES) -o $@
+
+$(ABILITY_EFFECTS_SANITIZE): $(ABILITY_EFFECTS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ABILITY_EFFECTS_SOURCES) -o $@
+
+$(MET_LOCATION_FIT_TEST): $(MET_LOCATION_FIT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MET_LOCATION_FIT_SOURCES) -o $@
+
+$(MET_LOCATION_FIT_SANITIZE): $(MET_LOCATION_FIT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MET_LOCATION_FIT_SOURCES) -o $@
+
+$(HELP_ACCURACY_TEST): $(HELP_ACCURACY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_help_accuracy.cpp -o $@
+
+$(HELP_ACCURACY_SANITIZE): $(HELP_ACCURACY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_help_accuracy.cpp -o $@
+
+$(EVENT_YEAR_TEST): $(EVENT_YEAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(EVENT_YEAR_SOURCES) -o $@
+
+$(EVENT_YEAR_SANITIZE): $(EVENT_YEAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(EVENT_YEAR_SOURCES) -o $@
 
 $(TOUCH_SCROLL_STATE_TEST): $(TOUCH_SCROLL_STATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
@@ -65,6 +177,8 @@ host-pickers: $(SHARED_SCROLLBAR_TEST) $(SPECIES_SEARCH_TEST)
 	./$(MOVE_TYPE_BADGES_TEST)
 	./$(ITEM_GRID_TEST)
 	./$(TOUCH_SCROLL_STATE_TEST)
+	./$(ITEM_SEARCH_TEST)
+	./$(ABILITY_EFFECTS_TEST)
 
 $(SPECIES_SEARCH_TEST): $(SPECIES_SEARCH_INPUTS)
 	@mkdir -p $(HOST_BUILD)
@@ -81,3 +195,35 @@ $(SHARED_SCROLLBAR_TEST): $(SHARED_SCROLLBAR_INPUTS)
 $(SHARED_SCROLLBAR_SANITIZE): $(SHARED_SCROLLBAR_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude $(SHARED_SCROLLBAR_SOURCES) -o $@
+
+$(HELD_ITEM_INPUT_TEST): $(HELD_ITEM_INPUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/touch_fakes -Iinclude tests/test_held_item_input.cpp -o $@
+
+$(HELD_ITEM_INPUT_SANITIZE): $(HELD_ITEM_INPUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude tests/test_held_item_input.cpp -o $@
+
+$(POPUP_DISMISS_TEST): $(POPUP_DISMISS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Itests/touch_fakes -Iinclude tests/test_popup_dismiss.cpp -o $@
+
+$(POPUP_DISMISS_SANITIZE): $(POPUP_DISMISS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/touch_fakes -Iinclude tests/test_popup_dismiss.cpp -o $@
+
+$(MET_ROWS_DISTINCT_TEST): $(MET_ROWS_DISTINCT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MET_ROWS_DISTINCT_SOURCES) -o $@
+
+$(MET_ROWS_DISTINCT_SANITIZE): $(MET_ROWS_DISTINCT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MET_ROWS_DISTINCT_SOURCES) -o $@
+
+$(SPECIAL_MET_NOTES_TEST): $(SPECIAL_MET_NOTES_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SPECIAL_MET_NOTES_SOURCES) -o $@
+
+$(SPECIAL_MET_NOTES_SANITIZE): $(SPECIAL_MET_NOTES_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SPECIAL_MET_NOTES_SOURCES) -o $@

@@ -11,10 +11,21 @@
 namespace PokeBank::UIModel::ClassicTrainerSession {
 
 inline constexpr int kRows = 2; // 0 Name, 1 Money
+// P3 (Round 5): rows a classic staged Trainer session adds where the native writer exists:
+// 2 Play Time, then Gender (row 3 with Play Time, else row 2). Gender is never added without a
+// native gender byte (Gen I, Gold / Silver).
+inline constexpr int kPlayTimeRow = 2;
+constexpr int genderRow(bool playTime) noexcept { return playTime ? 3 : 2; }
+constexpr int rowCount(bool playTime, bool gender) noexcept {
+    return kRows + (playTime ? 1 : 0) + (gender ? 1 : 0);
+}
+inline constexpr int kReviewTouchId = 61240;
 
+// Round 6 (B08): Y Review whether or not the focused row is editable; on a page without the
+// staged Trainer session the Gen I-IV grid router (ClassicBrowseReview.h) handles the key.
 constexpr const char* trainerPageInstructions(bool editable) noexcept {
-    return editable ? "Up/Down: Select  |  A: Edit  |  B: Back  |  +: Exit App"
-                    : "Up/Down: Select  |  B: Back  |  +: Exit App";
+    return editable ? "Up/Down: Select  |  A: Edit  |  Y: Review  |  B: Back  |  +: Exit App"
+                    : "Up/Down: Select  |  Y: Review  |  B: Back  |  +: Exit App";
 }
 
 // R2-BUG-001: on an editable Trainer page "A: Edit" is offered for the FOCUSED row only: Money

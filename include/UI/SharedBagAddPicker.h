@@ -75,9 +75,8 @@ inline void drawPicker(PKSEFramebuffer& fb, Buttons& touchButtons, int touchBase
 
 // ---- Bag confirmations (Remove, Key Item warning) ------------------------------------------
 // One presentation for every bag confirmation: SharedMenuGeometry Confirm layout (title, body
-// lines, in-frame glyph-button row). The glyph buttons repeat the screen footer's commit/cancel
-// keys and are not touch targets: commits stay on the frozen buttons (Y removes, A confirms a
-// Key Item warning, B always cancels).
+// lines, in-frame glyph-button row). A confirms the explicit Bag Remove / Key Item question;
+// B always cancels. The modal owns touch and its choices are not repeated in the footer.
 struct ConfirmGlyph {
     const char* glyph;   // "Y", "A", "B"
     const char* label;   // "Remove", "Confirm", "Cancel"
@@ -85,7 +84,7 @@ struct ConfirmGlyph {
 };
 
 // Owns the frame's touch (SharedEditorChrome::beginModal: the covered footer is never tappable)
-// and draws its own footer with the same commit / cancel glyphs.
+// and clears the covered footer, leaving its own glyph buttons as the visible choices.
 template <class Buttons>
 inline void drawConfirm(PKSEFramebuffer& fb, Buttons& touchButtons, MG::MenuType type,
                         std::string_view title, const std::string& line0, const std::string& line1,
@@ -111,20 +110,18 @@ inline void drawConfirm(PKSEFramebuffer& fb, Buttons& touchButtons, MG::MenuType
                            glyphs[i].commits ? (type == MG::MenuType::RemoveConfirm ? Colors::Error : Colors::Accent)
                                              : Colors::Divider,
                            glyphs[i].commits ? 2 : 1);
-        fb.drawText(r.x + 18, MG::textTop(r, MG::Text::Body),
-                    std::string(glyphs[i].glyph) + "  " + glyphs[i].label, Colors::Text, TextStyle::Body);
+        drawGlyphButton(fb,r.x,r.y,r.w,r.h,glyphs[i].glyph,glyphs[i].label);
     }
-    drawNavBar(fb, {{commit.glyph, commit.label}, {cancel.glyph, cancel.label}});
+    drawNavBar(fb,std::vector<ControllerHint>{}); // Visible choices live inside this modal.
 }
 
-// Remove confirmation: the exact stack and the staged-only note; Y commits, B cancels.
-// (Footer "Y Remove / B Cancel" drawn by drawConfirm.)
+// Remove confirmation: the exact stack and the staged-only note; A commits, B cancels.
 template <class Buttons>
 inline void drawRemoveConfirm(PKSEFramebuffer& fb, Buttons& touchButtons, Enums::GameVersion game,
                               std::string_view title, uint16_t itemId, const std::string& itemName,
                               uint16_t count, const std::string& note) {
     drawConfirm(fb, touchButtons, MG::MenuType::RemoveConfirm, title, itemName + "  |  Count " + std::to_string(count),
-                note, {"Y", "Remove", true}, {"B", "Cancel", false}, game, itemId, itemName);
+                note, {"A", "Remove", true}, {"B", "Cancel", false}, game, itemId, itemName);
 }
 
 // Key Item warning (UI/SharedBagAddFlow.h needsKeyItemWarning): shown before a Key Item is added

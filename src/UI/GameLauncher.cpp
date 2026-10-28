@@ -1276,6 +1276,9 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
     binding.launcherPath = defaultLauncherPath(kind, gameId, content);
     binding.contentPath = content;
     if (kind == GameLaunchProviderKind::RetroArch) {
+        // Only proves that SOME compatible core is installed: defaultRetroArchCore() returns the
+        // first existing one (e.g. melonDS when DeSmuME is absent). The launch itself recomputes
+        // the core from the save's evidence (retroArchCoreForSave), never from this value.
         binding.corePath = defaultRetroArchCore(gameId);
         if (binding.corePath.empty() || !regularFile(binding.corePath)) {
             error = "No compatible RetroArch core is installed for this game.";

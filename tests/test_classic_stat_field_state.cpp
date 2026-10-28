@@ -70,12 +70,22 @@ int main() {
         const auto src = read(path);
         assert(src.find("dvs{gen2ShownHpDv(p), p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]}") != std::string::npos);
         assert(src.find("gen2StatCellColor(r, 0)") != std::string::npos);
-        assert(src.find("stat, gen2StatCellColor(r, 2)") != std::string::npos);
-        assert(src.find("std::to_string(battle[4]), gen2StatCellColor(4, 2)") != std::string::npos);
+        // Round 7 (owner A22 / C01): plain-number Calculated column plus the Gen I-style Special
+        // block. The Special DV / Stat Exp remain one editable native row.
+        assert(src.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
+        assert(src.find("drawGen2SpecialBlock(fb, battle, x, y);") != std::string::npos);
+    }
+    {
+        // The one Calculated-column painter: model cells, shared field-state colour; the Special
+        // block's SpA / SpD values use the Special row's calculated state (ReadOnly gold).
+        const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+        assert(unified.find("W::calculatedCell(battle, row),\n                    gen2StatCellColor(row, 2)") != std::string::npos);
+        assert(unified.find("const Color value = gen2StatCellColor(4, 2);") != std::string::npos);
     }
     const auto gen2View = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     assert(gen2View.find("CSF::derivedHpDv(") != std::string::npos);
-    assert(gen2View.find("stat, cellColor(i, 2)") != std::string::npos);
+    assert(gen2View.find("std::to_string(battleStats[static_cast<std::size_t>(i)]), cellColor(i, 2)") != std::string::npos);
+    assert(gen2View.find("std::to_string(battleStats[5]), cellColor(4, 2)") != std::string::npos);
     // QA CG16: Shiny is an Editable inline toggle (never gold); the split SpA / SpD display is
     // ReadOnly gold. No Gen I / II editor value is drawn in a raw gold token; each goes through
     // UI/ClassicFieldColor.h (the shared field-state colour).
@@ -115,7 +125,9 @@ int main() {
             assert(src.find(dev) == std::string::npos);
     }
     assert(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find("GameContext::SurfaceMode::CreateDraft") != std::string::npos);
-    assert(read("src/UI/Gen2PokemonEditorFoundation.inc").find("if (state.slot >= 0) record += \" / Slot \"") != std::string::npos);
+    const auto gen2Foundation = read("src/UI/Gen2PokemonEditorFoundation.inc");
+    assert(gen2Foundation.find("state.party?\"Party \"") != std::string::npos);
+    assert(gen2Foundation.find("if (!state.party && state.slot >= 0) record += \" / Slot \"") != std::string::npos);
     std::cout << "Gen I/II STATS field states: derived HP DV and calculated stats gold everywhere PASS\n";
     return 0;
 }

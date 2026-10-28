@@ -5,17 +5,23 @@
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Inventory/ItemQuantityPolicy.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
 #include "UI/SharedBagAddPicker.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
+#include "UI/ReviewEntry.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
+#include "UI/ClassicStagedExit.h"
+#include "UI/ClassicTrainerSession.h"
+#include "UI/SharedTrainerPanel.h"
 #include "Integration/Gen5/Gen5HubRouting.h"
 #include "Integration/Gen5/Gen5DisplayStats.h"
 #include "Integration/Gen5/Gen5EditorFields.h"
 #include "Integration/Gen5/Gen5PersonalTypes.h"
 #include "Integration/Gen5/Gen5Progression.h"
 #include "UI/SharedPokemonShell.h"
+#include "UI/Gen5LanguageCycle.h"
 #include <ctime>
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5WorkingCopyExport.h"
@@ -31,6 +37,7 @@
 #include "Names/MachineDisplay.h"
 #include "Names/FormNames.h"
 #include "Names/MoveBattleStats5.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/ClassicMachineArtwork.h"
 #include "UI/NarrowPokemonActionMenu.h"
 #include "SharedPokemonEditorSurface.inc"
@@ -41,6 +48,8 @@
 #include <cstdio>
 
 namespace UI::Gen5SharedReadOnlySurface {
+PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen,
+    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws);
 namespace {
 bool isGen5Source(const TrainerViewScreen& screen) noexcept {
     // Deliberately check the exact source ID, not the Trainer's claimed game
@@ -163,6 +172,7 @@ struct PendingPidChange5 {
 };
 struct Gen5EditorState : EditorSurface::EditorState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool workspaceOpen = false;
     PendingPidChange5 pid;
     SharedScrollbar::State bagAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
@@ -176,9 +186,9 @@ std::string pidHex5(uint32_t pid) {
 }
 Gen5EditorState& editorStateFor(const TrainerViewScreen& screen) {
     static Gen5EditorState state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -214,11 +224,12 @@ struct Gen5Editor {
     using Field = Fields::Field;
     using PickerTarget = EditorSurface::PickerTarget;
     static constexpr auto generation = PokeBank::UIModel::SharedPokemonEditor::Generation::Gen5;
+    static constexpr int kGeneration = 5;   // ReviewEntry's button rule
     static constexpr int kDetailRows = Fields::RowCount;
     static constexpr int kMaxSpecies = Fields::kMaxSpecies;
     static constexpr bool kCompactForm = true;
     static constexpr const char* kDetailReadOnly =
-        "Language and Origin are read-only for a Generation V record in this editor";
+        "Origin is read-only for a Generation V record in this editor";
     static constexpr const char* kValueReadOnly = "This Generation V value is read-only";
     static constexpr const char* kHeldItemTitle = "Held Item — Generation V";
     static constexpr const char* kMovePickerTitle = "Move — Generation V";
@@ -272,6 +283,12 @@ struct Gen5Editor {
         (void)discardEditDraft(screen);
     }
     static void keep(TrainerViewScreen& screen, EditorSurface::EditorState&) { keepDraft(screen); }
+    // Round 6: + opens the shared Review; B there returns to this workspace (reviewReturn).
+    static void openReview(TrainerViewScreen& screen, EditorSurface::EditorState&) {
+        if (!backend(screen).openReviewFrom(nativeTrainer(screen).stagedPokemon()))
+            screen.postStatus("No staged Gen V changes to review", 220);
+        screen.controllerNavigation.reset();
+    }
 
     // Stage one native field; report the native refusal reason when refused.
     static bool stage(TrainerViewScreen& screen, Field field, size_t stat, uint32_t value) {
@@ -331,7 +348,7 @@ struct Gen5Editor {
                                    const Record& p, int row) {
         using namespace Fields;
         switch (row) {
-            case Species: return std::to_string(p.species()) + " - " + Names::getSpeciesName(p.species());
+            case Species: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());
             case Nickname: case OriginalTrainer: {
                 const auto name = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), row == Nickname);
                 return name ? *name : std::string("(native glyphs)");
@@ -421,6 +438,14 @@ struct Gen5Editor {
                 EditorSurface::openPicker(screen, state, PickerTarget::HeldItem,
                                           Fields::heldItemChoices(), p.heldItem());
                 return true;
+            case Language: {
+                // A/touch cycles native PK5 language IDs inline, without a modal.
+                // The existing guarded staging path maintains encryption/checksum,
+                // Review/Discard and source-save immutability. The changed value is the
+                // feedback: no status toast (owner Oct 25 7C, matching Gen III Language).
+                stage(screen, Field::Language, 0, PokeBank::UIModel::Gen5LanguageCycle::next(p.language()));
+                return true;
+            }
             case Friendship: {
                 const auto r = Utils::promptNumber("Friendship", p.friendship(), 0, 255);
                 if (r.accepted) stage(screen, Field::Friendship, 0, static_cast<uint32_t>(r.value));
@@ -443,8 +468,9 @@ struct Gen5Editor {
                     screen.postStatus("Met Location editing is read-only for transferred non-Gen-V origins", 300);
                     return true;
                 }
-                EditorSurface::openPicker(screen, state, PickerTarget::MetLocation,
-                                          Fields::metLocationChoices(), p.metLocation());
+                EditorSurface::openContextualMetLocationPicker(screen, state, p.originVersion(),
+                    p.species(), p.metLocation(), Fields::metLocationChoices(),
+                    {p.eggLocation(), p.egg(), p.fatefulEncounter()});
                 return true;
             case Pokerus: {
                 // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
@@ -476,10 +502,14 @@ struct Gen5Editor {
         const auto personal = PokeVault::Integration::Gen5::personal5(p.species(), 0, b2w2(screen));
         return !personal || personal.forms <= 1;
     }
-    static void passiveActivate(TrainerViewScreen& screen, EditorSurface::EditorState&, int row) {
+    // True when this generation has its own View message for the row.
+    static bool passiveActivate(TrainerViewScreen& screen, EditorSurface::EditorState&, int row) {
         const auto p = draft(screen).current();
-        if (row == Fields::Form && p && singleForm(screen, *p))
+        if (row == Fields::Form && p && singleForm(screen, *p)) {
             screen.postStatus("This Gen V Pokémon has only its default form", 135);
+            return true;
+        }
+        return false;
     }
 
     static std::array<uint8_t,6> ivs(const Record& p) { return p.ivs(); }
@@ -498,6 +528,19 @@ struct Gen5Editor {
     static bool pidRowEditable(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                int row, const Record&) {
         return Fields::pidRowEditable(draft(screen), row, b2w2(screen));
+    }
+    // Fields::pidRowEditable without the mode gate: rows Edit cannot change for this record either.
+    static bool pidRowLocked(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
+                             int row, const Record& p) {
+        if (Fields::earlierOrigin(p)) return true;
+        const auto personal = PokeVault::Integration::Gen5::personal5(p.species(), p.form(), b2w2(screen));
+        if (!personal) return true;
+        switch (row) {
+            case Fields::NatureRow: case Fields::ShinyRow: return false;
+            case Fields::GenderRow: return !PokeVault::Integration::Gen5::variableGenderRatio5(personal.info->genderRatio);
+            case Fields::AbilityRow: return Fields::abilityChoices(p, b2w2(screen)).size() <= 1;
+            default: return true;
+        }
     }
     static uint8_t gender(const Record& p) { return p.gender(); }
     static std::string pidRowValue(const TrainerViewScreen&, const Record& p, int row) {
@@ -573,30 +616,53 @@ struct Gen5Editor {
     static int maxPP(const TrainerViewScreen&, uint16_t move, uint8_t ppUps) {
         return PokeVault::Integration::Gen5::maxPP5(move, ppUps);
     }
-    static std::vector<uint16_t> moveChoices(TrainerViewScreen&, EditorSurface::EditorState&) {
-        return Fields::moveChoices();
+    static std::vector<uint16_t> moveChoices(TrainerViewScreen& screen, EditorSurface::EditorState&) {
+        const auto p = draft(screen).current();
+        return p ? Fields::moveChoices(screen.sourceGameId,p->species(),p->form(),p->moves())
+                 : std::vector<uint16_t>{0};
     }
-    static void moveStatus(TrainerViewScreen&, const EditorSurface::EditorState&, const Record&,
-                           uint16_t move, const char*& status, Color& color) {
-        status = move == 0 ? "-" : "Native";
-        color = move == 0 ? Colors::TextDim : Colors::TextSecondary;
+    static void moveStatus(TrainerViewScreen& screen, const EditorSurface::EditorState&,
+                           const Record& raw, uint16_t move, const char*& status, Color& color) {
+        namespace C = PokeVault::Integration::Gen5MoveCompatibility;
+        const auto current = draft(screen).current();
+        const auto currentMoves = current ? current->moves() : std::array<uint16_t,4>{};
+        const bool existing = std::find(currentMoves.begin(),currentMoves.end(),move) != currentMoves.end();
+        const auto availability = C::classify(screen.sourceGameId,raw.species(),raw.form(),move,existing);
+        status = move==0 ? "-" : "Unknown";
+        color = move==0 ? Colors::TextDim : Colors::Error;
+        if(availability==C::Availability::Direct) {
+            status = move==0 ? "-" : "OK";   // owner Oct 25 7B: the Gen I-IV treatment
+            color = move==0 ? Colors::TextDim : Colors::Success;
+        } else if(availability==C::Availability::Transfer) {
+            status = "Transfer";
+            color = Colors::Warning;
+        } else if(availability==C::Availability::FormHistory) {
+            status = "Prior form";
+            color = Colors::Warning;
+        } else if(availability==C::Availability::Preserved) {
+            status = "Preserved";
+            color = Colors::Warning;
+        }
     }
     // Black/White or Black 2/White 2 for the shared Moves panel and chooser facts.
     static Enums::GameVersion moveGame(const TrainerViewScreen& screen) {
         return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;
     }
-    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState&,
+    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState& state,
                                    PickerTarget target, uint16_t value) {
         const auto p = draft(screen).current();
         switch (target) {
             case PickerTarget::Species: return EditorSurface::dexLabel(value);
+            case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
             case PickerTarget::HeldItem:
                 return value == 0 ? "(none)" :
                     Names::machineDisplayLabel(screen.trainer.getGameGroup(), value, Names::getItemName(value));
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
-                std::string label = metLocationText5(p ? p->originVersion() : 20, value);
-                if (p) label += "  |  Met Lv. " + std::to_string(p->metLevel());
+                std::string label = Names::getMetLocationChoiceName(p ? p->originVersion() : 20, value);   // P5
+                if (state.pickerMetContextActive)
+                    label += "  |  " + state.pickerMetContext.detail(value,
+                        [](uint16_t species) { return Names::getSpeciesName(species); });
                 return label;
             }
             case PickerTarget::Pokerus: return Fields::pokerusLabel(value);
@@ -608,8 +674,9 @@ struct Gen5Editor {
                 const auto personal = PokeVault::Integration::Gen5::personal5(p->species(), p->form(), b2w2(screen));
                 const uint8_t ability = personal
                     ? PokeVault::Integration::Gen5::abilityForSlot5(*personal.info, value) : 0;
-                const char* slot = value == 2 ? " (Hidden)" : value == 1 ? " (Slot 2)" : " (Slot 1)";
-                return std::string(Trainer::getAbilityName(ability)) + slot;
+                // NEW-13: name and short effect; only the Hidden slot keeps a note.
+                const std::string name = std::string(Trainer::getAbilityName(ability)) + (value == 2 ? " (Hidden)" : "");
+                return UI::AbilityEffects::row(name, ability, 5);
             }
             default: return {};
         }
@@ -622,6 +689,7 @@ struct Gen5Editor {
         switch (target) {
             case PickerTarget::Species: return applySpecies(screen, state, *p, value);
             case PickerTarget::HeldItem: return stage(screen, Field::HeldItem, 0, value);
+            case PickerTarget::Language: return stage(screen, Field::Language, 0, value);
             case PickerTarget::Ball: return stage(screen, Field::Ball, 0, value);
             case PickerTarget::MetLocation: return stage(screen, Field::MetLocation, 0, value);
             case PickerTarget::Pokerus: return stage(screen, Field::Pokerus, 0, value);
@@ -636,7 +704,7 @@ struct Gen5Editor {
                     return false;
                 }
                 return offer(screen, state, std::move(probe),
-                             "Ability -> " + pickerLabel(screen, state, PickerTarget::Ability, value));
+                             "Ability -> " + UI::AbilityEffects::nameOf(pickerLabel(screen, state, PickerTarget::Ability, value)));
             }
             default: return false;
         }
@@ -686,6 +754,19 @@ struct Gen5Editor {
             screen.postStatus(error, 360);
             return false;
         }
+        if (species != p.species()) {
+            // R2-BUG-004: the new species' native default moveset at this level from the BW or
+            // B2W2 table (PKHeX lvlmove_bw / _b2w2), base PP, no PP Ups; staged in Keep/Review's
+            // replay order (Move, PP Ups, PP) so the replay reproduces these bytes exactly.
+            if (!PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,
+                    PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(PokeBank::UIModel::SpeciesMoveDefaults::gen5Table(b2w2(screen)), species, 0,
+                        static_cast<uint8_t>(Fields::level(p, b2w2(screen))),
+                        [](uint16_t move) { return PokeVault::Integration::Gen5::basePP5(move); }),
+                    error)) {
+                screen.postStatus("Could not reset moves for the new species: " + error, 360);
+                return false;
+            }
+        }
         if (probe.current()->shiny() != state.speciesPreviewShiny &&
             !probe.stage(Field::Shiny, 0, state.speciesPreviewShiny ? 1u : 0u, error)) {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
@@ -698,6 +779,7 @@ struct Gen5Editor {
     static std::array<uint8_t,2> speciesPreviewTypes(const TrainerViewScreen& screen, uint16_t species) {
         return classicTypes5(species, 0, b2w2(screen));
     }
+    static uint8_t nature(const Record& p) { return p.nature(); }
     static std::string speciesLabel(uint16_t value) { return EditorSurface::dexLabel(value); }
     // R2-SEARCH: species search is the shared in-modal chooser (SharedSpeciesPicker.h), live
     // per keystroke; the former swkbd "jump to first match" hook is retired.
@@ -750,7 +832,7 @@ struct Gen5Editor {
             {"OT gender", p.originalTrainerGender() == 0 ? "Male" : "Female"},
             // Only format validity is checked for Gen V; no legality conclusion is drawn.
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
-                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete)},
         };
         return rows;
     }
@@ -815,8 +897,8 @@ void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const G
                 Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(x + 28, cy + 62, pidHex5(pending.before) + "  ->  " + pidHex5(pending.after),
                 Colors::Text, TextStyle::Body);
-    fb.drawText(x + 28, cy + 98, "Gender, ability and shininess stay linked to the new PID. "
-                "Origin & Legality: not checked.", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 28, cy + 98, std::string("Gender, ability and shininess stay linked to the new PID. Origin & Legality: ")+
+                PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete), Colors::TextDim, TextStyle::Caption);
     const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;
     drawGlyphButton(fb, x + 24, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - bw, by, bw, bh, "A", "Change PID", Colors::PanelAlt);
@@ -833,7 +915,11 @@ bool handleSharedWorkspace(TrainerViewScreen& screen, u64 keys, const TouchInput
     }
     if (handlePidConfirmation(screen, state, keys, touch)) return true;
     EditorSurface::handleWorkspace<Gen5Editor>(screen, state, keys, touch);
-    if (!workspaceSurface(nativeTrainer(screen).sharedScreen().surface())) {
+    const auto& shared = nativeTrainer(screen).sharedScreen();
+    // A Review opened from this workspace returns to it: keep its focus and pending PID step.
+    const bool reviewOverWorkspace =
+        shared.surface() == Surface::Review && shared.reviewReturn() == Surface::Edit;
+    if (!workspaceSurface(shared.surface()) && !reviewOverWorkspace) {
         EditorSurface::resetWorkspaceFocus(state);
         state.workspaceOpen = false;
         state.pid = {};
@@ -931,6 +1017,11 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
                 // Shared Gen I-V Add (UI/SharedBagAddFlow.h): stage x1 with no keypad, or
                 // focus the existing stack; A on the row edits the quantity afterwards.
                 const uint16_t id=bag.chosenAddItem();
+                const auto rule=gen5PolicyRule(screen,bag.pocket(),id);
+                if(bag.requestAddWarning(ws,rule)) {
+                    screen.controllerNavigation.reset();
+                    return true;
+                }
                 const auto decision=bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),id),
                                                 refresh,error);
                 screen.controllerNavigation.reset();
@@ -940,10 +1031,21 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
             syncBagCursor(screen);
             return true;
         }
-        case BagSurface::ConfirmRemove:
-            // Deliberate Y -> Y removal; A never removes and B always cancels.
+        case BagSurface::KeyItemAddWarning:
             if(keys&HidNpadButton_B)bag.cancel();
-            else if(keys&HidNpadButton_Y) {
+            else if(keys&HidNpadButton_A) {
+                const auto decision=bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),bag.chosenAddItem()),
+                                                refresh,error);
+                if(!error.empty())screen.postStatus(error,320);
+                else screen.postStatus(decision.message+"; event flags unchanged",300);
+                screen.controllerNavigation.reset();
+            }
+            syncBagCursor(screen);
+            return true;
+        case BagSurface::ConfirmRemove:
+            // Y opened the explicit Bag Remove question; A confirms it, B always cancels.
+            if(keys&HidNpadButton_B)bag.cancel();
+            else if(keys&HidNpadButton_A) {
                 if(!bag.confirmRemove(ws,refresh,error))screen.postStatus(error,320);
                 else screen.postStatus("Gen V item removed from staged bag ONLY; SAV5 unchanged",300);
                 screen.controllerNavigation.reset();
@@ -1067,7 +1169,9 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     }
     if(keys&HidNpadButton_Up)editor.moveRow(-1);
     if(keys&HidNpadButton_Down)editor.moveRow(1);
-    if(keys&HidNpadButton_Plus) {
+    // Y (or the Review Changes button): the Trainer page's one Review key (ReviewEntry.h).
+    if(keys&HidNpadButton_Y ||
+       tap==PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId) {
         if(!state.openReviewFromBrowse(ws))
             screen.postStatus("No staged Gen V changes to review",220);
         screen.controllerNavigation.reset();
@@ -1156,78 +1260,71 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                         e.caught?Colors::Accent:Colors::TextDim,TextStyle::Caption);
         }
         std::vector<ControllerHint> hints;
-        for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+        for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
         drawNavBar(fb,hints);
         return;
     }
     // The shared Trainer panel: drawn in the same content rect and HOME-style
-    // card as the base Trainer view (no modal). Editable rows carry a value
-    // pill; read-only rows are labelled "Read-only"; the list scrolls so the
-    // focused row is always visible.
+    // card as the base Trainer view (no modal). Name / Money / Play Time /
+    // Pokedex are cards with a value pill; the read-only identity rows sit
+    // below a divider (R2-BUG-003). The page always draws its own footer.
+    // Round 7: painted by UI/SharedTrainerPanel.h, the painter the Gen I-IV Trainer page uses too.
     screen.drawGSCOverlay(fb);
     const int x=LEFT_PANEL_X,y=CONTENT_PANEL_Y;
     const int w=fb.getWidth()-x,h=CONTENT_PANEL_HEIGHT;
-    fb.drawFilledRoundedRect(x,y,w,h,16,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,16,Colors::Border,1);
-    constexpr int hH=46;
-    fb.drawFilledRoundedRect(x,y,w,hH,16,Colors::AccentDim);
-    fb.drawFilledRect(x,y+hH-16,w,16,Colors::AccentDim);
-    fb.drawText(x+22,y+(hH-fb.lineHeight(TextStyle::Heading))/2,"Trainer",
-                Colors::Text,TextStyle::Heading);
-    fb.drawText(x+170,y+(hH-fb.lineHeight(TextStyle::Caption))/2,
-                "Name, Money and Play Time are staged in app memory; the source save is unchanged",
-                Colors::TextDim,TextStyle::Caption);
+    namespace TPanel=UI::SharedTrainerPanel;
+    namespace TPage=PokeBank::UIModel::ClassicTrainerPage;
+    TPanel::drawPanel(fb,x,y,w,h,"Name, Money and Play Time are staged in app memory; the source save is unchanged");
     // R2-BUG-003: the Gen I-IV Trainer hierarchy. Selectable rows first (the staged Name / Money /
     // Play Time edits, and the Pokedex view) as cards with a value pill; a divider; then the
     // read-only identity rows, compact and unselectable, as Gen IV shows them (Gender, Trainer ID,
     // Secret ID as two separate native 16-bit numbers, plus Gen V's Badges). The raw language id is
     // secondary information: one unboxed detail line, by name. Every value is still read from the
     // save; nothing is merged or recomputed. Touch ids stay kGen5TrainerRowTouchBase + kRows index.
+    // Round 7 (owner B06 / C06, QA CG90): the rects come from the one Trainer page model
+    // (UI/ClassicTrainerPage.h) the Gen I-IV page uses: the Gen V heights, a compact Review button
+    // in its measured slot below the last row, and the language line beside it in that band, so
+    // neither can overlap a row.
     using TRow=G::Gen5TrainerScreen::Row;
-    constexpr int cardW=680,rowH=52,rowGap=8,infoH=42,infoGap=6,top=hH+18;
-    const int cardX=x+(w-cardW)/2;
+    using F=TPage::Field;
+    const std::vector<TPage::Row> model{{F::Name,true,-1},{F::Money,true,-1},{F::PlayTime,true,-1},
+        {F::Pokedex,true,-1},{F::Gender,false,-1},{F::TrainerId,false,-1},{F::SecretId,false,-1},
+        {F::Badges,false,-1}};
+    const auto page=PokeBank::UIModel::ClassicTrainerPage::layout(model,x,y,w,h,true);
     const auto indexOf=[](TRow row) {
         for(size_t i=0;i<G::Gen5TrainerScreen::kRows.size();++i)
             if(G::Gen5TrainerScreen::kRows[i]==row)return i;
         return G::Gen5TrainerScreen::kRows.size();
     };
-    int cy=y+top;
+    size_t placed=0;
     for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex}) {
         const size_t i=indexOf(row);
         const bool sel=editor.open() && i==editor.row();
-        fb.drawSoftShadow(cardX,cy,cardW,rowH,14);
-        fb.drawFilledRoundedRect(cardX,cy,cardW,rowH,14,Colors::PanelAlt);
-        if(sel)fb.drawRoundedRect(cardX,cy,cardW,rowH,14,Colors::FocusBorder,2);
-        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),cardX,cy,cardW,rowH});
-        fb.drawText(cardX+24,cy+(rowH-fb.lineHeight(TextStyle::Body))/2,G::Gen5TrainerScreen::label(row),
-                    sel?Colors::SelectedText:Colors::TextDim,TextStyle::Body);
-        const std::string value=G::Gen5TrainerScreen::value(ws,row);
-        int vw=0,vh=0;
-        fb.measureText(value,vw,vh,TextStyle::Body);
-        const int pillW=vw+44,pillH=36;
-        const int px=cardX+cardW-pillW-20,py=cy+(rowH-pillH)/2;
-        fb.drawPill(px,py,pillW,pillH,Colors::Background);
-        fb.drawText(px+(pillW-vw)/2,py+(pillH-vh)/2,value,Colors::Text,TextStyle::Body);
-        cy+=rowH+rowGap;
+        const auto& c=page.rows[placed++].card;
+        screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),c.x,c.y,c.w,c.h});
+        TPanel::drawEditableRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
+                                G::Gen5TrainerScreen::value(ws,row),sel);
     }
-    cy+=4;
-    fb.drawHDivider(cardX+20,cy,cardW-40);
-    cy+=14;
+    {
+        const int cardX=page.rows.front().card.x,cy=page.dividerY,cardW=TPage::kCardW;
+        TPanel::drawDivider(fb,cardX,cy,cardW);
+    }
     for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges}) {
-        fb.drawFilledRoundedRect(cardX,cy,cardW,infoH,12,Colors::PanelAlt);
-        fb.drawText(cardX+24,cy+(infoH-fb.lineHeight(TextStyle::Body))/2,G::Gen5TrainerScreen::label(row),
-                    Colors::TextDim,TextStyle::Body);
-        const std::string value=G::Gen5TrainerScreen::value(ws,row);
-        int vw=0,vh=0;
-        fb.measureText(value,vw,vh,TextStyle::Body);
-        fb.drawText(cardX+cardW-24-vw,cy+(infoH-vh)/2,value,Colors::Text,TextStyle::Body);
-        cy+=infoH+infoGap;
+        const auto& c=page.rows[placed++].card;
+        TPanel::drawInfoRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
+                            G::Gen5TrainerScreen::value(ws,row));
     }
-    if(const auto t=ws.trainerPresentation())
-        fb.drawText(cardX+24,cy+2,std::string("Game language: ")+Enums::getLanguageName(t->language)+
-                    "  (stored id "+std::to_string(t->language)+")",Colors::TextDim,TextStyle::Caption);
+    if(const auto t=ws.trainerPresentation()) {
+        const auto& line=page.language;
+        fb.drawText(line.x,line.y+(line.h-fb.lineHeight(TextStyle::Caption))/2,std::string("Game language: ")+
+                    Enums::getLanguageName(t->language)+"  (stored id "+std::to_string(t->language)+")",
+                    Colors::TextDim,TextStyle::Caption);
+    }
+    drawGlyphButton(fb,page.review.x,page.review.y,page.review.w,page.review.h,"Y","Review Changes");
+    screen.touchButtons.push_back({PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId,
+        page.review.x,page.review.y,page.review.w,page.review.h});
     std::vector<ControllerHint> hints;
-    for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+    for(const auto& entry:editor.footer(ws))hints.push_back({entry.glyph,entry.label});
     drawNavBar(fb,hints);
 }
 } // namespace
@@ -1288,6 +1385,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     // Loaded-game hub (same as Gen I-IV). The base hub keeps cursor/focus and
     // help; Gen V intercepts only activation, Exit and Review so that the
     // inherited Bank/Storage and source writers stay unreachable.
+    if(state.surface()==Surface::Browse && (screen.helpOverlayActive || (down&HidNpadButton_Minus)))
+        return false;
     if(state.surface()==Surface::Browse && !screen.detailViewActive) {
         if(screen.helpOverlayActive)return false;
         namespace G=PokeVault::Integration::Gen5;
@@ -1483,9 +1582,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             }
             else if(keys&HidNpadButton_Y)state.requestDiscardAll();
             else if(keys&(HidNpadButton_Left|HidNpadButton_Up|
-                         HidNpadButton_L))state.moveReviewPage(-1,staged);
+                         HidNpadButton_L))state.moveReviewPage(-1,staged,sharedReviewRows(screen,staged).size());
             else if(keys&(HidNpadButton_Right|HidNpadButton_Down|
-                         HidNpadButton_R))state.moveReviewPage(1,staged);
+                         HidNpadButton_R))state.moveReviewPage(1,staged,sharedReviewRows(screen,staged).size());
             return true;
         case Surface::ConfirmExport:
             if(keys&HidNpadButton_B) {
@@ -1546,13 +1645,19 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 }
             }
             return true;
-        case Surface::ConfirmExit:
-            if(keys&HidNpadButton_B)(void)state.back();
-            else if(keys&HidNpadButton_X)state.reviewFromExit(staged);
-            else if(keys&HidNpadButton_Y) {
-                if(state.confirmDiscardAndExit(staged))screen.goBack=true;
-            }
+        case Surface::ConfirmExit: {
+            namespace Exit=PokeBank::UIModel::ClassicStagedExit;
+            const auto action=Exit::choose(keys&HidNpadButton_A,keys&HidNpadButton_B,
+                keys&HidNpadButton_X,keys&HidNpadButton_Y,tap);
+            if(action==Exit::Action::ContinueEditing)(void)state.back();
+            else if(action==Exit::Action::Review)state.reviewFromExit(staged);
+            else if(action==Exit::Action::ExportCopy) {
+                state.reviewFromExit(staged);
+                (void)state.requestExport(staged);
+            } else if(action==Exit::Action::DiscardExit && state.confirmDiscardAndExit(staged))
+                screen.goBack=true;
             return true;
+        }
         case Surface::CloneDestination:
             state.cancelBoxAction(); // only transient while the keypads are open
             return true;
@@ -1577,7 +1682,15 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         screen.controllerNavigation.reset();
         return true;
     }
-    if(keys&HidNpadButton_Plus) {
+    // Round 7 (ReviewEntry.h): one Review key per screen. Party and Boxes: Y, where Y has no other
+    // job in Browse (carrying is handled above); + is not a second key there. The save hub keeps
+    // its + Review. B in Review returns here with the cursor and box intact.
+    namespace Entry=PokeBank::UIModel::ReviewEntry;
+    const bool party=screen.selectedMode==TrainerViewScreen::ViewMode::Party;
+    const bool boxes=screen.selectedMode==TrainerViewScreen::ViewMode::Boxes;
+    const bool panel=screen.detailViewActive && (party || boxes);
+    if((!screen.detailViewActive && (keys&HidNpadButton_Plus)) ||
+       (panel && Entry::opensReview(party?Entry::Screen::Party:Entry::Screen::Boxes,5,keys))) {
         if(!state.openReviewFromBrowse(staged))
             screen.postStatus("No staged Gen V changes to review",220);
         return true;
@@ -1675,13 +1788,13 @@ const char* reviewedStatName(size_t stat) noexcept {
     constexpr const char* names[]={"HP","Atk","Def","Spe","SpA","SpD"};
     return stat<6?names[stat]:"?";
 }
-std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
+std::string reviewedFieldName(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
     using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
-    if(c.field==Field::NicknameText)return "Nickname changed";
-    if(c.field==Field::OriginalTrainerText)return "OT Name changed";
     std::string name;
     switch(c.field) {
         case Field::Nature:name="Nature";break;
+        case Field::Personality:name="PID";break;
+        case Field::Shiny:name="Shiny";break;
         case Field::Level:name="Level";break;
         case Field::Experience:name="Experience";break;
         case Field::Species:name="Species";break;
@@ -1691,6 +1804,7 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::NicknameText:name="Nickname";break;
         case Field::OriginalTrainerText:name="OT Name";break;
         case Field::Friendship:name="Friendship";break;
+        case Field::Language:name="Language";break;
         case Field::IV:name=std::string("IV ")+reviewedStatName(c.stat);break;
         case Field::EV:name=std::string("EV ")+reviewedStatName(c.stat);break;
         case Field::HeldItem:name="Held Item";break;
@@ -1710,113 +1824,125 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::MovePP:name="PP "+std::to_string(c.stat+1);break;
         default:name="Unsupported";break;
     }
-    return name+": "+std::to_string(c.before)+" -> "+std::to_string(c.after);
+    return name;
 }
+std::string reviewedFieldValue(PokeVault::Integration::Gen5::StagedPokemon5Record::Field field,
+                               uint32_t value) {
+    using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
+        switch (field) {
+            case Field::Move: return Names::getMoveName(static_cast<uint16_t>(value));
+            case Field::HeldItem: return Names::getItemName(static_cast<uint16_t>(value));
+            case Field::Species: case Field::CreateBox: case Field::CloneBox: case Field::RemoveBox:
+                return value?Names::getSpeciesName(static_cast<uint16_t>(value)):"Empty";
+            case Field::Shiny: return value?"Yes":"No";
+            case Field::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
+            case Field::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
+            case Field::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
+            // Round 6 L06: Review names values instead of raw native modes ("Pokerus: 2 -> 1").
+            case Field::Pokerus: return Fields::pokerusLabel(value);
+            case Field::OriginalTrainerGender: return value == 0 ? "Male" : "Female";
+            case Field::Gender: return value == 0 ? "Male" : value == 1 ? "Female" : "Genderless";
+            case Field::FatefulEncounter: return value ? "Yes" : "No";
+            default: return std::to_string(value);
+        }
+}
+std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
+    using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
+    if(c.field==Field::NicknameText)return "Nickname changed";
+    if(c.field==Field::OriginalTrainerText)return "OT Name changed";
+    return reviewedFieldName(c)+": "+reviewedFieldValue(c.field,c.before)+" -> "+
+           reviewedFieldValue(c.field,c.after);
+}
+PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen,
+    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
+    namespace G=PokeVault::Integration::Gen5;
+    PokeBank::UIModel::SharedReview::Rows rows;
+    const auto pending=ws.pendingReview();
+    const auto location=[](const auto& loc) {
+        return loc.region==Region::Party?"Party "+std::to_string(loc.slot+1):
+            "Box "+std::to_string(loc.box+1)+" / Slot "+std::to_string(loc.slot+1);
+    };
+    for(const auto& grouped:G::groupReviewRows5(pending)) {
+        const auto& c=pending[grouped.change];std::string error;
+        const auto verified=G::verifyStagedReview(c,&error);
+        if(grouped.kind==G::ReviewRow5::Kind::Move) {
+            const auto& removed=pending[grouped.removal];
+            const auto original=G::verifyStagedReview(removed,&error);
+            rows.push_back({"Move Pokemon",verified && original?
+                location(removed.location)+" -> "+location(c.location):"Unverified staged difference"});
+            continue;
+        }
+        if(!verified) {rows.push_back({location(c.location),"Unverified staged difference"});continue;}
+        const G::Pokemon5ReadOnly before(std::span<const uint8_t>(c.before));
+        const G::Pokemon5ReadOnly after(std::span<const uint8_t>(c.after));
+        if(!verified->created.empty()) {
+            // CG74: the shared Create Review shape (Gen12CreateReview.h, as Gen I-IV): a
+            // "<loc> / Add Pokémon" header with "Empty -> SPECIES Lv n", then one "<loc> / Field" row
+            // per value of the certified staged record (later edits are already in those values).
+            using F=G::StagedPokemon5Record::Field;
+            namespace CR=PokeVault::Integration::Gen12CreateReview;
+            const std::string loc=location(c.location);
+            rows.push_back({loc+" / "+std::string(CR::kAddPokemon),"Empty -> "+CR::header(
+                Names::getSpeciesName(after.species()),
+                Fields::level(after,nativeTrainer(screen).sharedScreen().black2White2()))});
+            std::string moves;
+            std::array<uint32_t,6> ivs{},evs{};
+            for(const auto& v:verified->created) {
+                if(v.field==F::Move)moves+=(moves.empty()?"":", ")+std::string(Names::getMoveName(static_cast<uint16_t>(v.after)));
+                if(v.field==F::IV && v.stat<6)ivs[v.stat]=v.after;
+                if(v.field==F::EV && v.stat<6)evs[v.stat]=v.after;
+            }
+            if(!moves.empty())rows.push_back({loc+" / Moves",moves});
+            const auto ot=G::asciiName5(after.decodedBytes(),false);
+            rows.push_back({loc+" / OT / TID / SID",(ot && !ot->empty()?*ot:std::string("(none)"))+" / "+
+                std::to_string(after.tid())+" / "+std::to_string(after.sid())});
+            for(const auto& v:verified->created) {
+                if(v.field==F::Move || v.field==F::IV || v.field==F::EV ||
+                   v.field==F::TrainerId || v.field==F::SecretId)continue;
+                std::string value=reviewedFieldValue(v.field,v.after);
+                if(v.field==F::AbilitySlot)value=Trainer::getAbilityName(static_cast<uint16_t>(v.after));
+                if(v.field==F::MetLocation)value=Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
+                std::string name=reviewedFieldName(v);
+                if(v.field==F::AbilitySlot)name="Ability";
+                rows.push_back({loc+" / "+name,value});
+            }
+            constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
+            if(const auto line=CR::nonZero(statLabels,ivs);!line.empty())rows.push_back({loc+" / IVs",line});
+            if(const auto line=CR::nonZero(statLabels,evs);!line.empty())rows.push_back({loc+" / EVs",line});
+            continue;
+        }
+        for(const auto& field:verified->fields) {
+            using F=G::StagedPokemon5Record::Field;
+            std::string detail=reviewedFieldLabel(field);
+            if(field.field==F::NicknameText || field.field==F::OriginalTrainerText) {
+                const bool nickname=field.field==F::NicknameText;
+                const auto from=G::asciiName5(before.decodedBytes(),nickname);
+                const auto to=G::asciiName5(after.decodedBytes(),nickname);
+                detail=std::string(nickname?"Nickname: ":"OT Name: ")+(from?*from:"Native glyphs")+
+                    " -> "+(to?*to:"Native glyphs");
+            }
+            if(field.field==F::AbilitySlot)
+                detail=std::string("Ability: ")+Trainer::getAbilityName(before.ability())+" -> "+Trainer::getAbilityName(after.ability());
+            if(field.field==F::MetLocation)
+                detail="Met Location: "+Names::getMetLocationDisplayName(before.originVersion(),before.metLocation())+
+                    " -> "+Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
+            rows.push_back({location(c.location),detail});
+        }
+    }
+    for(const auto& c:ws.bagReviewChanges())rows.push_back({std::string("Bag / ")+G::bagPocketName5(c.pocket)+" / "+bagItemLabel(screen,c.itemId),
+        std::to_string(c.before)+" -> "+std::to_string(c.after)});
+    for(const auto& c:ws.trainerReviewChanges()) {
+        using F=G::TrainerChange5::Field;
+        rows.push_back({std::string("Trainer / ")+(c.field==F::Name?"Name":c.field==F::Money?"Money":"Play Time"),c.before+" -> "+c.after});
+    }
+    return rows;
+}
+
 void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 const ScreenState& state,
                 const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
-    dimShared(screen,fb);
-    constexpr int x=150,y=59,w=980,h=534;
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
-    fb.drawText(x+24,y+18,"Review Pending Changes - Generation V",
-                Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+57,
-        "Verified app-memory PK5 fields and native Bag slots; original SAV5 unchanged",
-        Colors::Accent,TextStyle::Caption);
-    const auto pending=ws.pendingReview();
-    // A staged Move is ONE row ("Move"), not its Clone + Remove halves (Gen5ReviewRows.h).
-    const auto records=PokeVault::Integration::Gen5::groupReviewRows5(pending);
-    const auto bagChanges=ws.bagReviewChanges();
-    const auto trainerChanges=ws.trainerReviewChanges();
-    const size_t total=records.size()+bagChanges.size()+trainerChanges.size();
-    constexpr size_t pageSize=ScreenState::kReviewPageSize;
-    const size_t pages=std::max(size_t{1},(total+pageSize-1)/pageSize);
-    const size_t page=std::min(state.reviewPage(),pages-1);
-    fb.drawText(x+24,y+94,std::to_string(records.size())+" staged Pokemon  /  "+
-        std::to_string(bagChanges.size())+" Bag  /  "+std::to_string(trainerChanges.size())+
-        " Trainer  /  Page "+std::to_string(page+1)+
-        " of "+std::to_string(pages),Colors::Text,TextStyle::Body);
-    for(size_t row=0;row<pageSize;++row) {
-        const size_t i=page*pageSize+row;
-        if(i>=total)break;
-        if(i>=records.size()+bagChanges.size()) {
-            const auto& c=trainerChanges[i-records.size()-bagChanges.size()];
-            using TField=PokeVault::Integration::Gen5::TrainerChange5::Field;
-            const int yy=y+133+static_cast<int>(row)*91;
-            fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
-            fb.drawText(x+32,yy+8,std::string("Trainer / ")+
-                (c.field==TField::Name?"Name":c.field==TField::Money?"Money":"Play Time"),
-                Colors::Text,TextStyle::Body);
-            fb.drawText(x+32,yy+43,c.before+" -> "+c.after,Colors::TextSecondary,TextStyle::Caption);
-            continue;
-        }
-        if(i>=records.size()) {
-            const auto& c=bagChanges[i-records.size()];
-            const int yy=y+133+static_cast<int>(row)*91;
-            fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
-            fb.drawText(x+32,yy+8,std::string("Bag / ")+
-                PokeVault::Integration::Gen5::bagPocketName5(c.pocket)+"  -  "+
-                bagItemLabel(screen,c.itemId),Colors::Text,TextStyle::Body);
-            const std::string what=c.before==0?"Added x"+std::to_string(c.after):
-                c.after==0?"Removed (was x"+std::to_string(c.before)+")":
-                "Quantity: "+std::to_string(c.before)+" -> "+std::to_string(c.after);
-            fb.drawText(x+32,yy+43,what,Colors::TextSecondary,TextStyle::Caption);
-            continue;
-        }
-        const auto& record=records[i];
-        const auto& change=pending[record.change];
-        const auto& loc=change.location;
-        const int yy=y+133+static_cast<int>(row)*91;
-        if(record.kind==PokeVault::Integration::Gen5::ReviewRow5::Kind::Move) {
-            const auto& removal=pending[record.removal];
-            const auto boxLabel=[](const auto& s) {
-                return "Box "+std::to_string(s.box+1)+" / Slot "+std::to_string(s.slot+1);
-            };
-            fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
-            fb.drawText(x+32,yy+8,"Move  "+boxLabel(removal.location)+"  ->  "+boxLabel(loc),
-                        Colors::Text,TextStyle::Body);
-            std::string error;
-            const auto moved=PokeVault::Integration::Gen5::verifyStagedReview(change,&error);
-            const auto vacated=PokeVault::Integration::Gen5::verifyStagedReview(removal,&error);
-            uint16_t species=0;
-            if(moved)
-                for(const auto& f:moved->fields)
-                    if(f.field==PokeVault::Integration::Gen5::StagedPokemon5Record::Field::CloneBox)
-                        species=static_cast<uint16_t>(f.after);
-            fb.drawText(x+32,yy+43,
-                moved && vacated
-                    ? std::string(Names::getSpeciesName(species))+" moved; the original slot is now empty"
-                    : std::string("Unverified staged difference - no legality conclusion"),
-                moved && vacated ? Colors::TextSecondary : Colors::Warning,TextStyle::Caption);
-            continue;
-        }
-        const std::string label=loc.region==Region::Party
-            ? "Party slot "+std::to_string(loc.slot+1)
-            : "Box "+std::to_string(loc.box+1)+" / Slot "+std::to_string(loc.slot+1);
-        fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
-        fb.drawText(x+32,yy+8,label,Colors::Text,TextStyle::Body);
-        std::string error;
-        const auto verified=PokeVault::Integration::Gen5::verifyStagedReview(change,&error);
-        if(!verified) {
-            fb.drawText(x+32,yy+42,
-                "Unverified staged difference - no legality conclusion",
-                Colors::Warning,TextStyle::Caption);
-            continue;
-        }
-        std::string line;
-        for(size_t field=0;field<verified->fields.size() && field<3;++field) {
-            if(!line.empty())line+="  |  ";
-            line+=reviewedFieldLabel(verified->fields[field]);
-        }
-        if(verified->fields.size()>3)
-            line+="  |  +"+std::to_string(verified->fields.size()-3)+" more";
-        fb.drawText(x+32,yy+43,line,Colors::TextSecondary,TextStyle::Caption);
-    }
-    fb.drawText(x+24,y+h-31,"Box clone/remove staged only; no source writes or inferred legality",
-                Colors::TextDim,TextStyle::Caption);
-    drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
-                   {"Y","Discard All..."},{"B","Back"}});
+    const auto rows=sharedReviewRows(screen,ws);
+    SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,state.reviewPage(),ws.hasChanges(),"Generation V");
 }
 // Origin & Legality (Round 3 Part 9): the neutral Gen I-IV panel. It reports the
 // PK5 structure and the record's stored origin only, and never a legality
@@ -1826,46 +1952,31 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
                    const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& workspace) {
     namespace P=PokeBank::UIModel::SharedEditorPresentation;
     dimShared(screen,fb);
-    SharedEditorChrome::beginModal(screen.touchButtons);
-    constexpr int x=210,y=82,w=860,h=500;
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-    fb.drawText(x+24,y+18,P::kOriginLegalityHeading,Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+52,"PK5 structure checked • no full legality checker",
-                Colors::TextDim,TextStyle::Caption);
     const auto& slot=state.target();
-    const auto pk=slot.region==Region::Party?workspace.viewParty(slot.slot):
-        workspace.viewBox(slot.box,slot.slot);
-    if(!pk || !pk->valid() || pk->empty()) {
-        fb.drawText(x+34,y+110,"No valid Pokemon selected",Colors::Warning,TextStyle::Body);
-        drawNavBar(fb,{{"B","Back"}});
-        return;
+    const auto p=slot.region==Region::Party?workspace.viewParty(slot.slot):workspace.viewBox(slot.box,slot.slot);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",gen5GameName(screen.sourceGameId)},
+        {"Native format",p && p->valid()?"PK5 checksum and structure valid":"PK5 unavailable or invalid"},
+        {"Encounter / evolution / transfers","Full history not evaluated"},
+        {"Rule coverage","Structure and editor guardrails; full legality incomplete"}};
+    if(p && p->valid() && !p->empty()) {
+        const auto origin=p->originVersion();const auto date=p->metDate();
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species()))+" #"+std::to_string(p->species())});
+        const auto nickname=PokeVault::Integration::Gen5::asciiName5(p->decodedBytes(),true);
+        const auto ot=PokeVault::Integration::Gen5::asciiName5(p->decodedBytes(),false);
+        rows.push_back({"Nickname",nickname?*nickname:"Native glyphs"});
+        rows.push_back({"Original Trainer",ot?*ot:"Native glyphs"});
+        rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
+        rows.push_back({"Origin game",Enums::getOriginGameName(origin)});
+        rows.push_back({"Met location",metLocationText5(origin,p->metLocation())});
+        if(const auto event=Names::metLocationEventEvidence(origin,p->metLocation());!event.empty())
+            rows.push_back({"Event provenance",event});
+        rows.push_back({"Met level",std::to_string(p->metLevel())});
+        rows.push_back({"Met date (stored)",(date.month==0 && date.day==0)?std::string("Not recorded"):std::to_string(date.year)+"-"+std::to_string(date.month)+"-"+std::to_string(date.day)});
+        rows.push_back({"Egg / fateful",std::string(p->egg()?"Unhatched":"Not egg")+" / "+(p->fatefulEncounter()?"Fateful":"Not fateful")});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves()[i]?Names::getMoveName(p->moves()[i]):"Empty"});
     }
-    const uint8_t origin=pk->originVersion();
-    const std::string originName=origin==20?"White":origin==21?"Black":
-        origin==22?"White 2":origin==23?"Black 2":"Other (version id "+std::to_string(origin)+")";
-    const auto date=pk->metDate();
-    const std::pair<std::string,std::string> rows[]={
-        {"Exact source",gen5GameName(screen.sourceGameId)},
-        {"PK5 structure","PASS"},
-        {"Source mutation","HARD DISABLED"},
-        {"Origin game",originName},
-        {"Met location",metLocationText5(origin,pk->metLocation())},
-        {"Met level / date",std::to_string(pk->metLevel())+"  /  "+std::to_string(date.year)+"-"+
-            std::to_string(date.month)+"-"+std::to_string(date.day)},
-        {"Fateful encounter",pk->fatefulEncounter()?"Yes":"No"},
-        {"Encounter check",P::legalityLabel(P::LegalityState::Unknown)},
-        {"Legality",P::legalityLabel(P::LegalityState::Incomplete)},
-    };
-    int rowY=y+96;
-    for(const auto& [label,value]:rows) {
-        fb.drawText(x+34,rowY,label,Colors::TextDim);
-        const bool flag=label=="Encounter check" || label=="Legality";
-        fb.drawText(x+290,rowY,value,label=="PK5 structure"?Colors::Success:
-                    label=="Source mutation"?Colors::Accent:flag?Colors::Warning:Colors::Text);
-        rowY+=40;
-    }
-    drawNavBar(fb,{{"B","Back"}});
+    SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::Incomplete);
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
@@ -1906,9 +2017,6 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             if(!serialized.empty()) serialized+="  |  ";
             serialized+=hint.button+": "+hint.label;
         }
-        if(!G::Gen5BagScreen::mutablePocket(bag.pocket()) &&
-           G::Gen5BagScreen::available(ws))
-            serialized+="  |  Key Items/TMs view only";
         drawNavBar(fb,serialized);
         return;
     }
@@ -1933,12 +2041,23 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             // (Names::getMachineDescriptor; Lane I fills BW/B2W2 there).
             [&](int index){return Names::getMachineDescriptor(game,choices[static_cast<size_t>(index)]).moveId;},
             editorStateFor(screen).bagAddScrollbar);
+    } else if(bag.surface()==BagSurface::KeyItemAddWarning) {
+        const auto id=bag.chosenAddItem();
+        UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,id,
+            bagItemLabel(screen,id),G::bagPocketName5(bag.pocket()),false);
+        return;
     } else {
         const auto& item=bag.pendingRemove();
+        if(item && PokeBank::UIModel::BagAdd::needsKeyItemWarning(
+                gen5PolicyRule(screen,bag.pocket(),item->itemId))) {
+            UI::SharedBagAddPicker::drawKeyItemWarning(fb,screen.touchButtons,game,item->itemId,
+                bagItemLabel(screen,item->itemId),G::bagPocketName5(bag.pocket()),true);
+            return;
+        }
         UI::SharedBagAddPicker::drawRemoveConfirm(fb,screen.touchButtons,game,"Remove Gen V Item?",
             item?item->itemId:0,item?bagItemLabel(screen,item->itemId):std::string(),
             item?item->count:0,"Staged bag only; Discard All in Review restores it.");
-        return; // drawRemoveConfirm draws its own Y Remove / B Cancel footer.
+        return; // The modal owns its A/B choices; do not repeat them in a footer.
     }
     drawNavBar(fb,hints);
 }
@@ -1947,6 +2066,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     auto& trainer=nativeTrainer(screen);
     auto& state=trainer.sharedScreen();
     const auto& staged=trainer.stagedPokemon();
+    if(screen.helpOverlayActive){screen.drawGSCOverlay(fb);return true;}
     // The inherited modal unconditionally invokes an unsupported Gen V
     // legality analyzer; the shared Gen V adapter never opens that modal.
     screen.details.active=false;
@@ -1981,14 +2101,10 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 {{"Y","Export Copy"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmDiscardAll:
-            drawDecision(screen,fb,"Discard All Staged Changes?",
-                "Y permanently clears app-memory edits; SAV5 stays unchanged.",
-                {{"Y","Confirm Discard"},{"B","Cancel"}});
+            SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons);
             return true;
         case Surface::ConfirmExit:
-            drawDecision(screen,fb,"Staged Changes Remain In Memory",
-                "Exit discards in-memory edits. Exported working copies remain safe.",
-                {{"Y","Discard & Exit"},{"X","Review"},{"B","Continue"}});
+            SharedEditorChrome::drawStagedExitPanel(fb,screen.touchButtons);
             return true;
         case Surface::Browse:break;
     }
@@ -2030,10 +2146,10 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         ClassicPackedMove::draw(screen,fb); // carried sprite + "Y Drop / L/R Box / B Cancel"
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
         drawNavBar(fb,{{"D-pad","Navigate"},{"L/R","Box"},
-                       {"ZL/ZR","Jump 5"},{"A","Actions"},{"+","Review"},{"B","Back"}});
+                       {"ZL/ZR","Jump 5"},{"A","Actions"},{"Y","Review"},{"B","Back"}});
     else
         drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Actions"},
-                       {"+","Review"},{"B","Back"}});
+                       {"Y","Review"},{"B","Back"}});
     return true;
 }
 } // namespace UI::Gen5SharedReadOnlySurface

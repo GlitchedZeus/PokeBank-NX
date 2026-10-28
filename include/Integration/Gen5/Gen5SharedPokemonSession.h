@@ -47,6 +47,8 @@ public:
         auto draft=StagedPokemon5Record::create(record->originalEncryptedBytes(),&error,
                                                   workspace.black2White2());
         if(!draft)return false;
+        if(const auto restore=workspace.pokerusRestoreByte(location))
+            draft->setPokerusRestoreBaseline(*restore);
         baseline_={record->originalEncryptedBytes().begin(),
                    record->originalEncryptedBytes().end()};
         working_=std::move(*draft);
@@ -155,6 +157,8 @@ public:
            !apply(Field::Nature,0,after.nature()))return false;
         if(before.friendship()!=after.friendship() &&
            !apply(Field::Friendship,0,after.friendship()))return false;
+        if(before.language()!=after.language() &&
+           !apply(Field::Language,0,after.language()))return false;
         // Gen IV parity tranche: these native PK5 metadata bytes are
         // independent of PID, gender, ability, and party battle stats.
         if(before.heldItem()!=after.heldItem() &&

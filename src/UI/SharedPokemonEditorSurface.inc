@@ -1,3 +1,4 @@
+#include "UI/SharedAbilityPicker.h"
 #pragma once
 // The ONE shared Pokemon editor workspace (DETAILS | STATS | MOVES), its value
 // pickers and its contextual move editor. Extracted unchanged from the accepted
@@ -22,10 +23,14 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ItemPickerSort.h"
+#include "UI/ItemPickerSearch.h"
+#include "UI/AbilityEffects.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
+#include "UI/NatureStatPresentation.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemInput.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorChrome.h"
@@ -33,6 +38,9 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
+#include "UI/SharedViewOnlyNotice.h"
+#include "UI/SharedPanelHeading.h"
+#include "UI/ReviewEntry.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/SharedSpeciesPicker.h"
@@ -46,6 +54,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include "Integration/Encounter/EncounterContext45.h"
 #include <utility>
 #include <vector>
 
@@ -80,7 +89,12 @@ struct EditorState {
     SharedSpeciesPicker::Chooser speciesChooser; // R2-SEARCH: live species filter + key grid
     std::vector<uint16_t> pickerValues;
     std::vector<uint16_t> pickerNativeValues;
+    PokeVault::Integration::EncounterContext45::Catalogue pickerMetContext;
+    bool pickerMetContextActive = false;
+    bool pickerOtherHistories = false;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
+    std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
+    SharedHeldItemSearch::State heldItemSearch;
 
     bool moveEditor = false;
     int moveEditorSlot = 0;
@@ -115,6 +129,7 @@ inline void resetWorkspaceFocus(EditorState& state) noexcept {
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
+    state.pickerMetContextActive = false;
     state.speciesPreviewShiny = false;
     state.moveEditor = false;
     state.moveEditorRow = 0;
@@ -137,7 +152,7 @@ inline Color genderValueColor(uint8_t gender) {
 
 inline void drawPanel(PKSEFramebuffer& fb, int x, int y, int w, int h, const char* title) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
-    fb.drawText(x + 14, y + 10, title, Colors::Accent, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, title);
 }
 
 inline void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
@@ -174,9 +189,13 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
     state.pickerScroll.reset();
     state.pickerViewport.reset();
     state.pickerTarget = target;
+    if(target==PickerTarget::HeldItem)state.heldItemSearch={};
     state.pickerValues = std::move(values);
     state.pickerNativeValues = state.pickerValues;
     state.pickerSort = ItemPickerSort::Mode::Native;
+    state.pickerQuery.clear();
+    state.pickerMetContextActive = false;
+    state.pickerOtherHistories = false;
     if (target == PickerTarget::Species) state.speciesChooser.reset();   // R2-SEARCH: full native list
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end() ? 0 :
@@ -184,8 +203,20 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
     screen.controllerNavigation.reset();
 }
 
-// The Met Location picker is wider so place names and met level fit on one row (Gen III too).
-inline constexpr int kMetLocationPickerWidth = 900;
+inline void openContextualMetLocationPicker(TrainerViewScreen& screen, EditorState& state,
+    uint8_t origin, uint16_t species, uint16_t current, std::vector<uint16_t> native,
+    PokeVault::Integration::EncounterContext45::History history) {
+    // EncounterGuardrails supplies source facts only; native histories are never rejected here.
+    PokeVault::Integration::EncounterContext45::Catalogue context(origin, species, current,
+                                                               std::move(native), history);
+    openPicker(screen, state, PickerTarget::MetLocation, context.choices(), current);
+    state.pickerNativeValues = context.choices(true);
+    state.pickerMetContext = std::move(context);
+    state.pickerMetContextActive = true;
+}
+
+// Wide enough for a place name and a separate encounter-context example (Gen III too).
+inline constexpr int kMetLocationPickerWidth = 620;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
@@ -194,9 +225,12 @@ static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
 // rows; draw and touch handling both read this layout, so they cannot drift apart.
 inline PokeBank::UIModel::SharedMenuGeometry::Layout valueListLayout(PickerTarget target, int count) noexcept {
     namespace G = PokeBank::UIModel::SharedMenuGeometry;
+    if(target==PickerTarget::Ability)return SharedAbilityPicker::layout(count);
+    // Met Location retains its bounded source-context columns.
     return G::layout(target == PickerTarget::Ball ? G::MenuType::BallPicker
-                     : target == PickerTarget::MetLocation ? G::MenuType::LocationPicker
-                                                           : G::MenuType::ChoicePicker, count);
+                     : target == PickerTarget::MetLocation
+                         ? G::MenuType::LocationPicker
+                         : G::MenuType::ChoicePicker, count);
 }
 
 inline bool compactPicker(PickerTarget target) noexcept {
@@ -220,9 +254,54 @@ constexpr auto sharedSpeciesName = [](uint16_t species) { return std::string(Nam
 template <class A>
 bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
+    // 7D: a release-confirmed tap outside the picker cancels it like B; this frame's return
+    // keeps the gesture from reaching the workspace underneath.
+    if (SharedPopupDismiss::tappedOutside(touch)) {
+        state.pickerScroll.stop();
+        state.valuePicker = false;
+        state.pickerTarget = PickerTarget::None;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive &&
+        (down & HidNpadButton_X) && !(down & HidNpadButton_B)) {
+        const uint16_t focused = state.pickerValues.empty() ? state.pickerMetContext.stored() :
+            state.pickerValues[static_cast<size_t>(state.pickerRow)];
+        state.pickerOtherHistories = !state.pickerOtherHistories;
+        state.pickerValues = state.pickerMetContext.choices(state.pickerOtherHistories);
+        const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), focused);
+        state.pickerRow = it == state.pickerValues.end() ? 0 : static_cast<int>(it - state.pickerValues.begin());
+        state.pickerScroll.reset();
+        state.pickerViewport.reset();
+        state.pickerScrollbar = {};
+        screen.controllerNavigation.reset();
+        return true;
+    }
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
-    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const auto heldItemName=[&](uint16_t id){return A::pickerLabel(screen, state, PickerTarget::HeldItem, id);};
+    if(gridPicker) {
+        const auto refilter=[&](const std::string& query) {
+            const int row=ItemPickerSearch::apply(state.pickerValues,state.pickerNativeValues,
+                state.pickerSort,query,state.pickerRow,heldItemName,SharedSearchInput::searchKey);
+            state.pickerQuery=query;
+            if(row>=0)state.pickerRow=row;
+            state.pickerViewport.reset();
+            return row>=0;
+        };
+        const int px=(1280-HeldItemGrid::modalWidth)/2,py=(720-kNavBarH-HeldItemGrid::modalHeight)/2;
+        const SharedSearchInput::Keys searchKeys{bool(down&HidNpadButton_Up),bool(down&HidNpadButton_Down),
+            bool(down&HidNpadButton_Left),bool(down&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+        if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
+            SharedSearchInput::sample(touch),px,py,refilter,
+            down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
+            state.pickerScroll.stop();
+            state.pickerViewport.reveal(state.pickerRow,static_cast<int>(state.pickerValues.size()),
+                HeldItemGrid::rows,HeldItemGrid::columnsForSearch(state.heldItemSearch.open()));
+            return true;
+        }
+    }
+    const int columns = gridPicker ? HeldItemGrid::columnsForSearch(state.heldItemSearch.open()) : 1;
     const int compactCount = std::max(0, count);
     const bool nature = state.pickerTarget == PickerTarget::Nature;
     const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
@@ -284,16 +363,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                     state.pickerRow);
             }
         } else if (state.pickerTarget == PickerTarget::HeldItem) {
-            constexpr int pickerW = HeldItemGrid::modalWidth;
-            constexpr int pickerH = HeldItemGrid::modalHeight;
-            constexpr int rowStep = HeldItemGrid::rowPitch;
-            const int px = (1280 - pickerW) / 2;
-            const int py = (720 - kNavBarH - pickerH) / 2;
-            state.pickerScroll.updateVertical(
-                touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
-                pickerW - 2 * HeldItemGrid::gridInsetX,
-                HeldItemGrid::rows * rowStep, rowStep,
-                state.pickerViewport.firstRow, maxFirstRow + 1);
+            // L06: SharedHeldItemInput::update below owns the grid's scroll, tap and A.
         } else if (state.pickerTarget == PickerTarget::Move) {
             constexpr auto pickerLayout = MoveUI::compactPickerLayout();
             const int px = (1280 - pickerLayout.width) / 2;
@@ -307,7 +377,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
             const auto valueList = valueListLayout(state.pickerTarget, count);
             const int pickerW = nature ? natureLayout.width : compact ? valueList.frame.w : 680;
             const int pickerH = nature ? natureLayout.height : compact ? valueList.frame.h : 560;
-            const int rowStep = nature ? natureLayout.rowStep : 42;
+            const int rowStep = nature ? natureLayout.rowStep : compact ? valueList.rule.rowHeight : 42;
             const int px = (1280 - pickerW) / 2;
             const int py = (720 - kNavBarH - pickerH) / 2;
             state.pickerScroll.updateVertical(
@@ -320,8 +390,11 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // Keep semantic focus fixed during picker drags; commit only the
     // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
-    if (!pickerBar.consumed && !speciesTouchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
+    bool tappedChoice = false;
+    // The Held Item grid resolves its own taps (SharedHeldItemInput::update below).
+    if (!gridPicker && !pickerBar.consumed && !speciesTouchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
+        tappedChoice = true;
         down |= HidNpadButton_A;
     }
     if (count <= 0) {
@@ -338,10 +411,30 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                     return id == 0 ? std::string() : std::string(Names::getMoveName(id));
                 return A::pickerLabel(screen, state, PickerTarget::HeldItem, id);
             });
+        if (gridPicker)   // NEW-06: a re-sort keeps the active search
+            state.pickerRow = std::max(0, ItemPickerSearch::narrow(state.pickerValues, state.pickerQuery,
+                                                                   state.pickerRow, heldItemName,SharedSearchInput::searchKey));
         state.pickerScroll.stop();
         state.pickerViewport.reset();
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         return true;
+    }
+
+    if (gridPicker && !(down & HidNpadButton_B)) {
+        // L06: tap and A share one step and one commit (UI/SharedHeldItemInput.h).
+        const int px = (1280 - HeldItemGrid::modalWidth) / 2;
+        const int py = (720 - kNavBarH - HeldItemGrid::modalHeight) / 2;
+        const auto held = SharedHeldItemInput::update(touch, state.pickerScroll, state.pickerViewport,
+            state.pickerRow, count, state.heldItemSearch.open(), px, py,
+            {bool(down & HidNpadButton_Up), bool(down & HidNpadButton_Down), bool(down & HidNpadButton_Left),
+             bool(down & HidNpadButton_Right), bool(down & HidNpadButton_L), bool(down & HidNpadButton_R),
+             bool(down & HidNpadButton_A)});
+        if (!held.choose) {
+            if (held.revealed)
+                screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
+        down = HidNpadButton_A;   // the shared commit below, on a focus that is now visible
     }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
         state.pickerScroll.stop();
@@ -404,7 +497,9 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
 
     // Species uses its own modal gesture. In other pickers the highlighted controller
     // choice can be off-screen after a finger scroll; A reveals rather than accepting it unseen.
-    if (state.pickerTarget != PickerTarget::Species &&
+    // L06 (Round 6): a completed tap on a partly visible choice (the clipped row a finger scroll
+    // leaves at the grid's edge) is the user pointing at it, so it is revealed AND chosen, like A.
+    if (state.pickerTarget != PickerTarget::Species && !tappedChoice &&
         !state.pickerViewport.containsSelection(
             state.pickerRow, count, visibleRows, columns)) {
         state.pickerScroll.stop();
@@ -412,12 +507,18 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
         return true;
     }
+    if (tappedChoice) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+    }
 
     state.pickerScroll.stop();
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     // The adapter applies the native choice to the draft, or reports why not
     // and leaves the picker open on the same row.
-    if (!A::applyPicker(screen, state, state.pickerTarget, value)) return true;
+    const bool unchangedLocation = state.pickerTarget == PickerTarget::MetLocation &&
+        state.pickerMetContextActive && value == state.pickerMetContext.stored();
+    if (!unchangedLocation && !A::applyPicker(screen, state, state.pickerTarget, value)) return true;
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     screen.controllerNavigation.reset();
@@ -532,6 +633,35 @@ bool editStatCell(TrainerViewScreen& screen, EditorState& state, const typename 
     return A::editPidRow(screen, state, activation.row, p);
 }
 
+// View (passive): A or a completed tap on a field says why nothing changes (owner Oct 25 L06:
+// no dead taps or invisible restrictions). Rows locked in every mode never point at Edit.
+template <class A, class Record>
+void viewOnlyActivate(TrainerViewScreen& screen, EditorState& state, Shared::Focus focus, const Record& p) {
+    namespace Notice = PokeBank::UIModel::ViewOnlyNotice;
+    constexpr std::array<const char*,5> pidLabels{{"Nature", "Gender", "Shiny", "Ability", "PID"}};
+    const auto activation = Workspace::activationFor(focus);
+    std::string field;
+    bool locked = false;
+    switch (activation.kind) {
+        case Workspace::ActivationKind::DetailField:
+            if (A::passiveActivate(screen, state, activation.row)) return;
+            field = A::detailLabel(activation.row);
+            locked = A::detailLocked(screen, state, activation.row, p);
+            break;
+        case Workspace::ActivationKind::MoveRow: field = "moves"; break;
+        case Workspace::ActivationKind::IvCell: field = "IVs"; break;
+        case Workspace::ActivationKind::EvCell: field = "EVs"; break;
+        case Workspace::ActivationKind::PidLinkedRow: {
+            const int index = activation.row - Workspace::kStatRows;
+            if (index < 0 || index >= static_cast<int>(pidLabels.size())) return;
+            field = pidLabels[static_cast<size_t>(index)];
+            locked = A::pidRowLocked(screen, state, activation.row, p);
+            break;
+        }
+    }
+    screen.postStatus(locked ? Notice::lockedHint(field) : Notice::editHint(field), Notice::kFrames);
+}
+
 template <class A>
 bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, const TouchInput& touch) {
     if (handleValuePicker<A>(screen, state, down, touch)) return true;
@@ -555,6 +685,16 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
             A::continueEditing(screen, state);
             return true;
         }
+        return true;
+    }
+
+    // Round 6 (P1-RETURN): + opens the shared Review from Create / Edit (Y stays re-roll); B in
+    // Review returns to this workspace with its draft and focus intact. View keeps its controls.
+    namespace Entry = PokeBank::UIModel::ReviewEntry;
+    if (!A::passive(screen, state) && (down & HidNpadButton_Plus) &&
+        Entry::plusOpensReview(A::creating(screen, state) ? Entry::Screen::Create : Entry::Screen::Edit,
+                               A::kGeneration)) {
+        A::openReview(screen, state);
         return true;
     }
 
@@ -600,13 +740,12 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
     // Touch-down is provisional: do not jump focus while a finger is still
     // dragging through DETAILS/STATS/MOVES. Only a completed tap can select.
     const int pressedRow = screen.touchedButtonId(touch);
-    Shared::Focus tapped{};
-    if (!detailsBar.consumed && Workspace::focusForTouch(pressedRow, rows, tapped)) {
-        state.focus = tapped;
-        if (tapped.panel == Shared::Panel::Details) state.detailsFocus = tapped.row;
+    if (!detailsBar.consumed && Workspace::focusCompletedTap(pressedRow,rows,state.focus,
+        state.detailsFocus,state.detailsViewport,visibleDetailRows)) {
+        const auto tapped=state.focus;
+        if(tapped.panel==Shared::Panel::Details)state.detailsTouchScroll.stop();
         if (editable) down |= HidNpadButton_A;
-        else if (passive && tapped.panel == Shared::Panel::Details)
-            A::passiveActivate(screen, state, tapped.row);
+        else if (passive) viewOnlyActivate<A>(screen, state, tapped, *record);
     }
     if (touch.justReleased() && touch.dragged()) {
         const int dx = touch.deltaX(), dy = touch.deltaY();
@@ -639,9 +778,8 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         screen.postStatus(Reroll::kRerollStatus, 200);
         return true;
     }
-    if ((down & HidNpadButton_A) && passive &&
-        state.focus.panel == Shared::Panel::Details)
-        A::passiveActivate(screen, state, state.focus.row);
+    if ((down & HidNpadButton_A) && passive)
+        viewOnlyActivate<A>(screen, state, state.focus, *record);
     if (!(down & HidNpadButton_A) || !editable) return true;
     if (state.focus.panel == Shared::Panel::Details &&
         !state.detailsViewport.containsSelection(state.focus.row, rows, visibleDetailRows)) {
@@ -687,6 +825,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         compactChoices ? valueList.frame.h : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    SharedPopupDismiss::publish(x, y, w, h);   // 7D: a tap outside closes it like B
 
     // Match the accepted Gen I-III picker family: neutral dialog chrome,
     // theme focus only on the active row/cell, and one authoritative footer.
@@ -696,6 +835,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
 
     if (speciesPicker) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        {   // 7D: the species chooser is drawn over the picker panel; either is inside.
+            const int left = std::min(x, modal.x), top = std::min(y, modal.y);
+            SharedPopupDismiss::publish(left, top, std::max(x + w, modal.x + modal.width) - left,
+                                        std::max(y + h, modal.y + modal.height) - top);
+        }
         const bool previewShiny = state.speciesPreviewShiny;
         const uint16_t species =
             state.pickerValues[static_cast<size_t>(state.pickerRow)];
@@ -705,7 +849,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, species, A::kMaxSpecies, previewShiny,
             [](uint16_t value) { return A::speciesLabel(value); },
-            [](uint16_t value) { return A::speciesLabel(value); },
+            [](uint16_t value) { return SharedSpeciesPicker::selectedTitle(value, sharedSpeciesName(value)); },
             &latestTouchGesture(), true, previewTypes, &state.speciesChooser);
         // Touch ids stay 6000 + pickerValues index; the chooser publishes the rows it drew.
         for (int i = 0; i < state.speciesChooser.rowCount; ++i) {
@@ -733,6 +877,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, A::moveGame(screen));
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
+        // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+        // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+        state.pickerViewport.ensure(state.pickerRow, count, visible);
         const int first = state.pickerViewport.firstRow;
         const int last = std::min(count, first + visible);
         const int viewportTop = y + moveLayout.rowStart;
@@ -760,11 +907,19 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
 
     const int count = static_cast<int>(state.pickerValues.size());
     if (heldItems) {
+        const int heldColumns=HeldItemGrid::columnsForSearch(state.heldItemSearch.open());
+        state.pickerViewport.ensure(state.pickerRow, count, HeldItemGrid::rows, heldColumns);   // see the list draws below
         SharedHeldItemPickerPresentation::drawHeading(
-            fb, x, y, A::kHeldItemTitle, state.pickerRow, count);
+            fb, x, y, A::kHeldItemTitle, state.pickerRow, state.heldItemSearch.noMatches?0:count,state.heldItemSearch.open());
         fb.drawText(x + w - 250, y + 55,
                     std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
                     Colors::TextDim, TextStyle::Caption);
+        if (const std::string tag = ItemPickerSearch::tag(state.pickerQuery); !tag.empty()) {
+            // NEW-06: the active search, top right on the title line.
+            int tw = 0, th = 0;
+            fb.measureText(tag, tw, th, TextStyle::Caption);
+            fb.drawText(x + w - 28 - tw, y + 26, tag, Colors::Accent, TextStyle::Caption);
+        }
         // R2-BUG-005: a focused Gen IV / V TM/HM shows its move from this game's machine table.
         if (state.pickerRow >= 0 && state.pickerRow < count)
             UI::SharedItemGridPicker::drawMachineDetail(fb, x + 150, y + 55, w - 420, A::moveGame(screen),
@@ -774,28 +929,32 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return A::pickerLabel(screen, state, PickerTarget::HeldItem, value); },
             [&](uint16_t value) { return A::heldItemArtKey(screen, value); },
-            state.pickerViewport.firstRow, state.pickerScroll.offset());
+            state.pickerViewport.firstRow, state.pickerScroll.offset(),&state.heldItemSearch);
         const int gridX = x + HeldItemGrid::gridInsetX;
         const int gridY = y + HeldItemGrid::gridInsetY;
         const int cellHeight = HeldItemGrid::rowPitch;
-        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int cellW = HeldItemGrid::cellWidth;
         const int firstRow = state.pickerViewport.firstRow;
-        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int firstVisibleItem = state.pickerViewport.firstRow * heldColumns + 1;
         const int lastVisibleItem = std::min(count,
-            firstVisibleItem + HeldItemGrid::pageSize - 1);
+            firstVisibleItem + HeldItemGrid::pageSizeForSearch(state.heldItemSearch.open()) - 1);
         (void)lastVisibleItem;
-        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
-             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
-            const int offset = i - firstRow * HeldItemGrid::columns;
-            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
-            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+        for (int i = std::max(0, (firstRow - 1) * heldColumns);
+             !state.heldItemSearch.noMatches && i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * heldColumns); ++i) {
+            const int offset = i - firstRow * heldColumns;
+            const int cellX = gridX + offset % heldColumns * cellW;
+            const int cellY = gridY + offset / heldColumns * cellHeight + state.pickerScroll.offset();
             appendClippedTouchButton(screen.touchButtons, 6000 + i,
                 cellX, cellY - 3, cellW - 10, cellHeight - 4,
-                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+                gridX, gridY - 3, HeldItemGrid::gridWidth(state.heldItemSearch.open()), HeldItemGrid::rows * cellHeight);
         }
         Presentation::PickerFooterSpec footer;
         footer.gridPaging = true;
         footer.xLabel = "Sort";
+        footer.minusLabel = "Search";   // NEW-06
+        if(state.heldItemSearch.open() || state.heldItemSearch.noMatches)
+            SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);
+        else
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
@@ -806,34 +965,74 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
+    if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive) {
+        // Round 7 B05: a focused event / transfer / trade / egg marker shows its full source-backed
+        // line and native id here (Names/SpecialMetLocationNotes.h); other rows show the list scope.
+        const uint16_t focused = state.pickerRow >= 0 && state.pickerRow < count
+            ? state.pickerValues[static_cast<size_t>(state.pickerRow)] : 0;
+        const std::string note = Names::specialMetLocationNote(state.pickerMetContext.origin(), focused);
+        fb.drawText(x + 165, y + 55, SharedMovesPanel::fit(fb,
+            note.empty() ? state.pickerMetContext.scope(state.pickerOtherHistories) : note, w - 195, TextStyle::Caption),
+            note.empty() ? Colors::TextSecondary : Colors::Text, TextStyle::Caption);
+    }
     const int visible = compactChoices ? visibleChoices : 10;
+    // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
+    // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.
+    state.pickerViewport.ensure(state.pickerRow, count, visible);
     const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
-    const int rowStep = naturePicker ? natureLayout.rowStep : 42;
+    const int rowStep = naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42;
+    const int choiceHeight=naturePicker? natureLayout.highlightHeight : rowStep-4;
     const int viewportTop = y + 90;
-    fb.setClipRect(x + 22, viewportTop - 4, w - 44, visible * rowStep);
+    // NEW-08: a scrolling list keeps a scrollbar gutter, so the bar never crowds the rows
+    // (rows, clip, touch boxes and the boxed highlight all use rowW).
+    const int scrollbarGap = SharedScrollbar::kTouchSlop + 4;
+    const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + scrollbarGap : 0;
+    const int rowW = w - 44 - barGutter;
+    fb.setClipRect(x + 22, viewportTop - 4, rowW, visible * rowStep);
     for (int i = first; i < last; ++i) {
         const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
         appendClippedTouchButton(screen.touchButtons, 6000 + i,
-            x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38,
-            x + 22, viewportTop - 4, w - 44, visible * rowStep);
+            x + 22, yy - 4, rowW, choiceHeight,
+            x + 22, viewportTop - 4, rowW, visible * rowStep);
         const bool selected = i == state.pickerRow;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38), {selected});  // R2-BUG-012 boxed row
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, choiceHeight), {selected});  // R2-BUG-012 boxed row
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         const std::string label = A::pickerLabel(screen, state, state.pickerTarget, value);
+        if (naturePicker) {
+            fb.drawText(x + 38, yy + 7, label, Colors::Text, TextStyle::Body);
+            NatureStats::drawEffect(fb, x + 166, yy + 10, value);
+            continue;
+        }
         const auto split = label.find("  |  ");
         if (state.pickerTarget == PickerTarget::MetLocation && split != std::string::npos) {
-            // Same row style as Gen III: bright place name left, met level right.
-            const std::string detail = label.substr(split + 5);
+            // Keep the source example in its own bounded column. It is not the stored Met Lv.
+            // Round 5 NEW-10: the detail gets what the measured name leaves, so at 620 px every
+            // real row shows both in full (tests/test_met_location_fit.cpp).
+            int nw = 0, nh = 0;
+            fb.measureText(label.substr(0, split), nw, nh, TextStyle::Body);
+            // The stored location (row 1, header "row 1 = stored") is drawn in the accent colour;
+            // its "Stored: " prefix gives way only where the full example would not fit.
+            const bool storedRow = state.pickerMetContextActive && value == state.pickerMetContext.stored();
+            std::string example = label.substr(split + 5);
+            int ew = 0, eh = 0;
+            fb.measureText(example, ew, eh, TextStyle::Caption);
+            if (storedRow && example.rfind("Stored: ", 0) == 0 && ew > rowW - 32 - nw - 20)
+                example.erase(0, 8);
+            const std::string detail = SharedMovesPanel::fit(fb, example,
+                std::max(0, rowW - 32 - nw - 20), TextStyle::Caption);
             int dw = 0, dh = 0;
             fb.measureText(detail, dw, dh, TextStyle::Caption);
             fb.drawText(x + 38, yy + 7, SharedMovesPanel::fit(fb, label.substr(0, split),
-                        w - 76 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
-            fb.drawText(x + w - 38 - dw, yy + 10, detail,
+                        rowW - 32 - dw - 20, TextStyle::Body), storedRow ? Colors::Accent : Colors::Text,
+                        TextStyle::Body);
+            fb.drawText(x + 22 + rowW - 16 - dw, yy + 10, detail,
                         selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+        } else if (state.pickerTarget == PickerTarget::Ability) {
+            SharedAbilityPicker::drawRow(fb,x+22,yy-4,rowW,choiceHeight,label,selected);
         } else if (state.pickerTarget == PickerTarget::Ball) {
             // The ball sprite leads its name at the BallPicker rule's gap (no far-right sprite).
-            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, w - 44, 38};
+            const auto cell = PokeBank::UIModel::SharedMenuGeometry::Rect{x + 22, yy - 4, rowW, 38};
             const auto sprite = PokeBank::UIModel::SharedMenuGeometry::spriteRect(valueList, cell);
             ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,
                                     Enums::getBallName(static_cast<uint8_t>(value)));
@@ -844,12 +1043,14 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         }
     }
     fb.clearClip();
-    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 14, viewportTop - 4,
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + 22 + rowW + scrollbarGap, viewportTop - 4,
         SharedScrollbar::kTrackWidth, visible * rowStep,
         SharedScrollbar::rows(count, visible, first));
     Presentation::PickerFooterSpec footer;
     footer.page = count > visible;
     footer.jump = count > 50;
+    if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive)
+        footer.xLabel = state.pickerOtherHistories ? "Wild data" : "Other histories";
     SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
@@ -867,10 +1068,14 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     {
-        const std::string detail = PokeBank::UIModel::SharedMoveFacts::detailLine(
-            PokeBank::UIModel::SharedMoveFacts::facts(move, A::moveGame(screen)));
+        auto facts = PokeBank::UIModel::SharedMoveFacts::facts(move, A::moveGame(screen));
+        const std::string category = PokeBank::UIModel::SharedMoveFacts::categoryLabel(facts);
+        facts.category = -1;
+        const std::string detail = PokeBank::UIModel::SharedMoveFacts::detailLine(facts);
         fb.drawText(x + 24, y + 52, detail.empty() ? std::string(A::kMoveEditorSubtitle) : detail,
                     Colors::TextDim, TextStyle::Caption);
+        if (!category.empty())
+            fb.drawText(x + 24, y + 72, "Category: " + category, Colors::TextDim, TextStyle::Caption);
     }
     const std::array<std::pair<std::string,std::string>,5> rows{{
         {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move))},
@@ -881,7 +1086,7 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
         {"Cancel", "Discard these move details"},
     }};
     for (int i = 0; i < 5; ++i) {
-        const int yy = y + 88 + i * 48;
+        const int yy = y + 100 + i * 48;
         const bool selected = i == state.moveEditorRow;
         screen.touchButtons.push_back({41400 + i, x + 22, yy, w - 44, 42});
         SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy, w - 44, 42), {selected});  // R2-BUG-012 boxed row
@@ -973,8 +1178,10 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
             const auto cell = Shared::cellFocusFor(A::generation, state.focus);
             drawFocus(fb, g.midX + cell.x, yy - 5, cell.width, 30, true);
         }
+        // Keep the owner's preferred at-a-glance Nature tint: raised stat green,
+        // lowered stat red, unaffected stat neutral. This is informative, not random.
         fb.drawText(g.midX + 18, yy, statLabels[static_cast<size_t>(row)],
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+                    NatureStats::statColor(A::nature(*raw), row, selected ? Colors::SelectedText : Colors::TextDim), TextStyle::Caption);
         fb.drawText(g.midX + 126, yy, std::to_string(iv[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(g.midX + 190, yy, std::to_string(ev[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         // Phase 4: a calculated stat is derived, never edited: the gold ReadOnly field state.
@@ -1043,12 +1250,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, A::kDataTitle, rows, stats);
 
+    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
+                      PokeBank::UIModel::ReviewEntry::Screen::Edit, A::kGeneration).glyph[0] == '+');
     if (viewMode)
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
-                        {"X", A::creating(screen, state) ? "Add" : "Keep"}, {"B", "Exit"}});
+                        {"X", A::creating(screen, state) ? "Add" : "Keep"},
+                        {"+", "Review"}, {"B", "Exit"}});
 
     if (A::confirmExit(screen, state)) {
         constexpr int w = 560, h = 226;

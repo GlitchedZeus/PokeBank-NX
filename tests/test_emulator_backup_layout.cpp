@@ -118,6 +118,34 @@ int main() {
             assert(toast.x >= G::kMargin && toast.right() <= G::kScreenW - G::kMargin);
         }
 
+    // Round 4 (R2-EMUBACKUP / C07 / S05): the PKSE-style actions and their wording.
+    assert(E::rowAction(E::kCreateRowEntry, SB::Kind::OriginalSource) == E::RowAction::CreateBackup);
+    assert(E::rowAction(0, SB::Kind::OriginalSource) == E::RowAction::BrowseSave);
+    for (const SB::Kind k : {SB::Kind::ManualBackup, SB::Kind::AppBackup, SB::Kind::ExportedCopy})
+        assert(E::rowAction(1, k) == E::RowAction::OpenBackup);
+    assert(E::rowAction(1,SB::Kind::StagedWorkingCopy)==E::RowAction::Details);
+    assert(std::string(E::rowActionLabel(E::RowAction::OpenBackup))=="Open");
+    assert(std::string(E::rowActionLabel(E::RowAction::CreateBackup)) == "Create");
+    assert(std::string(E::rowActionLabel(E::RowAction::BrowseSave)) == "Browse");
+    assert(E::rowLabel(SB::Kind::ManualBackup, "DraStic") == "Backup");
+    assert(SB::policyFor(SB::Kind::ManualBackup).deletable);
+    {
+        const G::Layout l = E::layout(6);
+        const G::Rect label = E::labelRect(l, G::cellRect(l, 0));
+        for (const char* provider : {"DraStic", "RetroArch (DeSmuME)", "melonDS", "Unknown provider",
+                                     "DraStic (savestate)"}) {
+            assert(G::fitsWidth(E::createRowLabel(), Text::Body, label.w));
+            assert(G::fitsWidth(E::createRowDetail(provider), Text::Caption, label.w));
+            assert(G::fitsWidth(E::explainerWithBackups(provider), Text::Caption, l.frame.w - 2 * l.rule.padX));
+            for (const std::string& notice : {E::createdNotice(provider), E::deletedNotice(provider)}) {
+                assert(notice.find("was not touched") != std::string::npos);
+                const G::Rect toast = E::noticeRect(G::textWidth(notice, Text::Caption));
+                assert(toast.x >= G::kMargin && toast.right() <= G::kScreenW - G::kMargin);
+            }
+        }
+        assert(G::fitsWidth(std::string("Backup  ·  2026-10-20 10:15"), Text::Body, label.w));
+    }
+
     std::cout << "CG13 emulator backups: SharedMenuGeometry BackupMenu frame / rows / hit targets, "
-                 "header + rows + notice fit, scroll reveals focus PASS\n";
+                 "header + rows + notice fit, scroll reveals focus; Create / Browse / Open actions, protected recovery and copy fit PASS\n";
 }

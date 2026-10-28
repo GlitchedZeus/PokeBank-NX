@@ -62,10 +62,10 @@ host-test: $(GSC_RENDER_TEST)
 host-sanitize: $(GSC_RENDER_SANITIZE)
 $(GSC_RENDER_TEST): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Itests/host-switch -Iinclude $(GSC_RENDER_SOURCES) -o $@
 $(GSC_RENDER_SANITIZE): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/host-switch -Iinclude $(GSC_RENDER_SOURCES) -o $@
 
 
 # Shared Gen I-IV move picker presentation: numbered rows plus exact-era
@@ -123,11 +123,11 @@ host-sanitize: $(SHARED_EDITOR_CONTRACT_SANITIZE)
 
 $(SHARED_EDITOR_CONTRACT_TEST): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Itests/host-switch -Iinclude tests/test_shared_editor_contract.cpp -o $@
 
 $(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Itests/host-switch -Iinclude tests/test_shared_editor_contract.cpp -o $@
 
 # Shared Gen I-V editor unit: Moves panel, Move chooser, picker footer, inline toggles and the
 # DETAILS viewport, plus source contracts that the real Gen III-V surfaces use them.
@@ -305,3 +305,34 @@ $(GEN4_STORAGE_CARRY_TEST): $(GEN4_STORAGE_CARRY_INPUTS)
 $(GEN4_STORAGE_CARRY_SANITIZE): $(GEN4_STORAGE_CARRY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_storage_carry.cpp -o $@
+
+# Owner Round 4 correction: keep green/red Nature effect hints in View/Edit STATS and Nature picker.
+STATS_LABEL_NEUTRAL_TEST := $(HOST_BUILD)/test_stats_label_neutral_contract
+STATS_LABEL_NEUTRAL_SANITIZE := $(HOST_BUILD)/test_stats_label_neutral_contract_sanitize
+HOST_TESTS += $(STATS_LABEL_NEUTRAL_TEST)
+HOST_SANITIZE_TESTS += $(STATS_LABEL_NEUTRAL_SANITIZE)
+host-test: $(STATS_LABEL_NEUTRAL_TEST)
+host-sanitize: $(STATS_LABEL_NEUTRAL_SANITIZE)
+$(STATS_LABEL_NEUTRAL_TEST): tests/test_stats_label_neutral_contract.cpp src/UI/SharedPokemonEditorSurface.inc include/UI/NatureStatEffect.h include/UI/NatureStatPresentation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(STATS_LABEL_NEUTRAL_SANITIZE): tests/test_stats_label_neutral_contract.cpp src/UI/SharedPokemonEditorSurface.inc include/UI/NatureStatEffect.h include/UI/NatureStatPresentation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# P3 (Round 5): the classic Trainer page's Play Time / Gender rows (native staged writers only).
+TRAINER_PT_GENDER_INPUTS := tests/test_trainer_playtime_gender_rows.cpp include/UI/ClassicTrainerSession.h \
+	include/UI/ClassicTrainerSessionInput.h src/UI/TrainerViewScreenBase.inc src/UI/Gen2TrainerSessionOverlay.inc \
+	src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc
+TRAINER_PT_GENDER_TEST := $(HOST_BUILD)/test_trainer_playtime_gender_rows
+TRAINER_PT_GENDER_SANITIZE := $(HOST_BUILD)/test_trainer_playtime_gender_rows_sanitize
+HOST_TESTS += $(TRAINER_PT_GENDER_TEST)
+HOST_SANITIZE_TESTS += $(TRAINER_PT_GENDER_SANITIZE)
+host-test: $(TRAINER_PT_GENDER_TEST)
+host-sanitize: $(TRAINER_PT_GENDER_SANITIZE)
+$(TRAINER_PT_GENDER_TEST): $(TRAINER_PT_GENDER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(TRAINER_PT_GENDER_SANITIZE): $(TRAINER_PT_GENDER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

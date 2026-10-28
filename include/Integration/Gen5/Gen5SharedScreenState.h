@@ -6,6 +6,8 @@
 #include "Integration/Gen5/Gen5CreateInputRules.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Integration/Gen5/Gen5ReviewRows.h"
+#include "UI/SharedReviewPresentation.h"
+#include "Pokemon/SpeciesMoveDefaults.h"
 
 #include <algorithm>
 #include <array>
@@ -63,7 +65,7 @@ public:
             workspace.emptyCloneDestination(cloneDestinationIndex_/30,
                                             cloneDestinationIndex_%30);
     }
-    static constexpr size_t kReviewPageSize = 4;
+    static constexpr size_t kReviewPageSize = PokeBank::UIModel::SharedReview::kPageSize;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
     [[nodiscard]] bool isEditing() const noexcept { return surface_==Surface::Edit; }
 
@@ -105,6 +107,7 @@ public:
         if(action==Action::Close) {surface_=Surface::Browse;error.clear();return true;}
         if(action==Action::Review) {
             reviewPage_=0;
+            reviewReturn_=Surface::Browse;
             surface_=Surface::Review;
             error.clear();
             return true;
@@ -392,7 +395,7 @@ public:
         r.nickname=std::string(nickname);
         r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
                      kSharedCreateBall,date.year,date.month,date.day};
-        r.ivs={15,15,15,15,15,15};
+        r.ivs={};
         r.evs={};
         r.moves[0]={kSharedCreateMove,0,std::nullopt};
         if(const auto checked=validateCreate5(r);!checked) {
@@ -487,8 +490,11 @@ public:
     }
     // A pending Create has no history to preserve, so a species choice rebuilds
     // the created PK5 natively (validateCreate5) with the draft's own values:
-    // PID (shiny state as requested), nature, level, IVs, EVs, item, met data,
-    // moves and nickname (a default nickname follows the new species).
+    // PID (shiny state as requested), nature, level, IVs, EVs, item, met data
+    // and nickname (a default nickname follows the new species). Moves: a real
+    // species change gets the new species' native default moveset at this level
+    // (R2-BUG-004; PKHeX lvlmove_bw / _b2w2, full PP, no PP Ups); the same
+    // species (a shiny-only rebuild) keeps the draft's own moves.
     template<class Refresh>
     [[nodiscard]] bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,
                                              std::string_view newDefaultName,
@@ -536,9 +542,16 @@ public:
                      p->ball(),met.year,met.month,met.day};
         const auto ivs=p->ivs(); const auto evs=p->evs();
         for(size_t i=0;i<6;++i){r.ivs[i]=ivs[i];r.evs[i]=evs[i];}
-        const auto moves=p->moves(); const auto ups=p->ppUps(); const auto pp=p->pp();
-        for(size_t i=0;i<4;++i)r.moves[i]={moves[i],moves[i]?ups[i]:0u,
-                                           moves[i]?std::optional<uint32_t>(pp[i]):std::nullopt};
+        if(species!=p->species()) {
+            const auto defaults=PokeBank::Moves::defaultMoves(
+                PokeBank::Moves::levelUpTableForGen45Version(trainer.gameVersion),
+                static_cast<uint16_t>(species),0,static_cast<uint8_t>(r.level));
+            for(size_t i=0;i<4;++i)r.moves[i]={defaults.moves[i],0u,std::nullopt};
+        } else {
+            const auto moves=p->moves(); const auto ups=p->ppUps(); const auto pp=p->pp();
+            for(size_t i=0;i<4;++i)r.moves[i]={moves[i],moves[i]?ups[i]:0u,
+                                               moves[i]?std::optional<uint32_t>(pp[i]):std::nullopt};
+        }
         if(const auto checked=validateCreate5(r);!checked) {
             error=std::string(checked.message);
             return false;
@@ -570,13 +583,10 @@ public:
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
     }
-    void moveReviewPage(int delta,const Workspace& workspace) {
+    void moveReviewPage(int delta,const Workspace& workspace,size_t presentationRows=0) {
         if(surface_!=Surface::Review)return;
-        const size_t records=reviewRowCount(workspace);
-        const size_t pages=std::max(size_t{1},
-            (records+kReviewPageSize-1)/kReviewPageSize);
-        if(delta>0 && reviewPage_+1<pages)++reviewPage_;
-        else if(delta<0 && reviewPage_>0)--reviewPage_;
+        reviewPage_=PokeBank::UIModel::SharedReview::move(reviewPage_,delta,
+            presentationRows?presentationRows:reviewRowCount(workspace));
     }
 
     // Review lists staged PK5 records (a staged Move as ONE row, Gen5ReviewRows.h), then
@@ -590,9 +600,23 @@ public:
     [[nodiscard]] bool openReviewFromBrowse(const Workspace& workspace) noexcept {
         if(surface_!=Surface::Browse || !workspace.hasChanges())return false;
         reviewPage_=0;
+        reviewReturn_=Surface::Browse;
         surface_=Surface::Review;
         return true;
     }
+    // Round 6 (P1-RETURN): + in the Create / Edit workspace opens the same Review, and B there
+    // returns to that workspace with its draft (and Create's staged record) intact. Only Browse
+    // and Edit may open it; every other surface is a modal step that must finish first.
+    [[nodiscard]] bool openReviewFrom(const Workspace& workspace) noexcept {
+        if(surface_==Surface::Browse)return openReviewFromBrowse(workspace);
+        if(surface_!=Surface::Edit || !workspace.hasChanges())return false;
+        reviewPage_=0;
+        reviewReturn_=Surface::Edit;
+        surface_=Surface::Review;
+        return true;
+    }
+    // Where B from Review goes: the workspace it was opened from, otherwise Browse.
+    [[nodiscard]] Surface reviewReturn() const noexcept { return reviewReturn_; }
 
     [[nodiscard]] bool keep(Workspace& workspace,std::string& error) {
         // A on the dirty-draft decision is a real Keep, not a dead action.
@@ -661,7 +685,10 @@ public:
             surface_=Surface::ConfirmDraft;
             return false;
         }
-        if(surface_==Surface::Actions || surface_==Surface::Review)
+        if(surface_==Surface::Review) {
+            surface_=reviewReturn_;
+            reviewReturn_=Surface::Browse;
+        } else if(surface_==Surface::Actions)
             surface_=Surface::Browse;
         else if(surface_==Surface::Legality)surface_=Surface::Actions;
         else if(surface_==Surface::ConfirmDraft)continueEditing();
@@ -707,6 +734,14 @@ public:
         if(surface_!=Surface::ConfirmDiscardAll)return false;
         workspace.discardAll();
         surface_=Surface::Browse;
+        if(reviewReturn_!=Surface::Browse) {
+            // Discard All removed what the workspace was editing (a Create's staged record
+            // included): never return into it; the draft goes with the discarded changes.
+            reviewReturn_=Surface::Browse;
+            draft_.discardDraft();
+            createPending_=false;
+            pendingCreateInput_.reset();
+        }
         return true;
     }
 
@@ -721,12 +756,21 @@ public:
             return false;
         }
         Workspace previous=workspace;
+        // A rejected refresh restores everything, including a workspace Review's draft.
+        Gen5SharedPokemonSession previousDraft=draft_;
+        const Surface previousReturn=reviewReturn_;
+        const bool previousCreatePending=createPending_;
+        const auto previousCreateInput=pendingCreateInput_;
         if(!confirmDiscardAll(workspace))return false;
         if(std::forward<Refresh>(refresh)(error)) {
             error.clear();
             return true;
         }
         workspace=std::move(previous);
+        draft_=std::move(previousDraft);
+        reviewReturn_=previousReturn;
+        createPending_=previousCreatePending;
+        pendingCreateInput_=previousCreateInput;
         surface_=Surface::ConfirmDiscardAll;
         if(error.empty())error="Gen V discard refresh rejected; staged changes preserved";
         return false;
@@ -740,6 +784,7 @@ public:
     void reviewFromExit(const Workspace& workspace) noexcept {
         if(surface_==Surface::ConfirmExit && workspace.hasChanges()) {
             reviewPage_=0;
+            reviewReturn_=Surface::Browse;
             surface_=Surface::Review;
         }
     }
@@ -755,6 +800,7 @@ private:
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
     bool createPending_=false;
+    Surface reviewReturn_=Surface::Browse;
 public:
     // Shared Create defaults (not format rules): a native species, move and
     // met data the Gen V validators accept, all editable before Keep.

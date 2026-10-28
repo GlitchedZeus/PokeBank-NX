@@ -204,7 +204,11 @@ void testTouchKeysAndRows() {
     in.search = true;
     frame(c, species, 151, in);
     const auto grid = Picker::keyGridRect(100, 76);
-    assert(grid.y == 76 + Picker::kListY + Picker::kSearchVisibleRows * Picker::kRowStep + 8);
+    // NEW-05: the keyboard sits in the preview column under the artwork, never over the list.
+    assert(Picker::kSearchVisibleRows == Picker::kVisibleRows && c.visibleRows() == Picker::kVisibleRows);
+    assert(grid.x >= 100 + Picker::kListX + Picker::kListW + 8 + UI::SharedScrollbar::kTrackWidth);  // right of list + bar
+    assert(grid.x + grid.w <= 100 + Picker::ModalWidth - 24);          // inside the modal's right padding
+    assert(grid.y >= 76 + Picker::kSearchArtY + Picker::kSearchArtH + 30);  // below the artwork and type badges
     assert(grid.y + grid.h <= 76 + Picker::ModalHeight - 24);          // the grid stays inside the modal
     const auto keyC = Search::keyRect(grid, keyOf('C'));
     // Touch down on C, release on C: types C. The frame's touch is the grid's.
@@ -252,6 +256,13 @@ void testTouchKeysAndRows() {
     std::cout << "touch keys / rows / scrollbar ok\n";
 }
 
+void testSelectedTitle() {
+    // NEW-11: the selected-species panel reads "Pikachu #25" (name first); lists keep "025 ...".
+    assert(Picker::selectedTitle(25, "Pikachu") == "Pikachu #25");
+    assert(Picker::selectedTitle(493, "Arceus") == "Arceus #493");
+    std::cout << "selected title ok\n";
+}
+
 void testGridGeometry() {
     const Search::Rect grid{0, 0, 560, 176};
     // Every key has a cell, cells do not overlap, and hit == rect.
@@ -281,6 +292,7 @@ int main() {
     testControllerTransitions();
     testTouchKeysAndRows();
     testGridGeometry();
+    testSelectedTitle();
     std::cout << "test_species_search_gen15: all passed\n";
     return 0;
 }

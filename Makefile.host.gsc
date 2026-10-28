@@ -20,7 +20,8 @@ GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
 	src/Integration/Gen2/Gen2StagedEditor.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
 	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
-	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Names/MoveNames.cpp
 GSC_BRIDGE_FLAGS := -Wno-unused-parameter
 GSC_UI_RULES_SOURCES := tests/test_gsc_ui_rules.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
@@ -33,7 +34,8 @@ GSC_EXPORT_TRANSACTION_SOURCES := tests/test_gsc_export_transaction.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp \
-	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp
+	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp \
+	src/Names/MoveNames.cpp
 
 GSC_RUNTIME_DISCOVERY_SOURCES := src/Legacy/RetroArchGSCDiscovery.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp

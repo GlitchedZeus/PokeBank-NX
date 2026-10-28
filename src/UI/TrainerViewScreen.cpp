@@ -18,6 +18,7 @@
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Save/GetSaveFileContents.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/ClassicPartyActions.h"
 #include "UI/TouchInput.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"

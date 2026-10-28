@@ -70,6 +70,8 @@ std::vector<uint8_t> fixture(){
     itemList(d,PCITEMS,{{0x2D,1}});
     setEntry(d,boxStart(0),CAP,33,0,0xB0,12,"CHAR");
     for(size_t s=0;s<CAP;++s)setEntry(d,boxStart(BOXES-1),CAP,33,s,0x15,5+(s%20),"MEW");
+    d[0x2CED]=123;d[0x2CEE]=0;d[0x2CEF]=45;d[0x2CF0]=59;
+    d[0x25A3]=1;d[0x25B6]=3;
     d[0x2ED5]=0xFF;checksums(d);return d;
 }
 }
@@ -77,6 +79,11 @@ std::vector<uint8_t> fixture(){
 int main(){
     auto raw=fixture();const auto before=raw;auto parsed=parse(raw,SourceGame::Red);assert(parsed);assert(raw==before);
     std::string error;auto trainer=RBYReadOnlyTrainer::create(*parsed.save,error);assert(trainer&&error.empty());
+    assert(PokeVault::Integration::Common::playTimeText(trainer->nativePlayTime)=="123:45:59");
+    assert(trainer->pokedexProgress().seen==2 && trainer->pokedexProgress().caught==1 && trainer->pokedexProgress().total==151);
+    auto badClock=raw;badClock[0x2CEF]=60;checksums(badClock);
+    auto badClockParsed=parse(badClock,SourceGame::Red);
+    assert(badClockParsed && !badClockParsed.save->trainer().playTime);
     assert(trainer->sourceGameId()=="red_gb");assert(!trainer->japaneseLayout());assert(trainer->getBoxCount()==12);assert(trainer->getSlotsPerBox()==20);
     assert(trainer->getGameGroup()==Enums::GameVersion::RBY);
     // RBY still stores one real Bag plus PC Items, but the accepted classic inventory UI now

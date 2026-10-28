@@ -40,12 +40,12 @@ using ClassicInventoryActionAvailability = InventoryActionAvailability;
     bool categorySupported, bool hasSelection, bool quantityEditable) noexcept;
 [[nodiscard]] bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept;
 
-// Y on an item asks first ("Remove <item>?"); only a second Y removes it and B cancels, the same
-// confirm button as Release. B wins over Y in one frame, so a mashed pair never removes; A is inert.
+// Y on an item asks first ("Remove <item>?"); the owner's Round 4 policy uses A INSIDE
+// that explicit Bag Remove question. B wins over A. Pokemon Release and Backup Delete stay Y.
 enum class ClassicRemoveConfirm : uint8_t { None, Remove, Cancel };
-[[nodiscard]] constexpr ClassicRemoveConfirm classicRemoveConfirmStep(bool y, bool b) noexcept {
+[[nodiscard]] constexpr ClassicRemoveConfirm classicRemoveConfirmStep(bool a, bool b) noexcept {
     if (b) return ClassicRemoveConfirm::Cancel;
-    if (y) return ClassicRemoveConfirm::Remove;
+    if (a) return ClassicRemoveConfirm::Remove;
     return ClassicRemoveConfirm::None;
 }
 
@@ -64,10 +64,6 @@ struct ClassicItemQuantity {
 [[nodiscard]] PokeVault::Inventory::QuantityPolicy::ItemQuantityRule classicItemQuantityRule(
     ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept;
 
-// The Gen I-III "Inventory Help" rows, in order. Key rows are "KEYS   description" (several
-// groups per row separated by 5+ spaces) so ScreenChrome::drawGlyphHelpLine draws each button as a
-// glyph badge (R2-BUG-013); the trailing notes are plain banner text.
-[[nodiscard]] std::span<const std::string_view> classicInventoryHelpLines() noexcept;
 
 } // namespace PokeBank::UIModel
 

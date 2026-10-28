@@ -1,3 +1,4 @@
+#include "test_backup_session_trace.h"
 // PokeBank NX application QA: Gen I-V acceptance matrix, Generation IV rows (Thread 4, QA-owned).
 //
 // Diamond, Pearl, Platinum, HeartGold and SoulSilver, each driven through the production Gen IV
@@ -362,6 +363,9 @@ void runVersion(Matrix& m, const VersionSpec& v) {
     const fs::path bindingsPath = root / "legacy_bindings.tsv";
     const Bytes original = buildSave(v);
     qacontract::writeSource(source, original);
+    std::string backupError;
+    const bool backupOk=verifyBackupSessionTrace(original,v.gameId,backupError);
+    m.check(ver,"backup-session",backupOk,backupError,"Exact historical file -> staged edit/export/Discard");
     // A non-save next to it: discovery must surface it as invalid, never as a Gen IV source.
     qacontract::spit(providerDir / "notes.sav", Bytes(100, 0x42));
     const auto sourceBefore = qacontract::fileState(source);
@@ -895,7 +899,7 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         p.expect(hasLine(lines, "Party slot 1: Pikachu #25 (edited)"), "party slot 1 line missing");
         p.expect(hasLine(lines, "Party slot 2: Burmy #412 (edited)"), "party slot 2 line missing");
         p.expect(hasLine(lines, "Box 1 slot 4: (empty) -> Bulbasaur #1"), "created slot line missing");
-        p.expect(hasLine(lines, "Bag Medicines: item #17 5 -> 9"), "bag quantity line missing");
+        p.expect(hasLine(lines, "Bag Medicines: Potion 5 -> 9"), "bag quantity line missing");
         p.expect(lines.size() == 5, "unexpected line count " + std::to_string(lines.size()));
     });
 

@@ -80,6 +80,10 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
 bool RBYReadOnlyTrainer::populate(
     const Integration::Gen1::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
+    nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,8};
+    const auto dex = save.dexProgress();
+    nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
     money = strictTrainer.money;
     TID16 = strictTrainer.trainerId;
@@ -189,6 +193,10 @@ bool RBYReadOnlyTrainer::refreshBoxesFromStagedPokemon(std::string& error) {
             boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(*record);
         }
     }
+    decltype(party) displayParty;
+    for(const auto& record:stagedPokemon_->view().party())
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon1ReadOnly>(record));
+    party.swap(displayParty);
     return true;
 }
 

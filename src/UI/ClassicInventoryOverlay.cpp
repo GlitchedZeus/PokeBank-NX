@@ -1,3 +1,4 @@
+#include "UI/ClassicSourceGuard.h"
 #include "UI/ClassicInventoryOverlay.h"
 #include "UI/SharedBoxedRows.h"   // R2-BUG-012: Add Item picker rows use the shared boxed style
 
@@ -12,6 +13,8 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryHelp.h"
+#include "UI/ClassicGenericUiGuard.h"
 #include "UI/SharedBagAddFlow.h"
 #include "UI/SharedBagAddPicker.h"
 #include "UI/InventoryUIContract.h"
@@ -59,24 +62,20 @@ enum class SourceKind : uint8_t { None, Gen1, Gen2, Gen3 };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     bool presentationInitialized = false;
     bool pickerActive = false;
     bool optionsActive = false;
-    bool reviewActive = false;
     bool helpActive = false;
     bool warningActive = false;
     bool discardConfirmActive = false;
     bool removeConfirmActive = false;
     int pickerRow = 0;
     int optionsRow = 0;
-    int reviewRow = 0;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
     SharedScrollbar::State pickerScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
-    TouchScrollState reviewScroll;
-    TouchPickerViewport reviewViewport;
-    SharedScrollbar::State reviewScrollbar;   // R2-SCROLLBAR: draggable thumb on Pending Changes
     ClassicPocket pendingPocket = ClassicPocket::Items;
     uint16_t pendingItem = 0;
     uint16_t pendingQuantity = 0;
@@ -88,9 +87,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -393,6 +392,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "No pending changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
     auto edited = finalizedBytes(screen, error);
     if (edited.empty()) {
         if (error.empty()) error = "Staged save finalization failed";
@@ -638,8 +640,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (state.removeConfirmActive) {
-        // The Remove question owns every input: Y removes, B cancels, nothing else acts.
-        switch (PokeBank::UIModel::classicRemoveConfirmStep((down & HidNpadButton_Y) != 0,
+        // The explicit Remove question owns every input: A confirms, B cancels.
+        switch (PokeBank::UIModel::classicRemoveConfirmStep((down & HidNpadButton_A) != 0,
                                                             (down & HidNpadButton_B) != 0)) {
             case PokeBank::UIModel::ClassicRemoveConfirm::Cancel:
                 state.removeConfirmActive = false;
@@ -762,44 +764,6 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
 
-    if (state.reviewActive) {
-        const auto lines = pendingLines(screen);
-        const int count = static_cast<int>(lines.size());
-        constexpr int width = 900, y = 66, rowStep = 57, visibleRows = 7;
-        const int x = (1280 - width) / 2;
-        state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
-        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        const auto reviewBar = SharedScrollbar::handleTouch(state.reviewScrollbar, SharedScrollbar::sample(touch),
-            SharedScrollbar::rows(count, visibleRows, state.reviewViewport.firstRow));
-        if (reviewBar.changed) {
-            state.reviewViewport.firstRow = reviewBar.scroll;
-            state.reviewScroll.stop();
-        }
-        if (maxFirstRow > 0 && !reviewBar.consumed) {
-            state.reviewScroll.updateVertical(
-                touch, x + 30, y + 94, width - 60, visibleRows * rowStep,
-                rowStep, state.reviewViewport.firstRow, maxFirstRow + 1);
-        } else {
-            state.reviewScroll.stop();
-        }
-        if (!reviewBar.consumed && touchId >= 0 && touchId < count) {
-            state.reviewScroll.stop();
-            state.reviewRow = touchId;
-        }
-        if (down & (HidNpadButton_Up | HidNpadButton_Down))
-            state.reviewScroll.stop();
-        if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow - 1 + count) % count;
-        if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & (HidNpadButton_Up | HidNpadButton_Down))
-            state.reviewViewport.reveal(state.reviewRow, count, visibleRows);
-        if (down & HidNpadButton_B) {
-            state.reviewScroll.stop();
-            state.reviewActive = false;
-            state.optionsActive = true;
-        }
-        return true;
-    }
-
     if (state.optionsActive) {
         constexpr int optionCount = 4;
         if (touchId >= 0 && touchId < optionCount) { state.optionsRow = touchId; down |= HidNpadButton_A; }
@@ -809,13 +773,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         if (!(down & HidNpadButton_A)) return true;
         switch (state.optionsRow) {
             case 0:
+                // Round 5: the Bag opens the ONE shared paged Review of this generation (named
+                // Bag, Pokemon and Trainer rows, X Export Copy, Y Discard All), as Gen IV's Bag
+                // does, not a separate list. B there returns to this Items view.
                 state.optionsActive = false;
-                state.reviewActive = true;
-                state.reviewRow = 0;
-                state.reviewScroll.reset();
-                state.reviewViewport.reset();
-                state.reviewViewport.ensure(
-                    state.reviewRow, static_cast<int>(pendingLines(screen).size()), 7);
+                if (!screen.openStagedReview(false))
+                    screen.postStatus("This source has no staged Review workspace", 300);
                 break;
             case 1: {
                 std::string error;
@@ -889,6 +852,13 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
 
+    // Round 6 (B08): + opens the shared Review directly, as in Gen IV/V, so the Bag's Review is no
+    // longer buried in a menu. Its Export Copy and Discard All are X and Y there, Bag changes
+    // included. Review needs no Bag backend, so it opens even when this pocket cannot stage.
+    if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        if (screen.openStagedReview(false)) return true;
+    }
+
     std::string availabilityError;
     if (!backendAvailable(screen, availabilityError)) {
         screen.postStatus(availabilityError, 360);
@@ -896,6 +866,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        // Only a source with no staged Review workspace falls back to the Bag's own Options
+        // (Export / Discard of the staged Bag), so nothing becomes unreachable.
         state.optionsActive = true;
         state.optionsRow = 0;
         return true;
@@ -948,7 +920,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isClassicSource(screen)) return;
     auto& state = stateFor(screen);
-    if (!state.pickerActive && !state.optionsActive && !state.reviewActive && !state.helpActive &&
+    if (!state.pickerActive && !state.optionsActive && !state.helpActive &&
         !state.warningActive && !state.discardConfirmActive && !state.removeConfirmActive) return;
 
     screen.touchButtons.clear();
@@ -967,12 +939,10 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             UI::SharedBagAddPicker::drawRemoveConfirm(fb, screen.touchButtons, group, "Remove " + name + "?",
                 state.pendingItem, name, stagedQuantity(screen, state.pendingPocket, state.pendingItem),
                 "Staged copy only; the original source save stays unchanged.");
-            drawNavBar(fb, {{"Y", "Remove"}, {"B", "Cancel"}});
         } else {
             UI::SharedBagAddPicker::drawKeyItemWarning(fb, screen.touchButtons, group, state.pendingItem,
                                                        name, PokeVault::Inventory::pocketName(state.pendingPocket),
                                                        state.pendingQuantity == 0);
-            drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
         }
         return;
     }
@@ -1039,7 +1009,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         };
         AddGrid::drawCells(fb, g, state.pickerRow, start, state.pickerScroll.offset(),
             [&](const PokeBank::UIModel::SharedMenuGeometry::Rect& cell, int i, bool focused) {
-                SharedEditorChrome::drawMenuCell(fb, screen.touchButtons, i, cell, focused);
+                // R2-BUG-012 boxed cell (the box IS the published touch rect), as drawMenuCell does.
+                SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cell.x, cell.y, cell.w, cell.h), {focused});
+                SharedBoxedRows::publish(screen.touchButtons, i, cell, {focused});
             },
             label,
             [&](PKSEFramebuffer& fb, const PokeBank::UIModel::SharedMenuGeometry::Rect& sprite, int i) {
@@ -1071,12 +1043,14 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.helpActive) {
-        fb.drawText(x + 30, y + 20, "Inventory Help", Colors::Text, TextStyle::Heading);
-        // R2-BUG-013: key rows draw their buttons as glyph badges (ScreenChrome::drawGlyphHelpLine);
-        // the notes stay plain text. Rows: ClassicInventoryUIModel classicInventoryHelpLines().
+        // Round 7 (B04): the same "Inventory Controls" Help as the Gen IV / V Bag (InventoryHelp.h);
+        // key rows draw their buttons as glyph badges (ScreenChrome::drawGlyphHelpLine, R2-BUG-013).
+        namespace InvHelp = PokeBank::UIModel::InventoryHelp;
+        fb.drawText(x + 30, y + 20, InvHelp::kTitle, Colors::Text, TextStyle::Heading);
         int rowY = y + 78;
-        for (const auto line : PokeBank::UIModel::classicInventoryHelpLines()) {
-            drawGlyphHelpLine(fb, x + 34, rowY, std::string(line), Colors::TextDim, TextStyle::Body);
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        for (const auto& line : InvHelp::lines(generation)) {
+            drawGlyphHelpLine(fb, x + 34, rowY, line, Colors::TextDim, TextStyle::Body);
             rowY += 48;
         }
         drawNavBar(fb, {{"B", "Close Help"}});
@@ -1099,43 +1073,6 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
-    if (state.reviewActive) {
-        const auto lines = pendingLines(screen);
-        fb.drawText(x + 30, y + 20, "Pending Classic Save Changes", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56, "Review only — use Inventory Options for Export or Discard.",
-                    Colors::TextDim, TextStyle::Caption);
-        if (lines.empty()) {
-            fb.drawText(x + 34, y + 116, "No pending changes.", Colors::TextDim, TextStyle::Body);
-        } else {
-            constexpr int visibleRows = 7;
-            const int count = static_cast<int>(lines.size());
-            state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
-            const int start = state.reviewViewport.firstRow;
-            const int drawFirst = std::max(0, start - 1);
-            const int drawLast = std::min(count, start + visibleRows + 1);
-            const int liveOffset = state.reviewScroll.offset();
-            const int listTop = y + 94;
-            constexpr int rowStep = 57;
-            fb.setClipRect(x + 30, listTop, width - 60, visibleRows * rowStep);
-            for (int i = drawFirst; i < drawLast; ++i) {
-                const int rowY = listTop + (i - start) * rowStep + liveOffset;
-                drawRow(fb, x + 30, rowY, width - 60,
-                        lines[static_cast<std::size_t>(i)], i == state.reviewRow);
-                if (rowY + 48 > listTop && rowY < listTop + visibleRows * rowStep)
-                    appendClippedTouchButton(screen.touchButtons, i,
-                        x + 30, rowY, width - 60, 48,
-                        x + 30, listTop, width - 60, visibleRows * rowStep);
-            }
-            fb.clearClip();
-            SharedScrollbar::drawAndPublish(fb, state.reviewScrollbar, x + width - 16, listTop,
-                SharedScrollbar::kTrackWidth, visibleRows * rowStep,
-                SharedScrollbar::rows(count, visibleRows, start));
-        }
-        drawNavBar(fb, {{"Up/Down", "Browse"}, {"B", "Back to Options"}});
-        if (!state.lastExportDirectory.empty())
-            fb.drawText(x + 30, y + height - 40, "Last export: " + state.lastExportDirectory,
-                        Colors::TextDim, TextStyle::Caption);
-    }
 }
 
 } // namespace UI::ClassicInventory

@@ -78,13 +78,19 @@ int main() {
                             Site{"src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", 2},
                             Site{"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", 2},
                             Site{"src/UI/Gen2HardwarePickerFix.inc", 1}, Site{"src/UI/Gen2PokemonPickerOverlay.inc", 1},
-                            Site{"src/UI/Gen2SharedPokemonSurface.inc", 2}, Site{"src/UI/Gen2SharedSurfaceParity.inc", 2},
+                            Site{"src/UI/Gen2SharedPokemonSurface.inc", 1}, Site{"src/UI/Gen2SharedSurfaceParity.inc", 1},
                             Site{"src/UI/Gen2UnifiedPokemonWorkspace.inc", 3},
                             Site{"src/UI/TrainerViewScreenGSCOverlay.inc", 1},
                             Site{"src/UI/ClassicInventoryOverlay.cpp", 1}}) {
         require(count(read(site.path), "SharedBoxedRows::drawBox(") >= site.boxes,
                 std::string("R2-BUG-012 boxed modal rows in ") + site.path);
     }
+    // Gen II's noninteractive Review rows now use the accepted shared panel;
+    // its interactive Clone grid still requires its own boxed cells above.
+    require(read("src/UI/Gen2SharedSurfaceParity.inc").find("drawSharedReviewSurface(screen,fb);")!=std::string::npos &&
+            read("src/UI/Gen2SharedPokemonSurface.inc").find("SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,")!=std::string::npos &&
+            read("include/UI/SharedEditorChrome.h").find("fb.drawFilledRoundedRect(x+18,yy,w-36,94,10,Colors::PanelAlt);")!=std::string::npos,
+            "Gen II Review delegates to the accepted shared boxed change rows");
     for (const char* path : {"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen2HardwarePickerFix.inc",
                              "src/UI/Gen2PokemonPickerOverlay.inc", "src/UI/Gen2SharedSurfaceParity.inc",
                              "src/UI/Gen2UnifiedPokemonWorkspace.inc", "src/UI/TrainerViewScreenGSCOverlay.inc",
@@ -111,7 +117,22 @@ int main() {
     for (const auto& [path, sites] : {std::pair{"src/UI/Gen3SharedPokemonSurface.inc", std::size_t{2}},
                                       std::pair{"src/UI/Gen4SharedPokemonSurface.inc", std::size_t{2}},
                                       std::pair{"src/UI/Gen5SharedReadOnlySurface.inc", std::size_t{1}}}) {
-        const std::string text = read(path);
+        std::string text = read(path);
+        if (std::string(path)=="src/UI/Gen4SharedPokemonSurface.inc" ||
+            std::string(path)=="src/UI/Gen3SharedPokemonSurface.inc") {
+            require(text.find("SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons)")!=std::string::npos,
+                    "Gen III/IV Discard delegates to the actual shared confirmation");
+            const auto sharedChrome=read("include/UI/SharedEditorChrome.h");
+            const auto begin=sharedChrome.find("inline void drawReviewDiscardConfirm(");
+            const auto end=sharedChrome.find("\n}\n",begin);
+            require(begin!=std::string::npos && end!=std::string::npos && end>begin,"shared Discard confirmation exists");
+            if(begin!=std::string::npos && end!=std::string::npos && end>begin) {
+                const auto helper=sharedChrome.substr(begin,end-begin);
+                require(helper.find("{\"B\",\"Keep Changes\"},{\"Y\",\"Discard All\"}")!=std::string::npos,
+                        "shared Discard keeps B cancellation and Y confirmation");
+                text+=helper;
+            }
+        }
         require(count(text, "SharedBoxedRows::drawGlyphChoices(") >= sites,
                 std::string("R2-BUG-012 Release / Discard / decision choices boxed in ") + path);
     }

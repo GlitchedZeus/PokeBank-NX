@@ -152,15 +152,24 @@ int main() {
         const auto at = gen5.find("void drawTrainerEditor(");
         const std::string trainer = gen5.substr(at, gen5.find("\n}\n", at) - at);
         const auto cards = trainer.find("for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex})");
-        const auto divider = trainer.find("fb.drawHDivider(cardX+20,cy,cardW-40);");
+        // Round 7: the divider is painted by the shared Trainer painter (UI/SharedTrainerPanel.h).
+        const auto divider = trainer.find("TPanel::drawDivider(fb,cardX,cy,cardW);");
         const auto info = trainer.find("for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges})");
         const auto language = trainer.find("\"Game language: \"");
         require(cards != std::string::npos && divider != std::string::npos && info != std::string::npos &&
                 language != std::string::npos && cards < divider && divider < info && info < language,
                 "R2-BUG-003 Trainer page: editable cards, divider, identity rows, language detail");
         require(trainer.find("TRow::Language}") == std::string::npos, "R2-BUG-003 language is not a main-view card");
-        require(count(trainer.substr(cards == std::string::npos ? 0 : cards), "screen.touchButtons.push_back(") == 1,
-                "R2-BUG-003 only the selectable cards publish touch targets");
+        require(cards!=std::string::npos && divider!=std::string::npos &&
+                count(trainer.substr(cards,divider-cards), "screen.touchButtons.push_back(")==1,
+                "R2-BUG-003 selectable cards publish their touch targets");
+        require(info!=std::string::npos && language!=std::string::npos &&
+                count(trainer.substr(info,language-info),"screen.touchButtons.push_back(")==0,
+                "R2-BUG-003 locked identity rows publish no touch targets");
+        require(language!=std::string::npos &&
+                count(trainer.substr(language),"screen.touchButtons.push_back(")==1 &&
+                trainer.find("ClassicTrainerSession::kReviewTouchId")!=std::string::npos,
+                "October24 Gen V Trainer adds one accessible Review touch button");
     }
 
     // R2-CHECK-011 (owner: Black 2 offers "VGE 2018/2019/2020"): the Gen V met-location picker

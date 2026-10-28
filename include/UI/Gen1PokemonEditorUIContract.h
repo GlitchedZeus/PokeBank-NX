@@ -18,15 +18,30 @@ enum class Action : uint8_t {
     AddPokemon,
     ReviewPendingChanges,
     Cancel,
+    // R2-CHECK-009: starts the existing Boxes-view hold-Y carry with this Pokemon picked up.
+    // Appended so every existing action keeps its value.
+    Move,
 };
 
 struct ActionSet {
-    std::array<Action, 7> values{};
+    std::array<Action, 8> values{};
     std::size_t count = 0;
     constexpr Action operator[](std::size_t index) const noexcept { return values[index]; }
 };
 
-constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false) noexcept {
+// `boxMove`: the sheet was opened from the Boxes view, where the staged packed-move carry exists
+// (R2-CHECK-009). Move then sits between Clone and Release, the shared E02 order. The read-only
+// Storage pane and every other caller pass false and keep the sheet without Move.
+constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false,
+                                   bool boxMove = false) noexcept {
+    if (occupied && boxMove) {
+        if (hasPendingChanges) {
+            return {{{Action::View, Action::Edit, Action::Clone, Action::Move, Action::Remove,
+                      Action::LegalityProvenance, Action::ReviewPendingChanges, Action::Cancel}}, 8};
+        }
+        return {{{Action::View, Action::Edit, Action::Clone, Action::Move, Action::Remove,
+                  Action::LegalityProvenance, Action::Cancel, Action::Cancel}}, 7};
+    }
     if (occupied) {
         if (hasPendingChanges) {
             return {{{Action::View, Action::Edit, Action::Clone, Action::Remove,

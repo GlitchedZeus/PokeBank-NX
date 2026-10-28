@@ -1,3 +1,5 @@
+#include "UI/ClassicSourceGuard.h"
+#include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
 #include "Enums/GameVersion.h"
@@ -63,10 +65,12 @@ struct Gen2EditorOverlayGeometry {
 
 struct Gen2EditorOverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     bool active = false;
     bool review = false;
     bool pokemonActions = false;
     bool pokemonFields = false;
+    bool pokemonParty = false;
     int selectedRow = 0;
     int reviewRow = 0;
     SharedScrollbar::State reviewScrollbar;   // draggable thumb on Review Pending Changes
@@ -78,9 +82,9 @@ struct Gen2EditorOverlayState {
 
 Gen2EditorOverlayState& editorOverlayState(const TrainerViewScreen& screen) {
     static Gen2EditorOverlayState state;
-    if (state.owner != &screen) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial)) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
     }
     return state;
 }
@@ -109,6 +113,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, Gen2Editor& editor, std:
         error = "No pending changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
 
     // Path construction remains centralized in PokeBankPaths, but all save finalization and I/O are
     // owned by Gen2ExportTransaction. This wrapper deliberately contains no fopen/fwrite sequence.
@@ -196,6 +203,7 @@ bool openPokemonActions(TrainerViewScreen& screen) {
     state.pokemonActions = true;
     state.pokemonFields = false;
     state.pokemonBox = screen.selectedBoxIndex;
+    state.pokemonParty = false;
     state.pokemonSlot = screen.selectedItemIndex;
     state.pokemonRow = 0;
     state.reviewRow = 0;
@@ -366,7 +374,7 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     for (int i = 0; i < 4; ++i) {
         const auto dv = Utils::promptNumber("Add Gen II Pokemon - " +
             std::string(i == 0 ? "Attack" : i == 1 ? "Defense" : i == 2 ? "Speed" : "Special") + " DV",
-            8, 0, 15);
+            0, 0, 15);
         if (!dv.accepted) return false;
         create.dvs[i] = static_cast<uint8_t>(dv.value);
     }
@@ -411,7 +419,7 @@ void handlePokemonFieldInput(TrainerViewScreen& screen, u64 down) {
 void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     auto& state = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
-    if (!editor) { state = {}; state.owner = &screen; return; }
+    if (!editor) { state = {}; state.owner = &screen; state.ownerSerial = screen.instanceSerial; return; }
     std::string error;
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(state.pokemonBox),
                                               static_cast<std::size_t>(state.pokemonSlot), error);
@@ -526,6 +534,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
             state.reviewRow = (state.reviewRow + 1) % changeCount;
         if (down & HidNpadButton_B) {
             state.review = false;
+            if (screen.selectedMode == TrainerViewScreen::ViewMode::Trainer) state.active = false;
             return;
         }
         if (down & HidNpadButton_Y) {
@@ -827,7 +836,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    "Origin & Legality: not checked",
+                    std::string("Full legality analysis: ")+PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked),
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

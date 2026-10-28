@@ -76,7 +76,8 @@ int main() {
     lacks(draw, "const bool editable = !view;");
     lacks(draw, "if (editable) screen.touchButtons");
     has(draw, "screen.touchButtons.push_back({5000 + i,");
-    has(draw, "{{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}, {\"Touch\", \"Back\"}}");
+    has(draw, "{{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Panel\"}, {\"B\", \"Back\"}}");
+    lacks(draw, "{\"Touch\", \"Back\"}");
 
     std::cout << "Gen I View: navigable, focusable, read-only: PASS\n";
 }

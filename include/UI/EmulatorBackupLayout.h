@@ -62,7 +62,41 @@ namespace G = SharedMenuGeometry;
     return SourceBackups::refusalReason(refusal);
 }
 [[nodiscard]] inline std::string deletedNotice(std::string_view providerDisplay) {
-    return "Export record deleted. The original " + sourceSaveName(providerDisplay) + " was not touched.";
+    return "Backup deleted. The original " + sourceSaveName(providerDisplay) + " was not touched.";
+}
+
+// Round 4 (R2-EMUBACKUP / C07 / S05): the PKSE-style flow. Each save gets a "Create backup now"
+// action row; A creates a copy only on that row. A on the original save browses it read-only (the
+// normal open, which never makes a backup); A on a backup shows its details; Y deletes a backup
+// after the confirmation. Nothing on this screen writes the emulator's own file.
+inline constexpr int kCreateRowEntry = -1; // EmuBackupRow::entry of a "Create backup now" row
+
+enum class RowAction : unsigned char { CreateBackup, BrowseSave, OpenBackup, Details };
+
+[[nodiscard]] constexpr RowAction rowAction(int entry, SourceBackups::Kind kind) noexcept {
+    if (entry == kCreateRowEntry) return RowAction::CreateBackup;
+    return kind == SourceBackups::Kind::OriginalSource ? RowAction::BrowseSave :
+        kind == SourceBackups::Kind::StagedWorkingCopy ? RowAction::Details : RowAction::OpenBackup;
+}
+[[nodiscard]] constexpr const char* rowActionLabel(RowAction action) noexcept {
+    switch (action) {
+        case RowAction::CreateBackup: return "Create";
+        case RowAction::BrowseSave:   return "Browse";
+        case RowAction::OpenBackup:   return "Open";
+        case RowAction::Details:      return "Details";
+    }
+    return "Details";
+}
+[[nodiscard]] inline std::string createRowLabel() { return "Create backup now"; }
+[[nodiscard]] inline std::string createRowDetail(std::string_view providerDisplay) {
+    return "Copies the " + sourceSaveName(providerDisplay) + " into PokeBank NX backups. The save is not changed.";
+}
+[[nodiscard]] inline std::string createdNotice(std::string_view providerDisplay) {
+    return "Backup created. The original " + sourceSaveName(providerDisplay) + " was not touched.";
+}
+[[nodiscard]] inline std::string explainerWithBackups(std::string_view providerDisplay) {
+    return "The " + sourceSaveName(providerDisplay) +
+           " is read only. Make a backup copy any time; only backups can be deleted.";
 }
 
 inline constexpr int kHeadingTop = 4;     // from frame.y (Heading, 28 px)
@@ -78,7 +112,11 @@ constexpr int lineH(G::Text style) noexcept { return G::fontPx(style) * 5 / 4; }
 
 [[nodiscard]] constexpr G::Layout layout(int rows, int screenW = G::kScreenW,
                                          int screenH = G::kScreenH) noexcept {
-    return G::layout(G::MenuType::BackupMenu, rows, screenW, screenH);
+    auto page=G::layout(G::MenuType::BackupMenu,std::max(rows,8),screenW,screenH);
+    page.itemCount=std::max(0,rows);
+    page.totalRows=std::max(0,rows);
+    page.visibleRows=std::min(std::max(0,rows),8);
+    return page;
 }
 
 // First row shown for a scroll position, clamped to the rule's viewport.

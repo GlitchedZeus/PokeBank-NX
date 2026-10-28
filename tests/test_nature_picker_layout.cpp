@@ -55,9 +55,14 @@ int main() {
         assert(source.find("natureLayout.visibleRows")!=std::string::npos);
         assert(source.find("naturePicker ? natureLayout.width")!=std::string::npos);
         assert(source.find("naturePicker ? natureLayout.height")!=std::string::npos);
-        assert(source.find("naturePicker ? natureLayout.rowStep : 42")!=std::string::npos);
-        assert(source.find("naturePicker ? natureLayout.highlightHeight : 38")!=std::string::npos);
-        assert(source.find("SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38), {selected});")!=std::string::npos); // R2-BUG-012
+        assert(source.find("naturePicker ? natureLayout.rowStep : compactChoices ? valueList.rule.rowHeight : 42")!=std::string::npos);
+        assert(source.find("const int choiceHeight=naturePicker? natureLayout.highlightHeight : rowStep-4;")!=std::string::npos);
+        // NEW-08: a scrolling list reserves a gutter so the scrollbar never crowds the rows.
+        assert(source.find("const int scrollbarGap = SharedScrollbar::kTouchSlop + 4;")!=std::string::npos);
+        assert(source.find("const int barGutter = count > visible ? SharedScrollbar::kTrackWidth + scrollbarGap : 0;")!=std::string::npos);
+        assert(source.find("const int rowW = w - 44 - barGutter;")!=std::string::npos);
+        assert(source.find("x + 22 + rowW + scrollbarGap, viewportTop - 4")!=std::string::npos);
+        assert(source.find("SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(x + 22, yy - 4, rowW, choiceHeight), {selected});")!=std::string::npos); // R2-BUG-012; NEW-08 rowW
     }
     return 0;
 }

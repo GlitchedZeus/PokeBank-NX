@@ -1,6 +1,7 @@
 #include "Integration/Gen1/Gen1ExportTransaction.h"
 
 #include "Integration/Common/ClassicStrictValidators.h"
+#include "Names/ItemNames.h"
 
 #include <algorithm>
 
@@ -10,11 +11,13 @@ std::vector<std::string> gen1ExportChangeLines(
     const StagedPokemonEditor& editor, const StagedInventoryEditor* inventory,
     const StagedTrainerEditor* trainer) {
     std::vector<std::string> out;
+    // An empty "before" is a new value (a created Pokemon's details): "<label>: <value>".
     for (const auto& change : editor.pendingChanges())
-        out.push_back(change.label + ": " + change.beforeValue + " -> " + change.afterValue);
+        out.push_back(change.label + ": " + (change.beforeValue.empty() ? change.afterValue
+                                                                      : change.beforeValue + " -> " + change.afterValue));
     if (inventory) {
         for (const auto& change : inventory->pendingChanges())
-            out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
+            out.push_back(std::string(Names::getItemNameG1(change.itemId)) + ": " +
                           std::to_string(change.before) + " -> " + std::to_string(change.after));
     }
     if (trainer) {

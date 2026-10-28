@@ -103,6 +103,12 @@ namespace UI {
         }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
         OpenIntent getOpenIntent() const { return openIntent; }
+        const PokeVault::Source::ImmutableSnapshot::File& getSelectedBackupSnapshot() const {
+            return selectedBackupSnapshot;
+        }
+        const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
+        // The card's raw provider label for an opened backup copy (top bar names its provider).
+        const std::string& getSelectedBackupProvider() const { return selectedBackupProvider; }
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
@@ -258,7 +264,10 @@ namespace UI {
         int emuBackupScroll = 0;
         std::string emuBackupNotice;
         std::string emuBackupProvider; // provider display name of the card the Backups list belongs to
+        std::string emuBackupGameId;   // exact game of the card (names the backup folder)
         void openEmulatorBackups(const std::string& notice = {});
+        void createEmulatorBackup(int listing);
+        void browseEmulatorSource(const std::string& source);
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;
@@ -273,6 +282,9 @@ namespace UI {
         std::string selectedTitleName;
         std::string selectedGameId;
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
+        PokeVault::Source::ImmutableSnapshot::File selectedBackupSnapshot;
+        std::string selectedBackupLabel;
+        std::string selectedBackupProvider;
         // Ephemeral, exact-session selection; never guessed from file mtime
         // and never grants emulator/source write authority.
         PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =
@@ -280,6 +292,18 @@ namespace UI {
         // Only the normalized exact source bytes selected for THIS editor
         // open, never a permission token or a remembered game preference.
         std::string selectedGen5Fingerprint;
+        // Why the last direct open of an assigned Gen V save fell back to the
+        // Save Instances picker (empty when nothing was assigned).
+        std::string gen5DirectOpenNotice;
+        bool openAssignedGen5Directly(const UserEntry& user, const TitleEntry& title,
+                                      const std::string& gameId);
+        static PokeVault::Integration::Gen5::SaveCopySelection gen5CopyForVariant(
+            const std::string& variant) {
+            using PokeVault::Integration::Gen5::SaveCopySelection;
+            if (variant == "gen5-copy-0-primary") return SaveCopySelection::Primary;
+            if (variant == "gen5-copy-1-backup") return SaveCopySelection::Backup;
+            return SaveCopySelection::Automatic;
+        }
         size_t selectedLegacySourceIndex = 0;
         PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
         PokeVault::Legacy::LegacySourceBindings* legacyBindings = nullptr;

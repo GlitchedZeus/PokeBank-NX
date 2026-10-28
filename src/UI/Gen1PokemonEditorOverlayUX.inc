@@ -1,3 +1,5 @@
+#include "UI/ClassicSourceGuard.h"
+#include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/Gen1ListFit.h"
@@ -61,6 +63,7 @@ enum class PickerKind : uint8_t { None, Species, Move };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     Mode mode = Mode::Closed;
     int box = 0;
@@ -78,9 +81,9 @@ struct OverlayState {
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -96,6 +99,14 @@ const PokeVault::Legacy::RBYReadOnlyTrainer* rbyTrainer(const TrainerViewScreen&
     return static_cast<const PokeVault::Legacy::RBYReadOnlyTrainer*>(&screen.trainer);
 }
 
+// R2-CHECK-009: Box Actions lists Move only where the staged packed-move carry exists (the Boxes
+// view of a Gen I source with a staged Pokemon editor); never in the read-only Storage pane.
+bool boxMoveAvailable(const TrainerViewScreen& screen) noexcept {
+    const auto* trainer = rbyTrainer(screen);
+    return trainer && trainer->stagedPokemon() && screen.detailViewActive &&
+           screen.selectedMode == TrainerViewScreen::ViewMode::Boxes;
+}
+
 // Working-copy draft for one Gen I Edit session (as in the Gen III-V shared editor). While it
 // exists, every editor() caller - field edits, pickers, sub-editors, Random DVs, the workspace
 // display - reads and writes the draft; the real staged copy changes only when the session is
@@ -103,6 +114,7 @@ const PokeVault::Legacy::RBYReadOnlyTrainer* rbyTrainer(const TrainerViewScreen&
 // trainer/staged editor (source reload) is never used.
 struct Gen1EditDraft {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     const Editor* base = nullptr;
     std::unique_ptr<Editor> draft;
 };
@@ -120,7 +132,7 @@ Editor* realEditor(TrainerViewScreen& screen) noexcept {
 Editor* editor(TrainerViewScreen& screen) noexcept {
     auto* real = realEditor(screen);
     auto& d = editDraftFor();
-    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    if (real && d.draft && d.owner == &screen && d.base == real && d.ownerSerial == screen.instanceSerial) return d.draft.get();
     return real;
 }
 
@@ -128,7 +140,7 @@ const Editor* editor(const TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
     const Editor* real = trainer ? trainer->stagedPokemon() : nullptr;
     const auto& d = editDraftFor();
-    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    if (real && d.draft && d.owner == &screen && d.base == real && d.ownerSerial == screen.instanceSerial) return d.draft.get();
     return real;
 }
 
@@ -143,7 +155,7 @@ bool beginEditDraft(TrainerViewScreen& screen, std::string& error) {
     }
     auto draft = Editor::create(real->view(), error);
     if (!draft) return false;
-    d.owner = &screen;
+    d.owner = &screen; d.ownerSerial = screen.instanceSerial;
     d.base = real;
     d.draft = std::move(draft);
     return true;
@@ -154,7 +166,7 @@ void dropEditDraft() noexcept { editDraftFor() = {}; }
 bool editDraftActive(const TrainerViewScreen& screen) noexcept {
     const auto* trainer = rbyTrainer(screen);
     const auto& d = editDraftFor();
-    return trainer && d.draft && d.owner == &screen && d.base == trainer->stagedPokemon();
+    return trainer && d.draft && d.owner == &screen && d.base == trainer->stagedPokemon() && d.ownerSerial == screen.instanceSerial;
 }
 
 bool editorAvailable(const TrainerViewScreen& screen) noexcept {
@@ -215,6 +227,12 @@ std::string speciesCompact(uint16_t species) {
     return UX::speciesPickerRow(species, Names::getSpeciesName(species));
 }
 
+// NEW-11: identity-panel heading reads "Pikachu #25"; lists and field rows keep speciesCompact.
+std::string speciesHeading(uint16_t species) {
+    if (species < 1 || species > 151) return "Invalid";
+    return std::string(Names::getSpeciesName(species)) + " #" + std::to_string(species);
+}
+
 std::string moveDisplay(uint8_t move) {
     if (move == 0) return "Empty";
     if (move > 165) return "Invalid";
@@ -264,7 +282,7 @@ const char* fieldLabel(int row) noexcept {
 }
 
 std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
-    if (row == 0) return speciesCompact(d.species);
+    if (row == 0) return speciesHeading(d.species);
     if (row == 1) return d.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(d.species) + " (default)" : d.nickname;
     if (row == 2) return std::to_string(d.level);
     if (row == 3) return std::to_string(draftExperience(d)) + " (derived)";
@@ -286,7 +304,7 @@ std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
 }
 
 std::string existingValue(const PokemonRecord& p, int row) {
-    if (row == 0) return speciesCompact(p.species);
+    if (row == 0) return speciesHeading(p.species);
     if (row == 1) return p.nickname;
     if (row == 2) return std::to_string(p.level);
     if (row == 3) return std::to_string(p.experience);
@@ -372,7 +390,13 @@ bool applyPicker(TrainerViewScreen& screen) {
     if (state.pickerForDraft) {
         if (state.picker == PickerKind::Species) {
             // Preview-only identity change. The draft lives solely in overlay memory until Stage Add.
-            state.draft.species = static_cast<uint16_t>(state.pickerValue);
+            // R2-BUG-004: a real species change brings the new species' native moves.
+            const auto species = static_cast<uint16_t>(state.pickerValue);
+            if (species != state.draft.species)
+                PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(
+                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.level),
+                    state.draft.moves, state.draft.pp, state.draft.ppUps);
+            state.draft.species = species;
         } else if (state.picker == PickerKind::Move) {
             const int slot = state.pickerMoveSlot;
             state.draft.moves[slot] = static_cast<uint8_t>(state.pickerValue);
@@ -393,6 +417,9 @@ bool applyPicker(TrainerViewScreen& screen) {
     BoxPokemonEdit edit;
     if (state.picker == PickerKind::Species) {
         edit.species = static_cast<uint16_t>(state.pickerValue);
+        if (*edit.species != pokemon->species)
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
+                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->level), edit);
     } else if (state.picker == PickerKind::Move) {
         auto moves = pokemon->moves;
         moves[state.pickerMoveSlot] = static_cast<uint8_t>(state.pickerValue);
@@ -678,6 +705,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "No pending Generation I changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
 
     const std::string root = PokeBank::Paths::gen1ExportsRoot();
     if (!PokeBank::Paths::ensureGen1ExportsRoot(&error)) return {};
@@ -764,6 +794,7 @@ void handleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             case UX::Action::AddPokemon: beginAddDraft(screen); break;
             case UX::Action::ReviewPendingChanges: state.mode = Mode::Review; state.reviewRow = 0; break;
             case UX::Action::Cancel: closeOverlay(state); break;
+            case UX::Action::Move: break; // not offered by this legacy sheet (boxMove = false)
         }
         return;
     }
@@ -861,7 +892,7 @@ void drawPreview(PKSEFramebuffer& fb, int x, int y, int w, const PokemonRecord* 
             fb.drawText(x + 26, y + 120, "Sprite unavailable", Colors::TextDim);
         }
     }
-    fb.drawText(x, y + 254, speciesCompact(species), Colors::Text, TextStyle::Heading);
+    fb.drawText(x, y + 254, speciesHeading(species), Colors::Text, TextStyle::Heading);
     fb.drawText(x, y + 292, nickname, Colors::Text);
     fb.drawText(x, y + 326, "Level " + std::to_string(level), Colors::Text);
     fb.drawText(x, y + 358, "EXP " + std::to_string(exp), Colors::TextDim);
@@ -974,7 +1005,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         Colors::TextDim);
     static constexpr const char* names[] = {
         "View", "Edit", "Clone", "Remove", PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
-        "Add Pokemon", "Review Pending Changes", "Cancel",
+        "Add Pokemon", "Review Pending Changes", "Cancel", "Move",
     };
     int rowY = y + 104;
     for (std::size_t i = 0; i < actions.count; ++i) {
@@ -1037,26 +1068,24 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 }
 
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
-    auto* trainer = rbyTrainer(screen);
-    auto* e = editor(screen);
-    fb.drawText(x + 26, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    const int lx = x + 40, vx = x + 330;
-    const std::array<std::pair<const char*, std::string>, 7> rows{{
-        {"Source game", screen.sourceGameId},
-        {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese (EDIT DISABLED)" : "International (validated editor)"},
-        {"Source mutation", "HARD DISABLED"},
-        {"Party mutation", "DEFERRED"},
-        {"Format validation", "Strict reparse + checksum on export"},
-        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "NOT CLAIMED by this editor"},
-        {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
-    }};
-    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
-        fb.drawText(lx, y + 100 + i * 52, rows[i].first, Colors::TextDim);
-        fb.drawText(vx, y + 100 + i * 52, rows[i].second,
-            i == 2 || i == 5 ? Colors::Accent : Colors::Text);
+    (void)x;(void)y;(void)w;(void)h;
+    namespace P=PokeBank::UIModel::SharedEditorPresentation;
+    auto* trainer=rbyTrainer(screen);auto* e=editor(screen);
+    std::string error;const auto p=selectedPokemon(screen,error);
+    std::vector<std::pair<std::string,std::string>> rows{
+        {"Source game",screen.sourceGameId},
+        {"Region/layout",trainer && trainer->japaneseLayout()?"Japanese":"International"},
+        {"Native format","PK1; save checksum checked on export"},
+        {"Source bytes",e?std::to_string(e->originalBytes().size())+" immutable bytes":"Unavailable"},
+        {"Encounter / transfer rules","Not evaluated"},
+        {"Rule coverage","Editor guardrails only; no complete legality check"}};
+    if(p) {
+        rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species))+" #"+std::to_string(p->species)});
+        rows.push_back({"Nickname",p->nickname});rows.push_back({"Original Trainer",p->originalTrainer});
+        rows.push_back({"Trainer ID",std::to_string(p->trainerId)});
+        for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
-    fb.drawText(lx, y + h - 62,
-        "Pending semantic changes: " + std::to_string(pendingLines(screen).size()), Colors::Text);
+    UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
 }
 
 void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {

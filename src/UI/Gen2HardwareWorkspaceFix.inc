@@ -44,10 +44,10 @@ void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
     focus.column = 1;
 }
 
-void clearHardwarePanelHeading(PKSEFramebuffer& fb, int x, int y, int width,
-                               const char* text, TextStyle style) {
+void clearHardwarePanelHeading(PKSEFramebuffer& fb, int x, int y, int width, const char* text) {
     fb.drawFilledRect(x + 10, y + 6, width, 34, Colors::Panel);
-    fb.drawText(x + 14, y + 10, text, Colors::Text, style);
+    // Round 7 P2: the one shared heading style (UI/SharedPanelHeading.h), as Gen IV / V.
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, text);
 }
 
 void drawHardwareWorkspaceCorrections(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -59,11 +59,11 @@ void drawHardwareWorkspaceCorrections(TrainerViewScreen& screen, PKSEFramebuffer
     const int midX = leftX + leftW + 14, midW = 398;
     const int rightX = midX + midW + 14;
 
-    // Gen I is the accepted focus model: headings remain neutral and the compact
-    // outline on the actual field/cell communicates focus.
-    clearHardwarePanelHeading(fb, leftX, contentY, 120, "DETAILS", TextStyle::Caption);
-    clearHardwarePanelHeading(fb, midX, contentY, 120, "STATS", TextStyle::Heading);
-    clearHardwarePanelHeading(fb, rightX, contentY, 120, "MOVES", TextStyle::Heading);
+    // Headings never signal focus (the compact outline on the field/cell does); they use the
+    // shared Gen IV / V heading style (owner Oct 26 typography).
+    clearHardwarePanelHeading(fb, leftX, contentY, 120, "DETAILS");
+    clearHardwarePanelHeading(fb, midX, contentY, 120, "STATS");
+    clearHardwarePanelHeading(fb, rightX, contentY, 120, "MOVES");
 
     // Keep DETAILS scrolling behavior available for future/Crystal rows but remove
     // the stray bottom glyph until the product intentionally exposes a scroll cue.
@@ -258,40 +258,33 @@ void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint6
         return;
     }
 
-    // Review rows are informational. Touch changes/browses the highlighted row only; it never
-    // aliases A because A exports the complete staged copy rather than acting on one row.
+    // The shared paged Review (round 5): rows are informational, so a tap never selects or acts.
+    // A completed vertical swipe that starts and ends on the panel turns one page, the touch
+    // counterpart of L/R. reviewRow is the page index the shared presenter draws.
     if (legacy.active && legacy.review) {
         auto* editor = stagedEditor(screen);
         if (!editor) return;
-        const int changeCount = static_cast<int>(editor->pendingChanges().size());
-        if (changeCount <= 0) return;
-        constexpr int w = 980, h = 540;
+        const size_t changeCount = editor->pendingChanges().size();
+        constexpr int w = 1100, h = 584; // SharedEditorChrome::drawReviewPanel
         constexpr int x = (1280 - w) / 2;
-        constexpr int y = (672 - h) / 2;
-        const int first = std::clamp(legacy.reviewRow - 4, 0, std::max(0, changeCount - 9));
-        const int last = std::min(changeCount, first + 9);
-        if (touch.justTapped()) {
-            for (int i = first; i < last; ++i) {
-                const int rowY = y + 88 + (i - first) * 45;
-                // Same-target requirement: even a sub-threshold wobble must
-                // not select the neighbouring pending change.
-                if (!pointInRect(touch.startX(), touch.startY(),
-                                 x + 22, rowY, w - 44, 42) ||
-                    !pointInRect(touch.x(), touch.y(),
-                                 x + 22, rowY, w - 44, 42)) continue;
-                legacy.reviewRow = i;
-                break;
-            }
-        }
-        if (touch.justReleased() && touch.dragged() &&
+        constexpr int y = (720 - kNavBarH - h) / 2;
+        if (!sharedSurfaceStateFor(screen).reviewDiscard.confirming && // the confirm is modal
+            touch.justReleased() && touch.dragged() &&
             pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
+            pointInRect(touch.x(), touch.y(), x, y, w, h) &&
             std::abs(touch.deltaY()) >= 24 &&
             std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 45);
-            legacy.reviewRow = std::clamp(
-                legacy.reviewRow + (touch.deltaY() < 0 ? steps : -steps), 0, changeCount - 1);
+            legacy.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(
+                static_cast<size_t>(std::max(0, legacy.reviewRow)), touch.deltaY() < 0 ? 1 : -1, changeCount));
         }
     }
+}
+
+// Round 6 / 7 (P1-RETURN): the shared Review is open over a Create / Edit workspace (+). One
+// predicate for the input owner below and the outermost draw (Gen2HardwareFinalFix).
+bool gen2WorkspaceReviewOpen(const TrainerViewScreen& screen) {
+    return isGSC(screen) && stateFor(screen).mode != Mode::None && editorOverlayState(screen).active &&
+           editorOverlayState(screen).review;
 }
 
 } // namespace
@@ -299,6 +292,9 @@ void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint6
 bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                    int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
+    // Round 6 (P1-RETURN): a Review opened from the Create / Edit workspace (+) owns input
+    // until its B, which returns to the workspace still open underneath.
+    if (gen2WorkspaceReviewOpen(screen)) return handleSharedReview(screen, down, held, stickX, stickY);
     if (stateFor(screen).mode != Mode::None) {
         handleUnifiedTouch(screen, touch, down);
         normalizeHardwareMoveRowFocus(screen);
@@ -315,6 +311,11 @@ bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uin
 
 bool drawUnifiedGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen)) return false;
+    // Round 6: the shared Review replaces the workspace while open (nothing drawn underneath).
+    if (gen2WorkspaceReviewOpen(screen)) {
+        drawSharedReviewSurface(screen, fb);
+        return true;
+    }
     if (stateFor(screen).mode != Mode::None) {
         normalizeHardwareDerivedHpDvFocus(screen);
         drawUnifiedWorkspace(screen, fb);

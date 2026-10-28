@@ -36,7 +36,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Integration/Gen3/FRLGReadModel.cpp \
 	src/Integration/Gen4/Gen4ReadOnlySave.cpp src/Integration/Gen4/Gen4AssignedSource.cpp \
 	src/Integration/Gen4/Gen4SourceDiscovery.cpp src/Integration/Gen4/Gen4StagedPokemonEditor.cpp \
-	src/Integration/Gen4/Gen4ExportTransaction.cpp \
+	src/Integration/Gen4/Gen4ExportTransaction.cpp src/Names/MachineDisplay.cpp src/Names/TMMoves.cpp \
 	src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp \
 	src/Integration/Gen5/Gen5AssignedSource.cpp \
 	src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Legacy/Gen4ReadOnlyTrainer.cpp \
@@ -53,7 +53,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
 	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
-	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/ItemPresence.cpp \
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/LocationNames.cpp src/Names/ItemPresence.cpp \
 	src/Names/MovePresence.cpp \
 	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp)
@@ -140,7 +140,7 @@ qa-libfuzzer-run: qa-libfuzzer qa-seeds
 			$(QA_BUILD)/corpus/$$t $(call QA_REGRESSION,$$t); \
 	done
 
-QA_CONTRACT_TESTS := test_qa_export_contracts test_qa_regressions
+QA_CONTRACT_TESTS := test_qa_export_contracts test_qa_regressions test_native_trainer_badges
 qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $(QA_BUILD)/san/,$(QA_CONTRACT_TESTS)) $(QA_GEN3_FIXTURE)
 	@set -e; for t in $(QA_CONTRACT_TESTS); do \
 		$(QA_BUILD)/plain/$$t; \
@@ -152,7 +152,8 @@ qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $
 # Fails on any FAIL / MISSING / DUPLICATE cell; Known defects are reproduced in qa-known-failures.
 QA_MATRIX_SOURCES := tests/test_qa_matrix.cpp tests/test_qa_matrix_gen12.cpp tests/test_qa_matrix_gen3.cpp \
 	tests/test_qa_matrix_gen4.cpp tests/test_qa_matrix_gen5.cpp
-QA_MATRIX_EXTRA_SOURCES := src/Legacy/RBYReadOnlyTrainer.cpp src/UI/ClassicInventoryUIModel.cpp
+QA_MATRIX_EXTRA_SOURCES := src/Legacy/RBYReadOnlyTrainer.cpp src/UI/ClassicInventoryUIModel.cpp \
+    src/Legacy/BackupReadOnlyTrainer.cpp src/Legacy/GSCReadOnlyTrainer.cpp tests/test_backup_session_trace.cpp
 $(QA_BUILD)/plain/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h tests/test_qa_matrix_round2.h \
 		$(QA_BUILD)/plain/libqacore.a $(QA_HEADERS)
 	$(CXX) $(QA_VARIANT_FLAGS_plain) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \
@@ -179,6 +180,8 @@ qa-tools-test:
 	python3 tests/test_qa_regressions_assets.py
 	python3 tests/test_hw_round1_regression_gate.py
 	python3 tests/test_qa_hw_round1_gate_mutations.py
+	python3 tests/test_qa_round5_contract_mutations.py
+	python3 tests/test_qa_make_retest.py
 	python3 tests/test_qa_manual_workflow_staleness.py
 	python3 tests/test_qa_host_header_deps.py
 	python3 tools/qa/manual_workflow_staleness.py

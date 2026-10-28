@@ -238,7 +238,7 @@ int main() {
     const auto passive = readFile("src/UI/Gen1PokemonEditorPassiveView.inc");
     assert(passive.find("drawFullscreenGen1Workspace(screen, fb)") != std::string::npos);
     assert(fullscreen.find("MoveCompatibility::canLearnMove") != std::string::npos);
-    // Per-slot status in the shared Moves panel; legality is a GEN I DATA row.
+    // Per-slot status in the shared Moves panel; legality is a row of the Origin & Legality pane.
     assert(fullscreen.find("ClassicMovesPanel::draw(") != std::string::npos);
     assert(fullscreen.find("\"Legality\"") != std::string::npos);
 
