@@ -609,6 +609,12 @@ Outcome creation(Ctx& c, Matrix& m) {
          "Add did not open the Create confirmation: " + error);
     need(ui.beginCreateDraft(ws, *request, refresher(*t), error), "beginCreateDraft: " + error);
     need(ui.surface() == Screen::Surface::Edit && ui.createPending(), "Create did not open the Edit draft");
+    // Owner Oct 28 (item 4): Keep is refused until a Met Location is chosen; the picker records it.
+    need(ui.createNeedsMetLocation() && !ui.keepWithPresentation(ws, refresher(*t), error) &&
+             error == "Choose a Met Location before Keep",
+         "Create kept without a Met Location choice");
+    need(ui.createPending(), "a refused Keep left the Create draft");
+    ui.noteCreateMetLocationChosen();
     need(ui.keepWithPresentation(ws, refresher(*t), error), "Keep: " + error);
     const auto made = ws.viewBox(0, 1);
     need(made && made->valid() && !made->empty() && made->species() == 25 && !made->partyRecord() &&
