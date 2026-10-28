@@ -26,6 +26,8 @@ inline constexpr uint32_t kMaxMoney = 999999;
 inline constexpr uint8_t kMaxStackQuantity = 99;
 inline constexpr std::size_t kInternationalTrainerNameMax = 7;
 inline constexpr std::size_t kInternationalPokemonNameMax = 10;
+// Japanese Gold / Silver / Crystal: trainer, OT and Pokemon names hold 5 kana (6-byte fields).
+inline constexpr std::size_t kJapaneseNameMax = 5;
 inline constexpr uint16_t kMaxGen2Species = 251;
 inline constexpr uint16_t kMaxGen2Move = 251;
 
@@ -94,9 +96,10 @@ public:
     // P3 (Round 5): Play Time (Gold / Silver / Crystal) and Crystal Trainer Gender, staged in this
     // image. Offsets are the ones Gen2ReadOnlySave already reads (PKHeX 6042efa241a9 SAV2Offsets):
     // play time = big-endian u16 hours, then minutes and seconds bytes, at 0x2053 (international
-    // Gold / Silver) or 0x2052 (international Crystal), inside the checksummed main block (the
-    // checksum and backup mirror are repaired at finalize). Crystal gender = one byte at 0x3E3D,
-    // 0 male / 1 female. Gold / Silver have no gender byte. Hours are capped at 999 (the shared
+    // Gold / Silver), 0x2052 (international Crystal) or 0x2034 (Japanese), inside the checksummed
+    // main block (the checksum and backup mirror are repaired at finalize). Crystal gender = one
+    // byte at 0x3E3D (international) or 0x8000 (Japanese, only in a 64 KiB image), 0 male /
+    // 1 female, outside the checksum. Gold / Silver have no gender byte. Hours are capped at 999 (the shared
     // Gen III-V editor bound); the timer's other bytes are never touched.
     struct PlayTime {
         uint16_t hours = 0;
@@ -138,17 +141,20 @@ public:
     bool stageReleaseBoxPokemon(std::size_t box, std::size_t slot, std::string& error);
 
     // Feature A (owner Oct 28): standalone .pk2 files (PokemonFile/NativePokemonFile.h).
-    // stageImportBoxPokemon places one decoded international .pk2 into the first empty slot of a
-    // box, as a staged change only (Review / Keep / Discard / Export Copy as for Add and Clone).
+    // stageImportBoxPokemon places one decoded .pk2 into the first empty slot of a box, as a staged
+    // change only (Review / Keep / Discard / Export Copy as for Add and Clone).
     // The box keeps the first 32 bytes of the 48-byte party body (pret/pokecrystal box_struct),
     // the file's list species byte (0xFD for an Egg, which imports as an Egg exactly as stored) and
-    // its 11-byte OT and nickname, all byte for byte. The record must pass the strict parser and
-    // this editor's own validators (species, level/EXP, held item, moves/PP, Pokerus). Japanese
-    // files, other generations, occupied or non-first-empty slots and full boxes are refused;
-    // nothing is converted, invented or legalized.
+    // its OT and nickname (11 bytes international, 6 Japanese), all byte for byte. The record must
+    // pass the strict parser and this editor's own validators (species, level/EXP, held item,
+    // moves/PP, Pokerus). A Japanese (63-byte) file goes only into a Japanese save and an
+    // international (73-byte) file only into an international save; other generations, occupied
+    // or non-first-empty slots and full boxes are refused; nothing is converted, invented or
+    // legalized.
     bool stageImportBoxPokemon(std::size_t box, std::size_t slot,
                                const PokeBank::PokemonFile::Decoded& file, std::string& error);
-    // PKHeX single-entry .pk2 list (73 bytes, PokeCrypto.cs SIZE_2LIST) of a staged box or Party
+    // PKHeX single-entry .pk2 list (73 bytes, or 63 from a Japanese save; PokeCrypto.cs
+    // SIZE_2ULIST / SIZE_2JLIST) of a staged box or Party
     // Pokemon. Reads only. A box record gets the party-only fields the game computes when it is
     // withdrawn (pokecrystal engine/pokemon/move_mon.asm SendGetMonIntoFromBox, PC_WITHDRAW:
     // CalcLevel into MON_LEVEL, CalcMonStats with Stat Exp, status 0, HP = max HP or 0 for an Egg).
@@ -210,6 +216,7 @@ private:
                            std::string& error) const;
     bool encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
                       std::string& error) const;
+    std::string storedName(std::string_view typed, std::span<const uint8_t> encoded) const;
     bool syncCurrentBoxCopy(std::size_t box, std::string& error);
     bool stageRecordEdit(bool party, std::size_t box, std::size_t slot,
                          const BoxPokemonEdit&, std::string& error);

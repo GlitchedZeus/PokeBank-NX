@@ -1,10 +1,12 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen2/Gen2NativeItemList.h"
 #include "Utils/Gen12AccentText.h"
+#include "Utils/Gen12KanaText.h"
 
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
+#include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
 #include "Names/MoveNames.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
@@ -35,23 +37,45 @@ struct Layout {
     uint8_t boxCount;
     uint8_t stringLength;
     uint8_t splitAtBox;
+    std::size_t party;
+    std::size_t playTime;
+    std::size_t gender; // kNoGender for Gold / Silver
 };
 
+constexpr std::size_t kNoGender = static_cast<std::size_t>(-1);
+
+// PKHeX 8e3eb3d4 SAV2Offsets.cs LoadOffsetsInternational / LoadOffsetsJapanese. The box geometry,
+// party, money, checksum range and primary checksum are the ones Gen2ReadOnlySave.cpp validates
+// (kIntlGS / kIntlC / kJpnGS / kJpnC); the secondary checksum (OverallChecksumPosition2), the
+// pouches (PouchItem / PouchBall, as Gen2ReadOnlyInventory.cpp reads them), TimePlayed and Gender
+// come from the same PKHeX file. Japanese saves keep 9 boxes of 30 with 6-byte names, boxes 1-6 in
+// SRAM bank 2 and 7-9 in bank 3 (SAV2.cs GetBoxRawDataOffset, splitAtIndex 6).
 constexpr Layout kIntlGS{
     0x200B, 11, 0x23DB, 0x241F, 0x2464, 0x2D6C, 0x2D68, 0x2D69, 0x7E6D,
-    20, 14, 11, 7,
+    20, 14, 11, 7, 0x288A, 0x2053, kNoGender,
 };
 constexpr Layout kIntlCrystal{
     0x200B, 11, 0x23DC, 0x2420, 0x2465, 0x2D10, 0x2B82, 0x2D0D, 0x1F0D,
-    20, 14, 11, 7,
+    20, 14, 11, 7, 0x2865, 0x2052, 0x3E3D,
+};
+// Japanese player name: 6 bytes (pret NAME_LENGTH_JAPANESE; PKHeX SAV2 StringLength 6, 5 chars).
+constexpr Layout kJpnGS{
+    0x200B, 6, 0x23BC, 0x2400, 0x2445, 0x2D10, 0x2C8B, 0x2D0D, 0x7F0D,
+    30, 9, 6, 6, 0x283E, 0x2034, kNoGender,
+};
+// Japanese Crystal keeps the player gender at 0x8000 (SRAM bank 4), present only in a 64 KiB image.
+constexpr Layout kJpnCrystal{
+    0x200B, 6, 0x23BE, 0x2402, 0x2447, 0x2D10, 0x2AE2, 0x2D0D, 0x7F0D,
+    30, 9, 6, 6, 0x281A, 0x2034, 0x8000,
 };
 
-const Layout& layoutFor(VersionFamily family) noexcept {
+const Layout& layoutFor(RegionLayout region, VersionFamily family) noexcept {
+    if (region == RegionLayout::Japanese)
+        return family == VersionFamily::Crystal ? kJpnCrystal : kJpnGS;
     return family == VersionFamily::Crystal ? kIntlCrystal : kIntlGS;
 }
-// PKHeX SAV2 / PokeList2 international native Party list, six 48-byte bodies.
-std::size_t partyStart(VersionFamily family) noexcept {
-    return family == VersionFamily::Crystal ? 0x2865 : 0x288A;
+const Layout& layoutFor(const Metadata& metadata) noexcept {
+    return layoutFor(metadata.region, metadata.family);
 }
 
 constexpr std::size_t kStoredBodySize = 32;
@@ -209,6 +233,25 @@ void copyRange(std::vector<uint8_t>& bytes, std::size_t sourceStart,
                 bytes.begin() + static_cast<std::ptrdiff_t>(destinationStart));
 }
 
+// Japanese Gold / Silver / Crystal keep ONE contiguous backup of the checksummed block
+// [0x2009, AccumulatedChecksumEnd] at 0x7209 (PKHeX 8e3eb3d4 SAV2.cs GetFinalData: Crystal copies
+// 0xADA bytes, Gold / Silver 0xC83 bytes, i.e. 0x2009..0x2AE2 -> 0x7209..0x7CE2 and
+// 0x2009..0x2C8B -> 0x7209..0x7E8B). pret has no Japanese disassembly to confirm it; every real
+// Japanese Gold, Silver and Crystal save tested here (POKEBANK_JP_FIXTURES) holds exactly that copy.
+bool synchronizeJapaneseMirror(std::vector<uint8_t>& bytes, const Layout& layout, std::string& error) {
+    constexpr std::size_t sourceStart = 0x2009;
+    constexpr std::size_t destination = 0x7209;
+    const std::size_t sourceEnd = layout.checksumEnd + 1;
+    if (!rangeFits(sourceStart, sourceEnd, bytes.size()) ||
+        destination + (sourceEnd - sourceStart) > layout.checksumSecondary ||
+        layout.checksumSecondary + 2 > bytes.size()) {
+        error = "Japanese Gen II mirror range does not fit the staged payload";
+        return false;
+    }
+    copyRange(bytes, sourceStart, sourceEnd, destination);
+    return true;
+}
+
 bool synchronizeInternationalMirrors(std::vector<uint8_t>& bytes, VersionFamily family,
                                      std::string& error) {
     const std::size_t payloadSize = bytes.size();
@@ -246,7 +289,7 @@ bool synchronizeInternationalMirrors(std::vector<uint8_t>& bytes, VersionFamily 
 
 bool repairForStrictReload(std::vector<uint8_t>& bytes, const Metadata& metadata,
                            std::string& error) {
-    const auto& layout = layoutFor(metadata.family);
+    const auto& layout = layoutFor(metadata);
     if (metadata.payloadSize > bytes.size() || layout.checksumSecondary + 1 >= metadata.payloadSize) {
         error = "staged Gen II payload cannot be repaired safely";
         return false;
@@ -258,9 +301,21 @@ bool repairForStrictReload(std::vector<uint8_t>& bytes, const Metadata& metadata
 
     std::vector<uint8_t> payloadCopy(bytes.begin(), bytes.begin() +
         static_cast<std::ptrdiff_t>(metadata.payloadSize));
-    if (!synchronizeInternationalMirrors(payloadCopy, metadata.family, error)) return false;
+    if (metadata.region == RegionLayout::Japanese
+            ? !synchronizeJapaneseMirror(payloadCopy, layout, error)
+            : !synchronizeInternationalMirrors(payloadCopy, metadata.family, error)) return false;
     std::copy(payloadCopy.begin(), payloadCopy.end(), bytes.begin());
     return true;
+}
+
+// True when the text holds hiragana / katakana (U+3040..U+30FF): such a name belongs to a Japanese
+// save and is refused by an international one with that reason.
+bool containsKana(std::string_view text) noexcept {
+    for (std::size_t i = 0; i + 2 < text.size(); ++i) {
+        const auto b0 = static_cast<unsigned char>(text[i]), b1 = static_cast<unsigned char>(text[i + 1]);
+        if (b0 == 0xE3 && (b1 == 0x81 || b1 == 0x82 || b1 == 0x83)) return true;
+    }
+    return false;
 }
 
 bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::size_t fieldBytes,
@@ -269,6 +324,12 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
     error.clear();
     if (name.empty()) {
         error = std::string(fieldLabel) + " cannot be empty";
+        return false;
+    }
+    if (containsKana(name)) {
+        error = std::string(fieldLabel) +
+            " uses Japanese characters, which an international Generation II save cannot store"
+            " (no region conversion)";
         return false;
     }
     encoded.assign(fieldBytes, 0x50);
@@ -341,6 +402,37 @@ bool encodeInternationalASCII(std::string_view name, std::size_t maxChars, std::
         input += consumed;
     }
     return true;
+}
+
+// Japanese Gen II names: 5 characters of the Japanese font in a 6-byte field ending in 0x50
+// (PKHeX SAV2 MaxStringLengthTrainer / MaxStringLengthNickname 5, StringLength 6). The byte table
+// is Utils/Gen12KanaText.h (PKHeX StringConverter TableJP), round-tripped through
+// decodeGen2String(..., Japanese) by tests/test_gen12_kana_text.cpp. Latin text is refused: no
+// region conversion.
+static_assert(kJapaneseNameMax == Utils::Gen12Kana::kMaxNameChars);
+
+bool encodeJapaneseKana(std::string_view name, std::size_t fieldBytes, std::vector<uint8_t>& encoded,
+                        std::string& error, std::string_view fieldLabel) {
+    error.clear();
+    if (fieldBytes != Utils::Gen12Kana::kMaxNameChars + 1) {
+        error = std::string(fieldLabel) + " field is not a Japanese Generation II name field";
+        return false;
+    }
+    std::string bad;
+    const auto result = Utils::Gen12Kana::encode(name, Utils::Gen12Kana::kMaxNameChars, encoded, &bad);
+    switch (result) {
+        case Utils::Gen12Kana::Result::Ok: return true;
+        case Utils::Gen12Kana::Result::Empty: error = std::string(fieldLabel) + " cannot be empty"; break;
+        case Utils::Gen12Kana::Result::TooLong:
+            error = std::string(fieldLabel) + " exceeds the Japanese Generation II limit of 5 characters";
+            break;
+        case Utils::Gen12Kana::Result::Unsupported:
+            error = std::string(fieldLabel) + " contains '" + bad +
+                    "', which a Japanese Generation II save cannot store (kana only; no region conversion)";
+            break;
+    }
+    encoded.clear();
+    return false;
 }
 
 bool validHeldItem(uint8_t item) noexcept {
@@ -457,22 +549,26 @@ std::array<uint8_t, 4> editableDVs(const PokemonRecord& p) noexcept {
     return {p.dvs[1], p.dvs[2], p.dvs[3], p.dvs[4]};
 }
 
-// PKHeX 8e3eb3d4 PokeCrypto.cs SIZE_2LIST / PokeList2 single entry: count 1, list species (0xFD
-// for an Egg), 0xFF, the 48-byte party body, 11-byte OT, 11-byte nickname (international).
-constexpr std::size_t kFileBody = 3, kFilePartyBody = 48, kFileString = 11;
-constexpr std::size_t kFileOT = kFileBody + kFilePartyBody, kFileNick = kFileOT + kFileString;
-constexpr std::size_t kFileSize = kFileNick + kFileString;
+// PKHeX 8e3eb3d4 PokeCrypto.cs SIZE_2ULIST (73) / SIZE_2JLIST (63), PokeList2 single entry:
+// count 1, list species (0xFD for an Egg), 0xFF, the 48-byte party body, OT, nickname. Names are
+// 11 bytes in an international file and 6 in a Japanese one (the save's own string length).
+constexpr std::size_t kFileBody = 3, kFilePartyBody = 48;
+constexpr std::size_t kFileOT = kFileBody + kFilePartyBody;
+constexpr std::size_t fileNick(std::size_t str) noexcept { return kFileOT + str; }
+constexpr std::size_t fileSize(std::size_t str) noexcept { return kFileOT + 2 * str; }
+static_assert(fileSize(11) == 73 && fileSize(6) == 63);
 constexpr uint8_t kEggMarker = 0xFD; // pret/pokecrystal constants/pokemon_constants.asm EGG
 
 std::vector<uint8_t> pk2List(uint8_t marker, const std::array<uint8_t, kFilePartyBody>& body,
-                             std::span<const uint8_t> ot, std::span<const uint8_t> nick) {
-    std::vector<uint8_t> out(kFileSize, 0x50);
+                             std::span<const uint8_t> ot, std::span<const uint8_t> nick,
+                             std::size_t str) {
+    std::vector<uint8_t> out(fileSize(str), 0x50);
     out[0] = 1;
     out[1] = marker;
     out[2] = 0xFF;
     std::copy(body.begin(), body.end(), out.begin() + kFileBody);
-    std::copy_n(ot.begin(), kFileString, out.begin() + kFileOT);
-    std::copy_n(nick.begin(), kFileString, out.begin() + kFileNick);
+    std::copy_n(ot.begin(), str, out.begin() + kFileOT);
+    std::copy_n(nick.begin(), str, out.begin() + static_cast<std::ptrdiff_t>(fileNick(str)));
     return out;
 }
 
@@ -550,10 +646,9 @@ StagedEditor::StagedEditor(const ReadOnlySave& source)
 
 std::unique_ptr<StagedEditor> StagedEditor::create(const ReadOnlySave& source, std::string& error) {
     error.clear();
-    if (source.metadata().region != RegionLayout::International) {
-        error = "staged Gen II editing is currently limited to validated international saves";
-        return nullptr;
-    }
+    // Japanese Gold / Silver / Crystal are edited on their own layout (9 boxes of 30, 6-byte kana
+    // names, one backup copy at 0x7209). Whether the APP offers this is decided by the owner's gate
+    // (Integration/Common/JapaneseEditingGate.h), which the callers consult, not by this writer.
     if (source.metadata().payloadSize < kRawSaveSize32K ||
         source.sourceBytes().size() < source.metadata().payloadSize) {
         error = "validated Gen II source has an invalid editable payload size";
@@ -565,10 +660,16 @@ std::unique_ptr<StagedEditor> StagedEditor::create(const ReadOnlySave& source, s
         error = "validated Gen II inventory is unavailable; staged editing remains disabled";
         return nullptr;
     }
-    const auto& layout = layoutFor(source.metadata().family);
+    const auto& layout = layoutFor(source.metadata());
     if (layout.checksumSecondary + 1 >= source.metadata().payloadSize ||
         layout.trainerName + layout.trainerNameBytes > source.metadata().payloadSize ||
         layout.money + 3 > source.metadata().payloadSize ||
+        layout.party + 8 + 6 * (48 + 2 * static_cast<std::size_t>(layout.stringLength)) >
+            source.metadata().payloadSize ||
+        layout.currentBoxCopy + boxListLength(layout) > source.metadata().payloadSize ||
+        layout.playTime + 4 > source.metadata().payloadSize ||
+        layout.boxCount != source.metadata().boxCount ||
+        layout.boxCapacity != source.metadata().boxCapacity ||
         boxStart(layout, layout.boxCount - 1) + boxListLength(layout) > source.metadata().payloadSize) {
         error = "Gen II editable offsets do not fit the validated payload";
         return nullptr;
@@ -578,24 +679,39 @@ std::unique_ptr<StagedEditor> StagedEditor::create(const ReadOnlySave& source, s
 
 bool StagedEditor::encodeTrainerName(std::string_view name, std::vector<uint8_t>& encoded,
                                      std::string& error) const {
+    if (metadata_.region == RegionLayout::Japanese)
+        return encodeJapaneseKana(name, layoutFor(metadata_).trainerNameBytes, encoded, error, "trainer name");
     return encodeInternationalASCII(name, kInternationalTrainerNameMax,
-                                    layoutFor(metadata_.family).trainerNameBytes,
+                                    layoutFor(metadata_).trainerNameBytes,
                                     encoded, error, "trainer name");
 }
 
 bool StagedEditor::encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
                                 std::string& error) const {
-    // A Pokemon's OT is a player name (7 characters internationally) stored in an 11-byte field.
+    // A Pokemon's OT is a player name (7 characters internationally) stored in an 11-byte field;
+    // kInternationalTrainerNameMax. Japanese: 5 kana in a 6-byte field.
+    if (metadata_.region == RegionLayout::Japanese)
+        return encodeJapaneseKana(name, layoutFor(metadata_).stringLength, encoded, error, "OT name");
     return encodeInternationalASCII(name, kInternationalTrainerNameMax,
-                                    layoutFor(metadata_.family).stringLength,
+                                    layoutFor(metadata_).stringLength,
                                     encoded, error, "OT name");
 }
 
 bool StagedEditor::encodePokemonName(std::string_view name, std::vector<uint8_t>& encoded,
                                      std::string& error) const {
+    if (metadata_.region == RegionLayout::Japanese)
+        return encodeJapaneseKana(name, layoutFor(metadata_).stringLength, encoded, error, "Pokemon name");
     return encodeInternationalASCII(name, kInternationalPokemonNameMax,
-                                    layoutFor(metadata_.family).stringLength,
+                                    layoutFor(metadata_).stringLength,
                                     encoded, error, "Pokemon name");
+}
+
+std::string StagedEditor::storedName(std::string_view typed, std::span<const uint8_t> encoded) const {
+    // Japanese Gen II stores べ / ぺ / へ / り with the katakana glyph bytes (Utils/Gen12KanaText.h), so
+    // the save reads back the katakana form: staged expectations use what the strict parser will
+    // read. International names keep the typed text, as before.
+    if (metadata_.region != RegionLayout::Japanese) return std::string(typed);
+    return decodeGen2String(encoded, metadata_.region);
 }
 
 void StagedEditor::clearChange(std::string_view key) {
@@ -622,10 +738,10 @@ bool StagedEditor::stageTrainerEdit(std::string_view name, uint32_t money, std::
 bool StagedEditor::stageTrainerName(std::string_view name, std::string& error) {
     std::vector<uint8_t> encoded;
     if (!encodeTrainerName(name, encoded, error)) return false;
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     std::copy(encoded.begin(), encoded.end(),
               staged_.begin() + static_cast<std::ptrdiff_t>(layout.trainerName));
-    trainerName_ = std::string(name);
+    trainerName_ = storedName(name, encoded);
     setChange("trainer_name", "Trainer Name", originalTrainerName_, trainerName_);
     return true;
 }
@@ -636,7 +752,7 @@ bool StagedEditor::stageMoney(uint32_t value, std::string& error) {
         error = "Generation II money exceeds retail maximum 999999";
         return false;
     }
-    writeBE24(staged_, layoutFor(metadata_.family).money, value);
+    writeBE24(staged_, layoutFor(metadata_).money, value);
     money_ = value;
     setChange("money", "Money", "$" + std::to_string(originalMoney_),
               "$" + std::to_string(money_));
@@ -644,12 +760,15 @@ bool StagedEditor::stageMoney(uint32_t value, std::string& error) {
 }
 
 namespace {
-// P3: the native clock and Crystal gender offsets (international layouts only; the staged editor
-// refuses Japanese saves). Same values Gen2ReadOnlySave reads.
-std::size_t playTimeOffset(VersionFamily family) noexcept {
-    return family == VersionFamily::Crystal ? 0x2052 : 0x2053;
+// P3: the native clock and Crystal gender offsets, the values Gen2ReadOnlySave reads: play time
+// 0x2053 (international Gold / Silver), 0x2052 (international Crystal), 0x2034 (Japanese); Crystal
+// gender 0x3E3D (international) or 0x8000 (Japanese, 64 KiB images only). See Layout above.
+std::size_t playTimeOffset(const Metadata& metadata) noexcept {
+    return layoutFor(metadata).playTime;
 }
-constexpr std::size_t kCrystalGenderOffset = 0x3E3D;
+std::size_t crystalGenderOffset(const Metadata& metadata) noexcept {
+    return layoutFor(metadata).gender;
+}
 StagedEditor::PlayTime readPlayTime(std::span<const uint8_t> bytes, std::size_t at) noexcept {
     return {static_cast<uint16_t>((bytes[at] << 8) | bytes[at + 1]), bytes[at + 2], bytes[at + 3]};
 }
@@ -661,11 +780,11 @@ std::string genderLabel(uint8_t gender) { return gender == 0 ? "Male" : gender =
 } // namespace
 
 StagedEditor::PlayTime StagedEditor::playTime() const noexcept {
-    return readPlayTime(staged_, playTimeOffset(metadata_.family));
+    return readPlayTime(staged_, playTimeOffset(metadata_));
 }
 
 bool StagedEditor::playTimeEditable() const noexcept {
-    const auto original = readPlayTime(original_, playTimeOffset(metadata_.family));
+    const auto original = readPlayTime(original_, playTimeOffset(metadata_));
     return original.minutes <= 59 && original.seconds <= 59;
 }
 
@@ -679,7 +798,7 @@ bool StagedEditor::stagePlayTime(PlayTime time, std::string& error) {
         error = "Gen II play time must be 0:00:00-999:59:59";
         return false;
     }
-    const std::size_t at = playTimeOffset(metadata_.family);
+    const std::size_t at = playTimeOffset(metadata_);
     staged_[at] = static_cast<uint8_t>(time.hours >> 8);
     staged_[at + 1] = static_cast<uint8_t>(time.hours);
     staged_[at + 2] = time.minutes;
@@ -689,12 +808,18 @@ bool StagedEditor::stagePlayTime(PlayTime time, std::string& error) {
 }
 
 uint8_t StagedEditor::trainerGender() const noexcept {
-    return metadata_.family == VersionFamily::Crystal ? staged_[kCrystalGenderOffset] : 0;
+    const std::size_t kCrystalGenderOffset = crystalGenderOffset(metadata_);
+    // A 32 KiB Japanese Crystal has no gender byte (it lies at 0x8000); it reads as unspecified 0.
+    return metadata_.family == VersionFamily::Crystal && metadata_.payloadSize > kCrystalGenderOffset
+        ? staged_[kCrystalGenderOffset] : 0;
 }
 
 bool StagedEditor::trainerGenderEditable() const noexcept {
+    const std::size_t kCrystalGenderOffset = crystalGenderOffset(metadata_);
+    // The byte must lie inside the payload: past a 32 KiB Japanese Crystal come RTC footer or
+    // padding bytes, never a gender.
     return metadata_.family == VersionFamily::Crystal && original_.size() > kCrystalGenderOffset &&
-           original_[kCrystalGenderOffset] <= 1;
+           metadata_.payloadSize > kCrystalGenderOffset && original_[kCrystalGenderOffset] <= 1;
 }
 
 bool StagedEditor::stageTrainerGender(uint8_t gender, std::string& error) {
@@ -705,6 +830,7 @@ bool StagedEditor::stageTrainerGender(uint8_t gender, std::string& error) {
             : "Gold and Silver store no trainer gender";
         return false;
     }
+    const std::size_t kCrystalGenderOffset = crystalGenderOffset(metadata_);
     staged_[kCrystalGenderOffset] = gender;
     setChange("trainer_gender", "Trainer Gender", genderLabel(original_[kCrystalGenderOffset]),
               genderLabel(gender));
@@ -712,7 +838,7 @@ bool StagedEditor::stageTrainerGender(uint8_t gender, std::string& error) {
 }
 
 uint8_t StagedEditor::itemQuantity(InventoryPocket pocket, uint8_t itemId) const noexcept {
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     const auto offset = pocketOffset(layout, pocket);
     const auto capacity = pocketCapacity(pocket);
     if (offset == static_cast<std::size_t>(-1) || capacity == 0) return 0;
@@ -730,7 +856,7 @@ bool StagedEditor::stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uin
         error = "item is not valid in this Generation II pocket";
         return false;
     }
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     const auto offset = pocketOffset(layout, pocket);
     const auto capacity = pocketCapacity(pocket);
     if (offset == static_cast<std::size_t>(-1) || capacity == 0) {
@@ -774,7 +900,7 @@ uint8_t StagedEditor::derivedHPDV(const std::array<uint8_t, 4>& dvs) noexcept {
 std::optional<PokemonRecord> StagedEditor::boxedPokemon(std::size_t box, std::size_t slot,
                                                          std::string& error) const {
     error.clear();
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     if (!validBoxLocation(metadata_, layout, box, slot, error)) return std::nullopt;
 
     std::vector<uint8_t> checked = staged_;
@@ -800,7 +926,7 @@ std::optional<PokemonRecord> StagedEditor::boxedPokemon(std::size_t box, std::si
 bool StagedEditor::syncCurrentBoxCopy(std::size_t box, std::string& error) {
     error.clear();
     if (box != metadata_.currentBox) return true;
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     const std::size_t start = boxStart(layout, box);
     const std::size_t length = boxListLength(layout);
     if (!rangeFits(start, start + length, metadata_.payloadSize) ||
@@ -863,12 +989,12 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
     if (edit.nickname) {
         std::vector<uint8_t> ignored;
         if (!encodePokemonName(*edit.nickname, ignored, error)) return false;
-        after.nickname = *edit.nickname;
+        after.nickname = storedName(*edit.nickname, ignored);
     }
     if (edit.otName) {
         std::vector<uint8_t> ignored;
         if (!encodeOTName(*edit.otName, ignored, error)) return false;
-        after.originalTrainer = *edit.otName;
+        after.originalTrainer = storedName(*edit.otName, ignored);
     }
     if (edit.heldItem) {
         if (!validHeldItem(*edit.heldItem)) {
@@ -977,9 +1103,9 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
     if ((nicknameChanged && !encodePokemonName(after.nickname, nicknameBytes, error)) ||
         (otChanged && !encodeOTName(after.originalTrainer, otBytes, error))) return false;
 
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     if (!party && !validBoxLocation(metadata_, layout, box, slot, error)) return false;
-    const std::size_t list = party?partyStart(metadata_.family):boxStart(layout, box);
+    const std::size_t list = party?layout.party:boxStart(layout, box);
     const uint8_t count = staged_[list];
     if (slot >= count) {
         error = "cannot edit an empty Generation II box slot";
@@ -990,8 +1116,11 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
     const auto changesBackup = changes_;
     const auto expectationsBackup = pokemonExpectations_;
     const std::size_t body = party?list+8+slot*48:boxBodyStart(layout, box) + slot * kStoredBodySize;
-    const std::size_t otAt=party?list+8+6*48+slot*11:boxOTStart(layout,box)+slot*layout.stringLength;
-    const std::size_t nickAt=party?list+8+6*48+6*11+slot*11:boxNicknameStart(layout,box)+slot*layout.stringLength;
+    // Party list (PKHeX PokeList2): count, 7 species bytes, six 48-byte bodies, six OT names, six
+    // nicknames; names are 11 bytes internationally and 6 in Japanese saves.
+    const std::size_t str = layout.stringLength;
+    const std::size_t otAt=party?list+8+6*48+slot*str:boxOTStart(layout,box)+slot*str;
+    const std::size_t nickAt=party?list+8+6*48+6*str+slot*str:boxNicknameStart(layout,box)+slot*str;
     writePokemonBody(staged_, body, after);
     if(party && (before.species!=after.species || before.level!=after.level ||
         before.dvs!=after.dvs || before.statExperience!=after.statExperience)) {
@@ -1135,7 +1264,7 @@ bool StagedEditor::stageCloneBoxPokemon(std::size_t sourceBox, std::size_t sourc
         error = "egg cloning is not enabled in this milestone";
         return false;
     }
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     if (destinationBox >= layout.boxCount || destinationBox >= metadata_.boxCount) {
         error = "clone destination box is outside the validated Gen II save";
         return false;
@@ -1237,7 +1366,14 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     }
     created.pokerus = pokemon.pokerus;
     created.caughtData = pokemon.caughtData;
-    created.nickname = pokemon.nickname.empty() ? std::string(Names::getSpeciesName(pokemon.species)) : pokemon.nickname;
+    // A Japanese save names an un-nicknamed Pokemon with the katakana species name (the Japanese
+    // table of Names/SpeciesNames, e.g. ポリゴン２ with its full-width digit, as the Gen II font
+    // stores it); an international save with the English one.
+    created.nickname = !pokemon.nickname.empty() ? pokemon.nickname
+        : metadata_.region == RegionLayout::Japanese
+            ? std::string(Names::getSpeciesNameLocalized(pokemon.species,
+                  static_cast<std::size_t>(Names::NameLanguage::Japanese)))
+            : std::string(Names::getSpeciesName(pokemon.species));
     // An un-nicknamed Pokemon carries the upper-case retail species name (pret/pokecrystal
     // data/pokemon/names.asm); evolution renames only a name equal to the old species name.
     if (pokemon.nickname.empty())
@@ -1275,8 +1411,10 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     std::vector<uint8_t> otBytes, nicknameBytes;
     if (!encodeOTName(created.originalTrainer, otBytes, error) ||
         !encodePokemonName(created.nickname, nicknameBytes, error)) return false;
+    created.originalTrainer = storedName(created.originalTrainer, otBytes);
+    created.nickname = storedName(created.nickname, nicknameBytes);
 
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     if (destinationBox >= layout.boxCount || destinationBox >= metadata_.boxCount) {
         error = "add destination box is outside the validated Gen II save";
         return false;
@@ -1353,25 +1491,27 @@ bool StagedEditor::stageImportBoxPokemon(std::size_t box, std::size_t slot,
         error = "Place or cancel carried Pokemon before importing a file";
         return false;
     }
-    if (metadata_.region != RegionLayout::International) {
-        error = "Japanese Generation II saves are read-only";
-        return false;
-    }
     if (file.generation != 2 || file.format != PokeBank::PokemonFile::Format::PK2) {
         error = "Only a .pk2 file can go into a Generation II save; Pokemon are not converted between generations";
         return false;
     }
-    if (file.japanese) {
+    const bool japaneseSave = metadata_.region == RegionLayout::Japanese;
+    if (file.japanese && !japaneseSave) {
         error = "This .pk2 comes from a Japanese game; it cannot go into an international save (no region conversion)";
         return false;
     }
+    if (!file.japanese && japaneseSave) {
+        error = "This .pk2 comes from an international game; it cannot go into a Japanese save (no region conversion)";
+        return false;
+    }
+    const auto& layout = layoutFor(metadata_);
+    const std::size_t str = layout.stringLength;
     const std::span<const uint8_t> f(file.plain);
-    if (f.size() != kFileSize || f[0] != 1 || f[2] != 0xFF ||
+    if (f.size() != fileSize(str) || f[0] != 1 || f[2] != 0xFF ||
         (f[1] != f[kFileBody] && f[1] != kEggMarker)) {
         error = "The .pk2 file is not a single-Pokemon list";
         return false;
     }
-    const auto& layout = layoutFor(metadata_.family);
     if (!validBoxLocation(metadata_, layout, box, slot, error)) return false;
     const std::size_t list = boxStart(layout, box);
     const uint8_t count = staged_[list];
@@ -1400,8 +1540,9 @@ bool StagedEditor::stageImportBoxPokemon(std::size_t box, std::size_t slot,
     staged_[list + 1 + slot] = f[1];
     staged_[list + 1 + slot + 1] = 0xFF;
     std::copy_n(f.begin() + kFileBody, kStoredBodySize, staged_.begin() + static_cast<std::ptrdiff_t>(bodyAt));
-    std::copy_n(f.begin() + kFileOT, kFileString, staged_.begin() + static_cast<std::ptrdiff_t>(otAt));
-    std::copy_n(f.begin() + kFileNick, kFileString, staged_.begin() + static_cast<std::ptrdiff_t>(nickAt));
+    std::copy_n(f.begin() + kFileOT, str, staged_.begin() + static_cast<std::ptrdiff_t>(otAt));
+    std::copy_n(f.begin() + static_cast<std::ptrdiff_t>(fileNick(str)), str,
+                staged_.begin() + static_cast<std::ptrdiff_t>(nickAt));
     if (!syncCurrentBoxCopy(box, error)) {
         restore();
         return false;
@@ -1454,11 +1595,12 @@ std::optional<std::vector<uint8_t>> StagedEditor::exportBoxPokemonFile(std::size
     };
     put(34, p->isEgg ? 0 : stats[0]);
     for (std::size_t i = 0; i < stats.size(); ++i) put(36 + i * 2, stats[i]);
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     const std::span<const uint8_t> staged(staged_);
     return pk2List(p->isEgg ? kEggMarker : static_cast<uint8_t>(p->species), body,
-                   staged.subspan(boxOTStart(layout, box) + slot * layout.stringLength, kFileString),
-                   staged.subspan(boxNicknameStart(layout, box) + slot * layout.stringLength, kFileString));
+                   staged.subspan(boxOTStart(layout, box) + slot * layout.stringLength, layout.stringLength),
+                   staged.subspan(boxNicknameStart(layout, box) + slot * layout.stringLength, layout.stringLength),
+                   layout.stringLength);
 }
 
 std::optional<std::vector<uint8_t>> StagedEditor::exportPartyPokemonFile(std::size_t slot,
@@ -1474,13 +1616,15 @@ std::optional<std::vector<uint8_t>> StagedEditor::exportPartyPokemonFile(std::si
         error = "Party record is not a Generation II party Pokemon";
         return std::nullopt;
     }
-    // PKHeX SAV2 / PokeList2 international Party list: count, 7 species bytes, six 48-byte bodies,
-    // six 11-byte OT names, six 11-byte nicknames.
-    const std::size_t names = partyStart(metadata_.family) + 8 + 6 * kFilePartyBody;
+    // PKHeX SAV2 / PokeList2 Party list: count, 7 species bytes, six 48-byte bodies, six OT names,
+    // six nicknames (11 bytes each internationally, 6 in a Japanese save).
+    const auto& layout = layoutFor(metadata_);
+    const std::size_t str = layout.stringLength;
+    const std::size_t names = layout.party + 8 + 6 * kFilePartyBody;
     const std::span<const uint8_t> staged(staged_);
     return pk2List(p->isEgg ? kEggMarker : static_cast<uint8_t>(p->species), p->rawBody,
-                   staged.subspan(names + slot * kFileString, kFileString),
-                   staged.subspan(names + 6 * kFileString + slot * kFileString, kFileString));
+                   staged.subspan(names + slot * str, str),
+                   staged.subspan(names + 6 * str + slot * str, str), str);
 }
 
 void StagedEditor::discard() noexcept {
@@ -1506,7 +1650,7 @@ std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
         return {};
     }
     std::vector<uint8_t> result = staged_;
-    const auto& layout = layoutFor(metadata_.family);
+    const auto& layout = layoutFor(metadata_);
     if (!repairForStrictReload(result, metadata_, error)) return {};
 
     const uint16_t repaired = calculateChecksum(

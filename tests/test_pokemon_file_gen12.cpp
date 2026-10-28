@@ -414,11 +414,28 @@ void japaneseSave() {
     d[party] = 0; d[party + 1] = 0xFF;
     uint16_t s = 0; for (size_t i = 0x2009; i <= end; ++i) s = uint16_t(s + d[i]);
     d[sum] = uint8_t(s); d[sum + 1] = uint8_t(s >> 8);
+    // Empty bag (PKHeX 8e3eb3d4 SAV2Offsets LoadOffsetsJapanese pouches): the editor needs a valid one.
+    std::fill_n(d.begin() + 0x23C7, 57, 0);
+    for (size_t o : {size_t{0x2400}, size_t{0x242A}, size_t{0x2445}, size_t{0x245F}}) { d[o] = 0; d[o + 1] = 0xFF; }
+    s = 0; for (size_t i = 0x2009; i <= end; ++i) s = uint16_t(s + d[i]);
+    d[sum] = uint8_t(s); d[sum + 1] = uint8_t(s >> 8);
     const auto parsed = parse(d, SourceGame::Gold);
     assert(parsed && parsed.save->metadata().region == RegionLayout::Japanese);
     std::string error;
-    // Japanese Gen II saves stay read-only: no staged editor, so nothing can be imported.
-    assert(!StagedEditor::create(*parsed.save, error) && !error.empty());
+    // The staged editor writes Japanese Gen II layouts (tests/test_gen2_japanese_writer.cpp; the app
+    // keeps them read-only behind JapaneseEditingGate.h). Files never cross regions: an
+    // international 73-byte .pk2 is refused, a Japanese 63-byte one imports into box 1 slot 1.
+    auto e = StagedEditor::create(*parsed.save, error);
+    assert(e);
+    Bytes jp(63, 0x50); jp[0] = 1; jp[1] = 25; jp[2] = 0xFF; std::fill_n(jp.begin() + 3, 48, 0);
+    jp[3] = 25; jp[3 + 2] = 33; jp[3 + 8] = 0x00; jp[3 + 9] = 0x0D; jp[3 + 10] = 0x2F;   // EXP 3375: level 15
+    jp[3 + 23] = 35; jp[3 + 31] = 15; jp[3 + 48] = 0x80; jp[3 + 48 + 6] = 0x80;          // OT / nickname "ア"
+    Bytes intl(73, 0x50); std::copy_n(jp.begin(), 51, intl.begin()); intl[51] = 0x80; intl[62] = 0x80;
+    refuse(*e, 0, 0, decoded(intl, "intl.pk2"), "international game");
+    assert(e->stageImportBoxPokemon(0, 0, decoded(jp, "jp.pk2"), error));
+    const auto back = e->exportBoxPokemonFile(0, 0, error);
+    assert(back && back->size() == 63 && std::equal(jp.begin(), jp.begin() + 35, back->begin()) &&
+           std::equal(jp.begin() + 51, jp.end(), back->begin() + 51));
 }
 }  // namespace gsc
 

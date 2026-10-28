@@ -18,7 +18,13 @@ struct InventoryLayout {
     std::size_t pcItems;
 };
 
-constexpr InventoryLayout inventoryLayout(VersionFamily family) noexcept {
+// PKHeX 8e3eb3d4 SAV2Offsets PouchTMHM / PouchItem / PouchKey / PouchBall / PouchPC, the offsets
+// Gen2ReadOnlyInventory.cpp decodes for each region.
+constexpr InventoryLayout inventoryLayout(RegionLayout region, VersionFamily family) noexcept {
+    if (region == RegionLayout::Japanese)
+        return family == VersionFamily::Crystal
+            ? InventoryLayout{0x23C9, 0x2402, 0x242C, 0x2447, 0x2461}
+            : InventoryLayout{0x23C7, 0x2400, 0x242A, 0x2445, 0x245F};
     return family == VersionFamily::Crystal
         ? InventoryLayout{0x23E7, 0x2420, 0x244A, 0x2465, 0x247F}
         : InventoryLayout{0x23E6, 0x241F, 0x2449, 0x2464, 0x247E};
@@ -115,10 +121,10 @@ Inventory::ClassicPocket semanticPocket(Inventory::ClassicGame game, InventoryPo
     return Inventory::ClassicPocket::Items;
 }
 
-uint8_t quantityIn(std::span<const uint8_t> bytes, std::size_t payloadSize, VersionFamily family,
-                   InventoryPocket pocket, uint8_t itemId) {
+uint8_t quantityIn(std::span<const uint8_t> bytes, std::size_t payloadSize, RegionLayout region,
+                   VersionFamily family, InventoryPocket pocket, uint8_t itemId) {
     if (payloadSize > bytes.size()) return 0;
-    const auto record = decodeInventory(bytes.first(payloadSize), RegionLayout::International, family);
+    const auto record = decodeInventory(bytes.first(payloadSize), region, family);
     if (!record.available) return 0;
     const auto* list = listFor(record, pocket);
     if (!list) return 0;
@@ -131,7 +137,7 @@ uint8_t quantityIn(std::span<const uint8_t> bytes, std::size_t payloadSize, Vers
 
 std::vector<InventoryItem> StagedEditor::inventoryEntries(InventoryPocket pocket, std::string& error) const {
     error.clear();
-    if (metadata_.region != RegionLayout::International || metadata_.payloadSize > staged_.size()) {
+    if (metadata_.payloadSize > staged_.size()) {
         error = "Generation II staged inventory is unavailable for this save layout";
         return {};
     }
@@ -152,13 +158,13 @@ std::vector<InventoryItem> StagedEditor::inventoryEntries(InventoryPocket pocket
 }
 
 uint8_t StagedEditor::stagedInventoryQuantity(InventoryPocket pocket, uint8_t itemId) const {
-    return quantityIn(staged_, metadata_.payloadSize, metadata_.family, pocket, itemId);
+    return quantityIn(staged_, metadata_.payloadSize, metadata_.region, metadata_.family, pocket, itemId);
 }
 
 bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                                           std::string& error) {
     error.clear();
-    if (metadata_.region != RegionLayout::International || metadata_.payloadSize > staged_.size()) {
+    if (metadata_.payloadSize > staged_.size()) {
         error = "Generation II staged inventory is unavailable for this save layout";
         return false;
     }
@@ -175,10 +181,11 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
         return false;
     }
 
-    const uint8_t originalQuantity = quantityIn(original_, metadata_.payloadSize, metadata_.family, pocket, itemId);
+    const uint8_t originalQuantity = quantityIn(original_, metadata_.payloadSize, metadata_.region, metadata_.family,
+                                                pocket, itemId);
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
-    const auto layout = inventoryLayout(metadata_.family);
+    const auto layout = inventoryLayout(metadata_.region, metadata_.family);
 
     if (pocket == InventoryPocket::TMHM) {
         const auto machines = Inventory::addableItems(game, Inventory::ClassicPocket::TMHM);

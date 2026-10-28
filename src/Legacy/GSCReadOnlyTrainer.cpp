@@ -1,5 +1,6 @@
 #include "Legacy/GSCReadOnlyTrainer.h"
 
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "Trainer/Inventory.h"
@@ -78,7 +79,14 @@ std::unique_ptr<GSCReadOnlyTrainer> GSCReadOnlyTrainer::create(
     // from the already-validated save and owns its own byte clone; failing to create it must never
     // prevent a safe read-only save from opening.
     std::string stagedError;
-    trainer->stagedEditor_ = Integration::Gen2::StagedEditor::create(save, stagedError);
+    // The Gen II writer edits Japanese layouts too, but the app keeps Japanese saves read-only until
+    // the owner opens Integration/Common/JapaneseEditingGate.h: no editor, so no edit, import or
+    // Export Copy of an edited Japanese save.
+    if (metadata.region == Integration::Gen2::RegionLayout::Japanese &&
+        !Integration::Common::kJapaneseClassicEditingEnabled)
+        stagedError = "Japanese Generation II saves are read-only";
+    else
+        trainer->stagedEditor_ = Integration::Gen2::StagedEditor::create(save, stagedError);
     trainer->stagedEditingUnavailableReason_ = std::move(stagedError);
     return trainer;
 }

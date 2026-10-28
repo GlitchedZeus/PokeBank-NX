@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <tuple>
 #include <vector>
 
 using namespace PokeVault::Integration::Gen2;
@@ -53,6 +54,15 @@ void pokemonList(std::vector<uint8_t>& d,size_t ofs,size_t cap,size_t bodySize,s
 void putChecksum(std::vector<uint8_t>& d,const L& l){
     uint16_t s=0;for(size_t i=0x2009;i<=l.end;i++)s=static_cast<uint16_t>(s+d[i]);
     d[l.sum]=s&0xFF;d[l.sum+1]=s>>8;
+}
+// Empty Japanese bag (PKHeX 8e3eb3d4 SAV2Offsets LoadOffsetsJapanese PouchTMHM .. PouchPC), then
+// the checksum again: the staged editor opens only on a save whose bag validates.
+void japaneseBag(std::vector<uint8_t>& d,const L& l){
+    const bool c=l.family==VersionFamily::Crystal;
+    const size_t tm=c?0x23C9:0x23C7;
+    std::fill_n(d.begin()+static_cast<std::ptrdiff_t>(tm),57,0);
+    for(size_t o:{c?0x2402:0x2400,c?0x242C:0x242A,c?0x2447:0x2445,c?0x2461:0x245F}){d[o]=0;d[o+1]=0xFF;}
+    putChecksum(d,l);
 }
 std::vector<uint8_t> fixture(const L& l,uint8_t species=25,bool shiny=true){
     size_t sz=(l.gender==0x8000)?0x10000:0x8000;
@@ -157,24 +167,38 @@ int main(){
         // The same Crystal at 64 KiB still reads its gender.
         auto full=fixture(JC,201,false);auto f=parse(full,SourceGame::Crystal);
         assert(f&&f.save->trainer().gender&&*f.save->trainer().gender==1);
-        // Japanese Gen II stays read-only: the staged editor refuses it.
-        std::string error;assert(!StagedEditor::create(*r.save,error)&&!error.empty());
+        // The staged editor writes Japanese layouts too (tests/test_gen2_japanese_writer.cpp); the
+        // APP keeps them read-only through JapaneseEditingGate.h in GSCReadOnlyTrainer
+        // (test_gsc_readonly_bridge). With a valid bag a 32 KiB Japanese Crystal opens, has no
+        // editable gender (its 0x8000 byte is absent) and opening it never changes a byte.
+        {
+            auto withBag=d;japaneseBag(withBag,JC);
+            auto opened=parse(withBag,SourceGame::Crystal);assert(opened);
+            std::string error;auto editor=StagedEditor::create(*opened.save,error);
+            assert(editor&&error.empty()&&!editor->trainerGenderEditable());
+            assert(std::equal(editor->originalBytes().begin(),editor->originalBytes().end(),withBag.begin()));
+        }
         // Malformed: a broken checksum is refused at 32 KiB too.
         auto bad=d;bad[JC.sum]^=0xFF;assert(!parse(bad,SourceGame::Crystal));
         // Japanese Gold/Silver at 32 KiB is still Gold/Silver, not Crystal.
         auto jgs=fixture(JGS);auto g=parse(jgs,SourceGame::Gold);
         assert(g&&g.save->metadata().family==VersionFamily::GoldSilver&&!g.save->trainer().gender);
         assert(!parse(jgs,SourceGame::Crystal));
-        // Round 8 automated QA: every Japanese Gen II layout stays read-only, not only 32 KiB
-        // Crystal: Japanese Gold, Silver and 64 KiB Crystal are refused too, and parsing them never
-        // changes a byte.
-        for (auto [bytes, game] : {std::pair{fixture(JGS), SourceGame::Gold}, std::pair{fixture(JGS), SourceGame::Silver},
-                                   std::pair{fixture(JC,201,false), SourceGame::Crystal}}) {
+        // Round 8 automated QA (updated for the Japanese Gen II writer, owner Oct 28): Japanese
+        // Gold, Silver and 64 KiB Crystal open in the staged editor on their own 9 x 30 layout,
+        // and parsing or opening them never changes a byte. Whether the app offers editing is the
+        // owner gate's call (JapaneseEditingGate.h, pinned closed in test_gsc_readonly_bridge).
+        for (auto [bytes, game, layout] : {std::tuple{fixture(JGS), SourceGame::Gold, JGS},
+                                           std::tuple{fixture(JGS), SourceGame::Silver, JGS},
+                                           std::tuple{fixture(JC,201,false), SourceGame::Crystal, JC}}) {
+            japaneseBag(bytes,layout);
             const auto pristine=bytes;
             auto japanese=parse(bytes,game);
             assert(japanese&&japanese.save->metadata().region==RegionLayout::Japanese);
-            std::string refusal;
-            assert(!StagedEditor::create(*japanese.save,refusal)&&!refusal.empty());
+            std::string error;
+            auto editor=StagedEditor::create(*japanese.save,error);
+            assert(editor&&error.empty());
+            assert(editor->metadata().boxCount==9&&editor->metadata().boxCapacity==30);
             assert(bytes==pristine);
         }
     }
