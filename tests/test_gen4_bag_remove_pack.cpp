@@ -3,12 +3,19 @@
 // src/applications/bag/main.c list build `break`s on item==NONE || quantity==0).
 // Covers DP/Pt/HGSS; first/middle/last/only slot; full pockets; repeated Remove/Add; discard;
 // checksum + strict reparse; ghost/unused slots preserved; source bytes immutable.
+// Integration review (pret pokediamond/pokeplatinum/pokeheartgold bag.c): only the slots the game
+// lists are packed; slots past the list stay byte-identical; a pocket with stacks after an empty
+// slot, or an item ID 0xFFFF stack inside the list, is pre-existing damage and Remove is refused
+// with the staged bytes unchanged instead of rearranging it.
 #include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "fuzz_synthetic_saves.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
+#include <span>
 #include <vector>
 
 using namespace PokeVault::Integration::Gen4;
@@ -89,16 +96,17 @@ int main() {
         CHECK(ed->stageBagRemove(kBalls, 0, &err));
         checkState(*ed, g.l, g.gid, kBalls, expectPad({}));
         // full pocket: remove first, then Add lands in the freed LAST slot with no hole
-        { std::vector<Slot> full; for (size_t i=0;i<cap;++i) full.push_back({uint16_t(i%2?1:2),uint16_t(i+1)});
-          // distinct ids needed for Add check: use real ball ids only where available
-          full.clear(); const uint16_t ids[] = {1,2,3,4,6,7,8,9,10,11,12,13,14,15};
+        { std::vector<Slot> full; const uint16_t ids[] = {1,2,3,4,6,7,8,9,10,11,12,13,14,15};
           for (size_t i=0;i<cap;++i) full.push_back({ids[i%14],uint16_t(i+1)});
           start(full, ed, raw);
           CHECK(ed->stageBagRemove(kBalls, 0, &err));
           auto exp = full; exp.erase(exp.begin()); exp.push_back({0,0});
           checkState(*ed, g.l, g.gid, kBalls, exp);
-          // re-adding the removed ball id goes to the freed last slot (stack ids repeat in this
-          // synthetic full pocket, so only when unique): verify at least capacity safety
+          // the last slot of a full pocket
+          start(full, ed, raw);
+          CHECK(ed->stageBagRemove(kBalls, cap - 1, &err));
+          exp = full; exp.back() = {0,0};
+          checkState(*ed, g.l, g.gid, kBalls, exp);
         }
         // repeated Remove/Add cycles keep the pocket packed
         start({{1,1},{2,2},{3,3}}, ed, raw);
@@ -117,16 +125,25 @@ int main() {
             CHECK(gameVisible(got) == 3);
             for (size_t s = 3; s < got.size(); ++s) CHECK(got[s].id == 0 && got[s].n == 0);
         }
-        // ghost / unused slots: a ghost (id!=0,count==0) after the victim is preserved, not erased
-        start({{1,10},{2,20},{9,0},{0,0}}, ed, raw);
+        // ghost / unused slots past the game's list (id!=0,count==0; 0xFFFF filler) are not
+        // listed in game and stay exactly where they are: only the listed stacks are packed.
+        start({{1,10},{2,20},{9,0},{0xFFFF,0xFFFF}}, ed, raw);
         CHECK(ed->stageBagRemove(kBalls, 0, &err));
-        { std::vector<Slot> exp{{2,20},{9,0}}; checkState(*ed, g.l, g.gid, kBalls, expectPad(exp)); }
-        // A PRE-EXISTING interior hole (not created by us) is carried through unchanged: Remove
-        // erases only the chosen stack and never drops or reorders the other stacks. (The app lists
-        // stacks past such a hole although the game would stop at it: reported separately.)
-        start({{1,10},{0,0},{3,30}}, ed, raw);
-        CHECK(ed->stageBagRemove(kBalls, 0, &err));
-        checkState(*ed, g.l, g.gid, kBalls, expectPad({{0,0},{3,30}}), false);
+        { std::vector<Slot> exp{{2,20},{0,0},{9,0},{0xFFFF,0xFFFF}}; checkState(*ed, g.l, g.gid, kBalls, expectPad(exp)); }
+        // A PRE-EXISTING interior hole (not created by us) is damage the game would hide stacks
+        // behind: Remove is refused for every stack and the staged image is untouched (no silent
+        // repair, no rearranging of other stacks).
+        for (const auto& damaged : {std::vector<Slot>{{1,10},{0,0},{3,30}}, std::vector<Slot>{{1,10},{5,0},{3,30}},
+                                    std::vector<Slot>{{0,0},{2,20}}, std::vector<Slot>{{1,10},{0xFFFF,4},{3,30}}}) {
+            start(damaged, ed, raw);
+            const std::vector<uint8_t> staged(ed->stagedBytes().begin(), ed->stagedBytes().end());
+            for (size_t victim = 0; victim < 3; ++victim) {
+                CHECK(!ed->stageBagRemove(kBalls, victim, &err));
+                CHECK(std::equal(staged.begin(), staged.end(), ed->stagedBytes().begin()));
+                if (victim == 0) CHECK(err.find("already has an empty or unreadable slot") != std::string::npos);
+            }
+            CHECK(std::equal(raw.begin(), raw.end(), staged.begin()));
+        }
         // other pockets and unrelated bytes identical outside the pocket tail + checksum
         start(three, ed, raw);
         CHECK(ed->stageBagRemove(kBalls, 0, &err));

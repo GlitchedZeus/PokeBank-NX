@@ -983,14 +983,37 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         setError(error,"Gen IV selected General pocket geometry is invalid");
         return false;
     }
+    // The game lists a pocket up to its FIRST slot with no item or a zero quantity
+    // (pret pokediamond/pokeplatinum/pokeheartgold bag list builders) and removal
+    // packs the pocket (PocketCompaction / Pocket_SortEmpty). Packing is only safe
+    // when the app's list and the game's list are the same stacks: a pocket whose
+    // stacks sit after an empty slot, or that holds an item ID 0xFFFF stack, is
+    // pre-existing native damage. Refuse rather than rearrange it.
+    const auto slotAt=[&](size_t slot){ return base+spec.offset+slot*4; };
+    const auto read16=[&](size_t at){
+        return uint16_t(uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8));
+    };
+    size_t gameListed=0;
+    while(gameListed<spec.slots &&
+          read16(slotAt(gameListed))!=0 && read16(slotAt(gameListed)+2)!=0)++gameListed;
+    for(size_t slot=0;slot<spec.slots;++slot) {
+        const uint16_t id=read16(slotAt(slot));
+        const uint16_t quantity=read16(slotAt(slot)+2);
+        const bool inGameList=slot<gameListed;
+        const bool appVisible=id!=0 && id!=0xFFFF && quantity!=0;
+        if(inGameList!=appVisible) {
+            setError(error,"Gen IV Remove refused: this pocket already has an empty or "
+                           "unreadable slot before other items. It is left unchanged.");
+            return false;
+        }
+    }
     size_t foundAt=0;
     size_t populated=0;
     bool found=false;
-    for(size_t slot=0;slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t quantity=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if(id==0 || id==0xFFFF || quantity==0)continue;
+    for(size_t slot=0;slot<gameListed;++slot) {
+        const size_t at=slotAt(slot);
+        const uint16_t id=read16(at);
+        const uint16_t quantity=read16(at+2);
         if(populated++==visibleIndex) {
             if(id!=expected.itemId || quantity!=expected.count) {
                 setError(error,"Gen IV item removal selection changed");
@@ -1006,13 +1029,14 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         return false;
     }
     auto backup=staged_;
-    // Native behaviour (pret/pokeplatinum Bag_TryRemoveItem -> Pocket_SortEmpty): a removed stack
-    // never leaves a hole. The in-game bag list stops at the first empty slot, so a hole would hide
-    // every later stack. Erase the slot by shifting the following slots up and blanking the last.
-    const size_t pocketEnd=base+spec.offset+spec.slots*4;
-    for(size_t at=foundAt;at+4<pocketEnd;at+=4)
+    // Native behaviour (pret Bag_TakeItem / Bag_TryRemoveItem -> pocket compaction): a removed
+    // stack never leaves a hole, since a hole would hide every later stack in game. Shift the
+    // listed stacks after it up one slot and blank the last listed slot. Slots past the game's
+    // list (ghost or filler data) are not listed in game either way and stay byte-identical.
+    const size_t listEnd=slotAt(gameListed);
+    for(size_t at=foundAt;at+4<listEnd;at+=4)
         for(size_t k=0;k<4;++k)staged_[at+k]=staged_[at+4+k];
-    for(size_t k=0;k<4;++k)staged_[pocketEnd-4+k]=0;
+    for(size_t k=0;k<4;++k)staged_[listEnd-4+k]=0;
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
         return false;
@@ -1043,11 +1067,11 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
             }
         }
     }
-    // Audit every byte, not merely the displayed pouch. Only the native
-    // four-byte item slot and the verified General CRC may change.
+    // Audit every byte, not merely the displayed pouch. Only the listed slots
+    // from the removed stack on and the verified General CRC may change.
     const size_t crcAt=base+blockSize-2;
     for(size_t i=0;i<staged_.size();++i) {
-        if(i>=foundAt && i<pocketEnd)continue;
+        if(i>=foundAt && i<listEnd)continue;
         if(i==crcAt || i==crcAt+1)continue;
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
