@@ -55,6 +55,8 @@ using namespace Enums;
 
 namespace UI {
     namespace {
+        // File lines the recovery-files confirmation shows at once (Up/Down scrolls the rest).
+        constexpr int kRecoveryConfirmLines = 9;
         PokeBank::Diagnostics::InputTrace::Recorder& inputTrace() {
             return PokeBank::Diagnostics::InputTrace::recorder();
         }
@@ -3228,6 +3230,48 @@ namespace UI {
         openEmulatorBackups("That save is no longer available. Refresh the game's sources.");
     }
 
+    // Owner item #10: Backups -> X. Lists this profile's backup / export history and DurableFile
+    // leftovers, classified by UI/RecoveryManagementModel.h. Reading only; nothing is selected.
+    void SaveSelectScreen::openRecoveryFiles(const std::string& notice) {
+        namespace RM = PokeBank::UIModel::RecoveryManagement;
+        recoveryRequest = {};
+        recoveryRequest.roots = {PokeBank::Paths::backupsRoot(), PokeBank::Paths::exportsRoot(),
+                                 PokeBank::Paths::banksRoot()};
+        recoveryRequest.profileIdentity = currentProfileIdentity();
+        // Ownership only changes the wording of a reason ("newest copy" vs "recovery only"); every
+        // source keeps its newest copy and its newest verified copy either way.
+        if (const UserEntry* user = currentUser()) {
+            for (const auto& title : user->titles) {
+                for (const auto& instance : title.legacyInstances)
+                    recoveryRequest.ownedSources.push_back(instance.path());
+                if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                     title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
+                    const auto assigned =
+                        legacyBindings->resolveFileForGame(recoveryRequest.profileIdentity, title.gameId);
+                    if (!assigned.binding.sourcePath.empty())
+                        recoveryRequest.ownedSources.push_back(assigned.binding.sourcePath);
+                }
+            }
+        }
+        recoveryListing = RM::Fs::enumerate(recoveryRequest);
+        recoverySelection = RM::emptySelection(recoveryListing.items.size());
+        recoveryPlan = {};
+        recoveryNotice = notice;
+        recoveryIndex = 0;
+        recoveryScroll = 0;
+        rebuildRecoveryRows();
+        // Focus the first copy, not a heading.
+        for (int i = 0; i < static_cast<int>(recoveryRows.size()); ++i)
+            if (recoveryRows[static_cast<size_t>(i)].item >= 0) { recoveryIndex = i; break; }
+        overlay = Overlay::RecoveryFiles;
+    }
+
+    void SaveSelectScreen::rebuildRecoveryRows() {
+        namespace RM = PokeBank::UIModel::RecoveryManagement;
+        recoveryRows = RM::rows(recoveryListing.items, recoveryListing.verdicts, recoverySelection);
+        recoveryIndex = std::clamp(recoveryIndex, 0, std::max(0, static_cast<int>(recoveryRows.size()) - 1));
+    }
+
     // A on "Create backup now": the only place an emulator-save backup is made (never on open).
     void SaveSelectScreen::createEmulatorBackup(int listing) {
         namespace SB = PokeBank::UIModel::SourceBackups;
@@ -3416,6 +3460,40 @@ namespace UI {
             }
             return;
         }
+        // Recovery files: removal needs this explicit Y over a list of every file; A/B keep them.
+        if (overlay == Overlay::RecoveryConfirm) {
+            namespace RM = PokeBank::UIModel::RecoveryManagement;
+            using PokeBank::UIModel::HomeQuit::Decision;
+            // D-pad scrolls the file list; every planned file can be read before Y.
+            const int lineCount = static_cast<int>(
+                RM::confirmationLines(recoveryListing.items, recoveryPlan).size());
+            const int maxFirst = std::max(0, lineCount - kRecoveryConfirmLines);
+            if (kDown & HidNpadButton_Up) recoveryConfirmScroll = std::max(0, recoveryConfirmScroll - 1);
+            if (kDown & HidNpadButton_Down) recoveryConfirmScroll = std::min(maxFirst, recoveryConfirmScroll + 1);
+            const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);
+            if (decision == Decision::Stay) {
+                overlay = Overlay::RecoveryFiles;
+            } else if (decision == Decision::Quit) {
+                // Each copy is re-checked against a fresh listing right before it is removed.
+                const auto outcomes = RM::Fs::removePlanned(recoveryRequest, recoveryListing, recoveryPlan);
+                size_t removed = 0;
+                std::string firstRefusal;
+                for (const auto& outcome : outcomes) {
+                    if (outcome.removed) {
+                        ++removed;
+                        logInfoToFile("Recovery files: removed", outcome.path.c_str());
+                    } else {
+                        logErrorToFile(("Recovery files: kept " + outcome.path).c_str(), outcome.message.c_str());
+                        if (firstRefusal.empty()) firstRefusal = outcome.message;
+                    }
+                }
+                std::string notice = "Removed " + std::to_string(removed) + " of " +
+                                     std::to_string(outcomes.size()) + ".";
+                if (!firstRefusal.empty()) notice += " " + firstRefusal;
+                openRecoveryFiles(notice);
+            }
+            return;
+        }
         // P0 #320: leaving PokeBank NX (quit or a launch handoff) needs an explicit Y in a visible
         // decision; A and B stay on the screen that opened it.
         if (overlay == Overlay::QuitConfirm) {
@@ -3520,6 +3598,7 @@ namespace UI {
                 case Overlay::Gen4Candidates: return &gen4CandidateScrollbar;
                 case Overlay::Gen5Candidates: return &gen5CandidateScrollbar;
                 case Overlay::EmulatorBackups: return &emuBackupScrollbar;
+                case Overlay::RecoveryFiles: return &recoveryScrollbar;
                 case Overlay::None: return classicGamesActive ? &classicGamesScrollbar : nullptr;
                 default: return nullptr;
             }
@@ -3565,6 +3644,7 @@ namespace UI {
                         case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
                         case Overlay::Options: optionsIndex = r.idx; break;
                         case Overlay::EmulatorBackups: emuBackupIndex = r.idx; break;
+                        case Overlay::RecoveryFiles: recoveryIndex = r.idx; break;
                         default: break;
                     }
                     break;
@@ -3596,6 +3676,7 @@ namespace UI {
                         case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
                         case Overlay::Options: optionsIndex = idx; break;
                         case Overlay::EmulatorBackups: emuBackupIndex = idx; break;
+                        case Overlay::RecoveryFiles: recoveryIndex = idx; break;
                         default: activate = false; break;
                     }
                     if (activate) kDown |= HidNpadButton_A;
@@ -4082,10 +4163,54 @@ namespace UI {
             return;
         }
 
+        if (overlay == Overlay::RecoveryFiles) {
+            namespace RM = PokeBank::UIModel::RecoveryManagement;
+            namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+            const int count = static_cast<int>(recoveryRows.size());
+            if (kDown & HidNpadButton_B) { openEmulatorBackups(); return; }
+            if (count == 0) return;
+            const auto bar = SharedScrollbar::handleTouch(recoveryScrollbar, barTouch, recoveryScroll);
+            if (bar.changed) recoveryScroll = bar.scroll;
+            // Headings name the save a group belongs to; controller focus moves between copies.
+            const auto step = [&](int direction) {
+                for (int n = 0; n < count; ++n) {
+                    recoveryIndex = (recoveryIndex + direction + count) % count;
+                    if (recoveryRows[static_cast<size_t>(recoveryIndex)].item >= 0) break;
+                }
+            };
+            if (kDown & HidNpadButton_Up) step(-1);
+            if (kDown & HidNpadButton_Down) step(1);
+            const auto layout = EB::layout(count);
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                recoveryScroll = EB::revealRow(layout, recoveryScroll, recoveryIndex);
+            recoveryScroll = EB::clampScroll(layout, recoveryScroll);
+            const auto& row = recoveryRows[static_cast<size_t>(recoveryIndex)];
+            if ((kDown & HidNpadButton_A) && row.item >= 0) {
+                const size_t item = static_cast<size_t>(row.item);
+                if (RM::toggle(recoverySelection, recoveryListing.verdicts, item)) {
+                    recoveryNotice.clear();
+                    rebuildRecoveryRows();
+                } else {
+                    recoveryNotice = recoveryListing.verdicts[item].reason;
+                }
+            }
+            if (kDown & HidNpadButton_Y) {
+                recoveryPlan = RM::buildPlan(recoveryListing.items, recoveryListing.verdicts, recoverySelection);
+                if (recoveryPlan.items.empty())
+                    recoveryNotice = "Select removable copies with A first. Nothing is removed without a confirmation.";
+                else {
+                    recoveryConfirmScroll = 0;
+                    overlay = Overlay::RecoveryConfirm;
+                }
+            }
+            return;
+        }
+
         if (overlay == Overlay::EmulatorBackups) {
             namespace SB = PokeBank::UIModel::SourceBackups;
             const int count = static_cast<int>(emuBackupRows.size());
             if (kDown & HidNpadButton_B) { overlay = Overlay::GameWorkspace; return; }
+            if (kDown & HidNpadButton_X) { openRecoveryFiles(); return; }
             if (count == 0) return;
             const auto emuBar = SharedScrollbar::handleTouch(emuBackupScrollbar, barTouch, emuBackupScroll);
             if (emuBar.changed) emuBackupScroll = emuBar.scroll;
@@ -5948,9 +6073,10 @@ namespace UI {
             }
             if (deletable)
                 drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", EB::rowActionLabel(action)}, {"Y", "Delete"},
-                                {"B", "Back"}});
+                                {"X", "Recovery files"}, {"B", "Back"}});
             else
-                drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", EB::rowActionLabel(action)}, {"B", "Back"}});
+                drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", EB::rowActionLabel(action)},
+                                {"X", "Recovery files"}, {"B", "Back"}});
         } else if (overlay == Overlay::EmulatorBackupDeleteConfirm) {
             constexpr int w = 820, h = 250;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -5973,6 +6099,86 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
             SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
                                                    "Y", "Delete", "A", "Cancel"));
+        } else if (overlay == Overlay::RecoveryFiles) {
+            // Same BackupMenu frame, rows and toast as the Backups list it opens from.
+            namespace RM = PokeBank::UIModel::RecoveryManagement;
+            namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+            namespace G = PokeBank::UIModel::SharedMenuGeometry;
+            const int rows = static_cast<int>(recoveryRows.size());
+            const G::Layout layout = EB::layout(rows, fb.getWidth(), fb.getHeight());
+            const G::Rect frame = layout.frame;
+            const int visible = layout.visibleRows;
+            beginTopTouchLayer();
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
+            drawModalSurface(fb, frame.x, frame.y, frame.w, frame.h);
+            const int textX = frame.x + layout.rule.padX;
+            fb.drawText(textX, frame.y + EB::kHeadingTop, "Recovery files", Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(textX, frame.y + EB::kExplainerTop,
+                        "Older copies and leftovers. Newest copies, Bank files and original saves always stay.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            for (int i = recoveryScroll; i < std::min(rows, recoveryScroll + visible); ++i) {
+                const auto& row = recoveryRows[static_cast<size_t>(i)];
+                const G::Rect cell = G::cellRect(layout, i - recoveryScroll);
+                BackupBrowserChrome::drawRow(fb, cell.x, cell.y, cell.w, cell.h, row.title, row.detail, row.badge,
+                                             i == recoveryIndex);
+                overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
+            }
+            if (rows == 0)
+                fb.drawText(textX, layout.list.y + 12, "No backups or recovery files were found.",
+                            Colors::TextSecondary, TextStyle::Body);
+            SharedScrollbar::drawAndPublish(fb, recoveryScrollbar, frame.right() - 14, layout.list.y,
+                SharedScrollbar::kTrackWidth, layout.list.h,
+                SharedScrollbar::rows(rows, visible, recoveryScroll));
+            if (!recoveryNotice.empty()) {
+                const G::Rect toast = EB::noticeRect(G::textWidth(recoveryNotice, G::Text::Caption),
+                                                     fb.getWidth(), fb.getHeight());
+                fb.drawFilledRoundedRect(toast.x, toast.y, toast.w, toast.h, 8, Colors::Panel);
+                fb.drawRoundedRect(toast.x, toast.y, toast.w, toast.h, 8, Colors::Warning, 2);
+                fb.drawText(toast.x + EB::kNoticePadX, toast.y + 7, recoveryNotice, Colors::Text,
+                            TextStyle::Caption);
+            }
+            bool removable = false;
+            if (recoveryIndex >= 0 && recoveryIndex < rows) {
+                const int item = recoveryRows[static_cast<size_t>(recoveryIndex)].item;
+                removable = item >= 0 &&
+                    recoveryListing.verdicts[static_cast<size_t>(item)].status == RM::Status::Removable;
+            }
+            const size_t picked = RM::selectedCount(recoverySelection);
+            std::vector<ControllerHint> hints = {{"D-pad/Stick", "Choose"},
+                                                 {"A", removable ? "Select" : "Why kept"}};
+            if (picked > 0) hints.push_back({"Y", "Remove selected (" + std::to_string(picked) + ")"});
+            hints.push_back({"B", "Back"});
+            drawNavBar(fb, hints);
+        } else if (overlay == Overlay::RecoveryConfirm) {
+            namespace RM = PokeBank::UIModel::RecoveryManagement;
+            const auto lines = RM::confirmationLines(recoveryListing.items, recoveryPlan);
+            constexpr int w = 1100, lineH = 26;
+            const int total = static_cast<int>(lines.size());
+            const int first = std::clamp(recoveryConfirmScroll, 0, std::max(0, total - kRecoveryConfirmLines));
+            const int shown = std::min(total - first, kRecoveryConfirmLines);
+            const bool scrolls = total > kRecoveryConfirmLines;
+            const int h = 200 + shown * lineH + (scrolls ? lineH : 0);
+            const int x = (fb.getWidth() - w) / 2, y = std::max(20, (fb.getHeight() - kNavBarH - h) / 2);
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 132));
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 30, y + 24, RM::confirmationSummary(recoveryPlan), Colors::TextPrimary, TextStyle::Heading);
+            drawGlyphSentence(fb, x + 30, y + 70, "These files will be removed. Press Y to remove; A or B keeps them.",
+                              Colors::TextSecondary, TextStyle::Body);
+            int ly = y + 112;
+            for (int i = first; i < first + shown; ++i, ly += lineH)
+                fb.drawText(x + 30, ly, BackupBrowserChrome::fit(fb, lines[static_cast<size_t>(i)], w - 60,
+                                                                 TextStyle::Caption),
+                            Colors::Text, TextStyle::Caption);
+            if (scrolls) {
+                fb.drawText(x + 30, ly, "Files " + std::to_string(first + 1) + "-" + std::to_string(first + shown) +
+                                            " of " + std::to_string(total) + ". Up/Down shows the rest.",
+                            Colors::TextSecondary, TextStyle::Caption);
+                ly += lineH;
+            }
+            fb.drawText(x + 30, ly + 14, "Newest copies, Bank files and original saves are never removed.",
+                        Colors::TextMuted, TextStyle::Caption);
+            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
+                                                   "Y", "Remove", "A", "Cancel"));
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
