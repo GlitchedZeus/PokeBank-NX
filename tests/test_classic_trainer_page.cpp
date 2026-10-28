@@ -197,12 +197,13 @@ int main() {
         checkPage(game, true, true);                     // worst case: every writer
     }
     // Round 7 (QA CG90): Gen V's Trainer page lays out its own rows (four selectable cards: Name,
-    // Money, Play Time, Pokedex; four identity rows: Gender, Trainer ID, Secret ID, Badges) with the
+    // Money, Play Time, Gender; four read-only rows: Pokedex, Trainer ID, Secret ID, Badges) with the
     // same model plus the language detail line, which sits left of Review in its band.
     {
         using F = Page::Field;
+        // Owner Oct 28 (#5): Gender is a staged card; the Pokedex summary is with the read-only rows.
         const std::vector<Page::Row> gen5{{F::Name, true, -1},     {F::Money, true, -1},  {F::PlayTime, true, -1},
-                                          {F::Pokedex, true, -1},  {F::Gender, false, -1}, {F::TrainerId, false, -1},
+                                          {F::Gender, true, -1},   {F::Pokedex, false, -1}, {F::TrainerId, false, -1},
                                           {F::SecretId, false, -1}, {F::Badges, false, -1}};
         const auto page = Page::layout(gen5, kX, kY, kW, kH, true);
         assert(page.fits && page.rows.size() == gen5.size());

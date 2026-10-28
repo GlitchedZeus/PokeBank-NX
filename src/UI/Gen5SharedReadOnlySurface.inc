@@ -569,13 +569,20 @@ struct Gen5Editor {
             for (uint16_t i = 0; i < 25; ++i) natures.push_back(i);
             EditorSurface::openPicker(screen, state, PickerTarget::Nature, std::move(natures), p.nature());
         } else if (row == Fields::GenderRow) {
+            // Owner Oct 28 (#6): Gender is an inline Male / Female toggle, as on Gen IV; the PID it
+            // changes is stated inline instead of in a separate "Change PID?" dialog. The probe is
+            // applied only when it passes the same strict re-verification that dialog used.
             auto probe = d;
             if (!Fields::toggleGender(probe, error)) {
                 screen.postStatus(error, 300);
+            } else if (const auto after = probe.current(); !after || !pidLinksHold(*after, b2w2(screen))) {
+                screen.postStatus("The new PID failed strict re-verification; nothing was changed", 320);
             } else {
-                std::string what = std::string("Gender ") + EditorSurface::genderText(p.gender()) +
-                                   " -> " + EditorSurface::genderText(probe.current()->gender());
-                offer(screen, state, std::move(probe), std::move(what));
+                const std::string note = std::string("Gender ") + EditorSurface::genderText(p.gender()) + " -> " +
+                    EditorSurface::genderText(after->gender()) + "  |  PID " + pidHex5(p.pid()) + " -> " +
+                    pidHex5(after->pid()) + " (nature, shininess and ability kept)";
+                d = std::move(probe);
+                screen.postStatus(note, 420);
             }
         } else if (row == Fields::ShinyRow) {
             auto probe = d;
@@ -1234,6 +1241,12 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
                     static_cast<uint32_t>(m.value),static_cast<uint32_t>(sec.value),refresh,error);
             break;
         }
+        case Row::Gender: {
+            // Owner Oct 28 (#5): A flips Male / Female in place, no prompt (Gen III / IV parity).
+            accepted=true;
+            staged=editor.applyGender(ws,current->gender==0?1:0,refresh,error);
+            break;
+        }
         default:break;
     }
     screen.controllerNavigation.reset();
@@ -1289,7 +1302,7 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     const int w=fb.getWidth()-x,h=CONTENT_PANEL_HEIGHT;
     namespace TPanel=UI::SharedTrainerPanel;
     namespace TPage=PokeBank::UIModel::ClassicTrainerPage;
-    TPanel::drawPanel(fb,x,y,w,h,"Name, Money and Play Time are staged in app memory; the source save is unchanged");
+    TPanel::drawPanel(fb,x,y,w,h,"Name, Money, Play Time and Gender are staged in app memory; the source save is unchanged");
     // R2-BUG-003: the Gen I-IV Trainer hierarchy. Selectable rows first (the staged Name / Money /
     // Play Time edits, and the Pokedex view) as cards with a value pill; a divider; then the
     // read-only identity rows, compact and unselectable, as Gen IV shows them (Gender, Trainer ID,
@@ -1302,8 +1315,10 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     // neither can overlap a row.
     using TRow=G::Gen5TrainerScreen::Row;
     using F=TPage::Field;
+    // Owner Oct 28 (#5): Gender is a staged card (its native writer exists); the Pokedex summary sits
+    // with the read-only rows as on Gen I-IV, and still opens the read-only list with A.
     const std::vector<TPage::Row> model{{F::Name,true,-1},{F::Money,true,-1},{F::PlayTime,true,-1},
-        {F::Pokedex,true,-1},{F::Gender,false,-1},{F::TrainerId,false,-1},{F::SecretId,false,-1},
+        {F::Gender,true,-1},{F::Pokedex,false,-1},{F::TrainerId,false,-1},{F::SecretId,false,-1},
         {F::Badges,false,-1}};
     const auto page=PokeBank::UIModel::ClassicTrainerPage::layout(model,x,y,w,h,true);
     const auto indexOf=[](TRow row) {
@@ -1312,7 +1327,7 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         return G::Gen5TrainerScreen::kRows.size();
     };
     size_t placed=0;
-    for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex}) {
+    for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Gender}) {
         const size_t i=indexOf(row);
         const bool sel=editor.open() && i==editor.row();
         const auto& c=page.rows[placed++].card;
@@ -1324,10 +1339,16 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         const int cardX=page.rows.front().card.x,cy=page.dividerY,cardW=TPage::kCardW;
         TPanel::drawDivider(fb,cardX,cy,cardW);
     }
-    for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges}) {
+    for(const TRow row:{TRow::Pokedex,TRow::TrainerId,TRow::SecretId,TRow::Badges}) {
         const auto& c=page.rows[placed++].card;
         TPanel::drawInfoRow(fb,c.x,c.y,c.w,c.h,G::Gen5TrainerScreen::label(row),
                             G::Gen5TrainerScreen::value(ws,row));
+        if(row==TRow::Pokedex) {
+            // Read-only, but A (or a tap) still opens the read-only Pokedex list.
+            const size_t i=indexOf(row);
+            screen.touchButtons.push_back({kGen5TrainerRowTouchBase+static_cast<int>(i),c.x,c.y,c.w,c.h});
+            if(editor.open() && i==editor.row())fb.drawRoundedRect(c.x,c.y,c.w,c.h,10,Colors::Accent,2);
+        }
     }
     if(const auto t=ws.trainerPresentation()) {
         const auto& line=page.language;
@@ -1948,7 +1969,8 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
         std::to_string(c.before)+" -> "+std::to_string(c.after)});
     for(const auto& c:ws.trainerReviewChanges()) {
         using F=G::TrainerChange5::Field;
-        rows.push_back({std::string("Trainer / ")+(c.field==F::Name?"Name":c.field==F::Money?"Money":"Play Time"),c.before+" -> "+c.after});
+        rows.push_back({std::string("Trainer / ")+(c.field==F::Name?"Name":c.field==F::Money?"Money":
+                        c.field==F::Gender?"Gender":"Play Time"),c.before+" -> "+c.after});
     }
     return rows;
 }

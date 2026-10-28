@@ -1159,8 +1159,8 @@ require(trainer_model, "6501f0ab46e8f8ca048539dbaf8cae8cb104e722", "PlayerBlockI
         "MiscBlockIndex = 52", "MaxMoney = 9999999", "kPlayerRanges", "kMiscRanges")
 require(surface, "return handleTrainerEditor(screen,keys,tap);", "editor.applyName(ws,r.text,refresh,error)",
         "editor.applyMoney(", "editor.applyPlayTime(", "drawTrainerEditor(screen,fb);",
-        "ws.trainerReviewChanges()", "for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Pokedex})",
-        "for(const TRow row:{TRow::Gender,TRow::TrainerId,TRow::SecretId,TRow::Badges})")
+        "ws.trainerReviewChanges()", "for(const TRow row:{TRow::Name,TRow::Money,TRow::PlayTime,TRow::Gender})",
+        "for(const TRow row:{TRow::Pokedex,TRow::TrainerId,TRow::SecretId,TRow::Badges})")
 require(read("include/Integration/Gen5/Gen5StagedSaveCandidate.h"), "Gen5StagedTrainer::kPlayerRanges",
         "did not preserve the exact staged trainer")
 require(read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp"), "TRAINER_CHANGED=")

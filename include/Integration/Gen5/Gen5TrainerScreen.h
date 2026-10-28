@@ -16,7 +16,7 @@
 namespace PokeVault::Integration::Gen5 {
 
 // Session-local model for the shared Trainer panel's Gen V field list.
-// Editable rows (Name, Money, Play Time) stage through Gen5StagedTrainer;
+// Editable rows (Name, Money, Play Time, Gender) stage through Gen5StagedTrainer;
 // every other row is read-only and says so. Controller and touch share the
 // same entry points: Up/Down or tap focuses, A or a second tap edits.
 class Gen5TrainerScreen {
@@ -32,7 +32,7 @@ public:
     [[nodiscard]] size_t row() const noexcept { return row_; }
     [[nodiscard]] Row selectedRow() const noexcept { return kRows[row_]; }
     [[nodiscard]] static constexpr bool editable(Row row) noexcept {
-        return row == Row::Name || row == Row::Money || row == Row::PlayTime;
+        return row == Row::Name || row == Row::Money || row == Row::PlayTime || row == Row::Gender;
     }
     [[nodiscard]] static constexpr const char* label(Row row) noexcept {
         switch (row) {
@@ -166,6 +166,15 @@ public:
                     " is read-only for Gen V (ownership/story data is never edited)";
             return false;
         }
+        if (selectedRow() == Row::Gender) {
+            const auto t = ws.trainerPresentation();
+            const auto* staged = ws.stagedTrainerIfOpened();
+            const uint8_t stored = staged ? staged->baseline().gender : (t ? t->gender : 0xFF);
+            if (stored > 1) {
+                error = "Gen V trainer gender has an unrecognized stored value; read-only";
+                return false;
+            }
+        }
         error.clear();
         return true;
     }
@@ -206,6 +215,13 @@ public:
                                      std::string& error) {
         return apply(ws, Row::PlayTime, std::forward<Refresh>(refresh), error,
                      [&](Gen5StagedTrainer& t, std::string* why) { return t.setPlayTime(h, m, s, why); });
+    }
+
+    // Gender is a two-value inline toggle (Gen III / IV ClassicTrainerSession: A flips Male / Female).
+    template <class Refresh>
+    [[nodiscard]] bool applyGender(Workspace& ws, uint8_t gender, Refresh&& refresh, std::string& error) {
+        return apply(ws, Row::Gender, std::forward<Refresh>(refresh), error,
+                     [&](Gen5StagedTrainer& t, std::string* why) { return t.setGender(gender, why); });
     }
 
     [[nodiscard]] static bool newGame(const Trainer5View& t) noexcept {

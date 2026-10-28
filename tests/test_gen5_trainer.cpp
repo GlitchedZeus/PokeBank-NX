@@ -131,13 +131,16 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(Screen::value(ws, Row::PlayTime) == "12:34:56" && Screen::value(ws, Row::Badges) == "3 / 8");
     assert(Screen::value(ws, Row::Gender) == "Female");
     // Gen I-IV Trainer convention: read-only rows are shown but never focused;
-    // Up/Down wrap over Name, Money, Play Time and the Pokedex list.
-    for (const Row ro : {Row::TrainerId, Row::SecretId, Row::Gender, Row::Badges, Row::Language})
+    // Up/Down wrap over Name, Money, Play Time, Gender (owner Oct 28 #5) and the Pokedex list.
+    for (const Row ro : {Row::TrainerId, Row::SecretId, Row::Badges, Row::Language})
         assert(!Screen::editable(ro) && !Screen::focusable(ro));
+    assert(Screen::editable(Row::Gender) && Screen::focusable(Row::Gender));
     screen.moveRow(1);
     assert(screen.selectedRow() == Row::Money);
     screen.moveRow(1);
     assert(screen.selectedRow() == Row::PlayTime);
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Gender);   // skips Trainer ID / Secret ID
     screen.moveRow(1);
     assert(screen.selectedRow() == Row::Pokedex);  // skips the read-only rows
     screen.moveRow(1);
@@ -193,14 +196,28 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(screen.applyPlayTime(ws, 999, 59, 59, refresh, error));
     assert(Screen::value(ws, Row::PlayTime) == "999:59:59");
 
-    // Review lists the three Trainer changes; the discoverable Y button opens it.
+    // Gender (owner Oct 28 #5): the stored Female byte flips to Male; only 0 / 1 are accepted; a
+    // refused refresh rolls back; the wrong row is refused.
+    assert(!screen.applyGender(ws, 0, refresh, error));          // Play Time is selected
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Gender && screen.beginEdit(ws, error));
+    assert(hasGlyph(screen.footer(), "A"));
+    assert(!screen.applyGender(ws, 2, refresh, error) && Screen::value(ws, Row::Gender) == "Female");
+    assert(!screen.applyGender(ws, 0, refuse, error) && Screen::value(ws, Row::Gender) == "Female");
+    assert(screen.applyGender(ws, 0, refresh, error) && Screen::value(ws, Row::Gender) == "Male");
+    screen.moveRow(-1);
+    assert(screen.selectedRow() == Row::PlayTime);
+
+    // Review lists the four Trainer changes; the discoverable Y button opens it.
     const auto changes = ws.trainerReviewChanges();
-    assert(changes.size() == 3);
+    assert(changes.size() == 4);
+    assert(changes[3].field == G::TrainerChange5::Field::Gender && changes[3].before == "Female" &&
+           changes[3].after == "Male");
     assert(changes[0].field == G::TrainerChange5::Field::Name && changes[0].before == "NX" &&
            changes[0].after == "Hilda7");
     assert(changes[1].before == "123456" && changes[1].after == "9999999");
     assert(changes[2].before == "12:34:56" && changes[2].after == "999:59:59");
-    assert(G::Gen5SharedScreenState::reviewRowCount(ws) == 3);
+    assert(G::Gen5SharedScreenState::reviewRowCount(ws) == 4);
     assert(hasGlyph(screen.footer(), "Y"));
     assert(shared.openReviewFromBrowse(ws));
     (void)shared.back();
@@ -219,7 +236,9 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
         const bool name = i >= playerBlock.offset + 0x04 && i < playerBlock.offset + 0x14;
         const bool time = i >= playerBlock.offset + 0x24 && i < playerBlock.offset + 0x28;
         const bool money = i >= miscBlock.offset && i < miscBlock.offset + 4;
-        assert(name || time || money || crcByte(i, playerBlock) || crcByte(i, miscBlock) || crcByte(i, terminal));
+        const bool gender = i == playerBlock.offset + 0x21;
+        assert(name || time || money || gender || crcByte(i, playerBlock) || crcByte(i, miscBlock) ||
+               crcByte(i, terminal));
     }
     const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
     assert(reopened);
@@ -227,6 +246,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(exported && exported->rawName == u"Hilda7" && exported->money == 9999999);
     assert(exported->hours == 999 && exported->minutes == 59 && exported->seconds == 59);
     assert(exported->tid == 12345 && exported->sid == 54321 && exported->badges == 7);
+    assert(exported->gender == 0 && exported->language == 2);
     assert(reopened->sourceBytes()[playerBlock.offset + 0x30] == 0x5A);
     assert(reopened->sourceBytes()[miscBlock.offset + 0x40] == 0xA5);
     // Name field is ClearZero + terminator per StringConverter5.
@@ -255,6 +275,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     std::string why;
     assert(trainer->refreshStagedPokemonPresentation(why));
     assert(trainer->trainerName == "NX" && trainer->money == 123456 && !ws.hasChanges());
+    assert(Screen::value(ws, Row::Gender) == "Female");
     screen.close();
     assert(!screen.open());
 }
@@ -279,6 +300,32 @@ void unrecognizedTrainerIsViewOnly() {
     assert(!Screen::available(ws) && !screen.openEditor(ws, error) && !error.empty());
     assert(!ws.stagedTrainer(&error) && !ws.hasChanges());
     assert(Screen::value(ws, Row::Money) == "Unavailable");
+}
+
+// Owner Oct 28 (#5): a stored trainer gender that is neither Male (0) nor Female (1) is never
+// rewritten: setGender and the A path refuse, nothing is staged.
+void unrecognizedGenderIsReadOnly() {
+    auto sav = fixture(G::SaveFamily::BlackWhite, 21);
+    const size_t player = G::trainerBlock5(G::SaveFamily::BlackWhite, T::PlayerBlockIndex).offset;
+    sav[player + 0x21] = 2;
+    auto copy = std::span<uint8_t>(sav).subspan(0, L::BlackWhiteCopySize);
+    for (const auto& b : L::BlackWhite) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, "black_nds", &error, G::SaveCopySelection::Primary);
+    assert(parsed && G::decodeTrainer5(*parsed) && G::decodeTrainer5(*parsed)->gender == 2);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    Screen screen;
+    assert(screen.openEditor(ws, error));
+    screen.moveRow(3);
+    assert(screen.selectedRow() == Row::Gender && !screen.beginEdit(ws, error) &&
+           error.find("unrecognized stored value") != std::string::npos);
+    auto* staged = ws.stagedTrainer(&error);
+    assert(staged && !staged->genderEditable() && !staged->setGender(0, &error) && !staged->dirty());
+    assert(Screen::value(ws, Row::Gender) == "Unknown" && !ws.hasChanges());
 }
 
 } // namespace
@@ -333,11 +380,13 @@ void trainerPanelFocusMemory() {
     assert(!screen.open());
     assert(screen.enter(ws, error) && screen.selectedRow() == Row::PlayTime);
     assert(screen.beginEdit(ws, error));
-    // The next focus skips the read-only identity rows to the Pokedex list,
+    // The next focus skips the read-only identity rows to Gender, then the Pokedex list,
     // which opens a view rather than an edit.
     screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Gender && screen.beginEdit(ws, error));
+    screen.moveRow(1);
     assert(screen.selectedRow() == Row::Pokedex && !screen.beginEdit(ws, error));
-    screen.moveRow(-3);
+    screen.moveRow(-4);
     assert(screen.selectedRow() == Row::Name && screen.beginEdit(ws, error));
     // Scrolling keeps the focused row visible for any viewport size.
     for (size_t visible = 1; visible <= Screen::kRows.size() + 1; ++visible)
@@ -369,6 +418,7 @@ int main() {
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);
     exercise(G::SaveFamily::Black2White2, "black2_nds", 23);
     unrecognizedTrainerIsViewOnly();
-    std::cout << "Gen V native Trainer: cited decode, staged Name/Money/Play Time, read-only rows, "
+    unrecognizedGenderIsReadOnly();
+    std::cout << "Gen V native Trainer: cited decode, staged Name/Money/Play Time/Gender, read-only rows, "
                  "Review and verified export PASS\n";
 }
