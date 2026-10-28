@@ -155,4 +155,20 @@ $(HOST_UI_DISCOVERY_TEST): $(HOST_UI_DISCOVERY_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_DISCOVERY_SANITIZE): $(HOST_UI_DISCOVERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_switch_title_discovery_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Japanese Gen I Bag read-only gate (JapaneseEditingGate.h): X / A / Y / + / Options-Export stage and
+# export nothing on a Japanese Red / Yellow Bag through the real screen; international Red still stages.
+HOST_UI_JP_BAG_TEST := $(HOST_BUILD)/test_ui_japanese_bag_readonly_host
+HOST_UI_JP_BAG_SANITIZE := $(HOST_BUILD)/test_ui_japanese_bag_readonly_host_sanitize
+HOST_UI_JP_BAG_INPUTS := tests/test_ui_japanese_bag_readonly_host.cpp tests/host-ui/HostUi.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_JP_BAG_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_JP_BAG_SANITIZE)
+host-test: $(HOST_UI_JP_BAG_TEST)
+host-sanitize: $(HOST_UI_JP_BAG_SANITIZE)
+$(HOST_UI_JP_BAG_TEST): $(HOST_UI_JP_BAG_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_bag_readonly_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_JP_BAG_SANITIZE): $(HOST_UI_JP_BAG_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_bag_readonly_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif

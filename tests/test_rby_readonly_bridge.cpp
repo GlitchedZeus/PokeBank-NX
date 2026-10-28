@@ -133,5 +133,23 @@ int main(){
     auto yp=parse(yellowRaw,SourceGame::Yellow);assert(yp);std::string ye;auto yt=RBYReadOnlyTrainer::create(*yp.save,ye);
     assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==6);
     assert(yt->items[1][0].itemId==0x14&&yt->items[4][0].itemId==0xC9&&yt->items[5][0].itemId==0x2D);
+    // JapaneseEditingGate.h: a Japanese R/G/B/Y save opens browse-only, with no staged Bag,
+    // Pokemon or Trainer editor (layout as in test_gen1_trainer_edit.cpp), International unchanged.
+    assert(trainer->stagedInventoryAvailable()&&trainer->stagedPokemonAvailable()&&trainer->stagedTrainer());
+    for (SourceGame game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) {
+        std::vector<uint8_t> jp(0x8000,0);
+        jp[0x2598]=0x50;jp[0x2ED5+1]=0xFF;jp[0x302D+1]=0xFF;jp[0x2842]=2;
+        jp[0x29B9]=game==SourceGame::Yellow?0x54:0x99;jp[0x2712]=game==SourceGame::Yellow?90:0;
+        jp[0x25C4]=1;jp[0x25C5]=29;jp[0x25C6]=3;jp[0x25C7]=0xFF;jp[0x27DC+1]=0xFF;
+        jp[0x3594]=diff8(std::span<const uint8_t>(jp).subspan(0x2598,0x0FFC));
+        const auto pristine=jp;
+        auto jparsed=parse(jp,game);assert(jparsed&&jparsed.save->metadata().region==RegionLayout::Japanese);
+        std::string je;auto jt=RBYReadOnlyTrainer::create(*jparsed.save,je);
+        assert(jt&&je.empty()&&jt->japaneseLayout()&&!jt->items.empty());
+        assert(!jt->stagedInventoryAvailable()&&!jt->stagedPokemonAvailable()&&!jt->stagedTrainer());
+        assert(jt->stagedInventoryUnavailableReason()=="Japanese Generation I saves are read-only");
+        assert(jt->stagedPokemonUnavailableReason()=="Japanese Generation I saves are read-only");
+        assert(!jt->hasStagedChanges()&&jp==pristine);
+    }
     std::cout<<"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\n";return 0;
 }

@@ -1,5 +1,6 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
@@ -63,6 +64,14 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     }
     auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
+
+    // JapaneseEditingGate.h: a Japanese save gets no staged editor at all while the gate is
+    // closed, so the Bag, Pokemon and Trainer pages stay browse-only and nothing can be exported.
+    if (trainer->japaneseLayout_ && !Integration::Common::kJapaneseClassicEditingEnabled) {
+        trainer->stagedInventoryUnavailableReason_ = Integration::Common::kJapaneseGen1ReadOnlyReason;
+        trainer->stagedPokemonUnavailableReason_ = Integration::Common::kJapaneseGen1ReadOnlyReason;
+        return trainer;
+    }
 
     std::string stagedError;
     trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);

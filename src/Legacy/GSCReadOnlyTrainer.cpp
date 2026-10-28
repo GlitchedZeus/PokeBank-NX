@@ -1,4 +1,5 @@
 #include "Legacy/GSCReadOnlyTrainer.h"
+#include "Integration/Common/JapaneseEditingGate.h"
 
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -77,6 +78,12 @@ std::unique_ptr<GSCReadOnlyTrainer> GSCReadOnlyTrainer::create(
     // Keep the accepted read-only bridge authoritative. Staged editing is an optional sidecar built
     // from the already-validated save and owns its own byte clone; failing to create it must never
     // prevent a safe read-only save from opening.
+    // JapaneseEditingGate.h: the Gen II staged editor also refuses Japanese layouts itself; the
+    // owner gate is checked here too so opening the writer can never open Japanese editing alone.
+    if (trainer->japaneseLayout_ && !Integration::Common::kJapaneseClassicEditingEnabled) {
+        trainer->stagedEditingUnavailableReason_ = Integration::Common::kJapaneseGen2ReadOnlyReason;
+        return trainer;
+    }
     std::string stagedError;
     trainer->stagedEditor_ = Integration::Gen2::StagedEditor::create(save, stagedError);
     trainer->stagedEditingUnavailableReason_ = std::move(stagedError);

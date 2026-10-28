@@ -280,6 +280,9 @@ int main(){
         assert(!trainer->hasTrainerGender()); // Gold / Silver: no stored gender (round 6)
         assert(trainer->SID16==0&&trainer->SID==0&&trainer->ID32==trainer->TID16);
         assert(trainer->getBoxCount()==9&&trainer->getSlotsPerBox()==30&&trainer->boxNames.size()==9);
+        // JapaneseEditingGate.h: no staged editor (Bag, Pokemon, Trainer) for a Japanese save.
+        assert(!trainer->stagedEditingAvailable());
+        assert(trainer->stagedEditingUnavailableReason()=="Japanese Generation II saves are read-only");
     }
     {
         auto bytes=fixture(IGS,1,25,201);
