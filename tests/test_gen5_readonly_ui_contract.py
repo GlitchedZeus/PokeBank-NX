@@ -1006,7 +1006,7 @@ require(read("tests/test_gen5_pk5_readonly.cpp"),
 # SAV5 review/reparse. Y, never A, stages destructive boxed removal.
 box_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")
 require(box_workspace,
-        "enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox, CreateBox }",
+        "enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox, CreateBox, ImportBox }",
         "cloneToEmptyBox(Slot from,size_t box,size_t slot",
         "removeBox(size_t box,size_t slot",
         "undoBoxReplacement(size_t box,size_t slot)",
@@ -1015,6 +1015,19 @@ require(box_workspace,
         "decoded.resize(Crypto::StoredSize)",
         "boxReplacements_.emplace(to,std::move(replacement))",
         "pending_.clear();boxReplacements_.clear();")
+# Feature A: a standalone .pk5/.ek5 import is one more box replacement in the SAME staged
+# workspace, independently re-verified by Review and by the export candidate.
+require(box_workspace,
+        "importToEmptyBox(std::span<const uint8_t> plain,size_t box,size_t slot",
+        "importRecordRefusal5(plain,black2White2())",
+        "replacement.importedRecord=stored")
+require(native_review,
+        "importRecordRefusal5(change.importedRecord,change.black2White2)",
+        "Crypto::encryptCandidate(change.importedRecord)!=change.replacementOriginal",
+        "Gen V box operation carried an unrelated imported record")
+require(candidate,
+        "Gen5StagedPokemonWorkspace::ChangeKind::ImportBox",
+        "source.family()==SaveFamily::Black2White2")
 require(native_review,"ChangeKind::FieldEdit",
         "Field::CloneBox","Field::RemoveBox",
         "Crypto::encryptCandidate(d)!=change.replacementOriginal",

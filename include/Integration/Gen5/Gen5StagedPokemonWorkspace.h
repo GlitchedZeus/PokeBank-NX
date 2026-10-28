@@ -6,6 +6,7 @@
 #include "Integration/Gen5/Gen5NativeCreate.h"
 #include "Integration/Gen5/Gen5Bag.h"
 #include "Integration/Gen5/Gen5BlankSlot.h"
+#include "Integration/Gen5/Gen5ImportRecord.h"
 #include "Integration/Gen5/Gen5Trainer.h"
 
 #include <cstddef>
@@ -42,7 +43,7 @@ public:
         return s.region==Region::Party ? (s.box==0 && s.slot<6) :
                s.region==Region::Box && s.box<24 && s.slot<30;
     }
-    enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox, CreateBox };
+    enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox, CreateBox, ImportBox };
     struct PendingChange {
         Slot location;
         std::vector<uint8_t> before;
@@ -53,6 +54,9 @@ public:
         std::vector<uint8_t> cloneSourceOriginal;
         std::optional<CreateRequest5> createRequest;
         std::vector<uint8_t> replacementOriginal;
+        // ImportBox only: the imported file's stored 136-byte PKHeX plaintext PK5, kept byte for
+        // byte. replacementOriginal is exactly this record re-encrypted (Crypto::encryptCandidate).
+        std::vector<uint8_t> importedRecord;
     };
 
     explicit Gen5StagedPokemonWorkspace(const Gen5ReadOnlySave& validated)
@@ -175,6 +179,52 @@ public:
         return true;
     }
 
+    // Feature A (owner Oct 28): place one standalone PK5 file's record into a physically empty box
+    // slot of this staged copy. `plain` is the PKHeX plaintext PK5 (PokeBank::PokemonFile::decode):
+    // 136 bytes, or 220 for a party file, whose stored 136 bytes are what a box slot holds (the
+    // party extension is dropped exactly as the game does on deposit; PKHeX PK5 box/party sizes,
+    // PokeCrypto.SIZE_5STORED / SIZE_5PARTY). The record is kept byte for byte: it is only
+    // re-encrypted into the native at-rest form, never edited, legalized or converted, and a record
+    // the selected title cannot hold is refused with the reason. App memory only; Review, Keep,
+    // Discard and Export Copy treat it like Create / Clone.
+    [[nodiscard]] bool importToEmptyBox(std::span<const uint8_t> plain,size_t box,size_t slot,
+                                        std::string* error=nullptr) {
+        const Slot target{Region::Box,box,slot};
+        const auto fail=[&](std::string_view why) {
+            if(error)*error=std::string(why);
+            return false;
+        };
+        if(!canonicalSlot(target))
+            return fail("Gen V import destination is outside boxes 1-24 / slots 1-30");
+        if(pending_.count(target) || boxReplacements_.count(target))
+            return fail("Gen V import destination already holds a staged change");
+        const auto existing=sourceSlot(target);
+        if(!existing || !existing->valid())
+            return fail("Gen V import destination slot is not a valid native PK5 slot");
+        if(!existing->empty())
+            return fail("Gen V import destination slot is occupied; choose an empty box slot");
+        if(!emptyCloneDestination(box,slot))
+            return fail("Gen V import destination is not a native blank PK5 slot");
+        if(const auto refusal=importRecordRefusal5(plain,black2White2()))
+            return fail(*refusal);
+        const std::vector<uint8_t> stored(plain.begin(),
+            plain.begin()+static_cast<std::ptrdiff_t>(Crypto::StoredSize));
+        const auto encrypted=Crypto::encryptCandidate(stored);
+        const Pokemon5ReadOnly checked(encrypted);
+        if(Crypto::decrypt(encrypted)!=stored || !checked.valid() || checked.empty() ||
+           checked.partyRecord())
+            return fail("Gen V imported record failed exact boxed PK5 verification");
+        BoxReplacement replacement;
+        replacement.kind=ChangeKind::ImportBox;
+        replacement.after=encrypted;
+        replacement.replacementOriginal=encrypted;
+        replacement.importedRecord=stored;
+        if(!boxReplacements_.emplace(target,std::move(replacement)).second)
+            return fail("Gen V import destination changed during staging");
+        if(error)error->clear();
+        return true;
+    }
+
     // A boxed removal is an app-owned native blank PK5 replacement only.
     // Party removal and party compaction are explicitly unsupported.
     [[nodiscard]] bool removeBox(size_t box,size_t slot,
@@ -235,7 +285,8 @@ public:
         const auto replacement=boxReplacements_.find(location);
         if(replacement!=boxReplacements_.end()) {
             if(replacement->second.kind!=ChangeKind::CloneBox &&
-               replacement->second.kind!=ChangeKind::CreateBox)return false;
+               replacement->second.kind!=ChangeKind::CreateBox &&
+               replacement->second.kind!=ChangeKind::ImportBox)return false;
         } else if(!pending_.count(location))return false;
         const auto pk=view(location);
         return pk && pk->valid() && !pk->empty();
@@ -367,7 +418,7 @@ public:
             out.push_back({slot,
                 {record.originalBytes().begin(),record.originalBytes().end()},
                 {record.stagedBytes().begin(),record.stagedBytes().end()},
-                black2White2(),ChangeKind::FieldEdit,{}, {},std::nullopt,{}});
+                black2White2(),ChangeKind::FieldEdit,{}, {},std::nullopt,{},{}});
         }
         for(const auto& [slot,replacement]:boxReplacements_) {
             const auto original=sourceSlot(slot);
@@ -377,7 +428,8 @@ public:
                  original->originalEncryptedBytes().end()},
                 replacement.after,black2White2(),replacement.kind,
                 replacement.cloneSource,replacement.cloneSourceOriginal,
-                replacement.createRequest,replacement.replacementOriginal});
+                replacement.createRequest,replacement.replacementOriginal,
+                replacement.importedRecord});
         }
         return out;
     }
@@ -433,6 +485,7 @@ private:
         std::vector<uint8_t> cloneSourceOriginal;
         std::optional<CreateRequest5> createRequest;
         std::vector<uint8_t> replacementOriginal;
+        std::vector<uint8_t> importedRecord;
     };
     [[nodiscard]] std::optional<Pokemon5ReadOnly> sourceSlot(const Slot& s) const {
         if(!canonicalSlot(s))return std::nullopt;
