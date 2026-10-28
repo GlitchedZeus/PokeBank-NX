@@ -3,6 +3,8 @@
 #include "Integration/Gen4/Gen4BagCatalog.h"
 
 #include "Encryption/Encryption4.h"
+#include "Names/Gen4HeldItemCatalog.h"
+#include "Names/SpeciesNames.h"
 #include "Utils/CRC16.h"
 #include "Utils/Gen4Text.h"
 #include "Enums/LanguageID.h"
@@ -63,6 +65,25 @@ void write16(std::vector<uint8_t>& bytes, size_t offset, uint16_t value) noexcep
 
 void setError(std::string* error, std::string value) {
     if (error) *error = std::move(value);
+}
+
+const char* layoutGameName(Layout layout) noexcept {
+    switch (layout) {
+        case Layout::DiamondPearl: return "Diamond/Pearl";
+        case Layout::Platinum: return "Platinum";
+        case Layout::HeartGoldSoulSilver: return "HeartGold/SoulSilver";
+    }
+    return "this Generation IV game";
+}
+
+std::string speciesLabel(uint16_t species) {
+    const char* name = Names::getSpeciesName(species);
+    return std::string(name ? name : "Species") + " #" + std::to_string(species);
+}
+
+// PK4 plaintext (PKHeX PK4): checksum u16 at 0x06 over 0x08..0x87.
+uint16_t plainU16(std::span<const uint8_t> bytes, size_t offset) noexcept {
+    return static_cast<uint16_t>(bytes[offset] | (static_cast<uint16_t>(bytes[offset + 1]) << 8));
 }
 
 } // namespace
@@ -487,6 +508,176 @@ bool Gen4StagedPokemonEditor::stageCloneBoxPokemon(
     }
     if (error) error->clear();
     return true;
+}
+
+// Feature A: standalone .pk4 / .ek4 import. The decoder (PokemonFile::decode) already proved the
+// file is a Gen IV PK4 by content (checksum in exactly one reading, PKHeX GetFormat45); this adds
+// the target game's own structural validators and never edits a byte of the record.
+bool Gen4StagedPokemonEditor::canImportPokemonFile(
+    const PokeBank::PokemonFile::Decoded& file, std::string* error) const {
+    if (file.generation != 4 || file.format != PokeBank::PokemonFile::Format::PK4) {
+        setError(error, "This is a Generation " + std::to_string(file.generation) +
+            " Pokemon file; a Generation IV save accepts only .pk4 / .ek4 records "
+            "(no conversion between generations)");
+        return false;
+    }
+    if (file.plain.size() != Encryption::SIZE_STORED4 &&
+        file.plain.size() != Encryption::SIZE_PARTY4) {
+        setError(error, "The .pk4 record is not 136 (box) or 236 (party) bytes");
+        return false;
+    }
+    // The stored 136 bytes; a party record's trailing battle-stat cache is not stored in a box.
+    const std::span<const uint8_t> stored(file.plain.data(), Encryption::SIZE_STORED4);
+    const auto storedBytes = std::as_bytes(stored);
+    if (Encryption::checksum4(storedBytes) != plainU16(stored, 0x06)) {
+        setError(error, "The .pk4 record's checksum does not match its data");
+        return false;
+    }
+    const auto encrypted = Encryption::encryptArray4(storedBytes);
+    const Pokemon::Pokemon4ReadOnly record(encrypted, sourceGroup_);
+    if (!record.valid() || record.isParty() ||
+        !std::equal(record.decryptedBytes().begin(), record.decryptedBytes().end(),
+                    storedBytes.begin(), storedBytes.end())) {
+        setError(error, "The .pk4 record failed strict PK4 checksum/sanity validation");
+        return false;
+    }
+    if (record.empty()) {
+        setError(error, "The .pk4 record holds no Pokemon (species 0)");
+        return false;
+    }
+
+    const std::string game = layoutGameName(layout_);
+    const uint16_t species = record.species();
+    // Species and form must exist in THIS game's personal table (PKHeX PersonalTable.DP / .Pt /
+    // .HGSS): e.g. Rotom appliance forms and Giratina Origin are Platinum+, Spiky-eared Pichu is
+    // HeartGold/SoulSilver only. Same tables and stored-form rule as Pokemon4Mutable::setForm.
+    if (species > 493 || record.personal().hp == 0) {
+        setError(error, speciesLabel(species) + " does not exist in " + game);
+        return false;
+    }
+    const auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(encrypted, sourceGroup_, error);
+    if (!editable) return false;
+    if (record.form() >= editable->formCount()) {
+        setError(error, speciesLabel(species) + " form " + std::to_string(record.form()) +
+            " does not exist in " + game);
+        return false;
+    }
+    // PKHeX FormVerifier: Shaymin Sky Forme cannot be kept in a Gen IV PC box (setForm rule).
+    if (species == 492 && record.form() != 0) {
+        setError(error, "Shaymin Sky Forme cannot be stored in a Generation IV PC box");
+        return false;
+    }
+    // Holdable items per game: PKHeX ItemStorage4DP / ItemStorage4Pt GetAllHeld (setHeldItem rule).
+    if (record.heldItem() != 0 && !Names::isGen4HeldItemPresent(record.heldItem(), sourceGroup_)) {
+        setError(error, "Held item #" + std::to_string(record.heldItem()) +
+            " is not a holdable item in " + game);
+        return false;
+    }
+    // Native PK4 move range ends at Shadow Force (467), PKHeX Legal.MaxMoveID_4 (setMove rule).
+    for (const auto move : record.moves()) {
+        if (move > 467) {
+            setError(error, "Move #" + std::to_string(move) +
+                " is outside the Generation IV move list");
+            return false;
+        }
+    }
+    if (!Enums::groupHasLanguage(sourceGroup_, record.language())) {
+        setError(error, "Language id " + std::to_string(record.language()) +
+            " is not a Generation IV game language");
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+bool Gen4StagedPokemonEditor::stageImportBoxPokemon(
+    size_t box, size_t slot, const PokeBank::PokemonFile::Decoded& file, std::string* error) {
+    if (!canImportPokemonFile(file, error)) return false;
+    auto parsedBefore = reparse(error);
+    if (!parsedBefore) return false;
+    if (box >= 18 || slot >= 30) {
+        setError(error, "Generation IV Import target is outside native 18 x 30 storage");
+        return false;
+    }
+    const auto& destination = parsedBefore->box(box, slot);
+    if (!destination.valid() || !destination.empty()) {
+        setError(error, destination.valid()
+            ? "Generation IV Import refuses to overwrite an occupied box slot"
+            : "Generation IV Import target failed strict slot validation");
+        return false;
+    }
+    const auto offset = boxRecordOffset(*parsedBefore, box, slot);
+    if (!offset) {
+        setError(error, "Generation IV Import target is outside the selected Storage block");
+        return false;
+    }
+
+    const auto plain = std::as_bytes(std::span<const uint8_t>(file.plain.data(),
+                                                              Encryption::SIZE_STORED4));
+    const auto encrypted = Encryption::encryptArray4(plain);
+    if (encrypted.size() != Encryption::SIZE_STORED4) {
+        setError(error, "Generation IV Import did not encrypt to a 0x88-byte stored PK4");
+        return false;
+    }
+
+    const auto backup = staged_;
+    for (size_t i = 0; i < encrypted.size(); ++i)
+        staged_[*offset + i] = static_cast<uint8_t>(encrypted[i]);
+
+    if (!refreshStorageCrc(*parsedBefore, error)) {
+        staged_ = backup;
+        return false;
+    }
+    auto parsedAfter = reparse(error);
+    if (!parsedAfter) {
+        staged_ = backup;
+        return false;
+    }
+    const auto& imported = parsedAfter->box(box, slot);
+    if (!imported.valid() || imported.empty() ||
+        !std::equal(imported.originalEncryptedBytes().begin(),
+                    imported.originalEncryptedBytes().end(),
+                    encrypted.begin(), encrypted.end()) ||
+        !std::equal(imported.decryptedBytes().begin(), imported.decryptedBytes().end(),
+                    plain.begin(), plain.end())) {
+        staged_ = backup;
+        setError(error, "Generation IV staged Import failed exact PK4 reparse verification");
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+std::optional<std::vector<uint8_t>> Gen4StagedPokemonEditor::exportBoxPokemonFile(
+    size_t box, size_t slot, std::string* error) const {
+    const auto pokemon = boxedPokemon(box, slot, error);
+    if (!pokemon) return std::nullopt;
+    const auto plain = pokemon->decryptedBytes();
+    if (plain.size() != Encryption::SIZE_STORED4) {
+        setError(error, "Generation IV box record is not a stored 0x88-byte PK4");
+        return std::nullopt;
+    }
+    std::vector<uint8_t> out(plain.size());
+    std::transform(plain.begin(), plain.end(), out.begin(),
+                   [](std::byte value) { return static_cast<uint8_t>(value); });
+    if (error) error->clear();
+    return out;
+}
+
+std::optional<std::vector<uint8_t>> Gen4StagedPokemonEditor::exportPartyPokemonFile(
+    size_t slot, std::string* error) const {
+    const auto pokemon = partyPokemon(slot, error);
+    if (!pokemon) return std::nullopt;
+    const auto plain = pokemon->decryptedBytes();
+    if (plain.size() != Encryption::SIZE_PARTY4) {
+        setError(error, "Generation IV party record is not a 0xEC-byte party PK4");
+        return std::nullopt;
+    }
+    std::vector<uint8_t> out(plain.size());
+    std::transform(plain.begin(), plain.end(), out.begin(),
+                   [](std::byte value) { return static_cast<uint8_t>(value); });
+    if (error) error->clear();
+    return out;
 }
 
 bool Gen4StagedPokemonEditor::stageMoveBoxPokemon(
