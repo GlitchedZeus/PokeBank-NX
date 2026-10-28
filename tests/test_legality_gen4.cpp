@@ -67,7 +67,8 @@ const Case kCases[] = {
     {"pcd", Expect::Valid, "diamond_nds", "PCD:25", "5ADAAC210000B2C21900EC002628BAE7401F00004609000200000000000000000000000000000000D9006200540027000F1E1E1E0000000072D8F5120000000003000000000000003A01330135012B012D0132013F01FFFFFFFFFFFFFFFF000A000000000000000038015E01530152014901FFFFFFFFFFFF0000001A0A0F0000F40B001014000000"},  // PKHeX: VALID
     {"pgt", Expect::Valid, "diamond_nds", "PGT:490", "74CB944E000043F2EA010000BD05973400000000785D000200000000000000000000000000000000260191005A010000141E0F0000000000D99FF63700000000050000000000000037012B0138012B013A0132014301FFFF000000000000000A00000000000000003E0149015701580149015601FFFF00001A0A0F1A0A0FB90B5200000400000000"},  // PKHeX: VALID
     {"ranch", Expect::Valid, "diamond_nds", "EncounterTrade4RanchGift:25", "9E7A4F130000785819000000E803804D401F00004609000200000000000000000000000000000000BF01550094006800140F140F00000000456EE1040000000000000000000000003A01330135012B012D0132013F01FFFF000000000000000A0000000000000000320145015D01500149015D01FFFF00000000001A0A0F00004400000492000000"},  // PKHeX: VALID
-    {"slot-type0-pid1-lead12", Expect::Valid, "heartgold_nds", "EncounterSlot4:19", "2A226FA80000EB9D130000004DAD39ED401F000046320002000000000000000000000000000000002C00E4009E00850119140F0500000000DA30A40E00000000020000000000CA003C012B013E013E012B013E012B01FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A0F0000BA0B000514020500"},  // PKHeX: VALID
+    {"slot-type0-pid1-lead12", Expect::Invalid, "heartgold_nds", "EncounterSlot4:19", "2A226FA80000EB9D130000004DAD39ED401F000046320002000000000000000000000000000000002C00E4009E00850119140F0500000000DA30A40E00000000020000000000CA003C012B013E013E012B013E012B01FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A0F0000BA0B000514020500"},  // Frozen6501 VALID; native Safari dispatch and26.10.18 INVALID. Original bytes retained.
+    {"hgss-native-grass", Expect::Valid, "heartgold_nds", "EncounterSlot4:19", "659AC8AE0000F042130000003BF3576008000000463E0002000000000000000000000000000000002100270000000000231E0000000000005E0E89230000000002000000000095003C012B013E013E012B013E012B01FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1B0000BA0B000402020400"},  // Original retained corpus b42145; PKHeX26.10.18 VALID.
     {"slot-type0-pid1-lead255", Expect::Valid, "diamond_nds", "EncounterSlot4:10", "7929528C000088C40A000000BBEB6D0ED80000004613000200000000000000000000000000000000210051000000000023280000000000006212AC2E0000000002000000000000002D012B013E012F013C013A0133012F01FFFF00000000000A00000000000000003E0149015701580149015601FFFF00000000001A0A0F00001300000406020000"},  // PKHeX: VALID
     {"slot-type0-pid20-lead255", Expect::Valid, "pearl_nds", "EncounterSlot4:10", "BC7635AA0000169A0A0000006875E7A9D8000000461300020000000000000000000000000000000021005100000000002328000000000000F5B2823D0000000000000000000000002D012B013E012F013C013A0133012F01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0A0F00001300000406020000"},  // PKHeX: VALID
     {"slot-type0-pid21-lead11", Expect::Valid, "heartgold_nds", "EncounterSlot4:10", "09000000000003C40A000000160672DC40000000461300020000000000000000000000000000000021005100000000002328000000000000BA45C8090000000002000000000096002D012B013E012F013C013A0133012F01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A0F0000BA0B000404020400"},  // PKHeX: VALID
@@ -188,7 +189,7 @@ const Rule kRules[] = {
     // PKHeX: INVALID Gender:PIDGenderMismatch
     {"gender-pid", "static", {{Op::Xor8, 0x40, 6}}, "Gender does not match the PID"},
     // PKHeX: INVALID EVs:EffortAbove510
-    {"ev-total", "slot-type0-pid1-lead12", {{Op::Set8, 0x18, 100}, {Op::Set8, 0x19, 100}, {Op::Set8, 0x1A, 100}, {Op::Set8, 0x1B, 100}, {Op::Set8, 0x1C, 100}, {Op::Set8, 0x1D, 100}}, "EV total is above 510"},
+    {"ev-total", "hgss-native-grass", {{Op::Set8, 0x18, 100}, {Op::Set8, 0x19, 100}, {Op::Set8, 0x1A, 100}, {Op::Set8, 0x1B, 100}, {Op::Set8, 0x1C, 100}, {Op::Set8, 0x1D, 100}}, "EV total is above 510"},
     // PKHeX: INVALID EVs:EffortEgg
     {"egg-evs", "egg-unhatched", {{Op::Set8, 0x18, 4}}, "Eggs cannot have EVs"},
     // PKHeX: INVALID HeldItem:ItemEgg
@@ -216,15 +217,15 @@ const Rule kRules[] = {
     // PKHeX: INVALID Memory:DateCalendarInvalidEgg
     {"egg-date", "static", {{Op::Set8, 0x78, 9}, {Op::Set8, 0x79, 1}, {Op::Set8, 0x7A, 1}}, "Egg date is set without an egg location"},
     // PKHeX: INVALID Ball:BallG4Johto
-    {"hgss-ball", "slot-type0-pid1-lead12", {{Op::Set8, 0x86, 3}}, "HG/SS ball value does not match the D/P/Pt ball value"},
+    {"hgss-ball", "hgss-native-grass", {{Op::Set8, 0x86, 3}}, "HG/SS ball value does not match the D/P/Pt ball value"},
     // PKHeX: INVALID Encounter:EncInvalid Ball:BallEncMismatch Ball:BallG4Sinnoh
-    {"dppt-ball", "slot-type0-pid1-lead12", {{Op::Set8, 0x83, 17}, {Op::Set8, 0x86, 17}}, "D/P/Pt ball value is above the Cherish Ball"},
+    {"dppt-ball", "hgss-native-grass", {{Op::Set8, 0x83, 17}, {Op::Set8, 0x86, 17}}, "D/P/Pt ball value is above the Cherish Ball"},
     // PKHeX: INVALID Encounter:EncInvalid Ball:BallEncMismatch
     {"ball-gift", "static", {{Op::Set8, 0x83, 2}, {Op::Set8, 0x86, 2}}, "Ball (#"},
     // PKHeX: INVALID Ability:AbilityUnexpected
     {"ability-species", "static", {{Op::Set8, 0x15, 1}}, "Ability is not one of this species' abilities"},
     // PKHeX: INVALID Fateful:FatefulInvalid
-    {"fateful-nonevent", "slot-type0-pid1-lead12", {{Op::Or8, 0x40, 1}}, "Fateful encounter flag is set on a non-event encounter"},
+    {"fateful-nonevent", "hgss-native-grass", {{Op::Or8, 0x40, 1}}, "Fateful encounter flag is set on a non-event encounter"},
     // PKHeX: INVALID Language:OTLanguageShouldBeLeq_0 Nickname:NickMatchLanguageFail
     {"language", "static", {{Op::Set8, 0x17, 9}}, "Language ID "},
     // PKHeX: INVALID Nickname:NickLengthShort
@@ -234,7 +235,7 @@ const Rule kRules[] = {
     // PKHeX: INVALID Trainer:OTShort
     {"ot-empty", "static", {{Op::Set16, 0x68, 0xFFFF}}, "OT name is empty"},
     // PKHeX: INVALID CurrentMove:FirstWithTwoArguments
-    {"move-unlearnable", "slot-type0-pid1-lead12", {{Op::Set16, 0x2A, 22}, {Op::Set8, 0x31, 25}}, "Move "},
+    {"move-unlearnable", "hgss-native-grass", {{Op::Set16, 0x2A, 22}, {Op::Set8, 0x31, 25}}, "Move "},
     // PKHeX: INVALID CurrentMove:FirstWithTwoArguments
     {"pp-above-max", "static", {{Op::Set8, 0x30, 60}}, "Move "},
     // PKHeX: INVALID Encounter:EncInvalid Form:FormInvalidRangeLEQ_0F Encounter:EncTypeMismatch
@@ -250,7 +251,7 @@ const Rule kRules[] = {
     // PKHeX: INVALID Encounter:EncInvalid Level:LevelMetBelow Encounter:EncTypeMismatch
     {"met-level", "static", {{Op::And8, 0x84, 128}, {Op::Or8, 0x84, 50}}, "Current level is below the met level"},
     // PKHeX: INVALID Encounter:EncTypeMismatch
-    {"ground-tile", "slot-type0-pid1-lead12", {{Op::Set8, 0x85, 7}}, "Encounter ground tile type does not match the encounter"},
+    {"ground-tile", "hgss-native-grass", {{Op::Set8, 0x85, 7}}, "Encounter ground tile type does not match the encounter"},
     // PKHeX: INVALID Trainer:EncTradeChangedOT
     {"trade-ot", "trade", {{Op::Xor8, 0x68, 1}}, "In-game trade OT name was changed"},
     // PKHeX: INVALID Nickname:EncTradeChangedNickname
@@ -258,9 +259,9 @@ const Rule kRules[] = {
     // PKHeX: INVALID Trainer:EncTradeChangedOT
     {"ranch-ot", "ranch", {{Op::Xor8, 0x68, 1}}, "My Pokemon Ranch OT name was changed"},
     // PKHeX: INVALID PID:PIDTypeMismatch
-    {"wild-ivs", "slot-type0-pid1-lead12", {{Op::Xor8, 0x38, 1}}, "The PID/IV correlation type does not match this encounter"},
+    {"wild-ivs", "hgss-native-grass", {{Op::Xor8, 0x38, 1}}, "The PID/IV correlation type does not match this encounter"},
     // PKHeX: INVALID Memory:ContestSheenLEQ_0
-    {"contest-sheen", "slot-type0-pid1-lead12", {{Op::Set8, 0x23, 255}}, "Contest sheen is too high for the contest stats gained"},
+    {"contest-sheen", "hgss-native-grass", {{Op::Set8, 0x23, 255}}, "Contest sheen is too high for the contest stats gained"},
     // PKHeX: INVALID Ribbon:FirstComplex
     {"ribbon-hoenn", "static", {{Op::Or8, 0x3C, 1}}, "ribbon(s) are not obtainable or are missing a prerequisite"},
     // PKHeX: VALID
@@ -270,10 +271,10 @@ const Rule kRules[] = {
     // PKHeX: INVALID Encounter:EggFMetLevel_0 Memory:DateCalendarInvalidEgg Encounter:EncTypeMismatch
     {"egg-location", "static", {{Op::Set16, 0x7E, 0x7D0}}, "Hatched egg: met level must be 0"},
     // PKHeX: INVALID Encounter:EncGiftNotFound Encounter:EncTypeMismatch
-    {"met-location", "slot-type0-pid1-lead12", {{Op::Set16, 0x46, 0xBB8}}, "No matching Mystery Gift (event) encounter"},
+    {"met-location", "hgss-native-grass", {{Op::Set16, 0x46, 0xBB8}}, "No matching Mystery Gift (event) encounter"},
     // PKHeX: VALID (it does not compare the two met-location fields). Pt/HG/SS write 3002 to the D/P
     // field for this Pt-only place, so no game writes this pair: PKHEX_DISAGREEMENT_REVIEW.md item 14.
-    {"met-location-dp-field", "slot-type0-pid1-lead12", {{Op::Set16, 0x80, 0xBB8}}, "D/P met location field holds 3000 where Pt/HG/SS write 3002"},
+    {"met-location-dp-field", "hgss-native-grass", {{Op::Set16, 0x80, 0xBB8}}, "D/P met location field holds 3000 where Pt/HG/SS write 3002"},
     // PKHeX: INVALID Encounter:EncGiftNotFound
     {"fateful-missing", "pcd", {{Op::And8, 0x40, 254}}, "No matching Mystery Gift (event) encounter"},
     // PKHeX: INVALID Shiny:EncGiftPIDMismatch

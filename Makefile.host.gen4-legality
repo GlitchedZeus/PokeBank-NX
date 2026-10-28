@@ -33,3 +33,16 @@ GEN4_FUZZ_FLAGS := -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sa
 $(HOST_BUILD)/fuzz_legality_gen4: $(GEN4_FUZZ_SOURCES) $(GEN4_LEGALITY_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(GEN4_FUZZ_FLAGS) $(GEN4_LEGALITY_FLAGS) -Iinclude $(GEN4_FUZZ_SOURCES) -o $@
+
+# Source-backed HGSS outbreak map/type gates, retaining every native rod slot.
+GEN4_HGSS_SWARM_SOURCES := tests/test_gen4_hgss_swarm.cpp $(filter-out tests/test_legality_gen4.cpp,$(GEN4_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen4_hgss_swarm
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hgss_swarm_sanitize
+host-test: $(HOST_BUILD)/test_gen4_hgss_swarm
+host-sanitize: $(HOST_BUILD)/test_gen4_hgss_swarm_sanitize
+$(HOST_BUILD)/test_gen4_hgss_swarm: $(GEN4_HGSS_SWARM_SOURCES) $(GEN4_LEGALITY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) -Iinclude $(GEN4_HGSS_SWARM_SOURCES) -o $@
+$(HOST_BUILD)/test_gen4_hgss_swarm_sanitize: $(GEN4_HGSS_SWARM_SOURCES) $(GEN4_LEGALITY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_HGSS_SWARM_SOURCES) -o $@

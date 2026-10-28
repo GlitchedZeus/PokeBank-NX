@@ -17,6 +17,7 @@ on:
       - 'tests/test_gen3_workspace_legality.cpp'
       - 'tests/test_gen5_gift_receivability.cpp'
       - 'tests/test_gen4_ground_tile.cpp'
+      - 'tests/test_gen4_hgss_swarm.cpp'
       - 'tests/test_gen5_app_context.cpp'
       - 'tests/test_gen35_release_rules.cpp'
       - 'tests/test_public_fixture_selection.py'
@@ -24,6 +25,9 @@ on:
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
       - 'Makefile.host.gen5-legality'
+      - 'Makefile.host.gen4-legality'
+      - 'tools/gen_legality_gen4_data/**'
+      - 'docs/legality/campaign-20261028/**'
       - 'docs/legality/completion-session2/app-integration.*'
       - 'docs/legality/hardening-20261027/**'
       - 'tools/legality_completion/**'
@@ -53,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -67,6 +71,9 @@ jobs:
           set -euo pipefail
           python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
           python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
+          python3 tools/legality_completion/hgss_swarm_repair.py \
+            --native build-completion/native-hgss --fetch \
+            --report build-completion/hgss-swarm-catalog.json | tee build-completion/hgss-swarm-catalog.log
           for profile in normal sanitize; do
             flags=()
             if [ "$profile" = sanitize ]; then flags+=(--sanitize); fi
@@ -74,6 +81,10 @@ jobs:
               --source build-completion/native-hgss --fetch \
               --work "build-completion/native-$profile" --compiler "$CXX" "${flags[@]}" \
               2>&1 | tee "build-completion/native-ev-$profile.log"
+            python3 tools/legality_completion/hgss_swarm_native_witness.py \
+              --native build-completion/native-hgss --fetch \
+              --work "build-completion/native-swarm-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-swarm-$profile.log"
           done
       - name: Preserve official release and native EV witness evidence
         if: always()
@@ -85,6 +96,11 @@ jobs:
             build-completion/global-link-generator.log
             build-completion/public-fixture-selection.log
             build-completion/native-ev-*.log
+            build-completion/native-swarm-*.log
+            build-completion/hgss-swarm-catalog.*
+            build-completion/test_gen4_hgss_swarm*.log
+            tests/fixtures/gen15_session2/hgss_swarm.txt
+            docs/legality/campaign-20261028/HGSS_SWARM_*.json
             build-completion/CI_HEAD.txt
             build-completion/CI_COMPILER.txt
             tests/fixtures/gen15_session2/global_link.txt

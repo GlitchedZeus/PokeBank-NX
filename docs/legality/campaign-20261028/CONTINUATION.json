@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "status": "active; no completion claim",
+  "pr": 314,
+  "branch": "claude/gen1-5-legality-campaign-w9mkom",
+  "remote_head": "30696ba7b64ba9227fcc4db643159951dbeeb365",
+  "official_release": {
+    "tag": "26.10.18",
+    "sha": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea"
+  },
+  "newer_master_separate": "8e3eb3d47bb496746c3eaa9d160329d295a5e2e5",
+  "working_changes": "HGSS swarm/Safari repair locally validated; focused commit/push next",
+  "validation": {
+    "targeted": "14 unchanged records+40 slot alternatives; GCC/Clang normal+ASan/UBSan PASS",
+    "affected": "GenIV, GenV, release, terrain; GCC/Clang normal+ASan/UBSan PASS",
+    "generator": "PASS",
+    "primary": "exactly7 changed verdicts; all confirmed targeted false clean repaired",
+    "earlier_retained": "three full retained sets replayed; GenIV raw false clean0 in each",
+    "fresh": "238777 emitted GenIII\u2013V records retained; detailed FRESH_METRICS.json",
+    "legacy6501": "128 raw stricter;91 changed unsupported encounter entries need native-level classification;37 old met-setter disagreements",
+    "ci": "not yet run for this uncommitted change"
+  },
+  "metrics": {
+    "primary": "PRIMARY_METRICS.json",
+    "fresh": "FRESH_METRICS.json",
+    "older": "RETAINED_REPLAY_METRICS.json",
+    "raw_queue": "RAW_FALSE_CLEAN_QUEUE.json"
+  },
+  "fixture_hashes": "HGSS_SWARM_FIXTURES.json",
+  "queue": [
+    {
+      "priority": 0,
+      "kind": "implementation gap",
+      "task": "Complete frozen6501 native-level adjudication, source-backed comparison classification, and verify pushed-head CI; seven current-release cases repaired",
+      "source": "src/Legality/Gen4LegalityEncounters.cpp; src/field/encounter_check.c@pret/pokeheartgold9d8b759",
+      "cases": [
+        "m68527-metlocation",
+        "m68829-metlevel",
+        "m69291-metlocation",
+        "m69319-metlocation",
+        "m69502-metlocation",
+        "m69659-metlocation",
+        "m62953-metlevel"
+      ],
+      "next": "Inspect native Safari levels (files/arc/safari_enc.json); corroborate91 older-reference accepted inaccessible rows without dropping them. Preserve original invalid fixture."
+    },
+    {
+      "priority": 0,
+      "kind": "reference disagreement",
+      "task": "GB3+26 Japanese OT alternative-generation routes; retain all45 GenII rawFC",
+      "source": "src/Legality/GBLegality.cpp; tools/pkhex_gb_diff/compare.py"
+    },
+    {
+      "priority": 1,
+      "kind": "implementation gap",
+      "task": "Full joint GenIII\u2013V ancestry, reuse FiniteBreedingChain; first investigate seven GenV egg cases",
+      "cases": [
+        "b7875",
+        "m7876-tid",
+        "b9545",
+        "m9546-otname",
+        "m9547-otname",
+        "b21270",
+        "m21273-iv"
+      ]
+    },
+    {
+      "priority": 2,
+      "kind": "evidence gap",
+      "task": "53 primary+3correlated GenV modern word filters versus native applicability"
+    },
+    {
+      "priority": 3,
+      "kind": "implementation gap",
+      "task": "General joint GenIII/IV EV/EXP solver, preserve native HGSS counterexample"
+    },
+    {
+      "priority": 4,
+      "kind": "implementation and evidence gaps",
+      "task": "Remaining encounters/RNG/moves, independent branch inventory, historical provenance"
+    }
+  ],
+  "scope": "engine only; no PR307/app merge/NRO/combined build",
+  "next_command": "python3 tools/legality_completion/hgss_swarm_repair.py --native ../outputs/legality-campaign-20261028/native-hgss --report ../outputs/legality-campaign-20261028/recheck.json",
+  "artifacts": "outputs/legality-campaign-20261028; immutable baseline outputs/legality-hardening-20261027",
+  "next_breeding_reference": {
+    "repo": "fuddlesworth/pokebw2",
+    "sha": "35d735b52bb77338f3a138d321e562975ade556e",
+    "status": "complete src and pokemon subtrees fetched; top-level recursive tree truncated; data/egg tutor research only"
+  }
+}

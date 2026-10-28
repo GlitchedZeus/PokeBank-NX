@@ -11,13 +11,20 @@ here=$(cd "$(dirname "$0")" && pwd); repo=$(cd "$here/../.." && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 dotnet build "$here/Gen4DataDump.csproj" -c Release -p:PKHEX_ROOT="$pkhex" -o "$work/bin" \
     > "$work/build.log" || { cat "$work/build.log"; exit 1; }
+# Apply narrowly scoped, original-game-backed corrections after the frozen
+# PKHeX dump. HGSS_NATIVE_SOURCE permits an already hash-verified offline cache.
+native=${HGSS_NATIVE_SOURCE:-"$work/native-hgss"}
+dotnet "$work/bin/Gen4DataDump.dll" "$pkhex" "$work/Gen4LegalityData.h" "$work/Gen4LegalityData.cpp"
+python3 "$repo/tools/legality_completion/hgss_swarm_repair.py" \
+    --native "$native" --fetch --source "$work/Gen4LegalityData.cpp" \
+    --header "$work/Gen4LegalityData.h" --report "$work/hgss-swarm.json" --apply
 if [ "$mode" = "--check" ]; then
-    dotnet "$work/bin/Gen4DataDump.dll" "$pkhex" "$work/Gen4LegalityData.h" "$work/Gen4LegalityData.cpp"
     status=0
     cmp -s "$work/Gen4LegalityData.h" "$repo/include/Legality/Gen4LegalityData.h" || { echo "include/Legality/Gen4LegalityData.h is stale"; status=1; }
     cmp -s "$work/Gen4LegalityData.cpp" "$repo/src/Legality/Gen4LegalityData.cpp" || { echo "src/Legality/Gen4LegalityData.cpp is stale"; status=1; }
     [ "$status" = 0 ] && echo "Gen IV legality tables are up to date"
     exit "$status"
 fi
-dotnet "$work/bin/Gen4DataDump.dll" "$pkhex" "$repo/include/Legality/Gen4LegalityData.h" "$repo/src/Legality/Gen4LegalityData.cpp"
+cp "$work/Gen4LegalityData.h" "$repo/include/Legality/Gen4LegalityData.h"
+cp "$work/Gen4LegalityData.cpp" "$repo/src/Legality/Gen4LegalityData.cpp"
 echo "wrote include/Legality/Gen4LegalityData.h and src/Legality/Gen4LegalityData.cpp"

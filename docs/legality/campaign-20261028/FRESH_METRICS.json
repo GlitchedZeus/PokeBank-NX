@@ -1,0 +1,95 @@
+{
+  "scope": "Fresh emitted synthetic GenIII\u2013V base corpus; no new GB sample. Internal generator pre-emission conversion/encounter exceptions remain a coverage limitation; no emitted case removed. No hardware/acquisition accuracy claim.",
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "generations": {
+    "3": {
+      "records": 40945,
+      "raw_agreement": 40187,
+      "raw_agreement_percent": 98.14873610941507,
+      "raw_false_invalid": 0,
+      "raw_false_clean": 0,
+      "incomplete": 758,
+      "loadfail": 0,
+      "reference_fishy_all": 4450,
+      "reference_fishy_valid": 1097,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "INVALID/INCOMPLETE": 5,
+        "INVALID/INVALID": 22038,
+        "VALID/INCOMPLETE": 753,
+        "VALID/NOPROBLEMS": 18149
+      },
+      "fishy_cross_table": {
+        "INVALID/INVALID": 3353,
+        "VALID/INCOMPLETE": 749,
+        "VALID/NOPROBLEMS": 348
+      }
+    },
+    "4": {
+      "records": 63244,
+      "raw_agreement": 62289,
+      "raw_agreement_percent": 98.4899753336285,
+      "raw_false_invalid": 45,
+      "raw_false_clean": 0,
+      "incomplete": 910,
+      "loadfail": 0,
+      "reference_fishy_all": 4667,
+      "reference_fishy_valid": 533,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "INVALID/INVALID": 36377,
+        "VALID/INCOMPLETE": 910,
+        "VALID/INVALID": 45,
+        "VALID/NOPROBLEMS": 25912
+      },
+      "fishy_cross_table": {
+        "INVALID/INVALID": 4134,
+        "VALID/NOPROBLEMS": 533
+      }
+    },
+    "5": {
+      "records": 134588,
+      "raw_agreement": 133656,
+      "raw_agreement_percent": 99.3075162718816,
+      "raw_false_invalid": 0,
+      "raw_false_clean": 36,
+      "incomplete": 896,
+      "loadfail": 0,
+      "reference_fishy_all": 32116,
+      "reference_fishy_valid": 14182,
+      "reference_misc_error": 555,
+      "cross_table": {
+        "INVALID/INCOMPLETE": 390,
+        "INVALID/INVALID": 72055,
+        "INVALID/NOPROBLEMS": 36,
+        "VALID/INCOMPLETE": 506,
+        "VALID/NOPROBLEMS": 61601
+      },
+      "fishy_cross_table": {
+        "INVALID/INCOMPLETE": 294,
+        "INVALID/INVALID": 17635,
+        "INVALID/NOPROBLEMS": 5,
+        "VALID/INCOMPLETE": 477,
+        "VALID/NOPROBLEMS": 13705
+      }
+    }
+  },
+  "files": {
+    "gen5-production.txt": {
+      "sha256": "2fb403fa5decd21686c1f9983f8764120d514fc792233011e283f32845df695c",
+      "bytes": 10713736
+    },
+    "gen5-reference.txt": {
+      "sha256": "c4c7413d74f1612f393936e5df6f4ed33e2c7aecbdcbf9cfc0ec4a5fbaabe2e7",
+      "bytes": 48617117
+    },
+    "gen34-production.txt": {
+      "sha256": "a7a0a4ebbb0f2cbfd0b87139846f1452bd9f0e4e84cd625d4dc60b27aa99054c",
+      "bytes": 15663266
+    },
+    "gen34-reference.txt": {
+      "sha256": "e5041c8f3917262fe2f8166c084057d8bde34806cd79f3ebc7c5665700ce1bc7",
+      "bytes": 31198438
+    }
+  }
+}

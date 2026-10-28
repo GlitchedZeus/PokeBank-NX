@@ -76,6 +76,14 @@ constexpr uint8_t kTileGrass = 2, kTileWater = 7;
 
 // ------------------------------------------------------------------ per-kind matching
 bool slotMatchExact(const D::Area4& a, const D::Slot4& s, const Pk4& pk, const Evo& evo) noexcept {
+    // HGSS's ordinary encounter bank at map section 202 is a placeholder.
+    // With the Safari system flag, the native land/surf/fishing dispatch uses
+    // FieldSystem_GenerateSafariEncounter and its ten-slot area tables. Without
+    // that flag the battle cannot supply the Safari Ball required here. Do not
+    // let a placeholder surf/rod slot bypass the real Safari level/frame check.
+    // pret/pokeheartgold@9d8b759: src/field/encounter_check.c.
+    if (isHGSS(a.version) && a.location == kLocSafariHGSS && a.type < SlotRef::kSafariGrass)
+        return false;
     if (s.form != evo.form && s.species != kBurmy) {
         if (s.form < 30) return false; // IsRandomUnspecificForm (FormDynamic)
     }
