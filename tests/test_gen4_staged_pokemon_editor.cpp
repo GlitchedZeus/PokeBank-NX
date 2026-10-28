@@ -621,6 +621,61 @@ void testSharedHoldYGroupPlacementAtomicity() {
     assert(!editor->hasChanges());
 }
 
+void testGen4BagAddSortsBerriesAndMachinesLikeNativeGames() {
+    // Native evidence: pret/pokeplatinum Bag_TryAddItem and pret/pokeheartgold
+    // Bag_AddItem call the pocket sort (ascending item ID, empties last) after
+    // every Add in POCKET_BERRIES and POCKET_TMHMS only.
+    namespace Bag = PokeVault::Integration::Gen4;
+    const size_t items = static_cast<size_t>(Bag::BagPocket::Items);
+    const size_t machines = static_cast<size_t>(Bag::BagPocket::Machines);
+    const size_t berries = static_cast<size_t>(Bag::BagPocket::Berries);
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        const auto original = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            original, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+        for (uint16_t id : {155, 150, 152}) assert(editor->stageBagAdd(berries, id, 5 + id, &error));
+        for (uint16_t id : {330, 420, 328, 329}) assert(editor->stageBagAdd(machines, id, 1, &error));
+        for (uint16_t id : {100, 70, 90}) assert(editor->stageBagAdd(items, id, 3, &error));
+        auto parsed = Gen4ReadOnlySave::parse(editor->stagedBytes(), layout, gameId(layout), &error);
+        assert(parsed);
+        const auto bag = Bag::decodeReadOnlyBag(*parsed);
+        assert(bag);
+        const std::vector<uint16_t> wantB{150, 152, 155}, wantM{328, 329, 330, 420},
+            wantI{100, 70, 90};  // Items pocket is NOT sorted natively
+        auto ids = [&](size_t p) {
+            std::vector<uint16_t> r;
+            for (const auto& s : (*bag)[p]) r.push_back(s.itemId);
+            return r;
+        };
+        assert(ids(berries) == wantB);
+        assert(ids(machines) == wantM);
+        assert(ids(items) == wantI);
+        for (const auto& s : (*bag)[berries]) assert(s.count == 5 + s.itemId);
+        // Trailing slots are native blanks, so no hole is created by the sort.
+        const auto spec = Bag::bagLayout(layout)[berries];
+        const size_t base = parsed->generalSelection().offset + spec.offset;
+        for (size_t slot = 3; slot < spec.slots; ++slot)
+            for (size_t k = 0; k < 4; ++k) assert(editor->stagedBytes()[base + slot * 4 + k] == 0);
+        // Fill the whole Berry pocket in descending order, then verify sorted.
+        for (uint16_t id = 212; id >= 149; --id) {
+            if (id == 150 || id == 152 || id == 155) continue;
+            assert(editor->stageBagAdd(berries, id, 1, &error));
+        }
+        parsed = Gen4ReadOnlySave::parse(editor->stagedBytes(), layout, gameId(layout), &error);
+        const auto full = Bag::decodeReadOnlyBag(*parsed);
+        assert(full && (*full)[berries].size() == 64);
+        for (size_t i = 0; i < 64; ++i) assert((*full)[berries][i].itemId == 149 + i);
+        const auto prior = editor->stagedBytes();
+        assert(!editor->stageBagAdd(berries, 149, 1, &error));
+        assert(editor->stagedBytes() == prior);
+        editor->discard();
+        assert(editor->stagedBytes() == original);
+    }
+}
+
 void testGen4BagQuantityBoundsAndSourceImmutability() {
     // Run against three strict dual-partition retail-layout fixtures, not
     // only an isolated presenter/source-code string contract. Exercise the
@@ -1351,6 +1406,7 @@ int main() {
     testMoveSwapAndCrossBoxTransactions();
     testSharedHoldYGroupPlacementAtomicity();
     testGen4BagQuantityBoundsAndSourceImmutability();
+    testGen4BagAddSortsBerriesAndMachinesLikeNativeGames();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
