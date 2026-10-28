@@ -29,6 +29,9 @@ on:
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
       - 'tools/pkhex_gen5_diff/**'
+      # HG/SS placeholder allowance for transfers (tools/pkhex_gen5_diff/run.sh).
+      - 'tools/pkhex_gen34_diff/hgss_placeholders.py'
+      - 'docs/legality/campaign-20261028/HGSS_SWARM_REMOVED_ROWS.json'
       - 'Makefile.host.gen5-legality'
       - '.github/workflows/legality-gen5-pkhex-diff.yml'
   workflow_dispatch:

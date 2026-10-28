@@ -16,6 +16,8 @@ import re
 import sys
 from collections import Counter, defaultdict
 
+import hgss_placeholders
+
 SHOW = int(sys.argv[2]) if len(sys.argv) > 2 else 12
 GAMES = ["R", "S", "E", "FR", "LG", "D", "P", "Pt", "HG", "SS"]
 VERDICTS = ["INVALID", "INCOMPLETE", "NOPROBLEMS", "LOADFAIL"]
@@ -86,7 +88,8 @@ def deliberate(r):
     for name, text, pred in DELIBERATE:
         if all(norm(i) == text for i in r["issues"]) and pred(r):
             return name
-    return None
+    # HG/SS Safari and rod-swarm placeholders (hgss_placeholders.py).
+    return hgss_placeholders.native(r["cart"], r["hex"], r["enc"], r["issues"])
 
 
 for r in rows:

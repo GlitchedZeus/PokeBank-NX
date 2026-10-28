@@ -92,11 +92,13 @@ fi
 echo "PKHeX rejects, PokeBank NX Incomplete (by mutation and PKHeX result):"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID" && b[2]!="INVALID") {m=a[1]; sub(/^m[0-9]+-/,"",m); sub(/^b[0-9]+$/,"base",m); r=$1; sub(/^[^;]*; /,"",r); print m" :: "r}}' \
     "$work/joined.txt" | sort | uniq -c | sort -rn | awk -v n="${SHOW:-15}" 'NR <= n'
-# No allow-list: PokeBank NX has no deliberately stricter Gen V rule. The former one
-# (hidden-ability flag with a slot 1/2 ability on a hidden-ability-only template) is a
-# Warning since docs/legality/PKHEX_DISAGREEMENT_REVIEW.md found no original-game evidence.
-false_invalid=$(awk -F'\t' '{split($1,a," "); split($2,b," ");
-    if (a[3]=="VALID" && b[2]=="INVALID") print}' "$work/joined.txt")
+# No Gen V rule is deliberately stricter. The former one (hidden-ability flag with a slot 1/2
+# ability on a hidden-ability-only template) is a Warning since
+# docs/legality/PKHEX_DISAGREEMENT_REVIEW.md found no original-game evidence. The only allowance
+# is for HG/SS-origin transfers that only an HG/SS Safari or rod-swarm placeholder row explains,
+# which frozen PKHeX still matches and the Gen IV origin analysis rejects
+# (tools/pkhex_gen34_diff/hgss_placeholders.py checks the record bytes and issues).
+false_invalid=$(python3 "$repo/tools/pkhex_gen34_diff/hgss_placeholders.py" gen5 "$work/joined.txt")
 if [ -n "$false_invalid" ]; then
     echo "FALSE INVALID (PKHeX VALID, PokeBank NX INVALID):"
     printf '%s\n' "$false_invalid" | awk -v n="${SHOW:-15}" 'NR <= n'

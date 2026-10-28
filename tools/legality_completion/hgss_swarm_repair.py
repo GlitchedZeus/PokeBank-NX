@@ -70,7 +70,8 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--native',type=pathlib.Path,required=True);p.add_argument('--fetch',action='store_true')
     p.add_argument('--source',type=pathlib.Path,default=PROJECT/'src/Legality/Gen4LegalityData.cpp')
     p.add_argument('--header',type=pathlib.Path,default=PROJECT/'include/Legality/Gen4LegalityData.h')
-    p.add_argument('--report',type=pathlib.Path,required=True);p.add_argument('--apply',action='store_true');a=p.parse_args()
+    p.add_argument('--report',type=pathlib.Path,required=True);p.add_argument('--apply',action='store_true')
+    p.add_argument('--removed-rows',type=pathlib.Path,help='also write the removed rows the PKHeX oracles read (tools/pkhex_gen34_diff/hgss_placeholders.py)');a=p.parse_args()
     pins=checked_native(a.native,a.fetch);expected,meta=native_rows(a.native)
     original=a.source.read_text();candidate,removed,count=repaired(original,expected)
     report={'native_commit':pins['commit'],'source_pins':str(PINS.relative_to(PROJECT)),
@@ -79,6 +80,10 @@ def main():
         'before_sha256':hashlib.sha256(original.encode()).hexdigest(),'candidate_sha256':hashlib.sha256(candidate.encode()).hexdigest(),
         'removed':removed,'after_slot_count':count,'native_projection_metadata':meta}
     a.report.write_text(json.dumps(report,indent=2)+'\n')
+    if a.removed_rows:
+        rows=sorted({(r['area'][0],r['area'][1],r['area'][2],r['slot'][2],r['slot'][3]) for r in removed})
+        head=json.dumps({'native_commit':pins['commit'],'species':129,'columns':['version','location','slot_type','level_min','level_max']})
+        a.removed_rows.write_text(head[:-1]+', "rows": [\n'+',\n'.join('  '+json.dumps(list(r)) for r in rows)+'\n]}\n')
     if a.apply:
         a.source.write_text(candidate)
         h=a.header.read_text();h,n=re.subn(r'(kSlotCount\s*=\s*)\d+',lambda m:m[1]+str(count),h,count=1);assert n==1;a.header.write_text(annotate(h))
