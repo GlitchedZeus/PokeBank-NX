@@ -5278,10 +5278,12 @@ int reviewGeneration(const std::string& gameId) {
                         }
                     }
                     // Round 6: the staged Bag's + opens Review (ReviewEntry.h).
+                    // ZR: Top Up / Add Missing (owner Oct 28, Feature B; ClassicInventoryOverlay.cpp).
                     instructions = PokeBank::UIModel::inventoryFooter(
                         true, pocket.has_value(), hasSelection, quantityEditable,
                         PokeBank::UIModel::ReviewEntry::footerText(
-                            PokeBank::UIModel::ReviewEntry::Screen::Bag, reviewGeneration(sourceGameId)));
+                            PokeBank::UIModel::ReviewEntry::Screen::Bag, reviewGeneration(sourceGameId)),
+                        ClassicInventory::topUpAvailable(*this));
                 } else {
                     const bool categorySupported = selectedCategory >= 0 &&
                         selectedCategory < static_cast<int>(trainer.items.size());
@@ -5461,6 +5463,9 @@ int reviewGeneration(const std::string& gameId) {
                     }
                     footer.push("X", "Add Item");
                     if (hasItem) footer.push("Y", "Remove");
+                    // Top Up / Add Missing (owner Oct 28, Feature B; Gen4SharedPokemonSurface.inc),
+                    // offered like X Add Item: the surface reports when no staged bag exists.
+                    footer.push("ZR", "Top Up");
                     // Round 6 (B08): Review straight from the Bag (+; Y stays Remove).
                     static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
                                       PokeBank::UIModel::ReviewEntry::Screen::Bag, 4).glyph[0] == '+');

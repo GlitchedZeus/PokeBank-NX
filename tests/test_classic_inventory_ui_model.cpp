@@ -211,7 +211,8 @@ int main() {
         };
         for (int gen = 1; gen <= 5; ++gen) {
             const auto lines = InvHelp::lines(gen);
-            const char* expected[] = {"", "D-pad/Stick", "L/R", "A", "X,Y", "A,B", "+", "B", "B,-"};
+            // Owner Oct 28 (Feature B): ZR opens Top Up / Add Missing on every Gen I-V Bag.
+            const char* expected[] = {"", "D-pad/Stick", "L/R", "A", "X,Y", "ZR", "A,B", "+", "B", "B,-"};
             assert(lines.size() == std::size(expected));
             for (std::size_t i = 0; i < lines.size(); ++i) {
                 if (glyphs(lines[i]) != expected[i])
@@ -221,18 +222,20 @@ int main() {
                 assert(lines[i].find("Inventory Options") == std::string::npos);
                 assert(lines[i].find("remains available") == std::string::npos);
             }
-            assert(lines[6].rfind("+   Review staged changes", 0) == 0);
+            assert(lines[7].rfind("+   Review staged changes", 0) == 0);
+            assert(lines[5].rfind("ZR   Top Up / Add Missing", 0) == 0);
             assert(lines[2].find(gen <= 3 ? "category" : "pocket") != std::string::npos);
         }
         std::ifstream in("src/UI/ClassicInventoryOverlay.cpp", std::ios::binary);
         const std::string overlay((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        const auto help = overlay.find("if (state.helpActive) {\n        // Round 7 (B04)");
-        const auto helpEnd = overlay.find("if (state.optionsActive) {", help);
+        // Owner Oct 28 (Bag Help #2, d9105fae): the Gen I-III Bag Help is the shared content-sized
+        // modal (ScreenChrome::drawInfoOverlay, which draws every row through drawGlyphHelpLine) with
+        // the InventoryHelp title and rows, no longer a 900 x 610 panel of its own.
+        const auto help = overlay.find("if (state.helpActive && !state.pickerActive && !state.discardConfirmActive) {");
+        const auto helpEnd = overlay.find("return;", help);
         assert(help != std::string::npos && helpEnd != std::string::npos);
         const auto body = overlay.substr(help, helpEnd - help);
-        assert(body.find("fb.drawText(x + 30, y + 20, InvHelp::kTitle,") != std::string::npos);
-        assert(body.find("for (const auto& line : InvHelp::lines(generation))") != std::string::npos);
-        assert(body.find("drawGlyphHelpLine(fb, x + 34, rowY, line,") != std::string::npos);
+        assert(body.find("drawInfoOverlay(fb, InvHelp::kTitle, InvHelp::lines(generation));") != std::string::npos);
         assert(body.find("\"Inventory Help\"") == std::string::npos);
         assert(std::string(InvHelp::kTitle) == "Inventory Controls");
     }

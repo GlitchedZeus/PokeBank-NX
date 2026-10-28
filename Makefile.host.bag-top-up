@@ -1,0 +1,43 @@
+# Top Up / Add Missing (owner Oct 28, Feature B; adapted from PKSE d2ad323 "Add All Items").
+# The Gen I-V adapters (include/Inventory/BulkItemAdapters*.h) over the REAL staged Bag editors on
+# synthetic saves, plus the shared SETUP / PREVIEW model (include/UI/BagTopUpModel.h). The real
+# TrainerViewScreen flow (ZR -> preview -> B / A -> Review) is tests/test_ui_bag_top_up_host.cpp in
+# Makefile.host.host-ui. Opt-in real saves: POKEBANK_REAL_SAVES=<folder> (never copied into the repo)
+# runs tests/test_bag_top_up_real_saves.cpp against every Gen III / IV / V save found there.
+# Included by Makefile.host after Makefile.host.jp-gen2.
+
+BAG_TOP_UP_COMMON_SOURCES := $(sort \
+	src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+	src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2PackedMove.cpp \
+	src/Integration/Gen2/Gen2UniversalInventory.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \
+	src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp \
+	$(filter-out tests/test_gen4_staged_pokemon_editor.cpp,$(GEN4_STAGED_EDITOR_SOURCES)))
+BAG_TOP_UP_HEADERS := include/Inventory/BulkItemPlan.h include/Inventory/BulkItemApply.h \
+	include/Inventory/BulkItemAdaptersClassic.h include/Inventory/BulkItemAdaptersNds.h \
+	include/UI/BagTopUpModel.h tests/fuzz_synthetic_saves.h \
+	include/Integration/Gen1/Gen1StagedInventoryEditor.h include/Integration/Gen2/Gen2StagedEditor.h \
+	include/Integration/Gen3/Gen3StagedInventoryEditor.h include/Integration/Gen5/Gen5Bag.h
+
+BAG_TOP_UP_TESTS := $(HOST_BUILD)/test_bag_top_up_adapters $(HOST_BUILD)/test_bag_top_up_real_saves
+BAG_TOP_UP_SANITIZE_TESTS := $(addsuffix _sanitize,$(BAG_TOP_UP_TESTS))
+
+HOST_TESTS += $(BAG_TOP_UP_TESTS)
+HOST_SANITIZE_TESTS += $(BAG_TOP_UP_SANITIZE_TESTS)
+host-test: $(BAG_TOP_UP_TESTS)
+host-sanitize: $(BAG_TOP_UP_SANITIZE_TESTS)
+
+.PHONY: host-bag-top-up
+host-bag-top-up: $(BAG_TOP_UP_TESTS)
+	./$(HOST_BUILD)/test_bag_top_up_adapters
+	./$(HOST_BUILD)/test_bag_top_up_real_saves
+
+$(HOST_BUILD)/test_bag_top_up_%: tests/test_bag_top_up_%.cpp $(BAG_TOP_UP_COMMON_SOURCES) $(BAG_TOP_UP_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Itests $< $(BAG_TOP_UP_COMMON_SOURCES) -o $@
+$(HOST_BUILD)/test_bag_top_up_%_sanitize: tests/test_bag_top_up_%.cpp $(BAG_TOP_UP_COMMON_SOURCES) $(BAG_TOP_UP_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Itests $< $(BAG_TOP_UP_COMMON_SOURCES) -o $@

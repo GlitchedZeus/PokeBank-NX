@@ -83,6 +83,15 @@ std::vector<InventoryEntry> StagedInventoryEditor::entries(Inventory::ClassicPoc
     return filtered;
 }
 
+std::size_t StagedInventoryEditor::freeSlots(Inventory::ClassicPocket pocket, std::string& error) const {
+    ReadOnlyInventory decoded;
+    if (!decode(decoded, error)) return 0;
+    const bool pc = isPcPocket(pocket);
+    const std::size_t used = pc ? decoded.pcItems.size() : decoded.bag.size();
+    const std::size_t capacity = blockCapacity(pc);
+    return used < capacity ? capacity - used : 0;
+}
+
 bool StagedInventoryEditor::rewrite(bool pc, const std::vector<InventoryEntry>& values,
                                     std::string& error) {
     const std::size_t capacity = blockCapacity(pc);

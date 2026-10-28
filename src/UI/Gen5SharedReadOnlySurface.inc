@@ -7,6 +7,8 @@
 #include "Inventory/ItemQuantityPolicy.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "UI/SharedBagAddPicker.h"
+#include "UI/SharedBagTopUp.h"
+#include "Inventory/BulkItemAdaptersNds.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
@@ -176,6 +178,7 @@ struct Gen5EditorState : EditorSurface::EditorState {
     bool workspaceOpen = false;
     PendingPidChange5 pid;
     SharedScrollbar::State bagAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
+    UI::SharedBagTopUp::Ui bagTopUp;          // Top Up / Add Missing (owner Oct 28, Feature B): ZR
 };
 constexpr int kGen5PidCancelTouch = 41700;
 constexpr int kGen5PidConfirmTouch = 41701;
@@ -991,6 +994,85 @@ PokeVault::Inventory::QuantityPolicy::ItemQuantityRule gen5PolicyRule(
     if (pocket >= kPockets.size() || !QP::gameFromId(screen.sourceGameId, game)) return {};
     return QP::quantityRule(game, kPockets[pocket], id);
 }
+// ---- Top Up / Add Missing (owner Oct 28, Feature B) ----------------------------------------
+// ZR on the Bag opens the shared flow (UI/SharedBagTopUp.h). The plan reads Gen5StagedBag through
+// Inventory/BulkItemAdaptersNds.h with gen5BagChoices (the Add picker's list); A in the preview
+// stages it all or nothing; a refused refresh restores the whole workspace; B stages nothing.
+namespace BI=PokeVault::Inventory::BulkItems;
+constexpr int kGen5TopUpTouchBase=81900;
+std::string gen5TopUpPocketName(BI::Pocket pocket) {
+    const auto native=BI::Gen5Bag::nativePocket(pocket);
+    return native?PokeVault::Integration::Gen5::bagPocketName5(*native):"Bag";
+}
+bool planGen5TopUp(TrainerViewScreen& screen,BI::Plan& out,std::vector<BI::Pocket>& covered,std::string& error) {
+    auto& trainer=nativeTrainer(screen);
+    auto& ws=trainer.stagedPokemon();
+    const auto game=BI::Gen5Bag::game(screen.sourceGameId);
+    auto* bag=ws.stagedBag(&error);
+    if(!game || !bag) {if(error.empty())error="Gen V bag is unavailable";return false;}
+    const auto pockets=BI::Gen5Bag::pockets(*bag);
+    const size_t pocket=trainer.bagScreen().pocket();
+    if(pocket>=BI::Gen5Bag::kPockets.size()) {error="Gen V pocket is unavailable";return false;}
+    const auto request=PokeBank::UIModel::BagTopUp::request(editorStateFor(screen).bagTopUp.model,
+        BI::Gen5Bag::kPockets[pocket],BI::bagPockets(pockets));
+    covered=request.pockets;
+    out=BI::plan(*game,request,pockets);
+    return true;
+}
+void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touch) {
+    namespace Model=PokeBank::UIModel::BagTopUp;
+    auto& trainer=nativeTrainer(screen);
+    auto& ui=editorStateFor(screen).bagTopUp;
+    const auto action=UI::SharedBagTopUp::handleInput(ui,keys,tap,kGen5TopUpTouchBase,touch);
+    screen.controllerNavigation.reset();
+    std::string error;
+    switch(action) {
+        case Model::Action::None:
+        case Model::Action::Close:
+            return;
+        case Model::Action::PromptAmount:
+            (void)UI::SharedBagTopUp::promptAmount(ui);
+            return;
+        case Model::Action::BuildPreview: {
+            BI::Plan plan;
+            std::vector<BI::Pocket> covered;
+            if(!planGen5TopUp(screen,plan,covered,error)) {screen.postStatus(error,320);return;}
+            Model::showPreview(ui.model,std::move(plan),covered,
+                [&](BI::Pocket,uint16_t id){return bagItemLabel(screen,id);},
+                [](BI::Pocket p){return gen5TopUpPocketName(p);});
+            return;
+        }
+        case Model::Action::Confirm: {
+            BI::Plan again;
+            std::vector<BI::Pocket> covered;
+            if(!planGen5TopUp(screen,again,covered,error) || !Model::samePlan(again,ui.model.plan)) {
+                screen.postStatus(error.empty()?"The Bag changed; preview again":error,320);
+                Model::close(ui.model);
+                return;
+            }
+            auto& ws=trainer.stagedPokemon();
+            auto snapshot=ws;
+            auto* bag=ws.stagedBag(&error);
+            const auto result=bag?BI::apply(*bag,ui.model.plan,BI::Gen5Bag::Adapter{}):BI::ApplyResult{};
+            Model::close(ui.model);
+            ui.scrollbar.reset();
+            if(!result.applied) {
+                screen.postStatus("Nothing staged: "+(result.error.empty()?error:result.error),400);
+                return;
+            }
+            if(!trainer.refreshStagedPokemonPresentation(error)) {
+                ws=std::move(snapshot);
+                std::string restored;
+                (void)trainer.refreshStagedPokemonPresentation(restored);
+                screen.postStatus("Gen V Top Up refresh failed; nothing staged: "+error,360);
+                return;
+            }
+            syncBagCursor(screen);
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added),400);
+            return;
+        }
+    }
+}
 bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touch) {
     namespace G=PokeVault::Integration::Gen5;
     using BagSurface=G::Gen5BagScreen::Surface;
@@ -1002,6 +1084,12 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
         return trainer.refreshStagedPokemonPresentation(why);
     };
     std::string error;
+    if(editorStateFor(screen).bagTopUp.active()) {
+        // Top Up / Add Missing owns every input while it is open (SETUP or PREVIEW).
+        handleGen5TopUp(screen,keys,tap,touch);
+        syncBagCursor(screen);
+        return true;
+    }
     switch(bag.surface()) {
         case BagSurface::AddPicker: {
             const int count=static_cast<int>(bag.addChoices().size());
@@ -1118,6 +1206,13 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
     if(keys&HidNpadButton_Plus) {
         if(!state.openReviewFromBrowse(ws))
             screen.postStatus("No staged Gen V changes to review",220);
+        screen.controllerNavigation.reset();
+    } else if(keys&HidNpadButton_ZR) {
+        // Top Up / Add Missing (owner Oct 28, Feature B): offered where X Add is.
+        if(!bag.availability(ws).addItem)
+            screen.postStatus(G::Gen5BagScreen::available(ws)?"Top Up is unavailable in this pocket"
+                                                             :"Gen V bag is unavailable",300);
+        else PokeBank::UIModel::BagTopUp::open(editorStateFor(screen).bagTopUp.model);
         screen.controllerNavigation.reset();
     } else if(keys&HidNpadButton_X) {
         if(!bag.openAdd(ws,error))screen.postStatus(error,300);
@@ -2043,6 +2138,11 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     const auto& bag=trainer.bagScreen();
     syncBagCursor(screen);
     screen.drawGSCOverlay(fb); // The shared Items panel with Gen V pockets.
+    if(editorStateFor(screen).bagTopUp.active()) {
+        UI::SharedBagTopUp::drawTopUpModal(fb,screen.touchButtons,editorStateFor(screen).bagTopUp,
+            kGen5TopUpTouchBase,G::bagPocketName5(bag.pocket()),"Gen V Bag");
+        return;
+    }
     std::vector<ControllerHint> hints;
     for(const auto& entry:bag.footer(ws))hints.push_back({entry.glyph,entry.label});
     if(bag.surface()==BagSurface::Browse) {

@@ -35,6 +35,10 @@ public:
     std::vector<InventoryEntry> entries(Inventory::ClassicPocket pocket, std::string& error) const;
     bool stageSetQuantity(Inventory::ClassicPocket pocket, uint16_t itemId, uint16_t quantity,
                           std::string& error);
+    // Free native slots of the list behind `pocket` (the 20-slot Bag every non-PC category views, or
+    // the 50-slot PC list), counted from the staged bytes. Top Up / Add Missing plans new stacks
+    // only into these (Inventory/BulkItemAdapters.h).
+    std::size_t freeSlots(Inventory::ClassicPocket pocket, std::string& error) const;
     bool stageRemove(Inventory::ClassicPocket pocket, uint16_t itemId, std::string& error) {
         return stageSetQuantity(pocket, itemId, 0, error);
     }

@@ -39,11 +39,13 @@ template <class Editor, class Adapter>
         }
         if (!adapter.setQuantity(trial, t, error)) { result.error = error.empty() ? "A top-up was refused" : error; return result; }
     }
+    // Top-ups read back by their native stack before any add runs: a writer that may place a new
+    // stack in an interior gap (Gen V) would otherwise shift the visible row a top-up names.
+    for (const auto& t : plan.topUps)
+        if (adapter.quantity(trial, t.pocket, t.itemId, t.slot) != t.to) { result.error = "A top-up did not read back"; return result; }
     for (const auto& a : plan.adds) {
         if (!adapter.add(trial, a, error)) { result.error = error.empty() ? "An item could not be added" : error; return result; }
     }
-    for (const auto& t : plan.topUps)
-        if (adapter.quantity(trial, t.pocket, t.itemId, t.slot) != t.to) { result.error = "A top-up did not read back"; return result; }
     for (const auto& a : plan.adds)
         if (adapter.quantity(trial, a.pocket, a.itemId, SIZE_MAX) != a.quantity) { result.error = "An added item did not read back"; return result; }
     editor = std::move(trial);

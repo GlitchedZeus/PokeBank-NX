@@ -36,7 +36,8 @@ void require(bool ok, const std::string& what) {
 const char* typeName(G::MenuType t) {
     constexpr const char* names[] = {"ItemPicker", "KeyItemWarning", "RemoveConfirm", "HeldItemPicker",
         "BallPicker", "SpeciesPicker", "MovePicker", "LocationPicker", "BoxMenu", "BackupMenu",
-        "LaunchConfirm", "SaveDiscard", "ChoicePicker"};
+        "LaunchConfirm", "SaveDiscard", "ChoicePicker", "BulkSetup", "BulkPreview"};
+    static_assert(std::size(names) == static_cast<std::size_t>(G::MenuType::Count), "one name per MenuType");
     return names[static_cast<int>(t)];
 }
 

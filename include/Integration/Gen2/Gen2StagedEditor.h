@@ -124,6 +124,16 @@ public:
     uint8_t stagedInventoryQuantity(InventoryPocket pocket, uint8_t itemId) const;
     bool stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                                 std::string& error);
+    // Top Up / Add Missing (owner Oct 28): a Gen II pair list can legally hold one item in two
+    // slots (pret pokecrystal engine/items/items.asm PutItemInPocket opens a new stack past 99).
+    // Sets the quantity of the stack in native list position `slot` (Items, Balls, PC Items), which
+    // must still hold `itemId`; only that slot's quantity byte changes. Never removes (quantity
+    // 1..the item's maximum). Recorded for Review per stack.
+    bool stageInventorySlotQuantity(InventoryPocket pocket, std::size_t slot, uint8_t itemId,
+                                    uint8_t quantity, std::string& error);
+    // Native slots of a container: the pair-list capacity (Items 20, Balls 12, PC 50), the Key Items
+    // list capacity (25), or one fixed slot per TM/HM of this game.
+    std::size_t inventoryCapacity(InventoryPocket pocket) const;
 
     std::optional<PokemonRecord> boxedPokemon(std::size_t box, std::size_t slot,
                                                std::string& error) const;

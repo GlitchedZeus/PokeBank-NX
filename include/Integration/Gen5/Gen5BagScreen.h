@@ -26,6 +26,7 @@ namespace PokeVault::Integration::Gen5 {
 //                             existing stack (UI/SharedBagAddFlow.h, Gen I-V)
 //   Y / footer Y           -> explicit Remove confirm, A confirms and B cancels
 //   L/R / header arrows    -> previous/next native pocket
+//   ZR / footer ZR         -> Top Up / Add Missing (UI/SharedBagTopUp.h; mutable pockets only)
 // Key Items and reusable TMs/HMs are unique; Key Item changes ask a story warning.
 class Gen5BagScreen {
 public:
@@ -86,6 +87,8 @@ public:
         if(can.editAmount)out.push_back({"A","Quantity"});
         if(can.addItem)out.push_back({"X","Add Item"});
         if(can.removeItem)out.push_back({"Y","Remove"});
+        // Top Up / Add Missing (owner Oct 28, Feature B): wherever X Add is offered.
+        if(can.addItem)out.push_back({"ZR","Top Up"});
         if(ws.hasChanges())out.push_back({"+","Review"});
         out.push_back({"B","Back"});
         return out;

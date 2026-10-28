@@ -98,6 +98,32 @@ int main() {
         const auto plan = B::plan(Game::Red, {B::Mode::AddMissing, 1, {}}, std::span(&key, 1));
         assert(!add(plan, 42));
     }
+    // Gen I: pockets that view ONE native list share its free slots (slotGroup), whichever are planned.
+    {
+        B::PocketState items{Pocket::Items, {{0, 75, 1}}, 3, addable(C::ClassicGame::Red, C::ClassicPocket::Items)};
+        B::PocketState medicine{Pocket::Medicine, {{0, 20, 1}}, 3, addable(C::ClassicGame::Red, C::ClassicPocket::Medicines)};
+        items.slotGroup = medicine.slotGroup = 0;
+        std::vector<B::PocketState> bag{items, medicine};
+        const auto plan = B::plan(Game::Red, {B::Mode::AddMissing, 5, {}}, bag);
+        assert(plan.adds.size() == 1);   // 3 slots, 2 held: one new stack in all
+        const auto medOnly = B::plan(Game::Red, {B::Mode::AddMissing, 5, {Pocket::Medicine}}, bag);
+        assert(medOnly.adds.size() == 1 && medOnly.adds[0].pocket == Pocket::Medicine);
+    }
+    // A writer that sets an item by id (perSlotTopUp = false) never merges two stacks: reported once.
+    {
+        B::PocketState items{Pocket::Items, {{0, 13, 5}, {1, 13, 7}, {2, 14, 1}}, 20, {}};
+        items.perSlotTopUp = false;
+        const auto plan = B::plan(Game::Emerald, {B::Mode::TopUpExisting, 99, {}}, std::span(&items, 1));
+        assert(!topUp(plan, 13) && topUp(plan, 14));
+        assert(std::count_if(plan.skipped.begin(), plan.skipped.end(), [](const B::Skip& s) {
+                   return s.itemId == 13 && s.reason == B::SkipReason::SeveralStacks; }) == 1);
+        assert(B::skipReasonText(B::SkipReason::SeveralStacks) == "held in several stacks; edit it on its own");
+    }
+    // "Every pocket" never includes the PC.
+    {
+        std::vector<B::PocketState> bag{{Pocket::Items, {}, 1, {}}, {Pocket::PCItems, {}, 50, {}}, {Pocket::Balls, {}, 1, {}}};
+        assert((B::bagPockets(bag) == std::vector<Pocket>{Pocket::Items, Pocket::Balls}));
+    }
     std::cout << "Top Up / Add Missing planner (caps, exclusions, capacity, filters): PASS\n";
     return 0;
 }

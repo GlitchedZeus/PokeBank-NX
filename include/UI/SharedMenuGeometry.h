@@ -89,6 +89,8 @@ enum class MenuType : uint8_t {
     LaunchConfirm,    // launch the game: Y commits
     SaveDiscard,      // save / discard staged work
     ChoicePicker,     // short editor value lists: Language, Ability, Form, Gender, Pokerus
+    BulkSetup,        // Bag Top Up / Add Missing: Mode / Scope / Amount / Preview / Cancel
+    BulkPreview,      // Bag Top Up / Add Missing preview: one text line per change or skip, scrolls
     Count
 };
 
@@ -156,6 +158,14 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::SaveDiscard:
             // The accepted Gen I-V exit / save dialog width (Dialogs/SaveConfirmDialog.cpp, 560).
             return {Kind::Confirm, 560, 1, 0, 0, 0, 60, 24, 16, 0, 0, 8, Text::Body, 56, 3};
+        case MenuType::BulkSetup:
+            // A short command menu (52 px rows like BoxMenu) wide enough for "Scope  This pocket
+            // (Battle Items)" and the "Key Items and HMs are never changed" caption.
+            return {Kind::List, 600, 1, 52, 6, 5, 86, 22, 18, 18, 0, 8, Text::Body};
+        case MenuType::BulkPreview:
+            // Read-only text lines (30 px pitch, no gap: nothing is focusable), 14 visible, a title
+            // and a totals caption above them; the shared scrollbar runs at the list's right edge.
+            return {Kind::List, 920, 1, 30, 0, 14, 96, 24, 16, 8, 0, 8, Text::Body};
         case MenuType::Count: break;
     }
     return {};
