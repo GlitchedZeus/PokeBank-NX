@@ -4,6 +4,7 @@
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "PokemonFile/NativePokemonFile.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -69,6 +70,30 @@ public:
     bool stageMoveBoxPokemon(size_t sourceBox, size_t sourceSlot,
                              size_t destinationBox, size_t destinationSlot,
                              std::string* error = nullptr);
+
+    // Feature A (owner Oct 28): standalone Pokemon files. Import places ONE decoded .pk4 / .ek4
+    // record (PokeBank::PokemonFile::decode, PKHeX plaintext PK4) into an EMPTY box slot of the
+    // APP-OWNED staged image only; it then shows up in Review like any staged change and Discard
+    // undoes it. A party-sized (236-byte) file contributes its stored 136 bytes, as PKHeX writes a box
+    // slot (PKM.EncryptedBoxData; the party battle-stat cache is not part of a box record).
+    // Every stored byte is kept as given: no PID/IV reroll, no checksum repair, no legalization,
+    // no Gen III/V conversion. The record must be one the editor's own Gen IV validators accept
+    // for the open game group (species/form in that game's personal table, holdable item, native
+    // move range, language). Same Storage CRC refresh, strict reparse and atomic rollback as Clone.
+    [[nodiscard]] bool canImportPokemonFile(const PokeBank::PokemonFile::Decoded& file,
+                                            std::string* error = nullptr) const;
+    bool stageImportBoxPokemon(size_t box, size_t slot,
+                               const PokeBank::PokemonFile::Decoded& file,
+                               std::string* error = nullptr);
+
+    // Non-mutating export of a Pokemon in the open (staged) save as the PKHeX plaintext PK4 a
+    // .pk4 file holds: decrypted, blocks in canonical ABCD order, checksum at 0x06 (PKHeX
+    // PK4.DecryptedBoxData / DecryptedPartyData). Box records are 136 bytes, party records 236,
+    // exactly as stored. PokeBank::PokemonFile::decode() returns the same record.
+    [[nodiscard]] std::optional<std::vector<uint8_t>> exportBoxPokemonFile(
+        size_t box, size_t slot, std::string* error = nullptr) const;
+    [[nodiscard]] std::optional<std::vector<uint8_t>> exportPartyPokemonFile(
+        size_t slot, std::string* error = nullptr) const;
 
     [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
         size_t slot, std::string* error = nullptr) const;
