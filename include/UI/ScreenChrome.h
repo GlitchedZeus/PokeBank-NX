@@ -797,7 +797,14 @@ namespace UI {
 
     inline void drawInfoOverlay(PKSEFramebuffer& fb, const std::string& title,
                                 const std::vector<std::string>& lines) {
-        constexpr int w = 700;
+        // Owner Oct 28 (Bag Help #1): sized to its longest row, so no row runs past the edge.
+        // Rows are measured as drawn (glyph badges included); the window stays between 560 px and
+        // the screen width minus the 16 px margins.
+        int widest = 0, titleHeight = 0;
+        fb.measureText(title, widest, titleHeight, TextStyle::Heading);
+        for (const std::string& line : lines)
+            widest = std::max(widest, drawGlyphHelpLine(fb, 0, 0, line, Colors::TextSecondary, TextStyle::Body, true));
+        const int w = std::clamp(widest + 60, 560, fb.getWidth() - 32);
         const int h = std::min(520, 140 + static_cast<int>(lines.size()) * 38);
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;

@@ -947,6 +947,15 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
+    if (state.helpActive && !state.pickerActive && !state.discardConfirmActive) {
+        // Owner Oct 28 (Bag Help #2): the Gen I-III Bag Help is the same content-sized modal as the
+        // Gen IV / V Bag (ScreenChrome::drawInfoOverlay), not a full 900 x 610 panel of its own.
+        namespace InvHelp = PokeBank::UIModel::InventoryHelp;
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        drawInfoOverlay(fb, InvHelp::kTitle, InvHelp::lines(generation));
+        return;
+    }
+
     const bool compactPicker = state.pickerActive;
     const auto pickerGeometry = classicPickerGrid(screen, state);
     const int width = compactPicker ? pickerGeometry.frame.w : 900;
@@ -1039,21 +1048,6 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         }
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
                         {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
-        return;
-    }
-
-    if (state.helpActive) {
-        // Round 7 (B04): the same "Inventory Controls" Help as the Gen IV / V Bag (InventoryHelp.h);
-        // key rows draw their buttons as glyph badges (ScreenChrome::drawGlyphHelpLine, R2-BUG-013).
-        namespace InvHelp = PokeBank::UIModel::InventoryHelp;
-        fb.drawText(x + 30, y + 20, InvHelp::kTitle, Colors::Text, TextStyle::Heading);
-        int rowY = y + 78;
-        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
-        for (const auto& line : InvHelp::lines(generation)) {
-            drawGlyphHelpLine(fb, x + 34, rowY, line, Colors::TextDim, TextStyle::Body);
-            rowY += 48;
-        }
-        drawNavBar(fb, {{"B", "Close Help"}});
         return;
     }
 
