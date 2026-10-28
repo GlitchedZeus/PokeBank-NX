@@ -16,6 +16,7 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(REPO/'tools/legality_completion'))
 from hgss_native_disagreement import necessary_level_proof
 from current_release_replay import changed_in_release
+from bw2_shared_order import necessary_order_proof
 def native(cart, hexdata, enc, issues):
     """An independently proven native level absence, or a measured release change.
 
@@ -47,6 +48,9 @@ def gen5(path):
             continue
         issues = [i.strip() for i in right.partition(" ;")[2].split(" | ") if i.strip() and not i.strip().startswith("W: ")]
         name = transferred(a[1], a[3], issues)
+        if name is None and issues:
+            proof = necessary_order_proof(a[1], a[3])
+            if proof:name=proof['basis']
         if name:
             counts[name] += 1
         else:

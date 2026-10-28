@@ -1,0 +1,49 @@
+{
+  "policy": "Every row remains in raw false Invalid and denominator. These necessary-condition source explanations are reported separately; no case IDs, oracle validity edits or denominator exclusions.",
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "raw_stricter_breakdown": {
+    "5": {
+      "native-bw2-shared-learnset-order": 1
+    }
+  },
+  "rows": [
+    {
+      "group": "gen5",
+      "generation": 5,
+      "id": "pidgey-reversed-shared-order",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "B2",
+      "reference_line": "pidgey-reversed-shared-order D8BDEC7C000002A810000000D6112CBF000000000F91000200000000000000000000000000000000210011006100000023231E0000000000FFFD8FFE00000000000F010000000000450067006700FFFF65007900FFFF000000000000000000170000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000481000000 VALID EncounterEgg5:16 native regression B2 ; ",
+      "production_line": "pidgey-reversed-shared-order INVALID ; Shared level-up moves cannot occur in this order in Black 2/White 2",
+      "native_proof": {
+        "basis": "native-bw2-shared-learnset-order",
+        "species": 16,
+        "required_shared_order": [
+          17,
+          97
+        ],
+        "native_level_order": [
+          33,
+          28,
+          16,
+          98,
+          18,
+          239,
+          297,
+          97,
+          17,
+          355,
+          366,
+          119,
+          403,
+          542
+        ],
+        "sha256": "84a802355de26a100ad22652162f95d7f92a17e2b284d6d2a9984e4bc077564a"
+      },
+      "classification": "native-bw2-shared-learnset-order"
+    }
+  ]
+}

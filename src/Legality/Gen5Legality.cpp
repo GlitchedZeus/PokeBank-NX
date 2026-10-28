@@ -789,7 +789,11 @@ bool recurse(Info& info, int start, uint8_t type) {
     }
     if(info.onlyInitial)return paternal==0;
     if(!info.ancestry)return true;
-    if(info.necessaryPaternalOnly){paternal=static_cast<uint8_t>(paternal&~shared);shared=0;}
+    if(info.necessaryPaternalOnly){
+        paternal=static_cast<uint8_t>(paternal&~shared);
+        return info.ancestry->possible(5,info.species,paternal,0)
+            || info.ancestry->possibleWithUncertifiedParentRole5(info.species,paternal);
+    }
     return info.requireSimple ? info.ancestry->provenBirth5(info.species,info.version,paternal,shared)
                               : info.ancestry->possible(5,info.species,paternal,shared);
 }
@@ -835,6 +839,35 @@ bool valid(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& mov
             if (D::kMachineMoves[t] == move && pi.rec && pi.tm(static_cast<int>(t))) { possible |= 1u << FatherTM; break; }
     }
     return recurse(info, count - 1, static_cast<uint8_t>(Max - 1));
+}
+
+// A necessary condition independent of either parent's complete ancestry.
+// Published B2W2 inheritLvlUpMoves walks the CHILD learnset. Any initial,
+// egg or machine alternative is ignored here, deliberately adding routes.
+bool nativeSharedOrderBroken(uint16_t species,uint8_t version,const std::array<uint16_t,4>& moves) {
+    if(version!=22&&version!=23)return false;
+    const int index=indexB2W2(species,0);
+    if(index<0||static_cast<size_t>(index)>=D::kLearnsetB2W2Count)return false;
+    const auto pi=personalForVersion(version,species,0);
+    if(!pi.rec)return false;
+    std::vector<uint16_t> levels,initial,required;
+    for(auto i=D::kLevelUpB2W2Start[index];i<D::kLevelUpB2W2Start[index+1];++i){
+        const auto& m=D::kLevelUpB2W2[i];levels.push_back(m.move);
+        if(m.level<=1)initial.push_back(m.move);
+    }
+    for(auto move:moves){
+        if(!move)break;
+        if(std::find(levels.begin(),levels.end(),move)==levels.end()||std::find(initial.begin(),initial.end(),move)!=initial.end())continue;
+        bool alternative=species==172&&move==344;
+        if(species<D::kEggMoveCount)for(auto i=D::kEggMoveStart[species];i<D::kEggMoveStart[species+1];++i)alternative|=D::kEggMoves[i]==move;
+        // All compatible TM/HM entries are a conservative superset: item
+        // availability cannot create a shared-order rejection.
+        for(size_t i=0;i<D::kMachineCount;++i)alternative|=D::kMachineMoves[i]==move&&pi.tm(static_cast<int>(i));
+        if(!alternative)required.push_back(move);
+    }
+    auto at=levels.begin();
+    for(auto move:required){at=std::find(at,levels.end(),move);if(at==levels.end())return true;++at;}
+    return false;
 }
 
 } // namespace Breed5
@@ -1950,7 +1983,11 @@ void Gen5Analyzer::movePool() {
     // move only needs a source.
     bool ancestryPartial=false;
     if (p_.isEgg && match_.kind == Kind::Egg) {
-        if (!Breed5::valid(match_.species, p_.version, p_.moves)) {
+        // The independently pinned reconstruction targets the English US/EU
+        // ROMs. Other regional binaries have not been replayed here.
+        if(!p_.fateful&&p_.form==0&&p_.language==2&&p_.eggLocation==kDaycare5&&p_.metLocation==0&&Breed5::nativeSharedOrderBroken(match_.species,p_.version,p_.moves)) {
+            a_.invalid(CheckIdentifier::Egg,"Shared level-up moves cannot occur in this order in Black 2/White 2");
+        } else if (!Breed5::valid(match_.species, p_.version, p_.moves)) {
             a_.invalid(CheckIdentifier::Moves, "Unhatched egg's moves are not in an order Gen V egg move inheritance can produce "
                                                "(level-1 moves, then the father's egg moves, inherited level-up moves and TMs)");
         } else if (!Breed5::valid(match_.species,p_.version,p_.moves,nullptr,true)) {
@@ -1960,17 +1997,17 @@ void Gen5Analyzer::movePool() {
             const Breeding::Gen35Ancestry ancestry(p_.moves);
             if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry)) {
                 // Original HGSS bodies prove both-parent shared inheritance.
-                // Until the Gen V parent-selection mechanism is replayed too,
-                // only exclusive egg/TM paternal sources are a certified
-                // necessary condition here. A failed shared-level joint route
-                // remains an implementation/evidence gap, not Invalid.
+                // B2W2 role selection is now replayed separately, but the
+                // complete family/event ancestry closure is still unverified.
+                // Exclusive egg/TM absence must also survive that conservative
+                // carrier relaxation; it cannot certify a clean birth.
                 if(Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,false,true)){
                     ancestryPartial=true;
-                    a_.warn(CheckIdentifier::Egg,"Exclusive paternal sources have a route, but the shared level-up parent ancestry or native Gen V mechanism has not been fully certified");
+                    a_.warn(CheckIdentifier::Egg,"Gen V parent roles or the complete inherited move history have not yet been verified");
                 }else a_.invalid(CheckIdentifier::Egg,"No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model");
             } else if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,true)) {
                 ancestryPartial=true;
-                a_.warn(CheckIdentifier::Egg,"Joint breeding implementation found a permissive ancestry but has not yet verified its complete birth order, form, event or transfer history");
+                a_.warn(CheckIdentifier::Egg,"The complete breeding history, move order, form or transfer path has not yet been verified");
             }
         }
     }

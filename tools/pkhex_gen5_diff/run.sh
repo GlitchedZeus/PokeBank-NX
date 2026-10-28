@@ -106,8 +106,8 @@ fi
 echo "PKHeX rejects, PokeBank NX Incomplete (by mutation and PKHeX result):"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID" && b[2]!="INVALID") {m=a[1]; sub(/^m[0-9]+-/,"",m); sub(/^b[0-9]+$/,"base",m); r=$1; sub(/^[^;]*; /,"",r); print m" :: "r}}' \
     "$work/joined.txt" | sort | uniq -c | sort -rn | awk -v n="${SHOW:-15}" 'NR <= n'
-# A stricter result is explained only by independent native level absence or
-# the unchanged bytes being Invalid under the explicitly pinned current release.
+# A stricter result needs an independent native level/order impossibility proof
+# or unchanged bytes Invalid under the explicitly pinned current release.
 # Discarded-placeholder membership alone is insufficient; raw older results stay.
 false_invalid=$(python3 "$repo/tools/pkhex_gen34_diff/hgss_placeholders.py" gen5 "$work/joined.txt")
 if [ -n "$false_invalid" ]; then

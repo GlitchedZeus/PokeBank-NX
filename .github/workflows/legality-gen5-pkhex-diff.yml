@@ -32,6 +32,7 @@ on:
       - 'tests/test_gen5_joint_breeding.cpp'
       - 'tests/fixtures/gen15_session2/gen5_joint_breeding.txt'
       - 'tests/test_reference_artifact_integrity.py'
+      - 'tests/test_bw2_shared_order.py'
       - 'tests/legality_gen5_test_helpers.h'
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
@@ -89,6 +90,16 @@ jobs:
 
       - name: Generated Gen V tables are up to date
         run: python3 -I tools/gen_legality_gen5_data.py --pkhex _ref/PKHeX --check
+
+      - name: Reproduce independent B2W2 shared-order evidence
+        run: |
+          set -euo pipefail
+          python3 tools/legality_completion/bw2_breeding_native_witness.py \
+            --native build/native-bw2 --fetch --work build/native-bw2-body
+          python3 tools/legality_completion/bw2_birth_index.py \
+            --source _ref/PKHeX-release --native build/native-bw2 \
+            --work build/bw2-order-index --check
+          python3 tests/test_bw2_shared_order.py
 
       - name: Gen V tests (GCC and Clang, normal and ASan/UBSan)
         run: |
@@ -148,6 +159,8 @@ jobs:
           name: legality-gen5-reference-adjudication
           path: |
             build/reference-heads.txt
+            docs/legality/campaign-20261028/BW2_*
+            build/native-bw2-body/native_bw2_birth.cpp
             build/diff-*/pkhex.txt
             build/diff-*/pokebank.txt
             build/diff-*/joined.txt

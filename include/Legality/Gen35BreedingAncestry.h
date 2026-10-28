@@ -22,6 +22,10 @@ public:
     bool provenBirth5(uint16_t baby,uint8_t version,uint8_t fatherMoves,uint8_t sharedMoves) const;
     bool provenSimple(uint8_t generation,uint16_t baby,uint8_t fatherMoves,uint8_t sharedMoves) const;
     bool possible(uint8_t generation,uint16_t baby,uint8_t fatherMoves,uint8_t sharedMoves) const;
+    // Necessary-condition relaxation only: a single maternal-family carrier
+    // holds the complete set, but the complete family/event closure is uncertified.
+    // This cannot certify a birth or produce NoProblemsFound.
+    bool possibleWithUncertifiedParentRole5(uint16_t baby,uint8_t moves) const;
     std::vector<Step> fatherWitness(uint8_t generation,uint16_t baby,uint8_t fatherMoves,uint8_t sharedMoves) const;
     const std::vector<BirthWitness>& certifiedBirths() const {return certifiedBirths_;}
 private:

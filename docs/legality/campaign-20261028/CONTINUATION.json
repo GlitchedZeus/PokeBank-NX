@@ -1,42 +1,47 @@
 {
-  "schema": 2,
+  "schema": 3,
   "status": "active; no completion claim",
   "pr": 314,
   "branch": "claude/gen1-5-legality-campaign-w9mkom",
-  "remote_head": "8f0301a3ac2a5fd38c8821f958563200f85a4285",
+  "remote_head": "1ae69f3a1dd1766c1848f4f387b1c68e46cabedb",
   "official_release": {
     "tag": "26.10.18",
     "sha": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea"
   },
   "newer_master_separate": "8e3eb3d47bb496746c3eaa9d160329d295a5e2e5",
-  "working_changes": "Conservative finite III-V ancestry and exact Gen V birth recipes; all seven original shared-level cases remain Incomplete. Native III/IV and hatched V adapters still missing. Local final validation complete; commit/push and current-head CI pending.",
+  "working_changes": "B2W2 child-learnset order, ordinary English necessary-order proof,Japanese guard,conservative family-carrier uncertainty and complete raw transport checks. Final immutable source/binary snapshot and new seed declared; source commit/current-head CI and full final replay status must be read from PR/artifacts. No completion claim.",
   "validation": {
-    "local": "JOINT_VALIDATION.json:8 final-policy suite/compiler executions,20 unchanged-path suites,4 native birth profiles PASS",
-    "original_seven": "7 old false-clean records now Incomplete, not completed rules",
-    "legacy_cli": "134228 frozen seed1 records; raw9 stricter native Safari rows retained; CLI and complete artifact verification PASS",
-    "ci": "8f0301a3:11 workflows passed, but Gen V raw retention was defective. New code CI pending; do not claim green from old head.",
-    "evidence_transport": "WORK and legacy KEEP now preserve raw/secondary files; verifier and5 adversarial integrity controls added"
+    "local": "BW2_VALIDATION.json:41 breeding and207 baseline cases,2000 fuzz records per GCC/Clang normal/sanitizer profile;8 native BW2/HGSS body profiles PASS. Earlier40000-fuzz runs retained. Exact final compile equals frozen binary.",
+    "original_seven": "7 original shared-level cases remain Incomplete",
+    "ci": "1ae69f3a:10 workflows success;GenV failed on3 Kangaskhan eggs. This source repair requires fresh-head CI.",
+    "evidence_transport": "CI_1AE_INTEGRITY_FAILURE.json:one malformed standalone record;original ZIP and joined view preserved. All-row hex/size checks and7 integrity controls now required."
   },
   "metrics": {
     "primary": "JOINT_PRIMARY_METRICS.json",
     "independent": "JOINT_INDEPENDENT_METRICS.json",
     "all_retained": "JOINT_RETAINED_METRICS.json",
-    "measurement_notes": "JOINT_MEASUREMENTS.md",
+    "measurement_notes": "BW2_BREEDING_REPAIR.md; JOINT_MEASUREMENTS.md is prior frozen-v3 only",
     "original_raw_queue": "RAW_FALSE_CLEAN_QUEUE.json",
-    "new_independent_queue": "JOINT_INDEPENDENT_QUEUE.json"
+    "new_independent_queue": "JOINT_INDEPENDENT_QUEUE.json",
+    "role_primary": "ROLE_PRIMARY_METRICS.json",
+    "role_independent": "ROLE_INDEPENDENT_METRICS.json",
+    "native_order_pair": "BW2_NATIVE_PAIR_METRICS.json",
+    "native_order_explanation": "BW2_NATIVE_PAIR_DISAGREEMENTS.json",
+    "final_source": "BW2_ENGINE_FINAL_MANIFEST.json",
+    "final_holdout_declaration": "BW2_FINAL_HOLDOUT_PLAN.json"
   },
-  "fixture_hashes": "GEN5_JOINT_FIXTURES.json",
+  "fixture_hashes": "BW2_BREEDING_FIXTURES.json",
   "queue": [
     {
       "priority": 0,
       "kind": "validation",
-      "task": "Commit/push forward, inspect all new-head CI jobs and verify raw artifact contents; do not waive new failures",
-      "source": "tools/pkhex_gen5_diff/run.sh; verify_reference_artifacts.py; JOINT_ENGINE_MANIFEST.json"
+      "task": "Verify full frozen final replays,all new-head CI jobs and downloaded raw artifacts; retain every case and reject inconsistent raw/joined bytes",
+      "source": "BW2_ENGINE_FINAL_MANIFEST.json; BW2_FINAL_HOLDOUT_PLAN.json; BW2_VALIDATION.json"
     },
     {
       "priority": 0,
       "kind": "implementation/evidence gap",
-      "task": "Certify original Gen V shared-level parent-selection/inheritance and full joint certificates; seven original cases remain Incomplete",
+      "task": "Extend the newly replayed English B2W2 mechanism to independently verified BW/regional binaries and complete ancestry certificates. Seven originals remain Incomplete.",
       "cases": [
         "b7875",
         "m7876-tid",
@@ -51,7 +56,7 @@
     {
       "priority": 1,
       "kind": "source/reference disagreement",
-      "task": "Review all primary/fresh stricter Happiny and other egg rows; full PKHeX analysis and standalone chain disagree. No verified-superiority claim or ID exception.",
+      "task": "Complete historical family/event closure for Kangaskhan WorkUp,Happiny MudBomb/Hail and all retained egg differences. Full report omits TMHM from ancestry gathering; no definitive impossible/clean conclusion from that discrepancy alone.",
       "source": "BREEDING_REFERENCE_ANOMALIES.json; JOINT_FIXTURE_REFERENCE_TRACE.json; JOINT_INDEPENDENT_QUEUE.json"
     },
     {
@@ -87,7 +92,7 @@
     }
   ],
   "scope": "engine only; no PR307 modifications, merge, app/NRO or combined app build",
-  "next_command": "python3 tests/test_reference_artifact_integrity.py && python3 tools/legality_completion/verify_reference_artifacts.py gen5 ../outputs/legality-campaign-20261028/legacy-joint-v3",
+  "next_command": "python3 tests/test_bw2_shared_order.py && python3 tests/test_reference_artifact_integrity.py",
   "artifacts": "outputs/legality-campaign-20261028; immutable baseline outputs/legality-hardening-20261027",
   "next_breeding_reference": {
     "repo": "fuddlesworth/pokebw2",
@@ -99,5 +104,6 @@
   "coordination": [
     "Preserved Claude ded4c2f2/f5f50e13 via forward checkout; no merge commit",
     "PR314 comments6469504356 and6469535480 report the native proof and unsafe exemption counterexamples; PR307 untouched"
-  ]
+  ],
+  "checkpoint_readme": "BW2_BREEDING_REPAIR.md"
 }

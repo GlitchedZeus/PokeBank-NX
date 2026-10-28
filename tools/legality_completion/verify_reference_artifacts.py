@@ -23,8 +23,10 @@ def verify(root, group):
         a, b = left.split(), right.split()
         assert a[0] == b[0] and a[0] not in seen, 'Missing or duplicate identity'
         seen.add(a[0])
+        payload = bytes.fromhex(a[hex_index])
+        assert len(payload) in ((80, 100, 136, 236) if group == 'gen34' else (136, 220)), 'Malformed raw record size'
         if a[index] == 'VALID' and b[1] == 'INVALID':
-            expected[a[0]] = (left, right, hashlib.sha256(bytes.fromhex(a[hex_index])).hexdigest())
+            expected[a[0]] = (left, right, hashlib.sha256(payload).hexdigest())
     secondary = root / 'current-release'
     report = json.loads((secondary / 'REPORT.json').read_text())
     assert report['reference'] == PIN and report['reference_source_clean']

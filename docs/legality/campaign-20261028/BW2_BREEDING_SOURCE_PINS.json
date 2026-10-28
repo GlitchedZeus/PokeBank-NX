@@ -1,0 +1,31 @@
+{
+  "repository": "fuddlesworth/pokebw2",
+  "commit": "9cb65bafa3e0198e6951a2fda6cc1c3470c67419",
+  "scope": "USA/Europe Black2/White2 published reconstruction. Project claims byte-matching C functions; we have not independently rebuilt ROMs. Only named move/role functions are replayed, with data/accessor stubs. Not hardware or acquired-specimen custody.",
+  "files": [
+    {
+      "path": "src/ov036/day_care.c",
+      "git_blob_sha1": "17ab01ff83b334e153ebf6b989bb7c8b8bf2fd09",
+      "sha256": "a910390b224ba14023b53493f344e2ab163e2eb90f05e279810e5922e4d6d8b7",
+      "url": "https://raw.githubusercontent.com/fuddlesworth/pokebw2/9cb65bafa3e0198e6951a2fda6cc1c3470c67419/src/ov036/day_care.c"
+    },
+    {
+      "path": "README.md",
+      "git_blob_sha1": "94119abccef699fd3d8d722dd5948404b412ed72",
+      "sha256": "a5aff06d844ab8affbe41b22601443afac6b5513e4dc2e060e4aa99bfd4aa646",
+      "url": "https://raw.githubusercontent.com/fuddlesworth/pokebw2/9cb65bafa3e0198e6951a2fda6cc1c3470c67419/README.md"
+    },
+    {
+      "path": "docs/nonmatching-functions.md",
+      "git_blob_sha1": "edae593a16a87bff8a2f54bdea530e405b5600dd",
+      "sha256": "02824d1b9c71bdf3256ad75a490c38a5c734a484af6d3c0afea2ca31880600c9",
+      "url": "https://raw.githubusercontent.com/fuddlesworth/pokebw2/9cb65bafa3e0198e6951a2fda6cc1c3470c67419/docs/nonmatching-functions.md"
+    },
+    {
+      "path": "res/pokemon/pidgey/data.json",
+      "git_blob_sha1": "665b973d5283d3d4f941eef547863f5ccfc1c5db",
+      "sha256": "1afb2efe868f4056d2bed9afb473c2cae9bd483d1c947b594be6e20d6413ea06",
+      "url": "https://raw.githubusercontent.com/fuddlesworth/pokebw2/9cb65bafa3e0198e6951a2fda6cc1c3470c67419/res/pokemon/pidgey/data.json"
+    }
+  ]
+}

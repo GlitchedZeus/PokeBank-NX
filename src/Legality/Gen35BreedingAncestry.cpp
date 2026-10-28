@@ -260,6 +260,10 @@ bool Gen35Ancestry::birthWitness(uint8_t era,uint16_t baby,uint16_t father,uint8
                 std::sort(dad.begin(),dad.end());
                 do{
                     const auto result=inheritBirthMoves(data,era,dad,mom,data.voltTackle&&std::find(moves_.begin(),moves_.end(),344)!=moves_.end());
+                    // The newly replayed child-order body is B2W2. Do not
+                    // extrapolate an order-dependent clean certificate to BW:
+                    // require the prior paternal traversal to agree as well.
+                    if(era==5&&game<=21&&result!=inheritBirthMoves(data,era,dad,mom,data.voltTackle&&std::find(moves_.begin(),moves_.end(),344)!=moves_.end(),false))continue;
                     std::array<uint16_t,4> actual{};std::copy(result.begin(),result.end(),actual.begin());
                     bool accepted=actual==moves_;
                     if(!exact){accepted=true;for(size_t bit=0;bit<4;++bit)if((wantedMask&(1u<<bit))&&std::find(result.begin(),result.end(),moves_[bit])==result.end())accepted=false;}
@@ -295,6 +299,15 @@ bool Gen35Ancestry::provenSimple(uint8_t era,uint16_t baby,uint8_t wanted,uint8_
 bool Gen35Ancestry::possible(uint8_t era,uint16_t baby,uint8_t wanted,uint8_t shared)const{
     if(era<3||era>5||!baby||baby>maximum(era)||wanted>15||shared>15||(shared&~wanted))return false;
     return wanted==0||findFather(era,baby,wanted,shared)!=0;
+}
+bool Gen35Ancestry::possibleWithUncertifiedParentRole5(uint16_t baby,uint8_t wanted)const{
+    if(!baby||baby>649||wanted>15)return false;
+    // The complete Gen V family/event ancestry closure remains uncertified.
+    // Even after the B2W2 role replay, keep this upper-bound relaxation when
+    // one actual family carrier can possess the whole queried combination.
+    // Different individuals' moves are never unioned here.
+    for(auto parent:maternalSpecies(5,baby))if(chain_->canKnow(node(5,parent),wanted))return true;
+    return false;
 }
 std::vector<Step> Gen35Ancestry::fatherWitness(uint8_t era,uint16_t baby,uint8_t wanted,uint8_t shared)const{
     const auto father=findFather(era,baby,wanted,shared);return father?chain_->witness(father,wanted):std::vector<Step>{};

@@ -1,0 +1,19 @@
+{
+  "engine": "1ae69f3a1dd1766c1848f4f387b1c68e46cabedb",
+  "artifact": 12831481595,
+  "zip_sha256": "66870606bf08246d26977273c3a7bb12c61755dc57766292401d96bc25c79cc9",
+  "original_archive_unchanged": true,
+  "source_rows": 134203,
+  "joined_rows": 134203,
+  "inconsistencies": [
+    {
+      "index": 46165,
+      "id": "b46165",
+      "standalone_reference_line": "b46165 A642A5DC0000661126020000AA8355F37D000000465B00020000000000000000000000000000000021003700FD00000023190A0000000000399E3E25000000000807000000000000420061007300630075006C0069006E00FFFF0000000000150000000000000000540065007300740065007200FFFF00000000001A0A1C00004(00000485000000 VALID EncounterSlot5:550 native base B ; ",
+      "joined_reference_line": "b46165 A642A5DC0000661126020000AA8355F37D000000465B00020000000000000000000000000000000021003700FD00000023190A0000000000399E3E25000000000807000000000000420061007300630075006C0069006E00FFFF0000000000150000000000000000540065007300740065007200FFFF00000000001A0A1C00004800000485000000 VALID EncounterSlot5:550 native base B ; ",
+      "standalone_hex_valid": false,
+      "status": "transport integrity failure; both views retained; no repair or omission"
+    }
+  ],
+  "status": "artifact source stream unacceptable until new consistent capture; joined snapshot retained separately, not substituted into the corrupt standalone file"
+}

@@ -23,6 +23,7 @@ on:
       - 'tests/test_gen35_release_rules.cpp'
       - 'tests/test_public_fixture_selection.py'
       - 'tests/test_hgss_reference_adjudication.py'
+      - 'tests/test_bw2_shared_order.py'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
@@ -73,6 +74,7 @@ jobs:
           set -euo pipefail
           python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
           python3 tests/test_hgss_reference_adjudication.py | tee build-completion/hgss-reference-adjudication.log
+          python3 tests/test_bw2_shared_order.py | tee build-completion/bw2-reference-adjudication.log
           python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
           python3 tools/legality_completion/hgss_swarm_repair.py \
             --native build-completion/native-hgss --fetch \
@@ -94,6 +96,10 @@ jobs:
               --native build-completion/native-hgss --fetch \
               --work "build-completion/native-birth-$profile" --compiler "$CXX" "${flags[@]}" \
               2>&1 | tee "build-completion/native-birth-$profile.log"
+            python3 tools/legality_completion/bw2_breeding_native_witness.py \
+              --native build-completion/native-bw2 --fetch \
+              --work "build-completion/native-bw2-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-bw2-$profile.log"
           done
       - name: Preserve official release and native EV witness evidence
         if: always()
@@ -107,6 +113,9 @@ jobs:
             build-completion/native-ev-*.log
             build-completion/native-swarm-*.log
             build-completion/native-birth-*.log
+            build-completion/native-bw2-*.log
+            build-completion/bw2-reference-adjudication.log
+            docs/legality/campaign-20261028/BW2_*
             build-completion/test_gen5_joint_breeding*.log
             build-completion/test_finite_breeding_chain*.log
             docs/legality/campaign-20261028/HGSS_BREEDING_SOURCE_PINS.json
