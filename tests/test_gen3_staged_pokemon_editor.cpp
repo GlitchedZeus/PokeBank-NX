@@ -376,6 +376,53 @@ void runGame(SourceGame game, Family family) {
         assert(identity->stageAddBoxPokemon(0, 1, unnamed, error));
         assert(identity->boxedPokemon(0, 1, error)->nickname == "PIKACHU");
         identity->discard();
+        // M1 D2: a blank nickname is the record language's own default name, formatted as PKHeX
+        // SpeciesName.GetSpeciesNameGeneration(species, language, 3) does: Japanese as-is, other
+        // languages upper case, French E/I accents stripped, Farfetch'd with a straight apostrophe.
+        struct LocalizedDefault { uint8_t language; uint16_t species; const char* name; };
+        for (const auto& want : {LocalizedDefault{1, 1, "フシギダネ"}, LocalizedDefault{2, 1, "BULBASAUR"},
+                                 LocalizedDefault{3, 1, "BULBIZARRE"}, LocalizedDefault{5, 1, "BISASAM"},
+                                 LocalizedDefault{4, 1, "BULBASAUR"}, LocalizedDefault{7, 1, "BULBASAUR"},
+                                 LocalizedDefault{3, 4, "SALAMECHE"}, LocalizedDefault{2, 83, "FARFETCH'D"},
+                                 LocalizedDefault{1, 25, "ピカチュウ"}}) {
+            BoxPokemonCreate localized; localized.species = want.species; localized.level = 5;
+            localized.language = want.language; localized.otName = want.language == 1 ? "サトシ" : "BLUE";
+            if (!identity->stageAddBoxPokemon(0, 1, localized, error))
+                std::cerr << "D2 create lang=" << int(want.language) << " species=" << want.species << ": " << error << "\n";
+            assert(identity->boxedPokemon(0, 1, error)->nickname == want.name);
+            identity->discard();
+        }
+        // M1 D1: nickname and language edited together encode in the NEW language; a language-only
+        // change renames a default name to the new language's default and keeps a custom name
+        // only if it can be stored unchanged, otherwise it is refused with nothing written.
+        {
+            BoxPokemonCreate bulba; bulba.species = 1; bulba.level = 5; bulba.language = 2; bulba.otName = "BLUE";
+            assert(identity->stageAddBoxPokemon(0, 1, bulba, error));
+            const auto named = [&] { return identity->boxedPokemon(0, 1, error); };
+            BoxPokemonEdit toFrench; toFrench.language = 3;
+            assert(identity->stageBoxPokemonEdit(0, 1, toFrench, error));
+            assert(named()->nickname == "BULBIZARRE" && named()->language == 3);
+            BoxPokemonEdit toJapanese; toJapanese.language = 1;
+            assert(identity->stageBoxPokemonEdit(0, 1, toJapanese, error));
+            assert(named()->nickname == "フシギダネ" && named()->language == 1);
+            BoxPokemonEdit both; both.nickname = "Müller"; both.language = 5;
+            assert(identity->stageBoxPokemonEdit(0, 1, both, error));
+            assert(named()->nickname == "Müller" && named()->language == 5);
+            BoxPokemonEdit toSpanish; toSpanish.language = 7;   // custom name kept, same table
+            assert(identity->stageBoxPokemonEdit(0, 1, toSpanish, error));
+            assert(named()->nickname == "Müller" && named()->language == 7);
+            const auto beforeRefusal = identity->stagedBytes();
+            BoxPokemonEdit cannotKeep; cannotKeep.language = 1;  // 'Müller' has no Japanese spelling
+            assert(!identity->stageBoxPokemonEdit(0, 1, cannotKeep, error) && !error.empty());
+            assert(identity->stagedBytes() == beforeRefusal);
+            BoxPokemonEdit kana; kana.nickname = "ボブ"; kana.language = 1;
+            assert(identity->stageBoxPokemonEdit(0, 1, kana, error));
+            assert(named()->nickname == "ボブ" && named()->language == 1);
+            BoxPokemonEdit backToEnglish; backToEnglish.nickname = "Émile"; backToEnglish.language = 2;
+            assert(identity->stageBoxPokemonEdit(0, 1, backToEnglish, error));
+            assert(named()->nickname == "Émile" && named()->language == 2);
+            identity->discard();
+        }
         // Japanese records: 5-character nickname and OT (PKHeX PK3); a 6th character is refused.
         BoxPokemonCreate japanese; japanese.species = 25; japanese.level = 5; japanese.language = 1;
         japanese.otName = "サトシ";

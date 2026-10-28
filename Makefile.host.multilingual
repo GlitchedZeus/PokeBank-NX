@@ -1,0 +1,22 @@
+# Multilingual Gen I-V naming (feature/multilingual-gen15). See docs/multilingual/.
+MULTILINGUAL_HOST_TESTS := \
+	$(HOST_BUILD)/test_default_species_names
+
+MULTILINGUAL_SANITIZE_TESTS := \
+	$(HOST_BUILD)/test_default_species_names_sanitize
+
+HOST_TESTS += $(MULTILINGUAL_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(MULTILINGUAL_SANITIZE_TESTS)
+host-test: $(MULTILINGUAL_HOST_TESTS)
+host-sanitize: $(MULTILINGUAL_SANITIZE_TESTS)
+
+DEFAULT_SPECIES_NAMES_SOURCES := tests/test_default_species_names.cpp src/Names/SpeciesNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+
+$(HOST_BUILD)/test_default_species_names: $(DEFAULT_SPECIES_NAMES_SOURCES) include/Names/DefaultSpeciesName.h include/Utils/Gen3Text.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(DEFAULT_SPECIES_NAMES_SOURCES) -o $@
+
+$(HOST_BUILD)/test_default_species_names_sanitize: $(DEFAULT_SPECIES_NAMES_SOURCES) include/Names/DefaultSpeciesName.h include/Utils/Gen3Text.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(DEFAULT_SPECIES_NAMES_SOURCES) -o $@

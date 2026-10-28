@@ -15,6 +15,7 @@
 #include "Names/MovePresence.h"
 #include "Names/NameLanguage.h"
 #include "Names/SpeciesNames.h"
+#include "Names/DefaultSpeciesName.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
 
@@ -72,32 +73,8 @@ bool isGen4ArceusPlate(uint16_t item) noexcept {
 }
 
 std::u16string gen4DefaultSpeciesName(uint16_t species, uint8_t language) {
-    const auto nameIndex = Names::languageIndexFor(
-        static_cast<Enums::LanguageID>(language));
-    auto value = Utils::utf8ToUtf16(
-        Names::getSpeciesNameLocalized(species, nameIndex));
-
-    // PKHeX SpeciesName.GetSpeciesNameGeneration(..., 4):
-    // Japanese/Korean keep their native casing; other Gen IV species names are uppercase.
-    if (language == static_cast<uint8_t>(Enums::LanguageID::Japanese) ||
-        language == static_cast<uint8_t>(Enums::LanguageID::Korean))
-        return value;
-
-    for (auto& ch : value) {
-        if (ch >= u'a' && ch <= u'z') ch = static_cast<char16_t>(ch - (u'a' - u'A'));
-        // French Gen IV strips E/I diacritics from default species names.
-        if (language == static_cast<uint8_t>(Enums::LanguageID::French)) {
-            switch (ch) {
-                case u'É': case u'È': case u'Ê': case u'Ë':
-                case u'é': case u'è': case u'ê': case u'ë': ch = u'E'; break;
-                case u'Î': case u'Ï': case u'î': case u'ï': ch = u'I'; break;
-                default: break;
-            }
-        }
-        // Gen III/IV Farfetch'd uses a straight apostrophe.
-        if (ch == u'’') ch = u'\'';
-    }
-    return value;
+    // PKHeX SpeciesName.GetSpeciesNameGeneration(..., 4); shared with Gen III and Gen V.
+    return Names::defaultSpeciesName(species, language, 4);
 }
 
 } // namespace
