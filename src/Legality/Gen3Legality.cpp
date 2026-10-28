@@ -1616,7 +1616,8 @@ bool breedRecurse(Breed3& b, int start, uint8_t type) noexcept {
     return breedVerifyBase(b);
 }
 
-bool moveBreed3(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& moves) {
+bool moveBreed3(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& moves,
+                std::array<uint8_t, 4>& sources) {
     int count = indexOf(moves, 0);
     if (count == 0) return false;
     if (count == -1) count = 4;
@@ -1627,7 +1628,11 @@ bool moveBreed3(uint16_t species, uint8_t version, const std::array<uint16_t, 4>
     b.base = baseEggMoves(source, species, 5);
     if (species == 172 && moves[static_cast<size_t>(count - 1)] == D::kMoveVoltTackle && version == kVerE)
         b.actual[static_cast<size_t>(--count)] = ESVoltTackle;
-    if (count == 0) return breedVerifyBase(b);
+    if (count == 0) {
+        const bool valid = breedVerifyBase(b);
+        if (valid) sources = b.actual;
+        return valid;
+    }
     const bool inherit = canInheritMoves(species);
     for (int i = 0; i < count; ++i) {
         const uint16_t move = moves[static_cast<size_t>(i)];
@@ -1637,7 +1642,9 @@ bool moveBreed3(uint16_t species, uint8_t version, const std::array<uint16_t, 4>
         if (isEggMove(species, move)) p |= 1u << ESFatherEgg;
         if (canLearnTM(species, move) || canLearnHM(species, move)) p |= 1u << ESFatherTM;
     }
-    return breedRecurse(b, count - 1, ESMax - 1);
+    const bool valid = breedRecurse(b, count - 1, ESMax - 1);
+    if (valid) sources = b.actual;
+    return valid;
 }
 
 void finalizeMoves(MoveResults& r, const std::array<uint16_t, 4>& cur) noexcept {
@@ -1677,8 +1684,14 @@ MoveResults verifyMoves(const Pk3& pk, const Enc& enc, const std::vector<Evo>& h
     const auto& cur = pk.moves;
     if (pk.isEgg) {
         if (enc.kind == Kind::Egg) {
-            if (moveBreed3(enc.species, enc.eggVersion, cur)) {
-                for (size_t i = 0; i < 4; ++i) r[i] = cur[i] == 0 ? MEmpty : MEggSource;
+            std::array<uint8_t, 4> sources{};
+            if (moveBreed3(enc.species, enc.eggVersion, cur, sources)) {
+                // Preserve the validated source assignment: the existing PID
+                // gender-bit check needs to distinguish both-parent level-up
+                // inheritance from the permitted male+Ditto route. The solver
+                // tries all lower-source phases before ParentLevelUp.
+                for (size_t i = 0; i < 4; ++i)
+                    r[i] = cur[i] == 0 ? MEmpty : sources[i] == ESParentLevelUp ? MInheritLevelUp : MEggSource;
             } else {
                 // PKHeX marks the positions that differ from the closest legal egg moveset;
                 // at least one always differs when the moveset cannot be bred.

@@ -41,5 +41,12 @@
     },
     "mutations_per_base": 4,
     "reason": "Public (not holdout) fixtures identified two false Invalid defects: GenIV traded hatch-game ball writer and GenV evolved fixed-slot ability. All prior raw results remain reported. Generate an additional independent affected-generation comparison only after the fixes are committed. GB code unchanged; its post-repair holdout remains the exact implementation measured."
+  },
+  "post_public_gen3_pid_repair": {
+    "declared_before_generation": true,
+    "gen3_seed": 2026102733,
+    "mutations": 4,
+    "scope": "Native GenIII unhatched eggs only. Preserve earlier raw runs; replay all previous bytes under the new native source. GenIV/V paths cannot use an unhatched nativeGenIII DayCare record; their retained streams must remain byte-identical. No new primary GenIV/V sample count claimed.",
+    "finding_origin": "Complete105-file public census, not the reserved holdout. Existing PID rule missed level-up provenance discarded by the bool-only birth validator."
   }
 }

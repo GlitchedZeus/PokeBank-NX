@@ -87,6 +87,20 @@ int main() {
         ++cases;
     }
     assert(context.eof()&&contextClean==4&&contextInvalid==4&&cases==140);
+    std::ifstream eggPid("tests/fixtures/gen15_session2/gen3_egg_pid.txt");assert(eggPid);
+    size_t eggPidClean=0,eggPidInvalid=0;
+    while(eggPid>>id>>expected>>hex) {
+        const auto bytes=fromHex(hex.c_str()),original=bytes;
+        const auto report=Legality::analyzePk3(bytes,"emerald_gba");
+        assert(report.verdict()==(expected=="NOPROBLEMS"?Verdict::NoProblemsFound:Verdict::Invalid));
+        assert(bytes==original);
+        if(expected=="NOPROBLEMS")++eggPidClean;else {
+            ++eggPidInvalid;
+            assert(hasText(report,Legality::Severity::Invalid,"PID bit 15"));
+        }
+        ++cases;
+    }
+    assert(eggPid.eof()&&eggPidClean==3&&eggPidInvalid==1&&cases==144);
     // A known full RNG state must survive reversal for both sign-bit aliases.
     uint32_t seed=0x20261027;
     for(size_t i=0;i<256;++i) {
