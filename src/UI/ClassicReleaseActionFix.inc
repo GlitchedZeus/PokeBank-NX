@@ -23,7 +23,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
         const auto* staged = editor(screen);
         const auto actions = PokeBank::UIModel::Gen1Editor::actionsForSlot(
             static_cast<bool>(pokemon), staged && !staged->pendingChanges().empty(),
-            boxMoveAvailable(screen));
+            boxMoveAvailable(screen), staged != nullptr);
         const int rows = static_cast<int>(actions.count);
         if (rows <= 0) return true;
         state.row = std::clamp(state.row, 0, rows - 1);
@@ -59,6 +59,21 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             case Action::Remove: state.mode = UX2Mode::RemoveConfirm; break;
             case Action::LegalityProvenance: state.mode = UX2Mode::Provenance; break;
             case Action::AddPokemon: ux2BeginAdd(screen); break;
+            case Action::ImportFile: {
+                // Feature A: the shared file dialog; the record goes to the box's first empty slot.
+                const int box = state.box, slot = state.slot;
+                ux2Close(state);
+                screen.controllerNavigation.reset();
+                PokemonFileMenus::beginImport(screen, 1, box, slot);
+                break;
+            }
+            case Action::ExportFile: {
+                const int box = state.box, slot = state.slot;
+                ux2Close(state);
+                screen.controllerNavigation.reset();
+                PokemonFileMenus::exportPokemon(screen, 1, false, box, slot);
+                break;
+            }
             case Action::ReviewPendingChanges: state.mode = UX2Mode::Review; state.reviewRow = 0; break;
             case Action::Cancel: ux2Close(state); break;
         }
@@ -109,7 +124,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto* staged = editor(screen);
     const auto actions = PokeBank::UIModel::Gen1Editor::actionsForSlot(
         static_cast<bool>(pokemon), staged && !staged->pendingChanges().empty(),
-        boxMoveAvailable(screen));
+        boxMoveAvailable(screen), staged != nullptr);
     state.row = std::clamp(state.row, 0, std::max(0, static_cast<int>(actions.count) - 1));
     // The composite has already drawn the box browser. Do not draw another
     // older wide panel behind this single, original narrow greyed-out sheet.
@@ -151,6 +166,9 @@ PokeBank::UIModel::SharedPokemonEditor::ActionCapabilities releaseActionCapabili
     caps.canClone = true;
     caps.canRemove = true;
     caps.hasLegalityProvenance = true;
+    // Feature A: this sheet exists only with a staged Gen II editor (Import / Export to file).
+    caps.canImportFile = true;
+    caps.canExportFile = true;
     return caps;
 }
 
@@ -391,6 +409,24 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             if (beginCreate(screen, legacy.pokemonBox))
                 dismissActionSheetForWorkspace(screen);
             return true;
+        case Action::ImportFile: {
+            // Feature A: the shared file dialog; the record goes to the box's first empty slot.
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 2, box, slot);
+            return true;
+        }
+        case Action::ExportFile: {
+            if (!pokemon) return true;
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 2, false, box, slot);
+            return true;
+        }
         case Action::Review:
             legacy.review = true;
             legacy.reviewRow = 0;

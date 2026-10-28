@@ -91,6 +91,7 @@ enum class MenuType : uint8_t {
     ChoicePicker,     // short editor value lists: Language, Ability, Form, Gender, Pokerus
     BulkSetup,        // Bag Top Up / Add Missing: Mode / Scope / Amount / Preview / Cancel
     BulkPreview,      // Bag Top Up / Add Missing preview: one text line per change or skip, scrolls
+    FileBrowser,      // Import from file: SD-card folders and Pokemon files (UI/PokemonFileDialog.h)
     Count
 };
 
@@ -166,6 +167,10 @@ constexpr Rule rule(MenuType type) noexcept {
             // Read-only text lines (30 px pitch, no gap: nothing is focusable), 14 visible, a title
             // and a totals caption above them; the shared scrollbar runs at the list's right edge.
             return {Kind::List, 920, 1, 30, 0, 14, 96, 24, 16, 8, 0, 8, Text::Body};
+        case MenuType::FileBrowser:
+            // Feature A (owner Oct 28): 1000 px for long SD paths, 96 px title + folder + message
+            // lines, 62 px rows whose 58 px cells stay at or above TouchTargetMin (56), 8 visible.
+            return {Kind::List, 1000, 1, 62, 4, 8, 96, 20, 16, 16, 0, 8, Text::Body};
         case MenuType::Count: break;
     }
     return {};

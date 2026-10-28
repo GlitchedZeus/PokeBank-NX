@@ -1,6 +1,7 @@
 #include "UI/ClassicPartyActions.h"
 #include "UI/ClassicGenericUiGuard.h"
 #include "UI/SharedPopupDismiss.h"
+#include "UI/PokemonFileMenus.h"
 
 // One Party sheet. The existing generation surfaces own the View / Edit /
 // Origin sessions; their explicit Party target selects the native backend.
@@ -27,7 +28,16 @@ int& row(TrainerViewScreen& screen) {
 }
 auto actions() {
     namespace Shared=PokeBank::UIModel::SharedPokemonEditor;
-    return Shared::actionsForSlot(true,{false,false,true},false);
+    // The sheet only opens with a staged editor (open()), so Feature A's Export to file joins it.
+    return Shared::withAction(Shared::actionsForSlot(true,{false,false,true},false),Shared::Action::ExportFile);
+}
+int partySlot(TrainerViewScreen& screen) {
+    switch(generation(screen)) {
+        case 1:return Gen1PokemonEditor::ux2StateFor(screen).slot;
+        case 2:return editorOverlayState(screen).pokemonSlot;
+        case 3:return Gen3SharedEditorSurface::stateFor(screen).slot;
+        default:return -1;
+    }
 }
 void close(TrainerViewScreen& screen) {
     switch(generation(screen)) {
@@ -92,6 +102,12 @@ bool handle(TrainerViewScreen& screen,uint64_t down,uint64_t held,int stickX,int
     using Action=PokeBank::UIModel::SharedPokemonEditor::Action;
     const auto action=list[static_cast<size_t>(selected)];
     if(action==Action::Close){close(screen);return true;}
+    if(action==Action::ExportFile) {
+        const int gen=generation(screen),slot=partySlot(screen);
+        close(screen);
+        PokemonFileMenus::exportPokemon(screen,gen,true,0,slot);
+        return true;
+    }
     switch(generation(screen)) {
         case 1: {
             auto& s=Gen1PokemonEditor::ux2StateFor(screen);

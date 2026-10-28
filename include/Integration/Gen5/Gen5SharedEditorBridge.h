@@ -46,8 +46,12 @@ struct SharedEditorSlot {
     const auto live=selectedSlot(workspace,slot.location);
     if(live.validated && !live.occupied &&
        slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-       workspace.emptyCloneDestination(slot.location.box,slot.location.slot))
+       workspace.emptyCloneDestination(slot.location.box,slot.location.slot)) {
         append(Shared::Action::Add);
+        // Feature A (owner Oct 28): a .pk5 / .ek5 file into the same verified empty box cell
+        // (Gen5PokemonFile.h importPokemonFile5; the UI runs the shared file dialog).
+        append(Shared::Action::ImportFile);
+    }
     if(live.validated && live.occupied) {
         append(Shared::Action::View);
         // Native Create/Clone results use the SAME shared Edit surface.
@@ -73,6 +77,9 @@ struct SharedEditorSlot {
         // Neutral Origin & Legality (Gen I-IV row): structure and origin only,
         // never a legality verdict.
         append(Shared::Action::LegalityProvenance);
+        // Feature A: a new .pk5 file of the record as staged (exportStagedPokemonFile5); never a
+        // workspace change.
+        append(Shared::Action::ExportFile);
     }
     if(workspace.hasChanges())append(Shared::Action::Review);
     append(Shared::Action::Close);

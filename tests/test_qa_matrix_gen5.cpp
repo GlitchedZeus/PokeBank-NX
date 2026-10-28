@@ -280,7 +280,7 @@ bool hasAction(const Shared::ActionSet& set, Shared::Action a) {
 }
 std::string actionList(const Shared::ActionSet& set) {
     static const char* names[] = {"View", "Edit", "Clone", "Remove", "Legality", "Add",
-                                  "Review", "Close", "None", "Move"};
+                                  "Review", "Close", "None", "Move", "ImportFile", "ExportFile"};
     std::string out;
     for (size_t i = 0; i < set.count; ++i) {
         if (i) out += ",";
@@ -828,10 +828,19 @@ Outcome actions(Ctx& c) {
         (void)ui.back();
     };
     // The one shared action order (NarrowPokemonActionMenu.h; owner-accepted E02): View, Edit, Clone,
-    // Move (where supported), Release, Origin & Legality, Review Pending Changes, Cancel.
-    expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::LegalityProvenance, A::Close}, "party");
-    expect(Slot{Region::Box, 0, 0}, {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Close}, "box");
-    expect(Slot{Region::Box, 0, 1}, {A::Add, A::Close}, "empty box");
+    // Move (where supported), Release, Origin & Legality, Review Pending Changes, Cancel. Feature A
+    // (owner Oct 28) adds one file row to that accepted order and moves nothing else: Export to file
+    // after Origin & Legality, Import from file after Add Pokemon. The exact full list is checked.
+    const auto withFileRow = [](std::vector<A> accepted, A file, std::size_t at) {
+        accepted.insert(accepted.begin() + static_cast<std::ptrdiff_t>(at), file);
+        return accepted;
+    };
+    expect(Slot{Region::Party, 0, 0},
+           withFileRow({A::View, A::Edit, A::Clone, A::LegalityProvenance, A::Close}, A::ExportFile, 4), "party");
+    expect(Slot{Region::Box, 0, 0},
+           withFileRow({A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Close}, A::ExportFile, 6),
+           "box");
+    expect(Slot{Region::Box, 0, 1}, withFileRow({A::Add, A::Close}, A::ImportFile, 1), "empty box");
     // Cursor wraps; Cancel (Close) returns to Browse without staging.
     need(ui.openActions(ws, Slot{Region::Box, 0, 0}, error), "openActions: " + error);
     ui.moveAction(-1, ws);
@@ -859,10 +868,13 @@ Outcome actions(Ctx& c) {
     // Part 9 item 1: a staged slot (the Clone copy in box 0/1, the Move result) keeps the full shared
     // list, with Review before Cancel; the party keeps Clone and Origin & Legality as well.
     expect(Slot{Region::Box, 0, 1},
-           {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Review, A::Close}, "cloned copy");
+           withFileRow({A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Review, A::Close},
+                       A::ExportFile, 6), "cloned copy");
     expect(Slot{Region::Box, dest / 30, dest % 30},
-           {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Review, A::Close}, "moved Pokemon");
-    expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::LegalityProvenance, A::Review, A::Close},
+           withFileRow({A::View, A::Edit, A::Clone, A::Move, A::Remove, A::LegalityProvenance, A::Review, A::Close},
+                       A::ExportFile, 6), "moved Pokemon");
+    expect(Slot{Region::Party, 0, 0},
+           withFileRow({A::View, A::Edit, A::Clone, A::LegalityProvenance, A::Review, A::Close}, A::ExportFile, 4),
            "party after staging");
     need(c.sourceUntouched(), "actions touched the source file");
     return passed("party [View,Edit,Clone,Origin & Legality,Cancel], box [View,Edit,Clone,Move,Release,Origin & Legality,"

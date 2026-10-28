@@ -106,8 +106,9 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     G::Gen5SharedScreenState addScreen;
     CHECK(addScreen.openActions(workspace,{Region::Box,0,1},error));
     const auto options=addScreen.availableActions(workspace);
-    CHECK(options.count==2 && options[0]==Action::Add &&
-          options[1]==Action::Close);
+    // Feature A (owner Oct 28): Import from file follows Add on the same verified empty cell.
+    CHECK(options.count==3 && options[0]==Action::Add &&
+          options[1]==Action::ImportFile && options[2]==Action::Close);
     CHECK(addScreen.activate(workspace,Action::Add,error));
     CHECK(addScreen.surface()==Surface::ConfirmCreateBox);
     CHECK(!addScreen.pendingCreateInput());

@@ -79,7 +79,8 @@ enum class TargetKind : uint8_t { Box, Party };
 
 enum class MenuAction : uint8_t {
     View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone,
-    Legality, Release, Add, Review, Close
+    Legality, Release, Add, Review, Close,
+    ImportFile, ExportFile   // Feature A (owner Oct 28): standalone .pk4 files
 };
 struct MenuActionEntry {
     MenuAction action = MenuAction::Close;
@@ -954,6 +955,9 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
     if (!occupied) {
         if (state.target == TargetKind::Box)
             add(MenuAction::Add, "Add Pokemon", stagedAvailable);
+        // Feature A: listed only where the staged editor can stage it (never greyed placeholders).
+        if (state.target == TargetKind::Box && stagedAvailable)
+            add(MenuAction::ImportFile, PokeBank::UIModel::NarrowPokemonMenu::kImportFileLabel, true);
         if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
         add(MenuAction::Close, "Cancel", true);
         return result;
@@ -971,6 +975,8 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
         add(MenuAction::Release, "Release", stagedAvailable);
     }
     add(MenuAction::Legality, PokeBank::UIModel::NarrowPokemonMenu::kOriginLegalityLabel, true);
+    if (stagedAvailable)
+        add(MenuAction::ExportFile, PokeBank::UIModel::NarrowPokemonMenu::kExportFileLabel, true);
     if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
     add(MenuAction::Close, "Cancel", true);
     return result;
@@ -1081,6 +1087,17 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
         case MenuAction::Legality:
             state.actions = false;
             state.legality = true;
+            break;
+        case MenuAction::ImportFile:
+            // Feature A: the shared file dialog stages into this empty box slot.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 4, state.box, state.slot);
+            break;
+        case MenuAction::ExportFile:
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 4, state.target == TargetKind::Party, state.box, state.slot);
             break;
         case MenuAction::Review:
             state.actions = false;

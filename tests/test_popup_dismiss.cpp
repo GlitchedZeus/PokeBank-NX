@@ -136,7 +136,7 @@ void testWiring() {
                       name == "SharedPokemonEditorSurface.inc" || name == "SaveSelectScreen.cpp" ||
                       name == "ClassicPartyActions.inc" || name == "Gen1PokemonEditorOverlayUXCleanup3.inc" ||
                       name == "Gen2PokemonPickerOverlay.inc" || name == "Gen2HardwarePickerFix.inc" ||
-                      name == "StoragePanel.cpp");
+                      name == "StoragePanel.cpp" || name == "PokemonFileDialog.cpp");
         publishers += n;
     }
     // Gen II Held Item; Gen III value + species; Gen IV/V value + species; Game Browser Help;
@@ -144,8 +144,9 @@ void testWiring() {
     // hardware move picker. Game / Trainer Help publishes from ScreenChrome drawInfoOverlay.
     // Round 7 C04: Product Home Quick Games, profile / game-file pickers, Legacy details, Quick
     // Options (SaveSelectScreen.cpp, now 6), and the Pokémon actions / carried-block menus
-    // (StoragePanel.cpp drawPopupMenu, only when `dismissible`).
-    assert(publishers == 19);
+    // (StoragePanel.cpp drawPopupMenu, only when `dismissible`). Feature A (owner Oct 28): the
+    // non-destructive Import from file dialog (PokemonFileDialog.cpp drawDialog).
+    assert(publishers == 20);
     const std::string home = read("src/UI/SaveSelectScreen.cpp");
     has(home, "        if (SharedPopupDismiss::tappedOutside(touch)) {\n            switch (overlay) {\n"
               "                case Overlay::GamesDrawer:\n                    if (!quickDrawerMotion.interactive()) break;\n"

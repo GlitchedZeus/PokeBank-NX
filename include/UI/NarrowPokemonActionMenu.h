@@ -83,13 +83,16 @@ struct Geometry {
 
 // One action vocabulary and ONE order for every generation's Pokemon Actions sheet:
 //   View, Edit, Clone, Move (where supported), Release, Origin & Legality,
-//   Review Pending Changes, Cancel   (empty slot: Add Pokemon, Review, Cancel)
+//   Export to file (where staged), Review Pending Changes, Cancel
+//   (empty slot: Add Pokemon, Import from file (where staged), Review, Cancel)
 // Only commands the staged editor really performs are listed. Shiny is edited inside the
 // editor; the old greyed placeholders (Make Shiny, Master Vault, Bank, Transfer) are gone.
 // Rows follow the native action set's order and keep its index, so controller order, touch
 // ids (touchIdBase + native index) and dispatch are unchanged. Matches Thread C's Gen I/II
 // builder (UI/ClassicPokemonActionMenu.h).
 inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";
+inline constexpr const char* kImportFileLabel = "Import from file";   // Feature A (owner Oct 28)
+inline constexpr const char* kExportFileLabel = "Export to file";
 
 [[nodiscard]] constexpr const char* sharedActionLabel(SharedPokemonEditor::Action action) noexcept {
     using A = SharedPokemonEditor::Action;
@@ -101,6 +104,8 @@ inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";
         case A::Remove: return "Release";
         case A::LegalityProvenance: return kOriginLegalityLabel;
         case A::Add: return "Add Pokemon";
+        case A::ImportFile: return kImportFileLabel;
+        case A::ExportFile: return kExportFileLabel;
         case A::Review: return "Review Pending Changes";
         case A::Close: return "Cancel";
         case A::None: return nullptr;
@@ -113,23 +118,25 @@ inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";
     using A = SharedPokemonEditor::Action;
     switch (action) {
         case A::Add: return 0;
-        case A::View: return 1;
-        case A::Edit: return 2;
-        case A::Clone: return 3;
-        case A::Move: return 4;
-        case A::Remove: return 5;
-        case A::LegalityProvenance: return 6;
-        case A::Review: return 7;
-        case A::Close: return 8;
-        case A::None: return 9;
+        case A::ImportFile: return 1;
+        case A::View: return 2;
+        case A::Edit: return 3;
+        case A::Clone: return 4;
+        case A::Move: return 5;
+        case A::Remove: return 6;
+        case A::LegalityProvenance: return 7;
+        case A::ExportFile: return 8;
+        case A::Review: return 9;
+        case A::Close: return 10;
+        case A::None: return 11;
     }
-    return 9;
+    return 11;
 }
 
 [[nodiscard]] constexpr Model classic(
     const SharedPokemonEditor::ActionSet& native, bool /*occupied*/ = true) noexcept {
     Model result{};
-    for (int rank = 0; rank < 9; ++rank)
+    for (int rank = 0; rank < 11; ++rank)
         for (int i = 0; i < static_cast<int>(native.count); ++i) {
             const auto action = native[static_cast<std::size_t>(i)];
             if (sharedActionRank(action) != rank) continue;
@@ -148,6 +155,8 @@ inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";
         case A::Remove: return "Release";
         case A::LegalityProvenance: return kOriginLegalityLabel;
         case A::AddPokemon: return "Add Pokemon";
+        case A::ImportFile: return kImportFileLabel;
+        case A::ExportFile: return kExportFileLabel;
         case A::ReviewPendingChanges: return "Review Pending Changes";
         case A::Cancel: return "Cancel";
         default: return nullptr;
@@ -185,7 +194,8 @@ constexpr bool hasLabel(const Model& m, const char* label) noexcept {
 namespace detail {
 constexpr bool onlySharedLabels(const Model& m) noexcept {
     constexpr const char* allowed[] = {"View", "Edit", "Clone", "Move", "Release", kOriginLegalityLabel,
-                                       "Add Pokemon", "Review Pending Changes", "Cancel"};
+                                       "Add Pokemon", kImportFileLabel, kExportFileLabel,
+                                       "Review Pending Changes", "Cancel"};
     for (int i = 0; i < m.count; ++i) {
         bool ok = false;
         for (const char* label : allowed) {
@@ -205,6 +215,14 @@ static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, tru
 static_assert(classic(SharedPokemonEditor::actionsForSlot(false), false).count == 2);
 static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)).visualIndex(-1) == -1);
 static_assert(gen1(Gen1Editor::actionsForSlot(true), true).visualIndex(-1) == -1);
+// Feature A: the file actions join the same sheet in the shared order, within the box-menu geometry.
+static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true, true, true}, true)).count == 8);
+static_assert(classic(SharedPokemonEditor::actionsForSlot(false, {true, true, true, true, true}, true)).count == 4);
+static_assert(detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(false, {true, true, true, true, true})),
+                               kImportFileLabel));
+static_assert(detail::hasLabel(gen1(Gen1Editor::actionsForSlot(true, true, true, true)), kExportFileLabel));
+static_assert(gen1(Gen1Editor::actionsForSlot(true, true, true, true)).count == 9);
+static_assert(detail::onlySharedLabels(gen1(Gen1Editor::actionsForSlot(true, true, true, true))));
 static_assert(geometry(12).height <= 720 - 56);
 static_assert(geometry(9).rowHeight == 46 && geometry(8).height == 78 + 8 * 46 + 34,
               "box menu: compact shared rows, content-driven height");

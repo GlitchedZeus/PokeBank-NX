@@ -86,6 +86,15 @@ void drawNarrowPokemonActions(PKSEFramebuffer&,std::vector<int>& buttons,
 namespace SharedEditorChrome {void drawPickerFooter(PKSEFramebuffer&,std::pair<bool,bool>) {}}
 }
 #include "../src/UI/ClassicPartyActions.inc"
+// Feature A (owner Oct 28): the Party sheet's Export to file row hands the slot to the shared file
+// layer (src/UI/PokemonFileMenus.inc); this probe records the hand-off.
+namespace UI::PokemonFileMenus {
+struct ExportCall {int generation=0;bool party=false;int box=-1,slot=-1;int count=0;} exportCall;
+bool exportPokemon(TrainerViewScreen&,int generation,bool party,int box,int slot) {
+    exportCall={generation,party,box,slot,exportCall.count+1};return true;
+}
+bool beginImport(TrainerViewScreen&,int,int,int) {return false;}
+}
 
 int main() {
     using namespace UI;
@@ -97,12 +106,15 @@ int main() {
         const auto mode=[&]{return gen==1?static_cast<int>(Gen1PokemonEditor::state.mode):
             gen==2?static_cast<int>(Gen2PokemonEditor::state.mode):
             Gen3SharedEditorSurface::state.mode?static_cast<int>(*Gen3SharedEditorSurface::state.mode):-1;};
-        for(int action=0;action<4;++action)for(bool touch:{false,true}) {
+        for(int action=0;action<5;++action)for(bool touch:{false,true}) {
             reset();assert(ClassicPartyActions::open(screen,0));
             PKSEFramebuffer fb;screen.touchButtons={-999};assert(ClassicPartyActions::draw(screen,fb));
-            assert(fb.dims==1 && drawn.count==4 && screen.touchButtons.size()==4);
+            // Feature A: Export to file joins the four shared rows after Origin & Legality.
+            assert(fb.dims==1 && drawn.count==5 && screen.touchButtons.size()==5);
             assert(std::string(drawn.rows[0].label)=="View" && std::string(drawn.rows[1].label)=="Edit");
-            assert(std::string(drawn.rows[2].label)=="Origin & Legality" && std::string(drawn.rows[3].label)=="Cancel");
+            assert(std::string(drawn.rows[2].label)=="Origin & Legality" && std::string(drawn.rows[3].label)=="Export to file");
+            assert(std::string(drawn.rows[4].label)=="Cancel");
+            PokemonFileMenus::exportCall={};
             if(!touch)for(int i=0;i<action;++i)assert(ClassicPartyActions::handle(screen,HidNpadButton_Down,0,0,0,{}));
             assert(ClassicPartyActions::handle(screen,touch?0:HidNpadButton_A,0,0,0,{touch?89000+action:-1}));
             assert(!ClassicPartyActions::active(screen));
@@ -111,6 +123,9 @@ int main() {
                 if(gen==2)assert(Gen2PokemonEditor::state.party && mode()==static_cast<int>(action?Gen2PokemonEditor::Mode::Edit:Gen2PokemonEditor::Mode::View));
                 if(gen==3)assert(Gen3SharedEditorSurface::state.party && mode()==static_cast<int>(action?PokeBank::UIModel::Gen3SharedEditor::Mode::Edit:PokeBank::UIModel::Gen3SharedEditor::Mode::View));
             }
+            if(action==3)assert(PokemonFileMenus::exportCall.count==1 && PokemonFileMenus::exportCall.generation==gen &&
+                PokemonFileMenus::exportCall.party && PokemonFileMenus::exportCall.slot==0);
+            else assert(PokemonFileMenus::exportCall.count==0);
             if(action==2)assert(gen==1?Gen1PokemonEditor::state.mode==Gen1PokemonEditor::UX2Mode::Provenance:
                 gen==2?Gen2PokemonEditor::shared.provenanceActive:Gen3SharedEditorSurface::state.legality);
         }
@@ -128,7 +143,7 @@ int main() {
         const int afterB=mode();
         reset();assert(ClassicPartyActions::open(screen,0));
         {PKSEFramebuffer fb;assert(ClassicPartyActions::draw(screen,fb));}
-        const auto g=PokeBank::UIModel::NarrowPokemonMenu::geometry(4,1280,720,56);
+        const auto g=PokeBank::UIModel::NarrowPokemonMenu::geometry(5,1280,720,56);
         assert(ClassicPartyActions::handle(screen,0,0,0,0,{-1,true,g.x+8,g.y+8,g.x+9,g.y+9}));
         assert(ClassicPartyActions::active(screen));
         assert(ClassicPartyActions::handle(screen,0,0,0,0,{-1,true,20,40,22,41}));
