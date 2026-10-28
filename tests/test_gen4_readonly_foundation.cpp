@@ -1203,13 +1203,18 @@ void testNativeGen4Bag() {
         assert(workspace->stageBagAdd(kMachines,420,1,&error) && error.empty());
         assert(!workspace->stageBagQuantity(kMachines,0,2,&error));
         assert(workspace->stageBagAdd(kMachines,328,99,&error) && error.empty());
-        assert(!workspace->stageBagQuantity(kMachines,1,100,&error));
-        assert(workspace->stageBagQuantity(kMachines,1,99,&error) && error.empty());
+        // Native Add sorts the TM/HM pocket by item ID (pret decomps), so
+        // TM01 (328) now precedes HM01 (420).
+        assert(!workspace->stageBagQuantity(kMachines,0,100,&error));
+        assert(!workspace->stageBagQuantity(kMachines,1,2,&error)); // HM cap is 1
+        assert(workspace->stageBagQuantity(kMachines,0,99,&error) && error.empty());
         assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
         assert(trainer->items[kKeyItems][0].count==1);
         assert(trainer->items[kMachines].size()==2);
-        assert(trainer->items[kMachines][0].count==1 &&
-               trainer->items[kMachines][1].count==99);
+        assert(trainer->items[kMachines][0].itemId==328 &&
+               trainer->items[kMachines][0].count==99);
+        assert(trainer->items[kMachines][1].itemId==420 &&
+               trainer->items[kMachines][1].count==1);
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
         // T-01 (PKSE 9a9a731 "real pouch capacity"; owner Oct 28). In every Gen IV pouch the
         // native slot count is at least the number of distinct legal items, so a legal Add never
