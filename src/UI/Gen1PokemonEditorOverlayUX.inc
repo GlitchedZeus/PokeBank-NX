@@ -463,7 +463,7 @@ bool editDraftField(TrainerViewScreen& screen) {
     if (row == 1) {
         const std::string initial = state.draft.nickname.empty()
             ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname;
-        const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
+        const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
         if (!result.accepted) return false;
         state.draft.nickname = result.text;
         return true;
@@ -520,7 +520,7 @@ bool editDraftField(TrainerViewScreen& screen) {
     }
     if (row == 26) {
         const std::string initial = state.draft.otName.empty() ? e->view().trainer().name : state.draft.otName;
-        const auto result = Utils::promptText("Generation I OT", "1-7 supported Gen I characters", initial, 7);
+        const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Generation I OT", "1-7 supported Gen I characters", initial, 7);
         if (!result.accepted) return false;
         state.draft.otName = result.text;
         return true;
@@ -570,7 +570,7 @@ bool editExistingField(TrainerViewScreen& screen) {
         return true;
     }
     if (row == 1) {
-        const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", pokemon->nickname, 10);
+        const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Generation I Nickname", "1-10 supported Gen I characters", pokemon->nickname, 10);
         if (!result.accepted) return false;
         edit.nickname = result.text;
     } else if (row == 2) {
@@ -623,7 +623,7 @@ bool editExistingField(TrainerViewScreen& screen) {
         stats[i] = static_cast<uint16_t>(result.value);
         edit.statExperience = stats;
     } else if (row == 26) {
-        const auto result = Utils::promptText("Generation I OT", "1-7 supported Gen I characters", pokemon->originalTrainer, 7);
+        const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Generation I OT", "1-7 supported Gen I characters", pokemon->originalTrainer, 7);
         if (!result.accepted) return false;
         edit.otName = result.text;
     } else if (row == 27) {

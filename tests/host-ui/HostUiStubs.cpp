@@ -91,6 +91,11 @@ KeyboardResult promptSystemText(const std::string&, const std::string&, const st
     return HostUi::nextText();
 }
 NumberResult promptNumber(const std::string&, int, int, int) { return HostUi::nextNumber(); }
+KeyboardResult promptJapaneseName(const std::string&, const std::string&, int maxChars) {
+    ++HostUi::japanesePromptCount;
+    HostUi::lastJapaneseMaxChars = maxChars;
+    return HostUi::nextText();
+}
 bool copyDirectoryTransactional(const char*, const char*) { return false; }
 bool deleteDirectoryRecursive(const char*) { return false; }
 bool restoreBackupToTitle(AccountUid, u64, const char*, const std::string&, const std::vector<std::string>&) {

@@ -2,6 +2,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 #include "UI/ClassicDefaultNickname.h"
+#include "UI/ClassicJapaneseNames.h"
 #include "UI/PokemonFileDialog.h"   // Feature A: Import from file / Export to file (every Gen I-V sheet)
 #include "UI/PokemonFileMenus.h"
 

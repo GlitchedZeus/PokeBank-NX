@@ -219,4 +219,17 @@ $(HOST_UI_FILE_MENUS_TEST): $(HOST_UI_FILE_MENUS_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_FILE_MENUS_SANITIZE): $(HOST_UI_FILE_MENUS_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_pokemon_file_menus_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Owner Oct 28: Japanese Gen I / II name prompts open the kana keyboard; other saves are unchanged.
+HOST_UI_JP_NAMES_TEST := $(HOST_BUILD)/test_ui_japanese_name_prompts_host
+HOST_UI_JP_NAMES_SANITIZE := $(HOST_BUILD)/test_ui_japanese_name_prompts_host_sanitize
+HOST_TESTS += $(HOST_UI_JP_NAMES_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_JP_NAMES_SANITIZE)
+host-test: $(HOST_UI_JP_NAMES_TEST)
+host-sanitize: $(HOST_UI_JP_NAMES_SANITIZE)
+$(HOST_UI_JP_NAMES_TEST): tests/test_ui_japanese_name_prompts_host.cpp include/UI/ClassicJapaneseNames.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_name_prompts_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_JP_NAMES_SANITIZE): tests/test_ui_japanese_name_prompts_host.cpp include/UI/ClassicJapaneseNames.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_name_prompts_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif

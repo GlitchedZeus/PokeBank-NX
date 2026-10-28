@@ -230,7 +230,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             break;
         case 1: {
             const uint16_t species = add ? state.draft.species : pokemon->species;
-            const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters",
+            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Generation I Nickname", "1-10 supported Gen I characters",
                                                   foundationNickname(state, pokemon, add, species), 10);
             if (!result.accepted) break;
             if (add) state.draft.nickname = result.text;
@@ -270,7 +270,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             break;
         }
         case 4: {
-            const auto result = Utils::promptText("Generation I OT", "1-7 supported Gen I characters",
+            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, "Generation I OT", "1-7 supported Gen I characters",
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
             if (add) state.draft.otName = result.text;
@@ -774,9 +774,10 @@ bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t
     fields.money = editor->money();
     fields.nameMax = static_cast<int>(editor->nameMax());
     fields.moneyMax = PokeVault::Integration::Gen1::kGen1MaxMoney;
-    fields.nameGuide = "1-7 letters, digits, space - . ? !";
+    fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer);
+    fields.nameGuide = fields.nameJapanese ? UI::ClassicJapaneseNames::kKanaGuide : "1-7 letters, digits, space - . ? !";
     fields.nameEditable = editor->nameEditable();
-    fields.nameReadOnlyReason = "Japanese Gen I trainer names are read-only here";
+    fields.nameReadOnlyReason = "This trainer name cannot be edited here";
     // Owner item 7: Gen I Play Time is now a native, staged edit (pret engine/play_time.asm).
     if (editor->playTimeEditable()) {
         fields.playTime = editor->playTime();
