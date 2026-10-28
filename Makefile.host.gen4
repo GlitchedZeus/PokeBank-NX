@@ -142,3 +142,16 @@ $(GEN4_SURFACE_CONTRACT_SANITIZE): tests/test_gen4_hardware_surface_contract.cpp
 	include/UI/SharedPokemonEditorContract.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# QA: Gen IV staged Bag Remove packing regression (game bag list stops at the first empty slot).
+GEN4_BAGPACK_SOURCES := tests/test_gen4_bag_remove_pack.cpp $(filter-out tests/test_gen4_readonly_foundation.cpp,$(GEN4_FOUNDATION_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen4_bag_remove_pack
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bag_remove_pack_sanitize
+host-test: $(HOST_BUILD)/test_gen4_bag_remove_pack
+host-sanitize: $(HOST_BUILD)/test_gen4_bag_remove_pack_sanitize
+$(HOST_BUILD)/test_gen4_bag_remove_pack: $(GEN4_BAGPACK_SOURCES) $(GEN4_HEADERS) tests/fuzz_synthetic_saves.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Itests -Ivendor/PKSM-Core/include $(GEN4_BAGPACK_SOURCES) -o $@
+$(HOST_BUILD)/test_gen4_bag_remove_pack_sanitize: $(GEN4_BAGPACK_SOURCES) $(GEN4_HEADERS) tests/fuzz_synthetic_saves.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Itests -Ivendor/PKSM-Core/include $(GEN4_BAGPACK_SOURCES) -o $@
