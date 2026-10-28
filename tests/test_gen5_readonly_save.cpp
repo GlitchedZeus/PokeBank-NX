@@ -1641,15 +1641,23 @@ int main() {
         const auto nativeActions=G::actions(workspace,nativeParty);
         // Round 3 Part 9: an edited party slot keeps Clone and lists the
         // neutral Origin & Legality row (Gen I-IV action order).
-        assert(nativeActions.count==6);
+        // Feature A (owner Oct 28): Export to file follows Origin & Legality.
+        assert(nativeActions.count==7);
         assert(nativeActions[0]==GA::View && nativeActions[1]==GA::Edit);
         assert(nativeActions[2]==GA::Clone && nativeActions[3]==GA::LegalityProvenance);
-        assert(nativeActions[4]==GA::Review && nativeActions[5]==GA::Close);
+        assert(nativeActions[4]==GA::ExportFile);
+        assert(nativeActions[5]==GA::Review && nativeActions[6]==GA::Close);
         // A stale/forged slot flag must never surface the Edit action on
         // an actually empty native box cell, even with pending changes.
         auto staleSlot=nativeParty;
         staleSlot.location={G::Gen5StagedPokemonWorkspace::Region::Box,0,1};
-        const auto staleActions=G::actions(workspace,staleSlot);
+        const auto staleWithFile=G::actions(workspace,staleSlot);
+        // Feature A (owner Oct 28): Import from file follows Add and is the only addition.
+        assert(staleWithFile.count==4 && staleWithFile[1]==GA::ImportFile);
+        PokeBank::UIModel::SharedPokemonEditor::ActionSet staleActions{};
+        for(size_t i=0;i<staleWithFile.count;++i)
+            if(staleWithFile[i]!=GA::ImportFile)
+                staleActions.values[staleActions.count++]=staleWithFile[i];
         // Empty verified cells use the very same shared Add/Review/Cancel
         // menu as Gen I-IV, not an invented Gen V-only Create UI.
         assert(staleActions.count==3 && staleActions[0]==GA::Add &&

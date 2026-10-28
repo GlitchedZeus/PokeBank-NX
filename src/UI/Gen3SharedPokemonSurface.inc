@@ -1692,7 +1692,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {/*clone*/true, /*remove*/true, /*legality*/true},
+        occupied, {/*clone*/true, /*remove*/true, /*legality*/true, /*import*/true, /*export*/true},
         !reviewRows(screen).empty());
     if (actions.count == 0) return true;
     state.actionRow = std::clamp(
@@ -1718,6 +1718,17 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
         case Shared::Action::View: beginViewOrEdit(screen, SessionModel::Mode::View); break;
         case Shared::Action::Edit: beginViewOrEdit(screen, SessionModel::Mode::Edit); break;
         case Shared::Action::Add: beginCreate(screen, state.box, state.slot); break;
+        case Shared::Action::ImportFile:
+            // Feature A: the shared file dialog stages into this empty slot.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 3, state.box, state.slot);
+            break;
+        case Shared::Action::ExportFile:
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 3, false, state.box, state.slot);
+            break;
         case Shared::Action::LegalityProvenance:
             state.actions = false;
             state.legality = true;
@@ -2503,7 +2514,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                                                static_cast<std::size_t>(state.slot), error);
     const bool occupied = pokemon.has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {true, true, true}, !reviewRows(screen).empty());
+        occupied, {true, true, true, true, true}, !reviewRows(screen).empty());
     screen.drawGSCOverlay(fb);
     // One narrow, greyed-out menu for touch and A. Underlying box hitboxes
     // are replaced by enabled native command IDs only.

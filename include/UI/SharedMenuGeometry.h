@@ -89,6 +89,7 @@ enum class MenuType : uint8_t {
     LaunchConfirm,    // launch the game: Y commits
     SaveDiscard,      // save / discard staged work
     ChoicePicker,     // short editor value lists: Language, Ability, Form, Gender, Pokerus
+    FileBrowser,      // Import from file: SD-card folders and Pokemon files (UI/PokemonFileDialog.h)
     Count
 };
 
@@ -156,6 +157,10 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::SaveDiscard:
             // The accepted Gen I-V exit / save dialog width (Dialogs/SaveConfirmDialog.cpp, 560).
             return {Kind::Confirm, 560, 1, 0, 0, 0, 60, 24, 16, 0, 0, 8, Text::Body, 56, 3};
+        case MenuType::FileBrowser:
+            // Feature A (owner Oct 28): 1000 px for long SD paths, 96 px title + folder + message
+            // lines, 62 px rows whose 58 px cells stay at or above TouchTargetMin (56), 8 visible.
+            return {Kind::List, 1000, 1, 62, 4, 8, 96, 20, 16, 16, 0, 8, Text::Body};
         case MenuType::Count: break;
     }
     return {};

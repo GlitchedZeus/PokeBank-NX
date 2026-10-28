@@ -2,6 +2,8 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 #include "UI/ClassicDefaultNickname.h"
+#include "UI/PokemonFileDialog.h"   // Feature A: Import from file / Export to file (every Gen I-V sheet)
+#include "UI/PokemonFileMenus.h"
 
 // Pre-include every dependency used by the preserved GSC source before the narrow rename macros.
 // Their include guards ensure the macros below rename only TrainerViewScreen's two method definitions,
@@ -174,6 +176,7 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 #include "Gen4SharedPokemonSurface.inc"
 #include "Gen5SharedReadOnlySurface.inc"
 #include "ClassicPartyActions.inc"
+#include "PokemonFileMenus.inc"
 
 namespace UI {
 
@@ -379,6 +382,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // the adapter's native capacity before any source action/move layer sees it.
     clampSourceBoxSelection(*this);
 
+    // Feature A: the Import from file dialog is modal over every Gen I-V surface.
+    if (PokemonFileDialog::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     // Gen V source isolation precedes all inherited touch and save handlers.
     if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
         return;
@@ -462,6 +467,12 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
         TrainerViewScreen& screen; PKSEFramebuffer& fb;
         ~StatusOnTop() { screen.drawTransientStatus(fb); }
     } statusOnTop{*this, fb};
+    // Feature A: the Import from file dialog owns the frame over every surface. Declared after the
+    // status guard, so it is destroyed (paints) first and the status line still lands on top.
+    struct FileDialogOnTop {
+        TrainerViewScreen& screen; PKSEFramebuffer& fb;
+        ~FileDialogOnTop() { PokemonFileDialog::drawDialog(screen, fb); }
+    } fileDialogOnTop{*this, fb};
     // Touch input is consumed before draw, so each rendered frame must publish fresh geometry.
     // Clear both screen-owned targets and visible controller-glyph buttons here because the
     // Gen I-IV editor frames do not all pass through drawAppBackdrop().

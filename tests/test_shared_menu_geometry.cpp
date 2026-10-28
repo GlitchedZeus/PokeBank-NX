@@ -36,7 +36,7 @@ void require(bool ok, const std::string& what) {
 const char* typeName(G::MenuType t) {
     constexpr const char* names[] = {"ItemPicker", "KeyItemWarning", "RemoveConfirm", "HeldItemPicker",
         "BallPicker", "SpeciesPicker", "MovePicker", "LocationPicker", "BoxMenu", "BackupMenu",
-        "LaunchConfirm", "SaveDiscard", "ChoicePicker"};
+        "LaunchConfirm", "SaveDiscard", "ChoicePicker", "FileBrowser"};
     return names[static_cast<int>(t)];
 }
 

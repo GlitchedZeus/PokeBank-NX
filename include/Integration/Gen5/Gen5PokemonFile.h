@@ -14,6 +14,7 @@
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "PokemonFile/NativePokemonFile.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -62,6 +63,39 @@ namespace PokeVault::Integration::Gen5 {
         return fail("Gen V export slot is empty");
     const size_t expected=location.region==Region::Party?Crypto::PartySize:Crypto::StoredSize;
     const auto decoded=pk->decodedBytes();
+    if(decoded.size()!=expected)
+        return fail("Gen V export slot holds a record of the wrong size");
+    if(error)error->clear();
+    return std::vector<uint8_t>(decoded.begin(),decoded.end());
+}
+
+// The same export for a slot as the open WORKSPACE holds it (Pokemon Actions -> Export to file): a
+// slot the session has not changed is exported from the source save by exportPokemonFile5; a staged
+// one (edited, created, cloned, imported) from its staged record under the same rules (valid,
+// occupied, exact box / party size). Non-mutating.
+[[nodiscard]] inline std::optional<std::vector<uint8_t>> exportStagedPokemonFile5(
+    const Gen5StagedPokemonWorkspace& workspace,Gen5StagedPokemonWorkspace::Slot location,
+    std::string* error=nullptr) {
+    using Region=Gen5StagedPokemonWorkspace::Region;
+    if(!Gen5StagedPokemonWorkspace::canonicalSlot(location))
+        return exportPokemonFile5(workspace.sourceSave(),location,error);
+    const auto& save=workspace.sourceSave();
+    const bool party=location.region==Region::Party;
+    const auto staged=party?workspace.viewParty(location.slot):workspace.viewBox(location.box,location.slot);
+    const auto source=party?(location.slot<save.partyCount()?save.partyPokemon(location.slot):std::nullopt)
+                           :save.boxPokemon(location.box,location.slot);
+    const bool unchanged=source && staged && std::ranges::equal(source->decodedBytes(),staged->decodedBytes());
+    if(unchanged || !staged)return exportPokemonFile5(workspace.sourceSave(),location,error);
+    const auto fail=[&](const char* why) -> std::optional<std::vector<uint8_t>> {
+        if(error)*error=why;
+        return std::nullopt;
+    };
+    if(!staged->valid())
+        return fail("Gen V export slot does not hold a valid PK5 record");
+    if(staged->empty())
+        return fail("Gen V export slot is empty");
+    const size_t expected=location.region==Region::Party?Crypto::PartySize:Crypto::StoredSize;
+    const auto decoded=staged->decodedBytes();
     if(decoded.size()!=expected)
         return fail("Gen V export slot holds a record of the wrong size");
     if(error)error->clear();

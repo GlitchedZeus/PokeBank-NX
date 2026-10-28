@@ -43,16 +43,24 @@ enum class Action : uint8_t {
     Close, // internal close/cancel semantic; product copy is always "Cancel".
     None,
     Move, // box-to-empty-box move (Gen IV/V shared box vocabulary)
+    // Feature A (owner Oct 28): standalone Pokemon files (UI/PokemonFileDialog.h). Appended so every
+    // existing action keeps its value.
+    ImportFile, // empty box slot: stage one .pkN / .ekN file from the SD card (never writes there)
+    ExportFile, // occupied slot: write a NEW .pkN under the app's pokemon folder (never the save)
 };
 
 struct ActionCapabilities {
     bool canClone = true;
     bool canRemove = false;
     bool hasLegalityProvenance = false;
+    // Feature A: only a surface whose session can stage an import (a validated staged editor) sets
+    // canImportFile; canExportFile needs the same editor's non-mutating file export.
+    bool canImportFile = false;
+    bool canExportFile = false;
 };
 
 struct ActionSet {
-    std::array<Action, 8> values{};
+    std::array<Action, 10> values{};
     std::size_t count = 0;
 
     constexpr Action operator[](std::size_t index) const noexcept {
@@ -69,6 +77,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
 
     if (!occupied) {
         append(Action::Add);
+        if (capabilities.canImportFile) append(Action::ImportFile);
         if (hasPendingChanges) append(Action::Review);
         append(Action::Close);
         return result;
@@ -79,9 +88,23 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (capabilities.canClone) append(Action::Clone);
     if (capabilities.canRemove) append(Action::Remove);
     if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
+    if (capabilities.canExportFile) append(Action::ExportFile);
     if (hasPendingChanges) append(Action::Review);
     append(Action::Close);
     return result;
+}
+
+// Inserts one action just before the trailing Review / Cancel rows of an existing set (the shared
+// order puts Import after Add and Export after Origin & Legality). Used where a fixed base sheet is
+// kept verbatim (the Gen I-III Party sheet) and the file action is an addition to it.
+constexpr ActionSet withAction(ActionSet set, Action action) noexcept {
+    if (set.count >= set.values.size()) return set;
+    std::size_t at = set.count;
+    while (at > 0 && (set.values[at - 1] == Action::Close || set.values[at - 1] == Action::Review)) --at;
+    for (std::size_t i = set.count; i > at; --i) set.values[i] = set.values[i - 1];
+    set.values[at] = action;
+    ++set.count;
+    return set;
 }
 
 constexpr const char* actionLabel(Action action) noexcept {
@@ -96,6 +119,8 @@ constexpr const char* actionLabel(Action action) noexcept {
         case Action::Close: return "Cancel";
         case Action::None: return "";
         case Action::Move: return "Move Pokemon";
+        case Action::ImportFile: return "Import from file";
+        case Action::ExportFile: return "Export to file";
     }
     return "";
 }
@@ -115,6 +140,8 @@ constexpr Surface surfaceForAction(Action action) noexcept {
         case Action::Review: return Surface::Review;
         case Action::Clone:
         case Action::Move:
+        case Action::ImportFile:
+        case Action::ExportFile:
         case Action::Remove:
         case Action::LegalityProvenance:
         case Action::Close:
