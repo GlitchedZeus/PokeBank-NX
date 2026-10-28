@@ -266,6 +266,19 @@ uint16_t StagedInventoryEditor::stagedInventoryQuantity(InventoryPouch pouch, ui
     return it == entries.end() ? 0 : it->count;
 }
 
+std::size_t StagedInventoryEditor::freeSlots(InventoryPouch pouch) const {
+    const auto* definition = definitionFor(sourceGame_, pouch);
+    if (!definition) return 0;
+    std::size_t free = 0;
+    for (uint16_t slot = 0; slot < definition->capacity; ++slot) {
+        std::array<uint8_t, 4> raw{};
+        if (!readLogical(staged_, sectorOffsets_, 1,
+                         definition->offset + static_cast<std::size_t>(slot) * 4, raw)) return 0;
+        if (read16(raw, 0) == 0) ++free;
+    }
+    return free;
+}
+
 bool StagedInventoryEditor::stageInventoryQuantity(
     InventoryPouch pouch, uint16_t itemId, uint16_t quantity, std::string& error) {
     error.clear();

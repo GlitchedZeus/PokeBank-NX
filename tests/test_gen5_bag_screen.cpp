@@ -87,6 +87,7 @@ void unavailableBag() {
     assert(!can.editAmount && !can.addItem && !can.removeItem);
     const auto footer = bag.footer(ws);
     assert(!hasGlyph(footer, "A") && !hasGlyph(footer, "X") && !hasGlyph(footer, "Y"));
+    assert(!hasGlyph(footer, "ZR"));   // Top Up / Add Missing only where X Add is offered
     assert(hasGlyph(footer, "L/R") && hasGlyph(footer, "B"));
     assert(bag.status(ws).find("unavailable") != std::string::npos);
     assert(!bag.beginQuantity(ws, error) && !error.empty());
@@ -133,6 +134,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(can.editAmount && can.addItem && can.removeItem);
     auto footer = bag.footer(ws);
     assert(hasGlyph(footer, "A") && hasGlyph(footer, "X") && hasGlyph(footer, "Y") && !hasGlyph(footer, "+"));
+    assert(hasGlyph(footer, "ZR"));    // owner Oct 28 (Feature B): ZR Top Up / Add Missing
 
     // Pocket navigation wraps across all five native pockets (L/R and arrows).
     bag.changePocket(-1);

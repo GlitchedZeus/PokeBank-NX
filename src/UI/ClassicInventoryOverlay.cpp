@@ -3,10 +3,12 @@
 #include "UI/SharedBoxedRows.h"   // R2-BUG-012: Add Item picker rows use the shared boxed style
 
 #include "Integration/Common/ClassicStrictValidators.h"
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Common/VerifiedStagedExport.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
+#include "Inventory/BulkItemAdaptersClassic.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
@@ -17,6 +19,7 @@
 #include "UI/ClassicGenericUiGuard.h"
 #include "UI/SharedBagAddFlow.h"
 #include "UI/SharedBagAddPicker.h"
+#include "UI/SharedBagTopUp.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
@@ -83,6 +86,7 @@ struct OverlayState {
     std::vector<uint16_t> pickerNativeItems;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string lastExportDirectory;
+    UI::SharedBagTopUp::Ui topUp;   // Top Up / Add Missing (owner Oct 28, Feature B)
 };
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
@@ -579,6 +583,178 @@ bool selectPickerItem(TrainerViewScreen& screen) {
     return true;
 }
 
+// ---- Top Up / Add Missing (owner Oct 28, Feature B) -----------------------------------------
+// ZR on the Bag (or Inventory Options) opens the shared flow (UI/SharedBagTopUp.h). The plan is
+// built from the staged editor through the generation's adapter (Inventory/BulkItemAdaptersClassic.h)
+// with the Add picker's own item list; A in the preview stages it all or nothing; B stages nothing.
+// Only a source with a staged editor gets here (backendAvailable): a Japanese Gen I / II save, read-
+// only while Integration/Common/JapaneseEditingGate.h is false, has none and is never offered it.
+namespace BI = PokeVault::Inventory::BulkItems;
+constexpr int kTopUpTouchBase = 9400;
+
+std::vector<BI::PocketState> topUpPockets(TrainerViewScreen& screen, BI::Game& game, std::string& error) {
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1: {
+            const auto* e = rbyTrainer(screen)->stagedInventory();
+            if (!e) break;
+            game = BI::Gen1Bag::game(*e);
+            return BI::Gen1Bag::pockets(*e, error);
+        }
+        case SourceKind::Gen2: {
+            const auto* e = gscTrainer(screen)->stagedEditor();
+            if (!e) break;
+            game = BI::Gen2Bag::game(*e);
+            return BI::Gen2Bag::pockets(*e, error);
+        }
+        case SourceKind::Gen3: {
+            const auto* e = gen3Trainer(screen)->stagedInventory();
+            if (!e) break;
+            game = BI::Gen3Bag::game(*e);
+            return BI::Gen3Bag::pockets(*e, error);
+        }
+        case SourceKind::None:
+            break;
+    }
+    if (error.empty()) error = "Staged classic inventory editing is unavailable; source remains read-only";
+    return {};
+}
+
+BI::ApplyResult applyTopUp(TrainerViewScreen& screen, const BI::Plan& plan) {
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1:
+            if (auto* e = rbyTrainer(screen)->stagedInventory()) return BI::apply(*e, plan, BI::Gen1Bag::Adapter(*e));
+            break;
+        case SourceKind::Gen2:
+            if (auto* e = gscTrainer(screen)->stagedEditor()) return BI::apply(*e, plan, BI::Gen2Bag::Adapter{});
+            break;
+        case SourceKind::Gen3:
+            if (auto* e = gen3Trainer(screen)->stagedInventory()) return BI::apply(*e, plan, BI::Gen3Bag::Adapter{});
+            break;
+        case SourceKind::None:
+            break;
+    }
+    BI::ApplyResult refused;
+    refused.error = "Staged classic inventory editing is unavailable; source remains read-only";
+    return refused;
+}
+
+std::string topUpItemName(ClassicGame game, BI::Pocket pocket, uint16_t itemId) {
+    const auto classic = BI::classicPocketFor(game, pocket);
+    return classic ? PokeVault::Inventory::displayItemName(game, *classic, itemId) : std::to_string(itemId);
+}
+std::string topUpPocketName(ClassicGame game, BI::Pocket pocket) {
+    const auto classic = BI::classicPocketFor(game, pocket);
+    return classic ? std::string(PokeVault::Inventory::pocketName(*classic)) : std::string("Bag");
+}
+
+// A Japanese Gen I / II save stays read-only while the gate is closed: Top Up is never offered there,
+// even where an older path still builds a staged Bag editor for it (the Gen I inventory editor).
+bool japaneseReadOnly(TrainerViewScreen& screen) noexcept {
+    if (Common::kJapaneseClassicEditingEnabled) return false;
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1: {
+            const auto* e = rbyTrainer(screen)->stagedInventory();
+            return !e || e->region() == PokeVault::Integration::Gen1::RegionLayout::Japanese;
+        }
+        case SourceKind::Gen2: {
+            const auto* e = gscTrainer(screen)->stagedEditor();
+            return !e || e->metadata().region == PokeVault::Integration::Gen2::RegionLayout::Japanese;
+        }
+        case SourceKind::Gen3:
+        case SourceKind::None:
+            return false;
+    }
+    return false;
+}
+
+void openTopUp(TrainerViewScreen& screen) {
+    std::string error;
+    ClassicGame game{};
+    ClassicPocket pocket{};
+    if (!backendAvailable(screen, error)) { screen.postStatus(error, 360); return; }
+    if (japaneseReadOnly(screen)) {
+        screen.postStatus("Japanese Generation I / II saves are read-only; Top Up is not offered", 360);
+        return;
+    }
+    if (!currentPocket(screen, game, pocket)) {
+        screen.postStatus("This inventory category is not supported by the selected classic game", 300);
+        return;
+    }
+    PokeBank::UIModel::BagTopUp::open(stateFor(screen).topUp.model);
+}
+
+// Builds the exact plan for the SETUP choices; `out` receives it with the pockets it covers.
+bool planTopUp(TrainerViewScreen& screen, BI::Plan& out, std::vector<BI::Pocket>& covered, std::string& error) {
+    auto& ui = stateFor(screen).topUp;
+    ClassicGame game{};
+    ClassicPocket pocket{};
+    if (!currentPocket(screen, game, pocket)) { error = "This inventory category is not supported"; return false; }
+    BI::Game policyGame{};
+    const auto pockets = topUpPockets(screen, policyGame, error);
+    if (pockets.empty()) return false;
+    const auto request = PokeBank::UIModel::BagTopUp::request(
+        ui.model, PokeVault::Inventory::quantityPolicyPocket(pocket), BI::bagPockets(pockets));
+    covered = request.pockets;
+    out = BI::plan(policyGame, request, pockets);
+    return true;
+}
+
+void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, const TouchInput& touch) {
+    namespace Model = PokeBank::UIModel::BagTopUp;
+    auto& ui = stateFor(screen).topUp;
+    const auto action = UI::SharedBagTopUp::handleInput(ui, down, touchId, kTopUpTouchBase, touch);
+    switch (action) {
+        case Model::Action::None:
+        case Model::Action::Close:
+            return;
+        case Model::Action::PromptAmount:
+            (void)UI::SharedBagTopUp::promptAmount(ui);
+            return;
+        case Model::Action::BuildPreview: {
+            BI::Plan plan;
+            std::vector<BI::Pocket> covered;
+            std::string error;
+            ClassicGame game{};
+            ClassicPocket pocket{};
+            if (!currentPocket(screen, game, pocket) || !planTopUp(screen, plan, covered, error)) {
+                screen.postStatus(error.empty() ? "Top Up / Add Missing is unavailable here" : error, 360);
+                return;
+            }
+            Model::showPreview(ui.model, std::move(plan), covered,
+                [&](BI::Pocket p, uint16_t id) { return topUpItemName(game, p, id); },
+                [&](BI::Pocket p) { return topUpPocketName(game, p); });
+            return;
+        }
+        case Model::Action::Confirm: {
+            // Re-plan against the editor as it is now; stage only the exact plan the preview showed.
+            BI::Plan again;
+            std::vector<BI::Pocket> covered;
+            std::string error;
+            if (!planTopUp(screen, again, covered, error) || !Model::samePlan(again, ui.model.plan)) {
+                screen.postStatus(error.empty() ? "The Bag changed; preview again" : error, 360);
+                Model::close(ui.model);
+                return;
+            }
+            const auto result = applyTopUp(screen, ui.model.plan);
+            Model::close(ui.model);
+            ui.scrollbar.reset();
+            if (!result.applied) {
+                screen.postStatus("Nothing staged: " + result.error, 420);
+                return;
+            }
+            if (!refreshPresentation(screen)) {
+                screen.postStatus("Changes staged, but the inventory presentation could not refresh", 360);
+                return;
+            }
+            const auto visible = screen.visibleItemIndices();
+            if (screen.selectedItemIndex >= static_cast<int>(visible.size()))
+                screen.selectedItemIndex = std::max(0, static_cast<int>(visible.size()) - 1);
+            screen.postStatus(Model::appliedStatus(result.toppedUp, result.added), 420);
+            return;
+        }
+    }
+}
+
 void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& text,
              bool selected, int height = 48, bool brightUnselected = false) {
     fb.drawFilledRoundedRect(x, y, width, height, 10, Colors::PanelAlt);
@@ -599,6 +775,10 @@ bool stagedEditingAvailable(TrainerViewScreen& screen) {
     if (!isClassicSource(screen)) return false;
     std::string error;
     return backendAvailable(screen, error);
+}
+
+bool topUpAvailable(TrainerViewScreen& screen) {
+    return stagedEditingAvailable(screen) && !japaneseReadOnly(screen);
 }
 
 bool refreshPresentation(TrainerViewScreen& screen) {
@@ -637,6 +817,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             screen.selectedCategory = std::clamp(screen.selectedCategory, 0, categoryCount - 1);
         screen.selectedItemIndex = 0;
         screen.currentPage = 0;
+    }
+
+    if (state.topUp.active()) {
+        // Top Up / Add Missing owns every input while it is open (SETUP or PREVIEW).
+        handleTopUpInput(screen, down, touchId, touch);
+        return true;
     }
 
     if (state.removeConfirmActive) {
@@ -765,7 +951,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (state.optionsActive) {
-        constexpr int optionCount = 4;
+        constexpr int optionCount = 5;
         if (touchId >= 0 && touchId < optionCount) { state.optionsRow = touchId; down |= HidNpadButton_A; }
         if (down & HidNpadButton_Up) state.optionsRow = (state.optionsRow - 1 + optionCount) % optionCount;
         if (down & HidNpadButton_Down) state.optionsRow = (state.optionsRow + 1) % optionCount;
@@ -795,6 +981,11 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
                 else state.discardConfirmActive = true;
                 break;
             case 3:
+                // Top Up / Add Missing, the same flow ZR opens on the Bag.
+                state.optionsActive = false;
+                openTopUp(screen);
+                break;
+            case 4:
                 state.optionsActive = false;
                 break;
         }
@@ -815,6 +1006,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
     if (touchId == CategoryTouch::PreviousId) down |= HidNpadButton_L;
     if (touchId == CategoryTouch::NextId) down |= HidNpadButton_R;
+
+    // ZR: Top Up / Add Missing (owner Oct 28, Feature B), offered only with a staged editor.
+    if (down & HidNpadButton_ZR) {
+        openTopUp(screen);
+        return true;
+    }
 
     std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
     if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
@@ -921,9 +1118,20 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isClassicSource(screen)) return;
     auto& state = stateFor(screen);
     if (!state.pickerActive && !state.optionsActive && !state.helpActive &&
-        !state.warningActive && !state.discardConfirmActive && !state.removeConfirmActive) return;
+        !state.warningActive && !state.discardConfirmActive && !state.removeConfirmActive &&
+        !state.topUp.active()) return;
 
     screen.touchButtons.clear();
+    if (state.topUp.active()) {
+        const auto game = exactGame(screen);
+        const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
+                                 : std::optional<ClassicPocket>{};
+        const int gen = generation(screen);
+        UI::SharedBagTopUp::drawTopUpModal(fb, screen.touchButtons, state.topUp, kTopUpTouchBase,
+            pocket ? std::string(PokeVault::Inventory::pocketName(*pocket)) : std::string("Bag"),
+            gen == 1 ? "Gen I Bag" : gen == 2 ? "Gen II Bag" : "Gen III Bag");
+        return;
+    }
     // Bag confirmations draw through the shared Gen I-V presentation (UI/SharedBagAddPicker.h:
     // SharedMenuGeometry RemoveConfirm / KeyItemWarning), the same as Gen IV/V.
     if (state.removeConfirmActive || state.warningActive) {
@@ -1053,9 +1261,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (state.optionsActive) {
         fb.drawText(x + 30, y + 20, "Inventory Options", Colors::Text, TextStyle::Heading);
-        const std::array<std::string, 4> rows{{
+        const std::array<std::string, 5> rows{{
             "Review Pending Changes (" + std::to_string(pendingLines(screen).size()) + ")",
-            "Export Staged Save", "Discard Staged Changes", "Cancel",
+            "Export Staged Save", "Discard Staged Changes", "Top Up / Add Missing", "Cancel",
         }};
         int rowY = y + 94;
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {

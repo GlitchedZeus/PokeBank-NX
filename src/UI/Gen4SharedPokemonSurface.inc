@@ -4,6 +4,8 @@
 #include "UI/Gen4BagQuantity.h"
 #include "UI/SharedBagAddFlow.h"
 #include "UI/SharedBagAddPicker.h"
+#include "UI/SharedBagTopUp.h"
+#include "Inventory/BulkItemAdaptersNds.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
@@ -124,6 +126,8 @@ struct State : Surface::EditorState {
     int itemRemoveVisibleRow = 0;
     uint16_t itemRemoveId = 0;
     uint16_t itemRemoveCount = 0;
+    // Top Up / Add Missing (owner Oct 28, Feature B): ZR on the Bag.
+    UI::SharedBagTopUp::Ui itemTopUp;
 };
 
 State& stateFor(const TrainerViewScreen& screen) {
@@ -159,7 +163,7 @@ bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     const auto& state = stateFor(screen);
     return state.actions || state.review || state.legality || state.confirmRelease ||
            state.itemRemoveConfirmActive || state.itemAddPickerActive ||
-           state.itemKeyWarningActive ||
+           state.itemKeyWarningActive || state.itemTopUp.active() ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
@@ -1721,10 +1725,114 @@ bool stageGen4BagAdd(TrainerViewScreen& screen,State& state,size_t addPocket,uin
     return true;
 }
 
+// ---- Top Up / Add Missing (owner Oct 28, Feature B) ----------------------------------------
+// ZR on the Bag opens the shared flow (UI/SharedBagTopUp.h). The plan reads the staged bag through
+// Inventory/BulkItemAdaptersNds.h with gen4BagChoices (the Add picker's list); A in the preview
+// stages it all or nothing through stageBagQuantity / stageBagAdd; B stages nothing.
+namespace BI=PokeVault::Inventory::BulkItems;
+constexpr int kGen4TopUpTouchBase=91900;
+
+std::string gen4TopUpItemName(const TrainerViewScreen& screen,uint16_t id) {
+    return Names::machineDisplayLabel(screen.trainer.getGameGroup(),id,Names::getItemName(id));
+}
+std::string gen4TopUpPocketName(BI::Pocket pocket) {
+    const auto native=BI::Gen4Bag::nativePocket(pocket);
+    return native?Gen4::bagPocketName(*native):"Bag";
+}
+bool gen4BagScreen(const TrainerViewScreen& screen) noexcept {
+    return screen.detailViewActive && screen.selectedMode==TrainerViewScreen::ViewMode::Items &&
+        screen.selectedCategory>=0 && screen.selectedCategory<static_cast<int>(Gen4::BagPocketCount);
+}
+bool planGen4TopUp(TrainerViewScreen& screen,const State& state,BI::Plan& out,
+                   std::vector<BI::Pocket>& covered,std::string& error) {
+    auto* staged=editor(screen);
+    if(!staged || !gen4BagScreen(screen)) {error="Gen IV Top Up requires a verified staged bag";return false;}
+    const auto game=BI::Gen4Bag::game(*staged);
+    if(!game) {error="Gen IV game is not recognized";return false;}
+    const auto pockets=BI::Gen4Bag::pockets(*staged,error);
+    if(pockets.empty())return false;
+    const auto request=PokeBank::UIModel::BagTopUp::request(state.itemTopUp.model,
+        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],BI::bagPockets(pockets));
+    covered=request.pockets;
+    out=BI::plan(*game,request,pockets);
+    return true;
+}
+void openGen4TopUp(TrainerViewScreen& screen,State& state) {
+    if(!editor(screen) || !gen4BagScreen(screen) || !Gen4::decodeReadOnlyBag(bridge(screen).sourceSave())) {
+        screen.postStatus("Gen IV Top Up requires a validated native source bag",300);
+        return;
+    }
+    PokeBank::UIModel::BagTopUp::open(state.itemTopUp.model);
+    screen.controllerNavigation.reset();
+}
+void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const TouchInput& touch) {
+    namespace Model=PokeBank::UIModel::BagTopUp;
+    auto& ui=state.itemTopUp;
+    const auto action=UI::SharedBagTopUp::handleInput(ui,down,screen.touchedButtonId(touch),kGen4TopUpTouchBase,touch);
+    screen.controllerNavigation.reset();
+    std::string error;
+    switch(action) {
+        case Model::Action::None:
+        case Model::Action::Close:
+            return;
+        case Model::Action::PromptAmount:
+            (void)UI::SharedBagTopUp::promptAmount(ui);
+            return;
+        case Model::Action::BuildPreview: {
+            BI::Plan plan;
+            std::vector<BI::Pocket> covered;
+            if(!planGen4TopUp(screen,state,plan,covered,error)) {screen.postStatus(error,320);return;}
+            Model::showPreview(ui.model,std::move(plan),covered,
+                [&](BI::Pocket,uint16_t id){return gen4TopUpItemName(screen,id);},
+                [](BI::Pocket p){return gen4TopUpPocketName(p);});
+            return;
+        }
+        case Model::Action::Confirm: {
+            BI::Plan again;
+            std::vector<BI::Pocket> covered;
+            auto* staged=editor(screen);
+            if(!staged || !planGen4TopUp(screen,state,again,covered,error) || !Model::samePlan(again,ui.model.plan)) {
+                screen.postStatus(error.empty()?"The Bag changed; preview again":error,320);
+                Model::close(ui.model);
+                return;
+            }
+            auto backup=*staged;
+            const auto result=BI::apply(*staged,ui.model.plan,BI::Gen4Bag::Adapter{});
+            Model::close(ui.model);
+            ui.scrollbar.reset();
+            if(!result.applied) {screen.postStatus("Nothing staged: "+result.error,400);return;}
+            if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+                *staged=std::move(backup);
+                std::string restored;
+                (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+                screen.postStatus("Gen IV Top Up refresh failed; nothing staged: "+error,360);
+                return;
+            }
+            const auto rows=screen.visibleItemIndices().size();
+            if(screen.selectedItemIndex>=static_cast<int>(rows))
+                screen.selectedItemIndex=rows?static_cast<int>(rows)-1:0;
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added),400);
+            return;
+        }
+    }
+}
+
+void drawGen4TopUp(TrainerViewScreen& screen,PKSEFramebuffer& fb,State& state) {
+    screen.drawGSCOverlay(fb);
+    const size_t pocket=static_cast<size_t>(std::max(0,screen.selectedCategory));
+    UI::SharedBagTopUp::drawTopUpModal(fb,screen.touchButtons,state.itemTopUp,kGen4TopUpTouchBase,
+        Gen4::bagPocketName(pocket),"Gen IV Bag");
+}
+
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                         u64 held,int stickX,int stickY,const TouchInput& touch) {
     const bool itemsScreen=screen.detailViewActive &&
         screen.selectedMode==TrainerViewScreen::ViewMode::Items;
+    if(state.itemTopUp.active()) {
+        // Top Up / Add Missing owns every input while it is open (SETUP or PREVIEW).
+        handleGen4TopUp(screen,state,down,touch);
+        return true;
+    }
     if(state.itemAddPickerActive) {
         u64 keys=screen.controllerNavigation.apply(
             down,held,stickX,stickY,
@@ -1943,7 +2051,7 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         // Forward controller movement and B/Exit to the shared Items panel.
         // Only A on an occupied, validated native stack opens an app-memory
         // draft. A must NEVER perform a destructive removal or source write.
-        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y|HidNpadButton_X|HidNpadButton_Plus)) ||
+        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y|HidNpadButton_X|HidNpadButton_Plus|HidNpadButton_ZR)) ||
            screen.helpOverlayActive || screen.itemEditDialogActive ||
            screen.saveConfirmActive || screen.pickerActive ||
            screen.actionSheet.isOpen())return false;
@@ -1953,6 +2061,11 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                PokeBank::UIModel::ReviewEntry::Screen::Bag,4,down&HidNpadButton_Plus)) {
             if(!screen.openStagedReview(false))
                 screen.postStatus("No staged Generation IV changes to review",220);
+            return true;
+        }
+        // ZR: Top Up / Add Missing (owner Oct 28, Feature B).
+        if(down&HidNpadButton_ZR) {
+            openGen4TopUp(screen,state);
             return true;
         }
         const int pocket=screen.selectedCategory;
@@ -2293,7 +2406,8 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (isGen4Nds(screen)) beginPassiveView(screen);
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
-    if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
+    if (state.itemTopUp.active())drawGen4TopUp(screen,fb,state);
+    else if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
     else if (state.itemKeyWarningActive)drawItemKeyWarning(screen,fb,state);
     else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);

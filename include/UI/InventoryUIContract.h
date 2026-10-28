@@ -42,10 +42,11 @@ struct InventoryActionAvailability {
 }
 
 // `plusHint` names what + does: "+: Options" (installed titles), "+: Review" (Gen I-V staged
-// Bags, ReviewEntry.h).
+// Bags, ReviewEntry.h). `topUp` adds "ZR: Top Up" (Top Up / Add Missing, owner Oct 28 Feature B)
+// for a Bag with a staged editor.
 [[nodiscard]] inline std::string inventoryFooter(bool editable, bool categorySupported,
                                                  bool hasSelection, bool quantityEditable,
-                                                 const char* plusHint = "+: Options") {
+                                                 const char* plusHint = "+: Options", bool topUp = false) {
     const auto available = inventoryActionAvailability(
         editable, categorySupported, hasSelection, quantityEditable);
     std::string out = "D-pad/Stick: Navigate";
@@ -53,6 +54,7 @@ struct InventoryActionAvailability {
     if (available.addItem) out += "  |  X: Add Item";
     if (available.removeItem) out += "  |  Y: Remove Item";
     if (categorySupported) out += "  |  L/R: Category";
+    if (topUp && editable && categorySupported) out += "  |  ZR: Top Up";
     out += "  |  ";
     out += plusHint;
     out += "  |  -: Help  |  B: Back";

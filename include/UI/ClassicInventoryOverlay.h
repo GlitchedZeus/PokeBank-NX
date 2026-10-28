@@ -13,6 +13,9 @@ namespace ClassicInventory {
 [[nodiscard]] bool isClassicSource(const TrainerViewScreen& screen) noexcept;
 // True only when PokeBank owns a staged classic editor for this read-only source.
 [[nodiscard]] bool stagedEditingAvailable(TrainerViewScreen& screen);
+// Top Up / Add Missing (owner Oct 28, Feature B) is offered: a staged Bag editor exists and the save
+// is not a Japanese Gen I / II save kept read-only by Integration/Common/JapaneseEditingGate.h.
+[[nodiscard]] bool topUpAvailable(TrainerViewScreen& screen);
 // Returns true when the classic inventory layer consumed this frame's input.
 [[nodiscard]] bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch);
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb);

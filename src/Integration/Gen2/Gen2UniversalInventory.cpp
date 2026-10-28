@@ -249,4 +249,80 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
     return true;
 }
 
+std::size_t StagedEditor::inventoryCapacity(InventoryPocket pocket) const {
+    if (pocket == InventoryPocket::KeyItems) return kKeyItemCapacity;
+    if (pocket == InventoryPocket::TMHM)
+        return Inventory::addableItems(classicGame(sourceGame_), Inventory::ClassicPocket::TMHM).size();
+    return pairCapacity(pocket);
+}
+
+bool StagedEditor::stageInventorySlotQuantity(InventoryPocket pocket, std::size_t slot, uint8_t itemId,
+                                              uint8_t quantity, std::string& error) {
+    error.clear();
+    if (metadata_.payloadSize > staged_.size()) {
+        error = "Generation II staged inventory is unavailable for this save layout";
+        return false;
+    }
+    const auto layout = inventoryLayout(metadata_.region, metadata_.family);
+    const std::size_t offset = pairOffset(layout, pocket);
+    const std::size_t capacity = pairCapacity(pocket);
+    if (offset == static_cast<std::size_t>(-1) || capacity == 0) {
+        error = "Only Items, Balls and PC Items hold separate Generation II stacks";
+        return false;
+    }
+    const auto game = classicGame(sourceGame_);
+    if (!Inventory::isAddableItem(game, classicPocket(pocket), itemId)) {
+        error = "Item is not valid for this exact Generation II game and pocket";
+        return false;
+    }
+    const auto logicalPocket = semanticPocket(game, pocket, itemId);
+    const auto rule = Inventory::quantityRule(game, logicalPocket, itemId);
+    if (quantity == 0 || quantity < rule.minimum || quantity > rule.maximum) {
+        error = "Item quantity is outside the valid range for this Generation II item";
+        return false;
+    }
+    std::vector<PairEntry> entries;
+    if (!readPairs(staged_, offset, capacity, entries)) {
+        error = "Generation II staged inventory pair-list is malformed";
+        return false;
+    }
+    if (slot >= entries.size() || entries[slot].id != itemId) {
+        error = "Generation II item stack changed; edit it again";
+        return false;
+    }
+    std::size_t first = 0;
+    while (first < entries.size() && entries[first].id != itemId) ++first;
+    uint8_t before = 0;
+    if (first == slot) {
+        before = quantityIn(original_, metadata_.payloadSize, metadata_.region, metadata_.family, pocket, itemId);
+    } else {
+        std::vector<PairEntry> original;
+        if (readPairs(original_, offset, capacity, original) && slot < original.size() &&
+            original[slot].id == itemId)
+            before = original[slot].quantity;
+    }
+    const auto stagedBackup = staged_;
+    staged_[offset + 2 + slot * 2] = quantity;   // byte-surgical: this stack's quantity only
+    std::vector<PairEntry> check;
+    const auto record = decodeInventory(std::span<const uint8_t>(staged_).first(metadata_.payloadSize),
+                                        metadata_.region, metadata_.family);
+    if (!record.available || !readPairs(staged_, offset, capacity, check) || check.size() != entries.size() ||
+        check[slot].id != itemId || check[slot].quantity != quantity) {
+        staged_ = stagedBackup;
+        error = "Generation II inventory edit failed semantic round-trip validation";
+        return false;
+    }
+    // The first stack keeps the per-item Review row every other Bag edit uses; a further stack of
+    // the same item gets its own row.
+    std::string key = "inventory:" + std::to_string(static_cast<unsigned>(pocket)) + ":" + std::to_string(itemId);
+    std::string label = std::string(Inventory::pocketName(classicPocket(pocket))) + ": " +
+                        Inventory::displayItemName(game, logicalPocket, itemId);
+    if (first != slot) {
+        key += ":slot:" + std::to_string(slot);
+        label += " (stack " + std::to_string(slot + 1) + ")";
+    }
+    setChange(key, label, std::to_string(before), std::to_string(quantity));
+    return true;
+}
+
 } // namespace PokeVault::Integration::Gen2

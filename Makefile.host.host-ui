@@ -186,4 +186,20 @@ $(HOST_UI_KANA_TEST): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12Ka
 $(HOST_UI_KANA_SANITIZE): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12KanaText.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_kana_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Owner Oct 28 (Feature B): Top Up / Add Missing through the real Gen III / IV / V Bag screens
+# (ZR -> SETUP -> numpad -> PREVIEW rows inside the modal -> B stages nothing -> A stages -> Review).
+HOST_UI_BAG_TOP_UP_TEST := $(HOST_BUILD)/test_ui_bag_top_up_host
+HOST_UI_BAG_TOP_UP_SANITIZE := $(HOST_BUILD)/test_ui_bag_top_up_host_sanitize
+HOST_UI_BAG_TOP_UP_INPUTS := tests/test_ui_bag_top_up_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_BAG_TOP_UP_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_BAG_TOP_UP_SANITIZE)
+host-test: $(HOST_UI_BAG_TOP_UP_TEST)
+host-sanitize: $(HOST_UI_BAG_TOP_UP_SANITIZE)
+$(HOST_UI_BAG_TOP_UP_TEST): $(HOST_UI_BAG_TOP_UP_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_bag_top_up_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_BAG_TOP_UP_SANITIZE): $(HOST_UI_BAG_TOP_UP_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_bag_top_up_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
