@@ -2,6 +2,7 @@
 #define POKEBANK_INTEGRATION_GEN3_GEN3_STAGED_POKEMON_EDITOR_H
 
 #include "Integration/Gen3/PKSMGen3Adapter.h"
+#include "PokemonFile/NativePokemonFile.h"
 
 #include <array>
 #include <cstddef>
@@ -148,6 +149,23 @@ public:
                               std::size_t destinationBox, std::size_t destinationSlot,
                               std::string& error);
     bool stageReleaseBoxPokemon(std::size_t box, std::size_t slot, std::string& error);
+
+    // Feature A (standalone files). Import places a decoded .pk3/.ek3 record (PokemonFile::decode)
+    // into an EMPTY box slot of the staged workspace, byte for byte: a box slot holds the 80-byte
+    // BoxPokemon, so a 100-byte party file contributes its first 80 bytes (pret pokeemerald /
+    // pokefirered include/pokemon.h struct Pokemon { struct BoxPokemon box; ... }, and
+    // include/pokemon_storage_system.h boxes[][] of struct BoxPokemon). Nothing is rerolled,
+    // repaired or converted; a record the editor's own field validators reject is refused.
+    bool stageImportBoxPokemon(std::size_t box, std::size_t slot,
+                               const PokeBank::PokemonFile::Decoded& file, std::string& error);
+    // Non-mutating export of the record as the open workspace holds it, in PKHeX plaintext PK3
+    // layout (decrypted, substructures in canonical Growth/Attacks/EVs/Misc order): 80 bytes for a
+    // box slot, 100 for a party slot with the party-only tail exactly as stored (Gen III never
+    // encrypts it: PKHeX PK3.EncryptParty is a no-op).
+    [[nodiscard]] std::optional<std::vector<uint8_t>> exportBoxPokemonFile(
+        std::size_t box, std::size_t slot, std::string& error) const;
+    [[nodiscard]] std::optional<std::vector<uint8_t>> exportPartyPokemonFile(
+        std::size_t slot, std::string& error) const;
 
     // Sparse carry is transactional: exact slots only, no compaction or overwrite.
     bool beginSparseMove(std::size_t box, const std::vector<std::size_t>& slots, std::string& error);
