@@ -344,6 +344,12 @@ public:
     // unless Keep is chosen: B asks Keep/Discard, and Discard undoes the
     // staged creation so the slot is the original native empty slot again.
     [[nodiscard]] bool createPending() const noexcept { return createPending_; }
+    // Owner item 4: a new Pokemon's Met Location is the user's choice. The native record needs a
+    // valid location to exist at all, so Create stages a placeholder (kSharedCreateMetLocation),
+    // shows the row as not chosen, and Keep refuses until a location is picked (picking the
+    // placeholder's own value explicitly counts as a choice).
+    [[nodiscard]] bool createNeedsMetLocation() const noexcept { return createPending_ && !createMetLocationChosen_; }
+    void noteCreateMetLocationChosen() noexcept { if(createPending_) createMetLocationChosen_=true; }
     struct CreateDate5 { uint32_t year=0, month=0, day=0; };
     [[nodiscard]] static std::optional<CreateRequest5> sharedCreateDefaults(
         const Workspace& ws, uint32_t pid, std::string_view nickname,
@@ -433,6 +439,7 @@ public:
         black2White2_=ws.black2White2();
         surface_=Surface::Edit;
         createPending_=true;
+        createMetLocationChosen_=false;
         error.clear();
         return true;
     }
@@ -647,6 +654,10 @@ public:
             error="Generation V presentation Keep requires an active Edit draft";
             return false;
         }
+        if(createNeedsMetLocation()) {
+            error="Choose a Met Location before Keep";
+            return false;
+        }
         if(createPending_ && !draft_.dirty()) {
             // The created record is already staged and presented; Keep with
             // no further edits simply finalizes it.
@@ -803,6 +814,7 @@ private:
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
     bool createPending_=false;
+    bool createMetLocationChosen_=false;
     Surface reviewReturn_=Surface::Browse;
 public:
     // Shared Create defaults (not format rules): a native species, move and

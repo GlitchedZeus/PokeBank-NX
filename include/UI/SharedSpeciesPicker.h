@@ -291,7 +291,7 @@ inline Handled handleKeys(Chooser& c, const PokeBank::UIModel::SharedPickerPagin
     using SharedSearchInput::Event;
     if (search) { c.search.toggleGrid(); h.keys = true; }
     if (c.search.open) {
-        const SharedSearchInput::Keys k{nav.up, nav.down, nav.left, nav.right, a, b};
+        const SharedSearchInput::Keys k{nav.up, nav.down, nav.left, nav.right, a, b, nav.l, nav.r};
         const Event ke = SharedSearchInput::handleKeys(c.search, k);
         if (ke != Event::None) h.keys = true;
         if (ke == Event::QueryChanged) h.queryChanged = true;

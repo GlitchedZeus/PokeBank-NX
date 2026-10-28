@@ -213,6 +213,21 @@ void gen5CreatePokerus() {
     d.press(HidNpadButton_A);
     check(mode() == 1, "Gen V Create A on Pokérus toggles Infected -> Cured (got " + std::to_string(mode()) + ")");
 
+    // Owner item 4: the Met Location shows as not chosen and Keep refuses until one is picked.
+    constexpr int kMetLocationRow = 13;
+    d.frame();
+    check(std::any_of(HostUi::texts.begin(), HostUi::texts.end(),
+                      [](const std::string& t) { return t.rfind("Choose a loca", 0) == 0; }),
+          "Gen V Create: Met Location reads 'Choose a location' until picked");
+    d.press(HidNpadButton_X);   // Keep before choosing: refused, the Create stays open
+    check(state.createPending() && state.surface() == G5::Gen5SharedScreenState::Surface::Edit,
+          "Gen V Create: Keep is refused until a Met Location is chosen");
+    check(d.tap(Workspace::kDetailTouchBase + kMetLocationRow), "Gen V Create: Met Location row publishes a touch target");
+    d.frame(); d.frame();
+    d.press(HidNpadButton_A);   // accept the picker's preselected location
+    d.frame(); d.frame();
+    check(!state.createNeedsMetLocation(), "Gen V Create: picking a location satisfies the choice");
+
     // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
     d.press(HidNpadButton_X);   // Keep
     check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Create");

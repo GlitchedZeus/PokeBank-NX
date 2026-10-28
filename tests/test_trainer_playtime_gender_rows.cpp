@@ -1,7 +1,7 @@
 // P3 (Round 5, R2-TRAINER / NEW-18): the classic Trainer page edits Play Time and Gender where a
 // native staged writer exists, through the one shared session (UI/ClassicTrainerSessionInput.h).
-//   * rows: 0 Name, 1 Money, 2 Play Time, then Gender (row 3 with Play Time); Gen I adds neither
-//     (no gender field; its timer saturation flag keeps Play Time read-only here);
+//   * rows: 0 Name, 1 Money, 2 Play Time, then Gender (row 3 with Play Time); Gen I adds Play Time
+//     only (no gender field; the timer's maxed flag follows pret play_time.asm);
 //   * Gen II offers Play Time, and Gender only on Crystal (Gold / Silver store none); Gen III / IV
 //     offer both; every accepted value goes to that generation's staged workspace (Review / Discard
 //     / Export Copy), never to the source save;
@@ -60,8 +60,13 @@ int main() {
           "Down / Up wrap over every row");
 
     const auto gen1 = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
-    check(gen1.find("stagePlayTime") == std::string::npos && gen1.find("stageGender") == std::string::npos,
-          "Gen I offers no Play Time / Gender rows (no gender field)");
+    // Owner Oct 28 (item 3): Gen I stages Play Time through its native writer (pret play_time.asm:
+    // hours 0-255, the maxed flag set only at 255:00:00); still no Gender (no native field).
+    check(gen1.find("if (editor->playTimeEditable()) {") != std::string::npos &&
+              gen1.find("return editor->stagePlayTime(next, error);") != std::string::npos &&
+              gen1.find("fields.playTimeMaxHours = 255;") != std::string::npos &&
+              gen1.find("stageGender") == std::string::npos,
+          "Gen I stages Play Time through its native writer and offers no Gender row (no gender field)");
     const auto gen2 = read("src/UI/Gen2TrainerSessionOverlay.inc");
     check(gen2.find("editor->stagePlayTime(") != std::string::npos &&
               gen2.find("if (editor->trainerGenderEditable())") != std::string::npos,

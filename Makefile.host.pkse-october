@@ -93,3 +93,27 @@ $(HOST_BUILD)/test_native_pokemon_file: $(NATIVE_POKEMON_FILE_SOURCES) include/P
 $(HOST_BUILD)/test_native_pokemon_file_sanitize: $(NATIVE_POKEMON_FILE_SOURCES) include/PokemonFile/NativePokemonFile.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(NATIVE_POKEMON_FILE_SOURCES) -o $@
+
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_folder_preferences
+HOST_TESTS += $(HOST_BUILD)/test_folder_preferences
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_folder_preferences_sanitize
+host-test: $(HOST_BUILD)/test_folder_preferences
+host-sanitize: $(HOST_BUILD)/test_folder_preferences_sanitize
+$(HOST_BUILD)/test_folder_preferences: tests/test_folder_preferences.cpp include/Utils/FolderPreferences.h include/Utils/SettingsFile.h src/Utils/Settings.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_folder_preferences.cpp -o $@
+$(HOST_BUILD)/test_folder_preferences_sanitize: tests/test_folder_preferences.cpp include/Utils/FolderPreferences.h include/Utils/SettingsFile.h src/Utils/Settings.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_folder_preferences.cpp -o $@
+
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_search_shoulder_keys
+HOST_TESTS += $(HOST_BUILD)/test_search_shoulder_keys
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_search_shoulder_keys_sanitize
+host-test: $(HOST_BUILD)/test_search_shoulder_keys
+host-sanitize: $(HOST_BUILD)/test_search_shoulder_keys_sanitize
+$(HOST_BUILD)/test_search_shoulder_keys: tests/test_search_shoulder_keys.cpp include/UI/SharedSearchInput.h include/UI/SharedSpeciesPicker.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_search_shoulder_keys.cpp -o $@
+$(HOST_BUILD)/test_search_shoulder_keys_sanitize: tests/test_search_shoulder_keys.cpp include/UI/SharedSearchInput.h include/UI/SharedSpeciesPicker.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_search_shoulder_keys.cpp -o $@

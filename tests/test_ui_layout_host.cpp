@@ -417,6 +417,11 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     verifyFrame(game + " / Create");
         checkEditorHeadings(game + " / Create");
 
+    // Owner item 4: a Gen V Create keeps only once a Met Location is chosen (the picker route is
+    // covered by test_ui_editor_input_host); record the choice so the layout sweep can continue.
+    if (gen5)
+        if (auto* g5 = dynamic_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer*>(&screen.trainer))
+            g5->sharedScreen().noteCreateMetLocationChosen();
     // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
     // its own surface (Boxes' Review key, Y since Round 7 ReviewEntry: Gen5SharedReadOnlySurface
     // openReviewFromBrowse).

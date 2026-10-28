@@ -1,6 +1,8 @@
 #ifndef UTILS_SETTINGS_H
 #define UTILS_SETTINGS_H
 
+#include "Utils/FolderPreferences.h"
+
 namespace Utils {
     // Persisted app settings live in sdmc:/switch/PokeBank-NX/settings.cfg (simple key=value text).
     // Currently: theme (OLED Black/Dark/Light) and app safety/preferences.
@@ -13,6 +15,9 @@ namespace Utils {
     // Write the current settings back to settings.cfg through a verified sibling-file
     // transaction. Returns false if the old authoritative file could not be preserved/replaced.
     bool saveSettings();
+
+    // Favourite and remembered folders (Feature C), loaded and saved with the other settings.
+    inline FolderPreferences::Preferences g_folderPreferences;
 }
 
 #endif

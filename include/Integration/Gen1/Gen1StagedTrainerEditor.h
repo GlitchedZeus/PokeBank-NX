@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -54,6 +55,14 @@ public:
 
     bool stageTrainerName(std::string_view name, std::string& error);
     bool stageMoney(uint32_t money, std::string& error);
+    // Play Time (owner item 7). pret pokered 171e2c2 engine/play_time.asm: hours, a "maxed" flag,
+    // minutes, seconds, frames; the clock stops while the flag is non-zero and the game sets it
+    // (0xFF) when hours reach 255. Accepted: 0:00:00-254:59:59 (flag cleared, the clock runs) or
+    // exactly 255:00:00 (flag set). The frames byte is kept.
+    const std::optional<Common::NativePlayTime>& playTime() const noexcept { return playTime_; }
+    bool playTimeEditable() const noexcept { return playTime_.has_value(); }
+    bool stagePlayTime(const Common::NativePlayTime& time, std::string& error);
+    std::size_t playTimeOffset() const noexcept { return region_ == RegionLayout::Japanese ? 0x2CA0 : 0x2CED; }
 
     bool hasPendingChanges() const noexcept { return stagedBytes_ != originalBytes_; }
     std::vector<TrainerChange> pendingChanges() const;
@@ -79,6 +88,8 @@ private:
     uint32_t originalMoney_ = 0;
     std::string name_;
     uint32_t money_ = 0;
+    std::optional<Common::NativePlayTime> originalPlayTime_;
+    std::optional<Common::NativePlayTime> playTime_;
 };
 
 // ---- inline implementation (header-only so every existing Gen I link list builds unchanged) ----
@@ -108,7 +119,8 @@ inline StagedTrainerEditor::StagedTrainerEditor(const ReadOnlySave& source)
     : region_(source.metadata().region), sourceGame_(source.metadata().sourceGame),
       originalBytes_(source.sourceBytes().begin(), source.sourceBytes().end()),
       stagedBytes_(originalBytes_), originalName_(source.trainer().name),
-      originalMoney_(source.trainer().money), name_(originalName_), money_(originalMoney_) {}
+      originalMoney_(source.trainer().money), name_(originalName_), money_(originalMoney_),
+      originalPlayTime_(source.trainer().playTime), playTime_(originalPlayTime_) {}
 
 inline std::unique_ptr<StagedTrainerEditor> StagedTrainerEditor::create(const ReadOnlySave& source, std::string& error) {
     error.clear();
@@ -164,11 +176,49 @@ inline bool StagedTrainerEditor::stageMoney(uint32_t money, std::string& error) 
     return true;
 }
 
+inline bool StagedTrainerEditor::stagePlayTime(const Common::NativePlayTime& time, std::string& error) {
+    error.clear();
+    if (!playTime_) {
+        error = "This save's Generation I play time is not readable, so it is not edited";
+        return false;
+    }
+    if (time.hours > 255 || time.minutes > 59 || time.seconds > 59) {
+        error = "Generation I play time is 0:00:00-255:00:00";
+        return false;
+    }
+    if (time.hours == 255 && (time.minutes != 0 || time.seconds != 0)) {
+        error = "Generation I play time stops at 255:00:00";
+        return false;
+    }
+    auto next = stagedBytes_;
+    const std::size_t o = playTimeOffset();
+    next[o] = static_cast<uint8_t>(time.hours);
+    next[o + 1] = time.hours == 255 ? 0xFF : 0x00;   // wPlayTimeMaxed
+    next[o + 2] = time.minutes;
+    next[o + 3] = time.seconds;                      // o + 4 (frames) is kept
+    refreshChecksum(next);
+    const auto check = parse(next, sourceGame_);
+    const auto& read = check ? check.save->trainer().playTime : std::nullopt;
+    if (!read || read->hours != time.hours || read->minutes != time.minutes || read->seconds != time.seconds) {
+        error = "Generation I play time failed strict reparse";
+        return false;
+    }
+    stagedBytes_ = std::move(next);
+    playTime_ = read;
+    return true;
+}
+
 inline std::vector<TrainerChange> StagedTrainerEditor::pendingChanges() const {
     std::vector<TrainerChange> out;
     if (name_ != originalName_) out.push_back({"Trainer Name", originalName_, name_});
     if (money_ != originalMoney_)
         out.push_back({"Money", "$" + std::to_string(originalMoney_), "$" + std::to_string(money_)});
+    const auto same = [](const std::optional<Common::NativePlayTime>& a, const std::optional<Common::NativePlayTime>& b) {
+        return a.has_value() == b.has_value() &&
+               (!a || (a->hours == b->hours && a->minutes == b->minutes && a->seconds == b->seconds && a->maximum == b->maximum));
+    };
+    if (!same(playTime_, originalPlayTime_))
+        out.push_back({"Play Time", Common::playTimeText(originalPlayTime_), Common::playTimeText(playTime_)});
     return out;
 }
 
@@ -176,6 +226,7 @@ inline void StagedTrainerEditor::discard() noexcept {
     stagedBytes_ = originalBytes_;
     name_ = originalName_;
     money_ = originalMoney_;
+    playTime_ = originalPlayTime_;
 }
 
 inline std::vector<uint8_t> StagedTrainerEditor::finalize(std::string& error) const {
@@ -183,7 +234,11 @@ inline std::vector<uint8_t> StagedTrainerEditor::finalize(std::string& error) co
     std::vector<uint8_t> candidate = stagedBytes_;
     refreshChecksum(candidate);
     const auto check = parse(candidate, sourceGame_);
-    if (!check || check.save->trainer().name != name_ || check.save->trainer().money != money_) {
+    const auto& reread = check ? check.save->trainer().playTime : std::nullopt;
+    const bool playTimeOk = reread.has_value() == playTime_.has_value() &&
+        (!reread || (reread->hours == playTime_->hours && reread->minutes == playTime_->minutes &&
+                     reread->seconds == playTime_->seconds));
+    if (!check || check.save->trainer().name != name_ || check.save->trainer().money != money_ || !playTimeOk) {
         error = "Generation I trainer edit failed strict reload";
         return {};
     }

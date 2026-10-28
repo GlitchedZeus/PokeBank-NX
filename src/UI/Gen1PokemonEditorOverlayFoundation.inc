@@ -777,6 +777,14 @@ bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t
     fields.nameGuide = "1-7 letters, digits, space - . ? !";
     fields.nameEditable = editor->nameEditable();
     fields.nameReadOnlyReason = "Japanese Gen I trainer names are read-only here";
+    // Owner item 7: Gen I Play Time is now a native, staged edit (pret engine/play_time.asm).
+    if (editor->playTimeEditable()) {
+        fields.playTime = editor->playTime();
+        fields.playTimeMaxHours = 255;
+        fields.stagePlayTime = [&](const PokeVault::Integration::Common::NativePlayTime& next, std::string& error) {
+            return editor->stagePlayTime(next, error);
+        };
+    }
     return UI::ClassicTrainerSession::handle(screen, down, held, stickX, stickY, touch, fields,
         [&](const std::string& name, uint32_t money, std::string& error) {
             if (name != editor->trainerName() && !editor->stageTrainerName(name, error)) return false;

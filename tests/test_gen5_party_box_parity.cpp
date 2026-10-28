@@ -384,6 +384,13 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
     assert(!ui.back() && ui.surface() == Surface::ConfirmDraft);
     ui.continueEditing();
     assert(ui.surface() == Surface::Edit && ui.draft().dirty());
+    // Owner item 4: Keep refuses until a Met Location is chosen; nothing is lost.
+    assert(ui.createNeedsMetLocation());
+    assert(!ui.keepWithPresentation(ws, ok, error) && error.find("Met Location") != std::string::npos);
+    assert(ui.surface() == Surface::Edit && ui.draft().dirty() && ui.createPending());
+    assert(draft.stage(NF::MetLocation, 0, 4, error));   // a different native location
+    ui.noteCreateMetLocationChosen();
+    assert(!ui.createNeedsMetLocation());
     assert(ui.keepWithPresentation(ws, ok, error));
     assert(ui.surface() == Surface::Browse && !ui.createPending());
     assert(ws.changedRecordCount() == 1);
@@ -392,6 +399,8 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
     assert(ui.openActions(ws, Slot{Region::Box, 0, 7}, error));
     assert(ui.activate(ws, Action::Add, error));
     assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(!ui.keepWithPresentation(ws, ok, error) && ui.createPending());   // location not chosen yet
+    ui.noteCreateMetLocationChosen();                                        // picked the shown value
     assert(ui.keepWithPresentation(ws, ok, error) && !ui.createPending());
     assert(ws.changedRecordCount() == 2);
 

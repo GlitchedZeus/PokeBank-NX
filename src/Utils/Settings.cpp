@@ -41,7 +41,9 @@ namespace Utils {
             return;
         }
 
-        for (const auto& entry : SettingsFile::parse(text)) {
+        const auto entries = SettingsFile::parse(text);
+        g_folderPreferences = FolderPreferences::fromSettings(entries);
+        for (const auto& entry : entries) {
             const char* key = entry.key.c_str();
             const char* val = entry.value.c_str();
 
@@ -88,6 +90,7 @@ namespace Utils {
         text += "\ndebugLogging=";
         text += g_debugLogging ? "1" : "0";
         text += "\n";
+        text += FolderPreferences::toSettingsText(g_folderPreferences);
 
         if (!AtomicTextFile::replace(settingsPath(), text)) {
             logErrorToFile("Failed to replace settings file safely", settingsPath().c_str());

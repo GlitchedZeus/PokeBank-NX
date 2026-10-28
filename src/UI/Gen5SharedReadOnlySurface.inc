@@ -363,7 +363,10 @@ struct Gen5Editor {
             case Origin: return Enums::getOriginGameName(p.originVersion());
             case Fields::Ball: return Enums::getBallName(p.ball());
             case MetLevel: return std::to_string(p.metLevel());
-            case MetLocation: return metLocationText5(p.originVersion(), p.metLocation());
+            case MetLocation:
+                // Owner item 4: a new Pokemon's location is not chosen until the user picks one.
+                if (backend(screen).createNeedsMetLocation()) return "Choose a location";
+                return metLocationText5(p.originVersion(), p.metLocation());
             case Pokerus: return Fields::pokerusLabel(p.pokerusMode());
             case Form:
                 return singleForm(screen, p) ? std::string("Default (fixed)")
@@ -681,6 +684,7 @@ struct Gen5Editor {
             default: return {};
         }
     }
+    static void metLocationAccepted(TrainerViewScreen& screen) { backend(screen).noteCreateMetLocationChosen(); }
     static bool applyPicker(TrainerViewScreen& screen, EditorSurface::EditorState& state,
                             PickerTarget target, uint16_t value) {
         auto& d = draft(screen);
@@ -691,7 +695,13 @@ struct Gen5Editor {
             case PickerTarget::HeldItem: return stage(screen, Field::HeldItem, 0, value);
             case PickerTarget::Language: return stage(screen, Field::Language, 0, value);
             case PickerTarget::Ball: return stage(screen, Field::Ball, 0, value);
-            case PickerTarget::MetLocation: return stage(screen, Field::MetLocation, 0, value);
+            case PickerTarget::MetLocation: {
+                // Picking a location (even the placeholder's own value) is the Create choice Keep needs.
+                if (p && p->metLocation() == value) { backend(screen).noteCreateMetLocationChosen(); return true; }
+                if (!stage(screen, Field::MetLocation, 0, value)) return false;
+                backend(screen).noteCreateMetLocationChosen();
+                return true;
+            }
             case PickerTarget::Pokerus: return stage(screen, Field::Pokerus, 0, value);
             case PickerTarget::Form: return stage(screen, Field::Form, 0, value);
             case PickerTarget::Move: return stage(screen, Field::Move, static_cast<size_t>(state.moveEditorSlot), value);

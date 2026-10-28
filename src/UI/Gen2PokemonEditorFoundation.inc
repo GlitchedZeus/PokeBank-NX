@@ -633,7 +633,8 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         return row>=0;
     };
     const SharedSearchInput::Keys searchKeys{bool(nav&HidNpadButton_Up),bool(nav&HidNpadButton_Down),
-        bool(nav&HidNpadButton_Left),bool(nav&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+        bool(nav&HidNpadButton_Left),bool(nav&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B),
+        bool(down&HidNpadButton_L),bool(down&HidNpadButton_R)};
     if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
         SharedSearchInput::sample(touch),px,py,refilter,
         down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {

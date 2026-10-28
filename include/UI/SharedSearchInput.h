@@ -202,14 +202,19 @@ inline Event apply(State& s, int key) noexcept {
 struct Keys {
     bool up = false, down = false, left = false, right = false;
     bool a = false, b = false;
-    constexpr bool any() const noexcept { return up || down || left || right || a || b; }
+    bool l = false, r = false;   // shoulder buttons: owned by the grid while it is open
+    constexpr bool any() const noexcept { return up || down || left || right || a || b || l || r; }
 };
 
 // Controller input while the grid is open. B closes the grid and KEEPS the query (the list stays
-// filtered); the owner's own B then cancels the chooser as before.
+// filtered); the owner's own B then cancels the chooser as before. L is Backspace (owner request,
+// round 6 item 9). R is consumed but types nothing: matching ignores spaces and punctuation, so a
+// space could never change the results. While the grid is open L/R never page the list behind it.
 inline Event handleKeys(State& s, const Keys& k) noexcept {
     if (!s.open || !k.any()) return Event::None;
     if (k.b) { s.closeGrid(); return Event::Closed; }
+    if (k.l) return apply(s, Backspace);
+    if (k.r) return Event::Consumed;
     if (k.up) s.cursor = moveCursor(s.cursor, -1, 0);
     if (k.down) s.cursor = moveCursor(s.cursor, 1, 0);
     if (k.left) s.cursor = moveCursor(s.cursor, 0, -1);

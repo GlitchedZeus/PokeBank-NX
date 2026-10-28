@@ -238,6 +238,47 @@ void trainerPage() {
 }
 } // namespace
 
+// Owner item 7: Gen I Play Time is a native staged edit (pret pokered 171e2c2 engine/play_time.asm).
+void playTime(SourceGame game, bool jp) {
+    auto raw = jp ? japanese(game) : international(game);
+    const size_t o = jp ? 0x2CA0 : 0x2CED;
+    raw[o] = 12; raw[o + 1] = 0; raw[o + 2] = 34; raw[o + 3] = 56; raw[o + 4] = 17;   // 12:34:56, frames 17
+    const size_t sum = jp ? 0x3594 : 0x3523, len = jp ? 0x0FFC : 0x0F8B;
+    raw[sum] = calculateDiff8(std::span<const uint8_t>(raw).subspan(0x2598, len));
+    const auto source = raw;
+    auto parsed = parse(raw, game);
+    assert(parsed);
+    std::string error;
+    auto trainer = StagedTrainerEditor::create(*parsed.save, error);
+    assert(trainer && trainer->playTimeEditable() && trainer->playTime()->hours == 12);
+    // Ordinary edit: only the clock bytes and the checksum change; frames kept; Review lists it.
+    assert(trainer->stagePlayTime({200, 1, 2, false}, error));
+    for (size_t i = 0; i < raw.size(); ++i)
+        if (i != o && i != o + 2 && i != o + 3 && i != sum) assert(trainer->stagedBytes()[i] == source[i]);
+    assert(trainer->stagedBytes()[o + 4] == 17 && trainer->stagedBytes()[o + 1] == 0);
+    const auto changes = trainer->pendingChanges();
+    assert(changes.size() == 1 && changes[0].label == "Play Time" && changes[0].beforeValue == "12:34:56" &&
+           changes[0].afterValue == "200:01:02");
+    auto out = trainer->finalize(error);
+    assert(!out.empty());
+    auto reread = parse(out, game);
+    assert(reread && reread.save->trainer().playTime->hours == 200 && reread.save->trainer().playTime->seconds == 2);
+    // 255:00:00 is where the game stops the clock: it sets the maxed flag (0xFF).
+    assert(trainer->stagePlayTime({255, 0, 0, false}, error) && trainer->stagedBytes()[o + 1] == 0xFF);
+    assert(trainer->playTime()->maximum);
+    // Below the maximum the flag is cleared again so the clock runs.
+    assert(trainer->stagePlayTime({254, 59, 59, false}, error) && trainer->stagedBytes()[o + 1] == 0);
+    // Refused, with nothing changed: past 255:00:00, minutes/seconds out of range.
+    const std::vector<uint8_t> before(trainer->stagedBytes().begin(), trainer->stagedBytes().end());
+    for (const auto bad : {PokeVault::Integration::Common::NativePlayTime{255, 0, 1, false}, PokeVault::Integration::Common::NativePlayTime{256, 0, 0, false},
+                           PokeVault::Integration::Common::NativePlayTime{1, 60, 0, false}, PokeVault::Integration::Common::NativePlayTime{1, 0, 60, false}})
+        assert(!trainer->stagePlayTime(bad, error) && !error.empty());
+    assert(std::equal(before.begin(), before.end(), trainer->stagedBytes().begin()));
+    trainer->discard();
+    assert(trainer->pendingChanges().empty() && trainer->playTime()->hours == 12);
+    assert(raw == source);
+}
+
 int main() {
     bcd();
     for (auto game : {SourceGame::Red, SourceGame::Blue, SourceGame::Yellow}) {
@@ -245,6 +286,7 @@ int main() {
         japaneseLayout(game);
     }
     trainerPage();
-    std::cout << "Gen I staged Trainer Name / Money (R/B/Y, International + Japanese) and Trainer page: PASS\n";
+    for (auto game : {SourceGame::Red, SourceGame::Blue, SourceGame::Yellow}) { playTime(game, false); playTime(game, true); }
+    std::cout << "Gen I staged Trainer Name / Money / Play Time (R/B/Y, International + Japanese) and Trainer page: PASS\n";
     return 0;
 }

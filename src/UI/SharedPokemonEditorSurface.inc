@@ -291,7 +291,8 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         };
         const int px=(1280-HeldItemGrid::modalWidth)/2,py=(720-kNavBarH-HeldItemGrid::modalHeight)/2;
         const SharedSearchInput::Keys searchKeys{bool(down&HidNpadButton_Up),bool(down&HidNpadButton_Down),
-            bool(down&HidNpadButton_Left),bool(down&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B)};
+            bool(down&HidNpadButton_Left),bool(down&HidNpadButton_Right),bool(down&HidNpadButton_A),bool(down&HidNpadButton_B),
+        bool(down&HidNpadButton_L),bool(down&HidNpadButton_R)};
         if(SharedHeldItemSearch::handle(state.heldItemSearch,down&HidNpadButton_Minus,searchKeys,
             SharedSearchInput::sample(touch),px,py,refilter,
             down&(HidNpadButton_L|HidNpadButton_R|HidNpadButton_ZL|HidNpadButton_ZR|HidNpadButton_X|HidNpadButton_Y))) {
@@ -519,6 +520,9 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     const bool unchangedLocation = state.pickerTarget == PickerTarget::MetLocation &&
         state.pickerMetContextActive && value == state.pickerMetContext.stored();
     if (!unchangedLocation && !A::applyPicker(screen, state, state.pickerTarget, value)) return true;
+    // Accepting the stored location stages nothing, but it is still the owner's choice (Gen V Create).
+    if constexpr (requires { A::metLocationAccepted(screen); })
+        if (unchangedLocation) A::metLocationAccepted(screen);
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     screen.controllerNavigation.reset();
