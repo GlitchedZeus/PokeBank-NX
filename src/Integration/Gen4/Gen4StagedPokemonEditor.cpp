@@ -1140,18 +1140,52 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
         return false;
     }
 
+    // Native behavior (pret/pokeplatinum Bag_TryAddItem, pret/pokeheartgold
+    // Bag_AddItem): after an Add the Berry and TM/HM pockets are sorted by
+    // ascending item ID. Other pockets append. Only a well-formed pocket (all
+    // occupied slots form a packed prefix, remaining slots are native blanks,
+    // no ghost/odd slots) is reordered; anything unusual keeps the append
+    // behaviour so malformed native slots are never silently rewritten.
+    const bool nativeSorted=pocket==static_cast<size_t>(BagPocket::Berries) ||
+                            pocket==static_cast<size_t>(BagPocket::Machines);
+    bool sortPocket=nativeSorted && target==base+spec.offset+afterLast*4 &&
+                    afterLast==prior.size();
+    for(size_t slot=afterLast;sortPocket && slot<spec.slots;++slot) {
+        const size_t at=base+spec.offset+slot*4;
+        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
+        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
+        if(!((id==0 && count==0) || (id==0xFFFF && count==0xFFFF)))sortPocket=false;
+    }
+    std::vector<Trainer::InventoryItem> expectedPocket(prior.begin(),prior.end());
+    expectedPocket.push_back(Trainer::InventoryItem{itemId,quantity,false,false});
+    if(sortPocket) {
+        std::stable_sort(expectedPocket.begin(),expectedPocket.end(),
+            [](const auto& l,const auto& r){return l.itemId<r.itemId;});
+    }
+    const size_t regionLo=base+spec.offset;
+    const size_t regionHi=regionLo+spec.slots*4;
+
     auto backup=staged_;
-    write16(staged_,target,itemId);
-    write16(staged_,target+2,quantity);
+    if(sortPocket) {
+        for(size_t n=0;n<expectedPocket.size();++n) {
+            write16(staged_,regionLo+n*4,expectedPocket[n].itemId);
+            write16(staged_,regionLo+n*4+2,expectedPocket[n].count);
+        }
+    } else {
+        write16(staged_,target,itemId);
+        write16(staged_,target+2,quantity);
+    }
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
         return false;
     }
     const auto after=reparse(error);
     const auto current=after?decodeReadOnlyBag(*after):std::nullopt;
-    if(!current || (*current)[pocket].size()!=prior.size()+1 ||
-       (*current)[pocket].back().itemId!=itemId ||
-       (*current)[pocket].back().count!=quantity) {
+    bool pocketOk=current && (*current)[pocket].size()==expectedPocket.size();
+    for(size_t n=0;pocketOk && n<expectedPocket.size();++n)
+        pocketOk=(*current)[pocket][n].itemId==expectedPocket[n].itemId &&
+                 (*current)[pocket][n].count==expectedPocket[n].count;
+    if(!pocketOk) {
         staged_=std::move(backup);
         setError(error,"Gen IV Add failed exact native pocket reparse");
         return false;
@@ -1164,7 +1198,7 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
             setError(error,"Gen IV Add changed another native pocket");
             return false;
         }
-        for(size_t n=0;n<oldPocket.size();++n) {
+        for(size_t n=0;i!=pocket && n<oldPocket.size();++n) {
             if(oldPocket[n].itemId!=newPocket[n].itemId ||
                oldPocket[n].count!=newPocket[n].count) {
                 staged_=std::move(backup);
@@ -1175,7 +1209,7 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
     }
     const size_t crcAt=base+blockSize-2;
     for(size_t i=0;i<staged_.size();++i) {
-        if(i>=target && i<target+4)continue;
+        if(sortPocket?(i>=regionLo && i<regionHi):(i>=target && i<target+4))continue;
         if(i==crcAt || i==crcAt+1)continue;
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
