@@ -145,6 +145,10 @@ int main(){
         assert(jt&&jt->japaneseLayout()&&jt->getBoxCount()==8&&jt->getSlotsPerBox()==30);
         assert(!jt->stagedPokemon()&&!jt->stagedTrainerEditable());
         assert(jt->stagedPokemonUnavailableReason()=="Japanese Generation I saves are read-only");
+        // Owner Oct 28: the Bag and Trainer editors are withheld too (the Bag screen edits whenever a
+        // staged Bag editor exists; the Round 8 build still created one for Japanese saves).
+        assert(!jt->stagedInventoryAvailable()&&!jt->stagedTrainer());
+        assert(jt->stagedInventoryUnavailableReason()=="Japanese Generation I saves are read-only");
     }
     std::cout<<"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\n";return 0;
 }

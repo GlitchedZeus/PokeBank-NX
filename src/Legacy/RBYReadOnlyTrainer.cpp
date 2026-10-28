@@ -65,24 +65,31 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
 
+    // The Gen I writers handle the Japanese layout, but the app keeps Japanese saves read-only until
+    // the owner opens the gate (Integration/Common/JapaneseEditingGate.h). NONE of the three staged
+    // editors exists for such a save: no Pokemon workspace, no Bag editor (the Bag screen offers
+    // edits whenever one exists; Round 8 still created it for Japanese saves), no Trainer editor.
+    const bool japaneseLocked = metadata.region == Integration::Gen1::RegionLayout::Japanese &&
+                                !Integration::Common::kJapaneseClassicEditingEnabled;
+    constexpr const char* kLocked = "Japanese Generation I saves are read-only";
+
     std::string stagedError;
-    trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
+    if (japaneseLocked)
+        stagedError = kLocked;
+    else
+        trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
     trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
 
     stagedError.clear();
-    // The Gen I writers handle the Japanese layout, but the app keeps Japanese saves read-only until
-    // the owner opens the gate (Integration/Common/JapaneseEditingGate.h). Every Gen I edit and its
-    // export go through the staged Pokemon workspace (stagedTrainerEditable() needs it too), so
-    // withholding it here keeps the whole Japanese save read-only, exactly as before.
-    if (metadata.region == Integration::Gen1::RegionLayout::Japanese &&
-        !Integration::Common::kJapaneseClassicEditingEnabled)
-        stagedError = "Japanese Generation I saves are read-only";
+    if (japaneseLocked)
+        stagedError = kLocked;
     else
         trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
     trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
 
     stagedError.clear();
-    trainer->stagedTrainer_ = Integration::Gen1::StagedTrainerEditor::create(save, stagedError);
+    if (!japaneseLocked)
+        trainer->stagedTrainer_ = Integration::Gen1::StagedTrainerEditor::create(save, stagedError);
     return trainer;
 }
 
