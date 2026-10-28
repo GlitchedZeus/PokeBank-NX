@@ -19,6 +19,7 @@ on:
       - 'tests/test_gen4_ground_tile.cpp'
       - 'tests/test_gen5_app_context.cpp'
       - 'tests/test_gen35_release_rules.cpp'
+      - 'tests/test_public_fixture_selection.py'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
@@ -64,6 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
           python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
           for profile in normal sanitize; do
             flags=()
@@ -81,6 +83,7 @@ jobs:
           path: |
             build-completion/test_gen35_release_rules*.log
             build-completion/global-link-generator.log
+            build-completion/public-fixture-selection.log
             build-completion/native-ev-*.log
             build-completion/CI_HEAD.txt
             build-completion/CI_COMPILER.txt

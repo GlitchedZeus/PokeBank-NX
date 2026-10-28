@@ -6,5 +6,6 @@
   "native_nro_device": "Not built/deployed; toolchain unavailable and integration has13 unresolved conflicts",
   "independent_human_review": "Not performed",
   "source_manifest_sha256": "4b3d0c9b7bee78a9b040c1b731e3a3a337794564dd24afb7ada98bb033e7d669",
-  "ci": "See exact published-head live checks and separate downloaded CI artifacts; local results do not establish CI success."
+  "ci": "See exact published-head live checks and separate downloaded CI artifacts; local results do not establish CI success.",
+  "public_census": "All105 native fixture files, all original Git blobs verified,0 errors; old75 subset preserved. Directory-independent selection regression PASS."
 }

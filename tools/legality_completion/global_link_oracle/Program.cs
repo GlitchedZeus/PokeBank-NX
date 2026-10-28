@@ -43,6 +43,7 @@ if(args.Length==2 && args[0]=="read-fixture") {
     var context=ext switch {".pk1"=>EntityContext.Gen1,".pk2"=>EntityContext.Gen2,".pk4"=>EntityContext.Gen4,".pk5"=>EntityContext.Gen5,_=>EntityContext.Gen3};
     var entity=EntityFormat.GetFromBytes(raw,context) ?? throw new Exception("Unrecognized fixture format");
     var originalType=entity.GetType().Name;
+    var originalAnalysis=new LegalityAnalysis(entity);
     PKM p=entity switch {CK3 c=>c.ConvertToPK3(),XK3 x=>x.ConvertToPK3(),_=>entity};
     if(p.Format is <1 or >5)throw new Exception("Outside Gen I-V");
     var size=p.Format==1?44:p.Format==2?48:p.Format==3?80:136;
@@ -51,6 +52,8 @@ if(args.Length==2 && args[0]=="read-fixture") {
         hex=Convert.ToHexString(p.Data[..size]),ot=p.Format<=2?Convert.ToHexString(p.OriginalTrainerTrash):"",
         nickname=p.Format<=2?Convert.ToHexString(p.NicknameTrash):"",language=p.Japanese?1:p is PK2 {Korean:true}?8:0,egg=p.IsEgg,
         referenceValid=analysis.Valid,
+        originalReferenceValid=originalAnalysis.Valid,
+        originalFindings=originalAnalysis.Results.Where(r=>!r.Valid||r.Judgement==Severity.Fishy).Select(r=>$"{r.Judgement}:{r.Identifier}:{r.Result}").ToArray(),
         findings=analysis.Results.Where(r=>!r.Valid||r.Judgement==Severity.Fishy).Select(r=>$"{r.Judgement}:{r.Identifier}:{r.Result}").ToArray(),
         moves=analysis.Info.Moves.Select((m,i)=>new{slot=i,valid=m.Valid,method=m.Info.Method.ToString()}).ToArray()}));return;
 }

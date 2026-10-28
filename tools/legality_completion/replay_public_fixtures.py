@@ -4,10 +4,13 @@
 Published test fixtures have no independently authenticated acquisition custody.
 CK3/XK3 conversions are labelled derivatives. Parse/analysis errors stay in counts.
 """
-import argparse, collections, hashlib, json, pathlib, re, subprocess
+import argparse, collections, hashlib, json, pathlib, subprocess
 
 def run(command, **kwargs):
     return subprocess.check_output([str(x) for x in command],text=True,timeout=60,**kwargs)
+
+def native_fixture_paths(root):
+    return sorted(p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in {'.pk1','.pk2','.pk3','.pk4','.pk5','.ck3','.xk3'})
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True)
@@ -15,8 +18,9 @@ def main():
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
     assert run(['git','-C',a.source,'rev-parse','HEAD']).strip()=='bfe89c74a3f5265805e364b79bc04ad38ebbc5ea'
     root=a.source/'Tests/PKHeX.Core.Tests/Legality'
-    paths=sorted(p for p in root.rglob('*') if p.suffix.lower() in {'.pk1','.pk2','.pk3','.pk4','.pk5','.ck3','.xk3'}
-                 and re.search(r'/Generation [1-5](?:/| )',p.as_posix()))
+    # Native format, not directory labels, determines scope. In particular,
+    # Illegal/Gen2, Illegal/Misc and Legal/General must never disappear.
+    paths=native_fixture_paths(root)
     rows=[];inputs=collections.defaultdict(list)
     for index,path in enumerate(paths):
         rel=path.relative_to(a.source).as_posix();raw=path.read_bytes()
@@ -24,6 +28,7 @@ def main():
              'original_sha256':hashlib.sha256(raw).hexdigest(),'original_bytes':len(raw),
              'custody':'published PKHeX test file; original-game acquisition not authenticated'}
         try:
+            assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()==row['source_blob'], 'Published fixture bytes differ from pinned Git blob'
             entity=json.loads(run([a.cache/'dotnet/dotnet',a.cache/'gl-export/GlobalLinkCatalog.dll','read-fixture',path]))
             row.update(entity);gen=entity['format'];i=row['id'];h=entity['hex'];ref='VALID' if entity['referenceValid'] else 'INVALID'
             row['conversion']='GameCube-to-PK3 derivative' if entity['sourceType'] in ('CK3','XK3') else 'decoded native record'
