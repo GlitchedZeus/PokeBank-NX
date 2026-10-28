@@ -1,0 +1,63 @@
+{
+  "policy": "Every raw discrepancy remains in METRICS. Existing policy predicates are separate from evidence-backed native proof. No new broad exception or record-ID whitelist. Original acquisition custody is unauthenticated.",
+  "generations": {
+    "1": {
+      "deliberate:level-exp": 154,
+      "uncertain:daycare-stale-level": 170,
+      "uncertain:daycare-exp-over-cap": 321,
+      "uncertain:name-digit": 60,
+      "uncertain:name-glyphless": 56,
+      "uncertain:jp-ot-charset": 14,
+      "uncertain:jp-ot-mark-gen1": 6,
+      "differing:PKHeX INVALID, PokeBank VALID": 3,
+      "uncertain:korean-pk1": 74,
+      "deliberate:korean-pk1-origin": 21,
+      "uncertain:gb-divided-stat-exp-zero": 743,
+      "uncertain:event-only": 15
+    },
+    "2": {
+      "deliberate:gs-ball-celebi": 12,
+      "uncertain:event-only": 20,
+      "uncertain:korean-western-trade": 245,
+      "uncertain:korean-met-data": 120,
+      "uncertain:korean-trainer-name": 31,
+      "deliberate:level-exp": 192,
+      "uncertain:daycare-stale-level": 102,
+      "uncertain:daycare-exp-over-cap": 45,
+      "uncertain:name-digit": 60,
+      "uncertain:name-glyphless": 52,
+      "uncertain:jp-ot-charset": 23,
+      "differing:PKHeX INVALID, PokeBank VALID": 26,
+      "uncertain:jp-ot-mark-gen1": 30,
+      "deliberate:jp-ot-mark-gen1-pick": 1,
+      "uncertain:gb-divided-stat-exp-zero": 282,
+      "deliberate:constructive-original-game-parent-ancestry": 6,
+      "uncertain:korean-met-data+korean-western-trade": 3,
+      "uncertain:unauthenticated-parent-gift": 2,
+      "uncertain:daycare-stale-level+korean-western-trade": 1
+    }
+  },
+  "gen34": {
+    "3/unresolved": 776,
+    "4/unresolved": 867,
+    "4/native-coupled-met-setter-contradiction": 52
+  },
+  "gen5": {
+    "Trainer:WordFilterFlaggedPattern_01": 15,
+    "Nickname:WordFilterFlaggedPattern_01": 25,
+    "Egg:EggMoveCombination": 7,
+    "Nickname:WordFilterFlaggedPattern_01 ~EVs:EffortEXPIncreased ~Level:LevelEXPThreshold": 3,
+    "Trainer:WordFilterFlaggedPattern_01 ~EVs:EffortEXPIncreased ~Level:LevelEXPThreshold": 2,
+    "Trainer:WordFilterFlaggedPattern_01 ~Level:LevelEXPThreshold": 5,
+    "Nickname:WordFilterFlaggedPattern_01 ~Level:LevelEXPThreshold": 3
+  },
+  "gen5-correlated": {
+    "Trainer:WordFilterFlaggedPattern_01": 2,
+    "Nickname:WordFilterFlaggedPattern_01": 1
+  },
+  "implementation_sha256": {
+    "compare.py": "94b0905d538d3816dcfe39879d5c2d86b4f5297c86192a7f399a99d6fc92712f",
+    "compare_dual.py": "5a08cda4fea3368c5a47e4ab3249bf263d83cfa2101d285abcd9a4abaf943f33",
+    "native_chain.py": "cd2ddf14468ea930cc37be4e19138b784eebbd4f0ceef0e86bbfef121caceaf7"
+  }
+}

@@ -43,8 +43,8 @@
     "gcc_context": 247,
     "gcc_current_app_bridge": 84,
     "gcc_presentation": 59049,
-    "sanitizers": "pending fresh rebuild",
-    "ci": "pending exact published head",
+    "sanitizers": "Final GCC/Clang normal and leak-enabled ASan+UBSan seven-suite matrix PASS at engine0a9ad207.",
+    "ci": "Exact published-head CI must be verified independently from live checks and evidence artifact run/commit metadata.",
     "gcc_release_rules": 140,
     "gcc_ranch_generated_states": 256,
     "gcc_gen4": {
@@ -55,8 +55,8 @@
       "cases": 207,
       "fuzz": 40000
     },
-    "native_ev_source_replay": "GCC PASS, original body and EXP split; not hardware",
+    "native_ev_source_replay": "GCC/Clang normal and leak-enabled ASan+UBSan PASS; unchanged native EXP/EV bodies.",
     "berry_fix": "72 reference-model constructions; 30 clean and42 negative across formats3,4,5. No acquired specimen or original distribution binary authenticated.",
-    "pre_hatch_matrix": "GCC/Clang normal and leak-enabled ASan/UBSan seven affected suites passed before the final two source repairs. Final exact-head rebuild pending."
+    "current_app_bridge": "GCC/Clang normal and leak-enabled ASan+UBSan84 cases PASS against d6cc878a"
   }
 }

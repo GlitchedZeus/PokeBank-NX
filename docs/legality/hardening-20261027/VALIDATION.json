@@ -1,0 +1,10 @@
+{
+  "engine_source_commit": "0a9ad2073b2ab678e5213b63b6fab60925e23172",
+  "local_affected_matrix": "GCC and Clang normal plus ASan/UBSan; leaks enabled, all28 executions passed",
+  "actual_app_boundary": "All4 compiler/profile runs passed84 cases against clean app d6cc878a",
+  "native_ev_replay": "All4 compiler/profile replays passed using unchanged pinned native bodies",
+  "native_nro_device": "Not built/deployed; toolchain unavailable and integration has13 unresolved conflicts",
+  "independent_human_review": "Not performed",
+  "source_manifest_sha256": "4b3d0c9b7bee78a9b040c1b731e3a3a337794564dd24afb7ada98bb033e7d669",
+  "ci": "See exact published-head live checks and separate downloaded CI artifacts; local results do not establish CI success."
+}

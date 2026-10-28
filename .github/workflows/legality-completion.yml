@@ -24,6 +24,7 @@ on:
       - 'Makefile.host.gb-legality'
       - 'Makefile.host.gen5-legality'
       - 'docs/legality/completion-session2/app-integration.*'
+      - 'docs/legality/hardening-20261027/**'
       - 'tools/legality_completion/**'
       - '.github/workflows/legality-completion.yml'
 jobs:
@@ -42,6 +43,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           submodules: recursive
+      - name: Record exact checkout and compiler for evidence artifacts
+        run: |
+          mkdir -p build-completion
+          git rev-parse HEAD > build-completion/CI_HEAD.txt
+          "$CXX" --version > build-completion/CI_COMPILER.txt
       - name: Build and execute focused normal and sanitizer regressions
         shell: bash
         run: |
@@ -76,6 +82,8 @@ jobs:
             build-completion/test_gen35_release_rules*.log
             build-completion/global-link-generator.log
             build-completion/native-ev-*.log
+            build-completion/CI_HEAD.txt
+            build-completion/CI_COMPILER.txt
             tests/fixtures/gen15_session2/global_link.txt
             tests/fixtures/gen15_session2/ev_exp.txt
             tests/fixtures/gen15_session2/ranch_iv.txt
@@ -147,6 +155,8 @@ jobs:
           path: app
       - name: Verify current app patch and actual staged workspace boundary
         run: |
+          git -C engine rev-parse HEAD > app-bridge-heads.txt
+          git -C app rev-parse HEAD >> app-bridge-heads.txt
           git -C app apply --check "$PWD/engine/docs/legality/hardening-20261027/app-presentation.patch"
           set -o pipefail
           bash engine/tools/legality_completion/test_app_bridge.sh app 2>&1 | tee app-bridge.log
@@ -157,6 +167,7 @@ jobs:
           name: legality-app-boundary-evidence
           path: |
             app-bridge.log
+            app-bridge-heads.txt
             engine/tests/app/test_gen5_workspace_legality.cpp
             engine/docs/legality/hardening-20261027/SOURCE_PINS.json
           if-no-files-found: warn

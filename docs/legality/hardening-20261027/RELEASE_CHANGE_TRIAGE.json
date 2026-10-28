@@ -1,0 +1,930 @@
+{
+  "from": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "to": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "policy": "Includes every changed path in the saved legality/resource diff. A source path is not a semantic rule. Reviewed change is not full-family parity. Unchanged applicable sources still require branch-level review. Modern contexts excluded from engineering scope only.",
+  "counts": {
+    "Reviewed change; see rule limits": 83,
+    "Outside nativeI\u2013V": 39,
+    "Gap": 6
+  },
+  "paths": [
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Assets/BinLinkerWriter.cs",
+      "rule_ids": "F01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Removed unused locals/comment; serialized native-rule format unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Bulk/DuplicateTrainerChecker.cs",
+      "rule_ids": "X02",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Bulk trainer ID/name reuse now compares decoded strings and reinterprets GenIII egg language. Separate bulk-save feature, not implemented individual-record report."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Bulk/HandlerChecker.cs",
+      "rule_ids": "X02",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Handling trainer buffer length; native1\u20135 has no handling trainer fields."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Data/EncounterEvent.cs",
+      "rule_ids": "H04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "PGF loader now GetArray pairs709 payloads with appended recipient metadata; existing repaired catalog generator checks identity/order."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5B2W2.cs",
+      "rule_ids": "E14",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Typed recipient/encounter identity paired without species/name shortcuts."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5BW.cs",
+      "rule_ids": "E14",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Typed762-row old pairing and3 new represented variants; source774 rows preserved."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Data/Live/EncounterServerDate.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator3.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "FRX/LGX remap and HOME Celebi special handling are outside original native1\u20135 context."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator4.cs",
+      "rule_ids": "E06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Sport ball/BK4 condition parentheses only; native encounter-type gaps separately remain."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator6.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator7.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/Lump/EncounterGenerator8X.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/EncounterCriteria.cs",
+      "rule_ids": "R01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "IV packing documentation only."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/Moveset/EncounterMovesetGenerator.cs",
+      "rule_ids": "M01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Enumeration skips new None sentinel; construction helper, no native legality rejection added."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Generator/Moveset/EncounterTypeGroup.cs",
+      "rule_ids": "M01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Adds None=0 construction sentinel; existing flags unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/EncounterArea7g.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/EncounterArea8g.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/EncounterSlot7GO.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/EncounterSlot8GO.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/IPogoDateRange.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/IPogoSlot.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/GO/PogoType.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen3/EncounterTrade3.cs",
+      "rule_ids": "T03/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New VC3 unconverted glyph path applies only modernHOME contexts; original PK3/PK4/PK5 unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen3/Gifts/EncounterGift3.cs",
+      "rule_ids": "R04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Berry Fix generation bounds ported; World ribbon propertyfalse; constructors do not authenticate receipts."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterEgg4.cs",
+      "rule_ids": "B04/B08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "ForceHatch refactor and Pt learn-source correction identified; comprehensive chronology still partial."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterTrade4RanchGift.cs",
+      "rule_ids": "E09/E10",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Independent PID and MRNG IV model added conservatively as Incomplete on no state."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen5/DreamWorldEntry.cs",
+      "rule_ids": "E14",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Promotion tuple expansion supported by typed export."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen5/EncounterStatic5Entree.cs",
+      "rule_ids": "E14",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Promotion recipient and matching identity exported; unsupported alternatives Incomplete."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen5/GlobalLinkPromotion.cs",
+      "rule_ids": "E14",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Language flags exported, including Japanese/Korean/international distinctions."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen7/EncounterStatic7.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen7b/EncounterTrade7b.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen8/EncounterSlot8.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen8/EncounterStatic8N.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen8/EncounterStatic8Nest.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen8a/EncounterSlot8a.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen8a/EncounterStatic8a.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen9/EncounterFixed9.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Gen9/EncounterOutbreak9.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Interfaces/IEncounterTemplate.cs",
+      "rule_ids": "T03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "HasOriginalMetLocation=>HasOriginalMetLevel: expressions identical for native1\u20135/ordinary transfer versions; difference is VC3, absent from valid native1\u20135."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Interfaces/Properties/IEncounterSlot34.cs",
+      "rule_ids": "R06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Exposes existing IsRerollMinimum31 property on interface; current native frame-model proof still partial."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Templates/Interfaces/RNG/IGenerateSeed64.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Construction interface takes trainer; native1\u20135 judge does not use64-bit generator interface."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Verifiers/EggHatchLocation4.cs",
+      "rule_ids": "B08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New flag copied; original hatch-map reachability remains source gap."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Verifiers/EncounterVerifier.cs",
+      "rule_ids": "T03/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New egg transfer branch is VC3 modern context only; ordinary III\u2192IV\u2192V transfer branch unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Verifiers/MysteryGiftRestriction.cs",
+      "rule_ids": "H04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Enum storage/refactor; commented version branch not asserted as a new definitive rule."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Encounters/Verifiers/MysteryGiftVerifier.cs",
+      "rule_ids": "H04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Language/scope pairing represented; receipt evidence remains partial."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Evolutions/EvolutionGroup/EvolutionGroup3.cs",
+      "rule_ids": "T03/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New VC3\u2192HOME next group; ordinary III\u2192IV group unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Evolutions/EvolutionGroup/EvolutionGroupHOME.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Evolutions/EvolutionGroup/EvolutionGroupHOME2.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2GS.cs",
+      "rule_ids": "B01/M03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Comments identify inaccessible single-parent egg moves. Binary GS resource changes separately remain a typed-data audit gap."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3E.cs",
+      "rule_ids": "M03/M05",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Tutor helper visibility/comment plus Format==3=>Format==Generation where Generation3; native behavior unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3RS.cs",
+      "rule_ids": "M03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Tutor helper private=>public for chain solver access; predicate unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource8SWSH.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/Shared/ILearnSource.cs",
+      "rule_ids": "B03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New GetIsEggMove defaultfalse supports chain API; G3\u20135 joint solver missing."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Learnset/LearnsetReader.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Adds32-bit index accessor overload; existing native16-bit learnsets unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Learnset/LearnsetStadium.cs",
+      "rule_ids": "B02",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Reviewed native Stadium2 inherited tutor routes retained."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Legal.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "ModernHOME range and Celebi special case; native held-item tables unchanged by this diff."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/LegalityAnalysis.cs",
+      "rule_ids": "P01/H06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Dispatch/exception/Valid aggregation refactored; redundant FatefulGiftMissing hint removed. Basic Invalid predicate remains. Native missing-event coverage is still partial in NX."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Localization/LegalityCheckLocalization.cs",
+      "rule_ids": "B03/V04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Adds chain and EVEXP messages, no separate extra native predicate."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Localization/LegalityCheckResultCodeExtensions.cs",
+      "rule_ids": "B03/V04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Message-code mapping for chain and EVEXP additions."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Localization/LegalityLocalizationContext.cs",
+      "rule_ids": "B03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Builds localized chain summary from selected inherited moves; presentation support, not solver equivalence."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedEraFlags.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Gap",
+      "reason": "G2 finite solver integrated; G3\u20135 recursive joint ancestry not integrated."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedLegality.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Gap",
+      "reason": "G2 finite solver integrated; G3\u20135 recursive joint ancestry not integrated."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedStep.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Gap",
+      "reason": "G2 finite solver integrated; G3\u20135 recursive joint ancestry not integrated."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedSummary.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Gap",
+      "reason": "G2 finite solver integrated; G3\u20135 recursive joint ancestry not integrated."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedTrace.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Gap",
+      "reason": "G2 finite solver integrated; G3\u20135 recursive joint ancestry not integrated."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/Chain/ChainBreedUtil.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Gap",
+      "reason": "G2 finite solver integrated; G3\u20135 recursive joint ancestry not integrated."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Moves/GameData.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Adds FRX/LGX modern transfer personal/learn source; valid original native version tables unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/LCRNG.cs",
+      "rule_ids": "R02",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Forward/reverse constants unchanged; documentation added."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/LCRNGReversal.cs",
+      "rule_ids": "R08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Different lattice bounds optimize same reversal problem; old native implementation retained. Complete seed-set equivalence still unproved."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/LCRNGReversalSkip.cs",
+      "rule_ids": "R08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Different lattice bounds for gap reversal; old native implementation retained. Full seed-set equivalence still unproved."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/MRNG.cs",
+      "rule_ids": "E10",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Multiplier/addend and first/third15-bit output reversal modeled."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/MRNGReversal.cs",
+      "rule_ids": "E10",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Complete native low16 enumeration instead of same reversal optimization."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/XDRNG.cs",
+      "rule_ids": "R08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New bounds/lattice reversal including Channel; forward constants unchanged. Old native reversal retained; full set equivalence not certified."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/XorShift128.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Algorithms/Xoroshiro128PlusReversal.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen3/ChannelJirachi.cs",
+      "rule_ids": "R03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "SkipToIVs/PrevToOrigin helper refactor; no new receipt authentication."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen3/CommonEvent3Checker.cs",
+      "rule_ids": "R04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Changed Berry Fix0..213 predicate ported; gender constraint retained."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/CuteCharm4.cs",
+      "rule_ids": "R06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Refactor/future evolution scope identified; no certified full branch equivalence."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodK.cs",
+      "rule_ids": "R06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Refactor/comments identified; no certified full branch equivalence."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/MethodK.cs",
+      "rule_ids": "R06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Comment change, existing reversal remains."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/PokewalkerRNG.cs",
+      "rule_ids": "E08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Parentheses/comments and helper refactor, no certified full branch equivalence."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/MethodFinder.cs",
+      "rule_ids": "R03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Channel failed-lock operator-precedence comment only."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Methods/Gen8/Overworld8RNG.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/Methods/Gen8a/Overworld8aRNG.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/RNG/PIDType.cs",
+      "rule_ids": "R04/E10",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "RTC description and Ranch enum; no universal native GenV correlation implied."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Restrictions/HomeQuirks.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Whitespace in modernHOME scale helper; outside native1\u20135."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Settings/ParseSettings.cs",
+      "rule_ids": "E17/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Separates originalGBA/Switch-exclusive/modernHOME profiles and event-ticket allowance. Individual native report profile/evidence is not fully equivalent to all optional settings."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Settings/Specialized/GameSpecificSettings.cs",
+      "rule_ids": "I06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Adds optional AllowBattleTowerTeamSwap defaultfalse; no ordinary-profile rule changed."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Structures/LegalityCheckResultCode.cs",
+      "rule_ids": "B03/V04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Chain and EVEXP result codes; predicates accounted separately."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Ball/BallUseLegality.cs",
+      "rule_ids": "I02/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "FRLG Switch-exclusive ball inventory is a distinct profile, not ordinaryGBA."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/ContestStatVerifier.cs",
+      "rule_ids": "I05",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Parentheses only, no native rule expansion."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Verifiers/EffortExpLegality.cs",
+      "rule_ids": "V04/V05",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "General joint budget not ported; source-replayed native counterexample to per-stat sum."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs",
+      "rule_ids": "V02/V03/V04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Existing native caps/zeroEXP preserved; general new EXP rule remains incomplete."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Legality/Verifiers/Egg/EggHatchLegality.cs",
+      "rule_ids": "B08",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New PK4 construction helper models hatch rebuild/origin retention/trade; relevant native ball repair backed by native hatch code."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Egg/EggStateLegality.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Adds FRX/LGX modern transfer hatch location branch."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Egg/EggVerifier.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "General recursive inherited joint check for hatched and unhatched eggs; G2 counterpart integrated, G3\u20135 missing."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/HistoryVerifier.cs",
+      "rule_ids": "X02",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Handling-trainer settings/bulk storage exception; no native1\u20135 handling trainer fields."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/IndividualValueVerifier.cs",
+      "rule_ids": "E10",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New Ranch condition inspected/covered by conservative native reversal."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/LevelVerifier.cs",
+      "rule_ids": "T03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "HasOriginalMetLevel predicate changed; native1\u20135 applicability still needs branch trace."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Misc/MiscFatefulEncounterVerifier.cs",
+      "rule_ids": "H04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Argument-width cast removed; paired PGF restriction predicate unchanged here."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Misc/MiscG1Verifier.cs",
+      "rule_ids": "B01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Egg-verifier dispatch refactor; joint G2 solver integrated, all new branches not certified."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Misc/MiscVerifierG3.cs",
+      "rule_ids": "I02/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Moves exclusive-profile ball condition to ball rule; ordinaryGBA unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Misc/MiscVerifierG4.cs",
+      "rule_ids": "I03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Traded hatch-game ball writer repaired with native rebuild evidence."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Misc/MiscVerifierPA8.cs",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "Selected native formats/generators do not use this modern-only branch. No implementation changes made."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/MiscVerifier.cs",
+      "rule_ids": "B01\u2013B06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Egg verifier now called for every egg origin, including hatched; general G3\u20135 chain integration remains missing."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/PIDVerifier.cs",
+      "rule_ids": "X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "New VC3 modernHOME EC path; native PID data has no separateEC."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonRules.cs",
+      "rule_ids": "I06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Cross-era/settings distinctions; nondefault BattleTowerTeamSwap not ordinary profile."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierEvent3.cs",
+      "rule_ids": "I06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "World template property isfalse for represented GenIII gift catalog."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierEvent4.cs",
+      "rule_ids": "I06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "World moved out of Event4 interface to Event3; represented GenIII gift World value remainsfalse."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierOnly3.cs",
+      "rule_ids": "I06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "World moved to Event3 verifier; not a newly released World ribbon."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierUnique3.cs",
+      "rule_ids": "I06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Winning/Victory receivesPKM to consult optional BattleTowerTeamSwap; ordinary defaultfalse."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/TrainerNameVerifier.cs",
+      "rule_ids": "N03/X02",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Handling-name buffer/numeric checks added; original-trainer predicate unchanged by diff."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Legality/Verifiers/TransferVerifier.cs",
+      "rule_ids": "T03/X01",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "NewVC3modernHOME transfer date/ball/foreign-species restrictions; ordinary PalPark/PokeTransfer guards unchanged."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/byte/eggmove/eggmove_gs.pkl",
+      "rule_ids": "M03",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Changed resource requires independent typed/native comparison."
+    },
+    {
+      "status": "A",
+      "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_ho.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/mgdb/pgf.pkl",
+      "rule_ids": "H04",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "709 byte-identical payloads with appended paired recipient metadata; original receipt scope unresolved."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/mgdb/wa9.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/mgdb/wc6.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/mgdb/wc6full.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/mgdb/wc7full.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/mgdb/wc8.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/Gen4/encounter_hg.pkl",
+      "rule_ids": "E06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Changed resource requires independent typed/native comparison."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/Gen4/encounter_ss.pkl",
+      "rule_ids": "E06",
+      "audit_state": "Reviewed change; see rule limits",
+      "reason": "Changed resource requires independent typed/native comparison."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/Gen9/encounter_might_paldea.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/Gen9/encounter_outbreak_paldea.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/Gen9/encounter_za.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/encounter_go_home.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    },
+    {
+      "status": "M",
+      "path": "PKHeX.Core/Resources/legality/wild/encounter_go_lgpe.pkl",
+      "rule_ids": "X01",
+      "audit_state": "Outside nativeI\u2013V",
+      "reason": "No implementation work in modern contexts; shared applicability remains a separate audit obligation."
+    }
+  ],
+  "outside_legality_directory": [
+    {
+      "path": "PKHeX.Core/PKM/PK2.cs",
+      "finding": "Whitespace only."
+    },
+    {
+      "path": "PKHeX.Core/PKM/PK3.cs",
+      "finding": "Derived ribbon counts; HM-removal comment; conversion guards unchanged."
+    },
+    {
+      "path": "PKHeX.Core/PKM/PKM.cs",
+      "finding": "HasOriginalMetLevel equals old HasOriginalMetLocation for valid native1\u20135; newVC3 and handling-name metadata are modern-only. IV setter API refactor."
+    },
+    {
+      "path": "PKHeX.Core/Game/Enums/GameVersion.cs",
+      "finding": "FRX/LGX56/57 cannot fit originalPK3 four-bit native version. Modern conversion context excluded."
+    },
+    {
+      "path": "PKHeX.Core/Game/GameUtil.cs",
+      "finding": "Adds modern convertedFRX/LGX context; ordinary native IDs unchanged."
+    }
+  ]
+}
