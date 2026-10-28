@@ -329,6 +329,18 @@ std::array<uint8_t, 80> StagedPokemonEditor::readBoxRaw(
     return raw;
 }
 
+bool StagedPokemonEditor::holdsUnreadableRecord(std::size_t box, std::size_t slot) const {
+    bool ok = false;
+    const auto raw = readBoxRaw(box, slot, ok);
+    if (!ok) return true;
+    // pret ZeroBoxMonData leaves a released slot all zero; any species index in the decrypted
+    // Growth block means a record is there even when it maps to no National Dex number.
+    std::byte* decrypted = Encryption::decryptArray3FRLG(std::as_bytes(std::span<const uint8_t>(raw)));
+    const bool species = decrypted[0x20] != std::byte{0} || decrypted[0x21] != std::byte{0};
+    delete[] decrypted;
+    return species;
+}
+
 std::optional<StagedPokemonRecord> StagedPokemonEditor::boxedPokemon(
     std::size_t box, std::size_t slot, std::string& error) const {
     error.clear();
@@ -750,6 +762,10 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         error = readError;
         return false;
     }
+    if (holdsUnreadableRecord(box, slot)) {
+        error = "Generation III Create needs an empty slot; this slot holds an unreadable record";
+        return false;
+    }
     if (create.species == 0 || create.species > 386 ||
         create.level < 1 || create.level > 100 ||
         !validHeldItem(sourceGame_, create.heldItem) ||
@@ -957,6 +973,10 @@ bool StagedPokemonEditor::stageCloneBoxPokemon(
         error = destError;
         return false;
     }
+    if (holdsUnreadableRecord(destinationBox, destinationSlot)) {
+        error = "Generation III clone destination holds an unreadable record";
+        return false;
+    }
 
     const auto backup = staged_;
     const auto changesBackup = changes_;
@@ -1113,13 +1133,9 @@ bool StagedPokemonEditor::stageImportBoxPokemon(
     // boxedPokemon reads a record whose internal species index has no National Dex number (unused
     // 252-276, or past 411) as "no Pokemon". Import does not write over such bytes: the slot must
     // hold no species index at all (pret ZeroBoxMonData leaves a released slot all zero).
-    {
-        bool slotOk = false;
-        const auto current = pk3Plaintext(readBoxRaw(box, slot, slotOk));
-        if (!slotOk || current[0x20] != 0 || current[0x21] != 0) {
-            error = "Import needs an empty box slot; this slot holds an unreadable record";
-            return false;
-        }
+    if (holdsUnreadableRecord(box, slot)) {
+        error = "Import needs an empty box slot; this slot holds an unreadable record";
+        return false;
     }
 
     // The box slot takes the stored part; a party file's 20 battle-stat bytes are not part of it
@@ -1323,6 +1339,10 @@ bool StagedPokemonEditor::placeSparseMove(std::size_t box, std::size_t anchor,
         const std::size_t slot = row * 6 + col;
         if (boxedPokemon(box, slot, error) || !error.empty()) {
             if (error.empty()) error = "Move destination must be empty; no overwrite";
+            return false;
+        }
+        if (holdsUnreadableRecord(box, slot)) {
+            error = "Move destination holds an unreadable record; no overwrite";
             return false;
         }
         destinations.push_back(slot);

@@ -432,6 +432,16 @@ void refusals(SourceGame game, Family family) {
         assert(!oddEditor->stageImportBoxPokemon(0, 7, decodeOk(good, "a.pk3"), error) &&
                error.find("unreadable record") != std::string::npos);
         assert(oddEditor->stagedBytes() == odd && !oddEditor->hasPendingChanges());
+        // The same guard protects Create, Clone and Move placement (pre-existing gap found here).
+        BoxPokemonCreate create; create.species = 25; create.level = 5; create.language = 2;
+        assert(!oddEditor->stageAddBoxPokemon(0, 7, create, error) &&
+               error.find("unreadable record") != std::string::npos);
+        assert(!oddEditor->stageCloneBoxPokemon(0, 0, 0, 7, error) &&
+               error.find("unreadable record") != std::string::npos);
+        assert(oddEditor->beginSparseMove(0, {0}, error));
+        assert(!oddEditor->placeSparseMove(0, 7, error) && error.find("unreadable record") != std::string::npos);
+        assert(oddEditor->cancelSparseMove(error));
+        assert(oddEditor->stagedBytes() == odd && !oddEditor->hasPendingChanges());
     }
 
     // Wrong generation: a real Gen IV record decoded by the codec, and hand-built Gen I/II/V shapes.

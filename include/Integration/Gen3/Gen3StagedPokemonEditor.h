@@ -191,6 +191,9 @@ private:
                      std::string& error);
     [[nodiscard]] std::array<uint8_t, 80> readBoxRaw(
         std::size_t box, std::size_t slot, bool& ok) const noexcept;
+    // True when the slot holds a nonzero species index that boxedPokemon cannot read (an internal
+    // index with no National Dex number): such bytes are not an empty slot and are never overwritten.
+    [[nodiscard]] bool holdsUnreadableRecord(std::size_t box, std::size_t slot) const;
 
     std::vector<std::size_t> carrySlots_;
     std::vector<std::array<uint8_t, 80>> carryRecords_;
