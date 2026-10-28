@@ -73,6 +73,8 @@ inline void occlude(int x, int y, int w, int h, unsigned alpha) {
 inline std::deque<Utils::NumberResult> numbers;         // answers for promptNumber, in order
 inline std::deque<Utils::KeyboardResult> textAnswers;  // answers for promptText / promptSystemText
 inline int promptCount = 0;                            // prompts shown so far
+inline int japanesePromptCount = 0;                    // of which kana name prompts (promptJapaneseName)
+inline int lastJapaneseMaxChars = 0;                   // the cap the last kana name prompt was opened with
 
 inline Utils::NumberResult nextNumber() {
     ++promptCount;

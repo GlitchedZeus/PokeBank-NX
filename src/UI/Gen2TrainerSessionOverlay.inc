@@ -21,9 +21,10 @@ bool handleTrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t hel
     UI::ClassicTrainerSession::Fields fields;
     fields.name = editor->trainerName();
     fields.money = editor->money();
-    fields.nameMax = 7;
+    fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer);
+    fields.nameMax = fields.nameJapanese ? 5 : 7;
     fields.moneyMax = Gen2::kMaxMoney;
-    fields.nameGuide = "1-7 native Gen II characters";
+    fields.nameGuide = fields.nameJapanese ? UI::ClassicJapaneseNames::kKanaGuide : "1-7 native Gen II characters";
     // P3: native Play Time (Gold / Silver / Crystal) and Crystal Trainer Gender, staged in the same
     // image as Name / Money. Gold / Silver store no trainer gender, so no Gender row is offered.
     if (editor->playTimeEditable()) {
