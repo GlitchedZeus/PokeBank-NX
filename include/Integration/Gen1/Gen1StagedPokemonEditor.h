@@ -6,6 +6,8 @@
 #include <string_view>
 #include <vector>
 
+namespace PokeBank::PokemonFile { struct Decoded; }
+
 namespace PokeVault::Integration::Gen1 {
 struct PokemonChange {
     std::string key, label, beforeValue, afterValue;
@@ -61,6 +63,25 @@ public:
     bool stageAdd(size_t box, size_t slot, const BoxPokemonCreate&, std::string& error);
     bool stageClone(size_t sourceBox, size_t sourceSlot, size_t box, size_t slot, std::string& error);
     bool stageRemove(size_t box, size_t slot, std::string& error);
+
+    // Feature A (owner Oct 28): standalone .pk1 files (PokemonFile/NativePokemonFile.h).
+    // stageImport places one decoded international .pk1 into the first empty slot of a box, as a
+    // staged change only (Review / Keep / Discard / Export Copy as for Create). The box keeps the
+    // first 33 bytes of the 44-byte party body (pret/pokered box_struct) plus the file's 11-byte
+    // OT and nickname as stored. When the party level (body 0x21) is non-zero it becomes the box
+    // level byte (body 0x03), as pokered engine/pokemon/add_mon.asm _MoveMon does on PARTY_TO_BOX;
+    // a zero party block (aa4b72e) keeps body 0x03. The record must then pass this editor's own
+    // validators. Japanese files, other generations, occupied or non-first-empty slots and full
+    // boxes are refused; nothing is converted, invented or legalized.
+    bool stageImport(size_t box, size_t slot, const PokeBank::PokemonFile::Decoded& file,
+                     std::string& error);
+    // PKHeX single-entry .pk1 list (69 bytes, PokeCrypto.cs SIZE_1LIST) of a staged box or Party
+    // Pokemon. Reads only. A box record gets the party-only fields the game computes when it leaves
+    // the PC (pokered _MoveMon BOX_TO_PARTY: CalcLevelFromExperience, then CalcStats with Stat Exp);
+    // current HP and status stay as stored. A Party record is copied as stored.
+    std::optional<std::vector<uint8_t>> exportBoxPokemonFile(size_t box, size_t slot,
+                                                             std::string& error) const;
+    std::optional<std::vector<uint8_t>> exportPartyPokemonFile(size_t slot, std::string& error) const;
 
     // Packed relocation engine used by the native classic box Y interaction. The single-Pokemon
     // entry points remain the Part 1 contract; Part 2 extends the same engine to an ordered group.
