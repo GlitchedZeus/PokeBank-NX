@@ -65,6 +65,14 @@ dotnet "$work/oracle/PKHeXGen5Oracle.dll" fixednames > "$work/fixednames.txt"
 "$work/gen5_diff" < "$work/pkhex.txt" > "$work/pokebank.txt"
 test "$(wc -l < "$work/pkhex.txt")" = "$(wc -l < "$work/pokebank.txt")"
 paste -d'\t' "$work/pkhex.txt" "$work/pokebank.txt" > "$work/joined.txt"
+# The older corpus stays frozen. Re-evaluate every raw stricter row against the
+# current official release without changing bytes or excluding the old result.
+if [ -n "${PKHEX_RELEASE_ROOT:-}" ]; then
+    python3 "$repo/tools/legality_completion/current_release_replay.py" \
+      --group gen5 --joined "$work/joined.txt" --source "$PKHEX_RELEASE_ROOT" \
+      --work "$work/current-release"
+    export CURRENT_RELEASE_REPLAY_REPORT="$work/current-release/REPORT.json"
+fi
 if [ -n "${GEN5_DIFF_KEEP:-}" ]; then
     mkdir -p "$GEN5_DIFF_KEEP"
     cp "$work/pkhex.txt" "$work/pokebank.txt" "$work/joined.txt" "$GEN5_DIFF_KEEP/"
@@ -92,12 +100,9 @@ fi
 echo "PKHeX rejects, PokeBank NX Incomplete (by mutation and PKHeX result):"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID" && b[2]!="INVALID") {m=a[1]; sub(/^m[0-9]+-/,"",m); sub(/^b[0-9]+$/,"base",m); r=$1; sub(/^[^;]*; /,"",r); print m" :: "r}}' \
     "$work/joined.txt" | sort | uniq -c | sort -rn | awk -v n="${SHOW:-15}" 'NR <= n'
-# No Gen V rule is deliberately stricter. The former one (hidden-ability flag with a slot 1/2
-# ability on a hidden-ability-only template) is a Warning since
-# docs/legality/PKHEX_DISAGREEMENT_REVIEW.md found no original-game evidence. The only allowance
-# is for HG/SS-origin transfers that only an HG/SS Safari or rod-swarm placeholder row explains,
-# which frozen PKHeX still matches and the Gen IV origin analysis rejects
-# (tools/pkhex_gen34_diff/hgss_placeholders.py checks the record bytes and issues).
+# A stricter result is explained only by independent native level absence or
+# the unchanged bytes being Invalid under the explicitly pinned current release.
+# Discarded-placeholder membership alone is insufficient; raw older results stay.
 false_invalid=$(python3 "$repo/tools/pkhex_gen34_diff/hgss_placeholders.py" gen5 "$work/joined.txt")
 if [ -n "$false_invalid" ]; then
     echo "FALSE INVALID (PKHeX VALID, PokeBank NX INVALID):"

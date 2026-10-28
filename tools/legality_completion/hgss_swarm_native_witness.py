@@ -70,6 +70,10 @@ int main() {
    const bool changed=rod==0?i==2:rod==1?(i==0||i==2||i==3):true;
    assert(slots[i].species==(changed?target.species:u16(10+i)));
   }
+  // The map/type match alone cannot replace slots when the outbreak is inactive.
+  for(u16 i=0;i<5;++i)slots[i].species=u16(10+i);
+  active=FALSE;EncSlots_Update_FishingSwarm(&field,rod,&data,slots);
+  for(u16 i=0;i<5;++i)assert(slots[i].species==u16(10+i));
  }
  for(u16 map:{u16(MAP_NEW_BARK),u16(MAP_ROUTE_34)})for(u32 random=0;random<20;++random)for(u8 rod=0;rod<3;++rod) {
   Location loc{map};FieldSystem field{nullptr,&loc};EncounterData data{SPECIES_MAGIKARP};EncounterSlot slots[5]{};
@@ -77,7 +81,7 @@ int main() {
   outbreakRandom=random;active=TRUE;EncSlots_Update_FishingSwarm(&field,rod,&data,slots);
   for(u16 i=0;i<5;++i)assert(slots[i].species==u16(10+i));
  }
- std::cout<<"Original HGSS swarm bodies: "<<cases<<" exhaustive map/type gates; four native fishing outbreaks; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS\n";
+ std::cout<<"Original HGSS swarm bodies: "<<cases<<" exhaustive map/type gates; four native fishing outbreaks; inactive controls; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS\n";
 }
 '''
     text=prefix+gate+stubs+fishing+harness;source=a.work/'hgss_swarm_native.cpp';source.write_text(text);binary=a.work/'hgss_swarm_native'

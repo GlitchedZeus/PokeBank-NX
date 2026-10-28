@@ -95,6 +95,16 @@ def deliberate(r):
 for r in rows:
     r["deliberate"] = deliberate(r)
 
+print("Raw older-reference disagreements (before adjudication; all records retained):")
+for game in GAMES + ["ALL"]:
+    subset=[r for r in rows if game=="ALL" or r["cart"]==game]
+    if not subset:continue
+    raw_fi=sum(r["p"]=="VALID" and r["ours"]=="INVALID" for r in subset)
+    raw_fc=sum(r["p"]=="INVALID" and r["ours"]=="NOPROBLEMS" for r in subset)
+    explained=Counter(r["deliberate"] for r in subset if r["deliberate"])
+    print(game,"raw false Invalid",raw_fi,"raw false clean",raw_fc,"adjudication",dict(explained))
+
+
 
 def false_invalid_row(r):
     return r["p"] == "VALID" and r["ours"] == "INVALID" and not r["deliberate"]

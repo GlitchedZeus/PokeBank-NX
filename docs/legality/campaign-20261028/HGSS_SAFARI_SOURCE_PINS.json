@@ -12,6 +12,12 @@
       "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/safari_zone.c",
       "sha256": "32867d29bb1f3500aa674842a639299e4b65432c194916ff83d28833e87f7aa3",
       "git_blob_sha1": "44bb7bee863d17f1047b4d2b021d6b0b737c4568"
+    },
+    {
+      "path": "files/poketool/personal/evo.json",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/files/poketool/personal/evo.json",
+      "sha256": "5d6cd7d450b19062b70afd496d3703f18ccadd6244d49fc3597eae3ae9cd18c1",
+      "git_blob_sha1": "ecd81d820d6cc47eb51b1a005136e5c84f0cf10f"
     }
   ]
 }

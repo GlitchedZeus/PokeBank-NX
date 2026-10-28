@@ -3,13 +3,13 @@
   "status": "active; no completion claim",
   "pr": 314,
   "branch": "claude/gen1-5-legality-campaign-w9mkom",
-  "remote_head": "30696ba7b64ba9227fcc4db643159951dbeeb365",
+  "remote_head": "f5f50e1351b190b73067422aaaa3427f808af3ad",
   "official_release": {
     "tag": "26.10.18",
     "sha": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea"
   },
   "newer_master_separate": "8e3eb3d47bb496746c3eaa9d160329d295a5e2e5",
-  "working_changes": "HGSS swarm/Safari repair locally validated; focused commit/push next",
+  "working_changes": "Narrow independent native-level adjudication, adversarial positive controls and explicit current-release replay replace unsafe placeholder-membership exceptions; validated locally, commit/push pending",
   "validation": {
     "targeted": "14 unchanged records+40 slot alternatives; GCC/Clang normal+ASan/UBSan PASS",
     "affected": "GenIV, GenV, release, terrain; GCC/Clang normal+ASan/UBSan PASS",
@@ -17,8 +17,10 @@
     "primary": "exactly7 changed verdicts; all confirmed targeted false clean repaired",
     "earlier_retained": "three full retained sets replayed; GenIV raw false clean0 in each",
     "fresh": "238777 emitted GenIII\u2013V records retained; detailed FRESH_METRICS.json",
-    "legacy6501": "128 raw stricter;91 changed unsupported encounter entries need native-level classification;37 old met-setter disagreements",
-    "ci": "not yet run for this uncommitted change"
+    "legacy6501": "91 of128 raw stricter GenIV cases have independent native necessary-level absence; all91 also Invalid in26.10.18. All128 replayed unchanged against release (93Invalid/35Valid); raw baseline counts unchanged.",
+    "ci": "f5f50e13 eleven PR-triggered workflows passed, including gen34/gen5; these predate the exception-tightening change and are not release acceptance",
+    "new_gate": "7 actual valid controls protected against simulated false Invalids;91 native proofs; reference errors cannot excuse rejection; both full frozen-reference CLI smoke runs PASS with explicit released reference replay",
+    "new_native_witness": "inactive-outbreak branch added; GCC/Clang normal/ASan+UBSan PASS"
   },
   "metrics": {
     "primary": "PRIMARY_METRICS.json",
@@ -31,7 +33,7 @@
     {
       "priority": 0,
       "kind": "implementation gap",
-      "task": "Complete frozen6501 native-level adjudication, source-backed comparison classification, and verify pushed-head CI; seven current-release cases repaired",
+      "task": "Verify pushed-head CI and archive raw second-reference evidence; source-backed seven current-release false cleans repaired",
       "source": "src/Legality/Gen4LegalityEncounters.cpp; src/field/encounter_check.c@pret/pokeheartgold9d8b759",
       "cases": [
         "m68527-metlocation",
@@ -42,7 +44,7 @@
         "m69659-metlocation",
         "m62953-metlevel"
       ],
-      "next": "Inspect native Safari levels (files/arc/safari_enc.json); corroborate91 older-reference accepted inaccessible rows without dropping them. Preserve original invalid fixture."
+      "next": "Run tests/test_hgss_reference_adjudication.py and inspect current_release_replay REPORTs. Do not restore placeholder-membership-only allowances."
     },
     {
       "priority": 0,
@@ -81,11 +83,17 @@
     }
   ],
   "scope": "engine only; no PR307/app merge/NRO/combined build",
-  "next_command": "python3 tools/legality_completion/hgss_swarm_repair.py --native ../outputs/legality-campaign-20261028/native-hgss --report ../outputs/legality-campaign-20261028/recheck.json",
+  "next_command": "python3 tests/test_hgss_reference_adjudication.py",
   "artifacts": "outputs/legality-campaign-20261028; immutable baseline outputs/legality-hardening-20261027",
   "next_breeding_reference": {
     "repo": "fuddlesworth/pokebw2",
     "sha": "35d735b52bb77338f3a138d321e562975ade556e",
-    "status": "complete src and pokemon subtrees fetched; top-level recursive tree truncated; data/egg tutor research only"
-  }
+    "status": "complete src and pokemon subtrees fetched; top-level recursive tree truncated; data/egg tutor research only",
+    "warning": "Species JSON omits ReflectType/Chansey and WringOut/Smoochum egg entries present in released raw resources; establish raw-ROM derivation before closed-world negative proof. Current production donor/tutor data already supports Paras NOT learning Covet; no superiority claim."
+  },
+  "engine_code_head": "c9f3ab280002c330afa3cbc954adb7789c12656d",
+  "coordination": [
+    "Preserved Claude ded4c2f2/f5f50e13 via forward checkout; no merge commit",
+    "PR314 comments6469504356 and6469535480 report the native proof and unsafe exemption counterexamples; PR307 untouched"
+  ]
 }

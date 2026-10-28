@@ -29,6 +29,9 @@ on:
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
       - 'tools/pkhex_gen5_diff/**'
+      - 'tools/legality_completion/**'
+      - 'docs/legality/campaign-20261028/**'
+      - 'tests/test_hgss_reference_adjudication.py'
       # HG/SS placeholder allowance for transfers (tools/pkhex_gen5_diff/run.sh).
       - 'tools/pkhex_gen34_diff/hgss_placeholders.py'
       - 'docs/legality/campaign-20261028/HGSS_SWARM_REMOVED_ROWS.json'
@@ -45,6 +48,7 @@ permissions:
 
 env:
   PKHEX_SHA: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+  PKHEX_RELEASE_ROOT: ${{ github.workspace }}/_ref/PKHeX-release
 
 jobs:
   gen5:
@@ -66,6 +70,12 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
           test "$(git -C _ref/PKHeX rev-parse HEAD)" = "$PKHEX_SHA"
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: bfe89c74a3f5265805e364b79bc04ad38ebbc5ea
+          path: _ref/PKHeX-release
+          persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -107,5 +117,29 @@ jobs:
         run: |
           set -euo pipefail
           for seed in 1 2 7 11; do
-            tools/pkhex_gen5_diff/run.sh _ref/PKHeX "$seed" 4
+            WORK="$PWD/build/diff-base-$seed" tools/pkhex_gen5_diff/run.sh _ref/PKHeX "$seed" 4
           done
+
+      - name: Record exact reference and engine heads
+        if: always()
+        run: |
+          mkdir -p build
+          git rev-parse HEAD > build/reference-heads.txt
+          git -C _ref/PKHeX rev-parse HEAD >> build/reference-heads.txt
+          git -C _ref/PKHeX-release rev-parse HEAD >> build/reference-heads.txt
+
+      - name: Preserve both reference results and unchanged raw comparison bytes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-gen5-reference-adjudication
+          path: |
+            build/reference-heads.txt
+            build/diff-*/pkhex.txt
+            build/diff-*/pokebank.txt
+            build/diff-*/joined.txt
+            build/diff-*/current-release/REPORT.json
+            build/diff-*/current-release/input.txt
+            build/diff-*/current-release/reference.txt
+          if-no-files-found: warn
+          retention-days: 30

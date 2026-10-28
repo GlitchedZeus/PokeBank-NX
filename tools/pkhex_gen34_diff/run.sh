@@ -50,6 +50,14 @@ g++ -std=c++20 -O2 -Wno-unused-parameter -I"$repo/include" "$here/gen34_diff.cpp
 "$work/gen34_diff" < "$work/pkhex.txt" > "$work/pokebank.txt"
 test "$(wc -l < "$work/pkhex.txt")" = "$(wc -l < "$work/pokebank.txt")"
 paste -d'\t' "$work/pkhex.txt" "$work/pokebank.txt" > "$work/joined.txt"
+# The older corpus stays frozen. Re-evaluate every raw stricter row against the
+# current official release without changing bytes or excluding the old result.
+if [ -n "${PKHEX_RELEASE_ROOT:-}" ]; then
+    python3 "$repo/tools/legality_completion/current_release_replay.py" \
+      --group gen34 --joined "$work/joined.txt" --source "$PKHEX_RELEASE_ROOT" \
+      --work "$work/current-release"
+    export CURRENT_RELEASE_REPLAY_REPORT="$work/current-release/REPORT.json"
+fi
 if [ "${GROW:-0}" = 1 ]; then echo "seed $seed, $mutations grown copies per PKHeX-valid base PK3"
 else echo "seed $seed, $mutations mutations per encounter, generations $gens, corpus $corpus"; fi
 if python3 "$here/summarize.py" "$work/joined.txt" "${SHOW:-12}"; then

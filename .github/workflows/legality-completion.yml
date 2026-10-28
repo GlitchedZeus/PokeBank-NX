@@ -21,6 +21,7 @@ on:
       - 'tests/test_gen5_app_context.cpp'
       - 'tests/test_gen35_release_rules.cpp'
       - 'tests/test_public_fixture_selection.py'
+      - 'tests/test_hgss_reference_adjudication.py'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
       - 'Makefile.host.gb-legality'
@@ -70,10 +71,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
+          python3 tests/test_hgss_reference_adjudication.py | tee build-completion/hgss-reference-adjudication.log
           python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
           python3 tools/legality_completion/hgss_swarm_repair.py \
             --native build-completion/native-hgss --fetch \
             --report build-completion/hgss-swarm-catalog.json | tee build-completion/hgss-swarm-catalog.log
+          python3 tools/legality_completion/hgss_native_level_index.py \
+            --native build-completion/native-hgss --fetch --check | tee build-completion/hgss-native-levels.log
           for profile in normal sanitize; do
             flags=()
             if [ "$profile" = sanitize ]; then flags+=(--sanitize); fi
@@ -98,6 +102,11 @@ jobs:
             build-completion/native-ev-*.log
             build-completion/native-swarm-*.log
             build-completion/hgss-swarm-catalog.*
+            build-completion/hgss-reference-adjudication.log
+            build-completion/hgss-native-levels.log
+            docs/legality/campaign-20261028/HGSS_NATIVE_LEVEL_INDEX.json
+            docs/legality/campaign-20261028/HGSS_FROZEN_REFERENCE_ADJUDICATION.json
+            docs/legality/campaign-20261028/HGSS_SAFARI_SOURCE_PINS.json
             build-completion/test_gen4_hgss_swarm*.log
             tests/fixtures/gen15_session2/hgss_swarm.txt
             docs/legality/campaign-20261028/HGSS_SWARM_*.json
