@@ -14,7 +14,11 @@ HGSS_SAFARI_SOURCE_PINS.json and HGSS_SWARM_SOURCE_PINS.json):
     step with the repair.
 A record matches only when such a placeholder row explains its species and level and the
 analyzer's only Invalid issues are the encounter/tile/RNG-frame ones, so any other complaint
-still fails the oracle. Real Safari and retained rod rows stay enforced by the analyzer; the
+still fails the oracle. The move, nickname and ribbon checks read the matched encounter (its
+species, level and evolution history), so their complaints may follow from the missing
+placeholder too; they are allowed when the analyzer found no encounter at all, or when the
+record evolved after capture (pre-evolution level-up moves and the any-language nickname
+allowance need the pre-evolution encounter, which another species' slot cannot give). Real Safari and retained rod rows stay enforced by the analyzer; the
 oracle line does not say which row PKHeX matched.
 
   hgss_placeholders.py gen5 JOINED   prints the Gen V oracle's PKHeX-VALID / ours-INVALID
@@ -39,6 +43,16 @@ ENCOUNTER_ISSUES = {
     "Encounter ground tile type does not match the encounter",
     "The PID/IV does not match any reachable RNG frame for this wild encounter and lead",
 }
+
+NO_ENCOUNTER = {
+    "No matching Gen IV encounter for this species, level, location, ball and PID/IV",
+    "No Generation IV encounter matches this transferred Pokemon (species, level, ball, PID/IV)",
+}
+# Checks that depend on the matched encounter (see above).
+DEPENDENT_ISSUES = re.compile(r"Move [1-4] \(#\d+\) cannot be learned by this Pokemon in (Generation IV"
+                              r"|any generation it lived in \(III/IV before transfer, V after\))"
+                              r"|Nickname does not match the species name for its language"
+                              r"|\d+ ribbon\(s\) are not obtainable or are missing a prerequisite")
 
 _rows = None
 
@@ -77,18 +91,28 @@ def u8(hexdata, offset):
 
 
 def _fields(hexdata, enc):
-    if len(hexdata) < 2 * 0x88 or not enc.startswith("EncounterSlot4:"):
+    """Origin version, the species PKHeX's wild slot gives (before any evolution), ball and met
+    level of an HG/SS-origin non-egg record."""
+    kind, _, species = enc.partition(":")
+    if len(hexdata) < 2 * 0x88 or kind != "EncounterSlot4" or not species.isdigit():
         return None
-    version, species = u8(hexdata, 0x5F), u16(hexdata, 0x08)
-    if version not in (7, 8) or enc != f"EncounterSlot4:{species}" or u16(hexdata, 0x7E):
+    version = u8(hexdata, 0x5F)
+    if version not in (7, 8) or u16(hexdata, 0x7E):
         return None
-    return version, species, u8(hexdata, 0x83), u8(hexdata, 0x84) & 0x7F
+    return version, int(species), u8(hexdata, 0x83), u8(hexdata, 0x84) & 0x7F
+
+
+def _issues_fit(hexdata, species, issues):
+    if not issues:
+        return False
+    dependent = u16(hexdata, 0x08) != species or any(i in NO_ENCOUNTER for i in issues)
+    return all(i in ENCOUNTER_ISSUES or (dependent and DEPENDENT_ISSUES.fullmatch(i)) for i in issues)
 
 
 def native(cart, hexdata, enc, issues):
-    """A native HG/SS PK4 (met location in the Pt/HG/SS field 0x46)."""
+    """An HG/SS-origin PK4 on any Gen IV cart (met location in the Pt/HG/SS field 0x46)."""
     f = _fields(hexdata, enc)
-    if cart not in ("HG", "SS") or f is None or u16(hexdata, 0x44) or not issues or not set(issues) <= ENCOUNTER_ISSUES:
+    if f is None or u16(hexdata, 0x44) or not _issues_fit(hexdata, f[1], issues):
         return None
     version, species, ball, level = f
     location = u16(hexdata, 0x46)
@@ -106,7 +130,7 @@ def transferred(hexdata, enc, issues):
     """An HG/SS-origin PK5 after Poke Transfer: the Gen IV met location is gone and the met
     level is the level at transfer, so a placeholder at or below it is enough."""
     f = _fields(hexdata, enc)
-    if f is None or u16(hexdata, 0x80) != POKE_TRANSFER or not issues or not set(issues) <= ENCOUNTER_ISSUES:
+    if f is None or u16(hexdata, 0x80) != POKE_TRANSFER or not _issues_fit(hexdata, f[1], issues):
         return None
     version, species, ball, level = f
     safari, swarm = rows()
