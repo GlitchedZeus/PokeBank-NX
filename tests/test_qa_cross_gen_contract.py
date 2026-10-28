@@ -3666,9 +3666,11 @@ def round7_contracts(sources):
     if not items or not re.search(r"return\s+(?:PokeBank::UIModel::)?InventoryHelp::lines\s*\(\s*generation\s*\)", items.group(1)):
         r.violations.append("include/UI/ClassicHelpPresentation.h: the Gen IV / V Items Help does not use the shared "
                             "InventoryHelp rows")
-    if ov and not re.search(r"for\s*\(\s*const\s+auto\s*&\s*\w+\s*:\s*InvHelp::lines\s*\(\s*generation\s*\)\s*\)", ov.code):
+    # Owner Oct 28 (Bag Help #2): the Gen I-III Bag draws those rows in the SAME content-sized modal
+    # as Gen IV / V (ScreenChrome::drawInfoOverlay), not in a panel of its own.
+    if ov and not re.search(r"drawInfoOverlay\s*\(\s*fb\s*,\s*InvHelp::kTitle\s*,\s*InvHelp::lines\s*\(\s*generation\s*\)\s*\)", ov.code):
         r.violations.append("src/UI/ClassicInventoryOverlay.cpp: the Gen I-III Bag Help does not draw the shared "
-                            "InventoryHelp rows")
+                            "InventoryHelp rows in the shared Help modal (drawInfoOverlay)")
     res.append(r)
 
     # ------------------------------------------------------------------------------------------

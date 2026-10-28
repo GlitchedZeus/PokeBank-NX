@@ -356,6 +356,32 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         }
         check(title, where + ": titled Inventory Controls");
         check(!stale, where + ": no old title or stale rows");
+        // Owner Oct 28 (Bag Help #1 / #2): every Help row lies inside the Help window, in every
+        // generation (Gen I-III used a fixed 900 px panel, Gen IV / V a fixed 700 px modal).
+        const HostUi::TextRect* titleRect = nullptr;
+        for (const auto& t : HostUi::visibleText)
+            if (t.text == "Inventory Controls") titleRect = &t;
+        const HostUi::Fill* modal = nullptr;
+        if (titleRect)
+            for (const auto& f : HostUi::fills)
+                if (f.x <= titleRect->x && f.x + f.w >= titleRect->x + titleRect->w && f.y <= titleRect->y &&
+                    f.y + f.h >= titleRect->y + titleRect->h && f.w < 1280 && f.h > 100)
+                    modal = &f;   // paint order: the last such surface under the title is the window
+        check(modal != nullptr, where + ": the Help window is found");
+        if (modal) {
+            int rows = 0;
+            for (const auto& t : HostUi::visibleText) {
+                if (t.y < modal->y || t.y + t.h > modal->y + modal->h) continue;
+                // Text beside the window is the Bag underneath; anything overlapping the opaque
+                // window was drawn on it, so it is Help content and must fit inside.
+                if (t.x + t.w <= modal->x || t.x >= modal->x + modal->w) continue;
+                ++rows;
+                check(t.x >= modal->x && t.x + t.w <= modal->x + modal->w,
+                      where + ": Help text inside the window: " + t.text);
+            }
+            check(rows >= 9, where + ": the Help rows are drawn inside the window");
+            check(modal->w < 1000, where + ": the Help window is sized to its content, not a full panel");
+        }
     }
     press(HidNpadButton_B);
     screen.helpOverlayActive = false;
