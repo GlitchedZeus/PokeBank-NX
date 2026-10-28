@@ -170,15 +170,25 @@ int main() {
         std::string error;
         auto staged=G5::StagedPokemon5Record::create(source,&error);
         assert(staged && !staged->dirty());
-        // Native language is a byte-only edit plus PK5 checksum/encryption. Names, PID,
-        // ribbons, party cache and all other decoded bytes remain exactly as supplied.
+        // Native language edit (M1 D3, PKHeX SpeciesName.GetSpeciesNameGeneration + StringConverter5):
+        // this record is not nicknamed, so its nickname becomes the species' default name in the new
+        // language. PID, OT name, ribbons, party cache and every other decoded byte stay as supplied.
         for (uint32_t language : {1u,2u,3u,4u,5u,7u,8u}) {
             for (bool b2w2 : {false,true}) {
                 auto languageEdit = G5::StagedPokemon5Record::create(source,&error,b2w2);
                 assert(languageEdit && languageEdit->stage(G5::StagedPokemon5Record::Field::Language,0,language,&error));
                 auto expected=C::decrypt(source);
                 expected[0x17]=static_cast<uint8_t>(language);
+                // Re-selecting the current language (2) is a no-op and leaves the name bytes alone.
+                if(language!=2)assert(G5::writeUnicodeName5(expected,true,Names::defaultSpeciesName(25,static_cast<uint8_t>(language),5),static_cast<uint8_t>(language)));
                 C::write16(expected,6,C::checksum(expected));
+                {
+                    const auto plain=C::decrypt(source);
+                    for(size_t i=0;i<plain.size();++i)
+                        if(i!=0x06 && i!=0x07 && i!=0x17 && (i<0x48 || i>=0x5E))assert(expected[i]==plain[i]);
+                    const char16_t first=static_cast<char16_t>(C::read16(expected,0x48));
+                    assert(language==2 ? first==0 : language==1 ? first==u'ピ' : language==8 ? first==u'피' : first==u'P');
+                }
                 assert(languageEdit->current().valid() && languageEdit->current().language()==language);
                 const auto actual=languageEdit->current();
                 assert(std::equal(actual.decodedBytes().begin(),actual.decodedBytes().end(),expected.begin(),expected.end()));

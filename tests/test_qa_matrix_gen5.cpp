@@ -700,9 +700,22 @@ Outcome fields(Ctx& c) {
         need(ok, k.name + " refused: " + error);
         need(k.check(*draft.current()), k.name + " did not stage the requested value");
         if(k.field==FI::Language) {
+            // M1 D3 (PKHeX PK5 / StringConverter5): the OT never changes; a nicknamed record keeps its
+            // nickname bytes; an unnicknamed one gets exactly the species' default name in the new
+            // language. Anything else is a silent name change.
             const auto after=draft.current();
-            need(std::equal(originalNames.begin(),originalNames.end(),after->decodedBytes().begin()+0x48) &&
-                 std::equal(originalOt.begin(),originalOt.end(),after->decodedBytes().begin()+0x68),
+            const auto bytes=after->decodedBytes();
+            Bytes expectedNames=originalNames;
+            if(!(G5::Crypto::read32(before->decodedBytes(),0x38)&0x80000000u) && before->language()!=after->language()) {
+                Bytes plain(bytes.begin(),bytes.end());
+                std::copy(originalNames.begin(),originalNames.end(),plain.begin()+0x48);
+                need(G5::writeUnicodeName5(plain,true,Names::defaultSpeciesName(after->species(),
+                         static_cast<uint8_t>(after->language()),5),static_cast<uint8_t>(after->language())),
+                     "Language: default name does not fit");
+                expectedNames.assign(plain.begin()+0x48,plain.begin()+0x5E);
+            }
+            need(std::equal(expectedNames.begin(),expectedNames.end(),bytes.begin()+0x48) &&
+                 std::equal(originalOt.begin(),originalOt.end(),bytes.begin()+0x68),
                  "Language silently changed native OT/nickname bytes");
         }
     }

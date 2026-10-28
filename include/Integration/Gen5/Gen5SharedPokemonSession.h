@@ -126,11 +126,22 @@ public:
             return tentative.stageBox(location_.box,location_.slot,field,stat,value,&error);
         };
 
+        // Language replays first: on an unnicknamed record it also rewrites the
+        // nickname to the species' default name in that language (M1 D3), so
+        // only a name that still differs afterwards is a user name edit.
+        if(before.language()!=after.language() &&
+           !apply(Field::Language,0,after.language()))return false;
+        const auto base=readSlot(tentative,location_);
+        if(!base || !base->valid() || base->empty()) {
+            error="Gen V Keep lost the staged slot during language replay";
+            return false;
+        }
+
         // Name changes use only exact-width native UTF-16 ASCII transactions.
         // Keep replays through the workspace's field whitelist, then validates
         // the complete encrypted PK5 against the original local draft.
         const auto replayName=[&](bool nickname)->bool {
-            const auto oldBytes=before.decodedBytes(),newBytes=after.decodedBytes();
+            const auto oldBytes=base->decodedBytes(),newBytes=after.decodedBytes();
             const bool flagChange=nickname &&
                 ((Crypto::read32(oldBytes,0x38)^Crypto::read32(newBytes,0x38))&
                  0x80000000u);
@@ -157,8 +168,6 @@ public:
            !apply(Field::Nature,0,after.nature()))return false;
         if(before.friendship()!=after.friendship() &&
            !apply(Field::Friendship,0,after.friendship()))return false;
-        if(before.language()!=after.language() &&
-           !apply(Field::Language,0,after.language()))return false;
         // Gen IV parity tranche: these native PK5 metadata bytes are
         // independent of PID, gender, ability, and party battle stats.
         if(before.heldItem()!=after.heldItem() &&

@@ -68,8 +68,8 @@ $(HOST_BUILD)/test_species_change_moves_gen4_sanitize: $(SPECIES_MOVES_GEN4_SOUR
 $(HOST_BUILD)/test_species_change_moves_gen5: tests/test_species_change_moves_gen5.cpp $(SPECIES_MOVES_DEPS) \
 	include/Integration/Gen5/Gen5SharedScreenState.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 $(HOST_BUILD)/test_species_change_moves_gen5_sanitize: tests/test_species_change_moves_gen5.cpp $(SPECIES_MOVES_DEPS) \
 	include/Integration/Gen5/Gen5SharedScreenState.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@

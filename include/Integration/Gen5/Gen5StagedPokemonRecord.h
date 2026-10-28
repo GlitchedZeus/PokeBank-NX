@@ -1,6 +1,7 @@
 #ifndef POKEBANK_GEN5_STAGED_RECORD_H
 #define POKEBANK_GEN5_STAGED_RECORD_H
 
+#include "Names/DefaultSpeciesName.h"
 #include "Pokemon/Pokemon5ReadOnly.h"
 #include "Integration/Gen5/Gen5MovePP.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
@@ -309,6 +310,17 @@ public:
                 if (stat != 0 || !(value == 1 || value == 2 || value == 3 || value == 4 ||
                                    value == 5 || value == 7 || value == 8))
                     return fail("Gen V language must be a supported native language ID");
+                if (value != candidate[0x17]) {
+                    const uint32_t iv32=Crypto::read32(candidate,0x38);
+                    // M1 D3: an un-nicknamed (and not egg) record stores its species name in its own
+                    // language, so the name follows the language (PKHeX GetSpeciesNameGeneration, 5).
+                    if ((iv32 & 0x80000000u) == 0 && (iv32 & 0x40000000u) == 0) {
+                        const auto name=Names::defaultSpeciesName(
+                            Crypto::read16(candidate,0x08),static_cast<uint8_t>(value),5);
+                        if (!writeUnicodeName5(candidate,true,name,static_cast<uint8_t>(value)))
+                            return fail("Gen V default name for this language does not fit the nickname field");
+                    }
+                }
                 candidate[0x17] = static_cast<uint8_t>(value);
                 break;
             case Field::IV: {

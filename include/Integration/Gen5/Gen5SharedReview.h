@@ -165,8 +165,13 @@ struct VerifiedSlotReview {
         result.fields.push_back({field,stat,from,to});
         return true;
     };
+    // Language first, matching Keep: on an unnicknamed record it also derives the
+    // default name in the new language (M1 D3), which is not a separate name edit.
+    if(!apply(Field::Language,0,before.language(),after.language()))
+        return std::nullopt;
+    const auto base=candidate->current();
     const auto replayName=[&](bool nickname)->bool {
-        const auto oldBytes=before.decodedBytes(),newBytes=after.decodedBytes();
+        const auto oldBytes=base.decodedBytes(),newBytes=after.decodedBytes();
         const bool flagChange=nickname &&
             ((Crypto::read32(oldBytes,0x38)^Crypto::read32(newBytes,0x38))&
              0x80000000u);
@@ -185,7 +190,6 @@ struct VerifiedSlotReview {
         return std::nullopt;
     if(!apply(Field::Nature,0,before.nature(),after.nature()) ||
        !apply(Field::Friendship,0,before.friendship(),after.friendship()) ||
-       !apply(Field::Language,0,before.language(),after.language()) ||
        !apply(Field::HeldItem,0,before.heldItem(),after.heldItem()) ||
        !apply(Field::Ball,0,before.ball(),after.ball()) ||
        !apply(Field::MetLevel,0,before.metLevel(),after.metLevel()) ||
