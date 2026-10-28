@@ -18,7 +18,7 @@ namespace PokeVault::Integration::Gen1 {
 // Staged Gen I Trainer Name / Money. Layout facts (PKHeX 6501f0ab SAV1Offsets.cs / SAV1.cs and
 // PKSM-Core aa22d7a Sav1.cpp, mirrored by Gen1ReadOnlySave.cpp's layout table):
 //   player name  0x2598, International 11 bytes (7 characters + 0x50 terminator / padding),
-//                Japanese 6 bytes (5 characters + terminator)
+//                Japanese 6 bytes (5 kana characters + terminator; PKHeX SAV1.MaxStringLengthTrainer)
 //   money        International 0x25F3, Japanese 0x25EE: 3 bytes packed BCD, big-endian
 //                (pret/pokered wPlayerMoney), at most 999999 (PKHeX SAV1.MaxMoney)
 //   checksum     International 0x3523 over 0x2598..0x3522, Japanese 0x3594 over 0x2598..0x3593:
@@ -47,8 +47,11 @@ public:
 
     const std::string& trainerName() const noexcept { return name_; }
     uint32_t money() const noexcept { return money_; }
-    // Name editing uses the shared Gen I English glyph encoder; Japanese kana names stay read-only.
-    bool nameEditable() const noexcept { return region_ == RegionLayout::International; }
+    // International names use the shared Gen I Latin glyph encoder, Japanese names the kana encoder
+    // (Utils/Gen12KanaText.h; owner Oct 28). A Japanese save refuses Latin letters and an
+    // international save refuses kana (no region conversion). Whether the app offers Japanese
+    // editing at all is decided outside this class (Integration/Common/JapaneseEditingGate.h).
+    bool nameEditable() const noexcept { return true; }
     std::size_t nameMax() const noexcept {
         return region_ == RegionLayout::Japanese ? kGen1JapaneseTrainerNameMax : kGen1InternationalTrainerNameMax;
     }
@@ -137,22 +140,21 @@ inline void StagedTrainerEditor::refreshChecksum(std::vector<uint8_t>& bytes) co
 
 inline bool StagedTrainerEditor::stageTrainerName(std::string_view name, std::string& error) {
     error.clear();
-    if (!nameEditable()) {
-        error = "Japanese Generation I trainer names are read-only (no kana encoder)";
-        return false;
-    }
     std::array<uint8_t, 11> encoded{};
-    if (!StagedPokemonEditor::encodeName(name, kGen1InternationalTrainerNameMax, encoded, error)) return false;
+    if (!StagedPokemonEditor::encodeRegionName(region_, name, nameMax(), encoded, error)) return false;
     auto next = stagedBytes_;
     for (std::size_t i = 0; i < nameLength(); ++i) next[nameOffset() + i] = encoded[i];
     refreshChecksum(next);
+    // The stored name must read back exactly as the encoded field decodes (typed hiragana べぺへり
+    // are stored with their shared katakana glyphs and read back that way).
+    const std::string expected = decodeGen1String(std::span<const uint8_t>(encoded).first(nameLength()), region_);
     const auto check = parse(next, sourceGame_);
-    if (!check || check.save->trainer().name != name) {
+    if (!check || expected.empty() || check.save->trainer().name != expected) {
         error = "Generation I trainer name failed strict reparse";
         return false;
     }
     stagedBytes_ = std::move(next);
-    name_ = std::string(name);
+    name_ = expected;
     return true;
 }
 

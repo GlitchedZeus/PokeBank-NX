@@ -1,5 +1,6 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
@@ -69,7 +70,15 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
 
     stagedError.clear();
-    trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
+    // The Gen I writers handle the Japanese layout, but the app keeps Japanese saves read-only until
+    // the owner opens the gate (Integration/Common/JapaneseEditingGate.h). Every Gen I edit and its
+    // export go through the staged Pokemon workspace (stagedTrainerEditable() needs it too), so
+    // withholding it here keeps the whole Japanese save read-only, exactly as before.
+    if (metadata.region == Integration::Gen1::RegionLayout::Japanese &&
+        !Integration::Common::kJapaneseClassicEditingEnabled)
+        stagedError = "Japanese Generation I saves are read-only";
+    else
+        trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
     trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
 
     stagedError.clear();

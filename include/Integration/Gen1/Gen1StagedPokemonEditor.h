@@ -9,6 +9,7 @@
 namespace PokeBank::PokemonFile { struct Decoded; }
 
 namespace PokeVault::Integration::Gen1 {
+struct StorageLayout;
 struct PokemonChange {
     std::string key, label, beforeValue, afterValue;
 };
@@ -46,10 +47,16 @@ struct BattleStats {
 };
 
 // Owns native party/boxed mutations in memory. No filesystem or source-write API.
+// Both regional layouts are written (owner Oct 28): International 12 boxes x 20 with 11-byte names
+// and Latin text, Japanese 8 boxes x 30 with 6-byte names and kana text (Gen1StorageLayout.h,
+// Utils/Gen12KanaText.h). Nothing is converted between regions. Whether the app offers Japanese
+// editing is decided outside this class (Integration/Common/JapaneseEditingGate.h).
 class StagedPokemonEditor final {
 public:
     static std::unique_ptr<StagedPokemonEditor> create(const ReadOnlySave&, std::string& error);
     const Metadata& metadata() const noexcept { return original_->metadata(); }
+    // Box count / capacity / name lengths / offsets of this save's region.
+    const StorageLayout& layout() const noexcept;
     const ReadOnlySave& view() const noexcept { return *view_; }
     std::span<const uint8_t> originalBytes() const noexcept { return original_->sourceBytes(); }
     std::span<const uint8_t> stagedBytes() const noexcept { return view_->sourceBytes(); }
@@ -65,17 +72,20 @@ public:
     bool stageRemove(size_t box, size_t slot, std::string& error);
 
     // Feature A (owner Oct 28): standalone .pk1 files (PokemonFile/NativePokemonFile.h).
-    // stageImport places one decoded international .pk1 into the first empty slot of a box, as a
-    // staged change only (Review / Keep / Discard / Export Copy as for Create). The box keeps the
-    // first 33 bytes of the 44-byte party body (pret/pokered box_struct) plus the file's 11-byte
-    // OT and nickname as stored. When the party level (body 0x21) is non-zero it becomes the box
-    // level byte (body 0x03), as pokered engine/pokemon/add_mon.asm _MoveMon does on PARTY_TO_BOX;
-    // a zero party block (aa4b72e) keeps body 0x03. The record must then pass this editor's own
-    // validators. Japanese files, other generations, occupied or non-first-empty slots and full
-    // boxes are refused; nothing is converted, invented or legalized.
+    // stageImport places one decoded .pk1 of the save's own region (69-byte international file into
+    // an international save, 59-byte Japanese file into a Japanese save) into the first empty slot of
+    // a box, as a staged change only (Review "Imported" / Keep / Discard / Export Copy as for
+    // Create). The box keeps the first 33 bytes of the 44-byte party body (pret/pokered box_struct)
+    // plus the file's OT and nickname (11 / 6 bytes) as stored. When the party level (body 0x21) is
+    // non-zero it becomes the box level byte (body 0x03), as pokered engine/pokemon/add_mon.asm
+    // _MoveMon does on PARTY_TO_BOX; a zero party block (aa4b72e) keeps body 0x03. The record must
+    // then pass this editor's own validators. Files of the other region, other generations,
+    // occupied or non-first-empty slots and full boxes are refused; nothing is converted, invented
+    // or legalized.
     bool stageImport(size_t box, size_t slot, const PokeBank::PokemonFile::Decoded& file,
                      std::string& error);
-    // PKHeX single-entry .pk1 list (69 bytes, PokeCrypto.cs SIZE_1LIST) of a staged box or Party
+    // PKHeX single-entry .pk1 list (69 / 59 bytes, PokeCrypto.cs SIZE_1ULIST / SIZE_1JLIST, by the
+    // save's region) of a staged box or Party
     // Pokemon. Reads only. A box record gets the party-only fields the game computes when it leaves
     // the PC (pokered _MoveMon BOX_TO_PARTY: CalcLevelFromExperience, then CalcStats with Stat Exp);
     // current HP and status stay as stored. A Party record is copied as stored.
@@ -118,8 +128,14 @@ public:
     static BattleStats calculateBattleStats(uint16_t species, uint8_t level,
                                             const std::array<uint8_t,4>& dvs,
                                             const std::array<uint16_t,5>& statExperience) noexcept;
+    // International (Latin) name glyphs; `maximum` counts characters.
     static bool encodeName(std::string_view, size_t maximum, std::array<uint8_t,11>&,
                            std::string& error);
+    // The name encoder of a region: International -> encodeName (11-byte field); Japanese -> kana
+    // (Utils::Gen12Kana, at most 5 characters, bytes 0..5 used, 0x50-filled). Kana for an
+    // international save and Latin letters for a Japanese save are refused (no region conversion).
+    static bool encodeRegionName(RegionLayout, std::string_view, size_t maximum,
+                                 std::array<uint8_t,11>&, std::string& error);
 private:
     struct PackedMoveState {
         bool active = false;
@@ -135,6 +151,9 @@ private:
     void rebuildChanges();
     std::shared_ptr<const ReadOnlySave> original_, view_;
     std::vector<PokemonChange> changes_;
+    // Records placed by stageImport this session (following later edits), so Review can say
+    // "Imported" instead of "Add Pokémon". Cleared by discard().
+    std::vector<PokemonRecord> imported_;
     PackedMoveState packedMove_;
 };
 } // namespace PokeVault::Integration::Gen1
