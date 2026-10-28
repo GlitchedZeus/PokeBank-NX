@@ -37,7 +37,13 @@ namespace UI
             Letters,
             Symbols,
             Accents,
-            Digits
+            Digits,
+            // Japanese Gen I / II name pages (request.japaneseKana), Utils::Gen12Kana::Page order.
+            HiraganaA,
+            HiraganaB,
+            KatakanaA,
+            KatakanaB,
+            KanaSymbols
         };
 
         enum class KeyboardKeyAction : uint8_t
@@ -52,7 +58,14 @@ namespace UI
             ShowLetters,
             ShowSymbols,
             ShowAccents,
-            SystemKeyboard // hands the text to the console's keyboard, for scripts with no keys here
+            SystemKeyboard, // hands the text to the console's keyboard, for scripts with no keys here
+            // Kana pages: ゛ ゜ 小 change the character before the caret; the mode key cycles
+            // あ -> ア -> １２３; the half key flips between a script's two pages.
+            KanaDakuten,
+            KanaHandakuten,
+            KanaSmall,
+            KanaNextMode,
+            KanaOtherHalf
         };
 
         /// Shift is one-shot unless pressed twice: Once applies to the next letter only, Locked
@@ -148,6 +161,7 @@ namespace UI
             void textEdited();
             void toggleSign();
             void handOffToSystemKeyboard();
+            void applyKanaModifier(KeyboardKeyAction modifier);
             void finish(bool acceptText);
         };
 

@@ -1,4 +1,5 @@
 #include "UI/Dialogs/KeyboardDialog.h"
+#include "Utils/Gen12KanaText.h"
 
 #include <algorithm>
 #include <climits>
@@ -126,9 +127,76 @@ namespace UI
                 addKey(plans, bottomRow, KeyboardKeyAction::Accept, "OK", 5);
             }
 
+            bool isKanaPage(KeyboardPage page)
+            {
+                return page == KeyboardPage::HiraganaA || page == KeyboardPage::HiraganaB ||
+                       page == KeyboardPage::KatakanaA || page == KeyboardPage::KatakanaB ||
+                       page == KeyboardPage::KanaSymbols;
+            }
+            Utils::Gen12Kana::Page kanaPage(KeyboardPage page)
+            {
+                using P = Utils::Gen12Kana::Page;
+                switch (page)
+                {
+                case KeyboardPage::HiraganaB: return P::HiraganaB;
+                case KeyboardPage::KatakanaA: return P::KatakanaA;
+                case KeyboardPage::KatakanaB: return P::KatakanaB;
+                case KeyboardPage::KanaSymbols: return P::Symbols;
+                default: return P::HiraganaA;
+                }
+            }
+            KeyboardPage dialogPage(Utils::Gen12Kana::Page page)
+            {
+                using P = Utils::Gen12Kana::Page;
+                switch (page)
+                {
+                case P::HiraganaB: return KeyboardPage::HiraganaB;
+                case P::KatakanaA: return KeyboardPage::KatakanaA;
+                case P::KatakanaB: return KeyboardPage::KatakanaB;
+                case P::Symbols: return KeyboardPage::KanaSymbols;
+                case P::HiraganaA: break;
+                }
+                return KeyboardPage::HiraganaA;
+            }
+
+            /// Japanese Gen I / II name pages: three rows of up to ten keys from Gen12KanaText.h (every
+            /// one encodable), Backspace on the first, then mode / other half / System / Space / OK.
+            void planKanaPage(std::vector<KeyPlan> &plans, KeyboardPage page)
+            {
+                namespace Kana = Utils::Gen12Kana;
+                const auto rows = Kana::pageRows(kanaPage(page));
+                for (int rowIndex = 0; rowIndex < static_cast<int>(rows.size()); ++rowIndex)
+                {
+                    for (const auto &key : rows[static_cast<size_t>(rowIndex)])
+                    {
+                        const KeyboardKeyAction action =
+                            key.modifier == Kana::Modifier::Dakuten      ? KeyboardKeyAction::KanaDakuten
+                            : key.modifier == Kana::Modifier::Handakuten ? KeyboardKeyAction::KanaHandakuten
+                            : key.modifier == Kana::Modifier::Small      ? KeyboardKeyAction::KanaSmall
+                                                                         : KeyboardKeyAction::Type;
+                        addKey(plans, rowIndex, action, std::string(key.text));
+                    }
+                    if (rowIndex == 0)
+                        addKey(plans, 0, KeyboardKeyAction::Backspace, "");
+                }
+                constexpr int bottomRow = KEY_ROW_COUNT - 1;
+                const auto current = kanaPage(page);
+                addKey(plans, bottomRow, KeyboardKeyAction::KanaNextMode, std::string(Kana::nextModeLabel(current)), 3);
+                if (Kana::hasOtherHalf(current))
+                    addKey(plans, bottomRow, KeyboardKeyAction::KanaOtherHalf, std::string(Kana::otherHalfLabel(current)), 3);
+                addKey(plans, bottomRow, KeyboardKeyAction::SystemKeyboard, "System", 3);
+                addKey(plans, bottomRow, KeyboardKeyAction::Space, "Space", Kana::hasOtherHalf(current) ? 8 : 11);
+                addKey(plans, bottomRow, KeyboardKeyAction::Accept, "OK", 5);
+            }
+
             std::vector<KeyPlan> planPage(KeyboardPage page, bool allowNegative)
             {
                 std::vector<KeyPlan> plans;
+                if (isKanaPage(page))
+                {
+                    planKanaPage(plans, page);
+                    return plans;
+                }
                 switch (page)
                 {
                 case KeyboardPage::Letters:
@@ -170,6 +238,8 @@ namespace UI
                         addKey(plans, 2, KeyboardKeyAction::ToggleSign, "+/-", 3);
                     addTypeKeys(plans, 3, "0", "0", 6);
                     addKey(plans, 3, KeyboardKeyAction::Accept, "OK", 6);
+                    break;
+                default:
                     break;
                 }
                 return plans;
@@ -225,7 +295,9 @@ namespace UI
             waitingForRelease = false;
             keys.clear();
             selectedKeyIndex = 0;
-            buildPage(request.digitsOnly ? KeyboardPage::Digits : KeyboardPage::Letters);
+            buildPage(request.digitsOnly     ? KeyboardPage::Digits
+                      : request.japaneseKana ? KeyboardPage::HiraganaA
+                                             : KeyboardPage::Letters);
         }
 
         void KeyboardState::buildPage(KeyboardPage newPage)
@@ -440,10 +512,24 @@ namespace UI
             if (page != KeyboardPage::Digits)
             {
                 if (buttonsDown & HidNpadButton_Y)
-                    insertText(" ");
-                if ((buttonsDown & HidNpadButton_X) && page != KeyboardPage::Symbols)
+                    insertText(request.japaneseKana ? "\u3000" : " ");
+                if ((buttonsDown & HidNpadButton_X) && page != KeyboardPage::Symbols && !isKanaPage(page))
                     shift = (shift == ShiftMode::Off) ? ShiftMode::Once : ShiftMode::Off;
-                if (buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR))
+                if ((buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR)) && request.japaneseKana)
+                {
+                    // Japanese names: ZL / ZR walk the five kana pages in order.
+                    constexpr KeyboardPage kanaPages[] = {KeyboardPage::HiraganaA, KeyboardPage::HiraganaB,
+                                                          KeyboardPage::KatakanaA, KeyboardPage::KatakanaB,
+                                                          KeyboardPage::KanaSymbols};
+                    constexpr int kanaPageCount = 5;
+                    int current = 0;
+                    for (int i = 0; i < kanaPageCount; ++i)
+                        if (kanaPages[i] == page)
+                            current = i;
+                    const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : kanaPageCount - 1;
+                    buildPage(kanaPages[(current + pageStep) % kanaPageCount]);
+                }
+                else if (buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR))
                 {
                     constexpr KeyboardPage textPages[] = {KeyboardPage::Letters, KeyboardPage::Symbols,
                                                           KeyboardPage::Accents};
@@ -487,10 +573,22 @@ namespace UI
                                                    : ShiftMode::Off;
                 break;
             case KeyboardKeyAction::Space:
-                insertText(" ");
+                // The Japanese Gen I / II font has only the full-width space (byte 0x7F).
+                insertText(request.japaneseKana ? "\u3000" : " ");
                 break;
             case KeyboardKeyAction::Accept:
                 finish(true);
+                break;
+            case KeyboardKeyAction::KanaDakuten:
+            case KeyboardKeyAction::KanaHandakuten:
+            case KeyboardKeyAction::KanaSmall:
+                applyKanaModifier(key.action);
+                break;
+            case KeyboardKeyAction::KanaNextMode:
+                buildPage(dialogPage(Utils::Gen12Kana::nextMode(kanaPage(page))));
+                break;
+            case KeyboardKeyAction::KanaOtherHalf:
+                buildPage(dialogPage(Utils::Gen12Kana::otherHalf(kanaPage(page))));
                 break;
             case KeyboardKeyAction::ClearText:
                 if (!text.empty())
@@ -664,6 +762,28 @@ namespace UI
             finish(true);
         }
 
+        void KeyboardState::applyKanaModifier(KeyboardKeyAction modifier)
+        {
+            namespace Kana = Utils::Gen12Kana;
+            textSelected = false;
+            if (caretOffset == 0)
+                return;
+            const size_t characterStart = previousCharacterStart(text, caretOffset);
+            const std::string_view previous(text.data() + characterStart, caretOffset - characterStart);
+            const Kana::Modifier m = modifier == KeyboardKeyAction::KanaDakuten      ? Kana::Modifier::Dakuten
+                                     : modifier == KeyboardKeyAction::KanaHandakuten ? Kana::Modifier::Handakuten
+                                                                                     : Kana::Modifier::Small;
+            const std::string_view replacement = Kana::applyModifier(m, previous);
+            if (replacement.empty())
+            {
+                refusedFrames = REFUSED_FRAMES;   // no such character in the Gen I / II font
+                return;
+            }
+            text.replace(characterStart, caretOffset - characterStart, replacement);
+            caretOffset = characterStart + replacement.size();
+            textEdited();
+        }
+
         void KeyboardState::finish(bool acceptText)
         {
             finished = true;
@@ -683,6 +803,9 @@ namespace UI
         {
             if (page == KeyboardPage::Digits)
                 return "Arrows: Move  |  A: Type  |  B: Delete  |  L/R: Cursor  |  +: OK  |  -: Cancel";
+            if (isKanaPage(page))
+                return "Arrows: Move  |  A: Type  |  B: Delete  |  Y: Space  |  L/R: Cursor  |  ZL/ZR: Page  |  "
+                       "+: OK  |  -: Cancel";
             if (page == KeyboardPage::Symbols)
                 return "Arrows: Move  |  A: Type  |  B: Delete  |  Y: Space  |  L/R: Cursor  |  ZL/ZR: Layout  |  "
                        "+: OK  |  -: Cancel";

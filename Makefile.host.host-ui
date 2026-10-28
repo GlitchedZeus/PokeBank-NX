@@ -173,4 +173,17 @@ $(HOST_UI_RECOVERY_TEST): $(HOST_UI_RECOVERY_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_RECOVERY_SANITIZE): $(HOST_UI_RECOVERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_recovery_files_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Owner Oct 28: the keyboard's Japanese Gen I / II name pages through the real KeyboardState.
+HOST_UI_KANA_TEST := $(HOST_BUILD)/test_ui_kana_keyboard_host
+HOST_UI_KANA_SANITIZE := $(HOST_BUILD)/test_ui_kana_keyboard_host_sanitize
+HOST_TESTS += $(HOST_UI_KANA_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_KANA_SANITIZE)
+host-test: $(HOST_UI_KANA_TEST)
+host-sanitize: $(HOST_UI_KANA_SANITIZE)
+$(HOST_UI_KANA_TEST): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12KanaText.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_kana_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_KANA_SANITIZE): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12KanaText.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_kana_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
