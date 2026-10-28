@@ -228,14 +228,13 @@ int main() {
         }
         std::ifstream in("src/UI/ClassicInventoryOverlay.cpp", std::ios::binary);
         const std::string overlay((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        // Owner Oct 28 (Bag Help #2, d9105fae): the Gen I-III Bag Help is the shared content-sized
-        // modal (ScreenChrome::drawInfoOverlay, which draws every row through drawGlyphHelpLine) with
-        // the InventoryHelp title and rows, no longer a 900 x 610 panel of its own.
-        const auto help = overlay.find("if (state.helpActive && !state.pickerActive && !state.discardConfirmActive) {");
-        const auto helpEnd = overlay.find("return;", help);
+        const auto help = overlay.find("if (state.helpActive) {\n        // Round 7 (B04)");
+        const auto helpEnd = overlay.find("if (state.optionsActive) {", help);
         assert(help != std::string::npos && helpEnd != std::string::npos);
         const auto body = overlay.substr(help, helpEnd - help);
-        assert(body.find("drawInfoOverlay(fb, InvHelp::kTitle, InvHelp::lines(generation));") != std::string::npos);
+        assert(body.find("fb.drawText(x + 30, y + 20, InvHelp::kTitle,") != std::string::npos);
+        assert(body.find("for (const auto& line : InvHelp::lines(generation))") != std::string::npos);
+        assert(body.find("drawGlyphHelpLine(fb, x + 34, rowY, line,") != std::string::npos);
         assert(body.find("\"Inventory Help\"") == std::string::npos);
         assert(std::string(InvHelp::kTitle) == "Inventory Controls");
     }
