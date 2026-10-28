@@ -138,4 +138,21 @@ $(HOST_UI_UNOWN_SANITIZE): $(HOST_UI_UNOWN_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_unown_letter_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 
+
+# Round 8 automated QA: the real SaveSelectScreen title discovery against a scripted console (one
+# account, synthetic save-data entries for the twelve FireRed/LeafGreen Switch releases plus noise).
+HOST_UI_DISCOVERY_TEST := $(HOST_BUILD)/test_ui_switch_title_discovery_host
+HOST_UI_DISCOVERY_SANITIZE := $(HOST_BUILD)/test_ui_switch_title_discovery_host_sanitize
+HOST_UI_DISCOVERY_INPUTS := tests/test_ui_switch_title_discovery_host.cpp tests/host-ui/HostUi.h \
+	tests/host-ui/switch.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_DISCOVERY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_DISCOVERY_SANITIZE)
+host-test: $(HOST_UI_DISCOVERY_TEST)
+host-sanitize: $(HOST_UI_DISCOVERY_SANITIZE)
+$(HOST_UI_DISCOVERY_TEST): $(HOST_UI_DISCOVERY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_switch_title_discovery_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_DISCOVERY_SANITIZE): $(HOST_UI_DISCOVERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_switch_title_discovery_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif

@@ -94,3 +94,11 @@ $(HOST_BUILD)/test_gen3_sector_signature_policy: tests/test_gen3_sector_signatur
 $(HOST_BUILD)/test_gen3_sector_signature_policy_sanitize: tests/test_gen3_sector_signature_policy.cpp include/Integration/Gen3/Gen3SaveValidation.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_sector_signature_policy.cpp -o $@
+
+# Round 8 automated compatibility matrix (docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md): build and
+# run every matrix test, plain and AddressSanitizer/UBSan, then the registration guard.
+ROUND8_MATRIX_TESTS := $(shell sed -n '/round8-matrix-tests:begin/,/round8-matrix-tests:end/p' docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md | grep '^test_')
+.PHONY: round8-compat-matrix
+round8-compat-matrix: $(addprefix $(HOST_BUILD)/,$(ROUND8_MATRIX_TESTS)) $(addsuffix _sanitize,$(addprefix $(HOST_BUILD)/,$(ROUND8_MATRIX_TESTS)))
+	@set -e; for t in $^; do echo "== $$t"; $$t; done
+	python3 tests/test_round8_compat_matrix.py

@@ -2,6 +2,7 @@
 #include "Integration/Gen2/Gen2ExportTransaction.h"
 #include "test_temp_dir.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <dirent.h>
@@ -279,6 +280,74 @@ void phase4(const L& layout, SourceGame game, const std::string& tag) {
     ::rmdir(root.c_str());
 }
 
+// Round 8 automated QA: Export Copy of a battery save padded to 128 KiB (upstream PKSE 9a9a731),
+// for a 32 KiB core with 0xFF fill and a 64 KiB core with 0x00 fill. Synthetic fixtures only.
+// The published copy keeps the source size and every padding byte; original_backup is the source
+// byte for byte; the stored checksums equal a fresh recomputation; it reparses strictly. An edited
+// image whose padding was disturbed is refused before any export directory exists.
+void paddedExport(const L& layout, SourceGame game, const std::string& tag, size_t core, uint8_t fill) {
+    auto base = fixture(layout, true);
+    base.resize(core, 0x00);
+    auto source = base;
+    source.resize(kPaddedSaveSize128K, fill);
+    const auto pristine = source;
+    auto parsed = parse(source, game);
+    assert(parsed && parsed.save->metadata().payloadSize == core &&
+           parsed.save->metadata().paddingSize == kPaddedSaveSize128K - core);
+    std::string error;
+    auto editor = StagedEditor::create(*parsed.save, error);
+    assert(editor && editor->stageMoney(123457, error));
+    const auto edited = editor->finalizedBytes(error);
+    assert(!edited.empty() && edited.size() == source.size());
+    {
+        auto recomputed = std::vector<uint8_t>(edited.begin(), edited.begin() + 0x8000);
+        checksum(recomputed, layout);
+        assert(std::equal(recomputed.begin(), recomputed.end(), edited.begin()));  // stored == recomputed
+    }
+    const std::string root = PokeBankTest::freshTempBase("pokebank-gen2-padded-export");
+    StagedEditorExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = "padded-" + tag;
+    request.sourcePath = "/retroarch/saves/" + tag + "-padded.srm";
+    request.gameId = sourceGameId(game);
+    request.timestamp = "20261028-120000";
+    request.applicationSha = "test-sha";
+    const auto result = publishVerifiedStagedEditorExport(*editor, request);
+    if (!result.success) std::fprintf(stderr, "padded export failed for %s: %s\n", tag.c_str(), result.error.c_str());
+    assert(result.success);
+    const auto written = readBytes(result.directory + "/edited.srm");
+    assert(readBytes(result.directory + "/original_backup.srm") == pristine);
+    assert(written == edited && written.size() == kPaddedSaveSize128K);
+    assert(std::all_of(written.begin() + static_cast<std::ptrdiff_t>(core), written.end(),
+                       [fill](uint8_t b) { return b == fill; }));
+    if (core > 0x8000)  // the 64 KiB core's upper half is carried verbatim
+        assert(std::equal(written.begin() + 0x8000, written.begin() + static_cast<std::ptrdiff_t>(core),
+                          pristine.begin() + 0x8000));
+    auto reparsed = parse(written, game);
+    assert(reparsed && reparsed.save->trainer().money == 123457);
+    removeExport(result.directory);
+
+    // Deliberately failing: one padding byte changed in the edited image.
+    auto disturbed = edited;
+    disturbed[kPaddedSaveSize128K - 1] ^= 0xFF;
+    ExportTransactionRequest bad;
+    bad.rootDirectory = root;
+    bad.directoryStem = "padded-bad-" + tag;
+    bad.sourcePath = request.sourcePath;
+    bad.gameId = request.gameId;
+    bad.timestamp = request.timestamp;
+    bad.originalBytes = pristine;
+    bad.editedBytes = disturbed;
+    bad.sourceGame = game;
+    bad.applicationSha = request.applicationSha;
+    bad.pendingChanges = editor->pendingChanges();
+    const auto refused = publishVerifiedExport(bad);
+    assert(!refused.success && refused.error.find("padded to 0x20000") != std::string::npos);
+    assert(!exists(root + "/padded-bad-" + tag));
+    assert(source == pristine);  // the source buffer is never written
+    ::rmdir(root.c_str());
+}
+
 } // namespace
 
 int main() {
@@ -288,5 +357,7 @@ int main() {
     phase4(GS, SourceGame::Gold, "gold");
     phase4(GS, SourceGame::Silver, "silver");
     phase4(C, SourceGame::Crystal, "crystal");
+    paddedExport(GS, SourceGame::Gold, "gold-ff32", 0x8000, 0xFF);
+    paddedExport(C, SourceGame::Crystal, "crystal-0064", 0x10000, 0x00);
     std::puts("GSC verified staged UI export + transaction: files, provenance, read-back, strict reparse, cleanup and source immutability PASS");
 }

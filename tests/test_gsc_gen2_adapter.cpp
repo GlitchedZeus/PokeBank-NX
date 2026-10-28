@@ -165,6 +165,18 @@ int main(){
         auto jgs=fixture(JGS);auto g=parse(jgs,SourceGame::Gold);
         assert(g&&g.save->metadata().family==VersionFamily::GoldSilver&&!g.save->trainer().gender);
         assert(!parse(jgs,SourceGame::Crystal));
+        // Round 8 automated QA: every Japanese Gen II layout stays read-only, not only 32 KiB
+        // Crystal: Japanese Gold, Silver and 64 KiB Crystal are refused too, and parsing them never
+        // changes a byte.
+        for (auto [bytes, game] : {std::pair{fixture(JGS), SourceGame::Gold}, std::pair{fixture(JGS), SourceGame::Silver},
+                                   std::pair{fixture(JC,201,false), SourceGame::Crystal}}) {
+            const auto pristine=bytes;
+            auto japanese=parse(bytes,game);
+            assert(japanese&&japanese.save->metadata().region==RegionLayout::Japanese);
+            std::string refusal;
+            assert(!StagedEditor::create(*japanese.save,refusal)&&!refusal.empty());
+            assert(bytes==pristine);
+        }
     }
     {
         auto d=fixture(IGS);

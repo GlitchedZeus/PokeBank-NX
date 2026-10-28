@@ -349,6 +349,8 @@ int main() {
     rtcFooterExport(SourceGame::EmeraldGBA, Family::Emerald, root);
     rtcFooterExport(SourceGame::FireRedGBA, Family::FRLG, root);
     rtcFooterExport(SourceGame::RubyGBA, Family::RS, root);
+    rtcFooterExport(SourceGame::SapphireGBA, Family::RS, root);     // Round 8 automated QA: all five
+    rtcFooterExport(SourceGame::LeafGreenGBA, Family::FRLG, root);
     genderPlayTime(SourceGame::RubyGBA, Family::RS, root);
     genderPlayTime(SourceGame::SapphireGBA, Family::RS, root);
     genderPlayTime(SourceGame::EmeraldGBA, Family::Emerald, root);

@@ -1,6 +1,7 @@
 // Bank load start-up policy (upstream PKSE 620c5f6 "bank file safety", ported as a decision
 // over real files). Exercises BankLoadPolicy::decide against an actual directory with the real
 // DurableFile recovery, then checks Bank::load is wired to it.
+#include "test_temp_dir.h"
 #include "Trainer/BankLoadPolicy.h"
 
 #include <cassert>
@@ -45,11 +46,11 @@ bool validBank(std::span<const uint8_t> bytes, std::string& error) {
     return true;
 }
 
+std::vector<std::string> gScenarioRoots;  // removed at the end of main
 std::string freshDir(const char* name) {
-    char templ[] = "/tmp/pokebank-bank-load-XXXXXX";
-    const char* made = ::mkdtemp(templ);
-    assert(made);
-    const std::string dir = std::string(made) + "/" + name;
+    const std::string made = PokeBankTest::freshTempBase("pokebank-bank-load");
+    gScenarioRoots.push_back(made);
+    const std::string dir = made + "/" + name;
     assert(::mkdir(dir.c_str(), 0700) == 0);
     return dir;
 }
@@ -167,5 +168,6 @@ int main() {
         assert(body.find("blockWrites(LoadOutcome::Blocked", blocked) < firstRun);
     }
 
+    for (const auto& root : gScenarioRoots) std::filesystem::remove_all(root);
     std::cout << "Bank load policy (PKSE 620c5f6 parity: unreadable/interrupted bank never a first run): PASS\n";
 }
