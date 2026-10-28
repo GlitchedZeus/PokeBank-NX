@@ -1,0 +1,10 @@
+{
+  "declared_utc": "2026-10-28T15:07:49.790474+00:00",
+  "before_generation": true,
+  "group": "gen5",
+  "seed": 2026102845,
+  "mutations": 4,
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "policy": "Every emitted record retained. The previous independent sample is preserved and now also a development/replay set. I-IV code is unchanged and their independently generated/fishy-expanded streams remain applicable; do not call them new generation. No validity, error or difficulty exclusions.",
+  "production_source_sha256": "b312e74971d7b9d1f3df9a9b44775fa24927265ad5ff77a71ef4a2f34ce0e78c"
+}

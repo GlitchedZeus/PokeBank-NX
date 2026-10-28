@@ -22,6 +22,7 @@
 #include "Legality/Gen5GiftReceivability.h"
 #include "Legality/Gen5FullCardCatalog.h"
 #include "Legality/Gen5GlobalLinkCatalog.h"
+#include "Legality/Gen35BreedingAncestry.h"
 
 #include <algorithm>
 #include <array>
@@ -738,6 +739,10 @@ struct Info {
     std::array<uint8_t, 4> actual{};    // EggSource5 chosen for each slot
     std::array<uint8_t, 4> possible{};  // bit (1 << Source) for each source that can give the slot's move
     std::vector<uint16_t> baseMoves;    // Learnset.GetBaseEggMoves(1)
+    uint16_t species = 0;
+    uint8_t version = 0;
+    const Breeding::Gen35Ancestry* ancestry = nullptr;
+    bool onlyInitial = false, requireSimple = false, necessaryPaternalOnly = false;
 };
 
 // MoveBreed5.VerifyBaseMoves: the leading Base slots are the tail of the base moves, in
@@ -775,11 +780,23 @@ bool recurse(Info& info, int start, uint8_t type) {
         if (!((info.possible[static_cast<std::size_t>(i)] >> type) & 1u)) return false;
         info.actual[static_cast<std::size_t>(i)] = type;
     } while (--i >= 0);
-    return verifyBaseMoves(info);
+    if (!verifyBaseMoves(info)) return false;
+    uint8_t paternal=0,shared=0;
+    for(size_t slot=0;slot<4;++slot) {
+        const auto source=info.actual[slot];
+        if(source==FatherEgg||source==FatherTM||source==ParentLevelUp)paternal|=uint8_t{1}<<slot;
+        if(source==ParentLevelUp)shared|=uint8_t{1}<<slot;
+    }
+    if(info.onlyInitial)return paternal==0;
+    if(!info.ancestry)return true;
+    if(info.necessaryPaternalOnly){paternal=static_cast<uint8_t>(paternal&~shared);shared=0;}
+    return info.requireSimple ? info.ancestry->provenBirth5(info.species,info.version,paternal,shared)
+                              : info.ancestry->possible(5,info.species,paternal,shared);
 }
 
 // MoveBreed5.Validate for `species` bred in `version` (20-23) holding `moves`.
-bool valid(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& moves) {
+bool valid(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& moves,
+           const Breeding::Gen35Ancestry* ancestry=nullptr,bool onlyInitial=false,bool requireSimple=false,bool necessaryPaternalOnly=false) {
     int count = 0;
     while (count < 4 && moves[static_cast<std::size_t>(count)] != 0) ++count;
     if (count == 0) return false;
@@ -790,6 +807,8 @@ bool valid(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& mov
     const int index = bw ? indexBW(species, 0) : indexB2W2(species, 0);
     Info info;
     info.moves = moves;
+    info.species=species;info.version=version;info.ancestry=ancestry;
+    info.onlyInitial=onlyInitial;info.requireSimple=requireSimple;info.necessaryPaternalOnly=necessaryPaternalOnly;
     std::vector<uint16_t> levelUp;
     if (index >= 0 && static_cast<std::size_t>(index) < total) {
         for (uint16_t i = start[index]; i < start[index + 1]; ++i) levelUp.push_back(learn[i].move);
@@ -1929,11 +1948,34 @@ void Gen5Analyzer::movePool() {
     // An unhatched bred egg's moves must follow the inheritance order (PKHeX
     // LearnVerifierRelearn.VerifyEggMoveset -> MoveBreed5.Validate); once hatched, each
     // move only needs a source.
-    if (p_.isEgg && match_.kind == Kind::Egg && !Breed5::valid(match_.species, p_.version, p_.moves)) {
-        a_.invalid(CheckIdentifier::Moves, "Unhatched egg's moves are not in an order Gen V egg move inheritance can produce "
-                                           "(level-1 moves, then the father's egg moves, inherited level-up moves and TMs)");
+    bool ancestryPartial=false;
+    if (p_.isEgg && match_.kind == Kind::Egg) {
+        if (!Breed5::valid(match_.species, p_.version, p_.moves)) {
+            a_.invalid(CheckIdentifier::Moves, "Unhatched egg's moves are not in an order Gen V egg move inheritance can produce "
+                                               "(level-1 moves, then the father's egg moves, inherited level-up moves and TMs)");
+        } else if (!Breed5::valid(match_.species,p_.version,p_.moves,nullptr,true)) {
+            // Reuse the finite joint-state foundation. All permissible local
+            // source assignments are tried: failure of the first assignment is
+            // not evidence that a different father/mother route is impossible.
+            const Breeding::Gen35Ancestry ancestry(p_.moves);
+            if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry)) {
+                // Original HGSS bodies prove both-parent shared inheritance.
+                // Until the Gen V parent-selection mechanism is replayed too,
+                // only exclusive egg/TM paternal sources are a certified
+                // necessary condition here. A failed shared-level joint route
+                // remains an implementation/evidence gap, not Invalid.
+                if(Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,false,true)){
+                    ancestryPartial=true;
+                    a_.warn(CheckIdentifier::Egg,"Exclusive paternal sources have a route, but the shared level-up parent ancestry or native Gen V mechanism has not been fully certified");
+                }else a_.invalid(CheckIdentifier::Egg,"No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model");
+            } else if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,true)) {
+                ancestryPartial=true;
+                a_.warn(CheckIdentifier::Egg,"Joint breeding implementation found a permissive ancestry but has not yet verified its complete birth order, form, event or transfer history");
+            }
+        }
     }
-    cov.moves = CoverageLevel::Complete;
+    cov.moves = ancestryPartial ? CoverageLevel::Partial : CoverageLevel::Complete;
+    if(ancestryPartial)cov.eggBreeding=CoverageLevel::Partial;
 }
 
 // PKHeX EvolutionRestrictions.IsValidEvolutionWithMove (EvolutionVerifier): a species that

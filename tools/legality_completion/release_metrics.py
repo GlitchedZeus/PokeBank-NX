@@ -46,12 +46,14 @@ def metric(rows):
         'fishy_cross_table':{f'{p}/{n}':v for (p,n),v in sorted(collections.Counter((r['reference'],r['nx']) for r in rows if r['fishy']).items())}}
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('root',type=pathlib.Path);p.add_argument('--output',type=pathlib.Path,required=True);a=p.parse_args()
-    groups=['gen1','gen2','gen34','gen5'];rows=[r for group in groups for r in read(a.root,group)]
+    p=argparse.ArgumentParser();p.add_argument('root',type=pathlib.Path);p.add_argument('--output',type=pathlib.Path,required=True)
+    p.add_argument('--groups',nargs='+',choices=['gen1','gen2','gen34','gen5'],default=['gen1','gen2','gen34','gen5'],help='Explicit measured streams; missing requested files remain errors.')
+    a=p.parse_args();groups=a.groups;rows=[r for group in groups for r in read(a.root,group)]
     report={'policy':'Fresh generated records, including generated INVALID, retained without exclusions. Raw binary agreement is not historical accuracy or completeness. Deliberate disagreements remain in raw counts. Fishy is exposed in every reference stream. LOADFAIL remains in denominator.',
-        'reference':'bfe89c74a3f5265805e364b79bc04ad38ebbc5ea','generations':{},'files':{}}
+        'reference':'bfe89c74a3f5265805e364b79bc04ad38ebbc5ea','groups':groups.copy(),'generations':{},'files':{}}
     for gen in range(1,6):
         subset=[r for r in rows if r['generation']==gen]
+        if not subset:continue
         report['generations'][str(gen)]={**metric(subset),'by_game_or_origin':{g:metric([r for r in subset if r['game']==g]) for g in sorted({r['game'] for r in subset})}}
     report['total']=metric(rows)
     extra=[]

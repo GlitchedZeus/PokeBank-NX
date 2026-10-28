@@ -1,0 +1,35 @@
+{
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "g5_sha256": "6df24e7f00dab32322d9d8f8b3209d30de1c89b0de88277081fe53434211830f",
+  "sources": [
+    {
+      "name": "personal_rs",
+      "sha256": "648c39c819c97f6706db4119c50abf858d6c4af4c1e0183fc2625ccda9901808"
+    },
+    {
+      "name": "personal_e",
+      "sha256": "af8f94d16827cf05a8317be62ebf43a87607585c28c4cc4e5a4b4e1e9d989866"
+    },
+    {
+      "name": "personal_fr",
+      "sha256": "63b08802afcd6233a1bfd235d699004be6db80bc12e77ae40e5a6f296a5ce7bd"
+    },
+    {
+      "name": "personal_lg",
+      "sha256": "ac487f5d9687c00b2b7ee5359467d6f8dbeb984a8c0f9b005ac1bfe6d38844ab"
+    },
+    {
+      "name": "personal_dp",
+      "sha256": "18ff6b5803cd5c7a5c4afdc54d56af5a90f0d0354a8b6fdfba86d467f9165326"
+    },
+    {
+      "name": "personal_pt",
+      "sha256": "af57e87c9cc7a23df71a2df3e270490b963f2ce2828c9375c101b761ce9324b3"
+    },
+    {
+      "name": "personal_hgss",
+      "sha256": "f7040b193e96869d8d7f15f66e25a854f27b184f828e4fdd093f387df2395f30"
+    }
+  ],
+  "differences": []
+}

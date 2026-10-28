@@ -17,6 +17,10 @@ on:
     paths:
       - 'src/Legality/Gen5*'
       - 'include/Legality/Gen5*'
+      - 'src/Legality/Gen35BreedingAncestry.cpp'
+      - 'include/Legality/Gen35BreedingAncestry.h'
+      - 'include/Legality/FiniteBreedingChain.h'
+      - 'include/Legality/BreedingBirthMoves.h'
       # Gen III/IV-origin transfers are checked by the Gen IV analyzer (Gen4::analyzeOrigin5).
       - 'src/Legality/Gen4Legality*'
       - 'include/Legality/Gen4Legality*'
@@ -25,6 +29,9 @@ on:
       - 'src/Names/SpeciesNames.cpp'
       - 'tests/test_legality_gen5.cpp'
       - 'tests/test_legality_gen5_adapter.cpp'
+      - 'tests/test_gen5_joint_breeding.cpp'
+      - 'tests/fixtures/gen15_session2/gen5_joint_breeding.txt'
+      - 'tests/test_reference_artifact_integrity.py'
       - 'tests/legality_gen5_test_helpers.h'
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
@@ -103,7 +110,7 @@ jobs:
           set -euo pipefail
           sudo apt-get install -y libclang-rt-18-dev
           clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinclude \
-            tests/fuzz/fuzz_legality_gen5.cpp src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp \
+            tests/fuzz/fuzz_legality_gen5.cpp src/Legality/Gen5Legality.cpp src/Legality/Gen35BreedingAncestry.cpp src/Legality/Gen5LegalityData.cpp \
             src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp \
             src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityEncounters.cpp \
             src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp src/Legality/Gen4LegalityRng.cpp \
@@ -119,6 +126,12 @@ jobs:
           for seed in 1 2 7 11; do
             WORK="$PWD/build/diff-base-$seed" tools/pkhex_gen5_diff/run.sh _ref/PKHeX "$seed" 4
           done
+
+      - name: Verify every retained raw stream and secondary-reference row
+        run: |
+          python3 tests/test_reference_artifact_integrity.py
+          python3 tools/legality_completion/verify_reference_artifacts.py gen5 \
+            build/diff-base-1 build/diff-base-2 build/diff-base-7 build/diff-base-11
 
       - name: Record exact reference and engine heads
         if: always()
@@ -141,5 +154,7 @@ jobs:
             build/diff-*/current-release/REPORT.json
             build/diff-*/current-release/input.txt
             build/diff-*/current-release/reference.txt
+            build/diff-*/current-release/oracle/*.dll
+            build/diff-*/generation-audit.jsonl
           if-no-files-found: warn
           retention-days: 30

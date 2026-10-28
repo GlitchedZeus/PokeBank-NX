@@ -8,7 +8,7 @@ mkdir -p "$work"
 mkdir -p "$work/include"
 ln -sfn "$repo/include/Legality" "$work/include/Legality"
 # This is the minimum source set used by the existing Gen5App adapter host gate.
-sources=(src/Legality/Gen5AppAdapter.cpp src/Legality/Gen5Legality.cpp
+sources=(src/Legality/Gen5AppAdapter.cpp src/Legality/Gen5Legality.cpp src/Legality/Gen35BreedingAncestry.cpp
  src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp
  src/Names/MoveNames.cpp src/Pokemon/Experience.cpp src/Legality/Gen4Legality.cpp
  src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityEncounters.cpp

@@ -1,0 +1,69 @@
+{
+  "production_base": "c9f3ab28 (production-equivalent for this path to8f0301a3)",
+  "baseline_binary_sha256": "5dd9511503aa2dcd534402645a23c5748ea569c9f82b683f2eba9cecd0ab2a64",
+  "rows": [
+    {
+      "id": "b7875",
+      "sha256": "16f54a5fda977354de6dc5db43bb7bd13d0fd3ef717dabf335ba3af7ba18e499",
+      "reference_line": "b7875 AEF2EA28000029C2710000003C49A3B6000000002883000200000000000000000000000000000000AA01040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native egg W2 ; Egg:EggMoveCombination",
+      "before": "b7875 NOPROBLEMS ;",
+      "after": "b7875 INCOMPLETE ;",
+      "prototype_after": "b7875 INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    },
+    {
+      "id": "m7876-tid",
+      "sha256": "f8967e0dbe4fb600c3aad339cd2d7bb1513c198f50310bbbd159d5adb65454aa",
+      "reference_line": "m7876-tid AEF2EA280000418A710000005411A3B6000000002883000200000000000000000000000000000000AA01040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native egg W2 ; Egg:EggMoveCombination",
+      "before": "m7876-tid NOPROBLEMS ;",
+      "after": "m7876-tid INCOMPLETE ;",
+      "prototype_after": "m7876-tid INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    },
+    {
+      "id": "b9545",
+      "sha256": "fbc1486303a13d65fb9e72e1df069ec914e7f846c36f36167351cb362d3439f8",
+      "reference_line": "b9545 B1E1C8D7000037F7EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native egg B2 ; Egg:EggMoveCombination",
+      "before": "b9545 NOPROBLEMS ;",
+      "after": "b9545 INCOMPLETE ;",
+      "prototype_after": "b9545 INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    },
+    {
+      "id": "m9546-otname",
+      "sha256": "203c54f3f707804c98d79658d248c609d39646e662b1ff8b74531f1d7a84be07",
+      "reference_line": "m9546-otname B1E1C8D7000083F6EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF00000000001700000000000000004E0065006F003000FFFF7200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native egg B2 ; Egg:EggMoveCombination",
+      "before": "m9546-otname NOPROBLEMS ;",
+      "after": "m9546-otname INCOMPLETE ;",
+      "prototype_after": "m9546-otname INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    },
+    {
+      "id": "m9547-otname",
+      "sha256": "4b94b26ea4217f280bf588c3b572cb386a4eac4258938931d1ce097ad013ccc0",
+      "reference_line": "m9547-otname B1E1C8D700009CF6EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF00000000001700000000000000004100420043004400450046004700FFFF1A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native egg B2 ; Egg:EggMoveCombination",
+      "before": "m9547-otname NOPROBLEMS ;",
+      "after": "m9547-otname INCOMPLETE ;",
+      "prototype_after": "m9547-otname INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    },
+    {
+      "id": "b21270",
+      "sha256": "d1a3db4c408c1391346fb8c62849381671b9ac3d6cf0209506650b6edda180f0",
+      "reference_line": "b21270 65D1D880000065283A0100004EA8A19E000000000F9E00020000000000000000000000000000000021004A0057010000232828000000000071FF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native egg B ; Egg:EggMoveCombination",
+      "before": "b21270 NOPROBLEMS ;",
+      "after": "b21270 INCOMPLETE ;",
+      "prototype_after": "b21270 INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    },
+    {
+      "id": "m21273-iv",
+      "sha256": "f972197ed6d773ae1433689a5fcc1d1e27915ed610f055b20fa021ff87fa5dfc",
+      "reference_line": "m21273-iv 65D1D880000060283A0100004EA8A19E000000000F9E00020000000000000000000000000000000021004A005701000023282800000000006CFF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native egg B ; Egg:EggMoveCombination",
+      "before": "m21273-iv NOPROBLEMS ;",
+      "after": "m21273-iv INCOMPLETE ;",
+      "prototype_after": "m21273-iv INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "status": "false clean confidence removed; rule/evidence gap remains open"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "declared_utc": "2026-10-28T14:52:22.541097+00:00",
+  "before_generation": true,
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "groups": {
+    "gen1": {
+      "count": 12000,
+      "seed": 2026102831
+    },
+    "gen2": {
+      "count": 12000,
+      "seed": 2026102832
+    },
+    "gen34": {
+      "seed": 2026102834,
+      "mutations": 4,
+      "mode": "34 base"
+    },
+    "gen5": {
+      "seed": 2026102835,
+      "mutations": 4
+    }
+  },
+  "policy": "Retain every emitted record, reference errors, Fishy and all disagreements. New independent mutations; exact bytes are authoritative. No valid-only grown filtering. GB source-title applicability remains unmeasured. Generated, not acquired specimens.",
+  "production_sources": {
+    "include/Legality/FiniteBreedingChain.h": "e82e80d6fff777c574a742cd1dbeb324b52998b978a0c39fc1c9ce001aa47597",
+    "src/Legality/Gen35BreedingAncestry.cpp": "bd39740de97799bfd116af3df51f180a2acb5f0c2e5fb40d0ea75299e1b12e25",
+    "src/Legality/Gen5Legality.cpp": "5e69194c80f6090eda64ad87cc9202e35828d8b708b9848a8efca9f9970d7019"
+  }
+}

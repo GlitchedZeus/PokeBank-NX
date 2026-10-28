@@ -1,61 +1,42 @@
 {
-  "schema": 1,
+  "schema": 2,
   "status": "active; no completion claim",
   "pr": 314,
   "branch": "claude/gen1-5-legality-campaign-w9mkom",
-  "remote_head": "f5f50e1351b190b73067422aaaa3427f808af3ad",
+  "remote_head": "8f0301a3ac2a5fd38c8821f958563200f85a4285",
   "official_release": {
     "tag": "26.10.18",
     "sha": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea"
   },
   "newer_master_separate": "8e3eb3d47bb496746c3eaa9d160329d295a5e2e5",
-  "working_changes": "Narrow independent native-level adjudication, adversarial positive controls and explicit current-release replay replace unsafe placeholder-membership exceptions; validated locally, commit/push pending",
+  "working_changes": "Conservative finite III-V ancestry and exact Gen V birth recipes; all seven original shared-level cases remain Incomplete. Native III/IV and hatched V adapters still missing. Local final validation complete; commit/push and current-head CI pending.",
   "validation": {
-    "targeted": "14 unchanged records+40 slot alternatives; GCC/Clang normal+ASan/UBSan PASS",
-    "affected": "GenIV, GenV, release, terrain; GCC/Clang normal+ASan/UBSan PASS",
-    "generator": "PASS",
-    "primary": "exactly7 changed verdicts; all confirmed targeted false clean repaired",
-    "earlier_retained": "three full retained sets replayed; GenIV raw false clean0 in each",
-    "fresh": "238777 emitted GenIII\u2013V records retained; detailed FRESH_METRICS.json",
-    "legacy6501": "91 of128 raw stricter GenIV cases have independent native necessary-level absence; all91 also Invalid in26.10.18. All128 replayed unchanged against release (93Invalid/35Valid); raw baseline counts unchanged.",
-    "ci": "f5f50e13 eleven PR-triggered workflows passed, including gen34/gen5; these predate the exception-tightening change and are not release acceptance",
-    "new_gate": "7 actual valid controls protected against simulated false Invalids;91 native proofs; reference errors cannot excuse rejection; both full frozen-reference CLI smoke runs PASS with explicit released reference replay",
-    "new_native_witness": "inactive-outbreak branch added; GCC/Clang normal/ASan+UBSan PASS"
+    "local": "JOINT_VALIDATION.json:8 final-policy suite/compiler executions,20 unchanged-path suites,4 native birth profiles PASS",
+    "original_seven": "7 old false-clean records now Incomplete, not completed rules",
+    "legacy_cli": "134228 frozen seed1 records; raw9 stricter native Safari rows retained; CLI and complete artifact verification PASS",
+    "ci": "8f0301a3:11 workflows passed, but Gen V raw retention was defective. New code CI pending; do not claim green from old head.",
+    "evidence_transport": "WORK and legacy KEEP now preserve raw/secondary files; verifier and5 adversarial integrity controls added"
   },
   "metrics": {
-    "primary": "PRIMARY_METRICS.json",
-    "fresh": "FRESH_METRICS.json",
-    "older": "RETAINED_REPLAY_METRICS.json",
-    "raw_queue": "RAW_FALSE_CLEAN_QUEUE.json"
+    "primary": "JOINT_PRIMARY_METRICS.json",
+    "independent": "JOINT_INDEPENDENT_METRICS.json",
+    "all_retained": "JOINT_RETAINED_METRICS.json",
+    "measurement_notes": "JOINT_MEASUREMENTS.md",
+    "original_raw_queue": "RAW_FALSE_CLEAN_QUEUE.json",
+    "new_independent_queue": "JOINT_INDEPENDENT_QUEUE.json"
   },
-  "fixture_hashes": "HGSS_SWARM_FIXTURES.json",
+  "fixture_hashes": "GEN5_JOINT_FIXTURES.json",
   "queue": [
     {
       "priority": 0,
-      "kind": "implementation gap",
-      "task": "Verify pushed-head CI and archive raw second-reference evidence; source-backed seven current-release false cleans repaired",
-      "source": "src/Legality/Gen4LegalityEncounters.cpp; src/field/encounter_check.c@pret/pokeheartgold9d8b759",
-      "cases": [
-        "m68527-metlocation",
-        "m68829-metlevel",
-        "m69291-metlocation",
-        "m69319-metlocation",
-        "m69502-metlocation",
-        "m69659-metlocation",
-        "m62953-metlevel"
-      ],
-      "next": "Run tests/test_hgss_reference_adjudication.py and inspect current_release_replay REPORTs. Do not restore placeholder-membership-only allowances."
+      "kind": "validation",
+      "task": "Commit/push forward, inspect all new-head CI jobs and verify raw artifact contents; do not waive new failures",
+      "source": "tools/pkhex_gen5_diff/run.sh; verify_reference_artifacts.py; JOINT_ENGINE_MANIFEST.json"
     },
     {
       "priority": 0,
-      "kind": "reference disagreement",
-      "task": "GB3+26 Japanese OT alternative-generation routes; retain all45 GenII rawFC",
-      "source": "src/Legality/GBLegality.cpp; tools/pkhex_gb_diff/compare.py"
-    },
-    {
-      "priority": 1,
-      "kind": "implementation gap",
-      "task": "Full joint GenIII\u2013V ancestry, reuse FiniteBreedingChain; first investigate seven GenV egg cases",
+      "kind": "implementation/evidence gap",
+      "task": "Certify original Gen V shared-level parent-selection/inheritance and full joint certificates; seven original cases remain Incomplete",
       "cases": [
         "b7875",
         "m7876-tid",
@@ -64,34 +45,57 @@
         "m9547-otname",
         "b21270",
         "m21273-iv"
-      ]
+      ],
+      "source": "Gen35BreedingAncestry.cpp; Gen5Legality.cpp; JOINT_BREEDING_GAPS.md"
+    },
+    {
+      "priority": 1,
+      "kind": "source/reference disagreement",
+      "task": "Review all primary/fresh stricter Happiny and other egg rows; full PKHeX analysis and standalone chain disagree. No verified-superiority claim or ID exception.",
+      "source": "BREEDING_REFERENCE_ANOMALIES.json; JOINT_FIXTURE_REFERENCE_TRACE.json; JOINT_INDEPENDENT_QUEUE.json"
+    },
+    {
+      "priority": 1,
+      "kind": "fresh false clean",
+      "task": "Resolve HGSS Caterpie m41147-ball using actual alternative encounter/RNG and native geometry; never assume the reference encounter wins",
+      "source": "JOINT_INDEPENDENT_QUEUE.json; Gen4LegalityEncounters.cpp"
+    },
+    {
+      "priority": 1,
+      "kind": "implementation gap",
+      "task": "Wire full finite ancestry and constructive certificates into native PK3/PK4 and hatched PK5; preserve existing Gen III source/PID and encounter alternatives"
     },
     {
       "priority": 2,
       "kind": "evidence gap",
-      "task": "53 primary+3correlated GenV modern word filters versus native applicability"
+      "task": "Native Gen V applicability of53 primary+3correlated modern word-filter complaints; all additional independent filter cases remain raw"
+    },
+    {
+      "priority": 2,
+      "kind": "source/reference disagreement",
+      "task": "GB regional OT/GSBall and alternative-origin differences; preserve all generations and all original streams"
     },
     {
       "priority": 3,
       "kind": "implementation gap",
-      "task": "General joint GenIII/IV EV/EXP solver, preserve native HGSS counterexample"
+      "task": "General joint III/IV EV/EXP solver; preserve native one-battle counterexample and zero-EXP negative"
     },
     {
       "priority": 4,
-      "kind": "implementation and evidence gaps",
-      "task": "Remaining encounters/RNG/moves, independent branch inventory, historical provenance"
+      "kind": "inventory/evidence gaps",
+      "task": "Every applicable branch across20 titles, remaining RNG/event/move histories, acquired custody and separately authorized app/device integration"
     }
   ],
-  "scope": "engine only; no PR307/app merge/NRO/combined build",
-  "next_command": "python3 tests/test_hgss_reference_adjudication.py",
+  "scope": "engine only; no PR307 modifications, merge, app/NRO or combined app build",
+  "next_command": "python3 tests/test_reference_artifact_integrity.py && python3 tools/legality_completion/verify_reference_artifacts.py gen5 ../outputs/legality-campaign-20261028/legacy-joint-v3",
   "artifacts": "outputs/legality-campaign-20261028; immutable baseline outputs/legality-hardening-20261027",
   "next_breeding_reference": {
     "repo": "fuddlesworth/pokebw2",
     "sha": "35d735b52bb77338f3a138d321e562975ade556e",
     "status": "complete src and pokemon subtrees fetched; top-level recursive tree truncated; data/egg tutor research only",
-    "warning": "Species JSON omits ReflectType/Chansey and WringOut/Smoochum egg entries present in released raw resources; establish raw-ROM derivation before closed-world negative proof. Current production donor/tutor data already supports Paras NOT learning Covet; no superiority claim."
+    "warning": "The native Gen V repository is research-only; some species JSON egg entries differ from pinned released raw resources. Earlier Reflect Type/Wring Out variants are NOT the primary seven cases. Establish raw-ROM derivation and mechanics before any closed-world native proof."
   },
-  "engine_code_head": "c9f3ab280002c330afa3cbc954adb7789c12656d",
+  "engine_code_head": "commit containing this continuation; parent8f0301a3 and exact JOINT_ENGINE_MANIFEST.json source hashes",
   "coordination": [
     "Preserved Claude ded4c2f2/f5f50e13 via forward checkout; no merge commit",
     "PR314 comments6469504356 and6469535480 report the native proof and unsafe exemption counterexamples; PR307 untouched"

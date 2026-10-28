@@ -1,0 +1,72 @@
+{
+  "head": "8f0301a3ac2a5fd38c8821f958563200f85a4285",
+  "status": "All eleven PR-triggered workflows passed. Gen V raw artifact retention was defective; this is not an artifact-integrity or full-release acceptance claim.",
+  "runs": [
+    {
+      "id": 40694592101,
+      "name": "Gen III/IV legality vs PKHeX",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592086,
+      "name": "Gen V legality vs PKHeX",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592135,
+      "name": "Gen I Original RBY TM/HM Source Parity",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592193,
+      "name": "Legality L3 exact-head native validation",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592069,
+      "name": "Legality L6 Stage 5 cross-lane audit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592173,
+      "name": "Gen I RBY Coordinator Exact-Head Native Checks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592260,
+      "name": "L4 Event Metadata Exact-Head Verification",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592128,
+      "name": "Gen I Coordinator Exact-Head Original PKHeX Differential",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592163,
+      "name": "Legality completion focused evidence",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592084,
+      "name": "Gen I/II legality vs PKHeX",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40694592307,
+      "name": "PokeBank NX Host Tests",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

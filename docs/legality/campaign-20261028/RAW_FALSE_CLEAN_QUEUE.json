@@ -764,7 +764,9 @@
     "game": "W2",
     "reference_line": "b7875 AEF2EA28000029C2710000003C49A3B6000000002883000200000000000000000000000000000000AA01040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native egg W2 ; Egg:EggMoveCombination",
     "production_line": "b7875 NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",
@@ -777,7 +779,9 @@
     "game": "W2",
     "reference_line": "m7876-tid AEF2EA280000418A710000005411A3B6000000002883000200000000000000000000000000000000AA01040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native egg W2 ; Egg:EggMoveCombination",
     "production_line": "m7876-tid NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",
@@ -803,7 +807,9 @@
     "game": "B2",
     "reference_line": "b9545 B1E1C8D7000037F7EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native egg B2 ; Egg:EggMoveCombination",
     "production_line": "b9545 NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",
@@ -816,7 +822,9 @@
     "game": "B2",
     "reference_line": "m9546-otname B1E1C8D7000083F6EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF00000000001700000000000000004E0065006F003000FFFF7200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native egg B2 ; Egg:EggMoveCombination",
     "production_line": "m9546-otname NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",
@@ -829,7 +837,9 @@
     "game": "B2",
     "reference_line": "m9547-otname B1E1C8D700009CF6EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF00000000001700000000000000004100420043004400450046004700FFFF1A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native egg B2 ; Egg:EggMoveCombination",
     "production_line": "m9547-otname NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",
@@ -881,7 +891,9 @@
     "game": "B",
     "reference_line": "b21270 65D1D880000065283A0100004EA8A19E000000000F9E00020000000000000000000000000000000021004A0057010000232828000000000071FF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native egg B ; Egg:EggMoveCombination",
     "production_line": "b21270 NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",
@@ -894,7 +906,9 @@
     "game": "B",
     "reference_line": "m21273-iv 65D1D880000060283A0100004EA8A19E000000000F9E00020000000000000000000000000000000021004A005701000023282800000000006CFF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native egg B ; Egg:EggMoveCombination",
     "production_line": "m21273-iv NOPROBLEMS ;",
-    "status": "awaiting evidence / implementation review"
+    "status": "no longer clean; Incomplete; shared-level implementation/evidence gap remains open",
+    "evidence": "JOINT_REGRESSION_BEFORE_AFTER.json",
+    "regression": "tests/fixtures/gen15_session2/gen5_joint_breeding.txt"
   },
   {
     "group": "gen5",

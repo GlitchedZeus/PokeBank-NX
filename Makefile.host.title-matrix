@@ -19,7 +19,7 @@ TITLE_MATRIX_SOURCES := tests/test_legality_title_matrix.cpp \
 	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
 	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	$(TITLE_MATRIX_GBA_SAVE_SOURCES) $(TITLE_MATRIX_NDS_SAVE_SOURCES) \
-	src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp
+	src/Legality/Gen5Legality.cpp src/Legality/Gen35BreedingAncestry.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp
 # The on-device Gen III reader (PKSMGen3NativeAdapter.cpp) builds on the host only with this define.
 # Under Clang, two shared PK3 sources trip -Wunused-function and GCC-only pragmas (as for
 # test_legality_gen4 in Makefile.host.gen4-legality).

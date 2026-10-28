@@ -19,6 +19,7 @@ on:
       - 'tests/test_gen4_ground_tile.cpp'
       - 'tests/test_gen4_hgss_swarm.cpp'
       - 'tests/test_gen5_app_context.cpp'
+      - 'tests/test_gen5_joint_breeding.cpp'
       - 'tests/test_gen35_release_rules.cpp'
       - 'tests/test_public_fixture_selection.py'
       - 'tests/test_hgss_reference_adjudication.py'
@@ -58,7 +59,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm test_gen5_joint_breeding)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -89,6 +90,10 @@ jobs:
               --native build-completion/native-hgss --fetch \
               --work "build-completion/native-swarm-$profile" --compiler "$CXX" "${flags[@]}" \
               2>&1 | tee "build-completion/native-swarm-$profile.log"
+            python3 tools/legality_completion/breeding_native_witness.py \
+              --native build-completion/native-hgss --fetch \
+              --work "build-completion/native-birth-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-birth-$profile.log"
           done
       - name: Preserve official release and native EV witness evidence
         if: always()
@@ -101,6 +106,12 @@ jobs:
             build-completion/public-fixture-selection.log
             build-completion/native-ev-*.log
             build-completion/native-swarm-*.log
+            build-completion/native-birth-*.log
+            build-completion/test_gen5_joint_breeding*.log
+            build-completion/test_finite_breeding_chain*.log
+            docs/legality/campaign-20261028/HGSS_BREEDING_SOURCE_PINS.json
+            docs/legality/campaign-20261028/GEN5_JOINT_FIXTURES.json
+            tests/fixtures/gen15_session2/gen5_joint_breeding.txt
             build-completion/hgss-swarm-catalog.*
             build-completion/hgss-reference-adjudication.log
             build-completion/hgss-native-levels.log

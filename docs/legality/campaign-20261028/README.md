@@ -1,5 +1,14 @@
 # October 28 engine campaign — HGSS encounter repair
 
+**Current continuation:** [joint breeding coverage and remaining rules](JOINT_BREEDING_GAPS.md),
+[new primary replay](JOINT_PRIMARY_METRICS.json) and [independent Gen I–V sample](JOINT_INDEPENDENT_METRICS.json).
+These supersede the pre-breeding counts below for the changed production path.
+The seven original Gen V egg false cleans are now Incomplete; their joint rules
+remain open. The new primary replay also retains raw stricter Happiny disagreements
+and additional Incomplete reports. See the continuation inventory before interpreting the older
+paragraphs saying joint ancestry has not changed production. Native III/IV and
+hatched V integration remain open. Acceptance is still blocked.
+
 Acceptance remains blocked. This continues PR314 from30696ba7, without changing PR307, building an application/NRO, merging, or replacing earlier evidence. Official PKHeX26.10.18 remains pinned to `bfe89c74a3f5265805e364b79bc04ad38ebbc5ea`. Newer master `8e3eb3d47bb496746c3eaa9d160329d295a5e2e5` is identified separately and is not the oracle for these measurements.
 
 ## Actual production changes

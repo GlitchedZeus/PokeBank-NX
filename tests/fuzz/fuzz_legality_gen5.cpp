@@ -1,6 +1,6 @@
 // libFuzzer harness for Legality::analyzePk5 (Gen V, read-only).
 //   clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -Iinclude \
-//     tests/fuzz/fuzz_legality_gen5.cpp src/Legality/Gen5Legality.cpp \
+//     tests/fuzz/fuzz_legality_gen5.cpp src/Legality/Gen5Legality.cpp src/Legality/Gen35BreedingAncestry.cpp \
 //     src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp \
 //     src/Names/MoveNames.cpp src/Pokemon/Experience.cpp -o fuzz_gen5
 // The first input byte picks the decoding path; with the decrypted path the

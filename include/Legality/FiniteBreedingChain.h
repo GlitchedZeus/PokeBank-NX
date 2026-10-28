@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <span>
+#include <utility>
 #include <vector>
 namespace Legality::Breeding {
 struct Species {
@@ -17,9 +18,21 @@ struct Species {
     std::vector<uint8_t> gifts; // joint sets from separate event/encounter origins
     std::vector<uint16_t> fathers;
     std::vector<uint16_t> evolvesTo;
+    // Bits whose selected inheritance source requires BOTH parents to know the
+    // move. A mother is one actual reachable individual, not a per-move union.
+    // Empty mothers permits paternal-only bits (e.g. a Ditto route), never the
+    // both-parent bits. Existing Gen II models leave both fields empty/zero.
+    uint8_t requiresMother = 0;
+    std::vector<uint16_t> mothers;
 };
 enum class StepKind : uint8_t { Native, Gift, PreviousEra, Evolution, Breed };
-struct Step { uint16_t species=0,parentSpecies=0; uint8_t mask=0,parentMask=0; StepKind kind=StepKind::Native; };
+struct Step {
+    uint16_t species=0,parentSpecies=0;
+    uint8_t mask=0,parentMask=0;
+    StepKind kind=StepKind::Native;
+    uint16_t motherSpecies=0;
+    uint8_t motherMask=0;
+};
 class FiniteChain {
 public:
     explicit FiniteChain(std::span<const Species> species, uint8_t previousEraDomain=15)
@@ -41,8 +54,19 @@ public:
                 }
                 for(auto father:rule.fathers)if(father<species_.size()) {
                     const uint16_t paternal=reachable_[father];
-                    for(uint8_t mask=0;mask<16;++mask)if(paternal&(uint16_t{1}<<mask))
-                        changed|=add(s,mask&rule.inherited,{static_cast<uint16_t>(s),father,mask,mask,StepKind::Breed});
+                    for(uint8_t mask=0;mask<16;++mask)if(paternal&(uint16_t{1}<<mask)) {
+                        if(rule.mothers.empty()||rule.requiresMother==0) {
+                            changed|=add(s,mask&rule.inherited&~rule.requiresMother,
+                                {static_cast<uint16_t>(s),father,mask,mask,StepKind::Breed});
+                        } else for(auto mother:rule.mothers)if(mother<species_.size()) {
+                            const auto maternal=reachable_[mother];
+                            for(uint8_t known=0;known<16;++known)if(maternal&(uint16_t{1}<<known)) {
+                                const auto inherited=static_cast<uint8_t>(mask&rule.inherited&~(rule.requiresMother&~known));
+                                changed|=add(s,inherited,
+                                    {static_cast<uint16_t>(s),father,mask,mask,StepKind::Breed,mother,known});
+                            }
+                        }
+                    }
                 }
             }
         } while(changed);
@@ -50,10 +74,15 @@ public:
     std::vector<Step> witness(size_t species,uint8_t mask)const {
         std::vector<Step> result;
         if(!canKnow(species,mask))return result;
-        while(mask) {
-            const auto& step=evidence_[species][mask];result.push_back(step);
-            if(!step.parentSpecies)break;
-            species=step.parentSpecies;mask=step.parentMask;
+        std::vector<std::pair<size_t,uint8_t>> pending{{species,mask}};
+        std::vector<uint16_t> visited(species_.size());
+        while(!pending.empty()) {
+            const auto [node,wanted]=pending.back();pending.pop_back();
+            if(!wanted||(visited[node]&(uint16_t{1}<<wanted)))continue;
+            visited[node]|=uint16_t{1}<<wanted;
+            const auto& step=evidence_[node][wanted];result.push_back(step);
+            if(step.motherSpecies)pending.emplace_back(step.motherSpecies,step.motherMask);
+            if(step.parentSpecies)pending.emplace_back(step.parentSpecies,step.parentMask);
         }
         return result;
     }
@@ -62,6 +91,13 @@ public:
     }
     bool hasFather(size_t child,uint8_t mask)const noexcept {
         if(child>=species_.size()||mask>15)return false;
+        const auto& rule=species_[child];
+        const auto shared=static_cast<uint8_t>(mask&rule.requiresMother);
+        if(shared) {
+            bool motherFound=false;
+            for(auto mother:rule.mothers)if(canKnow(mother,shared)){motherFound=true;break;}
+            if(!motherFound)return false;
+        }
         for(auto father:species_[child].fathers)if(canKnow(father,mask))return true;
         return mask==0;
     }

@@ -1,0 +1,142 @@
+{
+  "policy": "Counts are not rule completeness. Prototype outputs retained separately. No existing committed positive expectation weakened.",
+  "v3": {
+    "JOINT_V3_GCC_test_legality_gen5.log": {
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "last_line": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_V3_GCC_test_gen5_joint_breeding.log": {
+      "sha256": "ee107131e470e915080590da8bea05dc9dc1675e8d48c65f6c52d2f5cc5f2fda",
+      "last_line": "Joint Gen III-V ancestry / Gen V adapter:7 retained Incomplete and4 exclusive-paternal Invalid,paired order/source controls,4 concrete parent recipes and intermediate Durant birth PASS"
+    },
+    "JOINT_V3_CLANG_test_legality_gen5.log": {
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "last_line": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_V3_CLANG_test_gen5_joint_breeding.log": {
+      "sha256": "ee107131e470e915080590da8bea05dc9dc1675e8d48c65f6c52d2f5cc5f2fda",
+      "last_line": "Joint Gen III-V ancestry / Gen V adapter:7 retained Incomplete and4 exclusive-paternal Invalid,paired order/source controls,4 concrete parent recipes and intermediate Durant birth PASS"
+    },
+    "JOINT_V3_GCC_SAN_test_legality_gen5.log": {
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "last_line": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_V3_GCC_SAN_test_gen5_joint_breeding.log": {
+      "sha256": "ee107131e470e915080590da8bea05dc9dc1675e8d48c65f6c52d2f5cc5f2fda",
+      "last_line": "Joint Gen III-V ancestry / Gen V adapter:7 retained Incomplete and4 exclusive-paternal Invalid,paired order/source controls,4 concrete parent recipes and intermediate Durant birth PASS"
+    },
+    "JOINT_V3_CLANG_SAN_test_legality_gen5.log": {
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "last_line": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_V3_CLANG_SAN_test_gen5_joint_breeding.log": {
+      "sha256": "ee107131e470e915080590da8bea05dc9dc1675e8d48c65f6c52d2f5cc5f2fda",
+      "last_line": "Joint Gen III-V ancestry / Gen V adapter:7 retained Incomplete and4 exclusive-paternal Invalid,paired order/source controls,4 concrete parent recipes and intermediate Durant birth PASS"
+    }
+  },
+  "unchanged_core": {
+    "JOINT_CORE_GCC_test_finite_breeding_chain.log": {
+      "sha256": "439aa99b6d354f7bd317f67f0ac35ef62a0b625790c923a9011af3ad6e4e6b63",
+      "last_line": "Finite joint breeding proof: deep chain, non-merging cycles/events, era chronology, mixed origins and 192000 adversarial state checks PASS"
+    },
+    "JOINT_CORE_GCC_test_gb_breeding_chain.log": {
+      "sha256": "f25e4baab52f9122a9740a5a485d513e2b195df1124b9a5db52b1ba1d04926a3",
+      "last_line": "Native breeding production: 12 retained cases, 38 source-adjudicated clean cases, father witnesses, incompatible combinations and sex/Ditto controls PASS"
+    },
+    "JOINT_FINAL_GCC_test_legality_gen4.log": {
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "last_line": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_FINAL_GCC_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_line": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+    },
+    "JOINT_FINAL_GCC_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_line": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+    },
+    "JOINT_CORE_CLANG_test_finite_breeding_chain.log": {
+      "sha256": "439aa99b6d354f7bd317f67f0ac35ef62a0b625790c923a9011af3ad6e4e6b63",
+      "last_line": "Finite joint breeding proof: deep chain, non-merging cycles/events, era chronology, mixed origins and 192000 adversarial state checks PASS"
+    },
+    "JOINT_CORE_CLANG_test_gb_breeding_chain.log": {
+      "sha256": "f25e4baab52f9122a9740a5a485d513e2b195df1124b9a5db52b1ba1d04926a3",
+      "last_line": "Native breeding production: 12 retained cases, 38 source-adjudicated clean cases, father witnesses, incompatible combinations and sex/Ditto controls PASS"
+    },
+    "JOINT_FINAL_CLANG_test_legality_gen4.log": {
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "last_line": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_FINAL_CLANG_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_line": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+    },
+    "JOINT_FINAL_CLANG_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_line": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+    },
+    "JOINT_CORE_GCC_SAN_test_finite_breeding_chain.log": {
+      "sha256": "439aa99b6d354f7bd317f67f0ac35ef62a0b625790c923a9011af3ad6e4e6b63",
+      "last_line": "Finite joint breeding proof: deep chain, non-merging cycles/events, era chronology, mixed origins and 192000 adversarial state checks PASS"
+    },
+    "JOINT_CORE_GCC_SAN_test_gb_breeding_chain.log": {
+      "sha256": "f25e4baab52f9122a9740a5a485d513e2b195df1124b9a5db52b1ba1d04926a3",
+      "last_line": "Native breeding production: 12 retained cases, 38 source-adjudicated clean cases, father witnesses, incompatible combinations and sex/Ditto controls PASS"
+    },
+    "JOINT_FINAL_GCC_SAN_test_legality_gen4.log": {
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "last_line": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_FINAL_GCC_SAN_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_line": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+    },
+    "JOINT_FINAL_GCC_SAN_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_line": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+    },
+    "JOINT_CORE_CLANG_SAN_test_finite_breeding_chain.log": {
+      "sha256": "439aa99b6d354f7bd317f67f0ac35ef62a0b625790c923a9011af3ad6e4e6b63",
+      "last_line": "Finite joint breeding proof: deep chain, non-merging cycles/events, era chronology, mixed origins and 192000 adversarial state checks PASS"
+    },
+    "JOINT_CORE_CLANG_SAN_test_gb_breeding_chain.log": {
+      "sha256": "f25e4baab52f9122a9740a5a485d513e2b195df1124b9a5db52b1ba1d04926a3",
+      "last_line": "Native breeding production: 12 retained cases, 38 source-adjudicated clean cases, father witnesses, incompatible combinations and sex/Ditto controls PASS"
+    },
+    "JOINT_FINAL_CLANG_SAN_test_legality_gen4.log": {
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "last_line": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS"
+    },
+    "JOINT_FINAL_CLANG_SAN_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_line": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+    },
+    "JOINT_FINAL_CLANG_SAN_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_line": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+    }
+  },
+  "native_body": {
+    "NATIVE_BIRTH_GCC.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "scope": "20000 original HGSS body comparisons; Gen V/Light Ball additional controls model-only"
+    },
+    "NATIVE_BIRTH_CLANG.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "scope": "20000 original HGSS body comparisons; Gen V/Light Ball additional controls model-only"
+    },
+    "NATIVE_BIRTH_GCC_SAN.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "scope": "20000 original HGSS body comparisons; Gen V/Light Ball additional controls model-only"
+    },
+    "NATIVE_BIRTH_CLANG_SAN.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "scope": "20000 original HGSS body comparisons; Gen V/Light Ball additional controls model-only"
+    }
+  },
+  "legacy_cli": {
+    "records": 134228,
+    "log_sha256": "d6ae064898d8085ad41e68656ef47ed92278e73f38b4212678e9c1aba199c54b",
+    "status": "PASS;9 raw stricter rows retained/secondary-replayed; artifact verifier PASS"
+  }
+}

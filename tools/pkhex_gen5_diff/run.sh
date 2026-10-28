@@ -24,12 +24,14 @@
 #                          converts some records with an unseeded random source, so two
 #                          runs of one seed differ slightly; reuse a corpus to compare).
 #   GEN5_DIFF_KEEP=DIR     keep the corpus and both verdict files in DIR.
+#   WORK=DIR              retain the complete run, including secondary-reference
+#                          reports and source-built assemblies, even on failure.
 #   SHOW=N                 lines of each listing (default 15).
 #   GEN5_ORACLE_TRACE=1    the oracle writes each conversion / analysis step to stderr.
 set -euo pipefail
 pkhex=$(cd "$1" && pwd); seed=${2:-1}; mutations=${3:-4}
 here=$(cd "$(dirname "$0")" && pwd); repo=$(cd "$here/../.." && pwd)
-work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+if [ -n "${WORK:-}" ]; then work=$WORK; mkdir -p "$work"; else work=$(mktemp -d); trap 'rm -rf "$work"' EXIT; fi
 dotnet build "$here/oracle/PKHeXGen5Oracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" \
     -p:UseArtifactsOutput=true -p:ArtifactsPath="$work/artifacts" -o "$work/oracle" > "$work/build.log" || { cat "$work/build.log"; exit 1; }
 if [ -n "${GEN5_DIFF_CORPUS:-}" ]; then
@@ -40,6 +42,7 @@ fi
 # Gen III/IV-origin records are checked by the Gen IV analyzer's origin analysis
 # (Gen4::analyzeOrigin5), so its sources are part of the Gen V analyzer.
 g++ -std=c++20 -O2 -I"$repo/include" "$here/gen5_diff.cpp" "$repo/src/Legality/Gen5Legality.cpp" \
+    "$repo/src/Legality/Gen35BreedingAncestry.cpp" \
     "$repo/src/Legality/Gen5LegalityData.cpp" "$repo/src/Legality/Gen5Text.cpp" \
     "$repo/src/Legality/Gen4Legality.cpp" "$repo/src/Legality/Gen4LegalityData.cpp" \
     "$repo/src/Legality/Gen4LegalityEncounters.cpp" "$repo/src/Legality/Gen4LegalityMoves.cpp" \
@@ -75,8 +78,11 @@ if [ -n "${PKHEX_RELEASE_ROOT:-}" ]; then
 fi
 if [ -n "${GEN5_DIFF_KEEP:-}" ]; then
     mkdir -p "$GEN5_DIFF_KEEP"
-    cp "$work/pkhex.txt" "$work/pokebank.txt" "$work/joined.txt" "$GEN5_DIFF_KEEP/"
-    if [ -f "$work/generation-audit.jsonl" ]; then cp "$work/generation-audit.jsonl" "$GEN5_DIFF_KEEP/"; fi
+    if ! [ "$GEN5_DIFF_KEEP" -ef "$work" ]; then
+        cp "$work/pkhex.txt" "$work/pokebank.txt" "$work/joined.txt" "$GEN5_DIFF_KEEP/"
+        if [ -f "$work/generation-audit.jsonl" ]; then cp "$work/generation-audit.jsonl" "$GEN5_DIFF_KEEP/"; fi
+        if [ -d "$work/current-release" ]; then cp -R "$work/current-release" "$GEN5_DIFF_KEEP/"; fi
+    fi
 fi
 echo "seed $seed, $mutations mutations per record: PKHeX verdict / PokeBank NX verdict"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[1]!=b[1]) {print "id mismatch " a[1]; exit 1} c[a[3]"/"b[2]]++}
