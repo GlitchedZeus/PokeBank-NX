@@ -15,8 +15,7 @@
       "VALID/INCOMPLETE": 1
     },
     "3": {
-      "INVALID/NOPROBLEMS": 1,
-      "INVALID/INVALID": 6,
+      "INVALID/INVALID": 7,
       "VALID/NOPROBLEMS": 15,
       "VALID/INCOMPLETE": 3
     },
@@ -236,8 +235,8 @@
       "conversion": "decoded native record",
       "host_cart_context": "E",
       "host_cart_custody": "assumed from origin; source save not supplied",
-      "nx": "NOPROBLEMS",
-      "production_line": "public-003 NOPROBLEMS - ;"
+      "nx": "INVALID",
+      "production_line": "public-003 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; PID bit 15 does not match the bred species gender"
     },
     {
       "id": "public-004",

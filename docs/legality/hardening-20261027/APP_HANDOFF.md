@@ -1,6 +1,6 @@
 # Application integration handoff to Claude
 
-Application snapshot: PR307 `d6cc878a9652b78a6cdfd8a31cdb5797172d6c9d`. Legality implementation checkpoint: PR314 `0a9ad2073b2ab678e5213b63b6fab60925e23172`. Both PRs remain draft, with their original bases. No PR307 source/branch, source save or Pokémon was modified. This is a reviewed-interface proposal and host boundary evidence, **not an integrated build or device acceptance**.
+Application snapshot: PR307 `d6cc878a9652b78a6cdfd8a31cdb5797172d6c9d`. Legality implementation checkpoint: PR314 `b517dc6192d6d73253edace07ffe7fe213f1fc13`. Both PRs remain draft, with their original bases. No PR307 source/branch, source save or Pokémon was modified. This is a reviewed-interface proposal and host boundary evidence, **not an integrated build or device acceptance**.
 
 ## Gen V boundary ready for selective integration
 

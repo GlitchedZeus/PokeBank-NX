@@ -1,11 +1,10 @@
 {
-  "engine_source_commit": "0a9ad2073b2ab678e5213b63b6fab60925e23172",
-  "local_affected_matrix": "GCC and Clang normal plus ASan/UBSan; leaks enabled, all28 executions passed",
-  "actual_app_boundary": "All4 compiler/profile runs passed84 cases against clean app d6cc878a",
-  "native_ev_replay": "All4 compiler/profile replays passed using unchanged pinned native bodies",
-  "native_nro_device": "Not built/deployed; toolchain unavailable and integration has13 unresolved conflicts",
-  "independent_human_review": "Not performed",
-  "source_manifest_sha256": "4b3d0c9b7bee78a9b040c1b731e3a3a337794564dd24afb7ada98bb033e7d669",
-  "ci": "See exact published-head live checks and separate downloaded CI artifacts; local results do not establish CI success.",
-  "public_census": "All105 native fixture files, all original Git blobs verified,0 errors; old75 subset preserved. Directory-independent selection regression PASS."
+  "engine_source_commit": "b517dc6192d6d73253edace07ffe7fe213f1fc13",
+  "local_affected_matrix": "GCC/Clang normal and ASan/UBSan, leaks enabled; all28 runs PASS",
+  "current_app_boundary": "All4 compiler/profile runs84 cases PASS at clean appd6cc878a",
+  "public_census": "All105 original files/Git blobs;0 errors; exactly one false clean repaired; before/after retained",
+  "native_ev_proof": "Unchanged source-pinned proof; four compiler/profiles passed earlier, current144 suite preserves candidate/negative",
+  "device_and_independent_review": "Not performed;13 integration conflicts remain",
+  "source_manifest_sha256": "925cd872a0556c7d86b9cc4d14a2b168e382b890841d1f4e584fbf74fd54945b",
+  "ci": "Exact final published head must pass live checks; separate verified artifacts bind head and compilers."
 }

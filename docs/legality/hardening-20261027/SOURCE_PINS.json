@@ -43,9 +43,9 @@
     "gcc_context": 247,
     "gcc_current_app_bridge": 84,
     "gcc_presentation": 59049,
-    "sanitizers": "Final GCC/Clang normal and leak-enabled ASan+UBSan seven-suite matrix PASS at engine0a9ad207.",
+    "sanitizers": "Final GCC/Clang normal/leak-enabled ASan+UBSan seven-suite matrix PASS at b517dc61",
     "ci": "Exact published-head CI must be verified independently from live checks and evidence artifact run/commit metadata.",
-    "gcc_release_rules": 140,
+    "gcc_release_rules": 144,
     "gcc_ranch_generated_states": 256,
     "gcc_gen4": {
       "cases": 249,
@@ -57,7 +57,9 @@
     },
     "native_ev_source_replay": "GCC/Clang normal and leak-enabled ASan+UBSan PASS; unchanged native EXP/EV bodies.",
     "berry_fix": "72 reference-model constructions; 30 clean and42 negative across formats3,4,5. No acquired specimen or original distribution binary authenticated.",
-    "current_app_bridge": "GCC/Clang normal and leak-enabled ASan+UBSan84 cases PASS against d6cc878a",
-    "public_census": "105 files,0 errors, original Git blobs verified; canonical stored-body comparisons, labelled GameCube conversions; original acquisition custody unauthenticated."
+    "current_app_bridge": "GCC/Clang normal/leak-enabled ASan+UBSan84 cases PASS at b517dc61 against d6cc878a",
+    "public_census": "105 files,0 errors, original Git blobs verified; canonical stored-body comparisons, labelled GameCube conversions; original acquisition custody unauthenticated.",
+    "engine_checkpoint": "b517dc6192d6d73253edace07ffe7fe213f1fc13",
+    "native_gen3_egg_source": "NATIVE_GEN3_EGG_SOURCE_PINS.json; existing PID rule now receives validated inheritance type."
   }
 }
