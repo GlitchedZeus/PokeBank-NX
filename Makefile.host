@@ -24,6 +24,8 @@ include Makefile.host.host-ui
 include Makefile.host.review-entry
 include Makefile.host.pkse-upstream
 include Makefile.host.multilingual
+include Makefile.host.pkse-october
+include Makefile.host.pkse-october-pid
 
 include Makefile.host.machine
 

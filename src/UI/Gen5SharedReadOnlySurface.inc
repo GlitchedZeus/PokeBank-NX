@@ -697,6 +697,11 @@ struct Gen5Editor {
             case PickerTarget::Move: return stage(screen, Field::Move, static_cast<size_t>(state.moveEditorSlot), value);
             case PickerTarget::Nature: return stage(screen, Field::Nature, 0, value);
             case PickerTarget::Ability: {
+                // The ability the record already stores: nothing to change, nothing staged.
+                if (const auto now = d.current(); now && Fields::abilityChoiceKeepsStored(*now, b2w2(screen), value)) {
+                    screen.postStatus("Ability unchanged", 180);
+                    return true;
+                }
                 auto probe = d;
                 std::string why;
                 if (!probe.stage(Field::AbilitySlot, 0, value, why)) {

@@ -1452,6 +1452,7 @@ int reviewGeneration(const std::string& gameId) {
 
     void TrainerViewScreen::snapshotEditTarget() {
         details.editSnapshot.clear();
+        details.unsavedChangesAtSnapshot = hasUnsavedChanges;
         if (const Pokemon::Pokemon* t = detailsTargetPokemon()) {
             const auto d = t->getData();
             details.editSnapshot.assign(d.begin(), d.end());
@@ -1480,6 +1481,9 @@ int reviewGeneration(const std::string& gameId) {
         if (d.size() != details.editSnapshot.size()) return;   // fixed PK buffer -> always equal; guard anyway
         std::copy(details.editSnapshot.begin(), details.editSnapshot.end(), d.begin());
         mirrorEditedPartyMember();
+        // Discarding the page's edits also discards their "unsaved changes" mark (PKSE 620c5f6):
+        // otherwise Leave still offered to save an unchanged save.
+        hasUnsavedChanges = details.unsavedChangesAtSnapshot;
     }
 
     void TrainerViewScreen::closeDetailsModal() {
@@ -3397,12 +3401,11 @@ int reviewGeneration(const std::string& gameId) {
                         int dataStatIndex = statIndexMap[statEdit.selectedStat];
 
                         // Apply IV always; apply AV for Let's Go, EV otherwise.
-                        bool ivEvModified = false;  // IV/EV changes want a PID refresh; AV doesn't
                         bool anyModified = false;
                         if (statEdit.currentIV != statEdit.originalIV) {
                             pokemon->setIV(dataStatIndex, statEdit.currentIV);
                             hasUnsavedChanges = true;
-                            ivEvModified = true; anyModified = true;
+                            anyModified = true;
                         }
                         if (usesAV) {
                             if (statEdit.currentAV != statEdit.originalAV) {
@@ -3413,13 +3416,12 @@ int reviewGeneration(const std::string& gameId) {
                         } else if (statEdit.currentEV != statEdit.originalEV) {
                             pokemon->setEV(dataStatIndex, static_cast<uint8_t>(statEdit.currentEV));
                             hasUnsavedChanges = true;
-                            ivEvModified = true; anyModified = true;
+                            anyModified = true;
                         }
 
-                        // Regenerate PID to maintain legality after IV/EV changes (AVs don't affect it).
-                        if (ivEvModified) {
-                            pokemon->regeneratePID(pokemon->id32());
-                        }
+                        // IVs and EVs are independent of the PID: an IV/EV edit never rerolls it
+                        // (PKSE 620c5f6). The old call re-keyed the record -- for Let's Go it
+                        // rewrote the encryption constant -- on every IV/EV change.
                         // If this is an LGPE party member, mirror the edit to its party copy so the
                         // save's party overlay doesn't clobber it.
                         if (anyModified) {

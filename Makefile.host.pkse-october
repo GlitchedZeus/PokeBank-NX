@@ -1,0 +1,82 @@
+# PKSE October 2026 upstream campaign (owner Oct 28): inherited-bug regressions and new features.
+# Included by Makefile.host after Makefile.host.multilingual.
+
+PLA_RESEARCH_SOURCES := tests/test_pla_research_counts.cpp src/Trainer/Trainer8LA.cpp src/Trainer/Trainer.cpp src/Encryption/Encryption8LA.cpp src/Encryption/Encryption.cpp src/Pokemon/Pokemon8LA.cpp src/Pokemon/PLADexTable.cpp src/Pokemon/PersonalInfoTable.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/Experience.cpp src/Save/Block.cpp src/Utils/SHA256.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/Logger.cpp src/Names/AbilityNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp src/Names/SpeciesNames.cpp src/Enums/SCTypeCode.cpp
+PKSE_OCTOBER_HOST_TESTS := $(HOST_BUILD)/test_pla_research_counts
+PKSE_OCTOBER_SANITIZE_TESTS := $(HOST_BUILD)/test_pla_research_counts_sanitize
+
+HOST_TESTS += $(PKSE_OCTOBER_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(PKSE_OCTOBER_SANITIZE_TESTS)
+host-test: $(PKSE_OCTOBER_HOST_TESTS)
+host-sanitize: $(PKSE_OCTOBER_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_pla_research_counts: $(PLA_RESEARCH_SOURCES) include/Trainer/Trainer8LA.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $(PLA_RESEARCH_SOURCES) -o $@
+$(HOST_BUILD)/test_pla_research_counts_sanitize: $(PLA_RESEARCH_SOURCES) include/Trainer/Trainer8LA.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $(PLA_RESEARCH_SOURCES) -o $@
+
+LGPE_BLANK_SOURCES := tests/test_lgpe_blank_slots.cpp src/Trainer/Trainer7LGPE.cpp src/Trainer/Trainer.cpp src/Encryption/Encryption7LGPE.cpp src/Encryption/Encryption.cpp src/Pokemon/Pokemon7LGPE.cpp  src/Pokemon/PersonalInfoTable.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/Experience.cpp src/Save/Block.cpp src/Utils/SHA256.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/Logger.cpp src/Names/AbilityNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp src/Names/SpeciesNames.cpp src/Enums/SCTypeCode.cpp src/Pokemon/BaseStatsGen7.cpp
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_lgpe_blank_slots
+PKSE_OCTOBER_SANITIZE_TESTS += $(HOST_BUILD)/test_lgpe_blank_slots_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_lgpe_blank_slots
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_lgpe_blank_slots_sanitize
+host-test: $(HOST_BUILD)/test_lgpe_blank_slots
+host-sanitize: $(HOST_BUILD)/test_lgpe_blank_slots_sanitize
+$(HOST_BUILD)/test_lgpe_blank_slots: $(LGPE_BLANK_SOURCES) include/Trainer/Trainer7LGPE.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $(LGPE_BLANK_SOURCES) -o $@
+$(HOST_BUILD)/test_lgpe_blank_slots_sanitize: $(LGPE_BLANK_SOURCES) include/Trainer/Trainer7LGPE.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $(LGPE_BLANK_SOURCES) -o $@
+
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_settings_file_parse
+HOST_TESTS += $(HOST_BUILD)/test_settings_file_parse
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_settings_file_parse_sanitize
+host-test: $(HOST_BUILD)/test_settings_file_parse
+host-sanitize: $(HOST_BUILD)/test_settings_file_parse_sanitize
+$(HOST_BUILD)/test_settings_file_parse: tests/test_settings_file_parse.cpp include/Utils/SettingsFile.h include/Utils/PokeBankPaths.h src/Utils/Settings.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_settings_file_parse.cpp -o $@
+$(HOST_BUILD)/test_settings_file_parse_sanitize: tests/test_settings_file_parse.cpp include/Utils/SettingsFile.h include/Utils/PokeBankPaths.h src/Utils/Settings.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_settings_file_parse.cpp -o $@
+
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_pkse_october_contracts
+HOST_TESTS += $(HOST_BUILD)/test_pkse_october_contracts
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pkse_october_contracts_sanitize
+host-test: $(HOST_BUILD)/test_pkse_october_contracts
+host-sanitize: $(HOST_BUILD)/test_pkse_october_contracts_sanitize
+$(HOST_BUILD)/test_pkse_october_contracts: tests/test_pkse_october_contracts.cpp src/UI/TrainerViewScreenBase.inc include/UI/TrainerViewScreenBase.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) tests/test_pkse_october_contracts.cpp -o $@
+$(HOST_BUILD)/test_pkse_october_contracts_sanitize: tests/test_pkse_october_contracts.cpp src/UI/TrainerViewScreenBase.inc include/UI/TrainerViewScreenBase.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) tests/test_pkse_october_contracts.cpp -o $@
+
+BULK_ITEM_PLAN_SOURCES := tests/test_bulk_item_plan.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_bulk_item_plan
+HOST_TESTS += $(HOST_BUILD)/test_bulk_item_plan
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_bulk_item_plan_sanitize
+host-test: $(HOST_BUILD)/test_bulk_item_plan
+host-sanitize: $(HOST_BUILD)/test_bulk_item_plan_sanitize
+$(HOST_BUILD)/test_bulk_item_plan: $(BULK_ITEM_PLAN_SOURCES) include/Inventory/BulkItemPlan.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(BULK_ITEM_PLAN_SOURCES) -o $@
+$(HOST_BUILD)/test_bulk_item_plan_sanitize: $(BULK_ITEM_PLAN_SOURCES) include/Inventory/BulkItemPlan.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(BULK_ITEM_PLAN_SOURCES) -o $@
+
+BULK_ITEM_APPLY_SOURCES := tests/test_bulk_item_apply.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp
+PKSE_OCTOBER_HOST_TESTS += $(HOST_BUILD)/test_bulk_item_apply
+HOST_TESTS += $(HOST_BUILD)/test_bulk_item_apply
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_bulk_item_apply_sanitize
+host-test: $(HOST_BUILD)/test_bulk_item_apply
+host-sanitize: $(HOST_BUILD)/test_bulk_item_apply_sanitize
+$(HOST_BUILD)/test_bulk_item_apply: $(BULK_ITEM_APPLY_SOURCES) include/Inventory/BulkItemPlan.h include/Inventory/BulkItemApply.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests $(BULK_ITEM_APPLY_SOURCES) -o $@
+$(HOST_BUILD)/test_bulk_item_apply_sanitize: $(BULK_ITEM_APPLY_SOURCES) include/Inventory/BulkItemPlan.h include/Inventory/BulkItemApply.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(BULK_ITEM_APPLY_SOURCES) -o $@

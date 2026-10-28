@@ -583,6 +583,20 @@ namespace Trainer {
         return progress;
     }
 
+    std::vector<uint64_t> Trainer8LA::storedMonKeys() const
+    {
+        std::vector<uint64_t> keys;
+        auto add = [&](const ::Pokemon::Pokemon* pk) {
+            if (pk && pk->speciesID() != 0)
+                keys.push_back((static_cast<uint64_t>(pk->speciesID()) << 32) | pk->encryptionConstant());
+        };
+        for (const auto& pk : party) add(pk.get());
+        for (const auto& box : boxes)
+            for (const auto& pk : box) add(pk.get());
+        std::sort(keys.begin(), keys.end());
+        return keys;
+    }
+
     void Trainer8LA::updatePokedexBlock()
     {
         std::vector<uint8_t>* dex = nullptr;
@@ -596,9 +610,22 @@ namespace Trainer {
             return;
         }
         size_t skippedNoEntry = 0;
+        // Every Pokemon the Zukan already accounted for is skipped exactly once: an unedited build,
+        // a box-to-box move or a re-build leaves research untouched, and only a Pokemon that is new
+        // since the save was read (or since the previous build) registers. Before this, every stored
+        // Pokemon was registered on every build, so "Number caught" grew by the stored count on each
+        // working-copy write and each true Move post-image (PKSE 9a9a731, upstream issue #135).
+        std::vector<uint64_t> alreadyRegistered = m_registeredMons;
 
         auto registerMon = [&](const ::Pokemon::Pokemon* pk) {
-            if (!pk || pk->isEgg()) return;
+            if (!pk || pk->speciesID() == 0) return;
+            const uint64_t key = (static_cast<uint64_t>(pk->speciesID()) << 32) | pk->encryptionConstant();
+            const auto known = std::lower_bound(alreadyRegistered.begin(), alreadyRegistered.end(), key);
+            if (known != alreadyRegistered.end() && *known == key) {
+                alreadyRegistered.erase(known);
+                return;
+            }
+            if (pk->isEgg()) return;
             const uint16_t species = pk->speciesID();
             if (species == 0 || species > ::Pokemon::PLA_MAX_SPECIES) return;
             const uint8_t form = pk->form();
@@ -684,6 +711,7 @@ namespace Trainer {
         for (const auto& pk : party) registerMon(pk.get());
         for (const auto& box : boxes)
             for (const auto& pk : box) registerMon(pk.get());
+        m_registeredMons = storedMonKeys();
 
         // Not an error -- many species+form pairs genuinely have no statistics slot -- but a sudden
         // jump here would mean the lookup table is wrong, and silence is how that hides.

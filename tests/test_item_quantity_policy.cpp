@@ -116,6 +116,11 @@ static void testGen1() {
         expectUnique(g, Pocket::KeyItems, 6, ItemKind::KeyItem);   // Bicycle
         for (uint16_t rod : {76, 77, 78}) expectUnique(g, Pocket::KeyItems, rod, ItemKind::KeyItem);
         expectUnique(g, Pocket::KeyItems, 45, ItemKind::KeyItem);  // Bike Voucher
+        // Exp. All (75) is an ordinary stackable item: pret pokered data/items/key_items.asm:77
+        // "dbit FALSE ; EXP_ALL" (171e2c2), PKHeX PlayerBag1 MaxCount 99. PKSE d2ad323 agrees.
+        expectStack(g, Pocket::Items, 75, 99, ItemKind::Regular);
+        expectStack(g, Pocket::PCItems, 75, 99, ItemKind::Regular);
+        expectRejected(g, Pocket::KeyItems, 75);
         expectUnique(g, Pocket::PCItems, 6, ItemKind::KeyItem);    // key item in the PC stays unique
         for (uint16_t hm = 196; hm <= 200; ++hm) {
             expectUnique(g, Pocket::TMHM, hm, ItemKind::HM);

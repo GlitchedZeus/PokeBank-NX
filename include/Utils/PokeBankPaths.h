@@ -117,6 +117,9 @@ inline bool isOwnedPath(std::string_view path) noexcept {
 }
 
 inline bool directoryExists(const std::string& path) noexcept {
+    // An empty path is not a directory (stat("") fails today, but never rely on it: a remembered
+    // folder that is blank must read as missing; PKSE c671aa4).
+    if (path.empty()) return false;
     struct stat st{};
     return ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }

@@ -1,4 +1,5 @@
 #include "Utils/Settings.h"
+#include "Utils/SettingsFile.h"
 #include "Utils/AtomicTextFile.h"
 
 #include <cstdio>
@@ -25,17 +26,24 @@ namespace Utils {
         FILE* f = fopen(settingsPath().c_str(), "r");
         if (!f) return;  // no config yet -> keep compiled-in defaults
 
-        char line[128];
-        while (fgets(line, sizeof(line), f)) {
-            // Trim the trailing newline / carriage return.
-            char* nl = strpbrk(line, "\r\n");
-            if (nl) *nl = '\0';
+        // Read the whole (bounded) file and parse it line by line, never in fixed-size chunks: a
+        // long line is handled whole, so its tail can never be read as another setting.
+        std::string text;
+        char chunk[512];
+        size_t got = 0;
+        while ((got = fread(chunk, 1, sizeof(chunk), f)) > 0) {
+            text.append(chunk, got);
+            if (text.size() > SettingsFile::kMaxFile) break;
+        }
+        fclose(f);
+        if (text.size() > SettingsFile::kMaxFile) {
+            logErrorToFile("Settings file is too large; defaults kept", settingsPath().c_str());
+            return;
+        }
 
-            char* eq = strchr(line, '=');
-            if (!eq) continue;
-            *eq = '\0';
-            const char* key = line;
-            const char* val = eq + 1;
+        for (const auto& entry : SettingsFile::parse(text)) {
+            const char* key = entry.key.c_str();
+            const char* val = entry.value.c_str();
 
             if (strcmp(key, "theme") == 0) {
                 UI::applyTheme(UI::themeModeFromKey(val));
@@ -56,7 +64,6 @@ namespace Utils {
                 g_debugLogging = (strcmp(val, "0") != 0);
             }
         }
-        fclose(f);
     }
 
     bool saveSettings() {

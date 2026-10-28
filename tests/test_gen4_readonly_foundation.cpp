@@ -1198,6 +1198,45 @@ void testNativeGen4Bag() {
         assert(trainer->items[kMachines][0].count==1 &&
                trainer->items[kMachines][1].count==99);
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // T-01 (PKSE 9a9a731 "real pouch capacity"; owner Oct 28). In every Gen IV pouch the
+        // native slot count is at least the number of distinct legal items, so a legal Add never
+        // meets a false "pouch full". Items: every legal item fits. Berries, where legal items equal
+        // the slots (64): the pouch fills completely, a further Add is refused, nothing changes,
+        // and the full pouch reparses.
+        bool reachedFull=false;
+        for(const size_t pocket:{kItems,static_cast<size_t>(Bag::Berries)}) {
+            const size_t slots=G4::bagLayout(layout)[pocket].slots;
+            // Entries the save already holds that are not legal new Adds stay as they are.
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            size_t kept=0;
+            for(const auto& it:trainer->items[pocket])kept+=G4::gen4BagItemAllowed(layout,pocket,it.itemId)?0:1;
+            size_t legal=0;
+            for(uint16_t id=1;id<1000;++id) {
+                if(!G4::gen4BagItemAllowed(layout,pocket,id))continue;
+                ++legal;
+                assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+                bool held=false;
+                for(const auto& it:trainer->items[pocket])held=held || it.itemId==id;
+                if(!held)assert(workspace->stageBagAdd(pocket,id,1,&error) && error.empty());
+            }
+            assert(legal+kept<=slots);
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            assert(trainer->items[pocket].size()==legal+kept);
+            if(legal+kept==slots) {
+                reachedFull=true;
+                const auto full=workspace->stagedBytes();
+                for(uint16_t id=1;id<1000;++id)
+                    if(G4::gen4BagItemAllowed(layout,pocket,id))
+                        assert(!workspace->stageBagAdd(pocket,id,1,&error));
+                assert(workspace->stagedBytes()==full);
+            }
+            const auto out=workspace->finalizedBytes(&error);
+            const auto reparsedFull=Gen4ReadOnlySave::parse(out,layout,game,&error);
+            const auto fullBag=reparsedFull?G4::decodeReadOnlyBag(*reparsedFull):std::nullopt;
+            assert(fullBag && (*fullBag)[pocket].size()==legal+kept);
+            assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        }
+        assert(reachedFull);
         // B04: the shared Gen I-V Bag Add flow (UI/SharedBagAddFlow.h) on the real Gen IV
         // writer: A stages a new item at x1 with no keypad, A on the row edits only an
         // editable stack up to the native cap, a held item focuses its stack, a unique Key

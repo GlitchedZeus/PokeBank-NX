@@ -1,3 +1,4 @@
+#include "Integration/Gen4/Gen4AbilityChoice.h"
 #include "UI/ReviewEntry.h"
 #include "Inventory/ItemQuantityPolicy.h"
 #include "UI/Gen4BagQuantity.h"
@@ -735,7 +736,8 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
     state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Ability;
     state.pickerValues = {0, 1};
-    state.pickerRow = state.session.working ? state.session.working->abilitySlot() : 0;
+    state.pickerRow = state.session.working
+        ? PokeVault::Integration::Gen4::abilityPickerRow(*state.session.working) : 0;
     screen.controllerNavigation.reset();
 }
 
@@ -790,7 +792,9 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
     } else if (target == PickerTarget::Nature) {
         ok = state.session.working->setNature(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::Ability) {
-        ok = state.session.working->setAbilitySlot(static_cast<uint8_t>(value));
+        // The ability the record already stores: nothing to change.
+        ok = PokeVault::Integration::Gen4::abilityChoiceKeepsStored(*state.session.working, static_cast<uint8_t>(value))
+            || state.session.working->setAbilitySlot(static_cast<uint8_t>(value));
     }
 
     if (!ok) {

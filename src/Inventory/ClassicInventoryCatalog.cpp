@@ -41,8 +41,10 @@ constexpr std::array<ClassicPocket, 6> kGen3Pockets{{
     ClassicPocket::TMHM, ClassicPocket::Berries, ClassicPocket::PCItems,
 }};
 
-constexpr std::array<uint16_t, 18> kG1Items{{
-    10,29,30,32,33,34,46,47,49,51,55,56,57,58,65,66,67,68,
+// Exp. All (75) is an ordinary item, not a key item: pret pokered data/items/key_items.asm:77
+// (171e2c2) "dbit FALSE ; EXP_ALL"; PKHeX PlayerBag1 stacks it to 99 (PKSE d2ad323 agrees).
+constexpr std::array<uint16_t, 19> kG1Items{{
+    10,29,30,32,33,34,46,47,49,51,55,56,57,58,65,66,67,68,75,
 }};
 // Id 50 is pokered's unused duplicate "PP UP" (the real PP Up is 79); PKHeX does not offer it,
 // so it is not addable here either.
@@ -50,8 +52,8 @@ constexpr std::array<uint16_t, 26> kG1Medicines{{
     11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,52,53,54,60,61,62,79,80,81,82,
 }};
 constexpr std::array<uint16_t, 4> kG1Balls{{1,2,3,4}};
-constexpr std::array<uint16_t, 20> kG1Keys{{
-    5,6,31,41,42,43,45,48,63,64,69,70,71,72,73,74,75,76,77,78,
+constexpr std::array<uint16_t, 19> kG1Keys{{
+    5,6,31,41,42,43,45,48,63,64,69,70,71,72,73,74,76,77,78,
 }};
 constexpr std::array<uint16_t, 55> kG1Machines{{
     196,197,198,199,200,

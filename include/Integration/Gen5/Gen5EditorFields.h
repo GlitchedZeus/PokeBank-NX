@@ -132,10 +132,23 @@ inline constexpr uint16_t kMaxSpecies = 649;
 [[nodiscard]] inline uint16_t abilitySlot(const Pokemon5ReadOnly& p) noexcept {
     return p.hiddenAbility() ? 2 : static_cast<uint16_t>(abilityBit5(p.pid()));
 }
-// The picker shows slot 1 for a single-ability species even when PID bit 16 is 1.
+// Choosing `slot` would leave the stored ability exactly as it is (same ability id, same hidden flag).
+[[nodiscard]] inline bool abilityChoiceKeepsStored(const Pokemon5ReadOnly& p, bool b2w2, uint16_t slot) {
+    const auto personal = personal5(p.species(), p.form(), b2w2);
+    return personal && slot <= 2 && abilityForSlot5(*personal.info, static_cast<uint8_t>(slot)) == p.ability() &&
+           (slot == 2) == p.hiddenAbility();
+}
+// The picker opens on the slot that holds the ability the record actually stores (the row shows it), so
+// accepting the preselection changes nothing even when the stored ability disagrees with the PID
+// (owner Oct 28 PID-route review: a stored slot-2 ability was rewritten to the PID's slot on A).
+// Otherwise the PID slot; slot 1 for a single-ability species even when PID bit 16 is 1.
 [[nodiscard]] inline uint16_t abilityChoiceFor(const Pokemon5ReadOnly& p, bool b2w2) {
-    const uint16_t slot = abilitySlot(p);
     const auto choices = abilityChoices(p, b2w2);
+    const uint16_t slot = abilitySlot(p);
+    if (std::find(choices.begin(), choices.end(), slot) != choices.end() && abilityChoiceKeepsStored(p, b2w2, slot))
+        return slot;
+    for (const uint16_t c : choices)
+        if (abilityChoiceKeepsStored(p, b2w2, c)) return c;
     return std::find(choices.begin(), choices.end(), slot) != choices.end() ? slot : 0;
 }
 

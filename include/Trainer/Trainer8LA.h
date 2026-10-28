@@ -118,6 +118,7 @@ namespace Trainer {
             for (const auto& block : this->blocks) {
                 parseBlock(block);
             }
+            m_registeredMons = storedMonKeys();
         }
 
         /// Destructor - cleanup handled by base class and unique_ptrs
@@ -209,6 +210,11 @@ namespace Trainer {
         size_t m_partySlotStride = SIZE_PARTY8_LA;  // packed: no gap between party slots
         size_t m_boxSlotStride   = SIZE_STORED8_LA;  // packed: no gap between box slots
         size_t m_slotGapZero     = 0;               // no gap bytes after mon data
+        // Pokemon already accounted for by the Zukan block: (species << 32 | encryption constant),
+        // sorted, one entry per stored Pokemon. Taken when the save is read and after each Zukan
+        // update, so a build registers only genuine new arrivals (PKSE 9a9a731, upstream #135).
+        std::vector<uint64_t> m_registeredMons;
+        std::vector<uint64_t> storedMonKeys() const;
         /**
          * Parses a single block to extract relevant data.
          * Called during construction for each block in the save file.

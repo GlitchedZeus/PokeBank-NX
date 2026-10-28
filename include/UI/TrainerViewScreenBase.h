@@ -461,6 +461,7 @@ namespace UI {
             SharedScrollbar::State ribbonScrollbar;      // draggable thumb: ribbon / mark overlay
             std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)
             std::vector<std::byte> editSnapshot;         // baseline bytes for the "Unsaved changes" marker + revert
+            bool unsavedChangesAtSnapshot = false;      // hasUnsavedChanges when the snapshot was taken
         };
         DetailsState details;
         // Creator: the Species picker was opened in "create a new mon" mode; where the built mon lands,
