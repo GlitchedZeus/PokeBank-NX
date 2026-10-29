@@ -1,0 +1,113 @@
+{
+  "policy": "Final functional source: GCC/Clang normal and ASan/UBSan,41 retained breeding fixtures and207 baseline cases plus2000 fuzz records per profile. Additional earlier40000-fuzz runs retained. Exact source recompile equalled final frozen binary after comment-only edits. Eight native BW2/HGSS source/compiler/profile replays,5000 necessary-order positive constructions and7 transport controls. Counts are not completeness.",
+  "logs": {
+    "V6_FINAL_clang_normal_joint.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Recipe target=16 generation=5 version=23 baby=16 father=16 mother=16 dad=17,97,0,0, mom=97,17,0,0, born=33,97,17,0,",
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "V6_FINAL_clang_sanitize_joint.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Recipe target=16 generation=5 version=23 baby=16 father=16 mother=16 dad=17,97,0,0, mom=97,17,0,0, born=33,97,17,0,",
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "V6_FINAL_gcc_normal_joint.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Recipe target=16 generation=5 version=23 baby=16 father=16 mother=16 dad=17,97,0,0, mom=97,17,0,0, born=33,97,17,0,",
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "V6_FINAL_gcc_sanitize_joint.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Recipe target=16 generation=5 version=23 baby=16 father=16 mother=16 dad=17,97,0,0, mom=97,17,0,0, born=33,97,17,0,",
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "V6_FINAL_clang_normal_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "V6_FINAL_clang_sanitize_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "V6_FINAL_gcc_normal_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "V6_FINAL_gcc_sanitize_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "BW2_FINAL_BODY_clang_normal.log": {
+      "sha256": "84bf06ea656af0d3aaf748255f15ffb7415e0373b5b47ce805a206927c481045",
+      "last_lines": [
+        "Published BW2 bodies:19999 random cases,child-learnset shared order,role permutations,Light Ball,explicit order control and cross-checked Pidgey birth PASS",
+        "Published source 9cb65bafa3e0198e6951a2fda6cc1c3470c67419 compiled body witness SHA256 24787b6e64d9f6998d65f5868b24520c9615eb68c6f8bccfe05ab11266e3229a"
+      ]
+    },
+    "BW2_FINAL_BODY_clang_sanitize.log": {
+      "sha256": "84bf06ea656af0d3aaf748255f15ffb7415e0373b5b47ce805a206927c481045",
+      "last_lines": [
+        "Published BW2 bodies:19999 random cases,child-learnset shared order,role permutations,Light Ball,explicit order control and cross-checked Pidgey birth PASS",
+        "Published source 9cb65bafa3e0198e6951a2fda6cc1c3470c67419 compiled body witness SHA256 24787b6e64d9f6998d65f5868b24520c9615eb68c6f8bccfe05ab11266e3229a"
+      ]
+    },
+    "BW2_FINAL_BODY_gcc_normal.log": {
+      "sha256": "84bf06ea656af0d3aaf748255f15ffb7415e0373b5b47ce805a206927c481045",
+      "last_lines": [
+        "Published BW2 bodies:19999 random cases,child-learnset shared order,role permutations,Light Ball,explicit order control and cross-checked Pidgey birth PASS",
+        "Published source 9cb65bafa3e0198e6951a2fda6cc1c3470c67419 compiled body witness SHA256 24787b6e64d9f6998d65f5868b24520c9615eb68c6f8bccfe05ab11266e3229a"
+      ]
+    },
+    "BW2_FINAL_BODY_gcc_sanitize.log": {
+      "sha256": "84bf06ea656af0d3aaf748255f15ffb7415e0373b5b47ce805a206927c481045",
+      "last_lines": [
+        "Published BW2 bodies:19999 random cases,child-learnset shared order,role permutations,Light Ball,explicit order control and cross-checked Pidgey birth PASS",
+        "Published source 9cb65bafa3e0198e6951a2fda6cc1c3470c67419 compiled body witness SHA256 24787b6e64d9f6998d65f5868b24520c9615eb68c6f8bccfe05ab11266e3229a"
+      ]
+    },
+    "HGSS_FINAL_BODY_clang_normal.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "last_lines": [
+        "Original HGSS birth bodies:20000 independent parent/order/pool comparisons; duplicate-slot and Light Ball controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled witness SHA256 aed2f61d2212d1f86c13b12e28e93410ad74e08d4e4b0da15237d79c863c8021"
+      ]
+    },
+    "HGSS_FINAL_BODY_clang_sanitize.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "last_lines": [
+        "Original HGSS birth bodies:20000 independent parent/order/pool comparisons; duplicate-slot and Light Ball controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled witness SHA256 aed2f61d2212d1f86c13b12e28e93410ad74e08d4e4b0da15237d79c863c8021"
+      ]
+    },
+    "HGSS_FINAL_BODY_gcc_normal.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "last_lines": [
+        "Original HGSS birth bodies:20000 independent parent/order/pool comparisons; duplicate-slot and Light Ball controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled witness SHA256 aed2f61d2212d1f86c13b12e28e93410ad74e08d4e4b0da15237d79c863c8021"
+      ]
+    },
+    "HGSS_FINAL_BODY_gcc_sanitize.log": {
+      "sha256": "a8362ac76efb22b00a40c832a6f8a699eae526dba2e0c4125210597a705ca5ce",
+      "last_lines": [
+        "Original HGSS birth bodies:20000 independent parent/order/pool comparisons; duplicate-slot and Light Ball controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled witness SHA256 aed2f61d2212d1f86c13b12e28e93410ad74e08d4e4b0da15237d79c863c8021"
+      ]
+    }
+  }
+}

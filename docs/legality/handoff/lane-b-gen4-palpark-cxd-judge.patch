@@ -1,0 +1,86 @@
+Lane A -> Lane B (Gen IV) handoff: route a Pal Park Colosseum/XD origin through Gen3Cxd::judge.
+
+Reference patch against lane A's branch (lane-a-gen3-cxd). It compiles (g++ -fsyntax-only)
+against that tree; lane B owns src/Legality/Gen4Legality.cpp and should adapt the hunk to its
+own branch. Build lists: tests/test_legality_gen4 already links Gen3Legality.cpp and
+Gen3LegalityDataCxd.cpp through GEN3_LEGALITY_CONTEXT_SOURCES (Makefile.host.base), so no
+Makefile change is needed for Gen IV. Title-matrix rows affected once wired:
+tests/test_legality_title_matrix.cpp:1775-1787 (Pal Park Colosseum Umbreon / Shadow Quilava
+expect the "not verified" Warning today).
+
+What the judge does and does not cover is in include/Legality/Gen3Cxd.h (contract) and
+docs/legality/GEN3_PKHEX_RULE_INVENTORY.md section 7.
+
+--- a/src/Legality/Gen4Legality.cpp
++++ b/src/Legality/Gen4Legality.cpp
+@@ -19,6 +19,7 @@
+  * (coverage stays partial) because the Orre encounter tables are not ported.
+  */
+ #include "Gen4LegalityInternal.h"
++#include "Legality/Gen3Cxd.h"
+ 
+ #include <algorithm>
+ #include <cstring>
+@@ -1660,14 +1661,56 @@
+         return r;
+     }
+     if (pk.version == 15) {
+-        // Colosseum/XD origin: the Orre encounter tables (shadow, XD wild/static, trades) are not ported.
+-        const char* name = Gen4::versionName(pk.version);
++        // Colosseum/XD origin: PKHeX's GameCube rules (EncounterGenerator3GC templates, shadow team
++        // locks, Poke Spot / starter / trainer-ID RNG, CXDVerifier, fateful, ball, National and
++        // Earth Ribbon, ability) on the fields Pal Park keeps (Legality/Gen3Cxd.h). The met level
++        // is the transfer level and the met location is Pal Park, so the judge runs with
++        // hasOriginalMet false (PKHeX Format != 3: location not compared, template level within
++        // the chain). The Gen IV moves are not the Gen III moves, so they are not handed over:
++        // verify them here from j.encounterSpecies / j.encounterLevel / j.encounterMoves with the
++        // Gen III learn sources (CXD learns as Emerald) plus the Gen IV ones, as for a GBA origin.
++        const Gen4::Personal pers = Gen4::personal(Gen4::Table::HGSS, pk.species, pk.form);
++        Gen3Cxd::Input in;
++        in.species = pk.species;
++        in.currentLevel = Gen4::levelFromExp(pk.exp, pers.expGrowth());
++        in.hasOriginalMet = false;
++        in.metLevel = pk.metLevel;
++        in.ball = pk.ball();
++        in.fateful = pk.fateful;
++        in.isEgg = pk.isEgg;
++        in.pid = pk.pid;
++        in.ivs = pk.ivs;
++        in.tid = pk.tid;
++        in.sid = pk.sid;
++        in.otGender = pk.otGender;
++        in.language = pk.language;
++        in.namesKnown = true;
++        in.ot = Gen4::otText(pk);
++        in.nickname = Gen4::nicknameText(pk);
++        in.isNicknamed = pk.isNicknamed;
++        in.ribbonsKnown = true;
++        in.ribbonNational = Gen4::rib(pk, Gen4::kNational);
++        in.ribbonEarth = Gen4::rib(pk, Gen4::kEarth);
++        in.abilityKnown = true;
++        in.abilityBit = (pers.ability1() != pers.ability2() && pk.ability == pers.ability2()) ? 1 : 0;
++        const Gen3Cxd::Result j = Gen3Cxd::judge(in);
++        // Undecided: a search guard was hit; its findings are not proven, so they stay Warnings.
++        const Severity sev = j.verdict == Gen3Cxd::Verdict::Invalid ? Severity::Invalid : Severity::Warning;
++        for (const auto& text : j.invalid)
++            r.issues.push_back(Issue{sev, "Colosseum/XD origin: " + text, CheckIdentifier::Encounter});
++        for (const auto& text : j.warnings)
++            r.issues.push_back(Issue{Severity::Warning, "Colosseum/XD origin: " + text, CheckIdentifier::Encounter});
++        if (j.verdict != Gen3Cxd::Verdict::Matched) {
++            r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
++            r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Partial;
++            return r;
++        }
++        // Matched: j.encounter names the template. TODO (lane B): run the Pal Park transfer rules,
++        // the Gen IV verifiers and the move check against the matched template here, and set the
++        // coverage the way a GBA-origin Pal Park record gets it; until then keep it Partial.
++        r.issues.push_back(Issue{Severity::Info, "Colosseum/XD origin matched " + j.encounter, CheckIdentifier::Encounter});
+         r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
+         r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Partial;
+-        r.issues.push_back(Issue{Severity::Warning,
+-                                 std::string("Pal Park transfer from ") + (name ? name : "a Gen III game") +
+-                                     ": the Colosseum/XD encounter is not verified",
+-                                 CheckIdentifier::Transfer});
+         return r;
+     }
+     if (!Gen4::isGen4Version(pk.version) && !Gen4::isGen3Version(pk.version)) {

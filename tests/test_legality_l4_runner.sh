@@ -93,9 +93,56 @@ echo "L4 Ranger native storage field contract (196861 exhaustive cases)"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_ranger_storage_ball.cpp \
     -o "$scratch/l4_ranger_storage_ball"
 "$scratch/l4_ranger_storage_ball"
-# Gen I native source-linked gift/trade provenance tests (not whole legality).
-echo "L4 new Gen I native provenance fixtures"
-for fixture in legality_l4_gen1_preflight legality_l4_gen1_npc_metadata legality_l4_gen1_individual_chain legality_l4_gen1_original_native legality_l4_gen1_raw_record_witness; do
+# Original historical manifest tags are untrusted data. Exercise every raw
+# generation/action byte and permitted route combination independently of
+# the 28 registered C++ suites.
+echo "L4 C++ historical domain compile: 70,144 boundary cases"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_historical_domain.cpp \
+    -o "$scratch/l4_historical_domain"
+"$scratch/l4_historical_domain"
+# Stage 2: one archive-origin family is not equivalent to a received gift.
+# Exercise source digests, exact edition proof, original font evidence,
+# Stadium/PCNY distribution and Time Capsule histories before all 28 suites.
+echo "L4 Stage 2 original Gen I/II distribution join: 786432 source masks"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage2_gen12_join.cpp \
+    -o "$scratch/l4_stage2_gen12_join"
+"$scratch/l4_stage2_gen12_join"
+# Gen IV Stage 4 original-card, recipient-save, receipt and Ranger gating.
+# Supplement to the unchanged 28 registered suites; no CI bypass.
+echo "L4 Stage 4 original PCD/PGT recipient evidence"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage4_card_recipient.cpp \
+    -o "$scratch/l4_stage4_card_recipient"
+"$scratch/l4_stage4_card_recipient"
+# Stage 5: hash-bound original-to-current records, native field domains,
+# independent intermediate snapshots, Pal Park and Time Capsule proofs.
+# Adds a standalone fixture without altering the 28 registered suites.
+echo "L4 Stage 5 original-to-current bounded lineage"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage5_original_current_chain.cpp \
+    -o "$scratch/l4_stage5_original_current_chain"
+"$scratch/l4_stage5_original_current_chain"
+# Stage 6: fail-closed, source-specific redistribution and L5 research pins.
+# This fixture does not license any retail payload or global legality.
+echo "L4 Stage 6 Q07/Q08 research versus copyright/receipt boundary"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage6_rights_boundary.cpp \
+    -o "$scratch/l4_stage6_rights_boundary"
+"$scratch/l4_stage6_rights_boundary"
+# Final L4 Stage 7 gate: independently link original source archive,
+# original PKM, each historical record and the final native observation.
+# A rights/research match never grants global legality or payload copying.
+echo "L4 Stage 7 complete candidate-local PK1-PK4 provenance gate"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage7_final_provenance.cpp \
+    -o "$scratch/l4_stage7_final_provenance"
+"$scratch/l4_stage7_final_provenance"
+# L4 Gen V/VI Phase A: PKHeX-layout PGF, WC6/WC6Full, source receipt,
+# restriction witness and egg-ball boundaries. No duplicate PK5 decoder.
+echo "L4 Phase A Gen V/VI PGF/WC6 gift projection and receipt evidence"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_gen56_gift_source.cpp \
+    -o "$scratch/l4_gen56_gift_source"
+"$scratch/l4_gen56_gift_source"
+# L4 Gen I (English R/B/Y) source-linked event, NPC exchange, name and
+# Time Capsule catch-rate evidence. Not L1 encounter-table ownership.
+echo "L4 Gen I original game source and native record checks"
+for fixture in legality_l4_gen1_preflight legality_l4_gen1_npc_metadata legality_l4_gen1_individual_chain legality_l4_gen1_raw_record_witness legality_l4_gen1_original_native; do
     "$compiler" "${base[@]}" "tests/fixtures/$fixture.cpp" -o "$scratch/$fixture"
     "$scratch/$fixture"
 done

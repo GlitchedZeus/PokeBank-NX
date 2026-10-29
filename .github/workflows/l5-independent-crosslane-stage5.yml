@@ -1,0 +1,122 @@
+name: L5 Stage 5 Four-Lane Adversarial Gate
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      - 'claude/gen1-5-legality-**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  four-real-lanes:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: f7138ad95ed1e0cccab283d51e5ba87502bb3f79
+          path: _l5_stage5_l1
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 110372b2a877c41881eb5466392684d378b4a90d
+          path: _l5_stage5_l2
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2bf58df8033e045e0d4483a3900617ff61b350ea
+          path: _l5_stage5_l3
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 28fa55a9e56b9de7a40137b73199dd9051c53552
+          path: _l5_stage5_l4
+          persist-credentials: false
+      - name: Verify no branch-head substitution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C _l5_stage5_l1 rev-parse HEAD)" = "f7138ad95ed1e0cccab283d51e5ba87502bb3f79"
+          test "$(git -C _l5_stage5_l2 rev-parse HEAD)" = "110372b2a877c41881eb5466392684d378b4a90d"
+          test "$(git -C _l5_stage5_l3 rev-parse HEAD)" = "2bf58df8033e045e0d4483a3900617ff61b350ea"
+          test "$(git -C _l5_stage5_l4 rev-parse HEAD)" = "28fa55a9e56b9de7a40137b73199dd9051c53552"
+          git diff --check
+      - name: Run fail-closed output manipulation controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage5_crosslane.py --self-test
+      - name: Execute exact audit-owned crosslane ledger, dual compilers and sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage5_crosslane.py --timeout 900 \
+            --output /tmp/l5-stage5-ledger.json
+      - name: Execute four actual independently pinned L1-L4 headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage5_crosslane.py --full --timeout 900 \
+            --l1-root _l5_stage5_l1 \
+            --l2-root _l5_stage5_l2 \
+            --l3-root _l5_stage5_l3 \
+            --l4-root _l5_stage5_l4 \
+            --output /tmp/l5-stage5-four-lanes.json
+          python3 - <<'PY'
+          import json
+          local=json.load(open('/tmp/l5-stage5-ledger.json'))
+          actual=json.load(open('/tmp/l5-stage5-four-lanes.json'))
+          assert local['independent_audit_ledger_executed']
+          assert not local['actual_four_sibling_headers_executed']
+          assert actual['actual_four_sibling_headers_executed']
+          assert len(actual['source_blobs_verified'])==5
+          assert len(actual['runs'])==4
+          assert all(x['status']=='PASS' for x in actual['runs'])
+          assert actual['globally_invalid_conclusions']==0
+          assert actual['authenticated_original_retail_receipts']==0
+          assert not actual['release_approved']
+          PY
+      - name: Execute the same four lane headers from this exact integrated checkout
+        # The pinned lane checkouts above prove what L5 audited; on the
+        # integration branch the headers that ship are the ones in this tree.
+        # The tool pins each header blob, so drift here fails closed.
+        if: startsWith(github.ref, 'refs/heads/claude/gen1-5-legality-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage5_crosslane.py --full --timeout 900 \
+            --l1-root . --l2-root . --l3-root . --l4-root . \
+            --output /tmp/l5-stage5-four-lanes-exact-head.json
+          python3 - <<'PY'
+          import json
+          actual=json.load(open('/tmp/l5-stage5-four-lanes-exact-head.json'))
+          assert actual['actual_four_sibling_headers_executed']
+          assert len(actual['source_blobs_verified'])==5
+          assert len(actual['runs'])==4
+          assert all(x['status']=='PASS' for x in actual['runs'])
+          assert actual['globally_invalid_conclusions']==0
+          assert actual['authenticated_original_retail_receipts']==0
+          assert not actual['release_approved']
+          PY
+      - name: Preserve original and sibling sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
+          for lane in _l5_stage5_l1 _l5_stage5_l2 _l5_stage5_l3 _l5_stage5_l4; do
+            test -z "$(git -C "$lane" status --porcelain --untracked-files=no)"
+          done

@@ -1,0 +1,2188 @@
+{
+  "policy": "Observed fixed-corpus rates only, never semantic completeness. No exception removed. Gen I/II source-title applicability unmeasured. Gen V game is record origin, not save identity. Older Gen V and GB oracle did not expose Fishy, so non-Fishy metrics remain unmeasured. Synthetic specimens do not authenticate historical events.",
+  "corpora": {
+    "gen1-development": {
+      "generation": 1,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "4582e98eba14106f9c00224b022cc555b497e5dcc562316bcb06a0acbad9ed7b",
+          "bytes": 2439463
+        },
+        "pokebank.txt": {
+          "sha256": "84cd6d43c00834f57e564a616b093a39e9c42aa3cf114a82abc88f8b118e5777",
+          "bytes": 3835479
+        }
+      },
+      "all": {
+        "records": 50000,
+        "cross_table": {
+          "INVALID/INCOMPLETE": 1788,
+          "INVALID/INVALID": 11444,
+          "INVALID/NOPROBLEMS": 1,
+          "VALID/INCOMPLETE": 373,
+          "VALID/INVALID": 249,
+          "VALID/NOPROBLEMS": 36145
+        },
+        "invalid_detection": {
+          "numerator": 11444,
+          "denominator": 13233,
+          "percent": 86.48076777752588
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 36145,
+          "denominator": 36767,
+          "percent": 98.30826556422879
+        },
+        "valid_non_fishy_certification": null,
+        "binary_exact_verdict_agreement": {
+          "numerator": 47589,
+          "denominator": 50000,
+          "percent": 95.178
+        },
+        "three_state_agreement": null,
+        "incomplete": 2161,
+        "raw_false_invalid": 249,
+        "raw_false_clean": 1,
+        "loadfail": 0,
+        "unresolved_or_differing": 2411,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "native-format-no-source-title": {
+          "records": 50000,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1788,
+            "INVALID/INVALID": 11444,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/INCOMPLETE": 373,
+            "VALID/INVALID": 249,
+            "VALID/NOPROBLEMS": 36145
+          },
+          "invalid_detection": {
+            "numerator": 11444,
+            "denominator": 13233,
+            "percent": 86.48076777752588
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 36145,
+            "denominator": 36767,
+            "percent": 98.30826556422879
+          },
+          "valid_non_fishy_certification": null,
+          "binary_exact_verdict_agreement": {
+            "numerator": 47589,
+            "denominator": 50000,
+            "percent": 95.178
+          },
+          "three_state_agreement": null,
+          "incomplete": 2161,
+          "raw_false_invalid": 249,
+          "raw_false_clean": 1,
+          "loadfail": 0,
+          "unresolved_or_differing": 2411,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    },
+    "gen2-holdout": {
+      "generation": 2,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "fadc0414c5992924b9593942b3be9a326080caa9f3e8f7ea701a16917bbcae28",
+          "bytes": 2681416
+        },
+        "pokebank.txt": {
+          "sha256": "4a171ef25a046dd9aafe17f216b77b6ad46650e4151886a9c6122ccbe6b08f5e",
+          "bytes": 4246570
+        }
+      },
+      "all": {
+        "records": 50000,
+        "cross_table": {
+          "INVALID/INCOMPLETE": 1200,
+          "INVALID/INVALID": 13518,
+          "INVALID/NOPROBLEMS": 37,
+          "VALID/INCOMPLETE": 334,
+          "VALID/INVALID": 340,
+          "VALID/NOPROBLEMS": 34571
+        },
+        "invalid_detection": {
+          "numerator": 13518,
+          "denominator": 14755,
+          "percent": 91.61640121992545
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 34571,
+          "denominator": 35245,
+          "percent": 98.08767201021422
+        },
+        "valid_non_fishy_certification": null,
+        "binary_exact_verdict_agreement": {
+          "numerator": 48089,
+          "denominator": 50000,
+          "percent": 96.178
+        },
+        "three_state_agreement": null,
+        "incomplete": 1534,
+        "raw_false_invalid": 340,
+        "raw_false_clean": 37,
+        "loadfail": 0,
+        "unresolved_or_differing": 1911,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "native-format-no-source-title": {
+          "records": 50000,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1200,
+            "INVALID/INVALID": 13518,
+            "INVALID/NOPROBLEMS": 37,
+            "VALID/INCOMPLETE": 334,
+            "VALID/INVALID": 340,
+            "VALID/NOPROBLEMS": 34571
+          },
+          "invalid_detection": {
+            "numerator": 13518,
+            "denominator": 14755,
+            "percent": 91.61640121992545
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 34571,
+            "denominator": 35245,
+            "percent": 98.08767201021422
+          },
+          "valid_non_fishy_certification": null,
+          "binary_exact_verdict_agreement": {
+            "numerator": 48089,
+            "denominator": 50000,
+            "percent": 96.178
+          },
+          "three_state_agreement": null,
+          "incomplete": 1534,
+          "raw_false_invalid": 340,
+          "raw_false_clean": 37,
+          "loadfail": 0,
+          "unresolved_or_differing": 1911,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    },
+    "gen3-holdout": {
+      "generation": 3,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "c2546ad695a9ee300f344f79f0ca86e557fa8b65da0d5e3d30e804e9be6dcd5a",
+          "bytes": 7483771
+        },
+        "pokebank.txt": {
+          "sha256": "2feeda33ff161ad3b04d81838dc12c1864e8f0d7ed60b7a6c49b70f6ec3111c4",
+          "bytes": 4250159
+        }
+      },
+      "all": {
+        "records": 32756,
+        "cross_table": {
+          "INVALID/INCOMPLETE": 5,
+          "INVALID/INVALID": 16520,
+          "VALID/INCOMPLETE": 645,
+          "VALID/NOPROBLEMS": 15586
+        },
+        "invalid_detection": {
+          "numerator": 16520,
+          "denominator": 16525,
+          "percent": 99.9697428139183
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 15586,
+          "denominator": 16231,
+          "percent": 96.02612285133387
+        },
+        "valid_non_fishy_certification": {
+          "numerator": 15323,
+          "denominator": 15325,
+          "percent": 99.98694942903752
+        },
+        "binary_exact_verdict_agreement": {
+          "numerator": 32106,
+          "denominator": 32756,
+          "percent": 98.01563072414214
+        },
+        "three_state_agreement": {
+          "numerator": 32486,
+          "denominator": 32756,
+          "percent": 99.17572353156673
+        },
+        "incomplete": 650,
+        "raw_false_invalid": 0,
+        "raw_false_clean": 0,
+        "loadfail": 0,
+        "unresolved_or_differing": 650,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "E": {
+          "records": 6288,
+          "cross_table": {
+            "INVALID/INVALID": 3129,
+            "VALID/INCOMPLETE": 99,
+            "VALID/NOPROBLEMS": 3060
+          },
+          "invalid_detection": {
+            "numerator": 3129,
+            "denominator": 3129,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 3060,
+            "denominator": 3159,
+            "percent": 96.86609686609687
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 2983,
+            "denominator": 2983,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 6189,
+            "denominator": 6288,
+            "percent": 98.42557251908397
+          },
+          "three_state_agreement": {
+            "numerator": 6211,
+            "denominator": 6288,
+            "percent": 98.77544529262086
+          },
+          "incomplete": 99,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 99,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "FR": {
+          "records": 6928,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 3491,
+            "VALID/INCOMPLETE": 144,
+            "VALID/NOPROBLEMS": 3292
+          },
+          "invalid_detection": {
+            "numerator": 3491,
+            "denominator": 3492,
+            "percent": 99.97136311569301
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 3292,
+            "denominator": 3436,
+            "percent": 95.80908032596042
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 3251,
+            "denominator": 3252,
+            "percent": 99.96924969249693
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 6783,
+            "denominator": 6928,
+            "percent": 97.90704387990762
+          },
+          "three_state_agreement": {
+            "numerator": 6885,
+            "denominator": 6928,
+            "percent": 99.37933025404158
+          },
+          "incomplete": 145,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 145,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "LG": {
+          "records": 6904,
+          "cross_table": {
+            "INVALID/INVALID": 3472,
+            "VALID/INCOMPLETE": 150,
+            "VALID/NOPROBLEMS": 3282
+          },
+          "invalid_detection": {
+            "numerator": 3472,
+            "denominator": 3472,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 3282,
+            "denominator": 3432,
+            "percent": 95.62937062937063
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 3243,
+            "denominator": 3244,
+            "percent": 99.9691738594328
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 6754,
+            "denominator": 6904,
+            "percent": 97.82734646581692
+          },
+          "three_state_agreement": {
+            "numerator": 6864,
+            "denominator": 6904,
+            "percent": 99.42062572421784
+          },
+          "incomplete": 150,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 150,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "R": {
+          "records": 6544,
+          "cross_table": {
+            "INVALID/INVALID": 3326,
+            "VALID/INCOMPLETE": 129,
+            "VALID/NOPROBLEMS": 3089
+          },
+          "invalid_detection": {
+            "numerator": 3326,
+            "denominator": 3326,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 3089,
+            "denominator": 3218,
+            "percent": 95.99129894344313
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 3026,
+            "denominator": 3026,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 6415,
+            "denominator": 6544,
+            "percent": 98.02872860635696
+          },
+          "three_state_agreement": {
+            "numerator": 6481,
+            "denominator": 6544,
+            "percent": 99.03728606356968
+          },
+          "incomplete": 129,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 129,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "S": {
+          "records": 6092,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 4,
+            "INVALID/INVALID": 3102,
+            "VALID/INCOMPLETE": 123,
+            "VALID/NOPROBLEMS": 2863
+          },
+          "invalid_detection": {
+            "numerator": 3102,
+            "denominator": 3106,
+            "percent": 99.87121699935608
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 2863,
+            "denominator": 2986,
+            "percent": 95.88077695914266
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 2820,
+            "denominator": 2820,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 5965,
+            "denominator": 6092,
+            "percent": 97.91529875246225
+          },
+          "three_state_agreement": {
+            "numerator": 6045,
+            "denominator": 6092,
+            "percent": 99.2284963887065
+          },
+          "incomplete": 127,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 127,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    },
+    "gen4-holdout": {
+      "generation": 4,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "135ea52c0ba6ae383f6825d85ff540d9c99505c16c0866ecf149f5034e5c4e6a",
+          "bytes": 17541640
+        },
+        "pokebank.txt": {
+          "sha256": "8e2a4dcf7cf2cb7bacb97d3a55c0d187fe6b8d5bcd1d246db6ce2b830a060099",
+          "bytes": 7710834
+        }
+      },
+      "all": {
+        "records": 50995,
+        "cross_table": {
+          "INVALID/INVALID": 27770,
+          "VALID/INCOMPLETE": 659,
+          "VALID/INVALID": 45,
+          "VALID/NOPROBLEMS": 22521
+        },
+        "invalid_detection": {
+          "numerator": 27770,
+          "denominator": 27770,
+          "percent": 100.0
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 22521,
+          "denominator": 23225,
+          "percent": 96.96878363832077
+        },
+        "valid_non_fishy_certification": {
+          "numerator": 22122,
+          "denominator": 22826,
+          "percent": 96.9157977744677
+        },
+        "binary_exact_verdict_agreement": {
+          "numerator": 50291,
+          "denominator": 50995,
+          "percent": 98.61947249730366
+        },
+        "three_state_agreement": {
+          "numerator": 49892,
+          "denominator": 50995,
+          "percent": 97.83704284733797
+        },
+        "incomplete": 659,
+        "raw_false_invalid": 45,
+        "raw_false_clean": 0,
+        "loadfail": 0,
+        "unresolved_or_differing": 704,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "D": {
+          "records": 9036,
+          "cross_table": {
+            "INVALID/INVALID": 4847,
+            "VALID/INCOMPLETE": 112,
+            "VALID/INVALID": 12,
+            "VALID/NOPROBLEMS": 4065
+          },
+          "invalid_detection": {
+            "numerator": 4847,
+            "denominator": 4847,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 4065,
+            "denominator": 4189,
+            "percent": 97.03986631654332
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 3998,
+            "denominator": 4122,
+            "percent": 96.99175157690442
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 8912,
+            "denominator": 9036,
+            "percent": 98.62771137671535
+          },
+          "three_state_agreement": {
+            "numerator": 8845,
+            "denominator": 9036,
+            "percent": 97.8862328463922
+          },
+          "incomplete": 112,
+          "raw_false_invalid": 12,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 124,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "HG": {
+          "records": 12411,
+          "cross_table": {
+            "INVALID/INVALID": 6905,
+            "VALID/INCOMPLETE": 153,
+            "VALID/NOPROBLEMS": 5353
+          },
+          "invalid_detection": {
+            "numerator": 6905,
+            "denominator": 6905,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 5353,
+            "denominator": 5506,
+            "percent": 97.2212132219397
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 5267,
+            "denominator": 5420,
+            "percent": 97.17712177121771
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 12258,
+            "denominator": 12411,
+            "percent": 98.76722262509064
+          },
+          "three_state_agreement": {
+            "numerator": 12172,
+            "denominator": 12411,
+            "percent": 98.0742889372331
+          },
+          "incomplete": 153,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 153,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "P": {
+          "records": 8712,
+          "cross_table": {
+            "INVALID/INVALID": 4632,
+            "VALID/INCOMPLETE": 107,
+            "VALID/INVALID": 18,
+            "VALID/NOPROBLEMS": 3955
+          },
+          "invalid_detection": {
+            "numerator": 4632,
+            "denominator": 4632,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 3955,
+            "denominator": 4080,
+            "percent": 96.93627450980392
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 3879,
+            "denominator": 4004,
+            "percent": 96.87812187812187
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 8587,
+            "denominator": 8712,
+            "percent": 98.5651974288338
+          },
+          "three_state_agreement": {
+            "numerator": 8511,
+            "denominator": 8712,
+            "percent": 97.69283746556474
+          },
+          "incomplete": 107,
+          "raw_false_invalid": 18,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 125,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "Pt": {
+          "records": 8521,
+          "cross_table": {
+            "INVALID/INVALID": 4539,
+            "VALID/INCOMPLETE": 108,
+            "VALID/INVALID": 15,
+            "VALID/NOPROBLEMS": 3859
+          },
+          "invalid_detection": {
+            "numerator": 4539,
+            "denominator": 4539,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 3859,
+            "denominator": 3982,
+            "percent": 96.91109994977398
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 3789,
+            "denominator": 3912,
+            "percent": 96.8558282208589
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 8398,
+            "denominator": 8521,
+            "percent": 98.55650745217697
+          },
+          "three_state_agreement": {
+            "numerator": 8328,
+            "denominator": 8521,
+            "percent": 97.73500762821266
+          },
+          "incomplete": 108,
+          "raw_false_invalid": 15,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 123,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "SS": {
+          "records": 12315,
+          "cross_table": {
+            "INVALID/INVALID": 6847,
+            "VALID/INCOMPLETE": 179,
+            "VALID/NOPROBLEMS": 5289
+          },
+          "invalid_detection": {
+            "numerator": 6847,
+            "denominator": 6847,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 5289,
+            "denominator": 5468,
+            "percent": 96.72640819312363
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 5189,
+            "denominator": 5368,
+            "percent": 96.66542473919523
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 12136,
+            "denominator": 12315,
+            "percent": 98.5464880227365
+          },
+          "three_state_agreement": {
+            "numerator": 12036,
+            "denominator": 12315,
+            "percent": 97.73447015834348
+          },
+          "incomplete": 179,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 179,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    },
+    "gen5-holdout": {
+      "generation": 5,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "225b59713defbbb21c9f9393882f5c6e414428fa7760f672ae0e531986d9c7e9",
+          "bytes": 48864908
+        },
+        "pokebank.txt": {
+          "sha256": "c1823e5785b54ca34dc241aec8a7131808bd3c1b62f59eb09cc4562fb668f1bf",
+          "bytes": 10680161
+        }
+      },
+      "all": {
+        "records": 135193,
+        "cross_table": {
+          "INVALID/INCOMPLETE": 307,
+          "INVALID/INVALID": 72410,
+          "VALID/INCOMPLETE": 456,
+          "VALID/NOPROBLEMS": 62020
+        },
+        "invalid_detection": {
+          "numerator": 72410,
+          "denominator": 72717,
+          "percent": 99.57781536642051
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 62020,
+          "denominator": 62476,
+          "percent": 99.27011972597478
+        },
+        "valid_non_fishy_certification": {
+          "numerator": 47730,
+          "denominator": 47747,
+          "percent": 99.96439566883784
+        },
+        "binary_exact_verdict_agreement": {
+          "numerator": 134430,
+          "denominator": 135193,
+          "percent": 99.43562166680228
+        },
+        "three_state_agreement": {
+          "numerator": 120579,
+          "denominator": 135193,
+          "percent": 89.19026872693112
+        },
+        "incomplete": 763,
+        "raw_false_invalid": 0,
+        "raw_false_clean": 0,
+        "loadfail": 0,
+        "unresolved_or_differing": 763,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "B": {
+          "records": 21291,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 90,
+            "INVALID/INVALID": 11573,
+            "VALID/INCOMPLETE": 3,
+            "VALID/NOPROBLEMS": 9625
+          },
+          "invalid_detection": {
+            "numerator": 11573,
+            "denominator": 11663,
+            "percent": 99.22832890336963
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 9625,
+            "denominator": 9628,
+            "percent": 99.96884088076443
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 8151,
+            "denominator": 8154,
+            "percent": 99.96320824135394
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 21198,
+            "denominator": 21291,
+            "percent": 99.56319571649993
+          },
+          "three_state_agreement": {
+            "numerator": 19724,
+            "denominator": 21291,
+            "percent": 92.64008266403644
+          },
+          "incomplete": 93,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 93,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "B2": {
+          "records": 25500,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 75,
+            "INVALID/INVALID": 13495,
+            "VALID/INCOMPLETE": 6,
+            "VALID/NOPROBLEMS": 11924
+          },
+          "invalid_detection": {
+            "numerator": 13495,
+            "denominator": 13570,
+            "percent": 99.4473102431835
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 11924,
+            "denominator": 11930,
+            "percent": 99.94970662196144
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 9941,
+            "denominator": 9947,
+            "percent": 99.93968030561979
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 25419,
+            "denominator": 25500,
+            "percent": 99.68235294117648
+          },
+          "three_state_agreement": {
+            "numerator": 23436,
+            "denominator": 25500,
+            "percent": 91.90588235294118
+          },
+          "incomplete": 81,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 81,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "CXD": {
+          "records": 1470,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 3,
+            "INVALID/INVALID": 958,
+            "VALID/INCOMPLETE": 45,
+            "VALID/NOPROBLEMS": 464
+          },
+          "invalid_detection": {
+            "numerator": 958,
+            "denominator": 961,
+            "percent": 99.68782518210197
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 464,
+            "denominator": 509,
+            "percent": 91.15913555992141
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 407,
+            "denominator": 407,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 1422,
+            "denominator": 1470,
+            "percent": 96.73469387755102
+          },
+          "three_state_agreement": {
+            "numerator": 1410,
+            "denominator": 1470,
+            "percent": 95.91836734693878
+          },
+          "incomplete": 48,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 48,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "D": {
+          "records": 5661,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 3035,
+            "VALID/NOPROBLEMS": 2625
+          },
+          "invalid_detection": {
+            "numerator": 3035,
+            "denominator": 3036,
+            "percent": 99.96706192358366
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 2625,
+            "denominator": 2625,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1789,
+            "denominator": 1789,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 5660,
+            "denominator": 5661,
+            "percent": 99.98233527645293
+          },
+          "three_state_agreement": {
+            "numerator": 4824,
+            "denominator": 5661,
+            "percent": 85.21462639109699
+          },
+          "incomplete": 1,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 1,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "E": {
+          "records": 3619,
+          "cross_table": {
+            "INVALID/INVALID": 1889,
+            "VALID/INCOMPLETE": 1,
+            "VALID/NOPROBLEMS": 1729
+          },
+          "invalid_detection": {
+            "numerator": 1889,
+            "denominator": 1889,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 1729,
+            "denominator": 1730,
+            "percent": 99.94219653179191
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1018,
+            "denominator": 1018,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 3618,
+            "denominator": 3619,
+            "percent": 99.97236805747444
+          },
+          "three_state_agreement": {
+            "numerator": 2908,
+            "denominator": 3619,
+            "percent": 80.35368886432717
+          },
+          "incomplete": 1,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 1,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "FR": {
+          "records": 3622,
+          "cross_table": {
+            "INVALID/INVALID": 1857,
+            "VALID/INCOMPLETE": 7,
+            "VALID/NOPROBLEMS": 1758
+          },
+          "invalid_detection": {
+            "numerator": 1857,
+            "denominator": 1857,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 1758,
+            "denominator": 1765,
+            "percent": 99.60339943342777
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1014,
+            "denominator": 1014,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 3615,
+            "denominator": 3622,
+            "percent": 99.80673660960795
+          },
+          "three_state_agreement": {
+            "numerator": 2878,
+            "denominator": 3622,
+            "percent": 79.45886250690226
+          },
+          "incomplete": 7,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 7,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "HG": {
+          "records": 5567,
+          "cross_table": {
+            "INVALID/INVALID": 2830,
+            "VALID/NOPROBLEMS": 2737
+          },
+          "invalid_detection": {
+            "numerator": 2830,
+            "denominator": 2830,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 2737,
+            "denominator": 2737,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1617,
+            "denominator": 1617,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 5567,
+            "denominator": 5567,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 4447,
+            "denominator": 5567,
+            "percent": 79.88144422489671
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "LG": {
+          "records": 3200,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 1536,
+            "VALID/INCOMPLETE": 8,
+            "VALID/NOPROBLEMS": 1655
+          },
+          "invalid_detection": {
+            "numerator": 1536,
+            "denominator": 1537,
+            "percent": 99.93493819128172
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 1655,
+            "denominator": 1663,
+            "percent": 99.5189416716777
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1013,
+            "denominator": 1013,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 3191,
+            "denominator": 3200,
+            "percent": 99.71875
+          },
+          "three_state_agreement": {
+            "numerator": 2557,
+            "denominator": 3200,
+            "percent": 79.90625
+          },
+          "incomplete": 9,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 9,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "P": {
+          "records": 5278,
+          "cross_table": {
+            "INVALID/INVALID": 2725,
+            "VALID/NOPROBLEMS": 2553
+          },
+          "invalid_detection": {
+            "numerator": 2725,
+            "denominator": 2725,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 2553,
+            "denominator": 2553,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1732,
+            "denominator": 1732,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 5278,
+            "denominator": 5278,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 4457,
+            "denominator": 5278,
+            "percent": 84.44486547934824
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "Pt": {
+          "records": 5718,
+          "cross_table": {
+            "INVALID/INVALID": 3035,
+            "VALID/NOPROBLEMS": 2683
+          },
+          "invalid_detection": {
+            "numerator": 3035,
+            "denominator": 3035,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 2683,
+            "denominator": 2683,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1748,
+            "denominator": 1748,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 5718,
+            "denominator": 5718,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 4783,
+            "denominator": 5718,
+            "percent": 83.64812871633438
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "R": {
+          "records": 3763,
+          "cross_table": {
+            "INVALID/INVALID": 2027,
+            "VALID/INCOMPLETE": 198,
+            "VALID/NOPROBLEMS": 1538
+          },
+          "invalid_detection": {
+            "numerator": 2027,
+            "denominator": 2027,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 1538,
+            "denominator": 1736,
+            "percent": 88.59447004608295
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1043,
+            "denominator": 1043,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 3565,
+            "denominator": 3763,
+            "percent": 94.7382407653468
+          },
+          "three_state_agreement": {
+            "numerator": 3268,
+            "denominator": 3763,
+            "percent": 86.84560191336699
+          },
+          "incomplete": 198,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 198,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "S": {
+          "records": 3108,
+          "cross_table": {
+            "INVALID/INVALID": 1847,
+            "VALID/INCOMPLETE": 173,
+            "VALID/NOPROBLEMS": 1088
+          },
+          "invalid_detection": {
+            "numerator": 1847,
+            "denominator": 1847,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 1088,
+            "denominator": 1261,
+            "percent": 86.28072957969866
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 722,
+            "denominator": 722,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 2935,
+            "denominator": 3108,
+            "percent": 94.43371943371943
+          },
+          "three_state_agreement": {
+            "numerator": 2742,
+            "denominator": 3108,
+            "percent": 88.22393822393822
+          },
+          "incomplete": 173,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 173,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "SS": {
+          "records": 5209,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 2721,
+            "VALID/NOPROBLEMS": 2487
+          },
+          "invalid_detection": {
+            "numerator": 2721,
+            "denominator": 2722,
+            "percent": 99.96326230712711
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 2487,
+            "denominator": 2487,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 1458,
+            "denominator": 1458,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 5208,
+            "denominator": 5209,
+            "percent": 99.98080245728546
+          },
+          "three_state_agreement": {
+            "numerator": 4179,
+            "denominator": 5209,
+            "percent": 80.22653100403149
+          },
+          "incomplete": 1,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 1,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "W": {
+          "records": 18515,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 61,
+            "INVALID/INVALID": 10266,
+            "VALID/INCOMPLETE": 7,
+            "VALID/NOPROBLEMS": 8181
+          },
+          "invalid_detection": {
+            "numerator": 10266,
+            "denominator": 10327,
+            "percent": 99.40931538685001
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 8181,
+            "denominator": 8188,
+            "percent": 99.91450903761603
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 6894,
+            "denominator": 6898,
+            "percent": 99.94201217744273
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 18447,
+            "denominator": 18515,
+            "percent": 99.63273021874156
+          },
+          "three_state_agreement": {
+            "numerator": 17163,
+            "denominator": 18515,
+            "percent": 92.69781258439103
+          },
+          "incomplete": 68,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 68,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "W2": {
+          "records": 23672,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 75,
+            "INVALID/INVALID": 12616,
+            "VALID/INCOMPLETE": 8,
+            "VALID/NOPROBLEMS": 10973
+          },
+          "invalid_detection": {
+            "numerator": 12616,
+            "denominator": 12691,
+            "percent": 99.40903002127492
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 10973,
+            "denominator": 10981,
+            "percent": 99.92714689008287
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 9183,
+            "denominator": 9187,
+            "percent": 99.95646021552193
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 23589,
+            "denominator": 23672,
+            "percent": 99.64937478878
+          },
+          "three_state_agreement": {
+            "numerator": 21803,
+            "denominator": 23672,
+            "percent": 92.10459614734708
+          },
+          "incomplete": 83,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 83,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    },
+    "gen5-adversarial": {
+      "generation": 5,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "e0744eddde6e0efe074d8324eaf98b002a3e37c1a7c3f810c16ed72c4ec37209",
+          "bytes": 11836698
+        },
+        "pokebank.txt": {
+          "sha256": "382789f11214cc24d75cd4f59aa7258f04e411b0db893dd58e5cba20f59f1f1b",
+          "bytes": 5219841
+        }
+      },
+      "all": {
+        "records": 27053,
+        "cross_table": {
+          "INVALID/INCOMPLETE": 178,
+          "INVALID/INVALID": 25205,
+          "VALID/INCOMPLETE": 21,
+          "VALID/NOPROBLEMS": 1649
+        },
+        "invalid_detection": {
+          "numerator": 25205,
+          "denominator": 25383,
+          "percent": 99.29874325335855
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 1649,
+          "denominator": 1670,
+          "percent": 98.74251497005989
+        },
+        "valid_non_fishy_certification": {
+          "numerator": 1080,
+          "denominator": 1082,
+          "percent": 99.81515711645102
+        },
+        "binary_exact_verdict_agreement": {
+          "numerator": 26854,
+          "denominator": 27053,
+          "percent": 99.26440690496433
+        },
+        "three_state_agreement": {
+          "numerator": 26304,
+          "denominator": 27053,
+          "percent": 97.23136066240343
+        },
+        "incomplete": 199,
+        "raw_false_invalid": 0,
+        "raw_false_clean": 0,
+        "loadfail": 0,
+        "unresolved_or_differing": 199,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "B": {
+          "records": 4246,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 51,
+            "INVALID/INVALID": 3915,
+            "VALID/INCOMPLETE": 1,
+            "VALID/NOPROBLEMS": 279
+          },
+          "invalid_detection": {
+            "numerator": 3915,
+            "denominator": 3966,
+            "percent": 98.71406959152799
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 279,
+            "denominator": 280,
+            "percent": 99.64285714285714
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 196,
+            "denominator": 197,
+            "percent": 99.49238578680203
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 4194,
+            "denominator": 4246,
+            "percent": 98.77531794630241
+          },
+          "three_state_agreement": {
+            "numerator": 4111,
+            "denominator": 4246,
+            "percent": 96.82053697597739
+          },
+          "incomplete": 52,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 52,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "B2": {
+          "records": 5030,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 45,
+            "INVALID/INVALID": 4638,
+            "VALID/INCOMPLETE": 1,
+            "VALID/NOPROBLEMS": 346
+          },
+          "invalid_detection": {
+            "numerator": 4638,
+            "denominator": 4683,
+            "percent": 99.03907751441383
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 346,
+            "denominator": 347,
+            "percent": 99.71181556195965
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 258,
+            "denominator": 259,
+            "percent": 99.61389961389962
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 4984,
+            "denominator": 5030,
+            "percent": 99.0854870775348
+          },
+          "three_state_agreement": {
+            "numerator": 4896,
+            "denominator": 5030,
+            "percent": 97.33598409542743
+          },
+          "incomplete": 46,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 46,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "CXD": {
+          "records": 393,
+          "cross_table": {
+            "INVALID/INVALID": 382,
+            "VALID/INCOMPLETE": 1,
+            "VALID/NOPROBLEMS": 10
+          },
+          "invalid_detection": {
+            "numerator": 382,
+            "denominator": 382,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 10,
+            "denominator": 11,
+            "percent": 90.9090909090909
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 9,
+            "denominator": 9,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 392,
+            "denominator": 393,
+            "percent": 99.74554707379134
+          },
+          "three_state_agreement": {
+            "numerator": 392,
+            "denominator": 393,
+            "percent": 99.74554707379134
+          },
+          "incomplete": 1,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 1,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "D": {
+          "records": 1193,
+          "cross_table": {
+            "INVALID/INVALID": 1135,
+            "VALID/NOPROBLEMS": 58
+          },
+          "invalid_detection": {
+            "numerator": 1135,
+            "denominator": 1135,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 58,
+            "denominator": 58,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 32,
+            "denominator": 32,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 1193,
+            "denominator": 1193,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 1167,
+            "denominator": 1193,
+            "percent": 97.82062028499581
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "E": {
+          "records": 782,
+          "cross_table": {
+            "INVALID/INVALID": 748,
+            "VALID/NOPROBLEMS": 34
+          },
+          "invalid_detection": {
+            "numerator": 748,
+            "denominator": 748,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 34,
+            "denominator": 34,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 17,
+            "denominator": 17,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 782,
+            "denominator": 782,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 765,
+            "denominator": 782,
+            "percent": 97.82608695652173
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "FR": {
+          "records": 802,
+          "cross_table": {
+            "INVALID/INVALID": 743,
+            "VALID/NOPROBLEMS": 59
+          },
+          "invalid_detection": {
+            "numerator": 743,
+            "denominator": 743,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 59,
+            "denominator": 59,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 28,
+            "denominator": 28,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 802,
+            "denominator": 802,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 771,
+            "denominator": 802,
+            "percent": 96.13466334164589
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "HG": {
+          "records": 1036,
+          "cross_table": {
+            "INVALID/INVALID": 969,
+            "VALID/NOPROBLEMS": 67
+          },
+          "invalid_detection": {
+            "numerator": 969,
+            "denominator": 969,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 67,
+            "denominator": 67,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 28,
+            "denominator": 28,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 1036,
+            "denominator": 1036,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 997,
+            "denominator": 1036,
+            "percent": 96.23552123552123
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "LG": {
+          "records": 606,
+          "cross_table": {
+            "INVALID/INVALID": 566,
+            "VALID/NOPROBLEMS": 40
+          },
+          "invalid_detection": {
+            "numerator": 566,
+            "denominator": 566,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 40,
+            "denominator": 40,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 21,
+            "denominator": 21,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 606,
+            "denominator": 606,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 587,
+            "denominator": 606,
+            "percent": 96.86468646864687
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "P": {
+          "records": 984,
+          "cross_table": {
+            "INVALID/INVALID": 923,
+            "VALID/NOPROBLEMS": 61
+          },
+          "invalid_detection": {
+            "numerator": 923,
+            "denominator": 923,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 61,
+            "denominator": 61,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 38,
+            "denominator": 38,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 984,
+            "denominator": 984,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 961,
+            "denominator": 984,
+            "percent": 97.66260162601625
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "Pt": {
+          "records": 1187,
+          "cross_table": {
+            "INVALID/INVALID": 1128,
+            "VALID/NOPROBLEMS": 59
+          },
+          "invalid_detection": {
+            "numerator": 1128,
+            "denominator": 1128,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 59,
+            "denominator": 59,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 32,
+            "denominator": 32,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 1187,
+            "denominator": 1187,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 1160,
+            "denominator": 1187,
+            "percent": 97.72535804549284
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "R": {
+          "records": 713,
+          "cross_table": {
+            "INVALID/INVALID": 671,
+            "VALID/INCOMPLETE": 11,
+            "VALID/NOPROBLEMS": 31
+          },
+          "invalid_detection": {
+            "numerator": 671,
+            "denominator": 671,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 31,
+            "denominator": 42,
+            "percent": 73.80952380952381
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 14,
+            "denominator": 14,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 702,
+            "denominator": 713,
+            "percent": 98.45722300140253
+          },
+          "three_state_agreement": {
+            "numerator": 696,
+            "denominator": 713,
+            "percent": 97.61570827489481
+          },
+          "incomplete": 11,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 11,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "S": {
+          "records": 691,
+          "cross_table": {
+            "INVALID/INVALID": 665,
+            "VALID/INCOMPLETE": 4,
+            "VALID/NOPROBLEMS": 22
+          },
+          "invalid_detection": {
+            "numerator": 665,
+            "denominator": 665,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 22,
+            "denominator": 26,
+            "percent": 84.61538461538461
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 12,
+            "denominator": 12,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 687,
+            "denominator": 691,
+            "percent": 99.42112879884226
+          },
+          "three_state_agreement": {
+            "numerator": 681,
+            "denominator": 691,
+            "percent": 98.55282199710564
+          },
+          "incomplete": 4,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 4,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "SS": {
+          "records": 980,
+          "cross_table": {
+            "INVALID/INVALID": 922,
+            "VALID/NOPROBLEMS": 58
+          },
+          "invalid_detection": {
+            "numerator": 922,
+            "denominator": 922,
+            "percent": 100.0
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 58,
+            "denominator": 58,
+            "percent": 100.0
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 36,
+            "denominator": 36,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 980,
+            "denominator": 980,
+            "percent": 100.0
+          },
+          "three_state_agreement": {
+            "numerator": 958,
+            "denominator": 980,
+            "percent": 97.75510204081633
+          },
+          "incomplete": 0,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 0,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "W": {
+          "records": 3688,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 32,
+            "INVALID/INVALID": 3411,
+            "VALID/INCOMPLETE": 2,
+            "VALID/NOPROBLEMS": 243
+          },
+          "invalid_detection": {
+            "numerator": 3411,
+            "denominator": 3443,
+            "percent": 99.070577984316
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 243,
+            "denominator": 245,
+            "percent": 99.18367346938776
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 168,
+            "denominator": 168,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 3654,
+            "denominator": 3688,
+            "percent": 99.07809110629067
+          },
+          "three_state_agreement": {
+            "numerator": 3581,
+            "denominator": 3688,
+            "percent": 97.09869848156183
+          },
+          "incomplete": 34,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 34,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        },
+        "W2": {
+          "records": 4722,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 50,
+            "INVALID/INVALID": 4389,
+            "VALID/INCOMPLETE": 1,
+            "VALID/NOPROBLEMS": 282
+          },
+          "invalid_detection": {
+            "numerator": 4389,
+            "denominator": 4439,
+            "percent": 98.87362018472629
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 282,
+            "denominator": 283,
+            "percent": 99.64664310954063
+          },
+          "valid_non_fishy_certification": {
+            "numerator": 191,
+            "denominator": 191,
+            "percent": 100.0
+          },
+          "binary_exact_verdict_agreement": {
+            "numerator": 4671,
+            "denominator": 4722,
+            "percent": 98.91994917407878
+          },
+          "three_state_agreement": {
+            "numerator": 4581,
+            "denominator": 4722,
+            "percent": 97.01397712833545
+          },
+          "incomplete": 51,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "loadfail": 0,
+          "unresolved_or_differing": 51,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    },
+    "gen2-upstream-drift": {
+      "generation": 2,
+      "files": {
+        "pkhex.txt": {
+          "sha256": "99d520852e4c83c2c2179bdc85cfcdae516f7907822e01c61c806ec5801150fc",
+          "bytes": 415178
+        },
+        "pokebank.txt": {
+          "sha256": "5a53ea6c21558f676e112b02eb31ad8febd63968d75a99e60dcc8a8cfce18eeb",
+          "bytes": 712629
+        }
+      },
+      "all": {
+        "records": 10000,
+        "cross_table": {
+          "INVALID/INCOMPLETE": 343,
+          "INVALID/INVALID": 874,
+          "INVALID/NOPROBLEMS": 48,
+          "VALID/INCOMPLETE": 212,
+          "VALID/INVALID": 67,
+          "VALID/NOPROBLEMS": 8456
+        },
+        "invalid_detection": {
+          "numerator": 874,
+          "denominator": 1265,
+          "percent": 69.0909090909091
+        },
+        "valid_certification_including_fishy": {
+          "numerator": 8456,
+          "denominator": 8735,
+          "percent": 96.80595306239267
+        },
+        "valid_non_fishy_certification": null,
+        "binary_exact_verdict_agreement": {
+          "numerator": 9330,
+          "denominator": 10000,
+          "percent": 93.3
+        },
+        "three_state_agreement": null,
+        "incomplete": 555,
+        "raw_false_invalid": 67,
+        "raw_false_clean": 48,
+        "loadfail": 0,
+        "unresolved_or_differing": 670,
+        "rule_coverage": null,
+        "production_wired_rule_coverage": null,
+        "historical_provenance": null,
+        "original_source_evidence": null
+      },
+      "by_game_or_origin": {
+        "native-format-no-source-title": {
+          "records": 10000,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 343,
+            "INVALID/INVALID": 874,
+            "INVALID/NOPROBLEMS": 48,
+            "VALID/INCOMPLETE": 212,
+            "VALID/INVALID": 67,
+            "VALID/NOPROBLEMS": 8456
+          },
+          "invalid_detection": {
+            "numerator": 874,
+            "denominator": 1265,
+            "percent": 69.0909090909091
+          },
+          "valid_certification_including_fishy": {
+            "numerator": 8456,
+            "denominator": 8735,
+            "percent": 96.80595306239267
+          },
+          "valid_non_fishy_certification": null,
+          "binary_exact_verdict_agreement": {
+            "numerator": 9330,
+            "denominator": 10000,
+            "percent": 93.3
+          },
+          "three_state_agreement": null,
+          "incomplete": 555,
+          "raw_false_invalid": 67,
+          "raw_false_clean": 48,
+          "loadfail": 0,
+          "unresolved_or_differing": 670,
+          "rule_coverage": null,
+          "production_wired_rule_coverage": null,
+          "historical_provenance": null,
+          "original_source_evidence": null
+        }
+      }
+    }
+  }
+}

@@ -21,7 +21,7 @@ NATIVE = "tests/fixtures/legality_l5_native_codec_adversarial.cpp"
 CRYPT3 = "src/Encryption/Encryption3FRLG.cpp"
 CRYPT4 = "src/Encryption/Encryption4.cpp"
 PINS = {
-    CRYPT3: "eec27b73a15d6652371ed2e066690ef0fa9fb7ef",
+    CRYPT3: "133efded16f335220238d465d618c61ed57b2a9f",
     CRYPT4: "406935761713db95ae738398b65ba0a37d4cf97b",
 }
 EXPECTED = {

@@ -1,0 +1,62 @@
+name: L6 Codex Native Safety Matrix
+
+on:
+  push:
+    branches:
+      - audit/legality-integration-hardening-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      - 'claude/gen1-5-legality-**'
+  workflow_dispatch:
+
+concurrency:
+  group: l6-native-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: L6 native format GCC/Clang ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+
+      - name: Verify branch and exact commit identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git symbolic-ref --short HEAD 2>/dev/null || echo detached)" != main
+          git diff --check HEAD^ HEAD
+          echo "L6_HEAD=$GITHUB_SHA"
+          echo "L6_TREE=$(git rev-parse 'HEAD^{tree}')"
+
+      - name: Compile and execute full native PK1–PK4 format properties
+        shell: bash
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_stage2_native_formats.py --compiler "${{ matrix.compiler }}" \
+            --json-out "l6-native-${{ matrix.compiler }}.json"
+          python3 -c 'import json,sys; x=json.load(open(sys.argv[1])); assert len(x["runs"])==2 and all(r["status"]=="PASS" and r["checks"]==2297 for r in x["runs"])' \
+            "l6-native-${{ matrix.compiler }}.json"
+
+      - name: Attach exact-head native format evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l6-native-${{ matrix.compiler }}-${{ github.sha }}
+          path: l6-native-${{ matrix.compiler }}.json
+          if-no-files-found: ignore
+          retention-days: 14

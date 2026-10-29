@@ -69,6 +69,25 @@ int main(){
     auto less=P::evaluate(true,g4,now,source,std::array{fullPark});
     assert((less.contradicted&P::OriginalBall)==0);
   }
+  // Unrecognized manifest tags have no documented historical mechanics.
+  // Do not treat them as same-generation no-op witnesses.
+  s=source;s.originalGeneration=g4;
+  P::Step unknownAction{static_cast<P::Action>(255),g4,g4,true,0,{}};
+  const auto invalidStep=P::evaluate(true,g4,original,s,std::array{unknownAction});
+  assert(invalidStep.status==P::Status::UnknownHistoricalTransformation);
+  assert(invalidStep.contradicted==0 && !invalidStep.authenticated);
+  auto invalidSource=s;
+  invalidSource.originalGeneration=static_cast<P::Generation>(255);
+  assert(P::evaluate(true,static_cast<P::Generation>(255),original,
+                     invalidSource).status==P::Status::UnknownOriginalSource);
+  assert(P::evaluate(true,static_cast<P::Generation>(255),original,
+                     s).status==P::Status::UnknownRoute);
+  // Gen I predates held items and breeding; Gen II adds both systems.
+  const auto g1=P::Generation::I, g2=P::Generation::II;
+  assert(!P::routePermitted(g1,g1,P::Action::Hatch));
+  assert(!P::routePermitted(g1,g1,P::Action::ItemChange));
+  assert(P::routePermitted(g2,g2,P::Action::Hatch));
+  assert(P::routePermitted(g2,g2,P::Action::ItemChange));
   // Chronology: 16 maximal steps, 17 steps Unknown rather than overflow.
   std::array<P::Step,17> trades{};
   for(auto& t:trades)t={P::Action::Trade,g4,g4,true,0,{}};

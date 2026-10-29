@@ -1,0 +1,27 @@
+{
+  "app_head": "c3b0ac4812ef9d584de5d74109189c3ac897fe24",
+  "files": {
+    "src/UI/Modals/PokemonDetailsModal.cpp": {
+      "before_sha256": "3fd67730ea5777dd6cf01940fca28533f5d13b8d851e93b4fde17bdc6a12ee65",
+      "after_sha256": "888a9e32baa922339f193d16c0d0a8b5ce17473ba4e2b069f30c72807d723d5d"
+    },
+    "src/UI/TrainerViewScreenBase.inc": {
+      "before_sha256": "eb36ccfa3c964baa4d2edac8407eac90b0714fec901ae406a0ed4686da01a10d",
+      "after_sha256": "056bf0da1f0f948c02cd9835a45f97069c92c864ebca8f17b39062c510670db1"
+    },
+    "src/UI/Gen5SharedReadOnlySurface.inc": {
+      "before_sha256": "8b901602a8d12f7eeec0906e977162f180d47c9ca0b5da1fdffff9ed98c0c419",
+      "after_sha256": "625b14b8caec49062ee2af751dea68fba091271d324c822c3e5e347a9cb89591"
+    },
+    "include/Legacy/FRLGReadOnlyTrainer.h": {
+      "before_sha256": "51ffb0a1380c67a04a0f131f4f2cde734122c3949dc4e38519713cb8bd79bd33",
+      "after_sha256": "d7894eee832121e90f3886701bdf4a7c0a2d49e7658cdfa722dbadf0c098e4b3"
+    },
+    "src/Legacy/FRLGReadOnlyTrainer.cpp": {
+      "before_sha256": "b8716c1774e21dcb8854739d6826a425bbf128cf9338b1ae1de69e7e6fdfe69d",
+      "after_sha256": "e33c1c115ff5cb84df74c48834e0523d6ce0f74eef0667e45d6ecc14b57f9b5e"
+    }
+  },
+  "requires": "Selectively import the reviewed legality engine and Gen5WorkspaceAdapter/ReportPresentation first. Never merge the whole campaign blindly.",
+  "native_build": "Not run in this environment; hardware rendering pending."
+}

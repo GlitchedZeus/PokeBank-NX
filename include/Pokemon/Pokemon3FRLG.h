@@ -30,9 +30,20 @@ namespace Pokemon {
     class Pokemon3FRLG final : public Pokemon {
     public:
         explicit Pokemon3FRLG(std::span<const std::byte> raw) {
-            buffer = Encryption::decryptArray3FRLG(raw);   // decrypt + un-shuffle to canonical G/A/E/M
-            dataSize = raw.size();
-            data = std::span<std::byte>(buffer, dataSize);
+            inputSize_ = raw.size();
+            if (sizeValid()) {
+                dataSize = inputSize_;
+                buffer = Encryption::decryptArray3FRLG(raw); // decrypt + un-shuffle to canonical G/A/E/M
+                data = std::span<std::byte>(buffer, dataSize);
+            } else {
+                // The codec accepts arbitrary spans as a byte-preserving transport
+                // primitive.  This semantic adapter does not: quarantine every
+                // non-PK3 length behind a fixed, zeroed party-sized buffer. This
+                // makes malformed input bounded even when its source span is huge.
+                dataSize = 0;
+                buffer = new std::byte[Encryption::SIZE_PARTY3_FRLG]();
+                data = std::span<std::byte>(buffer, Encryption::SIZE_PARTY3_FRLG);
+            }
         }
         ~Pokemon3FRLG() override = default;
         Pokemon3FRLG(const Pokemon3FRLG&) = delete;
@@ -41,6 +52,11 @@ namespace Pokemon {
         Pokemon3FRLG& operator=(Pokemon3FRLG&&) noexcept = default;
 
         std::unique_ptr<Pokemon> clone() const override {
+            if (!sizeValid()) {
+                // There is no safe entity payload to duplicate. Callers that need
+                // raw malformed bytes must keep them at the transport boundary.
+                return nullptr;
+            }
             std::byte* enc = Encryption::encryptArray3FRLG(std::span<const std::byte>(data.data(), dataSize));
             auto c = std::make_unique<Pokemon3FRLG>(std::span<const std::byte>(enc, dataSize));
             c->setSaveLanguage(saveLanguage); // egg OT charset is save context, not encoded in PK3 bytes
@@ -50,13 +66,42 @@ namespace Pokemon {
 
         Enums::GameVersion getGameGroup() const noexcept override { return Enums::GameVersion::FRLG; }
 
+        [[nodiscard]] bool sizeValid() const noexcept {
+            return Encryption::validRecordSize3FRLG(inputSize_);
+        }
+        [[nodiscard]] size_t inputSize() const noexcept { return inputSize_; }
+
         // ---- byte helpers (canonical, decrypted buffer) ----
-        uint8_t  rd8(size_t o)  const noexcept { return static_cast<uint8_t>(data[o]); }
-        uint16_t rd16(size_t o) const noexcept { return static_cast<uint16_t>(rd8(o)) | (static_cast<uint16_t>(rd8(o + 1)) << 8); }
-        uint32_t rd32(size_t o) const noexcept { return static_cast<uint32_t>(rd16(o)) | (static_cast<uint32_t>(rd16(o + 2)) << 16); }
-        void wr8(size_t o, uint8_t v)  noexcept { data[o] = static_cast<std::byte>(v); }
-        void wr16(size_t o, uint16_t v) noexcept { wr8(o, static_cast<uint8_t>(v)); wr8(o + 1, static_cast<uint8_t>(v >> 8)); }
-        void wr32(size_t o, uint32_t v) noexcept { wr16(o, static_cast<uint16_t>(v)); wr16(o + 2, static_cast<uint16_t>(v >> 16)); }
+        uint8_t  rd8(size_t o)  const noexcept {
+            return sizeValid() && o < data.size() ? static_cast<uint8_t>(data[o]) : 0;
+        }
+        // Validate a whole field without overflowing size_t. In particular,
+        // SIZE_MAX must never wrap into the PID header, and a multi-byte write
+        // crossing a box/party boundary must not partially change the record.
+        [[nodiscard]] bool fieldFits(size_t o, size_t width) const noexcept {
+            return sizeValid() && o <= data.size() && width <= data.size() - o;
+        }
+        uint16_t rd16(size_t o) const noexcept {
+            if (!fieldFits(o, 2)) return 0;
+            return static_cast<uint16_t>(rd8(o)) | (static_cast<uint16_t>(rd8(o + 1)) << 8);
+        }
+        uint32_t rd32(size_t o) const noexcept {
+            if (!fieldFits(o, 4)) return 0;
+            return static_cast<uint32_t>(rd16(o)) | (static_cast<uint32_t>(rd16(o + 2)) << 16);
+        }
+        void wr8(size_t o, uint8_t v) noexcept {
+            if (sizeValid() && o < data.size()) data[o] = static_cast<std::byte>(v);
+        }
+        void wr16(size_t o, uint16_t v) noexcept {
+            if (!fieldFits(o, 2)) return;
+            wr8(o, static_cast<uint8_t>(v));
+            wr8(o + 1, static_cast<uint8_t>(v >> 8));
+        }
+        void wr32(size_t o, uint32_t v) noexcept {
+            if (!fieldFits(o, 4)) return;
+            wr16(o, static_cast<uint16_t>(v));
+            wr16(o + 2, static_cast<uint16_t>(v >> 16));
+        }
 
         // ---- core identity ----
         uint32_t pid() const noexcept override { return rd32(0x00); }
@@ -216,7 +261,7 @@ namespace Pokemon {
         uint16_t checksum() const noexcept override { return rd16(0x1C); }
         uint16_t calculateChecksum() const noexcept override { return Encryption::checksum3FRLG(std::span<const std::byte>(data.data(), dataSize)); }
         void refreshChecksum() noexcept override { wr16(0x1C, calculateChecksum()); }
-        bool checksumValid() const noexcept override { return checksum() == calculateChecksum(); }
+        bool checksumValid() const noexcept override { return sizeValid() && checksum() == calculateChecksum(); }
 
         // ---- editable setters (direct fields; PID-derived fields regenerate the PID) ----
         void setSpecies(uint16_t national) noexcept override {
@@ -260,6 +305,10 @@ namespace Pokemon {
 
     private:
         static constexpr const char16_t* EGG_NICKNAME_JAPANESE = u"タマゴ"; // タマゴ
+        // Raw input length is diagnostic-only for malformed spans. dataSize is
+        // zero there so generic Pokemon consumers cannot copy past data's fixed
+        // quarantine allocation.
+        size_t inputSize_ = 0;
         uint8_t saveLanguage = static_cast<uint8_t>(Enums::LanguageID::English);
         // Compute a battle stat (0=HP..5=SPD) from base/IV/EV/level/nature (Gen3 formula).
         uint16_t computeStat(int idx) const noexcept;

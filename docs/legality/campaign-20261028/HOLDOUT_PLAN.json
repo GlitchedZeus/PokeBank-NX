@@ -1,0 +1,10 @@
+{
+  "declared_utc": "2026-10-28T07:03:47.300947+00:00",
+  "before_generation": true,
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "commands": [
+    "dotnet PKHeXGen34Oracle.dll generate 2026102804 4 34 base",
+    "dotnet PKHeXGen5Oracle.dll generate 2026102805 4"
+  ],
+  "policy": "Retain every emitted record including reference Invalid, Fishy, errors and all disagreements. Seed controls corpus mutations; PKHeX encounter generation can use its own randomness, so exact output bytes are authoritative. Generated fixtures, not acquisition custody. No fresh GB sample in this cycle. No grown valid-only filtering."
+}

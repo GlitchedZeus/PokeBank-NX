@@ -1,0 +1,123 @@
+{
+  "pkhex": "6042efa241a9925ce57e645329ea7f976deabdd3",
+  "seed": 719921,
+  "count": 10000,
+  "failed_cases": [
+    {
+      "id": "7517",
+      "raw_corpus": "7517 kor2-egg 8 48002872f3003a0600009c0000000000000000000075ee230e0900780000000500000014001400090009000d000b0010 07150af150505050505050 8194838398505050505050 0",
+      "pkhex_current": "7517 INVALID EncounterEgg2:72:GS:5 ; Egg:EggMoveCombination",
+      "nx": "7517 VALID egg Tentacool in Gold/Silver (hatched at level 5) ;",
+      "status": "Tentacool: Haze and Mirror Coat have no one compatible father ancestry",
+      "after": "7517 INVALID egg Tentacool in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "7517 father=0"
+    },
+    {
+      "id": "7527",
+      "raw_corpus": "7527 kor2-egg 8 0100212d7150a266000087000000000000000000008e4e23281e147800000005000000130013000a000b0009000c000c 07150af150505050505050 074b074b079c5050505050 0",
+      "pkhex_current": "7527 INVALID EncounterEgg2:1:GS:5 ; Egg:EggMoveCombination",
+      "nx": "7527 VALID egg Bulbasaur in Gold/Silver (hatched at level 5) ;",
+      "status": "Korean Bulbasaur: only catalogued PCNY Chikorita Petal Dance ancestry plus unsupported Korean-Western trade; history unverified",
+      "after": "7527 UNCERTAIN egg Bulbasaur in Gold/Silver (hatched at level 5) ; | The compatible father ancestry requires a catalogued fixed-move gift whose historical distribution is not authenticated | Needs a trade between Korean Gold/Silver and a Western game (documented for the cartridges by Bulbapedia; PKHeX does not allow it)",
+      "witness": "7527 father=1 4:1:12<-152:12 0:152:12<-152:8 1:152:8<-0:0"
+    },
+    {
+      "id": "7553",
+      "raw_corpus": "7553 kor2-egg-unhatched 8 4f00ae21db1777f400007d00000000000000000000803d0a2319140300000005000000180018000c000b0006000a000a 0a71051050505050505050 06cb505050505050505050 1",
+      "pkhex_current": "7553 INVALID EncounterEgg2:79:GS:5 ; Egg:EggMoveCombination",
+      "nx": "7553 VALID egg Slowpoke in Gold/Silver (hatched at level 5) ;",
+      "status": "Unhatched Korean Slowpoke: incompatible inherited combination",
+      "after": "7553 INVALID egg Slowpoke in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "7553 father=0"
+    },
+    {
+      "id": "7575",
+      "raw_corpus": "7575 kor2-egg-unhatched 8 4f00ae21dbf849dc00007d0000000000000000000010cc0a23190f0e00000005000000180018000b000b0007000a000a 07150af150505050505050 06cb505050505050505050 1",
+      "pkhex_current": "7575 INVALID EncounterEgg2:79:GS:5 ; Egg:EggMoveCombination",
+      "nx": "7575 VALID egg Slowpoke in Gold/Silver (hatched at level 5) ;",
+      "status": "Korean Slowpoke: catalogued PCNY Lapras Future Sight ancestry plus unsupported Korean-Western trade; history unverified",
+      "after": "7575 UNCERTAIN egg Slowpoke in Gold/Silver (hatched at level 5) ; | The compatible father ancestry requires a catalogued fixed-move gift whose historical distribution is not authenticated | Needs a trade between Korean Gold/Silver and a Western game (documented for the cartridges by Bulbapedia; PKHeX does not allow it)",
+      "witness": "7575 father=79 4:79:12<-131:12 0:131:12<-131:8 1:131:8<-0:0"
+    },
+    {
+      "id": "7582",
+      "raw_corpus": "7582 kor2-egg-unhatched 8 04000a2dc8bba0b000008700000000000000000000abbe23280f0a0800000005000000130013000b000a000c000c000b 08b6062650505050505050 06cb505050505050505050 1",
+      "pkhex_current": "7582 INVALID EncounterEgg2:4:GS:5 ; Egg:EggMoveCombination",
+      "nx": "7582 VALID egg Charmander in Gold/Silver (hatched at level 5) ;",
+      "status": "Unhatched Charmander: incompatible inherited combination",
+      "after": "7582 INVALID egg Charmander in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "7582 father=0"
+    },
+    {
+      "id": "9123",
+      "raw_corpus": "9123 egg2-jp 1 b700216fc130b48000006400000000000000000000f64923212814780081df050000001600160008000a00090007000a b1b6c8505050 418550505050 0",
+      "pkhex_current": "9123 INVALID EncounterEgg2:183:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9123 VALID egg Marill in Gold/Silver (hatched at level 5) ;",
+      "status": "Marill: incompatible inherited combination",
+      "after": "9123 INVALID egg Marill in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "9123 father=0"
+    },
+    {
+      "id": "9429",
+      "raw_corpus": "9429 egg2 0 4200432b1be396880000870000000000000000000010634b1e52057800000005000000160016000d000a000900080008 868e8b8350505050505050 8c8e8d5050505050505050 0",
+      "pkhex_current": "9429 INVALID EncounterEgg2:66:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9429 VALID egg Machop in Gold/Silver (hatched at level 5) ;",
+      "status": "Machop: Rolling Kick and Encore cannot share one compatible ancestry",
+      "after": "9429 INVALID egg Machop in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "9429 father=0"
+    },
+    {
+      "id": "9484",
+      "raw_corpus": "9484 egg2 0 f6002c2bc8f6b61500009c000000000000000000005642a3aa4d447800c18805000000140014000b000a00090009000a 868e8b8350505050505050 8c8e8d5050505050505050 0",
+      "pkhex_current": "9484 INVALID EncounterEgg2:246:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9484 VALID egg Larvitar in Gold/Silver (hatched at level 5) ;",
+      "status": "Larvitar: incompatible inherited combination",
+      "after": "9484 INVALID egg Larvitar in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "9484 father=0"
+    },
+    {
+      "id": "9615",
+      "raw_corpus": "9615 egg2 0 0100212d82dbce700000878e6d843e51860a449e9a37656a280fa27800c18405000000140014000a000a000a000c000c 868e8b8350505050505050 8c8e8d5050505050505050 0",
+      "pkhex_current": "9615 INVALID EncounterEgg2:1:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9615 VALID egg Bulbasaur in Gold/Silver (hatched at level 5) ;",
+      "status": "Lapras: Gen I TM40 Skull Bash, Time Capsule, Gen II level50 Safeguard, breed both to Bulbasaur",
+      "after": "9615 VALID egg Bulbasaur in Gold/Silver (hatched at level 5) ;",
+      "witness": "9615 father=1 4:1:12<-131:12 0:131:12<-131:4 2:131:4<-131:0"
+    },
+    {
+      "id": "9744",
+      "raw_corpus": "9744 egg2-jp 1 66008c5f48ecbf8000009c00000000000000000000ab90e0140a02780081c905000000150015000a000e0009000b0009 b1b6c8505050 09ab50505050 0",
+      "pkhex_current": "9744 INVALID EncounterEgg2:102:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9744 VALID egg Exeggcute in Gold/Silver (hatched at level 5) ;",
+      "status": "Oddish: Gen I TM Mega Drain, Time Capsule, Gen II level32 Moonlight, breed both to Exeggcute",
+      "after": "9744 VALID egg Exeggcute in Gold/Silver (hatched at level 5) ;",
+      "witness": "9744 father=43 0:43:12<-43:4 2:43:4<-43:0"
+    },
+    {
+      "id": "9869",
+      "raw_corpus": "9869 egg2-unhatched 0 730004c1170000c000007d00000000000000000000d2df0f28140005000000050000001a001a000f000d000f000a000e 868e8b8350505050505050 8486865050505050505050 1",
+      "pkhex_current": "9869 INVALID EncounterEgg2:115:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9869 VALID egg Kangaskhan in Gold/Silver (hatched at level 5) ;",
+      "status": "Female-only Kangaskhan cannot supply Dizzy Punch as its own father",
+      "after": "9869 INVALID egg Kangaskhan in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "9869 father=0"
+    },
+    {
+      "id": "9891",
+      "raw_corpus": "9891 egg2-unhatched 0 480028dbe500525c00009c000000000000000000002f432319280011000000050000001300130009000a000c000a000f 868e8b8350505050505050 8486865050505050505050 1",
+      "pkhex_current": "9891 INVALID EncounterEgg2:72:GS:5 ; Egg:EggMoveCombination",
+      "nx": "9891 VALID egg Tentacool in Gold/Silver (hatched at level 5) ;",
+      "status": "Tentacool: incompatible simultaneous inherited moves",
+      "after": "9891 INVALID egg Tentacool in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination",
+      "witness": "9891 father=0"
+    }
+  ],
+  "trace": "EggVerifier.VerifyEggBreedingChain -> GatherInheritedMoves -> ChainBreedLegality.IsValid. Existing NX validates move provenance/order without proving a single compatible father chain. Includes Korean, Japanese, Western and unhatched/hatched cases.",
+  "next_step": "Audit original breeding inheritance and compatibility; implement a complete father-chain proof using egg groups, sex constraints, all legitimate move sources and alternate histories. Reclassify this probe as a regression after any repair and declare a fresh holdout.",
+  "summary": {
+    "Invalid": 8,
+    "Incomplete": 2,
+    "Source_backed_clean": 2,
+    "remaining_unverified_original_12": 2
+  }
+}

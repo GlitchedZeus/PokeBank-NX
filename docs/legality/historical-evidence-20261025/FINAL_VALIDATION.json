@@ -1,0 +1,672 @@
+{
+  "published_head": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+  "published_tree": "81e59a86832c30fdc9c90c5476aded5e8d2a2a9e",
+  "pr": {
+    "baseRefName": "integration/legality-gen14-major-20261012",
+    "headRefName": "claude/gen1-5-legality-campaign-w9mkom",
+    "headRefOid": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+    "isDraft": true,
+    "number": 314,
+    "state": "OPEN",
+    "title": "Gen I\u2013V legality: joint breeding and source-bound historical evidence",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/pull/314"
+  },
+  "validation": {
+    "starting_sha": "0b01ad6c614c1652a6c9591195ebff22cb761d8f",
+    "gcc_focused": {
+      "status": "PASS",
+      "exit_code": 0,
+      "configurations": 26,
+      "log": "gcc-focused.log",
+      "leaks": "enabled",
+      "undefined_behavior": "halt_on_error=1"
+    },
+    "clang_focused": {
+      "status": "PASS",
+      "exit_code": 0,
+      "configurations": 26,
+      "log": "clang-focused.log",
+      "leaks": "enabled",
+      "undefined_behavior": "halt_on_error=1"
+    },
+    "archive": "PASS81 originals;63 released/18 unreleased; SHA256/Git blob/CRC",
+    "generator": "PASS4 adversarial controls, source originals immutable",
+    "retained_gen5": {
+      "records": 135193,
+      "input_sha256": "1b3d20cfaeefb80916885c576425deb5f48f9fca4b6049ac7e36be4c72a24689",
+      "previous_native_sha256": "1641e2721e4419b2cd568cebf832c0d3e2e8274ba0140ae07f8f279b3efe2543",
+      "current_native_sha256": "1641e2721e4419b2cd568cebf832c0d3e2e8274ba0140ae07f8f279b3efe2543",
+      "byte_identical": true,
+      "reference": "PKHeX6042efa241a9925ce57e645329ea7f976deabdd3 retained original corpus; no fresh holdout claim",
+      "counts": {
+        "NOPROBLEMS": 58505,
+        "INVALID": 72410,
+        "INCOMPLETE": 4278
+      }
+    },
+    "workflow_yaml": "PASS46 files",
+    "hardware": "NOT DEPLOYED; application branch untouched",
+    "full_parity": "NOT ACHIEVED; frozen metrics unchanged",
+    "total_focused_configurations": 52,
+    "published_sha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+    "ci_first_head": {
+      "sha": "bc081e78ce162629ea0fbc43b69ff5eabac50de0",
+      "finding": "newer GCC range-loop-construct warning in new test; const-reference correction preserves all assertions",
+      "raw_log": "CI_FOCUSED_GCC_RAW.log",
+      "fixed_test_configurations": 4
+    },
+    "current_app_boundary": {
+      "status": "PASS",
+      "checkout": "11b44e09562ddbfc3e9e6dc08b138f022b8c3d3a",
+      "deployment": "none, read-only host bridge",
+      "log": "current-app-boundary.log"
+    },
+    "ci_focused": {
+      "run": 40245637156,
+      "head_sha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "jobs": "3/3 PASS",
+      "artifacts": "CI_ARTIFACT_VERIFICATION.json",
+      "source_cards_per_artifact": 81,
+      "reports_per_artifact": 2,
+      "sanitizer_diagnostics": 0,
+      "log": "CI_FOCUSED_SUCCESS.log"
+    },
+    "final_ci": {
+      "head_sha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "checks": 49,
+      "checks_pass": 49,
+      "workflows": 24,
+      "workflows_pass": 24,
+      "status": "PASS",
+      "checks_file": "FINAL_CHECKS.json",
+      "workflows_file": "FINAL_CI.json"
+    }
+  },
+  "checks": [
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171/job/121326642194",
+      "name": "Legality lane L2 (native + sanitizers)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171/job/121326642277",
+      "name": "Legality lane L3 (native + sanitizers)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171/job/121326642147",
+      "name": "Legality lane L5 (native + sanitizers)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171/job/121326642158",
+      "name": "Legality lane L4 (native + sanitizers)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637156/job/121326489668",
+      "name": "focused (g++)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637132/job/121326489688",
+      "name": "L4 g++ / sanitizer=1",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171/job/121326642089",
+      "name": "Legality lane L1 (native + sanitizers)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632762/job/121326475988",
+      "name": "clang++ / sanitizer=true",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637215/job/121326489789",
+      "name": "machine-source",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632799/job/121326476226",
+      "name": "L6 gate ledger (clang++ / normal)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632762/job/121326476018",
+      "name": "clang++ / sanitizer=false",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637156/job/121326489607",
+      "name": "focused (clang++)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632799/job/121326476111",
+      "name": "L6 gate ledger (clang++ / sanitize)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632799/job/121326476043",
+      "name": "L6 gate ledger (g++ / sanitize)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632762/job/121326475950",
+      "name": "g++ / sanitizer=true",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637146/job/121326489771",
+      "name": "L3 29 suites / g++ / native + ASan/UBSan",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632807/job/121326475913",
+      "name": "L2 seventeen suites gcc normal + ASan/UBSan",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637162/job/121326489728",
+      "name": "Gen I exact head / clang++",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637132/job/121326489654",
+      "name": "L4 g++ / sanitizer=0",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632762/job/121326475870",
+      "name": "g++ / sanitizer=false",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637146/job/121326489561",
+      "name": "L3 29 suites / clang++ / native + ASan/UBSan",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637133/job/121326489567",
+      "name": "L6 Stage5 g++ production and standalone",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632783/job/121326476080",
+      "name": "four-real-lanes",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632767/job/121326476172",
+      "name": "L6 native format GCC/Clang g++",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637154/job/121326809160",
+      "name": "gen4",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632799/job/121326476140",
+      "name": "L6 failure receipt and manifest regressions",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637132/job/121326489507",
+      "name": "L4 clang++ / sanitizer=0",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632807/job/121326476114",
+      "name": "L2 seventeen suites clang normal + ASan/UBSan",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637154/job/121326808896",
+      "name": "gen34",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171/job/121326641886",
+      "name": "Host tests (GCC)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637147/job/121326489465",
+      "name": "diff",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637156/job/121326489479",
+      "name": "app-boundary",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637166/job/121326697869",
+      "name": "actual-original-pkhex-and-native",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632803/job/121326475981",
+      "name": "original-provenance",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632799/job/121326476139",
+      "name": "L6 gate ledger (g++ / normal)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632767/job/121326475916",
+      "name": "L6 native format GCC/Clang clang++",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637162/job/121326489487",
+      "name": "Gen I exact head / g++",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637133/job/121326489379",
+      "name": "L6 Stage5 clang++ production and standalone",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632809/job/121326475896",
+      "name": "Native PK1 source stats Clang normal ASan UBSan",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637167/job/121326546313",
+      "name": "gen5",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637132/job/121326489632",
+      "name": "L4 clang++ / sanitizer=1",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632801/job/121326476088",
+      "name": "machine-source",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632786/job/121326476145",
+      "name": "release-gate-and-invalid-inventory",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632809/job/121326476052",
+      "name": "Native PK1 source stats GCC normal ASan UBSan",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632754/job/121326475886",
+      "name": "L1 exact-head sanitize (58 suites)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632745/job/121326475782",
+      "name": "native-stage3",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632752/job/121326476061",
+      "name": "pinned-source-differential",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632754/job/121326475748",
+      "name": "L1 exact-head host (58 suites)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "link": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632758/job/121326476024",
+      "name": "Full original-source 172-execution acceptance",
+      "state": "SUCCESS"
+    }
+  ],
+  "workflows": [
+    {
+      "conclusion": "success",
+      "databaseId": 40245637133,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Legality L6 Stage 5 cross-lane audit",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637133"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637162,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen I RBY Coordinator Exact-Head Native Checks",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637162"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637146,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Legality L3 exact-head native validation",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637146"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637215,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen I Original RBY TM/HM Source Parity",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637215"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637132,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L4 Event Metadata Exact-Head Verification",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637132"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637147,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen I/II legality vs PKHeX",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637147"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637156,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Legality completion focused evidence",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637156"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637166,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen I Coordinator Exact-Head Original PKHeX Differential",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637166"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637167,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen V legality vs PKHeX",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637167"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637154,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen III/IV legality vs PKHeX",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637154"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245637171,
+      "event": "pull_request",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "PokeBank NX Host Tests",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637171"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632752,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L5 Independent Pinned PKHeX Differential",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632752"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632801,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "Gen I Original RBY TM/HM Source Parity",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632801"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632786,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L5 Final Stage 7 Fail-Closed Dashboard",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632786"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632754,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L1 original encounters and RNG native matrix",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632754"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632803,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L5 Independent Stage 6 Provenance Gate",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632803"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632745,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L5 Independent Gen III-IV Native Fuzz QA",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632745"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632809,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L2 Gen I Native DV StatExp and Battle Stats",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632809"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632767,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L6 Codex Native Safety Matrix",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632767"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632783,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L5 Stage 5 Four-Lane Adversarial Gate",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632783"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632799,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L6 integration hardening native gates",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632799"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632758,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L2 Stage 7 Final Breeding Legality Acceptance",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632758"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632762,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L6 Codex Bounded PK4 Intake",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632762"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40245632807,
+      "event": "push",
+      "headBranch": "claude/gen1-5-legality-campaign-w9mkom",
+      "headSha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "name": "L2 Breeding Legality (standalone native)",
+      "status": "completed",
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245632807"
+    }
+  ],
+  "verified_ci_artifacts": [
+    {
+      "compiler": "clang++",
+      "artifact_id": 12618149493,
+      "artifact_digest": "sha256:35dbb58757b5b8d75969d3a90b38ac971b888d9f299c8c76ac37d71a13fbea5e",
+      "artifact_url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637156/artifacts/12618149493",
+      "head_sha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "original_cards_verified": 81,
+      "released_rows": 63,
+      "unreleased_excluded": 18,
+      "authenticated_receipts": 0,
+      "reports": [
+        {
+          "file": "ci-evidence-clang/build-completion/test_gen5_full_card_evidence.json",
+          "sha256": "be06b363bd728afb94a8718ee810ad991c224dd80cda302d9729d73777ae8219"
+        },
+        {
+          "file": "ci-evidence-clang/build-completion/test_gen5_full_card_evidence_sanitize.json",
+          "sha256": "be06b363bd728afb94a8718ee810ad991c224dd80cda302d9729d73777ae8219"
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "compiler": "g++",
+      "artifact_id": 12619250018,
+      "artifact_digest": "sha256:be5f347e69b982034a5f71eb4f314854c6cc4131c2002ec1fc8155bf8d918e0f",
+      "artifact_url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40245637156/artifacts/12619250018",
+      "head_sha": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+      "original_cards_verified": 81,
+      "released_rows": 63,
+      "unreleased_excluded": 18,
+      "authenticated_receipts": 0,
+      "reports": [
+        {
+          "file": "ci-evidence-gcc/build-completion/test_gen5_full_card_evidence.json",
+          "sha256": "be06b363bd728afb94a8718ee810ad991c224dd80cda302d9729d73777ae8219"
+        },
+        {
+          "file": "ci-evidence-gcc/build-completion/test_gen5_full_card_evidence_sanitize.json",
+          "sha256": "be06b363bd728afb94a8718ee810ad991c224dd80cda302d9729d73777ae8219"
+        }
+      ],
+      "status": "PASS"
+    }
+  ],
+  "historical_receipts_newly_authenticated": 0,
+  "full_parity": "NOT ACHIEVED; frozen metrics unchanged",
+  "documentation_checkpoint": "Recorded separately on the WIP branch after published-head CI; production code unchanged"
+}

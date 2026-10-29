@@ -1,0 +1,12 @@
+diff --git a/src/Legality/Gen5Legality.cpp b/src/Legality/Gen5Legality.cpp
+index f7623b44..16f98c4f 100644
+--- a/src/Legality/Gen5Legality.cpp
++++ b/src/Legality/Gen5Legality.cpp
+@@ -511,6 +511,7 @@ const char* originKindName(G4::EncKind k) {
+         case K::Gift3: case K::GiftNY3: case K::GiftJP3: return "Gen III event gift";
+         case K::GiftColo3: return "Colosseum / XD bonus disc gift";
+         case K::Egg3: return "Gen III egg";
++        case K::Cxd3: return "Colosseum / XD encounter";
+         case K::Invalid: break;
+     }
+     return "encounter";

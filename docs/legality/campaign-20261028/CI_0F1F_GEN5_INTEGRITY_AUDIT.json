@@ -1,0 +1,35 @@
+{
+  "engine": "0f1f34cc9dacb10b2f2fac4d5f36484edeea8c05",
+  "artifact": 12851442302,
+  "zip_sha256": "04dd920c18494c9defb3c474c1950a7bd3ce2b63c15c4340bca18de390b03eda",
+  "policy": "Original archive and every conflicting view retained. Joined extractions are separately named development inputs, never repairs of the original standalone files. No release acceptance from an inconsistent capture.",
+  "runs": [
+    {
+      "run": "diff-base-1",
+      "records": 134508,
+      "inconsistencies": []
+    },
+    {
+      "run": "diff-base-11",
+      "records": 134978,
+      "inconsistencies": []
+    },
+    {
+      "run": "diff-base-2",
+      "records": 134573,
+      "inconsistencies": [
+        {
+          "index": 42709,
+          "standalone_reference_line": "m42709-ability 1178B89B000013DA19020000EDBCA39E7438030046610002000000000000000000000000000000009901F101380030010A0F050A0000000085511F0600000000021400000000000053006500690073006D00690074006F0061006400FFFF00160000000000000000540065007300740065007200FFFF00000000001A0A1C0000390000043C000000 INVALID EncounterSlot5:537 native base W2 ; Ability:AbilityUnexpected",
+          "standalone_production_line": "m42709-ability INVALID ; Ability 97 is not one of this species' abilitiec",
+          "joined_line": "m42709-ability 1178B89B000013DA19020000EDBCA39E7438030046610002000000000000000000000000000000009901F101380030010A0F050A0000000085511F0600000000021400000000000053006500690073006D00690074006F0061006400FFFF00160000000000000000540065007300740065007200FFFF00000000001A0A1C0000390000043C000000 INVALID EncounterSlot5:537 native base W2 ; Ability:AbilityUnexpected\tm42709-ability INVALID ; Ability 97 is not one of this species' abilities"
+        }
+      ]
+    },
+    {
+      "run": "diff-base-7",
+      "records": 135038,
+      "inconsistencies": []
+    }
+  ]
+}

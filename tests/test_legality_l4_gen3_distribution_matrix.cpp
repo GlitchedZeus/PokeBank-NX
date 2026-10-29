@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <utility>
 namespace W=Legality::Gen3DistributionWitnessEvidence;
 using F=W::Family;using M=W::Mechanism;using H=W::History;using S=W::Status;using SS=W::SourceStatus;
 constexpr W::OriginalCandidate attested(F f=F::Wishmaker,M m=M::PokemonGift) {
@@ -77,6 +78,26 @@ int main() {
         ++sourceStates;
     }
     assert(sourceStates==11u*5u*8u*64u);
+    // An out-of-domain serialized source-version tag must be Unknown,
+    // never positive evidence or a candidate exclusion from a fake row.
+    // This includes the now-distinct original Bonus Disc and Channel media.
+    unsigned sourceTags=0;
+    for(unsigned code=0;code<256;++code) {
+        auto a=c;
+        a.originalSource=static_cast<W::OriginalSource>(code);
+        auto altered=n;altered.ids.tid^=1;
+        const auto verdict=W::evaluate(altered,a);
+        const bool recognized=code>=1 && code<=9;
+        assert((verdict.source==SS::ConditionalSource)==recognized);
+        if(!recognized) {
+            assert(verdict.mismatchMask==0);
+            assert(verdict.conditionalMatchMask==0);
+            assert(verdict.unknownMask==65535u);
+        }
+        assert(!verdict.globallyInvalid && !verdict.authenticated);
+        ++sourceTags;
+    }
+    assert(sourceTags==256u);
     // A reconstructed or digest-less alleged archive cannot validate values.
     {auto a=c;a.originalArchiveIndependentlyAuthenticated=false;
         assert(W::evaluate(n,a).source==SS::UntrustedArchive);
@@ -141,6 +162,148 @@ int main() {
         auto x=n;x.otName[0]^=std::byte{1};x.nickname[0]^=std::byte{1};x.language^=1;
         auto r=W::evaluate(x,a);
         assert(r.mismatchMask==0 && r.unknownMask==((1u<<4)|(1u<<5)|(1u<<6)));}
+    // A purported distribution with no corroborated historical release
+    // cannot exclude a Pokémon based on claimed archived source fields.
+    // Individual receipt remains independently Unknown, not authenticated.
+    {auto a=c;a.historicalReleaseIndependentlyCorroborated=false;
+        auto tampered=n;tampered.ids.tid^=1;
+        auto r=W::evaluate(tampered,a);
+        assert(r.source==SS::UnknownRelease);
+        assert(r.mismatchMask==0 && r.conditionalMatchMask==0);
+        assert(r.unknownMask==65535u && !r.globallyInvalid);}
+    // A known language conversion means OT and nickname game-font bytes may
+    // be re-encoded too. Their apparent byte mismatch must not cause a
+    // source-specific exclusion without separately verified encoding history.
+    {auto a=c;a.languageConversionPossible=true;
+        auto changed=n;
+        changed.language^=1;
+        changed.nickname[2]^=std::byte{0x80};
+        changed.otName[2]^=std::byte{0x80};
+        const auto r=W::evaluate(changed,a);
+        const uint32_t rawText=(1u<<4)|(1u<<5)|(1u<<6);
+        assert((r.unknownMask&rawText)==rawText);
+        assert((r.mismatchMask&rawText)==0);
+        assert(!r.authenticated && !r.globallyInvalid);}
+    // Distinct native OT and event-move contradictions exclude ONLY the
+    // independently attested distribution candidate.
+    {auto a=c;auto changed=n;
+        changed.otName[0]^=std::byte{1};changed.moves[0]^=1;
+        auto r=W::evaluate(changed,a);
+        assert(r.mismatchMask==((1u<<6)|(1u<<11)));
+        a.moves.history=H::Unknown;
+        a.nicknameOrOTReencodingPossible=true;
+        r=W::evaluate(changed,a);
+        assert(r.mismatchMask==0);
+        assert((r.unknownMask&((1u<<6)|(1u<<11)))==((1u<<6)|(1u<<11)));}
+    // The original receiver title, original GC source, source digest,
+    // original trainer encoding and event move history are independent facts.
+    // A Pokémon from a documented GameCube transfer can retain a GC-origin
+    // game value while the receiving GBA version is Sapphire/Ruby.
+    {auto a=c;a.originalSource=W::OriginalSource::ColosseumBonusDisc;
+     auto x=n;x.originGame=15;
+     a.originGame.original=15;
+     W::TransferHistory h{};
+     h.route=W::TransferRoute::GameCubeToGba;
+     h.originalToNativeRecordIndependentlyLinked=true;
+     h.receivingGbaVersionIndependentlyVerified=true;
+     h.receivingGbaVersion=1;
+     h.gameCubeOriginalIndependentlyVerified=true;
+     h.originalGameCubeVersion=W::OriginalSource::ColosseumBonusDisc;
+     h.gameCubeToGbaDeliveryIndependentlyVerified=true;
+     h.originalGameFontEncodingIndependentlyVerified=true;
+     h.originalEventMovesHistoryIndependentlyVerified=true;
+     const auto positive=W::evaluateOriginalHistory(x,a,h);
+     assert(positive.status==W::JoinedStatus::ConditionalCandidate);
+     assert(!positive.authenticated && !positive.globallyInvalid);
+     for(unsigned mask=0;mask<32;++mask) {
+         auto sparse=h;
+         sparse.originalToNativeRecordIndependentlyLinked=bool(mask&1u);
+         sparse.receivingGbaVersionIndependentlyVerified=bool(mask&2u);
+         sparse.gameCubeOriginalIndependentlyVerified=bool(mask&4u);
+         sparse.gameCubeToGbaDeliveryIndependentlyVerified=bool(mask&8u);
+         sparse.originalGameFontEncodingIndependentlyVerified=bool(mask&16u);
+         const auto result=W::evaluateOriginalHistory(x,a,sparse);
+         assert((result.status==W::JoinedStatus::ConditionalCandidate)==
+                (mask==31u));
+         assert(!result.globallyInvalid);
+     }
+     // The source identity and the claimed GC transfer version must agree.
+     auto wrongSource=a;
+     wrongSource.originalSource=W::OriginalSource::XD;
+     assert(W::evaluateOriginalHistory(x,wrongSource,h).status==
+            W::JoinedStatus::UnknownRoute);
+     wrongSource=a;wrongSource.family=W::Family::Wondercard;
+     assert(W::evaluateOriginalHistory(x,wrongSource,h).status==
+            W::JoinedStatus::UnknownRoute);
+     // A source's original GC provenance is not a direct GBA gift route.
+     auto local=h;local.route=W::TransferRoute::GbaLocal;
+     local.nativeOriginVersionPreservedIndependentlyVerified=true;
+     assert(W::evaluateOriginalHistory(x,a,local).status==
+            W::JoinedStatus::UnknownRoute);
+     // Exhaust all possible serialized source-family and GameCube-origin
+     // tags. A future/unsupported family must not silently become a
+     // GameCube distribution on account of plausible OT and event moves.
+     unsigned routeDomain=0,conditionalGcFamilies=0;
+     for(unsigned family=0;family<256;++family) {
+         auto familyCandidate=a;
+         familyCandidate.family=static_cast<W::Family>(family);
+         const auto result=W::evaluateOriginalHistory(x,familyCandidate,h);
+         const bool eligible=family==1u;
+         assert((result.status==W::JoinedStatus::ConditionalCandidate)==eligible);
+         if(eligible)++conditionalGcFamilies;
+         ++routeDomain;
+     }
+     assert(routeDomain==256 && conditionalGcFamilies==1);
+     for(unsigned original=0;original<256;++original) {
+         auto sourceCandidate=a;
+         sourceCandidate.originalSource=static_cast<W::OriginalSource>(original);
+         const auto result=W::evaluateOriginalHistory(x,sourceCandidate,h);
+         assert((result.status==W::JoinedStatus::ConditionalCandidate)==
+                (original==static_cast<unsigned>(W::OriginalSource::ColosseumBonusDisc)));
+         assert(!result.globallyInvalid && !result.authenticated);
+         ++routeDomain;
+     }
+     assert(routeDomain==512);
+     // Exact independently identified media distinguish the bonus disc,
+     // Pokémon Channel and Colosseum/XD native gift route. Cross-wiring
+     // their documented families cannot become conditional.
+     for(auto pair:{std::pair{W::Family::Channel,W::OriginalSource::PokemonChannel},
+                    std::pair{W::Family::GameCubeGift,W::OriginalSource::XD},
+                    std::pair{W::Family::GameCubeGift,W::OriginalSource::Colosseum}}) {
+         auto source=a;source.family=pair.first;
+         source.originalSource=pair.second;
+         auto route=h;route.originalGameCubeVersion=pair.second;
+         assert(W::evaluateOriginalHistory(x,source,route).status==
+                W::JoinedStatus::ConditionalCandidate);
+         route.originalGameCubeVersion=W::OriginalSource::ColosseumBonusDisc;
+         assert(W::evaluateOriginalHistory(x,source,route).status==
+                W::JoinedStatus::UnknownRoute);
+     }
+     h.gameCubeOriginalIndependentlyVerified=false;
+     assert(W::evaluateOriginalHistory(x,a,h).status==
+            W::JoinedStatus::UnknownRoute);
+     h.gameCubeOriginalIndependentlyVerified=true;
+     h.originalGameFontEncodingIndependentlyVerified=false;
+     auto raw=W::evaluateOriginalHistory(x,a,h);
+     assert((raw.unknown&((1u<<4)|(1u<<5)|(1u<<6)))!=0);
+     assert(raw.excluded==0);
+     h.originalGameFontEncodingIndependentlyVerified=true;
+     h.originalEventMovesHistoryIndependentlyVerified=false;
+     auto moves=W::evaluateOriginalHistory(x,a,h);
+     assert(moves.status==W::JoinedStatus::UnknownEncodingOrMoveHistory);
+     h.originalEventMovesHistoryIndependentlyVerified=true;
+     auto tampered=x;tampered.moves[0]^=1;
+     auto contradiction=W::evaluateOriginalHistory(tampered,a,h);
+     assert(contradiction.status==W::JoinedStatus::CandidateExcluded);
+     assert(contradiction.excluded==(1u<<11));
+     h.originalToNativeRecordIndependentlyLinked=false;
+     assert(W::evaluateOriginalHistory(tampered,a,h).status==
+            W::JoinedStatus::UnknownRoute);
+     // An uncorroborated release may not use this stricter source join.
+     h.originalToNativeRecordIndependentlyLinked=true;
+     a.historicalReleaseIndependentlyCorroborated=false;
+     assert(W::evaluateOriginalHistory(tampered,a,h).status==
+            W::JoinedStatus::UnknownOriginalSource);}
     // An unavailable native record cannot establish field contradictions.
     {auto x=n;x.available=false;auto r=W::evaluate(x,c);
         assert(!r.nativeAvailable && r.mismatchMask==0 && !r.globallyInvalid);}

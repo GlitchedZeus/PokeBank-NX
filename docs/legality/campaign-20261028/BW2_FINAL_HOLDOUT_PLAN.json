@@ -1,0 +1,22 @@
+{
+  "declared_utc": "2026-10-28T20:20:43.340960+00:00",
+  "before_generation": true,
+  "seed": 2026102885,
+  "mutations": 4,
+  "group": "gen5",
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "engine_binary_sha256": "98141a6f2a7932b2871576d895a979b0007e32d1f85cc99a6327cd6d304d2200",
+  "production_sha256": {
+    "src/Legality/Gen5Legality.cpp": "206407e72eda3faa3eb68b707885e8d6a68b10de85fc89f29fd1473d9c901ee3",
+    "src/Legality/Gen35BreedingAncestry.cpp": "fde160934f084fde13cd9180d595cff9f7dbaefecaf1cf66fea659d711245919",
+    "include/Legality/Gen35BreedingAncestry.h": "45228503786b30ee706c88138952fc1c3f28aa9f03d03eb1b97765a46b1de9d9",
+    "include/Legality/FiniteBreedingChain.h": "e82e80d6fff777c574a742cd1dbeb324b52998b978a0c39fc1c9ce001aa47597",
+    "include/Legality/BreedingBirthMoves.h": "6adab7889a8d5f96a81b7dfeaa911984b39676c5888646912c5d81b5699a8036",
+    "src/Legality/Gen3LegalityData.cpp": "80834e494fb5723d2a169a605e53344bf700b7e322d01dd1c2e0c5ce2f536fa8",
+    "src/Legality/Gen3LegalityDataCxd.cpp": "9ec33af9d585f6cbf9581d879a153beadaa6c064b6fd2c7a6a024a0c9f8f1a67",
+    "src/Legality/Gen4LegalityData.cpp": "6c343413e794f18bab6445072a2267f0deb9f0731de5049c18dd32d8e8429e3c",
+    "src/Legality/Gen5LegalityData.cpp": "12feb638d0f4a77b266904ff23060c675257c14be18eb14fe9b35837d0569bf3",
+    "tools/pkhex_gen5_diff/gen5_diff.cpp": "a2086a412dfbf33c85b99cdc42940d1bc93d95676074fcd8edc7e419752ab949"
+  },
+  "policy": "Every emitted row retained. Prior samples separately retained/replayed; generator grown-valid-base selection and pre-emission exceptions disclosed. No oracle validity patches. I-IV source and previous independent outputs unchanged."
+}

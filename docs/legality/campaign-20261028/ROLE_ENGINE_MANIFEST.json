@@ -1,0 +1,20 @@
+{
+  "base": "1ae69f3a1dd1766c1848f4f387b1c68e46cabedb",
+  "status": "frozen role-repair worktree; bind next commit",
+  "binary_sha256": "617cfcbc93ed670466d98459cf9b2abe9d01b8d5864ef20baf4029dd33c08f1e",
+  "compiler": "g++ (GCC) 16.2.1 20260810",
+  "source_sha256": {
+    "src/Legality/Gen5Legality.cpp": "95743a455200a837b5b0528396579ab36b63781e945f79e557c4f4aeb00d4783",
+    "src/Legality/Gen35BreedingAncestry.cpp": "f32a8f1e832dde656d4d75662a464567de71a0bad0d1c643e0e9e5a15b63d5a2",
+    "include/Legality/Gen35BreedingAncestry.h": "cdc1c1b12f06185a2ba030170b0432badc1408f469aa3aedc1ef4824e53f533b",
+    "include/Legality/FiniteBreedingChain.h": "e82e80d6fff777c574a742cd1dbeb324b52998b978a0c39fc1c9ce001aa47597",
+    "include/Legality/BreedingBirthMoves.h": "7c0099368c6e4eff09d6db08dcae9635e6cf3f16cde0dfe5cb60e7fb571ae134",
+    "src/Legality/Gen3LegalityData.cpp": "80834e494fb5723d2a169a605e53344bf700b7e322d01dd1c2e0c5ce2f536fa8",
+    "src/Legality/Gen3LegalityDataCxd.cpp": "9ec33af9d585f6cbf9581d879a153beadaa6c064b6fd2c7a6a024a0c9f8f1a67",
+    "src/Legality/Gen4LegalityData.cpp": "6c343413e794f18bab6445072a2267f0deb9f0731de5049c18dd32d8e8429e3c",
+    "src/Legality/Gen5LegalityData.cpp": "12feb638d0f4a77b266904ff23060c675257c14be18eb14fe9b35837d0569bf3",
+    "tools/pkhex_gen5_diff/gen5_diff.cpp": "a2086a412dfbf33c85b99cdc42940d1bc93d95676074fcd8edc7e419752ab949"
+  },
+  "policy": "All v3 runs use this copied binary. Earlier prototype batch changed executable paths mid-run and is not a final-head validation. Raw prototype streams stay retained.",
+  "binary_path": ".cache/legality-campaign-20261028/verified-v4-gen5_diff"
+}

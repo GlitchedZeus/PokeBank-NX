@@ -135,6 +135,39 @@ int main() {
     assert(all.pid.status==PID::Status::ConditionalOriginalEggPIDMatched);
     assert(all.moves.status==
            Legality::Gen4DiamondPearlEggMoveStage::Status::ConditionalMoveHistoryMatched);
+    // Original-source physical snapshot IDs are NOT derivable from
+    // encrypted PK4. When separately attested, PID, IV and four moves
+    // must bind back to the same read-only original records and event.
+    auto archived=three;
+    auto& source=archived.pid.originalParentWitness;
+    source.supplied=true;
+    source.originalDaycareEventIndependentlyVerified=true;
+    source.physicalDepositOrderIndependentlyVerified=true;
+    source.originalPairIdentityIndependentlyVerified=true;
+    source.originalParentSnapshotsIndependentlyVerified=true;
+    source.creationItemsIndependentlyVerified=true;
+    source.collectionLanguagesIndependentlyVerified=true;
+    source.originalEggEventIdentity=archived.parentStageToken;
+    source.originalPhysicalPairIdentity=archived.moves.originalPhysicalPairIdentity;
+    source.physicalSlots[0]={101,25,1,7,229,2};
+    source.physicalSlots[1]={202,25,0,11,0,2};
+    const auto nativeWitness=N::evaluate(archived);
+    assert(nativeWitness.status==N::Status::AllThreeConditionalStagesMatched);
+    assert(nativeWitness.pid.originalParentWitnessStatus==
+           Legality::Gen4DiamondPearlOriginalParentWitness::Status::ConditionallyMatched);
+    auto badArchive=archived;
+    badArchive.pid.originalParentWitness.originalPhysicalPairIdentity++;
+    assert(N::evaluate(badArchive).status==N::Status::IncoherentNativeMoveSnapshots);
+    badArchive=archived;
+    badArchive.pid.originalParentWitness.physicalSlots[0].snapshotIdentity++;
+    assert(N::evaluate(badArchive).status==N::Status::IncoherentNativeMoveSnapshots);
+    badArchive=archived;
+    badArchive.pid.originalParentWitness.physicalSlots[1].heldItemAtCreation=229;
+    assert(N::evaluate(badArchive).status==N::Status::StageHistoryUnresolved);
+    badArchive=archived;
+    badArchive.pid.originalParentWitness.collectionLanguagesIndependentlyVerified=false;
+    assert(N::evaluate(badArchive).status==N::Status::StageHistoryUnresolved);
+    assert(m0raw==m0Copy && m1raw==m1Copy && eggMovesRaw==eggMoveCopy);
     auto partyMovesRaw=native(32,0,stage.child,true,0,true,moves);
     Pokemon::Pokemon4ReadOnly partyMoves(partyMovesRaw,Enums::GameVersion::DP);
     const auto partyCopy=partyMovesRaw;

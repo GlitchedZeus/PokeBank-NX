@@ -1,0 +1,23 @@
+{
+  "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+  "files": [
+    {
+      "path": "src/daycare.c",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/daycare.c",
+      "sha256": "077948145972cbad55c28f835d4a61d59b75fd9ffb5d50fe358606a7feb30375",
+      "git_blob_sha1": "9860db357309ddfd249ff6351695f57feaebf2f8"
+    },
+    {
+      "path": "src/pokemon.c",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/pokemon.c",
+      "sha256": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+      "git_blob_sha1": "6127956d12e380033c08b1fce1e707d16b601c1a"
+    },
+    {
+      "path": "src/get_egg.c",
+      "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/get_egg.c",
+      "sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "git_blob_sha1": "3127e0e1010842829cfc34014d4625cf5eef76be"
+    }
+  ]
+}

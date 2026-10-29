@@ -76,6 +76,57 @@ int main() {
         assert((n.moves==W::Moves{10,20,30,40}));
         assert(!n.egg && n.fateful && n.ribbonBits==0x81000001);
         const auto c=profile(n);
+        // Native encrypted PK3 is the observed half of an independently
+        // attested GameCube -> GBA distribution history, never a receipt.
+        // Treat all source flags below as synthetic witness inputs.
+        W::TransferHistory transfer{};
+        transfer.route=W::TransferRoute::GameCubeToGba;
+        transfer.originalToNativeRecordIndependentlyLinked=true;
+        transfer.receivingGbaVersionIndependentlyVerified=true;
+        transfer.receivingGbaVersion=n.originGame;
+        transfer.gameCubeOriginalIndependentlyVerified=true;
+        transfer.originalGameCubeVersion=W::OriginalSource::PokemonChannel;
+        transfer.gameCubeToGbaDeliveryIndependentlyVerified=true;
+        transfer.originalGameFontEncodingIndependentlyVerified=true;
+        transfer.originalEventMovesHistoryIndependentlyVerified=true;
+        auto gcCandidate=c;
+        gcCandidate.originalSource=W::OriginalSource::PokemonChannel;
+        gcCandidate.family=W::Family::Channel;
+        gcCandidate.individualHistoricalReceiptKnown=true; // simulated
+        auto historical=W::evaluateOriginalHistory(n,gcCandidate,transfer);
+        assert(historical.status==W::JoinedStatus::ConditionalCandidate);
+        assert(!historical.authenticated && !historical.globallyInvalid);
+        // Source admission and encrypted record integrity are independent.
+        transfer.gameCubeToGbaDeliveryIndependentlyVerified=false;
+        historical=W::evaluateOriginalHistory(n,gcCandidate,transfer);
+        assert(historical.status==W::JoinedStatus::UnknownRoute);
+        transfer.gameCubeToGbaDeliveryIndependentlyVerified=true;
+        transfer.originalGameFontEncodingIndependentlyVerified=false;
+        auto mismatchedOT=gcCandidate;
+        mismatchedOT.otName.original[2]^=std::byte{1};
+        historical=W::evaluateOriginalHistory(n,mismatchedOT,transfer);
+        assert((historical.unknown&(1u<<6))!=0);
+        assert((historical.excluded&(1u<<6))==0);
+        transfer.originalGameFontEncodingIndependentlyVerified=true;
+        historical=W::evaluateOriginalHistory(n,mismatchedOT,transfer);
+        assert(historical.status==W::JoinedStatus::CandidateExcluded);
+        assert(historical.excluded==(1u<<6));
+        // A later tutor/event-move change with independently verified final
+        // moves is a legitimate original-to-current metadata transition.
+        auto changedMoves=gcCandidate;
+        changedMoves.moves.original={1,2,3,4};
+        changedMoves.moves.history=H::IndependentlyVerifiedFinal;
+        changedMoves.moves.independentlyVerifiedFinal=n.moves;
+        historical=W::evaluateOriginalHistory(n,changedMoves,transfer);
+        assert(historical.status==W::JoinedStatus::ConditionalCandidate);
+        changedMoves.moves.independentlyVerifiedFinal[0]^=1;
+        historical=W::evaluateOriginalHistory(n,changedMoves,transfer);
+        assert(historical.excluded==(1u<<11));
+        transfer.originalEventMovesHistoryIndependentlyVerified=false;
+        historical=W::evaluateOriginalHistory(n,changedMoves,transfer);
+        assert(historical.excluded==0 && (historical.unknown&(1u<<11))!=0);
+        // The normal source-distribution witness remains independently
+        // incomplete without an actual original recipient receipt.
         const auto r=N::evaluateEncrypted(raw,c);
         assert(r.source==W::SourceStatus::MissingReceipt);
         assert(r.conditionalMatchMask==0xffffu && r.unknownMask==0);

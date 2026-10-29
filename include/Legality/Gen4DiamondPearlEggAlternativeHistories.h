@@ -98,6 +98,12 @@ constexpr Result evaluate(const Input& in) noexcept {
            !c.sharedPhysicalParentPairIndependentlyVerified ||
            !c.ivPhysicalParentPairIdentity ||
            c.ivPhysicalParentPairIdentity!=c.pidPhysicalParentPairIdentity ||
+           // An optional independently attested source pair must be the
+           // identical physical pair used for the IV-stage hypothesis.
+           (c.pid.originalParentWitness.supplied &&
+            (!c.pid.originalParentWitness.originalPhysicalPairIdentity ||
+             c.pid.originalParentWitness.originalPhysicalPairIdentity!=
+                 c.ivPhysicalParentPairIdentity)) ||
            c.originalEggEventIdentity!=in.originalEggEventIdentity ||
            c.iv.game!=in.game || c.pid.game!=in.game ||
            c.pid.parentStageToken!=in.originalEggEventIdentity ||

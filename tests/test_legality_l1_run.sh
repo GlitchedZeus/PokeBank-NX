@@ -65,6 +65,19 @@ suites=(
   test_legality_l1_stage3_route_ledger
   test_legality_l1_stage3_joint_wild
   test_legality_l1_stage3_pidiv_same_capture
+  test_legality_l1_stage4_gc_transfer_history
+  test_legality_l1_stage4_gc_source_adapter
+  test_legality_l1_stage5_acquisition
+  test_legality_l1_stage5_family_adapter
+  test_legality_l1_stage6_cross_origin
+  test_legality_l1_stage6_source_adapter
+  test_legality_l1_stage7_native_gate
+  test_legality_l1_stage7_parser_linked
+  test_legality_l1_stage7_custody_authority
+  test_legality_l1_stage7_production_bridge
+  test_legality_l1_phasea_catalog
+  test_legality_l1_phasea_original_routes
+  test_legality_l1_phasea_rng
   test_legality_l1_gen1_pret_slots
   test_legality_l1_gen1_pret_statics_trades
   test_legality_l1_gen1_pret_prizes
@@ -96,6 +109,9 @@ for profile in "${profiles[@]}"; do
     fi
     if [[ "$suite" == test_legality_l1_stage1_production_crypto ]]; then
       sources+=(src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp)
+    fi
+    if [[ "$suite" == test_legality_l1_stage7_parser_linked ]]; then
+      sources+=("${native[@]}" src/Encryption/Encryption3FRLG.cpp)
     fi
     target="$build_dir/$suite-$profile"
     echo "L1: compile $suite [$profile]"

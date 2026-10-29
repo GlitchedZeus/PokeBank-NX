@@ -27,6 +27,7 @@ namespace Pokemon {
     // a broad generation/game-group label as a runtime type discriminator.
     class Pokemon1ReadOnly;
     class Pokemon2ReadOnly;
+    class Pokemon4ReadOnly;
     /**
      * PKM - Abstract base class for Pokemon entity data
      *
@@ -234,6 +235,10 @@ namespace Pokemon {
             return nullptr;
         }
         virtual const Pokemon2ReadOnly* nativePk2ReadOnly() const noexcept {
+            return nullptr;
+        }
+        // Native Gen IV record (decrypted PK4 bytes) for the Gen IV legality analyzer.
+        virtual const Pokemon4ReadOnly* nativePk4ReadOnly() const noexcept {
             return nullptr;
         }
 

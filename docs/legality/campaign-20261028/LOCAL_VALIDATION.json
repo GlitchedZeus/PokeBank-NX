@@ -1,0 +1,129 @@
+{
+  "logs": [
+    {
+      "path": "AFFECTED_FIXED_clang_normal_test_legality_gen5.log",
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "output": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_sanitize_test_legality_gen5.log",
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "output": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_normal_test_legality_gen4.log",
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "output": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_normal_test_gen35_release_rules.log",
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "output": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_sanitize_test_legality_gen4.log",
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "output": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_normal_test_legality_gen5.log",
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "output": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_sanitize_test_gen35_release_rules.log",
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "output": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_normal_test_gen35_release_rules.log",
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "output": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_sanitize_test_gen35_release_rules.log",
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "output": "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_sanitize_test_legality_gen4.log",
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "output": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_sanitize_test_legality_gen5.log",
+      "sha256": "6f6ad8d7339b7d25abd4fe22c7588740964fe616be4a4ee5647bf1200f54dce9",
+      "output": "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_sanitize_test_gen4_ground_tile.log",
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "output": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_normal_test_legality_gen4.log",
+      "sha256": "de212259c501dd3710c714a6b8d7c074fa1651ae47c28cf557970a8fcc52c9fa",
+      "output": "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 40000 fuzz records PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_sanitize_test_gen4_ground_tile.log",
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "output": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_gcc_normal_test_gen4_ground_tile.log",
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "output": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS\n"
+    },
+    {
+      "path": "AFFECTED_FIXED_clang_normal_test_gen4_ground_tile.log",
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "output": "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS\n"
+    },
+    {
+      "path": "SWARM_SAFARI_gcc_normal.log",
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "output": "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS\n"
+    },
+    {
+      "path": "SWARM_SAFARI_clang_normal.log",
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "output": "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS\n"
+    },
+    {
+      "path": "SWARM_SAFARI_gcc_sanitize.log",
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "output": "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS\n"
+    },
+    {
+      "path": "SWARM_SAFARI_clang_sanitize.log",
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "output": "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS\n"
+    },
+    {
+      "path": "NATIVE_SWARM_SAFARI_g++-normal.log",
+      "sha256": "04a99412e1e27d14237c83680640d9594b68a8805f04360ca184896a096587a1",
+      "output": "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS\nOriginal HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS\nNative source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 e5032c3997a2f72461b482e55a421a39536ca16b18ee910912f3961bd7f54795\nNative Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe\n"
+    },
+    {
+      "path": "NATIVE_SWARM_SAFARI_clang++-normal.log",
+      "sha256": "04a99412e1e27d14237c83680640d9594b68a8805f04360ca184896a096587a1",
+      "output": "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS\nOriginal HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS\nNative source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 e5032c3997a2f72461b482e55a421a39536ca16b18ee910912f3961bd7f54795\nNative Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe\n"
+    },
+    {
+      "path": "NATIVE_SWARM_SAFARI_clang++-sanitize.log",
+      "sha256": "04a99412e1e27d14237c83680640d9594b68a8805f04360ca184896a096587a1",
+      "output": "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS\nOriginal HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS\nNative source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 e5032c3997a2f72461b482e55a421a39536ca16b18ee910912f3961bd7f54795\nNative Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe\n"
+    },
+    {
+      "path": "NATIVE_SWARM_SAFARI_g++-sanitize.log",
+      "sha256": "04a99412e1e27d14237c83680640d9594b68a8805f04360ca184896a096587a1",
+      "output": "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS\nOriginal HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS\nNative source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 e5032c3997a2f72461b482e55a421a39536ca16b18ee910912f3961bd7f54795\nNative Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe\n"
+    },
+    {
+      "path": "GEN4_REGEN_FINAL.log",
+      "sha256": "5715415f05b4d79bea3c5471aad40f760543b2874028d0f3f2d2e84228ed6e2d",
+      "output": "Native HGSS swarm catalog: 590 unreachable variants removed; 24380 retained slots PASS\nGen IV legality tables are up to date\n"
+    }
+  ]
+}

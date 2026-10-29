@@ -41,7 +41,8 @@ struct Result {
 constexpr Result replay(const Candidate& c) noexcept {
     if(!c.originalNatureStateIndependentlyAttested ||
        !c.originalPidSnapshotIndependentlyAttested) return {};
-    if(c.method==Method::Unknown) return {Status::UnsupportedMethod};
+    if(c.method!=Method::J && c.method!=Method::K)
+        return {Status::UnsupportedMethod};
     if(c.targetNature>=25) return {Status::InvalidTargetNature};
     uint32_t state=Gen3PidIv::Detail::next(c.preNatureState);
     const uint32_t half=state>>16;

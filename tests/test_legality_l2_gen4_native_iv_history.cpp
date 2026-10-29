@@ -104,7 +104,17 @@ int main() {
     assert(mixed.histories.status==H::Status::ConditionalHistoryMatched);
     assert(mixed.histories.matched==1 && mixed.histories.contradicted==1 &&
            mixed.histories.unknown==1);
+    // Since 3cb9950f an independently attested matching row survives an
+    // earlier colliding route (positive rescue, see the B16 candidate-set
+    // suite); the inconclusive earlier row stays counted as unknown.
     alternatives.historicalAlternatives.histories[1].historicalHeldItemsKnown=false;
+    const auto rescued=N::evaluate(alternatives);
+    assert(rescued.histories.status==H::Status::ConditionalHistoryMatched);
+    assert(rescued.histories.matched==1 && rescued.histories.contradicted==1 &&
+           rescued.histories.unknown==2);
+    // With no attested matching row left, the duplicate cannot claim
+    // exhaustive contradiction.
+    alternatives.historicalAlternatives.histories[2].historicalHeldItemsKnown=false;
     assert(N::evaluate(alternatives).histories.status==
            H::Status::MissingOrDuplicateRouteIdentity);
     // Separately attested item histories do not come from whatever

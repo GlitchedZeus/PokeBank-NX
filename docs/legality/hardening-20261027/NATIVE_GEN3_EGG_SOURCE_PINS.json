@@ -1,0 +1,74 @@
+[
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "src/daycare.c",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/src/daycare.c",
+    "sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+    "git_blob_sha1": "ef4eaabb531c483187dd30f8b227c26d04d28f47"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "src/data/pokemon/level_up_learnsets.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/src/data/pokemon/level_up_learnsets.h",
+    "sha256": "a7569a51e3bb0ca4f094830c76c6db45a692c7ed64db21e59bc76a90237599e0",
+    "git_blob_sha1": "212b969a70e0dd454be2be71615f59496388bfb2"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "src/data/pokemon/egg_moves.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/src/data/pokemon/egg_moves.h",
+    "sha256": "dbc39729ba62ae2b70c9dded2c32b18f55c9ea409a867c0720c30617008da758",
+    "git_blob_sha1": "f8c250c6da2b9ede1a4f23bb972644f11d096738"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "include/daycare.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/include/daycare.h",
+    "sha256": "62de256c527dc841219648726bb3da4ace59dd5bcf841c4bc8bf7138014d8b2d",
+    "git_blob_sha1": "bc4004a7b6cf09d3cd34ec3b77c7f5e95afa1484"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "include/pokemon.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/include/pokemon.h",
+    "sha256": "a5ded332bece10439fd187690fe09681aa26189df270e96cd9961a244538de2c",
+    "git_blob_sha1": "3d75157f91f437bc310ce4a21208cc696a4f19ab"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "include/global.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/include/global.h",
+    "sha256": "92746f8d14e16020be235f5e88b901043e7a806613e9dedfabc21ca493631656",
+    "git_blob_sha1": "bdfc426fb93c964c9f13ca0bd7291c328ef09ae1"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "include/constants/pokemon.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/include/constants/pokemon.h",
+    "sha256": "e0153a94a2fc0f84e6de372494dfb01e88be4d9cf1cbbeca5e56b8a0b645f7e5",
+    "git_blob_sha1": "0d6a20e2b9e39dbc23ed0869c6eba78f9d16ed70"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "include/constants/global.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/include/constants/global.h",
+    "sha256": "7a45fa89f03000033b3786dfdeadf8f72df7d7e6f24d3563fbd36c7a82017301",
+    "git_blob_sha1": "2dff51e1e9656bdb8b4ddddff5cf34fa8269788f"
+  },
+  {
+    "repository": "pret/pokeemerald",
+    "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+    "path": "include/constants/daycare.h",
+    "url": "https://raw.githubusercontent.com/pret/pokeemerald/5eff78649e7170a877b961ef0b3da13b81a16038/include/constants/daycare.h",
+    "sha256": "25c2f31cf0b5779b3caa0cca53ca892733748f0310cf3d9d51b4e3a6c20896ea",
+    "git_blob_sha1": "e412d2ab770706c1cb1b813dbe13243eef3b7189"
+  }
+]

@@ -1,4 +1,5 @@
 #include "Legality/Gen3GameCubeOriginalNativeStage.h"
+#include "Legality/Gen3GameCubeOriginalTransferHistory.h"
 #include "Legality/Gen4SinnohOriginalHoneyHistory.h"
 #include "l1_native_encrypted_formats.h"
 #include <cassert>
@@ -47,6 +48,51 @@ int main(){
                 c.originalCapturedPidSpeciesOtIndependentlyAttested=true;
                 c.originalPurificationIndependentlyAttested=true;
                 assert(G::evaluate(c).status==G::Status::ConditionalGameCubeOriginHistory);
+                // Original encrypted PK3 buffer -> native physical fields
+                // -> strictly conditional independently attested scene and
+                // original capture/recipient witnesses. The synthetic source
+                // flags exercise the bridge; they do NOT authenticate retail
+                // GameCube provenance.
+                namespace T=Legality::Gen3GameCubeOriginalTransferHistory;
+                const uint32_t iv32=N::rd32(decrypted,0x48);
+                const std::array<uint8_t,6> decodedIvs{{
+                    static_cast<uint8_t>(iv32&31u),
+                    static_cast<uint8_t>((iv32>>5)&31u),
+                    static_cast<uint8_t>((iv32>>10)&31u),
+                    static_cast<uint8_t>((iv32>>15)&31u),
+                    static_cast<uint8_t>((iv32>>20)&31u),
+                    static_cast<uint8_t>((iv32>>25)&31u)
+                }};
+                T::Candidate capture{};
+                capture.specimenIdentity=shuffle+1;
+                capture.originalGameCubeSaveIdentity=10;
+                capture.originalPhysicalSourceRoute=11;
+                capture.recipientSaveIdentity=12;
+                capture.originalRootIndependentlyAttested=true;
+                capture.originalSceneAndRouteIndependentlyAttested=true;
+                capture.originalSourceEvaluatorIndependentlyReplayed=true;
+                capture.sourceCheck=T::SourceCheck::SourceMatched;
+                capture.originalIvsIndependentlyAttested=true;
+                capture.originalCapturedIvs=decodedIvs;
+                capture.originalRecipientTransferIndependentlyAttested=true;
+                capture.native=c;
+                capture.native.originalRoute=G::Route::FixedGiftOrTrade;
+                capture.native.native.ivs=decodedIvs;
+                assert(T::evaluate(capture).status==
+                       T::Status::ConditionalGameCubeTransferOnly);
+                auto missed=capture;missed.originalIvsIndependentlyAttested=false;
+                assert(T::evaluate(missed).status==
+                       T::Status::UnknownIndependentNativeIvs);
+                missed=capture;missed.native.native.ivs[0]^=1u;
+                assert(T::evaluate(missed).status==
+                       T::Status::CandidateNativeIvsContradicted);
+                missed=capture;missed.native.native.ivs[0]=255u;
+                assert(T::evaluate(missed).status==
+                       T::Status::UnknownMalformedNativeIvs);
+                missed=capture;missed.native.native.checksumAndDecryptionVerified=
+                    false;
+                assert(T::evaluate(missed).status==
+                       T::Status::UnknownNativeSnapshot);
                 ++pk3pass;
                 auto bad=c;bad.native.species^=1u;
                 assert(G::evaluate(bad).status==G::Status::CandidateNativeIdentityContradicted);++nativeNeg;

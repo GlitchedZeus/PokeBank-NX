@@ -1,0 +1,107 @@
+{
+  "engine_source": "c9f3ab280002c330afa3cbc954adb7789c12656d",
+  "shared_head_before_update": "f5f50e1351b190b73067422aaaa3427f808af3ad",
+  "logs": [
+    {
+      "path": "NATIVE_GATE_FINAL_clang++-sanitize.log",
+      "bytes": 534,
+      "sha256": "fea3766834d990e89dc91e96b78a2c76c0b0397981752b46ab0d3dcf501117dc",
+      "last_lines": [
+        "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; inactive controls; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS",
+        "Original HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 73b152d408b4b10c849692c785c2e056e0cbf917ce15a51aafc0bb0d53a98466",
+        "Native Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe"
+      ]
+    },
+    {
+      "path": "NATIVE_GATE_FINAL_clang++-normal.log",
+      "bytes": 534,
+      "sha256": "fea3766834d990e89dc91e96b78a2c76c0b0397981752b46ab0d3dcf501117dc",
+      "last_lines": [
+        "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; inactive controls; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS",
+        "Original HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 73b152d408b4b10c849692c785c2e056e0cbf917ce15a51aafc0bb0d53a98466",
+        "Native Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe"
+      ]
+    },
+    {
+      "path": "NATIVE_GATE_FINAL_g++-normal.log",
+      "bytes": 534,
+      "sha256": "fea3766834d990e89dc91e96b78a2c76c0b0397981752b46ab0d3dcf501117dc",
+      "last_lines": [
+        "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; inactive controls; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS",
+        "Original HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 73b152d408b4b10c849692c785c2e056e0cbf917ce15a51aafc0bb0d53a98466",
+        "Native Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe"
+      ]
+    },
+    {
+      "path": "NATIVE_GATE_FINAL_g++-sanitize.log",
+      "bytes": 534,
+      "sha256": "fea3766834d990e89dc91e96b78a2c76c0b0397981752b46ab0d3dcf501117dc",
+      "last_lines": [
+        "Original HGSS swarm bodies: 3932160 exhaustive map/type gates; four native fishing outbreaks; inactive controls; allfive Super Rod slots; New Bark/Route34 phantom defaults excluded PASS",
+        "Original HGSS Safari dispatch: land, surf, all rods select Safari handler; ordinary controls PASS",
+        "Native source 9d8b7591f09b65804da2fb2dfd56f320633e0d36 compiled-body SHA256 73b152d408b4b10c849692c785c2e056e0cbf917ce15a51aafc0bb0d53a98466",
+        "Native Safari dispatch compiled-body SHA256 75b51c94d0b63d7843639652bfc22a244c83503b5e7a85e709b184e08057ecfe"
+      ]
+    },
+    {
+      "path": "DUAL_GEN34.log",
+      "bytes": 92,
+      "sha256": "f535c67a6bbaa1a24e9fae7dcfd6151470153e43f3a67aafe10d4175c29198b8",
+      "last_lines": [
+        "Secondary official-release replay: 128 retained stricter rows; 93 reference-version changes"
+      ]
+    },
+    {
+      "path": "DUAL_GEN5.log",
+      "bytes": 89,
+      "sha256": "1bae6d36641cfb6115b94a82874b3268af9360f48e9ea7a32367e639441c12a3",
+      "last_lines": [
+        "Secondary official-release replay: 7 retained stricter rows; 7 reference-version changes"
+      ]
+    },
+    {
+      "path": "GEN4_REGEN_CLAUDE_FINAL.log",
+      "bytes": 125,
+      "sha256": "5715415f05b4d79bea3c5471aad40f760543b2874028d0f3f2d2e84228ed6e2d",
+      "last_lines": [
+        "Native HGSS swarm catalog: 590 unreachable variants removed; 24380 retained slots PASS",
+        "Gen IV legality tables are up to date"
+      ]
+    },
+    {
+      "path": "REFERENCE_GATE_TEST.log",
+      "bytes": 133,
+      "sha256": "5466b47aef072472690663872d6d4a0ab9e2dd18eee3440ce6ab7b948fc83f6e",
+      "last_lines": [
+        "HGSS reference gate:7 genuine positives cannot be exempted;91 independent native level proofs; error/valid/byte-identity guards PASS"
+      ]
+    },
+    {
+      "path": "E2E_GEN5_DUAL_REFERENCE.log",
+      "bytes": 273910,
+      "sha256": "f9eb0e5e9e95a13b2606a6eea130703c73f4a469ce16810df4300332789c3c90",
+      "last_lines": [
+        "      3 metlocation :: Encounter:EncGiftNotFound ~Trainer:OT_SID0 Ribbon:FirstComplex Fateful:FatefulInvalid Fateful:FatefulGiftMissing Move1:Unobtainable Move3:Unobtainable Move4:Unobtainable",
+        "      2 version :: Encounter:EncGiftNotFound Nickname:NickMatchLanguageFail Ribbon:FirstComplex Fateful:FatefulInvalid Fateful:FatefulGiftMissing Move2:Unobtainable",
+        "      2 version :: Encounter:EncGiftNotFound Nickname:NickMatchLanguageFail Ribbon:FirstComplex Fateful:FatefulInvalid Fateful:FatefulGiftMissing Move1:Unobtainable Move2:Unobtainable Move3:Unobtainable",
+        "deliberately stricter (native-safari-level-absence): 5",
+        "PASS: no false Invalid"
+      ]
+    },
+    {
+      "path": "E2E_GEN34_DUAL_REFERENCE.log",
+      "bytes": 18193,
+      "sha256": "7645428845dfea44d027710338c97d741a524cdb900b24866420ee25d46041ec",
+      "last_lines": [
+        "   e.g. m14513-metlocation R EncounterSlot3:129 PKHeX=VALID codes=[~PID:EncConditionBadRNGFrame]",
+        "   ours: (no Invalid issue)  coverage=internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial",
+        "   warnings: No RNG frame produces this wild slot for wild slot (Magikarp)",
+        "   hex: 43C563F8D68960C9C7BBC1C3C5BBCCCAFF000202CED9E7E8D9E6FF003AC10000810000007A1000000046000096002100000000002823000000000000000000000000000000200F21B2FB9F0900000000",
+        "PASS: no false Invalid and no false Valid"
+      ]
+    }
+  ]
+}

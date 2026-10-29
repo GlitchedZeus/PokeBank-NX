@@ -1,0 +1,233 @@
+name: Gen III/IV legality vs PKHeX
+
+# Every Gen III (R/S/E/FR/LG) and Gen IV (D/P/Pt/HG/SS) encounter PKHeX.Core can
+# build, plus seeded single-field mutations, is read through the production PK3/PK4
+# entities and Legality::analyze with the cartridge's own source game. Fails on any
+# false Invalid (PKHeX VALID, PokeBank NX Invalid), any false Valid (PKHeX INVALID,
+# PokeBank NX No problems found) or any record that cannot load. The "grown" corpus
+# plays PKHeX-valid Gen IV records forward (levels, moves, EVs, evolution, items,
+# trades) and transfers PKHeX-valid Gen III records through Pal Park; GROW=1 plays
+# PKHeX-valid Gen III records forward (EXP, level-up moves, EVs, evolution, held items,
+# trades) as PK3.
+#
+# The Gen IV (PK4) analyzer job also checks that the generated Gen IV tables match the
+# pinned PKHeX.Core sources, runs its host test (PKHeX-backed fixtures, rule negatives,
+# malformed records, the Legality::analyze hook, fuzz) with GCC and Clang, normal and
+# ASan/UBSan, and runs libFuzzer for ten minutes. The Gen III PK3 analyzer
+# (src/Legality/Gen3Legality.cpp) runs its table check, fixture tests and a libFuzzer
+# pass in the gen34 job.
+
+on:
+  pull_request:
+    paths:
+      - 'src/Legality/**'
+      - 'include/Legality/**'
+      - 'include/Pokemon/Pokemon.h'
+      - 'src/Pokemon/Pokemon3FRLG.cpp'
+      - 'include/Pokemon/Pokemon3FRLG.h'
+      - 'src/Pokemon/Pokemon4ReadOnly*.cpp'
+      - 'include/Pokemon/Pokemon4ReadOnly*.h'
+      - 'src/Encryption/Encryption3FRLG.cpp'
+      - 'src/Encryption/Encryption4.cpp'
+      - 'tests/test_legality_gen4.cpp'
+      - 'tests/fuzz/fuzz_legality_gen4.cpp'
+      - 'tools/gen_legality_gen4_data/**'
+      - 'tools/pkhex_gen34_diff/**'
+      - 'tools/legality_completion/**'
+      - 'docs/legality/campaign-20261028/**'
+      - 'tests/test_hgss_reference_adjudication.py'
+      - 'tests/test_reference_evidence_package.py'
+      - 'tests/test_gen4_hgss_contest.cpp'
+      - 'tests/test_gen4_ranch_ability.cpp'
+      - 'tests/fixtures/gen15_session2/ranch_ability.txt'
+      - 'tests/test_hgss_contest_catalog.py'
+      - 'tests/fixtures/gen15_session2/hgss_contest.txt'
+      - 'tools/legality_completion/hgss_swarm_repair.py'
+      - 'tools/legality_completion/hgss_native_catalog.py'
+      - 'docs/legality/campaign-20261028/HGSS_SWARM_REMOVED_ROWS.json'
+      - 'Makefile.host.base'
+      - 'Makefile.host.gen4-legality'
+      - 'tools/gen_legality_gen3_data.py'
+      - 'tools/gen_legality_gen3_cxd_data.py'
+      - 'tests/test_legality_gen3.cpp'
+      - 'tests/fuzz/fuzz_legality_gen3.cpp'
+      - 'Makefile.host.gen3-legality'
+      - '.github/workflows/legality-gen34-pkhex-diff.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: legality-gen34-pkhex-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PKHEX_SHA: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+  PKHEX_RELEASE_ROOT: ${{ github.workspace }}/_ref/PKHeX-release
+
+jobs:
+  gen4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: ${{ env.PKHEX_SHA }}
+          path: _ref/PKHeX
+          persist-credentials: false
+      - name: Exact heads
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git -C _ref/PKHeX rev-parse HEAD)" = "$PKHEX_SHA"
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: bfe89c74a3f5265805e364b79bc04ad38ebbc5ea
+          path: _ref/PKHeX-release
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Generated Gen IV tables are up to date
+        run: tools/gen_legality_gen4_data/run.sh _ref/PKHeX --check
+
+      - name: Gen IV tests (GCC and Clang, normal and ASan/UBSan)
+        run: |
+          set -euo pipefail
+          for cxx in g++ clang++; do
+            make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
+              build/host-$cxx/test_legality_gen4 build/host-$cxx/test_legality_gen4_sanitize
+            GEN4_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen4
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen4_sanitize
+          done
+
+      - name: libFuzzer (Clang, ASan/UBSan, 10 minutes)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y libclang-rt-18-dev
+          make -f Makefile.host CXX=clang++ HOST_BUILD=build/fuzz build/fuzz/fuzz_legality_gen4
+          mkdir -p build/fuzz/corpus
+          # Seeds: every fixture of the host test, decrypted, prefixed with its save's game.
+          python3 -I -c "import re,sys; g=['diamond_nds','pearl_nds','platinum_nds','heartgold_nds','soulsilver_nds']; [open(f'{sys.argv[1]}/s{i}','wb').write(bytes([2*g.index(m[0])])+bytes.fromhex(m[1])) for i,m in enumerate(re.findall(r'\"(\w+_nds)\", \"[^\"]*\", \"([0-9A-F]{272})\"', open('tests/test_legality_gen4.cpp').read()))]" build/fuzz/corpus
+          build/fuzz/fuzz_legality_gen4 -max_total_time=600 -max_len=237 build/fuzz/corpus
+
+  gen34:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: ${{ env.PKHEX_SHA }}
+          path: _ref/PKHeX
+          persist-credentials: false
+      - name: Exact heads
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git -C _ref/PKHeX rev-parse HEAD)" = "$PKHEX_SHA"
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: bfe89c74a3f5265805e364b79bc04ad38ebbc5ea
+          path: _ref/PKHeX-release
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Generated Gen III tables are up to date
+        run: |
+          python3 -I tools/gen_legality_gen3_data.py --pkhex _ref/PKHeX --check
+          python3 -I tools/gen_legality_gen3_cxd_data.py --pkhex _ref/PKHeX --check
+      - name: Gen III tests (GCC and Clang, normal and ASan/UBSan)
+        run: |
+          set -euo pipefail
+          for cxx in g++ clang++; do
+            # The shared production link graph carries GCC-only pragmas and a helper
+            # Clang reports as unused; the Gen III sources themselves build clean.
+            extra=""
+            if [ "$cxx" = clang++ ]; then extra="-Wno-unknown-warning-option -Wno-unused-function"; fi
+            make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
+              CXXFLAGS="-std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 $extra" \
+              build/host-$cxx/test_legality_gen3 build/host-$cxx/test_legality_gen3_sanitize
+            GEN3_FUZZ_ROUNDS=100000 build/host-$cxx/test_legality_gen3
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen3_sanitize
+          done
+      - name: Gen III libFuzzer (Clang, ASan/UBSan, 10 minutes)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y libclang-rt-18-dev
+          clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined \
+            -Wno-unused-parameter -Iinclude tests/fuzz/fuzz_legality_gen3.cpp src/Legality/Gen3Legality.cpp \
+            src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp -o build/fuzz_gen3
+          mkdir -p build/fuzz_corpus_gen3
+          python3 -I -c "import re,sys; [open(f'build/fuzz_corpus_gen3/s{i}','wb').write(bytes([i % 5])+bytes.fromhex(h)) for i,h in enumerate(re.findall(r'\"([0-9A-F]{160})\"', open('tests/test_legality_gen3.cpp').read()))]"
+          build/fuzz_gen3 -max_total_time=600 -max_len=120 build/fuzz_corpus_gen3
+      - name: PK3/PK4 verdicts against PKHeX (every Gen III/IV encounter, 3 seeds)
+        run: |
+          set -euo pipefail
+          for seed in 1 2 3; do
+            WORK="$PWD/build/diff-base-$seed" tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3
+          done
+      - name: Grown PK4 verdicts against PKHeX (played-forward records and Pal Park, 3 seeds)
+        run: |
+          set -euo pipefail
+          for seed in 1 2 3; do
+            WORK="$PWD/build/diff-grown4-$seed" tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3 4 grown
+          done
+      - name: Grown PK3 corpus against PKHeX (EXP, moves, EVs, evolution, items, trades; 3 seeds)
+        run: |
+          set -euo pipefail
+          for seed in 1 2 3; do
+            WORK="$PWD/build/diff-grown3-$seed" GROW=1 tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3
+          done
+
+      - name: Verify complete retained raw and secondary-reference streams
+        run: |
+          python3 tests/test_reference_artifact_integrity.py
+          python3 tools/legality_completion/verify_reference_artifacts.py gen34 \
+            build/diff-base-{1,2,3} build/diff-grown4-{1,2,3} build/diff-grown3-{1,2,3}
+
+      - name: Record exact reference and engine heads
+        if: always()
+        run: |
+          mkdir -p build
+          git rev-parse HEAD > build/reference-heads.txt
+          git -C _ref/PKHeX rev-parse HEAD >> build/reference-heads.txt
+          git -C _ref/PKHeX-release rev-parse HEAD >> build/reference-heads.txt
+          python3 tools/legality_completion/package_reference_evidence.py \
+            --build build --archive build/reference-evidence.tar.gz
+
+      - name: Verify the sealed reference capture before upload
+        run: |
+          python3 tests/test_reference_evidence_package.py
+          python3 tools/legality_completion/package_reference_evidence.py --verify \
+            --archive build/reference-evidence.tar.gz --group gen34 \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --runs diff-base-1 diff-base-2 diff-base-3 diff-grown4-1 diff-grown4-2 diff-grown4-3 diff-grown3-1 diff-grown3-2 diff-grown3-3
+
+      - name: Preserve both reference results and unchanged raw comparison bytes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-gen34-reference-adjudication
+          path: |
+            build/reference-heads.txt
+            build/reference-files.json
+            build/reference-evidence.tar.gz
+          if-no-files-found: warn
+          retention-days: 30

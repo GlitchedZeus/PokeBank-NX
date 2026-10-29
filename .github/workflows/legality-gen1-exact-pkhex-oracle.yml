@@ -75,8 +75,8 @@ jobs:
           test "$(git -C _l5_gen1_coordinator/vendor/PKSM-Core rev-parse HEAD)" = aa22d7a4f87c0351baf7da5962ba5acd01039a7c
           test "$(git -C _l5_gen1_pkhex rev-parse HEAD)" = 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
           test "$(git hash-object _l5_gen1_accepted/src/Legality/Legality.cpp)" = b1d02d6620e8fffca2cf71874b786d44108e193f
-          test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = aeede14171542247eb633451c50bd9b2074c49dc
-          test "$(git hash-object _l5_gen1_coordinator/src/Integration/Gen1/Gen1ReadOnlySave.cpp)" = a2445a20a2ede222a2b14e56f87305ef3263484e
+          test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = 9214187a579ac69fd3b071b1d23fbf737309c0d0
+          test "$(git hash-object _l5_gen1_coordinator/src/Integration/Gen1/Gen1ReadOnlySave.cpp)" = 7409ad560dc5391165c53e764c8212f6d288ad45
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c
           test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = 6cb93000fcc3cf2198e8d399c49b426bbf973621
@@ -87,8 +87,8 @@ jobs:
           test "$(git hash-object tools/audit_legality_l5_gen1_rby_protocol_negative.py)" = 1a01b9585cc23ea733626874c41116c9b1137dc8
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = 925bf4b680c403b07d5da98bfe19dbb23f57882a
           test "$(git hash-object tests/fixtures/legality_l5_gen1_original_pk1_raw_offsets.cpp)" = 4ef984298867d2acd4866b7039dd988a5c60309d
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_real_save_pipeline.cpp)" = d7f571ec60bc1ff65e3d328b745a960dca7461d4
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_all_151_sourcefree_native.cpp)" = 4c4fc7e3b17c9097eb36d11c660adc821b902af2
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_real_save_pipeline.cpp)" = ef4b32e42f71df0dc6ebb62ce591eacbbbaa0d7f
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_all_151_sourcefree_native.cpp)" = db78d1683305c8080167a5c0ff4fb0bd48ffecd2
           git diff --check
       - name: Execute all 65,536 original Gen I DV patterns and Stat Experience boundaries GCC and Clang normal plus ASan/UBSan
         shell: bash

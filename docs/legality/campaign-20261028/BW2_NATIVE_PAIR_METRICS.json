@@ -1,0 +1,72 @@
+{
+  "policy": "Fresh generated records, including generated INVALID, retained without exclusions. Raw binary agreement is not historical accuracy or completeness. Deliberate disagreements remain in raw counts. Fishy is exposed in every reference stream. LOADFAIL remains in denominator.",
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "groups": [
+    "gen5"
+  ],
+  "generations": {
+    "5": {
+      "records": 2,
+      "raw_agreement": 1,
+      "raw_agreement_percent": 50.0,
+      "raw_false_invalid": 1,
+      "raw_false_clean": 0,
+      "incomplete": 0,
+      "loadfail": 0,
+      "reference_fishy_all": 0,
+      "reference_fishy_valid": 0,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "VALID/INVALID": 1,
+        "VALID/NOPROBLEMS": 1
+      },
+      "fishy_cross_table": {},
+      "by_game_or_origin": {
+        "B2": {
+          "records": 2,
+          "raw_agreement": 1,
+          "raw_agreement_percent": 50.0,
+          "raw_false_invalid": 1,
+          "raw_false_clean": 0,
+          "incomplete": 0,
+          "loadfail": 0,
+          "reference_fishy_all": 0,
+          "reference_fishy_valid": 0,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "VALID/INVALID": 1,
+            "VALID/NOPROBLEMS": 1
+          },
+          "fishy_cross_table": {}
+        }
+      }
+    }
+  },
+  "files": {
+    "gen5-reference.txt": {
+      "sha256": "bd2395d7a8d594dd3411aeb30b6e303ba71e407f634c4b6eaf69664dbbca777b",
+      "bytes": 696
+    },
+    "gen5-production.txt": {
+      "sha256": "33b99fe65631ab21e5077dffcca2b8836529e4ae15b6aa0d48de3bb931734a32",
+      "bytes": 147
+    }
+  },
+  "total": {
+    "records": 2,
+    "raw_agreement": 1,
+    "raw_agreement_percent": 50.0,
+    "raw_false_invalid": 1,
+    "raw_false_clean": 0,
+    "incomplete": 0,
+    "loadfail": 0,
+    "reference_fishy_all": 0,
+    "reference_fishy_valid": 0,
+    "reference_misc_error": 0,
+    "cross_table": {
+      "VALID/INVALID": 1,
+      "VALID/NOPROBLEMS": 1
+    },
+    "fishy_cross_table": {}
+  }
+}

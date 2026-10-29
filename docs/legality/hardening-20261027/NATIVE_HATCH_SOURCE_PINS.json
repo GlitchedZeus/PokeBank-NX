@@ -1,0 +1,34 @@
+[
+  {
+    "repository": "pokeheartgold",
+    "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "path": "src/get_egg.c",
+    "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/get_egg.c",
+    "sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+    "git_blob_sha1": "3127e0e1010842829cfc34014d4625cf5eef76be"
+  },
+  {
+    "repository": "pokeheartgold",
+    "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "path": "src/pokemon.c",
+    "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/pokemon.c",
+    "sha256": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+    "git_blob_sha1": "6127956d12e380033c08b1fce1e707d16b601c1a"
+  },
+  {
+    "repository": "pokeplatinum",
+    "commit": "637bb186e11b5ce1ee578981311c057498e57126",
+    "path": "src/overlay005/daycare.c",
+    "url": "https://raw.githubusercontent.com/pret/pokeplatinum/637bb186e11b5ce1ee578981311c057498e57126/src/overlay005/daycare.c",
+    "sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+    "git_blob_sha1": "9a4c97a09842f696fd07fc822bbe1297c7388eba"
+  },
+  {
+    "repository": "pokeplatinum",
+    "commit": "637bb186e11b5ce1ee578981311c057498e57126",
+    "path": "src/pokemon.c",
+    "url": "https://raw.githubusercontent.com/pret/pokeplatinum/637bb186e11b5ce1ee578981311c057498e57126/src/pokemon.c",
+    "sha256": "84838b196abe0d851f76e2f1ea75e04473b158ede6d517a4229f2c337b4dda8b",
+    "git_blob_sha1": "76993130cb6d61b9e65ae022a0cce820216dc5c2"
+  }
+]

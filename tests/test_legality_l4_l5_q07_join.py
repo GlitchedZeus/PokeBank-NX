@@ -19,6 +19,13 @@ L4 = [dict(projection_index=str(i), species=str(4+i), tid=str(7200+i),
            archive_grade="UNVERIFIED", record_digest_available="NO",
            release_attested="NO") for i in range(2)]
 BASE = {
+    "schema": "L5_Q07_GEN4_247_EVENT_ARCHIVE_JOIN_V1",
+    "catalog_id": "Q07",
+    "copying_binaries_permitted": False,
+    "defaultGrade": "unknown",
+    "allowedGrades": ["original_authenticated",
+                      "converted_with_authenticated_original",
+                      "reconstructed_or_placeholder", "altered", "unreleased", "unknown"],
     "source": {"pkhex_revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
                "projection_records": 2, "blob_sha": module.git_blob_sha(DATA)},
     "metrics": {"templates": 2, "unique_card_ids": 1, "repeated_card_id_templates": 2,
@@ -36,7 +43,10 @@ for i, a in enumerate(L4):
                          "license_redistribution_clearance": "not established",
                          "original_payload_moves": "unknown", "original_payload_ribbons": "unknown",
                          "original_raw_trainer_bytes": "unknown",
-                         "distribution_language_window": "unknown"})
+                         "distribution_language_window": "unknown",
+                         "source_line": i+6,
+                         "source_projection": "synthetic structural-only",
+                         "verdict_policy": "Unknown until independently authenticated"})
 
 
 def ctext(rows):
@@ -57,6 +67,43 @@ class JoinTests(unittest.TestCase):
     def test_agreement(self):
         self.assertEqual(check()["matching_composite_keys"], 2)
         self.assertTrue(check()["original_event_provenance_still_unknown"])
+
+    def test_manifest_permissions_cannot_be_upgraded(self):
+        for field, value in [
+            ("copying_binaries_permitted", True),
+            ("defaultGrade", "original_authenticated"),
+            ("schema", "L5_Q07_NEW_SCHEMA"),
+            ("catalog_id", "Q99"),
+            ("allowedGrades", ["original_authenticated"])]:
+            with self.subTest(field=field):
+                x = json.loads(json.dumps(BASE))
+                x.update({"schema":"L5_Q07_GEN4_247_EVENT_ARCHIVE_JOIN_V1",
+                          "catalog_id":"Q07","copying_binaries_permitted":False,
+                          "defaultGrade":"unknown",
+                          "allowedGrades":["original_authenticated",
+                           "converted_with_authenticated_original",
+                           "reconstructed_or_placeholder", "altered",
+                           "unreleased", "unknown"]})
+                x[field] = value
+                with self.assertRaises(ValueError):
+                    check(x)
+
+    def test_disallow_embedded_payload_keys_and_boolean_ids(self):
+        x = json.loads(json.dumps(BASE))
+        x.update({"schema":"L5_Q07_GEN4_247_EVENT_ARCHIVE_JOIN_V1",
+                  "catalog_id":"Q07","copying_binaries_permitted":False,
+                  "defaultGrade":"unknown",
+                  "allowedGrades":["original_authenticated",
+                   "converted_with_authenticated_original",
+                   "reconstructed_or_placeholder", "altered",
+                   "unreleased", "unknown"]})
+        x["rows"][0]["binary_card_hex"] = "00ff"
+        with self.assertRaisesRegex(ValueError,"payload"):
+            check(x)
+        del x["rows"][0]["binary_card_hex"]
+        x["rows"][0]["native_language_code"] = True
+        with self.assertRaisesRegex(ValueError,"structured integer"):
+            check(x)
 
     def test_changed_trainer(self):
         x = json.loads(json.dumps(BASE)); x["rows"][0]["sid"] = 0

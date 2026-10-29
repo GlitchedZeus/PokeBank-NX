@@ -51,6 +51,28 @@ bool hasInvalidWith(const Legality::Report& r,std::string_view term1,
     }
     return false;
 }
+// An Invalid finding that an egg carries EVs: the text names an egg and has
+// "ev"/"evs" as a whole word or "effort". A plain substring test for "ev" also
+// matches "level", and the Gen IV analyzer reports these synthetic eggs' level
+// (PKHeX EggFMetLevel_0: "Egg level does not match its encounter"), which is
+// not an EV finding.
+bool hasEggEvInvalid(const Legality::Report& r) {
+    for(const auto& issue:r.issues) {
+        if(issue.severity!=Legality::Severity::Invalid)continue;
+        std::string str=issue.text;
+        for(char& ch:str)ch=static_cast<char>(
+            std::tolower(static_cast<unsigned char>(ch)));
+        if(str.find("egg")==std::string::npos)continue;
+        if(str.find("effort")!=std::string::npos)return true;
+        std::string word;
+        for(const char ch:str+' ') {
+            if(std::isalnum(static_cast<unsigned char>(ch))) { word+=ch; continue; }
+            if(word=="ev"||word=="evs")return true;
+            word.clear();
+        }
+    }
+    return false;
+}
 Legality::Report pk3Probe(uint8_t value,bool egg,bool exactSource,
                           uint8_t secondEV=0,uint8_t thirdEV=0,
                           bool mismatchedSource=false) {
@@ -143,9 +165,7 @@ int main(int argc,char** argv) {
             const Legality::Report r=gen==3
               ? pk3Probe(static_cast<uint8_t>(ev),true,exactSource)
               : pk4Probe(static_cast<uint8_t>(ev),true,exactSource);
-            const bool eggEV = hasInvalidWith(r,"egg","ev") ||
-                               hasInvalidWith(r,"egg","effort") ||
-                               hasInvalidWith(r,"ev","egg");
+            const bool eggEV = hasEggEvInvalid(r);
             assert(eggEV==(!baseline && ev>0));
             ++assertions;
         }
@@ -169,7 +189,7 @@ int main(int argc,char** argv) {
                 : pk4Probe(255,true,exactSource,255);
             assert(!hasInvalidWith(egg,"ev total over 510"));
             assert(!hasInvalidWith(egg,"ev over 252"));
-            assert(hasInvalidWith(egg,"egg","ev"));
+            assert(hasEggEvInvalid(egg));
             ++assertions;
         }
         for(int gen:{3,4})for(bool egg:{false,true}) {
@@ -177,7 +197,7 @@ int main(int argc,char** argv) {
                 ? pk3Probe(255,egg,false,0,0,true)
                 : pk4Probe(255,egg,false,0,0,true);
             assert(!hasInvalidWith(r,"ev over 252"));
-            assert(hasInvalidWith(r,"egg","ev")==egg);
+            assert(hasEggEvInvalid(r)==egg);
             bool sourceWarning=false;
             for(const auto& issue:r.issues)
                 if(issue.severity==Legality::Severity::Warning &&

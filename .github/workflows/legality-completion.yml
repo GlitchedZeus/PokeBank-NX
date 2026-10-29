@@ -1,0 +1,242 @@
+name: Legality completion focused evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'include/Legality/**'
+      - 'src/Legality/**'
+      - 'include/Integration/Gen2/**'
+      - 'src/Integration/Gen2/**'
+      - 'include/Utils/Gen2KoreanTable.h'
+      - 'tests/test_gen2_korean_save.cpp'
+      - 'tests/test_gen3_berry_*.cpp'
+      - 'tests/test_legality_report_presentation.cpp'
+      - 'tests/app/**'
+      - 'tests/test_gb_breeding_chain.cpp'
+      - 'tests/test_finite_breeding_chain.cpp'
+      - 'tests/test_gen3_workspace_legality.cpp'
+      - 'tests/test_gen5_gift_receivability.cpp'
+      - 'tests/test_gen4_ground_tile.cpp'
+      - 'tests/test_gen4_hgss_swarm.cpp'
+      - 'tests/test_gen4_hgss_contest.cpp'
+      - 'tests/test_gen4_ranch_ability.cpp'
+      - 'tests/test_hgss_contest_catalog.py'
+      - 'tests/test_gen5_app_context.cpp'
+      - 'tests/test_gen5_joint_breeding.cpp'
+      - 'tests/test_gen35_release_rules.cpp'
+      - 'tests/test_public_fixture_selection.py'
+      - 'tests/test_hgss_reference_adjudication.py'
+      - 'tests/test_reference_evidence_package.py'
+      - 'tests/test_bw2_shared_order.py'
+      - 'tests/fixtures/gen15_session2/**'
+      - 'tests/fixtures/gen3_berry_save.h'
+      - 'Makefile.host.gb-legality'
+      - 'Makefile.host.gen5-legality'
+      - 'Makefile.host.gen4-legality'
+      - 'tools/gen_legality_gen4_data/**'
+      - 'docs/legality/campaign-20261028/**'
+      - 'docs/legality/completion-session2/app-integration.*'
+      - 'docs/legality/hardening-20261027/**'
+      - 'tools/legality_completion/**'
+      - '.github/workflows/legality-completion.yml'
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++, clang++]
+    env:
+      CXX: ${{ matrix.cxx }}
+      ASAN_OPTIONS: detect_leaks=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: recursive
+      - name: Record exact checkout and compiler for evidence artifacts
+        run: |
+          mkdir -p build-completion
+          git rev-parse HEAD > build-completion/CI_HEAD.txt
+          "$CXX" --version > build-completion/CI_COMPILER.txt
+      - name: Build and execute focused normal and sanitizer regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm test_gen4_hgss_contest test_gen4_ranch_ability test_gen5_joint_breeding)
+          targets=()
+          for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
+          make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
+          for name in "${names[@]}"; do
+            "build-completion/$name" 2>&1 | tee "build-completion/$name.log"
+            "build-completion/${name}_sanitize" 2>&1 | tee "build-completion/${name}_sanitize.log"
+          done
+      - name: Reproduce source-pinned release counterexample and catalog pairing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/test_reference_evidence_package.py | tee build-completion/reference-evidence-package.log
+          python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
+          python3 tests/test_hgss_reference_adjudication.py | tee build-completion/hgss-reference-adjudication.log
+          python3 tests/test_bw2_shared_order.py | tee build-completion/bw2-reference-adjudication.log
+          python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
+          python3 tools/legality_completion/hgss_contest_repair.py \
+            --native build-completion/native-hgss --fetch \
+            --report build-completion/hgss-contest-catalog.json | tee build-completion/hgss-contest-catalog.log
+          python3 tests/test_hgss_contest_catalog.py \
+            --native build-completion/native-hgss | tee build-completion/hgss-contest-protection.log
+          python3 tools/legality_completion/hgss_swarm_repair.py \
+            --native build-completion/native-hgss --fetch \
+            --report build-completion/hgss-swarm-catalog.json | tee build-completion/hgss-swarm-catalog.log
+          python3 tools/legality_completion/hgss_native_level_index.py \
+            --native build-completion/native-hgss --fetch --check | tee build-completion/hgss-native-levels.log
+          for profile in normal sanitize; do
+            flags=()
+            if [ "$profile" = sanitize ]; then flags+=(--sanitize); fi
+            python3 tools/legality_completion/ev_exp_native_witness.py \
+              --source build-completion/native-hgss --fetch \
+              --work "build-completion/native-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-ev-$profile.log"
+            python3 tools/legality_completion/hgss_swarm_native_witness.py \
+              --native build-completion/native-hgss --fetch \
+              --work "build-completion/native-swarm-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-swarm-$profile.log"
+            python3 tools/legality_completion/breeding_native_witness.py \
+              --native build-completion/native-hgss --fetch \
+              --work "build-completion/native-birth-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-birth-$profile.log"
+            python3 tools/legality_completion/bw2_breeding_native_witness.py \
+              --native build-completion/native-bw2 --fetch \
+              --work "build-completion/native-bw2-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-bw2-$profile.log"
+          done
+      - name: Preserve official release and native EV witness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-release-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen35_release_rules*.log
+            build-completion/global-link-generator.log
+            build-completion/public-fixture-selection.log
+            build-completion/reference-evidence-package.log
+            build-completion/native-ev-*.log
+            build-completion/native-swarm-*.log
+            build-completion/native-birth-*.log
+            build-completion/native-bw2-*.log
+            build-completion/bw2-reference-adjudication.log
+            docs/legality/campaign-20261028/BW2_*
+            build-completion/test_gen5_joint_breeding*.log
+            build-completion/test_finite_breeding_chain*.log
+            docs/legality/campaign-20261028/HGSS_BREEDING_SOURCE_PINS.json
+            docs/legality/campaign-20261028/GEN5_JOINT_FIXTURES.json
+            tests/fixtures/gen15_session2/gen5_joint_breeding.txt
+            build-completion/hgss-swarm-catalog.*
+            build-completion/hgss-contest-catalog.*
+            build-completion/hgss-contest-protection.log
+            build-completion/test_gen4_hgss_contest*.log
+            build-completion/test_gen4_ranch_ability*.log
+            tests/fixtures/gen15_session2/ranch_ability.txt
+            build-completion/native-hgss/**/*
+            tests/fixtures/gen15_session2/hgss_contest.txt
+            docs/legality/campaign-20261028/HGSS_CONTEST_*.json
+            build-completion/hgss-reference-adjudication.log
+            build-completion/hgss-native-levels.log
+            docs/legality/campaign-20261028/HGSS_NATIVE_LEVEL_INDEX.json
+            docs/legality/campaign-20261028/HGSS_FROZEN_REFERENCE_ADJUDICATION.json
+            docs/legality/campaign-20261028/HGSS_SAFARI_SOURCE_PINS.json
+            build-completion/test_gen4_hgss_swarm*.log
+            tests/fixtures/gen15_session2/hgss_swarm.txt
+            docs/legality/campaign-20261028/HGSS_SWARM_*.json
+            build-completion/CI_HEAD.txt
+            build-completion/CI_COMPILER.txt
+            tests/fixtures/gen15_session2/global_link.txt
+            tests/fixtures/gen15_session2/ev_exp.txt
+            tests/fixtures/gen15_session2/ranch_iv.txt
+            tests/fixtures/gen15_session2/berry_fix.txt
+            tests/fixtures/gen15_session2/evolved_trade_hatch.txt
+            tests/fixtures/gen15_session2/gen3_egg_pid.txt
+            docs/legality/hardening-20261027/*PINS.json
+            docs/legality/hardening-20261027/GLOBAL_LINK_PAIRING.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Preserve native terrain boundary regressions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-ground-tile-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen4_ground_tile*.log
+            tests/fixtures/gen15_session2/ground_tile.txt
+            docs/legality/native-terrain-20261025/SOURCE_PINS.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Preserve Gen V source-context evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-gen5-boundary-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen5_app_context*.log
+            build-completion/test_legality_gen5_adapter*.log
+            tests/test_gen5_app_context.cpp
+            docs/legality/hardening-20261027/SOURCE_PINS.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Original full-card corpus and provenance negative controls
+        run: |
+          set -euo pipefail
+          mkdir -p build-completion/source
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/kwsch/PKHeX/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Resources/legality/mgdb/pgf.pkl \
+            --output build-completion/source/pgf.pkl
+          for reader in test_gen5_full_card_evidence test_gen5_full_card_evidence_sanitize; do
+            python3 tools/legality_completion/full_card_evidence.py \
+              --archive build-completion/archive --pgf build-completion/source/pgf.pkl \
+              --fetch --check --reader "build-completion/$reader" \
+              --report "build-completion/$reader.json"
+          done
+          python3 tests/test_gen5_full_card_generator.py \
+            --archive build-completion/archive --pgf build-completion/source/pgf.pkl
+      - name: Preserve independently replayed full-card evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-full-card-evidence-${{ matrix.cxx }}
+          path: |
+            build-completion/test_gen5_full_card_evidence*.json
+            build-completion/archive/**/*.wc5full
+            docs/legality/historical-evidence-20261025/FULL_CARD_MANIFEST.json
+          if-no-files-found: warn
+          retention-days: 30
+  app-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: engine
+      - uses: actions/checkout@v4
+        with:
+          ref: d6cc878a9652b78a6cdfd8a31cdb5797172d6c9d
+          path: app
+      - name: Verify current app patch and actual staged workspace boundary
+        run: |
+          git -C engine rev-parse HEAD > app-bridge-heads.txt
+          git -C app rev-parse HEAD >> app-bridge-heads.txt
+          git -C app apply --check "$PWD/engine/docs/legality/hardening-20261027/app-presentation.patch"
+          set -o pipefail
+          bash engine/tools/legality_completion/test_app_bridge.sh app 2>&1 | tee app-bridge.log
+      - name: Preserve current application boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-app-boundary-evidence
+          path: |
+            app-bridge.log
+            app-bridge-heads.txt
+            engine/tests/app/test_gen5_workspace_legality.cpp
+            engine/docs/legality/hardening-20261027/SOURCE_PINS.json
+          if-no-files-found: warn
+          retention-days: 30
