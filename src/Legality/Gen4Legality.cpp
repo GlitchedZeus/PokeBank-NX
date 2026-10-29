@@ -1149,6 +1149,22 @@ void Analyzer::verifyAbility() {
     const int abilIndex = pk_.ability == a1 ? 0 : (pk_.ability == a2 ? 1 : -1);
     if (abilIndex < 0) { invalid(CheckIdentifier::Ability, "Ability is not one of this species' abilities"); return; }
     const int pidIndex = static_cast<int>(pk_.pid & 1);
+    const uint8_t expectedPidAbility = pidIndex == 0 || a2 == 0 ? a1 : a2;
+    // The shared report's legacy native-slot guard belongs after encounter
+    // selection. Preserve it for ordinary exact-source retail records, while
+    // Ranch's unverified Wii writer receives its own uncertainty below.
+    if (cartKnown_ && isGen4Version(pk_.version) && !pk_.fateful &&
+        enc_.kind != EncKind::Ranch && pk_.ability != expectedPidAbility) {
+        invalid(CheckIdentifier::Ability, "Ability does not match the Generation IV PID-selected native slot");
+        return;
+    }
+    if (enc_.kind == EncKind::Ranch && a1 != a2 &&
+        pk_.ability != expectedPidAbility) {
+        // The released fixed-ability model permits some such records. No
+        // original Wii writer has been verified here, so do not certify them
+        // clean or invent a definitive generic PID-bit rejection.
+        fishy(CheckIdentifier::Ability, "Ranch ability differs from the PID-selected slot; original Wii ability behavior has not been verified");
+    }
     auto pidMatch = [&]() {
         if ((pidIndex == 0 ? a1 : a2) != pk_.ability)
             invalid(CheckIdentifier::Ability, "Ability does not match the PID's ability bit");

@@ -32,6 +32,7 @@ on:
       - 'tests/test_gen5_joint_breeding.cpp'
       - 'tests/fixtures/gen15_session2/gen5_joint_breeding.txt'
       - 'tests/test_reference_artifact_integrity.py'
+      - 'tests/test_reference_evidence_package.py'
       - 'tests/test_bw2_shared_order.py'
       - 'tests/legality_gen5_test_helpers.h'
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
@@ -151,6 +152,16 @@ jobs:
           git rev-parse HEAD > build/reference-heads.txt
           git -C _ref/PKHeX rev-parse HEAD >> build/reference-heads.txt
           git -C _ref/PKHeX-release rev-parse HEAD >> build/reference-heads.txt
+          python3 tools/legality_completion/package_reference_evidence.py \
+            --build build --archive build/reference-evidence.tar.gz
+
+      - name: Verify the sealed reference capture before upload
+        run: |
+          python3 tests/test_reference_evidence_package.py
+          python3 tools/legality_completion/package_reference_evidence.py --verify \
+            --archive build/reference-evidence.tar.gz --group gen5 \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --runs diff-base-1 diff-base-2 diff-base-7 diff-base-11
 
       - name: Preserve both reference results and unchanged raw comparison bytes
         if: always()
@@ -161,13 +172,7 @@ jobs:
             build/reference-heads.txt
             docs/legality/campaign-20261028/BW2_*
             build/native-bw2-body/native_bw2_birth.cpp
-            build/diff-*/pkhex.txt
-            build/diff-*/pokebank.txt
-            build/diff-*/joined.txt
-            build/diff-*/current-release/REPORT.json
-            build/diff-*/current-release/input.txt
-            build/diff-*/current-release/reference.txt
-            build/diff-*/current-release/oracle/*.dll
-            build/diff-*/generation-audit.jsonl
+            build/reference-files.json
+            build/reference-evidence.tar.gz
           if-no-files-found: warn
           retention-days: 30

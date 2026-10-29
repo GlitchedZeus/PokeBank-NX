@@ -1,26 +1,25 @@
 {
-  "schema": 3,
+  "schema": 4,
   "status": "active; no completion claim",
   "pr": 314,
   "branch": "claude/gen1-5-legality-campaign-w9mkom",
-  "remote_head": "1ae69f3a1dd1766c1848f4f387b1c68e46cabedb",
+  "remote_head": "0f1f34cc9dacb10b2f2fac4d5f36484edeea8c05",
   "official_release": {
     "tag": "26.10.18",
     "sha": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea"
   },
   "newer_master_separate": "8e3eb3d47bb496746c3eaa9d160329d295a5e2e5",
-  "working_changes": "B2W2 child-learnset order, ordinary English necessary-order proof,Japanese guard,conservative family-carrier uncertainty and complete raw transport checks. Final immutable source/binary snapshot and new seed declared; source commit/current-head CI and full final replay status must be read from PR/artifacts. No completion claim.",
+  "working_changes": "Final local HGSS contest-only bank and native/shared Ranch ability repairs, source-pinned regeneration, final32 suite executions, new independent III-V samples and full retained replays complete. Source commit/push and fresh-head sealed CI evidence acceptance pending. No PR307 edit or merge.",
   "validation": {
-    "local": "BW2_VALIDATION.json:41 breeding and207 baseline cases,2000 fuzz records per GCC/Clang normal/sanitizer profile;8 native BW2/HGSS body profiles PASS. Earlier40000-fuzz runs retained. Exact final compile equals frozen binary.",
-    "original_seven": "7 original shared-level cases remain Incomplete",
-    "ci": "1ae69f3a:10 workflows success;GenV failed on3 Kangaskhan eggs. This source repair requires fresh-head CI.",
-    "evidence_transport": "CI_1AE_INTEGRITY_FAILURE.json:one malformed standalone record;original ZIP and joined view preserved. All-row hex/size checks and7 integrity controls now required."
+    "local": "REPAIR_VALIDATION.json:32 final compiler/profile suite executions;8 contest fixtures;5 Ranch payloads on5 titles through direct/encrypted/shared paths;table regeneration byte-identical;105 public fixtures replayed with all differences retained.",
+    "ci": "0f1f34cc:10 workflows passed;gen34 failed h60141-ability. New code keeps that unverified Ranch history Incomplete and needs fresh-head CI.",
+    "evidence_transport": "CI_0F1F_GEN5_INTEGRITY_AUDIT.json:one production diagnostic character conflicts; Pokemon payloads/verdicts agree. All originals kept. New sealed capture is verified before upload and anchored by CI-log hash."
   },
   "metrics": {
-    "primary": "JOINT_PRIMARY_METRICS.json",
-    "independent": "JOINT_INDEPENDENT_METRICS.json",
+    "primary": "REPAIR_PRIMARY_METRICS.json",
+    "independent": "REPAIR_INDEPENDENT_METRICS.json",
     "all_retained": "JOINT_RETAINED_METRICS.json",
-    "measurement_notes": "BW2_BREEDING_REPAIR.md; JOINT_MEASUREMENTS.md is prior frozen-v3 only",
+    "measurement_notes": "REPAIR_CHECKPOINT_20261029.md",
     "original_raw_queue": "RAW_FALSE_CLEAN_QUEUE.json",
     "new_independent_queue": "JOINT_INDEPENDENT_QUEUE.json",
     "role_primary": "ROLE_PRIMARY_METRICS.json",
@@ -28,15 +27,19 @@
     "native_order_pair": "BW2_NATIVE_PAIR_METRICS.json",
     "native_order_explanation": "BW2_NATIVE_PAIR_DISAGREEMENTS.json",
     "final_source": "BW2_ENGINE_FINAL_MANIFEST.json",
-    "final_holdout_declaration": "BW2_FINAL_HOLDOUT_PLAN.json"
+    "final_holdout_declaration": "BW2_FINAL_HOLDOUT_PLAN.json",
+    "previous_same_input": "REPAIR_PREVIOUS_SAMPLE_METRICS.json",
+    "source": "REPAIR_ENGINE_MANIFEST.json",
+    "holdout_declaration": "REPAIR_HOLDOUT_PLAN.json",
+    "public": "REPAIR_PUBLIC_FIXTURES.json"
   },
-  "fixture_hashes": "BW2_BREEDING_FIXTURES.json",
+  "fixture_hashes": "REPAIR_FIXTURE_REFERENCE.json; BW2_BREEDING_FIXTURES.json",
   "queue": [
     {
       "priority": 0,
       "kind": "validation",
-      "task": "Verify full frozen final replays,all new-head CI jobs and downloaded raw artifacts; retain every case and reject inconsistent raw/joined bytes",
-      "source": "BW2_ENGINE_FINAL_MANIFEST.json; BW2_FINAL_HOLDOUT_PLAN.json; BW2_VALIDATION.json"
+      "task": "Commit/push forward;verify every new-head workflow and downloaded sealed evidence archive against the digest in its successful verification log. Do not accept inconsistent loose captures or waive new cases.",
+      "source": "REPAIR_ENGINE_MANIFEST.json;REPAIR_VALIDATION.json;package_reference_evidence.py"
     },
     {
       "priority": 0,
@@ -58,12 +61,6 @@
       "kind": "source/reference disagreement",
       "task": "Complete historical family/event closure for Kangaskhan WorkUp,Happiny MudBomb/Hail and all retained egg differences. Full report omits TMHM from ancestry gathering; no definitive impossible/clean conclusion from that discrepancy alone.",
       "source": "BREEDING_REFERENCE_ANOMALIES.json; JOINT_FIXTURE_REFERENCE_TRACE.json; JOINT_INDEPENDENT_QUEUE.json"
-    },
-    {
-      "priority": 1,
-      "kind": "fresh false clean",
-      "task": "Resolve HGSS Caterpie m41147-ball using actual alternative encounter/RNG and native geometry; never assume the reference encounter wins",
-      "source": "JOINT_INDEPENDENT_QUEUE.json; Gen4LegalityEncounters.cpp"
     },
     {
       "priority": 1,
@@ -105,5 +102,5 @@
     "Preserved Claude ded4c2f2/f5f50e13 via forward checkout; no merge commit",
     "PR314 comments6469504356 and6469535480 report the native proof and unsafe exemption counterexamples; PR307 untouched"
   ],
-  "checkpoint_readme": "BW2_BREEDING_REPAIR.md"
+  "checkpoint_readme": "REPAIR_CHECKPOINT_20261029.md"
 }

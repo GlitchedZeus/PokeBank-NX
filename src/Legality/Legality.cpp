@@ -2047,7 +2047,11 @@ namespace Legality {
                 add(r, Severity::Invalid, "Ability not legal for this species");
             } else if (sourceProfile && exactGeneration == 4 &&
                        storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail &&
+                       pk.nativePk4ReadOnly() == nullptr &&
                        !pk.isFatefulEncounter()) {
+                // Immutable native PK4 records get the encounter-aware ability
+                // verifier below. A generic PID rule cannot override fixed
+                // Ranch/NPC/event ability handling in that verifier.
                 // Event gifts (PCD) keep the card's ability even when the PID would
                 // select the other slot (PKHeX VerifyAbilityPCD), so fateful records
                 // are left to the event checks.

@@ -46,3 +46,27 @@ $(HOST_BUILD)/test_gen4_hgss_swarm: $(GEN4_HGSS_SWARM_SOURCES) $(GEN4_LEGALITY_H
 $(HOST_BUILD)/test_gen4_hgss_swarm_sanitize: $(GEN4_HGSS_SWARM_SOURCES) $(GEN4_LEGALITY_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_HGSS_SWARM_SOURCES) -o $@
+
+GEN4_HGSS_CONTEST_SOURCES := tests/test_gen4_hgss_contest.cpp $(filter-out tests/test_legality_gen4.cpp,$(GEN4_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen4_hgss_contest
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hgss_contest_sanitize
+host-test: $(HOST_BUILD)/test_gen4_hgss_contest
+host-sanitize: $(HOST_BUILD)/test_gen4_hgss_contest_sanitize
+$(HOST_BUILD)/test_gen4_hgss_contest: $(GEN4_HGSS_CONTEST_SOURCES) $(GEN4_LEGALITY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) -Iinclude $(GEN4_HGSS_CONTEST_SOURCES) -o $@
+$(HOST_BUILD)/test_gen4_hgss_contest_sanitize: $(GEN4_HGSS_CONTEST_SOURCES) $(GEN4_LEGALITY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_HGSS_CONTEST_SOURCES) -o $@
+
+GEN4_RANCH_ABILITY_SOURCES := tests/test_gen4_ranch_ability.cpp $(filter-out tests/test_legality_gen4.cpp,$(GEN4_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen4_ranch_ability
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_ranch_ability_sanitize
+host-test: $(HOST_BUILD)/test_gen4_ranch_ability
+host-sanitize: $(HOST_BUILD)/test_gen4_ranch_ability_sanitize
+$(HOST_BUILD)/test_gen4_ranch_ability: $(GEN4_RANCH_ABILITY_SOURCES) $(GEN4_LEGALITY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) -Iinclude $(GEN4_RANCH_ABILITY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen4_ranch_ability_sanitize: $(GEN4_RANCH_ABILITY_SOURCES) $(GEN4_LEGALITY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN4_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_RANCH_ABILITY_SOURCES) -o $@

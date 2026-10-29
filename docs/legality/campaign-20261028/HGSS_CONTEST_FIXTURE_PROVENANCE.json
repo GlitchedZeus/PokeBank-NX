@@ -1,0 +1,50 @@
+[
+  {
+    "id": "hg-ordinary-original",
+    "source_id": "b41135",
+    "derivative": false,
+    "authenticated_custody": false
+  },
+  {
+    "id": "hg-ordinary-heal",
+    "source_id": "b41135",
+    "derivative": true,
+    "authenticated_custody": false
+  },
+  {
+    "id": "hg-contest-original",
+    "source_id": "b41145",
+    "derivative": false,
+    "authenticated_custody": false
+  },
+  {
+    "id": "m41147-ball",
+    "source_id": "b41145",
+    "derivative": true,
+    "authenticated_custody": false
+  },
+  {
+    "id": "ss-ordinary-original",
+    "source_id": "b41415",
+    "derivative": false,
+    "authenticated_custody": false
+  },
+  {
+    "id": "ss-ordinary-heal",
+    "source_id": "b41415",
+    "derivative": true,
+    "authenticated_custody": false
+  },
+  {
+    "id": "ss-contest-original",
+    "source_id": "b41425",
+    "derivative": false,
+    "authenticated_custody": false
+  },
+  {
+    "id": "ss-contest-heal",
+    "source_id": "b41425",
+    "derivative": true,
+    "authenticated_custody": false
+  }
+]

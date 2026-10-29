@@ -25,10 +25,10 @@ if [ -n "${WORK:-}" ]; then work=$WORK; mkdir -p "$work"; else work=$(mktemp -d)
 dotnet build "$here/oracle/PKHeXGen34Oracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" -o "$work/oracle" > "$work/build.log" || { cat "$work/build.log"; exit 1; }
 if [ "${GROW:-0}" = 1 ]; then
     gens=3
-    dotnet "$work/oracle/PKHeXGen34Oracle.dll" generate "$seed" 0 3 > "$work/base.txt"
-    dotnet "$work/oracle/PKHeXGen34Oracle.dll" grow "$seed" "$mutations" "$work/base.txt" > "$work/pkhex.txt"
+    dotnet "$work/oracle/PKHeXGen34Oracle.dll" generate "$seed" 0 3 > "$work/base.txt" 2> "$work/base-generation-audit.log"
+    dotnet "$work/oracle/PKHeXGen34Oracle.dll" grow "$seed" "$mutations" "$work/base.txt" > "$work/pkhex.txt" 2> "$work/generation-audit.log"
 else
-    dotnet "$work/oracle/PKHeXGen34Oracle.dll" generate "$seed" "$mutations" "$gens" "$corpus" > "$work/pkhex.txt"
+    dotnet "$work/oracle/PKHeXGen34Oracle.dll" generate "$seed" "$mutations" "$gens" "$corpus" > "$work/pkhex.txt" 2> "$work/generation-audit.log"
 fi
 # Same production sources as GEN34_LANGUAGE_ANALYZER_SOURCES (Makefile.host.legality-language).
 srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp

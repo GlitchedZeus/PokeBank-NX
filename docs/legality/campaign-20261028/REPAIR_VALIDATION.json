@@ -1,0 +1,218 @@
+{
+  "policy": "32 final compiler/profile suite executions; all fixed regressions retained. The positive sealed-capture control passes all134508 raw rows; the complete historical conflicting capture is correctly rejected. Counts are not rule completeness. Original failed/stalled generation logs remain outside this snapshot; clean isolated regeneration is byte-identical.",
+  "logs": {
+    "REPAIR_ACCEPTANCE_clang_normal_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_lines": [
+        "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_lines": [
+        "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_gen4_hgss_contest.log": {
+      "sha256": "d121e166ca21f4857d29aa4f48a4baea216562450d7d31628d185689e8f00528",
+      "last_lines": [
+        "HGSS contest bank:ordinary Poke/Heal and contest Sport positives in both games;2 contest Heal negatives including retained false-clean regression;input immutability and repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_gen4_hgss_swarm.log": {
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "last_lines": [
+        "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_gen4_ranch_ability.log": {
+      "sha256": "df9c526fe3c5a36a044624b01750d9b74b5b9f74640790b25bc044fdd40299fb",
+      "last_lines": [
+        "Ranch ability:retained uncertainty,PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_gen5_joint_breeding.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_legality_gen4.log": {
+      "sha256": "a93524d469066ff77cfe6199a96768a80d39096346c20ecf93eed56e61e59169",
+      "last_lines": [
+        "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_normal_test_legality_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_lines": [
+        "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_lines": [
+        "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_gen4_hgss_contest.log": {
+      "sha256": "d121e166ca21f4857d29aa4f48a4baea216562450d7d31628d185689e8f00528",
+      "last_lines": [
+        "HGSS contest bank:ordinary Poke/Heal and contest Sport positives in both games;2 contest Heal negatives including retained false-clean regression;input immutability and repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_gen4_hgss_swarm.log": {
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "last_lines": [
+        "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_gen4_ranch_ability.log": {
+      "sha256": "df9c526fe3c5a36a044624b01750d9b74b5b9f74640790b25bc044fdd40299fb",
+      "last_lines": [
+        "Ranch ability:retained uncertainty,PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_gen5_joint_breeding.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_legality_gen4.log": {
+      "sha256": "a93524d469066ff77cfe6199a96768a80d39096346c20ecf93eed56e61e59169",
+      "last_lines": [
+        "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_clang_sanitize_test_legality_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_lines": [
+        "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_lines": [
+        "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_gen4_hgss_contest.log": {
+      "sha256": "d121e166ca21f4857d29aa4f48a4baea216562450d7d31628d185689e8f00528",
+      "last_lines": [
+        "HGSS contest bank:ordinary Poke/Heal and contest Sport positives in both games;2 contest Heal negatives including retained false-clean regression;input immutability and repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_gen4_hgss_swarm.log": {
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "last_lines": [
+        "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_gen4_ranch_ability.log": {
+      "sha256": "df9c526fe3c5a36a044624b01750d9b74b5b9f74640790b25bc044fdd40299fb",
+      "last_lines": [
+        "Ranch ability:retained uncertainty,PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_gen5_joint_breeding.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_legality_gen4.log": {
+      "sha256": "a93524d469066ff77cfe6199a96768a80d39096346c20ecf93eed56e61e59169",
+      "last_lines": [
+        "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_normal_test_legality_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_gen35_release_rules.log": {
+      "sha256": "180995be3dc08ca63313c9b1195caa1ed10109b3b10aa144c4667128d187a973",
+      "last_lines": [
+        "Official release rules: 144 cases; 40 unsupported PGL histories, supported regional controls, native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_gen4_ground_tile.log": {
+      "sha256": "9e41d04a54cc4da4c12bc4f7f3a72b9032c8ced4b9e6893aab1fe0a9ee09d1fa",
+      "last_lines": [
+        "Ground terrain:10 original positives across five PK4 games/five PK5 origins; 2310 corrupt bytes rejected, terrain24 preserved, immutable/repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_gen4_hgss_contest.log": {
+      "sha256": "d121e166ca21f4857d29aa4f48a4baea216562450d7d31628d185689e8f00528",
+      "last_lines": [
+        "HGSS contest bank:ordinary Poke/Heal and contest Sport positives in both games;2 contest Heal negatives including retained false-clean regression;input immutability and repeated analysis PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_gen4_hgss_swarm.log": {
+      "sha256": "9171ef9404a5e8d88521e7d32c1f34d5cf082aecea15dbd34d2fbbe9f11fe59d",
+      "last_lines": [
+        "HGSS native swarm and Safari gates:7 unchanged positives,7 false-clean negatives,40 valid outbreak slot alternatives PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_gen4_ranch_ability.log": {
+      "sha256": "df9c526fe3c5a36a044624b01750d9b74b5b9f74640790b25bc044fdd40299fb",
+      "last_lines": [
+        "Ranch ability:retained uncertainty,PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_gen5_joint_breeding.log": {
+      "sha256": "cd79270aa16fc8bbb094ed890bdd94db9ba2cdccc1fa6f113e52937e06966ea3",
+      "last_lines": [
+        "Joint Gen III-V ancestry / Gen V adapter:41 records,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_legality_gen4.log": {
+      "sha256": "a93524d469066ff77cfe6199a96768a80d39096346c20ecf93eed56e61e59169",
+      "last_lines": [
+        "Gen IV PK4 legality: 250 PKHeX-backed, rule, malformed and hook cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "REPAIR_ACCEPTANCE_gcc_sanitize_test_legality_gen5.log": {
+      "sha256": "63aeadf46f5879262517500a3dfc8063e6eaa397e4889fcf93626318fc5b9487",
+      "last_lines": [
+        "Gen V PK5 legality: 207 PKHeX-backed, malformed and boundary cases plus 2000 fuzz records PASS"
+      ]
+    },
+    "HGSS_CONTEST_REGENERATION_CLEAN.log": {
+      "sha256": "17ffdb812827432663cd5e5c65359402105d87df257a355168e8c42e8dc8796f",
+      "last_lines": [
+        "Native HGSS swarm catalog: 590 unreachable variants removed; 24308 retained slots PASS",
+        "Gen IV legality tables are up to date"
+      ]
+    },
+    "SEALED_POSITIVE_CONTROL.log": {
+      "sha256": "60cb6c89e14ed83ae0a4043e45a6a2899de686203073ab000e01cb4d21bb012e",
+      "last_lines": [
+        "diff-base-1: 134508 unchanged raw rows, 11 complete secondary replays PASS",
+        "{\"archive_sha256\": \"4986141a0437091866725d7bcfb52025c41f687347e8f1d8df970ff72b7451f5\", \"files\": 10, \"manifest_sha256\": \"b63d4705ff7feac9c427560e31421bcb2c0b42ff9ddb78922e20618e4fda1102\", \"sealed_verification\": \"PASS\"}"
+      ]
+    },
+    "SEALED_CONFLICT_CONTROL.log": {
+      "sha256": "993804daf9a1d5d75671c32220a5cc46d93751425f8a7d6e65d0c75722ad1e45",
+      "last_lines": [
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: Joined bytes changed"
+      ]
+    }
+  }
+}

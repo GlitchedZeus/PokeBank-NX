@@ -18,11 +18,15 @@ on:
       - 'tests/test_gen5_gift_receivability.cpp'
       - 'tests/test_gen4_ground_tile.cpp'
       - 'tests/test_gen4_hgss_swarm.cpp'
+      - 'tests/test_gen4_hgss_contest.cpp'
+      - 'tests/test_gen4_ranch_ability.cpp'
+      - 'tests/test_hgss_contest_catalog.py'
       - 'tests/test_gen5_app_context.cpp'
       - 'tests/test_gen5_joint_breeding.cpp'
       - 'tests/test_gen35_release_rules.cpp'
       - 'tests/test_public_fixture_selection.py'
       - 'tests/test_hgss_reference_adjudication.py'
+      - 'tests/test_reference_evidence_package.py'
       - 'tests/test_bw2_shared_order.py'
       - 'tests/fixtures/gen15_session2/**'
       - 'tests/fixtures/gen3_berry_save.h'
@@ -60,7 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm test_gen5_joint_breeding)
+          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm test_gen4_hgss_contest test_gen4_ranch_ability test_gen5_joint_breeding)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -72,10 +76,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tests/test_reference_evidence_package.py | tee build-completion/reference-evidence-package.log
           python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
           python3 tests/test_hgss_reference_adjudication.py | tee build-completion/hgss-reference-adjudication.log
           python3 tests/test_bw2_shared_order.py | tee build-completion/bw2-reference-adjudication.log
           python3 tools/legality_completion/global_link_catalog.py --check | tee build-completion/global-link-generator.log
+          python3 tools/legality_completion/hgss_contest_repair.py \
+            --native build-completion/native-hgss --fetch \
+            --report build-completion/hgss-contest-catalog.json | tee build-completion/hgss-contest-catalog.log
+          python3 tests/test_hgss_contest_catalog.py \
+            --native build-completion/native-hgss | tee build-completion/hgss-contest-protection.log
           python3 tools/legality_completion/hgss_swarm_repair.py \
             --native build-completion/native-hgss --fetch \
             --report build-completion/hgss-swarm-catalog.json | tee build-completion/hgss-swarm-catalog.log
@@ -110,6 +120,7 @@ jobs:
             build-completion/test_gen35_release_rules*.log
             build-completion/global-link-generator.log
             build-completion/public-fixture-selection.log
+            build-completion/reference-evidence-package.log
             build-completion/native-ev-*.log
             build-completion/native-swarm-*.log
             build-completion/native-birth-*.log
@@ -122,6 +133,14 @@ jobs:
             docs/legality/campaign-20261028/GEN5_JOINT_FIXTURES.json
             tests/fixtures/gen15_session2/gen5_joint_breeding.txt
             build-completion/hgss-swarm-catalog.*
+            build-completion/hgss-contest-catalog.*
+            build-completion/hgss-contest-protection.log
+            build-completion/test_gen4_hgss_contest*.log
+            build-completion/test_gen4_ranch_ability*.log
+            tests/fixtures/gen15_session2/ranch_ability.txt
+            build-completion/native-hgss/**/*
+            tests/fixtures/gen15_session2/hgss_contest.txt
+            docs/legality/campaign-20261028/HGSS_CONTEST_*.json
             build-completion/hgss-reference-adjudication.log
             build-completion/hgss-native-levels.log
             docs/legality/campaign-20261028/HGSS_NATIVE_LEVEL_INDEX.json

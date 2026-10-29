@@ -36,6 +36,12 @@ on:
       - 'tools/legality_completion/**'
       - 'docs/legality/campaign-20261028/**'
       - 'tests/test_hgss_reference_adjudication.py'
+      - 'tests/test_reference_evidence_package.py'
+      - 'tests/test_gen4_hgss_contest.cpp'
+      - 'tests/test_gen4_ranch_ability.cpp'
+      - 'tests/fixtures/gen15_session2/ranch_ability.txt'
+      - 'tests/test_hgss_contest_catalog.py'
+      - 'tests/fixtures/gen15_session2/hgss_contest.txt'
       - 'tools/legality_completion/hgss_swarm_repair.py'
       - 'tools/legality_completion/hgss_native_catalog.py'
       - 'docs/legality/campaign-20261028/HGSS_SWARM_REMOVED_ROWS.json'
@@ -190,6 +196,12 @@ jobs:
             WORK="$PWD/build/diff-grown3-$seed" GROW=1 tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3
           done
 
+      - name: Verify complete retained raw and secondary-reference streams
+        run: |
+          python3 tests/test_reference_artifact_integrity.py
+          python3 tools/legality_completion/verify_reference_artifacts.py gen34 \
+            build/diff-base-{1,2,3} build/diff-grown4-{1,2,3} build/diff-grown3-{1,2,3}
+
       - name: Record exact reference and engine heads
         if: always()
         run: |
@@ -197,6 +209,16 @@ jobs:
           git rev-parse HEAD > build/reference-heads.txt
           git -C _ref/PKHeX rev-parse HEAD >> build/reference-heads.txt
           git -C _ref/PKHeX-release rev-parse HEAD >> build/reference-heads.txt
+          python3 tools/legality_completion/package_reference_evidence.py \
+            --build build --archive build/reference-evidence.tar.gz
+
+      - name: Verify the sealed reference capture before upload
+        run: |
+          python3 tests/test_reference_evidence_package.py
+          python3 tools/legality_completion/package_reference_evidence.py --verify \
+            --archive build/reference-evidence.tar.gz --group gen34 \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --runs diff-base-1 diff-base-2 diff-base-3 diff-grown4-1 diff-grown4-2 diff-grown4-3 diff-grown3-1 diff-grown3-2 diff-grown3-3
 
       - name: Preserve both reference results and unchanged raw comparison bytes
         if: always()
@@ -205,11 +227,7 @@ jobs:
           name: legality-gen34-reference-adjudication
           path: |
             build/reference-heads.txt
-            build/diff-*/pkhex.txt
-            build/diff-*/pokebank.txt
-            build/diff-*/joined.txt
-            build/diff-*/current-release/REPORT.json
-            build/diff-*/current-release/input.txt
-            build/diff-*/current-release/reference.txt
+            build/reference-files.json
+            build/reference-evidence.tar.gz
           if-no-files-found: warn
           retention-days: 30

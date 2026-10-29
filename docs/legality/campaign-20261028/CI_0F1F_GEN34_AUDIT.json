@@ -1,0 +1,43 @@
+{
+  "engine": "0f1f34cc9dacb10b2f2fac4d5f36484edeea8c05",
+  "artifact": 12849339467,
+  "zip_sha256": "9baa3ca483c628a2b55f20358dd91ea911e776c547881e0cf8a7b3cda2d4d48e",
+  "rows": [
+    {
+      "run": "diff-base-1",
+      "records": 83759,
+      "raw_join_identity": "PASS",
+      "secondary_rows": 132,
+      "source_assembly_present": false
+    },
+    {
+      "run": "diff-base-2",
+      "records": 83755,
+      "raw_join_identity": "PASS",
+      "secondary_rows": 141,
+      "source_assembly_present": false
+    },
+    {
+      "run": "diff-base-3",
+      "records": 83759,
+      "raw_join_identity": "PASS",
+      "secondary_rows": 143,
+      "source_assembly_present": false
+    },
+    {
+      "run": "diff-grown4-1",
+      "records": 80244,
+      "raw_join_identity": "PASS",
+      "secondary_rows": 155,
+      "source_assembly_present": false
+    },
+    {
+      "run": "diff-grown4-2",
+      "records": 80296,
+      "raw_join_identity": "PASS",
+      "secondary_rows": 174,
+      "source_assembly_present": false
+    }
+  ],
+  "status": "All original raw/joined streams consistent. Historical upload omitted source-built current-reference DLLs; independent downloaded assembly identity cannot be verified. New workflow retains them and checks every run. Failed grown4 seed2 Ranch ability case retained; later seeds not reached, not counted as tested."
+}

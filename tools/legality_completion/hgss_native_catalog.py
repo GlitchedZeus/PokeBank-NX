@@ -41,6 +41,11 @@ def native_rows(root):
         return (x['min'],x['max']) if isinstance(x,dict) else (x,x)
     for r in raw:
         bank=r['map']
+        # This bank is reached through the contest entry state. The native
+        # bugContestFlag branch selects the separate contest table, so its
+        # ordinary grass data is inactive (HGSS_CONTEST_SOURCE_PINS.json).
+        if bank==maps.get('MAP_NATIONAL_PARK_BUG_CATCHING_CONTEST'):
+            continue
         if bank not in banks:
             unmapped.append(bank);continue
         for version in (7,8):
