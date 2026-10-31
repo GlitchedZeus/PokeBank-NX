@@ -2,8 +2,8 @@
 
 One GitHub Projects board, **PokeBank NX**, tracks the open issues and pull requests. Its definition is version-controlled:
 
-- `tools/github/project_board_items.tsv`: every tracked issue / PR with its **Stage** and **Resolution**;
-- `tools/github/setup_project_board.sh`: creates or updates the board from that file (owner runs it once with `gh auth refresh -s project`). It is additive: it never closes, deletes or edits an issue, PR or branch.
+- `docs/project-board/items.tsv`: every tracked issue / PR with its **Stage** and **Resolution**;
+- `docs/project-board/setup_project_board.sh`: creates or updates the board from that file (owner runs it once with `gh auth refresh -s project`). It is additive: it never closes, deletes or edits an issue, PR or branch.
 
 ## Stage (the board columns)
 

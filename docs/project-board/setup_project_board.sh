@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create (or update) the "PokeBank NX" GitHub Projects board from tools/github/project_board_items.tsv.
+# Create (or update) the "PokeBank NX" GitHub Projects board from docs/project-board/items.tsv.
 #
 # Additive only: it creates the project and its two single-select fields if they are missing, adds
 # each listed issue / PR and sets its Stage and Resolution. It never closes, deletes or edits an issue,
@@ -7,13 +7,13 @@
 #
 # Needs the GitHub CLI logged in as the repository owner with the project scope:
 #   gh auth refresh -s project
-#   tools/github/setup_project_board.sh            # owner GlitchedZeus, repo PokeBank-NX
+#   docs/project-board/setup_project_board.sh   # owner GlitchedZeus, repo PokeBank-NX
 set -euo pipefail
 
 OWNER="${OWNER:-GlitchedZeus}"
 REPO="${REPO:-PokeBank-NX}"
 TITLE="${TITLE:-PokeBank NX}"
-ITEMS="$(dirname "$0")/project_board_items.tsv"
+ITEMS="$(dirname "$0")/items.tsv"
 STAGES="Backlog,To Do,In Progress,Review,Done"
 RESOLUTIONS="Active,Completed,Superseded,Deferred"
 
