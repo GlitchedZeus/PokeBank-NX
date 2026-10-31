@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Integration/Gen6 src/Integration/Gen7 src/Integration/Gen8 src/Integration/Gen7b src/Integration/Gen8b src/Integration/Gen8a src/Integration/Modern src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion src/PokemonFile nanovg vendor/PKSM-Core/memecrypto
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Integration/Gen6 src/Integration/Gen7 src/Integration/Gen8 src/Integration/Gen7b src/Integration/Gen8b src/Integration/Gen8a src/Integration/Gen9 src/Integration/Modern src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion src/PokemonFile nanovg vendor/PKSM-Core/memecrypto
 DATA		:=	data
 # vendor/PKSM-Core/memecrypto: FlagBrew's MemeCrypto (RSA verify of SAV7 signatures), compiled as plain C
 # for the Gen VII strict parser (src/Integration/Gen7/Gen7Save.cpp). Read-only verification; no signer.

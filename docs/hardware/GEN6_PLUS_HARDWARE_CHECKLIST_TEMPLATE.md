@@ -355,6 +355,30 @@ loads and shows exactly the reviewed changes.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group G9 · Pokémon Scarlet / Violet (linked `main` file)
+
+### G9-01 · Assign and open
+**Steps:** HOME → "Pokemon Scarlet (Save File)" → Assign Save File Manually → open (base game, Teal Mask and
+Indigo Disk saves are all accepted by PKHeX's size rule plus the container hash).
+**Expected:** Validates as the exact title (a Violet save is refused on the Scarlet card); party and 32 × 30
+boxes match the game; Origin & Legality shows Tera types and scale read-only.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G9-02 · Shared workflows and battle teams
+**Steps:** Repeat G8-03 and G8-04 on this save.
+**Expected:** Same editable fields as Sword/Shield; team members never offer Move/Release; locked-team
+members refuse Edit.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G9-03 · Export Copy and in-game reopen
+**Steps:** Review → X → Y; restore `edited.bin` as `main` with your save manager (back up first); launch.
+**Expected:** `exports/sv/<game>_<time>/` with a pristine `original_backup.bin`; the game loads and shows
+exactly the reviewed changes.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Totals
 
 | Count | Number |

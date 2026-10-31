@@ -1,0 +1,38 @@
+# Scarlet / Violet (SAV9SV / PK9) adapter of the shared Modern::NativeSession contract
+# (development/gen6-plus). Host tests only; exports go to a fresh temporary directory.
+GEN9SVPLUS_TEST_NAMES := test_gen9sv_native_session
+GEN9SVPLUS_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN9SVPLUS_TEST_NAMES))
+GEN9SVPLUS_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN9SVPLUS_TESTS))
+
+HOST_TESTS += $(GEN9SVPLUS_TESTS)
+HOST_SANITIZE_TESTS += $(GEN9SVPLUS_SANITIZE_TESTS)
+host-test: $(GEN9SVPLUS_TESTS)
+host-sanitize: $(GEN9SVPLUS_SANITIZE_TESTS)
+
+GEN9SVPLUS_HEADERS := $(wildcard include/Integration/Gen9/*.h) $(wildcard include/Integration/Gen8/*.h) \
+	$(wildcard tests/fixtures/gen9sv/*.h) $(wildcard tests/fixtures/gen8/*.h) include/Integration/Common/GameCapabilityRegistry.h \
+	include/Integration/Modern/NativeSession.h
+GEN9SVPLUS_FLAGS := -Wno-unused-parameter -Iinclude -Itests -D_PKSMCORE_CONFIGURED -fno-operator-names
+GEN9SVPLUS_SESSION_SOURCES := src/Integration/Gen9/Gen9SvNativeSession.cpp src/Integration/Gen9/Gen9SvSession.cpp \
+	src/Integration/Gen8/Gen8SwishCrypto.cpp src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Pokemon/PokemonTypes.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Names/ItemPresence.cpp
+GEN9SVPLUS_SOURCES_test_gen9sv_native_session := tests/test_gen9sv_native_session.cpp $(GEN9SVPLUS_SESSION_SOURCES)
+
+define GEN9SVPLUS_TEST_RULES
+$(HOST_BUILD)/$(1): $$(GEN9SVPLUS_SOURCES_$(1)) $$(GEN9SVPLUS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(GEN9SVPLUS_FLAGS) $$(GEN9SVPLUS_SOURCES_$(1)) -o $$@
+
+$(HOST_BUILD)/$(1)_sanitize: $$(GEN9SVPLUS_SOURCES_$(1)) $$(GEN9SVPLUS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(SANITIZE_FLAGS) $$(GEN9SVPLUS_FLAGS) $$(GEN9SVPLUS_SOURCES_$(1)) -o $$@
+endef
+$(foreach t,$(GEN9SVPLUS_TEST_NAMES),$(eval $(call GEN9SVPLUS_TEST_RULES,$(t))))
+
+.PHONY: gen9svplus-host-test gen9svplus-host-sanitize
+gen9svplus-host-test: $(GEN9SVPLUS_TESTS)
+	@set -e; for test_bin in $(GEN9SVPLUS_TESTS); do ./$$test_bin; done
+
+gen9svplus-host-sanitize: $(GEN9SVPLUS_SANITIZE_TESTS)
+	@set -e; for test_bin in $(GEN9SVPLUS_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done

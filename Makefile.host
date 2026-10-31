@@ -20,6 +20,7 @@ include Makefile.host.gen8-plus
 include Makefile.host.gen7b-plus
 include Makefile.host.gen8b-plus
 include Makefile.host.gen8a-plus
+include Makefile.host.gen9sv-plus
 include Makefile.host.modern-ui
 include Makefile.host.capability-matrix
 include Makefile.host.home-providers

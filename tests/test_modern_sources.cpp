@@ -9,6 +9,7 @@
 #include "fixtures/gen7b/Gen7bSyntheticSave.h"
 #include "fixtures/gen8b/Gen8bSyntheticSave.h"
 #include "fixtures/gen8a/Gen8aSyntheticSave.h"
+#include "fixtures/gen9sv/Gen9SvSyntheticSave.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -51,7 +52,7 @@ std::vector<uint8_t> slurp(const std::string& path) {
 int main() {
     // ---- family dispatch ----
     check(Modern::isModernAssignedId("x_3ds") && Modern::isModernAssignedId("ultramoon_3ds"), "3DS titles are Modern-assigned");
-    check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("scarlet_switch") &&
+    check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("legends_za_switch") &&
               !Modern::isModernAssignedId("legends_za_switch"),
           "DS titles and Switch titles without a verified adapter are not");
     check(Modern::isModernAssignedId("sword_switch") && Modern::isModernAssignedId("shield_switch") &&
@@ -333,6 +334,32 @@ int main() {
         check(opened.ready() && opened.session->boxCount() == 32 && Modern::homeCardSnapshot(opened).partyCount == 2,
               "PLA opens through the Gen8a adapter: " + opened.diagnostic);
         check(slurp(laDir + "/main") == la, "PLA fixture never written");
+    }
+
+    // ---- Scarlet / Violet: manual link, same contract ----
+    {
+        const std::string svDir = root + "/linked-sv";
+        ::mkdir(svDir.c_str(), 0755);
+        const auto sv = Gen9SvFixture::makeSave();
+        check(writeFile(svDir + "/main", sv), "SV fixture written");
+        check(Modern::gameGroupFor("violet_switch") == Enums::GameVersion::SV && Modern::generationLabelFor("scarlet_switch") == "Generation IX" &&
+                  Modern::exportsRootFor("scarlet_switch").ends_with("/exports/sv"),
+              "SV dispatch");
+        const auto row = Modern::inspectSourceFile(svDir + "/main", "Manual", "scarlet_switch");
+        check(row.ready() && row.generation == 9 && row.partyCount == 2 && row.trainerName == "Juliana", "linked SV main validates: " + row.diagnostic);
+        check(Modern::inspectSourceFile(svDir + "/main", "Manual", "violet_switch").validation ==
+                  PokeVault::Source::ValidationStatus::AssignmentMismatch,
+              "Scarlet bytes refuse Violet");
+        auto catalog = Modern::forGameAndProfile(std::vector<PokeVault::Source::SaveInstance>{row}, bindings, profileA, "scarlet_switch");
+        const auto assigned = catalog.rows.size() == 1
+                                  ? Modern::assignValidatedSource(bindings, catalog.rows.front(), profileA, "scarlet_switch")
+                                  : Modern::SourceAssignmentResult{};
+        check(assigned.success && bindings.resolveFileForGame(profileA, "scarlet_switch").binding.expectedRawFamily == "SV",
+              "SV assignment: " + assigned.diagnostic);
+        auto opened = Modern::openAssignedSource(bindings, profileA, "scarlet_switch");
+        check(opened.ready() && opened.session->familyLabel() == "Generation IX" && Modern::homeCardSnapshot(opened).partyCount == 2,
+              "SV opens through the Gen9 adapter: " + opened.diagnostic);
+        check(slurp(svDir + "/main") == sv, "SV fixture never written");
     }
 
     std::cout << "test_modern_sources: " << (failures ? "FAILED " : "all ") << checks << " checks"

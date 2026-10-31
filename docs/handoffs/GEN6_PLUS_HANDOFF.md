@@ -91,6 +91,10 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   gates). Artifact `PokeBank-NX-Gen6Plus-Experimental-b3d40b3a` (id 13058177412, zip sha256
   `3791796d43c740e53a547ffe4a0dd9d4e90129cd1de97276126032284ff8e284`); NRO SHA-256 in its `SHA256SUMS`.
   EXPERIMENTAL, NOT DEVICE TESTED.
+- **Scarlet/Violet**: PK9 shares PK8's size, encryption and every offset the shared editor writes, so the
+  verified PK8 codec and the shared `Gen8RecordEdits` whitelist are reused; PK9-only reads (language 0xD5,
+  Tera 0x94/0x95, scale 0x4A) feed the view. PKHeX's exact SV size rule + SwishCrypto hash, KMyStatus/KParty/
+  KBox, TeamIndexes8 + locks (same protection as SWSH), export to `exports/sv`. A Z-A-sized file is refused.
 - PKHeX reference files were fetched from the pinned commit `6501f0ab` for offsets only (not vendored).
 
 ## Status per game (host evidence only; NOT DEVICE TESTED)
@@ -109,8 +113,9 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   installed-title reader only.
 - **Legends: Arceus**: linked `main` through the shared surface: editor, box Clone/Move/Remove, Review,
   verified Export to `exports/pla`; Create blocked; held items/Effort Levels read-only.
-- **Scarlet/Violet, Legends: Z-A**: honest BLOCKED editor/export with the named adapter prerequisite.
-  Z-A is PA9/SAV9ZA, not SV.
+- **Scarlet / Violet**: linked `main` through the shared surface: editor, box Clone/Move/Remove with team
+  protection, Review, verified Export to `exports/sv`; Create blocked; Tera/scale read-only.
+- **Legends: Z-A**: honest BLOCKED editor/export with the named adapter prerequisite. Z-A is PA9/SAV9ZA, not SV.
 
 No title is accepted on hardware. Gen I–V hardware cells read NOT ACCEPTED (owner rounds were on earlier
 candidates; #313 open).

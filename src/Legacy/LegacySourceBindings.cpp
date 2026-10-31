@@ -48,6 +48,8 @@ namespace PokeVault::Legacy {
                 if (binding.gameIdentity == "brilliant_diamond_switch" || binding.gameIdentity == "shining_pearl_switch")
                     return binding.expectedRawFamily == "BDSP";
                 if (binding.gameIdentity == "legends_arceus_switch") return binding.expectedRawFamily == "PLA";
+                if (binding.gameIdentity == "scarlet_switch" || binding.gameIdentity == "violet_switch")
+                    return binding.expectedRawFamily == "SV";
                 return false;
             }
             const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";

@@ -341,8 +341,24 @@ constexpr std::array<WorkflowStatus, WorkflowCount> gen8pla() noexcept {
     }};
 }
 
-constexpr std::string_view kSvAdapter =
-    "SV needs a PK9 staged session over the SCBlock container with revision/DLC block verification and Tera/Minted-Nature masks";
+// Scarlet / Violet through the shared Modern adapter (Integration/Gen9: PK9 over the shared PK8 rules).
+constexpr std::array<WorkflowStatus, WorkflowCount> gen9sv() noexcept {
+    return {{
+        ok(),  // Dashboard
+        ok(),  // Save Instances: manual link, PKHeX SV size rule + SwishCrypto hash, fingerprint revalidation
+        ok(), ok(), ok(),
+        ro("Tera types, scale, mint nature and battle-team membership are shown read-only; no verified writer"),
+        ro("MyStatus9 trainer facts are read-only"),
+        ro("Installed-title reader shows pockets read-only; staged Bag needs a verified MyItem9 editor"),
+        ro("Installed-title reader shows counts read-only; the shared adapter has no verified Zukan9 writer"),
+        blocked("Create needs verifiable EC/PID, personal, met, Tera type, handler, memory and cached-stat defaults"),
+        ok(), ok(), ok(),  // Clone / Move / Remove: box records; team-referenced and locked slots protected
+        ro("Immutable Switch historical backups are read-only previews"),
+        ok(),
+        ok(),  // Export Copy: canonical SwishCrypto re-encryption + block-level verifier, exports/sv
+    }};
+}
+
 constexpr std::string_view kZaAdapter =
     "Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV";
 
@@ -428,6 +444,11 @@ constexpr GameCapabilities plaRow() noexcept {
             {32, 30, 6, "SCBlock"}, mech8pla(), gen8pla(), HardwareState::NotDeviceTested, "exports/pla", "modern-native",
             UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen8a_host", {}};
 }
+constexpr GameCapabilities svRow(std::string_view id, std::string_view title) noexcept {
+    return {id, title, 9, Platform::NintendoSwitch, "SV", "PK9", StatModel::IVEV, {32, 30, 6, "SCBlock"},
+            mech9sv(), gen9sv(), HardwareState::NotDeviceTested, "exports/sv", "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen9sv_host", {}};
+}
 constexpr GameCapabilities swshRow(std::string_view id, std::string_view title) noexcept {
     return {id, title, 8, Platform::NintendoSwitch, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"},
             mech8swsh(), gen8swsh(), HardwareState::NotDeviceTested, "exports/gen8", "modern-native",
@@ -482,8 +503,8 @@ inline constexpr std::array<GameCapabilities, 38> Registry = {{
     Detail::bdspRow("shining_pearl_switch", "Shining Pearl"),
     Detail::plaRow(),
     // ---- Gen IX ----
-    Detail::switchRow("scarlet_switch", "Scarlet", 9, "SV", "PK9", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech9sv(), Detail::kSvAdapter),
-    Detail::switchRow("violet_switch", "Violet", 9, "SV", "PK9", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech9sv(), Detail::kSvAdapter),
+    Detail::svRow("scarlet_switch", "Scarlet"),
+    Detail::svRow("violet_switch", "Violet"),
     Detail::switchRow("legends_za_switch", "Legends Z-A", 9, "ZA", "PA9", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech9za(), Detail::kZaAdapter),
 }};
 

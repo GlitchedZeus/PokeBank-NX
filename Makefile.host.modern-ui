@@ -146,6 +146,24 @@ $(MODERN_UI_GEN8A_SANITIZE): $(MODERN_UI_GEN8A_INPUTS) $(MODERN_UI_SANITIZE_ARCH
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen8a_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
 MODERN_UI_TESTS += $(MODERN_UI_GEN8A_TEST)
 MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_GEN8A_SANITIZE)
+# The same surface over the Scarlet/Violet adapter and a synthetic SAV9SV `main` fixture.
+MODERN_UI_GEN9SV_TEST := $(HOST_BUILD)/test_ui_modern_surface_gen9sv_host
+MODERN_UI_GEN9SV_SANITIZE := $(HOST_BUILD)/test_ui_modern_surface_gen9sv_host_sanitize
+MODERN_UI_GEN9SV_INPUTS := tests/test_ui_modern_surface_gen9sv_host.cpp tests/host-ui/HostUi.h tests/host-ui/switch.h \
+	$(wildcard tests/fixtures/gen9sv/*.h) $(wildcard include/Integration/Gen9/*.h) include/Integration/Modern/ModernScreenState.h \
+	src/UI/ModernSharedSurface.inc $(MODERN_UI_STUBS)
+HOST_TESTS += $(MODERN_UI_GEN9SV_TEST)
+HOST_SANITIZE_TESTS += $(MODERN_UI_GEN9SV_SANITIZE)
+host-test: $(MODERN_UI_GEN9SV_TEST)
+host-sanitize: $(MODERN_UI_GEN9SV_SANITIZE)
+$(MODERN_UI_GEN9SV_TEST): $(MODERN_UI_GEN9SV_INPUTS) $(MODERN_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen9sv_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_ARCHIVE) -o $@
+$(MODERN_UI_GEN9SV_SANITIZE): $(MODERN_UI_GEN9SV_INPUTS) $(MODERN_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen9sv_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
+MODERN_UI_TESTS += $(MODERN_UI_GEN9SV_TEST)
+MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_GEN9SV_SANITIZE)
 endif
 
 .PHONY: modern-ui-host-test modern-ui-host-sanitize

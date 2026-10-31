@@ -191,8 +191,19 @@ int main() {
                   row->status(Cap::Workflow::Create).support == Cap::Support::Blocked,
               "legends_arceus_switch editor/storage/export; mechanics read-only; Create blocked");
     }
+    // Scarlet/Violet: PK9 through the shared adapter with battle-team protection; Tera read-only.
+    for (const char* id : {"scarlet_switch", "violet_switch"}) {
+        const auto* row = Cap::find(id);
+        check(row && row->provider == "modern-native" && row->uiEvidence == "test_ui_modern_surface_gen9sv_host" &&
+                  row->recordFormat == "PK9" && row->generation == 9 && row->mechanics.teraType,
+              std::string(id) + " served by the Modern adapter (PK9)");
+        check(row && row->supports(Cap::Workflow::PokemonEditor) && row->supports(Cap::Workflow::Move) && row->supports(Cap::Workflow::Export) &&
+                  row->exportRoot == "exports/sv" && !row->supports(Cap::Workflow::NativeMechanics) &&
+                  row->status(Cap::Workflow::Create).support == Cap::Support::Blocked,
+              std::string(id) + " editor/storage/export; Tera read-only; Create blocked");
+    }
     // Remaining Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
-    for (const char* id : {"scarlet_switch", "legends_za_switch"}) {
+    for (const char* id : {"legends_za_switch"}) {
         const auto* row = Cap::find(id);
         check(row && row->status(Cap::Workflow::PokemonEditor).support == Cap::Support::Blocked &&
                   !row->status(Cap::Workflow::PokemonEditor).reason.empty(),
@@ -201,7 +212,7 @@ int main() {
         check(row && row->exportRoot.empty(), std::string(id) + " advertises no export root");
     }
     check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && Cap::isModernNativeId("letsgo_eevee_switch") && !Cap::isModernNativeId("black_nds") &&
-              !Cap::isModernNativeId("scarlet_switch") && Cap::isModernNativeId("brilliant_diamond_switch") &&
+              Cap::isModernNativeId("scarlet_switch") && Cap::isModernNativeId("brilliant_diamond_switch") &&
               Cap::isModernNativeId("legends_arceus_switch") && !Cap::isModernNativeId("legends_za_switch"),
           "isModernNativeId identifies the Modern adapter titles only");
 
