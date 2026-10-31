@@ -43,3 +43,22 @@ gen7plus-host-test: $(GEN7PLUS_TESTS)
 
 gen7plus-host-sanitize: $(GEN7PLUS_SANITIZE_TESTS)
 	@set -e; for test_bin in $(GEN7PLUS_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
+
+# MiniGmpAllocationScope invariants (nesting, hook restore, overflow, threads) over the real
+# vendored MemeCrypto objects; the sanitizer build is the leak proof (CI sets detect_leaks=1).
+MINIGMP_TEST := $(HOST_BUILD)/test_mini_gmp_scope
+MINIGMP_SANITIZE := $(HOST_BUILD)/test_mini_gmp_scope_sanitize
+HOST_TESTS += $(MINIGMP_TEST)
+HOST_SANITIZE_TESTS += $(MINIGMP_SANITIZE)
+host-test: $(MINIGMP_TEST)
+host-sanitize: $(MINIGMP_SANITIZE)
+$(MINIGMP_TEST): tests/test_mini_gmp_scope.cpp include/Integration/Gen7/MiniGmpAllocationScope.h $(GEN7_MEME_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN7PLUS_FLAGS) -pthread tests/test_mini_gmp_scope.cpp $(GEN7_MEME_OBJECTS) -o $@
+$(MINIGMP_SANITIZE): tests/test_mini_gmp_scope.cpp include/Integration/Gen7/MiniGmpAllocationScope.h $(GEN7_MEME_SANITIZE_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN7PLUS_FLAGS) -pthread tests/test_mini_gmp_scope.cpp $(GEN7_MEME_SANITIZE_OBJECTS) -o $@
+GEN7PLUS_TESTS += $(MINIGMP_TEST)
+gen7plus-host-test: $(MINIGMP_TEST)
+GEN7PLUS_SANITIZE_TESTS += $(MINIGMP_SANITIZE)
+gen7plus-host-sanitize: $(MINIGMP_SANITIZE)
