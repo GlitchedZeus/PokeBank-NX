@@ -333,7 +333,7 @@ void put16(std::vector<uint8_t>& b, unsigned o, unsigned v) {
 // Bulbasaur (base 45): (45 * 2) * 100 / 100 + 100 + 10. Its other stats are (base + 8) * 2 + 5:
 // Attack and Defense 119 (base 49), Speed 111 (45), Special 151 (65).
 std::vector<uint8_t> redSave(uint32_t exp, uint16_t maxHP = 200,
-                             std::array<uint16_t, 4> stats = {119, 119, 111, 151}) {
+                             std::array<uint16_t, 4> stats = {119, 119, 111, 151}, int currentHP = -1) {
     std::vector<uint8_t> b(kSaveSize, 0);
     b[kMain] = 0x80;  // player name "A"
     b[kMain + 1] = 0x50;
@@ -349,7 +349,7 @@ std::vector<uint8_t> redSave(uint32_t exp, uint16_t maxHP = 200,
     b[kParty + 2] = 0xFF;
     const unsigned o = kParty + 8;
     b[o] = 0x99;
-    put16(b, o + 1, maxHP);         // current HP
+    put16(b, o + 1, currentHP < 0 ? maxHP : static_cast<unsigned>(currentHP));  // current HP
     b[o + 3] = 100;                 // box level
     b[o + 5] = 0x16;                // Grass
     b[o + 6] = 0x03;                // Poison
@@ -887,6 +887,129 @@ void partySpecialSplit() {
     check(GB::formatProblems(e2).empty(), "PK2 box struct in party layout: stats not judged");
 }
 
+// The same Bulbasaur (level 100, DVs 8/8/8/8, EXP at the level-100 total) alone in the Red
+// save's current box: a box struct keeps the current HP it was deposited with.
+std::vector<uint8_t> redBoxSave(uint16_t currentHP, uint16_t hpStatExp) {
+    std::vector<uint8_t> b = redSave(gameExp(MediumSlow, 100));
+    b[kBox] = 1;
+    b[kBox + 1] = 0x99;
+    b[kBox + 2] = 0xFF;
+    const unsigned o = kBox + 20 + 2;  // 20 slots, the count and the list terminator
+    b[o] = 0x99;
+    put16(b, o + 1, currentHP);
+    b[o + 3] = 100;
+    b[o + 5] = 0x16;
+    b[o + 6] = 0x03;
+    b[o + 7] = 45;
+    b[o + 8] = 33;
+    b[o + 9] = 45;
+    put16(b, o + 0x0C, 1234);
+    const uint32_t exp = gameExp(MediumSlow, 100);
+    b[o + 0x0E] = static_cast<uint8_t>(exp >> 16);
+    b[o + 0x0F] = static_cast<uint8_t>(exp >> 8);
+    b[o + 0x10] = static_cast<uint8_t>(exp);
+    put16(b, o + 0x11, hpStatExp);
+    put16(b, o + 0x1B, 0x8888);
+    b[o + 0x1D] = 35;
+    b[o + 0x1E] = 40;
+    const unsigned ot = o + 20 * 33, nick = ot + 20 * 11;
+    b[ot] = 0x80;
+    b[ot + 1] = 0x50;
+    b[nick] = 0x81;
+    b[nick + 1] = 0x50;
+    unsigned sum = 0xFF;
+    for (unsigned i = kMain; i < kMain + kMainLength; ++i)
+        sum = (sum - b[i]) & 0xFF;
+    b[kChecksum] = static_cast<uint8_t>(sum);
+    return b;
+}
+
+void currentHpRule() {
+    // Engine: a party struct's current HP is at most its stored max HP.
+    for (const uint16_t hp : {0, 1, 199, 200, 201, 999}) {
+        GB::Entity2 e = bulbasaur2({33, 45, 0, 0});
+        e.partyStats = true;
+        e.maxHP = 200;
+        e.hpKnown = true;
+        e.currentHP = hp;
+        check(hasText(GB::formatProblems(e), "Current HP") == (hp > 200),
+              "PK2 current HP " + std::to_string(hp) + " of max 200");
+        e.hpKnown = false;
+        check(!hasText(GB::formatProblems(e), "Current HP"), "PK2 current HP not known");
+    }
+    // A Gen I box struct (no stored max HP): at most the formula's max HP at its level with
+    // its own HP stat experience, checked over a grid with the PKSM bases (independent of
+    // the engine's table) and the games' square root.
+    int judged = 0;
+    const std::array<std::array<uint8_t, 4>, 3> dvSets{{{0, 0, 0, 0}, {15, 15, 15, 15}, {9, 2, 7, 12}}};
+    for (uint16_t species = 1; species <= 151; ++species) {
+        const auto* personal = PokeVault::Integration::Gen2::personalRecord(species);
+        if (!personal)
+            continue;
+        for (unsigned level : {1u, 5u, 50u, 100u})
+            for (const auto& dvs : dvSets)
+                for (uint16_t statExp : {0, 6468, 65535}) {
+                    const unsigned hpDv = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+                    const unsigned top = gameMaxHp(personal->hp, hpDv, level, statExp);
+                    for (unsigned hp : {0u, top - 1, top, top + 1, 65535u}) {
+                        GB::Entity1 e;
+                        e.species = static_cast<uint8_t>(species);
+                        e.level = static_cast<uint8_t>(level);
+                        e.exp = Pokemon::getExpForLevel(static_cast<uint8_t>(level), Pokemon::getGrowthRate(species));
+                        e.dvs = dvs;
+                        e.statExp = {statExp, 0, 0, 0, 0};
+                        e.nickname = "MON";
+                        e.hpKnown = true;
+                        e.currentHP = static_cast<uint16_t>(hp);
+                        check(hasText(GB::formatProblems(e), "Current HP") == (hp > top),
+                              "PK1 box species " + std::to_string(species) + " level " + std::to_string(level) +
+                                  " stat exp " + std::to_string(statExp) + " current HP " + std::to_string(hp));
+                        ++judged;
+                    }
+                }
+    }
+    check(judged > 8000, "box current-HP grid size");
+
+    using namespace PokeVault::Integration::Gen1;
+    const auto analyzeParty = [](int currentHP) {
+        std::vector<uint8_t> bytes = redSave(gameExp(MediumSlow, 100), 200, {119, 119, 111, 151}, currentHP);
+        const auto parsed = parse(bytes, SourceGame::Red);
+        check(parsed && parsed.save && parsed.save->party().size() == 1, "Red save party current HP: parses");
+        const Pokemon::Pokemon1ReadOnly pk(parsed.save->party().front());
+        return Legality::analyze(pk, pk.getGameGroup(), "red_gb");
+    };
+    check(analyzeParty(200).verdict() == Legality::Verdict::NoProblemsFound, "Red save party current HP 200 of 200");
+    check(analyzeParty(0).verdict() == Legality::Verdict::NoProblemsFound, "Red save party fainted (current HP 0)");
+    const auto over = analyzeParty(201);
+    check(over.verdict() == Legality::Verdict::Invalid && hasIssue(over, Legality::Severity::Invalid, "Current HP 201"),
+          "Red save party current HP 201 of 200: Invalid");
+    const auto analyzeBox = [](uint16_t currentHP, uint16_t hpStatExp) {
+        const std::vector<uint8_t> original = redBoxSave(currentHP, hpStatExp);
+        std::vector<uint8_t> bytes = original;
+        const auto parsed = parse(bytes, SourceGame::Red);
+        const bool ok = parsed && parsed.save && !parsed.save->boxes().empty() &&
+                        parsed.save->boxes().front().slots.size() > 0 && parsed.save->boxes().front().slots[0];
+        check(ok, "Red save box record: parses");
+        check(bytes == original, "Red save box record: bytes unchanged");
+        if (!ok)
+            return Legality::Report{};
+        const Pokemon::Pokemon1ReadOnly pk(*parsed.save->boxes().front().slots[0]);
+        Legality::Context context{pk.getGameGroup(), "red_gb"};
+        context.storage = Legality::SlotStorage::PartyOrBox;
+        return Legality::analyze(pk, context);
+    };
+    // Level 100, HP DV 0: 200 with no HP stat experience; with 65535 (b = 255, bonus 63)
+    // ((45 * 2) + 63) + 110 = 263.
+    check(analyzeBox(200, 0).verdict() == Legality::Verdict::NoProblemsFound, "Red save box current HP 200");
+    check(hasIssue(analyzeBox(201, 0), Legality::Severity::Invalid, "Current HP 201"), "Red save box current HP 201");
+    // (HP stat experience alone, the others at zero, is a stat-experience Warning of its own.)
+    const auto full = analyzeBox(263, 65535);
+    check(full.verdict() != Legality::Verdict::Invalid && !hasIssue(full, Legality::Severity::Invalid, "Current HP"),
+          "Red save box current HP 263 with full HP stat experience");
+    check(hasIssue(analyzeBox(264, 65535), Legality::Severity::Invalid, "Current HP 264"),
+          "Red save box current HP 264 with full HP stat experience");
+}
+
 void partyStatProduction() {
     using namespace PokeVault::Integration::Gen1;
     // Red save, level-100 Bulbasaur, DVs 8: Attack 119, Defense 119, Speed 111, Special 151.
@@ -930,6 +1053,7 @@ int main() {
     partyStatGrid();
     partySpecialSplit();
     partyStatProduction();
+    currentHpRule();
     if (failures != 0) {
         std::fprintf(stderr, "Gen I/II structural legality: %d of %d checks FAILED\n", failures, checks);
         return EXIT_FAILURE;

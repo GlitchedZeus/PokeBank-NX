@@ -75,7 +75,7 @@ jobs:
           test "$(git -C _l5_gen1_coordinator/vendor/PKSM-Core rev-parse HEAD)" = aa22d7a4f87c0351baf7da5962ba5acd01039a7c
           test "$(git -C _l5_gen1_pkhex rev-parse HEAD)" = 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
           test "$(git hash-object _l5_gen1_accepted/src/Legality/Legality.cpp)" = b1d02d6620e8fffca2cf71874b786d44108e193f
-          test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = 8c7d8383b27ccdc1ddc26e5c61d5742f77602ac7
+          test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = f1dd434c2513c51c09ab4fb87687fd18ff8b2b1c
           test "$(git hash-object _l5_gen1_coordinator/src/Integration/Gen1/Gen1ReadOnlySave.cpp)" = 7409ad560dc5391165c53e764c8212f6d288ad45
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c

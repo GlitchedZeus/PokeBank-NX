@@ -2379,6 +2379,40 @@ static std::vector<Problem> partyStatProblems(uint8_t generation, uint8_t specie
     return out;
 }
 
+/// Current HP never exceeds max HP. Battle damage and healing are capped at the battle max
+/// HP, which is the party max HP; a level-up, Rare Candy or evolution adds the max-HP gain
+/// to the current HP (the CalcStats callers in pokered experience.asm, evos_moves.asm and
+/// item_effects.asm; the CalcMonStats callers in pokecrystal evolve.asm, battle/core.asm and
+/// item_effects.asm), and every other stat recalculation (a return to the party, vitamins,
+/// the Time Capsule) keeps the current HP while max HP stays or grows, as stat experience
+/// and EXP only grow. A catch saves and restores the wild Pokemon's current HP around the
+/// stat reload. A Gen I box struct keeps the current HP it had when it was
+/// deposited (pokered _MoveMon copies the box part, then the party level into its level byte),
+/// so it is at most the formula's max HP at that stored level with its own stat experience.
+/// partyMaxHP 0 means no stored max HP (a box struct, or a box struct in party layout).
+static Problem currentHpProblem(uint8_t generation, uint8_t species, uint8_t level, const std::array<uint8_t, 4>& dvs,
+                                uint16_t hpStatExp, uint16_t partyMaxHP, uint16_t currentHP) {
+    const uint8_t maxSpecies = generation == 1 ? kMaxSpecies1 : kMaxSpecies2;
+    if (species == 0 || species > maxSpecies || level == 0 || level > 100)
+        return {};
+    if (partyMaxHP != 0) {
+        if (currentHP > partyMaxHP)
+            return {Area::Stats, "Current HP " + std::to_string(currentHP) + " is above its max HP " +
+                                     std::to_string(partyMaxHP)};
+        return {};
+    }
+    const unsigned dv = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+    unsigned root = 1;
+    while (root < 255 && root * root < hpStatExp)
+        ++root;
+    const unsigned top = std::min(999u, ((kBaseStats[species][0] + dv) * 2 + root / 4) * level / 100 + level + 10);
+    if (currentHP > top)
+        return {Area::Stats, "Current HP " + std::to_string(currentHP) + " is above the highest max HP level " +
+                                 std::to_string(level) + " and HP DV " + std::to_string(dv) + " give with its " +
+                                 std::to_string(hpStatExp) + " HP stat experience (" + std::to_string(top) + ")"};
+    return {};
+}
+
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
     if (e.species != 0 && e.species <= kMaxSpecies1) {
@@ -2390,6 +2424,12 @@ std::vector<Problem> formatProblems(const Entity1& e) {
     if (e.partyStats) {
         for (Problem& stat : partyStatProblems(1, e.species, e.level, e.dvs, e.statExp, e.maxHP, e.stats))
             out.push_back(std::move(stat));
+    }
+    if (e.hpKnown) {
+        if (Problem hp = currentHpProblem(1, e.species, e.level, e.dvs, e.statExp[0], e.partyStats ? e.maxHP : 0,
+                                          e.currentHP);
+            !hp.text.empty())
+            out.push_back(std::move(hp));
     }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)  // the stored bytes decide when they are known (Korean names decode to nothing in a Western decoder)
         out.push_back({Area::Trainer, "Nickname is empty"});
@@ -2409,6 +2449,12 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         if (e.partyStats) {
             for (Problem& stat : partyStatProblems(2, e.species, e.level, e.dvs, e.statExp, e.maxHP, e.stats))
                 out.push_back(std::move(stat));
+        }
+        if (e.hpKnown) {
+            if (Problem hp = currentHpProblem(2, e.species, e.level, e.dvs, e.statExp[0], e.partyStats ? e.maxHP : 0,
+                                              e.currentHP);
+                !hp.text.empty())
+                out.push_back(std::move(hp));
         }
     }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)

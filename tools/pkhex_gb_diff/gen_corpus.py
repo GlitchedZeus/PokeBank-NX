@@ -165,6 +165,7 @@ class Mon:
         self.nick_raw = None
         self.max_hp_delta = 0  # added to the stored party max HP (a defect)
         self.stat_delta = [0] * 4  # added to the stored Attack, Defense, Speed, Special (a defect)
+        self.hp_delta = 0  # added to the stored current HP (a defect)
 
 
 # Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
@@ -274,7 +275,7 @@ def finish(d, mon, rng, japanese):
     body[0] = d.internal.get(mon.species, 0)
     stats = p["stats"]
     hp = stat(stats[0], hp_dv, mon.level, True)
-    body[1:3] = hp.to_bytes(2, "big")
+    body[1:3] = (hp + mon.hp_delta).to_bytes(2, "big")
     body[3] = mon.level
     body[5], body[6] = mon.types
     body[7] = mon.catch
@@ -686,6 +687,15 @@ def main():
         if v == BU:
             japanize(d, mon, rng)
         emit("defect-party-stat-jp" if v == BU else "defect-party-stat", mon, v == BU)
+
+    # Current HP one above max HP (GBLegality.cpp currentHpProblem); appended last as well.
+    for _ in range(max(1, args.count // 200)):
+        species, lmin, lmax, v = rng.choice(d.wild)
+        yellow = v == YW
+        level = rng.randint(lmin, lmax)
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        mon.hp_delta = 1
+        emit("defect-current-hp", mon, False)
 
 
 if __name__ == "__main__":

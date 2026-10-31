@@ -388,8 +388,9 @@ DELIBERATE = (
     ("jp-ot-mark-gen1-pick", "INVALID", "VALID",
      lambda r, ctx, pk, pb: jp_ot_mark(r, ctx) and set(pkhex_codes(pk[1])) == {"Trainer:G1CharOT"}),
     # A party struct's stat that no stat experience up to the stored one gives at its level
-    # (pokered CalcStat / pokecrystal CalcMonStatC; GBLegality.cpp partyStatProblems). PKHeX
-    # does not compare stored party stats. Recomputed here from PKHeX's own base stats.
+    # (pokered CalcStat / pokecrystal CalcMonStatC; GBLegality.cpp partyStatProblems), or a
+    # current HP above the stored max HP (currentHpProblem). PKHeX does not compare stored
+    # party stats or current HP. Recomputed here from PKHeX's own base stats.
     ("party-stats", "VALID", "INVALID", lambda r, ctx, pk, pb: party_stats(r, ctx, pb)),
 )
 
@@ -407,6 +408,8 @@ PARTY_STAT_NAMES = {1: ("Max HP", "Attack", "Defense", "Speed", "Special"),
 
 
 def party_stat_problem(text):
+    if text.startswith("Current HP ") and " is above " in text:
+        return True
     return " is not what level " in text and any(text.startswith(n + " ") for n in PARTY_STAT_NAMES[1] + PARTY_STAT_NAMES[2])
 
 
@@ -431,7 +434,8 @@ def party_stats(r, ctx, pb):
     if stored[0] == 0:
         return False
     bases = ctx.base_stats[r.format][r.species]
-    bad = False
+    current = int.from_bytes(b[1:3] if r.format == 1 else b[34:36], "big")
+    bad = current > stored[0]
     for i, value in enumerate(stored):
         stat_exp = int.from_bytes(b[exp_at + exp_slot[i] * 2:exp_at + exp_slot[i] * 2 + 2], "big")
         extra = r.level + 10 if i == 0 else 5

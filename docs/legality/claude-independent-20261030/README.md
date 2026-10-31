@@ -165,6 +165,44 @@ Tests:
   as before (#9716, the hand-verified Bulbasaur-father ancestry, and #11060, an unauthenticated
   gift ancestry kept Incomplete). Production parity passes for both formats.
 
+## Milestone 4: current HP never above max HP (beyond PKHeX)
+
+The games cap battle damage and healing at the max HP. A level-up, Rare Candy or evolution
+adds the max-HP gain to the current HP (pokered `experience.asm`, `evos_moves.asm` and `item_effects.asm` around
+`CalcStats`; pokecrystal `evolve.asm`, `battle/core.asm` and `item_effects.asm` around `CalcMonStats`). Every
+other recalculation (a return to the party, vitamins, the Time Capsule) keeps the current HP
+while max HP stays or grows, because EXP and stat experience only grow. A catch saves and
+restores the wild Pokemon's current HP around `LoadEnemyMon`.
+
+- Party structs (PK1 and PK2): current HP at most the stored max HP, when the stored bytes are
+  the ones the record was parsed from (`partyStats`).
+- Gen I box structs keep the current HP they were deposited with, and pokered `_MoveMon`
+  writes the party level into the box level byte on deposit. So a box record's current HP is
+  at most the formula's max HP at its stored level with its own HP stat experience. A Gen II
+  box struct has no current HP.
+- `currentHpProblem` in `GBLegality.cpp`; `Entity1/2::hpKnown` / `currentHP` are set by
+  `Legality.cpp` from the raw struct bytes only (`rawBody`, 44/33 bytes for PK1, 48 for PK2).
+
+Tests: an engine table of party current HP values, a PK1 box grid (151 species × 4 levels ×
+3 DV sets × 3 stat-experience values × 5 values, PKSM bases) and real Red saves (party
+200/0/201 of 200; a box Bulbasaur with 200/201 HP and no HP stat experience, 263/264 with
+65535). 3,896,994 structural checks in total.
+
+Differential, same seed: the corpora end with `defect-current-hp` / `defect2-current-hp`
+(current HP one above max). PKHeX 26.10.18 accepts all 60 + 60; they are classified with the
+`party-stats` predicate (current HP above the stored max HP), and the first 12,000 verdicts
+are byte-identical. PK1: 0 differing. PK2: the same two pre-existing records. Production
+parity passes for both formats.
+
+## Gen IV grown corpus (A3)
+
+`tools/pkhex_gen34_diff/run.sh` with PKHeX 26.10.18, seed 2026103102, 3 mutations, Gen IV,
+corpus `grown` (80,820 records) on #314's engine: 0 false Invalid, 28 documented
+`met-location-fields` (stricter), 1,417 PKHeX-valid records kept Incomplete by warnings
+(1,072 of them the PC PP warning), and 2 false clean. Both are Pal Park PK4 records where
+PKHeX reports `EVs:EffortUntrainedMoreEXP_0`. That is the Gen III/IV joint EV/EXP area Codex
+owns in #314, so it was passed to Codex and not changed here.
+
 ## Dependencies and consolidation
 
 - #327 is stacked on #314 (`claude/gen1-5-legality-campaign-w9mkom`) at
