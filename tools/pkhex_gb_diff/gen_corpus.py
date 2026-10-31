@@ -164,6 +164,7 @@ class Mon:
         self.ot_raw = None  # the stored name bytes, when a kind sets them directly
         self.nick_raw = None
         self.max_hp_delta = 0  # added to the stored party max HP (a defect)
+        self.stat_delta = [0] * 4  # added to the stored Attack, Defense, Speed, Special (a defect)
 
 
 # Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
@@ -288,7 +289,7 @@ def finish(d, mon, rng, japanese):
     body[0x21] = mon.level
     body[0x22:0x24] = (hp + mon.max_hp_delta).to_bytes(2, "big")
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc))):
-        body[0x24 + i * 2:0x26 + i * 2] = stat(b, dv, mon.level, False).to_bytes(2, "big")
+        body[0x24 + i * 2:0x26 + i * 2] = (stat(b, dv, mon.level, False) + mon.stat_delta[i]).to_bytes(2, "big")
     length = 6 if japanese else 11
     if japanese:
         def text(s):
@@ -673,6 +674,18 @@ def main():
         if v == BU:
             japanize(d, mon, rng)
         emit("defect-party-max-hp-jp" if v == BU else "defect-party-max-hp", mon, v == BU)
+
+    # The same for one of the other stats (GBLegality.cpp partyStatProblems), after the
+    # max-HP records so that they keep their ids too.
+    for _ in range(max(1, args.count // 200)):
+        species, lmin, lmax, v = rng.choice(d.wild)
+        yellow = v == YW
+        level = rng.randint(lmin, lmax)
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        mon.stat_delta[rng.randrange(4)] = rng.choice((-1, 1))
+        if v == BU:
+            japanize(d, mon, rng)
+        emit("defect-party-stat-jp" if v == BU else "defect-party-stat", mon, v == BU)
 
 
 if __name__ == "__main__":

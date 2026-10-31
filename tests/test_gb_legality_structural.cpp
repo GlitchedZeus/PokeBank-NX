@@ -15,7 +15,7 @@
 //  3. Production analyzer on native PK2 records (Pokemon2ReadOnly).
 //  4. The party max-HP rule: the engine against the games' CalcStat run over every stat
 //     experience value up to the stored one (base HP from the PKSM port, independent of
-//     the pret-generated GBBaseHP.inc), and the production analyzer on party records.
+//     the pret-generated GBBaseStats.inc), and the production analyzer on party records.
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
@@ -330,8 +330,10 @@ void put16(std::vector<uint8_t>& b, unsigned o, unsigned v) {
 }
 
 // Max HP 200 is what level 100, HP DV 0 (DVs 8/8/8/8) and no HP stat experience give
-// Bulbasaur (base 45): (45 * 2) * 100 / 100 + 100 + 10.
-std::vector<uint8_t> redSave(uint32_t exp, uint16_t maxHP = 200) {
+// Bulbasaur (base 45): (45 * 2) * 100 / 100 + 100 + 10. Its other stats are (base + 8) * 2 + 5:
+// Attack and Defense 119 (base 49), Speed 111 (45), Special 151 (65).
+std::vector<uint8_t> redSave(uint32_t exp, uint16_t maxHP = 200,
+                             std::array<uint16_t, 4> stats = {119, 119, 111, 151}) {
     std::vector<uint8_t> b(kSaveSize, 0);
     b[kMain] = 0x80;  // player name "A"
     b[kMain + 1] = 0x50;
@@ -363,8 +365,8 @@ std::vector<uint8_t> redSave(uint32_t exp, uint16_t maxHP = 200) {
     b[o + 0x1E] = 40;
     b[o + 0x21] = 100;              // party level
     put16(b, o + 0x22, maxHP);
-    for (unsigned i = 1; i < 5; ++i)
-        put16(b, o + 0x22 + i * 2, 231 - i);
+    for (unsigned i = 0; i < 4; ++i)
+        put16(b, o + 0x24 + i * 2, stats[i]);
     const unsigned ot = o + 6 * 44, nick = ot + 6 * 11;
     b[ot] = 0x80;
     b[ot + 1] = 0x50;
@@ -663,7 +665,10 @@ void partyMaxHpGrid() {
     check(!hasText(GB::formatProblems(egg), "Max HP"), "unhatched egg: no party max-HP problem");
 }
 
-Legality::Report pk2Party(uint16_t maxHP, uint16_t recordMaxHP, uint16_t hpStatExp = 0) {
+// Pidgey level 5, DVs 8/8/8/8, no stat experience: Attack 10 (base 45), Defense 9 (40),
+// Speed 11 (56), Special Attack and Defense 9 (35): ((base + 8) * 2) * 5 / 100 + 5.
+Legality::Report pk2Party(uint16_t maxHP, uint16_t recordMaxHP, uint16_t hpStatExp = 0,
+                          std::array<uint16_t, 5> stats = {10, 9, 11, 9, 9}) {
     PokeVault::Integration::Gen2::PokemonRecord rec{};
     rec.species = 16;  // Pidgey, base HP 40
     rec.level = 5;
@@ -690,6 +695,10 @@ Legality::Report pk2Party(uint16_t maxHP, uint16_t recordMaxHP, uint16_t hpStatE
     body[31] = 5;
     body[36] = static_cast<uint8_t>(maxHP >> 8);
     body[37] = static_cast<uint8_t>(maxHP);
+    for (std::size_t i = 0; i < 5; ++i) {
+        body[38 + i * 2] = static_cast<uint8_t>(stats[i] >> 8);
+        body[39 + i * 2] = static_cast<uint8_t>(stats[i]);
+    }
     std::copy(body.begin(), body.end(), rec.rawBody.begin());
     rec.rawBodySize = body.size();
     const Pokemon::Pokemon2ReadOnly pk(rec);
@@ -736,6 +745,179 @@ void partyMaxHpProduction() {
     check(!hasIssue(pk2Party(0, 0), Legality::Severity::Invalid, "Max HP"), "PK2 box struct in party layout (max HP 0)");
 }
 
+// True when a definitive problem names this stat ("Attack 12 is not ..."), so that Attack
+// does not match Special Attack.
+bool hasStat(const std::vector<GB::Problem>& problems, const std::string& stat) {
+    for (const auto& p : problems)
+        if (p.definitive && p.text.rfind(stat + " ", 0) == 0 && p.text.find(" is not what level ") != std::string::npos)
+            return true;
+    return false;
+}
+
+unsigned gameStat(unsigned base, unsigned dv, unsigned level, unsigned statExp) {
+    return std::min(999u, ((base + dv) * 2 + gameRoot(statExp) / 4) * level / 100 + 5);
+}
+
+void partyStatGrid() {
+    // Attack, Defense, Speed, Special Attack and Special Defense, one at a time, with every
+    // other stat at a value the formula gives: the stored stat must be the formula at some
+    // stat experience between 0 and the stored one. Bases from the PKSM port (independent
+    // of the pret-generated table the engine reads).
+    const unsigned levels[] = {1, 5, 37, 100};
+    const uint16_t statExps[] = {0, 6468, 65535};
+    const std::array<std::array<uint8_t, 4>, 3> dvSets{{{0, 0, 0, 0}, {15, 15, 15, 15}, {9, 2, 7, 12}}};
+    std::array<std::bitset<64>, std::size(statExps)> bonuses{};
+    for (std::size_t i = 0; i < std::size(statExps); ++i)
+        for (unsigned s = 0; s <= statExps[i]; ++s)
+            bonuses[i].set(gameRoot(s) / 4);
+    static const char* const kNames[] = {"Attack", "Defense", "Speed", "Special Attack", "Special Defense"};
+    int judged = 0;
+    for (uint16_t species = 1; species <= 251; ++species) {
+        const auto* personal = PokeVault::Integration::Gen2::personalRecord(species);
+        if (!personal)
+            continue;
+        const unsigned baseHp = species == 210 ? 90u : species == 240 ? 45u : personal->hp;  // see partyMaxHpGrid
+        const unsigned bases[] = {personal->attack, personal->defense, personal->speed, personal->specialAttack,
+                                  personal->specialDefense};
+        for (unsigned level : levels)
+            for (const auto& dvs : dvSets) {
+                const unsigned hpDv = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+                const unsigned statDv[] = {dvs[0], dvs[1], dvs[2], dvs[3], dvs[3]};
+                std::array<uint16_t, 5> fresh{};
+                for (std::size_t k = 0; k < 5; ++k)
+                    fresh[k] = static_cast<uint16_t>(gameStat(bases[k], statDv[k], level, 0));
+                for (std::size_t k = 0; k < 5; ++k)
+                    for (std::size_t si = 0; si < std::size(statExps); ++si) {
+                        const uint16_t statExp = statExps[si];
+                        std::bitset<1001> reachable;
+                        for (unsigned bonus = 0; bonus < 64; ++bonus)
+                            if (bonuses[si].test(bonus))
+                                reachable.set(std::min(999u, ((bases[k] + statDv[k]) * 2 + bonus) * level / 100 + 5));
+                        const unsigned lo = gameStat(bases[k], statDv[k], level, 0);
+                        const unsigned hi = gameStat(bases[k], statDv[k], level, statExp);
+                        for (unsigned value : {0u, lo - 1, lo, lo + 1, (lo + hi) / 2, hi - 1, hi, hi + 1, 1000u}) {
+                            const std::string name = "species " + std::to_string(species) + " level " +
+                                                     std::to_string(level) + " " + kNames[k] + " DV " +
+                                                     std::to_string(statDv[k]) + " stat exp " + std::to_string(statExp) +
+                                                     " value " + std::to_string(value);
+                            const bool bad = !(value <= 1000 && reachable.test(std::min(value, 1000u)));
+                            GB::Entity2 e2;
+                            e2.species = static_cast<uint8_t>(species);
+                            e2.level = static_cast<uint8_t>(level);
+                            e2.exp = Pokemon::getExpForLevel(static_cast<uint8_t>(level), Pokemon::getGrowthRate(species));
+                            e2.dvs = dvs;
+                            // Special Attack and Special Defense share the Special stat experience.
+                            e2.statExp[k == 4 ? 4 : k + 1] = statExp;
+                            e2.nickname = "MON";
+                            e2.partyStats = true;
+                            e2.maxHP = static_cast<uint16_t>(gameMaxHp(baseHp, hpDv, level, 0));
+                            e2.stats = fresh;
+                            e2.stats[k] = static_cast<uint16_t>(value);
+                            const auto problems = GB::formatProblems(e2);
+                            check(hasStat(problems, kNames[k]) == bad, name + " (PK2)");
+                            for (std::size_t other = 0; other < 5; ++other)
+                                if (other != k)
+                                    check(!hasStat(problems, kNames[other]), name + " (PK2): only that stat");
+                            check(!hasStat(problems, "Max HP"), name + " (PK2): max HP");
+                            e2.partyStats = false;
+                            check(!hasStat(GB::formatProblems(e2), kNames[k]), name + " (PK2, no party stats)");
+                            // Gen I has the same Attack, Defense and Speed.
+                            if (species <= 151 && k < 3) {
+                                GB::Entity1 e1;
+                                e1.species = e2.species;
+                                e1.level = e2.level;
+                                e1.exp = e2.exp;
+                                e1.dvs = dvs;
+                                e1.statExp = e2.statExp;
+                                e1.nickname = "MON";
+                                e1.partyStats = true;
+                                e1.maxHP = e2.maxHP;
+                                e1.stats = {e2.stats[0], e2.stats[1], e2.stats[2], 0, 0};
+                                // The PKSM table has no Gen I Special, so it is left at 0 (which
+                                // the engine rejects as Special); only the stat under test is read.
+                                const auto p1 = GB::formatProblems(e1);
+                                check(hasStat(p1, kNames[k]) == bad, name + " (PK1)");
+                                ++judged;
+                            }
+                            ++judged;
+                        }
+                    }
+            }
+    }
+    check(judged > 100000, "party stat grid size");
+}
+
+// Gen I keeps one Special (pokered base_stats), Gen II splits it, and the Time Capsule
+// recomputes it from the receiving generation's bases. Psyduck: Gen I Special 50, Gen II
+// Special Attack 65 and Special Defense 50.
+void partySpecialSplit() {
+    const std::array<uint8_t, 4> dvs{8, 8, 8, 8};
+    // Level 50, no stat experience: Special Attack (65 + 8) * 2 / 2 + 5 = 78; Special
+    // Defense and the Gen I Special (50 + 8) * 2 / 2 + 5 = 63. Max HP (50 * 2) / 2 + 60 = 110,
+    // Attack (52 + 8) + 5 = 65, Defense (48 + 8) + 5 = 61, Speed (55 + 8) + 5 = 68.
+    GB::Entity1 e1;
+    e1.species = 54;
+    e1.level = 50;
+    e1.exp = Pokemon::getExpForLevel(50, Pokemon::getGrowthRate(54));
+    e1.dvs = dvs;
+    e1.nickname = "PSYDUCK";
+    e1.partyStats = true;
+    e1.maxHP = 110;
+    e1.stats = {65, 61, 68, 63, 0};
+    check(GB::formatProblems(e1).empty(), "PK1 Psyduck with its Gen I Special 63");
+    e1.stats[3] = 78;
+    check(hasStat(GB::formatProblems(e1), "Special"), "PK1 Psyduck with the Gen II Special Attack 78");
+    GB::Entity2 e2;
+    e2.species = 54;
+    e2.level = 50;
+    e2.exp = e1.exp;
+    e2.dvs = dvs;
+    e2.nickname = "PSYDUCK";
+    e2.partyStats = true;
+    e2.maxHP = 110;
+    e2.stats = {65, 61, 68, 78, 63};
+    check(GB::formatProblems(e2).empty(), "PK2 Psyduck with Special Attack 78 and Special Defense 63");
+    e2.stats[3] = 63;
+    check(hasStat(GB::formatProblems(e2), "Special Attack"), "PK2 Psyduck carrying the Gen I Special as Special Attack");
+    // A battle stage or a burn halving Attack never reaches the party struct.
+    e2.stats = {32, 61, 68, 78, 63};
+    check(hasStat(GB::formatProblems(e2), "Attack"), "PK2 Psyduck with a halved Attack");
+    // A box struct exported in party layout (max HP 0) is not judged.
+    e2.maxHP = 0;
+    check(GB::formatProblems(e2).empty(), "PK2 box struct in party layout: stats not judged");
+}
+
+void partyStatProduction() {
+    using namespace PokeVault::Integration::Gen1;
+    // Red save, level-100 Bulbasaur, DVs 8: Attack 119, Defense 119, Speed 111, Special 151.
+    const std::array<std::array<uint16_t, 4>, 4> wrong{{{120, 119, 111, 151}, {119, 0, 111, 151},
+                                                        {119, 119, 222, 151}, {119, 119, 111, 150}}};
+    static const char* const kNames[] = {"Attack", "Defense", "Speed", "Special"};
+    for (std::size_t k = 0; k < wrong.size(); ++k) {
+        const std::string name = std::string("Red save, level-100 Bulbasaur, wrong ") + kNames[k];
+        const std::vector<uint8_t> original = redSave(gameExp(MediumSlow, 100), 200, wrong[k]);
+        std::vector<uint8_t> bytes = original;
+        const auto parsed = parse(bytes, SourceGame::Red);
+        check(parsed && parsed.save && parsed.save->party().size() == 1, name + ": parses");
+        if (!parsed || !parsed.save || parsed.save->party().size() != 1)
+            continue;
+        const Pokemon::Pokemon1ReadOnly pk(parsed.save->party().front());
+        const auto report = Legality::analyze(pk, pk.getGameGroup(), "red_gb");
+        check(report.verdict() == Legality::Verdict::Invalid &&
+                  hasIssue(report, Legality::Severity::Invalid, std::string(kNames[k]) + " "),
+              name + ": Invalid");
+        check(bytes == original, name + ": save bytes unchanged");
+    }
+    // Native PK2 party Pidgey (see pk2Party).
+    check(pk2Party(19, 19).verdict() == Legality::Verdict::NoProblemsFound, "PK2 party Pidgey, formula stats");
+    check(hasIssue(pk2Party(19, 19, 0, {10, 9, 11, 10, 9}), Legality::Severity::Invalid, "Special Attack 10"),
+          "PK2 party Pidgey, Special Attack 10 without stat experience");
+    check(hasIssue(pk2Party(19, 19, 0, {10, 9, 11, 9, 0}), Legality::Severity::Invalid, "Special Defense 0"),
+          "PK2 party Pidgey, Special Defense 0");
+    check(!hasIssue(pk2Party(0, 0, 0, {1, 1, 1, 1, 1}), Legality::Severity::Invalid, "is not what level"),
+          "PK2 box struct in party layout: stats not judged");
+}
+
 } // namespace
 
 int main() {
@@ -745,6 +927,9 @@ int main() {
     productionPk2();
     partyMaxHpGrid();
     partyMaxHpProduction();
+    partyStatGrid();
+    partySpecialSplit();
+    partyStatProduction();
     if (failures != 0) {
         std::fprintf(stderr, "Gen I/II structural legality: %d of %d checks FAILED\n", failures, checks);
         return EXIT_FAILURE;

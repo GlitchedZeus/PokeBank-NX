@@ -71,12 +71,13 @@ class Context:
     Gen I internal species index, and PKHeX's font tables (`nul[format]["EN"|"JP"]` marks the
     bytes with no character; `jp[format]` is the Japanese table itself)."""
 
-    def __init__(self, growth, internal_to_national, nul=None, jp=None, base_hp=None):
+    def __init__(self, growth, internal_to_national, nul=None, jp=None, base_stats=None):
         self.growth = growth
         self.internal_to_national = internal_to_national
         self.nul = nul
         self.jp = jp
-        self.base_hp = base_hp
+        # base_stats[format][species]: HP ATK DEF SPE SPC (format 1) or HP ATK DEF SPE SPA SPD.
+        self.base_stats = base_stats
 
     @staticmethod
     def load(pkhex, pokered):
@@ -85,13 +86,15 @@ class Context:
         import gb_text
         personal = gen.read_personal2(pkhex / "PKHeX.Core/Resources/byte/personal/personal_c")
         growth = {s: personal[s]["growth"] for s in range(1, 252)}
-        base_hp = {s: personal[s]["stats"][0] for s in range(1, 252)}
+        personal1 = gen.read_personal1(pkhex / "PKHeX.Core/Resources/byte/personal/personal_rb")
+        base_stats = {1: {s: personal1[s]["stats"] for s in range(1, 152)},
+                      2: {s: personal[s]["stats"] for s in range(1, 252)}}
         pret = ver.Pret(pokered)
         by_internal = {v: k for k, v in pret.internal.items()}
         internal = {idx: pret.dex[name] for idx, name in by_internal.items() if name in pret.dex}
         nul = {g: {t: gb_text.read_nul_mask(pkhex, g, f"Table{t}") for t in ("EN", "JP")} for g in (1, 2)}
         jp = {g: gb_text.read_table(pkhex, g, "TableJP") for g in (1, 2)}
-        return Context(growth, internal, nul, jp, base_hp)
+        return Context(growth, internal, nul, jp, base_stats)
 
 
 def parse_corpus_line(line, lineno, ctx):
@@ -384,10 +387,10 @@ DELIBERATE = (
     # look for another, so it is INVALID (Trainer:G1CharOT) while the Gen II origin is legal.
     ("jp-ot-mark-gen1-pick", "INVALID", "VALID",
      lambda r, ctx, pk, pb: jp_ot_mark(r, ctx) and set(pkhex_codes(pk[1])) == {"Trainer:G1CharOT"}),
-    # A party struct's max HP that no stat experience up to the stored one gives at its level
-    # (pokered CalcStat / pokecrystal CalcMonStatC; GBLegality.cpp partyMaxHpProblem). PKHeX
-    # does not compare stored party stats. Recomputed here from PKHeX's own base HP.
-    ("party-max-hp", "VALID", "INVALID", lambda r, ctx, pk, pb: party_max_hp(r, ctx, pb)),
+    # A party struct's stat that no stat experience up to the stored one gives at its level
+    # (pokered CalcStat / pokecrystal CalcMonStatC; GBLegality.cpp partyStatProblems). PKHeX
+    # does not compare stored party stats. Recomputed here from PKHeX's own base stats.
+    ("party-stats", "VALID", "INVALID", lambda r, ctx, pk, pb: party_stats(r, ctx, pb)),
 )
 
 
@@ -399,21 +402,43 @@ def game_root(stat_exp):
             return b
 
 
-def party_max_hp(r, ctx, pb):
-    if r.egg or not ctx.base_hp or not 1 <= r.species <= 251 or not 1 <= r.level <= 100:
+PARTY_STAT_NAMES = {1: ("Max HP", "Attack", "Defense", "Speed", "Special"),
+                    2: ("Max HP", "Attack", "Defense", "Speed", "Special Attack", "Special Defense")}
+
+
+def party_stat_problem(text):
+    return " is not what level " in text and any(text.startswith(n + " ") for n in PARTY_STAT_NAMES[1] + PARTY_STAT_NAMES[2])
+
+
+def party_stats(r, ctx, pb):
+    """True when PokeBank's only problems are party stats and at least one stored stat is
+    out of the formula's reach for every stat experience up to the stored one."""
+    if r.egg or not ctx.base_stats or not 1 <= r.level <= 100 or r.species not in ctx.base_stats[r.format]:
         return False
-    if [p for p in pokebank_problems(pb[1]) if not p.startswith("Max HP ")] or "Max HP " not in pb[1]:
+    problems = pokebank_problems(pb[1])
+    if not problems or not all(party_stat_problem(p) for p in problems):
         return False
     b = r.body
     if r.format == 1:
-        dvs, hp_exp, stored = b[0x1B:0x1D], int.from_bytes(b[0x11:0x13], "big"), int.from_bytes(b[0x22:0x24], "big")
+        dv_at, exp_at, stat_at = 0x1B, 0x11, 0x22
     else:
-        dvs, hp_exp, stored = b[21:23], int.from_bytes(b[11:13], "big"), int.from_bytes(b[36:38], "big")
-    dv = ((dvs[0] >> 4 & 1) << 3) | ((dvs[0] & 1) << 2) | ((dvs[1] >> 4 & 1) << 1) | (dvs[1] & 1)
-    base = ctx.base_hp[r.species]
-    reach = {min(999, ((base + dv) * 2 + game_root(s) // 4) * r.level // 100 + r.level + 10)
-             for s in range(hp_exp + 1)}
-    return stored != 0 and stored not in reach
+        dv_at, exp_at, stat_at = 21, 11, 36
+    atk, df, spe, spc = b[dv_at] >> 4, b[dv_at] & 15, b[dv_at + 1] >> 4, b[dv_at + 1] & 15
+    hp_dv = ((atk & 1) << 3) | ((df & 1) << 2) | ((spe & 1) << 1) | (spc & 1)
+    dvs = (hp_dv, atk, df, spe, spc, spc)
+    exp_slot = (0, 1, 2, 3, 4, 4)
+    stored = [int.from_bytes(b[stat_at + i * 2:stat_at + i * 2 + 2], "big") for i in range(len(PARTY_STAT_NAMES[r.format]))]
+    if stored[0] == 0:
+        return False
+    bases = ctx.base_stats[r.format][r.species]
+    bad = False
+    for i, value in enumerate(stored):
+        stat_exp = int.from_bytes(b[exp_at + exp_slot[i] * 2:exp_at + exp_slot[i] * 2 + 2], "big")
+        extra = r.level + 10 if i == 0 else 5
+        reach = {min(999, ((bases[i] + dvs[i]) * 2 + game_root(s) // 4) * r.level // 100 + extra)
+                 for s in range(stat_exp + 1)}
+        bad = bad or value not in reach
+    return bad
 
 
 def korean_pk1_origin(r, ctx, pk, pb):

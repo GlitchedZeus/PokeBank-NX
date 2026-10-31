@@ -56,10 +56,12 @@ namespace Legality::GB {
         std::string nickname;               // decoded; compared against trade nicknames
         Language language = Language::Unknown;
         Storage storage = Storage::Unknown;
-        // The party struct's stored max HP, when the record is a party struct (box structs
-        // store no stats). partyStats false: not known, and the max-HP rule is skipped.
+        // The party struct's stored stats, when the record is a party struct (box structs
+        // store none). partyStats false: not known, and the party stat rule is skipped.
+        // stats: Attack, Defense, Speed, Special (the fifth entry is unused).
         bool partyStats = false;
         uint16_t maxHP = 0;
+        std::array<uint16_t, 5> stats{};
         // The name fields as stored (11 bytes, 6 in Japanese), when the caller has them.
         // Empty means "not available": the byte-level rules (the trade marker's terminator,
         // glyphless bytes, a Korean Gold/Silver name on a Western record) are then skipped.
@@ -90,6 +92,7 @@ namespace Legality::GB {
         Storage storage = Storage::Unknown; // see Entity1
         bool partyStats = false;            // see Entity1
         uint16_t maxHP = 0;
+        std::array<uint16_t, 5> stats{};    // Attack, Defense, Speed, Special Attack, Special Defense
         std::vector<uint8_t> otRaw;         // as stored, when available (see Entity1)
         std::vector<uint8_t> nickRaw;
     };
@@ -145,7 +148,7 @@ namespace Legality::GB {
     Result checkGen2(const Entity2& pk);
 
     /// The rules that hold whatever the origin and whatever else is wrong with the record
-    /// (stat experience, Pokerus, level against EXP, a party struct's max HP, an empty nickname). checkGen1/checkGen2
+    /// (stat experience, Pokerus, level against EXP, a party struct's stats, an empty nickname). checkGen1/checkGen2
     /// already include them; this is for callers that cannot run the origin search on a
     /// malformed record.
     std::vector<Problem> formatProblems(const Entity1& pk);

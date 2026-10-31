@@ -157,6 +157,8 @@ int main() {
                      static_cast<uint8_t>(body[0x1C] >> 4), static_cast<uint8_t>(body[0x1C] & 15)};
             e.partyStats = true;
             e.maxHP = be16(body, 0x22);
+            for (std::size_t i = 0; i < 4; ++i)
+                e.stats[i] = be16(body, 0x24 + i * 2);
             e.tradeTrainer = ot[0] == 0x5D;
             e.otName = Gen1::decodeGen1String(ot, region);
             e.nickname = Gen1::decodeGen1String(nick, region);
