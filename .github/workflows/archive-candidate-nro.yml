@@ -1,0 +1,127 @@
+name: Archive candidate NRO to a pre-release
+
+# Copies an already-built, already-recorded candidate NRO out of its expiring Actions artifact
+# into a GitHub pre-release tagged nro/<sha8> on the exact application commit
+# (docs/hardware/NRO_ARCHIVE.md). It never rebuilds: it downloads the original artifact from its
+# own run, requires the NRO's SHA-256 (and BUILD_IDENTITY.txt, when present) to match the inputs,
+# and refuses to overwrite an existing release. A pre-release is never marked as the latest
+# release, and its notes keep the build's hardware status as recorded by the owner.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Workflow run that published the candidate artifact (numeric)'
+        required: true
+      artifact_name:
+        description: 'Artifact name, e.g. PokeBank-NX-Gen1-5-Candidate-3634d1e6'
+        required: true
+      nro_file:
+        description: 'NRO file inside the artifact'
+        required: true
+      code_sha:
+        description: 'Full 40-character application commit the NRO was built from'
+        required: true
+      nro_sha256:
+        description: 'Expected SHA-256 of the NRO (64 hex characters)'
+        required: true
+      label:
+        description: 'Short label, e.g. "Round 10 candidate (NOT DEVICE TESTED)"'
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: archive-nro-${{ inputs.code_sha }}
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    name: Preserve one candidate NRO
+    runs-on: ubuntu-latest
+    env:
+      RUN_ID: ${{ inputs.run_id }}
+      ARTIFACT_NAME: ${{ inputs.artifact_name }}
+      NRO_FILE: ${{ inputs.nro_file }}
+      CODE_SHA: ${{ inputs.code_sha }}
+      NRO_SHA256: ${{ inputs.nro_sha256 }}
+      LABEL: ${{ inputs.label }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "::error::run_id must be numeric"; exit 1; }
+          [[ "$CODE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::code_sha must be 40 hex characters"; exit 1; }
+          [[ "$NRO_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::nro_sha256 must be 64 hex characters"; exit 1; }
+          [[ "$ARTIFACT_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "::error::unexpected artifact name"; exit 1; }
+          [[ "$NRO_FILE" =~ ^[A-Za-z0-9._-]+\.nro$ ]] || { echo "::error::unexpected NRO file name"; exit 1; }
+          [[ "$LABEL" =~ ^[A-Za-z0-9\ ._()/:-]+$ ]] || { echo "::error::label may use letters, digits, spaces and ._()/:- only"; exit 1; }
+          echo "TAG=nro/${CODE_SHA:0:8}" >> "$GITHUB_ENV"
+
+      - name: Refuse to overwrite an existing release
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::release $TAG already exists; nothing was changed"
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::tag $TAG already exists; nothing was changed"
+            exit 1
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/commits/$CODE_SHA" --jq .sha | grep -qx "$CODE_SHA" \
+            || { echo "::error::commit $CODE_SHA is not in this repository"; exit 1; }
+
+      - name: Download the original artifact from its own run (no rebuild)
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: nro
+
+      - name: Verify the NRO bytes and build identity
+        run: |
+          set -euo pipefail
+          test -f "nro/$NRO_FILE" || { echo "::error::$NRO_FILE not in the artifact"; ls -la nro; exit 1; }
+          actual="$(sha256sum "nro/$NRO_FILE" | cut -d' ' -f1)"
+          test "$actual" = "$NRO_SHA256" || { echo "::error::SHA-256 $actual does not match $NRO_SHA256"; exit 1; }
+          if [ -f nro/BUILD_IDENTITY.txt ]; then
+            grep -qx "APPLICATION_SHA=$CODE_SHA" nro/BUILD_IDENTITY.txt \
+              || { echo "::error::BUILD_IDENTITY.txt names a different application commit"; cat nro/BUILD_IDENTITY.txt; exit 1; }
+            if grep -q '^SHA256=' nro/BUILD_IDENTITY.txt; then
+              grep -qx "SHA256=$NRO_SHA256" nro/BUILD_IDENTITY.txt \
+                || { echo "::error::BUILD_IDENTITY.txt names a different SHA-256"; exit 1; }
+            fi
+          fi
+          (cd nro && sha256sum "$NRO_FILE" > "$NRO_FILE.sha256")
+          {
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| NRO | \`$NRO_FILE\` |"
+            echo "| Application commit | \`$CODE_SHA\` |"
+            echo "| SHA-256 | \`$actual\` |"
+            echo "| Size | $(stat -c %s "nro/$NRO_FILE") bytes |"
+            echo "| Source run | https://github.com/$GITHUB_REPOSITORY/actions/runs/$RUN_ID |"
+          } | tee -a "$GITHUB_STEP_SUMMARY" > notes-table.md
+
+      - name: Publish the pre-release
+        run: |
+          set -euo pipefail
+          {
+            echo "Archived copy of an existing candidate build: $LABEL."
+            echo
+            echo "The NRO bytes are the original Actions artifact (no rebuild), verified against the SHA-256 below."
+            echo "Hardware status is whatever the owner recorded for this exact file in docs/hardware/; this pre-release"
+            echo "is preservation only and does not mean the build is accepted or released."
+            echo
+            cat notes-table.md
+          } > notes.md
+          gh release create "$TAG" nro/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$CODE_SHA" \
+            --prerelease --latest=false \
+            --title "NRO archive ${CODE_SHA:0:8}: $LABEL" \
+            --notes-file notes.md

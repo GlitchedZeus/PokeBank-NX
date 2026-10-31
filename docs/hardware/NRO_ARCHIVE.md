@@ -1,0 +1,23 @@
+# Candidate NRO archive
+
+Candidate NROs are first published as GitHub Actions artifacts, which **expire** (90 days for candidate builds). This record lists the important ones with their exact identity, and `.github/workflows/archive-candidate-nro.yml` copies each into a GitHub **pre-release** tagged `nro/<sha8>` on its exact application commit. The workflow downloads the original artifact (no rebuild), verifies the SHA-256 and refuses to overwrite.
+
+A pre-release here is **preservation only**: it is not a release, does not mean the build is accepted, and is never marked "latest". Hardware status is what the owner recorded for that exact file.
+
+| Build | Application commit | NRO SHA-256 | Size (bytes) | Original run / artifact | Artifact expires | Hardware status | Pre-release |
+|---|---|---|---:|---|---|---|---|
+| Round 1 | `7fea17971906cae557a7207bfb7b0bed3548cea2` | `217f24becaaa4eb940abaef01962c80a2fb5536bc6af77934add92d900bac1d5` | 175685297 | [38946941097](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38946941097) / `12066747065` | 2027-01-14 | owner-tested ([results](ROUND1_RESULTS_7fea1797.md)) | `nro/7fea1797`: pending |
+| Round 2 | `e10f307faf7254a47429babc49093e407ed65f1a` | `1dd518b756274cfe70d7a87b06a2e30f027389aeaddd9640f03ef3c5a2eb7ac0` | 175791793 | [39120355693](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39120355693) / `12133189538` | 2027-01-16 | owner-tested ([results](ROUND2_RESULTS_e10f307f.md)) | `nro/e10f307f`: pending |
+| Round 3 | `62a2f8c34476062ece344ef2188ab6b385369a7d` | `0c7a6fb01af2a1356676beedf3aec9da79842a499c7c63833fb683f42f332078` | 176029361 | [39227970775](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/39227970775) / `12175187129` | 2027-01-17 | owner-tested ([results](ROUND3_RESULTS_62a2f8c3.md)) | `nro/62a2f8c3`: pending |
+| Round 5 | `1ca2faec55ee64702eac6e0779daed3a1c8b3377` | `b8966cdbd108530ae1c056a07e318d2f05d0cdee30d910b361ab29f381e41511` | 176799409 | [40151550783](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40151550783) / `12582906901` | 2027-01-23 | owner-tested 31/8/3 ([results](ROUND5_RESULTS_1ca2faec.md)) | `nro/1ca2faec`: pending |
+| Round 6 | `26186464d477d33fdc0afc2fe19ea1394035f49f` | `5b1a85c878e2999f0f8212a583f037643c3b42147a21fef631ea11a832d2a3bf` | 176848561 | [40269917711](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40269917711) / `12628540555` | 2027-01-24 | owner-tested 49/9/1 ([results](ROUND6_RESULTS_26186464.md)) | `nro/26186464`: pending |
+| Round 7 | `e88957f22a5b6432b56f91ef62e1f1938d391a96` | `9e1b6a314fd7643901b6bb157dc69bfa82de61b9b4c45dc97214021f3db813b5` | 176869041 | [40429278048](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40429278048) / `12700694069` | 2027-01-25 | results not recorded ([checklist](RETEST_e88957f2.md)) | `nro/e88957f2`: pending |
+| Round 8 | `6ec5ccb982d3f51e42470c6b22bf4c2ea61b4b5d` | `49d95c555636e3ed3f461c080c168d06c963415801d8ad02b0f7ae5f87eee186` | 176885425 | [40605484594](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40605484594) / `12779504702` | 2027-01-25 | results not recorded ([checklist](RETEST_6ec5ccb9.md)) | `nro/6ec5ccb9`: pending |
+| Round 9 | `d6a20a2a884ca6f8798646be399c0fdd067fcc36` | `57b2c1186942473ee53f78df6f44bc5ab430acb0b86f26ecddc8326c87c0494a` | 177155761 | [40678341932](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40678341932) / `12811726719` | 2027-01-26 | results not recorded ([checklist](RETEST_d6a20a2a.md)) | `nro/d6a20a2a`: pending |
+| Round 10 | `3634d1e6f3f216160db162fd953d82ede45f7af0` | `b6cd0b89e25c83627558b4d3d70949431c40947c3c8cd26fe46b67bb2c9e8cd9` | 177159857 | [40775834570](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40775834570) / `12854482976` | 2027-01-26 | **owner testing now** ([checklist](RETEST_3634d1e6.md)) | `nro/3634d1e6`: pending |
+
+Round 4 has no separate candidate record (its repairs shipped in Round 5). Earlier Gen I–IV accepted builds (for example `0760334f`) predate this naming and their artifacts are not listed here.
+
+## Archiving one build
+
+Run **Archive candidate NRO to a pre-release** (`workflow_dispatch`) with the row's run ID, artifact name (`PokeBank-NX-Gen1-5-Candidate-<sha8>`), NRO file (`<artifact name>.nro`), full application commit, SHA-256 and a short label, then change "pending" to the release link here.
