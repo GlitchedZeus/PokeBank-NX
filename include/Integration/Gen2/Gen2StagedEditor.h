@@ -216,6 +216,9 @@ private:
         std::vector<uint8_t> stagedBefore;
         std::vector<StagedChange> changesBefore;
         std::vector<PokemonExpectation> expectationsBefore;
+        // Round 11 H32: the cached trainer fields go back with the bytes on cancel.
+        std::string trainerNameBefore;
+        uint32_t moneyBefore = 0;
     };
 
     explicit StagedEditor(const ReadOnlySave& source);
@@ -228,6 +231,8 @@ private:
                       std::string& error) const;
     std::string storedName(std::string_view typed, std::span<const uint8_t> encoded) const;
     bool syncCurrentBoxCopy(std::size_t box, std::string& error);
+    // Round 11 H32: true (with the reason) while a packed carry is active.
+    bool refuseWhileCarrying(std::string& error) const;
     bool stageRecordEdit(bool party, std::size_t box, std::size_t slot,
                          const BoxPokemonEdit&, std::string& error);
     void rememberPokemonExpectation(std::size_t box, std::size_t slot,

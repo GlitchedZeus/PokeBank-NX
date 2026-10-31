@@ -59,7 +59,7 @@ bool StagedPokemonEditor::beginPackedGroupMove(std::size_t sourceBox,
     state.active = true; state.sourceBox = sourceBox; state.sourceSlots = ordered;
     state.beforeBytes.assign(stagedBytes().begin(), stagedBytes().end()); packedMove_ = std::move(state);
     for (auto it = ordered.rbegin(); it != ordered.rend(); ++it) {
-        if (!stageRemove(sourceBox, *it, error)) {
+        if (!removeBoxedSlot(sourceBox, *it, error)) {   // unguarded: this pickup owns the carry
             auto restore = packedMove_.beforeBytes; std::string restoreError; commit(std::move(restore), restoreError);
             packedMove_ = {};
             if (error.empty()) error = restoreError.empty() ? "Generation I group pickup failed" : restoreError;
