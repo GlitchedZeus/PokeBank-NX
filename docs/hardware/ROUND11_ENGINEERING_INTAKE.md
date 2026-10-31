@@ -77,6 +77,13 @@ The 34 PASS results (H01–H03, H05–H11, H13–H21, H23, H24, H26, H28, H30, H
 - **Recovery files.** The global list stays (protection is computed over the full listing); focus starts on the opening game's group, preferably its first removable copy.
 - **Box controls.** Y picks up, A places, B cancels (all generations). X exports on an occupied slot and imports on an empty slot; Create stays in Actions.
 
+### Owner safety clarifications (October 31) — these override section 4 where they differ
+
+1. **Create validation is exact-game / format-aware.** "At least one move" is an **app policy** for a usable Pokémon, not a legality proof, and is labelled as such. Met Location is required as an **explicit choice** in the exact game's own location list. Never require a *nonzero* value: a real native Pokémon can legitimately carry location 0 or no recorded location (for example Gen III RSE index 0, Gen IV/V special or "----" entries, traded or event records). The check must use each game's native semantics, never one universal rule.
+2. **H25 history vs stale editor state.** On an existing Pokémon, recorded history (Met Location, Met Level, Pokérus, ball, egg/fateful data) is **preserved**. When it is incompatible with a newly chosen species, it is **flagged** in the editor and in Review, never silently deleted. New drafts reset properly and never inherit another record's state; the editor panels always re-read the record being edited, so nothing stale is shown.
+3. **Recovery files.** Focus may start on the current game's backups, but **nothing starts selected for deletion**. All protection (newest copy, Bank, unverified) and both confirmation steps stay exactly as they are.
+4. **Scope of the Round 11 repair NRO:** Gen I–V only. No unfinished Vault/Bank features and no Gen VI–IX code are integrated.
+
 ## 5. Separate from the repair candidate
 
 - **Vault / Bank (H38, H40–H43, bank search):** a v1.0 feature with its own reviewed plan and branch; not part of the Round 11 repair NRO.
