@@ -158,6 +158,9 @@ class Mon:
         self.egg_name = None  # an unhatched egg's name when it is not the game's own
         self.ot_raw = None  # the stored name bytes, when a kind sets them directly
         self.nick_raw = None
+        self.max_hp_delta = 0  # added to the stored party max HP (a defect)
+        self.stat_delta = [0] * 5  # added to the stored Attack ... Special Defense (a defect)
+        self.hp_delta = 0  # added to the stored current HP (a defect)
 
 
 def encounter_moves(d, species, level, crystal):
@@ -247,10 +250,10 @@ def finish(d, mon, rng):
     body[31] = mon.level
     stats = p["stats"]  # HP ATK DEF SPE SPA SPD
     hp = g1.stat(stats[0], hp_dv, mon.level, True)
-    body[34:36] = hp.to_bytes(2, "big")
-    body[36:38] = hp.to_bytes(2, "big")
+    body[34:36] = (hp + mon.hp_delta).to_bytes(2, "big")
+    body[36:38] = (hp + mon.max_hp_delta).to_bytes(2, "big")
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc), (stats[5], spc))):
-        body[38 + i * 2:40 + i * 2] = g1.stat(b, dv, mon.level, False).to_bytes(2, "big")
+        body[38 + i * 2:40 + i * 2] = (g1.stat(b, dv, mon.level, False) + mon.stat_delta[i]).to_bytes(2, "big")
     if mon.korean:
         def kor(s):
             return d.kor.encode(s, 11, terminate=not mon.fill_name)
@@ -827,6 +830,30 @@ def main():
             mon.statexp = rng.choice((g1.stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
             mon.pokerus = rng.choice((0, pokerus(rng), rng.randrange(256)))
             emit_maybe_jp("random2", mon, japanese, korean)
+
+    # A party max HP one off the only value a fresh catch can hold (no stat experience yet):
+    # pokecrystal CalcMonStatC gives one value, and PKHeX does not compare stored party stats.
+    # Appended after the seeded stream above, so its records keep their ids.
+    for _ in range(max(1, args.count // 200)):
+        mon = wild_mon(d, rng, rng.choice(d.wild))
+        mon.statexp = [0] * 5
+        mon.max_hp_delta = rng.choice((-1, 1))
+        emit("defect2-party-max-hp", mon)
+
+    # The same for one of the other stats (GBLegality.cpp partyStatProblems), after the
+    # max-HP records so that they keep their ids too.
+    for _ in range(max(1, args.count // 200)):
+        mon = wild_mon(d, rng, rng.choice(d.wild))
+        mon.statexp = [0] * 5
+        mon.stat_delta[rng.randrange(5)] = rng.choice((-1, 1))
+        emit("defect2-party-stat", mon)
+
+    # Current HP one above max HP (GBLegality.cpp currentHpProblem); appended last as well.
+    for _ in range(max(1, args.count // 200)):
+        mon = wild_mon(d, rng, rng.choice(d.wild))
+        mon.statexp = [0] * 5
+        mon.hp_delta = 1
+        emit("defect2-current-hp", mon)
 
 
 if __name__ == "__main__":

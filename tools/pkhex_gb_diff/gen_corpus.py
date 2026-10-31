@@ -163,6 +163,9 @@ class Mon:
         self.fill_name = False  # Japanese only: the name fills its field with no terminator
         self.ot_raw = None  # the stored name bytes, when a kind sets them directly
         self.nick_raw = None
+        self.max_hp_delta = 0  # added to the stored party max HP (a defect)
+        self.stat_delta = [0] * 4  # added to the stored Attack, Defense, Speed, Special (a defect)
+        self.hp_delta = 0  # added to the stored current HP (a defect)
 
 
 # Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
@@ -272,7 +275,7 @@ def finish(d, mon, rng, japanese):
     body[0] = d.internal.get(mon.species, 0)
     stats = p["stats"]
     hp = stat(stats[0], hp_dv, mon.level, True)
-    body[1:3] = hp.to_bytes(2, "big")
+    body[1:3] = (hp + mon.hp_delta).to_bytes(2, "big")
     body[3] = mon.level
     body[5], body[6] = mon.types
     body[7] = mon.catch
@@ -285,9 +288,9 @@ def finish(d, mon, rng, japanese):
         body[0x11 + i * 2:0x13 + i * 2] = value.to_bytes(2, "big")
     body[0x1B:0x1D] = ((atk << 12) | (df << 8) | (spe << 4) | spc).to_bytes(2, "big")
     body[0x21] = mon.level
-    body[0x22:0x24] = hp.to_bytes(2, "big")
+    body[0x22:0x24] = (hp + mon.max_hp_delta).to_bytes(2, "big")
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc))):
-        body[0x24 + i * 2:0x26 + i * 2] = stat(b, dv, mon.level, False).to_bytes(2, "big")
+        body[0x24 + i * 2:0x26 + i * 2] = (stat(b, dv, mon.level, False) + mon.stat_delta[i]).to_bytes(2, "big")
     length = 6 if japanese else 11
     if japanese:
         def text(s):
@@ -659,6 +662,40 @@ def main():
             if japanese:
                 japanize(d, mon, rng)
             emit("random" + jp, mon, japanese)
+
+    # A party max HP one off the only value a fresh catch can hold (no stat experience yet):
+    # pokered CalcStat gives one value, and PKHeX does not compare stored party stats.
+    # Appended after the seeded stream above, so its records keep their ids.
+    for _ in range(max(1, args.count // 200)):
+        species, lmin, lmax, v = rng.choice(d.wild)
+        yellow = v == YW
+        level = rng.randint(lmin, lmax)
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        mon.max_hp_delta = rng.choice((-1, 1))
+        if v == BU:
+            japanize(d, mon, rng)
+        emit("defect-party-max-hp-jp" if v == BU else "defect-party-max-hp", mon, v == BU)
+
+    # The same for one of the other stats (GBLegality.cpp partyStatProblems), after the
+    # max-HP records so that they keep their ids too.
+    for _ in range(max(1, args.count // 200)):
+        species, lmin, lmax, v = rng.choice(d.wild)
+        yellow = v == YW
+        level = rng.randint(lmin, lmax)
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        mon.stat_delta[rng.randrange(4)] = rng.choice((-1, 1))
+        if v == BU:
+            japanize(d, mon, rng)
+        emit("defect-party-stat-jp" if v == BU else "defect-party-stat", mon, v == BU)
+
+    # Current HP one above max HP (GBLegality.cpp currentHpProblem); appended last as well.
+    for _ in range(max(1, args.count // 200)):
+        species, lmin, lmax, v = rng.choice(d.wild)
+        yellow = v == YW
+        level = rng.randint(lmin, lmax)
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        mon.hp_delta = 1
+        emit("defect-current-hp", mon, False)
 
 
 if __name__ == "__main__":
