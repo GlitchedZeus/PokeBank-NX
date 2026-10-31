@@ -25,6 +25,7 @@
 #include "Integration/Gen6/Gen6PK6.h"
 #include "Legality/Gen7bLegality.h"
 #include "Legality/ModernLegality.h"
+#include "Pokemon/Experience.h"
 
 namespace {
 
@@ -190,6 +191,19 @@ void testRuleEdits(const std::vector<Record>& records) {
     expectInvalid(n, "pid==ec", [](auto& b) { PK6::write32(b, 0x18, PK6::read32(b, 0x00)); }, "PID equals the encryption constant");
     expectInvalid(n, "ball", [](auto& b) { b[0xDC] = 27; }, "cannot be held by a PB7");
     expectInvalid(n, "hyper training", [](auto& b) { b[0xDE] = 1; }, "needs level 100");
+    {
+        // At level 100 a gold bottle cap (all six flags) may cover a perfect IV; one silver cap may not.
+        const auto growth = Legality::Gen7b::Data::personal(PK6::read16(n.plain, 0x08), n.plain[0x1D] >> 3)->growth;
+        auto at100 = [&](uint8_t flags) {
+            return analyzePlain(n, edit(n.plain, [&](auto& b) {
+                PK6::write32(b, 0x10, Pokemon::getExpForLevel(100, growth));
+                PK6::write32(b, 0x74, (PK6::read32(b, 0x74) & ~0x1Fu) | 31u);  // HP IV 31
+                b[0xDE] = flags;
+            }));
+        };
+        check(!hasIssue(at100(0x3F), Severity::Invalid, "perfect IV"), "gold bottle cap over a perfect IV is not Invalid");
+        check(hasIssue(at100(0x01), Severity::Invalid, "perfect IV"), "silver bottle cap on a perfect IV is Invalid");
+    }
     {
         uint16_t item = 1;
         while (item < 2000 && Legality::Gen7b::Data::heldItemAllowed(item)) ++item;

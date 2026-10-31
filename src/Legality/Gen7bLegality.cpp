@@ -249,6 +249,8 @@ private:
             invalid(CheckIdentifier::Stats, "Hyper Training with six perfect IVs");
             return;
         }
+        // Let's Go's gold bottle cap trains all six, perfect IVs included (PKHeX skips Gen7b here).
+        if ((flags & 0x3F) == 0x3F) return;
         for (size_t i = 0; i < 6; ++i) {
             if (pk_.iv(i) == 31 && ((flags >> HyperTrainBit[i]) & 1)) {
                 invalid(CheckIdentifier::Stats, "Hyper Training on a perfect IV");
