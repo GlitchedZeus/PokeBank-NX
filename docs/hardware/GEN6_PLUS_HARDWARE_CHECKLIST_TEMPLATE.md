@@ -379,6 +379,30 @@ exactly the reviewed changes.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group G9a · Pokémon Legends: Z-A (linked `main` file)
+
+### G9a-01 · Assign and open (base game and Mega Dimension DLC)
+**Steps:** HOME → "Pokemon Legends Z-A (Save File)" → Assign Save File Manually → open a base-game save, then a
+DLC save if you have one.
+**Expected:** Validates; party and 32 × 30 boxes match the game; Origin & Legality shows Alpha and the save
+revision. A Scarlet/Violet save is never accepted on this card.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G9a-02 · Shared workflows and battle teams
+**Steps:** Repeat G8-03 and G8-04 on this save.
+**Expected:** Same editable fields as Sword/Shield; team members never offer Move/Release.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G9a-03 · Export Copy and in-game reopen (both revisions)
+**Steps:** Stage an edit, a box Move and a Release → Review → X → Y; restore `edited.bin` as `main` with your
+save manager (back up first); launch.
+**Expected:** `exports/za/legends_za_switch_<time>/` with a pristine backup; the game loads with exactly the
+reviewed changes; on the DLC save, moved/released slots behave like every other box slot.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Totals
 
 | Count | Number |

@@ -95,6 +95,10 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   verified PK8 codec and the shared `Gen8RecordEdits` whitelist are reused; PK9-only reads (language 0xD5,
   Tera 0x94/0x95, scale 0x4A) feed the view. PKHeX's exact SV size rule + SwishCrypto hash, KMyStatus/KParty/
   KBox, TeamIndexes8 + locks (same protection as SWSH), export to `exports/sv`. A Z-A-sized file is refused.
+- **Legends: Z-A**: its own module (`Gen9ZaSession`), never SV: Z-A sizes + hash, game 52, Party9a (no count
+  byte; leading present slots), 0x198 box stride, DLC revision block (`KSaveRevision`) with the at-rest
+  "present" flag set exactly where PKHeX's `WriteSlotBox` sets it; gap bytes and party footers never change.
+  PA9 shares PK8 encryption and every editable offset, so the shared rules are reused. Export to `exports/za`.
 - PKHeX reference files were fetched from the pinned commit `6501f0ab` for offsets only (not vendored).
 
 ## Status per game (host evidence only; NOT DEVICE TESTED)
@@ -115,7 +119,9 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   verified Export to `exports/pla`; Create blocked; held items/Effort Levels read-only.
 - **Scarlet / Violet**: linked `main` through the shared surface: editor, box Clone/Move/Remove with team
   protection, Review, verified Export to `exports/sv`; Create blocked; Tera/scale read-only.
-- **Legends: Z-A**: honest BLOCKED editor/export with the named adapter prerequisite. Z-A is PA9/SAV9ZA, not SV.
+- **Legends: Z-A**: linked `main` through its own adapter: editor, box Clone/Move/Remove with team protection,
+  Review, verified Export to `exports/za`; Create blocked; Alpha/Plus/Mega read-only.
+- Every Gen VI–IX title is now served by a verified shared-contract adapter; none is legacy-reader-only.
 
 No title is accepted on hardware. Gen I–V hardware cells read NOT ACCEPTED (owner rounds were on earlier
 candidates; #313 open).

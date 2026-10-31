@@ -202,18 +202,21 @@ int main() {
                   row->status(Cap::Workflow::Create).support == Cap::Support::Blocked,
               std::string(id) + " editor/storage/export; Tera read-only; Create blocked");
     }
-    // Remaining Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
-    for (const char* id : {"legends_za_switch"}) {
-        const auto* row = Cap::find(id);
-        check(row && row->status(Cap::Workflow::PokemonEditor).support == Cap::Support::Blocked &&
-                  !row->status(Cap::Workflow::PokemonEditor).reason.empty(),
-              std::string(id) + " editor blocked with prerequisite");
-        check(row && row->status(Cap::Workflow::Export).support == Cap::Support::Blocked, std::string(id) + " export blocked");
-        check(row && row->exportRoot.empty(), std::string(id) + " advertises no export root");
+    // Legends: Z-A: its own PA9/SAV9ZA adapter (never the SV one).
+    {
+        const auto* row = Cap::find("legends_za_switch");
+        check(row && row->provider == "modern-native" && row->uiEvidence == "test_ui_modern_surface_gen9za_host" &&
+                  row->family == "ZA" && row->recordFormat == "PA9" && row->exportRoot == "exports/za" &&
+                  row->supports(Cap::Workflow::PokemonEditor) && row->supports(Cap::Workflow::Export) &&
+                  !row->supports(Cap::Workflow::NativeMechanics) && row->status(Cap::Workflow::Create).support == Cap::Support::Blocked,
+              "legends_za_switch served by its own Modern adapter; mechanics read-only; Create blocked");
     }
-    check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && Cap::isModernNativeId("letsgo_eevee_switch") && !Cap::isModernNativeId("black_nds") &&
+    // No Gen VI-IX title is left on the legacy-reader-only path; every row names its UI evidence.
+    for (const auto& row : rows)
+        if (row.generation >= 6) check(row.provider == "modern-native" && !row.uiEvidence.empty(), std::string(row.id) + " is adapter-served");
+    check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && Cap::isModernNativeId("letsgo_eevee_switch") && !Cap::isModernNativeId("black_nds") && Cap::isModernNativeId("legends_za_switch") &&
               Cap::isModernNativeId("scarlet_switch") && Cap::isModernNativeId("brilliant_diamond_switch") &&
-              Cap::isModernNativeId("legends_arceus_switch") && !Cap::isModernNativeId("legends_za_switch"),
+              Cap::isModernNativeId("legends_arceus_switch"),
           "isModernNativeId identifies the Modern adapter titles only");
 
     std::cout << "test_game_capability_registry: " << (failures ? "FAILED " : "all ") << checks << " checks"

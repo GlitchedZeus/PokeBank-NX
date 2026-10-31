@@ -18,7 +18,7 @@ GEN6PLUS_HEADERS := include/Integration/Common/GameCapabilityRegistry.h \
 	$(wildcard include/Integration/Gen7b/*.h) $(wildcard tests/fixtures/gen7b/*.h) \
 	$(wildcard include/Integration/Gen8b/*.h) $(wildcard tests/fixtures/gen8b/*.h) \
 	$(wildcard include/Integration/Gen8a/*.h) $(wildcard tests/fixtures/gen8a/*.h) \
-	$(wildcard include/Integration/Gen9/*.h) $(wildcard tests/fixtures/gen9sv/*.h)
+	$(wildcard include/Integration/Gen9/*.h) $(wildcard tests/fixtures/gen9sv/*.h) $(wildcard tests/fixtures/gen9za/*.h)
 GEN6PLUS_FLAGS := -Wno-unused-parameter -Iinclude -Itests -isystem $(PKSM_CORE_ROOT)/include -isystem $(GEN7_MEME_ROOT) \
 	-D_PKSMCORE_CONFIGURED -fno-operator-names $(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
 # Tests that reach the Gen VII parser through ModernSources link the vendored MemeCrypto objects.
@@ -42,7 +42,8 @@ GEN6PLUS_GEN8_SOURCES := src/Integration/Gen8/Gen8NativeSession.cpp src/Integrat
 	src/Integration/Gen7b/Gen7bNativeSession.cpp src/Integration/Gen7b/Gen7bStagedSession.cpp src/Integration/Gen7b/Gen7bSave.cpp \
 	src/Integration/Gen8b/Gen8bNativeSession.cpp src/Integration/Gen8b/Gen8bStagedSession.cpp src/Integration/Gen8b/Gen8bSave.cpp src/Utils/MD5.cpp \
 	src/Integration/Gen8a/Gen8aNativeSession.cpp src/Integration/Gen8a/Gen8aSession.cpp \
-	src/Integration/Gen9/Gen9SvNativeSession.cpp src/Integration/Gen9/Gen9SvSession.cpp
+	src/Integration/Gen9/Gen9SvNativeSession.cpp src/Integration/Gen9/Gen9SvSession.cpp \
+	src/Integration/Gen9/Gen9ZaNativeSession.cpp src/Integration/Gen9/Gen9ZaSession.cpp
 GEN6PLUS_SOURCES_test_modern_sources := tests/test_modern_sources.cpp src/Integration/Modern/ModernSources.cpp \
 	src/Integration/Gen6/Gen6SaveSources.cpp src/Legacy/LegacySourceBindings.cpp $(GEN6PLUS_SESSION_SOURCES) \
 	$(GEN6PLUS_GEN7_SOURCES) $(GEN6PLUS_GEN8_SOURCES)

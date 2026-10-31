@@ -10,6 +10,7 @@
 #include "fixtures/gen8b/Gen8bSyntheticSave.h"
 #include "fixtures/gen8a/Gen8aSyntheticSave.h"
 #include "fixtures/gen9sv/Gen9SvSyntheticSave.h"
+#include "fixtures/gen9za/Gen9ZaSyntheticSave.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -52,8 +53,8 @@ std::vector<uint8_t> slurp(const std::string& path) {
 int main() {
     // ---- family dispatch ----
     check(Modern::isModernAssignedId("x_3ds") && Modern::isModernAssignedId("ultramoon_3ds"), "3DS titles are Modern-assigned");
-    check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("legends_za_switch") &&
-              !Modern::isModernAssignedId("legends_za_switch"),
+    check(!Modern::isModernAssignedId("black_nds") && Modern::isModernAssignedId("legends_za_switch") &&
+              Modern::isModernAssignedId("legends_za_switch"),
           "DS titles and Switch titles without a verified adapter are not");
     check(Modern::isModernAssignedId("sword_switch") && Modern::isModernAssignedId("shield_switch") &&
               Modern::gameGroupFor("shield_switch") == Enums::GameVersion::SWSH && Modern::expectedFamily("sword_switch") == "SWSH" &&
@@ -360,6 +361,29 @@ int main() {
         check(opened.ready() && opened.session->familyLabel() == "Generation IX" && Modern::homeCardSnapshot(opened).partyCount == 2,
               "SV opens through the Gen9 adapter: " + opened.diagnostic);
         check(slurp(svDir + "/main") == sv, "SV fixture never written");
+    }
+
+    // ---- Legends: Z-A: manual link through its own adapter ----
+    {
+        const std::string zaDir = root + "/linked-za";
+        ::mkdir(zaDir.c_str(), 0755);
+        const auto za = Gen9ZaFixture::makeSave();
+        check(writeFile(zaDir + "/main", za), "Z-A fixture written");
+        check(Modern::gameGroupFor("legends_za_switch") == Enums::GameVersion::ZA && Modern::expectedFamily("legends_za_switch") == "ZA" &&
+                  Modern::exportsRootFor("legends_za_switch").ends_with("/exports/za"),
+              "Z-A dispatch");
+        const auto row = Modern::inspectSourceFile(zaDir + "/main", "Manual", "legends_za_switch");
+        check(row.ready() && row.generation == 9 && row.partyCount == 2 && row.trainerName == "Taunie", "linked Z-A main validates: " + row.diagnostic);
+        check(!Modern::inspectSourceFile(zaDir + "/main", "Manual", "scarlet_switch").ready(), "Z-A bytes are never accepted as Scarlet");
+        auto catalog = Modern::forGameAndProfile(std::vector<PokeVault::Source::SaveInstance>{row}, bindings, profileA, "legends_za_switch");
+        const auto assigned = catalog.rows.size() == 1
+                                  ? Modern::assignValidatedSource(bindings, catalog.rows.front(), profileA, "legends_za_switch")
+                                  : Modern::SourceAssignmentResult{};
+        check(assigned.success && bindings.resolveFileForGame(profileA, "legends_za_switch").binding.expectedRawFamily == "ZA",
+              "Z-A assignment: " + assigned.diagnostic);
+        auto opened = Modern::openAssignedSource(bindings, profileA, "legends_za_switch");
+        check(opened.ready() && Modern::homeCardSnapshot(opened).partyCount == 2, "Z-A opens through its adapter: " + opened.diagnostic);
+        check(slurp(zaDir + "/main") == za, "Z-A fixture never written");
     }
 
     std::cout << "test_modern_sources: " << (failures ? "FAILED " : "all ") << checks << " checks"

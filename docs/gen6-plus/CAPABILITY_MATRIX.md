@@ -85,7 +85,7 @@ Source: `include/Integration/Common/GameCapabilityRegistry.h` (cumulative-inheri
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Scarlet (`scarlet_switch`, SV, PK9) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, Tera type, handler, memory and cached-stat defaults / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen9_* lane suites + test_gen9_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen9sv_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
 | Violet (`violet_switch`, SV, PK9) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, Tera type, handler, memory and cached-stat defaults / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen9_* lane suites + test_gen9_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen9sv_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
-| Legends Z-A (`legends_za_switch`, ZA, PA9) | Dashboard PASS / Save Instances READ-ONLY | Party READ-ONLY / Boxes READ-ONLY | BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV | BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV / Clone BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV / Move BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV / Remove BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV | Backup READ-ONLY / Review BLOCKED - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV | BLOCKED - Installed-game injection is hard-disabled; a verified Export Copy needs the adapter's strict re-parse and byte-diff verifier | Host read-validation tests only (no staged session) | NOT TESTED |
+| Legends Z-A (`legends_za_switch`, ZA, PA9) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, Alpha, Plus flags, handler and cached-stat defaults / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen9_* lane suites + test_gen9_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen9za_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
 
 Rows: 38 titles.
 
@@ -112,7 +112,7 @@ Flags are the `NativeMechanics` members set to true in the registry; the shared 
 | Legends Arceus (`legends_arceus_switch`, PLA, PA8) | VIII | modern-native | IV/EffortLevel | 32 x 30 (SCBlock) | fairyType, hyperTraining, effortLevels, alphaPokemon, moveMastery, pastures, mintedNature, ribbons, scale |
 | Scarlet (`scarlet_switch`, SV, PK9) | IX | modern-native | IV/EV | 32 x 30 (SCBlock) | fairyType, memories, hyperTraining, teraType, mintedNature, marks, ribbons, scale |
 | Violet (`violet_switch`, SV, PK9) | IX | modern-native | IV/EV | 32 x 30 (SCBlock) | fairyType, memories, hyperTraining, teraType, mintedNature, marks, ribbons, scale |
-| Legends Z-A (`legends_za_switch`, ZA, PA9) | IX | legacy-modern-reader | IV/EV | 32 x 30 (SCBlock) | megaForms, fairyType, hyperTraining, alphaPokemon, mintedNature, plusFlags, scale |
+| Legends Z-A (`legends_za_switch`, ZA, PA9) | IX | modern-native | IV/EV | 32 x 30 (SCBlock) | megaForms, fairyType, hyperTraining, alphaPokemon, mintedNature, plusFlags, scale |
 
 ## Blockers
 
@@ -145,11 +145,8 @@ Every Blocked reason in the registry, once, with the workflows and titles it app
 - Create needs verifiable EC/PID, personal, met, Tera type, handler, memory and cached-stat defaults
   - Workflows: Create
   - Titles: Scarlet, Violet
-- Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV
-  - Workflows: Pokemon editor, Native mechanics, Create, Clone, Move/Swap, Remove, Review
-  - Titles: Legends Z-A
-- Installed-game injection is hard-disabled; a verified Export Copy needs the adapter's strict re-parse and byte-diff verifier
-  - Workflows: Export and safety
+- Create needs verifiable EC/PID, personal, met, Alpha, Plus flags, handler and cached-stat defaults
+  - Workflows: Create
   - Titles: Legends Z-A
 
 Generated by tools/capability_matrix.cpp from GameCapabilityRegistry.h; do not edit by hand.

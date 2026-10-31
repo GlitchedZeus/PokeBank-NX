@@ -50,6 +50,7 @@ namespace PokeVault::Legacy {
                 if (binding.gameIdentity == "legends_arceus_switch") return binding.expectedRawFamily == "PLA";
                 if (binding.gameIdentity == "scarlet_switch" || binding.gameIdentity == "violet_switch")
                     return binding.expectedRawFamily == "SV";
+                if (binding.gameIdentity == "legends_za_switch") return binding.expectedRawFamily == "ZA";
                 return false;
             }
             const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";
