@@ -84,7 +84,7 @@ jobs:
         run: make -f Makefile.host host-clean
 
       - name: Run host tests
-        run: make -f Makefile.host host-test
+        run: make -f Makefile.host -j"$(nproc)" host-test
 
       - name: Focused RSE save-open bridge regression
         run: |
@@ -110,4 +110,4 @@ jobs:
           ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}" ./build-host/test_rse_open_regression_sanitize
 
       - name: Run ASan and UBSan tests
-        run: make -f Makefile.host host-sanitize
+        run: make -f Makefile.host -j"$(nproc)" host-sanitize

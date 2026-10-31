@@ -3,7 +3,7 @@
 > **CURRENT AUTHORITY OVERRIDE (2026-09-29):** Recovery is branch-agnostic. First read `docs/ENGINEERING_AUTHORITY.md` and re-fetch live GitHub. Use the currently authorized/pushed lane as the source of truth; references below to `feature/pokebank-playable`, a private repository, or an old production branch are historical recovery context and must not override live state.
 
 
-Last updated: 2026-09-10
+Last updated: 2026-09-22
 
 ## The rule
 
@@ -12,7 +12,7 @@ When the user says **RECOVERY**, recovery is an operation, not an archaeology se
 The normal recovery path is:
 
 ```text
-origin/feature/pokebank-playable
+the authoritative branch named by CURRENT_STATUS.md / docs/NEXT_CODEX_PROMPT.md
         ↓
 python3 tools/recover_workspace.py
         ↓
@@ -23,13 +23,15 @@ RECOVERY COMPLETE
 continue the active task
 ```
 
+Current important exception: PR #77 is an active draft branch with an exact hardware candidate under test. Do **not** assume production is the recovery target merely because older recovery tooling/documentation was written when production was the only active line. Re-fetch the active PR first. If `tools/recover_workspace.py` attempts to force a different branch, stop rather than allowing it to reset/overwrite the active candidate or newer work.
+
 Do **not** start by reading reflogs, walking every worktree, searching old sessions, rebuilding roadmaps, or checking dozens of historical refs.
 
 Forensic recovery is an **exception path only**. Enter it only when the normal GitHub recovery path fails, the requested remote commit is missing, or the user explicitly asks to recover unsaved local-only work.
 
 ## What GitHub must contain
 
-Every piece of project-authored work that cannot be reproduced automatically must be committed and pushed to `origin/feature/pokebank-playable` before a session is considered safely saved:
+Every piece of project-authored work that cannot be reproduced automatically must be committed and pushed to `the authoritative branch named by CURRENT_STATUS.md / docs/NEXT_CODEX_PROMPT.md` before a session is considered safely saved:
 
 - source code;
 - tests;
@@ -65,7 +67,7 @@ After the first full preflight-passing recovery, run:
 python3 tools/pack_recovery_snapshot.py
 git add -f recovery/assets_snapshot/
 git commit -m "recovery: snapshot complete verified RomFS"
-git push origin feature/pokebank-playable
+git push origin <authoritative-active-branch>
 ```
 
 The packer creates a deterministic tar of the complete `romfs/` tree and splits it into 80 MiB GitHub-safe pieces under:
@@ -160,7 +162,7 @@ The user's copies of historical artifacts are useful independent fallbacks, but 
 
 When a new coding session starts and the user says RECOVERY:
 
-1. Use `origin/feature/pokebank-playable` as the normal source of truth.
+1. Use `the authoritative branch named by CURRENT_STATUS.md / docs/NEXT_CODEX_PROMPT.md` as the normal source of truth.
 2. Read only `CURRENT_STATUS.md`, this contract, and `docs/NEXT_CODEX_PROMPT.md`.
 3. Run:
 
@@ -197,7 +199,7 @@ Before a coding session is reported as safely saved:
 ```text
 project-authored changes committed
         ↓
-pushed to origin/feature/pokebank-playable
+pushed to the authoritative branch named by CURRENT_STATUS.md / docs/NEXT_CODEX_PROMPT.md
         ↓
 remote SHA verified
         ↓

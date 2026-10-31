@@ -1,120 +1,51 @@
 # PokeBank NX Project Status
 
-Last updated: **2026-09-29**
+## CURRENT PRIORITY — October 17, 2026
 
-For exact active head and CI status, read `CURRENT_STATUS.md` first.
+**PokeBank NX is an active alpha; no v1.0 release.** The release target remains **one safe, shared Gen I–V editor across 20 game releases**, not a five-editor fork or a separate Gen V wizard.
 
-## Project identity
+- **Application:** [Gen I–V PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307), HEAD checked `315ad61df3c445dd5f9a6174c7267dea4bcea35f`, remains OPEN / DRAFT. **Last owner-tested candidate** is [`7fea1797`](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38946941097/artifacts/12066747065), whose exact-binary audit passed; it is **not fully hardware accepted**.
+- **Owner device results:** **42 of 54 targeted checks PASS** (including global A/B/R behavior, Gen II Create, Gen I–V Moves/PP, responsive scrolling, many modal/layout changes, Gen V Party/Boxes/Trainer display and original-source immutability). Six issues need fixing/investigation and six more checks remain unverified. [Detailed permanent retest ledger](docs/hardware/OWNER_RETEST_7fea1797_20261017.md). The full [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313) all-title, every-action gate remains OPEN.
+- **Repair priorities:** Bag Add inserts quantity 1 into the staged Bag before stack edit; compact/shared menu sizing; incremental species search; draggable scrollbar thumbs; Gen I Trainer/Money editing; Crystal Met Time inline; Gen II Special value; Gen V clipped fields, PP caption spacing and full Review/Discard/Export parity. Confirm emulator-specific backup access without making original saves writable.
+- **Legality:** [Gen I–V PR #314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314), HEAD `cfe0e7dc`, remains independent, open and draft. Production PK1–PK4 analyzers plus engine-only PK5; latest CI passes on the observed head. Gen III/IV high PKHeX differential corpus coverage and Gen V transfer rules are implemented, but neither complete original-history coverage nor combined-app wiring is claimed. Colosseum/XD and unverifiable provenance remain under research.
+- **Release order:** finish roughly two targeted UI/testing rounds as needed → reviewed legality merge after UI stabilizes → combined exact-NRO host/device tests and full 20-game acceptance → independent audit, safe repo cleanup and owner approval → start Gen VI–IX app/emulator work.
+- **Safety/governance:** External saves immutable, app-owned staged export only; no automatic writeback, no unsafe merge/force-push or branch-history deletion.
 
-- Product: **PokeBank NX**
-- Repository: `GlitchedZeus/PokeBank-NX`
-- Platform: Nintendo Switch homebrew
-- Current state: active alpha
-- Active MAIN implementation lane: **PR #92**
-- PR #100 Product UI polish: **content integrated into PR #92; PR #100 closed**
-- PR #92 remains **OPEN / DRAFT / NOT MERGED**
+The material below is the **historical October 14 engineering snapshot**, retained for context; active state is above and on live GitHub.
 
-GitHub is authoritative. Checkpoint SHAs document evidence; they are never instructions to move a branch backward.
+---
 
-## Headline
+**Last checked: October 14, 2026.** This is a milestone summary, not a fictitious completion percentage. [Current engineering state](CURRENT_STATUS.md) · [Full cross-lane snapshot](docs/ENGINEERING_SNAPSHOT_20261014.md).
 
-PokeBank NX has passed its original Gen I–III foundation stage.
+## Product identity
+PokeBank NX is a native Nintendo Switch, offline, C++20, HOME-inspired Pokémon save manager/editor. Status: **active alpha**. Core principles: real generation-native data, shared staged editor, explicit profile/source identity, immutable original external saves and exact-NRO hardware testing. Default `main` is not the combined development release branch.
 
-Today the project has:
+## Milestone progress
+| Area | Implementation | Acceptance / outstanding |
+|---|---|---|
+| Gen I Red/Blue/Yellow | ✅ Full accepted native/editor foundation | Earlier Switch hardware passed; new integrated UI retest |
+| Gen II Gold/Silver/Crystal | ✅ DV, Stat Exp, Pokémon/Items foundation | Earlier Switch hardware passed; new integrated UI retest |
+| Gen III R/S/E/FR/LG | ✅ Strict sources, Trainer/Party/Boxes and staged editor | Earlier Switch hardware passed; latest source/launch/touch retest |
+| Gen IV D/P/Pt/HG/SS | ✅ Accepted prior integrated milestone; advanced editor/Items | Claude [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) CI and hardware fixes ongoing |
+| Gen V B/W/B2/W2 | 🧪 [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) implemented staged PK5 View/Edit/Create/Review/export + active-profile Save Instances | ✅ Six CI gates green; ❌ owner hardware still pending |
+| Modern Home / Touch | ✅ Earlier working UX; additional narrow Actions/assets/touch | New exact candidate must be tested |
+| Legality Gen I–IV | 🔬 Five specialist lanes with Gen I-first original-game research | [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298) + Claude [#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) combined CI blockers |
+| Gen V–IX legality | 🔬 [#301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) structural foundations | Full histories/PKHeX parity not available |
+| Master Vault, Banks, Search | ⏳ Entry points / backlog only | Persistent Vault and global collection engine future work |
+| Original emulator / installed-save writes | 🔒 Forbidden by default | No broad Inject Save or unsafe writes |
 
-- hardware-accepted Gen I–III shared editor workflows;
-- a real staged Gen IV Party/Box editor with Create and field parity work;
-- provider-aware Gen IV source discovery/assignment;
-- the modern Product Home integrated into the MAIN Gen IV lane;
-- real Party sprite presentation;
-- real Gen I–IV Pokédex progress plumbing;
-- Gen IV trainer-name propagation;
-- game-appropriate trainer portraits driven by proven game/gender data;
-- Classic Game Sources;
-- cursor-memory infrastructure;
-- Backpack/Items quick navigation through the existing safe open flow;
-- compact quick Items/Settings controls;
-- a two-pane Settings screen with remembered cursor state.
+## Active branches and milestones
+- [Gen I–IV finalization #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) — Claude works on packaged NRO art verification, per-root DS discovery fairness, ROM header identity and combined hardware polish; its candidate/native/Gen IV/touch gates have passed at `3ac0ae29`, with the full host suite still running and real-device acceptance pending.
+- [Gen V integration #300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) — `58bd564ba479745f6129f57167aeac6616297753` passed six checks, NRO [run 38523683607](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38523683607). Still need Switch check of existing emulator-folder save discovery, per-profile assignment, primary/backup copies, shared editor, and original-save immutability.
+- [Gen V source-hardening #304](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) — stronger persistent copy/identity and provider/focus UI handling; separately tested stacked draft, awaiting reconciliation.
+- [Gen IV Ball #305](https://github.com/GlitchedZeus/PokeBank-NX/pull/305) — unmerged `max(0x83,0x86)` correction.
+- [Read-only legality #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103), [coordinator #298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298), [Claude #303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) and [later-gen #301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) — isolated, incomplete, and subject to exact source/CI review.
 
-The next milestone is **one combined Gen I–IV + Product UI NRO** for real Switch testing.
+## Release priorities
+1. Complete #306 full host CI, then supply **one exact Gen I–IV NRO** for owner to test artwork, source selection, Items, input/touch, launch and Quit & Return.
+2. Test #300's already CI-green Gen V NRO with the owner's **existing** save layout. Assignment to Switch profile must persist after emulator save updates; no file relocation required by design.
+3. Complete touch-only parity and one trustworthy artifact-hash record per accepted round.
+4. Continue legality independently, integrate only verified subsets, use Unknown/Incomplete whenever authentic original-game evidence is absent.
+5. Later: generation-by-generation format extension, persistent app-owned Vault/Banks, broader adapters, and separately authorized safe write transactions.
 
-## Active MAIN lane
-
-PR #92
-Branch: `feature/gen4-full-editor-20260928`
-
-Last verified head:
-`710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
-
-At the time of this update, Product UI Native #61 and Gen IV Shared Editor Candidate Gate #137 are green on the exact head. Host Tests #1701 is still running.
-
-## Generation status
-
-### Gen I — accepted
-
-Red / Blue / Yellow read, inventory and shared Pokémon editor workflows are hardware accepted.
-
-### Gen II — accepted
-
-Gold / Silver / Crystal read, inventory and shared Pokémon editor workflows are hardware accepted.
-
-### Gen III — accepted
-
-Ruby / Sapphire / Emerald / FireRed / LeafGreen read, inventory and shared Pokémon editor workflows are hardware accepted.
-
-### Gen IV — active
-
-Diamond / Pearl / Platinum / HeartGold / SoulSilver have a working staged editor foundation.
-
-The first Party/Box View/Edit milestone is already physically accepted. G4-04 extends that foundation with Create, additional native fields, forms, species mutation, move handling, action parity, and current Product UI integration.
-
-The full G4-04 + Product UI combination is **hardware pending**.
-
-## Product experience
-
-The intended top-level UX is now stable:
-
-1. **Product Home** for the selected game, trainer identity, Party, Pokédex progress, Open/Launch and high-level features.
-2. **Classic Game Sources** for users who prefer the familiar direct game grid.
-3. Existing proven Party / Boxes / Trainer / Inventory / editor flows underneath.
-4. Compact access to Backups, Search, future features, Items and Settings.
-5. Two-pane Settings and contextual help.
-6. Remembered navigation state across rebuilt menus.
-
-Master Vault and global Pokédex/collection systems may be previewed in the UI but remain non-persistent until their backends are ready.
-
-## Current technical priorities
-
-Before the next hardware candidate:
-
-- finish the remaining exact-head Host Tests/sanitizer gate without regressing the already-green native Product UI and Gen IV candidate gates;
-- hardware-check the integrated Gen IV editor, real trainer names/portraits, real Gen I–IV Pokédex progress, Classic Game Sources, cursor memory, Backpack/Items quick entry, and two-pane Settings;
-- verify DraStic/melonDS direct launch handoff using the existing app-owned binding model;
-- keep explicit Link Game File as the fail-closed fallback whenever content identity cannot be proven;
-- ship one exact Actions-built NRO with a recorded artifact ID and SHA-256 for owner hardware testing.
-
-After hardware acceptance:
-
-- full app-wide touch control parity;
-- then Master Vault / Banks and later-generation expansion according to the roadmap.
-
-## Safety / scope locks
-
-- original source saves stay immutable;
-- external emulator saves remain read-only;
-- installed-game live writes remain disabled;
-- staged editing remains app-owned;
-- Launch never grants write permission;
-- ambiguous source/content matching fails closed;
-- cross-game True Move remains locked;
-- Gen V is not started;
-- Master Vault persistence is not started;
-- future Inject Save work remains separate.
-
-## Hardware acceptance rule
-
-A feature is not device accepted because CI is green or because a neighboring SHA passed previously.
-
-Acceptance requires the **exact Actions-built NRO** for the exact application commit to be physically tested on a real Switch.
-
-That rule remains in force for the upcoming integrated Gen IV + Product UI candidate.
+**No progress percentages are inferred from PR, file or test counts.** Passed CI, source implementation, and physical Switch acceptance are different milestones.

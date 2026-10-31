@@ -1,10 +1,46 @@
 # PokeBank NX — Build / Artifact Record
 
-Last updated: 2026-09-11
+## Current combined Gen I–V integration candidate — CI GREEN / DEVICE RETEST PENDING (Oct 15)
+
+- [PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) application code at checked SHA `35cbf1637da41e9607f2d524354c51d70e401fb2`.
+- **All nine exact-head GitHub checks passed**: GCC/Clang full host, Gen V focused, native PR, integrated Gen I–V and Gen I–IV NROs, Touch, Gen I/II move/multi-move.
+- [Combined NRO workflow run 38682361760](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38682361760), artifact `PokeBank-NX-Gen1-5-Candidate-35cbf163` (artifact ID `11948329433`; GitHub reports unexpired through January 13, 2027).
+- Exact NRO payload SHA-256 is **not independently extracted here**; no fabricated hash. Its packaging/CI success does **not** certify the physical Switch.
+- The owner's actual earlier `fa9cfcea` Gen I–V hardware run **FAILED** for Gen V shared-hub routing, retail encrypted blank Create, new-game trainer representation and separate wizard/modal. #307 includes software fixes after that failed run; they **require owner retest**. Never rewrite the acceptance record as "not device tested" for `fa9cfcea`: it **was** tested and failed.
+- Follow [the complete 20-game, 106-checkpoint starting hardware matrix](handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) and [sole acceptance issue #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313). No active Gen VI/3DS emulator integration before the owner signs the exact Gen I–V candidate.
+- Older isolated #278/#300/#304/#306 PRs closed solely because their heads are provable ancestors of #307; branches/commits preserved.
+
+
+Last updated: **2026-10-14**
 
 This file distinguishes application source, build verification, artifact identity, packaging infrastructure, and physical-device acceptance.
 
-## CURRENT ACCEPTED RBY ARTIFACT — PHYSICALLY ACCEPTED
+## Current Gen V NRO development artifact — CI GREEN / HARDWARE PENDING
+
+```text
+Application SHA: 58bd564ba479745f6129f57167aeac6616297753
+Branch: integration/gen5-ui-hardware-candidate-20261012
+PR: https://github.com/GlitchedZeus/PokeBank-NX/pull/300
+GitHub Actions run: https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38523683607
+Artifact: PokeBank-NX-Gen5-Save-Instances-38523683607
+Exact-head CI: Native PR Gate, Full Host Tests, Gen V Focused Host
+               (+ASan/UBSan), Touch Input Gating,
+               Gen I/II Packed Move and Multi-Move — ALL PASSED
+Owner hardware acceptance: FALSE — pending current NRO test
+Source writes: DISABLED; only app-owned staged/export copies supported
+```
+
+This is a development artifact for a branch that contains Black/White/B2W2 source discovery, Save Instances and **Assign Save to This Profile**, strict primary/backup choice, native shared staged PK5 editing/Create/Review and app-owned export, with source saves immutable. The GitHub artifact is not equivalent to proof that the owner's existing emulator saves open correctly on Switch.
+
+**Artifact hash discipline:** The exact NRO payload's byte-level SHA-256 was not independently extracted in this documentation pass; **do not invent a hash** from the Actions ZIP size or GitHub artifact ID. A future owner-accepted NRO must record its actual digest, application/tree SHA and physical smoke result.
+
+## Gen I–IV newest finalization candidate — NOT ACCEPTED
+
+- [Claude PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) at checked head `3ac0ae29fe5d40bc8abededffd2b49326610eec4` adds exact built-NRO RomFS asset verification, 10 region scenes, 20 trainer portraits, fair DS discovery and ROM-header launch identity.
+- At the later October 14 recheck, Gen I–IV hardware-candidate build, Product UI native, Gen IV shared-editor gate, Native PR Gate and Touch checks **passed** at `3ac0ae29`. The full Host Tests workflow was still **running**. Exact [Gen I–IV artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38534704407): `PokeBank-NX-Gen1-4-Candidate-3ac0ae29`. **No owner hardware acceptance is implied** until the current NRO is physically tested.
+- Last owner-accepted integrated application: `0760334fb850ca46b5171c55f690998d7680d4e7` (October 8). NRO SHA-256 `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91`.
+
+## HISTORICAL RBY ARTIFACT — PHYSICALLY ACCEPTED
 
 ```text
 Version: 0.1.0-alpha

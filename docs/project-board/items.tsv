@@ -1,0 +1,67 @@
+# kind	number	stage	resolution	note
+issue	313	In Progress	Active	Gen I-V final acceptance; owner testing Round 10 3634d1e6
+issue	329	In Progress	Active	Gen I-IX legality master tracker
+pr	314	In Progress	Active	Gen I-V legality campaign (isolated)
+pr	327	In Progress	Active	Independent Gen I-V legality lane (stacked on #314)
+pr	328	In Progress	Active	Gen VI-IX legality foundation (stacked on #314)
+issue	323	In Progress	Active	Shared Review + Trainer parity; Round 7-10 repairs untested
+issue	285	In Progress	Active	Legality master inventory (#314 lineage)
+issue	326	Review	Completed	Fixed; pending current hardware verification
+issue	325	Review	Completed	Fixed; pending current hardware verification
+issue	322	Review	Completed	Fixed; pending current hardware verification
+issue	324	Review	Completed	Partly fixed; Gen IV part unconfirmed
+issue	320	Review	Completed	Believed fixed; pending owner confirmation
+issue	95	Review	Completed	Implemented; close after main consolidation merges
+pr	307	Review	Superseded	Contained in the consolidation; close after it merges into main
+pr	92	Review	Superseded	Contained in the consolidation; close after it merges into main
+pr	309	To Do	Active	Retarget to development/gen6-plus once it exists
+pr	311	To Do	Active	Stacked on #309
+pr	312	To Do	Active	Stacked on #311
+pr	321	To Do	Active	Gen VI-IX research; retarget to development/gen6-plus
+issue	89	Backlog	Deferred	Backups + explicit Inject workflow (injection stays disabled)
+issue	286	Backlog	Superseded	L1 lane; PR #293 contained in #314
+issue	287	Backlog	Superseded	L2 lane; PR #295 contained in #314
+issue	288	Backlog	Superseded	L3 lane; PR #296 contained in #314
+issue	289	Backlog	Superseded	L4 lane; PR #292 contained in #314
+issue	290	Backlog	Superseded	L5 lane; PR #294 contained in #314
+pr	103	Backlog	Superseded	Contained in #314; close after legality consolidation
+pr	292	Backlog	Superseded	Contained in #314
+pr	293	Backlog	Superseded	Contained in #314
+pr	294	Backlog	Superseded	Contained in #314
+pr	295	Backlog	Superseded	Contained in #314
+pr	296	Backlog	Superseded	Contained in #314
+pr	298	Backlog	Superseded	Contained in #314
+pr	299	Backlog	Superseded	Contained in #314
+pr	303	Backlog	Superseded	Contained in #314
+pr	305	Backlog	Superseded	Contained in #314
+pr	308	Backlog	Superseded	Contained in #314
+pr	301	Backlog	Deferred	Unique Gen V-IX legality foundation; legality review
+pr	273	Backlog	Deferred	Unique legality commits; legality review
+pr	252	Backlog	Deferred	Unique legality research
+pr	230	Backlog	Deferred	Unique legality stack top
+pr	229	Backlog	Deferred	Inside #230 stack
+pr	228	Backlog	Deferred	Inside #230 stack
+pr	227	Backlog	Deferred	Inside #230 stack
+pr	144	Backlog	Deferred	PKHeX parity ledger
+pr	280	Backlog	Deferred	Unique Gen III-IV touch parity follow-up; review
+pr	163	Backlog	Deferred	Early Gen V read-only lane; owner review
+pr	122	Backlog	Deferred	Touch-control parity lane; owner review
+issue	31	Backlog	Completed	Believed implemented; owner decides
+issue	69	Backlog	Completed	Audit remediation done (one deferred item); owner decides
+issue	29	Backlog	Active	v1.0 roadmap and release gates
+issue	55	Backlog	Active	v1.0 touch-only operation
+issue	56	Backlog	Active	v1.0 emulator source adapters
+issue	57	Backlog	Active	v1.0 runtime and storage
+issue	58	Backlog	Active	v1.0 PokeBank-owned UI
+issue	59	Backlog	Active	v1.0 inventory editor
+issue	70	Backlog	Active	v1 polish backlog
+issue	5	Backlog	Deferred	Host-side PKHeX oracle
+issue	9	Backlog	Deferred	Summary and provenance view
+issue	15	Backlog	Deferred	NRO artifact preservation (see docs/hardware/NRO_ARCHIVE.md)
+issue	16	Backlog	Deferred	Branding and NRO metadata
+issue	17	Backlog	Deferred	Golden test corpus
+issue	21	Backlog	Deferred	NRO reliability backlog
+issue	26	Backlog	Deferred	Box navigation semantics
+issue	30	Backlog	Deferred	DS / 3DS identities
+issue	49	Backlog	Deferred	Bank to HOME preservation
+issue	50	Backlog	Deferred	EventsGallery permission research
