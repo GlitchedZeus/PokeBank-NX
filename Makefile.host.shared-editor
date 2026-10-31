@@ -206,7 +206,8 @@ $(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
 # R2-BUG-012: one boxed-row style for every interactive Gen I-V modal (SharedBoxedRows.h).
 SHARED_BOXED_ROWS_INPUTS := tests/test_shared_boxed_rows.cpp include/UI/SharedBoxedRows.h include/UI/ScreenChrome.h \
 	src/UI/SharedPokemonEditorSurface.inc src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc \
-	include/UI/SharedHeldItemPickerPresentation.h
+	include/UI/SharedHeldItemPickerPresentation.h include/UI/BackupBrowserChrome.h src/UI/BackupSelectionScreen.cpp \
+	src/UI/SaveSelectScreen.cpp
 SHARED_BOXED_ROWS_TEST := $(HOST_BUILD)/test_shared_boxed_rows
 SHARED_BOXED_ROWS_SANITIZE := $(HOST_BUILD)/test_shared_boxed_rows_sanitize
 

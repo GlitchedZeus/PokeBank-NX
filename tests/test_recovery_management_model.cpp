@@ -9,6 +9,11 @@
 //   the default selection is empty, A toggles removable rows only, the plan holds exactly the
 //   selected removable items (and never empties a source), rows are grouped by source with badges,
 //   and the confirmation lists every file with its size.
+// Round 11 H12 (owner: "i cant see what is selected and nothing in the footer and nothing on screen
+// changes"): rows carry structured state (heading / picked / removable) for the drawn marked style,
+// the footer comes from footerHints (A Select / Deselect / Why kept, Y only with a selection, - Help,
+// B Back), initialFocus starts in the opening game's group without filtering classify() inputs, and
+// A on a protected row says why it cannot be selected.
 #include "UI/RecoveryManagementModel.h"
 
 #include <iostream>
@@ -208,6 +213,63 @@ void pathRefusals() {
     check(!removable(v, 1) && v[1].reason.find("Bank") != std::string::npos, "the Bank file is protected");
 }
 
+std::string hint(const std::vector<RM::Hint>& hints, const std::string& glyph) {
+    for (const auto& h : hints)
+        if (h.glyph == glyph) return h.label;
+    return "<none>";
+}
+
+// Round 11 H12: footer, help, protected explanation and initial focus.
+void roundElevenFooterAndFocus(const std::vector<RM::Item>& items, const std::vector<RM::Verdict>& v,
+                               const std::vector<RM::Row>& rows) {
+    // rows: 0 heading A, 1 protected newest, 2 picked, 3 removable, 4 heading main, 5 removable .failed
+    auto hints = RM::footerHints(rows, 3, 0);
+    check(hint(hints, "A") == "Select", "A Select on a removable row");
+    check(hint(hints, "Y") == "<none>", "no Y without a selection");
+    check(hint(hints, "-") == "Help" && hint(hints, "B") == "Back", "- Help and B Back are always offered");
+    check(hints.front().glyph == "D-pad/Stick" && hints.back().glyph == "B", "Choose first, Back last");
+    hints = RM::footerHints(rows, 2, 1);
+    check(hint(hints, "A") == "Deselect", "A Deselect on a picked row");
+    check(hint(hints, "Y") == "Remove selected (1)", "Y counts the selection");
+    hints = RM::footerHints(rows, 1, 2);
+    check(hint(hints, "A") == "Why kept" && hint(hints, "Y") == "Remove selected (2)", "A Why kept on a protected row");
+    hints = RM::footerHints(rows, 0, 0);
+    check(hint(hints, "A") == "<none>" && hint(hints, "-") == "Help", "no A on a heading");
+    hints = RM::footerHints(rows, 99, 0);
+    check(hint(hints, "A") == "<none>" && hint(hints, "B") == "Back", "an out-of-range focus offers no A");
+    hints = RM::footerHints({}, 0, 0);
+    check(hint(hints, "A") == "<none>" && hint(hints, "B") == "Back", "an empty listing still offers Back");
+
+    const auto help = RM::helpLines();
+    check(hint(help, "A") .find("Select") != std::string::npos && hint(help, "Y").find("confirmation") != std::string::npos &&
+              hint(help, "B") != "<none>" && hint(help, "-") != "<none>",
+          "Help explains A, Y (with its confirmation), - and B");
+
+    const std::string why = RM::protectedNotice(v[2]);
+    check(why.find(v[2].reason) != std::string::npos && why.find("Only Removable copies can be selected") != std::string::npos,
+          "A on a protected row says why and that only Removable copies can be selected");
+    check(RM::anyRemovable(v), "the listing has removable copies");
+    check(!RM::anyRemovable({RM::Verdict{RM::Status::Protected, "x"}}), "an all-protected listing has none");
+
+    // Initial focus: the opening game's group, preferring its first Removable row.
+    check(RM::initialFocus(rows, items, {kSourceA}) == 2, "first Removable row of the opening game's group");
+    check(RM::initialFocus(rows, items, {items[3].source}) == 5, "another opening source focuses its own group");
+    check(RM::initialFocus(rows, items, {"sdmc:/nowhere.sav"}) == 1, "no match: the first item row");
+    check(RM::initialFocus(rows, items, {}) == 1, "no opening game: the first item row");
+    check(RM::initialFocus({}, items, {kSourceA}) == 0, "no rows: index 0");
+    // A group with only protected rows: focus its first item, never a heading.
+    std::vector<RM::Item> one = {record(RM::Kind::ManualBackup, kManual + "/20261001_100000", kSourceB, "1"),
+                                 record(RM::Kind::ManualBackup, kManual + "/20261002_100000", kSourceA, "2"),
+                                 record(RM::Kind::ManualBackup, kManual + "/20261003_100000", kSourceA, "3")};
+    const auto ov = RM::classify(one, kRoots);
+    const auto orows = RM::rows(one, ov, RM::emptySelection(one.size()));
+    // Black (A) sorts before White (B): 0 heading A, 1 A newest, 2 A older (removable), 3 heading B, 4 B only.
+    check(RM::initialFocus(orows, one, {kSourceB}) == 4, "an all-protected opening group focuses its first item");
+    // Focus never changes what is protected: classify ran over the full listing.
+    check(ov[1].status == RM::Status::Removable && ov[2].status == RM::Status::Protected && ov[0].status == RM::Status::Protected,
+          "protection is computed over every source, not the opening game's only");
+}
+
 void selectionAndPlan() {
     std::vector<RM::Item> items = {
         record(RM::Kind::ManualBackup, kManual + "/20261001_100000", kSourceA, "20261001_100000"),
@@ -254,6 +316,13 @@ void selectionAndPlan() {
           "row title shows kind and size");
     check(rows[4].item == -1 && rows[4].title == "Save: main", "second group heading");
     check(rows[5].item == 3 && rows[5].detail.find("never used") != std::string::npos, "row detail shows the reason");
+    // Round 11 H12: the same state as structured fields, for the drawn style (not only badge text).
+    check(rows[0].heading && !rows[0].picked && !rows[0].removable, "a heading is flagged and never picked");
+    check(!rows[1].heading && !rows[1].picked && !rows[1].removable, "protected row: not picked, not removable");
+    check(!rows[2].heading && rows[2].picked && rows[2].removable, "selected row: picked and removable");
+    check(!rows[3].heading && !rows[3].picked && rows[3].removable, "removable row: removable, not picked");
+    check(rows[4].heading && rows[5].removable && !rows[5].picked, "second group: heading, then a removable leftover");
+    roundElevenFooterAndFocus(items, v, rows);
 
     // Confirmation: every member file listed, with sizes and a total.
     selection = RM::emptySelection(items.size());
