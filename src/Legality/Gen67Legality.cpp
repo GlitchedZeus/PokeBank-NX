@@ -120,6 +120,7 @@ public:
         checkFateful(format_ == 6 ? Modern::Format::PK6 : Modern::Format::PK7, pk_.species(), (plain_[0x1D] & 1) != 0);
         checkLanguage();
         checkNickname();
+        checkUnhatchedEgg();
         checkHeldItem();
         checkConsoleRegion();
         checkTransferMetLocation();
@@ -461,6 +462,34 @@ private:
         if (ModernEncounter::fatefulPossible(format, species, fateful)) return;
         invalid(CheckIdentifier::Encounter, fateful ? "Fateful encounter flag is set but no encounter of the species is fateful"
                                                     : "Fateful encounter flag is clear but every encounter of the species is fateful");
+    }
+
+    // EncounterVerifier.VerifyUnhatchedEgg and NicknameVerifier.VerifyNicknameEgg, made
+    // encounter-independent over every egg encounter of the format's own games (ModernEncounter.h).
+    void checkUnhatchedEgg() {
+        if (!pk_.isEgg() || originGen_ == 0) return;
+        if (originGen_ != format_) {
+            invalid(CheckIdentifier::Egg, "An unhatched egg cannot be transferred (Poke Transporter and Pokemon Bank refuse eggs)");
+            return;
+        }
+        const auto f = ModernEncounter::eggFacts(format_ == 6 ? Modern::Format::PK6 : Modern::Format::PK7, pk_.species());
+        if (!f.decided) return;
+        if (!f.exists) {
+            invalid(CheckIdentifier::Egg, "No egg of the species exists in the origin games");
+            return;
+        }
+        const uint16_t eggLocation = pk_.eggLocation(), met = pk_.metLocation();
+        if (eggLocation == 0 && !f.eggLocationZero)
+            invalid(CheckIdentifier::Egg, "An unhatched egg has no egg location");
+        // A mystery gift egg's met level and locations follow its card; bred and in-game gift eggs:
+        if (!f.gift) {
+            if (pk_.metLevel() != 1) invalid(CheckIdentifier::Egg, "An unhatched egg's met level is not 1");
+            if (met != 0 && met != 30002) invalid(CheckIdentifier::Egg, "An unhatched egg has a met location other than a link trade");
+            if (eggLocation == 30002) invalid(CheckIdentifier::Egg, "An unhatched egg cannot have the link-trade egg location");
+        }
+        if (pk_.isNicknamed() ? !f.nicknameFlagSet : !f.nicknameFlagClear)
+            invalid(CheckIdentifier::Egg, pk_.isNicknamed() ? "An unhatched egg's nickname flag is set, but no egg of the species sets it"
+                                                            : "An unhatched egg's nickname flag is clear, but every egg of the species sets it");
     }
 
     // BallVerifier: no encounter uses ball 0 or a ball above the format's last ball.

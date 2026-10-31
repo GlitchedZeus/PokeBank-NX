@@ -6,7 +6,7 @@
  * species (wild ball sets per game, fixed balls, egg inheritance, Dream World, GO restrictions,
  * plus the Shedinja and Legends: Arceus -> Sword/Shield replacements). A ball outside that union
  * has no encounter at all. The same pass records whether any encounter takes the fateful flag
- * and whether any takes it clear. Generated from the pinned PKHeX.Core by
+ * and whether any takes it clear, and the unhatched-egg facts of each species. Generated from the pinned PKHeX.Core by
  * tools/pkhex_gen67_diff/oracle ("dumpencounters") into ModernEncounterData.inc.
  */
 #pragma once
@@ -24,5 +24,18 @@ bool ballPossible(Modern::Format format, uint16_t species, uint8_t ball) noexcep
 /// False only when no encounter of the species in this format accepts the fateful flag in this
 /// state (set, or clear). Undecided cases as for ballPossible.
 bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noexcept;
+
+/// Unhatched-egg facts of the species in a format that has eggs (PK6, PK7, PK8, PB8, PK9), over
+/// the egg encounters of that format's own games only: transfer services and HOME never accept an
+/// egg, so an unhatched record is always in the format of the game it was laid in.
+struct EggFacts {
+    bool decided = false;        // false: the format has no egg table, or the species is undecided
+    bool exists = false;         // some egg encounter (bred, static gift or mystery gift)
+    bool gift = false;           // a mystery gift egg exists (its met level and locations follow the gift)
+    bool nicknameFlagSet = false;    // EggStateLegality.IsNicknameFlagSet may be true
+    bool nicknameFlagClear = false;  // ... may be false
+    bool eggLocationZero = false;    // a gift egg may carry egg location 0
+};
+EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept;
 
 } // namespace Legality::ModernEncounter

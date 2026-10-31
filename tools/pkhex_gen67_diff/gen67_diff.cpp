@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -57,6 +58,10 @@ int main(int argc, char** argv) {
     std::map<std::string, size_t> detectedByRule, falseByRule, undetectedByPkhex;
     std::map<std::string, std::pair<size_t, size_t>> byGroup; // group -> {PKHeX invalid, detected}
     std::vector<std::string> falseInvalidLines;
+    // GEN67_DIFF_UNDETECTED=path: one line per PKHeX-invalid record left undecided
+    // ("id group encounter first-PKHeX-result"), for choosing the next rule.
+    std::ofstream undetectedOut;
+    if (const char* path = std::getenv("GEN67_DIFF_UNDETECTED")) undetectedOut.open(path);
     while (std::getline(std::cin, line)) {
         std::istringstream in(line);
         std::string id, fmt, game, slot, hex, verdict, enc, group;
@@ -96,6 +101,7 @@ int main(int argc, char** argv) {
                 std::string r;
                 while (rs >> r && r[0] == '~') {}
                 ++undetectedByPkhex[r];
+                if (undetectedOut) undetectedOut << id << ' ' << group << ' ' << enc << ' ' << r << '\n';
             }
         }
         if (report.verdict() != Legality::Verdict::Invalid && report.verdict() != Legality::Verdict::Incomplete &&

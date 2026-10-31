@@ -1,5 +1,5 @@
 // ModernEncounter.cpp - encounter facts as per-species unions: BallVerifier's ball sets and
-// MiscFatefulEncounterVerifier's fateful flag.
+// MiscFatefulEncounterVerifier's fateful flag, and the unhatched-egg facts of EncounterVerifier.
 // The tables are include/Legality/ModernEncounterData.inc, written by
 // tools/pkhex_gen67_diff/oracle ("dumpencounters") and checked against the pinned PKHeX in CI.
 #include "Legality/ModernEncounter.h"
@@ -33,6 +33,8 @@ struct Tables {
 };
 constexpr Tables<uint64_t> kBalls{kBalls6, kBalls7, kBalls7B, kBalls8, kBalls8B, kBalls8A, kBalls9, kBalls9A};
 constexpr Tables<uint8_t> kFateful{kFateful6, kFateful7, kFateful7B, kFateful8, kFateful8B, kFateful8A, kFateful9, kFateful9A};
+// Formats without eggs (Let's Go, Legends) have no egg table.
+constexpr Tables<uint8_t> kEggs{kEgg6, kEgg7, {}, kEgg8, kEgg8B, {}, kEgg9, {}};
 
 bool switchFormat(Modern::Format f) noexcept {
     using F = Modern::Format;
@@ -69,6 +71,21 @@ bool ballPossible(Modern::Format format, uint16_t species, uint8_t ball) noexcep
 bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noexcept {
     const uint8_t allowed = entry(kFateful, format, species);
     return allowed == 0 || (allowed & (fateful ? 1 : 2)) != 0;
+}
+
+EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept {
+    // The format's own table only: no egg is ever carried into another format.
+    const auto t = kEggs.get(format);
+    const uint8_t v = species < t.size() ? t[species] : 0;
+    EggFacts f;
+    if ((v & 0x80) == 0) return f;
+    f.decided = true;
+    f.exists = (v & 1) != 0;
+    f.gift = (v & 2) != 0;
+    f.nicknameFlagSet = (v & 4) != 0;
+    f.nicknameFlagClear = (v & 8) != 0;
+    f.eggLocationZero = (v & 16) != 0;
+    return f;
 }
 
 } // namespace Legality::ModernEncounter

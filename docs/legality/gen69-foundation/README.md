@@ -282,6 +282,31 @@ fateful statics, fateful mystery gifts and Gen III event gifts) and whether any 
 accepts is Invalid, in either direction: a Pidgey with the flag set, or a Manaphy without it.
 Gift receivability (version and language restrictions) still needs the gift itself.
 
+## Unhatched-egg rules (PK6, PK7)
+
+`dumpencounters` also records, per format with eggs and species, the unhatched-egg facts of the
+egg encounters of that format's own games (bred eggs, in-game gift eggs and mystery gift eggs):
+whether one exists, whether one is a mystery gift, which nickname-flag states
+`EggStateLegality.IsNicknameFlagSet` allows, and whether a gift egg may carry egg location 0
+(none does). `ModernEncounter::eggFacts` reads the format's own table only, never a HOME union:
+Poké Transporter, Pokémon Bank and HOME refuse eggs, so an unhatched record is always in the
+format of the game that laid or gave it. For a PK6/PK7 record with the egg flag set, these are
+Invalid (`EncounterVerifier.VerifyUnhatchedEgg` and `NicknameVerifier.VerifyNicknameEgg`, made
+encounter-independent):
+
+* an origin generation other than the format's (a transferred or Virtual Console egg);
+* a species with no egg encounter in the format's games (an evolved or legendary species);
+* egg location 0;
+* when no mystery gift egg of the species exists (its card fixes met level and locations):
+  met level other than 1, a met location other than none or link trade (30002), or the
+  link-trade egg location (an egg traded unhatched keeps its day-care location);
+* a nickname flag state no egg of the species takes (only Eevee's Gen VII gift egg is clear).
+
+The egg name itself, hatch counters, and the hatched-record side (hatch location per game, met
+level 1) still need the encounter. The generator now also emits each egg encounter's record
+before it hatches (`Unhatched` in the oracle), so every corpus carries PKHeX-valid unhatched
+eggs as positive controls and their mutations as negatives.
+
 ## Nickname rule (every format)
 
 `src/Legality/ModernNickname.cpp`, called by all five analyzers, mirrors two parts of
@@ -313,48 +338,50 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 
 | Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
 |---|---|---:|---:|---:|---:|---:|---:|
-| PK6/PK7 | 1 / 4 | 88,012 | 42,094 | 45,918 | 39,080 (85.1%) | 0 | 0 |
-| PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 78,577 (85.5%) | 0 | 0 |
-| PK6/PK7 | 3 / 8 | 156,298 | 63,420 | 92,878 | 79,528 (85.6%) | 0 | 0 |
-| PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 40,089 (85.6%) | 0 | 0 |
-| PB7 | 1 / 8 | 5,324 | 1,447 | 3,877 | 3,701 (95.5%) | 0 | 0 |
-| PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,870 (96.0%) | 0 | 0 |
-| PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,437 (95.2%) | 0 | 0 |
-| PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,682 (95.7%) | 0 | 0 |
-| PA8 | 1 / 4 | 16,161 | 6,530 | 9,631 | 6,950 (72.2%) | 0 | 0 |
-| PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,609 (72.2%) | 0 | 0 |
-| PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 14,265 (72.9%) | 0 | 0 |
-| PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,745 (73.3%) | 0 | 0 |
-| PA9 | 1 / 4 | 20,953 | 9,460 | 11,493 | 8,211 (71.4%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 8,369 (71.2%) | 0 | 0 |
-| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 17,131 (70.7%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 8,404 (72.1%) | 0 | 0 |
-| PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 21,059 (79.8%) | 0 | 0 |
-| PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 20,302 (79.6%) | 0 | 0 |
-| PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 41,262 (79.7%) | 0 | 0 |
-| PK8 | 4 / 4 | 45,489 | 19,817 | 25,672 | 20,418 (79.5%) | 0 | 0 |
-| PB8 | 1 / 4 | 44,334 | 18,431 | 25,903 | 22,320 (86.2%) | 0 | 0 |
-| PB8 | 2 / 4 | 44,643 | 18,787 | 25,856 | 22,322 (86.3%) | 0 | 0 |
-| PB8 | 3 / 8 | 77,736 | 26,371 | 51,365 | 44,007 (85.7%) | 0 | 0 |
-| PB8 | 4 / 4 | 45,193 | 18,952 | 26,241 | 22,462 (85.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 39,685 | 18,653 | 21,032 | 18,356 (87.3%) | 0 | 0 |
-| PK9 | 2 / 4 | 39,929 | 18,565 | 21,364 | 18,641 (87.3%) | 0 | 0 |
-| PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 37,027 (88.0%) | 0 | 0 |
-| PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 18,117 (87.4%) | 0 | 0 |
+| PK6/PK7 | 1 / 4 | 103,791 | 47,864 | 55,927 | 49,191 (88.0%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 182,416 | 71,341 | 111,075 | 98,207 (88.4%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 182,943 | 71,063 | 111,880 | 98,766 (88.3%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 104,672 | 48,162 | 56,510 | 49,580 (87.7%) | 0 | 0 |
+| PB7 | 1 / 8 | 5,324 | 1,449 | 3,875 | 3,699 (95.5%) | 0 | 0 |
+| PB7 | 2 / 4 | 3,050 | 1,098 | 1,952 | 1,874 (96.0%) | 0 | 0 |
+| PB7 | 3 / 16 | 9,859 | 2,042 | 7,817 | 7,442 (95.2%) | 0 | 0 |
+| PB7 | 4 / 8 | 5,287 | 1,448 | 3,839 | 3,674 (95.7%) | 0 | 0 |
+| PA8 | 1 / 4 | 16,161 | 6,518 | 9,643 | 6,957 (72.1%) | 0 | 0 |
+| PA8 | 2 / 4 | 15,521 | 6,363 | 9,158 | 6,607 (72.1%) | 0 | 0 |
+| PA8 | 3 / 8 | 29,114 | 9,552 | 19,562 | 14,235 (72.8%) | 0 | 0 |
+| PA8 | 4 / 4 | 15,706 | 6,488 | 9,218 | 6,756 (73.3%) | 0 | 0 |
+| PA9 | 1 / 4 | 20,953 | 9,438 | 11,515 | 8,240 (71.6%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,203 | 9,458 | 11,745 | 8,366 (71.2%) | 0 | 0 |
+| PA9 | 3 / 8 | 38,041 | 13,819 | 24,222 | 17,129 (70.7%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,136 | 9,486 | 11,650 | 8,407 (72.2%) | 0 | 0 |
+| PK8 | 1 / 4 | 49,192 | 21,134 | 28,058 | 22,315 (79.5%) | 0 | 0 |
+| PK8 | 2 / 4 | 49,929 | 21,462 | 28,467 | 22,550 (79.2%) | 0 | 0 |
+| PK8 | 3 / 8 | 88,885 | 31,716 | 57,169 | 45,590 (79.7%) | 0 | 0 |
+| PK8 | 4 / 4 | 51,245 | 22,353 | 28,892 | 22,863 (79.1%) | 0 | 0 |
+| PB8 | 1 / 4 | 46,138 | 18,183 | 27,955 | 23,199 (83.0%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,341 | 18,394 | 27,947 | 23,262 (83.2%) | 0 | 0 |
+| PB8 | 3 / 8 | 82,201 | 26,636 | 55,565 | 46,244 (83.2%) | 0 | 0 |
+| PB8 | 4 / 4 | 47,741 | 18,987 | 28,754 | 23,882 (83.1%) | 0 | 0 |
+| PK9 | 1 / 4 | 43,647 | 20,248 | 23,399 | 20,236 (86.5%) | 0 | 0 |
+| PK9 | 2 / 4 | 43,062 | 19,856 | 23,206 | 20,003 (86.2%) | 0 | 0 |
+| PK9 | 3 / 8 | 76,816 | 29,821 | 46,995 | 40,910 (87.1%) | 0 | 0 |
+| PK9 | 4 / 4 | 42,637 | 19,738 | 22,899 | 19,813 (86.5%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
-whose EC PKHeX does not check, and the encounter is not resolved here. A few PKHeX verdicts depend on the run date
+whose EC PKHeX does not check, and the encounter is not resolved here. Every corpus grew at this milestone because the generator now also emits each egg
+encounter before it hatches (PK6/PK7, PK8, PB8, PK9); the Switch rates dipped because the egg
+rules there are not implemented yet. A few PKHeX verdicts depend on the run date
 (HOME and distribution date windows), so the PKHeX valid/invalid split can move by a few
 records between days; the false-Invalid and false-Valid counts must stay zero.
 
 The corpus is synthetic (PKHeX builds every record from its own templates for a test
 trainer); it is not a personal save and not retail evidence. The detection rate measures how
 much of PKHeX's rejection these encounter-independent rules reproduce. It is not a measure of
-rule completeness. The remaining ~20% need encounter, learnset, event or history data
-(largest PK6/PK7 groups: fateful flags, geography consistency, egg locations, ball per
+rule completeness. The remaining ~12–30% need encounter, learnset, event or history data
+(largest PK6/PK7 groups: fateful flags, geography consistency, hatched-egg locations, ball per
 encounter, learnset-only moves, nickname language for relaxed species; largest PK8 groups: no matching
 encounter, fateful flags, Gigantamax per encounter, nickname language for relaxed species, PID type per
 encounter, Hyper Training level 50–99, ball per encounter, egg locations; largest PB8
@@ -362,7 +389,9 @@ groups: no matching encounter, ball per encounter, fateful flags, nickname langu
 on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg locations; largest PK9 groups:
 no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, Tera type per
 encounter or evolution chain, ball availability, gift matching, learnset-only moves). The driver
-prints this gap list ("left Incomplete, by first PKHeX result") on every run.
+prints this gap list ("left Incomplete, by first PKHeX result") on every run; with
+`GEN67_DIFF_UNDETECTED=FILE` it also writes each undetected record's id, group, PKHeX encounter
+and first PKHeX result to FILE.
 
 `tests/fixtures/gen67/pkhex8_seed2_sample.txt` (1,632 PK8 records from `generate8 2 4`,
 stratified the same way) does the same for PK8 in `tests/test_legality_gen8.cpp`

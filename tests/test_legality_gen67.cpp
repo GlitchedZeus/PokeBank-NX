@@ -435,6 +435,39 @@ void testBall(const std::vector<Record>& records) {
         if (B::ballPossible(Format::PK9, 25, ball)) check(B::ballPossible(Format::PK8, 25, ball), "HOME union PK9 -> PK8");
 }
 
+void testUnhatchedEgg(const std::vector<Record>& records) {
+    namespace B = Legality::ModernEncounter;
+    using Legality::Modern::Format;
+    // Table facts: Pidgey (16) and Pichu (172) hatch from eggs, Mewtwo (150) never; Eevee's (133)
+    // Gen VII in-game gift egg has the nickname flag clear; Ralts (280) has a mystery gift egg in
+    // Gen VI; formats without eggs are undecided.
+    const auto pidgey = B::eggFacts(Format::PK6, 16), mewtwo = B::eggFacts(Format::PK7, 150), eevee = B::eggFacts(Format::PK7, 133);
+    check(pidgey.decided && pidgey.exists && pidgey.nicknameFlagSet && !pidgey.nicknameFlagClear && !pidgey.gift, "PK6 Pidgey egg");
+    check(B::eggFacts(Format::PK6, 172).exists, "PK6 Pichu egg");
+    check(mewtwo.decided && !mewtwo.exists, "PK7 Mewtwo has no egg");
+    check(eevee.exists && eevee.nicknameFlagSet && eevee.nicknameFlagClear, "PK7 Eevee gift egg has the flag clear");
+    check(B::eggFacts(Format::PK6, 280).gift, "PK6 Ralts has a mystery gift egg");
+    check(!B::eggFacts(Format::PB7, 25).decided && !B::eggFacts(Format::PA8, 25).decided && !B::eggFacts(Format::PK6, 2000).decided,
+          "formats without eggs and species outside the table are undecided");
+    // Edits: a hatched native PK7 record turned back into an egg keeps its hatch location (or is
+    // not an egg species at all); a transferred PK6 record cannot be an egg.
+    if (const Record* r = find(records, [](const Record& x) {
+            return x.pkhexValid && x.format == Format::PK7 && x.label.rfind("native7:base", 0) == 0 && PK6::read16(x.plain, 0xDA) != 0 &&
+                   PK6::read16(x.plain, 0xDA) != 30002;
+        })) {
+        const auto rep = analyzePlain(*r, edit(r->plain, [](auto& b) { b[0x77] |= 0x40; }));
+        check(rep.verdict() == Verdict::Invalid && (hasIssue(rep, Severity::Invalid, "unhatched egg") || hasIssue(rep, Severity::Invalid, "No egg of the species")),
+              "PK7 hatched record set to egg: " + describe(rep));
+    }
+    if (const Record* r = find(records, [](const Record& x) {
+            return x.pkhexValid && x.format == Format::PK6 && x.label.rfind("transfer6:base", 0) == 0;
+        })) {
+        const auto rep = analyzePlain(*r, edit(r->plain, [](auto& b) { b[0x77] |= 0x40; }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "cannot be transferred"),
+              "PK6 transferred record set to egg: " + describe(rep));
+    }
+}
+
 void testFuzz(const std::vector<Record>& records) {
     const char* env = std::getenv("GEN67_FUZZ_ROUNDS");
     const size_t rounds = env ? std::strtoul(env, nullptr, 10) : 20000;
@@ -477,6 +510,7 @@ int main() {
     testHelpers();
     testNickname(records);
     testBall(records);
+    testUnhatchedEgg(records);
     testFuzz(records);
     std::cout << "test_legality_gen67: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

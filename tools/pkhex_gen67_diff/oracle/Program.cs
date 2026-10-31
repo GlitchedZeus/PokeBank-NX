@@ -603,6 +603,7 @@ static class DumpEncounters
         o.WriteLine("// Included once, by src/Legality/ModernEncounter.cpp. Per format and national species: kBalls, a");
         o.WriteLine("// 64-bit ball mask; kFateful, bit 0 = some encounter has the fateful flag, bit 1 = some has it");
         o.WriteLine("// clear. 0 means EncounterMovesetGenerator found no encounter (the rules then do not decide).");
+        o.WriteLine("// kEgg (formats with eggs): unhatched-egg facts of the species, see Egg() in the oracle; 0 = undecided.");
         var formats = new (string name, Func<PKM> make)[]
         {
             ("6", () => new PK6()), ("7", () => new PK7()), ("7b", () => new PB7()), ("8", () => new PK8()),
@@ -624,6 +625,8 @@ static class DumpEncounters
             int maxSpecies = proto.MaxSpeciesID, maxBall = proto.MaxBallID;
             var masks = new ulong[maxSpecies + 1];
             var fateful = new int[maxSpecies + 1];
+            var eggs = new int[maxSpecies + 1];
+            var context = proto.Context;
             var failed = new HashSet<GameVersion>();
             for (ushort s = 1; s <= maxSpecies; s++)
             {
@@ -631,7 +634,7 @@ static class DumpEncounters
                 pk.Species = s;
                 var forms = Math.Max((byte)1, pk.PersonalInfo.FormCount);
                 ulong mask = 0;
-                int fate = 0;
+                int fate = 0, egg = 0;
                 bool undecided = false;
                 for (byte f = 0; f < forms; f++)
                 {
@@ -647,6 +650,7 @@ static class DumpEncounters
                             {
                                 mask |= EncounterBalls(enc, maxBall);
                                 fate |= Fateful(enc);
+                                if (enc.IsEgg && enc.Species == s && enc.Context == context) egg |= Egg(enc, pk);
                             }
                         }
                         catch (ArgumentOutOfRangeException) when (version.Context == EntityContext.None)
@@ -675,6 +679,10 @@ static class DumpEncounters
                     if (s == (int)Species.Shedinja) mask |= (1UL << (int)Ball.Poke) | (1UL << (int)Ball.Sport);
                     if (name == "8") mask |= 1UL << (int)Ball.Poke;  // PLA origin traded to Sword/Shield
                 }
+                // Mystery gift eggs of the species itself, whatever the generator's filters.
+                foreach (var g in gifts)
+                    if (g.IsEgg && g.Species == s && g.Context == context && reach(g)) egg |= Egg(g, pk);
+                eggs[s] = undecided ? 0 : egg | 0x80;
                 masks[s] = undecided ? 0 : mask;
                 fateful[s] = undecided || mask == 0 ? 0 : fate;
             }
@@ -685,7 +693,22 @@ static class DumpEncounters
                 o.WriteLine("    " + string.Join(",", masks.Skip(i).Take(8).Select(m => $"0x{m:X}ull")) + ",");
             o.WriteLine("}};");
             Dump.Bytes(o, $"kFateful{key}", fateful);
+            if (name is "6" or "7" or "8" or "8b" or "9") Dump.Bytes(o, $"kEgg{key}", eggs);
         }
+    }
+
+    // Unhatched-egg facts of one egg encounter of the format's own context (eggs never leave it:
+    // Poke Transporter, Pokemon Bank and HOME refuse them). 1 = an egg exists; 2 = it is a mystery
+    // gift (its met level and locations follow the gift); 4 / 8 = EggStateLegality.IsNicknameFlagSet
+    // may be true / false; 16 = its egg location may be 0. Bit 7 marks a decided species.
+    private static int Egg(IEncounterable enc, PKM pk)
+    {
+        int bits = 1;
+        if (enc is MysteryGift) bits |= 2;
+        if (enc is WB8 or EncounterStatic8b) bits |= 4 | 8;  // the flag follows IsUntraded
+        else bits |= EggStateLegality.IsNicknameFlagSet(enc, pk) ? 4 : 8;
+        if (enc is not IEncounterEgg && enc is ILocation { EggLocation: 0 }) bits |= 16;
+        return bits;
     }
 
     // MiscFatefulEncounterVerifier: 1 when the encounter requires the flag, 2 when it requires it
@@ -1068,7 +1091,13 @@ sealed class Generator(Random rng, int mutations)
                         if (!seen.Add(key))
                             continue;
                         if (TryConvert(enc, tr) is { } pk && pk.Context == context)
+                        {
                             Emit(pk, version, group, true);
+                            // The same egg before it hatches (the converter hatches eggs): positive and
+                            // negative controls for the unhatched-egg rules.
+                            if (enc is { IsEgg: true } && !pk.IsEgg && Unhatched(pk, enc) is { } egg)
+                                Emit(egg, version, group, true);
+                        }
                     }
                 }
             }
@@ -1207,6 +1236,38 @@ sealed class Generator(Random rng, int mutations)
         _ when pk is PK9 => Versions9.Contains(pk.Version) ? pk.Version : Versions9[rng.Next(2)],
         _ => Versions8.Contains(pk.Version) ? pk.Version : Versions8[rng.Next(2)],
     };
+
+    // An egg encounter's record as it is before hatching: in the box of the game that received it.
+    private static PKM? Unhatched(PKM hatched, IEncounterable enc)
+    {
+        if (hatched.Format < 6) return null;
+        var pk = hatched.Clone();
+        pk.IsEgg = true;
+        pk.IsNicknamed = EggStateLegality.IsNicknameFlagSet(enc, pk);
+        pk.Nickname = SpeciesName.GetEggName(pk.Language, pk.Format);
+        if (enc is IEncounterEgg && pk.EggLocation == Locations.LinkTrade6)
+        {
+            // Laid in another game and traded over unhatched: the egg keeps the day-care location.
+            pk.EggLocation = Locations.Daycare5;
+            pk.MetLocation = Locations.LinkTrade6;
+        }
+        else
+        {
+            pk.MetLocation = pk is PB8 ? Locations.Default8bNone : (ushort)0;
+            pk.MetDate = null;
+        }
+        pk.MetLevel = EggStateLegality.EggMetLevel;
+        pk.OriginalTrainerFriendship = (byte)pk.PersonalInfo.HatchCycles;
+        pk.CurrentHandler = 0;
+        pk.HandlingTrainerName = string.Empty;
+        pk.HandlingTrainerFriendship = 0;
+        if (pk is IMemoryOT ot) { ot.OriginalTrainerMemory = 0; ot.OriginalTrainerMemoryIntensity = 0; ot.OriginalTrainerMemoryFeeling = 0; ot.OriginalTrainerMemoryVariable = 0; }
+        if (pk is IMemoryHT ht) { ht.HandlingTrainerMemory = 0; ht.HandlingTrainerMemoryIntensity = 0; ht.HandlingTrainerMemoryFeeling = 0; ht.HandlingTrainerMemoryVariable = 0; }
+        if (pk.Format >= 8) pk.HandlingTrainerGender = 0;
+        pk.CurrentLevel = EggStateLegality.EggLevel;
+        pk.ResetPartyStats();
+        return pk;
+    }
 
     private static PKM? TryConvert(IEncounterable enc, ITrainerInfo tr)
     {

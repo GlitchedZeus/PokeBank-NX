@@ -61,13 +61,13 @@ if ! cmp -s "$work/names.inc" "$repo/include/Legality/ModernNicknameData.inc"; t
     diff "$repo/include/Legality/ModernNicknameData.inc" "$work/names.inc" | head -20
     exit 1
 fi
-dotnet "$work/oracle/PKHeXGen67Oracle.dll" dumpencounters > "$work/balls.inc"
-if ! cmp -s "$work/balls.inc" "$repo/include/Legality/ModernEncounterData.inc"; then
+dotnet "$work/oracle/PKHeXGen67Oracle.dll" dumpencounters > "$work/encounters.inc"
+if ! cmp -s "$work/encounters.inc" "$repo/include/Legality/ModernEncounterData.inc"; then
     echo "include/Legality/ModernEncounterData.inc differs from the PKHeX dump:"
-    diff "$repo/include/Legality/ModernEncounterData.inc" "$work/balls.inc" | head -20
+    diff "$repo/include/Legality/ModernEncounterData.inc" "$work/encounters.inc" | head -20
     exit 1
 fi
-echo "generated $label tables, species names and encounter balls match PKHeX"
+echo "generated $label tables, species names and encounter tables match PKHeX"
 dotnet "$work/oracle/PKHeXGen67Oracle.dll" "$generate" "$seed" "$mutations" > "$work/pkhex.txt"
 g++ -std=c++20 -O2 -Wall -Wextra -Werror -I"$repo/include" "$here/gen67_diff.cpp" \
     "$repo/src/Legality/ModernLegality.cpp" "$repo/src/Legality/Gen67Legality.cpp" \
