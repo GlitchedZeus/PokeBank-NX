@@ -46,32 +46,32 @@ namespace Pokemon {
 
     uint8_t Pokemon8SWSH::baseHP() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->hp;
+        return getBaseStatsSWSH(speciesID(), form())->hp;
     }
 
     uint8_t Pokemon8SWSH::baseATK() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->atk;
+        return getBaseStatsSWSH(speciesID(), form())->atk;
     }
 
     uint8_t Pokemon8SWSH::baseDEF() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->def;
+        return getBaseStatsSWSH(speciesID(), form())->def;
     }
 
     uint8_t Pokemon8SWSH::baseSPE() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->spe;
+        return getBaseStatsSWSH(speciesID(), form())->spe;
     }
 
     uint8_t Pokemon8SWSH::baseSPA() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->spa;
+        return getBaseStatsSWSH(speciesID(), form())->spa;
     }
 
     uint8_t Pokemon8SWSH::baseSPD() const noexcept
     {
-        return getBaseStatsGen89(speciesID(), form())->spd;
+        return getBaseStatsSWSH(speciesID(), form())->spd;
     }
 
     // ========================================
@@ -160,13 +160,18 @@ namespace Pokemon {
          * - NatureMod = Nature modifier (90, 100, or 110)
          */
 
+        const auto* base = getBaseStatsSWSH(speciesID(), form());
+        if (!base || base->id != speciesID() || base->hp == 0) {
+            return; // Unknown/unmodelled form: preserve the existing party-stat tail.
+        }
+
         uint8_t levelValue = level();
         if (levelValue == 0 || levelValue > 100) {
             return; // Invalid level, don't recalculate
         }
 
         // Calculate HP (different formula from other stats)
-        int hp = ((2 * baseHP() + ivHP() + (evHP() / 4)) * levelValue) / 100 + levelValue + 10;
+        int hp = ((2 * base->hp + ivHP() + (evHP() / 4)) * levelValue) / 100 + levelValue + 10;
         const uint16_t oldMax = readUInt16LittleEndian(
             reinterpret_cast<const uint8_t*>(data.data() + 0x14A));   // before it is overwritten
         writeUInt16LittleEndian(reinterpret_cast<uint8_t*>(data.data() + 0x14A), static_cast<uint16_t>(hp));
@@ -175,7 +180,7 @@ namespace Pokemon {
 
         // Calculate other stats (ATK, DEF, SPE, SPA, SPD)
         int stats[5];
-        int baseStats[5] = {baseATK(), baseDEF(), baseSPE(), baseSPA(), baseSPD()};
+        int baseStats[5] = {base->atk, base->def, base->spe, base->spa, base->spd};
         int ivs[5] = {ivATK(), ivDEF(), ivSPE(), ivSPA(), ivSPD()};
         int evs[5] = {evATK(), evDEF(), evSPE(), evSPA(), evSPD()};
 

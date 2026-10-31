@@ -266,6 +266,14 @@ int main() {
     assert(!earlyResult.save->boxes()[0].slots[0]);
     assert(earlyResult.save->boxes()[2].slots[0] && earlyResult.save->boxes()[2].slots[0]->species==1);
 
+    // Retail lists are bounded by count + immediate 0xFF; stale later marker bytes are ignored.
+    auto staleMarkers=red;
+    staleMarkers[INTL.party+4]=0x99;
+    staleMarkers[INTL.checksum]=diff8(
+        std::span<const uint8_t>(staleMarkers).subspan(0x2598,INTL.mainLength));
+    auto staleParsed=parse(staleMarkers,SourceGame::Red);
+    assert(staleParsed&&staleParsed.save->party().size()==2);
+
     auto badParty=red;
     badParty[INTL.party]=7;
     badParty[INTL.checksum]=diff8(std::span<const uint8_t>(badParty).subspan(0x2598,INTL.mainLength));
@@ -293,6 +301,16 @@ int main() {
     assert(!bad && bad.error==SaveError::InvalidTrainerData);
     bad=parse(std::span<const uint8_t>(red.data(),red.size()-1),SourceGame::Red);
     assert(!bad && bad.error==SaveError::WrongSize);
+
+    {
+        const std::array<uint8_t,3> tradeOt{{0x5D,0x80,0x50}};
+        assert(decodeGen1String(tradeOt,RegionLayout::International)=="*");
+        const std::array<uint8_t,3> embedded{{0x80,0x5D,0x50}};
+        assert(decodeGen1String(embedded,RegionLayout::International)=="A*");
+        // PKHeX StringConverter1 stops at any byte with no glyph, not only 0x00/0x50.
+        const std::array<uint8_t,4> glyphlessTerminator{{0x80,0x01,0x81,0x50}};
+        assert(decodeGen1String(glyphlessTerminator,RegionLayout::International)=="A");
+    }
 
     std::cout << "Gen I RBY strict read-only adapter/oracle tests passed\n";
     return 0;

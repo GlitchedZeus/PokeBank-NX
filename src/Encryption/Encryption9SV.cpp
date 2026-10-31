@@ -20,6 +20,7 @@ namespace Encryption {
 
     void shuffleArray9SV(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue)
     {
+        if (data.size() < SIZE_STORED9_SV || result.size() < SIZE_STORED9_SV) return;
         /**
          * Unshuffles the 4 data blocks based on the shuffle value.
          *
@@ -68,6 +69,8 @@ namespace Encryption {
 
     std::byte* decryptArray9SV(std::span<const std::byte> encryptedData)
     {
+        if (encryptedData.size() != SIZE_STORED9_SV &&
+            encryptedData.size() != SIZE_PARTY9_SV) return nullptr;
         /**
          * Main decryption function for Generation 9 Pokemon data.
          *
@@ -110,6 +113,8 @@ namespace Encryption {
 
     std::byte* encryptArray9SV(std::span<const std::byte> decryptedData, uint32_t personalityValue)
     {
+        if (decryptedData.size() != SIZE_STORED9_SV &&
+            decryptedData.size() != SIZE_PARTY9_SV) return nullptr;
         /**
          * Main encryption function for Generation 9 Pokemon data.
          *

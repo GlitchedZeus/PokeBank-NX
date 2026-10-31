@@ -1,0 +1,17 @@
+# Feature A UI (owner Oct 28): Pokemon Actions -> Import from file / Export to file. The dialog's pure
+# input model and its SD-card half (listing, size-capped read, durable export) in a private mkdtemp
+# tree. The real-screen tests live in Makefile.host.host-ui (GCC-only harness).
+POKEMON_FILE_DIALOG_SOURCES := tests/test_pokemon_file_dialog_model.cpp src/PokemonFile/NativePokemonFile.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp src/Utils/DurableFile.cpp
+POKEMON_FILE_DIALOG_HEADERS := include/UI/PokemonFileDialogModel.h include/UI/PokemonFileIo.h \
+	include/UI/PokemonFileBrowser.h include/Utils/FolderPreferences.h
+HOST_TESTS += $(HOST_BUILD)/test_pokemon_file_dialog_model
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pokemon_file_dialog_model_sanitize
+host-test: $(HOST_BUILD)/test_pokemon_file_dialog_model
+host-sanitize: $(HOST_BUILD)/test_pokemon_file_dialog_model_sanitize
+$(HOST_BUILD)/test_pokemon_file_dialog_model: $(POKEMON_FILE_DIALOG_SOURCES) $(POKEMON_FILE_DIALOG_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(POKEMON_FILE_DIALOG_SOURCES) -o $@
+$(HOST_BUILD)/test_pokemon_file_dialog_model_sanitize: $(POKEMON_FILE_DIALOG_SOURCES) $(POKEMON_FILE_DIALOG_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(POKEMON_FILE_DIALOG_SOURCES) -o $@

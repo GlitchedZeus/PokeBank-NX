@@ -4,6 +4,8 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Dialogs/EditControls.h"   // shared step buttons + A/B choice buttons
 #include "UI/TrainerViewScreen.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"
@@ -18,6 +20,11 @@ namespace Dialogs {
         // Resolve the Pokemon being edited (party / box / bank).
         const Pokemon::Pokemon* pokemon = screen.detailsTargetPokemon();
         if (!pokemon) return;
+        // Gen I-V: the dialog owns the touch layer and draws its own footer. Gen VI+ keeps its
+        // original presentation.
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
 
         // Let's Go uses Awakening Values (AVs) instead of EVs (EVs are inert in that game),
         // so the second editable stat is AV for LGPE Pokemon and EV for everything else.
@@ -39,7 +46,7 @@ namespace Dialogs {
         // IV row (tap -> select IV, id 10)
         if (ivMode) fb.drawSelectionHighlight(x + 16, cy - 4, w - 32, 34);
         fb.drawText(labelX, cy + 2, "IV", ivMode ? Colors::Text : Colors::TextDim);
-        fb.drawText(valX,   cy + 2, std::to_string(screen.statEdit.currentIV), ivMode ? Colors::Accent : Colors::Text);
+        fb.drawText(valX,   cy + 2, std::to_string(screen.statEdit.currentIV), Colors::Text);
         fb.drawText(rangeX, cy + 4, "(0 - 31)", Colors::TextDim, TextStyle::Caption);
         screen.touchButtons.push_back({10, x + 16, cy - 4, w - 32, 34});
         cy += 42;
@@ -48,7 +55,7 @@ namespace Dialogs {
         if (!ivMode) fb.drawSelectionHighlight(x + 16, cy - 4, w - 32, 34);
         fb.drawText(labelX, cy + 2, usesAV ? "AV" : "EV", !ivMode ? Colors::Text : Colors::TextDim);
         fb.drawText(valX,   cy + 2, std::to_string(usesAV ? screen.statEdit.currentAV : screen.statEdit.currentEV),
-                    !ivMode ? Colors::Accent : Colors::Text);
+                    Colors::Text);
         fb.drawText(rangeX, cy + 4, usesAV ? (g_allowIllegalEdits ? "(0 - 255)" : "(0 - 200)")
                                           : (g_allowIllegalEdits ? "(0 - 255)" : "(0 - 252)"),
                     Colors::TextDim, TextStyle::Caption);
@@ -83,6 +90,7 @@ namespace Dialogs {
         const int cbw = 190;
         drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B", "Cancel", 0);
         drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", 1);
+        if (classicSessionDialog) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Save"}});
     }
 }
 }

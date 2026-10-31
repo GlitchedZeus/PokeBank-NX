@@ -40,11 +40,11 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Gen1 src/Integration/Gen3 src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion src/PokemonFile nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
-APP_AUTHOR  :=  GlitchedZeus and PKSE contributors
+APP_AUTHOR  :=  GlitchedZeus and PokeBank NX contributors
 # THE version, in two spellings. Both are set here and nothing downstream needs editing.
 #
 # APP_VERSION is the .nacp one -- the home menu and hbmenu read it. The name is not ours to choose:
@@ -216,6 +216,18 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
+# The RetroArch return host is a tiny PokeBank-owned nested NRO loader. Build it first and
+# embed it in the main RomFS so the runtime can install an exact matching helper atomically.
+RETURN_HOST_DIR := $(CURDIR)/runtime/return_host
+RETURN_HOST_NRO := $(RETURN_HOST_DIR)/PokeBankReturnHost.nro
+RETURN_HOST_ROMFS := $(CURDIR)/romfs/runtime/PokeBankReturnHost.nro
+
+.PHONY: return-host
+return-host:
+	@$(MAKE) --no-print-directory -C $(RETURN_HOST_DIR)
+	@mkdir -p "$(dir $(RETURN_HOST_ROMFS))"
+	@cp -f "$(RETURN_HOST_NRO)" "$(RETURN_HOST_ROMFS)"
+
 # Default target when you just run 'make'. Only builds.
 default: game-card-art $(BUILD)
 
@@ -236,11 +248,23 @@ game-card-art:
 	@cp -f "$(GAME_CARD_ART_SOURCE)/red_gb.png" "$(GAME_CARD_ART_DIR)/red_gb.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/blue_gb.png" "$(GAME_CARD_ART_DIR)/blue_gb.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/yellow_gb.png" "$(GAME_CARD_ART_DIR)/yellow_gb.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/gold_gbc.png" "$(GAME_CARD_ART_DIR)/gold_gbc.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/silver_gbc.png" "$(GAME_CARD_ART_DIR)/silver_gbc.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/crystal_gbc.png" "$(GAME_CARD_ART_DIR)/crystal_gbc.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/firered_gba.png" "$(GAME_CARD_ART_DIR)/firered_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/leafgreen_gba.png" "$(GAME_CARD_ART_DIR)/leafgreen_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/ruby_gba.png" "$(GAME_CARD_ART_DIR)/ruby_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/sapphire_gba.png" "$(GAME_CARD_ART_DIR)/sapphire_gba.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/emerald_gba.png" "$(GAME_CARD_ART_DIR)/emerald_gba.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/diamond_nds.png" "$(GAME_CARD_ART_DIR)/diamond_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/pearl_nds.png" "$(GAME_CARD_ART_DIR)/pearl_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/platinum_nds.png" "$(GAME_CARD_ART_DIR)/platinum_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/heartgold_nds.png" "$(GAME_CARD_ART_DIR)/heartgold_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/soulsilver_nds.png" "$(GAME_CARD_ART_DIR)/soulsilver_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black_nds.png" "$(GAME_CARD_ART_DIR)/black_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white_nds.png" "$(GAME_CARD_ART_DIR)/white_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black2_nds.png" "$(GAME_CARD_ART_DIR)/black2_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white2_nds.png" "$(GAME_CARD_ART_DIR)/white2_nds.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)
@@ -285,7 +309,10 @@ types:
 #---------------------------------------------------------------------------------
 FONT_DIR         := romfs/fonts
 FONT_FILE        := $(FONT_DIR)/Nunito.ttf
-FONT_URL         := https://github.com/google/fonts/raw/main/ofl/nunito/Nunito%5Bwght%5D.ttf
+# Pinned to the exact google/fonts commit include/UI/NunitoMetrics.h was generated from
+# (tools/gen_nunito_metrics.py), so text-width layout rules match the bundled font
+# (SHA-256 bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207).
+FONT_URL         := https://raw.githubusercontent.com/google/fonts/47d54ca1ebb14fd864695f1d39dc734f39017c33/ofl/nunito/Nunito%5Bwght%5D.ttf
 # Fallback fonts for glyphs Nunito lacks. Symbols covers gender ♂/♀ + star ★;
 # Symbols2 covers the card-suit heart ♥ (and other suits) that Symbols omits.
 SYMBOL_FONT_FILE  := $(FONT_DIR)/NotoSansSymbols.ttf
@@ -322,15 +349,23 @@ fonts:
 # are already present (like the font).
 
 #---------------------------------------------------------------------------------
-.PHONY: $(BUILD) clean all
+.PHONY: $(BUILD) clean all native-ui-check
 
-$(BUILD):
+# Compile the real macro/include composite and Inventory with the normal Switch
+# flags before a candidate spends time on the full host/package gate.
+native-ui-check:
+	@mkdir -p $(BUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile TrainerViewScreenCompositeOverlay.o ClassicInventoryOverlay.o
+
+$(BUILD): return-host
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile all
 
 #---------------------------------------------------------------------------------
 clean:
 	@printf "clean ...\n"
+	@$(MAKE) --no-print-directory -C runtime/return_host clean || true
+	@rm -f romfs/runtime/PokeBankReturnHost.nro
 ifeq ($(strip $(APP_JSON)),)
 	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(TARGET).lst
 else

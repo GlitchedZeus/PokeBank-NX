@@ -1,10 +1,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <Libs/stb_image.h>
 
+#include <cctype>
 #include <cstdio>
 #include <string>
 
 #include "UI/SpriteManager.h"
+#include "UI/ItemSpriteKey.h"
 #include "Pokemon/FormSpriteMapping.h"
 #include "Utils/Logger.h"
 
@@ -31,6 +33,7 @@ namespace UI {
     size_t SpriteManager::spriteBytes = 0;
     SpriteManager::EvictFn SpriteManager::evictCallback = nullptr;
     std::map<uint8_t, Sprite*> SpriteManager::typeSpriteCache;
+    std::map<std::string, Sprite*> SpriteManager::itemSpriteCache;
     bool SpriteManager::initialized = false;
 
     void SpriteManager::setEvictCallback(EvictFn fn) { evictCallback = fn; }
@@ -90,6 +93,8 @@ namespace UI {
 
         for (auto& pair : typeSpriteCache) delete pair.second;
         typeSpriteCache.clear();
+        for (auto& pair : itemSpriteCache) delete pair.second;
+        itemSpriteCache.clear();
 
         initialized = false;
         logInfoToFile("SpriteManager cleanup complete");
@@ -182,6 +187,35 @@ namespace UI {
     bool SpriteManager::spriteExists(uint16_t speciesId, bool isShiny) {
         Sprite* sprite = getSprite(speciesId, isShiny);
         return sprite != nullptr;
+    }
+
+    Sprite* SpriteManager::getItemSprite(const std::string& itemName) {
+        // Shared Gen I-IV name aliases, not a conversion between native IDs.
+        // Machine labels may contain a move suffix (TM27 — Return); the helper
+        // retains only the exact machine identifier.
+        const std::string key = ItemSpriteKey::slug(itemName);
+        if (key.empty()) return nullptr;
+        // Only canonical PNG loads are OWNED by this cache. The fallback
+        // returned below is borrowed from its own canonical cache entry.
+        // Never store one Sprite* under both "tm27" and "tm-normal" (or each
+        // Gen II mail and "classic-mail-envelope"): cleanup would double-delete.
+        const auto fallback = [&]() -> Sprite* {
+            if (ItemSpriteKey::isGen2Mail(key))
+                return getItemSprite("classic-mail-envelope");
+            // Never claim an untyped TM/HM is a Normal-type machine. The
+            // caller already resolves type from its exact native game and
+            // item ID; if the lookup remains unknown it draws a neutral disc.
+            if (ItemSpriteKey::isTM(key) || ItemSpriteKey::isHM(key))
+                return nullptr;
+            return nullptr;
+        };
+        const auto cached = itemSpriteCache.find(key);
+        if (cached != itemSpriteCache.end())
+            return cached->second ? cached->second : fallback();
+
+        Sprite* sprite = loadSprite("sprites/items/" + key + ".png");
+        itemSpriteCache.emplace(key, sprite); // unique owned allocation or miss
+        return sprite ? sprite : fallback();
     }
 
     Sprite* SpriteManager::getTypeSprite(uint8_t typeId) {

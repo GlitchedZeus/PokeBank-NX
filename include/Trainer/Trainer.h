@@ -17,6 +17,7 @@
 #include <span>
 #include <array>
 #include <memory>
+#include "Integration/Common/NativeBadges.h"
 #include <string>
 
 #include "Save/Block.h"
@@ -24,6 +25,7 @@
 #include "Utils/HelperUtilities.h"
 #include "Utils/StringHelpers.h"
 #include "Trainer/Inventory.h"
+#include "Integration/Common/NativePlayTime.h"
 #include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
 
@@ -32,6 +34,13 @@ using namespace Utils;
 using namespace Enums;
 
 namespace Trainer {
+    struct PokedexProgress {
+        uint16_t seen = 0;
+        uint16_t caught = 0;
+        uint16_t total = 0;
+        [[nodiscard]] bool available() const noexcept { return total != 0; }
+    };
+
 
     // Pokemon storage constants (common across generations)
     constexpr size_t MAX_PARTY_SLOTS = 6;  // Maximum Pokemon in party
@@ -261,6 +270,13 @@ namespace Trainer {
         virtual size_t getPartySize() const noexcept = 0;
 
         /**
+         * Reports app-owned staged edits that have not been explicitly discarded/exported/saved.
+         * This is intentionally independent of source writability: immutable emulator sources can
+         * still have valuable staged work that B/+ must never silently throw away.
+         */
+        virtual bool hasStagedChanges() const noexcept { return false; }
+
+        /**
          * Gets the game group for this trainer type.
          * Used for type dispatch without RTTI (required for Nintendo Switch builds).
          * @return GameVersion group (GG, SWSH, etc.)
@@ -415,6 +431,13 @@ namespace Trainer {
          * are left exactly as they were rather than half-written.
          */
         virtual void updatePokedexBlock() {}
+        /// Read the game's authoritative Pokédex progress without deriving it from party/boxes.
+        /// Unsupported formats return total=0 so presentation stays truthful.
+        // Populated only from a native read model; unsupported formats remain unavailable.
+        std::optional<PokeVault::Integration::Common::NativePlayTime> nativePlayTime;
+        PokeVault::Integration::Common::NativeBadges nativeBadges;
+        PokedexProgress nativeDexProgress;
+        virtual PokedexProgress pokedexProgress() const { return nativeDexProgress; }
 
         /** Longest box name this game accepts, in characters (not bytes). 0 = renaming unsupported. */
         virtual size_t getMaxBoxNameLength() const noexcept { return 0; }

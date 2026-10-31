@@ -1,6 +1,8 @@
 #ifndef POKEBANK_GEN1_READ_ONLY_SAVE_H
 #define POKEBANK_GEN1_READ_ONLY_SAVE_H
 
+#include "Integration/Common/NativePlayTime.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -74,10 +76,18 @@ struct PokemonRecord {
     std::size_t rawBodySize = 0;
 };
 
+struct DexProgress {
+    uint16_t seen = 0;
+    uint16_t caught = 0;
+    uint16_t total = 0;
+};
+
 struct TrainerRecord {
+    std::optional<Common::NativePlayTime> playTime;
     std::string name;
     uint16_t trainerId = 0;
     uint32_t money = 0;
+    uint8_t badges = 0;
 };
 
 struct BoxRecord {
@@ -103,6 +113,7 @@ public:
     const std::vector<BoxRecord>& boxes() const noexcept { return boxes_; }
     const Metadata& metadata() const noexcept { return metadata_; }
     std::span<const uint8_t> sourceBytes() const noexcept { return sourceBytes_; }
+    [[nodiscard]] DexProgress dexProgress() const noexcept;
 
 private:
     friend ParseResult parse(std::span<const uint8_t>, SourceGame);

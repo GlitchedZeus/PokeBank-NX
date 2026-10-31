@@ -2,7 +2,7 @@
  * Bank.h - Persistent cross-GAME Pokemon storage ("bank")
  *
  * A HOME-style storage bank: boxes of Pokemon that live OUTSIDE any single save file,
- * persisted to the SD card under sdmc:/PKSE/bank. UNIFIED across all games: every slot
+ * persisted to the SD card under sdmc:/switch/PokeBank-NX/bank. UNIFIED across all games: every slot
  * carries its own game-group tag + native (encrypted) per-gen bytes, so Pokemon from all
  * six titles coexist in one bank. Deposit is passive (store as-is, byte-in == byte-out) --
  * the bank never converts or mutates a stored mon. Only withdraw-INTO-a-save converts, and
@@ -15,20 +15,35 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <span>
 #include <vector>
 
 #include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
+#include "Trainer/BankFormatPolicy.h"
 
 namespace Trainer {
     class Bank {
     public:
+        /// What the last load() found. Only FirstRun may create or migrate a Bank; every other
+        /// non-Loaded outcome leaves the authoritative bytes untouched and blocks saving.
+        enum class LoadOutcome {
+            FirstRun,        // bank.dat genuinely absent, no preserved or set-aside generation
+            Loaded,          // a complete, supported bank.dat was read
+            Restored,        // an interrupted save's validated .previous.N was put back first
+            ReadFailed,      // bank.dat exists but could not be read (open/I/O/allocation/short read)
+            Quarantined,     // unsupported or corrupt header: preserved as a unique .unreadable.N
+            Truncated,       // record table shorter than its header says: loaded for inspection only
+            DamagedRecords,  // some records failed validation: loaded for inspection only
+            NewerLayout,     // more boxes than this build supports: loaded for inspection only
+            Blocked,         // path not inspectable, or only unverifiable/set-aside evidence exists
+        };
         /// Number of bank boxes. 8 was not enough to stage a full generation for testing (Gen 3 alone
         /// is 386 Pokemon = 13 boxes); PKSM ships 150. The on-disk record table is fixed-size so that
         /// slot N sits at a computable offset, which makes the file grow with this constant --
         /// 100 boxes is ~1.1 MB. Raising it is safe: the header stores the count the file was written
         /// with, and load() honours THAT, so a smaller older bank still opens (see load()).
-        static constexpr size_t BANK_BOX_COUNT = 100;
+        static constexpr size_t BANK_BOX_COUNT = BankFormatPolicy::currentBoxCount;
         static constexpr size_t BANK_SLOTS_PER_BOX = 30;    // 6x5 grid per box
 
         /// Constructs the unified bank and loads any existing on-SD contents. On first run it
@@ -41,6 +56,18 @@ namespace Trainer {
 
         /// Writes the bank to its SD file (tagged, encrypted records). Returns true on success.
         bool save() const;
+
+        /// Canonical authoritative file used by durable transaction adapters.
+        std::string authoritativePath() const;
+
+        /// Build the exact current Bank image and prove every occupied slot round-trips.
+        bool buildVerifiedImage(std::vector<uint8_t>& out, std::string& error) const;
+
+        /// Structural validator for an arbitrary supported Bank image. Does not depend on live boxes.
+        static bool validateStorageImage(std::span<const uint8_t> image, std::string& error);
+
+        /// Mark a verified committed image as the current dirty-state baseline.
+        bool acceptCommittedImage(std::span<const uint8_t> image, std::string& error) const;
 
         /// True if the in-memory boxes differ from the last saved/loaded on-disk state.
         /// Used to prompt Save/Discard when leaving the storage view (HOME-style).
@@ -69,12 +96,15 @@ namespace Trainer {
         size_t lastLoadRejects() const noexcept { return loadRejects; }
 
         /// Occupied slots whose bytes did not survive an encrypt->decrypt round trip during the
-        /// last save(). The bank's contract is byte-in == byte-out, so non-zero means a PKSE bug.
-        ///
-        /// Reported rather than enforced ON PURPOSE. A failed bank save blocks leaving the storage
-        /// view, so treating a verification miss as a save failure would trap the user in the
-        /// UI over what may be a false positive. Writing proceeds; the anomaly is surfaced instead.
+        /// last save attempt. The bank's contract is byte-in == byte-out, so non-zero means the
+        /// image is NOT safe to persist. Audit hardening makes this a fail-closed save condition.
         size_t lastVerifyFailures() const noexcept { return verifyFailures; }
+
+        /// True when the on-disk Bank is valid enough to inspect but was written with a
+        /// newer/larger layout this build cannot round-trip without data loss.
+        bool isWriteBlocked() const noexcept { return writeBlocked; }
+        LoadOutcome lastLoadOutcome() const noexcept { return loadOutcome; }
+        const std::string& writeBlockReason() const noexcept { return writeBlockReasonText; }
 
     private:
         std::string filePath() const;
@@ -86,6 +116,10 @@ namespace Trainer {
         mutable std::vector<uint8_t> savedImage;   // serialized image as of the last load()/save()
         mutable size_t verifyFailures = 0;
         size_t loadRejects = 0;
+        bool writeBlocked = false;
+        std::string writeBlockReasonText;
+        LoadOutcome loadOutcome = LoadOutcome::FirstRun;
+        void blockWrites(LoadOutcome outcome, std::string reason);
     };
 }
 

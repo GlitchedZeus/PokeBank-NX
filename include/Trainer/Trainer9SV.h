@@ -150,7 +150,8 @@ namespace Trainer {
          */
         void updateItemBlock() override;
         void updateTrainerInfoBlock() override;
-        void updatePokedexBlock() override;      // Paldea / Kitakami Zukan blocks
+        void updatePokedexBlock() override;
+        PokedexProgress pokedexProgress() const override;      // Paldea / Kitakami Zukan blocks
         bool itemsAreIdIndexed() const override { return true; }   // count at itemId * 0x10
 
         /**

@@ -1,3 +1,4 @@
+#include "Source/SaveInstance.h"
 #include "Legacy/RetroArchRBYDiscovery.h"
 
 #include "Utils/SHA256.h"
@@ -284,7 +285,12 @@ void scanDirectory(const std::string& root, std::size_t depth, ScanState& state)
         struct stat metadata{};
         if (!isRegularFile(path, &metadata)) continue;
         const std::string fileIdentity = filesystemIdentity(path);
-        if (!state.visitedFiles.insert(fileIdentity).second) continue;
+        if (!state.visitedFiles.insert(fileIdentity).second) {
+            for (auto& existing : state.result.sources)
+                if (existing.canonicalPath == fileIdentity)
+                    Source::addSourceAlias(existing, sourceIdentity(path));
+            continue;
+        }
         if (state.result.filesExamined >= state.limits.maxFiles) {
             state.result.limitReached = true;
             break;

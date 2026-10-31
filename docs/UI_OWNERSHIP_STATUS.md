@@ -1,5 +1,7 @@
 # PokeBank NX UI Ownership Status
 
+> **CURRENT UI SNAPSHOT, NOT BRANCH AUTHORITY:** Re-fetch GitHub before acting on this dated ownership table. Active lane/task routing is defined by `docs/ENGINEERING_AUTHORITY.md`, `README.md` and live GitHub.
+
 Last updated: **2026-10-14**
 
 This file tracks the visible product layer separately from proven save/editor backends. The October 8 Gen I–IV owner-tested UI is the previous acceptance checkpoint; newer Claude [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) and Gen V [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) UIs are **development candidates**, not merged releases.

@@ -11,7 +11,7 @@
 // loop-idiom pass rewrites the fixed 48-byte substructure copies into memcpy and then can't propagate
 // the size guard to the new[] buffer -- it false-positives with bogus 2^63-byte ranges. Both warnings
 // are the same false positive (accesses are guarded above); suppress them for this file.
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #pragma GCC diagnostic ignored "-Wrestrict"
 #endif
@@ -54,9 +54,9 @@ namespace Encryption {
 
     std::byte* decryptArray3FRLG(std::span<const std::byte> raw) {
         const size_t n = raw.size();
+        if (n != SIZE_STORED3_FRLG && n != SIZE_PARTY3_FRLG) return nullptr;
         std::byte* out = new std::byte[n]();
         for (size_t i = 0; i < n; ++i) out[i] = raw[i];
-        if (n < 0x50) return out;  // too small to hold the data block
 
         const uint32_t pid  = rd32(out + 0x00);
         const uint32_t seed = pid ^ rd32(out + 0x04);   // key = PID ^ OT_ID32
@@ -75,9 +75,9 @@ namespace Encryption {
 
     std::byte* encryptArray3FRLG(std::span<const std::byte> dec) {
         const size_t n = dec.size();
+        if (n != SIZE_STORED3_FRLG && n != SIZE_PARTY3_FRLG) return nullptr;
         std::byte* out = new std::byte[n]();
         for (size_t i = 0; i < n; ++i) out[i] = dec[i];
-        if (n < 0x50) return out;
 
         const uint32_t pid  = rd32(out + 0x00);
         const uint32_t seed = pid ^ rd32(out + 0x04);

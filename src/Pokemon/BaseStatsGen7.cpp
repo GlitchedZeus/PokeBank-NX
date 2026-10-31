@@ -48,11 +48,17 @@ namespace Pokemon {
             }
         }
 
-        // If no form-specific entry found, fall back to base form
-        if (speciesId >= BASE_STATS_COUNT_GEN7) {
-            return &empty;
+        // The table is dense only for Kanto 0..151. Meltan/Melmetal are sparse rows
+        // appended after Mew, so BASE_STATS_COUNT_GEN7 is not a valid dex-id ceiling.
+        if (speciesId <= 151) {
+            return &BASE_STATS_TABLE_GEN7[speciesId];
         }
-        return &BASE_STATS_TABLE_GEN7[speciesId];
+        if (form == 0) {
+            const BaseStatsGen7* sparse = searchFormArray(
+                BASE_STATS_TABLE_GEN7, BASE_STATS_COUNT_GEN7, speciesId);
+            if (sparse) return sparse;
+        }
+        return &empty;
     }
 
     // Wrapper functions that forward to Names namespace

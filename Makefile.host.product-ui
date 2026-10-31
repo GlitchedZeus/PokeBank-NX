@@ -1,0 +1,198 @@
+# Product-shell model tests are intentionally header-only: they prove navigation and honest
+# capability classification without pulling libnx/UI rendering into the host suite.
+PRODUCT_UI_TESTS := $(HOST_BUILD)/test_app_shell_model $(HOST_BUILD)/test_organization_preview_model $(HOST_BUILD)/test_game_launch_model $(HOST_BUILD)/test_quick_games_drawer_motion
+PRODUCT_UI_SANITIZE_TESTS := $(HOST_BUILD)/test_app_shell_model_sanitize $(HOST_BUILD)/test_organization_preview_model_sanitize $(HOST_BUILD)/test_game_launch_model_sanitize $(HOST_BUILD)/test_quick_games_drawer_motion_sanitize
+
+HOST_TESTS += $(PRODUCT_UI_TESTS)
+HOST_SANITIZE_TESTS += $(PRODUCT_UI_SANITIZE_TESTS)
+
+# This fragment is included after Makefile.host.base defines host-test/host-sanitize. GNU make
+# expands target prerequisites when the rule is parsed, so appending the variables above is not
+# enough to make those late-added binaries build before the base recipe iterates HOST_TESTS.
+# Add explicit prerequisite-only rules here so the global suites compile these tests first.
+host-test: $(PRODUCT_UI_TESTS)
+host-sanitize: $(PRODUCT_UI_SANITIZE_TESTS)
+
+.PHONY: product-ui-test
+product-ui-test: $(PRODUCT_UI_TESTS)
+	@set -e; for test_bin in $(PRODUCT_UI_TESTS); do $$test_bin; done
+
+$(HOST_BUILD)/test_app_shell_model: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_app_shell_model.cpp -o $@
+
+$(HOST_BUILD)/test_app_shell_model_sanitize: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_app_shell_model.cpp -o $@
+
+$(HOST_BUILD)/test_organization_preview_model: tests/test_organization_preview_model.cpp include/UI/OrganizationPreviewModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_organization_preview_model.cpp -o $@
+
+$(HOST_BUILD)/test_organization_preview_model_sanitize: tests/test_organization_preview_model.cpp include/UI/OrganizationPreviewModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_organization_preview_model.cpp -o $@
+
+$(HOST_BUILD)/test_game_launch_model: tests/test_game_launch_model.cpp include/UI/GameLaunchModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_game_launch_model.cpp -o $@
+
+$(HOST_BUILD)/test_game_launch_model_sanitize: tests/test_game_launch_model.cpp include/UI/GameLaunchModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_game_launch_model.cpp -o $@
+
+$(HOST_BUILD)/test_quick_games_drawer_motion: tests/test_quick_games_drawer_motion.cpp include/UI/QuickGamesDrawerMotion.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_quick_games_drawer_motion.cpp -o $@
+
+$(HOST_BUILD)/test_quick_games_drawer_motion_sanitize: tests/test_quick_games_drawer_motion.cpp include/UI/QuickGamesDrawerMotion.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_quick_games_drawer_motion.cpp -o $@
+
+# P0 #320: Product Home quit guard + opt-in input trace.
+HOME_INPUT_GUARD_TEST := $(HOST_BUILD)/test_home_input_guard
+HOME_INPUT_GUARD_SANITIZE := $(HOST_BUILD)/test_home_input_guard_sanitize
+HOME_INPUT_GUARD_HEADERS := include/UI/HomeQuitConfirm.h include/UI/InputTrace.h
+HOST_TESTS += $(HOME_INPUT_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(HOME_INPUT_GUARD_SANITIZE)
+host-test: $(HOME_INPUT_GUARD_TEST)
+host-sanitize: $(HOME_INPUT_GUARD_SANITIZE)
+
+$(HOME_INPUT_GUARD_TEST): tests/test_home_input_guard.cpp $(HOME_INPUT_GUARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(HOME_INPUT_GUARD_SANITIZE): tests/test_home_input_guard.cpp $(HOME_INPUT_GUARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Round 2 phase 7: emulator-save backups (original source read-only, app-owned export records only).
+EMU_BACKUP_TEST := $(HOST_BUILD)/test_emulator_backup_access
+EMU_BACKUP_SANITIZE := $(HOST_BUILD)/test_emulator_backup_access_sanitize
+EMU_BACKUP_SOURCES := tests/test_emulator_backup_access.cpp \
+	src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp
+EMU_BACKUP_INPUTS := $(EMU_BACKUP_SOURCES) include/UI/SourceBackupClassification.h \
+	include/UI/WorkingCopyRefresh.h include/UI/ClassicSourceGuard.h include/Source/ImmutableSourceSnapshot.h \
+	include/Integration/Common/VerifiedStagedExport.h
+HOST_TESTS += $(EMU_BACKUP_TEST)
+HOST_SANITIZE_TESTS += $(EMU_BACKUP_SANITIZE)
+host-test: $(EMU_BACKUP_TEST)
+host-sanitize: $(EMU_BACKUP_SANITIZE)
+
+$(EMU_BACKUP_TEST): $(EMU_BACKUP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(EMU_BACKUP_SOURCES) -o $@
+
+$(EMU_BACKUP_SANITIZE): $(EMU_BACKUP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(EMU_BACKUP_SOURCES) -o $@
+
+# Round 6 (B08 / P1-RETURN): Review entry from every editor screen, Gen I-IV return to the screen.
+REVIEW_ENTRY_TEST := $(HOST_BUILD)/test_review_entry
+REVIEW_ENTRY_SANITIZE := $(HOST_BUILD)/test_review_entry_sanitize
+REVIEW_ENTRY_INPUTS := tests/test_review_entry.cpp include/UI/ReviewEntry.h include/UI/ClassicBrowseReview.h \
+	include/UI/ClassicReviewOrigin.h include/UI/Gen2WorkspaceLayers.h include/UI/InventoryUIContract.h
+HOST_TESTS += $(REVIEW_ENTRY_TEST)
+HOST_SANITIZE_TESTS += $(REVIEW_ENTRY_SANITIZE)
+host-test: $(REVIEW_ENTRY_TEST)
+host-sanitize: $(REVIEW_ENTRY_SANITIZE)
+
+$(REVIEW_ENTRY_TEST): $(REVIEW_ENTRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_review_entry.cpp -o $@
+
+$(REVIEW_ENTRY_SANITIZE): $(REVIEW_ENTRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_review_entry.cpp -o $@
+
+# Round 2 phase 13 / L06: party and summary-panel taps open the native Actions sheet (Gen III-V).
+L06_TAP_TEST := $(HOST_BUILD)/test_party_summary_tap_routing
+L06_TAP_SANITIZE := $(HOST_BUILD)/test_party_summary_tap_routing_sanitize
+L06_TAP_INPUTS := tests/test_party_summary_tap_routing.cpp include/UI/Gen4BoxTouchActions.h \
+	include/Integration/Gen5/Gen5BoxTouchNavigation.h src/UI/Gen3SharedPokemonSurface.inc \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+HOST_TESTS += $(L06_TAP_TEST)
+HOST_SANITIZE_TESTS += $(L06_TAP_SANITIZE)
+host-test: $(L06_TAP_TEST)
+host-sanitize: $(L06_TAP_SANITIZE)
+
+$(L06_TAP_TEST): $(L06_TAP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(L06_TAP_SANITIZE): $(L06_TAP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# R2-LAUNCH: the leave decision follows SharedMenuGeometry::LaunchConfirm and every line fits.
+LEAVE_LAYOUT_TEST := $(HOST_BUILD)/test_leave_decision_layout
+LEAVE_LAYOUT_SANITIZE := $(HOST_BUILD)/test_leave_decision_layout_sanitize
+LEAVE_LAYOUT_INPUTS := tests/test_leave_decision_layout.cpp include/UI/LeaveDecisionLayout.h \
+	include/UI/SharedMenuGeometry.h include/UI/NunitoMetrics.h include/UI/GameLaunchModel.h \
+	include/UI/HomeQuitConfirm.h
+HOST_TESTS += $(LEAVE_LAYOUT_TEST)
+HOST_SANITIZE_TESTS += $(LEAVE_LAYOUT_SANITIZE)
+host-test: $(LEAVE_LAYOUT_TEST)
+host-sanitize: $(LEAVE_LAYOUT_SANITIZE)
+
+$(LEAVE_LAYOUT_TEST): $(LEAVE_LAYOUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(LEAVE_LAYOUT_SANITIZE): $(LEAVE_LAYOUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# CG13: the emulator backups list lays out through SharedMenuGeometry::BackupMenu and its text fits.
+EMU_BACKUP_LAYOUT_TEST := $(HOST_BUILD)/test_emulator_backup_layout
+EMU_BACKUP_LAYOUT_SANITIZE := $(HOST_BUILD)/test_emulator_backup_layout_sanitize
+EMU_BACKUP_LAYOUT_INPUTS := tests/test_emulator_backup_layout.cpp include/UI/EmulatorBackupLayout.h src/UI/SaveSelectScreen.cpp \
+	include/UI/SharedMenuGeometry.h include/UI/NunitoMetrics.h include/UI/SourceBackupClassification.h
+HOST_TESTS += $(EMU_BACKUP_LAYOUT_TEST)
+HOST_SANITIZE_TESTS += $(EMU_BACKUP_LAYOUT_SANITIZE)
+host-test: $(EMU_BACKUP_LAYOUT_TEST)
+host-sanitize: $(EMU_BACKUP_LAYOUT_SANITIZE)
+
+$(EMU_BACKUP_LAYOUT_TEST): $(EMU_BACKUP_LAYOUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(EMU_BACKUP_LAYOUT_SANITIZE): $(EMU_BACKUP_LAYOUT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# R2-BUG-013: help rows and modal instructions name every controller button as a coloured badge.
+GLYPH_INSTRUCTION_TEST := $(HOST_BUILD)/test_glyph_instruction
+GLYPH_INSTRUCTION_SANITIZE := $(HOST_BUILD)/test_glyph_instruction_sanitize
+GLYPH_INSTRUCTION_INPUTS := tests/test_glyph_instruction.cpp include/UI/GlyphInstruction.h
+HOST_TESTS += $(GLYPH_INSTRUCTION_TEST)
+HOST_SANITIZE_TESTS += $(GLYPH_INSTRUCTION_SANITIZE)
+host-test: $(GLYPH_INSTRUCTION_TEST)
+host-sanitize: $(GLYPH_INSTRUCTION_SANITIZE)
+
+$(GLYPH_INSTRUCTION_TEST): $(GLYPH_INSTRUCTION_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(GLYPH_INSTRUCTION_SANITIZE): $(GLYPH_INSTRUCTION_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Round 3 Part 9: each provider is named in the session header / leave dialog; profile focus kept.
+SESSION_PROVIDER_TEST := $(HOST_BUILD)/test_session_provider_names
+SESSION_PROVIDER_SANITIZE := $(HOST_BUILD)/test_session_provider_names_sanitize
+SESSION_PROVIDER_INPUTS := tests/test_session_provider_names.cpp include/Source/SaveProviderIdentity.h \
+	include/Source/SaveInstance.h include/UI/LeaveDecisionLayout.h include/UI/ProfileTitleFocus.h \
+	include/UI/SharedMenuGeometry.h include/UI/NunitoMetrics.h
+HOST_TESTS += $(SESSION_PROVIDER_TEST)
+HOST_SANITIZE_TESTS += $(SESSION_PROVIDER_SANITIZE)
+host-test: $(SESSION_PROVIDER_TEST)
+host-sanitize: $(SESSION_PROVIDER_SANITIZE)
+
+$(SESSION_PROVIDER_TEST): $(SESSION_PROVIDER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(SESSION_PROVIDER_SANITIZE): $(SESSION_PROVIDER_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

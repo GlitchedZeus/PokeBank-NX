@@ -1,0 +1,245 @@
+#include "Integration/Gen2/Gen2ReadOnlySave.h"
+#include "Integration/Gen2/Gen2StagedEditor.h"
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+using namespace PokeVault::Integration::Gen2;
+
+namespace {
+struct L {
+    RegionLayout region; VersionFamily family; size_t money, idx, names, party, current, end, sum, gender;
+    uint8_t cap, boxes, str, split;
+};
+constexpr size_t N = static_cast<size_t>(-1);
+constexpr L IGS{RegionLayout::International,VersionFamily::GoldSilver,0x23DB,0x2724,0x2727,0x288A,0x2D6C,0x2D68,0x2D69,N,20,14,11,7};
+constexpr L IC {RegionLayout::International,VersionFamily::Crystal,0x23DC,0x2700,0x2703,0x2865,0x2D10,0x2B82,0x2D0D,0x3E3D,20,14,11,7};
+constexpr L JGS{RegionLayout::Japanese,VersionFamily::GoldSilver,0x23BC,0x2705,0x2708,0x283E,0x2D10,0x2C8B,0x2D0D,N,30,9,6,6};
+constexpr L JC {RegionLayout::Japanese,VersionFamily::Crystal,0x23BE,0x26E2,0x26E5,0x281A,0x2D10,0x2AE2,0x2D0D,0x8000,30,9,6,6};
+
+size_t listLen(size_t cap,size_t body,size_t str){return 1+(cap+1)+cap*body+2*cap*str;}
+size_t stride(const L& l){return listLen(l.cap,32,l.str)+2;}
+size_t boxStart(const L& l,size_t b){return b<l.split?0x4000+b*stride(l):0x6000+(b-l.split)*stride(l);}
+
+void emptyList(std::vector<uint8_t>& d,size_t ofs,size_t){d[ofs]=0;d[ofs+1]=0xFF;}
+void name(std::vector<uint8_t>& d,size_t ofs,size_t len,char c){
+    std::fill_n(d.begin()+ofs,len,0x50);
+    if(c>='A'&&c<='Z')d[ofs]=static_cast<uint8_t>(0x80+c-'A');
+}
+void pokemonList(std::vector<uint8_t>& d,size_t ofs,size_t cap,size_t bodySize,size_t str,uint8_t species,bool shiny,bool party){
+    d[ofs]=1;d[ofs+1]=species;d[ofs+2]=0xFF;
+    size_t body=ofs+1+(cap+1);
+    d[body+0]=species;d[body+1]=0x01;
+    d[body+2]=33;d[body+3]=45;d[body+4]=0;d[body+5]=0;
+    d[body+6]=0x12;d[body+7]=0x34;
+    d[body+8]=0;d[body+9]=0x10;d[body+10]=0;
+    for(int i=0;i<5;i++){d[body+11+2*i]=0;d[body+12+2*i]=static_cast<uint8_t>(i+1);}
+    if(shiny){d[body+21]=0x7A;d[body+22]=0xAA;}else{d[body+21]=0x98;d[body+22]=0x76;}
+    d[body+23]=10|0x40;d[body+24]=20|0x80;d[body+25]=0;d[body+26]=0;
+    d[body+27]=123;d[body+28]=0x21;d[body+29]=0;d[body+30]=0;d[body+31]=15;
+    if(party){
+        d[body+32]=0x08;d[body+33]=0;
+        auto be=[&](size_t o,uint16_t v){d[body+o]=v>>8;d[body+o+1]=v&0xFF;};
+        be(34,35);be(36,40);be(38,30);be(40,20);be(42,25);be(44,26);be(46,27);
+    }
+    size_t ot=body+cap*bodySize;
+    size_t nick=ot+cap*str;
+    name(d,ot,str,'O');name(d,nick,str,'M');
+}
+void putChecksum(std::vector<uint8_t>& d,const L& l){
+    uint16_t s=0;for(size_t i=0x2009;i<=l.end;i++)s=static_cast<uint16_t>(s+d[i]);
+    d[l.sum]=s&0xFF;d[l.sum+1]=s>>8;
+}
+// Empty Japanese bag (PKHeX 8e3eb3d4 SAV2Offsets LoadOffsetsJapanese PouchTMHM .. PouchPC), then
+// the checksum again: the staged editor opens only on a save whose bag validates.
+void japaneseBag(std::vector<uint8_t>& d,const L& l){
+    const bool c=l.family==VersionFamily::Crystal;
+    const size_t tm=c?0x23C9:0x23C7;
+    std::fill_n(d.begin()+static_cast<std::ptrdiff_t>(tm),57,0);
+    for(size_t o:{c?0x2402:0x2400,c?0x242C:0x242A,c?0x2447:0x2445,c?0x2461:0x245F}){d[o]=0;d[o+1]=0xFF;}
+    putChecksum(d,l);
+}
+std::vector<uint8_t> fixture(const L& l,uint8_t species=25,bool shiny=true){
+    size_t sz=(l.gender==0x8000)?0x10000:0x8000;
+    std::vector<uint8_t>d(sz);
+    d[0x2009]=0x12;d[0x200A]=0x34;name(d,0x200B,l.str,'A');
+    d[l.money]=0x01;d[l.money+1]=0xE2;d[l.money+2]=0x40;
+    d[l.idx]=0;if(l.gender!=N)d[l.gender]=1;
+    for(size_t b=0;b<l.boxes;b++){emptyList(d,boxStart(l,b),l.cap);name(d,l.names+b*9,9,static_cast<char>('A'+(b%26)));}
+    pokemonList(d,boxStart(l,0),l.cap,32,l.str,species,shiny,false);
+    emptyList(d,l.current,l.cap); // deliberately stale current-box copy; stored bank is authoritative.
+    pokemonList(d,l.party,6,48,l.str,species,shiny,true);
+    putChecksum(d,l);return d;
+}
+}
+
+int main(){
+    {
+        auto d=fixture(IGS);const auto before=d;auto r=parse(d,SourceGame::Gold);assert(r);
+        assert(r.save->metadata().family==VersionFamily::GoldSilver);
+        assert(r.save->metadata().region==RegionLayout::International);
+        assert(r.save->metadata().sourceGameId=="gold_gbc");
+        assert(r.save->trainer().trainerId==0x1234);assert(r.save->trainer().money==123456);
+        assert(r.save->party().size()==1);const auto&p=r.save->party()[0];
+        assert(p.species==25&&p.heldItem==1&&p.friendship==123);
+        assert(p.dvs[1]==7&&p.dvs[2]==10&&p.dvs[3]==10&&p.dvs[4]==10&&p.shiny);
+        assert(p.pp[0]==10&&p.ppUps[0]==1&&p.pp[1]==20&&p.ppUps[1]==2);
+        assert(p.partyRecord&&p.currentHP==35&&p.maxHP==40&&p.specialDefense==27);
+        assert(r.save->boxes().size()==14);
+        assert(r.save->boxes()[0].slots[0]&&r.save->boxes()[0].slots[0]->species==25);
+        assert(d==before);
+        auto silver=parse(d,SourceGame::Silver);assert(silver&&silver.save->metadata().sourceGameId=="silver_gbc");
+        auto wrong=parse(d,SourceGame::Crystal);assert(!wrong&&wrong.error==SaveError::GameHintMismatch);
+    }
+    {
+        auto d=fixture(IC);auto r=parse(d,SourceGame::Crystal);assert(r&&r.save->metadata().family==VersionFamily::Crystal);
+        assert(r.save->trainer().gender&&*r.save->trainer().gender==1);assert(r.save->metadata().payloadSize==0x8000);
+    }
+    {
+        auto d=fixture(JGS);auto r=parse(d,SourceGame::Gold);assert(r&&r.save->metadata().region==RegionLayout::Japanese);
+        assert(r.save->metadata().boxCount==9&&r.save->metadata().boxCapacity==30);
+    }
+    {
+        auto d=fixture(JC,201,false);auto r=parse(d,SourceGame::Crystal);assert(r&&r.save->metadata().payloadSize==0x10000);
+        assert(r.save->party()[0].species==201);
+    }
+    {
+        auto d=fixture(IGS);for(int i=0;i<7;i++)d.push_back(0);auto r=parse(d,SourceGame::Gold);
+        assert(r&&r.save->metadata().rtcFooterSize==7&&r.save->sourceBytes().size()==0x8007);
+    }
+    // 128 KiB padded files (upstream PKSE 9a9a731): sizes tried smallest first, uniform tail only.
+    for(const uint8_t fill:{uint8_t{0x00},uint8_t{0xFF}}){
+        auto d=fixture(IGS);d.resize(kPaddedSaveSize128K,fill);const auto before=d;
+        auto r=parse(d,SourceGame::Gold);assert(r);
+        assert(r.save->metadata().payloadSize==0x8000&&r.save->metadata().paddingSize==0x18000);
+        assert(r.save->metadata().rtcFooterSize==0&&r.save->sourceBytes().size()==kPaddedSaveSize128K);
+        assert(r.save->party().size()==1&&d==before);
+    }
+    {
+        // A real 64 KiB Japanese Crystal padded to 128 KiB opens at 64 KiB with its gender byte.
+        auto d=fixture(JC,201,false);d.resize(kPaddedSaveSize128K,0xFF);
+        auto r=parse(d,SourceGame::Crystal);assert(r);
+        assert(r.save->metadata().payloadSize==0x10000&&r.save->metadata().paddingSize==0x10000);
+        assert(r.save->trainer().gender&&*r.save->trainer().gender==1);
+    }
+    {
+        // A 64 KiB international core (data in its upper half) padded to 128 KiB opens at 64 KiB.
+        auto d=fixture(IGS);d.resize(0x10000,0x00);d[0x9000]=0x5C;d.resize(kPaddedSaveSize128K,0xFF);
+        auto r=parse(d,SourceGame::Gold);assert(r);
+        assert(r.save->metadata().payloadSize==0x10000&&r.save->metadata().paddingSize==0x10000);
+        // RTC footers stay footers at either core size, and are not padding.
+        auto rtc32=fixture(IGS);rtc32.insert(rtc32.end(),0x2C,0x11);
+        auto a=parse(rtc32,SourceGame::Gold);
+        assert(a&&a.save->metadata().rtcFooterSize==0x2C&&a.save->metadata().paddingSize==0);
+        auto rtc64=fixture(IGS);rtc64.resize(0x10000,0x00);rtc64.insert(rtc64.end(),7,0x22);
+        auto b=parse(rtc64,SourceGame::Gold);
+        assert(b&&b.save->metadata().payloadSize==0x10000&&b.save->metadata().rtcFooterSize==7);
+        // Padding plus a footer is not a known envelope: refused, never truncated or guessed.
+        auto both=fixture(IGS);both.resize(kPaddedSaveSize128K,0xFF);both.insert(both.end(),7,0x00);
+        auto c=parse(both,SourceGame::Gold);assert(!c&&c.error==SaveError::WrongSize);
+    }
+    {
+        // Not padding: one stray byte in the tail, or a padded size other than 128 KiB.
+        auto d=fixture(IGS);d.resize(kPaddedSaveSize128K,0xFF);d[0x1FFFF]=0x01;
+        auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::WrongSize);
+        // Mixed past 32 KiB but uniform past 64 KiB is a 64 KiB image plus padding, exactly as
+        // the same 64 KiB image is accepted unpadded.
+        auto mixed=fixture(IGS);mixed.resize(kPaddedSaveSize128K,0x00);mixed[0x8000]=0xFF;
+        auto m=parse(mixed,SourceGame::Gold);
+        assert(m&&m.save->metadata().payloadSize==0x10000&&m.save->metadata().paddingSize==0x10000);
+        auto unpadded=mixed;unpadded.resize(0x10000);assert(parse(unpadded,SourceGame::Gold));
+        auto odd=fixture(IGS);odd.resize(0x18000,0xFF);
+        auto o=parse(odd,SourceGame::Gold);assert(!o&&o.error==SaveError::WrongSize);
+    }
+    {
+        // Q02 (independent QA 2026-10-27; upstream PKSE 0c993bc): a 32 KiB Japanese Crystal file is
+        // valid; its optional trainer gender (0x8000) is absent and stays unspecified, never invented.
+        auto d=fixture(JC,201,false);d.resize(0x8000);const auto before=d;
+        auto r=parse(d,SourceGame::Crystal);assert(r);
+        assert(r.save->metadata().region==RegionLayout::Japanese&&r.save->metadata().family==VersionFamily::Crystal);
+        assert(r.save->metadata().payloadSize==0x8000&&!r.save->trainer().gender);
+        assert(r.save->party()[0].species==201&&d==before);
+        // The same Crystal at 64 KiB still reads its gender.
+        auto full=fixture(JC,201,false);auto f=parse(full,SourceGame::Crystal);
+        assert(f&&f.save->trainer().gender&&*f.save->trainer().gender==1);
+        // The staged editor writes Japanese layouts too (tests/test_gen2_japanese_writer.cpp); the
+        // APP keeps them read-only through JapaneseEditingGate.h in GSCReadOnlyTrainer
+        // (test_gsc_readonly_bridge). With a valid bag a 32 KiB Japanese Crystal opens, has no
+        // editable gender (its 0x8000 byte is absent) and opening it never changes a byte.
+        {
+            auto withBag=d;japaneseBag(withBag,JC);
+            auto opened=parse(withBag,SourceGame::Crystal);assert(opened);
+            std::string error;auto editor=StagedEditor::create(*opened.save,error);
+            assert(editor&&error.empty()&&!editor->trainerGenderEditable());
+            assert(std::equal(editor->originalBytes().begin(),editor->originalBytes().end(),withBag.begin()));
+        }
+        // Malformed: a broken checksum is refused at 32 KiB too.
+        auto bad=d;bad[JC.sum]^=0xFF;assert(!parse(bad,SourceGame::Crystal));
+        // Japanese Gold/Silver at 32 KiB is still Gold/Silver, not Crystal.
+        auto jgs=fixture(JGS);auto g=parse(jgs,SourceGame::Gold);
+        assert(g&&g.save->metadata().family==VersionFamily::GoldSilver&&!g.save->trainer().gender);
+        assert(!parse(jgs,SourceGame::Crystal));
+        // Round 8 automated QA (updated for the Japanese Gen II writer, owner Oct 28): Japanese
+        // Gold, Silver and 64 KiB Crystal open in the staged editor on their own 9 x 30 layout,
+        // and parsing or opening them never changes a byte. Whether the app offers editing is the
+        // owner gate's call (JapaneseEditingGate.h, pinned closed in test_gsc_readonly_bridge).
+        for (auto [bytes, game, layout] : {std::tuple{fixture(JGS), SourceGame::Gold, JGS},
+                                           std::tuple{fixture(JGS), SourceGame::Silver, JGS},
+                                           std::tuple{fixture(JC,201,false), SourceGame::Crystal, JC}}) {
+            japaneseBag(bytes,layout);
+            const auto pristine=bytes;
+            auto japanese=parse(bytes,game);
+            assert(japanese&&japanese.save->metadata().region==RegionLayout::Japanese);
+            std::string error;
+            auto editor=StagedEditor::create(*japanese.save,error);
+            assert(editor&&error.empty());
+            assert(editor->metadata().boxCount==9&&editor->metadata().boxCapacity==30);
+            assert(bytes==pristine);
+        }
+    }
+    {
+        auto d=fixture(IGS);
+        d[IGS.party+3]=25;
+        putChecksum(d,IGS);
+        auto r=parse(d,SourceGame::Gold);
+        assert(r&&r.save->party().size()==1);
+        const std::array<uint8_t,2> ligature{{0xEA,0x50}};
+        assert(decodeGen2String(ligature,RegionLayout::International)=="%");
+        const std::array<uint8_t,2> po{{0x70,0x50}};
+        const std::array<uint8_t,2> ke{{0x71,0x50}};
+        const std::array<uint8_t,2> pk{{0xE1,0x50}};
+        const std::array<uint8_t,2> mn{{0xE2,0x50}};
+        const std::array<uint8_t,2> arrow{{0xEB,0x50}};
+        const std::array<uint8_t,8> gen2Digits{{0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0x50}};
+        assert(decodeGen2String(po,RegionLayout::International)=="@");
+        assert(decodeGen2String(ke,RegionLayout::International)=="#");
+        assert(decodeGen2String(pk,RegionLayout::International)=="{");
+        assert(decodeGen2String(mn,RegionLayout::International)=="}");
+        assert(decodeGen2String(arrow,RegionLayout::International)=="→");
+        assert(decodeGen2String(gen2Digits,RegionLayout::International)=="０１２３４５６");
+        const std::array<uint8_t,2> jpBe{{0x3D,0x50}};
+        const std::array<uint8_t,2> jpRi{{0xD8,0x50}};
+        const std::array<uint8_t,2> jpHandakuten{{0xE4,0x50}};
+        assert(decodeGen2String(jpBe,RegionLayout::Japanese)=="ベ");
+        assert(decodeGen2String(jpRi,RegionLayout::Japanese)=="リ");
+        assert(decodeGen2String(jpHandakuten,RegionLayout::Japanese)=="ﾟ");
+        const std::array<uint8_t,3> tradeOt{{0x5D,0x80,0x50}};
+        assert(decodeGen2String(tradeOt,RegionLayout::International)=="*");
+    }
+    {
+        auto d=fixture(IGS);d[0x2100]^=1;auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::ChecksumMismatch);
+    }
+    {
+        auto d=fixture(IGS);d[IGS.party]=7;putChecksum(d,IGS);auto r=parse(d,SourceGame::Gold);
+        assert(!r&&r.error==SaveError::InvalidStructure);
+    }
+    {
+        std::vector<uint8_t>d(123);auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::WrongSize);
+    }
+    std::cout<<"Gen II strict read-only parser focused tests: PASS\n";
+}

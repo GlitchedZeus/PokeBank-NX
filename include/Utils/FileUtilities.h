@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Utils/NXTypes.h"   // AccountUid/u64; <switch.h> on console. The IMPLEMENTATIONS
@@ -14,11 +15,16 @@ namespace Utils {
     // Returns a new[] allocation (caller uses delete[]), or nullptr with outSize=0.
     uint8_t* readAllBytes(const char* path, size_t* outSize);
     bool copyDirectory(const char* srcPath, const char* destPath);
+    // Copy into a hidden/non-browsable sibling and atomically promote only after the recursive copy
+    // succeeds. Existing destinations (notably Working) are rotated aside until promotion succeeds.
+    bool copyDirectoryTransactional(const char* srcPath, const char* finalPath);
+    bool isBackupTransactionArtifactName(std::string_view name) noexcept;
     bool copyFile(const char* srcPath, const char* destPath);
     bool deleteDirectoryRecursive(const char* path);
-    // Copies the current game save into PKSE/{titleName}/. When `timestamped` is true a new
-    // timestamped history folder is created; when false a single reusable "Working" folder is
-    // overwritten (auto-backup disabled — no pile-up). Returns the created folder path, or "" on failure.
+    // Copies the current installed save into the selected Switch account + exact-release namespace:
+    // backups/account-<AccountUid>/<exact-game-id>/<workspace>. When `timestamped` is true a new
+    // history folder is created; when false a reusable "Working" folder is used. Display title is
+    // logging/legacy-discovery text only and never determines the writable namespace.
     std::string backupSaveData(AccountUid userUid, u64 titleId, std::string titleName, bool timestamped = true);
     // Copy a backup's save files onto the real game save. The backup directory IS the edited
     // save -- PKSE writes edits straight into it -- so there is no separate "modified" copy.
@@ -29,7 +35,8 @@ namespace Utils {
                               const std::string& primaryFile,
                               const std::vector<std::string>& optionalFiles = {});
     std::string getTimestamp();
-    std::vector<std::string> listBackupDirectories(const char* gameDirectory);
+    std::vector<std::string> listBackupDirectories(const char* gameDirectory,
+                                                   bool includeWorking = false);
 }
 
 #endif

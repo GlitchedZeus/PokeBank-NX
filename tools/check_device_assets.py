@@ -4,10 +4,8 @@
 This check is intentionally offline and stdlib-only. It does not download or modify anything.
 Run tools/gen_hdsprites.py first when HD Pokémon renders are missing.
 
-Why this exists:
-    romfs/ is generated locally and gitignored. A clean checkout can therefore build a valid .nro
-    while silently omitting the HD Pokémon renders used by View Pokémon / Summary. Device-test and
-    release builds must prove the expected local RomFS assets exist before packaging.
+Cleanup #3 additionally proves the exact Gen I Normal/Shiny preview contract used by SpriteManager:
+base-form species IDs 001-151, HOME render first, `s` suffix for shiny, lower-resolution fallback only.
 
 Run:
     python tools/check_device_assets.py
@@ -18,20 +16,41 @@ Exit status:
 """
 from __future__ import annotations
 
-import os
 import re
-import sys
 from pathlib import Path
+
+from png_asset_validation import validate_png
+from fetch_product_art import TRAINER_URLS, REQUIRED_REGIONS
 
 ROOT = Path(__file__).resolve().parent.parent
 ROMFS = ROOT / "romfs"
 HD_DIR = ROMFS / "sprites" / "pokemon_hd"
 TYPE_DIR = ROMFS / "sprites" / "types"
+ITEM_ICON_DIR = ROMFS / "sprites" / "items"
+BALL_ICON_NAMES = (
+    "master-ball", "ultra-ball", "great-ball", "poke-ball",
+    "safari-ball", "net-ball", "dive-ball", "nest-ball",
+    "repeat-ball", "timer-ball", "luxury-ball", "premier-ball",
+    "dusk-ball", "heal-ball", "quick-ball", "cherish-ball",
+)
 FONT_DIR = ROMFS / "fonts"
+REGION_BACKDROPS = (
+    "kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "hisui", "paldea",
+)
+TRAINER_PORTRAITS = (
+    "red", "leaf", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra",
+    "chase", "elaine", "victor", "gloria", "rei", "akari", "florian", "juliana", "paxton",
+    "harmony",
+)
 GAME_CARD_ART_DIR = ROMFS / "game_cards"
+REGION_BACKDROP_DIR = ROMFS / "region_backdrops"
+TRAINER_PORTRAIT_DIR = ROMFS / "trainer_portraits"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
+SPRITE_MANAGER = ROOT / "src" / "UI" / "SpriteManager.cpp"
+SPECIES_NAMES_CPP = ROOT / "src" / "Names" / "SpeciesNames.cpp"
 
 DEX_MAX = 1025
+GEN1_DEX_MAX = 151
 REQUIRED_FONTS = (
     "Nunito.ttf",
     "NotoSansSymbols.ttf",
@@ -57,12 +76,66 @@ def pinned_sprite_ref() -> str:
     return match.group(1) if match else "unknown"
 
 
+def gen1_species_names() -> list[str]:
+    """Read the same generated species-name table the C++ UI uses; no second hand-written list."""
+    try:
+        text = SPECIES_NAMES_CPP.read_text(encoding="utf-8")
+        marker = "static const char* const SPECIES_NAMES_EN[] = {"
+        block = text.split(marker, 1)[1].split("};", 1)[0]
+        names = re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', block)
+        if len(names) > GEN1_DEX_MAX:
+            return names
+    except (OSError, IndexError):
+        pass
+    return ["None"] + [f"Species {n}" for n in range(1, GEN1_DEX_MAX + 1)]
+
+
+def verify_runtime_sprite_contract(errors: list[str]) -> None:
+    """Prove the preflight's filename expectations still match SpriteManager's live path contract."""
+    try:
+        text = SPRITE_MANAGER.read_text(encoding="utf-8")
+    except OSError:
+        fail(errors, "src/UI/SpriteManager.cpp is missing; cannot verify runtime sprite mapping")
+        return
+
+    required = (
+        'std::string suffix = isShiny ? "s" : "";',
+        'Pokemon::getFormSpriteId(speciesId, formId)',
+        'loadSprite("sprites/pokemon_hd/" + sid + suffix + ".png")',
+        'loadSprite("sprites/pokemon/" + sid + suffix + ".png")',
+    )
+    missing = [needle for needle in required if needle not in text]
+    if missing:
+        fail(errors, "SpriteManager runtime mapping changed; update asset preflight with the runtime: " + "; ".join(missing))
+    else:
+        ok("SpriteManager HOME-first normal/shiny path + defensive lower-resolution fallback contract matches preflight")
+
+    lowered = text.lower()
+    suspicious = [token for token in ("hue_shift", "hueshift", "hue-rotate", "huerotate") if token in lowered]
+    if suspicious:
+        fail(errors, "runtime hue-filter shiny substitute detected; Cleanup #3 requires real bundled shiny artwork")
+    else:
+        ok("no runtime hue-filter/generated shiny substitute detected")
+
+
+def format_missing(ids: list[int], names: list[str]) -> str:
+    shown = ids[:20]
+    labels = []
+    for n in shown:
+        name = names[n] if n < len(names) else f"Species {n}"
+        labels.append(f"{n:03d} {name}")
+    return ", ".join(labels) + (" ..." if len(ids) > len(shown) else "")
+
+
 def main() -> int:
     errors: list[str] = []
+    names = gen1_species_names()
     print("PokeBank NX device-build asset preflight")
     print(f"repo: {ROOT}")
     print(f"PokeAPI sprite ref: {pinned_sprite_ref()}")
     print()
+
+    verify_runtime_sprite_contract(errors)
 
     if not ROMFS.is_dir():
         fail(errors, "romfs/ is missing")
@@ -76,8 +149,23 @@ def main() -> int:
         total_bytes = sum(p.stat().st_size for p in pngs)
         ok(f"HD sprite directory exists ({len(pngs)} PNGs, {total_bytes / (1024 * 1024):.1f} MiB)")
 
-        names = {p.name for p in pngs}
-        missing_base = [n for n in range(1, DEX_MAX + 1) if f"{n}.png" not in names]
+        invalid_pngs = []
+        valid_file_names = set()
+        for p in pngs:
+            valid, reason, dimensions = validate_png(p)
+            if valid:
+                valid_file_names.add(p.name)
+            else:
+                invalid_pngs.append(f"{p.name}: {reason}")
+        if invalid_pngs:
+            preview = "; ".join(invalid_pngs[:10])
+            suffix = " ..." if len(invalid_pngs) > 10 else ""
+            fail(errors, f"{len(invalid_pngs)} HD sprite PNG(s) are corrupt/invalid: {preview}{suffix}")
+        else:
+            ok("all HD sprite PNGs pass signature/chunk/CRC/IEND validation")
+
+        file_names = valid_file_names
+        missing_base = [n for n in range(1, DEX_MAX + 1) if f"{n}.png" not in file_names]
         if missing_base:
             preview = ", ".join(str(n) for n in missing_base[:20])
             suffix = " ..." if len(missing_base) > 20 else ""
@@ -85,15 +173,21 @@ def main() -> int:
         else:
             ok(f"all {DEX_MAX} base-species HOME renders are present")
 
-        # Representative capability checks. These catch a common partial-copy failure where only
-        # base normals were staged into romfs and shiny/form assets were dropped.
-        if any(re.fullmatch(r"\d+s\.png", name) for name in names):
-            ok("at least one shiny HOME render is present")
+        # Cleanup #3 intentionally supports base-form Gen I species 001-151. The runtime's base-form
+        # key is the National Dex species ID and shiny appends `s`; validate BOTH paths explicitly.
+        missing_gen1_normal = [n for n in range(1, GEN1_DEX_MAX + 1) if f"{n}.png" not in file_names]
+        missing_gen1_shiny = [n for n in range(1, GEN1_DEX_MAX + 1) if f"{n}s.png" not in file_names]
+        if missing_gen1_normal:
+            fail(errors, f"{len(missing_gen1_normal)} Gen I normal HOME renders missing: {format_missing(missing_gen1_normal, names)}")
         else:
-            fail(errors, "no shiny HOME renders found")
+            ok(f"all {GEN1_DEX_MAX} Gen I normal HOME renders are present")
+        if missing_gen1_shiny:
+            fail(errors, f"{len(missing_gen1_shiny)} Gen I shiny HOME renders missing: {format_missing(missing_gen1_shiny, names)}")
+        else:
+            ok(f"all {GEN1_DEX_MAX} Gen I shiny HOME renders are present")
 
         alt_numeric = []
-        for name in names:
+        for name in file_names:
             match = re.fullmatch(r"(\d+)(?:s|f|fs)?\.png", name)
             if match and int(match.group(1)) > 10000:
                 alt_numeric.append(name)
@@ -102,8 +196,8 @@ def main() -> int:
         else:
             fail(errors, "no numeric alternate-form HOME render IDs (>10000) found")
 
-        for sample in ("1.png", "25.png"):
-            if sample in names:
+        for sample in ("1.png", "25.png", "151.png", "1s.png", "25s.png", "151s.png"):
+            if sample in file_names:
                 ok(f"representative render {sample} exists")
             else:
                 fail(errors, f"representative render {sample} is missing")
@@ -117,6 +211,25 @@ def main() -> int:
         else:
             ok("all 18 type sprites are present")
 
+    # Each Poké Ball picker row displays its OWN item image, not one generic
+    # ball symbol. This is an explicit generated, packaged asset contract.
+    if not ITEM_ICON_DIR.is_dir():
+        fail(errors, "native ball/item PNG directory is missing; run tools/gen_item_sprites.py")
+    else:
+        bad_ball_icons = []
+        for name in BALL_ICON_NAMES:
+            filename = ITEM_ICON_DIR / f"{name}.png"
+            if not filename.is_file():
+                bad_ball_icons.append(f"{name}: missing")
+                continue
+            valid, reason, _dimensions = validate_png(filename)
+            if not valid:
+                bad_ball_icons.append(f"{name}: {reason}")
+        if bad_ball_icons:
+            fail(errors, "ball-specific PNGs invalid/missing: " + "; ".join(bad_ball_icons))
+        else:
+            ok("all 16 distinct, PNG-validated native Poké Ball item sprites present")
+
     if not FONT_DIR.is_dir():
         fail(errors, "romfs/fonts/ is missing; run: make fonts")
     else:
@@ -128,18 +241,81 @@ def main() -> int:
 
     required_game_cards = (
         "red_gb.png", "blue_gb.png", "yellow_gb.png",
+        "gold_gbc.png", "silver_gbc.png", "crystal_gbc.png",
         "firered_gba.png", "leafgreen_gba.png",
         "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",
+        "diamond_nds.png", "pearl_nds.png", "platinum_nds.png",
+        "heartgold_nds.png", "soulsilver_nds.png",
+        "black_nds.png", "white_nds.png", "black2_nds.png", "white2_nds.png",
     )
     if not GAME_CARD_ART_DIR.is_dir():
         fail(errors, "romfs/game_cards/ is missing; run: make game-card-art")
     else:
-        missing_cards = [name for name in required_game_cards
-                         if not (GAME_CARD_ART_DIR / name).is_file()]
+        missing_cards = [name for name in required_game_cards if not (GAME_CARD_ART_DIR / name).is_file()]
         if missing_cards:
             fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
-            ok("Red/Blue/Yellow GB + FireRed/LeafGreen/Ruby/Sapphire/Emerald GBA game-card artwork is present")
+            invalid_cards = []
+            for name in required_game_cards:
+                valid, reason, _ = validate_png(GAME_CARD_ART_DIR / name)
+                if not valid:
+                    invalid_cards.append(f"{name}: {reason}")
+            if invalid_cards:
+                fail(errors, "invalid packaged cover artwork: " + "; ".join(invalid_cards))
+            else:
+                ok("all required game-card artwork (Gen I-V) is packaged and PNG-validated")
+
+    # Use the same canonical exact Product Home manifest that stages
+    # trainer images and region scenes. Do not greenlight a native NRO with
+    # only the older eight backdrops or fake Trainer placeholder badges.
+    required_regions = REQUIRED_REGIONS
+    if not REGION_BACKDROP_DIR.is_dir():
+        fail(errors, "romfs/region_backdrops/ is missing; branch artwork was not packaged")
+    else:
+        missing_or_invalid = []
+        for region in required_regions:
+            file = REGION_BACKDROP_DIR / region
+            valid, reason, _ = validate_png(file)
+            if not valid:
+                missing_or_invalid.append(f"{region}: {reason}")
+        if missing_or_invalid:
+            fail(errors, "missing or invalid region scenery: " + "; ".join(missing_or_invalid))
+        else:
+            ok("all 10 regional backdrops are packaged and PNG-validated")
+
+    if not TRAINER_PORTRAIT_DIR.is_dir():
+        fail(errors, "romfs/trainer_portraits/ is missing; Product Home trainers were not packaged")
+    else:
+        missing_trainers = []
+        for name in TRAINER_URLS:
+            file = TRAINER_PORTRAIT_DIR / name
+            valid, reason, _ = validate_png(file)
+            if not valid:
+                missing_trainers.append(f"{name}: {reason}")
+        if missing_trainers:
+            fail(errors, "missing or invalid trainer portraits: " + "; ".join(missing_trainers))
+        else:
+            ok(f"all {len(TRAINER_URLS)} Product Home trainer portraits are packaged and PNG-validated")
+
+    # Product Home scenery and trainer art. A previous hardware NRO silently lost these when CI
+    # replaced the branch romfs/ with the older recovery snapshot; keep them mandatory.
+    for label, directory, names in (
+        ("region backdrop", ROMFS / "region_backdrops", REGION_BACKDROPS),
+        ("trainer portrait", ROMFS / "trainer_portraits", TRAINER_PORTRAITS),
+    ):
+        bad = []
+        for name in names:
+            path = directory / f"{name}.png"
+            if not path.is_file():
+                bad.append(f"{name}: missing")
+                continue
+            valid, reason, _dimensions = validate_png(path)
+            if not valid:
+                bad.append(f"{name}: {reason}")
+        if bad:
+            fail(errors, f"{label} PNGs invalid/missing (run tools/fetch_product_art.py): " + "; ".join(bad))
+        else:
+            ok(f"all {len(names)} {label} PNGs present and valid")
 
     print()
     if errors:

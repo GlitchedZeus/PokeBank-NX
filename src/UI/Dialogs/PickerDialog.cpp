@@ -5,10 +5,13 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"     // drawScrollbar
+#include "UI/TouchScroll.h"
+#include "UI/InventoryUIContract.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"     // getNatureName / getAbilityName
 #include "Names/MoveNames.h"     // getMoveName / getMoveCount
-#include "Names/ItemNames.h"     // getItemNameG3 (Gen 3 has its own item id space)
+#include "Names/ItemNames.h"
+#include "Names/MachineDisplay.h"     // getItemNameG3 (Gen 3 has its own item id space)
 #include "Enums/Ball.h"          // getBallName
 #include "Enums/LanguageID.h"    // getLanguageName
 #include "Enums/GameVersion.h"   // getGameVersionName (Origin picker)
@@ -105,10 +108,12 @@ namespace Dialogs {
 
         // Dim behind + centered panel.
         fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 150));
-        const int pw = 560, ph = H - 120;
-        const int px = (W - pw) / 2, py = 60;
+        const int pw = PokeBank::UIModel::InventoryPickerLayout::Width;
+        const int py = PokeBank::UIModel::InventoryPickerLayout::VerticalMargin;
+        const int ph = H - 2 * py;
+        const int px = (W - pw) / 2;
         fb.drawFilledRoundedRect(px, py, pw, ph, 16, Colors::Panel);
-        fb.drawRoundedRect(px, py, pw, ph, 16, Colors::Accent, 2);
+        fb.drawRoundedRect(px, py, pw, ph, 16, Colors::Divider, 1);
 
         // Title + position caption. A pouch picker opened to change an existing item's type says so
         // rather than "Add Item to Pouch".
@@ -124,15 +129,24 @@ namespace Dialogs {
         fb.drawHDivider(px + 20, py + 52, pw - 40);
 
         // Scrollable list window centered on the selection.
-        const int rowH = 40;
-        const int listTop = py + 64, listBottom = py + ph - 48;
-        int visible = (listBottom - listTop) / rowH;
-        if (visible < 1) visible = 1;
-        int first = sel - visible / 2;
+        const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
+        const auto viewport = PokeBank::UIModel::InventoryPickerLayout::viewport(W, H);
+        const int listTop = viewport.y;
+        const int visible = viewport.visibleRows;
+        // A held scrollbar thumb owns the viewport: hand the live-drag helper an empty rect so
+        // the rows do not also follow the finger.
+        const auto visual = liveVerticalListVisual(
+            sel, count, rowH,
+            viewport.x, viewport.y, screen.pickerScrollbar.capturing() ? 0 : viewport.w, viewport.h);
+        const int visualSel = visual.index;
+        int first = visualSel - visible / 2;
         if (first > count - visible) first = count - visible;
         if (first < 0) first = 0;
+        const int drawFirst = std::max(0, first - 1);
+        const int drawLast = std::min(count, first + visible + 1);
 
         screen.touchButtons.clear();
+        fb.setClipRect(viewport.x, viewport.y, viewport.w, viewport.h);
         // the Ability picker reorders its options (legal abilities first) via screen.pickerOrder,
         // and the legal prefix renders green. Form and Gender filter rather than reorder (forms the
         // game can't hold are dropped; so are genders the species can't be), but they need the same
@@ -147,15 +161,11 @@ namespace Dialogs {
                            || kind == PickerKind::Ball    || kind == PickerKind::Form
                            || kind == PickerKind::Gender)
                            && !screen.pickerOrder.empty();
-        for (int i = 0; i < visible && (first + i) < count; ++i) {
-            const int idx = first + i;
+        for (int idx = drawFirst; idx < drawLast; ++idx) {
             const int val = (reorder && idx < static_cast<int>(screen.pickerOrder.size())) ? screen.pickerOrder[idx] : idx;
-            const int ry = listTop + i * rowH;
-            const bool s = (idx == sel);
-            if (s) {
-                fb.drawFilledRoundedRect(px + 12, ry, pw - 24, rowH - 4, 8, Colors::Selected);
-                fb.drawRoundedRect(px + 12, ry, pw - 24, rowH - 4, 8, Colors::Accent, 2);
-            }
+            const int ry = listTop + (idx - first) * rowH + visual.offset;
+            const bool s = (idx == visualSel);
+            if (s) fb.drawSelectionHighlight(px + 12, ry, pw - 24, rowH - 4);
             const bool legal = reorder && idx < screen.pickerLegalCount;
             const Color col = legal ? Color(120, 210, 130) : (s ? Colors::Text : Colors::TextDim);
             // Met Location / Form resolve their names through mon-specific context (origin version /
@@ -172,14 +182,26 @@ namespace Dialogs {
             } else {
                 label = pickerOptionLabel(kind, val);
             }
+            static std::string machineLabel;
+            if (kind == PickerKind::Item || kind == PickerKind::ItemG3 ||
+                kind == PickerKind::PouchItem || kind == PickerKind::PouchItemG3) {
+                machineLabel = Names::machineDisplayLabel(screen.trainer.getGameGroup(),
+                                                         static_cast<uint16_t>(val), label);
+                label = machineLabel.c_str();
+            }
             fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
-            screen.touchButtons.push_back({ idx, px + 12, ry, pw - 24, rowH - 4 });  // id = option row
+            if (ry + rowH > viewport.y && ry < viewport.y + viewport.h)
+                appendClippedTouchButton(screen.touchButtons, idx,
+                    viewport.x, ry, viewport.w, rowH - 4,
+                    viewport.x, viewport.y, viewport.w, viewport.h);  // id = option row
         }
+        fb.clearClip();
 
-        // Scrollbar on the panel's right edge (same thumb as everywhere else) when the list overflows.
-        drawScrollbar(fb, px + pw - 14, listTop, visible * rowH, count * rowH, first * rowH);
+        // Shared draggable scrollbar; follows the same visual row + residual pixels as the content.
+        drawScrollbar(fb, screen.pickerScrollbar, px + pw - 14, viewport.y, viewport.h, count * rowH,
+                      first * rowH - visual.offset);
 
-        fb.drawText(px + 20, py + ph - 34, "A: Select    B: Cancel    L/R: Page", Colors::TextDim, TextStyle::Caption);
+        drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}});
     }
 }
 }

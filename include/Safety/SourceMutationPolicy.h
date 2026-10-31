@@ -9,6 +9,8 @@ namespace PokeVault::Safety {
         BackupOrStaged,
         AppOwnedStorage,
         RetroArchLegacy,
+        ExternalLegacy,
+        HistoricalBackup, // unknown/native historical ownership grants view only
     };
 
     enum class SourceMutation : uint8_t {

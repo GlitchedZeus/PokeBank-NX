@@ -1,0 +1,328 @@
+// Hardware-retest adapter for the Generation II shared workspace.
+// Keep the proven shared editor implementation underneath; normalize only the
+// hardware-visible focus/presentation regressions found on dc6bf22b.
+
+#include "UI/SharedPokemonShell.h"
+
+namespace UI::Gen2PokemonEditor {
+namespace {
+
+void normalizeHardwareMoveRowFocus(TrainerViewScreen& screen) {
+    auto& unified = unifiedStateFor(screen);
+    unified.focus = Unified::normalizeMoveRowFocus(Unified::Generation::Gen2, unified.focus, unified.crystal);
+}
+
+void normalizeHardwareDerivedHpDvFocus(TrainerViewScreen& screen,
+                                       const Unified::Focus* previous = nullptr) {
+    auto& unified = unifiedStateFor(screen);
+    auto& focus = unified.focus;
+    if (focus.panel != Unified::Panel::Values || focus.row != 0 || focus.column != 0) return;
+
+    // Preserve vertical DV-column navigation while skipping the derived HP DV.
+    if (previous && previous->panel == Unified::Panel::Values && previous->column == 0) {
+        if (previous->row == 1) {
+            focus.row = 6;
+            return;
+        }
+        if (previous->row == 6) {
+            focus.row = 1;
+            return;
+        }
+    }
+
+    // HP DV is derived/non-focusable. Moving left from HP Stat Exp must stay
+    // inside STATS and land on the next real editable DV: Attack DV.
+    if (previous && previous->panel == Unified::Panel::Values &&
+        previous->row == 0 && previous->column == 1) {
+        focus.panel = Unified::Panel::Values;
+        focus.row = 1;
+        focus.column = 0;
+        return;
+    }
+
+    // Entering STATS on the HP row defaults to the first real editable value.
+    focus.column = 1;
+}
+
+void clearHardwarePanelHeading(PKSEFramebuffer& fb, int x, int y, int width, const char* text) {
+    fb.drawFilledRect(x + 10, y + 6, width, 34, Colors::Panel);
+    // Round 7 P2: the one shared heading style (UI/SharedPanelHeading.h), as Gen IV / V.
+    PokeBank::UIModel::PanelHeading::draw(fb, x, y, text);
+}
+
+void drawHardwareWorkspaceCorrections(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    const auto& state = stateFor(screen);
+    const auto g = Unified::geometry720p();
+    const int contentY = g.y + 74;
+    const int contentH = g.height - 94;
+    const int leftX = g.x + 18, leftW = 300;
+    const int midX = leftX + leftW + 14, midW = 398;
+    const int rightX = midX + midW + 14;
+
+    // Headings never signal focus (the compact outline on the field/cell does); they use the
+    // shared Gen IV / V heading style (owner Oct 26 typography).
+    clearHardwarePanelHeading(fb, leftX, contentY, 120, "DETAILS");
+    clearHardwarePanelHeading(fb, midX, contentY, 120, "STATS");
+    clearHardwarePanelHeading(fb, rightX, contentY, 120, "MOVES");
+
+    // Keep DETAILS scrolling behavior available for future/Crystal rows but remove
+    // the stray bottom glyph until the product intentionally exposes a scroll cue.
+    fb.drawFilledRect(leftX + leftW - 50, contentY + contentH - 34, 38, 26, Colors::Panel);
+
+    // Empty move rows have no meaningful PP or PP-Up value. Preserve the Empty row
+    // and compatibility status, but remove numeric noise and any stale aux-cell outline.
+    for (int slot = 0; slot < 4; ++slot) {
+        if (state.working.moves[static_cast<std::size_t>(slot)] != 0) continue;
+        const int yy = contentY + 62 + slot * 32;
+        fb.drawFilledRect(rightX + 184, yy - 6, 104, 30, Colors::Panel);
+    }
+}
+
+bool pointInRect(int px, int py, int x, int y, int w, int h) noexcept {
+    return px >= x && px < x + w && py >= y && py < y + h;
+}
+
+bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool activate,
+                            uint64_t& down) {
+    auto& state = stateFor(screen);
+    auto& unified = unifiedStateFor(screen);
+
+    // Child dialogs own the whole gesture while visible. Their rows map directly to the
+    // already-proven controller action path; release activation remains the only mutation point.
+    if (unified.moveEditor) {
+        constexpr int w = 650, h = 390, navH = 48;
+        const int x = (1280 - w) / 2;
+        const int y = (720 - navH - h) / 2;
+        for (int row = 0; row < 5; ++row) {
+            const int rowY = y + 88 + row * 48;
+            if (!pointInRect(px, py, x + 22, rowY, w - 44, 42)) continue;
+            unified.moveEditorRow = row;
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        return false;
+    }
+    if (unified.progressionEditor) {
+        constexpr int x = 320, y = 168, w = 640;
+        for (int row = 0; row < 4; ++row) {
+            const int rowY = y + 96 + row * 48;
+            if (!pointInRect(px, py, x + 22, rowY - 5, w - 44, 40)) continue;
+            unified.progressionRow = row;
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        return false;
+    }
+    if (state.itemPicker || state.confirmExit || unified.selector.open() ||
+        pickerStateFor(screen).model.active()) return false;
+
+    // The final hardware surface is the SharedPokemonShell fullscreen layout, not the older
+    // centered workspace geometry. Hit-test exactly that 1280x720 Switch surface.
+    const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
+    const int contentY = geometry.y;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX, rightW = geometry.rightW;
+
+    // Do not hit-test DETAILS through the obsolete focus-centred scrollWindow.
+    // The final hardware repaint draws from detailsViewport.firstRow plus
+    // detailsTouchScroll.offset(), not detailsFocus. The existing clipped
+    // 1700+row targets in drawUnifiedDetails()/updateUnifiedDetailsTouch()
+    // are the single source of truth for visible Details taps (including
+    // Crystal's bottom Held Item and encounter rows). This helper handles
+    // the Stats/Moves cells and its child dialogs only.
+
+
+    for (int row = 0; row < 5; ++row) {
+        const int yy = contentY + 70 + row * 34;
+        for (int col = 0; col < 2; ++col) {
+            if (row == 0 && col == 0) continue; // HP DV is derived/read-only.
+            Unified::Focus candidate{Unified::Panel::Values,
+                                     static_cast<uint8_t>(row),
+                                     static_cast<uint8_t>(col)};
+            const auto cell = Unified::cellFocus(candidate);
+            if (!pointInRect(px, py, midX + cell.x, yy - 5, cell.width, 28)) continue;
+            unified.focus = candidate;
+            if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+            return true;
+        }
+    }
+
+    const std::array<int, 2> capabilityY{contentY + 366, contentY + 408};
+    for (int i = 0; i < 2; ++i) {
+        if (!pointInRect(px, py, midX + 8, capabilityY[static_cast<std::size_t>(i)] - 5,
+                         midW - 16, 30)) continue;
+        unified.focus = {Unified::Panel::Values, static_cast<uint8_t>(5 + i), 0};
+        if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+        return true;
+    }
+
+    // Same rows the shared Moves panel draws (UI/Gen2MovesPanel.h).
+    if (const int slot = UI::Gen2MovesPanel::hitSlot(px, py, rightX, contentY, rightW); slot >= 0) {
+        unified.focus = {Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
+        if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+        return true;
+    }
+    return false;
+}
+
+void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint64_t& down) {
+    auto& state = stateFor(screen);
+    auto& unified = unifiedStateFor(screen);
+    if (state.mode == Mode::None) return;
+    if (state.itemPicker || state.confirmExit || unified.selector.open() ||
+        pickerStateFor(screen).model.active()) return;
+
+    // Keep Details/Stats/Moves focus intact until release resolves the actual
+    // tap. Contact alone can still turn into a long Details-panel swipe.
+    // The shared Gen II Details panel already has its own clipped pixel
+    // viewport (updateUnifiedDetailsTouch). Never ALSO move the semantic
+    // editor focus when that finger scroll ends: the duplicate old handler
+    // skipped rows and could jump past Held Item. A drag is never a tap.
+    if (touch.justReleased() && touch.dragged()) return;
+
+    if (touch.justTapped()) {
+        // Resolve both contact and release using the SAME visible geometry. Calling the passive
+        // focus resolver for each point avoids duplicating any of the Details/Stats/Moves hitboxes.
+        // Restore state between probes: a Details focus change itself scrolls that panel.
+        const auto savedFocus = unified.focus;
+        const auto savedDetailsFocus = unified.detailsFocus;
+        const auto savedMoveRow = unified.moveEditorRow;
+        const auto savedProgressionRow = unified.progressionRow;
+
+        const bool started = focusUnifiedTouchPoint(
+            screen, touch.startX(), touch.startY(), false, down);
+        const auto startFocus = unified.focus;
+        const auto startMoveRow = unified.moveEditorRow;
+        const auto startProgressionRow = unified.progressionRow;
+
+        unified.focus = savedFocus;
+        unified.detailsFocus = savedDetailsFocus;
+        unified.moveEditorRow = savedMoveRow;
+        unified.progressionRow = savedProgressionRow;
+
+        const bool ended = focusUnifiedTouchPoint(screen, touch.x(), touch.y(), false, down);
+        const auto endFocus = unified.focus;
+        const auto endMoveRow = unified.moveEditorRow;
+        const auto endProgressionRow = unified.progressionRow;
+
+        unified.focus = savedFocus;
+        unified.detailsFocus = savedDetailsFocus;
+        unified.moveEditorRow = savedMoveRow;
+        unified.progressionRow = savedProgressionRow;
+
+        bool sameTarget = started && ended;
+        if (unified.moveEditor) {
+            sameTarget = sameTarget && startMoveRow == endMoveRow;
+        } else if (unified.progressionEditor) {
+            sameTarget = sameTarget && startProgressionRow == endProgressionRow;
+        } else {
+            sameTarget = sameTarget &&
+                         startFocus.panel == endFocus.panel &&
+                         startFocus.row == endFocus.row &&
+                         startFocus.column == endFocus.column;
+        }
+        if (sameTarget)
+            focusUnifiedTouchPoint(screen, touch.startX(), touch.startY(), true, down);
+    }
+}
+
+void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint64_t& down) {
+    auto& shared = sharedSurfaceStateFor(screen);
+    auto& legacy = editorOverlayState(screen);
+
+    // Clone has one truthful writable target: the highlighted first empty slot in the selected
+    // destination box. Tapping any other cell is inert; the existing A backend remains authoritative.
+    if (shared.cloneActive) {
+        auto* editor = stagedEditor(screen);
+        if (!editor) return;
+        constexpr int w = 930, h = 540;
+        constexpr int x = (1280 - w) / 2;
+        constexpr int y = (672 - h) / 2;
+        constexpr int cols = 5, cellW = 164, cellH = 72;
+        constexpr int startX = x + 48, startY = y + 96;
+        if (touch.justTapped()) {
+            const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
+            if (destination >= 0) {
+                const int col = destination % cols, row = destination / cols;
+                if (pointInRect(touch.startX(), touch.startY(), startX + col * cellW,
+                                startY + row * cellH, cellW - 10, cellH - 10))
+                    down |= HidNpadButton_A;
+            }
+        }
+        if (touch.justReleased() && touch.dragged() &&
+            pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
+            std::abs(touch.deltaX()) > std::abs(touch.deltaY()) &&
+            std::abs(touch.deltaX()) >= 56) {
+            down |= touch.deltaX() < 0 ? HidNpadButton_R : HidNpadButton_L;
+        }
+        return;
+    }
+
+    // The shared paged Review (round 5): rows are informational, so a tap never selects or acts.
+    // A completed vertical swipe that starts and ends on the panel turns one page, the touch
+    // counterpart of L/R. reviewRow is the page index the shared presenter draws.
+    if (legacy.active && legacy.review) {
+        auto* editor = stagedEditor(screen);
+        if (!editor) return;
+        const size_t changeCount = editor->pendingChanges().size();
+        constexpr int w = 1100, h = 584; // SharedEditorChrome::drawReviewPanel
+        constexpr int x = (1280 - w) / 2;
+        constexpr int y = (720 - kNavBarH - h) / 2;
+        if (!sharedSurfaceStateFor(screen).reviewDiscard.confirming && // the confirm is modal
+            touch.justReleased() && touch.dragged() &&
+            pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
+            pointInRect(touch.x(), touch.y(), x, y, w, h) &&
+            std::abs(touch.deltaY()) >= 24 &&
+            std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+            legacy.reviewRow = static_cast<int>(PokeBank::UIModel::SharedReview::move(
+                static_cast<size_t>(std::max(0, legacy.reviewRow)), touch.deltaY() < 0 ? 1 : -1, changeCount));
+        }
+    }
+}
+
+// Round 6 / 7 (P1-RETURN): the shared Review is open over a Create / Edit workspace (+). One
+// predicate for the input owner below and the outermost draw (Gen2HardwareFinalFix).
+bool gen2WorkspaceReviewOpen(const TrainerViewScreen& screen) {
+    return isGSC(screen) && stateFor(screen).mode != Mode::None && editorOverlayState(screen).active &&
+           editorOverlayState(screen).review;
+}
+
+} // namespace
+
+bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                   int stickX, int stickY, const TouchInput& touch) {
+    if (!isGSC(screen)) return false;
+    // Round 6 (P1-RETURN): a Review opened from the Create / Edit workspace (+) owns input
+    // until its B, which returns to the workspace still open underneath.
+    if (gen2WorkspaceReviewOpen(screen)) return handleSharedReview(screen, down, held, stickX, stickY);
+    if (stateFor(screen).mode != Mode::None) {
+        handleUnifiedTouch(screen, touch, down);
+        normalizeHardwareMoveRowFocus(screen);
+        normalizeHardwareDerivedHpDvFocus(screen);
+        const auto previous = unifiedStateFor(screen).focus;
+        const bool handled = handleUnifiedWorkspaceInput(screen, down, held, stickX, stickY, touch);
+        normalizeHardwareMoveRowFocus(screen);
+        normalizeHardwareDerivedHpDvFocus(screen, &previous);
+        return handled;
+    }
+    handleParityTouch(screen, touch, down);
+    return handleUnifiedGen2SurfaceInputBase(screen, down, held, stickX, stickY, touch);
+}
+
+bool drawUnifiedGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!isGSC(screen)) return false;
+    // Round 6: the shared Review replaces the workspace while open (nothing drawn underneath).
+    if (gen2WorkspaceReviewOpen(screen)) {
+        drawSharedReviewSurface(screen, fb);
+        return true;
+    }
+    if (stateFor(screen).mode != Mode::None) {
+        normalizeHardwareDerivedHpDvFocus(screen);
+        drawUnifiedWorkspace(screen, fb);
+        drawHardwareWorkspaceCorrections(screen, fb);
+        return true;
+    }
+    return drawUnifiedGen2SurfaceBase(screen, fb);
+}
+
+} // namespace UI::Gen2PokemonEditor

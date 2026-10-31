@@ -81,12 +81,81 @@ namespace PokeVault::Legacy {
         }
         auto trainer = std::unique_ptr<FRLGReadOnlyTrainer>(new FRLGReadOnlyTrainer(metadata));
         if (!trainer->populate(save, error)) return nullptr;
+        std::string stagedError;
+        trainer->stagedInventory_ = Integration::Gen3::StagedInventoryEditor::create(
+            save.sourceBytes(), metadata.sourceGame, stagedError);
+        trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
+
+        std::string pokemonStagedError;
+        trainer->stagedPokemon_ = Integration::Gen3::StagedPokemonEditor::create(
+            save.sourceBytes(), metadata.sourceGame, pokemonStagedError);
+        trainer->stagedPokemonUnavailableReason_ = std::move(pokemonStagedError);
+
+        std::string trainerStagedError;
+        trainer->stagedTrainer_ = Integration::Gen3::Gen3StagedTrainerEditor::create(
+            save.sourceBytes(), metadata.sourceGame, trainerStagedError);
         return trainer;
+    }
+
+    bool FRLGReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
+        error.clear();
+        if (!stagedPokemon_) {
+            error = "Generation III staged Pokemon editing unavailable";
+            return false;
+        }
+        // Presentation must reflect the in-progress sparse carry (source holes visible)
+        // without turning that transaction into an exportable save. begin/place/cancel validate
+        // staged_ themselves; strict parse below is a second presentation-only check.
+        const auto& bytes = stagedPokemon_->stagedBytes();
+        if (bytes.empty()) {
+            error = "Generation III staged Pokemon presentation is empty";
+            return false;
+        }
+        auto parsed = Integration::Gen3::parse(bytes, stagedPokemon_->sourceGame());
+        if (!parsed) {
+            error = parsed.detail.empty()
+                ? std::string(Integration::Gen3::errorMessage(parsed.error))
+                : parsed.detail;
+            return false;
+        }
+
+        decltype(boxes) displayBoxes(boxCount_);
+        for (const auto& record : parsed.save->boxes()) {
+            if (record.location.kind != Integration::Gen3::PokemonLocation::Kind::Box ||
+                record.location.box >= displayBoxes.size() ||
+                record.location.slot >= slotsPerBox_) {
+                error = "strict Generation III staged reparse returned an invalid box location";
+                return false;
+            }
+            auto pokemon = makePokemon(record, 80, error);
+            if (!pokemon) return false;
+            displayBoxes[record.location.box][record.location.slot] = std::move(pokemon);
+        }
+        if (parsed.save->lastEnumerationError() != Integration::Gen3::SaveError::None) {
+            error = "strict Generation III staged reparse could not enumerate boxes";
+            return false;
+        }
+        boxes.swap(displayBoxes);
+        decltype(party) displayParty;
+        for(const auto& record:parsed.save->party()) {
+            auto pokemon=makePokemon(record,100,error);
+            if(!pokemon)return false;
+            displayParty.push_back(std::move(pokemon));
+        }
+        if(parsed.save->lastEnumerationError()!=Integration::Gen3::SaveError::None) {
+            error="strict Generation III staged Party enumeration failed";return false;
+        }
+        party.swap(displayParty);
+        return true;
     }
 
     bool FRLGReadOnlyTrainer::populate(
         const Integration::Gen3::ReadOnlySave& save, std::string& error) {
         const auto& strictTrainer = save.trainer();
+        nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,8};
+        const auto dex = save.dexProgress();
+        nativeDexProgress = {dex.seen,dex.caught,dex.total};
         trainerName = strictTrainer.name;
         trainerGender = strictTrainer.gender;
         TID16 = strictTrainer.tid16;

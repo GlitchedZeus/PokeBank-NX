@@ -1,10 +1,12 @@
 #include "Legacy/LegacySourceBindings.h"
+#include "Integration/Gen5/Gen5SourcePathIdentity.h"
 
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <utility>
 #include <vector>
 #ifdef __SWITCH__
@@ -14,7 +16,24 @@ extern "C" Result fsdevGetLastResult(void) __attribute__((weak));
 
 namespace PokeVault::Legacy {
     namespace {
-        using Owners = std::unordered_map<std::string, std::string>;
+        using Owners = std::unordered_map<std::string, BindingRecord>;
+        bool validSourceExtension(const BindingRecord& binding) {
+            if (binding.sourceVariant.empty())
+                return binding.physicalIdentity.empty() && binding.contentFingerprint.empty();
+            if (!binding.contentFingerprint.empty() &&
+                (binding.physicalIdentity.empty() || binding.contentFingerprint.size() != 64 ||
+                 !std::all_of(binding.contentFingerprint.begin(),binding.contentFingerprint.end(),
+                    [](unsigned char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'); })))
+                return false;
+            const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";
+            const bool sequel = binding.gameIdentity == "black2_nds" || binding.gameIdentity == "white2_nds";
+            return !binding.sourcePath.empty() &&
+                ((bw && binding.expectedRawFamily == "BW") ||
+                 (sequel && binding.expectedRawFamily == "B2W2")) &&
+                (binding.sourceVariant == "gen5-copy-0-primary" ||
+                 binding.sourceVariant == "gen5-copy-1-backup") &&
+                binding.physicalIdentity.find('\0') == std::string::npos;
+        }
         constexpr const char* Header = "# PokeBank NX legacy source bindings v1\n";
         enum class ReadStatus { Missing, Valid, Invalid };
         char hexDigit(unsigned value) noexcept {
@@ -78,13 +97,38 @@ namespace PokeVault::Legacy {
             while (offset < bytes.size()) {
                 const size_t end = bytes.find('\n', offset);
                 const std::string_view row(bytes.data() + offset, end - offset);
-                const size_t sep = row.find('\t');
-                std::string source, profile;
-                if (sep == std::string_view::npos ||
-                    row.find('\t', sep + 1) != std::string_view::npos ||
-                    !hexDecode(row.substr(0, sep), source) ||
-                    !hexDecode(row.substr(sep + 1), profile) ||
-                    !owners.emplace(std::move(source), std::move(profile)).second) {
+                std::vector<std::string> fields;
+                size_t start = 0;
+                bool decoded = true;
+                do {
+                    const size_t tab = row.find('\t', start);
+                    std::string field;
+                    if (!hexDecode(row.substr(start, tab == std::string_view::npos
+                        ? row.size() - start : tab - start), field) ||
+                        field.find('\0') != std::string::npos) { decoded = false; break; }
+                    fields.push_back(std::move(field));
+                    if (tab == std::string_view::npos) break;
+                    start = tab + 1;
+                } while (fields.size() <= 9);
+                if (!decoded || (fields.size() != 2 && fields.size() != 3 &&
+                                 fields.size() != 6 && fields.size() != 7 && fields.size() != 8 && fields.size() != 9)) {
+                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
+                }
+                BindingRecord binding;
+                binding.profileIdentity = fields[1];
+                if (fields.size() >= 3) binding.gameIdentity = fields[2];
+                if (fields.size() >= 6) {
+                    binding.sourcePath = fields[3];
+                    binding.sourceType = fields[4];
+                    binding.expectedRawFamily = fields[5];
+                }
+                if (fields.size() >= 7) binding.sourceVariant = fields[6];
+                if (fields.size() >= 8) binding.physicalIdentity = fields[7];
+                if (fields.size() == 9) binding.contentFingerprint = fields[8];
+                if (!validSourceExtension(binding)) {
+                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
+                }
+                if (!owners.emplace(fields[0], std::move(binding)).second) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 offset = end + 1;
@@ -93,11 +137,26 @@ namespace PokeVault::Legacy {
         }
 
         std::string serialize(const Owners& owners) {
-            std::vector<std::pair<std::string, std::string>> ordered(owners.begin(), owners.end());
-            std::sort(ordered.begin(), ordered.end());
+            std::vector<std::pair<std::string, BindingRecord>> ordered(owners.begin(), owners.end());
+            std::sort(ordered.begin(), ordered.end(),
+                      [](const auto& a, const auto& b) { return a.first < b.first; });
             std::string bytes = Header;
-            for (const auto& [source, profile] : ordered)
-                bytes += hexEncode(source) + "\t" + hexEncode(profile) + "\n";
+            for (const auto& [source, binding] : ordered) {
+                bytes += hexEncode(source) + "\t" + hexEncode(binding.profileIdentity);
+                if (!binding.gameIdentity.empty())
+                    bytes += "\t" + hexEncode(binding.gameIdentity);
+                if (!binding.sourcePath.empty())
+                    bytes += "\t" + hexEncode(binding.sourcePath) + "\t" +
+                        hexEncode(binding.sourceType) + "\t" + hexEncode(binding.expectedRawFamily);
+                if (!binding.sourceVariant.empty()) {
+                    bytes += "\t" + hexEncode(binding.sourceVariant);
+                    if (!binding.physicalIdentity.empty())
+                        bytes += "\t" + hexEncode(binding.physicalIdentity);
+                    if (!binding.contentFingerprint.empty())
+                        bytes += "\t" + hexEncode(binding.contentFingerprint);
+                }
+                bytes += "\n";
+            }
             return bytes;
         }
     }
@@ -234,29 +293,337 @@ namespace PokeVault::Legacy {
         return false;
     }
 
+    bool LegacySourceBindings::assignAndSave(std::string_view source, std::string_view profile,
+                                             std::string_view game) {
+        const auto before = owners_;
+        if (!assign(source, profile, game)) { errno = EINVAL; return fail("assign"); }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
     bool LegacySourceBindings::assign(std::string_view sourceIdentity,
                                       std::string_view profileIdentity) {
         if (sourceIdentity.empty() || profileIdentity.empty()) return false;
-        owners_.insert_or_assign(std::string(sourceIdentity), std::string(profileIdentity));
+        auto [it, inserted] = owners_.try_emplace(
+            std::string(sourceIdentity),
+            BindingRecord{std::string(profileIdentity), {}, {}, {}, {}});
+        if (!inserted) it->second.profileIdentity = profileIdentity;
         return true;
+    }
+
+    bool LegacySourceBindings::assign(std::string_view sourceIdentity,
+                                      std::string_view profileIdentity,
+                                      std::string_view gameIdentity) {
+        if (sourceIdentity.empty() || profileIdentity.empty() || gameIdentity.empty()) return false;
+        owners_[std::string(sourceIdentity)] =
+            BindingRecord{std::string(profileIdentity), std::string(gameIdentity), {}, {}, {}};
+        return true;
+    }
+
+    bool LegacySourceBindings::assignFileAndSave(std::string_view source, BindingRecord binding) {
+        const auto safe = [](std::string_view value) {
+            return !value.empty() && value.find('\0') == std::string_view::npos;
+        };
+        if (!safe(source) || !safe(binding.profileIdentity) || !safe(binding.gameIdentity) ||
+            !safe(binding.sourcePath) || !safe(binding.sourceType) || !safe(binding.expectedRawFamily) ||
+            !validSourceExtension(binding)) {
+            errno = EINVAL; return fail("assign-file");
+        }
+        // Metadata transaction paths must never alias an assigned source save.
+        struct stat sourceInfo{};
+        const bool sourceExists = ::stat(binding.sourcePath.c_str(), &sourceInfo) == 0;
+        for (const auto& metadataPath : {storagePath_, storagePath_ + ".tmp", storagePath_ + ".bak"}) {
+            struct stat metadataInfo{};
+            const bool sameFile = sourceExists && ::stat(metadataPath.c_str(), &metadataInfo) == 0 &&
+                sourceInfo.st_ino != 0 && sourceInfo.st_dev == metadataInfo.st_dev &&
+                sourceInfo.st_ino == metadataInfo.st_ino;
+            const bool sdAlias = Integration::Gen5::gen5BindingGame(binding.gameIdentity) &&
+                Integration::Gen5::sameSdOwnershipPath(binding.sourcePath, metadataPath);
+            if (binding.sourcePath == metadataPath || sameFile || sdAlias) {
+                errno = EINVAL; return fail("assignment-aliases-metadata");
+            }
+        }
+        const auto before = owners_;
+        owners_[std::string(source)] = std::move(binding);
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    bool LegacySourceBindings::replaceFileAssignmentAndSave(
+        std::string_view sourceIdentity, BindingRecord binding) {
+        const auto safe = [](std::string_view value) {
+            return !value.empty() && value.find('\0') == std::string_view::npos;
+        };
+        if (!safe(sourceIdentity) || !safe(binding.profileIdentity) ||
+            !safe(binding.gameIdentity) || !safe(binding.sourcePath) ||
+            !safe(binding.sourceType) || !safe(binding.expectedRawFamily) || !validSourceExtension(binding)) {
+            errno = EINVAL;
+            return fail("replace-file-assignment");
+        }
+
+        Source::SaveInstance selected;
+        selected.sourceIdentity = sourceIdentity;
+        selected.sourcePath = binding.sourcePath;
+        selected.gameId = binding.gameIdentity;
+        selected.physicalIdentity = binding.physicalIdentity;
+        selected.contentFingerprint = binding.contentFingerprint;
+        applyClaims(selected);
+        if (!Source::visibleToProfile(selected, binding.profileIdentity)) {
+            errno = EEXIST; return fail("replace-file-assignment-conflict");
+        }
+        const auto existing = owners_.find(std::string(sourceIdentity));
+        if (existing != owners_.end() &&
+            (existing->second.profileIdentity != binding.profileIdentity ||
+             existing->second.gameIdentity != binding.gameIdentity)) {
+            errno = EEXIST;
+            return fail("replace-file-assignment-conflict");
+        }
+
+        struct stat sourceInfo{};
+        const bool sourceExists = ::stat(binding.sourcePath.c_str(), &sourceInfo) == 0;
+        for (const auto& metadataPath : {storagePath_, storagePath_ + ".tmp", storagePath_ + ".bak"}) {
+            struct stat metadataInfo{};
+            const bool sameFile = sourceExists && ::stat(metadataPath.c_str(), &metadataInfo) == 0 &&
+                sourceInfo.st_ino != 0 && sourceInfo.st_dev == metadataInfo.st_dev &&
+                sourceInfo.st_ino == metadataInfo.st_ino;
+            const bool sdAlias = Integration::Gen5::gen5BindingGame(binding.gameIdentity) &&
+                Integration::Gen5::sameSdOwnershipPath(binding.sourcePath, metadataPath);
+            if (binding.sourcePath == metadataPath || sameFile || sdAlias) {
+                errno = EINVAL;
+                return fail("assignment-aliases-metadata");
+            }
+        }
+
+        const auto before = owners_;
+        for (auto it = owners_.begin(); it != owners_.end();) {
+            if (it->second.profileIdentity == binding.profileIdentity &&
+                it->second.gameIdentity == binding.gameIdentity)
+                it = owners_.erase(it);
+            else
+                ++it;
+        }
+        owners_[std::string(sourceIdentity)] = std::move(binding);
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    void LegacySourceBindings::applyClaims(Source::SaveInstance& instance) const {
+        struct stat selected{};
+        const bool exists = ::stat(instance.path().c_str(), &selected) == 0 && selected.st_ino != 0;
+        for (const auto& [identity, binding] : owners_) {
+            bool matches = identity == instance.sourceIdentity ||
+                std::find(instance.sourceAliases.begin(), instance.sourceAliases.end(), identity) != instance.sourceAliases.end();
+            if (Integration::Gen5::gen5BindingGame(binding.gameIdentity) &&
+                Integration::Gen5::gen5BindingGame(instance.gameId))
+                matches |= Integration::Gen5::sameSdOwnershipPath(binding.sourcePath, instance.path());
+            if (!binding.sourcePath.empty()) {
+                struct stat bound{};
+                matches |= binding.sourcePath == instance.path() || (exists &&
+                    ::stat(binding.sourcePath.c_str(), &bound) == 0 &&
+                    selected.st_dev == bound.st_dev && selected.st_ino == bound.st_ino);
+            }
+            // Inodes can be reused after deletion. Live path/inode aliases
+            // above retain ownership through in-place emulator changes. A
+            // renamed source needs its original physical ID AND snapshot.
+            const bool samePhysical = !binding.physicalIdentity.empty() &&
+                binding.physicalIdentity == instance.physicalIdentity;
+            if (samePhysical && !matches) {
+                if (!binding.contentFingerprint.empty() && !instance.contentFingerprint.empty() &&
+                    binding.contentFingerprint == instance.contentFingerprint)
+                    matches = true;
+                else if (instance.gameId == binding.gameIdentity) {
+                    // Could be a changed moved source OR a reused inode for
+                    // another same-title save. Do not fabricate its owner.
+                    instance.claimConflict = true;
+                    instance.diagnostic = "Gen V source ownership is ambiguous; repair or forget the stale remembered assignment before choosing this file";
+                }
+            }
+            if (matches) {
+                Source::mergeProfileClaim(instance, binding.profileIdentity);
+                if (!instance.gameId.empty() && !binding.gameIdentity.empty() &&
+                    instance.gameId != binding.gameIdentity) instance.claimConflict = true;
+            }
+        }
+    }
+
+    bool LegacySourceBindings::claimInstanceAndSave(const Source::SaveInstance& instance,
+                                                    std::string_view profile) {
+        auto checked = instance;
+        applyClaims(checked);
+        if (profile.empty() || !instance.ready() || !Source::visibleToProfile(checked, profile)) {
+            errno = EEXIST; return fail("claim-source-conflict");
+        }
+        const auto before = owners_;
+        if (!assign(instance.sourceIdentity, profile)) { errno = EINVAL; return fail("claim-source"); }
+        for (const auto& alias : instance.sourceAliases) {
+            if (!assign(alias, profile)) { owners_ = before; errno = EINVAL; return fail("claim-alias"); }
+        }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    bool LegacySourceBindings::preferGameSourceAndSave(
+        const Source::SaveInstance& instance, std::string_view profileIdentity,
+        std::string_view gameIdentity) {
+        lastError_.clear();
+        auto checked = instance;
+        applyClaims(checked);
+        if (profileIdentity.empty() || gameIdentity.empty() || !instance.ready() ||
+            instance.gameId != gameIdentity ||
+            !Source::visibleToProfile(checked, profileIdentity)) {
+            errno = EEXIST;
+            return fail("prefer-game-source-conflict");
+        }
+
+        std::vector<std::string> identities;
+        identities.reserve(instance.sourceAliases.size() + 1);
+        identities.push_back(instance.sourceIdentity);
+        for (const auto& alias : instance.sourceAliases) {
+            if (!alias.empty() &&
+                std::find(identities.begin(), identities.end(), alias) == identities.end())
+                identities.push_back(alias);
+        }
+        if (identities.front().empty()) {
+            errno = EINVAL;
+            return fail("prefer-game-source-identity");
+        }
+
+        // Validate every identity before changing the in-memory map. File-backed Gen IV rows are
+        // deliberately not repurposed as classic catalog preferences.
+        for (const auto& identity : identities) {
+            const auto found = owners_.find(identity);
+            if (found == owners_.end()) continue;
+            if (found->second.profileIdentity != profileIdentity ||
+                !found->second.sourcePath.empty()) {
+                errno = EEXIST;
+                return fail("prefer-game-source-conflict");
+            }
+        }
+
+        const auto before = owners_;
+        // Clear only the prior catalog preference. Keep its profile claim so choosing save B never
+        // makes save A suddenly visible to another profile.
+        for (auto& [identity, binding] : owners_) {
+            (void)identity;
+            if (binding.profileIdentity == profileIdentity &&
+                binding.gameIdentity == gameIdentity && binding.sourcePath.empty())
+                binding.gameIdentity.clear();
+        }
+
+        auto& primary = owners_[instance.sourceIdentity];
+        primary.profileIdentity = std::string(profileIdentity);
+        primary.gameIdentity = std::string(gameIdentity);
+        for (size_t index = 1; index < identities.size(); ++index) {
+            auto& alias = owners_[identities[index]];
+            alias.profileIdentity = std::string(profileIdentity);
+            // Only the canonical identity carries the preference, otherwise one physical file's
+            // aliases would look like multiple preferred saves.
+            alias.gameIdentity.clear();
+        }
+
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    bool LegacySourceBindings::isPreferredGameSource(
+        const Source::SaveInstance& instance, std::string_view profileIdentity,
+        std::string_view gameIdentity) const {
+        if (profileIdentity.empty() || gameIdentity.empty() || instance.gameId != gameIdentity)
+            return false;
+        const auto matches = [&](const std::string& identity) {
+            const auto found = owners_.find(identity);
+            return found != owners_.end() &&
+                found->second.profileIdentity == profileIdentity &&
+                found->second.gameIdentity == gameIdentity;
+        };
+        if (matches(instance.sourceIdentity)) return true;
+        return std::any_of(instance.sourceAliases.begin(), instance.sourceAliases.end(), matches);
+    }
+
+    bool LegacySourceBindings::unassignGameAndSave(
+        std::string_view profileIdentity, std::string_view gameIdentity) {
+        if (profileIdentity.empty() || gameIdentity.empty()) {
+            errno = EINVAL;
+            return fail("unassign-game");
+        }
+        const auto before = owners_;
+        size_t removed = 0;
+        for (auto it = owners_.begin(); it != owners_.end();) {
+            if (it->second.profileIdentity == profileIdentity &&
+                it->second.gameIdentity == gameIdentity) {
+                it = owners_.erase(it);
+                ++removed;
+            } else {
+                ++it;
+            }
+        }
+        if (removed == 0) {
+            errno = ENOENT;
+            return fail("unassign-game");
+        }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    AssignedFile LegacySourceBindings::resolveFileForGame(std::string_view profile,
+                                                          std::string_view game) const {
+        AssignedFile result;
+        for (const auto& [identity, binding] : owners_) {
+            if (binding.profileIdentity != profile || binding.gameIdentity != game) continue;
+            if (!result.sourceIdentity.empty()) {
+                result.status = AssignedFileStatus::Ambiguous;
+                return result; // Never pick an arbitrary one, even if one file is missing.
+            }
+            result.sourceIdentity = identity;
+            result.binding = binding;
+        }
+        if (result.sourceIdentity.empty()) return result;
+        if (result.binding.sourcePath.empty()) return result; // Old catalog-only assignment.
+        struct stat info{};
+        if (::stat(result.binding.sourcePath.c_str(), &info) != 0) {
+            result.status = errno == ENOENT || errno == ENOTDIR
+                ? AssignedFileStatus::Missing : AssignedFileStatus::Unreadable;
+        } else {
+            result.status = S_ISREG(info.st_mode) ? AssignedFileStatus::Ready : AssignedFileStatus::Unreadable;
+        }
+        return result;
     }
 
     bool LegacySourceBindings::unassign(std::string_view sourceIdentity) {
         return owners_.erase(std::string(sourceIdentity)) != 0;
     }
 
+    bool LegacySourceBindings::unassignAndSave(std::string_view sourceIdentity) {
+        const auto before = owners_;
+        if (!unassign(sourceIdentity)) { errno = EINVAL; return fail("unassign"); }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
     bool LegacySourceBindings::isAssigned(std::string_view sourceIdentity) const {
-        return owners_.contains(std::string(sourceIdentity));
+        return owners_.find(std::string(sourceIdentity)) != owners_.end();
     }
 
     bool LegacySourceBindings::isVisibleTo(std::string_view sourceIdentity,
                                            std::string_view profileIdentity) const {
         const auto found = owners_.find(std::string(sourceIdentity));
-        return found != owners_.end() && found->second == profileIdentity;
+        return found != owners_.end() && found->second.profileIdentity == profileIdentity;
     }
 
     std::string LegacySourceBindings::assignedProfile(std::string_view sourceIdentity) const {
         const auto found = owners_.find(std::string(sourceIdentity));
-        return found == owners_.end() ? std::string{} : found->second;
+        return found == owners_.end() ? std::string{} : found->second.profileIdentity;
+    }
+
+    std::string LegacySourceBindings::assignedGame(std::string_view sourceIdentity) const {
+        const auto found = owners_.find(std::string(sourceIdentity));
+        return found == owners_.end() ? std::string{} : found->second.gameIdentity;
     }
 }

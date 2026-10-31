@@ -1,7 +1,10 @@
+#include "Source/SaveInstance.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
 #include "Legacy/RetroArchRBYDiscovery.h"
+#include "Legacy/RetroArchGSCDiscovery.h"
 
 #include "Utils/SHA256.h"
+#include "Save/RtcFooter.h"
 
 #include <algorithm>
 #include <array>
@@ -9,6 +12,8 @@
 #include <cstdio>
 #include <dirent.h>
 #include <set>
+#include <string_view>
+#include <vector>
 #include <sys/stat.h>
 
 namespace PokeVault::Legacy {
@@ -108,12 +113,58 @@ namespace PokeVault::Legacy {
             return extension == ".sav" || extension == ".srm";
         }
 
-        IdentityHint identityHint(const std::string& path) {
-            std::string compact;
-            compact.reserve(path.size());
-            for (unsigned char c : path)
-                if (std::isalnum(c)) compact.push_back(static_cast<char>(std::tolower(c)));
+        // Lower-case alphanumeric tokens of the save's own file stem and its immediate folder.
+        // Higher directories never decide identity (QA-F6): "/myleafgreenerybackups/game.sav" or
+        // "/backups/emerald-era/firered/x.sav" must not be read through an unrelated name.
+        std::vector<std::string> identityTokens(const std::string& path) {
+            std::string scope = path;
+            const size_t dot = scope.find_last_of('.');
+            const size_t slash = scope.find_last_of("/\\");
+            if (dot != std::string::npos && (slash == std::string::npos || dot > slash))
+                scope.erase(dot);
+            const size_t fileStart = scope.find_last_of("/\\");
+            if (fileStart != std::string::npos) {
+                const size_t folderStart = fileStart == 0 ? std::string::npos
+                                                          : scope.find_last_of("/\\", fileStart - 1);
+                scope = scope.substr(folderStart == std::string::npos ? 0 : folderStart + 1);
+            }
+            std::vector<std::string> tokens;
+            std::string token;
+            for (size_t i = 0; i <= scope.size(); ++i) {
+                const unsigned char c = i < scope.size() ? static_cast<unsigned char>(scope[i]) : '/';
+                if (std::isalnum(c)) {
+                    token.push_back(static_cast<char>(std::tolower(c)));
+                } else if (!token.empty()) {
+                    tokens.push_back(std::move(token));
+                    token.clear();
+                }
+            }
+            return tokens;
+        }
 
+        // A release is named by an isolated token: "firered", "pokemonfirered", "firered" +
+        // "version" (also "pokemonfireredversion"), or two adjacent tokens such as "Fire Red".
+        bool tokenNamesRelease(const std::vector<std::string>& tokens, std::string_view release) {
+            auto exact = [&](std::string_view token) {
+                for (const std::string_view prefix : {std::string_view{}, std::string_view{"pokemon"},
+                                                      std::string_view{"poke"}})
+                    for (const std::string_view suffix : {std::string_view{}, std::string_view{"version"}})
+                        if (token.size() == prefix.size() + release.size() + suffix.size() &&
+                            token.substr(0, prefix.size()) == prefix &&
+                            token.substr(prefix.size(), release.size()) == release &&
+                            token.substr(prefix.size() + release.size()) == suffix)
+                            return true;
+                return false;
+            };
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                if (exact(tokens[i])) return true;
+                if (i + 1 < tokens.size() && exact(tokens[i] + tokens[i + 1])) return true;
+            }
+            return false;
+        }
+
+        IdentityHint identityHint(const std::string& path) {
+            const auto tokens = identityTokens(path);
             const std::array<std::pair<std::string_view, IdentityHint>, 5> names{{
                 {"firered", IdentityHint::FireRed}, {"leafgreen", IdentityHint::LeafGreen},
                 {"sapphire", IdentityHint::Sapphire}, {"emerald", IdentityHint::Emerald},
@@ -122,7 +173,7 @@ namespace PokeVault::Legacy {
             IdentityHint result = IdentityHint::None;
             size_t matches = 0;
             for (const auto& [needle, hint] : names) {
-                if (compact.find(needle) == std::string::npos) continue;
+                if (!tokenNamesRelease(tokens, needle)) continue;
                 result = hint;
                 ++matches;
             }
@@ -174,10 +225,12 @@ namespace PokeVault::Legacy {
             source.fileSize = static_cast<uint64_t>(metadata.st_size);
             source.modifiedTime = static_cast<int64_t>(metadata.st_mtime);
             const size_t size = static_cast<size_t>(metadata.st_size);
-            if (size != 0x20000) {
+            std::size_t rtcFooterSize = 0;
+            if (!PokeVault::Save::splitRtcPayloadSize(
+                    size, Integration::Gen3::GEN3_SAVE_SIZE, rtcFooterSize)) {
                 source.status = LegacySourceStatus::InvalidSave;
                 source.parseError = Integration::Gen3::SaveError::WrongSize;
-                source.detail = "candidate is not an exact 128 KiB Gen III save";
+                source.detail = "candidate is not a 128 KiB Gen III save with a recognized RTC footer";
                 return source;
             }
 
@@ -253,7 +306,12 @@ namespace PokeVault::Legacy {
                 struct stat metadata{};
                 if (!isRegularFile(path, &metadata)) continue;
                 const std::string fileIdentity = filesystemIdentity(path);
-                if (!state.visitedFiles.insert(fileIdentity).second) continue;
+                if (!state.visitedFiles.insert(fileIdentity).second) {
+                    for (auto& existing : state.result.sources)
+                        if (existing.canonicalPath == fileIdentity)
+                            Source::addSourceAlias(existing, sourceIdentity(path));
+                    continue;
+                }
                 if (state.result.filesExamined >= state.limits.maxFiles) {
                     state.result.limitReached = true;
                     break;
@@ -282,21 +340,69 @@ namespace PokeVault::Legacy {
             return LegacySourceStatus::ReadError;
         }
 
-        FRLGSource importRBYSource(const RBYSource& input) {
+        LegacySourceStatus mapGSCStatus(GSCSourceStatus status) noexcept {
+            switch (status) {
+                case GSCSourceStatus::Ready: return LegacySourceStatus::Ready;
+                case GSCSourceStatus::InvalidSave: return LegacySourceStatus::InvalidSave;
+                case GSCSourceStatus::AmbiguousIdentity: return LegacySourceStatus::AmbiguousIdentity;
+                case GSCSourceStatus::ReadError: return LegacySourceStatus::ReadError;
+                case GSCSourceStatus::ScanLimitReached: return LegacySourceStatus::ScanLimitReached;
+            }
+            return LegacySourceStatus::ReadError;
+        }
+
+        FRLGSource importRBYSource(const RBYSource& input,
+                                   std::string_view provider = "RetroArch") {
             FRLGSource output;
             output.path = input.path;
             output.normalizedPath = input.normalizedPath;
             output.sourceIdentity = input.sourceIdentity;
+            output.sourceAliases = input.sourceAliases;
             output.canonicalPath = input.canonicalPath;
             output.fileSize = input.fileSize;
             output.modifiedTime = input.modifiedTime;
             output.contentFingerprint = input.contentFingerprint;
             output.gameId = input.gameId;
+            output.providerLabel = std::string(provider);
             output.status = mapRBYStatus(input.status);
             output.gen1ParseError = input.parseError;
             output.detail = input.detail;
             output.gen1Save = input.save;
             return output;
+        }
+
+        FRLGSource importGSCSource(const GSCSource& input,
+                                   std::string_view provider = "RetroArch") {
+            FRLGSource output;
+            output.path = input.path;
+            output.normalizedPath = input.normalizedPath;
+            output.sourceIdentity = input.sourceIdentity;
+            output.sourceAliases = input.sourceAliases;
+            output.canonicalPath = input.canonicalPath;
+            output.fileSize = input.fileSize;
+            output.modifiedTime = input.modifiedTime;
+            output.contentFingerprint = input.contentFingerprint;
+            output.gameId = input.gameId;
+            output.providerLabel = std::string(provider);
+            output.status = mapGSCStatus(input.status);
+            output.gen2ParseError = input.parseError;
+            output.detail = input.detail;
+            output.gen2Save = input.save;
+            return output;
+        }
+
+        void importRootKind(FRLGDiscoveryResult& result, GSCDiscoveryResult::RootKind kind) {
+            if (result.activeRootKind != FRLGDiscoveryResult::RootKind::None) return;
+            switch (kind) {
+                case GSCDiscoveryResult::RootKind::Configured:
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::Configured;
+                    break;
+                case GSCDiscoveryResult::RootKind::ConventionalFallback:
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
+                    break;
+                case GSCDiscoveryResult::RootKind::None:
+                    break;
+            }
         }
     }
 
@@ -316,6 +422,72 @@ namespace PokeVault::Legacy {
             if (!value.empty() && value != "default") {
                 roots.push_back(isAbsoluteOrDevicePath(value) ? value : join(dirname(configPath), value));
             }
+            break;
+        }
+        std::fclose(file);
+        return roots;
+    }
+
+    std::vector<std::string> mGBASaveRootsFromConfig(const std::string& configPath) {
+        std::vector<std::string> roots;
+        FILE* file = std::fopen(configPath.c_str(), "rb");
+        if (!file) return roots;
+
+        char line[2048];
+        bool inSection = false;
+        while (std::fgets(line, sizeof(line), file)) {
+            std::string value = trim(std::string(line));
+            if (value.empty() || value.front() == ';' || value.front() == '#') continue;
+            if (value.front() == '[') {
+                inSection = true;
+                continue;
+            }
+            if (inSection) continue; // mCoreConfigMap reads savegamePath from the root table.
+
+            const size_t equals = value.find('=');
+            if (equals == std::string::npos ||
+                trim(value.substr(0, equals)) != "savegamePath") continue;
+            value = trim(value.substr(equals + 1));
+            if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+                value = value.substr(1, value.size() - 2);
+            if (value.empty()) break; // Empty means "same directory as ROM"; never crawl it.
+
+            // A provider config is permission to inspect that provider's save directory, not a
+            // license to crawl the SD card. Reject parent traversal and filesystem roots even if
+            // an unusual/malicious config asks mGBA itself to use them.
+            auto hasParentSegment = [](std::string_view path) {
+                size_t start = 0;
+                while (start <= path.size()) {
+                    const size_t end = path.find_first_of("/\\", start);
+                    const std::string_view segment =
+                        path.substr(start, end == std::string_view::npos
+                            ? path.size() - start : end - start);
+                    if (segment == "..") return true;
+                    if (end == std::string_view::npos) break;
+                    start = end + 1;
+                }
+                return false;
+            };
+            if (hasParentSegment(value)) break;
+
+            const size_t device = configPath.find(":/");
+            std::string candidate;
+            if (value.front() == '/' && device != std::string::npos) {
+                // mGBA's Switch build sees /foo at the SD filesystem root. PokeBank uses fsdev's
+                // explicit sdmc:/ spelling, so preserve the same root without guessing.
+                candidate = configPath.substr(0, device + 1) + value;
+            } else if (isAbsoluteOrDevicePath(value)) {
+                candidate = value;
+            } else {
+                candidate = join(dirname(configPath), value);
+            }
+
+            const std::string normalized = normalizedPath(candidate);
+            const size_t candidateDevice = normalized.find(":/");
+            const bool deviceRoot = candidateDevice != std::string::npos &&
+                normalized.size() == candidateDevice + 2;
+            if (normalized == "/" || deviceRoot) break;
+            roots.push_back(std::move(candidate));
             break;
         }
         std::fclose(file);
@@ -350,17 +522,16 @@ namespace PokeVault::Legacy {
             kind = FRLGDiscoveryResult::RootKind::ConventionalFallback;
         }
 
-        // Keep the already accepted Gen III traversal unchanged, then independently run the strict
-        // Gen I scanner over the same approved RetroArch battery-save root. The two parsers never
-        // reinterpret each other's data; this merge is presentation/catalog plumbing only.
+        // Keep the accepted Gen III traversal unchanged, then independently run strict Gen I and
+        // Gen II scanners over the same approved RetroArch battery-save root. This is presentation
+        // plumbing only: no parser is allowed to reinterpret another generation's bytes.
         auto result = discoverFRLGSaves(selectedRoots, limits);
         result.activeRootKind = kind;
 
         RBYScanLimits rbyLimits;
         rbyLimits.maxDepth = limits.maxDepth;
         rbyLimits.maxFiles = limits.maxFiles;
-        auto rby = discoverConfiguredRetroArchRBYSaves(
-            rbyLimits, configPath, conventionalRoot);
+        auto rby = discoverConfiguredRetroArchRBYSaves(rbyLimits, configPath, conventionalRoot);
         result.filesExamined = std::max(result.filesExamined, rby.filesExamined);
         result.limitReached = result.limitReached || rby.limitReached;
         if (result.activeRoot.empty()) result.activeRoot = rby.activeRoot;
@@ -376,9 +547,118 @@ namespace PokeVault::Legacy {
                     break;
             }
         }
-        result.sources.reserve(result.sources.size() + rby.sources.size());
+
+        GSCScanLimits gscLimits;
+        gscLimits.maxDepth = limits.maxDepth;
+        gscLimits.maxFiles = limits.maxFiles;
+        auto gsc = discoverConfiguredRetroArchGSCSaves(gscLimits, configPath, conventionalRoot);
+        result.filesExamined = std::max(result.filesExamined, gsc.filesExamined);
+        result.limitReached = result.limitReached || gsc.limitReached;
+        if (result.activeRoot.empty()) result.activeRoot = gsc.activeRoot;
+        importRootKind(result, gsc.activeRootKind);
+
+        result.sources.reserve(result.sources.size() + rby.sources.size() + gsc.sources.size());
         for (const auto& source : rby.sources)
             result.sources.push_back(importRBYSource(source));
+        for (const auto& source : gsc.sources)
+            result.sources.push_back(importGSCSource(source));
+        return result;
+    }
+
+    FRLGDiscoveryResult discoverConfiguredLegacySaves(
+        ScanLimits limits, const std::string& retroArchConfigPath,
+        const std::string& retroArchConventionalRoot, const std::string& mGBAConfigPath,
+        const std::string& ticoSaveBase) {
+        if (limits.maxFiles == 0) limits.maxFiles = 1;
+        auto result = discoverConfiguredRetroArchFRLGSaves(
+            limits, retroArchConfigPath, retroArchConventionalRoot);
+
+        auto physicalKey = [](const FRLGSource& source) -> const std::string& {
+            return source.canonicalPath.empty() ? source.normalizedPath : source.canonicalPath;
+        };
+        auto appendUnique = [&](FRLGSource source) {
+            const std::string key = physicalKey(source);
+            auto duplicate = std::find_if(result.sources.begin(), result.sources.end(),
+                [&](const auto& existing) { return physicalKey(existing) == key; });
+            if (duplicate == result.sources.end()) result.sources.push_back(std::move(source));
+            else {
+                Source::addSourceAlias(*duplicate, source.sourceIdentity);
+                for (const auto& alias : source.sourceAliases) Source::addSourceAlias(*duplicate, alias);
+            }
+        };
+
+        // Every additive provider must hand us an exact approved battery-save root. This helper
+        // spends only the remaining global file budget and still lets the independent Gen I/II/III
+        // parsers validate the bytes; provider identity never changes parsing semantics.
+        auto appendProvider = [&](const std::vector<std::string>& roots,
+                                  std::string_view provider, size_t providerMaxDepth) {
+            if (roots.empty() || !isDirectory(roots.front()) || result.limitReached) return;
+            if (result.filesExamined >= limits.maxFiles) {
+                result.limitReached = true;
+                return;
+            }
+
+            const size_t remaining = limits.maxFiles - result.filesExamined;
+            const ScanLimits providerLimits{providerMaxDepth, remaining};
+            auto gba = discoverFRLGSaves(roots, providerLimits);
+
+            RBYScanLimits rbyLimits;
+            rbyLimits.maxDepth = providerMaxDepth;
+            rbyLimits.maxFiles = remaining;
+            auto rby = discoverRBYSaves(roots, rbyLimits);
+
+            GSCScanLimits gscLimits;
+            gscLimits.maxDepth = providerMaxDepth;
+            gscLimits.maxFiles = remaining;
+            auto gsc = discoverGSCSaves(roots, gscLimits);
+
+            const size_t providerExamined =
+                std::max({gba.filesExamined, rby.filesExamined, gsc.filesExamined});
+            result.filesExamined += providerExamined;
+            result.limitReached = result.limitReached || gba.limitReached ||
+                                  rby.limitReached || gsc.limitReached;
+            if (result.activeRoot.empty()) {
+                if (!gba.activeRoot.empty()) result.activeRoot = gba.activeRoot;
+                else if (!rby.activeRoot.empty()) result.activeRoot = rby.activeRoot;
+                else if (!gsc.activeRoot.empty()) result.activeRoot = gsc.activeRoot;
+                if (!result.activeRoot.empty())
+                    result.activeRootKind = FRLGDiscoveryResult::RootKind::Configured;
+            }
+
+            for (auto& source : gba.sources) {
+                source.providerLabel = std::string(provider);
+                if (source.ready())
+                    source.detail = "validated read-only " + std::string(provider) +
+                                    " Generation III source";
+                appendUnique(std::move(source));
+            }
+            for (const auto& source : rby.sources) {
+                auto imported = importRBYSource(source, provider);
+                if (imported.ready())
+                    imported.detail = "validated read-only " + std::string(provider) +
+                                      " Generation I source";
+                appendUnique(std::move(imported));
+            }
+            for (const auto& source : gsc.sources) {
+                auto imported = importGSCSource(source, provider);
+                if (imported.ready())
+                    imported.detail = "validated read-only " + std::string(provider) +
+                                      " Generation II source";
+                appendUnique(std::move(imported));
+            }
+        };
+
+        appendProvider(mGBASaveRootsFromConfig(mGBAConfigPath), "mGBA", limits.maxDepth);
+
+        // Tico's public Gambatte core selects /tico/saves/gb or /tico/saves/gbc by slug,
+        // while its mGBA core owns /tico/saves/gba. Both write native .sav and accept .srm as a
+        // load fallback. Files are written directly in those folders, so inspect depth 0 only:
+        // never recurse from /tico/saves or from a Tico battery-save directory.
+        if (!ticoSaveBase.empty()) {
+            for (const char* slug : {"gb", "gbc", "gba"})
+                appendProvider(std::vector<std::string>{join(ticoSaveBase, slug)}, "Tico", 0);
+        }
+
         return result;
     }
 }
