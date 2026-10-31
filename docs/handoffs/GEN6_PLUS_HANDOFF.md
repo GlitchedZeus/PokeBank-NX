@@ -91,6 +91,9 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   gates). Artifact `PokeBank-NX-Gen6Plus-Experimental-b3d40b3a` (id 13058177412, zip sha256
   `3791796d43c740e53a547ffe4a0dd9d4e90129cd1de97276126032284ff8e284`); NRO SHA-256 in its `SHA256SUMS`.
   EXPERIMENTAL, NOT DEVICE TESTED.
+- **Experimental NRO of `b1cfc9e7` (+ Scarlet/Violet)**: CI run 41253352389 green (same gates). Artifact
+  `PokeBank-NX-Gen6Plus-Experimental-b1cfc9e7` (id 13061654379, zip sha256
+  `2d5c21d1f8c19ccf3e67ec8e9573cc2c99276a7654cb4cc23bfd34e85c3cd0e9`). The Z-A head is built by the next run.
 - **Scarlet/Violet**: PK9 shares PK8's size, encryption and every offset the shared editor writes, so the
   verified PK8 codec and the shared `Gen8RecordEdits` whitelist are reused; PK9-only reads (language 0xD5,
   Tera 0x94/0x95, scale 0x4A) feed the view. PKHeX's exact SV size rule + SwishCrypto hash, KMyStatus/KParty/
