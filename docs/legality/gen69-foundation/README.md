@@ -259,11 +259,11 @@ Tera type per encounter or evolution chain, ball per encounter, fateful flags, e
 ribbons and marks, memories, trash bytes, nicknamed records, and HOME history (pre-DLC learnset limits,
 height/weight 0/0 after a Legends: Arceus visit).
 
-## Encounter ball rule (every format)
+## Encounter ball and fateful rules (every format)
 
-`src/Legality/ModernBall.cpp`, called by all five analyzers after the ball range check, makes
-`BallVerifier.VerifyBall` encounter-independent. For each format and national species the
-oracle (`dumpballs`) runs `EncounterMovesetGenerator` over every game that can reach the format
+`src/Legality/ModernEncounter.cpp`, called by all five analyzers, makes `BallVerifier.VerifyBall`
+and `MiscFatefulEncounterVerifier` encounter-independent. For each format and national species the
+oracle (`dumpencounters`) runs `EncounterMovesetGenerator` over every game that can reach the format
 and every form of the species, and unions each encounter's balls: `IFixedBall`, egg
 inheritance (`BallContext6/7/HOME`, Poké Ball before Generation 6, never Master or Cherish),
 Dream World balls, GO restrictions (plus Master and Strange), and the game's wild balls. Every
@@ -272,9 +272,15 @@ Poké/Sport Ball and Sword/Shield's Poké Ball replacement for Legends: Arceus r
 format (PK8, PB8, PA8, PK9, PA9) checks the union over all Switch formats and Let's Go, because
 HOME also moves records back to older games. A ball outside the union is Invalid; a species with
 no generated encounter in the format is not decided. The masks are
-`include/Legality/ModernBallData.inc`, checked byte for byte by every `run.sh` mode. Which ball a
+`include/Legality/ModernEncounterData.inc`, checked byte for byte by every `run.sh` mode. Which ball a
 given encounter allows (and Heavy Ball, ability-dependent inheritance, curry) still needs
 encounter matching.
+
+The same pass records, per species, whether any encounter requires the fateful flag (in-game
+fateful statics, fateful mystery gifts and Gen III event gifts) and whether any requires it clear
+(everything else; a Gen III fateful egg allows both). A fateful flag no encounter of the species
+accepts is Invalid, in either direction: a Pidgey with the flag set, or a Manaphy without it.
+Gift receivability (version and language restrictions) still needs the gift itself.
 
 ## Nickname rule (every format)
 
@@ -307,34 +313,34 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 
 | Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
 |---|---|---:|---:|---:|---:|---:|---:|
-| PK6/PK7 | 1 / 4 | 88,012 | 42,094 | 45,918 | 37,976 (82.7%) | 0 | 0 |
-| PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 76,342 (83.1%) | 0 | 0 |
-| PK6/PK7 | 3 / 8 | 156,298 | 63,420 | 92,878 | 77,195 (83.1%) | 0 | 0 |
-| PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 38,948 (83.2%) | 0 | 0 |
-| PB7 | 1 / 8 | 5,324 | 1,447 | 3,877 | 3,608 (93.1%) | 0 | 0 |
-| PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,823 (93.6%) | 0 | 0 |
-| PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,279 (93.2%) | 0 | 0 |
-| PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,598 (93.5%) | 0 | 0 |
-| PA8 | 1 / 4 | 16,161 | 6,530 | 9,631 | 6,824 (70.9%) | 0 | 0 |
-| PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,491 (70.9%) | 0 | 0 |
-| PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 13,945 (71.3%) | 0 | 0 |
-| PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,610 (71.8%) | 0 | 0 |
-| PA9 | 1 / 4 | 20,953 | 9,460 | 11,493 | 8,069 (70.2%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 8,208 (69.8%) | 0 | 0 |
-| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 16,773 (69.2%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 8,264 (70.9%) | 0 | 0 |
-| PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,743 (78.6%) | 0 | 0 |
-| PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,971 (78.3%) | 0 | 0 |
-| PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 40,577 (78.3%) | 0 | 0 |
-| PK8 | 4 / 4 | 45,489 | 19,817 | 25,672 | 20,077 (78.2%) | 0 | 0 |
-| PB8 | 1 / 4 | 44,334 | 18,431 | 25,903 | 22,057 (85.2%) | 0 | 0 |
-| PB8 | 2 / 4 | 44,643 | 18,787 | 25,856 | 22,023 (85.2%) | 0 | 0 |
-| PB8 | 3 / 8 | 77,736 | 26,371 | 51,365 | 43,433 (84.6%) | 0 | 0 |
-| PB8 | 4 / 4 | 45,193 | 18,952 | 26,241 | 22,188 (84.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 39,685 | 18,653 | 21,032 | 18,061 (85.9%) | 0 | 0 |
-| PK9 | 2 / 4 | 39,929 | 18,565 | 21,364 | 18,374 (86.0%) | 0 | 0 |
-| PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 36,444 (86.6%) | 0 | 0 |
-| PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,821 (85.9%) | 0 | 0 |
+| PK6/PK7 | 1 / 4 | 88,012 | 42,094 | 45,918 | 39,080 (85.1%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 78,577 (85.5%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 156,298 | 63,420 | 92,878 | 79,528 (85.6%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 40,089 (85.6%) | 0 | 0 |
+| PB7 | 1 / 8 | 5,324 | 1,447 | 3,877 | 3,701 (95.5%) | 0 | 0 |
+| PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,870 (96.0%) | 0 | 0 |
+| PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,437 (95.2%) | 0 | 0 |
+| PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,682 (95.7%) | 0 | 0 |
+| PA8 | 1 / 4 | 16,161 | 6,530 | 9,631 | 6,950 (72.2%) | 0 | 0 |
+| PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,609 (72.2%) | 0 | 0 |
+| PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 14,265 (72.9%) | 0 | 0 |
+| PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,745 (73.3%) | 0 | 0 |
+| PA9 | 1 / 4 | 20,953 | 9,460 | 11,493 | 8,211 (71.4%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 8,369 (71.2%) | 0 | 0 |
+| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 17,131 (70.7%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 8,404 (72.1%) | 0 | 0 |
+| PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 21,059 (79.8%) | 0 | 0 |
+| PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 20,302 (79.6%) | 0 | 0 |
+| PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 41,262 (79.7%) | 0 | 0 |
+| PK8 | 4 / 4 | 45,489 | 19,817 | 25,672 | 20,418 (79.5%) | 0 | 0 |
+| PB8 | 1 / 4 | 44,334 | 18,431 | 25,903 | 22,320 (86.2%) | 0 | 0 |
+| PB8 | 2 / 4 | 44,643 | 18,787 | 25,856 | 22,322 (86.3%) | 0 | 0 |
+| PB8 | 3 / 8 | 77,736 | 26,371 | 51,365 | 44,007 (85.7%) | 0 | 0 |
+| PB8 | 4 / 4 | 45,193 | 18,952 | 26,241 | 22,462 (85.6%) | 0 | 0 |
+| PK9 | 1 / 4 | 39,685 | 18,653 | 21,032 | 18,356 (87.3%) | 0 | 0 |
+| PK9 | 2 / 4 | 39,929 | 18,565 | 21,364 | 18,641 (87.3%) | 0 | 0 |
+| PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 37,027 (88.0%) | 0 | 0 |
+| PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 18,117 (87.4%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.

@@ -12,7 +12,7 @@
 
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/ModernNickname.h"
-#include "Legality/ModernBall.h"
+#include "Legality/ModernEncounter.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen8a {
@@ -111,8 +111,9 @@ public:
         checkNature();
         if (ball() == 0 || ball() > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball()) + " cannot be held by a PA8");
-        else if (!ModernBall::possible(Modern::Format::PA8, species(), ball()))
+        else if (!ModernEncounter::ballPossible(Modern::Format::PA8, species(), ball()))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball()) + " is not possible for any encounter of the species");
+        checkFateful(Modern::Format::PA8, species(), (p_[0x22] & 1) != 0);
         checkLanguage();
         checkNickname();
         if (!Data::heldItemAllowed(u16(0x0A)))
@@ -267,6 +268,13 @@ private:
         }
         if (stat != nature && !Data::mintNature(stat))
             invalid(CheckIdentifier::Misc, "Stat nature is neither the nature nor a mint");
+    }
+
+    // MiscFatefulEncounterVerifier: the fateful flag in a state no encounter of the species takes.
+    void checkFateful(Modern::Format format, uint16_t species, bool fateful) {
+        if (ModernEncounter::fatefulPossible(format, species, fateful)) return;
+        invalid(CheckIdentifier::Encounter, fateful ? "Fateful encounter flag is set but no encounter of the species is fateful"
+                                                    : "Fateful encounter flag is clear but every encounter of the species is fateful");
     }
 
     // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).

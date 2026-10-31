@@ -25,7 +25,7 @@
 
 #include "Integration/Gen6/Gen6PK6.h"
 #include "Legality/Gen67Legality.h"
-#include "Legality/ModernBall.h"
+#include "Legality/ModernEncounter.h"
 #include "Legality/ModernNickname.h"
 #include "Legality/ModernLegality.h"
 
@@ -398,23 +398,41 @@ void testNickname(const std::vector<Record>& records) {
               "PK7 unflagged non-name: " + describe(unflagged));
 }
 
-// ModernBall (BallVerifier as a per-species union over every encounter).
+// ModernEncounter (BallVerifier and the fateful flag as per-species unions over every encounter).
 void testBall(const std::vector<Record>& records) {
-    namespace B = Legality::ModernBall;
+    namespace B = Legality::ModernEncounter;
     using Legality::Modern::Format;
     // Every PKHeX-valid PK6/PK7 fixture record's ball is possible for its species.
     for (const auto& r : records) {
         if (!r.pkhexValid || (r.format != Format::PK6 && r.format != Format::PK7)) continue;
-        check(B::possible(r.format, PK6::read16(r.plain, 0x08), r.plain[0xDC]), "valid fixture ball possible: " + r.label);
+        check(B::ballPossible(r.format, PK6::read16(r.plain, 0x08), r.plain[0xDC]), "valid fixture ball possible: " + r.label);
     }
     // Let's Go: Pikachu and Eevee are caught or gifted, never in a Dream Ball (25).
-    check(B::possible(Format::PB7, 25, 4) && !B::possible(Format::PB7, 25, 25), "PB7 Pikachu Poke yes, Dream no");
+    check(B::ballPossible(Format::PB7, 25, 4) && !B::ballPossible(Format::PB7, 25, 25), "PB7 Pikachu Poke yes, Dream no");
     // Undecided outside the table, for ball ids past 63 and for species without encounters.
-    check(B::possible(Format::PB7, 2000, 25) && B::possible(Format::PK9, 25, 64) && B::possible(Format::Unknown, 25, 25),
+    check(B::ballPossible(Format::PB7, 2000, 25) && B::ballPossible(Format::PK9, 25, 64) && B::ballPossible(Format::Unknown, 25, 25),
           "undecided cases");
+    // Fateful flag: Pidgey (16) never has a fateful encounter; Manaphy (490) only has fateful ones.
+    check(!B::fatefulPossible(Format::PK7, 16, true) && B::fatefulPossible(Format::PK7, 16, false), "Pidgey is never fateful");
+    check(B::fatefulPossible(Format::PK8, 490, true) && !B::fatefulPossible(Format::PK8, 490, false), "Manaphy is always fateful");
+    check(B::fatefulPossible(Format::PK9, 2000, true) && B::fatefulPossible(Format::Unknown, 16, true), "fateful undecided cases");
+    {
+        const Record* pk7 = find(records, [](const Record& r) {
+            return r.pkhexValid && r.format == Format::PK7 && r.label.rfind("native7:base", 0) == 0;
+        });
+        if (pk7) {
+            const uint16_t sp = PK6::read16(pk7->plain, 0x08);
+            const bool fateful = (pk7->plain[0x1D] & 1) != 0;
+            if (!B::fatefulPossible(Format::PK7, sp, !fateful)) {
+                const auto r = analyzePlain(*pk7, edit(pk7->plain, [](auto& b) { b[0x1D] ^= 1; }));
+                check(r.verdict() == Verdict::Invalid && hasIssue(r, Severity::Invalid, "Fateful encounter flag"),
+                      "PK7 flipped fateful flag: " + describe(r));
+            }
+        }
+    }
     // A Switch format takes HOME's union: a ball any Switch game or Let's Go gives the species.
     for (uint8_t ball = 1; ball < 40; ++ball)
-        if (B::possible(Format::PK9, 25, ball)) check(B::possible(Format::PK8, 25, ball), "HOME union PK9 -> PK8");
+        if (B::ballPossible(Format::PK9, 25, ball)) check(B::ballPossible(Format::PK8, 25, ball), "HOME union PK9 -> PK8");
 }
 
 void testFuzz(const std::vector<Record>& records) {

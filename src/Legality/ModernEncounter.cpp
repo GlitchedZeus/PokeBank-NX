@@ -1,0 +1,74 @@
+// ModernEncounter.cpp - encounter facts as per-species unions: BallVerifier's ball sets and
+// MiscFatefulEncounterVerifier's fateful flag.
+// The tables are include/Legality/ModernEncounterData.inc, written by
+// tools/pkhex_gen67_diff/oracle ("dumpencounters") and checked against the pinned PKHeX in CI.
+#include "Legality/ModernEncounter.h"
+
+#include <array>
+#include <span>
+
+namespace Legality::ModernEncounter {
+namespace {
+
+#include "Legality/ModernEncounterData.inc"
+
+template <typename T>
+struct Tables {
+    std::span<const T> pk6, pk7, pb7, pk8, pb8, pa8, pk9, pa9;
+    std::span<const T> get(Modern::Format format) const noexcept {
+        using F = Modern::Format;
+        switch (format) {
+        case F::PK6: return pk6;
+        case F::PK7: return pk7;
+        case F::PB7: return pb7;
+        case F::PK8: return pk8;
+        case F::PB8: return pb8;
+        case F::PA8: return pa8;
+        case F::PK9: return pk9;
+        case F::PA9: return pa9;
+        case F::Unknown: break;
+        }
+        return {};
+    }
+};
+constexpr Tables<uint64_t> kBalls{kBalls6, kBalls7, kBalls7B, kBalls8, kBalls8B, kBalls8A, kBalls9, kBalls9A};
+constexpr Tables<uint8_t> kFateful{kFateful6, kFateful7, kFateful7B, kFateful8, kFateful8B, kFateful8A, kFateful9, kFateful9A};
+
+bool switchFormat(Modern::Format f) noexcept {
+    using F = Modern::Format;
+    return f == F::PK8 || f == F::PB8 || f == F::PA8 || f == F::PK9 || f == F::PA9;
+}
+
+// The species' entry in one format; 0 when it has no generated encounter there. HOME moves
+// records between every Switch format, including back to an older game (a Scarlet/Violet gift
+// in Sword/Shield), which the generator for the older format does not yield: a Switch format
+// takes the union over all of them and Let's Go once the format itself has an entry.
+template <typename T>
+T entry(const Tables<T>& tables, Modern::Format format, uint16_t species) noexcept {
+    using F = Modern::Format;
+    auto one = [&](F f) -> T {
+        const auto t = tables.get(f);
+        return species < t.size() ? t[species] : T{0};
+    };
+    T value = one(format);
+    if (value != 0 && switchFormat(format)) {
+        for (F other : {F::PB7, F::PK8, F::PB8, F::PA8, F::PK9, F::PA9})
+            value = static_cast<T>(value | one(other));
+    }
+    return value;
+}
+
+} // namespace
+
+bool ballPossible(Modern::Format format, uint16_t species, uint8_t ball) noexcept {
+    if (ball >= 64) return true;
+    const uint64_t allowed = entry(kBalls, format, species);
+    return allowed == 0 || ((allowed >> ball) & 1) != 0;
+}
+
+bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noexcept {
+    const uint8_t allowed = entry(kFateful, format, species);
+    return allowed == 0 || (allowed & (fateful ? 1 : 2)) != 0;
+}
+
+} // namespace Legality::ModernEncounter

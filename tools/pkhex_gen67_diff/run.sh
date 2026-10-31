@@ -26,7 +26,7 @@
 #    obedience level, TM flags, scale, ...). PK9 tables live in Gen8LegalityData.inc too.
 #    Every mode also checks ModernNicknameData.inc ("dumpnames": species names and the
 #    species whose fixed-nickname or fixed-language encounters relax the name rule) and
-#    ModernBallData.inc ("dumpballs": each species' ball union over every encounter).
+#    ModernEncounterData.inc ("dumpencounters": each species' ball union over every encounter).
 # 3. gen67_diff.cpp analyzes every record and fails when
 #    - PokeBank NX reports Invalid for a record PKHeX accepts (a false Invalid), or
 #    - PokeBank NX reports "No problems found" for a record PKHeX rejects (a false Valid).
@@ -61,10 +61,10 @@ if ! cmp -s "$work/names.inc" "$repo/include/Legality/ModernNicknameData.inc"; t
     diff "$repo/include/Legality/ModernNicknameData.inc" "$work/names.inc" | head -20
     exit 1
 fi
-dotnet "$work/oracle/PKHeXGen67Oracle.dll" dumpballs > "$work/balls.inc"
-if ! cmp -s "$work/balls.inc" "$repo/include/Legality/ModernBallData.inc"; then
-    echo "include/Legality/ModernBallData.inc differs from the PKHeX dump:"
-    diff "$repo/include/Legality/ModernBallData.inc" "$work/balls.inc" | head -20
+dotnet "$work/oracle/PKHeXGen67Oracle.dll" dumpencounters > "$work/balls.inc"
+if ! cmp -s "$work/balls.inc" "$repo/include/Legality/ModernEncounterData.inc"; then
+    echo "include/Legality/ModernEncounterData.inc differs from the PKHeX dump:"
+    diff "$repo/include/Legality/ModernEncounterData.inc" "$work/balls.inc" | head -20
     exit 1
 fi
 echo "generated $label tables, species names and encounter balls match PKHeX"
@@ -75,7 +75,7 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -I"$repo/include" "$here/gen67_diff.cpp
     "$repo/src/Legality/Gen8LegalityData.cpp" "$repo/src/Legality/Gen7bLegality.cpp" \
     "$repo/src/Legality/Gen7bLegalityData.cpp" "$repo/src/Legality/Gen8aLegality.cpp" \
     "$repo/src/Legality/Gen8aLegalityData.cpp" "$repo/src/Legality/Gen9aLegality.cpp" \
-    "$repo/src/Legality/Gen9aLegalityData.cpp" "$repo/src/Legality/ModernNickname.cpp" "$repo/src/Legality/ModernBall.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen67_diff"
+    "$repo/src/Legality/Gen9aLegalityData.cpp" "$repo/src/Legality/ModernNickname.cpp" "$repo/src/Legality/ModernEncounter.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen67_diff"
 status=0
 "$work/gen67_diff" "${SHOW:-20}" < "$work/pkhex.txt" > "$work/report.txt" || status=$?
 cat "$work/report.txt"

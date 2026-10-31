@@ -14,7 +14,7 @@
 
 #include "Integration/Gen6/Gen6PK6.h"
 #include "Legality/ModernNickname.h"
-#include "Legality/ModernBall.h"
+#include "Legality/ModernEncounter.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen7b {
@@ -81,6 +81,7 @@ public:
         checkAbility();
         if (pk_.nature() >= 25) invalid(CheckIdentifier::Misc, "Nature is out of range");
         checkBall();
+        checkFateful(Modern::Format::PB7, pk_.species(), (plain_[0x1D] & 1) != 0);
         checkLanguage();
         checkNickname();
         if (!Data::heldItemAllowed(pk_.heldItem()))
@@ -225,11 +226,18 @@ private:
         if (slots[number >> 1] != ability) invalid(CheckIdentifier::Ability, "Ability does not match the ability number");
     }
 
+    // MiscFatefulEncounterVerifier: the fateful flag in a state no encounter of the species takes.
+    void checkFateful(Modern::Format format, uint16_t species, bool fateful) {
+        if (ModernEncounter::fatefulPossible(format, species, fateful)) return;
+        invalid(CheckIdentifier::Encounter, fateful ? "Fateful encounter flag is set but no encounter of the species is fateful"
+                                                    : "Fateful encounter flag is clear but every encounter of the species is fateful");
+    }
+
     // BallVerifier: ball 0 or above Beast Ball.
     void checkBall() {
         const uint8_t ball = pk_.ball();
         if (ball == 0 || ball > Data::maxBall()) invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a PB7");
-        else if (!ModernBall::possible(Modern::Format::PB7, pk_.species(), ball))
+        else if (!ModernEncounter::ballPossible(Modern::Format::PB7, pk_.species(), ball))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " is not possible for any encounter of the species");
     }
 

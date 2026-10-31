@@ -14,7 +14,7 @@
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen67Legality.h"
 #include "Legality/ModernNickname.h"
-#include "Legality/ModernBall.h"
+#include "Legality/ModernEncounter.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen8 {
@@ -110,6 +110,7 @@ public:
         checkAbility();
         checkNature();
         checkBall();
+        checkFateful(sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8, species, (plain_[0x22] & 1) != 0);
         checkLanguage();
         checkNickname();
         checkHeldItem();
@@ -465,6 +466,13 @@ private:
             invalid(CheckIdentifier::Misc, "Stat nature is neither the nature nor a mint");
     }
 
+    // MiscFatefulEncounterVerifier: the fateful flag in a state no encounter of the species takes.
+    void checkFateful(Modern::Format format, uint16_t species, bool fateful) {
+        if (ModernEncounter::fatefulPossible(format, species, fateful)) return;
+        invalid(CheckIdentifier::Encounter, fateful ? "Fateful encounter flag is set but no encounter of the species is fateful"
+                                                    : "Fateful encounter flag is clear but every encounter of the species is fateful");
+    }
+
     // BallVerifier: no Sword/Shield record holds ball 0 or a ball above Beast Ball (Legends:
     // Arceus balls are replaced by a Poke Ball when the record moves to Sword/Shield); BD/SP
     // keeps Legends: Arceus balls, up to the Origin Ball.
@@ -472,7 +480,7 @@ private:
         const uint8_t ball = pk_.ball();
         if (ball == 0 || ball > Data::maxBall(ctx_))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a " + formatName());
-        else if (!ModernBall::possible(sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8, species(), ball))
+        else if (!ModernEncounter::ballPossible(sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8, species(), ball))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " is not possible for any encounter of the species");
     }
 
