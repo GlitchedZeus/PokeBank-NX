@@ -86,7 +86,7 @@ integrity check.
 Not implemented (keeps the report Incomplete): encounter tables, learnsets and move
 chronology, relearn moves, eggs beyond the structural checks, events/Wonder Cards, balls per
 encounter, IV/flawless counts, shiny locks, ribbons, memories, geolocation history, trash
-bytes and nicknames/word filter, Bank/Transporter history beyond the PID and met-location
+bytes and nicknamed records/word filter, Bank/Transporter history beyond the PID and met-location
 rules, fateful flags and Super Training.
 
 ## PB7 (Let's Go Pikachu/Eevee) rules
@@ -115,7 +115,7 @@ height and weight are recomputed in single precision without fused multiply-add,
 | Sizes | stored height or weight is not what its scalars give (Meltan and Melmetal excepted: fixed WB7 sizes need the gift) | `MiscVerifierPB7.VerifyCalculatedSizes` |
 
 Not implemented for PB7: encounter tables (wild, static, trades, GO Park), learnsets, WB7 gifts,
-ball per encounter, fateful flags, nicknames, trash bytes and memories.
+ball per encounter, fateful flags, nicknamed records, trash bytes and memories.
 
 ## PA8 (Legends: Arceus) rules
 
@@ -142,7 +142,7 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 Not decided for PA8: encounters (alpha flag per encounter, alpha scalars, fixed gifts),
 learnsets and mastery by level, PID = EC (fixed-EC gifts), HOME-calculated sizes (fused
 multiply-add) and pre-evolution sizes, Hyper Training minimum level, ball per encounter,
-nicknames, ribbons and memories.
+nicknamed records, ribbons and memories.
 
 ## PA9 (Legends: Z-A) rules
 
@@ -165,7 +165,7 @@ into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, b
 Not decided for PA9: empty or rearranged move slots (moves can be removed through HOME and the
 move menu; PKHeX checks them against the encounter's minimum moveset), encounters, the birth
 ability, Plus moves per level (a flag the line can learn is not decided), alpha per encounter, PID = EC, Hyper
-Training minimum level, ball per encounter, nicknames, ribbons and memories.
+Training minimum level, ball per encounter, nicknamed records, ribbons and memories.
 
 ## PK8 (Sword/Shield) rules
 
@@ -209,7 +209,7 @@ history.
 Not implemented for PK8 (keeps the report Incomplete): encounter tables (wild, raids, dens,
 gifts, eggs), learnsets and relearn moves, Gigantamax per encounter, HOME tracker and size
 re-roll history, egg locations, fateful flags, balls per encounter, IV/shiny/PID correlations
-per encounter, ribbons and marks, memories, trash bytes, nicknames/word filter, Pokémon GO
+per encounter, ribbons and marks, memories, trash bytes, nicknamed records/word filter, Pokémon GO
 and Let's Go transfer details.
 
 ## PB8 (Brilliant Diamond/Shining Pearl) rules
@@ -229,7 +229,7 @@ above that is not Sword/Shield-specific applies, with these differences:
 
 TR learnability (Sword/Shield TRs) is not checked for PB8. Not implemented for PB8: encounter
 tables (wild, Grand Underground, gifts, eggs, roamers), learnsets and TM flags, ball per
-encounter, fateful flags, egg locations, ribbons, memories, trash bytes and nicknames.
+encounter, fateful flags, egg locations, ribbons, memories, trash bytes and nicknamed records.
 
 ## PK9 (Scarlet/Violet) rules
 
@@ -256,8 +256,30 @@ non-Sword/Shield-specific PK8 rule applies, with these differences:
 
 Not implemented for PK9: encounter tables (wild, Tera raids, outbreaks, gifts, eggs), learnsets,
 Tera type per encounter or evolution chain, ball per encounter, fateful flags, egg locations,
-ribbons and marks, memories, trash bytes, nicknames, and HOME history (pre-DLC learnset limits,
+ribbons and marks, memories, trash bytes, nicknamed records, and HOME history (pre-DLC learnset limits,
 height/weight 0/0 after a Legends: Arceus visit).
+
+## Nickname rule (every format)
+
+`src/Legality/ModernNickname.cpp`, called by all five analyzers, mirrors two parts of
+`NicknameVerifier`:
+
+* **NickLengthShort**: an empty nickname is Invalid whatever the flags.
+* **VerifyUnNicknamed**: a record that is not an egg and whose nickname flag is clear must carry
+  its species' name (`SpeciesName.GetSpeciesNameGeneration`). PB7, PK8, PB8, PA8, PK9 and PA9
+  need the name in the record's own language; HOME's ASCII apostrophe is accepted for
+  Farfetch'd and Sirfetch'd. PK6/PK7 need the record's language only for a species with no
+  pre-evolution in any game that was never an egg; otherwise (an evolved record or a traded
+  egg may keep another language's name) the name must match one of the game's languages.
+
+The rule never decides a species whose evolution line includes a fixed-nickname in-game trade
+or gift (`IFixedNickname`) or a fixed-language, un-nicknamed mystery gift (`ILangNick`), since
+`NicknameVerifier` skips or relaxes the check for those encounters. It also leaves a PK7 name
+with Chinese private glyphs and an invalid language to the other rules. The species names,
+the Generation 7 Chinese renames, the language lists, those relaxed species and the
+no-pre-evolution set are `include/Legality/ModernNicknameData.inc` (oracle `dumpnames`), which
+every `run.sh` mode checks byte for byte. Nicknamed records (word filter, length, another
+species' name) are not decided yet.
 
 ## Differential evidence
 
@@ -268,34 +290,34 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 
 | Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
 |---|---|---:|---:|---:|---:|---:|---:|
-| PK6/PK7 | 1 / 4 | 88,012 | 42,094 | 45,918 | 36,883 (80.3%) | 0 | 0 |
-| PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 74,064 (80.6%) | 0 | 0 |
-| PK6/PK7 | 3 / 8 | 156,298 | 63,436 | 92,862 | 74,892 (80.6%) | 0 | 0 |
-| PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 37,809 (80.7%) | 0 | 0 |
-| PB7 | 1 / 8 | 5,324 | 1,450 | 3,874 | 3,518 (90.8%) | 0 | 0 |
-| PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,786 (91.7%) | 0 | 0 |
-| PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,112 (91.1%) | 0 | 0 |
-| PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,513 (91.3%) | 0 | 0 |
-| PA8 | 1 / 4 | 16,161 | 6,535 | 9,626 | 6,721 (69.8%) | 0 | 0 |
-| PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,384 (69.7%) | 0 | 0 |
-| PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 13,737 (70.2%) | 0 | 0 |
-| PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,502 (70.7%) | 0 | 0 |
-| PA9 | 1 / 4 | 20,953 | 9,460 | 11,493 | 7,504 (65.3%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 7,587 (64.5%) | 0 | 0 |
-| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 15,607 (64.4%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 7,617 (65.4%) | 0 | 0 |
-| PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,366 (77.1%) | 0 | 0 |
-| PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,615 (76.9%) | 0 | 0 |
-| PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 39,815 (76.9%) | 0 | 0 |
-| PK8 | 4 / 4 | 45,489 | 19,817 | 25,672 | 19,709 (76.8%) | 0 | 0 |
-| PB8 | 1 / 4 | 44,334 | 18,431 | 25,903 | 21,392 (82.6%) | 0 | 0 |
-| PB8 | 2 / 4 | 44,643 | 18,787 | 25,856 | 21,320 (82.5%) | 0 | 0 |
-| PB8 | 3 / 8 | 77,736 | 26,371 | 51,365 | 42,100 (82.0%) | 0 | 0 |
-| PB8 | 4 / 4 | 45,193 | 18,952 | 26,241 | 21,493 (81.9%) | 0 | 0 |
-| PK9 | 1 / 4 | 39,685 | 18,653 | 21,032 | 17,351 (82.5%) | 0 | 0 |
-| PK9 | 2 / 4 | 39,929 | 18,565 | 21,364 | 17,626 (82.5%) | 0 | 0 |
-| PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 35,065 (83.3%) | 0 | 0 |
-| PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,131 (82.6%) | 0 | 0 |
+| PK6/PK7 | 1 / 4 | 88,012 | 42,094 | 45,918 | 37,637 (82.0%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 75,691 (82.3%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 156,298 | 63,420 | 92,878 | 76,538 (82.4%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 38,619 (82.5%) | 0 | 0 |
+| PB7 | 1 / 8 | 5,324 | 1,447 | 3,877 | 3,542 (91.4%) | 0 | 0 |
+| PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,798 (92.3%) | 0 | 0 |
+| PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,141 (91.4%) | 0 | 0 |
+| PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,527 (91.7%) | 0 | 0 |
+| PA8 | 1 / 4 | 16,161 | 6,530 | 9,631 | 6,813 (70.7%) | 0 | 0 |
+| PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,481 (70.8%) | 0 | 0 |
+| PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 13,925 (71.2%) | 0 | 0 |
+| PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,600 (71.7%) | 0 | 0 |
+| PA9 | 1 / 4 | 20,953 | 9,460 | 11,493 | 7,862 (68.4%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 7,981 (67.9%) | 0 | 0 |
+| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 16,341 (67.4%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 8,045 (69.0%) | 0 | 0 |
+| PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,720 (78.5%) | 0 | 0 |
+| PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,955 (78.2%) | 0 | 0 |
+| PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 40,548 (78.3%) | 0 | 0 |
+| PK8 | 4 / 4 | 45,489 | 19,817 | 25,672 | 20,059 (78.1%) | 0 | 0 |
+| PB8 | 1 / 4 | 44,334 | 18,431 | 25,903 | 21,692 (83.7%) | 0 | 0 |
+| PB8 | 2 / 4 | 44,643 | 18,787 | 25,856 | 21,663 (83.8%) | 0 | 0 |
+| PB8 | 3 / 8 | 77,736 | 26,371 | 51,365 | 42,702 (83.1%) | 0 | 0 |
+| PB8 | 4 / 4 | 45,193 | 18,952 | 26,241 | 21,814 (83.1%) | 0 | 0 |
+| PK9 | 1 / 4 | 39,685 | 18,653 | 21,032 | 17,673 (84.0%) | 0 | 0 |
+| PK9 | 2 / 4 | 39,929 | 18,565 | 21,364 | 17,954 (84.0%) | 0 | 0 |
+| PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 35,663 (84.7%) | 0 | 0 |
+| PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,418 (84.0%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
@@ -310,12 +332,12 @@ trainer); it is not a personal save and not retail evidence. The detection rate 
 much of PKHeX's rejection these encounter-independent rules reproduce. It is not a measure of
 rule completeness. The remaining ~20% need encounter, learnset, event or history data
 (largest PK6/PK7 groups: fateful flags, geography consistency, egg locations, ball per
-encounter, learnset-only moves, nickname language; largest PK8 groups: no matching
-encounter, fateful flags, Gigantamax per encounter, nickname language, PID type per
+encounter, learnset-only moves, nickname language for relaxed species; largest PK8 groups: no matching
+encounter, fateful flags, Gigantamax per encounter, nickname language for relaxed species, PID type per
 encounter, Hyper Training level 50–99, ball per encounter, egg locations; largest PB8
-groups: no matching encounter, ball per encounter, fateful flags, nickname language, PID = EC
+groups: no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, PID = EC
 on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg locations; largest PK9 groups:
-no matching encounter, ball per encounter, fateful flags, nickname language, Tera type per
+no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, Tera type per
 encounter or evolution chain, ball availability, gift matching, learnset-only moves). The driver
 prints this gap list ("left Incomplete, by first PKHeX result") on every run.
 

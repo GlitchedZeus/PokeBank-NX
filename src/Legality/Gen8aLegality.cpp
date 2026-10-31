@@ -11,6 +11,7 @@
 #include <string>
 
 #include "Integration/Gen8/Gen8PK8.h"
+#include "Legality/ModernNickname.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen8a {
@@ -110,6 +111,7 @@ public:
         if (ball() == 0 || ball() > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball()) + " cannot be held by a PA8");
         checkLanguage();
+        checkNickname();
         if (!Data::heldItemAllowed(u16(0x0A)))
             invalid(CheckIdentifier::Items, "Held item " + std::to_string(u16(0x0A)) + " is not obtainable in Legends: Arceus");
         checkHyperTraining();
@@ -262,6 +264,14 @@ private:
         }
         if (stat != nature && !Data::mintNature(stat))
             invalid(CheckIdentifier::Misc, "Stat nature is neither the nature nor a mint");
+    }
+
+    // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).
+    void checkNickname() {
+        namespace N = ModernNickname;
+        const N::Input n{N::Family::Switch8, p_.subspan(0x60, 26), species(), p_[0xF2], ((p_[0x97] >> 6) & 1) != 0,
+                         ((p_[0x97] >> 7) & 1) != 0, 0};
+        if (const char* m = N::message(N::check(n))) invalid(CheckIdentifier::Trainer, m);
     }
 
     // LanguageVerifier (generation 8: up to Chinese (Traditional), no language 6).

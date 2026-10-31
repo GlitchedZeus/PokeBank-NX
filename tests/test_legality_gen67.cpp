@@ -25,6 +25,7 @@
 
 #include "Integration/Gen6/Gen6PK6.h"
 #include "Legality/Gen67Legality.h"
+#include "Legality/ModernNickname.h"
 #include "Legality/ModernLegality.h"
 
 namespace {
@@ -293,6 +294,109 @@ void testHelpers() {
     check(Legality::Gen67::Data::consoleRegionCountryValid(0, 1) && !Legality::Gen67::Data::consoleRegionCountryValid(0, 49), "Japan region");
 }
 
+// ModernNickname (NicknameVerifier.VerifyUnNicknamed) for every family, then on a PK7 record.
+std::vector<uint8_t> nicknameField(std::u16string_view text) {
+    std::vector<uint8_t> out(26, 0);
+    for (size_t i = 0; i < text.size() && i < 13; ++i) {
+        out[2 * i] = static_cast<uint8_t>(text[i] & 0xFF);
+        out[2 * i + 1] = static_cast<uint8_t>(text[i] >> 8);
+    }
+    return out;
+}
+
+void testNickname(const std::vector<Record>& records) {
+    namespace N = Legality::ModernNickname;
+    using F = N::Family;
+    auto run = [](F family, std::u16string_view text, uint16_t species, uint8_t language, bool egg = false,
+                  bool nicknamed = false, uint16_t eggLocation = 0) {
+        const auto field = nicknameField(text);
+        return N::check({family, field, species, language, egg, nicknamed, eggLocation});
+    };
+    // A species no fixed-nickname or fixed-language encounter touches, whose English and French
+    // names differ.
+    uint16_t plain = 0;
+    for (uint16_t s = 1; s <= 1025 && !plain; ++s)
+        if (!N::relaxed(s) && N::speciesName(s, 2) != N::speciesName(s, 3)) plain = s;
+    check(plain != 0, "a species without a relaxed encounter exists");
+    const auto en = N::speciesName(plain, 2), fr = N::speciesName(plain, 3);
+    for (F family : {F::Beluga, F::Switch8, F::Switch9}) {
+        check(run(family, en, plain, 2) == N::Result::NoIssue, "English name in English");
+        check(run(family, fr, plain, 2) == N::Result::NotSpecies, "French name on an English record");
+        check(run(family, u"Tester", plain, 2) == N::Result::NotSpecies, "another name without the nickname flag");
+        check(run(family, u"Tester", plain, 2, false, true) == N::Result::NoIssue, "a nickname with the flag");
+        check(run(family, fr, plain, 2, true) == N::Result::NoIssue, "an egg is not decided here");
+        check(run(family, u"", plain, 2, false, true) == N::Result::Empty, "empty nickname, even when flagged");
+        check(run(family, fr, plain, 0) == N::Result::NoIssue, "language 0 is the language rule's");
+    }
+    check(run(F::Switch9, N::speciesName(plain, 11), plain, 11) == N::Result::NoIssue, "Spanish (LATAM) in Z-A");
+    check(N::message(N::Result::NoIssue) == nullptr && N::message(N::Result::Empty) != nullptr, "messages");
+    // A relaxed species (fixed-language gift or fixed-nickname trade in its line) is never decided.
+    uint16_t relaxedSpecies = 0;
+    for (uint16_t s = 1; s <= 1025 && !relaxedSpecies; ++s)
+        if (N::relaxed(s)) relaxedSpecies = s;
+    check(relaxedSpecies != 0 && run(F::Switch9, u"Tester", relaxedSpecies, 2) == N::Result::NoIssue,
+          "a relaxed species stays undecided");
+    check(N::relaxed(2000) && run(F::Switch9, u"Tester", 2000, 2) == N::Result::NoIssue, "unknown species");
+    // Farfetch'd keeps an ASCII apostrophe after a HOME import (English, Italian, Spanish).
+    if (!N::relaxed(83)) {
+        check(run(F::Switch8, u"Farfetch'd", 83, 2) == N::Result::NoIssue, "Farfetch'd ASCII apostrophe in English");
+        check(run(F::Switch8, u"Farfetch'd", 83, 3) == N::Result::NotSpecies, "Farfetch'd ASCII apostrophe in French");
+    }
+    // PK6/PK7: an evolved record may carry any language's name; one with no pre-evolution, never
+    // an egg, must carry its own language's name.
+    bool sawStrict = false, sawAny = false;
+    for (uint16_t s = 1; s <= 721; ++s) {
+        if (N::relaxed(s) || N::speciesName(s, 2) == N::speciesName(s, 3)) continue;
+        const auto r = run(F::Gen6, N::speciesName(s, 3), s, 2);
+        if (r == N::Result::NotSpecies) {
+            sawStrict = true;
+            check(run(F::Gen6, N::speciesName(s, 3), s, 2, false, false, 30002) == N::Result::NoIssue,
+                  "a traded egg may carry another language's name");
+        } else if (r == N::Result::NoIssue) {
+            sawAny = true;
+            check(run(F::Gen6, u"Tester", s, 2) == N::Result::NotAnyName, "an evolved record still needs some name");
+        } else {
+            check(false, "PK6 other-language name gives NoIssue or NotSpecies");
+        }
+    }
+    check(sawStrict && sawAny, "PK6 has strict and any-language species");
+    // Generation 6/7 half-width gender glyphs read as U+2642/U+2640; Gen 7 Chinese glyphs are undecided.
+    if (!N::relaxed(32)) {
+        std::u16string half(N::speciesName(32, 2));
+        for (auto& c : half)
+            if (c == u'♂') c = u'';
+        check(run(F::Gen6, half, 32, 2) == N::Result::NoIssue, "half-width male sign in PK6");
+        check(run(F::Switch8, half, 32, 2) == N::Result::NotSpecies, "half-width male sign is not a PK8 name");
+    }
+    check(run(F::Gen7, u"", plain, 9) == N::Result::NoIssue, "a PK7 Chinese glyph is undecided");
+    if (!N::relaxed(233))
+        check(run(F::Beluga, N::speciesName(233, 9), 233, 9) == N::Result::NotSpecies &&
+                  run(F::Switch8, N::speciesName(233, 9), 233, 9) == N::Result::NoIssue,
+              "Generation 7 keeps the old Chinese (Simplified) Porygon2 name");
+
+    // On a native PK7 from the fixture.
+    const Record* pk7 = find(records, [](const Record& r) {
+        return r.pkhexValid && r.format == Format::PK7 && r.label.rfind("native7:base", 0) == 0;
+    });
+    if (!pk7) return check(false, "fixture has a native PK7");
+    auto withName = [&](std::u16string_view text, bool nicknamed) {
+        return edit(pk7->plain, [&](auto& b) {
+            const auto field = nicknameField(text);
+            std::copy(field.begin(), field.end(), b.begin() + 0x40);
+            b[0x77] = static_cast<uint8_t>(nicknamed ? (b[0x77] | 0x80) : (b[0x77] & 0x7F));
+        });
+    };
+    const auto empty = analyzePlain(*pk7, withName(u"", true));
+    check(empty.verdict() == Verdict::Invalid && hasIssue(empty, Severity::Invalid, "Nickname is empty"), "PK7 empty nickname");
+    const auto named = analyzePlain(*pk7, withName(u"Tester", true));
+    check(!hasIssue(named, Severity::Invalid, "nickname"), "PK7 flagged nickname: " + describe(named));
+    const auto unflagged = analyzePlain(*pk7, withName(u"Tester", false));
+    const uint16_t species = PK6::read16(pk7->plain, 0x08);
+    if (!N::relaxed(species))
+        check(unflagged.verdict() == Verdict::Invalid && hasIssue(unflagged, Severity::Invalid, "nickname flag is clear"),
+              "PK7 unflagged non-name: " + describe(unflagged));
+}
+
 void testFuzz(const std::vector<Record>& records) {
     const char* env = std::getenv("GEN67_FUZZ_ROUNDS");
     const size_t rounds = env ? std::strtoul(env, nullptr, 10) : 20000;
@@ -333,6 +437,7 @@ int main() {
     testRuleEdits(records);
     testInterface(records);
     testHelpers();
+    testNickname(records);
     testFuzz(records);
     std::cout << "test_legality_gen67: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

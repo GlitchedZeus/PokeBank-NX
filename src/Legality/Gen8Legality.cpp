@@ -13,6 +13,7 @@
 
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen67Legality.h"
+#include "Legality/ModernNickname.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen8 {
@@ -109,6 +110,7 @@ public:
         checkNature();
         checkBall();
         checkLanguage();
+        checkNickname();
         checkHeldItem();
         checkTransferMetLocation();
         if (originGen_ == 1 || originGen_ == 2) checkVirtualConsole();
@@ -469,6 +471,14 @@ private:
         const uint8_t ball = pk_.ball();
         if (ball == 0 || ball > Data::maxBall(ctx_))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a " + formatName());
+    }
+
+    // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).
+    void checkNickname() {
+        namespace N = ModernNickname;
+        const N::Input n{sv() ? N::Family::Switch9 : N::Family::Switch8, plain_.subspan(0x58, 26), species(), language(), pk_.isEgg(),
+                         pk_.isNicknamed(), 0};
+        if (const char* m = N::message(N::check(n))) invalid(CheckIdentifier::Trainer, m);
     }
 
     // LanguageVerifier.

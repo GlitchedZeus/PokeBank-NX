@@ -14,6 +14,7 @@
 #include "Integration/Gen6/Gen6PK6.h"
 #include "Integration/Gen6/Gen6PersonalData.h"
 #include "Integration/Gen7/Gen7PersonalData.h"
+#include "Legality/ModernNickname.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen67 {
@@ -116,6 +117,7 @@ public:
         checkNature();
         checkBall();
         checkLanguage();
+        checkNickname();
         checkHeldItem();
         checkConsoleRegion();
         checkTransferMetLocation();
@@ -457,6 +459,14 @@ private:
         const uint8_t ball = pk_.ball();
         if (ball == 0 || ball > Data::maxBall(format_))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " does not exist");
+    }
+
+    // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).
+    void checkNickname() {
+        namespace N = ModernNickname;
+        const N::Input n{format_ == 6 ? N::Family::Gen6 : N::Family::Gen7, plain_.subspan(0x40, 26), pk_.species(), pk_.language(),
+                         pk_.isEgg(), pk_.isNicknamed(), static_cast<uint16_t>(plain_[0xD8] | (plain_[0xD9] << 8))};
+        if (const char* m = N::message(N::check(n))) invalid(CheckIdentifier::Trainer, m);
     }
 
     // LanguageVerifier.

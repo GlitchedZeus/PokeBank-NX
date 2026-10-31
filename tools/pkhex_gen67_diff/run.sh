@@ -24,6 +24,8 @@
 #    flags, PP, obedience, ...). PA9 tables are Gen9aLegalityData.inc ("dump9a").
 #    "9": the same for Scarlet/Violet (PK9), with PK9-only field mutations (Tera types,
 #    obedience level, TM flags, scale, ...). PK9 tables live in Gen8LegalityData.inc too.
+#    Every mode also checks ModernNicknameData.inc ("dumpnames": species names and the
+#    species whose fixed-nickname or fixed-language encounters relax the name rule).
 # 3. gen67_diff.cpp analyzes every record and fails when
 #    - PokeBank NX reports Invalid for a record PKHeX accepts (a false Invalid), or
 #    - PokeBank NX reports "No problems found" for a record PKHeX rejects (a false Valid).
@@ -52,7 +54,13 @@ if ! cmp -s "$work/data.inc" "$repo/include/Legality/$table"; then
     diff "$repo/include/Legality/$table" "$work/data.inc" | head -20
     exit 1
 fi
-echo "generated $label tables match PKHeX"
+dotnet "$work/oracle/PKHeXGen67Oracle.dll" dumpnames > "$work/names.inc"
+if ! cmp -s "$work/names.inc" "$repo/include/Legality/ModernNicknameData.inc"; then
+    echo "include/Legality/ModernNicknameData.inc differs from the PKHeX dump:"
+    diff "$repo/include/Legality/ModernNicknameData.inc" "$work/names.inc" | head -20
+    exit 1
+fi
+echo "generated $label tables and species names match PKHeX"
 dotnet "$work/oracle/PKHeXGen67Oracle.dll" "$generate" "$seed" "$mutations" > "$work/pkhex.txt"
 g++ -std=c++20 -O2 -Wall -Wextra -Werror -I"$repo/include" "$here/gen67_diff.cpp" \
     "$repo/src/Legality/ModernLegality.cpp" "$repo/src/Legality/Gen67Legality.cpp" \
@@ -60,7 +68,7 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -I"$repo/include" "$here/gen67_diff.cpp
     "$repo/src/Legality/Gen8LegalityData.cpp" "$repo/src/Legality/Gen7bLegality.cpp" \
     "$repo/src/Legality/Gen7bLegalityData.cpp" "$repo/src/Legality/Gen8aLegality.cpp" \
     "$repo/src/Legality/Gen8aLegalityData.cpp" "$repo/src/Legality/Gen9aLegality.cpp" \
-    "$repo/src/Legality/Gen9aLegalityData.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen67_diff"
+    "$repo/src/Legality/Gen9aLegalityData.cpp" "$repo/src/Legality/ModernNickname.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen67_diff"
 status=0
 "$work/gen67_diff" "${SHOW:-20}" < "$work/pkhex.txt" > "$work/report.txt" || status=$?
 cat "$work/report.txt"

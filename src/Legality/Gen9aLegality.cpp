@@ -13,6 +13,7 @@
 
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen8Legality.h"
+#include "Legality/ModernNickname.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen9a {
@@ -59,6 +60,7 @@ public:
         if (p_[0x124] == 0 || p_[0x124] > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(p_[0x124]) + " cannot be held by a PA9");
         checkLanguage();
+        checkNickname();
         if (!Data::heldItemAllowed(u16(0x0A)))
             invalid(CheckIdentifier::Items, "Held item " + std::to_string(u16(0x0A)) + " is not obtainable in Legends: Z-A");
         checkHyperTraining();
@@ -190,6 +192,14 @@ private:
         }
         if (stat != nature && !Data::mintNature(stat))
             invalid(CheckIdentifier::Misc, "Stat nature is neither the nature nor a mint");
+    }
+
+    // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).
+    void checkNickname() {
+        namespace N = ModernNickname;
+        const N::Input n{N::Family::Switch9, p_.subspan(0x58, 26), species_, p_[0xD5], ((p_[0x8F] >> 6) & 1) != 0,
+                         ((p_[0x8F] >> 7) & 1) != 0, 0};
+        if (const char* m = N::message(N::check(n))) invalid(CheckIdentifier::Trainer, m);
     }
 
     // LanguageVerifier: no language 0 or 6; Spanish (LATAM) only for a Legends: Z-A origin.

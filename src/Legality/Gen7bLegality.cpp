@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "Integration/Gen6/Gen6PK6.h"
+#include "Legality/ModernNickname.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen7b {
@@ -80,6 +81,7 @@ public:
         if (pk_.nature() >= 25) invalid(CheckIdentifier::Misc, "Nature is out of range");
         checkBall();
         checkLanguage();
+        checkNickname();
         if (!Data::heldItemAllowed(pk_.heldItem()))
             invalid(CheckIdentifier::Items, "Held item " + std::to_string(pk_.heldItem()) + " is not obtainable in Let's Go Pikachu/Eevee");
         checkHyperTraining();
@@ -226,6 +228,13 @@ private:
     void checkBall() {
         const uint8_t ball = pk_.ball();
         if (ball == 0 || ball > Data::maxBall()) invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a PB7");
+    }
+
+    // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).
+    void checkNickname() {
+        namespace N = ModernNickname;
+        const N::Input n{N::Family::Beluga, plain_.subspan(0x40, 26), pk_.species(), pk_.language(), pk_.isEgg(), pk_.isNicknamed(), 0};
+        if (const char* m = N::message(N::check(n))) invalid(CheckIdentifier::Trainer, m);
     }
 
     // LanguageVerifier (generation 7: up to Chinese (Traditional), no language 6).
