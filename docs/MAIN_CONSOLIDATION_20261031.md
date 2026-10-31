@@ -1,5 +1,7 @@
 # Main consolidation and repository cleanup ledger — October 31, 2026
 
+**Snapshot:** October 31, 2026, about 09:00 UTC (316 branch refs, 31 open PRs besides #330, 35 open issues). #327 and #328 are actively moving; their SHAs are as of this snapshot.
+
 **Status: RECORD + PROPOSAL.** Nothing in this ledger deletes a branch, closes a PR or closes an issue by itself. Every deletion, closure and retarget listed here waits for the owner's explicit approval; unique or unmerged history additionally needs an archival ref first.
 
 ## 1. What was consolidated
@@ -15,27 +17,27 @@
 | Removed files | the application line's audited Sept 29 removals stay removed: `.github/workflows/import-pkse.yml` (destructive import), `PKSE.sln`, `PKSE.vcxproj`, `PKSE.vcxproj.filters`, `CppProperties.json` (stale VS metadata). They remain in history |
 | Not merged | legality #314 / #327 / #328 and their lineage; Gen VI–IX lanes. Japanese Gen I/II editing stays locked |
 
-## 2. Long-term branch structure (planned)
+## 2. Long-term branch structure
 
 | Branch | Purpose | When |
 |---|---|---|
 | `main` | Gen I–V application and ongoing bug fixes | when the owner approves and merges the consolidation PR |
-| `development/gen6-plus` | future Gen VI–IX application | created from the integrated `main` **after** the owner accepts it; then #309→#311→#312 and #321 retarget there |
-| `development/legality-engine` | combined, reviewed Gen I–IX legality | created from the integrated `main` after acceptance, then **receives the reviewed engine** (#314 or successor, then #327, then #328). An empty branch is not the completed consolidation |
+| `development/gen6-plus` | Gen VI–IX application | **exists** since October 31 (`ec5a35b4`): created by the Gen VI–IX application work from the Round 10 application `0842c6f3`, importing #309/#311/#312. Active development: not touched by this consolidation. Once `main` holds the consolidation, the branch should merge `main` forward |
+| `development/legality-engine` *(planned)* | combined, reviewed Gen I–IX legality | created from the integrated `main` after acceptance, then **receives the reviewed engine** (#314 or successor, then #327, then #328). An empty branch is not the completed consolidation |
 
-## 3. Open pull requests (31)
+## 3. Open pull requests (31, plus the consolidation PR #330)
 
 Method: `git merge-base --is-ancestor <PR head> <line>` and `git rev-list --no-merges <head> --not <application> <#314> <old main>`; patch equivalence with `git cherry`. **No PR is closed in this pass.**
 
 | PR | Head | Classification | Proposed action (owner approval) |
 |---|---|---|---|
-| [#328](https://github.com/GlitchedZeus/PokeBank-NX/pull/328) | `work/claude-gen69-legality-foundation-20261030` `63556298` | ACTIVE — 3 unique commits, stacked on #314 | Keep open, isolated; tracked in #329 |
-| [#327](https://github.com/GlitchedZeus/PokeBank-NX/pull/327) | `work/claude-gen15-legality-independent-20261030` `6cc05036` | ACTIVE — 2 unique commits, stacked on #314 | Keep open, isolated; tracked in #329 |
-| [#321](https://github.com/GlitchedZeus/PokeBank-NX/pull/321) | `research/gen6-9-codex-20261018` `9b46c779` | UNIQUE — 1 research commit (Gen VI–IX audit, SAV7 evidence) | Keep; retarget to `development/gen6-plus` once it exists |
+| [#328](https://github.com/GlitchedZeus/PokeBank-NX/pull/328) | `work/claude-gen69-legality-foundation-20261030` `de712c07` | ACTIVE — 10 unique commits at this snapshot, stacked on #314 | Keep open, isolated; tracked in #329 |
+| [#327](https://github.com/GlitchedZeus/PokeBank-NX/pull/327) | `work/claude-gen15-legality-independent-20261030` `af06513e` | ACTIVE — 3 unique commits at this snapshot, stacked on #314 | Keep open, isolated; tracked in #329 |
+| [#321](https://github.com/GlitchedZeus/PokeBank-NX/pull/321) | `research/gen6-9-codex-20261018` `9b46c779` | UNIQUE — 1 research commit (Gen VI–IX audit, SAV7 evidence) | Keep; retarget to `development/gen6-plus` (owner / Gen VI–IX work decides) |
 | [#314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314) | `claude/gen1-5-legality-campaign-w9mkom` `eabe41f3` | ACTIVE — Gen I–V legality campaign | Keep open, isolated; tracked in #329 |
 | [#312](https://github.com/GlitchedZeus/PokeBank-NX/pull/312) | `claude/gen8-native-20261015` `2f065ee2` | UNIQUE — stacked on #311 (14 commits incl. stack) | Keep (stacked) |
 | [#311](https://github.com/GlitchedZeus/PokeBank-NX/pull/311) | `claude/gen7-native-20261014` `2438b5d0` | UNIQUE — stacked on #309 (13 commits incl. #309) | Keep (stacked) |
-| [#309](https://github.com/GlitchedZeus/PokeBank-NX/pull/309) | `claude/gen6-native-20261014` `5e683690` | UNIQUE — 6 commits (Gen VI native lane, bottom of stack) | Keep; retarget to `development/gen6-plus` once it exists |
+| [#309](https://github.com/GlitchedZeus/PokeBank-NX/pull/309) | `claude/gen6-native-20261014` `5e683690` | UNIQUE — 6 commits (Gen VI native lane, bottom of stack) | Keep; imported onto `development/gen6-plus` by the Gen VI–IX work |
 | [#308](https://github.com/GlitchedZeus/PokeBank-NX/pull/308) | `claude/legality-gen3-negai-boshi-lifetime` `2761a75d` | CONTAINED in #314 (`eabe41f3`) | Keep open while #314/#327/#328 develop; close as superseded after the legality consolidation is accepted |
 | [#307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) | `claude/gen5-integration-20261014` `d6cc878a` | INCORPORATED — head `d6cc878a` is in the application line | Close only after the consolidation is merged into `main` |
 | [#305](https://github.com/GlitchedZeus/PokeBank-NX/pull/305) | `claude/gen4-capture-ball` `b8eb006e` | CONTAINED in #314 (`eabe41f3`) | Keep open while #314/#327/#328 develop; close as superseded after the legality consolidation is accepted |
@@ -61,7 +63,7 @@ Method: `git merge-base --is-ancestor <PR head> <line>` and `git rev-list --no-m
 | [#103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) | `feature/legality-engine-gen1-4-20260929` `d29eada5` | CONTAINED in #314 (`eabe41f3`) | Keep open while #314/#327/#328 develop; close as superseded after the legality consolidation is accepted |
 | [#92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | `feature/gen4-full-editor-20260928` `ddaff247` | INCORPORATED — head `ddaff247` is in the application line | Close only after the consolidation is merged into `main` |
 
-## 4. Open issues (34, plus new tracker #329)
+## 4. Open issues (35, including the new tracker #329)
 
 **No issue is closed automatically.** Fixes observed on older builds stay open until the owner verifies them on the current hardware candidate.
 
@@ -88,18 +90,18 @@ Method: `git merge-base --is-ancestor <PR head> <line>` and `git rev-list --no-m
 | #29, #55, #56, #57, #58, #59, #70 | v1.0 roadmap / release-gate trackers | ACTIVE roadmap | Keep |
 | #5, #9, #15, #16, #17, #21, #26, #30, #49, #50 | backlog / research / preservation | ACTIVE backlog | Keep; candidates for the project board's Backlog |
 
-## 5. Branch refs (314)
+## 5. Branch refs (316)
 
 | Class | Count | Meaning | Archive requirement before any deletion |
 |---|---:|---|---|
 | `IN_MAIN` | 69 | every commit reachable from the consolidated application | none beyond this ledger's SHA record once `main` holds the merge |
 | `IN_LEGALITY_314` | 171 | every commit reachable from #314 `eabe41f3` (unmerged) | archive tag on the #314 head (or its successor) first |
 | `MERGES_ONLY` | 1 | no unique non-merge commit | none beyond the SHA record |
-| `UNIQUE` | 73 | at least one commit in neither line nor old `main` | `archive/<branch>` tag **and** owner review |
+| `UNIQUE` | 75 | at least one commit in neither line nor old `main` | `archive/<branch>` tag **and** owner review |
 
 Columns: branch, tip SHA, tip date, class, unique non-merge commits, PRs whose head equals this tip, and the proposed handling. **Protected** = `main`, every open-PR head and base, the Round 9 / Round 10 candidate sources and the branches named in section 1. Deleting a branch never deletes Actions artifacts or merged history, but `blob/<branch>/...` links break, so each deletion needs approval.
 
-<details><summary><strong>Protected (21)</strong></summary>
+<details><summary><strong>Protected (contained) (21)</strong></summary>
 
 | Branch | Tip | Date | Class | Unique | PR(s) at tip | Handling |
 |---|---|---|---|---:|---|---|
@@ -354,14 +356,14 @@ Columns: branch, tip SHA, tip date, class, unique non-merge commits, PRs whose h
 
 </details>
 
-<details><summary><strong>Unique work: keep (73)</strong></summary>
+<details><summary><strong>Unique work: keep (PROTECTED where it is an open-PR head/base or an active line) (75)</strong></summary>
 
 | Branch | Tip | Date | Class | Unique | PR(s) at tip | Handling |
 |---|---|---|---|---:|---|---|
 | `archive/qa-campaigns-2026-10-28` | `c0f1c967` | 2026-10-29 | UNIQUE | 3 |  | KEEP: 3 unique patch(es); archive tag + owner review before any deletion |
 | `audit/full-repository-line-by-line-20260928` | `143c5e5c` | 2026-09-29 | UNIQUE | 182 |  | KEEP: 182 unique patch(es); archive tag + owner review before any deletion |
-| `audit/gen1-4-legality-research-20261011` | `fc0225e6` | 2026-10-11 | UNIQUE | 5 | #252 | KEEP: 5 unique patch(es); archive tag + owner review before any deletion |
-| `audit/gen1-4-pkhex-parity-ledger-20261006` | `b450bf25` | 2026-10-06 | UNIQUE | 1 | #144 | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
+| `audit/gen1-4-legality-research-20261011` | `fc0225e6` | 2026-10-11 | UNIQUE | 5 | #252 | PROTECTED (never a deletion candidate): open PR head/base; 5 unique patch(es) |
+| `audit/gen1-4-pkhex-parity-ledger-20261006` | `b450bf25` | 2026-10-06 | UNIQUE | 1 | #144 | PROTECTED (never a deletion candidate): open PR head/base; 1 unique patch(es) |
 | `audit/pre-gen3-shared-editor-71` | `c363505e` | 2026-09-15 | UNIQUE | 9 | #72 | KEEP: 9 unique patch(es); archive tag + owner review before any deletion |
 | `ci/classic-inventory-corrected-validation-20260913` | `a0280e3e` | 2026-09-13 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `ci/classic-inventory-correction-20260913` | `4d11237b` | 2026-09-13 | UNIQUE | 5 |  | KEEP: 5 unique patch(es); archive tag + owner review before any deletion |
@@ -384,11 +386,11 @@ Columns: branch, tip SHA, tip date, class, unique non-merge commits, PRs whose h
 | `ci/standalone-production-artifact-20260912` | `ed19625f` | 2026-09-12 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `ci/standalone-validation-20260912` | `5bce5864` | 2026-09-12 | UNIQUE | 3 |  | KEEP: 3 unique patch(es); archive tag + owner review before any deletion |
 | `claude/gen5-handoff-from-legality-20261014` | `fc519414` | 2026-10-14 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
-| `claude/gen6-native-20261014` | `5e683690` | 2026-10-15 | UNIQUE | 6 | #309 | KEEP: earlier point of `claude/gen7-native-20261014`; archive tag + owner review before any deletion |
-| `claude/gen7-native-20261014` | `2438b5d0` | 2026-10-15 | UNIQUE | 13 | #311 | KEEP: earlier point of `claude/gen8-native-20261015`; archive tag + owner review before any deletion |
-| `claude/gen8-native-20261015` | `2f065ee2` | 2026-10-15 | UNIQUE | 14 | #312 | KEEP: 14 unique patch(es); archive tag + owner review before any deletion |
+| `claude/gen6-native-20261014` | `5e683690` | 2026-10-15 | UNIQUE | 6 | #309 | PROTECTED (never a deletion candidate): open PR head/base; earlier point of `claude/gen7-native-20261014` |
+| `claude/gen7-native-20261014` | `2438b5d0` | 2026-10-15 | UNIQUE | 13 | #311 | PROTECTED (never a deletion candidate): open PR head/base; earlier point of `claude/gen8-native-20261015` |
+| `claude/gen8-native-20261015` | `2f065ee2` | 2026-10-15 | UNIQUE | 14 | #312 | PROTECTED (never a deletion candidate): open PR head/base; 14 unique patch(es) |
 | `claude/item-quantity-policy-20261016` | `f6acf510` | 2026-10-28 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
-| `claude/optimistic-euler-ph2z4f` | `fb5e79e8` | 2026-10-20 | UNIQUE | 77 |  | KEEP: 77 unique patch(es); archive tag + owner review before any deletion |
+| `claude/optimistic-euler-ph2z4f` | `fb5e79e8` | 2026-10-20 | UNIQUE | 77 |  | PROTECTED (never a deletion candidate): session checkpoint log (77 unique doc commits); 77 unique patch(es) |
 | `claude/tender-gates-bkl5jq` | `d78690ea` | 2026-10-28 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `codex/gsc-readonly` | `fa081f67` | 2026-09-11 | UNIQUE | 37 | #53 | KEEP: 37 unique patch(es); archive tag + owner review before any deletion |
 | `codex/legality-gen4-bcc-reroll-sync-success-20261005` | `31fd10f9` | 2026-10-05 | UNIQUE | 2 | #135 | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
@@ -402,35 +404,37 @@ Columns: branch, tip SHA, tip date, class, unique non-merge commits, PRs whose h
 | `dev/inventory-hardware-polish-20260913` | `08fb25f7` | 2026-09-13 | UNIQUE | 11 |  | KEEP: earlier point of `ci/inventory-dirty-final-validation-20260913`; archive tag + owner review before any deletion |
 | `dev/standalone-runtime-audit-20260912` | `f278c6d5` | 2026-09-12 | UNIQUE | 9 |  | KEEP: 9 unique patch(es); archive tag + owner review before any deletion |
 | `dev/standalone-runtime-candidate-20260912` | `c8a08c1d` | 2026-09-12 | UNIQUE | 5 |  | KEEP: 5 unique patch(es); archive tag + owner review before any deletion |
+| `development/gen6-plus` | `ec5a35b4` | 2026-10-31 | UNIQUE | 3 |  | PROTECTED (never a deletion candidate): active Gen VI-IX application (created Oct 31 by the Gen VI-IX work); 3 unique patch(es) |
 | `docs/legality-checkpoint-palpark-egg-20261011` | `0f4d05a6` | 2026-10-11 | UNIQUE | 2 | #251 | KEEP: 2 unique patch(es); archive tag + owner review before any deletion |
 | `docs/project-status-refresh-20260929` | `6927f06c` | 2026-09-29 | UNIQUE | 3 | #102 | KEEP: 3 unique patch(es); archive tag + owner review before any deletion |
 | `feature/gen1-staged-editor-20260913` | `a45a1b63` | 2026-09-13 | UNIQUE | 1 |  | KEEP: 0 unique patch(es); archive tag + owner review before any deletion |
 | `feature/gen4-complete-editor-20260928` | `4a3e2e19` | 2026-09-28 | UNIQUE | 31 | #94 | KEEP: 31 unique patch(es); archive tag + owner review before any deletion |
-| `feature/gen5-readonly-foundation-20261008` | `79679950` | 2026-10-12 | UNIQUE | 85 | #163 | KEEP: 85 unique patch(es); archive tag + owner review before any deletion |
+| `feature/gen5-readonly-foundation-20261008` | `79679950` | 2026-10-12 | UNIQUE | 85 | #163 | PROTECTED (never a deletion candidate): open PR head/base; 85 unique patch(es) |
 | `feature/legality-gen3-hoenn-safari-rng-20261007` | `cf60f1fa` | 2026-10-07 | UNIQUE | 4 | #155 | KEEP: 4 unique patch(es); archive tag + owner review before any deletion |
-| `feature/legality-gen4-egg-iv-stage-20261011` | `dfa2fb53` | 2026-10-11 | UNIQUE | 2 | #273 | KEEP: 2 unique patch(es); archive tag + owner review before any deletion |
-| `feature/legality-gen5-9-foundation-20261012` | `809a3184` | 2026-10-12 | UNIQUE | 24 | #301 | KEEP: 24 unique patch(es); archive tag + owner review before any deletion |
+| `feature/legality-gen4-egg-iv-stage-20261011` | `dfa2fb53` | 2026-10-11 | UNIQUE | 2 | #273 | PROTECTED (never a deletion candidate): open PR head/base; 2 unique patch(es) |
+| `feature/legality-gen5-9-foundation-20261012` | `809a3184` | 2026-10-12 | UNIQUE | 24 | #301 | PROTECTED (never a deletion candidate): open PR head/base; 24 unique patch(es) |
 | `feature/legality-pk2-timecapsule-move-stage-20261011` | `6e4bd7ec` | 2026-10-11 | UNIQUE | 1 | #250 | KEEP: earlier point of `docs/legality-checkpoint-palpark-egg-20261011`; archive tag + owner review before any deletion |
 | `feature/legality-rng-move-input-hardening-20261011` | `82d32ab6` | 2026-10-11 | UNIQUE | 16 | #270 | KEEP: 16 unique patch(es); archive tag + owner review before any deletion |
-| `feature/legality-sourcefree-egg-move-guard-20261011` | `95416a8f` | 2026-10-11 | UNIQUE | 6 | #230 | KEEP: 6 unique patch(es); archive tag + owner review before any deletion |
-| `feature/legality-sourcefree-pk12-move-compatibility-20261011` | `14baf42c` | 2026-10-11 | UNIQUE | 3 | #229 | KEEP: earlier point of `feature/legality-sourcefree-egg-move-guard-20261011`; archive tag + owner review before any deletion |
-| `feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011` | `a1eea80b` | 2026-10-11 | UNIQUE | 1 | #227 | KEEP: earlier point of `feature/legality-sourcefree-egg-move-guard-20261011`; archive tag + owner review before any deletion |
-| `feature/legality-sourcefree-pk4-palpark-move-history-20261011` | `3df1de83` | 2026-10-11 | UNIQUE | 2 | #228 | KEEP: earlier point of `feature/legality-sourcefree-egg-move-guard-20261011`; archive tag + owner review before any deletion |
-| `feature/touch-controls-20261005` | `36c0d1d6` | 2026-10-09 | UNIQUE | 370 | #122 | KEEP: 370 unique patch(es); archive tag + owner review before any deletion |
-| `fix/gen14-action-tap-empty-parity-20261011` | `dcd855a7` | 2026-10-11 | UNIQUE | 9 | #280 | KEEP: 9 unique patch(es); archive tag + owner review before any deletion |
+| `feature/legality-sourcefree-egg-move-guard-20261011` | `95416a8f` | 2026-10-11 | UNIQUE | 6 | #230 | PROTECTED (never a deletion candidate): open PR head/base; 6 unique patch(es) |
+| `feature/legality-sourcefree-pk12-move-compatibility-20261011` | `14baf42c` | 2026-10-11 | UNIQUE | 3 | #229 | PROTECTED (never a deletion candidate): open PR head/base; earlier point of `feature/legality-sourcefree-egg-move-guard-20261011` |
+| `feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011` | `a1eea80b` | 2026-10-11 | UNIQUE | 1 | #227 | PROTECTED (never a deletion candidate): open PR head/base; earlier point of `feature/legality-sourcefree-egg-move-guard-20261011` |
+| `feature/legality-sourcefree-pk4-palpark-move-history-20261011` | `3df1de83` | 2026-10-11 | UNIQUE | 2 | #228 | PROTECTED (never a deletion candidate): open PR head/base; earlier point of `feature/legality-sourcefree-egg-move-guard-20261011` |
+| `feature/touch-controls-20261005` | `36c0d1d6` | 2026-10-09 | UNIQUE | 370 | #122 | PROTECTED (never a deletion candidate): open PR head/base; 370 unique patch(es) |
+| `fix/gen14-action-tap-empty-parity-20261011` | `dcd855a7` | 2026-10-11 | UNIQUE | 9 | #280 | PROTECTED (never a deletion candidate): open PR head/base; 9 unique patch(es) |
 | `hardening/audit-bank-migration-20260928` | `342a149a` | 2026-09-28 | UNIQUE | 1 | #98 | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `hardening/audit-settings-durability-20260928` | `d928533c` | 2026-09-28 | UNIQUE | 1 | #99 | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `integration/gen2-staged-editor-20260912` | `d3da18fd` | 2026-09-12 | UNIQUE | 2 |  | KEEP: 2 unique patch(es); archive tag + owner review before any deletion |
+| `integration/main-gen15-consolidation` | `61dbb05a` | 2026-10-31 | UNIQUE | 7 | #330 | PROTECTED (never a deletion candidate): consolidation PR #330 head; 7 unique patch(es) |
 | `polish/v1-ui-qol-20260928` | `c8c98d5d` | 2026-09-28 | UNIQUE | 13 | #88 | KEEP: 11 unique patch(es); archive tag + owner review before any deletion |
-| `research/gen6-9-codex-20261018` | `9b46c779` | 2026-10-18 | UNIQUE | 1 | #321 | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
+| `research/gen6-9-codex-20261018` | `9b46c779` | 2026-10-18 | UNIQUE | 1 | #321 | PROTECTED (never a deletion candidate): open PR head/base; 1 unique patch(es) |
 | `staging/product-home-perf-audit-20261004` | `defa2c99` | 2026-10-04 | UNIQUE | 8 |  | KEEP: 8 unique patch(es); archive tag + owner review before any deletion |
 | `wip/codex-oct24-repairs` | `11b44e09` | 2026-10-24 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `wip/coord-r5-safari-ball-20261024` | `31a75206` | 2026-10-24 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
 | `wip/l-backup-picker-20261024` | `0fe9e5f7` | 2026-10-24 | UNIQUE | 1 |  | KEEP: earlier point of `wip/l-r5-backup-browser-20261024`; archive tag + owner review before any deletion |
 | `wip/l-r5-backup-browser-20261024` | `8a0f9eb4` | 2026-10-24 | UNIQUE | 2 |  | KEEP: 2 unique patch(es); archive tag + owner review before any deletion |
 | `wip/p-heldsearch-20261024` | `65bd8d65` | 2026-10-24 | UNIQUE | 1 |  | KEEP: 1 unique patch(es); archive tag + owner review before any deletion |
-| `work/claude-gen15-legality-independent-20261030` | `6cc05036` | 2026-10-31 | UNIQUE | 2 | #327 | KEEP: 2 unique patch(es); archive tag + owner review before any deletion |
-| `work/claude-gen69-legality-foundation-20261030` | `e33e1115` | 2026-10-31 | UNIQUE | 2 |  | KEEP: 2 unique patch(es); archive tag + owner review before any deletion |
+| `work/claude-gen15-legality-independent-20261030` | `af06513e` | 2026-10-31 | UNIQUE | 3 | #327 | PROTECTED (never a deletion candidate): open PR head/base; 3 unique patch(es) |
+| `work/claude-gen69-legality-foundation-20261030` | `de712c07` | 2026-10-31 | UNIQUE | 10 | #328 | PROTECTED (never a deletion candidate): open PR head/base; 10 unique patch(es) |
 
 </details>
 
