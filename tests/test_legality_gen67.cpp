@@ -213,8 +213,9 @@ void testInterface(const std::vector<Record>& records) {
           "native formats");
     check(Legality::Modern::generationOf(Game::SW) == 8 && Legality::Modern::generationOf(Game::SL) == 9, "generations");
 
-    // Formats without rules: Incomplete with structure None, never Invalid.
-    for (Format f : {Format::PB7, Format::PK8, Format::PB8, Format::PA8, Format::PK9, Format::PA9}) {
+    // Formats without rules: Incomplete with structure None, never Invalid (PK8 has its own
+    // analyzer, tests/test_legality_gen8.cpp).
+    for (Format f : {Format::PB7, Format::PB8, Format::PA8, Format::PK9, Format::PA9}) {
         std::vector<uint8_t> bytes(profile(f)->partySize, 0x5A);
         Input in;
         in.format = f;

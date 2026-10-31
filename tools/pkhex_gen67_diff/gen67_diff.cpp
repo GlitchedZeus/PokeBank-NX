@@ -1,14 +1,15 @@
-// Differential driver: PokeBank NX Gen VI/VII verdicts against a PKHeX corpus.
+// Differential driver: PokeBank NX Gen VI-VIII (PK6/PK7/PK8) verdicts against a PKHeX corpus.
 //
 //   gen67_diff [SHOW] < corpus.txt
 //
 // Corpus lines come from oracle/Program.cs ("generate"):
-//   <id> <6|7> <game> <box|party> <decrypted hex> VALID|INVALID <encounter>:<species> <group> ; <PKHeX results>
+//   <id> <6|7|8> <game> <box|party> <decrypted hex> VALID|INVALID <encounter>:<species> <group> ; <PKHeX results>
 // Each record is analyzed decrypted, with the line's game and slot. Exit status 1 when
 //   - PokeBank NX reports Invalid for a record PKHeX accepts (a false Invalid), or
 //   - PokeBank NX reports "No problems found" for a record PKHeX rejects (a false Valid).
 // Records PKHeX rejects that PokeBank NX leaves Incomplete are counted, not failed:
 // Unknown is never turned into Invalid.
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
     const size_t show = argc > 1 ? std::strtoul(argv[1], nullptr, 10) : 20;
     std::string line;
     size_t total = 0, pkValid = 0, pkInvalid = 0, detected = 0, undetected = 0, falseInvalid = 0, falseValid = 0, malformed = 0;
-    std::map<std::string, size_t> detectedByRule, falseByRule;
+    std::map<std::string, size_t> detectedByRule, falseByRule, undetectedByPkhex;
     std::map<std::string, std::pair<size_t, size_t>> byGroup; // group -> {PKHeX invalid, detected}
     std::vector<std::string> falseInvalidLines;
     while (std::getline(std::cin, line)) {
@@ -62,7 +63,8 @@ int main(int argc, char** argv) {
         if (!(in >> id >> fmt >> game >> slot >> hex >> verdict >> enc >> group)) { ++malformed; continue; }
         ++total;
         Legality::Modern::Input input;
-        input.format = fmt == "6" ? Legality::Modern::Format::PK6 : Legality::Modern::Format::PK7;
+        input.format = fmt == "6" ? Legality::Modern::Format::PK6
+                     : fmt == "7" ? Legality::Modern::Format::PK7 : Legality::Modern::Format::PK8;
         input.game = static_cast<Legality::Modern::Game>(std::stoi(game));
         input.slot = slot == "party" ? Legality::Modern::Slot::Party : Legality::Modern::Slot::Box;
         input.encrypted = false;
@@ -85,7 +87,15 @@ int main(int argc, char** argv) {
             auto& g = byGroup[group];
             ++g.first;
             if (ours == Legality::Verdict::Invalid) { ++detected; ++g.second; ++detectedByRule[firstInvalid]; }
-            else ++undetected;
+            else {
+                ++undetected;
+                // First PKHeX result that is not a "~" (Fishy) line, for the gap summary.
+                const auto results = line.substr(line.find(" ; ") + 3);
+                std::istringstream rs(results);
+                std::string r;
+                while (rs >> r && r[0] == '~') {}
+                ++undetectedByPkhex[r];
+            }
         }
         if (report.verdict() != Legality::Verdict::Invalid && report.verdict() != Legality::Verdict::Incomplete &&
             report.verdict() != Legality::Verdict::NoProblemsFound)
@@ -97,6 +107,11 @@ int main(int argc, char** argv) {
     for (const auto& [g, c] : byGroup) std::cout << "  group " << g << ": " << c.second << "/" << c.first << " detected\n";
     std::cout << "detected by first rule:\n";
     for (const auto& [r, c] : detectedByRule) std::cout << "  " << c << "  " << r << "\n";
+    std::cout << "left Incomplete, by first PKHeX result:\n";
+    std::vector<std::pair<size_t, std::string>> gaps;
+    for (const auto& [r, c] : undetectedByPkhex) gaps.emplace_back(c, r);
+    std::sort(gaps.rbegin(), gaps.rend());
+    for (size_t i = 0; i < gaps.size() && i < 25; ++i) std::cout << "  " << gaps[i].first << "  " << gaps[i].second << "\n";
     if (falseInvalid) {
         std::cout << "false Invalid by rule:\n";
         for (const auto& [r, c] : falseByRule) std::cout << "  " << c << "  " << r << "\n";

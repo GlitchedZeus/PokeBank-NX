@@ -1,14 +1,16 @@
-# Gen VI (PK6: X/Y/OR/AS) and Gen VII (PK7: SN/MN/US/UM) legality through
+# Gen VI (PK6: X/Y/OR/AS), Gen VII (PK7: SN/MN/US/UM) and Gen VIII (PK8: SW/SH) legality through
 # Legality::Modern::analyze. The codec and base stats are the existing Gen VI/VII
-# integration headers (Gen6PK6.h, Gen6PersonalData.h, Gen7PersonalData.h); rule data is
+# integration headers (Gen6PK6.h, Gen6PersonalData.h, Gen7PersonalData.h, Gen8PK8.h); rule data is
 # generated from PKHeX by tools/pkhex_gen67_diff/oracle. tools/pkhex_gen67_diff/run.sh
 # reproduces the fixture verdicts at scale against PKHeX.Core.
 GEN67_LEGALITY_SOURCES := src/Legality/ModernLegality.cpp src/Legality/Gen67Legality.cpp \
-	src/Legality/Gen67LegalityData.cpp src/Pokemon/Experience.cpp
+	src/Legality/Gen67LegalityData.cpp src/Legality/Gen8Legality.cpp src/Legality/Gen8LegalityData.cpp \
+	src/Pokemon/Experience.cpp
 GEN67_LEGALITY_HEADERS := include/Legality/ModernLegality.h include/Legality/Gen67Legality.h \
 	include/Legality/Gen67LegalityData.inc include/Legality/Legality.h include/Legality/LegalityContext.h \
 	include/Integration/Gen6/Gen6PK6.h include/Integration/Gen6/Gen6PersonalData.h \
-	include/Integration/Gen7/Gen7PersonalData.h
+	include/Integration/Gen7/Gen7PersonalData.h include/Legality/Gen8Legality.h \
+	include/Legality/Gen8LegalityData.inc include/Integration/Gen8/Gen8PK8.h
 GEN67_TEST_SOURCES := tests/test_legality_gen67.cpp $(GEN67_LEGALITY_SOURCES)
 HOST_TESTS += $(HOST_BUILD)/test_legality_gen67
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen67_sanitize
@@ -22,3 +24,17 @@ $(HOST_BUILD)/test_legality_gen67: $(GEN67_TEST_SOURCES) $(GEN67_LEGALITY_HEADER
 $(HOST_BUILD)/test_legality_gen67_sanitize: $(GEN67_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex_seed2_sample.txt
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN67_TEST_SOURCES) -o $@
+
+GEN8_TEST_SOURCES := tests/test_legality_gen8.cpp $(GEN67_LEGALITY_SOURCES)
+HOST_TESTS += $(HOST_BUILD)/test_legality_gen8
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen8_sanitize
+host-test: $(HOST_BUILD)/test_legality_gen8
+host-sanitize: $(HOST_BUILD)/test_legality_gen8_sanitize
+
+$(HOST_BUILD)/test_legality_gen8: $(GEN8_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8_seed2_sample.txt
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN8_TEST_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_gen8_sanitize: $(GEN8_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8_seed2_sample.txt
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN8_TEST_SOURCES) -o $@

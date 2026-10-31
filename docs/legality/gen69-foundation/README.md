@@ -25,7 +25,7 @@ byte (git blob ids):
 | `include/Integration/Gen6/Gen6PK6.h` (PK6/PK7 crypto, checksum, field accessors) | `726c8ff22b342dd5595df194f0ff47cecc25e1a3` |
 | `include/Integration/Gen6/Gen6PersonalData.h` (PersonalTable.AO base stats) | `e9f57b01e405235758f16ca0ab5e0a101ab62b7b` |
 | `include/Integration/Gen7/Gen7PersonalData.h` (PersonalTable.USUM base stats) | `ebf2dc7bfc246adacce2fa5fe15a69923be08cef` |
-| `include/Integration/Gen8/Gen8PK8.h` (PK8 codec, next milestone) | `33ecd733bfec5e9c84281e7ea45772267a8fd038` |
+| `include/Integration/Gen8/Gen8PK8.h` (PK8 codec) | `33ecd733bfec5e9c84281e7ea45772267a8fd038` |
 
 No save parser, staged session, exporter or SAV7 signing code is used or changed. Save
 parsing and serialization stay with the Main Development project.
@@ -46,7 +46,7 @@ everything else is Incomplete. No modern area claims Complete coverage, so a rec
 a contradiction is **Incomplete**, never "No problems found". The analyzer only reads the
 bytes: no Pokémon object, no mutation, no save write, deterministic.
 
-PK6 and PK7 have rules today. PB7/PK8/PB8/PA8/PK9/PA9 are accepted and reported Incomplete
+PK6, PK7 and PK8 have rules today. PB7/PB8/PA8/PK9/PA9 are accepted and reported Incomplete
 with structure coverage None until their decoders and rules are wired in.
 
 ## PK6 / PK7 rules
@@ -75,7 +75,7 @@ CI fails if it drifts.
 | Held item | egg holding an item; item not released for the generation | `ItemVerifier`, `ItemRestrictions` |
 | 3DS region | console region ≥ 7; country outside the console region | `ConsoleRegionVerifier`, `Locale3DS` |
 | Transfer | Gen III/IV origin met location must be Poké Transporter's (Celebi / Crown beast exceptions) | `TransferVerifier.VerifyTransferLegalityG3/G4` |
-| Virtual Console | female OT outside Crystal; met level 100 nature = EXP % 25; met level ≤ 2 nature set; VC language vs console region | `TransferVerifier.VerifyTransferLegalityG12` |
+| Virtual Console | met location not Poké Transporter's (30013 Red/Green/Blue/Yellow, 30017 Gold/Silver/Crystal); female OT outside Crystal; met level 100 nature = EXP % 25; met level ≤ 2 nature set; VC language vs console region | `TransferVerifier.VerifyVCEncounter`, `VerifyTransferLegalityG12` |
 | Hyper Training (PK7) | below level 100; six perfect IVs; a trained perfect IV | `HyperTrainingVerifier` |
 
 Warnings (not PKHeX rules, never Invalid): a PK7 in a Gen VI game or the reverse; species,
@@ -90,6 +90,51 @@ encounter, IV/flawless counts, shiny locks, ribbons, memories, geolocation histo
 bytes and nicknames/word filter, Bank/Transporter history beyond the PID and met-location
 rules, fateful flags and Super Training.
 
+## PK8 (Sword/Shield) rules
+
+`include/Legality/Gen8Legality.h`, `src/Legality/Gen8Legality.cpp`. The codec is the #312
+`Gen8PK8.h` (unchanged). Rule data comes from `oracle dump8` →
+`include/Legality/Gen8LegalityData.inc` (PersonalTable.SWSH abilities, gender ratios, form
+counts, growth rates, base stats, presence in the game and TR permissions; Gen VIII base PP;
+held items; battle-only forms; form items; mint natures), and CI fails if it drifts.
+
+A PK8 can hold a record from almost every game. Its origin follows PKHeX `PKM.Generation`
+(version byte, plus the met location for Pokémon GO), and a HOME side transfer is recognised
+by its `LocationsHOME` met location (59994–60000: Legends: Arceus, BD/SP, Scarlet/Violet,
+Switch FireRed/LeafGreen), where the version byte reads Sword or Shield.
+
+| Area | Rule (Invalid) | PKHeX source |
+|---|---|---|
+| Structure | checksum mismatch; sanity flag set | `G8PKM`, `PKM.Valid` |
+| Species | species above 898; species/form not present in Sword/Shield | `Legal.MaxSpeciesID_8`, `TransferVerifier.VerifyTransferLegalityG8` (`IsPresentInGame`) |
+| Origin | a version no game writes into a PK8 (0, 6, 46, 50/51 without a HOME location, 53+, GO without a GO location); Legends: Z-A | `PKM.Generation` = 0 (no encounter), newer than the format |
+| Form | out of range (Unown/Mothim/Scatterbug/Spewpa exceptions); Cosplay Pikachu outside Gen VI; Unown Gen II/III letter; Giratina/Arceus/Genesect/Silvally form vs item; Keldeo vs Secret Sword (forced from Gen VIII on); event-only Scatterbug/Spewpa patterns; Meowstic form vs gender; Own Tempo Rockruff / Dusk Lycanroc from Sun/Moon; Rotom/Furfrou egg forms; battle-only forms | `FormVerifier` (format 8 branches), `FormInfo`, `FormItem` |
+| Level, EVs | as PK6/PK7 | `LevelVerifier`, `EffortValueVerifier` |
+| Moves | move above 826; empty first slot; gap; duplicates; Kyurem fusion moves; Hoopa form vs Hyperspace Hole/Fury | `LearnVerifier.Finalize`, `FlagFormExclusiveKyurem/Hoopa` |
+| PP | PP Ups on an empty slot, Sketch or Revival Blessing; PP above the PP-Up maximum; egg PP Ups; egg PP not base PP | `MovePPVerifier`, `Legal.IsPPUpAvailable` |
+| EC/PID | Gen III–V origin: Poké Transporter PID; other origins: PID ≠ EC (Switch Virtual Console FR/LG and Legends: Arceus / BD/SP / HOME side transfers left undecided: HOME PID and fixed-EC gifts) | `PIDVerifier.VerifyEC` |
+| Gender, ability, nature | as PK6/PK7, on PersonalTable.SWSH | `GenderVerifier`, `AbilityVerifier`, `PIDVerifier` |
+| Stat nature | the stat nature is neither the nature nor a mint | `MiscVerifierHelpers.VerifyStatAlignment`, `Nature.IsMint` |
+| Ball | ball 0 or above Beast Ball (Legends: Arceus balls become a Poké Ball in Sword/Shield) | `BallVerifier`, `Legal.MaxBallID_8` |
+| Language | as PK6/PK7, Gen VII–IX origins up to Chinese (Traditional) | `LanguageVerifier`, `Legal.GetMaxLanguageID` |
+| Held item | egg holding an item; item not released in Sword/Shield | `ItemVerifier`, `ItemRestrictions` |
+| Transfer | Gen III/IV origin met location must be Poké Transporter's (Celebi / Crown beast exceptions) | `TransferVerifier.VerifyTransferLegalityG3/G4` |
+| Virtual Console | met location 30013/30017; female OT outside Crystal; met level 100 nature = EXP % 25; met level ≤ 2 nature set | `TransferVerifier.VerifyVCEncounter`, `VerifyTransferLegalityG12` |
+| Hyper Training | below level 50; six perfect IVs; a trained perfect IV | `HyperTrainingVerifier` |
+| Sword/Shield fields | Dynamax level above 10, on an egg, or on Zacian/Zamazenta/Eternatus; battle version other than 0/Sword/Shield, or Sword/Shield on a record that originated in or side-transferred to Sword/Shield; sociability above 255 or on an egg; a TR flag the species/form cannot learn (Calyrex exception); a Sword/Shield egg without the nickname flag | `MiscVerifierPK8` (`VerifyDynamax`, `IsBattleVersionValid`, `VerifySociability`, `VerifyTechRecordFlags`), `NicknameVerifier` (`EggStateLegality.IsNicknameFlagSet`) |
+
+Warnings (never Invalid): a PK8 in a game that does not store PK8; party level or stats that
+do not match (stats use the stat nature); same trainer IDs as the save with another OT; a
+container that failed its own integrity check. Hyper Training between level 50 and 99 is an
+Info line: it is valid only after a Scarlet/Violet or Z-A visit, which needs the evolution
+history.
+
+Not implemented for PK8 (keeps the report Incomplete): encounter tables (wild, raids, dens,
+gifts, eggs), learnsets and relearn moves, Gigantamax per encounter, HOME tracker and size
+re-roll history, egg locations, fateful flags, balls per encounter, IV/shiny/PID correlations
+per encounter, ribbons and marks, memories, trash bytes, nicknames/word filter, Pokémon GO
+and Let's Go transfer details.
+
 ## Differential evidence
 
 `tools/pkhex_gen67_diff/run.sh PKHEX [SEED] [MUTATIONS]` builds the oracle against PKHeX,
@@ -97,19 +142,36 @@ checks the generated tables byte for byte, generates a corpus and runs `gen67_di
 It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX invalid, NX
 "No problems found"). Results on 2026-10-31 (local, .NET 10.0.114, g++ 13.3):
 
-| Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
-|---|---:|---:|---:|---:|---:|---:|
-| 1 / 4 | 88,012 | 42,080 | 45,932 | 36,805 (80.1%) | 0 | 0 |
-| 2 / 8 | 155,118 | 63,170 | 91,948 | 73,937 (80.4%) | 0 | 0 |
-| 3 / 8 | 156,298 | 63,386 | 92,912 | 74,779 (80.5%) | 0 | 0 |
-| 4 / 4 | 89,523 | 42,679 | 46,844 | 37,753 (80.6%) | 0 | 0 |
+| Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
+|---|---|---:|---:|---:|---:|---:|---:|
+| PK6/PK7 | 1 / 4 | 88,012 | 42,094 | 45,918 | 36,883 (80.3%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 74,064 (80.6%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 156,298 | 63,436 | 92,862 | 74,892 (80.6%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 37,809 (80.7%) | 0 | 0 |
+| PK8 | 1 / 4 | 46,387 | 19,992 | 26,395 | 20,363 (77.1%) | 0 | 0 |
+| PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,632 (76.9%) | 0 | 0 |
+| PK8 | 3 / 8 | 81,530 | 29,743 | 51,787 | 39,862 (77.0%) | 0 | 0 |
+| PK8 | 4 / 4 | 45,489 | 19,817 | 25,672 | 19,727 (76.8%) | 0 | 0 |
+
+PK8 runs use `run.sh PKHEX SEED MUTATIONS 8`. A few PKHeX verdicts depend on the run date
+(HOME and distribution date windows), so the PKHeX valid/invalid split can move by a few
+records between days; the false-Invalid and false-Valid counts must stay zero.
 
 The corpus is synthetic (PKHeX builds every record from its own templates for a test
 trainer); it is not a personal save and not retail evidence. The detection rate measures how
 much of PKHeX's rejection these encounter-independent rules reproduce. It is not a measure of
 rule completeness. The remaining ~20% need encounter, learnset, event or history data
-(largest groups: fateful flags, geography consistency, egg locations, ball per encounter,
-learnset-only moves, nickname language).
+(largest PK6/PK7 groups: fateful flags, geography consistency, egg locations, ball per
+encounter, learnset-only moves, nickname language; largest PK8 groups: no matching
+encounter, fateful flags, Gigantamax per encounter, nickname language, PID type per
+encounter, Hyper Training level 50–99, ball per encounter, egg locations). The driver
+prints this gap list ("left Incomplete, by first PKHeX result") on every run.
+
+`tests/fixtures/gen67/pkhex8_seed2_sample.txt` (1,632 PK8 records from `generate8 2 4`,
+stratified the same way) does the same for PK8 in `tests/test_legality_gen8.cpp`
+(`test_legality_gen8{,_sanitize}`), with PK8 rule edits, valid edits that must stay
+undecided (mint, Dynamax 10, battle version on a Gen VII record), egg rules, structure,
+interface and fuzz checks.
 
 `tests/fixtures/gen67/pkhex_seed2_sample.txt` (1,531 records, stratified by group, mutation
 and NX rule) locks each record's verdict class in `tests/test_legality_gen67.cpp`, which also

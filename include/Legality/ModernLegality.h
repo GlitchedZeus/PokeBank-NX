@@ -20,8 +20,8 @@
  * touched, no Pokemon object is built or mutated, and the same input always gives the
  * same Report. Malformed input is reported in the Report, never thrown.
  *
- * Formats with rules today: PK6 (X/Y/OR/AS) and PK7 (SN/MN/US/UM), see
- * Gen67Legality.h. Every other modern format is accepted and reported Incomplete with
+ * Formats with rules today: PK6 (X/Y/OR/AS) and PK7 (SN/MN/US/UM), see Gen67Legality.h,
+ * and PK8 (SW/SH), see Gen8Legality.h. Every other modern format is accepted and reported Incomplete with
  * structure coverage None until its decoder and rules are wired in.
  */
 #pragma once

@@ -1,8 +1,10 @@
 // Gen VI / Gen VII differential oracle for PokeBank NX (PK6 and PK7 records).
 //
-//   dotnet PKHeXGen67Oracle.dll dump                    (C++ tables, see include/Legality/Gen67LegalityData.inc)
-//   dotnet PKHeXGen67Oracle.dll generate SEED MUTATIONS (corpus, one record per line)
-//   dotnet PKHeXGen67Oracle.dll probe FORMAT SLOT HEX   (every PKHeX check result for one record)
+//   dotnet PKHeXGen67Oracle.dll dump                     (C++ tables, see include/Legality/Gen67LegalityData.inc)
+//   dotnet PKHeXGen67Oracle.dll dump8                    (C++ tables, see include/Legality/Gen8LegalityData.inc)
+//   dotnet PKHeXGen67Oracle.dll generate SEED MUTATIONS  (PK6/PK7 corpus, one record per line)
+//   dotnet PKHeXGen67Oracle.dll generate8 SEED MUTATIONS (PK8 corpus, same line format)
+//   dotnet PKHeXGen67Oracle.dll probe FORMAT SLOT HEX    (every PKHeX check result for one record)
 //
 // "dump" writes every PKHeX value the C++ analyzer reads (personal abilities, gender
 // ratios, form counts and growth rates from PersonalTable.AO / PersonalTable.USUM, base
@@ -17,6 +19,11 @@
 // (PK1/PK2 -> PK7) and "grown" copies (levelled, EVs, party records), plus MUTATIONS
 // single-field mutations of each. One line per record:
 //   <id> <6|7> <game> <box|party> <decrypted hex> VALID|INVALID <encounter>:<species> <group> ; <identifier>:<result> ...
+//
+// "generate8" does the same for Sword/Shield (PK8): every Gen VIII encounter PKHeX knows for
+// Sword and Shield, records moved in through HOME (Gen VI/VII 3DS, Virtual Console, Let's Go,
+// Brilliant Diamond/Shining Pearl, Legends: Arceus and Scarlet/Violet origins), grown copies
+// and PK8-specific mutations (Dynamax level, stat nature, battle version, TR flags, ...).
 // The records are synthetic (made by PKHeX from its own templates), never a personal save.
 using System.Reflection;
 using System.Text;
@@ -27,10 +34,15 @@ if (args.Length == 1 && args[0] == "dump")
     Dump.Run();
     return 0;
 }
+if (args.Length == 1 && args[0] == "dump8")
+{
+    Dump8.Run();
+    return 0;
+}
 if (args.Length == 4 && args[0] == "probe")
 {
     var data = Convert.FromHexString(args[3]);
-    PKM pk = args[1] == "6" ? new PK6(data) : new PK7(data);
+    PKM pk = args[1] switch { "6" => new PK6(data), "7" => new PK7(data), _ => new PK8(data) };
     var slot = args[2] == "party" ? StorageSlotType.Party : StorageSlotType.Box;
     var la = new LegalityAnalysis(pk, slot);
     Console.WriteLine($"{(la.Valid ? "VALID" : "INVALID")} {la.EncounterMatch.GetType().Name}:{la.EncounterMatch.Species} v={pk.Version} lvl={pk.CurrentLevel}");
@@ -40,12 +52,19 @@ if (args.Length == 4 && args[0] == "probe")
         Console.WriteLine($"  move{i + 1} {la.Info.Moves[i].Valid} {la.Info.Moves[i].Info.Method}");
     return 0;
 }
-if (args.Length != 3 || args[0] != "generate")
+if (args.Length != 3 || args[0] is not ("generate" or "generate8"))
 {
-    Console.Error.WriteLine("usage: dump | generate SEED MUTATIONS | probe 6|7 box|party HEX");
+    Console.Error.WriteLine("usage: dump | dump8 | generate SEED MUTATIONS | generate8 SEED MUTATIONS | probe 6|7|8 box|party HEX");
     return 2;
 }
 var gen = new Generator(new Random(int.Parse(args[1])), int.Parse(args[2]));
+if (args[0] == "generate8")
+{
+    gen.Native8();
+    gen.Home8();
+    gen.Grown();
+    return 0;
+}
 gen.Native6();
 gen.Native7();
 gen.Transfers();
@@ -55,8 +74,8 @@ return 0;
 
 static class Dump
 {
-    private static int Const(string name) =>
-        (int)typeof(Legal).GetField(name, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!;
+    internal static int Const(string name) =>
+        Convert.ToInt32(typeof(Legal).GetField(name, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!);
 
     public static void Run()
     {
@@ -154,7 +173,7 @@ static class Dump
         o.WriteLine("}};");
     }
 
-    private static void Bytes(TextWriter o, string name, IEnumerable<int> values)
+    internal static void Bytes(TextWriter o, string name, IEnumerable<int> values)
     {
         var v = values.ToList();
         o.WriteLine($"constexpr std::array<uint8_t, {v.Count}> {name}{{{{");
@@ -163,7 +182,7 @@ static class Dump
         o.WriteLine("}};");
     }
 
-    private static void Bits(TextWriter o, string name, IEnumerable<bool> values)
+    internal static void Bits(TextWriter o, string name, IEnumerable<bool> values)
     {
         var v = values.ToList();
         var bytes = new byte[(v.Count + 7) / 8];
@@ -173,7 +192,7 @@ static class Dump
         Bytes(o, name, bytes.Select(b => (int)b));
     }
 
-    private static void FormItems(TextWriter o, string name, int maxItem, Func<int, byte> get)
+    internal static void FormItems(TextWriter o, string name, int maxItem, Func<int, byte> get)
     {
         var rows = new List<string>();
         for (int i = 1; i <= maxItem; i++)
@@ -185,12 +204,73 @@ static class Dump
     }
 }
 
+static class Dump8
+{
+    public static void Run()
+    {
+        var o = Console.Out;
+        int maxSpecies = Dump.Const("MaxSpeciesID_8"), maxMove = Dump.Const("MaxMoveID_8_R2"), maxItem = Dump.Const("MaxItemID_8_R2");
+        o.WriteLine("// GENERATED by tools/pkhex_gen67_diff/oracle (dotnet PKHeXGen67Oracle.dll dump8) -- do not edit.");
+        o.WriteLine("// Source: PKHeX.Core at the commit pinned in .github/workflows/legality-gen67-pkhex-diff.yml.");
+        o.WriteLine("// Included once, by src/Legality/Gen8LegalityData.cpp.");
+        o.WriteLine($"constexpr uint16_t kMaxSpecies8 = {maxSpecies}, kMaxMove8 = {maxMove}, kMaxItem8 = {maxItem}, kMaxBall8 = {Dump.Const("MaxBallID_8")};");
+        // PersonalTable.SWSH, one row per species and form: {species, form, ability1, ability2,
+        // hidden, gender, growth, formCount, present, HP, Atk, Def, Spe, SpA, SpD}, and the
+        // row's TR permissions (PersonalInfo8SWSH.GetIsLearnTR, 100 bits in 13 bytes).
+        var table = PersonalTable.SWSH;
+        var rows = new List<string>();
+        var tr = new List<int>();
+        int trCount = ((IPermitRecord)table[1]).RecordCountUsed;
+        for (ushort s = 0; s <= maxSpecies; s++)
+        {
+            var count = Math.Max((byte)1, table[s].FormCount);
+            for (byte f = 0; f < count; f++)
+            {
+                var pi = table.GetFormEntry(s, f);
+                rows.Add($"{{{s},{f},{pi.Ability1},{pi.Ability2},{pi.AbilityH},{pi.Gender},{pi.EXPGrowth},{count},{(table.IsPresentInGame(s, f) ? 1 : 0)},{pi.HP},{pi.ATK},{pi.DEF},{pi.SPE},{pi.SPA},{pi.SPD}}}");
+                var bits = new byte[(trCount + 7) / 8];
+                for (int i = 0; i < trCount; i++)
+                    if (pi.GetIsLearnTR(i)) bits[i >> 3] |= (byte)(1 << (i & 7));
+                tr.AddRange(bits.Select(b => (int)b));
+            }
+        }
+        o.WriteLine($"constexpr uint8_t kTechRecordCount8 = {trCount};");
+        o.WriteLine($"constexpr std::array<PersonalRow8, {rows.Count}> kPersonal8{{{{");
+        for (int i = 0; i < rows.Count; i += 6)
+            o.WriteLine("    " + string.Join(",", rows.Skip(i).Take(6)) + ",");
+        o.WriteLine("}};");
+        Dump.Bytes(o, "kTechRecords8", tr);
+        Dump.Bytes(o, "kBasePP8", Enumerable.Range(0, maxMove + 1).Select(m => (int)MoveInfo.GetPP(EntityContext.Gen8, (ushort)m)));
+        Dump.Bits(o, "kHeldItems8", Enumerable.Range(0, maxItem + 1).Select(i => ItemRestrictions.IsHeldItemAllowed(i, EntityContext.Gen8)));
+        var battle = new List<string>();
+        for (ushort s = 1; s <= maxSpecies; s++)
+        {
+            // Forms at or above the form count are already outside the species' forms.
+            for (byte f = 0; f < table[s].FormCount; f++)
+            {
+                if (FormInfo.IsBattleOnlyForm(s, f, 8))
+                    battle.Add($"{{{s},{f}}}");
+            }
+        }
+        o.WriteLine($"constexpr std::array<SpeciesForm, {battle.Count}> kBattleForms8{{{{{string.Join(",", battle)}}}}};");
+        Dump.FormItems(o, "kArceusItems8", maxItem, i => FormItem.GetFormArceus(i, 8));
+        Dump.FormItems(o, "kGenesectItems8", maxItem, i => FormItem.GetFormGenesect(i));
+        Dump.FormItems(o, "kSilvallyItems8", maxItem, i => FormItem.GetFormSilvally(i));
+        // Nature.IsMint: the natures a stat-nature byte may hold when it differs from the nature.
+        uint mints = 0;
+        for (int n = 0; n < 25; n++)
+            if (((Nature)n).IsMint) mints |= 1u << n;
+        o.WriteLine($"constexpr uint32_t kMintNatures = 0x{mints:X8}u;");
+    }
+}
+
 sealed class Generator(Random rng, int mutations)
 {
     private int count;
     private readonly List<(PKM pk, string group)> grownSeeds = [];
     private static readonly GameVersion[] Versions6 = [GameVersion.X, GameVersion.Y, GameVersion.OR, GameVersion.AS];
     private static readonly GameVersion[] Versions7 = [GameVersion.SN, GameVersion.MN, GameVersion.US, GameVersion.UM];
+    private static readonly GameVersion[] Versions8 = [GameVersion.SW, GameVersion.SH];
 
     private SimpleTrainerInfo Trainer(GameVersion version) => new(version)
     {
@@ -204,7 +284,74 @@ sealed class Generator(Random rng, int mutations)
     public void Native6() => Native(Versions6, 721, PersonalTable.AO, EntityContext.Gen6, v => new PK6 { Version = v }, "native6");
     public void Native7() => Native(Versions7, 807, PersonalTable.USUM, EntityContext.Gen7, v => new PK7 { Version = v }, "native7");
 
-    private void Native(GameVersion[] versions, int maxSpecies, IPersonalTable table, EntityContext context, Func<GameVersion, PKM> blank, string group)
+    /// <summary>Sword/Shield encounters, at most <see cref="PerForm8"/> per species, form and game.</summary>
+    public void Native8() => Native(Versions8, 898, PersonalTable.SWSH, EntityContext.Gen8, v => new PK8 { Version = v }, "native8", PerForm8);
+
+    private const int PerForm8 = 8;
+
+    /// <summary>
+    /// Records moved into Sword/Shield through HOME: 3DS Gen VI/VII natives, Gen III-V and Virtual
+    /// Console records, Let's Go, Brilliant Diamond/Shining Pearl, Legends: Arceus and Scarlet/Violet.
+    /// </summary>
+    public void Home8()
+    {
+        GameVersion[] v3 = [GameVersion.R, GameVersion.S, GameVersion.E, GameVersion.FR, GameVersion.LG];
+        GameVersion[] v4 = [GameVersion.D, GameVersion.P, GameVersion.Pt, GameVersion.HG, GameVersion.SS];
+        GameVersion[] v5 = [GameVersion.B, GameVersion.W, GameVersion.B2, GameVersion.W2];
+        var sources = new (string group, int maxSpecies, GameVersion[] versions, Func<PKM> blank, int keep)[]
+        {
+            ("home3", 386, v3, () => new PK3(), 6),
+            ("home4", 493, v4, () => new PK4(), 6),
+            ("home5", 649, v5, () => new PK5(), 5),
+            ("home6", 721, Versions6, () => new PK6(), 4),
+            ("home7", 807, Versions7, () => new PK7(), 3),
+            ("homevc", 251, [GameVersion.RD, GameVersion.GN, GameVersion.BU, GameVersion.YW, GameVersion.GD, GameVersion.SI, GameVersion.C], () => new PK2(), 3),
+            ("homelgpe", 809, [GameVersion.GP, GameVersion.GE], () => new PB7(), 1),
+            ("homebdsp", 493, [GameVersion.BD, GameVersion.SP], () => new PB8(), 3),
+            ("homepla", 905, [GameVersion.PLA], () => new PA8(), 2),
+            ("homesv", 1025, [GameVersion.SL, GameVersion.VL], () => new PK9(), 3),
+        };
+        foreach (var (group, maxSpecies, versions, blank, keep) in sources)
+        {
+            var seen = new HashSet<string>();
+            for (ushort species = 1; species <= maxSpecies; species++)
+            {
+                if (rng.Next(keep) != 0) continue; // a sample of the species keeps the corpus size bounded
+                if (!PersonalTable.SWSH.IsPresentInGame(species, 0) && rng.Next(4) != 0) continue; // a few TransferBad records
+                foreach (var version in versions)
+                {
+                    var tr = Trainer(version);
+                    var b = blank();
+                    b.Species = species;
+                    if (b is PK1 or PK2 && species > 151 && version is GameVersion.RD or GameVersion.GN or GameVersion.BU or GameVersion.YW)
+                        continue;
+                    List<IEncounterable> encounters;
+                    try { encounters = EncounterMovesetGenerator.GenerateEncounters(b, tr, ReadOnlyMemory<ushort>.Empty, version).ToList(); }
+                    catch (Exception) { continue; }
+                    foreach (var enc in encounters.Take(3))
+                    {
+                        var key = $"{enc.GetType().Name}:{enc.Species}:{enc.Form}:{enc.Version}:{enc.Location}:{enc.LevelMin}";
+                        if (!seen.Add(key))
+                            continue;
+                        if (TryConvert(enc, tr) is not { } src)
+                            continue;
+                        PKM? pk8;
+                        try { pk8 = EntityConverter.ConvertToType(src, typeof(PK8), out _); }
+                        catch (Exception) { continue; }
+                        if (pk8 is not PK8 p8)
+                            continue;
+                        // HOME assigns a tracker; the Sword/Shield save that receives it becomes the handler.
+                        var game = Versions8[rng.Next(2)];
+                        p8.Tracker = (ulong)rng.NextInt64(1, long.MaxValue);
+                        p8.UpdateHandler(Trainer(game));
+                        Emit(p8, game, group, true);
+                    }
+                }
+            }
+        }
+    }
+
+    private void Native(GameVersion[] versions, int maxSpecies, IPersonalTable table, EntityContext context, Func<GameVersion, PKM> blank, string group, int perForm = int.MaxValue)
     {
         var seen = new HashSet<string>();
         for (ushort species = 1; species <= maxSpecies; species++)
@@ -221,10 +368,8 @@ sealed class Generator(Random rng, int mutations)
                     List<IEncounterable> encounters;
                     try { encounters = EncounterMovesetGenerator.GenerateEncounters(b, tr, ReadOnlyMemory<ushort>.Empty, version).ToList(); }
                     catch (Exception) { continue; }
-                    foreach (var enc in encounters)
+                    foreach (var enc in encounters.Where(e => e.Context == context).Take(perForm))
                     {
-                        if (enc.Context != context)
-                            continue;
                         var key = $"{enc.GetType().Name}:{enc.Species}:{enc.Form}:{enc.Version}:{enc.Location}:{enc.EggLocation}:{enc.LevelMin}:{enc.LongName}";
                         if (!seen.Add(key))
                             continue;
@@ -330,15 +475,20 @@ sealed class Generator(Random rng, int mutations)
                 if (pk.IV_SPA != 31) ht.HT_SPA = true;
                 if (pk.IV_SPD != 31) ht.HT_SPD = true;
             }
+            if (pk is PK8 p8 && rng.Next(2) == 0)
+                p8.DynamaxLevel = (byte)rng.Next(0, 11);
             var party = rng.Next(3) == 0;
             if (party) pk.ResetPartyStats();
             Emit(pk, Game(pk), "grown", false, party);
         }
     }
 
-    private GameVersion Game(PKM pk) => pk.Format == 6
-        ? (Versions6.Contains(pk.Version) ? pk.Version : Versions6[rng.Next(4)])
-        : (Versions7.Contains(pk.Version) ? pk.Version : Versions7[rng.Next(4)]);
+    private GameVersion Game(PKM pk) => pk.Format switch
+    {
+        6 => Versions6.Contains(pk.Version) ? pk.Version : Versions6[rng.Next(4)],
+        7 => Versions7.Contains(pk.Version) ? pk.Version : Versions7[rng.Next(4)],
+        _ => Versions8.Contains(pk.Version) ? pk.Version : Versions8[rng.Next(2)],
+    };
 
     private static PKM? TryConvert(IEncounterable enc, ITrainerInfo tr)
     {
@@ -376,14 +526,16 @@ sealed class Generator(Random rng, int mutations)
 
     private string Mutate(PKM pk)
     {
-        var maxSpecies = pk.Format == 6 ? 721 : 807;
-        var maxMove = pk.Format == 6 ? 621 : 728;
+        if (pk is PK8 p8 && rng.Next(3) == 0)
+            return Mutate8(p8);
+        var maxSpecies = pk.Format switch { 6 => 721, 7 => 807, _ => 898 };
+        var maxMove = pk.Format switch { 6 => 621, 7 => 728, _ => 826 };
         switch (rng.Next(32))
         {
             case 0: pk.Ball = (byte)rng.Next(0, 28); return "ball";
             case 1: pk.MetLevel = (byte)Math.Clamp(pk.MetLevel + rng.Next(-3, 4), 0, 100); return "metlevel";
             case 2: pk.AbilityNumber = new[] { 0, 1, 2, 3, 4, 5, 6, 8 }[rng.Next(8)]; return "abilitynumber";
-            case 3: pk.Ability = rng.Next(0, pk.Format == 6 ? 192 : 234); return "ability";
+            case 3: pk.Ability = rng.Next(0, pk.Format switch { 6 => 192, 7 => 234, _ => 268 }); return "ability";
             case 4: pk.Gender = (byte)rng.Next(3); return "gender";
             case 5: pk.Nature = (Nature)rng.Next(26); return "nature";
             case 6: pk.PID = (uint)rng.NextInt64(0, 1L << 32); return "pid";
@@ -393,10 +545,10 @@ sealed class Generator(Random rng, int mutations)
             case 10: pk.SetMove(rng.Next(1, 4), pk.Move1); return "dupmove";
             case 11: pk.SetEV(rng.Next(6), rng.Next(256)); return "ev";
             case 12: pk.SetIV(rng.Next(6), rng.Next(32)); return "iv";
-            case 13: pk.Version = (GameVersion)new[] { 0, 1, 3, 6, 7, 10, 15, 20, 23, 24, 26, 27, 28, 30, 32, 33, 34, 35, 37, 39, 41, 42, 47 }[rng.Next(23)]; return "version";
+            case 13: pk.Version = (GameVersion)new[] { 0, 1, 3, 6, 7, 10, 15, 20, 23, 24, 26, 27, 28, 30, 32, 33, 34, 35, 37, 39, 41, 42, 47, 44, 45, 46, 48, 50, 52, 53, 56 }[rng.Next(pk.Format == 8 ? 31 : 23)]; return "version";
             case 14: pk.Form = (byte)rng.Next(0, 33); return "form";
             case 15: pk.Language = rng.Next(0, 12); return "language";
-            case 16: pk.HeldItem = rng.Next(0, pk.Format == 6 ? 780 : 965); return "item";
+            case 16: pk.HeldItem = rng.Next(0, pk.Format switch { 6 => 780, 7 => 965, _ => 1612 }); return "item";
             case 17: pk.EXP = (uint)Math.Max(0, (long)pk.EXP + rng.Next(-5000, 5000)); return "exp";
             case 18: pk.EXP = Experience.GetEXP(100, pk.PersonalInfo.EXPGrowth) + (uint)rng.Next(1, 100); return "exp100+";
             case 19: pk.Move1_PPUps = rng.Next(0, 4); pk.Move1_PP = rng.Next(0, 70); return "pp";
@@ -412,6 +564,26 @@ sealed class Generator(Random rng, int mutations)
             case 29: if (pk is IRegionOrigin r) { r.ConsoleRegion = (byte)rng.Next(0, 8); return "consoleregion"; } return "none";
             case 30: pk.CurrentLevel = (byte)Math.Max(1, pk.MetLevel - rng.Next(1, 5)); return "levelbelowmet";
             default: pk.SetEVs([252, 252, 6, 0, 0, 1]); return "ev511";
+        }
+    }
+
+    /// <summary>Single-field mutations of the PK8-only fields.</summary>
+    private string Mutate8(PK8 pk)
+    {
+        switch (rng.Next(12))
+        {
+            case 0: pk.DynamaxLevel = (byte)rng.Next(0, 13); return "dynamax";
+            case 1: pk.StatAlignment = (Nature)rng.Next(0, 26); return "statnature";
+            case 2: pk.BattleVersion = (GameVersion)new[] { 0, 0, 44, 45, 43, 50 }[rng.Next(6)]; return "battleversion";
+            case 3: pk.SetMoveRecordFlag(rng.Next(0, 100), true); return "trflag";
+            case 4: pk.Sociability = (uint)rng.Next(0, 300); return "sociability";
+            case 5: pk.CanGigantamax = !pk.CanGigantamax; return "gigantamax";
+            case 6: pk.MetLocation = (ushort)new[] { 59994, 59995, 59996, 59997, 59998, 59999, 60000, 30001, 30007, 30012 }[rng.Next(10)]; return "sidemet";
+            case 7: pk.HeightScalar = 0; pk.WeightScalar = 0; return "scale0";
+            case 8: pk.Form = (byte)rng.Next(0, 4); return "form8";
+            case 9: pk.Ball = (byte)rng.Next(24, 38); return "ball8";
+            case 10: pk.HyperTrainFlags = (byte)rng.Next(1, 64); pk.CurrentLevel = (byte)rng.Next(Math.Max(1, (int)pk.MetLevel), 101); return "hypertrain8";
+            default: pk.IsEgg = true; pk.DynamaxLevel = (byte)rng.Next(1, 4); return "eggdynamax";
         }
     }
 }

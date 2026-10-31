@@ -511,9 +511,15 @@ private:
                 std::to_string(originGen_) + " origin");
     }
 
-    // TransferVerifier.VerifyTransferLegalityG12 (PK7 Virtual Console transfers).
+    // TransferVerifier.VerifyVCEncounter / VerifyTransferLegalityG12 (PK7 Virtual Console
+    // transfers). Poke Transporter writes met location 30013 for a Red/Green/Blue/Yellow
+    // record (30017 when its family is Gen II-only) and 30017 for Gold/Silver/Crystal.
     void checkVirtualConsole() {
         if (format_ != 7) return;
+        const uint8_t version = pk_.originVersion();
+        const uint16_t metLocation = pk_.metLocation();
+        if (metLocation != 30017 && !(version >= 35 && version <= 38 && metLocation == 30013))
+            invalid(CheckIdentifier::Transfer, "Met location is not Poke Transporter's for a Virtual Console origin");
         if (pk_.originalTrainerGender() == 1 && pk_.originVersion() != 41)
             invalid(CheckIdentifier::Trainer, "Only Crystal has a female OT among the Virtual Console games");
         const uint8_t met = pk_.metLevel();

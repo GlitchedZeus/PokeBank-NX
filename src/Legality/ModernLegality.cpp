@@ -5,6 +5,7 @@
 #include <string>
 
 #include "Legality/Gen67Legality.h"
+#include "Legality/Gen8Legality.h"
 
 namespace Legality::Modern {
 namespace {
@@ -15,7 +16,7 @@ constexpr std::array<FormatProfile, 8> kProfiles{{
     {Format::PK6, "PK6", 6, 0xE8, 0x104, true},
     {Format::PK7, "PK7", 7, 0xE8, 0x104, true},
     {Format::PB7, "PB7", 7, 0x104, 0x104, false},
-    {Format::PK8, "PK8", 8, 0x148, 0x158, false},
+    {Format::PK8, "PK8", 8, 0x148, 0x158, true},
     {Format::PB8, "PB8", 8, 0x148, 0x158, false},
     {Format::PA8, "PA8", 8, 0x168, 0x178, false},
     {Format::PK9, "PK9", 9, 0x148, 0x158, false},
@@ -60,6 +61,7 @@ Report analyze(std::span<const uint8_t> record, const Input& input) {
     }
     if (input.format == Format::PK6) return Gen67::analyze(6, record, input);
     if (input.format == Format::PK7) return Gen67::analyze(7, record, input);
+    if (input.format == Format::PK8) return Gen8::analyze(record, input);
     Report report{};
     report.coverage.structure = CoverageLevel::None;
     if (std::all_of(record.begin(), record.end(), [](uint8_t b) { return b == 0; })) return report;

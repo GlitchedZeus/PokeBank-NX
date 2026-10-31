@@ -1,21 +1,26 @@
-name: Gen VI/VII legality vs PKHeX
+name: Gen VI-VIII legality vs PKHeX
 
-# Gen VI (PK6) and Gen VII (PK7) legality through Legality::Modern::analyze:
-#  - the rule tables in include/Legality/Gen67LegalityData.inc are byte-identical to the
-#    pinned PKHeX.Core dump,
+# Gen VI (PK6), Gen VII (PK7) and Gen VIII (PK8) legality through Legality::Modern::analyze:
+#  - the rule tables in include/Legality/Gen67LegalityData.inc and Gen8LegalityData.inc are
+#    byte-identical to the pinned PKHeX.Core dump,
 #  - the fixture, rule-edit, interface and fuzz tests pass with GCC and Clang, normal and
 #    ASan/UBSan,
 #  - every Gen VI/VII encounter PKHeX can build, Gen V encounters moved with Poke
 #    Transporter, Virtual Console Gen I/II encounters, grown copies and single-field
-#    mutations of each get no false Invalid and no false Valid against PKHeX's verdict.
+#    mutations of each get no false Invalid and no false Valid against PKHeX's verdict,
+#  - the same holds for every Sword/Shield encounter, records moved into Sword/Shield
+#    through HOME and their mutations.
 
 on:
   pull_request:
     paths:
       - 'src/Legality/ModernLegality.cpp'
       - 'src/Legality/Gen67*'
+      - 'src/Legality/Gen8Legality*'
       - 'include/Legality/ModernLegality.h'
       - 'include/Legality/Gen67*'
+      - 'include/Legality/Gen8Legality*'
+      - 'include/Integration/Gen8/Gen8PK8.h'
       - 'include/Legality/Legality.h'
       - 'include/Legality/LegalityContext.h'
       - 'include/Integration/Gen6/Gen6PK6.h'
@@ -23,6 +28,7 @@ on:
       - 'include/Integration/Gen7/Gen7PersonalData.h'
       - 'src/Pokemon/Experience.cpp'
       - 'tests/test_legality_gen67.cpp'
+      - 'tests/test_legality_gen8.cpp'
       - 'tests/fixtures/gen67/**'
       - 'tools/pkhex_gen67_diff/**'
       - 'Makefile.host.gen67-legality'
@@ -64,15 +70,19 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Gen VI/VII tests (GCC and Clang, normal and ASan/UBSan)
+      - name: Gen VI/VII/VIII tests (GCC and Clang, normal and ASan/UBSan)
         run: |
           set -euo pipefail
           for cxx in g++ clang++; do
             make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
-              build/host-$cxx/test_legality_gen67 build/host-$cxx/test_legality_gen67_sanitize
+              build/host-$cxx/test_legality_gen67 build/host-$cxx/test_legality_gen67_sanitize \
+              build/host-$cxx/test_legality_gen8 build/host-$cxx/test_legality_gen8_sanitize
             GEN67_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen67
+            GEN8_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen8
             ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
               build/host-$cxx/test_legality_gen67_sanitize
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen8_sanitize
           done
 
       - name: PK6/PK7 verdicts against PKHeX (tables, seeds 1 and 3)
@@ -80,3 +90,9 @@ jobs:
           set -euo pipefail
           tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 4
           tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 8
+
+      - name: PK8 verdicts against PKHeX (tables, seeds 1 and 3)
+        run: |
+          set -euo pipefail
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 4 8
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 8 8
