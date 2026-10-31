@@ -294,6 +294,81 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     check(sav == pristine, tag + "original SAV5 bytes unchanged");
 }
 
+// Round 11 H31 / H32: Clone is the same deferred carry as Move. Actions -> Clone only closes the menu;
+// nothing is staged until the drop. An occupied target, a slot holding a staged change (Release /
+// Clone), a changed carried record and a refused presentation all leave the workspace exactly as it
+// was. A Party Pokemon clones into a box as the native boxed record.
+void exerciseCloneCarry(G::SaveFamily family, std::string_view game, uint8_t version) {
+    const std::string tag = std::string(game) + " Clone carry: ";
+    const auto sav = fixture(family, version);
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    check(parsed.has_value(), tag + "fixture parses");
+    if (!parsed) return;
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+    const auto refuse = [](std::string& why) { why = "presentation refused"; return false; };
+    const Slot eevee{Region::Box, 0, 0};
+
+    check(!ui.beginCloneCarry(ws, error), tag + "Clone carry needs the Actions menu open");
+    check(ui.openActions(ws, eevee, error) && ui.beginCloneCarry(ws, error) && ui.surface() == Surface::Browse,
+          tag + "Actions -> Clone closes the menu for the carry");
+    const auto copy = bytesOf(ws, 0, 0);
+    check(ws.changedRecordCount() == 0 && ws.pendingReview().empty(), tag + "pickup stages nothing");
+    check(!ui.dropCarriedClone(ws, eevee, copy, 0, 1, ok, error) && ws.changedRecordCount() == 0 &&
+              ws.viewBox(0, 1)->species() == 495,
+          tag + "drop on an occupied slot is refused; the occupant stays");
+    check(!ui.dropCarriedClone(ws, eevee, copy, 0, 0, ok, error) && ws.changedRecordCount() == 0,
+          tag + "drop on the source itself is refused");
+    auto tampered = copy;
+    tampered[20] ^= 1;
+    check(!ui.dropCarriedClone(ws, eevee, tampered, 2, 3, ok, error) && ws.changedRecordCount() == 0,
+          tag + "a changed carried record is refused");
+    check(!ui.dropCarriedClone(ws, eevee, copy, 2, 3, refuse, error) && ws.changedRecordCount() == 0 &&
+              ws.emptyCloneDestination(2, 3),
+          tag + "a refused presentation rolls the clone back");
+    check(!ui.dropCarriedClone(ws, eevee, copy, 24, 0, ok, error) && !ui.dropCarriedClone(ws, eevee, copy, 0, 30, ok, error),
+          tag + "a destination outside the 24 x 30 boxes is refused");
+    check(ui.dropCarriedClone(ws, eevee, copy, 2, 3, ok, error), tag + "drop on an empty slot stages the clone (" + error + ")");
+    check(ws.viewBox(2, 3)->species() == 133 && ws.viewBox(2, 3)->pid() == 0xABCDEF01u && bytesOf(ws, 0, 0) == copy,
+          tag + "the copy is the Eevee and the source is unchanged");
+    check(ws.changedRecordCount() == 1, tag + "exactly one staged record");
+    const auto afterClone = ws.changedRecordCount();
+    check(!ui.dropCarriedClone(ws, eevee, copy, 2, 3, ok, error) && ws.changedRecordCount() == afterClone,
+          tag + "the cloned slot now refuses a second clone");
+
+    // A slot freed by a staged Release is still a staged change: never written by a clone.
+    check(ui.openActions(ws, Slot{Region::Box, 0, 1}, error) && ui.activate(ws, Action::Remove, error) &&
+              ui.confirmRemoveBox(ws, ok, error),
+          tag + "Snivy release staged");
+    const auto afterRelease = ws.changedRecordCount();
+    check(ui.openActions(ws, eevee, error) && ui.beginCloneCarry(ws, error) &&
+              !ui.dropCarriedClone(ws, eevee, copy, 0, 1, ok, error) && ws.changedRecordCount() == afterRelease &&
+              ws.viewBox(0, 1)->empty(),
+          tag + "a slot holding a staged Release is protected");
+
+    // Party source: Clone is offered and lands as the native boxed record.
+    const Slot party{Region::Party, 0, 0};
+    const auto pikachu = ws.viewParty(0);
+    check(pikachu && pikachu->valid() && !pikachu->empty(), tag + "party Pikachu");
+    if (!pikachu) return;
+    const std::vector<uint8_t> partyBytes(pikachu->originalEncryptedBytes().begin(), pikachu->originalEncryptedBytes().end());
+    check(ui.openActions(ws, party, error) && !ui.beginMoveCarry(ws, error) && ui.surface() == Surface::Actions,
+          tag + "Party Move stays unavailable");
+    check(ui.beginCloneCarry(ws, error) && ui.surface() == Surface::Browse, tag + "Party Clone starts the carry");
+    check(ui.dropCarriedClone(ws, party, partyBytes, 3, 0, ok, error), tag + "Party clone drops into Box 4 (" + error + ")");
+    check(ws.viewBox(3, 0)->species() == 25 && !ws.viewBox(3, 0)->partyRecord() && ws.viewParty(0)->species() == 25,
+          tag + "the party clone is boxed; the party Pokemon stays");
+
+    bool verified = true;
+    for (const auto& change : ws.pendingReview()) verified = verified && G::verifyStagedReview(change, &error).has_value();
+    check(verified, tag + "every staged record verifies (" + error + ")");
+    check(G::buildStagedSaveCandidate(ws, &error).has_value(), tag + "export candidate builds (" + error + ")");
+    check(sav == pristine, tag + "original SAV5 bytes unchanged");
+}
+
 std::string read(const char* path) {
     std::ifstream in(path, std::ios::binary);
     return {std::istreambuf_iterator<char>(in), {}};
@@ -312,6 +387,10 @@ void sourceWiring() {
     check(carry.find("CarryGeneration::Gen5") != std::string::npos &&
               carry.find("trainer.sharedScreen().dropCarriedPokemon(") != std::string::npos,
           "the shared carry drops Gen V through the verified state-model Move");
+    check(surface.find("state.beginCloneCarry(staged,error)") != std::string::npos &&
+              carry.find("trainer.sharedScreen().dropCarriedClone(") != std::string::npos &&
+              surface.find("stageCloneOrMoveByKeypad") == std::string::npos,
+          "Gen V Clone is the same shared carry and drops through the verified state-model Clone");
     check(surface.find("case Surface::Legality:drawLegality5(") != std::string::npos &&
               surface.find("case Surface::Legality:\n            if(keys&HidNpadButton_B)") != std::string::npos,
           "Origin & Legality is drawn and B backs out");
@@ -337,6 +416,8 @@ int main() {
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::Black2White2, "black2_nds", 23);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);
+    exerciseCloneCarry(G::SaveFamily::BlackWhite, "black_nds", 21);
+    exerciseCloneCarry(G::SaveFamily::Black2White2, "white2_nds", 22);
     if (failures) {
         std::cerr << failures << " of " << checks << " check(s) failed\n";
         return EXIT_FAILURE;

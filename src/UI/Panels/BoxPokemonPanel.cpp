@@ -151,7 +151,7 @@ namespace Panels {
             std::string speciesName = pokemon ? std::string(pokemon->species()) : "";
             // A grabbed slot renders empty: its occupant is drawn riding the cursor instead, so
             // showing it here too would put the same Pokemon on screen twice.
-            // Gen IV defers PK4 changes until the validated Y drop, unlike
+            // Gen IV defers PK4 changes until the validated A drop, unlike
             // Gen III's temporary staged extraction. Visually treat each
             // carried source as empty without altering the original record.
             const bool carriedSource = ClassicPackedMove::hidesGen4CarriedSource(

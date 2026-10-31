@@ -598,7 +598,7 @@ void testSharedHoldYGroupPlacementAtomicity() {
 
     // Valid nonoverlapping group: preserve the exact encrypted PK4 payloads,
     // leave the original emulator image untouched, and make both old source
-    // slots empty. This models a single published shared-overlay Y drop.
+    // slots empty. This models a single published shared-overlay A drop (Round 11 H23).
     {
         auto candidate = *editor;
         assert(candidate.stageMoveBoxPokemon(0, 0, 1, 0, &error));

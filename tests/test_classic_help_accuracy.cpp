@@ -105,10 +105,13 @@ void testClaimsMatchTheCode() {
     assert(gen5.find("if(keys&HidNpadButton_Y ||\n       tap==PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId)") !=
            std::string::npos);
     assert(gen5.find("keys&(HidNpadButton_Plus|HidNpadButton_Y)") == std::string::npos);
-    // Moving a Pokemon: Y places, B cancels.
+    // Moving or cloning a Pokemon: A places, B cancels (Round 11 H23, owner: the place key moved from
+    // Y to A in every generation). Both carry dispatch sites use the shared ClassicCarryRules keys.
     const std::string carry = read("src/UI/ClassicPackedMoveOverlay.inc");
-    assert(carry.find("if (down & HidNpadButton_Y) return place(screen, state);") != std::string::npos);
-    assert(carry.find("if (down & HidNpadButton_B) return cancel(screen, state);") != std::string::npos);
+    assert(carry.find("case Carry::Key::Place: return place(screen, state);") != std::string::npos);
+    assert(carry.find("case Carry::Key::Cancel: return cancel(screen, state);") != std::string::npos);
+    assert(carry.find("if (down & HidNpadButton_Y) return place(screen, state);") == std::string::npos);
+    assert(read("include/UI/ClassicCarryRules.h").find("if (down & kButtonA) return Key::Place;") != std::string::npos);
     std::cout << "Help claims match the input code ok\n";
 }
 

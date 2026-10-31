@@ -223,7 +223,7 @@ int main() {
     contains(composite, "ClassicPackedMove::handleInput(*this");
     contains(classicMove, "constexpr int kMultiHoldFrames = 8");
     contains(classicMove, "if (!(held & HidNpadButton_Y)) return beginSelectedGroup(screen, state)");
-    contains(classicMove, "if (down & HidNpadButton_Y) return place(screen, state)");
+    contains(classicMove, "case Carry::Key::Place: return place(screen, state);");   // Round 11 H23: A places
     contains(classicMove, "state.touchSelecting = true");
     contains(classicMove, "if (state.touchArmed && touch.justReleased())");
     contains(classicMove, "CarryGeneration::Gen4");

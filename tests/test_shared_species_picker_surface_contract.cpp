@@ -66,8 +66,11 @@ int main() {
     assert(gen3.find("constexpr int px = 110, py = 56, pw = 1060, ph = 600") == std::string::npos);
     assert(gen3.find("Choose Species — Generation III") == std::string::npos);
 
-    // Gen II Empty Slot / Pokemon Actions must use the same quiet panel shell as Gen I/III.
-    contains(gen2Actions, "drawPanelSurface(fb, x, y, w, h, false, 18)");
+    // Gen II Empty Slot / Pokemon Actions must use the same quiet panel shell as Gen I/III. Round 11
+    // H31 removed the Gen II Clone dialog (the last full-size panel here, drawn with that shell);
+    // the Actions sheet is the shared narrow menu and the remaining modal keeps the quiet shell.
+    contains(gen2Actions, "drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18)");
+    contains(gen2Actions, "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,");
     assert(gen2Actions.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") ==
            std::string::npos);
 

@@ -230,7 +230,7 @@ public:
     }
     // Move Pokemon uses the SHARED Gen I-IV carry (ClassicPackedMoveOverlay):
     // Actions -> Move closes the menu and the overlay picks the Pokemon up;
-    // nothing is staged until Y drops it on a verified empty box slot. B
+    // nothing is staged until A drops it on a verified empty box slot. B
     // cancels with nothing to restore. The carry remembers the exact staged
     // record it picked up and refuses a drop if that record has changed.
     [[nodiscard]] bool beginMoveCarry(const Workspace& workspace,std::string& error) {
@@ -273,6 +273,64 @@ public:
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V move presentation rejected; stage rolled back";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
+    // Round 11 H31 (owner): Clone uses the same shared carry as Move. Actions -> Clone closes
+    // the menu and the overlay carries a ghost copy; nothing is staged until A drops it on a
+    // verified empty box slot, B cancels with nothing to restore. Unlike Move, a Party source is
+    // allowed: it lands as the native boxed form (cloneToEmptyBox / cloneStagedToEmptyBox).
+    [[nodiscard]] bool beginCloneCarry(const Workspace& workspace,std::string& error) {
+        const auto allowed=availableActions(workspace);
+        bool listed=false;
+        for(size_t i=0;i<allowed.count;++i)if(allowed[i]==Action::Clone)listed=true;
+        if(surface_!=Surface::Actions || !listed) {
+            error="Gen V Clone is not available for this slot";
+            return false;
+        }
+        if(workspace.firstEmptyCloneDestination()>=720) {
+            error="Gen V has no verified empty box destination";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    // The Clone drop: the exact staged PK5 picked up (box or party) must be unchanged, and the
+    // destination must be a verified empty box slot (never an occupied, staged or non-native slot).
+    // One snapshot transaction: a refused presentation rolls the clone back.
+    template<class Refresh>
+    [[nodiscard]] bool dropCarriedClone(Workspace& workspace,const Slot& from,
+                                        std::span<const uint8_t> pickedUp,
+                                        size_t box,size_t slot,
+                                        Refresh&& refresh,std::string& error) {
+        const auto current=from.region==Workspace::Region::Box
+            ? workspace.viewBox(from.box,from.slot) : workspace.viewParty(from.slot);
+        if(surface_!=Surface::Browse || !current || !current->valid() || current->empty() ||
+           !std::equal(current->originalEncryptedBytes().begin(),
+                       current->originalEncryptedBytes().end(),
+                       pickedUp.begin(),pickedUp.end())) {
+            error="Gen V carried Pokemon changed; no clone staged";
+            return false;
+        }
+        if(!workspace.emptyCloneDestination(box,slot)) {
+            error="Box "+std::to_string(box+1)+" / Slot "+std::to_string(slot+1)+
+                  " is not an empty verified Gen V box slot";
+            return false;
+        }
+        Workspace snapshot=workspace;
+        const bool staged=workspace.originalOccupied(from)
+            ? workspace.cloneToEmptyBox(from,box,slot,&error)
+            : workspace.cloneStagedToEmptyBox(from,box,slot,&error);
+        if(!staged) {
+            workspace=std::move(snapshot);
+            return false;
+        }
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V clone presentation rejected; stage rolled back";
             return false;
         }
         error.clear();

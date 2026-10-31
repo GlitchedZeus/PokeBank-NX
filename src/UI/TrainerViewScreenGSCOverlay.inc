@@ -10,6 +10,7 @@
 #include "Names/SpeciesNames.h"
 #include "UI/Common.h"
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/ClassicPackedMovePresentation.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
@@ -443,18 +444,14 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
             state.pokemonRow = 0;
             break;
         case Actions::SlotAction::Clone: {
-            const auto destination = Utils::promptNumber("Clone to Gen II Box", state.pokemonBox + 1, 1,
-                                                         editor->metadata().boxCount);
-            if (!destination.accepted) break;
-            std::size_t destinationSlot = 0;
-            if (!editor->stageCloneBoxPokemon(static_cast<std::size_t>(state.pokemonBox),
-                                              static_cast<std::size_t>(state.pokemonSlot),
-                                              static_cast<std::size_t>(destination.value - 1),
-                                              destinationSlot, error))
-                screen.postStatus(error.empty() ? "Clone failed" : error, 300);
-            else
-                screen.postStatus("Clone staged in Box " + std::to_string(destination.value) +
-                                  " Slot " + std::to_string(destinationSlot + 1) + "; source unchanged", 300);
+            // Round 11 H31: the one shared visual Clone carry (ClassicPackedMoveOverlay), never a
+            // keypad: the sheet closes, A places the copy on an empty slot, B cancels.
+            const int box = state.pokemonBox, slot = state.pokemonSlot;
+            state.active = false;
+            state.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+                screen.postStatus("Clone could not start from here", 240);
             break;
         }
         case Actions::SlotAction::Add:

@@ -19,6 +19,8 @@ enum class Page { Hub,Pokemon,Party,Items,Trainer };
 inline constexpr const char* kPlusReview = "+   Review staged changes     B   Return to the save hub";
 inline constexpr const char* kYReview = "Y   Review staged changes     B   Return to the save hub";
 inline constexpr const char* kExitMenu = "A / X / Y   Exit menu: A Review, X Export Copy, Y Discard and leave";
+// ClassicPackedMoveOverlay (ClassicCarryRules::carryKey): A places a carried Pokemon or clone, B cancels.
+inline constexpr const char* kCarryPlace = "A   While moving or cloning: place it here     B   While carrying: cancel";
 // TrainerViewScreenBase: B or - closes this Help window (helpOverlayActive).
 inline constexpr const char* kCloseHelp = "B / -   Close this Help";
 inline std::vector<std::string> lines(Page page,int generation) {
@@ -37,7 +39,10 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back("A   On an empty slot: create a Pokemon draft");
             out.push_back("L / R   Previous / next box     ZL / ZR   Jump boxes");
             out.push_back(generation==5?kYReview:kPlusReview);   // Gen I-IV Boxes: Y is Move
-            out.push_back("Y   While moving: place it here     B   While moving: cancel");
+            // Round 11 H23 (owner): Y picks up, A places, B cancels (ClassicCarryRules, every
+            // generation). Gen V's Y is Review, so its pickup is A -> Move / Clone (the first row).
+            if(generation!=5)out.push_back("Y   Tap: pick up to move     Y   Hold: multi-select");
+            out.push_back(kCarryPlace);
             out.push_back("Y   Release question: only Y releases; B cancels");
             break;
         case Page::Party:

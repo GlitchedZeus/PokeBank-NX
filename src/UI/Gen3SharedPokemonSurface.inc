@@ -1742,19 +1742,13 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             state.confirmRelease = true;
             break;
         case Shared::Action::Clone: {
-            const auto box = Utils::promptNumber("Clone to Gen III Box", state.box + 1, 1, 14);
-            if (!box.accepted) break;
-            const auto slot = Utils::promptNumber("Clone to Slot", state.slot + 1, 1, 30);
-            if (!slot.accepted) break;
-            if (!staged->stageCloneBoxPokemon(
-                    static_cast<std::size_t>(state.box), static_cast<std::size_t>(state.slot),
-                    static_cast<std::size_t>(box.value - 1), static_cast<std::size_t>(slot.value - 1),
-                    error)) {
-                screen.postStatus(error.empty() ? "Generation III Clone failed" : error, 360);
-            } else {
-                refreshPresentation(screen);
-                screen.postStatus("Generation III Clone staged; source save unchanged", 300);
-            }
+            // Round 11 H31 (owner): the shared visual Clone carry, never number keypads. Actions
+            // closes; the copy rides the box cursor from the first empty slot of this box; A places
+            // it on any empty slot (occupied / unreadable slots are refused), B cancels.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, state.box, state.slot))
+                screen.postStatus("Clone could not start from here", 240);
             break;
         }
         case Shared::Action::Close:

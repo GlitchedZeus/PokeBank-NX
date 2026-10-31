@@ -48,7 +48,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             case Action::Edit: state.mode = UX2Mode::Edit; state.row = 0; break;
             case Action::Clone: ux2OpenClone(screen); break;
             case Action::Move: {
-                // R2-CHECK-009: the existing Boxes carry, picked up; Y drops, B cancels.
+                // R2-CHECK-009: the existing Boxes carry, picked up; A places, B cancels.
                 const int box = state.box, slot = state.slot;
                 ux2Close(state);
                 screen.controllerNavigation.reset();
@@ -310,9 +310,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                               int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
     if (handlePassiveViewTouch(screen, touch)) return true;
-    // Defence in depth: never own input under the Clone or Provenance dialogs.
-    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
-        return false;
+    // Defence in depth: never own input under the Provenance dialog.
+    if (sharedSurfaceStateFor(screen).provenanceActive) return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -383,14 +382,15 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             return true;
         case Action::Clone: {
             if (!pokemon) return true;
-            auto& shared = sharedSurfaceStateFor(screen);
-            shared.cloneActive = true;
-            shared.cloneBox = legacy.pokemonBox;
-            // The Clone destination dialog owns input and the frame (as Legality & Provenance
-            // does). Leaving the action sheet "open" underneath kept this handler capturing
-            // every input, so Clone looked inert and B revealed the dialog instead of cancelling.
+            // Round 11 H31 (owner): the shared visual Clone carry, as in Gen I. The sheet closes, the
+            // copy rides the box cursor, A places it at the chosen box's next free slot (packed list),
+            // B cancels; no Actions menu reopens afterwards (the old dialog returned to Actions).
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
             legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+                screen.postStatus("Clone could not start from here", 240);
             return true;
         }
         case Action::Remove:
@@ -446,8 +446,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
 
 bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
-    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
-        return false;
+    if (sharedSurfaceStateFor(screen).provenanceActive) return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);

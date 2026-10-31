@@ -21,7 +21,7 @@ enum class UX2Mode : uint8_t {
     MoveEditor,
     DVEditor,
     StatExpEditor,
-    CloneDestination,
+    CloneDestination,   // no longer entered: Round 11 H31 Clone is the shared box carry (ux2OpenClone)
     RemoveConfirm,
     Review,
     Provenance,
@@ -432,47 +432,18 @@ bool ux2ApplyStatExp(TrainerViewScreen& screen) {
     return true;
 }
 
+// Round 11 H31 (owner): Clone is the shared visual carry (ClassicPackedMoveOverlay), as in every other
+// generation. Actions closes, the copy rides the box cursor from the box's next free slot, A places
+// it there (Gen I boxes are packed lists, so any empty cell of the chosen box lands at its next free
+// slot), an occupied slot or a full box is refused, B cancels. Nothing is staged before A, and no
+// Actions menu reopens. Both Gen I Actions sheets (ClassicReleaseActionFix and this one) come here.
 void ux2OpenClone(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
-    auto* e = editor(screen);
-    if (!e) return;
-    state.cloneBox = std::clamp(state.box, 0, std::max(0, ux2BoxCount(*e) - 1));
-    const int first = ux2FirstEmpty(*e, state.cloneBox);
-    state.cloneSlot = first >= 0 ? first : 0;
-    state.mode = UX2Mode::CloneDestination;
-}
-
-bool ux2StageClone(TrainerViewScreen& screen) {
-    auto& state = ux2StateFor(screen);
-    auto* e = editor(screen);
-    if (!e) return false;
-    const int slots = ux2SlotCount(*e, state.cloneBox);
-    if (state.cloneSlot < 0 || state.cloneSlot >= slots) return false;
-    std::string error;
-    const auto occupied = e->boxedPokemon(static_cast<size_t>(state.cloneBox), static_cast<size_t>(state.cloneSlot), error);
-    if (!error.empty()) { screen.postStatus(error, 300); return false; }
-    if (occupied) {
-        screen.postStatus("Choose an empty destination slot", 240);
-        return false;
-    }
-    const int writable = ux2FirstEmpty(*e, state.cloneBox);
-    if (writable < 0) {
-        screen.postStatus("Destination Generation I box is full", 240);
-        return false;
-    }
-    if (state.cloneSlot != writable) {
-        screen.postStatus("Gen I boxes are contiguous; only the next writable empty slot can store a clone", 360);
-        return false;
-    }
-    if (!e->stageClone(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
-                       static_cast<size_t>(state.cloneBox), static_cast<size_t>(state.cloneSlot), error)) {
-        screen.postStatus(error.empty() ? "Generation I clone was rejected" : error, 300);
-        return false;
-    }
-    refreshBoxes(screen);
-    screen.postStatus("Clone staged at chosen writable slot; source Pokemon and original .srm unchanged", 300);
+    const int box = state.box, slot = state.slot;
     ux2Close(state);
-    return true;
+    screen.controllerNavigation.reset();
+    if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+        screen.postStatus("Clone could not start from here", 240);
 }
 
 void ux2HandlePicker(TrainerViewScreen& screen, uint64_t down) {
@@ -715,29 +686,6 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.mode == UX2Mode::LevelExpEditor || state.mode == UX2Mode::MoveEditor ||
         state.mode == UX2Mode::DVEditor || state.mode == UX2Mode::StatExpEditor) {
         ux2HandleSubEditor(screen, down);
-        return;
-    }
-
-    if (state.mode == UX2Mode::CloneDestination) {
-        const int boxes = ux2BoxCount(*e);
-        const int slots = ux2SlotCount(*e, state.cloneBox);
-        constexpr int cols = 5;
-        if (down & HidNpadButton_L) {
-            state.cloneBox = (state.cloneBox + boxes - 1) % boxes;
-            const int first = ux2FirstEmpty(*e, state.cloneBox); state.cloneSlot = first >= 0 ? first : 0;
-        }
-        if (down & HidNpadButton_R) {
-            state.cloneBox = (state.cloneBox + 1) % boxes;
-            const int first = ux2FirstEmpty(*e, state.cloneBox); state.cloneSlot = first >= 0 ? first : 0;
-        }
-        if (slots > 0) {
-            if (down & HidNpadButton_Left) state.cloneSlot = (state.cloneSlot + slots - 1) % slots;
-            if (down & HidNpadButton_Right) state.cloneSlot = (state.cloneSlot + 1) % slots;
-            if (down & HidNpadButton_Up) state.cloneSlot = (state.cloneSlot - cols + slots) % slots;
-            if (down & HidNpadButton_Down) state.cloneSlot = (state.cloneSlot + cols) % slots;
-        }
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return; }
-        if (down & HidNpadButton_A) ux2StageClone(screen);
         return;
     }
 

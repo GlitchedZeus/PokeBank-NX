@@ -312,9 +312,10 @@ int main() {
     contains(move, "if (isGen3(screen)) return beginGen3");
     contains(move, "The selected sparse rectangle contains no Pokemon");
     contains(move, "if (state.active)");
-    contains(move, "if (down & HidNpadButton_B) return cancel(screen, state)");
-    contains(move, "if (down & HidNpadButton_Y) return place(screen, state)");
-    contains(move, "down & (HidNpadButton_A | HidNpadButton_X)");
+    // Round 11 H23 (owner): A places, B cancels, Y / X are refused with a hint (ClassicCarryRules).
+    contains(move, "case Carry::Key::Cancel: return cancel(screen, state);");
+    contains(move, "case Carry::Key::Place: return place(screen, state);");
+    contains(move, "screen.postStatus(Carry::refuseHint(state.intent), 180);");
     contains(move, "D-pad and L/R keep using the accepted box navigation path");
     contains(move, "screen.currentlySelecting = true");
     contains(move, "int stickX, int stickY, const TouchInput& touch");
