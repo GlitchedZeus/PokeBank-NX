@@ -653,7 +653,7 @@ static class DumpEncounters
                                 fate |= Fateful(enc);
                                 if (enc.IsEgg && enc.Species == s && enc.Context == context) egg |= Egg(enc, pk);
                                 if (enc.Context == context)
-                                    egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not 0 } ? 32 : 0;
+                                    egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
                         }
                         catch (ArgumentOutOfRangeException) when (version.Context == EntityContext.None)
@@ -687,7 +687,7 @@ static class DumpEncounters
                     if (g.IsEgg && g.Species == s && g.Context == context && reach(g)) egg |= Egg(g, pk);
                 foreach (var g in gifts)
                     if (g.Context == context && reach(g) && line.Contains(g.Species))
-                        egg |= g.IsEgg ? 64 : g.EggLocation != 0 ? 32 : 0;
+                        egg |= g.IsEgg ? 64 : g.EggLocation is not (0 or Locations.Default8bNone) ? 32 : 0;
                 eggs[s] = undecided ? 0 : egg | 0x80;
                 masks[s] = undecided ? 0 : mask;
                 fateful[s] = undecided || mask == 0 ? 0 : fate;
@@ -727,14 +727,15 @@ static class DumpEncounters
 
     // Unhatched-egg facts of one egg encounter of the format's own context (eggs never leave it:
     // Poke Transporter, Pokemon Bank and HOME refuse them). 1 = an egg exists; 2 = it is a mystery
-    // gift (its met level and locations follow the gift); 4 / 8 = EggStateLegality.IsNicknameFlagSet
+    // gift, or from Generation 8 on any in-game gift egg (its met level and locations follow it); 4 / 8 = EggStateLegality.IsNicknameFlagSet
     // may be true / false; 16 = its egg location may be 0. Over every encounter of the species or a
     // pre-evolution in the format's context (and mystery gifts of its line): 32 = a non-egg encounter
-    // carries a nonzero egg location; 64 = an egg encounter exists. Bit 7 marks a decided species.
+    // carries an egg location other than 0 or BD/SP's none (65535); 64 = an egg encounter exists. Bit 7 marks a decided species.
     private static int Egg(IEncounterable enc, PKM pk)
     {
         int bits = 1;
-        if (enc is MysteryGift) bits |= 2;
+        // From Sword/Shield on, an in-game gift egg (Static8b, Static9) matches its own met fields too.
+        if (enc is MysteryGift || (enc.Generation >= 8 && enc is not IEncounterEgg)) bits |= 2;
         if (enc is WB8 or EncounterStatic8b) bits |= 4 | 8;  // the flag follows IsUntraded
         else bits |= EggStateLegality.IsNicknameFlagSet(enc, pk) ? 4 : 8;
         if (enc is not IEncounterEgg && enc is ILocation { EggLocation: 0 }) bits |= 16;

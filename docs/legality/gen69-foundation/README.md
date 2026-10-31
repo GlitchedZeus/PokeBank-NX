@@ -282,7 +282,7 @@ fateful statics, fateful mystery gifts and Gen III event gifts) and whether any 
 accepts is Invalid, in either direction: a Pidgey with the flag set, or a Manaphy without it.
 Gift receivability (version and language restrictions) still needs the gift itself.
 
-## Egg rules (PK6, PK7)
+## Egg rules (PK6, PK7, PK8, PB8, PK9)
 
 `dumpencounters` also records, per format with eggs and species, the unhatched-egg facts of the
 egg encounters of that format's own games (bred eggs, in-game gift eggs and mystery gift eggs):
@@ -310,6 +310,15 @@ and none does). `EncounterVerifier.VerifyEncounterEggHatched` then applies whate
 (bred, in-game gift or mystery gift): met level 1, and a met location in the origin game's hatch
 list (`EggHatchLocation6/7`, dumped as `kHatch*`). A species whose line has no egg in its origin
 games cannot carry an egg location. Hatch counters and the egg's own moves still need the encounter.
+
+PK8, PB8 and PK9 apply the same rules to records of their own games (Sword/Shield without a
+side-transfer met location, BD/SP, Scarlet/Violet; an unhatched Scarlet/Violet egg has no version
+yet). An unhatched egg from any other game is Invalid, since HOME refuses eggs. BD/SP stores "no
+location" as 65535 and an unhatched egg's trade as 30001 (`LinkTrade6NPC`); the others use 0 and
+30002. From Generation 8 on, an in-game gift egg (BD/SP's Happiny and Riolu eggs, Jacq's egg)
+counts as a gift for the met-field rules, since its template fixes those fields, and the
+nickname-flag facts come from the table (Jacq's egg is the only flag-clear Scarlet/Violet egg).
+A BD/SP non-egg encounter carries egg location 65535, which the hatched rule treats as none.
 
 The generator now also emits each egg encounter's record
 before it hatches (`Unhatched` in the oracle), so every corpus carries PKHeX-valid unhatched
@@ -362,26 +371,25 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA9 | 2 / 4 | 21,203 | 9,438 | 11,765 | 8,387 (71.3%) | 0 | 0 |
 | PA9 | 3 / 8 | 38,041 | 13,812 | 24,229 | 17,147 (70.8%) | 0 | 0 |
 | PA9 | 4 / 4 | 21,136 | 9,493 | 11,643 | 8,391 (72.1%) | 0 | 0 |
-| PK8 | 1 / 4 | 49,192 | 21,119 | 28,073 | 22,306 (79.5%) | 0 | 0 |
-| PK8 | 2 / 4 | 49,929 | 21,465 | 28,464 | 22,556 (79.2%) | 0 | 0 |
-| PK8 | 3 / 8 | 88,885 | 31,707 | 57,178 | 45,578 (79.7%) | 0 | 0 |
-| PK8 | 4 / 4 | 51,245 | 22,345 | 28,900 | 22,870 (79.1%) | 0 | 0 |
-| PB8 | 1 / 4 | 46,138 | 18,973 | 27,165 | 23,216 (85.5%) | 0 | 0 |
-| PB8 | 2 / 4 | 46,341 | 19,233 | 27,108 | 23,242 (85.7%) | 0 | 0 |
-| PB8 | 3 / 8 | 82,202 | 27,760 | 54,442 | 46,267 (85.0%) | 0 | 0 |
-| PB8 | 4 / 4 | 47,741 | 19,856 | 27,885 | 23,858 (85.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 43,647 | 20,249 | 23,398 | 20,263 (86.6%) | 0 | 0 |
-| PK9 | 2 / 4 | 43,062 | 19,867 | 23,195 | 19,987 (86.2%) | 0 | 0 |
-| PK9 | 3 / 8 | 76,816 | 29,832 | 46,984 | 40,920 (87.1%) | 0 | 0 |
-| PK9 | 4 / 4 | 42,637 | 19,745 | 22,892 | 19,799 (86.5%) | 0 | 0 |
+| PK8 | 1 / 4 | 49,192 | 21,119 | 28,073 | 22,932 (81.7%) | 0 | 0 |
+| PK8 | 2 / 4 | 49,929 | 21,465 | 28,464 | 23,190 (81.5%) | 0 | 0 |
+| PK8 | 3 / 8 | 88,885 | 31,707 | 57,178 | 46,824 (81.9%) | 0 | 0 |
+| PK8 | 4 / 4 | 51,245 | 22,345 | 28,900 | 23,504 (81.3%) | 0 | 0 |
+| PB8 | 1 / 4 | 46,138 | 18,973 | 27,165 | 24,014 (88.4%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,341 | 19,233 | 27,108 | 24,054 (88.7%) | 0 | 0 |
+| PB8 | 3 / 8 | 82,202 | 27,760 | 54,442 | 48,004 (88.2%) | 0 | 0 |
+| PB8 | 4 / 4 | 47,741 | 19,856 | 27,885 | 24,707 (88.6%) | 0 | 0 |
+| PK9 | 1 / 4 | 43,647 | 20,249 | 23,398 | 20,403 (87.2%) | 0 | 0 |
+| PK9 | 2 / 4 | 43,062 | 19,867 | 23,195 | 20,123 (86.8%) | 0 | 0 |
+| PK9 | 3 / 8 | 76,816 | 29,832 | 46,984 | 41,160 (87.6%) | 0 | 0 |
+| PK9 | 4 / 4 | 42,637 | 19,745 | 22,892 | 19,926 (87.0%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
 whose EC PKHeX does not check, and the encounter is not resolved here. Every corpus grew at this milestone because the generator now also emits each egg
-encounter before it hatches (PK6/PK7, PK8, PB8, PK9); the Switch rates dipped slightly because
-the egg rules there are not implemented yet. A few PKHeX verdicts depend on the run date
+encounter before it hatches (PK6/PK7, PK8, PB8, PK9). A few PKHeX verdicts depend on the run date
 (HOME and distribution date windows), so the PKHeX valid/invalid split can move by a few
 records between days; the false-Invalid and false-Valid counts must stay zero.
 
@@ -392,9 +400,9 @@ rule completeness. The remaining ~12–30% need encounter, learnset, event or hi
 (largest PK6/PK7 groups: fateful flags, geography consistency, nickname language, ball per
 encounter, learnset-only moves, nickname language for relaxed species; largest PK8 groups: no matching
 encounter, fateful flags, Gigantamax per encounter, nickname language for relaxed species, PID type per
-encounter, Hyper Training level 50–99, ball per encounter, egg locations; largest PB8
+encounter, Hyper Training level 50–99, ball per encounter, egg histories from other games; largest PB8
 groups: no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, PID = EC
-on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg locations; largest PK9 groups:
+on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg histories from other games; largest PK9 groups:
 no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, Tera type per
 encounter or evolution chain, ball availability, gift matching, learnset-only moves). The driver
 prints this gap list ("left Incomplete, by first PKHeX result") on every run; with

@@ -32,6 +32,7 @@
 
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen8Legality.h"
+#include "Legality/ModernEncounter.h"
 #include "Legality/ModernLegality.h"
 
 namespace {
@@ -386,6 +387,7 @@ void testScarletViolet(const std::vector<Record>& records) {
         const auto r = analyzePlain(egg, edit(egg.plain, [](auto& b) {
             PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) & 0x7FFFFFFFu);
             PK8::write16(b, 0x120, 60005);
+            PK8::write16(b, 0x08, 387);  // a species Jacq's egg can be (the egg table allows the flag clear)
         }));
         check(!hasIssue(r, Severity::Invalid, "nickname flag"), "PK9 Jacq egg needs no nickname flag: " + describe(r));
         const auto r0 = analyzePlain(egg, edit(egg.plain, [](auto& b) { b[0xCE] = 0; }));
@@ -502,6 +504,44 @@ void testFuzz(const std::vector<Record>& records) {
 
 } // namespace
 
+// Egg rules (ModernEncounter.h egg facts, hatch lists, egg names) on PK8, PB8 and PK9 records.
+void testEggs(const std::vector<Record>& all) {
+    namespace B = Legality::ModernEncounter;
+    check(B::eggFacts(Format::PK8, 172).exists && !B::eggFacts(Format::PK9, 150).exists && B::eggFacts(Format::PB8, 490).gift,
+          "egg facts: Pichu hatches in SW/SH, Mewtwo never in S/V, Manaphy is a BD/SP gift egg");
+    check(B::hatchLocation(44, 6) && !B::hatchLocation(44, 0) && !B::hatchLocation(50, 0), "hatch lists");
+    for (Format f : {Format::PK8, Format::PB8, Format::PK9}) {
+        const size_t versionAt = f == Format::PK9 ? 0xCE : 0xDE;
+        const uint8_t own0 = f == Format::PK8 ? 44 : f == Format::PB8 ? 48 : 50;
+        const std::string name = f == Format::PK8 ? "PK8" : f == Format::PB8 ? "PB8" : "PK9";
+        // A hatched record of the format's own games: met level 1 at a hatching location.
+        const Record* hatched = find(all, [&](const Record& r) {
+            const uint16_t egg = PK8::read16(r.plain, 0x120);
+            return r.pkhexValid && r.format == f && (r.plain[versionAt] == own0 || r.plain[versionAt] == own0 + 1) && egg != 0 &&
+                   egg != 65535 && !(r.plain[0x8F] & 0x40) && r.label.rfind("native", 0) == 0;
+        });
+        check(hatched != nullptr, name + " fixture has a hatched record");
+        if (!hatched) continue;
+        auto rep = analyzePlain(*hatched, edit(hatched->plain, [](auto& b) { b[0x125] = static_cast<uint8_t>((b[0x125] & 0x80) | 3); }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "hatched egg's met level"), name + " hatched at met level 3: " + describe(rep));
+        rep = analyzePlain(*hatched, edit(hatched->plain, [](auto& b) { b[0x122] = 0xFE; b[0x123] = 0xFF; }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "hatching location"), name + " hatched at location 65534: " + describe(rep));
+        // The same record set back to an egg keeps its hatch location and species name.
+        rep = analyzePlain(*hatched, edit(hatched->plain, [](auto& b) { b[0x8F] |= 0x40; }));
+        check(rep.verdict() == Verdict::Invalid && (hasIssue(rep, Severity::Invalid, "unhatched egg") || hasIssue(rep, Severity::Invalid, "No egg of the species")),
+              name + " hatched record set to egg: " + describe(rep));
+        // A record that came through HOME from another game cannot be an egg.
+        const Record* moved = find(all, [&](const Record& r) {
+            return r.pkhexValid && r.format == f && r.plain[versionAt] != own0 && r.plain[versionAt] != own0 + 1 && r.plain[versionAt] != 0 &&
+                   r.label.find("home") != std::string::npos;
+        });
+        if (moved) {
+            rep = analyzePlain(*moved, edit(moved->plain, [](auto& b) { b[0x8F] |= 0x40; }));
+            check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "HOME refuses eggs"), name + " HOME record set to egg: " + describe(rep));
+        }
+    }
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -517,6 +557,7 @@ int main() {
     auto all = records;
     all.insert(all.end(), bdsp.begin(), bdsp.end());
     all.insert(all.end(), sv.begin(), sv.end());
+    testEggs(all);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

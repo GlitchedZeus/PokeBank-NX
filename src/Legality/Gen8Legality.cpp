@@ -113,6 +113,8 @@ public:
         checkFateful(sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8, species, (plain_[0x22] & 1) != 0);
         checkLanguage();
         checkNickname();
+        checkUnhatchedEgg();
+        checkHatchedEgg();
         checkHeldItem();
         checkTransferMetLocation();
         if (originGen_ == 1 || originGen_ == 2) checkVirtualConsole();
@@ -482,6 +484,66 @@ private:
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a " + formatName());
         else if (!ModernEncounter::ballPossible(sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8, species(), ball))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " is not possible for any encounter of the species");
+    }
+
+    Modern::Format format() const noexcept { return sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8; }
+
+    // EncounterVerifier.VerifyUnhatchedEgg and NicknameVerifier.VerifyNicknameEgg, made
+    // encounter-independent over every egg encounter of the format's own games (ModernEncounter.h).
+    // BD/SP stores "no location" as 65535 and an unhatched egg's trade as 30001 (LinkTrade6NPC).
+    void checkUnhatchedEgg() {
+        if (!pk_.isEgg()) return;
+        const bool own = sv() ? (version_ == 0 || version_ == 50 || version_ == 51)
+                       : bdsp() ? (version_ == 48 || version_ == 49)
+                                : (side_ == 0 && (version_ == VersionSW || version_ == VersionSH));
+        if (!own) {
+            invalid(CheckIdentifier::Egg, std::string("An unhatched egg cannot leave the game it is in (HOME refuses eggs), so it must be a ") +
+                                              gameName() + " egg");
+            return;
+        }
+        const auto lang = language();
+        if (lang != 0 && lang != 6 && !ModernNickname::eggNameMatches(sv() ? ModernNickname::Family::Switch9 : ModernNickname::Family::Switch8,
+                                                                      plain_.subspan(0x58, 26), lang))
+            invalid(CheckIdentifier::Egg, "An unhatched egg's name is not the egg name of its language");
+        const auto f = ModernEncounter::eggFacts(format(), species());
+        if (!f.decided) return;
+        if (!f.exists) {
+            invalid(CheckIdentifier::Egg, "No egg of the species exists in the format's games");
+            return;
+        }
+        const uint16_t none = bdsp() ? 65535 : 0, trade = bdsp() ? 30001 : 30002;
+        const uint16_t eggLocation = PK8::read16(plain_, 0x120);
+        if (eggLocation == none && !f.eggLocationZero)
+            invalid(CheckIdentifier::Egg, "An unhatched egg has no egg location");
+        // A gift egg's (mystery gift or in-game) met level and locations follow its template; bred eggs:
+        if (!f.gift) {
+            if (pk_.metLevel() != 1) invalid(CheckIdentifier::Egg, "An unhatched egg's met level is not 1");
+            if (met_ != none && met_ != trade) invalid(CheckIdentifier::Egg, "An unhatched egg has a met location other than a link trade");
+            if (eggLocation == trade) invalid(CheckIdentifier::Egg, "An unhatched egg cannot have the link-trade egg location");
+        }
+        if (pk_.isNicknamed() ? !f.nicknameFlagSet : !f.nicknameFlagClear)
+            invalid(CheckIdentifier::Egg, pk_.isNicknamed() ? "An unhatched egg's nickname flag is set, but no egg of the species sets it"
+                                                            : "An unhatched egg's nickname flag is clear, but every egg of the species sets it");
+    }
+
+    // EncounterVerifier.VerifyEncounterEgg8/8BDSP/9 for a record of the format's own games. No non-egg
+    // encounter there carries an egg location (other than BD/SP's 65535; ModernEncounter.h checks it
+    // per species), so a hatched record with one hatched from an egg: met level 1, at a hatching
+    // location of its game.
+    void checkHatchedEgg() {
+        const bool own = sv() ? (version_ == 50 || version_ == 51) : bdsp() ? (version_ == 48 || version_ == 49)
+                                                                           : (side_ == 0 && (version_ == VersionSW || version_ == VersionSH));
+        const uint16_t eggLocation = PK8::read16(plain_, 0x120);
+        if (pk_.isEgg() || !own || eggLocation == 0 || eggLocation == 65535) return;
+        const auto f = ModernEncounter::eggFacts(format(), species());
+        if (!f.decided || f.nonEggEggLocation) return;
+        if (!f.lineHasEgg) {
+            invalid(CheckIdentifier::Egg, "Egg location is set but no egg of the species' line exists in its origin games");
+            return;
+        }
+        if (pk_.metLevel() != 1) invalid(CheckIdentifier::Egg, "A hatched egg's met level is not 1");
+        if (!ModernEncounter::hatchLocation(version_, met_))
+            invalid(CheckIdentifier::Egg, "A hatched egg's met location is not a hatching location of its origin game");
     }
 
     // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).
