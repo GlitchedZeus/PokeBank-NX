@@ -1,5 +1,7 @@
 # PokeBank NX — v1.0 Roadmap
 
+> **ROADMAP, NOT BRANCH AUTHORITY:** This file describes current product direction as a dated snapshot. Re-fetch GitHub and use `docs/ENGINEERING_AUTHORITY.md` for active lane/task routing.
+
 ## OWNER-LOCKED RELEASE ORDER — OCTOBER 17, 2026
 
 **This current release order supersedes older speculative phase labels below; it does not authorize unsafe merges or writes.**
