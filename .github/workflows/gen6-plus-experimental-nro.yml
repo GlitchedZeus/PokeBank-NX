@@ -33,13 +33,13 @@ jobs:
       - name: Lane suites under GCC and sanitizers
         run: |
           set -euo pipefail
-          make -f Makefile.host -j4 gen6-host-test gen7-host-test gen8-host-test gen6plus-host-test gen7plus-host-test gen8plus-host-test gen7bplus-host-test gen8bplus-host-test modern-ui-host-test
-          make -f Makefile.host -j4 gen6-host-sanitize gen7-host-sanitize gen8-host-sanitize gen6plus-host-sanitize gen7plus-host-sanitize gen8plus-host-sanitize gen7bplus-host-sanitize gen8bplus-host-sanitize modern-ui-host-sanitize
+          make -f Makefile.host -j4 gen6-host-test gen7-host-test gen8-host-test gen6plus-host-test gen7plus-host-test gen8plus-host-test gen7bplus-host-test gen8bplus-host-test gen8aplus-host-test modern-ui-host-test
+          make -f Makefile.host -j4 gen6-host-sanitize gen7-host-sanitize gen8-host-sanitize gen6plus-host-sanitize gen7plus-host-sanitize gen8plus-host-sanitize gen7bplus-host-sanitize gen8bplus-host-sanitize gen8aplus-host-sanitize modern-ui-host-sanitize
           make -f Makefile.host capability-matrix-doc-check
       - name: Backend suites under Clang
         run: |
           set -euo pipefail
-          make -f Makefile.host HOST_BUILD=build-clang CXX=clang++ -j4 gen6plus-host-test gen7plus-host-test gen8plus-host-test gen7bplus-host-test gen8bplus-host-test
+          make -f Makefile.host HOST_BUILD=build-clang CXX=clang++ -j4 gen6plus-host-test gen7plus-host-test gen8plus-host-test gen7bplus-host-test gen8bplus-host-test gen8aplus-host-test
       - name: Gen I-V contracts stay green on this lane
         run: |
           set -euo pipefail
@@ -99,7 +99,8 @@ jobs:
                      'PokeVault::Integration::Gen6::Gen6NativeSession::open' 'PokeVault::Integration::Gen7::Gen7NativeSession::open' 'PokeVault::Integration::Gen8::Gen8NativeSession::open' \
                      'PokeVault::Integration::Gen8::verifyWorkingCopy' 'PokeVault::Integration::Gen7b::Gen7bNativeSession::open' \
                      'PokeVault::Integration::Gen7b::verifyWorkingCopy' 'PokeVault::Integration::Gen8b::Gen8bNativeSession::open' \
-                     'PokeVault::Integration::Gen8b::verifyWorkingCopy' \
+                     'PokeVault::Integration::Gen8b::verifyWorkingCopy' 'PokeVault::Integration::Gen8a::Gen8aNativeSession::open' \
+                     'PokeVault::Integration::Gen8a::verifyWorkingCopy' \
                      'PokeVault::Integration::Modern::openAssignedSource' 'PokeVault::Legacy::ModernReadOnlyTrainer::create' \
                      'memecrypto_verify'; do
             grep -qF "$sym" elf-symbols.txt || { echo "not linked: $sym"; exit 1; }

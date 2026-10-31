@@ -180,8 +180,19 @@ int main() {
                   !row->supports(Cap::Workflow::Pokedex) && !row->mechanics.dynamax,
               std::string(id) + " Create blocked, Bag/Pokedex not claimed, no Dynamax");
     }
+    // Legends: Arceus: PA8 through the shared adapter; held items read-only, Effort Levels read-only.
+    {
+        const auto* row = Cap::find("legends_arceus_switch");
+        check(row && row->provider == "modern-native" && row->uiEvidence == "test_ui_modern_surface_gen8a_host" &&
+                  row->recordFormat == "PA8" && row->statModel == Cap::StatModel::IVEffortLevel,
+              "legends_arceus_switch served by the Modern adapter (PA8)");
+        check(row && row->supports(Cap::Workflow::PokemonEditor) && row->supports(Cap::Workflow::Move) && row->supports(Cap::Workflow::Export) &&
+                  row->exportRoot == "exports/pla" && !row->supports(Cap::Workflow::NativeMechanics) &&
+                  row->status(Cap::Workflow::Create).support == Cap::Support::Blocked,
+              "legends_arceus_switch editor/storage/export; mechanics read-only; Create blocked");
+    }
     // Remaining Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
-    for (const char* id : {"legends_arceus_switch", "scarlet_switch", "legends_za_switch"}) {
+    for (const char* id : {"scarlet_switch", "legends_za_switch"}) {
         const auto* row = Cap::find(id);
         check(row && row->status(Cap::Workflow::PokemonEditor).support == Cap::Support::Blocked &&
                   !row->status(Cap::Workflow::PokemonEditor).reason.empty(),
@@ -191,7 +202,7 @@ int main() {
     }
     check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && Cap::isModernNativeId("letsgo_eevee_switch") && !Cap::isModernNativeId("black_nds") &&
               !Cap::isModernNativeId("scarlet_switch") && Cap::isModernNativeId("brilliant_diamond_switch") &&
-              !Cap::isModernNativeId("legends_arceus_switch"),
+              Cap::isModernNativeId("legends_arceus_switch") && !Cap::isModernNativeId("legends_za_switch"),
           "isModernNativeId identifies the Modern adapter titles only");
 
     std::cout << "test_game_capability_registry: " << (failures ? "FAILED " : "all ") << checks << " checks"

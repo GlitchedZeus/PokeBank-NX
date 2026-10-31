@@ -8,6 +8,7 @@
 #include "fixtures/gen8/Gen8SyntheticSave.h"
 #include "fixtures/gen7b/Gen7bSyntheticSave.h"
 #include "fixtures/gen8b/Gen8bSyntheticSave.h"
+#include "fixtures/gen8a/Gen8aSyntheticSave.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -51,7 +52,7 @@ int main() {
     // ---- family dispatch ----
     check(Modern::isModernAssignedId("x_3ds") && Modern::isModernAssignedId("ultramoon_3ds"), "3DS titles are Modern-assigned");
     check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("scarlet_switch") &&
-              !Modern::isModernAssignedId("legends_arceus_switch"),
+              !Modern::isModernAssignedId("legends_za_switch"),
           "DS titles and Switch titles without a verified adapter are not");
     check(Modern::isModernAssignedId("sword_switch") && Modern::isModernAssignedId("shield_switch") &&
               Modern::gameGroupFor("shield_switch") == Enums::GameVersion::SWSH && Modern::expectedFamily("sword_switch") == "SWSH" &&
@@ -309,6 +310,29 @@ int main() {
         check(opened.ready() && opened.session->boxCount() == 40 && Modern::homeCardSnapshot(opened).partyCount == 2,
               "BD/SP opens through the Gen8b adapter: " + opened.diagnostic);
         check(slurp(bdDir + "/SaveData.bin") == bd, "BD/SP fixture never written");
+    }
+
+    // ---- Legends: Arceus: manual link, same contract ----
+    {
+        const std::string laDir = root + "/linked-pla";
+        ::mkdir(laDir.c_str(), 0755);
+        const auto la = Gen8aFixture::makeSave();
+        check(writeFile(laDir + "/main", la), "PLA fixture written");
+        check(Modern::gameGroupFor("legends_arceus_switch") == Enums::GameVersion::PLA &&
+                  Modern::exportsRootFor("legends_arceus_switch").ends_with("/exports/pla"),
+              "PLA dispatch");
+        const auto row = Modern::inspectSourceFile(laDir + "/main", "Manual", "legends_arceus_switch");
+        check(row.ready() && row.generation == 8 && row.partyCount == 2 && row.trainerName == "Akari", "linked PLA main validates: " + row.diagnostic);
+        auto catalog = Modern::forGameAndProfile(std::vector<PokeVault::Source::SaveInstance>{row}, bindings, profileA, "legends_arceus_switch");
+        const auto assigned = catalog.rows.size() == 1
+                                  ? Modern::assignValidatedSource(bindings, catalog.rows.front(), profileA, "legends_arceus_switch")
+                                  : Modern::SourceAssignmentResult{};
+        check(assigned.success && bindings.resolveFileForGame(profileA, "legends_arceus_switch").binding.expectedRawFamily == "PLA",
+              "PLA assignment: " + assigned.diagnostic);
+        auto opened = Modern::openAssignedSource(bindings, profileA, "legends_arceus_switch");
+        check(opened.ready() && opened.session->boxCount() == 32 && Modern::homeCardSnapshot(opened).partyCount == 2,
+              "PLA opens through the Gen8a adapter: " + opened.diagnostic);
+        check(slurp(laDir + "/main") == la, "PLA fixture never written");
     }
 
     std::cout << "test_modern_sources: " << (failures ? "FAILED " : "all ") << checks << " checks"

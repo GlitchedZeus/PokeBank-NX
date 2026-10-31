@@ -77,7 +77,7 @@ Source: `include/Integration/Common/GameCapabilityRegistry.h` (cumulative-inheri
 | Shield (`shield_switch`, SWSH, PK8) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, handler, memory and cached-stat defaults (Gen8StagedSession::createUnsupportedReason) / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen8_* lane suites + test_gen8_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen8_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
 | Brilliant Diamond (`brilliant_diamond_switch`, BDSP, PB8) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, handler, memory and cached-stat defaults / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen8_* lane suites + test_gen8_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen8b_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
 | Shining Pearl (`shining_pearl_switch`, BDSP, PB8) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, handler, memory and cached-stat defaults / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen8_* lane suites + test_gen8_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen8b_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
-| Legends Arceus (`legends_arceus_switch`, PLA, PA8) | Dashboard PASS / Save Instances READ-ONLY | Party READ-ONLY / Boxes READ-ONLY | BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification | BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification / Clone BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification / Move BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification / Remove BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification | Backup READ-ONLY / Review BLOCKED - PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification | BLOCKED - Installed-game injection is hard-disabled; a verified Export Copy needs the adapter's strict re-parse and byte-diff verifier | Host read-validation tests only (no staged session) | NOT TESTED |
+| Legends Arceus (`legends_arceus_switch`, PLA, PA8) | Dashboard PASS / Save Instances PASS | Party PASS / Boxes PASS | PASS | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | Create BLOCKED - Create needs verifiable EC/PID, personal, met, Alpha/Noble, mastery, size and cached-stat defaults / Clone PASS / Move PASS / Remove PASS | Backup READ-ONLY / Review PASS | PASS | test_gen8_* lane suites + test_gen8_native_session + test_modern_sources + real-screen test_ui_modern_surface_gen8a_host (GCC; Clang/ASan/UBSan on the backend set); native devkitA64 build pending CI | NOT TESTED |
 
 ## Generation IX (Nintendo Switch)
 
@@ -109,7 +109,7 @@ Flags are the `NativeMechanics` members set to true in the registry; the shared 
 | Shield (`shield_switch`, SWSH, PK8) | VIII | modern-native | IV/EV | 32 x 30 (SCBlock) | fairyType, memories, hyperTraining, dynamax, gigantamax, technicalRecords, battleTeamLocks, mintedNature, marks, ribbons, scale |
 | Brilliant Diamond (`brilliant_diamond_switch`, BDSP, PB8) | VIII | modern-native | IV/EV | 40 x 30 (FlatMD5) | fairyType, hyperTraining, mintedNature, ribbons, scale |
 | Shining Pearl (`shining_pearl_switch`, BDSP, PB8) | VIII | modern-native | IV/EV | 40 x 30 (FlatMD5) | fairyType, hyperTraining, mintedNature, ribbons, scale |
-| Legends Arceus (`legends_arceus_switch`, PLA, PA8) | VIII | legacy-modern-reader | IV/EffortLevel | 32 x 30 (Pastures) | fairyType, hyperTraining, effortLevels, alphaPokemon, moveMastery, pastures, mintedNature, ribbons, scale |
+| Legends Arceus (`legends_arceus_switch`, PLA, PA8) | VIII | modern-native | IV/EffortLevel | 32 x 30 (SCBlock) | fairyType, hyperTraining, effortLevels, alphaPokemon, moveMastery, pastures, mintedNature, ribbons, scale |
 | Scarlet (`scarlet_switch`, SV, PK9) | IX | legacy-modern-reader | IV/EV | 32 x 30 (SCBlock) | fairyType, memories, hyperTraining, teraType, mintedNature, marks, ribbons, scale |
 | Violet (`violet_switch`, SV, PK9) | IX | legacy-modern-reader | IV/EV | 32 x 30 (SCBlock) | fairyType, memories, hyperTraining, teraType, mintedNature, marks, ribbons, scale |
 | Legends Z-A (`legends_za_switch`, ZA, PA9) | IX | legacy-modern-reader | IV/EV | 32 x 30 (SCBlock) | megaForms, fairyType, hyperTraining, alphaPokemon, mintedNature, plusFlags, scale |
@@ -139,15 +139,15 @@ Every Blocked reason in the registry, once, with the workflows and titles it app
 - Create needs verifiable EC/PID, personal, met, handler, memory and cached-stat defaults
   - Workflows: Create
   - Titles: Brilliant Diamond, Shining Pearl
-- PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification
-  - Workflows: Pokemon editor, Native mechanics, Create, Clone, Move/Swap, Remove, Review
+- Create needs verifiable EC/PID, personal, met, Alpha/Noble, mastery, size and cached-stat defaults
+  - Workflows: Create
   - Titles: Legends Arceus
-- Installed-game injection is hard-disabled; a verified Export Copy needs the adapter's strict re-parse and byte-diff verifier
-  - Workflows: Export and safety
-  - Titles: Legends Arceus, Scarlet, Violet, Legends Z-A
 - SV needs a PK9 staged session over the SCBlock container with revision/DLC block verification and Tera/Minted-Nature masks
   - Workflows: Pokemon editor, Native mechanics, Create, Clone, Move/Swap, Remove, Review
   - Titles: Scarlet, Violet
+- Installed-game injection is hard-disabled; a verified Export Copy needs the adapter's strict re-parse and byte-diff verifier
+  - Workflows: Export and safety
+  - Titles: Scarlet, Violet, Legends Z-A
 - Z-A needs a separate PA9/SAV9ZA staged session (0x198 box stride, Plus flags, footer/presence updates); it is not SV
   - Workflows: Pokemon editor, Native mechanics, Create, Clone, Move/Swap, Remove, Review
   - Titles: Legends Z-A

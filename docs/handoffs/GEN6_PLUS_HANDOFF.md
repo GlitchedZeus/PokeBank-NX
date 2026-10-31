@@ -79,6 +79,10 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   is removed). Revisions 1.0–1.3 by size + Gem8Version word, whole-file MD5, ROM code, battle teams/locks
   from BoxLayout8b. Same PK8 rules as SWSH via `Gen8RecordEdits.h`; box Clone/Move/Remove; export writes
   staged records + MD5 only. Box names shown.
+- **Legends: Arceus**: PA8 codec (0x168/0x178, 0x58-byte blocks) over the verified SwishCrypto container;
+  Edit (nickname, OT, OT gender, IDs, friendship, Hisui balls, fateful); held items read-only (Pokémon
+  cannot hold items in PLA); Effort Levels/Alpha/Noble/mastery read-only; box Clone/Move/Remove; export with
+  canonical re-encryption + block verifier to `exports/pla`.
 - PKHeX reference files were fetched from the pinned commit `6501f0ab` for offsets only (not vendored).
 
 ## Status per game (host evidence only; NOT DEVICE TESTED)
@@ -95,8 +99,10 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
 - **Brilliant Diamond / Shining Pearl**: linked SaveData through the shared surface: editor, Clone/Move/
   Remove (box), Review, verified Export to `exports/bdsp`; Create blocked; Bag/Pokédex read-only via the
   installed-title reader only.
-- **Legends: Arceus, Scarlet/Violet, Legends: Z-A**: honest BLOCKED editor/export with the named adapter
-  prerequisite. Z-A is PA9/SAV9ZA, not SV.
+- **Legends: Arceus**: linked `main` through the shared surface: editor, box Clone/Move/Remove, Review,
+  verified Export to `exports/pla`; Create blocked; held items/Effort Levels read-only.
+- **Scarlet/Violet, Legends: Z-A**: honest BLOCKED editor/export with the named adapter prerequisite.
+  Z-A is PA9/SAV9ZA, not SV.
 
 No title is accepted on hardware. Gen I–V hardware cells read NOT ACCEPTED (owner rounds were on earlier
 candidates; #313 open).

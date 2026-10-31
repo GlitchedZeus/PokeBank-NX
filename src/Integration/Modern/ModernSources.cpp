@@ -8,6 +8,7 @@
 #include "Integration/Gen7b/Gen7bNativeSession.h"
 #include "Integration/Gen8/Gen8NativeSession.h"
 #include "Integration/Gen8b/Gen8bNativeSession.h"
+#include "Integration/Gen8a/Gen8aNativeSession.h"
 #include "Utils/PokeBankPaths.h"
 #include "Utils/SHA256.h"
 #include "Utils/StringHelpers.h"
@@ -128,6 +129,7 @@ Enums::GameVersion gameGroupFor(std::string_view gameId) noexcept {
     if (family == "SWSH") return Enums::GameVersion::SWSH;
     if (family == "LGPE") return Enums::GameVersion::GG;
     if (family == "BDSP") return Enums::GameVersion::BDSP;
+    if (family == "PLA") return Enums::GameVersion::PLA;
     return Enums::GameVersion::XY;
 }
 
@@ -169,6 +171,7 @@ OpenedSession openSession(std::string_view gameId, std::span<const uint8_t> byte
     if (row->family == "SWSH") return Gen8::Gen8NativeSession::open(bytes, gameId);
     if (row->family == "LGPE") return Gen7b::Gen7bNativeSession::open(bytes, gameId);
     if (row->family == "BDSP") return Gen8b::Gen8bNativeSession::open(bytes, gameId);
+    if (row->family == "PLA") return Gen8a::Gen8aNativeSession::open(bytes, gameId);
     return {nullptr, std::string(row->title) + " has no verified staged adapter yet: " +
                          std::string(row->status(Capability::Workflow::PokemonEditor).reason)};
 }
@@ -275,6 +278,26 @@ Source::SaveInstance inspectSourceFile(const std::string& path, std::string_view
         row.diagnostic = probe.instance.diagnostic;
         row.partyCount = probe.instance.partyCount;
         row.trainerName = probe.instance.trainerName;
+        return row;
+    }
+    if (reg->family == "PLA") {
+        std::string why;
+        const auto save = Gen8a::Gen8aSave::parse(bytes, assignedExactGame, &why);
+        if (!save) {
+            row.validation = Source::ValidationStatus::Invalid;
+            row.diagnostic = why;
+            return row;
+        }
+        row.validation = Source::ValidationStatus::Ready;
+        row.diagnostic.clear();
+        row.partyCount = save->partyCount();
+        std::u16string name;
+        for (size_t i = 0; i + 1 < Gen8a::Layout::MyNameBytes; i += 2) {
+            const uint16_t ch = Gen8a::PA8::read16(save->myStatus().data, Gen8a::Layout::MyName + i);
+            if (ch == 0) break;
+            name.push_back(static_cast<char16_t>(ch));
+        }
+        row.trainerName = Utils::utf16ToUtf8(name);
         return row;
     }
     if (reg->family == "BDSP") {

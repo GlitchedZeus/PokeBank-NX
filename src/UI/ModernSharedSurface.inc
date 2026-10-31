@@ -101,7 +101,7 @@ bool isModernSource(const TrainerViewScreen& screen) noexcept {
     return family == Enums::GameVersion::XY || family == Enums::GameVersion::ORAS ||
            family == Enums::GameVersion::SM || family == Enums::GameVersion::USUM ||
            family == Enums::GameVersion::SWSH || family == Enums::GameVersion::GG ||
-           family == Enums::GameVersion::BDSP;
+           family == Enums::GameVersion::BDSP || family == Enums::GameVersion::PLA;
 }
 
 namespace {

@@ -323,8 +323,24 @@ constexpr std::array<WorkflowStatus, WorkflowCount> gen8bdsp() noexcept {
     }};
 }
 
-constexpr std::string_view kPlaAdapter =
-    "PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification";
+// Legends: Arceus through the shared Modern adapter (Integration/Gen8a: PA8 codec + Gen8aStagedSession).
+constexpr std::array<WorkflowStatus, WorkflowCount> gen8pla() noexcept {
+    return {{
+        ok(),  // Dashboard
+        ok(),  // Save Instances: manual link, SwishCrypto hash + block validation, fingerprint revalidation
+        ok(), ok(), ok(),
+        ro("Alpha/Noble, Effort Levels, Alpha move and size scalars are shown read-only; pastures and move mastery have no verified writer"),
+        ro("MyStatus8a trainer facts are read-only"),
+        ro("Installed-title reader shows pouches read-only; staged Bag needs a verified PlayerBag8a editor"),
+        ro("Installed-title reader shows research counts read-only; the shared adapter has no verified Pokedex writer"),
+        blocked("Create needs verifiable EC/PID, personal, met, Alpha/Noble, mastery, size and cached-stat defaults"),
+        ok(), ok(), ok(),  // Clone / Move / Remove: box records only
+        ro("Immutable Switch historical backups are read-only previews"),
+        ok(),
+        ok(),  // Export Copy: canonical SwishCrypto re-encryption + block-level verifier, exports/pla
+    }};
+}
+
 constexpr std::string_view kSvAdapter =
     "SV needs a PK9 staged session over the SCBlock container with revision/DLC block verification and Tera/Minted-Nature masks";
 constexpr std::string_view kZaAdapter =
@@ -407,6 +423,11 @@ constexpr GameCapabilities bdspRow(std::string_view id, std::string_view title) 
             mech8bdsp(), gen8bdsp(), HardwareState::NotDeviceTested, "exports/bdsp", "modern-native",
             UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen8b_host", {}};
 }
+constexpr GameCapabilities plaRow() noexcept {
+    return {"legends_arceus_switch", "Legends Arceus", 8, Platform::NintendoSwitch, "PLA", "PA8", StatModel::IVEffortLevel,
+            {32, 30, 6, "SCBlock"}, mech8pla(), gen8pla(), HardwareState::NotDeviceTested, "exports/pla", "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen8a_host", {}};
+}
 constexpr GameCapabilities swshRow(std::string_view id, std::string_view title) noexcept {
     return {id, title, 8, Platform::NintendoSwitch, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"},
             mech8swsh(), gen8swsh(), HardwareState::NotDeviceTested, "exports/gen8", "modern-native",
@@ -459,7 +480,7 @@ inline constexpr std::array<GameCapabilities, 38> Registry = {{
     Detail::swshRow("shield_switch", "Shield"),
     Detail::bdspRow("brilliant_diamond_switch", "Brilliant Diamond"),
     Detail::bdspRow("shining_pearl_switch", "Shining Pearl"),
-    Detail::switchRow("legends_arceus_switch", "Legends Arceus", 8, "PLA", "PA8", StatModel::IVEffortLevel, {32, 30, 6, "Pastures"}, Detail::mech8pla(), Detail::kPlaAdapter),
+    Detail::plaRow(),
     // ---- Gen IX ----
     Detail::switchRow("scarlet_switch", "Scarlet", 9, "SV", "PK9", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech9sv(), Detail::kSvAdapter),
     Detail::switchRow("violet_switch", "Violet", 9, "SV", "PK9", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech9sv(), Detail::kSvAdapter),

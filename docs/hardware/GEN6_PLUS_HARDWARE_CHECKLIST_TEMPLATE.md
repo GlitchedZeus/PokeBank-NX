@@ -331,6 +331,30 @@ loads (the whole-file MD5 is refreshed) and shows exactly the reviewed changes.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group G8a · Pokémon Legends: Arceus (linked `main` file)
+
+### G8a-01 · Assign and open
+**Steps:** HOME → "Pokemon Legends Arceus (Save File)" → Assign Save File Manually → open.
+**Expected:** Validates; party and 32 × 30 boxes match the game; Origin & Legality shows Alpha/Noble,
+Effort Levels, Alpha move and size scalars read-only.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8a-02 · Edit and storage
+**Steps:** Edit nickname, OT, OT gender, IDs, friendship, ball (only Hisui balls offered), fateful; Clone,
+Move and Release box Pokémon; open a party member's Actions.
+**Expected:** Edits stage; held item, Effort Levels, IVs and nature are read-only; party members offer no
+Clone/Move/Release.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8a-03 · Export Copy and in-game reopen
+**Steps:** Review → X → Y; restore `edited.bin` as `main` with your save manager (back up first); launch.
+**Expected:** `exports/pla/legends_arceus_switch_<time>/` with a pristine `original_backup.bin`; the game
+loads and shows exactly the reviewed changes.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Totals
 
 | Count | Number |
