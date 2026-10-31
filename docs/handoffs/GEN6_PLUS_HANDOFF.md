@@ -68,7 +68,7 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
 | --- | --- | --- |
 | `1509a314` | `MiniGmpAllocationScope` hardened: depth counter (inner scopes no-op), recursive mutex, static hook restore, overflow flag; invariants documented | `test_mini_gmp_scope` 13 (nesting, overflow, 4 threads × 6 real sign/verify) GCC/Clang/ASan+LSan |
 | `2a4f4cb3` | Let's Go Pikachu/Eevee adapter (`Integration/Gen7b`) | `test_gen7b_native_session` 68, `test_ui_modern_surface_gen7b_host` 31 |
-| next | Brilliant Diamond/Shining Pearl adapter (`Integration/Gen8b`), shared PK8 edit rules (`Gen8RecordEdits.h`) | `test_gen8b_native_session` 41, `test_ui_modern_surface_gen8b_host` 46, `test_modern_sources` 94 |
+| `7d785b2e` | Brilliant Diamond/Shining Pearl adapter (`Integration/Gen8b`), shared PK8 edit rules (`Gen8RecordEdits.h`) | `test_gen8b_native_session` 41, `test_ui_modern_surface_gen8b_host` 46, `test_modern_sources` 94 |
 
 - **Let's Go**: strict SAV7b parse (block CRCs, gapless 1000-record storage, party/partner pointer integrity);
   op-log staging; Edit (nickname, OT, OT gender, TID/SID, LGPE balls, fateful); Clone appends at the next
@@ -83,6 +83,14 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   Edit (nickname, OT, OT gender, IDs, friendship, Hisui balls, fateful); held items read-only (Pokémon
   cannot hold items in PLA); Effort Levels/Alpha/Noble/mastery read-only; box Clone/Move/Remove; export with
   canonical re-encryption + block verifier to `exports/pla`.
+- **Experimental NRO of `7d785b2e` (LGPE + BD/SP)**: CI run 41240043279 green (host gates incl. leak-checked
+  sanitizers and Clang, devkitA64 build, ELF symbol check, RomFS verification). Artifact
+  `PokeBank-NX-Gen6Plus-Experimental-7d785b2e` (id 13057521770, zip sha256
+  `86b3bd8468d418acd91a7f5c501cdcf089c59a8fc561b4e6a18f46d898d3749e`). 
+- **Experimental NRO of `b3d40b3a` (LGPE + BD/SP + PLA, current code head)**: CI run 41241375177 green (same
+  gates). Artifact `PokeBank-NX-Gen6Plus-Experimental-b3d40b3a` (id 13058177412, zip sha256
+  `3791796d43c740e53a547ffe4a0dd9d4e90129cd1de97276126032284ff8e284`); NRO SHA-256 in its `SHA256SUMS`.
+  EXPERIMENTAL, NOT DEVICE TESTED.
 - PKHeX reference files were fetched from the pinned commit `6501f0ab` for offsets only (not vendored).
 
 ## Status per game (host evidence only; NOT DEVICE TESTED)
