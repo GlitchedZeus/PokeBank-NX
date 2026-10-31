@@ -14,6 +14,7 @@
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen8Legality.h"
 #include "Legality/ModernNickname.h"
+#include "Legality/ModernBall.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen9a {
@@ -59,6 +60,8 @@ public:
         checkNature();
         if (p_[0x124] == 0 || p_[0x124] > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(p_[0x124]) + " cannot be held by a PA9");
+        else if (!ModernBall::possible(Modern::Format::PA9, species_, p_[0x124]))
+            invalid(CheckIdentifier::Origin, "Ball " + std::to_string(p_[0x124]) + " is not possible for any encounter of the species");
         checkLanguage();
         checkNickname();
         if (!Data::heldItemAllowed(u16(0x0A)))

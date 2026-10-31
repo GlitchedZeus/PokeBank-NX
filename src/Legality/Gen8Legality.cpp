@@ -14,6 +14,7 @@
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen67Legality.h"
 #include "Legality/ModernNickname.h"
+#include "Legality/ModernBall.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen8 {
@@ -471,6 +472,8 @@ private:
         const uint8_t ball = pk_.ball();
         if (ball == 0 || ball > Data::maxBall(ctx_))
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a " + formatName());
+        else if (!ModernBall::possible(sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8, species(), ball))
+            invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " is not possible for any encounter of the species");
     }
 
     // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).

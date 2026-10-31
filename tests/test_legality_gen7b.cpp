@@ -190,6 +190,8 @@ void testRuleEdits(const std::vector<Record>& records) {
     expectInvalid(n, "egg", [](auto& b) { PK6::write32(b, 0x74, PK6::read32(b, 0x74) | 0x40000000u); }, "has no eggs");
     expectInvalid(n, "pid==ec", [](auto& b) { PK6::write32(b, 0x18, PK6::read32(b, 0x00)); }, "PID equals the encryption constant");
     expectInvalid(n, "ball", [](auto& b) { b[0xDC] = 27; }, "cannot be held by a PB7");
+    // No Let's Go encounter gives a Dream Ball (25), whatever the species.
+    expectInvalid(n, "dream ball", [](auto& b) { b[0xDC] = 25; }, "not possible for any encounter");
     expectInvalid(n, "hyper training", [](auto& b) { b[0xDE] = 1; }, "needs level 100");
     {
         // At level 100 a gold bottle cap (all six flags) may cover a perfect IV; one silver cap may not.

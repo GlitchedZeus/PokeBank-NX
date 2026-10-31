@@ -25,6 +25,7 @@
 
 #include "Integration/Gen6/Gen6PK6.h"
 #include "Legality/Gen67Legality.h"
+#include "Legality/ModernBall.h"
 #include "Legality/ModernNickname.h"
 #include "Legality/ModernLegality.h"
 
@@ -397,6 +398,25 @@ void testNickname(const std::vector<Record>& records) {
               "PK7 unflagged non-name: " + describe(unflagged));
 }
 
+// ModernBall (BallVerifier as a per-species union over every encounter).
+void testBall(const std::vector<Record>& records) {
+    namespace B = Legality::ModernBall;
+    using Legality::Modern::Format;
+    // Every PKHeX-valid PK6/PK7 fixture record's ball is possible for its species.
+    for (const auto& r : records) {
+        if (!r.pkhexValid || (r.format != Format::PK6 && r.format != Format::PK7)) continue;
+        check(B::possible(r.format, PK6::read16(r.plain, 0x08), r.plain[0xDC]), "valid fixture ball possible: " + r.label);
+    }
+    // Let's Go: Pikachu and Eevee are caught or gifted, never in a Dream Ball (25).
+    check(B::possible(Format::PB7, 25, 4) && !B::possible(Format::PB7, 25, 25), "PB7 Pikachu Poke yes, Dream no");
+    // Undecided outside the table, for ball ids past 63 and for species without encounters.
+    check(B::possible(Format::PB7, 2000, 25) && B::possible(Format::PK9, 25, 64) && B::possible(Format::Unknown, 25, 25),
+          "undecided cases");
+    // A Switch format takes HOME's union: a ball any Switch game or Let's Go gives the species.
+    for (uint8_t ball = 1; ball < 40; ++ball)
+        if (B::possible(Format::PK9, 25, ball)) check(B::possible(Format::PK8, 25, ball), "HOME union PK9 -> PK8");
+}
+
 void testFuzz(const std::vector<Record>& records) {
     const char* env = std::getenv("GEN67_FUZZ_ROUNDS");
     const size_t rounds = env ? std::strtoul(env, nullptr, 10) : 20000;
@@ -438,6 +458,7 @@ int main() {
     testInterface(records);
     testHelpers();
     testNickname(records);
+    testBall(records);
     testFuzz(records);
     std::cout << "test_legality_gen67: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

@@ -12,6 +12,7 @@
 
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/ModernNickname.h"
+#include "Legality/ModernBall.h"
 #include "Pokemon/Experience.h"
 
 namespace Legality::Gen8a {
@@ -110,6 +111,8 @@ public:
         checkNature();
         if (ball() == 0 || ball() > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball()) + " cannot be held by a PA8");
+        else if (!ModernBall::possible(Modern::Format::PA8, species(), ball()))
+            invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball()) + " is not possible for any encounter of the species");
         checkLanguage();
         checkNickname();
         if (!Data::heldItemAllowed(u16(0x0A)))

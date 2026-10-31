@@ -6,7 +6,7 @@
 GEN67_LEGALITY_SOURCES := src/Legality/ModernLegality.cpp src/Legality/Gen67Legality.cpp \
 	src/Legality/Gen67LegalityData.cpp src/Legality/Gen8Legality.cpp src/Legality/Gen8LegalityData.cpp \
 	src/Legality/Gen7bLegality.cpp src/Legality/Gen7bLegalityData.cpp src/Legality/Gen8aLegality.cpp \
-	src/Legality/Gen8aLegalityData.cpp src/Legality/Gen9aLegality.cpp src/Legality/Gen9aLegalityData.cpp src/Legality/ModernNickname.cpp \
+	src/Legality/Gen8aLegalityData.cpp src/Legality/Gen9aLegality.cpp src/Legality/Gen9aLegalityData.cpp src/Legality/ModernNickname.cpp src/Legality/ModernBall.cpp \
 	src/Pokemon/Experience.cpp
 GEN67_LEGALITY_HEADERS := include/Legality/ModernLegality.h include/Legality/Gen67Legality.h \
 	include/Legality/Gen67LegalityData.inc include/Legality/Legality.h include/Legality/LegalityContext.h \
@@ -16,7 +16,8 @@ GEN67_LEGALITY_HEADERS := include/Legality/ModernLegality.h include/Legality/Gen
 	include/Legality/Gen7bLegality.h include/Legality/Gen7bLegalityData.inc \
 	include/Legality/Gen8aLegality.h include/Legality/Gen8aLegalityData.inc \
 	include/Legality/Gen9aLegality.h include/Legality/Gen9aLegalityData.inc \
-	include/Legality/ModernNickname.h include/Legality/ModernNicknameData.inc
+	include/Legality/ModernNickname.h include/Legality/ModernNicknameData.inc \
+	include/Legality/ModernBall.h include/Legality/ModernBallData.inc
 GEN67_TEST_SOURCES := tests/test_legality_gen67.cpp $(GEN67_LEGALITY_SOURCES)
 HOST_TESTS += $(HOST_BUILD)/test_legality_gen67
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen67_sanitize
