@@ -1,0 +1,82 @@
+name: Gen VI/VII legality vs PKHeX
+
+# Gen VI (PK6) and Gen VII (PK7) legality through Legality::Modern::analyze:
+#  - the rule tables in include/Legality/Gen67LegalityData.inc are byte-identical to the
+#    pinned PKHeX.Core dump,
+#  - the fixture, rule-edit, interface and fuzz tests pass with GCC and Clang, normal and
+#    ASan/UBSan,
+#  - every Gen VI/VII encounter PKHeX can build, Gen V encounters moved with Poke
+#    Transporter, Virtual Console Gen I/II encounters, grown copies and single-field
+#    mutations of each get no false Invalid and no false Valid against PKHeX's verdict.
+
+on:
+  pull_request:
+    paths:
+      - 'src/Legality/ModernLegality.cpp'
+      - 'src/Legality/Gen67*'
+      - 'include/Legality/ModernLegality.h'
+      - 'include/Legality/Gen67*'
+      - 'include/Legality/Legality.h'
+      - 'include/Legality/LegalityContext.h'
+      - 'include/Integration/Gen6/Gen6PK6.h'
+      - 'include/Integration/Gen6/Gen6PersonalData.h'
+      - 'include/Integration/Gen7/Gen7PersonalData.h'
+      - 'src/Pokemon/Experience.cpp'
+      - 'tests/test_legality_gen67.cpp'
+      - 'tests/fixtures/gen67/**'
+      - 'tools/pkhex_gen67_diff/**'
+      - 'Makefile.host.gen67-legality'
+      - '.github/workflows/legality-gen67-pkhex-diff.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: legality-gen67-pkhex-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # PKHeX 26.10.18
+  PKHEX_SHA: bfe89c74a3f5265805e364b79bc04ad38ebbc5ea
+
+jobs:
+  gen67:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: ${{ env.PKHEX_SHA }}
+          path: _ref/PKHeX
+          persist-credentials: false
+      - name: Exact heads
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git -C _ref/PKHeX rev-parse HEAD)" = "$PKHEX_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Gen VI/VII tests (GCC and Clang, normal and ASan/UBSan)
+        run: |
+          set -euo pipefail
+          for cxx in g++ clang++; do
+            make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
+              build/host-$cxx/test_legality_gen67 build/host-$cxx/test_legality_gen67_sanitize
+            GEN67_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen67
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen67_sanitize
+          done
+
+      - name: PK6/PK7 verdicts against PKHeX (tables, seeds 1 and 3)
+        run: |
+          set -euo pipefail
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 4
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 8
