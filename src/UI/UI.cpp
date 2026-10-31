@@ -38,6 +38,8 @@
 #include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
+#include "Legacy/ModernReadOnlyTrainer.h"
+#include "Integration/Modern/ModernSources.h"
 
 using namespace Utils;
 using namespace Trainer;
@@ -403,6 +405,18 @@ namespace UI {
                                             selectScreen.getSelectedGen5Copy(),
                                             selectScreen.getSelectedGen5Fingerprint(), error)) {
                             logErrorToFile("Generation V read-only source refused open", error.c_str());
+                            selectScreen.reportOpenFailure(error);
+                            fb.startFade();
+                            continue;
+                        }
+                    } else if (selectScreen.getSelectedSourceKind() ==
+                               SaveSelectScreen::SelectedSourceKind::ModernAssignedFile) {
+                        std::string error;
+                        if (!handleModernView(selectScreen.getSelectedUser(),
+                                              selectScreen.getSelectedGameId(),
+                                              selectScreen.getOpenIntent(),
+                                              selectScreen.getSelectedGen5Fingerprint(), error)) {
+                            logErrorToFile("Modern read-only source refused open", error.c_str());
                             selectScreen.reportOpenFailure(error);
                             fb.startFade();
                             continue;
@@ -881,6 +895,75 @@ namespace UI {
             running=false;
         } else {
             inputTrace().event("trainer:gen5", "back-to-home");
+        }
+        return true;
+    }
+
+    bool UIManager::handleModernView(
+        AccountUid userUid, const std::string& gameId,
+        SaveSelectScreen::OpenIntent intent,
+        std::string_view selectedFingerprint,
+        std::string& error) {
+        namespace Modern=PokeVault::Integration::Modern;
+        error.clear();
+        const auto* identity=PokeVault::Games::findGame(gameId);
+        if (!identity || !Modern::isModernAssignedId(gameId) ||
+            identity->support!=PokeVault::Games::SourceSupport::ReadOnly ||
+            (intent!=SaveSelectScreen::OpenIntent::Default &&
+             intent!=SaveSelectScreen::OpenIntent::Items)) {
+            error="Shared editor requires an exact title served by the Modern adapter and a validated external save";
+            return false;
+        }
+        // The Save Instance selection carries the exact validated payload into Open; the path can
+        // stay the same while an emulator or Checkpoint rewrites it.
+        if(selectedFingerprint.empty()) {
+            error="Save snapshot missing; choose a validated Save Instance again";
+            return false;
+        }
+        auto opened=Modern::openAssignedSource(legacySourceBindings,profileIdentity(userUid),gameId,
+                                               selectedFingerprint);
+        if (!opened.ready() || opened.instance.gameId!=gameId || !opened.instance.readOnly()) {
+            error=opened.diagnostic.empty()
+                ? std::string(Modern::generationLabelFor(gameId))+" source changed or failed strict validation"
+                : opened.diagnostic;
+            return false;
+        }
+        const std::string sourcePath=opened.source.binding.sourcePath;
+        const std::string sourceType=opened.source.binding.sourceType;
+        auto trainer=PokeVault::Legacy::ModernReadOnlyTrainer::create(
+            std::move(opened.session),gameId,Modern::gameGroupFor(gameId),error);
+        if (!trainer) {
+            if (error.empty())error=std::string(Modern::generationLabelFor(gameId))+" read-only presentation failed";
+            return false;
+        }
+        logInfoToFile("Opening assigned Modern-adapter source read-only",sourcePath.c_str());
+        TrainerViewScreen trainerScreen(
+            *trainer,"Pokemon "+std::string(identity->title),sourcePath,0,userUid,
+            PokeVault::Safety::SourceKind::ExternalLegacy,gameId,sourceType);
+        // Same loaded-game hub as Gen I-V. ModernSharedSurface (src/UI/ModernSharedSurface.inc)
+        // intercepts activation, Exit and Review on the hub and owns the entered panels, so the
+        // inherited Bank/source writers stay unreachable; the original save remains immutable.
+        if (intent==SaveSelectScreen::OpenIntent::Items)
+            trainerScreen.openItemsShortcut();
+        fb.startFade();
+        while (appletMainLoop() && running && !trainerScreen.shouldExit() &&
+               !trainerScreen.hasRequestedExit()) {
+            padUpdate(&pad);
+            touch.update();
+            keyboardBackdrop=&trainerScreen;
+            traceScreenFrame("trainer:modern", pad, "mode=" + std::to_string(static_cast<int>(trainerScreen.selectedMode)));
+            trainerScreen.update(pad,touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit())break;
+            trainerScreen.draw(fb);
+            fb.drawFadeOverlay();
+            fb.flush();
+        }
+        keyboardBackdrop=nullptr;
+        if (trainerScreen.hasRequestedExit()) {
+            inputTrace().event("trainer:modern", "app-exit", "origin=trainer-requested-exit");
+            running=false;
+        } else {
+            inputTrace().event("trainer:modern", "back-to-home");
         }
         return true;
     }

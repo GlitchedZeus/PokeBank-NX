@@ -71,6 +71,12 @@ namespace UI {
                             PokeVault::Integration::Gen5::SaveCopySelection selectedCopy,
                             std::string_view selectedFingerprint,
                             std::string& error);
+        // Gen VI+ titles served by the shared Modern adapter (Integration/Modern): the ONE
+        // TrainerViewScreen over a ModernReadOnlyTrainer; the source save is never written.
+        bool handleModernView(AccountUid userUid, const std::string& gameId,
+                              SaveSelectScreen::OpenIntent intent,
+                              std::string_view selectedFingerprint,
+                              std::string& error);
     };
 }
 

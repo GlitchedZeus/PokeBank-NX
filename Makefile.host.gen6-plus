@@ -1,0 +1,58 @@
+# Gen VI-IX shared application layer (development/gen6-plus): the capability registry, the
+# generation-neutral Modern::NativeSession contract and its per-family adapters. Host tests only;
+# nothing here can write an original save.
+GEN6PLUS_TEST_NAMES := test_game_capability_registry test_gen6_native_session test_modern_sources test_modern_trainer_bridge
+GEN6PLUS_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN6PLUS_TEST_NAMES))
+GEN6PLUS_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN6PLUS_TESTS))
+
+HOST_TESTS += $(GEN6PLUS_TESTS)
+HOST_SANITIZE_TESTS += $(GEN6PLUS_SANITIZE_TESTS)
+host-test: $(GEN6PLUS_TESTS)
+host-sanitize: $(GEN6PLUS_SANITIZE_TESTS)
+
+GEN6PLUS_HEADERS := include/Integration/Common/GameCapabilityRegistry.h \
+	include/Integration/Modern/NativeSession.h include/Pokemon/ModernRecordView.h \
+	include/Integration/Modern/ModernSources.h include/Legacy/ModernReadOnlyTrainer.h \
+	include/Integration/Gen6/Gen6NativeSession.h $(wildcard include/Integration/Gen6/*.h) \
+	$(wildcard tests/fixtures/gen6/*.h)
+GEN6PLUS_FLAGS := -Wno-unused-parameter -Iinclude -Itests -isystem $(PKSM_CORE_ROOT)/include -isystem $(GEN7_MEME_ROOT) \
+	-D_PKSMCORE_CONFIGURED -fno-operator-names $(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
+# Tests that reach the Gen VII parser through ModernSources link the vendored MemeCrypto objects.
+GEN6PLUS_MEME_test_modern_sources := yes
+
+GEN6PLUS_SOURCES_test_game_capability_registry := tests/test_game_capability_registry.cpp src/Games/GameIdentity.cpp
+GEN6PLUS_SOURCES_test_gen6_native_session := tests/test_gen6_native_session.cpp \
+	src/Integration/Gen6/Gen6NativeSession.cpp src/Integration/Gen6/Gen6Save.cpp \
+	src/Integration/Gen6/Gen6StagedSession.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Utils/SHA256.cpp src/Pokemon/Experience.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Pokemon/PokemonTypes.cpp src/Pokemon/PersonalInfoTable.cpp src/Names/SpeciesNames.cpp src/Games/GameIdentity.cpp
+
+GEN6PLUS_SESSION_SOURCES := src/Integration/Gen6/Gen6NativeSession.cpp src/Integration/Gen6/Gen6Save.cpp \
+	src/Integration/Gen6/Gen6StagedSession.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Utils/SHA256.cpp src/Pokemon/Experience.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Pokemon/PokemonTypes.cpp src/Pokemon/PersonalInfoTable.cpp src/Names/SpeciesNames.cpp src/Games/GameIdentity.cpp
+GEN6PLUS_GEN7_SOURCES := src/Integration/Gen7/Gen7NativeSession.cpp src/Integration/Gen7/Gen7Save.cpp \
+	src/Integration/Gen7/Gen7StagedSession.cpp src/Integration/Gen7/Gen7SaveSources.cpp
+GEN6PLUS_SOURCES_test_modern_sources := tests/test_modern_sources.cpp src/Integration/Modern/ModernSources.cpp \
+	src/Integration/Gen6/Gen6SaveSources.cpp src/Legacy/LegacySourceBindings.cpp $(GEN6PLUS_SESSION_SOURCES) \
+	$(GEN6PLUS_GEN7_SOURCES)
+GEN6PLUS_SOURCES_test_modern_trainer_bridge := tests/test_modern_trainer_bridge.cpp src/Legacy/ModernReadOnlyTrainer.cpp \
+	$(GEN6PLUS_SESSION_SOURCES)
+
+define GEN6PLUS_TEST_RULES
+$(HOST_BUILD)/$(1): $$(GEN6PLUS_SOURCES_$(1)) $$(GEN6PLUS_HEADERS) $$(if $$(GEN6PLUS_MEME_$(1)),$$(GEN7_MEME_OBJECTS),)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(GEN6PLUS_FLAGS) $$(GEN6PLUS_SOURCES_$(1)) $$(if $$(GEN6PLUS_MEME_$(1)),$$(GEN7_MEME_OBJECTS),) -o $$@
+
+$(HOST_BUILD)/$(1)_sanitize: $$(GEN6PLUS_SOURCES_$(1)) $$(GEN6PLUS_HEADERS) $$(if $$(GEN6PLUS_MEME_$(1)),$$(GEN7_MEME_SANITIZE_OBJECTS),)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(SANITIZE_FLAGS) $$(GEN6PLUS_FLAGS) $$(GEN6PLUS_SOURCES_$(1)) $$(if $$(GEN6PLUS_MEME_$(1)),$$(GEN7_MEME_SANITIZE_OBJECTS),) -o $$@
+endef
+$(foreach t,$(GEN6PLUS_TEST_NAMES),$(eval $(call GEN6PLUS_TEST_RULES,$(t))))
+
+.PHONY: gen6plus-host-test gen6plus-host-sanitize
+gen6plus-host-test: $(GEN6PLUS_TESTS)
+	@set -e; for test_bin in $(GEN6PLUS_TESTS); do ./$$test_bin; done
+
+gen6plus-host-sanitize: $(GEN6PLUS_SANITIZE_TESTS)
+	@set -e; for test_bin in $(GEN6PLUS_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done

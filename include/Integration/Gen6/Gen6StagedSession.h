@@ -6,6 +6,7 @@
 #include "Integration/Gen6/Gen6ExactFormatEditorProvider.h"
 #include "Integration/Gen6/Gen6Save.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -101,6 +102,41 @@ public:
     }
 
     bool undo(SlotRef slot) noexcept { return entries_.erase(slot) != 0; }
+
+    // One slot's staged entry, copied out so a UI draft can be discarded back to it exactly.
+    struct EntrySnapshot {
+        bool present = false;
+        ChangeKind kind = ChangeKind::Edit;
+        std::optional<PK6::Pokemon6> record;
+        std::optional<SlotRef> cloneSource;
+        std::vector<std::string> notes;
+    };
+    [[nodiscard]] EntrySnapshot snapshotEntry(SlotRef slot) const {
+        EntrySnapshot out;
+        const auto it = entries_.find(slot);
+        if (it == entries_.end()) return out;
+        out.present = true;
+        out.kind = it->second.kind;
+        out.record = it->second.record;
+        out.cloneSource = it->second.cloneSource;
+        out.notes = it->second.notes;
+        return out;
+    }
+    void restoreEntry(SlotRef slot, const EntrySnapshot& snapshot) {
+        if (!snapshot.present || !snapshot.record) {
+            entries_.erase(slot);
+            return;
+        }
+        entries_.insert_or_assign(slot, Entry{snapshot.kind, *snapshot.record, snapshot.cloneSource, snapshot.notes});
+    }
+    [[nodiscard]] bool entryMatches(SlotRef slot, const EntrySnapshot& snapshot) const {
+        const auto it = entries_.find(slot);
+        if (it == entries_.end()) return !snapshot.present;
+        if (!snapshot.present || !snapshot.record) return false;
+        const auto a = it->second.record.plain(), b = snapshot.record->plain();
+        return it->second.kind == snapshot.kind && a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin()) &&
+               it->second.cloneSource == snapshot.cloneSource && it->second.notes == snapshot.notes;
+    }
     void clear() noexcept {
         entries_.clear();
         if (bag_) bag_->discard();

@@ -7,7 +7,7 @@ namespace PokeVault::Games {
         using enum Platform;
         using enum SourceSupport;
 
-        constexpr std::array<GameDescriptor, 42> kGames{{
+        constexpr std::array<GameDescriptor, 50> kGames{{
             {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
             {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
             {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
@@ -32,6 +32,16 @@ namespace PokeVault::Games {
             {"white_nds",                     "White",             NintendoDS,     5, 0, Planned},
             {"black2_nds",                    "Black 2",           NintendoDS,     5, 0, Planned},
             {"white2_nds",                    "White 2",           NintendoDS,     5, 0, Planned},
+            // Nintendo 3DS titles (development/gen6-plus): validated external copies only (Dekopon,
+            // Checkpoint-layout exports, manual link). Never an installed-title mount.
+            {"x_3ds",                        "X",                 Nintendo3DS,    6, 0, ReadOnly},
+            {"y_3ds",                        "Y",                 Nintendo3DS,    6, 0, ReadOnly},
+            {"omegaruby_3ds",                "Omega Ruby",        Nintendo3DS,    6, 0, ReadOnly},
+            {"alphasapphire_3ds",            "Alpha Sapphire",    Nintendo3DS,    6, 0, ReadOnly},
+            {"sun_3ds",                      "Sun",               Nintendo3DS,    7, 0, ReadOnly},
+            {"moon_3ds",                     "Moon",              Nintendo3DS,    7, 0, ReadOnly},
+            {"ultrasun_3ds",                 "Ultra Sun",         Nintendo3DS,    7, 0, ReadOnly},
+            {"ultramoon_3ds",                "Ultra Moon",        Nintendo3DS,    7, 0, ReadOnly},
             {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
             {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
             // Q04 (independent QA 2026-10-27): every localized FireRed/LeafGreen Switch release is its
@@ -100,6 +110,7 @@ namespace PokeVault::Games {
             case Platform::GameBoyAdvance: return "Game Boy Advance";
             case Platform::NintendoDS: return "Nintendo DS";
             case Platform::NintendoSwitch: return "Nintendo Switch";
+            case Platform::Nintendo3DS: return "Nintendo 3DS";
         }
         return "Unknown platform";
     }
@@ -112,6 +123,7 @@ namespace PokeVault::Games {
             case Platform::GameBoyColor: return "GBC";
             case Platform::GameBoyAdvance: return "GBA";
             case Platform::NintendoDS: return "NDS";
+            case Platform::Nintendo3DS: return "3DS";
             case Platform::NintendoSwitch: return {};
         }
         return {};
@@ -138,6 +150,17 @@ namespace PokeVault::Games {
         if (id == "white_nds") return "romfs:/game_cards/white_nds.png";
         if (id == "black2_nds") return "romfs:/game_cards/black2_nds.png";
         if (id == "white2_nds") return "romfs:/game_cards/white2_nds.png";
+        // Gen VI/VII 3DS covers: served once the packaged RomFS carries them (tools/check_device_assets.py
+        // lists the required files). An absent cover falls back to the shared text card, never to
+        // another game's artwork.
+        if (id == "x_3ds") return "romfs:/game_cards/x_3ds.png";
+        if (id == "y_3ds") return "romfs:/game_cards/y_3ds.png";
+        if (id == "omegaruby_3ds") return "romfs:/game_cards/omegaruby_3ds.png";
+        if (id == "alphasapphire_3ds") return "romfs:/game_cards/alphasapphire_3ds.png";
+        if (id == "sun_3ds") return "romfs:/game_cards/sun_3ds.png";
+        if (id == "moon_3ds") return "romfs:/game_cards/moon_3ds.png";
+        if (id == "ultrasun_3ds") return "romfs:/game_cards/ultrasun_3ds.png";
+        if (id == "ultramoon_3ds") return "romfs:/game_cards/ultramoon_3ds.png";
         return {};
     }
 
@@ -163,6 +186,9 @@ namespace PokeVault::Games {
         if (id == "black_nds" || id == "white_nds" ||
             id == "black2_nds" || id == "white2_nds") return "unova";
 
+        if (id == "x_3ds" || id == "y_3ds") return "kalos";
+        if (id == "omegaruby_3ds" || id == "alphasapphire_3ds") return "hoenn";
+        if (id == "sun_3ds" || id == "moon_3ds" || id == "ultrasun_3ds" || id == "ultramoon_3ds") return "alola";
         if (id == "legends_arceus_switch") return "hisui";
         if (id == "sword_switch" || id == "shield_switch") return "galar";
         if (id == "scarlet_switch" || id == "violet_switch") return "paldea";

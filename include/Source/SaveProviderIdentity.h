@@ -31,6 +31,7 @@ enum class ProviderIdentity : uint8_t {
     Tico,
     Dekopon,
     Azahar,
+    Checkpoint, // 3DS Checkpoint-layout backup folder (Gen VI/VII exports copied to the SD card)
 };
 
 namespace ProviderDetail {
@@ -58,6 +59,7 @@ namespace ProviderDetail {
     if (equalsIgnoreCase(raw, "Tico")) return ProviderIdentity::Tico;
     if (equalsIgnoreCase(raw, "Dekopon")) return ProviderIdentity::Dekopon;
     if (equalsIgnoreCase(raw, "Azahar")) return ProviderIdentity::Azahar;
+    if (equalsIgnoreCase(raw, "Checkpoint")) return ProviderIdentity::Checkpoint;
     if (equalsIgnoreCase(raw, "Manual")) return ProviderIdentity::Manual;
     // "Remembered", "Source", an empty pre-provider binding row, or anything
     // hand-edited: discovery did not identify a provider. Say so honestly.
@@ -75,6 +77,7 @@ namespace ProviderDetail {
         case ProviderIdentity::Tico: return "Tico";
         case ProviderIdentity::Dekopon: return "Dekopon";
         case ProviderIdentity::Azahar: return "Azahar";
+        case ProviderIdentity::Checkpoint: return "Checkpoint (3DS backup)";
         case ProviderIdentity::Manual: return "Manual file";
         case ProviderIdentity::Multiple: return "Multiple providers";
         case ProviderIdentity::Unknown: break;
@@ -90,7 +93,7 @@ namespace ProviderDetail {
 // of the discovery label ("RetroArch/DeSmuME" -> "retroarch-desmume"), so match it the same way.
 [[nodiscard]] inline ProviderIdentity identifyProviderId(std::string_view id) {
     for (const std::string_view label : {"DraStic", "DraStic Savestate", "melonDS", "RetroArch",
-                                         "RetroArch/DeSmuME", "mGBA", "Tico", "Dekopon", "Azahar", "Manual"})
+                                         "RetroArch/DeSmuME", "mGBA", "Tico", "Dekopon", "Azahar", "Checkpoint", "Manual"})
         if (!id.empty() && providerIdFor(label) == id) return identifyProvider(label);
     return ProviderIdentity::Unknown;
 }

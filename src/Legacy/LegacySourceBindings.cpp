@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <string_view>
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
@@ -25,14 +26,25 @@ namespace PokeVault::Legacy {
                  !std::all_of(binding.contentFingerprint.begin(),binding.contentFingerprint.end(),
                     [](unsigned char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'); })))
                 return false;
+            if (binding.physicalIdentity.find('\0') != std::string::npos || binding.sourcePath.empty()) return false;
+            // Gen VI/VII 3DS archives (development/gen6-plus): one native copy per file, so the
+            // variant is a fixed single-copy marker and the family names the SAV6/SAV7 layout.
+            if (binding.sourceVariant == "3ds-single-copy") {
+                struct Family3ds { std::string_view game, family; };
+                static constexpr Family3ds families[] = {
+                    {"x_3ds", "XY"}, {"y_3ds", "XY"}, {"omegaruby_3ds", "ORAS"}, {"alphasapphire_3ds", "ORAS"},
+                    {"sun_3ds", "SM"}, {"moon_3ds", "SM"}, {"ultrasun_3ds", "USUM"}, {"ultramoon_3ds", "USUM"},
+                };
+                for (const auto& f : families)
+                    if (binding.gameIdentity == f.game) return binding.expectedRawFamily == f.family;
+                return false;
+            }
             const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";
             const bool sequel = binding.gameIdentity == "black2_nds" || binding.gameIdentity == "white2_nds";
-            return !binding.sourcePath.empty() &&
-                ((bw && binding.expectedRawFamily == "BW") ||
-                 (sequel && binding.expectedRawFamily == "B2W2")) &&
+            return ((bw && binding.expectedRawFamily == "BW") ||
+                    (sequel && binding.expectedRawFamily == "B2W2")) &&
                 (binding.sourceVariant == "gen5-copy-0-primary" ||
-                 binding.sourceVariant == "gen5-copy-1-backup") &&
-                binding.physicalIdentity.find('\0') == std::string::npos;
+                 binding.sourceVariant == "gen5-copy-1-backup");
         }
         constexpr const char* Header = "# PokeBank NX legacy source bindings v1\n";
         enum class ReadStatus { Missing, Valid, Invalid };

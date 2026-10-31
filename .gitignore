@@ -62,3 +62,6 @@ tools/.pret_cache/
 /romfs/runtime/
 /romfs/game_cards/
 __pycache__/
+
+# Per-worker host object directories (development/gen6-plus parallel builds)
+/build-*/

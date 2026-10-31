@@ -64,6 +64,7 @@ void providerIdentityTable() {
         {"Tico", "Tico"},                    // Gen I-III Tico battery folders
         {"Dekopon", "Dekopon"},
         {"Azahar", "Azahar"},
+        {"Checkpoint", "Checkpoint (3DS backup)"}, // Gen VI/VII Checkpoint-layout export folders
         {"Manual", "Manual file"},           // explicit manual file link
         {"RETROARCH", "RetroArch"},          // historical upper-cased classic card label
         {"", "Unknown provider"},            // pre-provider binding row
@@ -186,7 +187,7 @@ void labelsNeverExceedTheCard() {
     // Classic Games tile (CLASSIC_TILE_W - 16) and Home hero (326 px) budgets
     // for every provider the table knows.
     for (std::string_view provider : {"DraStic", "melonDS", "RetroArch", "RetroArch/DeSmuME",
-                                      "mGBA", "Tico", "Dekopon", "Azahar", "Manual", ""}) {
+                                      "mGBA", "Tico", "Dekopon", "Azahar", "Checkpoint", "Manual", ""}) {
         const auto line = S::homeSourceLine("Nintendo DS",
             S::homeCardSourceText("REMEMBERED / CHOOSE COPY", provider));
         for (int budget : {150, 184, 326}) {

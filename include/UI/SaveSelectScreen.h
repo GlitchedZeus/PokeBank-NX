@@ -42,6 +42,9 @@ namespace UI {
             RetroArchFRLG,
             Gen4AssignedFile,
             Gen5AssignedFile,
+            // Gen VI+ exact-game cards served by the shared Modern adapter (Integration/Modern):
+            // explicit per-profile assignment of a validated external 3DS save archive.
+            ModernAssignedFile,
         };
 
         enum class OpenIntent { Default, Items, Backups };
@@ -395,6 +398,7 @@ namespace UI {
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
         void loadGen5Cards();
+        void loadModernCards();
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
@@ -454,6 +458,14 @@ namespace UI {
         bool assignGen5Candidate(const PokeVault::Source::SaveInstance& chosen);
         void chooseGen5ManualFile();
         bool unassignCurrentGen5Game();
+        // Modern-adapter titles reuse the Gen V Save Instances overlays (gen5TargetGameId names the
+        // target); these are the family-specific discovery/assign/open steps behind them.
+        bool openAssignedModernDirectly(const UserEntry& user, const TitleEntry& title,
+                                        const std::string& gameId);
+        void discoverModernCandidates();
+        bool assignModernCandidate(const PokeVault::Source::SaveInstance& chosen);
+        void chooseModernManualFile();
+        bool unassignCurrentModernGame();
 
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)

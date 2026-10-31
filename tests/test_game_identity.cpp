@@ -3,12 +3,13 @@
 #include <cassert>
 #include <set>
 #include <string>
+#include <string_view>
 
 using namespace PokeVault::Games;
 
 int main() {
     const auto games = allGameDescriptors();
-    assert(games.size() == 42);  // 32 + ten localized FireRed/LeafGreen Switch releases (Q04)
+    assert(games.size() == 50);  // 32 + ten localized FireRed/LeafGreen Switch releases (Q04) + eight 3DS titles
 
     std::set<std::string> ids;
     std::set<uint64_t> switchIds;
@@ -90,6 +91,18 @@ int main() {
     assert(platformName(Platform::GameBoyAdvance) == "Game Boy Advance");
     assert(platformName(Platform::NintendoDS) == "Nintendo DS");
     assert(platformName(Platform::NintendoSwitch) == "Nintendo Switch");
+    assert(platformName(Platform::Nintendo3DS) == "Nintendo 3DS");
+    for (const char* id : {"x_3ds", "y_3ds", "omegaruby_3ds", "alphasapphire_3ds",
+                           "sun_3ds", "moon_3ds", "ultrasun_3ds", "ultramoon_3ds"}) {
+        const auto* game = findGame(id);
+        assert(game && game->platform == Platform::Nintendo3DS && game->switchTitleId == 0);
+        assert(game->support == SourceSupport::ReadOnly);
+        assert(game->dataGeneration == (std::string_view(id).find("sun") != std::string_view::npos ||
+                                        std::string_view(id).find("moon") != std::string_view::npos ? 7 : 6));
+        assert(legacyPlatformAbbreviation(id) == "3DS");
+    }
+    assert(gameRegionBackdropKey("x_3ds") == "kalos" && gameRegionBackdropKey("omegaruby_3ds") == "hoenn" &&
+           gameRegionBackdropKey("ultramoon_3ds") == "alola");
     assert(legacyPlatformAbbreviation("red_gb") == "GB");
     assert(legacyPlatformAbbreviation("blue_gb") == "GB");
     assert(legacyPlatformAbbreviation("yellow_gb") == "GB");

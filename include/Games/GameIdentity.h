@@ -12,6 +12,7 @@ namespace PokeVault::Games {
         GameBoyAdvance,
         NintendoDS,
         NintendoSwitch,
+        Nintendo3DS,
     };
 
     enum class SourceSupport : uint8_t {

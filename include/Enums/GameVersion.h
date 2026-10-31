@@ -61,6 +61,10 @@ namespace Enums {
         HGSS = 79, // Pokemon HeartGold/SoulSilver NDS save-layout group
         BW = 80,   // Pokemon Black/White NDS read-only source group
         B2W2 = 81, // Pokemon Black 2/White 2 NDS read-only source group
+        XY = 82,   // Pokemon X/Y 3DS read-only source group (Integration/Gen6)
+        ORAS = 83, // Pokemon Omega Ruby/Alpha Sapphire 3DS read-only source group (Integration/Gen6)
+        SM = 87,   // Pokemon Sun/Moon 3DS read-only source group (Integration/Gen7)
+        USUM = 88, // Pokemon Ultra Sun/Ultra Moon 3DS read-only source group (Integration/Gen7)
 
         // Generational Groupings
         Gen7B = 84,
@@ -202,6 +206,10 @@ namespace Enums {
             case GameVersion::W2: return "White 2";
             case GameVersion::BW: return "Black/White";
             case GameVersion::B2W2: return "Black 2/White 2";
+            case GameVersion::XY: return "X/Y";
+            case GameVersion::ORAS: return "Omega Ruby/Alpha Sapphire";
+            case GameVersion::SM: return "Sun/Moon";
+            case GameVersion::USUM: return "Ultra Sun/Ultra Moon";
             case GameVersion::GSC: return "Gold/Silver/Crystal";
             case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";

@@ -8,12 +8,14 @@ namespace PokeBank::UIModel::PokemonEditorFoundation {
 // Format is the current serialization layout, never the Pokemon's origin game.
 enum class SaveFormat : uint8_t {
     Unknown, RBYInternational, RBYJapanese, GSCInternational, GSCJapanese,
-    PK3GBA, PK4, PB7, PA8, PK9, PK5
+    PK3GBA, PK4, PB7, PA8, PK9, PK5,
+    PK6, PK7 // Nintendo 3DS SAV6 / SAV7 families (Integration/Gen6, Integration/Gen7)
 };
 enum class SaveFamily : uint8_t {
     RBY, GoldSilver, Crystal, RubySapphire, Emerald, FireRedLeafGreen,
     DiamondPearl, Platinum, HeartGoldSoulSilver,
-    LetsGo, LegendsArceus, ScarletViolet, BlackWhite, Black2White2
+    LetsGo, LegendsArceus, ScarletViolet, BlackWhite, Black2White2,
+    XY, OmegaRubyAlphaSapphire, SunMoon, UltraSunUltraMoon
 };
 enum class StatModel : uint8_t { DVStatExpSingleSpecial, DVStatExpSplitSpecial, IVAwakening, IVEffortLevel, IVEV };
 struct ExactSaveIdentity {
@@ -96,6 +98,24 @@ constexpr std::optional<ExactSaveCapabilities> exactSaveCapabilities(const Exact
         return ExactSaveCapabilities{id,family,StatModel::IVEV,fields,
                                      31,255,true,false};
     }
+    if (game == "x_3ds" || game == "y_3ds" || game == "omegaruby_3ds" || game == "alphasapphire_3ds") {
+        if (id.platform != Platform::Nintendo3DS || id.generation != Generation::Gen6 ||
+            id.format != SaveFormat::PK6) return std::nullopt;
+        // Gen6EditorProvider::fieldState is the per-field authority; these flags only size the
+        // shared supplemental panels (held item / ribbons) and the stat columns.
+        auto fields = capabilitiesForGeneration(Generation::Gen6);
+        const bool oras = game == "omegaruby_3ds" || game == "alphasapphire_3ds";
+        return ExactSaveCapabilities{id, oras ? SaveFamily::OmegaRubyAlphaSapphire : SaveFamily::XY,
+                                     StatModel::IVEV, fields, 31, 252, true, false};
+    }
+    if (game == "sun_3ds" || game == "moon_3ds" || game == "ultrasun_3ds" || game == "ultramoon_3ds") {
+        if (id.platform != Platform::Nintendo3DS || id.generation != Generation::Gen7 ||
+            id.format != SaveFormat::PK7) return std::nullopt;
+        auto fields = capabilitiesForGeneration(Generation::Gen7);
+        const bool ultra = game == "ultrasun_3ds" || game == "ultramoon_3ds";
+        return ExactSaveCapabilities{id, ultra ? SaveFamily::UltraSunUltraMoon : SaveFamily::SunMoon,
+                                     StatModel::IVEV, fields, 31, 252, true, false};
+    }
     if (id.platform != Platform::NintendoSwitch) return std::nullopt;
     if (game == "letsgo_pikachu_switch" || game == "letsgo_eevee_switch") {
         if (id.generation != Generation::Gen7 || id.format != SaveFormat::PB7) return std::nullopt;
@@ -135,6 +155,10 @@ constexpr std::optional<ExactSaveCapabilities> capabilitiesForSourceId(std::stri
     if (id == "black_nds" || id == "white_nds" ||
         id == "black2_nds" || id == "white2_nds")
         return exactSaveCapabilities({id,Platform::NintendoDS,Generation::Gen5,SaveFormat::PK5});
+    if (id == "x_3ds" || id == "y_3ds" || id == "omegaruby_3ds" || id == "alphasapphire_3ds")
+        return exactSaveCapabilities({id,Platform::Nintendo3DS,Generation::Gen6,SaveFormat::PK6});
+    if (id == "sun_3ds" || id == "moon_3ds" || id == "ultrasun_3ds" || id == "ultramoon_3ds")
+        return exactSaveCapabilities({id,Platform::Nintendo3DS,Generation::Gen7,SaveFormat::PK7});
     if (id == "letsgo_pikachu_switch" || id == "letsgo_eevee_switch")
         return exactSaveCapabilities({id,Platform::NintendoSwitch,Generation::Gen7,SaveFormat::PB7});
     if (id == "legends_arceus_switch")

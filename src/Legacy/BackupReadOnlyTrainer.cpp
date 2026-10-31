@@ -7,6 +7,8 @@
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Modern/ModernSources.h"
+#include "Legacy/ModernReadOnlyTrainer.h"
 #include <algorithm>
 
 namespace PokeVault::Legacy {
@@ -16,6 +18,18 @@ std::unique_ptr<Trainer::Trainer> openBackupTrainer(
     namespace G1=Integration::Gen1;namespace G2=Integration::Gen2;
     namespace G3=Integration::Gen3;namespace G4=Integration::Gen4;namespace G5=Integration::Gen5;
     const auto* identity=Games::findGame(gameId);
+    if(identity && Integration::Modern::isModernAssignedId(gameId) && !file.bytes.empty()) {
+        // Gen VI+ titles served by the shared Modern adapter: the archived bytes are parsed
+        // strictly by the family's own parser and presented through the one shared bridge.
+        if(!Source::ImmutableSnapshot::unchanged(file,error))return {};
+        auto opened=Integration::Modern::openSession(gameId,file.bytes);
+        if(!opened.ready()){error=opened.diagnostic;return {};}
+        auto trainer=ModernReadOnlyTrainer::create(std::move(opened.session),gameId,
+            Integration::Modern::gameGroupFor(gameId),error);
+        if(!trainer){if(error.empty())error="Backup failed strict native validation";return {};}
+        if(!Source::ImmutableSnapshot::unchanged(file,error))return {};
+        error.clear();return trainer;
+    }
     if(!identity || identity->dataGeneration<1 || identity->dataGeneration>5 ||
        identity->platform==Games::Platform::NintendoSwitch || file.bytes.empty()) {
         error="Backup requires an exact supported Gen I-V emulator game";return {};
