@@ -162,7 +162,8 @@ HOST_UI_RECOVERY_TEST := $(HOST_BUILD)/test_ui_recovery_files_host
 HOST_UI_RECOVERY_SANITIZE := $(HOST_BUILD)/test_ui_recovery_files_host_sanitize
 HOST_UI_RECOVERY_INPUTS := tests/test_ui_recovery_files_host.cpp tests/host-ui/HostUi.h \
 	tests/host-ui/switch.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS) \
-	include/UI/RecoveryManagementModel.h include/UI/RecoveryManagementFs.h
+	include/UI/RecoveryManagementModel.h include/UI/RecoveryManagementFs.h include/UI/SharedBoxedRows.h \
+	include/UI/BackupBrowserChrome.h
 HOST_TESTS += $(HOST_UI_RECOVERY_TEST)
 HOST_SANITIZE_TESTS += $(HOST_UI_RECOVERY_SANITIZE)
 host-test: $(HOST_UI_RECOVERY_TEST)
