@@ -39,6 +39,31 @@ int main() {
     }
     assert(input.eof()&&cases==41&&invalid==2&&partial==23&&clean==16);
 
+    // Native adapters share the actual version-specific birth writer. These
+    // are joint shared-level recipes, not independent per-move donors.
+    for(const auto game:std::array<uint8_t,5>{1,2,3,4,5}) {
+        Breeding::Gen35Ancestry ancestry({33,45,73,0});
+        assert(ancestry.provenBirth(3,1,game,4,4,true));
+        assert(Breeding::Gen35Ancestry::provenOrdinaryBirth(3,1,game,{33,45,73,0},4,4,true));
+        assert(ancestry.certifiedBirths().back().generation==3);
+    }
+    for(const auto game:std::array<uint8_t,5>{7,8,10,11,12}) {
+        Breeding::Gen35Ancestry ancestry({33,45,73,0});
+        assert(ancestry.provenBirth(4,1,game,6,6,true));
+        assert(Breeding::Gen35Ancestry::provenOrdinaryBirth(4,1,game,{33,45,73,0},6,6,true));
+        assert(ancestry.certifiedBirths().back().generation==4);
+        // A hatched survivor need not occupy its birth slot.
+        Breeding::Gen35Ancestry hatched({73,33,45,0});
+        assert(hatched.provenBirth(4,1,game,1,1,false));
+        assert(Breeding::Gen35Ancestry::provenOrdinaryBirth(4,1,game,{73,33,45,0},1,1,false));
+        assert(!hatched.provenBirth(4,1,game,1,1,true));
+    }
+    {
+        Breeding::Gen35Ancestry invalidQuery({33,45,73,0});
+        assert(!invalidQuery.provenBirth(3,1,22,4,4,true));
+        assert(!invalidQuery.provenBirth(4,650,12,4,4,true));
+        assert(!invalidQuery.provenBirth(5,1,22,4,8,true));
+    }
     // Construct actual four-slot parent/birth recipes, beyond a union of donors.
     struct Proof {std::array<uint16_t,4> moves;uint16_t baby;uint8_t version,father,shared;};
     const std::array<Proof,6> proofs{{

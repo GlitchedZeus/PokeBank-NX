@@ -14,7 +14,7 @@ enum Version : uint8_t { S = 0x01, R = 0x02, E = 0x04, FR = 0x08, LG = 0x10, CXD
 
 /// PersonalInfo3 fields read by the analyzer (personal_rs; PK3.PersonalInfo is RS).
 struct Personal { uint8_t gender; uint8_t hatchCycles; uint8_t friendship; uint8_t growth;
-                  uint8_t ability1; uint8_t ability2; };
+                  uint8_t ability1; uint8_t ability2; uint8_t baseExperience; uint16_t evYield; };
 inline constexpr std::size_t kMaxSpecies = 386;
 inline constexpr std::size_t kMaxMove = 354;
 extern const Personal kPersonal[kMaxSpecies + 1];

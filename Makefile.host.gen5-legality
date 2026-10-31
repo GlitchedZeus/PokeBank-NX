@@ -134,3 +134,15 @@ $(HOST_BUILD)/test_gen35_release_rules: $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CAR
 $(HOST_BUILD)/test_gen35_release_rules_sanitize: $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@
+
+GEN5_NAME_UNCERTAINTY_SOURCES := tests/test_gen5_name_uncertainty.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen5_name_uncertainty
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_name_uncertainty_sanitize
+host-test: $(HOST_BUILD)/test_gen5_name_uncertainty
+host-sanitize: $(HOST_BUILD)/test_gen5_name_uncertainty_sanitize
+$(HOST_BUILD)/test_gen5_name_uncertainty: $(GEN5_NAME_UNCERTAINTY_SOURCES) include/Legality/Gen5UnverifiedNameFilters.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_NAME_UNCERTAINTY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_name_uncertainty_sanitize: $(GEN5_NAME_UNCERTAINTY_SOURCES) include/Legality/Gen5UnverifiedNameFilters.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_NAME_UNCERTAINTY_SOURCES) -o $@

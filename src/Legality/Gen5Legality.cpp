@@ -1979,8 +1979,8 @@ void Gen5Analyzer::movePool() {
     if (!found)
         for (uint16_t m : best) a_.invalid(CheckIdentifier::Moves, moveName(m) + " cannot be learned by this Pokemon in Gen V");
     // An unhatched bred egg's moves must follow the inheritance order (PKHeX
-    // LearnVerifierRelearn.VerifyEggMoveset -> MoveBreed5.Validate); once hatched, each
-    // move only needs a source.
+    // LearnVerifierRelearn.VerifyEggMoveset -> MoveBreed5.Validate). Hatched
+    // inherited survivors still require one simultaneous birth recipe.
     bool ancestryPartial=false;
     if (p_.isEgg && match_.kind == Kind::Egg) {
         // The independently pinned reconstruction targets the English US/EU
@@ -2009,6 +2009,34 @@ void Gen5Analyzer::movePool() {
                 ancestryPartial=true;
                 a_.warn(CheckIdentifier::Egg,"The complete breeding history, move order, form or transfer path has not yet been verified");
             }
+        }
+    }
+    if (!p_.isEgg && found) {
+        bool certified=false;
+        // A different matching acquisition can remove the need for a breeding
+        // history. Do not reject the first egg candidate in isolation.
+        for(const auto& t:matchAll_) {
+            if(!missing(movesFor(&t)).empty())continue;
+            if(t.kind!=Kind::Egg){certified=true;break;}
+            Template ordinary=t;ordinary.kind=Kind::Static;
+            const auto teachable=movesFor(&ordinary);
+            uint8_t inherited=0;
+            for(size_t i=0;i<4;++i)if(p_.moves[i]&&p_.moves[i]<=kMaxMove&&!teachable.test(p_.moves[i])) {
+                // Light Ball is a birth action, not a queried parental move.
+                if(t.species==172&&p_.moves[i]==344)continue;
+                inherited|=static_cast<uint8_t>(1u<<i);
+            }
+            if(!inherited){certified=true;break;}
+            if(p_.form!=0)continue; // no cross-form lower certificate
+            for(uint8_t shared=0;shared<16;++shared) {
+                if(shared&~inherited)continue;
+                if(Breeding::Gen35Ancestry::provenOrdinaryBirth(5,t.species,p_.version,p_.moves,inherited,shared,false)){certified=true;break;}
+            }
+            if(certified)break;
+        }
+        if(!certified){
+            ancestryPartial=true;
+            a_.warn(CheckIdentifier::Egg,"Hatched inherited moves lack a verified simultaneous parental birth history");
         }
     }
     cov.moves = ancestryPartial ? CoverageLevel::Partial : CoverageLevel::Complete;
@@ -2225,6 +2253,10 @@ void Gen5Analyzer::filterName(std::u16string_view text, uint8_t origin, const ch
         const char* list = hit.list == T::Filter::Switch ? "Switch" : hit.list == T::Filter::Console3DS ? "3DS" : "Gen V";
         report(std::string(what) + " \"" + utf8(text) + "\" is blocked by the " + list + " word filter (\"" +
                utf8(T::filterPattern(hit.list, hit.index)) + "\")");
+    }
+    if (hit.list == T::Filter::None && !T::unverifiedLookbackPattern(text, origin).empty()) {
+        textUnknown_ = true;
+        a_.warn(CheckIdentifier::Trainer, std::string(what) + " matches a newer lookback word-filter pattern whose applicability to original Gen III-V games is unverified");
     }
     if (T::tooManyNumbers(text, origin)) report(std::string(what) + " \"" + utf8(text) + "\" has more than 4 digits");
 }

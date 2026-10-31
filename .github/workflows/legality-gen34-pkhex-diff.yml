@@ -173,7 +173,11 @@ jobs:
           sudo apt-get install -y libclang-rt-18-dev
           clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined \
             -Wno-unused-parameter -Iinclude tests/fuzz/fuzz_legality_gen3.cpp src/Legality/Gen3Legality.cpp \
-            src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp -o build/fuzz_gen3
+            src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
+            src/Legality/Gen35BreedingAncestry.cpp src/Legality/Gen5LegalityData.cpp \
+            src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityEncounters.cpp \
+            src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp src/Legality/Gen4LegalityRng.cpp \
+            src/Legality/Gen4LegalityText.cpp src/Pokemon/Experience.cpp -o build/fuzz_gen3
           mkdir -p build/fuzz_corpus_gen3
           python3 -I -c "import re,sys; [open(f'build/fuzz_corpus_gen3/s{i}','wb').write(bytes([i % 5])+bytes.fromhex(h)) for i,h in enumerate(re.findall(r'\"([0-9A-F]{160})\"', open('tests/test_legality_gen3.cpp').read()))]"
           build/fuzz_gen3 -max_total_time=600 -max_len=120 build/fuzz_corpus_gen3

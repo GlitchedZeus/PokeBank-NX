@@ -29,6 +29,8 @@
 
 #include "Legality/Gen3LegalityData.h"
 #include "Legality/Gen3LegalityDataCxd.h"
+#include "Legality/Gen34EvExpFeasibility.h"
+#include "Legality/Gen35BreedingAncestry.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon.h"
@@ -3718,6 +3720,36 @@ void verifyIvs(const Pk3& pk, Analysis& a) {
     a.fishy(CheckIdentifier::Stats, "All IVs are " + std::to_string(hp));
 }
 
+const std::vector<EvExp::Battle>& evBattles3(uint8_t version, bool ownTrainer) {
+    static const auto catalogs=[] {
+        std::array<std::array<std::vector<EvExp::Battle>,2>,6> result;
+        for (uint8_t v=1;v<=5;++v) for (unsigned own=0;own<2;++own) {
+            std::array<EvExp::Battle,6> best{};
+            for (size_t i=0;i<D::kAreaCount;++i) {
+                const auto& area=D::kAreas[i];
+                if (!(area.version&versionBit(v)) || area.type>5 || isSafariLocation3(area.location)) continue;
+                for (size_t j=area.slotStart;j<area.slotStart+area.slotCount;++j) {
+                    const auto& slot=D::kSlots[j];if (!slot.species || slot.species>D::kMaxSpecies || slot.form) continue;
+                    const auto& p=D::kPersonal[slot.species];EvExp::Evs yield{};
+                    for (unsigned stat=0;stat<6;++stat) yield[stat]=static_cast<uint8_t>((p.evYield>>(2*stat))&3);
+                    if (EvExp::total(yield)!=1) continue;
+                    const unsigned base=unsigned(p.baseExperience)*slot.minLevel/7;
+                    // Exact Emerald six-participant/five-share native context.
+                    // Other contexts use a conservative gross EXP bound,
+                    // including a possible traded-recipient boost.
+                    const unsigned cost=own&&v==kVerE?std::max(1u,(base/2)/6):2*std::max(1u,base);
+                    for (size_t stat=0;stat<6;++stat) if (yield[stat] && (!best[stat].experience || cost<best[stat].experience))
+                        best[stat]={yield,cost,slot.species,slot.minLevel,v};
+                }
+            }
+            for (const auto& b:best) if (b.experience) result[v][own].push_back(b);
+        }
+        return result;
+    }();
+    static const std::vector<EvExp::Battle> empty;
+    return version>=1&&version<=5?catalogs[version][ownTrainer]:empty;
+}
+
 void verifyEvs(const Pk3& pk, Analysis& a) {
     int sum = 0;
     for (uint8_t ev : pk.evs) sum += ev;
@@ -3734,12 +3766,39 @@ void verifyEvs(const Pk3& pk, Analysis& a) {
     for (uint8_t ev : pk.evs)
         if (ev != 0 && (ev > 100 || ev % 10 != 0)) vitamin = false;
     if (!vitamin) {
-        if (e.levelMin == 100) {
-            a.invalid(CheckIdentifier::Stats, "A level 100 encounter can only gain EVs from vitamins (max 100 each)");
+        // Existing exact event/Orre encounter models also initialize EVs to
+        // zero. Their receipt/RNG uncertainty remains handled separately;
+        // do not discard that modeled initial state merely for being gifts.
+        const bool native=(isGbaVersion(pk.version) || pk.version==kVerCXD) && e.kind!=Kind::Invalid &&
+            (pk.metKnown || e.kind==Kind::Gift || e.kind==Kind::GiftNY || e.kind==Kind::GiftJPN);
+        if (!native) {
+            a.fishy(CheckIdentifier::Stats,"The initial EV/EXP state of this encounter or transfer is not verified");
         } else {
-            const uint8_t met = std::max(pk.metLevel, e.levelMin);
-            if (expForLevel(met, personal(e.species).growth) == pk.exp)
-                a.invalid(CheckIdentifier::Stats, "EVs above the vitamin pattern require EXP gain");
+            const uint8_t met=std::max(pk.metLevel,e.levelMin);
+            const auto start=expForLevel(met,personal(e.species).growth);
+            if (pk.exp>=start) {
+                EvExp::Request request{pk.evs,pk.exp-start,3,true,true,pk.pokerus!=0,pk.version==kVerE,2048};
+                // A traded egg retains its original game byte. For a hatched
+                // record, certify the action sequence in every possible hatch
+                // game rather than inventing which player performed the hatch.
+                auto result=EvExp::solve(request,evBattles3(pk.version==kVerCXD?kVerE:pk.version,e.kind!=Kind::Trade && pk.version!=kVerCXD));
+                if (pk.version==kVerCXD && result.verdict==EvExp::Verdict::Proven)
+                    for (uint8_t v=1;v<=5;++v)
+                        if (EvExp::solve(request,evBattles3(v,false)).verdict!=EvExp::Verdict::Proven) {
+                            result.verdict=EvExp::Verdict::Incomplete;break;
+                        }
+                if (e.kind==Kind::Egg && result.verdict==EvExp::Verdict::Proven)
+                    for (uint8_t v=1;v<=5;++v) {
+                        request.berriesAvailable=v==kVerE;
+                        if (EvExp::solve(request,evBattles3(v,true)).verdict!=EvExp::Verdict::Proven) {
+                            result.verdict=EvExp::Verdict::Incomplete;break;
+                        }
+                    }
+                if (result.verdict==EvExp::Verdict::Impossible)
+                    a.invalid(CheckIdentifier::Stats,"The joint EV gains require more EXP-bearing battle actions than the available EXP permits");
+                else if (result.verdict==EvExp::Verdict::Incomplete)
+                    a.fishy(CheckIdentifier::Stats,"The joint EV/EXP action history is not yet verified; search limits or missing action routes are not impossibility proofs");
+            }
         }
     }
     bool allEqual = true;
@@ -4189,10 +4248,37 @@ void verifyCxd(const Pk3& pk, Analysis& a) {
     if (pk.otGender == 1) a.invalid(CheckIdentifier::Trainer, "Colosseum/XD Pokemon have a male Original Trainer");
 }
 
+// Positive-only joint parent certificate. The move verifier's selected birth
+// assignment remains authoritative for the Nidoran PID rule above.
+void verifyJointAncestry(const Pk3& pk, Analysis& a) {
+    if (a.enc.kind!=Kind::Egg) return;
+    uint8_t paternal=0,shared=0;
+    if (pk.isEgg) {
+        std::array<uint8_t,4> sources{};
+        if (!moveBreed3(a.enc.species,a.enc.eggVersion,pk.moves,sources)) return;
+        for (unsigned i=0;i<4;++i) {
+            if (sources[i]==ESFatherEgg || sources[i]==ESFatherTM || sources[i]==ESParentLevelUp) paternal|=1u<<i;
+            if (sources[i]==ESParentLevelUp) shared|=1u<<i;
+        }
+    } else for (unsigned i=0;i<4;++i) {
+        if (a.moves[i]==MEggMove || a.moves[i]==MInheritLevelUp) paternal|=1u<<i;
+        if (a.moves[i]==MInheritLevelUp) shared|=1u<<i;
+    }
+    if (!paternal) return;
+    bool certified=Breeding::Gen35Ancestry::provenOrdinaryBirth(3,a.enc.species,a.enc.eggVersion,pk.moves,paternal,shared,pk.isEgg);
+    if (!certified && pk.isEgg) {
+        Breeding::Gen35Ancestry ancestry(pk.moves);
+        certified=ancestry.provenBirth(3,a.enc.species,a.enc.eggVersion,paternal,shared,true);
+    }
+    if (!certified)
+        a.fishy(CheckIdentifier::Egg,"The simultaneous Gen III parent move ancestry is not yet certified");
+}
+
 /// Full PKHeX pipeline for a Gen III PK3 (version R/S/E/FR/LG or Colosseum/XD, species 1-386).
 void runChecks(const Pk3& pk, Analysis& a, bool& enigma) {
     findEncounter(pk, a);
     verifyPid(pk, a);
+    verifyJointAncestry(pk, a);
     verifyLanguage(pk, a);
     verifyNickname(pk, a);
     verifyTrainerName(pk, a);
@@ -4504,6 +4590,7 @@ Result judge(const Input& in) {
     Analysis a;
     findEncounter(pk, a);
     verifyPid(pk, a);
+    verifyJointAncestry(pk, a);
     verifyLanguage(pk, a);
     if (in.namesKnown) {
         verifyNickname(pk, a);

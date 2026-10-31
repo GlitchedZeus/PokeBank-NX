@@ -52,7 +52,7 @@ GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
 	src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityHook.cpp src/Legality/Gen4LegalityEncounters.cpp \
 	src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp \
 	src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityPalPark.cpp \
-	src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp \
+	src/Legality/Gen35BreedingAncestry.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp \
 	src/Integration/Gen1/Gen1MoveCompatibility.cpp \
 	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
 	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
