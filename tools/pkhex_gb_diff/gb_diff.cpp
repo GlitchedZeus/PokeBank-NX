@@ -90,6 +90,8 @@ Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vecto
     e.pokerus = body[28];
     e.caughtData = static_cast<uint16_t>((body[29] << 8) | body[30]);
     e.level = body[31];
+    e.partyStats = true;  // the corpus holds party structs
+    e.maxHP = be16(body, 36);
     e.isEgg = egg;
     e.tradeTrainer = ot[0] == 0x5D;
     // PK2.Korean: not Japanese, and the trainer name starts with a Hangul page byte.
@@ -166,6 +168,8 @@ int main(int argc, char** argv) {
             e.statExp[i] = be16(body, 0x11 + i * 2);
         e.dvs = {static_cast<uint8_t>(body[0x1B] >> 4), static_cast<uint8_t>(body[0x1B] & 15),
                  static_cast<uint8_t>(body[0x1C] >> 4), static_cast<uint8_t>(body[0x1C] & 15)};
+        e.partyStats = true;
+        e.maxHP = be16(body, 0x22);
         e.tradeTrainer = ot[0] == 0x5D;
         e.otName = decodeGen1String(ot, region);
         e.nickname = decodeGen1String(nick, region);

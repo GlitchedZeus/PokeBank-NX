@@ -2305,6 +2305,48 @@ static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, u
     return {Area::Stats, stale, false};
 }
 
+/// Base HP of species 0-251 from pret (tools/gen_gb_base_hp.py); Gen II kept Gen I's values.
+constexpr uint8_t kBaseHP[] = {
+#include "Legality/GBBaseHP.inc"
+};
+static_assert(sizeof(kBaseHP) == 252);
+
+/// A party struct's stored max HP. Both games compute it the same way (pokered
+/// home/move_mon.asm CalcStat, pokecrystal engine/pokemon/move_mon.asm CalcMonStatC):
+/// ((base + HP DV) * 2 + b / 4) * level / 100 + level + 10, capped at 999, where b is the
+/// smallest of 1..255 whose square reaches the HP stat experience (the HP DV is the low bit
+/// of the other four). They write it only from the record's own level, DVs and stat
+/// experience: fresh stats on a gift, trade, hatch or catch (a caught Pokemon's stats are
+/// reloaded from its own species, level and original DVs even after Transform: pokered
+/// ItemUseBall LoadEnemyMonData, pokecrystal PokeBallEffect LoadEnemyMon), and a recalculation
+/// with the stat experience of that moment on every level-up, Rare Candy, evolution and
+/// return to the party. Max HP is never modified in battle (stat stages, burn and paralysis
+/// touch the other stats), stat experience never goes down and the level never changes
+/// without a recalculation, so the stored value is the formula at the current level for some
+/// stat experience between 0 and the current one. Nothing else writes it on the cartridge.
+/// A stored 0 is no party snapshot at all (a box struct exported in party layout, as the
+/// PKHeX test files from boxes are), so it is skipped rather than judged.
+static Problem partyMaxHpProblem(uint8_t species, uint8_t level, const std::array<uint8_t, 4>& dvs,
+                                 uint16_t hpStatExp, uint16_t maxHP) {
+    if (maxHP == 0 || species == 0 || species > kMaxSpecies2 || level == 0 || level > 100)
+        return {};
+    const unsigned dv = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+    unsigned root = 1;
+    while (root < 255 && root * root < hpStatExp)
+        ++root;
+    const unsigned base = kBaseHP[species];
+    const auto hp = [&](unsigned bonus) {
+        return std::min(999u, ((base + dv) * 2 + bonus) * level / 100 + level + 10);
+    };
+    for (unsigned bonus = 0; bonus <= root / 4; ++bonus)
+        if (hp(bonus) == maxHP)
+            return {};
+    return {Area::Stats, "Max HP " + std::to_string(maxHP) + " is not what level " + std::to_string(level) +
+                             " and HP DV " + std::to_string(dv) + " give with at most its " +
+                             std::to_string(hpStatExp) + " HP stat experience (" + std::to_string(hp(0)) +
+                             (root / 4 ? "-" + std::to_string(hp(root / 4)) : std::string()) + ")"};
+}
+
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
     if (e.species != 0 && e.species <= kMaxSpecies1) {
@@ -2313,6 +2355,10 @@ std::vector<Problem> formatProblems(const Entity1& e) {
     }
     if (Problem stats = statExpProblem(e.statExp, false); !stats.text.empty())
         out.push_back(std::move(stats));
+    if (e.partyStats) {
+        if (Problem hp = partyMaxHpProblem(e.species, e.level, e.dvs, e.statExp[0], e.maxHP); !hp.text.empty())
+            out.push_back(std::move(hp));
+    }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)  // the stored bytes decide when they are known (Korean names decode to nothing in a Western decoder)
         out.push_back({Area::Trainer, "Nickname is empty"});
     return out;
@@ -2328,6 +2374,10 @@ std::vector<Problem> formatProblems(const Entity2& e) {
     if (!e.isEgg && e.species != 0 && e.species <= kMaxSpecies2) {
         if (Problem level = levelExpProblem(2, e.species, e.level, e.exp, e.storage); !level.text.empty())
             out.push_back(std::move(level));
+        if (e.partyStats) {
+            if (Problem hp = partyMaxHpProblem(e.species, e.level, e.dvs, e.statExp[0], e.maxHP); !hp.text.empty())
+                out.push_back(std::move(hp));
+        }
     }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)
         out.push_back({Area::Trainer, "Nickname is empty"});

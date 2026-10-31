@@ -238,6 +238,11 @@ namespace Legality {
                 e.type2 = rec.type2;
                 e.dvs = {rec.dvs[1], rec.dvs[2], rec.dvs[3], rec.dvs[4]};
                 e.tid = rec.trainerId;
+                // The party max-HP rule reads the stored party struct, only when the
+                // record's own fields were parsed from those very bytes.
+                e.partyStats = rec.partyRecord && rec.rawBodySize == 44 && rec.rawBody[0x21] == rec.level &&
+                               ((rec.rawBody[0x22] << 8) | rec.rawBody[0x23]) == rec.maxHP;
+                e.maxHP = rec.maxHP;
                 e.tradeTrainer = rec.originalTrainer == "*";
                 e.language = gen1Language(rec.originalTrainer, rec.nickname);
                 const GB::Result origin = GB::checkGen1(e);
@@ -1050,6 +1055,10 @@ namespace Legality {
                 e.tid = rec.trainerId;
                 e.friendship = rec.friendship;
                 e.caughtData = rec.caughtData;
+                // As for PK1: the party struct's own bytes, when the record was parsed from them.
+                e.partyStats = rec.partyRecord && rec.rawBodySize == 48 && rec.rawBody[31] == rec.level &&
+                               ((rec.rawBody[36] << 8) | rec.rawBody[37]) == rec.maxHP;
+                e.maxHP = rec.maxHP;
                 e.tradeTrainer = rec.originalTrainer == "*";
                 // The strict parser carries record encoding. Do not infer Korean Hangul
                 // as unknown/Western from UTF-8, or mistake low Japanese glyph bytes for pages.

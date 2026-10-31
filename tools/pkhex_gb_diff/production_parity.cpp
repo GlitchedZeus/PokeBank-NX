@@ -117,6 +117,7 @@ int main() {
             rec.pokerus = body[28];
             rec.caughtData = static_cast<uint16_t>((body[29] << 8) | body[30]);
             rec.level = body[31];
+            rec.maxHP = be16(body, 36);
             rec.isEgg = egg;
             rec.nameEncoding = region;
             rec.originalTrainer = Gen2::decodeGen2String(ot, region);
@@ -154,6 +155,8 @@ int main() {
                 e.statExp[i] = be16(body, 0x11 + i * 2);
             e.dvs = {static_cast<uint8_t>(body[0x1B] >> 4), static_cast<uint8_t>(body[0x1B] & 15),
                      static_cast<uint8_t>(body[0x1C] >> 4), static_cast<uint8_t>(body[0x1C] & 15)};
+            e.partyStats = true;
+            e.maxHP = be16(body, 0x22);
             e.tradeTrainer = ot[0] == 0x5D;
             e.otName = Gen1::decodeGen1String(ot, region);
             e.nickname = Gen1::decodeGen1String(nick, region);
@@ -183,6 +186,7 @@ int main() {
             rec.pp = e.pp;
             rec.ppUps = e.ppUps;
             rec.level = body[0x21];
+            rec.maxHP = be16(body, 0x22);
             rec.originalTrainer = e.otName;
             rec.nickname = e.nickname;
             rec.originalTrainerRaw = ot;

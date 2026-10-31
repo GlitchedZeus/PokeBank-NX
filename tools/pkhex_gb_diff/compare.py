@@ -71,11 +71,12 @@ class Context:
     Gen I internal species index, and PKHeX's font tables (`nul[format]["EN"|"JP"]` marks the
     bytes with no character; `jp[format]` is the Japanese table itself)."""
 
-    def __init__(self, growth, internal_to_national, nul=None, jp=None):
+    def __init__(self, growth, internal_to_national, nul=None, jp=None, base_hp=None):
         self.growth = growth
         self.internal_to_national = internal_to_national
         self.nul = nul
         self.jp = jp
+        self.base_hp = base_hp
 
     @staticmethod
     def load(pkhex, pokered):
@@ -84,12 +85,13 @@ class Context:
         import gb_text
         personal = gen.read_personal2(pkhex / "PKHeX.Core/Resources/byte/personal/personal_c")
         growth = {s: personal[s]["growth"] for s in range(1, 252)}
+        base_hp = {s: personal[s]["stats"][0] for s in range(1, 252)}
         pret = ver.Pret(pokered)
         by_internal = {v: k for k, v in pret.internal.items()}
         internal = {idx: pret.dex[name] for idx, name in by_internal.items() if name in pret.dex}
         nul = {g: {t: gb_text.read_nul_mask(pkhex, g, f"Table{t}") for t in ("EN", "JP")} for g in (1, 2)}
         jp = {g: gb_text.read_table(pkhex, g, "TableJP") for g in (1, 2)}
-        return Context(growth, internal, nul, jp)
+        return Context(growth, internal, nul, jp, base_hp)
 
 
 def parse_corpus_line(line, lineno, ctx):
@@ -382,7 +384,36 @@ DELIBERATE = (
     # look for another, so it is INVALID (Trainer:G1CharOT) while the Gen II origin is legal.
     ("jp-ot-mark-gen1-pick", "INVALID", "VALID",
      lambda r, ctx, pk, pb: jp_ot_mark(r, ctx) and set(pkhex_codes(pk[1])) == {"Trainer:G1CharOT"}),
+    # A party struct's max HP that no stat experience up to the stored one gives at its level
+    # (pokered CalcStat / pokecrystal CalcMonStatC; GBLegality.cpp partyMaxHpProblem). PKHeX
+    # does not compare stored party stats. Recomputed here from PKHeX's own base HP.
+    ("party-max-hp", "VALID", "INVALID", lambda r, ctx, pk, pb: party_max_hp(r, ctx, pb)),
 )
+
+
+def game_root(stat_exp):
+    b = 0
+    while True:
+        b += 1
+        if b == 255 or b * b >= stat_exp:
+            return b
+
+
+def party_max_hp(r, ctx, pb):
+    if r.egg or not ctx.base_hp or not 1 <= r.species <= 251 or not 1 <= r.level <= 100:
+        return False
+    if [p for p in pokebank_problems(pb[1]) if not p.startswith("Max HP ")] or "Max HP " not in pb[1]:
+        return False
+    b = r.body
+    if r.format == 1:
+        dvs, hp_exp, stored = b[0x1B:0x1D], int.from_bytes(b[0x11:0x13], "big"), int.from_bytes(b[0x22:0x24], "big")
+    else:
+        dvs, hp_exp, stored = b[21:23], int.from_bytes(b[11:13], "big"), int.from_bytes(b[36:38], "big")
+    dv = ((dvs[0] >> 4 & 1) << 3) | ((dvs[0] & 1) << 2) | ((dvs[1] >> 4 & 1) << 1) | (dvs[1] & 1)
+    base = ctx.base_hp[r.species]
+    reach = {min(999, ((base + dv) * 2 + game_root(s) // 4) * r.level // 100 + r.level + 10)
+             for s in range(hp_exp + 1)}
+    return stored != 0 and stored not in reach
 
 
 def korean_pk1_origin(r, ctx, pk, pb):

@@ -13,7 +13,11 @@
 //  2. Production analyzer on a real, checksum-valid Red save: a level-100 Bulbasaur with
 //     exactly the level-100 EXP total, one more, one less. The save bytes must not change.
 //  3. Production analyzer on native PK2 records (Pokemon2ReadOnly).
+//  4. The party max-HP rule: the engine against the games' CalcStat run over every stat
+//     experience value up to the stored one (base HP from the PKSM port, independent of
+//     the pret-generated GBBaseHP.inc), and the production analyzer on party records.
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
+#include "Integration/Gen2/Gen2PersonalData.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Legality/GBLegality.h"
 #include "Legality/Legality.h"
@@ -24,6 +28,7 @@
 #include "Pokemon/Pokemon2ReadOnly.h"
 
 #include <array>
+#include <bitset>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -324,7 +329,9 @@ void put16(std::vector<uint8_t>& b, unsigned o, unsigned v) {
     b[o + 1] = static_cast<uint8_t>(v);
 }
 
-std::vector<uint8_t> redSave(uint32_t exp) {
+// Max HP 200 is what level 100, HP DV 0 (DVs 8/8/8/8) and no HP stat experience give
+// Bulbasaur (base 45): (45 * 2) * 100 / 100 + 100 + 10.
+std::vector<uint8_t> redSave(uint32_t exp, uint16_t maxHP = 200) {
     std::vector<uint8_t> b(kSaveSize, 0);
     b[kMain] = 0x80;  // player name "A"
     b[kMain + 1] = 0x50;
@@ -340,7 +347,7 @@ std::vector<uint8_t> redSave(uint32_t exp) {
     b[kParty + 2] = 0xFF;
     const unsigned o = kParty + 8;
     b[o] = 0x99;
-    put16(b, o + 1, 231);           // current HP
+    put16(b, o + 1, maxHP);         // current HP
     b[o + 3] = 100;                 // box level
     b[o + 5] = 0x16;                // Grass
     b[o + 6] = 0x03;                // Poison
@@ -355,7 +362,8 @@ std::vector<uint8_t> redSave(uint32_t exp) {
     b[o + 0x1D] = 35;
     b[o + 0x1E] = 40;
     b[o + 0x21] = 100;              // party level
-    for (unsigned i = 0; i < 5; ++i)
+    put16(b, o + 0x22, maxHP);
+    for (unsigned i = 1; i < 5; ++i)
         put16(b, o + 0x22 + i * 2, 231 - i);
     const unsigned ot = o + 6 * 44, nick = ot + 6 * 11;
     b[ot] = 0x80;
@@ -559,6 +567,175 @@ void productionPk2() {
           "native PK2 duplicate Tackle");
 }
 
+// ---------------------------------------------------------------- 4. party max HP
+
+// pokered home/move_mon.asm CalcStat / pokecrystal CalcMonStatC for HP: b counts up from 1
+// until b * b reaches the stat experience or b is 255; the bonus is b / 4.
+unsigned gameRoot(unsigned statExp) {
+    unsigned b = 0;
+    do {
+        ++b;
+    } while (b != 255 && b * b < statExp);
+    return b;
+}
+
+unsigned gameMaxHp(unsigned base, unsigned dv, unsigned level, unsigned statExp) {
+    return std::min(999u, ((base + dv) * 2 + gameRoot(statExp) / 4) * level / 100 + level + 10);
+}
+
+void partyMaxHpGrid() {
+    // Every max HP a party struct can hold at this level: the formula at any stat experience
+    // the record has had, 0 up to the stored one (stat experience only grows).
+    const unsigned levels[] = {1, 2, 5, 37, 99, 100};
+    const uint16_t statExps[] = {0, 1, 5, 6468, 65535};
+    const std::array<std::array<uint8_t, 4>, 4> dvSets{{{0, 0, 0, 0}, {15, 15, 15, 15}, {9, 2, 7, 12}, {8, 9, 14, 1}}};
+    // The bonuses (b / 4) the games can have used at any stat experience up to each value.
+    std::array<std::bitset<64>, std::size(statExps)> bonuses{};
+    for (std::size_t i = 0; i < std::size(statExps); ++i)
+        for (unsigned s = 0; s <= statExps[i]; ++s)
+            bonuses[i].set(gameRoot(s) / 4);
+    int judged = 0;
+    for (uint16_t species = 1; species <= 251; ++species) {
+        const auto* personal = PokeVault::Integration::Gen2::personalRecord(species);
+        check(personal && personal->hp != 0, "PKSM base HP of species " + std::to_string(species));
+        if (!personal)
+            continue;
+        // The PKSM port's two base-HP errors: Granbull is 90 and Magby 45 in pret pokecrystal
+        // data/pokemon/base_stats and in PKHeX personal_c; the port has 99 and 74.
+        const unsigned baseHp = species == 210 ? 90u : species == 240 ? 45u : personal->hp;
+        check((species == 210 || species == 240) == (baseHp != personal->hp),
+              "PKSM base HP erratum of species " + std::to_string(species));
+        for (unsigned level : levels)
+            for (const auto& dvs : dvSets)
+                for (std::size_t si = 0; si < std::size(statExps); ++si) {
+                    const uint16_t statExp = statExps[si];
+                    const unsigned hpDv = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+                    std::bitset<1001> reachable;
+                    for (unsigned bonus = 0; bonus < 64; ++bonus)
+                        if (bonuses[si].test(bonus))
+                            reachable.set(std::min(999u, ((baseHp + hpDv) * 2 + bonus) * level / 100 + level + 10));
+                    const unsigned lo = gameMaxHp(baseHp, hpDv, level, 0);
+                    const unsigned hi = gameMaxHp(baseHp, hpDv, level, statExp);
+                    for (unsigned maxHP : {0u, 1u, lo - 1, lo, lo + 1, (lo + hi) / 2, hi - 1, hi, hi + 1, 999u, 1000u}) {
+                        const std::string name = "species " + std::to_string(species) + " level " + std::to_string(level) +
+                                                 " HP DV " + std::to_string(hpDv) + " stat exp " + std::to_string(statExp) +
+                                                 " max HP " + std::to_string(maxHP);
+                        // 0 is no party snapshot (a box struct in party layout): not judged.
+                        const bool bad = maxHP != 0 && !(maxHP <= 1000 && reachable.test(std::min(maxHP, 1000u)));
+                        GB::Entity2 e2;
+                        e2.species = static_cast<uint8_t>(species);
+                        e2.level = static_cast<uint8_t>(level);
+                        e2.exp = Pokemon::getExpForLevel(static_cast<uint8_t>(level), Pokemon::getGrowthRate(species));
+                        e2.dvs = dvs;
+                        e2.statExp = {statExp, 0, 0, 0, 0};
+                        e2.nickname = "MON";
+                        e2.partyStats = true;
+                        e2.maxHP = static_cast<uint16_t>(maxHP);
+                        check(hasText(GB::formatProblems(e2), "Max HP") == bad, name + " (PK2)");
+                        e2.partyStats = false;
+                        check(!hasText(GB::formatProblems(e2), "Max HP"), name + " (PK2, no party stats)");
+                        if (species <= 151) {
+                            GB::Entity1 e1;
+                            e1.species = static_cast<uint8_t>(species);
+                            e1.level = e2.level;
+                            e1.exp = e2.exp;
+                            e1.dvs = dvs;
+                            e1.statExp = e2.statExp;
+                            e1.nickname = "MON";
+                            e1.partyStats = true;
+                            e1.maxHP = e2.maxHP;
+                            check(hasText(GB::formatProblems(e1), "Max HP") == bad, name + " (PK1)");
+                        }
+                        ++judged;
+                    }
+                }
+    }
+    check(judged > 200000, "party max-HP grid size");
+    // An unhatched egg is not judged by the party rule.
+    GB::Entity2 egg;
+    egg.species = 172;
+    egg.level = 5;
+    egg.exp = 125;
+    egg.isEgg = true;
+    egg.nickname = "EGG";
+    egg.partyStats = true;
+    egg.maxHP = 1;
+    check(!hasText(GB::formatProblems(egg), "Max HP"), "unhatched egg: no party max-HP problem");
+}
+
+Legality::Report pk2Party(uint16_t maxHP, uint16_t recordMaxHP, uint16_t hpStatExp = 0) {
+    PokeVault::Integration::Gen2::PokemonRecord rec{};
+    rec.species = 16;  // Pidgey, base HP 40
+    rec.level = 5;
+    rec.experience = gameExp(MediumSlow, 5);
+    rec.moves = {33, 28, 0, 0};
+    rec.pp = {35, 15, 0, 0};
+    rec.trainerId = 1234;
+    rec.dvs = {0, 8, 8, 8, 8};
+    rec.statExperience = {hpStatExp, 0, 0, 0, 0};
+    rec.friendship = 70;
+    rec.originalTrainer = "GOLD";
+    rec.nickname = "PIDGEY";
+    rec.maxHP = recordMaxHP;
+    rec.partyRecord = true;
+    // The stored party struct the record was parsed from (pokecrystal party_struct).
+    std::array<uint8_t, 48> body{};
+    body[0] = 16;
+    body[2] = 33;
+    body[3] = 28;
+    body[6] = 1234 >> 8;
+    body[7] = 1234 & 0xFF;
+    body[21] = 0x88;
+    body[22] = 0x88;
+    body[31] = 5;
+    body[36] = static_cast<uint8_t>(maxHP >> 8);
+    body[37] = static_cast<uint8_t>(maxHP);
+    std::copy(body.begin(), body.end(), rec.rawBody.begin());
+    rec.rawBodySize = body.size();
+    const Pokemon::Pokemon2ReadOnly pk(rec);
+    return Legality::analyze(pk, Enums::GameVersion::GSC, "gold_gbc");
+}
+
+void partyMaxHpProduction() {
+    using namespace PokeVault::Integration::Gen1;
+    // Red save, level-100 Bulbasaur (HP DV 0, no HP stat experience): 200 is the only max HP.
+    for (const uint16_t maxHP : {199, 201, 231, 999}) {
+        const std::string name = "Red save, level-100 Bulbasaur, max HP " + std::to_string(maxHP);
+        const std::vector<uint8_t> original = redSave(gameExp(MediumSlow, 100), maxHP);
+        std::vector<uint8_t> bytes = original;
+        const auto parsed = parse(bytes, SourceGame::Red);
+        check(parsed && parsed.save && parsed.save->party().size() == 1, name + ": parses");
+        if (!parsed || !parsed.save || parsed.save->party().size() != 1)
+            continue;
+        const Pokemon::Pokemon1ReadOnly pk(parsed.save->party().front());
+        const auto report = Legality::analyze(pk, pk.getGameGroup(), "red_gb");
+        check(report.verdict() == Legality::Verdict::Invalid && hasIssue(report, Legality::Severity::Invalid, "Max HP"),
+              name + ": Invalid");
+        check(bytes == original, name + ": save bytes unchanged");
+    }
+    {
+        std::vector<uint8_t> bytes = redSave(gameExp(MediumSlow, 100), 200);
+        const auto parsed = parse(bytes, SourceGame::Red);
+        check(parsed && parsed.save && parsed.save->party().size() == 1, "Red save, max HP 200: parses");
+        if (parsed && parsed.save && parsed.save->party().size() == 1) {
+            const Pokemon::Pokemon1ReadOnly pk(parsed.save->party().front());
+            check(Legality::analyze(pk, pk.getGameGroup(), "red_gb").verdict() == Legality::Verdict::NoProblemsFound,
+                  "Red save, level-100 Bulbasaur, max HP 200: No problems found");
+        }
+    }
+    // Native PK2 party records: Pidgey level 5, HP DV 0: (40 * 2) * 5 / 100 + 15 = 19; with
+    // 6468 HP stat experience (b = 81, bonus 20) anything from 19 to 20 ((80 + 20) * 5 / 100 + 15).
+    check(pk2Party(19, 19).verdict() == Legality::Verdict::NoProblemsFound, "PK2 party Pidgey max HP 19");
+    check(pk2Party(20, 20).verdict() == Legality::Verdict::Invalid, "PK2 party Pidgey max HP 20 without stat experience");
+    check(pk2Party(20, 20, 6468).verdict() != Legality::Verdict::Invalid, "PK2 party Pidgey max HP 20 with stat experience");
+    check(!hasIssue(pk2Party(19, 19, 6468), Legality::Severity::Invalid, "Max HP"),
+          "PK2 party Pidgey max HP 19 recalculated before its stat experience");
+    check(hasIssue(pk2Party(21, 21, 6468), Legality::Severity::Invalid, "Max HP"), "PK2 party Pidgey max HP 21");
+    // The rule reads only stored bytes the record's own fields were parsed from.
+    check(!hasIssue(pk2Party(20, 19), Legality::Severity::Invalid, "Max HP"), "PK2 record and stored bytes disagree");
+    check(!hasIssue(pk2Party(0, 0), Legality::Severity::Invalid, "Max HP"), "PK2 box struct in party layout (max HP 0)");
+}
+
 } // namespace
 
 int main() {
@@ -566,6 +743,8 @@ int main() {
     levelExpGrid();
     realRedSave();
     productionPk2();
+    partyMaxHpGrid();
+    partyMaxHpProduction();
     if (failures != 0) {
         std::fprintf(stderr, "Gen I/II structural legality: %d of %d checks FAILED\n", failures, checks);
         return EXIT_FAILURE;

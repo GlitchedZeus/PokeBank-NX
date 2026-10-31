@@ -18,6 +18,7 @@ on:
       - 'src/Integration/Gen1/**'
       - 'src/Integration/Gen2/Gen2ReadOnlySave.cpp'
       - 'tools/gen_gb_legality_data.py'
+      - 'tools/gen_gb_base_hp.py'
       - 'tools/verify_gb_legality_data.py'
       - 'tools/pkhex_gb_diff/**'
       - '.github/workflows/legality-gb-pkhex-diff.yml'
@@ -96,6 +97,9 @@ jobs:
 
       - name: Tables agree with the pret disassemblies
         run: python3 -I tools/verify_gb_legality_data.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokeyellow _ref/pokeyellow
+
+      - name: Party max-HP base table agrees with pret
+        run: python3 -I tools/gen_gb_base_hp.py --pokered _ref/pokered --pokecrystal _ref/pokecrystal --check
 
       - name: Independent native ancestry and rejection controls
         run: python3 tools/pkhex_gb_diff/test_native_chain.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokecrystal _ref/pokecrystal

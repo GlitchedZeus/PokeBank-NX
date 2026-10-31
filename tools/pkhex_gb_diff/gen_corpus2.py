@@ -158,6 +158,7 @@ class Mon:
         self.egg_name = None  # an unhatched egg's name when it is not the game's own
         self.ot_raw = None  # the stored name bytes, when a kind sets them directly
         self.nick_raw = None
+        self.max_hp_delta = 0  # added to the stored party max HP (a defect)
 
 
 def encounter_moves(d, species, level, crystal):
@@ -248,7 +249,7 @@ def finish(d, mon, rng):
     stats = p["stats"]  # HP ATK DEF SPE SPA SPD
     hp = g1.stat(stats[0], hp_dv, mon.level, True)
     body[34:36] = hp.to_bytes(2, "big")
-    body[36:38] = hp.to_bytes(2, "big")
+    body[36:38] = (hp + mon.max_hp_delta).to_bytes(2, "big")
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc), (stats[5], spc))):
         body[38 + i * 2:40 + i * 2] = g1.stat(b, dv, mon.level, False).to_bytes(2, "big")
     if mon.korean:
@@ -827,6 +828,15 @@ def main():
             mon.statexp = rng.choice((g1.stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
             mon.pokerus = rng.choice((0, pokerus(rng), rng.randrange(256)))
             emit_maybe_jp("random2", mon, japanese, korean)
+
+    # A party max HP one off the only value a fresh catch can hold (no stat experience yet):
+    # pokecrystal CalcMonStatC gives one value, and PKHeX does not compare stored party stats.
+    # Appended after the seeded stream above, so its records keep their ids.
+    for _ in range(max(1, args.count // 200)):
+        mon = wild_mon(d, rng, rng.choice(d.wild))
+        mon.statexp = [0] * 5
+        mon.max_hp_delta = rng.choice((-1, 1))
+        emit("defect2-party-max-hp", mon)
 
 
 if __name__ == "__main__":
