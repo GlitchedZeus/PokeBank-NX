@@ -219,6 +219,42 @@ folder appears under `exports/`; Discard All still works; B-exit still guards.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group G7b · Pokémon Let's Go Pikachu / Eevee (linked `main` file)
+
+Prerequisite: a COPY of the game's `main` (0xB8800 or 1 MiB) on the SD card, exported by your save manager.
+
+### G7b-01 · Two cards, assign, open
+**Steps:** HOME → "Pokemon Let's Go Pikachu (Save File)" → Assign Save File Manually → open.
+**Expected:** The installed-title card is unchanged; the file validates as the exact title (an Eevee save is
+refused on the Pikachu card); 40 × 25 Boxes and the party match the game; your partner shows
+"Partner Pokemon: Yes" in Origin & Legality.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G7b-02 · Edit
+**Steps:** Edit a party member and a box Pokémon: nickname, OT name/gender, Trainer ID, ball (only Poké,
+Great, Ultra, Master, Premier offered), fateful.
+**Expected:** Edits stage and show in both Party and Boxes for a party member (one record). Friendship and
+Awakening Values are read-only (they feed CP); CP and AVs appear in Origin & Legality.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G7b-03 · Clone, Release, partner protection
+**Steps:** Clone a box Pokémon; Release a different box Pokémon; open the partner and a party member.
+**Expected:** Clone lands at the next free slot (any other destination is refused and the right slot is
+named); Release moves later Pokémon up one slot; the partner and party members never offer Release; Move
+is never offered.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G7b-04 · Export Copy and in-game reopen
+**Steps:** Review → X → Y; restore `edited.bin` as `main` with your save manager (back up first); launch.
+**Expected:** `exports/lgpe/<game>_<time>/` holds `original_backup.bin` (identical to your source),
+`edited.bin`, `EDIT_MANIFEST.txt`; the game loads with the party and partner intact and shows exactly the
+reviewed edits, clone and release. Bag shows "Bag unavailable" with the MyItem reason in PokeBank NX.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Group G8 · Pokémon Sword / Shield (linked `main` file)
 
 Prerequisite: a COPY of the game's `main` save file on the SD card (exported by your save manager). Never

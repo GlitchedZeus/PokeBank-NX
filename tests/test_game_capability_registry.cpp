@@ -145,9 +145,29 @@ int main() {
                   row->storage.boxCount == 32 && row->storage.slotsPerBox == 30, std::string(id) + " SWSH mechanics and 32x30 boxes");
         check(row && row->hardware == Cap::HardwareState::NotDeviceTested, std::string(id) + " is not device tested");
     }
+    // Let's Go: the shared Modern adapter; Move blocked by the gapless list, AV/friendship read-only.
+    for (const char* id : {"letsgo_pikachu_switch", "letsgo_eevee_switch"}) {
+        const auto* row = Cap::find(id);
+        check(row && row->provider == "modern-native" && row->ui == Cap::UiIntegration::ModernSurfaceHostTested &&
+                  row->uiEvidence == "test_ui_modern_surface_gen7b_host",
+              std::string(id) + " served by the Modern adapter with named host-UI evidence");
+        check(row && row->supports(Cap::Workflow::PokemonEditor) && row->supports(Cap::Workflow::Clone) &&
+                  row->supports(Cap::Workflow::Remove) && row->supports(Cap::Workflow::Review) &&
+                  row->supports(Cap::Workflow::Export) && row->exportRoot == "exports/lgpe",
+              std::string(id) + " editor, clone, release, review and export to exports/lgpe");
+        check(row && row->status(Cap::Workflow::Move).support == Cap::Support::Blocked &&
+                  row->status(Cap::Workflow::Move).reason.find("gapless") != std::string_view::npos,
+              std::string(id) + " Move blocked by the gapless storage list");
+        check(row && !row->supports(Cap::Workflow::NativeMechanics) &&
+                  row->status(Cap::Workflow::NativeMechanics).reason.find("CP") != std::string_view::npos,
+              std::string(id) + " AVs/CP read-only with the CP prerequisite named");
+        check(row && row->status(Cap::Workflow::Create).support == Cap::Support::Blocked && !row->supports(Cap::Workflow::Bag) &&
+                  row->storage.boxCount == 40 && row->storage.slotsPerBox == 25 && row->mechanics.awakeningValues &&
+                  row->mechanics.partnerRestrictions,
+              std::string(id) + " Create blocked, Bag not claimed, 40x25, AV/partner mechanics");
+    }
     // Remaining Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
-    for (const char* id : {"letsgo_pikachu_switch", "brilliant_diamond_switch", "legends_arceus_switch",
-                           "scarlet_switch", "legends_za_switch"}) {
+    for (const char* id : {"brilliant_diamond_switch", "legends_arceus_switch", "scarlet_switch", "legends_za_switch"}) {
         const auto* row = Cap::find(id);
         check(row && row->status(Cap::Workflow::PokemonEditor).support == Cap::Support::Blocked &&
                   !row->status(Cap::Workflow::PokemonEditor).reason.empty(),
@@ -155,7 +175,7 @@ int main() {
         check(row && row->status(Cap::Workflow::Export).support == Cap::Support::Blocked, std::string(id) + " export blocked");
         check(row && row->exportRoot.empty(), std::string(id) + " advertises no export root");
     }
-    check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && !Cap::isModernNativeId("black_nds") &&
+    check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && Cap::isModernNativeId("letsgo_eevee_switch") && !Cap::isModernNativeId("black_nds") &&
               !Cap::isModernNativeId("scarlet_switch") && !Cap::isModernNativeId("brilliant_diamond_switch"),
           "isModernNativeId identifies the Modern adapter titles only");
 

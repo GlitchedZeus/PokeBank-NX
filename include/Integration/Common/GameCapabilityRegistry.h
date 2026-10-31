@@ -285,8 +285,26 @@ constexpr std::array<WorkflowStatus, WorkflowCount> gen8swsh() noexcept {
     }};
 }
 
-constexpr std::string_view kLgpeAdapter =
-    "LGPE needs a PB7 staged session over the pointer-backed 1000-slot storage with starter/party pointer repair";
+// Let's Go through the shared Modern adapter (Integration/Gen7b: Gen7bStagedSession + Gen7bNativeSession).
+constexpr std::array<WorkflowStatus, WorkflowCount> gen7lgpe() noexcept {
+    return {{
+        ok(),  // Dashboard: installed-title card and the assigned-file card
+        ok(),  // Save Instances: manual link, strict CRC/gapless/pointer validation, fingerprint revalidation
+        ok(), ok(), ok(),
+        ro("Awakening Values, Combat Power, partner and height/weight are shown read-only; AV/friendship edits need a verified CP recompute"),
+        ro("MyStatus trainer facts are read-only"),
+        ro("Installed-title reader shows pouches read-only; staged Bag needs a verified MyItem (block 0) decoder"),
+        ro("Installed-title reader shows counts read-only; the shared adapter has no verified Zukan decoder"),
+        blocked("Create needs verifiable EC/PID, personal, met, GO origin, height/weight and cached CP defaults"),
+        ok(),  // Clone: appended at the single next free index of the gapless list
+        blocked("Let's Go storage is a gapless list whose positions the game assigns; Clone appends and Release compacts instead"),
+        ok(),  // Remove: box Pokemon only; party members and the partner are protected; compaction + pointer remap
+        ro("Immutable Switch historical backups are read-only previews"),
+        ok(),
+        ok(),  // Export Copy: header/storage blocks + CRCs only, independently replay-verified, exports/lgpe
+    }};
+}
+
 constexpr std::string_view kBdspAdapter =
     "BDSP needs the paired-file authority protocol (which of the two save files is current) before any staged session";
 constexpr std::string_view kPlaAdapter =
@@ -363,6 +381,11 @@ constexpr GameCapabilities gen7Row(std::string_view id, std::string_view title, 
             {32, 30, 6, "SparseNative"}, mech7(), gen7sm(), HardwareState::NotDeviceTested, {}, "modern-native",
             UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen7_host", {}};
 }
+constexpr GameCapabilities lgpeRow(std::string_view id, std::string_view title) noexcept {
+    return {id, title, 7, Platform::NintendoSwitch, "LGPE", "PB7", StatModel::IVAwakening, {40, 25, 6, "PointerBacked"},
+            mech7b(), gen7lgpe(), HardwareState::NotDeviceTested, "exports/lgpe", "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen7b_host", {}};
+}
 constexpr GameCapabilities swshRow(std::string_view id, std::string_view title) noexcept {
     return {id, title, 8, Platform::NintendoSwitch, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"},
             mech8swsh(), gen8swsh(), HardwareState::NotDeviceTested, "exports/gen8", "modern-native",
@@ -408,8 +431,8 @@ inline constexpr std::array<GameCapabilities, 38> Registry = {{
     Detail::gen7Row("moon_3ds", "Moon", "SM"),
     Detail::gen7Row("ultrasun_3ds", "Ultra Sun", "USUM"),
     Detail::gen7Row("ultramoon_3ds", "Ultra Moon", "USUM"),
-    Detail::switchRow("letsgo_pikachu_switch", "Let's Go Pikachu", 7, "LGPE", "PB7", StatModel::IVAwakening, {40, 25, 6, "PointerBacked"}, Detail::mech7b(), Detail::kLgpeAdapter),
-    Detail::switchRow("letsgo_eevee_switch", "Let's Go Eevee", 7, "LGPE", "PB7", StatModel::IVAwakening, {40, 25, 6, "PointerBacked"}, Detail::mech7b(), Detail::kLgpeAdapter),
+    Detail::lgpeRow("letsgo_pikachu_switch", "Let's Go Pikachu"),
+    Detail::lgpeRow("letsgo_eevee_switch", "Let's Go Eevee"),
     // ---- Gen VIII ----
     Detail::swshRow("sword_switch", "Sword"),
     Detail::swshRow("shield_switch", "Shield"),

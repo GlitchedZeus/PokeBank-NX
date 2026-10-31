@@ -6,6 +6,7 @@
 #include "fixtures/gen6/Gen6SyntheticSave.h"
 #include "fixtures/gen7/Gen7SyntheticSave.h"
 #include "fixtures/gen8/Gen8SyntheticSave.h"
+#include "fixtures/gen7b/Gen7bSyntheticSave.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -249,6 +250,37 @@ int main() {
             check(Modern::openAssignedSource(bindings, profileA, "sword_switch").ready(), "the valid Sword assignment survives the refusals");
         }
         check(slurp(swDir + "/main") == swordSave, "Sword fixture never written");
+    }
+
+    // ---- Let's Go: manual link, same contract ----
+    {
+        const std::string lgDir = root + "/linked-letsgo";
+        ::mkdir(lgDir.c_str(), 0755);
+        const auto lg = Gen7bFixture::makeSave();
+        check(writeFile(lgDir + "/main", lg), "Let's Go fixture written");
+        check(Modern::isModernAssignedId("letsgo_pikachu_switch") && Modern::gameGroupFor("letsgo_eevee_switch") == Enums::GameVersion::GG &&
+                  Modern::expectedFamily("letsgo_pikachu_switch") == "LGPE" &&
+                  Modern::sourceVariantFor("letsgo_pikachu_switch") == Modern::kSourceVariantSwitchMain &&
+                  Modern::exportsRootFor("letsgo_pikachu_switch").ends_with("/exports/lgpe"),
+              "Let's Go dispatch");
+        const auto row = Modern::inspectSourceFile(lgDir + "/main", "Manual", "letsgo_pikachu_switch");
+        check(row.ready() && row.generation == 7 && row.partyCount == 2 && row.trainerName == "Red" &&
+                  row.sourceVariant == Modern::kSourceVariantSwitchMain,
+              "linked Let's Go main validates strictly: " + row.diagnostic);
+        const auto wrong = Modern::inspectSourceFile(lgDir + "/main", "Manual", "letsgo_eevee_switch");
+        check(!wrong.ready() && wrong.validation == PokeVault::Source::ValidationStatus::AssignmentMismatch, "Pikachu bytes refuse Eevee");
+        auto catalog = Modern::forGameAndProfile(std::vector<PokeVault::Source::SaveInstance>{row}, bindings, profileA,
+                                                 "letsgo_pikachu_switch");
+        const auto assigned = catalog.rows.size() == 1
+                                  ? Modern::assignValidatedSource(bindings, catalog.rows.front(), profileA, "letsgo_pikachu_switch")
+                                  : Modern::SourceAssignmentResult{};
+        check(assigned.success, "Let's Go assignment: " + assigned.diagnostic);
+        check(bindings.resolveFileForGame(profileA, "letsgo_pikachu_switch").binding.expectedRawFamily == "LGPE", "LGPE family persisted");
+        auto opened = Modern::openAssignedSource(bindings, profileA, "letsgo_pikachu_switch");
+        check(opened.ready() && opened.session->boxCount() == 40 && opened.session->slotsPerBox() == 25,
+              "Let's Go opens through the Gen7b adapter: " + opened.diagnostic);
+        check(Modern::homeCardSnapshot(opened).partyCount == 2, "Let's Go home card snapshot");
+        check(slurp(lgDir + "/main") == lg, "Let's Go fixture never written");
     }
 
     std::cout << "test_modern_sources: " << (failures ? "FAILED " : "all ") << checks << " checks"

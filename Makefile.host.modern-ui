@@ -92,6 +92,24 @@ $(MODERN_UI_GEN8_SANITIZE): $(MODERN_UI_GEN8_INPUTS) $(MODERN_UI_SANITIZE_ARCHIV
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen8_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
 MODERN_UI_TESTS += $(MODERN_UI_GEN8_TEST)
 MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_GEN8_SANITIZE)
+# The same surface over the Let's Go adapter and a synthetic SAV7b `main` fixture.
+MODERN_UI_GEN7B_TEST := $(HOST_BUILD)/test_ui_modern_surface_gen7b_host
+MODERN_UI_GEN7B_SANITIZE := $(HOST_BUILD)/test_ui_modern_surface_gen7b_host_sanitize
+MODERN_UI_GEN7B_INPUTS := tests/test_ui_modern_surface_gen7b_host.cpp tests/host-ui/HostUi.h tests/host-ui/switch.h \
+	$(wildcard tests/fixtures/gen7b/*.h) $(wildcard include/Integration/Gen7b/*.h) include/Integration/Modern/ModernScreenState.h \
+	src/UI/ModernSharedSurface.inc $(MODERN_UI_STUBS)
+HOST_TESTS += $(MODERN_UI_GEN7B_TEST)
+HOST_SANITIZE_TESTS += $(MODERN_UI_GEN7B_SANITIZE)
+host-test: $(MODERN_UI_GEN7B_TEST)
+host-sanitize: $(MODERN_UI_GEN7B_SANITIZE)
+$(MODERN_UI_GEN7B_TEST): $(MODERN_UI_GEN7B_INPUTS) $(MODERN_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen7b_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_ARCHIVE) -o $@
+$(MODERN_UI_GEN7B_SANITIZE): $(MODERN_UI_GEN7B_INPUTS) $(MODERN_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen7b_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
+MODERN_UI_TESTS += $(MODERN_UI_GEN7B_TEST)
+MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_GEN7B_SANITIZE)
 endif
 
 .PHONY: modern-ui-host-test modern-ui-host-sanitize

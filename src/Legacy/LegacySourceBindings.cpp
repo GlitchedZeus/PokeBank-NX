@@ -40,9 +40,13 @@ namespace PokeVault::Legacy {
                 return false;
             }
             // Sword/Shield `main` (development/gen6-plus): one SwishCrypto file, family SWSH.
-            if (binding.sourceVariant == "switch-main-single")
-                return (binding.gameIdentity == "sword_switch" || binding.gameIdentity == "shield_switch") &&
-                       binding.expectedRawFamily == "SWSH";
+            if (binding.sourceVariant == "switch-main-single") {
+                if (binding.gameIdentity == "sword_switch" || binding.gameIdentity == "shield_switch")
+                    return binding.expectedRawFamily == "SWSH";
+                if (binding.gameIdentity == "letsgo_pikachu_switch" || binding.gameIdentity == "letsgo_eevee_switch")
+                    return binding.expectedRawFamily == "LGPE";
+                return false;
+            }
             const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";
             const bool sequel = binding.gameIdentity == "black2_nds" || binding.gameIdentity == "white2_nds";
             return ((bw && binding.expectedRawFamily == "BW") ||

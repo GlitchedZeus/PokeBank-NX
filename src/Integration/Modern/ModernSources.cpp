@@ -5,6 +5,7 @@
 #include "Integration/Gen6/Gen6SaveSources.h"
 #include "Integration/Gen7/Gen7NativeSession.h"
 #include "Integration/Gen7/Gen7SaveSources.h"
+#include "Integration/Gen7b/Gen7bNativeSession.h"
 #include "Integration/Gen8/Gen8NativeSession.h"
 #include "Utils/PokeBankPaths.h"
 #include "Utils/SHA256.h"
@@ -124,6 +125,7 @@ Enums::GameVersion gameGroupFor(std::string_view gameId) noexcept {
     if (family == "SM") return Enums::GameVersion::SM;
     if (family == "USUM") return Enums::GameVersion::USUM;
     if (family == "SWSH") return Enums::GameVersion::SWSH;
+    if (family == "LGPE") return Enums::GameVersion::GG;
     return Enums::GameVersion::XY;
 }
 
@@ -163,6 +165,7 @@ OpenedSession openSession(std::string_view gameId, std::span<const uint8_t> byte
     if (row->generation == 7 && row->platform == Capability::Platform::Nintendo3DS)
         return Gen7::Gen7NativeSession::open(bytes, gameId);
     if (row->family == "SWSH") return Gen8::Gen8NativeSession::open(bytes, gameId);
+    if (row->family == "LGPE") return Gen7b::Gen7bNativeSession::open(bytes, gameId);
     return {nullptr, std::string(row->title) + " has no verified staged adapter yet: " +
                          std::string(row->status(Capability::Workflow::PokemonEditor).reason)};
 }
@@ -269,6 +272,22 @@ Source::SaveInstance inspectSourceFile(const std::string& path, std::string_view
         row.diagnostic = probe.instance.diagnostic;
         row.partyCount = probe.instance.partyCount;
         row.trainerName = probe.instance.trainerName;
+        return row;
+    }
+    if (reg->family == "LGPE") {
+        std::string why;
+        const auto save = Gen7b::Gen7bSave::parse(bytes, assignedExactGame, &why);
+        if (!save) {
+            row.validation = why.find("does not match the assigned") != std::string::npos
+                                 ? Source::ValidationStatus::AssignmentMismatch
+                                 : Source::ValidationStatus::Invalid;
+            row.diagnostic = why;
+            return row;
+        }
+        row.validation = Source::ValidationStatus::Ready;
+        row.diagnostic.clear();
+        row.partyCount = save->model().header.partyCount();
+        row.trainerName = Utils::utf16ToUtf8(save->trainer().name);
         return row;
     }
     if (reg->family == "SWSH") {

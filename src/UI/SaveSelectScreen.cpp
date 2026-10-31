@@ -3056,7 +3056,7 @@ namespace UI {
         const bool switchFile = Modern::sourceVariantFor(gen5TargetGameId) == Modern::kSourceVariantSwitchMain;
         const auto chosen = Utils::promptText(
             "Choose " + gen + " Save",
-            switchFile ? "Full SD path to a copied Sword/Shield 'main' save file (exported by a save manager)"
+            switchFile ? "Full SD path to a copied 'main' save file for this game (exported by a save manager)"
                        : "Full SD path to the 3DS 'main' save archive (Checkpoint/JKSM export or Dekopon save)",
             remembered.binding.sourcePath, 240);
         if (!chosen.accepted) return;
