@@ -305,8 +305,24 @@ constexpr std::array<WorkflowStatus, WorkflowCount> gen7lgpe() noexcept {
     }};
 }
 
-constexpr std::string_view kBdspAdapter =
-    "BDSP needs the paired-file authority protocol (which of the two save files is current) before any staged session";
+// BD/SP through the shared Modern adapter (Integration/Gen8b over the shared Gen8RecordEdits rules).
+constexpr std::array<WorkflowStatus, WorkflowCount> gen8bdsp() noexcept {
+    return {{
+        ok(),  // Dashboard: installed-title card and the assigned-file card
+        ok(),  // Save Instances: manual link, revision + whole-file MD5 validation, fingerprint revalidation
+        ok(), ok(), ok(),
+        ro("Mint (stat) nature and battle-team membership are shown read-only; no verified writer"),
+        ro("MyStatus8b trainer facts are read-only"),
+        ro("Installed-title reader shows pockets read-only; staged Bag needs a verified MyItem8b editor"),
+        ro("Installed-title reader shows counts read-only; the shared adapter has no verified Zukan8b writer"),
+        blocked("Create needs verifiable EC/PID, personal, met, handler, memory and cached-stat defaults"),
+        ok(), ok(), ok(),  // Clone / Move / Remove: box records, team-referenced and locked slots protected
+        ro("Immutable Switch historical backups are read-only previews"),
+        ok(),
+        ok(),  // Export Copy: staged records + whole-file MD5 only, independently verified, exports/bdsp
+    }};
+}
+
 constexpr std::string_view kPlaAdapter =
     "PLA needs a PA8 staged session over the SCBlock container with Effort Level, mastery and pasture geometry verification";
 constexpr std::string_view kSvAdapter =
@@ -386,6 +402,11 @@ constexpr GameCapabilities lgpeRow(std::string_view id, std::string_view title) 
             mech7b(), gen7lgpe(), HardwareState::NotDeviceTested, "exports/lgpe", "modern-native",
             UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen7b_host", {}};
 }
+constexpr GameCapabilities bdspRow(std::string_view id, std::string_view title) noexcept {
+    return {id, title, 8, Platform::NintendoSwitch, "BDSP", "PB8", StatModel::IVEV, {40, 30, 6, "FlatMD5"},
+            mech8bdsp(), gen8bdsp(), HardwareState::NotDeviceTested, "exports/bdsp", "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen8b_host", {}};
+}
 constexpr GameCapabilities swshRow(std::string_view id, std::string_view title) noexcept {
     return {id, title, 8, Platform::NintendoSwitch, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"},
             mech8swsh(), gen8swsh(), HardwareState::NotDeviceTested, "exports/gen8", "modern-native",
@@ -436,8 +457,8 @@ inline constexpr std::array<GameCapabilities, 38> Registry = {{
     // ---- Gen VIII ----
     Detail::swshRow("sword_switch", "Sword"),
     Detail::swshRow("shield_switch", "Shield"),
-    Detail::switchRow("brilliant_diamond_switch", "Brilliant Diamond", 8, "BDSP", "PB8", StatModel::IVEV, {40, 30, 6, "FlatPairedFile"}, Detail::mech8bdsp(), Detail::kBdspAdapter),
-    Detail::switchRow("shining_pearl_switch", "Shining Pearl", 8, "BDSP", "PB8", StatModel::IVEV, {40, 30, 6, "FlatPairedFile"}, Detail::mech8bdsp(), Detail::kBdspAdapter),
+    Detail::bdspRow("brilliant_diamond_switch", "Brilliant Diamond"),
+    Detail::bdspRow("shining_pearl_switch", "Shining Pearl"),
     Detail::switchRow("legends_arceus_switch", "Legends Arceus", 8, "PLA", "PA8", StatModel::IVEffortLevel, {32, 30, 6, "Pastures"}, Detail::mech8pla(), Detail::kPlaAdapter),
     // ---- Gen IX ----
     Detail::switchRow("scarlet_switch", "Scarlet", 9, "SV", "PK9", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech9sv(), Detail::kSvAdapter),

@@ -7,6 +7,7 @@
 #include "fixtures/gen7/Gen7SyntheticSave.h"
 #include "fixtures/gen8/Gen8SyntheticSave.h"
 #include "fixtures/gen7b/Gen7bSyntheticSave.h"
+#include "fixtures/gen8b/Gen8bSyntheticSave.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -50,7 +51,7 @@ int main() {
     // ---- family dispatch ----
     check(Modern::isModernAssignedId("x_3ds") && Modern::isModernAssignedId("ultramoon_3ds"), "3DS titles are Modern-assigned");
     check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("scarlet_switch") &&
-              !Modern::isModernAssignedId("brilliant_diamond_switch"),
+              !Modern::isModernAssignedId("legends_arceus_switch"),
           "DS titles and Switch titles without a verified adapter are not");
     check(Modern::isModernAssignedId("sword_switch") && Modern::isModernAssignedId("shield_switch") &&
               Modern::gameGroupFor("shield_switch") == Enums::GameVersion::SWSH && Modern::expectedFamily("sword_switch") == "SWSH" &&
@@ -281,6 +282,33 @@ int main() {
               "Let's Go opens through the Gen7b adapter: " + opened.diagnostic);
         check(Modern::homeCardSnapshot(opened).partyCount == 2, "Let's Go home card snapshot");
         check(slurp(lgDir + "/main") == lg, "Let's Go fixture never written");
+    }
+
+    // ---- BD/SP: manual link of SaveData.bin, same contract ----
+    {
+        const std::string bdDir = root + "/linked-bdsp";
+        ::mkdir(bdDir.c_str(), 0755);
+        const auto bd = Gen8bFixture::makeSave();
+        check(writeFile(bdDir + "/SaveData.bin", bd), "BD/SP fixture written");
+        check(Modern::gameGroupFor("shining_pearl_switch") == Enums::GameVersion::BDSP && Modern::expectedFamily("brilliant_diamond_switch") == "BDSP" &&
+                  Modern::exportsRootFor("brilliant_diamond_switch").ends_with("/exports/bdsp"),
+              "BD/SP dispatch");
+        const auto row = Modern::inspectSourceFile(bdDir + "/SaveData.bin", "Manual", "brilliant_diamond_switch");
+        check(row.ready() && row.generation == 8 && row.partyCount == 2 && row.trainerName == "Lucas",
+              "linked BD/SP save validates strictly: " + row.diagnostic);
+        check(Modern::inspectSourceFile(bdDir + "/SaveData.bin", "Manual", "shining_pearl_switch").validation ==
+                  PokeVault::Source::ValidationStatus::AssignmentMismatch,
+              "BD bytes refuse SP");
+        auto catalog = Modern::forGameAndProfile(std::vector<PokeVault::Source::SaveInstance>{row}, bindings, profileA, "brilliant_diamond_switch");
+        const auto assigned = catalog.rows.size() == 1
+                                  ? Modern::assignValidatedSource(bindings, catalog.rows.front(), profileA, "brilliant_diamond_switch")
+                                  : Modern::SourceAssignmentResult{};
+        check(assigned.success && bindings.resolveFileForGame(profileA, "brilliant_diamond_switch").binding.expectedRawFamily == "BDSP",
+              "BD/SP assignment: " + assigned.diagnostic);
+        auto opened = Modern::openAssignedSource(bindings, profileA, "brilliant_diamond_switch");
+        check(opened.ready() && opened.session->boxCount() == 40 && Modern::homeCardSnapshot(opened).partyCount == 2,
+              "BD/SP opens through the Gen8b adapter: " + opened.diagnostic);
+        check(slurp(bdDir + "/SaveData.bin") == bd, "BD/SP fixture never written");
     }
 
     std::cout << "test_modern_sources: " << (failures ? "FAILED " : "all ") << checks << " checks"

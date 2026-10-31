@@ -4,7 +4,7 @@
 > This lane is isolated from the Gen I–V repair campaign, #307, #314, #327/#328. No merge into `main` or
 > into the Gen I–V repair branch, no force-push, no branch deletion, no source-save write.
 
-Last updated: 2026-10-31 UTC, by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
+Last updated: 2026-10-31 UTC (late), by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
 
 ## Branching decision (owner, 2026-10-31)
 
@@ -62,6 +62,25 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   78 (SWSH link/assign/reopen/variant refusals), `test_game_capability_registry` (SWSH rows); every Gen VI–VIII
   suite passes with `ASAN_OPTIONS=detect_leaks=1`; Clang backend set green.
 
+## Session 3 milestones (Let's Go, BD/SP, MemeCrypto scope audit)
+
+| Commit | Content | Host evidence |
+| --- | --- | --- |
+| `1509a314` | `MiniGmpAllocationScope` hardened: depth counter (inner scopes no-op), recursive mutex, static hook restore, overflow flag; invariants documented | `test_mini_gmp_scope` 13 (nesting, overflow, 4 threads × 6 real sign/verify) GCC/Clang/ASan+LSan |
+| `2a4f4cb3` | Let's Go Pikachu/Eevee adapter (`Integration/Gen7b`) | `test_gen7b_native_session` 68, `test_ui_modern_surface_gen7b_host` 31 |
+| next | Brilliant Diamond/Shining Pearl adapter (`Integration/Gen8b`), shared PK8 edit rules (`Gen8RecordEdits.h`) | `test_gen8b_native_session` 41, `test_ui_modern_surface_gen8b_host` 46, `test_modern_sources` 94 |
+
+- **Let's Go**: strict SAV7b parse (block CRCs, gapless 1000-record storage, party/partner pointer integrity);
+  op-log staging; Edit (nickname, OT, OT gender, TID/SID, LGPE balls, fateful); Clone appends at the next
+  free index; Release compacts and remaps party/partner pointers; partner/party never released; Move
+  blocked (game-assigned positions); Friendship/AVs read-only (they feed the cached CP). Export: header +
+  storage blocks + CRCs only, replay-verified.
+- **BD/SP**: PKHeX SAV8BS is ONE flat file per slot (the earlier "paired-file" prerequisite was wrong and
+  is removed). Revisions 1.0–1.3 by size + Gem8Version word, whole-file MD5, ROM code, battle teams/locks
+  from BoxLayout8b. Same PK8 rules as SWSH via `Gen8RecordEdits.h`; box Clone/Move/Remove; export writes
+  staged records + MD5 only. Box names shown.
+- PKHeX reference files were fetched from the pinned commit `6501f0ab` for offsets only (not vendored).
+
 ## Status per game (host evidence only; NOT DEVICE TESTED)
 
 `docs/gen6-plus/CAPABILITY_MATRIX.md` (generated) is the 12-column table. Summary:
@@ -71,8 +90,13 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
 - **Sword / Shield**: linked `main` through the shared surface: editor, Clone/Move/Remove (box), Review,
   Discard, verified Export to `exports/gen8`; Bag/Pokédex read-only via the installed-title reader only;
   Create blocked. Installed-title (console) SWSH unchanged and still read-only.
-- **Let's Go, BD/SP, Legends: Arceus, Scarlet/Violet, Legends: Z-A**: honest BLOCKED editor/export with the
-  named adapter prerequisite. Z-A is PA9/SAV9ZA, not SV.
+- **Let's Go Pikachu / Eevee**: linked `main` through the shared surface: editor, Clone, Release, Review,
+  verified Export to `exports/lgpe`; Move blocked; AV/CP read-only; Create blocked.
+- **Brilliant Diamond / Shining Pearl**: linked SaveData through the shared surface: editor, Clone/Move/
+  Remove (box), Review, verified Export to `exports/bdsp`; Create blocked; Bag/Pokédex read-only via the
+  installed-title reader only.
+- **Legends: Arceus, Scarlet/Violet, Legends: Z-A**: honest BLOCKED editor/export with the named adapter
+  prerequisite. Z-A is PA9/SAV9ZA, not SV.
 
 No title is accepted on hardware. Gen I–V hardware cells read NOT ACCEPTED (owner rounds were on earlier
 candidates; #313 open).

@@ -1,4 +1,5 @@
 #include "Integration/Gen8/Gen8StagedSession.h"
+#include "Integration/Gen8/Gen8RecordEdits.h"
 
 #ifdef __SWITCH__
 #include "Utils/PokeBankPaths.h"
@@ -19,40 +20,8 @@ size_t recordOffset(SlotRef s) {
                                            : Gen8Save::boxRecordOffset(s.box, s.slot);
 }
 
-// Per-byte bitmask of what a field edit may change inside a decrypted PK8, derived from the
-// provider's Editable set so the verifier and the UI share one table. The cached party block
-// (0x148..0x157) is never whitelisted: no Editable field feeds a battle stat.
-std::array<uint8_t, PK8::PartySize> editMask(RecordRegion region) {
-    std::array<uint8_t, PK8::PartySize> m{};
-    const auto range = [&](size_t from, size_t to) { for (size_t i = from; i < to; ++i) m[i] = 0xFF; };
-    using Gen8EditorProvider::editable;
-    m[0x06] = m[0x07] = 0xFF;  // checksum is always recomputed
-    if (editable(Field::HeldItem, region)) range(0x0A, 0x0C);
-    if (editable(Field::TrainerId, region)) range(0x0C, 0x0E);
-    if (editable(Field::SecretId, region)) range(0x0E, 0x10);
-    if (editable(Field::FatefulEncounter, region)) m[0x22] |= 0x01;
-    if (editable(Field::Pokerus, region)) m[0x32] = 0xFF;
-    if (editable(Field::Nickname, region)) {
-        range(PK8::NicknameOffset, PK8::NicknameOffset + PK8::NameBytes);
-        m[0x8F] |= 0x80;  // IV32 bit 31: IsNicknamed
-    }
-    if (editable(Field::OriginalTrainer, region))
-        range(PK8::OriginalTrainerOffset, PK8::OriginalTrainerOffset + PK8::NameBytes);
-    if (editable(Field::Friendship, region)) m[0x112] = 0xFF;
-    if (editable(Field::Ball, region)) m[0x124] = 0xFF;
-    if (editable(Field::OriginalTrainerGender, region)) m[0x125] |= 0x80;
-    return m;
-}
-
-bool allowedName(std::string_view text) {
-    if (text.empty() || text.size() > PK8::NameCapacity) return false;
-    bool visible = false;
-    for (unsigned char c : text) {
-        if (c < 0x20 || c > 0x7E) return false;
-        if (c != ' ') visible = true;
-    }
-    return visible;
-}
+using Gen8Edits::allowedName;
+using Gen8Edits::editMask;
 
 bool heldItemInRange(uint32_t value) noexcept { return value <= Gen8EditorProvider::Limits.maxHeldItem; }
 

@@ -166,8 +166,22 @@ int main() {
                   row->mechanics.partnerRestrictions,
               std::string(id) + " Create blocked, Bag not claimed, 40x25, AV/partner mechanics");
     }
+    // BD/SP: one flat file (no paired-file selection), the shared adapter with a verified export.
+    for (const char* id : {"brilliant_diamond_switch", "shining_pearl_switch"}) {
+        const auto* row = Cap::find(id);
+        check(row && row->provider == "modern-native" && row->uiEvidence == "test_ui_modern_surface_gen8b_host" &&
+                  row->storage.model == "FlatMD5" && row->storage.boxCount == 40 && row->storage.slotsPerBox == 30,
+              std::string(id) + " served by the Modern adapter over the flat MD5 file");
+        check(row && row->supports(Cap::Workflow::PokemonEditor) && row->supports(Cap::Workflow::Clone) &&
+                  row->supports(Cap::Workflow::Move) && row->supports(Cap::Workflow::Remove) && row->supports(Cap::Workflow::Export) &&
+                  row->exportRoot == "exports/bdsp",
+              std::string(id) + " editor, storage and export");
+        check(row && row->status(Cap::Workflow::Create).support == Cap::Support::Blocked && !row->supports(Cap::Workflow::Bag) &&
+                  !row->supports(Cap::Workflow::Pokedex) && !row->mechanics.dynamax,
+              std::string(id) + " Create blocked, Bag/Pokedex not claimed, no Dynamax");
+    }
     // Remaining Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
-    for (const char* id : {"brilliant_diamond_switch", "legends_arceus_switch", "scarlet_switch", "legends_za_switch"}) {
+    for (const char* id : {"legends_arceus_switch", "scarlet_switch", "legends_za_switch"}) {
         const auto* row = Cap::find(id);
         check(row && row->status(Cap::Workflow::PokemonEditor).support == Cap::Support::Blocked &&
                   !row->status(Cap::Workflow::PokemonEditor).reason.empty(),
@@ -176,7 +190,8 @@ int main() {
         check(row && row->exportRoot.empty(), std::string(id) + " advertises no export root");
     }
     check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && Cap::isModernNativeId("letsgo_eevee_switch") && !Cap::isModernNativeId("black_nds") &&
-              !Cap::isModernNativeId("scarlet_switch") && !Cap::isModernNativeId("brilliant_diamond_switch"),
+              !Cap::isModernNativeId("scarlet_switch") && Cap::isModernNativeId("brilliant_diamond_switch") &&
+              !Cap::isModernNativeId("legends_arceus_switch"),
           "isModernNativeId identifies the Modern adapter titles only");
 
     std::cout << "test_game_capability_registry: " << (failures ? "FAILED " : "all ") << checks << " checks"

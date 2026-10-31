@@ -1,0 +1,38 @@
+# Brilliant Diamond / Shining Pearl (SAV8BS / PB8) adapter of the shared Modern::NativeSession contract
+# (development/gen6-plus). Host tests only; exports go to a fresh temporary directory.
+GEN8BPLUS_TEST_NAMES := test_gen8b_native_session
+GEN8BPLUS_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN8BPLUS_TEST_NAMES))
+GEN8BPLUS_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN8BPLUS_TESTS))
+
+HOST_TESTS += $(GEN8BPLUS_TESTS)
+HOST_SANITIZE_TESTS += $(GEN8BPLUS_SANITIZE_TESTS)
+host-test: $(GEN8BPLUS_TESTS)
+host-sanitize: $(GEN8BPLUS_SANITIZE_TESTS)
+
+GEN8BPLUS_HEADERS := $(wildcard include/Integration/Gen8b/*.h) $(wildcard include/Integration/Gen8/*.h) \
+	$(wildcard tests/fixtures/gen8b/*.h) $(wildcard tests/fixtures/gen8/*.h) include/Integration/Common/GameCapabilityRegistry.h \
+	include/Integration/Modern/NativeSession.h include/Utils/MD5.h
+GEN8BPLUS_FLAGS := -Wno-unused-parameter -Iinclude -Itests -D_PKSMCORE_CONFIGURED -fno-operator-names
+GEN8BPLUS_SESSION_SOURCES := src/Integration/Gen8b/Gen8bNativeSession.cpp src/Integration/Gen8b/Gen8bStagedSession.cpp \
+	src/Integration/Gen8b/Gen8bSave.cpp src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp src/Utils/MD5.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Pokemon/PokemonTypes.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Names/ItemPresence.cpp
+GEN8BPLUS_SOURCES_test_gen8b_native_session := tests/test_gen8b_native_session.cpp $(GEN8BPLUS_SESSION_SOURCES)
+
+define GEN8BPLUS_TEST_RULES
+$(HOST_BUILD)/$(1): $$(GEN8BPLUS_SOURCES_$(1)) $$(GEN8BPLUS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(GEN8BPLUS_FLAGS) $$(GEN8BPLUS_SOURCES_$(1)) -o $$@
+
+$(HOST_BUILD)/$(1)_sanitize: $$(GEN8BPLUS_SOURCES_$(1)) $$(GEN8BPLUS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(SANITIZE_FLAGS) $$(GEN8BPLUS_FLAGS) $$(GEN8BPLUS_SOURCES_$(1)) -o $$@
+endef
+$(foreach t,$(GEN8BPLUS_TEST_NAMES),$(eval $(call GEN8BPLUS_TEST_RULES,$(t))))
+
+.PHONY: gen8bplus-host-test gen8bplus-host-sanitize
+gen8bplus-host-test: $(GEN8BPLUS_TESTS)
+	@set -e; for test_bin in $(GEN8BPLUS_TESTS); do ./$$test_bin; done
+
+gen8bplus-host-sanitize: $(GEN8BPLUS_SANITIZE_TESTS)
+	@set -e; for test_bin in $(GEN8BPLUS_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done

@@ -305,6 +305,32 @@ The source file you linked is unchanged.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group G8b · Pokémon Brilliant Diamond / Shining Pearl (linked SaveData file)
+
+Prerequisite: a COPY of the game's save file (1.0–1.3 revisions are accepted) on the SD card.
+
+### G8b-01 · Assign and open
+**Steps:** HOME → "Pokemon Brilliant Diamond (Save File)" → Assign Save File Manually → open.
+**Expected:** Validates as the exact title (a Shining Pearl save is refused on the Brilliant Diamond card);
+40 × 30 Boxes with their in-game names; the party matches the game; Trainer shows the save revision.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8b-02 · Shared workflows and battle teams
+**Steps:** Repeat G8-03 and G8-04 on this save.
+**Expected:** Same editable fields as Sword/Shield (no Dynamax facts); team members never offer
+Move/Release; locked-team members refuse Edit.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8b-03 · Export Copy and in-game reopen
+**Steps:** Stage edits, a box Move and a Release → Review → X → Y; restore `edited.bin` with your save
+manager (back up first); launch.
+**Expected:** `exports/bdsp/<game>_<time>/` with `original_backup.bin` identical to your source; the game
+loads (the whole-file MD5 is refreshed) and shows exactly the reviewed changes.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Totals
 
 | Count | Number |
