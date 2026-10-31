@@ -46,7 +46,7 @@ everything else is Incomplete. No modern area claims Complete coverage, so a rec
 a contradiction is **Incomplete**, never "No problems found". The analyzer only reads the
 bytes: no Pokémon object, no mutation, no save write, deterministic.
 
-PK6, PK7, PB7, PK8, PB8 and PK9 have rules today. PA8/PA9 are accepted and reported Incomplete
+PK6, PK7, PB7, PK8, PB8, PA8 and PK9 have rules today. PA9 is accepted and reported Incomplete
 with structure coverage None until their decoders and rules are wired in.
 
 ## PK6 / PK7 rules
@@ -117,6 +117,33 @@ height and weight are recomputed in single precision without fused multiply-add,
 
 Not implemented for PB7: encounter tables (wild, static, trades, GO Park), learnsets, WB7 gifts,
 ball per encounter, fateful flags, nicknames, trash bytes and memories.
+
+## PA8 (Legends: Arceus) rules
+
+PA8 keeps the Gen VIII encryption (PK8's LCG and block order) with 0x58-byte blocks: 0x168
+bytes stored, 0x178 in the party. `src/Legality/Gen8aLegality.cpp` has its own codec (reusing
+`Gen8PK8.h`'s crypt and block tables unchanged) and analyzer. Tables come from
+`PersonalTable.LA` (abilities, gender, growth, forms, presence, height, weight and move shop
+permissions), the move shop list, `EntityContext.Gen8a` PP and held items and format-8
+battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species ≤ 905, moves ≤
+850, items ≤ 1828, balls ≤ 37).
+
+| Area | Rule (Invalid) | PKHeX source |
+|---|---|---|
+| Species | above 905; a species/form Legends: Arceus does not hold; a form outside the species' forms; a battle-only form (no form-item rule: Dialga, Palkia, Giratina and Arceus change form with key items) | `TransferVerifier`, `FormVerifier` |
+| Level, EVs | experience above the level-100 total; level below met level; an EV above 252 or a total above 510 | `LevelVerifier`, `EffortValueVerifier` |
+| Moves and PP | unknown move, empty first slot, gaps, duplicates; any PP Up (Legends: Arceus has none); PP above its maximum | `Legal.IsPPUpAvailable`, `MovePPVerifier` |
+| Identity | gender against the ratio; ability against the slots and number; nature; stat nature not the nature or a mint; ball 0 or above 37; language; held item | `GenderVerifier`, `AbilityVerifier`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `ItemVerifier` |
+| Hyper Training | six perfect IVs; a perfect IV trained (the minimum level depends on the games visited and is not decided) | `HyperTrainingVerifier` |
+| Legends: Arceus | noble flag; displayed scale not the height scalar; an Effort Level above its IV's cap | `LegendsArceusVerifier` |
+| Move shop | an alpha move on a non-alpha, not masterable by the species, or not mastered; a purchased move the species cannot buy | `LegendsArceusVerifier.CheckMastery` |
+| Misc | sociability, Gigantamax, Dynamax level, TR flags, fullness or enjoyment set; battle version as Sword/Shield | `MiscVerifierPA8`, `FullnessRules` |
+| Sizes | a Legends: Arceus record with no HOME tracker, not an alpha and not Enamorus whose stored height or weight is not the in-game calculation | `MiscVerifierPA8.VerifyAbsoluteSizes` |
+
+Not decided for PA8: encounters (alpha flag per encounter, alpha scalars, fixed gifts),
+learnsets and mastery by level, PID = EC (fixed-EC gifts), HOME-calculated sizes (fused
+multiply-add) and pre-evolution sizes, Hyper Training minimum level, ball per encounter,
+nicknames, ribbons and memories.
 
 ## PK8 (Sword/Shield) rules
 
@@ -227,6 +254,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,786 (91.7%) | 0 | 0 |
 | PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,112 (91.1%) | 0 | 0 |
 | PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,513 (91.3%) | 0 | 0 |
+| PA8 | 1 / 4 | 16,161 | 6,535 | 9,626 | 6,721 (69.8%) | 0 | 0 |
+| PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,384 (69.7%) | 0 | 0 |
+| PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 13,737 (70.2%) | 0 | 0 |
+| PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,502 (70.7%) | 0 | 0 |
 | PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,366 (77.1%) | 0 | 0 |
 | PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,615 (76.9%) | 0 | 0 |
 | PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 39,815 (76.9%) | 0 | 0 |
@@ -240,7 +271,7 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 35,065 (83.3%) | 0 | 0 |
 | PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,131 (82.6%) | 0 | 0 |
 
-PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
+PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
@@ -290,3 +321,14 @@ checked by `tests/test_legality_gen7b.cpp` (`test_legality_gen7b{,_sanitize}`), 
 GO without GO Park, species, egg, PID = EC, ball, Hyper Training, held item, checksum), edits
 that must stay undecided (spirit and mood in the party, a traded record's received date, the
 partner's CP and spirit), the source-game warning, the interface contract and a fuzz pass.
+
+`tests/fixtures/gen67/pkhex8a_seed2_sample.txt` (2,420 PA8 records from `generate8a 2 4`) is
+checked by `tests/test_legality_gen8a.cpp` (`test_legality_gen8a{,_sanitize}`), with the codec
+round trip (stored and party), PA8 edits (EVs, PP Ups, PP, noble, scale, Effort Levels, alpha
+move, move shop purchases, sociability, Gigantamax, Dynamax, TR flags, fullness, enjoyment,
+battle version, natures, height, weight, species, presence, ball, language, Hyper Training,
+held item, checksum, sanity), edits that must stay undecided (a permitted purchase, a mastered
+alpha move on an alpha, sizes with a HOME tracker, on an alpha or on a transfer), the
+source-game warning, the interface contract and a fuzz pass. Its largest PKHeX gaps are
+encounter matching, alpha size and alpha flag per encounter, fateful flags, mastery without a
+purchase, PID = EC and ball per encounter.

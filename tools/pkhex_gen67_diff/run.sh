@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Differential test: PokeBank NX's Gen VI/VII (PK6/PK7), Gen VIII (PK8, PB8) or Scarlet/Violet
 # (PK9) legality verdicts against PKHeX.Core.
-#   tools/pkhex_gen67_diff/run.sh PKHEX_CHECKOUT [SEED] [MUTATIONS] [67|7b|8|8b|9]
+#   tools/pkhex_gen67_diff/run.sh PKHEX_CHECKOUT [SEED] [MUTATIONS] [67|7b|8|8a|8b|9]
 # 1. The oracle's "dump" ("dump8") must reproduce include/Legality/Gen67LegalityData.inc
 #    (Gen8LegalityData.inc) byte for byte (every rule table the C++ analyzer reads comes
 #    from this PKHeX checkout).
@@ -16,6 +16,9 @@
 #    "7b": Let's Go Pikachu/Eevee (PB7): GP/GE and GO Park encounters and grown copies
 #    (Awakening Values, recalculated CP), with PB7-only field mutations (AVs, CP, sizes,
 #    spirit/mood, received date). PB7 tables are Gen7bLegalityData.inc ("dump7b").
+#    "8a": Legends: Arceus (PA8): its own encounters, records moved in through HOME and grown
+#    copies (Effort Levels), with PA8-only field mutations (alpha and noble flags, alpha move,
+#    move shop, scale, sizes, ...). PA8 tables are Gen8aLegalityData.inc ("dump8a").
 #    "9": the same for Scarlet/Violet (PK9), with PK9-only field mutations (Tera types,
 #    obedience level, TM flags, scale, ...). PK9 tables live in Gen8LegalityData.inc too.
 # 3. gen67_diff.cpp analyzes every record and fails when
@@ -29,10 +32,11 @@ pkhex=$(cd "$1" && pwd); seed=${2:-1}; mutations=${3:-4}; mode=${4:-67}
 case "$mode" in
     67) dump=dump; generate=generate; table=Gen67LegalityData.inc; label="Gen VI/VII" ;;
     7b) dump=dump7b; generate=generate7b; table=Gen7bLegalityData.inc; label="Let's Go" ;;
+    8a) dump=dump8a; generate=generate8a; table=Gen8aLegalityData.inc; label="Legends: Arceus" ;;
     8) dump=dump8; generate=generate8; table=Gen8LegalityData.inc; label="Gen VIII" ;;
     8b) dump=dump8; generate=generate8b; table=Gen8LegalityData.inc; label="Gen VIII BD/SP" ;;
     9) dump=dump8; generate=generate9; table=Gen8LegalityData.inc; label="Scarlet/Violet" ;;
-    *) echo "mode must be 67, 7b, 8, 8b or 9" >&2; exit 2 ;;
+    *) echo "mode must be 67, 7b, 8, 8a, 8b or 9" >&2; exit 2 ;;
 esac
 here=$(cd "$(dirname "$0")" && pwd); repo=$(cd "$here/../.." && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
@@ -50,7 +54,8 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -I"$repo/include" "$here/gen67_diff.cpp
     "$repo/src/Legality/ModernLegality.cpp" "$repo/src/Legality/Gen67Legality.cpp" \
     "$repo/src/Legality/Gen67LegalityData.cpp" "$repo/src/Legality/Gen8Legality.cpp" \
     "$repo/src/Legality/Gen8LegalityData.cpp" "$repo/src/Legality/Gen7bLegality.cpp" \
-    "$repo/src/Legality/Gen7bLegalityData.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen67_diff"
+    "$repo/src/Legality/Gen7bLegalityData.cpp" "$repo/src/Legality/Gen8aLegality.cpp" \
+    "$repo/src/Legality/Gen8aLegalityData.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen67_diff"
 status=0
 "$work/gen67_diff" "${SHOW:-20}" < "$work/pkhex.txt" > "$work/report.txt" || status=$?
 cat "$work/report.txt"
