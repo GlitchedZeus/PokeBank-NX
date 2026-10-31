@@ -5,8 +5,10 @@
 #include "Integration/Gen6/Gen6SaveSources.h"
 #include "Integration/Gen7/Gen7NativeSession.h"
 #include "Integration/Gen7/Gen7SaveSources.h"
+#include "Integration/Gen8/Gen8NativeSession.h"
 #include "Utils/PokeBankPaths.h"
 #include "Utils/SHA256.h"
+#include "Utils/StringHelpers.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -94,8 +96,9 @@ Source::SaveInstance baseRow(const std::string& path, std::string_view providerL
     row.normalizedPath = normalizedPath(path);
     row.label = path.substr(path.find_last_of('/') == std::string::npos ? 0 : path.find_last_of('/') + 1);
     row.sourceLabel = providerLabel == kProviderCheckpoint ? "Checkpoint backup" : providerLabel == kProviderDekopon ? "Emulator save" : "Linked file";
-    row.containerType = "3ds-save-archive-main";
-    row.sourceVariant = std::string(kSourceVariant3ds);
+    const bool switchMain = sourceVariantFor(exactGame) == kSourceVariantSwitchMain;
+    row.containerType = switchMain ? "switch-swish-main" : "3ds-save-archive-main";
+    row.sourceVariant = std::string(switchMain ? kSourceVariantSwitchMain : kSourceVariant3ds);
     row.access = Source::AccessMode::ReadOnly;
     row.kind = providerLabel == kProviderManual ? Source::SaveInstanceKind::ManualImport
              : providerLabel == kProviderCheckpoint ? Source::SaveInstanceKind::Backup
@@ -108,12 +111,19 @@ Source::SaveInstance baseRow(const std::string& path, std::string_view providerL
 
 bool isModernAssignedId(std::string_view gameId) noexcept { return registered(gameId) != nullptr; }
 
+std::string_view sourceVariantFor(std::string_view gameId) noexcept {
+    const auto* row = registered(gameId);
+    if (!row) return {};
+    return row->platform == Capability::Platform::NintendoSwitch ? kSourceVariantSwitchMain : kSourceVariant3ds;
+}
+
 Enums::GameVersion gameGroupFor(std::string_view gameId) noexcept {
     const auto family = expectedFamily(gameId);
     if (family == "XY") return Enums::GameVersion::XY;
     if (family == "ORAS") return Enums::GameVersion::ORAS;
     if (family == "SM") return Enums::GameVersion::SM;
     if (family == "USUM") return Enums::GameVersion::USUM;
+    if (family == "SWSH") return Enums::GameVersion::SWSH;
     return Enums::GameVersion::XY;
 }
 
@@ -152,6 +162,7 @@ OpenedSession openSession(std::string_view gameId, std::span<const uint8_t> byte
     if (row->generation == 6) return Gen6::Gen6NativeSession::open(bytes, gameId);
     if (row->generation == 7 && row->platform == Capability::Platform::Nintendo3DS)
         return Gen7::Gen7NativeSession::open(bytes, gameId);
+    if (row->family == "SWSH") return Gen8::Gen8NativeSession::open(bytes, gameId);
     return {nullptr, std::string(row->title) + " has no verified staged adapter yet: " +
                          std::string(row->status(Capability::Workflow::PokemonEditor).reason)};
 }
@@ -173,7 +184,7 @@ bool readSourceFileReadOnly(const std::string& path, std::vector<uint8_t>& bytes
     }
     const auto size = static_cast<size_t>(st.st_size);
     if (size == 0 || size > (4u << 20)) {
-        diagnostic = "source file size is outside every supported 3DS save size";
+        diagnostic = "source file size is outside every supported save size";
         return false;
     }
     FILE* file = std::fopen(path.c_str(), "rb");
@@ -258,6 +269,24 @@ Source::SaveInstance inspectSourceFile(const std::string& path, std::string_view
         row.diagnostic = probe.instance.diagnostic;
         row.partyCount = probe.instance.partyCount;
         row.trainerName = probe.instance.trainerName;
+        return row;
+    }
+    if (reg->family == "SWSH") {
+        // Strict SCBlock parse of the exact assigned title; the same parser the adapter opens with.
+        std::string why;
+        const auto save = Gen8::Gen8Save::parse(bytes, assignedExactGame, &why);
+        if (!save) {
+            row.validation = why.find("does not match the assigned") != std::string::npos
+                                 ? Source::ValidationStatus::AssignmentMismatch
+                                 : Source::ValidationStatus::Invalid;
+            row.diagnostic = why;
+            return row;
+        }
+        row.validation = Source::ValidationStatus::Ready;
+        row.diagnostic.clear();
+        row.partyCount = save->partyCount();
+        const auto trainer = save->trainer();
+        row.trainerName = Utils::utf16ToUtf8(trainer.rawName);
         return row;
     }
     row.validation = Source::ValidationStatus::Unsupported;
@@ -407,7 +436,7 @@ SourceAssignmentResult assignValidatedSource(Legacy::LegacySourceBindings& bindi
     binding.sourcePath = fresh.path();
     binding.sourceType = fresh.providerLabel;
     binding.expectedRawFamily = std::string(expectedFamily(exactGame));
-    binding.sourceVariant = std::string(kSourceVariant3ds);
+    binding.sourceVariant = std::string(sourceVariantFor(exactGame));
     binding.physicalIdentity = fresh.physicalIdentity;
     binding.contentFingerprint = fresh.contentFingerprint;
     if (!bindings.replaceFileAssignmentAndSave(fresh.sourceIdentity, std::move(binding))) {
@@ -445,7 +474,7 @@ AssignedSourceReadOnly openAssignedSource(const Legacy::LegacySourceBindings& bi
     const auto& binding = out.source.binding;
     if (binding.profileIdentity != profile || binding.gameIdentity != exactGame || binding.sourcePath.empty() ||
         binding.sourceType.empty() || binding.expectedRawFamily != expectedFamily(exactGame) ||
-        binding.sourceVariant != kSourceVariant3ds) {
+        binding.sourceVariant != sourceVariantFor(exactGame)) {
         out.status = AssignedOpenStatus::AssignmentMismatch;
         out.diagnostic = "Persisted assignment has the wrong exact title, provider or family";
         return out;

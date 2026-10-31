@@ -5,6 +5,7 @@
 // with the vendored memecrypto exactly as PKHeX MemeCrypto.SignInPlace does
 // (SHA256 of the checksum table, zero tail). Safe to commit: no real data.
 #include "Integration/Gen7/Gen7Save.h"
+#include "Integration/Gen7/MiniGmpAllocationScope.h"
 #include "Utils/CRC16.h"
 
 #include "fixtures/gen6/Gen6SyntheticSave.h"
@@ -33,7 +34,10 @@ inline void signMeme(std::vector<uint8_t>& save, Layout::Family f) {
     const auto hash = Gen7Save::checksumTableHash(save, f);
     std::copy(hash.begin(), hash.end(), payload.begin());
     std::array<uint8_t, Layout::SignatureLength> signedBytes{};
-    memecrypto_sign(payload.data(), signedBytes.data(), static_cast<int>(payload.size()));
+    {
+        const PokeVault::Integration::Gen7::MiniGmpAllocationScope scope;  // rsa_decrypt leaks its mpz temporaries
+        memecrypto_sign(payload.data(), signedBytes.data(), static_cast<int>(payload.size()));
+    }
     std::copy(signedBytes.begin(), signedBytes.end(),
               save.begin() + static_cast<std::ptrdiff_t>(Layout::signatureOffset(f)));
 }

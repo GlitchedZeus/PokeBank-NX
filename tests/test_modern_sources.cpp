@@ -5,6 +5,7 @@
 #include "Integration/Modern/ModernSources.h"
 #include "fixtures/gen6/Gen6SyntheticSave.h"
 #include "fixtures/gen7/Gen7SyntheticSave.h"
+#include "fixtures/gen8/Gen8SyntheticSave.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -47,7 +48,17 @@ std::vector<uint8_t> slurp(const std::string& path) {
 int main() {
     // ---- family dispatch ----
     check(Modern::isModernAssignedId("x_3ds") && Modern::isModernAssignedId("ultramoon_3ds"), "3DS titles are Modern-assigned");
-    check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("sword_switch"), "DS and installed Switch titles are not");
+    check(!Modern::isModernAssignedId("black_nds") && !Modern::isModernAssignedId("scarlet_switch") &&
+              !Modern::isModernAssignedId("brilliant_diamond_switch"),
+          "DS titles and Switch titles without a verified adapter are not");
+    check(Modern::isModernAssignedId("sword_switch") && Modern::isModernAssignedId("shield_switch") &&
+              Modern::gameGroupFor("shield_switch") == Enums::GameVersion::SWSH && Modern::expectedFamily("sword_switch") == "SWSH" &&
+              Modern::platformLabelFor("sword_switch") == "Nintendo Switch" && Modern::generationLabelFor("sword_switch") == "Generation VIII" &&
+              Modern::exportsRootFor("sword_switch").ends_with("/exports/gen8"),
+          "Sword/Shield linked files are served by the Gen VIII adapter");
+    check(Modern::sourceVariantFor("x_3ds") == Modern::kSourceVariant3ds &&
+              Modern::sourceVariantFor("sword_switch") == Modern::kSourceVariantSwitchMain && Modern::sourceVariantFor("black_nds").empty(),
+          "source variant per platform");
     check(Modern::gameGroupFor("x_3ds") == Enums::GameVersion::XY && Modern::gameGroupFor("alphasapphire_3ds") == Enums::GameVersion::ORAS &&
               Modern::gameGroupFor("moon_3ds") == Enums::GameVersion::SM && Modern::gameGroupFor("ultrasun_3ds") == Enums::GameVersion::USUM,
           "game groups");
@@ -186,6 +197,58 @@ int main() {
         const auto snap7 = Modern::homeCardSnapshot(opened7);
         check(snap7.current() && snap7.partyCount == 2 && snap7.dexTotal > 0, "Sun home card snapshot");
         check(slurp(sunDir + "/main") == sunSave, "Sun fixture never written");
+    }
+
+    // ---- Gen VIII Sword/Shield: manual link only (no Switch save-manager layout is invented) ----
+    {
+        const std::string swDir = root + "/linked-sword";
+        ::mkdir(swDir.c_str(), 0755);
+        const auto swordSave = Gen8Fixture::makeSave();
+        check(writeFile(swDir + "/main", swordSave), "Sword fixture written");
+        check(Modern::discoverKnownSources("sword_switch", roots).instances.empty(), "no Switch discovery layout is assumed");
+        const auto row = Modern::inspectSourceFile(swDir + "/main", "Manual", "sword_switch");
+        check(row.ready() && row.generation == 8 && row.containerType == "switch-swish-main" &&
+                  row.sourceVariant == Modern::kSourceVariantSwitchMain && row.partyCount == 2 && row.trainerName == "Hop" &&
+                  row.readOnly() && !row.contentFingerprint.empty(),
+              "linked Sword main validates strictly: " + row.diagnostic);
+        const auto wrong = Modern::inspectSourceFile(swDir + "/main", "Manual", "shield_switch");
+        check(!wrong.ready() && wrong.validation == PokeVault::Source::ValidationStatus::AssignmentMismatch,
+              "Sword bytes refuse a Shield assignment");
+        std::vector<uint8_t> junk(swordSave.size(), 0x33);
+        check(writeFile(swDir + "/junk", junk), "junk written");
+        const auto bad = Modern::inspectSourceFile(swDir + "/junk", "Manual", "sword_switch");
+        check(!bad.ready() && bad.validation == PokeVault::Source::ValidationStatus::Invalid && !bad.diagnostic.empty(),
+              "a corrupt container is Invalid with a reason");
+        auto catalog8 = Modern::forGameAndProfile(std::vector<PokeVault::Source::SaveInstance>{row}, bindings, profileA, "sword_switch");
+        check(catalog8.rows.size() == 1, "Sword row catalogued");
+        const auto assigned8 = Modern::assignValidatedSource(bindings, catalog8.rows.front(), profileA, "sword_switch");
+        check(assigned8.success, "Sword assignment: " + assigned8.diagnostic);
+        const auto resolved = bindings.resolveFileForGame(profileA, "sword_switch");
+        check(resolved.binding.expectedRawFamily == "SWSH" && resolved.binding.sourceVariant == Modern::kSourceVariantSwitchMain,
+              "SWSH family and Switch variant persisted");
+        auto opened8 = Modern::openAssignedSource(bindings, profileA, "sword_switch");
+        check(opened8.ready() && opened8.session->exactGameId() == "sword_switch" && opened8.session->boxCount() == 32 &&
+                  opened8.session->familyLabel() == "Generation VIII",
+              "Sword opens through the Gen VIII adapter: " + opened8.diagnostic);
+        check(opened8.ready() && !opened8.session->exportSupport().available, "nothing to export before a staged change");
+        const auto snap8 = Modern::homeCardSnapshot(opened8);
+        check(snap8.current() && snap8.partyCount == 2, "Sword home card snapshot");
+        check(Modern::openAssignedSource(bindings, profileA, "sword_switch", "deadbeef").status == Modern::AssignedOpenStatus::InvalidSave,
+              "a stale fingerprint is refused");
+        check(Modern::openAssignedSource(bindings, profileB, "sword_switch").status == Modern::AssignedOpenStatus::Unassigned,
+              "profile B has no Sword assignment");
+        {
+            // The binding store refuses a Switch-variant record that names the wrong family or a 3DS title.
+            PokeVault::Legacy::BindingRecord forged = resolved.binding;
+            forged.expectedRawFamily = "XY";
+            check(!bindings.replaceFileAssignmentAndSave(resolved.sourceIdentity, forged), "Switch variant with a 3DS family refused");
+            forged = resolved.binding;
+            forged.gameIdentity = "x_3ds";
+            forged.expectedRawFamily = "SWSH";
+            check(!bindings.replaceFileAssignmentAndSave(resolved.sourceIdentity, forged), "Switch variant on a 3DS title refused");
+            check(Modern::openAssignedSource(bindings, profileA, "sword_switch").ready(), "the valid Sword assignment survives the refusals");
+        }
+        check(slurp(swDir + "/main") == swordSave, "Sword fixture never written");
     }
 
     std::cout << "test_modern_sources: " << (failures ? "FAILED " : "all ") << checks << " checks"

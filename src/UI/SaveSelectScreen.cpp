@@ -1143,8 +1143,13 @@ namespace UI {
             for(const auto& game:PokeVault::Games::allGameDescriptors()) {
                 if(!PokeVault::Integration::Modern::isModernAssignedId(game.id))continue;
                 TitleEntry card;
-                card.name="Pokemon "+std::string(game.title);
-                card.label=std::string(game.title);
+                // A Switch title keeps its installed-title card (console save, legacy read-only
+                // reader); this second card is the linked `main` FILE served by the shared adapter,
+                // so it says so instead of reading as a duplicate.
+                const bool switchFile=PokeVault::Integration::Modern::sourceVariantFor(game.id)==
+                    PokeVault::Integration::Modern::kSourceVariantSwitchMain;
+                card.name="Pokemon "+std::string(game.title)+(switchFile?" (Save File)":"");
+                card.label=std::string(game.title)+(switchFile?" File":"");
                 card.gameId=std::string(game.id);
                 card.platformLabel=std::string(PokeVault::Integration::Modern::platformLabelFor(game.id));
                 card.artworkKey=card.gameId;
@@ -2941,7 +2946,11 @@ namespace UI {
             " invalid=" + std::to_string(catalog.invalidOrAmbiguous) +
             " claimedOther=" + std::to_string(catalog.ownedByOtherProfile));
         if (gen5Instances.empty()) {
-            if (discovered.rootsOpened == 0) {
+            if (discovered.rootsConsidered == 0) {
+                // Switch titles: no save-manager folder layout is verified, so nothing is scanned.
+                gen5Notice = "No verified save-manager folder layout exists for this title yet. Use Assign Save "
+                             "File Manually with the exact path to a copied 'main'.";
+            } else if (discovered.rootsOpened == 0) {
                 gen5Notice = "No Checkpoint-layout (sdmc:/3ds/Checkpoint/saves) or Dekopon save folders were "
                              "accessible (0 opened). Use Assign Save File Manually for an exact path.";
             } else if (discovered.filesExamined == 0) {
@@ -2957,7 +2966,7 @@ namespace UI {
                 const auto rejected = std::find_if(rows.begin(), rows.end(),
                     [](const PokeVault::Source::SaveInstance& item) { return !item.ready() && !item.diagnostic.empty(); });
                 gen5Notice = "Inspected " + std::to_string(discovered.filesExamined) +
-                    " 3DS save archive(s); none validated for this game.";
+                    " save file(s); none validated for this game.";
                 if (rejected != rows.end()) {
                     gen5Notice += " Example rejection: " + rejected->diagnostic;
                     logInfoToFile(gen + " strict read-only rejection: game=" + gen5TargetGameId +
@@ -3044,9 +3053,11 @@ namespace UI {
         const std::string gen = modernGenerationShort(gen5TargetGameId);
         const auto remembered = legacyBindings ? legacyBindings->resolveFileForGame(
             currentProfileIdentity(), gen5TargetGameId) : PokeVault::Legacy::AssignedFile{};
+        const bool switchFile = Modern::sourceVariantFor(gen5TargetGameId) == Modern::kSourceVariantSwitchMain;
         const auto chosen = Utils::promptText(
             "Choose " + gen + " Save",
-            "Full SD path to the 3DS 'main' save archive (Checkpoint/JKSM export or Dekopon save)",
+            switchFile ? "Full SD path to a copied Sword/Shield 'main' save file (exported by a save manager)"
+                       : "Full SD path to the 3DS 'main' save archive (Checkpoint/JKSM export or Dekopon save)",
             remembered.binding.sourcePath, 240);
         if (!chosen.accepted) return;
         if (!legacyBindings) {

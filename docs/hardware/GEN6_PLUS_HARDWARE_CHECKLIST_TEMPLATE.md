@@ -219,6 +219,56 @@ folder appears under `exports/`; Discard All still works; B-exit still guards.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group G8 · Pokémon Sword / Shield (linked `main` file)
+
+Prerequisite: a COPY of the game's `main` save file on the SD card (exported by your save manager). Never
+point PokeBank NX at a live installed save; the installed-title card stays read-only and is a separate card.
+
+### G8-01 · Two cards, clearly named
+**Steps:** On HOME, find "Pokemon Sword" (installed title, if installed) and "Pokemon Sword (Save File)".
+**Expected:** The installed card opens the existing read-only reader exactly as before; the Save File card
+offers Save Instances / Assign Save File Manually and never scans a folder layout.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8-02 · Assign and open the copied `main`
+**Steps:** Assign Save File Manually → enter the full path → open.
+**Expected:** Validates as the exact title (a Shield `main` on the Sword card is refused with a reason);
+opens on the shared hub; Party and 32 × 30 Boxes match the game.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8-03 · Shared workflows
+**Steps:** Repeat G6-06 … G6-12 and G6-15 … G6-21 on this save.
+**Expected:** Same screens and controls. Editable: Nickname, OT name/gender, TID16/SID16, held item,
+friendship, Pokérus, ball, fateful. IV/EV/Nature/Level/moves are read-only. Party records offer no
+Clone/Move/Release. Dynamax Level, Gigantamax and battle-team membership appear in Origin & Legality.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8-04 · Battle teams are protected
+**Steps:** Open a Pokémon that is in a battle team; then one in a LOCKED team.
+**Expected:** A team member offers Clone but never Move/Release; a locked-team member refuses Edit with
+"unlock the team in game first".
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8-05 · Bag and Pokédex honesty
+**Steps:** Open Items and the Trainer page from the Save File card.
+**Expected:** "Bag unavailable" with the MyItem decoder reason (not a validation failure); Pokédex counts
+unavailable; nothing is guessed.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G8-06 · Export Copy and in-game reopen
+**Steps:** Stage an edit → Review → X → Y. Copy `edited.bin` back as `main` with your save manager
+(keep a backup of the original first) and launch the game.
+**Expected:** `exports/gen8/<sword|shield>_<time>/` holds `original_backup.bin` (identical to your source),
+`edited.bin` and `EDIT_MANIFEST.txt`; the game loads the edited save and shows exactly the reviewed change.
+The source file you linked is unchanged.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Totals
 
 | Count | Number |

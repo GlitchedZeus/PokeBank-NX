@@ -1,70 +1,95 @@
 # Gen VI–IX application campaign: active handoff (development/gen6-plus)
 
 > Rules: [`docs/ENGINEERING_PROTOCOL.md`](../ENGINEERING_PROTOCOL.md). Source of truth: GitHub.
-> This lane is isolated from #307, #314, #327/#328 and the unaccepted `main` merge. No merge into `main`,
-> no force-push, no branch deletion, no source-save write.
+> This lane is isolated from the Gen I–V repair campaign, #307, #314, #327/#328. No merge into `main` or
+> into the Gen I–V repair branch, no force-push, no branch deletion, no source-save write.
 
-Last updated: 2026-10-31 UTC, by Claude (coordinator session_011W9mYgjDqGPH91UprKtQLu).
+Last updated: 2026-10-31 UTC, by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
+
+## Branching decision (owner, 2026-10-31)
+
+Gen I–V is finished and hardware-accepted first, by the Gen I–V session, on its own repair branch. This lane
+keeps developing Gen VI–IX on `development/gen6-plus` using the current Gen I–V application only as its
+development foundation. Once Gen I–V is fully accepted, this lane is updated to the FINAL accepted shared UI,
+editor, controls, menus, save management and common workflows, reconciled and re-tested, and then offered as
+a **separate integration PR for owner approval**. Until then: no PR, no merge. The legality engine (#314,
+#327/#328) stays separate.
 
 ## Base and branch
 
-- Branch `development/gen6-plus`, started from the Round 10 Gen I–V source
-  `fix/gen4-bag-remove-compaction` @ `0842c6f3` (application code `3634d1e6`, owner checklist
-  `docs/hardware/RETEST_3634d1e6.md`). Nothing from that candidate was changed; everything here is additive.
-- Imported as new files: the Gen VI lane (#309), Gen VII lane (#311) and Gen VIII SWSH lane (#312) from
-  `claude/gen8-native-20261015` @ `2f065ee2`.
+- Branch `development/gen6-plus`, started from the Round 10 Gen I–V source `fix/gen4-bag-remove-compaction`
+  @ `0842c6f3`; merged with `main` @ `9ce7f737` (PR #330 consolidation) by a normal merge in `b5fe6c0b`
+  (docs/workflows/status only; zero src/include/tests/Makefile diff).
+- Imported lanes: Gen VI (#309), Gen VII (#311), Gen VIII SWSH (#312) from `claude/gen8-native-20261015` @ `2f065ee2`.
 
 ## Architecture (one application, not nine)
 
 | Layer | Files | Role |
 | --- | --- | --- |
-| Capability registry | `include/Integration/Common/GameCapabilityRegistry.h` | All 38 titles: per-workflow PASS / READ-ONLY / BLOCKED(reason) / NOT APPLICABLE, native mechanics per title, storage geometry. `static_assert` enforces cumulative inheritance. |
+| Capability registry | `include/Integration/Common/GameCapabilityRegistry.h` | All 38 titles: per-workflow PASS / READ-ONLY / BLOCKED(reason) / NOT APPLICABLE, native mechanics, storage geometry, hardware state and UI-integration evidence. `static_assert`s enforce cumulative inheritance and evidenced hardware claims. |
 | Session contract | `include/Integration/Modern/NativeSession.h` | The one backend interface for Gen VI+: views, provider field states, staging, draft bracket, clone/move/remove/create support with reasons, bag, trainer facts, dex, review rows, verified export. |
-| Adapters | `include/Integration/Gen6/Gen6NativeSession.h`, `include/Integration/Gen7/Gen7NativeSession.h` | Gen VI (X/Y/ORAS) over the #309 staged session; Gen VII (SM/USUM) over the #311 staged session (export blocked by the SAV7 signing gate). |
-| Presentation bridge | `include/Pokemon/ModernRecordView.h`, `include/Legacy/ModernReadOnlyTrainer.h` | One presentation Pokémon and one Trainer bridge for the existing shared Party/Boxes/Items/Trainer panels. |
-| Save Instances | `include/Integration/Modern/ModernSources.h` | Discovery (Checkpoint layout, Dekopon), strict validation, per-profile binding (`3ds-single-copy`), fingerprint-checked reopen, Home card snapshot. |
-| Routing | `src/UI/SaveSelectScreen.cpp` (`ModernAssignedFile`), `src/UI/UI.cpp` (`handleModernView`), `src/Legacy/BackupReadOnlyTrainer.cpp` | Shared Home cards, the Gen V Save Instances overlays serve 3DS titles, the one TrainerViewScreen opens over the bridge, emulator backups open read-only. |
-| Shared surface | `src/UI/ModernSharedSurface.inc` (in progress) | The Gen VI+ adapter of the shared Trainer/Party/Boxes/Items screen and the ONE editor workspace; written once against NativeSession. |
-
-Adding a generation = one adapter + one registry row + identity rows + fixture-backed tests. Never a new editor.
+| Adapters | `Gen6NativeSession`, `Gen7NativeSession`, `Gen8NativeSession` | X/Y/ORAS over the #309 staged session; SM/USUM over #311 (export blocked by the SAV7 signing gate); **Sword/Shield over the new `Gen8StagedSession`** (battle-team protection, canonical SwishCrypto re-encryption verifier, export to `exports/gen8`). |
+| Presentation bridge | `include/Pokemon/ModernRecordView.h`, `include/Legacy/ModernReadOnlyTrainer.h` | One presentation Pokémon and one Trainer bridge for the shared panels. |
+| Save Instances | `include/Integration/Modern/ModernSources.h` | 3DS: Checkpoint layout, Dekopon, manual (`3ds-single-copy`). SWSH: manual link only (`switch-main-single`); no Switch save-manager layout is assumed. Strict validation, per-profile binding, fingerprint-checked reopen, Home card snapshot. |
+| Routing | `SaveSelectScreen.cpp` (`ModernAssignedFile`), `UI.cpp` (`handleModernView`), `BackupReadOnlyTrainer.cpp` | Shared Home cards (Switch titles get a separate "(Save File)" card beside the installed-title card), the shared Save Instances overlays, one TrainerViewScreen over the bridge. |
+| Shared surface | `src/UI/ModernSharedSurface.inc` + `ModernScreenState.h` | The Gen VI+ adapter of the shared Party/Boxes/Items/Trainer screen and the ONE editor workspace. Only `ExternalLegacy` screens with an adapter-served id reach it (installed-title SWSH stays on the legacy reader). |
 
 ## Commits on this lane
 
-| Commit | Content | Host evidence |
+| Commit | Content | Evidence |
 | --- | --- | --- |
-| `ff607c4e` | Import of the #309/#311/#312 lane files (new files + 3 include lines + host-UI MemeCrypto include) | gen6/gen7/gen8 suites green against Round 10 headers; full GCC host suite green |
-| `82cd400f` | Registry, NativeSession, Gen VI/VII adapters, bridge, Save Instances, routing, native Makefile | `test_game_capability_registry` 1,585, `test_gen6_native_session` 101, `test_gen7_native_session` 177, `test_modern_sources` 58, `test_modern_trainer_bridge` 25 (GCC + Clang; ASan/UBSan on the gen6-plus set); Gen I–V static contracts unchanged |
+| `ff607c4e` | Lane import (#309/#311/#312) | gen6/gen7/gen8 suites green |
+| `82cd400f` | Registry, NativeSession, Gen VI/VII adapters, bridge, Save Instances, routing | registry/adapters/sources/bridge suites (GCC + Clang; ASan/UBSan) |
+| `2b25f2d7` | Shared surface wired, registry hardware/UI honesty, review fixes | real-screen `test_ui_modern_surface_host` (98), `..._gen7_host` (27) |
+| `b5fe6c0b` | Normal merge of `main` @ `9ce7f737` | docs/workflows only |
+| `3697d77d` | Experimental NRO workflow (`.github/workflows/gen6-plus-experimental-nro.yml`) | run 41231980644 FAILED in host gates: LeakSanitizer (CI sets `detect_leaks=1`) found the vendored FlagBrew `rsa.c` leak; fixed in the next commit |
+| next | Sword/Shield adapter + shared-UI integration; MemeCrypto leak containment | see below |
+
+## This milestone (Sword/Shield + leak fix)
+
+- `Gen8EditorProvider.h`, `Gen8StagedSession.{h,cpp}`, `Gen8NativeSession.{h,cpp}`: Nickname, OT, OT gender,
+  TID16/SID16, held item (SWSH presence ≤ 1607), OT friendship (handler friendship refused), Pokérus, ball
+  (1–26), fateful editable; IV/EV/nature/level/species/moves read-only (no pinned SWSH stat table to recompute
+  cached stats). Box Clone/Move/Remove; party storage refused; team-referenced slots never moved/removed;
+  locked-team members never edited; unreadable team blocks refuse every box change. Dynamax Level,
+  Gigantamax, mint nature and team membership shown as native read-only facts. Bag and Pokédex unavailable in
+  the adapter with named prerequisites. Export: edited `main` rebuilt from the immutable block list with only
+  staged record ranges replaced, then verified (strict reparse, canonical re-encryption, block keys/types/sizes,
+  foreign blocks identical, per-byte PK8 whitelist) and published as `edited.bin` + `original_backup.bin`.
+- `MiniGmpAllocationScope.h`: the pinned FlagBrew `rsa.c` never clears its `mpz_t` temporaries (≈0.9 KiB per
+  SAV7 open, on device too). The submodule is untouched; verify/sign run inside a scope that reclaims them.
+- Tests: `test_gen8_native_session` 118, `test_ui_modern_surface_gen8_host` 46 (real screen), `test_modern_sources`
+  78 (SWSH link/assign/reopen/variant refusals), `test_game_capability_registry` (SWSH rows); every Gen VI–VIII
+  suite passes with `ASAN_OPTIONS=detect_leaks=1`; Clang backend set green.
 
 ## Status per game (host evidence only; NOT DEVICE TESTED)
 
-See `docs/gen6-plus/CAPABILITY_MATRIX.md` (generated from the registry) for the full 12-column table.
-Summary of what is true today:
+`docs/gen6-plus/CAPABILITY_MATRIX.md` (generated) is the 12-column table. Summary:
 
-- **X / Y / Omega Ruby / Alpha Sapphire**: Dashboard card, Save Instances (Dekopon, Checkpoint copy, manual),
-  Party, 31×30 Boxes, shared editor with provider field states (nickname, OT, IDs, held item, friendship,
-  IV/EV, nature, level, ball, Pokérus, OT gender, fateful editable; species/form/gender/shiny/ability/moves/
-  language/met read-only until a verified writer and a pinned XY/ORAS learnset exist), Clone, box Move, box
-  Remove, Bag (Items/Medicine/Berries editable; Key Items/TMs read-only), Trainer facts, Pokédex counts,
-  Review, Discard, verified Export Copy to `exports/gen6`. **Create blocked** (EC/PID/personal/met/handler/
-  memory/geolocation defaults not verifiably derivable). Party Remove blocked (party compaction unverified).
-- **Sun / Moon / Ultra Sun / Ultra Moon**: same workflows through the same adapter contract; **Export blocked**
-  (MemeCrypto re-signing has no retail acceptance evidence; see `docs/gen7/README.md`); Create blocked.
-- **Let's Go, Sword/Shield, BD/SP, Legends: Arceus, Scarlet/Violet, Legends: Z-A**: registered with honest
-  BLOCKED editor/export status and the named adapter prerequisite; the installed-title readers remain as
-  before. Z-A is PA9/SAV9ZA, not SV.
+- **X / Y / OR / AS**: full shared workflow incl. Bag and verified Export; Create blocked; party Remove blocked.
+- **Sun / Moon / US / UM**: same, **Export blocked** (SAV7 signing gate); Create blocked.
+- **Sword / Shield**: linked `main` through the shared surface: editor, Clone/Move/Remove (box), Review,
+  Discard, verified Export to `exports/gen8`; Bag/Pokédex read-only via the installed-title reader only;
+  Create blocked. Installed-title (console) SWSH unchanged and still read-only.
+- **Let's Go, BD/SP, Legends: Arceus, Scarlet/Violet, Legends: Z-A**: honest BLOCKED editor/export with the
+  named adapter prerequisite. Z-A is PA9/SAV9ZA, not SV.
 
-## Owner hardware checklist
+No title is accepted on hardware. Gen I–V hardware cells read NOT ACCEPTED (owner rounds were on earlier
+candidates; #313 open).
 
-`docs/hardware/GEN6_PLUS_HARDWARE_CHECKLIST_TEMPLATE.md` (G0 safety, G6-01…G6-21, G7-01…G7-03). No NRO is
-bound yet; the native devkitA64 build of this lane has not run in this session (no toolchain here) and must
-be confirmed by CI before any binding.
+## NRO
+
+Local devkitA64 link proof of `2b25f2d7`/`b5fe6c0b` succeeded (all Gen VI+ entry points in the ELF) but its
+RomFS check failed (trainer portraits cannot be fetched through this container's proxy) → not distributable.
+The CI workflow builds the full RomFS; an NRO is only bound once a run is green. Owner checklist template:
+`docs/hardware/GEN6_PLUS_HARDWARE_CHECKLIST_TEMPLATE.md`.
 
 ## Open work (in order)
 
-1. Land `src/UI/ModernSharedSurface.inc` + state machine + host-UI harness test; wire into
-   `TrainerViewScreenCompositeOverlay.cpp` (three additive lines).
-2. Artwork: 3DS covers and Gen VI/VII trainer portraits (pinned libretro-thumbnails / Showdown sources).
-3. Native CI build on this lane; bind one NRO; owner runs the G6/G7 checklist.
-4. Pinned XY/ORAS/SM/USUM learnsets and species/form rules → unlock Moves/Species editing in the Gen VI/VII
-   provider tables (never before the data is pinned).
-5. Gen VIII/IX adapters per the registry prerequisites (SWSH over #312 first).
+1. Green CI run of the experimental NRO workflow → record run id, artifact and NRO SHA-256 here.
+2. Extend the hardware checklist with SWSH linked-file steps (G8-xx).
+3. LGPE adapter (PB7 pointer-backed storage), then BDSP (paired-file authority), PLA, SV, Z-A — each only
+   behind its own verified staged session.
+4. Pinned learnsets/personal tables → unlock Moves/Species (Gen VI/VII) and IV/EV/Nature/Level (SWSH).
+5. Licensed artwork only (3DS box art has no redistribution licence; generated fallback cards are used).
+6. After Gen I–V acceptance: reconcile onto the final accepted shared UI, re-test, open the separate integration PR.

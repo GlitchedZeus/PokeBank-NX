@@ -65,8 +65,8 @@ VerifiedStagedExport              separate verified Export Copy; never the sourc
 
 - `Registry` is a `constexpr std::array<GameCapabilities, 38>`: Gen I-V baseline (20 titles,
   provider `classic`, `HardwareState::OwnerTestedEarlierCandidate`, `UiIntegration::ClassicSharedUi`),
-  Gen VI and SM/USUM (provider `modern-native`, `UiIntegration::ModernSurfaceHostTested`), LGPE /
-  SWSH / BDSP / PLA / SV / Z-A (provider `legacy-modern-reader`, `UiIntegration::LegacyReaderOnly`).
+  Gen VI, SM/USUM and Sword/Shield (provider `modern-native`, `UiIntegration::ModernSurfaceHostTested`),
+  LGPE / BDSP / PLA / SV / Z-A (provider `legacy-modern-reader`, `UiIntegration::LegacyReaderOnly`).
 - Each row carries `id` (must equal the `GameIdentity` id), `generation`, `platform`, `family`,
   `recordFormat`, `statModel`, `storage` geometry, `NativeMechanics` flags, 16 `WorkflowStatus`
   entries, `hardware`, `exportRoot` (empty when export is blocked), `provider`, `ui` (how far the
@@ -110,6 +110,7 @@ Adapters on this branch:
 | --- | --- | --- | --- |
 | X / Y / Omega Ruby / Alpha Sapphire | `include/Integration/Gen6/Gen6NativeSession.h`, `src/Integration/Gen6/Gen6NativeSession.cpp` | `Gen6StagedSession` (strict SAV6 parse, app-memory staging, byte-whitelist verifier) | `tests/test_gen6_native_session.cpp` |
 | Sun / Moon / Ultra Sun / Ultra Moon | `include/Integration/Gen7/Gen7NativeSession.h`, `src/Integration/Gen7/Gen7NativeSession.cpp` | `Gen7StagedSession` (signature-verified SAV7 parse, unsigned candidate) | `tests/test_gen7_native_session.cpp` |
+| Sword / Shield | `include/Integration/Gen8/Gen8NativeSession.h`, `src/Integration/Gen8/Gen8NativeSession.cpp` | `Gen8StagedSession` (strict SCBlock parse, battle-team protection, canonical SwishCrypto re-encryption + block-level verifier) with `Gen8EditorProvider` | `tests/test_gen8_native_session.cpp`, `tests/test_ui_modern_surface_gen8_host.cpp` |
 
 Both expose a static `open(bytes, assignedExactGame)` returning `OpenedSession{session,
 diagnostic}`. The assigned exact title is authoritative: a MyStatus version byte that disagrees is
@@ -171,7 +172,8 @@ Mirrors the accepted Gen IV/V model (`Gen5GameSourceCatalog` / `Gen5AssignedSour
 - family dispatch from the registry: `isModernAssignedId`, `expectedFamily`, `gameGroupFor`,
   `platformLabelFor`, `generationLabelFor`, `exportsRootFor` (`Paths::root()/<exportRoot>`, empty
   when the registry blocks export) and `openSession(gameId, bytes)`, which routes generation 6 to
-  `Gen6NativeSession::open`, generation 7 on Nintendo 3DS to `Gen7NativeSession::open`, and
+  `Gen6NativeSession::open`, generation 7 on Nintendo 3DS to `Gen7NativeSession::open`, family SWSH
+  to `Gen8NativeSession::open` (manual link only, binding variant `switch-main-single`), and
   answers every other registered title with "no verified staged adapter yet" plus the registry's
   editor reason;
 - strict inspection: `inspectSourceFile` / `inspectSourceChoices` read a regular file read-only,
@@ -340,9 +342,9 @@ Review are BLOCKED with the family's adapter prerequisite:
 
 - Let's Go Pikachu / Eevee (PB7, 40 x 25 PointerBacked, IV/Awakening): "LGPE needs a PB7 staged
   session over the pointer-backed 1000-slot storage with starter/party pointer repair".
-- Sword / Shield (PK8, 32 x 30 SCBlock): "SWSH needs Gen8StagedSession over the strict SCBlock
-  parser (Integration/Gen8) with a per-field byte mask, battle-team lock refusal and
-  companion-file carry-through".
+- Sword / Shield moved to `modern-native` (see the adapter table): a linked `main` opens in the shared
+  surface; the installed-title reader keeps serving the console save read-only. Restoring an exported
+  `edited.bin` into a save folder (and carrying any companion files) stays a manual, owner-verified step.
 - Brilliant Diamond / Shining Pearl (PB8, 40 x 30 FlatPairedFile): "BDSP needs the paired-file
   authority protocol (which of the two save files is current) before any staged session".
 - Legends Arceus (PA8, 32 x 30 Pastures, IV/EffortLevel): "PLA needs a PA8 staged session over

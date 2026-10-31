@@ -14,7 +14,7 @@ GEN6PLUS_HEADERS := include/Integration/Common/GameCapabilityRegistry.h \
 	include/Integration/Modern/NativeSession.h include/Pokemon/ModernRecordView.h \
 	include/Integration/Modern/ModernSources.h include/Legacy/ModernReadOnlyTrainer.h \
 	include/Integration/Gen6/Gen6NativeSession.h $(wildcard include/Integration/Gen6/*.h) \
-	$(wildcard tests/fixtures/gen6/*.h)
+	$(wildcard tests/fixtures/gen6/*.h) $(wildcard include/Integration/Gen8/*.h) $(wildcard tests/fixtures/gen8/*.h)
 GEN6PLUS_FLAGS := -Wno-unused-parameter -Iinclude -Itests -isystem $(PKSM_CORE_ROOT)/include -isystem $(GEN7_MEME_ROOT) \
 	-D_PKSMCORE_CONFIGURED -fno-operator-names $(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
 # Tests that reach the Gen VII parser through ModernSources link the vendored MemeCrypto objects.
@@ -33,9 +33,11 @@ GEN6PLUS_SESSION_SOURCES := src/Integration/Gen6/Gen6NativeSession.cpp src/Integ
 	src/Pokemon/PokemonTypes.cpp src/Pokemon/PersonalInfoTable.cpp src/Names/SpeciesNames.cpp src/Games/GameIdentity.cpp
 GEN6PLUS_GEN7_SOURCES := src/Integration/Gen7/Gen7NativeSession.cpp src/Integration/Gen7/Gen7Save.cpp \
 	src/Integration/Gen7/Gen7StagedSession.cpp src/Integration/Gen7/Gen7SaveSources.cpp
+GEN6PLUS_GEN8_SOURCES := src/Integration/Gen8/Gen8NativeSession.cpp src/Integration/Gen8/Gen8StagedSession.cpp \
+	src/Integration/Gen8/Gen8Save.cpp src/Integration/Gen8/Gen8SwishCrypto.cpp src/Names/ItemPresence.cpp
 GEN6PLUS_SOURCES_test_modern_sources := tests/test_modern_sources.cpp src/Integration/Modern/ModernSources.cpp \
 	src/Integration/Gen6/Gen6SaveSources.cpp src/Legacy/LegacySourceBindings.cpp $(GEN6PLUS_SESSION_SOURCES) \
-	$(GEN6PLUS_GEN7_SOURCES)
+	$(GEN6PLUS_GEN7_SOURCES) $(GEN6PLUS_GEN8_SOURCES)
 GEN6PLUS_SOURCES_test_modern_trainer_bridge := tests/test_modern_trainer_bridge.cpp src/Legacy/ModernReadOnlyTrainer.cpp \
 	$(GEN6PLUS_SESSION_SOURCES)
 

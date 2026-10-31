@@ -1,4 +1,5 @@
 #include "Integration/Gen7/Gen7Save.h"
+#include "Integration/Gen7/MiniGmpAllocationScope.h"
 
 #include "Utils/CRC16.h"
 #include "Utils/SHA256.h"
@@ -55,7 +56,12 @@ bool Gen7Save::verifySignature(std::span<const uint8_t> save, Layout::Family f,
     std::array<uint8_t, Layout::SignatureLength> input{};
     std::array<uint8_t, Layout::SignatureLength> output{};
     std::copy_n(save.begin() + static_cast<std::ptrdiff_t>(Layout::signatureOffset(f)), input.size(), input.begin());
-    if (!memecrypto_verify(input.data(), output.data(), static_cast<int>(input.size()))) return false;
+    bool verified = false;
+    {
+        const MiniGmpAllocationScope scope;  // reclaims rsa.c's uncleared mpz temporaries
+        verified = memecrypto_verify(input.data(), output.data(), static_cast<int>(input.size()));
+    }
+    if (!verified) return false;
     const auto hash = checksumTableHash(save, f);
     if (!std::equal(hash.begin(), hash.end(), output.begin())) return false;
     if (payload) *payload = output;

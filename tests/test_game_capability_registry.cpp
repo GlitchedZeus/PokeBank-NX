@@ -123,8 +123,30 @@ int main() {
     // Z-A is its own family with its own record format, never an SV alias.
     const auto* za = Cap::find("legends_za_switch");
     check(za && za->family == "ZA" && za->recordFormat == "PA9" && !za->mechanics.teraType, "Z-A is PA9/SAV9ZA, not SV");
-    // Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
-    for (const char* id : {"letsgo_pikachu_switch", "sword_switch", "brilliant_diamond_switch", "legends_arceus_switch",
+    // Sword/Shield: the shared Modern adapter with a verified Export Copy; Bag/Pokedex/Create stay
+    // unavailable in the adapter with their prerequisites named.
+    for (const char* id : {"sword_switch", "shield_switch"}) {
+        const auto* row = Cap::find(id);
+        check(row && row->provider == "modern-native" && row->ui == Cap::UiIntegration::ModernSurfaceHostTested &&
+                  row->uiEvidence == "test_ui_modern_surface_gen8_host",
+              std::string(id) + " served by the Modern adapter with named host-UI evidence");
+        check(row && row->supports(Cap::Workflow::PokemonEditor) && row->supports(Cap::Workflow::Review) &&
+                  row->supports(Cap::Workflow::Export) && row->exportRoot == "exports/gen8",
+              std::string(id) + " editor, review and export to exports/gen8");
+        check(row && row->supports(Cap::Workflow::Clone) && row->supports(Cap::Workflow::Move) && row->supports(Cap::Workflow::Remove),
+              std::string(id) + " Clone/Move/Remove supported");
+        check(row && row->status(Cap::Workflow::Create).support == Cap::Support::Blocked &&
+                  !row->status(Cap::Workflow::Create).reason.empty(), std::string(id) + " Create blocked with reason");
+        check(row && !row->supports(Cap::Workflow::Bag) && row->status(Cap::Workflow::Bag).reason.find("MyItem") != std::string_view::npos,
+              std::string(id) + " staged Bag not claimed; prerequisite named");
+        check(row && !row->supports(Cap::Workflow::Pokedex) && !row->supports(Cap::Workflow::NativeMechanics),
+              std::string(id) + " Pokedex and native mechanics are read-only, not claimed as editable");
+        check(row && row->mechanics.dynamax && row->mechanics.gigantamax && row->mechanics.battleTeamLocks &&
+                  row->storage.boxCount == 32 && row->storage.slotsPerBox == 30, std::string(id) + " SWSH mechanics and 32x30 boxes");
+        check(row && row->hardware == Cap::HardwareState::NotDeviceTested, std::string(id) + " is not device tested");
+    }
+    // Remaining Switch-reader titles are honest: editing blocked with the adapter prerequisite named.
+    for (const char* id : {"letsgo_pikachu_switch", "brilliant_diamond_switch", "legends_arceus_switch",
                            "scarlet_switch", "legends_za_switch"}) {
         const auto* row = Cap::find(id);
         check(row && row->status(Cap::Workflow::PokemonEditor).support == Cap::Support::Blocked &&
@@ -133,7 +155,8 @@ int main() {
         check(row && row->status(Cap::Workflow::Export).support == Cap::Support::Blocked, std::string(id) + " export blocked");
         check(row && row->exportRoot.empty(), std::string(id) + " advertises no export root");
     }
-    check(Cap::isModernNativeId("x_3ds") && !Cap::isModernNativeId("black_nds") && !Cap::isModernNativeId("sword_switch"),
+    check(Cap::isModernNativeId("x_3ds") && Cap::isModernNativeId("sword_switch") && !Cap::isModernNativeId("black_nds") &&
+              !Cap::isModernNativeId("scarlet_switch") && !Cap::isModernNativeId("brilliant_diamond_switch"),
           "isModernNativeId identifies the Modern adapter titles only");
 
     std::cout << "test_game_capability_registry: " << (failures ? "FAILED " : "all ") << checks << " checks"

@@ -263,9 +263,28 @@ constexpr std::array<WorkflowStatus, WorkflowCount> switchReader(std::string_vie
     }};
 }
 
-constexpr std::string_view kSwshAdapter =
-    "SWSH needs Gen8StagedSession over the strict SCBlock parser (Integration/Gen8) with a per-field byte mask, "
-    "battle-team lock refusal and companion-file carry-through";
+// Sword/Shield through the shared Modern adapter (Integration/Gen8: Gen8StagedSession + Gen8NativeSession).
+// The installed-title reader (Trainer8SWSH) still serves the console-mounted save read-only; an
+// assigned `main` file opens in the shared surface with staged editing and a verified Export Copy.
+constexpr std::array<WorkflowStatus, WorkflowCount> gen8swsh() noexcept {
+    return {{
+        ok(),  // Dashboard: installed-title card and the assigned-file card
+        ok(),  // Save Instances: manual link with strict SCBlock validation + fingerprint revalidation
+        ok(), ok(), ok(),
+        ro("Dynamax Level, Gigantamax, mint (stat) nature and battle-team membership are shown read-only; no verified writer"),
+        ro("MyStatus trainer facts are read-only"),
+        ro("Installed-title reader shows pockets read-only; staged Bag needs a verified MyItem (0x1177C2C4) pouch decoder"),
+        ro("Installed-title reader shows counts read-only; the shared adapter has no verified Zukan8 decoder"),
+        blocked("Create needs verifiable EC/PID, personal, met, handler, memory and cached-stat defaults (Gen8StagedSession::createUnsupportedReason)"),
+        ok(),  // Clone: box records into verified blank, team-free box slots
+        ok(),  // Move: box-to-box, team-referenced records refused
+        ok(),  // Remove: team-free box records
+        ro("Immutable Switch historical backups are read-only previews"),
+        ok(),
+        ok(),  // Export Copy: canonical SwishCrypto re-encryption + block-level verifier, exports/gen8
+    }};
+}
+
 constexpr std::string_view kLgpeAdapter =
     "LGPE needs a PB7 staged session over the pointer-backed 1000-slot storage with starter/party pointer repair";
 constexpr std::string_view kBdspAdapter =
@@ -344,6 +363,11 @@ constexpr GameCapabilities gen7Row(std::string_view id, std::string_view title, 
             {32, 30, 6, "SparseNative"}, mech7(), gen7sm(), HardwareState::NotDeviceTested, {}, "modern-native",
             UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen7_host", {}};
 }
+constexpr GameCapabilities swshRow(std::string_view id, std::string_view title) noexcept {
+    return {id, title, 8, Platform::NintendoSwitch, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"},
+            mech8swsh(), gen8swsh(), HardwareState::NotDeviceTested, "exports/gen8", "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen8_host", {}};
+}
 constexpr GameCapabilities switchRow(std::string_view id, std::string_view title, uint8_t gen, std::string_view family,
                                      std::string_view fmt, StatModel stat, StorageGeometry geo, NativeMechanics mech,
                                      std::string_view adapter) noexcept {
@@ -387,8 +411,8 @@ inline constexpr std::array<GameCapabilities, 38> Registry = {{
     Detail::switchRow("letsgo_pikachu_switch", "Let's Go Pikachu", 7, "LGPE", "PB7", StatModel::IVAwakening, {40, 25, 6, "PointerBacked"}, Detail::mech7b(), Detail::kLgpeAdapter),
     Detail::switchRow("letsgo_eevee_switch", "Let's Go Eevee", 7, "LGPE", "PB7", StatModel::IVAwakening, {40, 25, 6, "PointerBacked"}, Detail::mech7b(), Detail::kLgpeAdapter),
     // ---- Gen VIII ----
-    Detail::switchRow("sword_switch", "Sword", 8, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech8swsh(), Detail::kSwshAdapter),
-    Detail::switchRow("shield_switch", "Shield", 8, "SWSH", "PK8", StatModel::IVEV, {32, 30, 6, "SCBlock"}, Detail::mech8swsh(), Detail::kSwshAdapter),
+    Detail::swshRow("sword_switch", "Sword"),
+    Detail::swshRow("shield_switch", "Shield"),
     Detail::switchRow("brilliant_diamond_switch", "Brilliant Diamond", 8, "BDSP", "PB8", StatModel::IVEV, {40, 30, 6, "FlatPairedFile"}, Detail::mech8bdsp(), Detail::kBdspAdapter),
     Detail::switchRow("shining_pearl_switch", "Shining Pearl", 8, "BDSP", "PB8", StatModel::IVEV, {40, 30, 6, "FlatPairedFile"}, Detail::mech8bdsp(), Detail::kBdspAdapter),
     Detail::switchRow("legends_arceus_switch", "Legends Arceus", 8, "PLA", "PA8", StatModel::IVEffortLevel, {32, 30, 6, "Pastures"}, Detail::mech8pla(), Detail::kPlaAdapter),

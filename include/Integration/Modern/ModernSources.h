@@ -40,6 +40,10 @@ inline constexpr std::string_view kProviderCheckpoint = "Checkpoint";
 inline constexpr std::string_view kProviderManual = "Manual";
 // SAV6/SAV7 archives hold one native copy; the binding store records this fixed marker.
 inline constexpr std::string_view kSourceVariant3ds = "3ds-single-copy";
+// A Sword/Shield `main` is one SwishCrypto file (no Primary/Backup pair); manual link only until a
+// Switch save-manager folder layout is verified from its source.
+inline constexpr std::string_view kSourceVariantSwitchMain = "switch-main-single";
+[[nodiscard]] std::string_view sourceVariantFor(std::string_view gameId) noexcept;
 
 // ---- strict file inspection ----
 // Reads the regular file at `path` (never a directory, never followed through dot segments),

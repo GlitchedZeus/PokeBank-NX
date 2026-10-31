@@ -93,10 +93,14 @@ constexpr int kDexRowTouchBase = 83000;
 bool isModernSource(const TrainerViewScreen& screen) noexcept {
     // The exact assigned id decides (never the Trainer's claimed group alone), then the group the
     // shared Modern bridge presents; nothing else may reach the inherited mutators.
+    // Only an assigned external file (or its archived copy) is presented through a ModernReadOnlyTrainer;
+    // installed-title and Switch historical-backup screens never carry ExternalLegacy + an assigned id.
+    if (screen.sourceKind != PokeVault::Safety::SourceKind::ExternalLegacy) return false;
     if (!Modern::isModernAssignedId(screen.sourceGameId)) return false;
     const auto family = screen.trainer.getGameGroup();
     return family == Enums::GameVersion::XY || family == Enums::GameVersion::ORAS ||
-           family == Enums::GameVersion::SM || family == Enums::GameVersion::USUM;
+           family == Enums::GameVersion::SM || family == Enums::GameVersion::USUM ||
+           family == Enums::GameVersion::SWSH;
 }
 
 namespace {
@@ -946,7 +950,14 @@ void drawBagPanel(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     screen.touchButtons.push_back({CategoryTouch::NextId, nextX, arrowY, CategoryTouch::Width, CategoryTouch::Height});
     if (pockets.empty() || st.pocket >= pockets.size()) {
         fb.drawText(x + 24, y + hH + 30, "Bag unavailable", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 24, y + hH + 58, "Native " + generationLabel(screen) + " bag data failed validation.", Colors::TextDim, TextStyle::Caption);
+        // An adapter with no verified bag decoder says so (registry reason); otherwise the native
+        // pockets were present but failed strict validation.
+        const auto& bagStatus = sessionOf(screen).capabilities().status(Capability::Workflow::Bag);
+        const std::string why = !sessionOf(screen).bagAvailable() && bagStatus.support != Capability::Support::Supported &&
+                                        !bagStatus.reason.empty()
+                                    ? std::string(bagStatus.reason)
+                                    : "Native " + generationLabel(screen) + " bag data failed validation.";
+        fb.drawText(x + 24, y + hH + 58, SharedMovesPanel::fit(fb, why, width - 48, TextStyle::Caption), Colors::TextDim, TextStyle::Caption);
         fb.drawText(x + 24, y + hH + 82, "Trainer, Party and Boxes remain available; no item is guessed.", Colors::TextDim, TextStyle::Caption);
         return;
     }
