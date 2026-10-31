@@ -210,6 +210,37 @@ namespace UI {
         nvgFillColor(vg, toNVG(color)); nvgFill(vg);
     }
 
+    namespace {
+    // Clamp each corner so opposite corners never overlap (NanoVG expects radii <= half the side).
+    RoundedArtwork::CornerRadii clampRadii(RoundedArtwork::CornerRadii c, int w, int h) {
+        const float m = static_cast<float>(std::min(w, h)) / 2.0f;
+        const auto f = [m](float r) { return r < 0 ? 0.0f : (r > m ? m : r); };
+        return {f(c.topLeft), f(c.topRight), f(c.bottomRight), f(c.bottomLeft)};
+    }
+    }
+
+    void PKSEFramebuffer::drawFilledRoundedRectVarying(int x, int y, int w, int h,
+                                                       RoundedArtwork::CornerRadii radii, Color color) {
+        if (w <= 0 || h <= 0 || !ensureFrame()) return;
+        const auto c = clampRadii(radii, w, h);
+        nvgBeginPath(vg);
+        nvgRoundedRectVarying(vg, (float)x, (float)y, (float)w, (float)h, c.topLeft, c.topRight, c.bottomRight, c.bottomLeft);
+        nvgFillColor(vg, toNVG(color)); nvgFill(vg);
+    }
+
+    void PKSEFramebuffer::drawImageRoundedCover(int x, int y, int w, int h, RoundedArtwork::CornerRadii radii,
+                                                int imgW, int imgH, const unsigned char* data, int channels) {
+        if (w <= 0 || h <= 0 || !ensureFrame()) return;
+        int img = nvgImageFor(data, imgW, imgH, channels);
+        if (img < 0) return;
+        const auto cover = RoundedArtwork::coverRect({x, y, w, h}, imgW, imgH);
+        const auto c = clampRadii(radii, w, h);
+        NVGpaint p = nvgImagePattern(vg, (float)cover.x, (float)cover.y, (float)cover.w, (float)cover.h, 0.0f, img, 1.0f);
+        nvgBeginPath(vg);
+        nvgRoundedRectVarying(vg, (float)x, (float)y, (float)w, (float)h, c.topLeft, c.topRight, c.bottomRight, c.bottomLeft);
+        nvgFillPaint(vg, p); nvgFill(vg);
+    }
+
     void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int r, Color color, int thickness) {
         if (w <= 0 || h <= 0 || thickness <= 0 || !ensureFrame()) return;
         int rmax = std::min(w, h) / 2; if (r > rmax) r = rmax; if (r < 0) r = 0;

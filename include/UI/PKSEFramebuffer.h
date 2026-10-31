@@ -6,6 +6,7 @@
 #include <string>
 
 #include "UI/Common.h"
+#include "UI/RoundedArtwork.h"
 
 // Forward-declare types so we don't pull heavy SDL/GL/NanoVG headers into the 15+ UI files that
 // include this header. The concrete includes live only in PKSEFramebuffer.cpp.
@@ -72,6 +73,13 @@ namespace UI {
         // straight edges are exact. `r` is the corner radius (clamped to min(w,h)/2).
         void drawFilledRoundedRect(int x, int y, int w, int h, int r, Color color);
         void drawRoundedRect(int x, int y, int w, int h, int r, Color color, int thickness = 1);
+        // Per-corner radii (RoundedArtwork::CornerRadii), e.g. a band rounded only at the top of a card.
+        void drawFilledRoundedRectVarying(int x, int y, int w, int h, RoundedArtwork::CornerRadii radii, Color color);
+        // Image filling a rounded shape, scaled to cover it (aspect kept, centred, cropped by the shape).
+        // ONE vector path filled with an image pattern: the path masks the corners, so no clip rect and
+        // no image strips are needed, and the edge stays exact at any output scale.
+        void drawImageRoundedCover(int x, int y, int w, int h, RoundedArtwork::CornerRadii radii,
+                                   int imgWidth, int imgHeight, const unsigned char* imageData, int channels);
         void drawFilledCircle(int cx, int cy, int r, Color color);
         void drawCircle(int cx, int cy, int r, Color color, int thickness = 1);
         // Draws a Pokemon egg (cream oval + teal spots) centered at (cx,cy), ~size px tall.
