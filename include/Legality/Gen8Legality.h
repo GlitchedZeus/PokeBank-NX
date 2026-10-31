@@ -1,11 +1,13 @@
 /**
- * Gen8Legality.h - Generation VIII Sword/Shield (PK8) native legality.
+ * Gen8Legality.h - Generation VIII Sword/Shield (PK8) and Brilliant Diamond/Shining Pearl
+ * (PB8) native legality.
  *
- * Reached through Legality::Modern::analyze (ModernLegality.h). The record codec is the
- * existing Gen VIII PK8 decoder (Integration/Gen8/Gen8PK8.h). Rule data (PersonalTable.SWSH
- * abilities, gender ratios, form counts, growth rates, base stats, presence in the game and
- * TR permissions, base PP, released held items, form items, battle-only forms, mint natures
- * and ID limits) is generated from the pinned PKHeX.Core by tools/pkhex_gen67_diff/oracle
+ * Reached through Legality::Modern::analyze (ModernLegality.h). Both formats share the G8PKM
+ * layout, so the record codec is the existing Gen VIII PK8 decoder (Integration/Gen8/
+ * Gen8PK8.h) for both. Rule data (PersonalTable.SWSH and PersonalTable.BDSP abilities, gender
+ * ratios, form counts, growth rates, base stats and presence in the game, SW/SH TR
+ * permissions, base PP, released held items, form items, battle-only forms, mint natures and
+ * ID limits) is generated from the pinned PKHeX.Core by tools/pkhex_gen67_diff/oracle
  * ("dump8") into Gen8LegalityData.inc.
  *
  * Every Invalid rule mirrors a PKHeX.Core verifier at the pinned commit and depends only on
@@ -23,6 +25,10 @@
 #include "Legality/ModernLegality.h"
 
 namespace Legality::Gen8 {
+
+/// The game family whose tables and rules apply: PK8 (Sword/Shield) or PB8 (Brilliant
+/// Diamond/Shining Pearl, PKHeX EntityContext.Gen8b).
+enum class Context : uint8_t { SwordShield, BDSP };
 
 /// PKHeX PKM.Generation of a PK8 record: the generation its version byte (and, for
 /// Pokemon GO, its met location) names. 1-2 Virtual Console, 3-7 the handheld games and
@@ -42,35 +48,36 @@ struct Personal {
     bool present;                      // PersonalTable.SWSH.IsPresentInGame
     std::array<uint8_t, 6> baseStats;  // HP Atk Def Spe SpA SpD
 };
-/// PersonalTable.SWSH entry; nullopt for species 0, a species above 898 or a form outside
+/// PersonalTable.SWSH (or .BDSP) entry; nullopt for species 0, a species above the table (898, BD/SP 493) or a form outside
 /// the species' form count.
-std::optional<Personal> personal(uint16_t species, uint8_t form) noexcept;
+std::optional<Personal> personal(uint16_t species, uint8_t form, Context ctx = Context::SwordShield) noexcept;
 /// Form count of the species' base entry (at least 1); 0 when the species is outside.
-uint8_t formCount(uint16_t species) noexcept;
+uint8_t formCount(uint16_t species, Context ctx = Context::SwordShield) noexcept;
 /// PersonalTable.SWSH.IsPresentInGame(species, form).
-bool presentInGame(uint16_t species, uint8_t form) noexcept;
+bool presentInGame(uint16_t species, uint8_t form, Context ctx = Context::SwordShield) noexcept;
 /// PersonalInfo8SWSH.GetIsLearnTR(index) for the species/form; false outside the table.
 bool canLearnTechRecord(uint16_t species, uint8_t form, uint8_t index) noexcept;
 uint8_t techRecordCount() noexcept;
 /// MoveInfo.GetPP(EntityContext.Gen8, move); 0 above the last move.
-uint8_t basePP(uint16_t move) noexcept;
-uint16_t maxSpecies() noexcept;
-uint16_t maxMove() noexcept;
-uint16_t maxItem() noexcept;
-uint8_t maxBall() noexcept;
+uint8_t basePP(uint16_t move, Context ctx = Context::SwordShield) noexcept;
+uint16_t maxSpecies(Context ctx = Context::SwordShield) noexcept;
+uint16_t maxMove(Context ctx = Context::SwordShield) noexcept;
+uint16_t maxItem(Context ctx = Context::SwordShield) noexcept;
+uint8_t maxBall(Context ctx = Context::SwordShield) noexcept;
 /// ItemRestrictions.IsHeldItemAllowed(item, EntityContext.Gen8).
-bool heldItemAllowed(uint16_t item) noexcept;
+bool heldItemAllowed(uint16_t item, Context ctx = Context::SwordShield) noexcept;
 /// FormInfo.IsBattleOnlyForm(species, form, 8).
-bool battleOnlyForm(uint16_t species, uint8_t form) noexcept;
+bool battleOnlyForm(uint16_t species, uint8_t form, Context ctx = Context::SwordShield) noexcept;
 /// FormItem.GetFormArceus(item, 8) / GetFormGenesect / GetFormSilvally.
-uint8_t arceusForm(uint16_t item) noexcept;
+uint8_t arceusForm(uint16_t item, Context ctx = Context::SwordShield) noexcept;
 uint8_t genesectForm(uint16_t item) noexcept;
 uint8_t silvallyForm(uint16_t item) noexcept;
 /// Nature.IsMint.
 bool mintNature(uint8_t nature) noexcept;
 } // namespace Data
 
-/// Analyze one PK8 record. Called by Modern::analyze; see ModernLegality.h for the contract.
-Report analyze(std::span<const uint8_t> record, const Modern::Input& input);
+/// Analyze one PK8 (Context::SwordShield) or PB8 (Context::BDSP) record. Called by
+/// Modern::analyze; see ModernLegality.h for the contract.
+Report analyze(Context ctx, std::span<const uint8_t> record, const Modern::Input& input);
 
 } // namespace Legality::Gen8

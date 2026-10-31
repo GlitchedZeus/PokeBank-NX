@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Differential test: PokeBank NX's Gen VI/VII (PK6/PK7) or Gen VIII (PK8) legality verdicts
-# against PKHeX.Core.
-#   tools/pkhex_gen67_diff/run.sh PKHEX_CHECKOUT [SEED] [MUTATIONS] [67|8]
+# Differential test: PokeBank NX's Gen VI/VII (PK6/PK7) or Gen VIII (PK8, PB8) legality
+# verdicts against PKHeX.Core.
+#   tools/pkhex_gen67_diff/run.sh PKHEX_CHECKOUT [SEED] [MUTATIONS] [67|8|8b]
 # 1. The oracle's "dump" ("dump8") must reproduce include/Legality/Gen67LegalityData.inc
 #    (Gen8LegalityData.inc) byte for byte (every rule table the C++ analyzer reads comes
 #    from this PKHeX checkout).
@@ -11,6 +11,8 @@
 #    "8": Sword/Shield encounters, records moved into Sword/Shield through HOME (Gen III-VII,
 #    Virtual Console, Let's Go, BD/SP, Legends: Arceus, Scarlet/Violet) and grown copies,
 #    plus MUTATIONS mutations of each (including the PK8-only fields).
+#    "8b": the same for Brilliant Diamond/Shining Pearl (PB8): BD/SP encounters, records
+#    moved into BD/SP through HOME and grown copies, with PB8-only field mutations.
 # 3. gen67_diff.cpp analyzes every record and fails when
 #    - PokeBank NX reports Invalid for a record PKHeX accepts (a false Invalid), or
 #    - PokeBank NX reports "No problems found" for a record PKHeX rejects (a false Valid).
@@ -22,7 +24,8 @@ pkhex=$(cd "$1" && pwd); seed=${2:-1}; mutations=${3:-4}; mode=${4:-67}
 case "$mode" in
     67) dump=dump; generate=generate; table=Gen67LegalityData.inc; label="Gen VI/VII" ;;
     8) dump=dump8; generate=generate8; table=Gen8LegalityData.inc; label="Gen VIII" ;;
-    *) echo "mode must be 67 or 8" >&2; exit 2 ;;
+    8b) dump=dump8; generate=generate8b; table=Gen8LegalityData.inc; label="Gen VIII BD/SP" ;;
+    *) echo "mode must be 67, 8 or 8b" >&2; exit 2 ;;
 esac
 here=$(cd "$(dirname "$0")" && pwd); repo=$(cd "$here/../.." && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT

@@ -1,9 +1,9 @@
-// Differential driver: PokeBank NX Gen VI-VIII (PK6/PK7/PK8) verdicts against a PKHeX corpus.
+// Differential driver: PokeBank NX Gen VI-VIII (PK6/PK7/PK8/PB8) verdicts against a PKHeX corpus.
 //
 //   gen67_diff [SHOW] < corpus.txt
 //
 // Corpus lines come from oracle/Program.cs ("generate"):
-//   <id> <6|7|8> <game> <box|party> <decrypted hex> VALID|INVALID <encounter>:<species> <group> ; <PKHeX results>
+//   <id> <6|7|8|8b> <game> <box|party> <decrypted hex> VALID|INVALID <encounter>:<species> <group> ; <PKHeX results>
 // Each record is analyzed decrypted, with the line's game and slot. Exit status 1 when
 //   - PokeBank NX reports Invalid for a record PKHeX accepts (a false Invalid), or
 //   - PokeBank NX reports "No problems found" for a record PKHeX rejects (a false Valid).
@@ -64,7 +64,8 @@ int main(int argc, char** argv) {
         ++total;
         Legality::Modern::Input input;
         input.format = fmt == "6" ? Legality::Modern::Format::PK6
-                     : fmt == "7" ? Legality::Modern::Format::PK7 : Legality::Modern::Format::PK8;
+                     : fmt == "7" ? Legality::Modern::Format::PK7
+                     : fmt == "8b" ? Legality::Modern::Format::PB8 : Legality::Modern::Format::PK8;
         input.game = static_cast<Legality::Modern::Game>(std::stoi(game));
         input.slot = slot == "party" ? Legality::Modern::Slot::Party : Legality::Modern::Slot::Box;
         input.encrypted = false;

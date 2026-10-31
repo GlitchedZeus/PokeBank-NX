@@ -1,11 +1,15 @@
-// Generation VIII Sword/Shield (PK8) legality through Legality::Modern::analyze.
+// Generation VIII Sword/Shield (PK8) and Brilliant Diamond/Shining Pearl (PB8) legality
+// through Legality::Modern::analyze.
 //
 // tests/fixtures/gen67/pkhex8_seed2_sample.txt is a stratified sample of the differential
 // corpus (tools/pkhex_gen67_diff, `generate8 2 4`): synthetic records PKHeX.Core built from
 // its own Sword/Shield encounter templates, records it moved into Sword/Shield through HOME
 // (Gen III-VII, Virtual Console, Let's Go, BD/SP, Legends: Arceus, Scarlet/Violet) and grown
-// copies, each with PKHeX's verdict and a single-field mutation. One line per record:
-//   8 <game> <box|party> <decrypted hex> <PKHeX VALID|INVALID> <NX Invalid|Incomplete> <label>
+// copies, each with PKHeX's verdict and a single-field mutation.
+// tests/fixtures/gen67/pkhexb8_seed2_sample.txt is the same for PB8 (`generate8b 2 4`): BD/SP
+// encounters, records moved into BD/SP through HOME (Gen III-VII, Virtual Console, Let's Go,
+// Sword/Shield, Legends: Arceus, Scarlet/Violet) and grown copies. One line per record:
+//   <8|8b> <game> <box|party> <decrypted hex> <PKHeX VALID|INVALID> <NX Invalid|Incomplete> <label>
 // Every line must keep its NX verdict class: a PKHeX-valid record is never Invalid, a
 // record this analyzer caught stays caught, and nothing is ever "No problems found".
 // Then rule edits of fixture records, the interface contract, malformed input, encryption
@@ -68,6 +72,7 @@ std::string describe(const Report& r) {
 }
 
 struct Record {
+    Format format;
     Game game;
     Slot slot;
     std::vector<uint8_t> plain;
@@ -76,24 +81,24 @@ struct Record {
     std::string label;
 };
 
-std::vector<Record> loadFixture() {
+std::vector<Record> loadFixture(const char* env, const char* fallback, const std::string& want) {
     std::vector<Record> out;
-    const char* path = std::getenv("GEN8_FIXTURE");
-    std::ifstream in(path ? path : "tests/fixtures/gen67/pkhex8_seed2_sample.txt");
+    const char* path = std::getenv(env);
+    std::ifstream in(path ? path : fallback);
     std::string line;
     while (std::getline(in, line)) {
         std::istringstream s(line);
         std::string fmt, game, slot, hex, pkhex, nx, label;
-        if (!(s >> fmt >> game >> slot >> hex >> pkhex >> nx >> label) || fmt != "8") continue;
-        out.push_back({static_cast<Game>(std::stoi(game)), slot == "party" ? Slot::Party : Slot::Box, fromHex(hex),
-                       pkhex == "VALID", nx == "Invalid", label});
+        if (!(s >> fmt >> game >> slot >> hex >> pkhex >> nx >> label) || fmt != want) continue;
+        out.push_back({fmt == "8b" ? Format::PB8 : Format::PK8, static_cast<Game>(std::stoi(game)),
+                       slot == "party" ? Slot::Party : Slot::Box, fromHex(hex), pkhex == "VALID", nx == "Invalid", label});
     }
     return out;
 }
 
 Input inputFor(const Record& r, bool encrypted = false) {
     Input in;
-    in.format = Format::PK8;
+    in.format = r.format;
     in.game = r.game;
     in.slot = r.slot;
     in.encrypted = encrypted;
@@ -110,8 +115,8 @@ std::vector<uint8_t> edit(const std::vector<uint8_t>& plain, const std::function
     return copy;
 }
 
-void testFixture(const std::vector<Record>& records) {
-    check(records.size() > 1000, "fixture loaded (" + std::to_string(records.size()) + " records)");
+void testFixture(const std::vector<Record>& records, const std::string& name) {
+    check(records.size() > 1000, name + " fixture loaded (" + std::to_string(records.size()) + " records)");
     size_t valid = 0, caught = 0;
     for (const auto& r : records) {
         const auto report = analyzePlain(r, r.plain);
@@ -131,7 +136,7 @@ void testFixture(const std::vector<Record>& records) {
         const auto viaStored = Legality::Modern::analyze(PK8::encrypt(r.plain), inputFor(r, true));
         check(viaStored.verdict() == v && viaStored.issues.size() == report.issues.size(), r.label + ": encrypted path differs");
     }
-    check(valid > 300 && caught > 500, "fixture covers both PKHeX-valid and caught records");
+    check(valid > 300 && caught > 500, name + " fixture covers both PKHeX-valid and caught records");
 }
 
 const Record* find(const std::vector<Record>& records, const std::function<bool(const Record&)>& pred) {
@@ -232,6 +237,72 @@ void testRuleEdits(const std::vector<Record>& records) {
     }
 }
 
+// PB8: MiscVerifierPB8 fields, BD/SP tables and the format boundary, on PKHeX-valid BD/SP
+// records from the fixture.
+void testBdsp(const std::vector<Record>& records) {
+    check(Legality::Modern::profile(Format::PB8)->rulesImplemented, "PB8 has rules");
+    const Record* native = find(records, [](const Record& r) {
+        const uint16_t s = PK8::read16(r.plain, 0x08);
+        return r.pkhexValid && startsWith(r.label, "native8b:base") && s != 327 && s != 290 &&
+               ((PK8::read32(r.plain, 0x8C) >> 30) & 1) == 0 && (r.plain[0xDE] == 48 || r.plain[0xDE] == 49);
+    });
+    const Record* home = find(records, [](const Record& r) {
+        return r.pkhexValid && startsWith(r.label, "bdhome7:base") && ((PK8::read32(r.plain, 0x8C) >> 30) & 1) == 0;
+    });
+    check(native && home, "fixture has native and HOME PB8 bases");
+    if (!native || !home) return;
+    auto expectInvalid = [&](const Record& base, const char* name, const std::function<void(std::vector<uint8_t>&)>& f, const char* fragment) {
+        const auto r = analyzePlain(base, edit(base.plain, f));
+        check(r.verdict() == Verdict::Invalid && hasIssue(r, Severity::Invalid, fragment),
+              std::string("PB8 ") + name + ": expected Invalid '" + fragment + "', got " + describe(r));
+    };
+    auto expectNotInvalid = [&](const Record& base, const char* name, const std::function<void(std::vector<uint8_t>&)>& f) {
+        const auto r = analyzePlain(base, edit(base.plain, f));
+        check(r.verdict() == Verdict::Incomplete, std::string("PB8 ") + name + ": expected Incomplete, got " + describe(r));
+    };
+    const Record& n = *native;
+    expectInvalid(n, "sociability", [](auto& b) { PK8::write32(b, 0x48, 1); }, "has no sociability");
+    expectInvalid(n, "dpr illegal flag", [](auto& b) { b[0x52] = 1; }, "illegal-record flag");
+    expectInvalid(n, "gigantamax", [](auto& b) { b[0x16] |= 0x10; }, "cannot Gigantamax");
+    expectInvalid(n, "dynamax", [](auto& b) { b[0x90] = 1; }, "no Dynamax level");
+    expectInvalid(n, "tr flag", [](auto& b) { b[0x127] = 1; }, "cannot hold TR flags");
+    expectInvalid(n, "battle version", [](auto& b) { b[0xDF] = 44; }, "Battle version 44");
+    expectInvalid(n, "hyper training below 100", [](auto& b) { b[0x126] = 1; }, "needs level 100");
+    expectInvalid(n, "species above 493", [](auto& b) { PK8::write16(b, 0x08, 494); }, "does not exist in PB8");
+    expectInvalid(n, "ball 28", [](auto& b) { b[0x124] = 38; }, "cannot be held by a PB8");
+    expectInvalid(*home, "pid==ec", [](auto& b) { PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); }, "PID equals the encryption constant");
+    expectInvalid(n, "spinda tracker", [](auto& b) { PK8::write16(b, 0x08, 327); b[0x24] = 0; PK8::write32(b, 0x135, 1); }, "no HOME tracker");
+    expectInvalid(*home, "nincada moved in", [](auto& b) { PK8::write16(b, 0x08, 290); b[0x24] = 0; }, "cannot be moved into BD/SP");
+    expectInvalid(*home, "origin 53", [](auto& b) { b[0xDE] = 53; }, "cannot be stored in a PB8");
+    // Values a legitimate BD/SP record can hold stay undecided.
+    expectNotInvalid(n, "battle version zero", [](auto& b) { b[0xDF] = 0; });
+    expectNotInvalid(*home, "battle version on a moved record", [](auto& b) { b[0xDF] = 44; });
+    // PID equal to the EC on a BD/SP native may be a fixed-EC WB8 gift; on a Sword/Shield
+    // record with EC 0 it may be a HOME gift (WC8.IsHOMEGift). Neither is decided here.
+    expectNotInvalid(n, "pid==ec native", [](auto& b) { PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); });
+    expectNotInvalid(*home, "ec 0 pid 0 from sword", [](auto& b) { PK8::write32(b, 0x00, 0); PK8::write32(b, 0x1C, 0); b[0xDE] = 44; b[0xDF] = 0; });
+    // Egg TR bytes are not checked (PKHeX skips eggs).
+    Record egg = n;
+    egg.plain = edit(n.plain, [](auto& b) { PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) | 0xC0000000u); });
+    {
+        const auto r = analyzePlain(egg, edit(egg.plain, [](auto& b) { b[0x127] = 1; }));
+        check(!hasIssue(r, Severity::Invalid, "TR flags"), "PB8 egg TR bytes are not flagged: " + describe(r));
+    }
+    // A PB8 in Sword/Shield is a source-game Warning.
+    {
+        Record moved = n;
+        moved.game = Game::SW;
+        const auto r = analyzePlain(moved, moved.plain);
+        check(r.verdict() == Verdict::Incomplete && hasIssue(r, Severity::Warning, "does not store PB8"),
+              "PB8 in Sword/Shield is a source-game Warning");
+    }
+    namespace D = Legality::Gen8::Data;
+    using Legality::Gen8::Context;
+    check(D::maxSpecies(Context::BDSP) == 493 && D::maxBall(Context::BDSP) == 37, "BD/SP limits");
+    check(D::personal(387, 0, Context::BDSP) && !D::personal(494, 0, Context::BDSP), "BD/SP personal table ends at Arceus");
+    check(D::presentInGame(13, 0, Context::BDSP), "Weedle is present in BD/SP");
+}
+
 void testInterface(const std::vector<Record>& records) {
     check(Legality::Modern::profile(Format::PK8)->rulesImplemented, "PK8 has rules");
     Input in;
@@ -295,12 +366,13 @@ void testHelpers() {
 }
 
 void testFuzz(const std::vector<Record>& records) {
+    // records holds both PK8 and PB8 fixture lines; each mutated record keeps its format.
     const char* env = std::getenv("GEN8_FUZZ_ROUNDS");
     const size_t rounds = env ? std::strtoul(env, nullptr, 10) : 20000;
     std::mt19937 rng(8);
     for (size_t i = 0; i < rounds; ++i) {
         Input in;
-        in.format = Format::PK8;
+        in.format = (rng() & 1) != 0 ? Format::PK8 : Format::PB8;
         in.game = static_cast<Game>(std::array<uint8_t, 5>{0, 44, 45, 48, 30}[rng() % 5]);
         in.slot = static_cast<Slot>(rng() % 4);
         in.encrypted = (rng() & 1) != 0;
@@ -308,6 +380,7 @@ void testFuzz(const std::vector<Record>& records) {
         if (!records.empty() && (rng() % 3) != 0) {
             // A fixture record with random byte flips and a refreshed checksum.
             const auto& base = records[rng() % records.size()];
+            in.format = base.format;
             bytes = base.plain;
             for (int k = 0, n = 1 + static_cast<int>(rng() % 6); k < n; ++k) bytes[8 + rng() % (bytes.size() - 8)] ^= static_cast<uint8_t>(1u << (rng() % 8));
             PK8::write16(bytes, 0x06, PK8::checksum(bytes));
@@ -329,12 +402,17 @@ void testFuzz(const std::vector<Record>& records) {
 } // namespace
 
 int main() {
-    const auto records = loadFixture();
-    testFixture(records);
+    const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
+    const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
+    testFixture(records, "PK8");
+    testFixture(bdsp, "PB8");
     testRuleEdits(records);
+    testBdsp(bdsp);
     testInterface(records);
     testHelpers();
-    testFuzz(records);
+    auto all = records;
+    all.insert(all.end(), bdsp.begin(), bdsp.end());
+    testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;
 }

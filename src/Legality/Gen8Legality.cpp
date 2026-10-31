@@ -1,4 +1,5 @@
-// Gen8Legality.cpp - PK8 (Sword/Shield) native legality (see include/Legality/Gen8Legality.h).
+// Gen8Legality.cpp - PK8 (Sword/Shield) and PB8 (Brilliant Diamond/Shining Pearl) native legality
+// (see include/Legality/Gen8Legality.h).
 //
 // Every Invalid below names the PKHeX.Core verifier it mirrors (pinned commit in
 // .github/workflows/legality-gen67-pkhex-diff.yml). Rules that need an encounter match, an
@@ -65,32 +66,35 @@ constexpr bool isSunMoon(uint8_t version) noexcept { return version == 30 || ver
 
 class Analyzer {
 public:
-    Analyzer(const PK8::Pokemon8& pk, const Modern::Input& input) : pk_(pk), in_(input), plain_(pk.plain()) {}
+    Analyzer(Context ctx, const PK8::Pokemon8& pk, const Modern::Input& input)
+        : ctx_(ctx), pk_(pk), in_(input), plain_(pk.plain()) {}
 
     Report run() {
         report_.coverage.structure = CoverageLevel::Complete;
         report_.coverage.internal = CoverageLevel::Partial;
         report_.coverage.moves = CoverageLevel::Partial;
         report_.coverage.pidRng = CoverageLevel::Partial;   // EC/PID transfer and nature correlation only
-        report_.coverage.transfer = CoverageLevel::Partial; // presence in Sword/Shield and transfer markers only
+        report_.coverage.transfer = CoverageLevel::Partial; // presence in the game and transfer markers only
         checkSource();
         const uint16_t species = pk_.species();
-        if (species > Data::maxSpecies()) {
-            invalid(CheckIdentifier::Species, "Species " + std::to_string(species) +
-                    " does not exist in PK8 (PKHeX: species above the format's maximum)");
+        if (species > Data::maxSpecies(ctx_)) {
+            invalid(CheckIdentifier::Species, "Species " + std::to_string(species) + " does not exist in " + formatName() +
+                    " (PKHeX: species above the format's maximum)");
             return finish();
         }
         version_ = pk_.originVersion();
         met_ = PK8::read16(plain_, 0x122);
-        side_ = sideTransferOrigin(met_);
+        // Only Sword/Shield remaps a side transfer's version and met location (LocationsHOME).
+        side_ = bdsp() ? 0 : sideTransferOrigin(met_);
         originGen_ = originGeneration(version_, met_);
-        personal_ = Data::personal(species, form());
+        if (bdsp() && (version_ == 50 || version_ == 51)) originGen_ = 9;  // Scarlet/Violet keeps its version in a PB8
+        personal_ = Data::personal(species, form(), ctx_);
         checkOrigin();
         checkPresence();
         checkForm();
         // Base-form personal entry for a form outside the table (already Invalid above).
-        if (!personal_) personal_ = Data::personal(species, 0);
-        // Species/forms absent from Sword/Shield have empty personal rows; their checks are moot.
+        if (!personal_) personal_ = Data::personal(species, 0, ctx_);
+        // Species/forms absent from the game have empty personal rows; their checks are moot.
         if (personal_ && !personal_->present) personal_.reset();
         checkLevel();
         checkEffortValues();
@@ -105,17 +109,21 @@ public:
         checkTransferMetLocation();
         if (originGen_ == 1 || originGen_ == 2) checkVirtualConsole();
         checkHyperTraining();
-        checkSwordShieldFields();
-        checkTechRecords();
+        if (bdsp()) checkBdspFields();
+        else {
+            checkSwordShieldFields();
+            checkTechRecords();
+        }
         checkPartyStats();
         checkTrainer();
         report_.issues.push_back({Severity::Info,
-            "Sword/Shield encounter, learnset, event, breeding, ribbon, memory, Gigantamax and HOME-history rules "
+            std::string(gameName()) + " encounter, learnset, event, breeding, ribbon, memory and HOME-history rules "
             "are not implemented yet; a record without a contradiction stays Incomplete", CheckIdentifier::Misc});
         return finish();
     }
 
 private:
+    Context ctx_;
     const PK8::Pokemon8& pk_;
     const Modern::Input& in_;
     std::span<const uint8_t> plain_;
@@ -131,6 +139,10 @@ private:
     void warning(CheckIdentifier id, std::string text) { report_.issues.push_back({Severity::Warning, std::move(text), id}); }
     void info(CheckIdentifier id, std::string text) { report_.issues.push_back({Severity::Info, std::move(text), id}); }
 
+    bool bdsp() const noexcept { return ctx_ == Context::BDSP; }
+    const char* formatName() const noexcept { return bdsp() ? "PB8" : "PK8"; }
+    const char* gameName() const noexcept { return bdsp() ? "Brilliant Diamond/Shining Pearl" : "Sword/Shield"; }
+
     // G8PKM.Form reads one byte; the high byte of the 16-bit field is not part of the form.
     uint8_t form() const noexcept { return plain_[0x24]; }
     bool partySlot() const noexcept { return in_.slot == Slot::Party || pk_.size() == PK8::PartySize; }
@@ -145,17 +157,19 @@ private:
             if (pk_.move(i) == move) return true;
         return false;
     }
-    // PK8.VC3: a Switch Virtual Console FireRed/LeafGreen record moved in through HOME.
-    bool vc3() const noexcept { return met_ == SWFR || met_ == SHLG; }
+    // PKM.VC3: a Switch Virtual Console FireRed/LeafGreen record moved in through HOME (PK8
+    // overrides it with its HOME met location; PB8 keeps the version).
+    bool vc3() const noexcept { return bdsp() ? (version_ == 56 || version_ == 57) : (met_ == SWFR || met_ == SHLG); }
 
     void checkSource() {
         if (in_.game == Game::Unknown) {
             report_.coverage.sourceGame = CoverageLevel::Partial;
             return;
         }
-        if (Modern::nativeFormat(in_.game) != Modern::Format::PK8) {
+        if (Modern::nativeFormat(in_.game) != (bdsp() ? Modern::Format::PB8 : Modern::Format::PK8)) {
             report_.coverage.sourceGame = CoverageLevel::None;
-            warning(CheckIdentifier::SourceGame, "The source game does not store PK8 records; game-specific checks were skipped");
+            warning(CheckIdentifier::SourceGame, std::string("The source game does not store ") + formatName() +
+                    " records; game-specific checks were skipped");
             return;
         }
         report_.coverage.sourceGame = in_.integrity == Modern::Integrity::Verified ? CoverageLevel::Complete
@@ -164,35 +178,36 @@ private:
             warning(CheckIdentifier::SourceGame, "The source container failed its own integrity check");
     }
 
-    // EncounterFinder: a version no game writes into a PK8 has no encounter at all, and
-    // Legends: Z-A records cannot be moved into Sword/Shield.
+    // EncounterFinder: a version no game writes into the format has no encounter at all, and
+    // Legends: Z-A records cannot be moved into Sword/Shield (whether HOME moves them into
+    // BD/SP is not decided here).
     void checkOrigin() {
         if (originGen_ == 0) {
-            invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " cannot be stored in a PK8");
+            invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " cannot be stored in a " + formatName());
             return;
         }
-        if (originGen_ > 8) {
-            invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " is newer than PK8");
+        if (originGen_ > 8 && !bdsp()) {
+            invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " is newer than " + std::string(formatName()));
             return;
         }
         if (side_ != 0)
             info(CheckIdentifier::Transfer, "Moved into Sword/Shield through HOME from game " + std::to_string(side_));
-        else if (originGen_ < 8)
+        else if (originGen_ != 8)
             info(CheckIdentifier::Transfer, "Transferred from generation " + std::to_string(originGen_));
     }
 
-    // TransferVerifier.VerifyTransferLegalityG8: Sword/Shield holds a selection of species
-    // and forms; any other species/form cannot be in a PK8.
+    // TransferVerifier.VerifyTransferLegalityG8: Sword/Shield and BD/SP hold a selection of
+    // species and forms; any other species/form cannot be in the format.
     void checkPresence() {
-        if (!Data::presentInGame(pk_.species(), form()))
-            invalid(CheckIdentifier::Transfer, "Species/form is not present in Sword/Shield");
+        if (!Data::presentInGame(pk_.species(), form(), ctx_))
+            invalid(CheckIdentifier::Transfer, std::string("Species/form is not present in ") + gameName());
     }
 
     // FormVerifier (format 8 branches).
     void checkForm() {
         const uint16_t species = pk_.species();
         const uint8_t f = form();
-        const uint8_t count = Data::formCount(species);
+        const uint8_t count = Data::formCount(species, ctx_);
         if (count <= 1 && f == 0) return;
         bool inRange = f < count;
         if (!inRange) {
@@ -224,7 +239,7 @@ private:
                     return invalid(CheckIdentifier::Items, "Giratina's form does not match the Griseous Orb");
                 break;
             case Arceus:
-                if (Data::arceusForm(item) != f)
+                if (Data::arceusForm(item, ctx_) != f)
                     return invalid(CheckIdentifier::Items, "Arceus' form does not match its held Plate");
                 return;
             case Keldeo:
@@ -261,7 +276,7 @@ private:
                 break;
             default: break;
         }
-        if (Data::battleOnlyForm(species, f))
+        if (Data::battleOnlyForm(species, f, ctx_))
             invalid(CheckIdentifier::Species, "Battle-only form outside battle");
     }
 
@@ -296,7 +311,7 @@ private:
         std::array<uint16_t, 4> m{};
         for (size_t i = 0; i < 4; ++i) m[i] = pk_.move(i);
         for (size_t i = 0; i < 4; ++i) {
-            if (m[i] > Data::maxMove()) invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " does not exist");
+            if (m[i] > Data::maxMove(ctx_)) invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " does not exist");
         }
         if (m[0] == 0) invalid(CheckIdentifier::Moves, "The first move slot is empty");
         bool empty = false;
@@ -320,7 +335,7 @@ private:
                 if (movePPUps(i) != 0) { invalid(CheckIdentifier::Egg, "An egg cannot have PP Ups"); break; }
             }
             for (size_t i = 0; i < 4; ++i) {
-                if (movePP(i) != Data::basePP(m[i])) { invalid(CheckIdentifier::Egg, "An egg's PP is not its moves' base PP"); break; }
+                if (movePP(i) != Data::basePP(m[i], ctx_)) { invalid(CheckIdentifier::Egg, "An egg's PP is not its moves' base PP"); break; }
             }
             return;
         }
@@ -329,7 +344,7 @@ private:
                 invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " cannot have PP Ups");
         }
         for (size_t i = 0; i < 4; ++i) {
-            const uint32_t healed = Data::basePP(m[i]) * (5u + movePPUps(i)) / 5u;
+            const uint32_t healed = Data::basePP(m[i], ctx_) * (5u + movePPUps(i)) / 5u;
             if (movePP(i) > healed) invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is above its maximum");
         }
     }
@@ -337,7 +352,7 @@ private:
     // PIDVerifier.VerifyEC (format >= 6). Gen III-V origins carry the Poke Transporter PID;
     // Switch Virtual Console records carry HOME's PID (not checked here); everything else
     // has PID != EC, except fixed-EC Legends: Arceus / Brilliant Diamond / Shining Pearl
-    // gifts, which a record moved in from those games may be.
+    // gifts, which a record moved in from those games may be, and Sword/Shield HOME gifts.
     void checkPidEc() {
         if (vc3()) return;
         const uint32_t pid = pk_.pid(), ec = pk_.encryptionConstant();
@@ -347,7 +362,10 @@ private:
             return;
         }
         const bool fixedEcGift = side_ != 0 || version_ == 47 || version_ == 48 || version_ == 49;
-        if (originGen_ != 0 && pid == ec && !fixedEcGift)
+        // A Sword/Shield-origin record with EC 0 may be a HOME gift (WC8.IsHOMEGift), whose
+        // EC PKHeX does not check; the encounter is not resolved here.
+        const bool homeGift = ec == 0 && (version_ == 44 || version_ == 45);
+        if (originGen_ != 0 && pid == ec && !fixedEcGift && !homeGift)
             invalid(CheckIdentifier::PidRng, "PID equals the encryption constant");
     }
 
@@ -414,11 +432,12 @@ private:
     }
 
     // BallVerifier: no Sword/Shield record holds ball 0 or a ball above Beast Ball (Legends:
-    // Arceus balls are replaced by a Poke Ball when the record moves to Sword/Shield).
+    // Arceus balls are replaced by a Poke Ball when the record moves to Sword/Shield); BD/SP
+    // keeps Legends: Arceus balls, up to the Origin Ball.
     void checkBall() {
         const uint8_t ball = pk_.ball();
-        if (ball == 0 || ball > Data::maxBall())
-            invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a PK8");
+        if (ball == 0 || ball > Data::maxBall(ctx_))
+            invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball) + " cannot be held by a " + formatName());
     }
 
     // LanguageVerifier.
@@ -445,8 +464,8 @@ private:
     void checkHeldItem() {
         const uint16_t item = pk_.heldItem();
         if (pk_.isEgg() && item != 0) invalid(CheckIdentifier::Egg, "An egg cannot hold an item");
-        if (!Data::heldItemAllowed(item))
-            invalid(CheckIdentifier::Items, "Held item " + std::to_string(item) + " is not obtainable in Sword/Shield");
+        if (!Data::heldItemAllowed(item, ctx_))
+            invalid(CheckIdentifier::Items, "Held item " + std::to_string(item) + " is not obtainable in " + gameName());
     }
 
     // TransferVerifier.VerifyTransferLegalityG3 / G4: a Gen III/IV origin (by version) moved
@@ -483,11 +502,15 @@ private:
     }
 
     // HyperTrainingVerifier. Sword/Shield trains at level 100, Scarlet/Violet and Z-A at 50;
-    // whether this record visited those games needs its evolution history, so only a level
-    // below 50 is decided here.
+    // whether a PK8 visited those games needs its evolution history, so only a level below 50
+    // is decided for it. BD/SP always needs level 100 (HOME refuses lower trained records).
     void checkHyperTraining() {
         const uint8_t flags = plain_[0x126];
         if ((flags & 0x3F) == 0 || !personal_) return;
+        if (bdsp() && level() < 100) {
+            invalid(CheckIdentifier::Stats, "Hyper Training in Brilliant Diamond/Shining Pearl needs level 100");
+            return;
+        }
         if (level() < 50) {
             invalid(CheckIdentifier::Stats, "Hyper Training needs level 50 or more");
             return;
@@ -517,16 +540,7 @@ private:
         const uint32_t social = PK8::read32(plain_, 0x48);
         if (pk_.isEgg() ? social != 0 : social > 255)
             invalid(CheckIdentifier::Misc, pk_.isEgg() ? "An egg cannot have sociability" : "Sociability is above 255");
-        // IBattleVersion.IsBattleVersionValid: 0, or Sword/Shield for a record that did not
-        // originate in (or side-transfer into) Sword/Shield.
-        const uint8_t battle = plain_[0xDF];
-        if (battle != 0) {
-            const bool swordShieldOrigin = version_ == VersionSW || version_ == VersionSH || version_ == 47 ||
-                                           version_ == 48 || version_ == 49 || version_ == 50 || version_ == 51 ||
-                                           version_ == 56 || version_ == 57;
-            if ((battle != VersionSW && battle != VersionSH) || swordShieldOrigin)
-                invalid(CheckIdentifier::Misc, "Battle version " + std::to_string(battle) + " is not possible for this record");
-        }
+        checkBattleVersion();
         // IDynamaxLevel.CanHaveDynamaxLevel: no egg and no Zacian/Zamazenta/Eternatus; at most 10.
         const uint8_t dynamax = pk_.dynamaxLevel();
         if (dynamax != 0) {
@@ -534,6 +548,40 @@ private:
             if (pk_.isEgg() || s == Zacian || s == Zamazenta || s == Eternatus || dynamax > 10)
                 invalid(CheckIdentifier::Misc, "Dynamax level " + std::to_string(dynamax) + " is not possible");
         }
+    }
+
+    // MiscVerifierPB8: BD/SP has no sociability, Dynamax, Gigantamax or TR flags (a
+    // non-egg record with any TR flag is Invalid), the Dpr-illegal flag is never set, Spinda
+    // and Nincada cannot come in from another game, a Spinda has no HOME tracker, and the
+    // battle version follows the same rule as Sword/Shield.
+    void checkBdspFields() {
+        if (PK8::read32(plain_, 0x48) != 0) invalid(CheckIdentifier::Misc, "Brilliant Diamond/Shining Pearl has no sociability");
+        if (plain_[0x52] != 0) invalid(CheckIdentifier::Transfer, "The BD/SP illegal-record flag is set");
+        const uint16_t s = pk_.species();
+        const bool native = version_ == 48 || version_ == 49;
+        if ((s == 327 || s == 290) && !native) invalid(CheckIdentifier::Transfer, "Spinda and Nincada cannot be moved into BD/SP");
+        // G8PKM.Tracker: 64 bits at 0x135.
+        if (s == 327 && (PK8::read32(plain_, 0x135) | PK8::read32(plain_, 0x139)) != 0)
+            invalid(CheckIdentifier::Transfer, "A BD/SP Spinda has no HOME tracker");
+        checkBattleVersion();
+        if ((plain_[0x16] & 0x10) != 0) invalid(CheckIdentifier::Misc, "BD/SP records cannot Gigantamax");
+        if (pk_.dynamaxLevel() != 0) invalid(CheckIdentifier::Misc, "BD/SP records have no Dynamax level");
+        if (!pk_.isEgg()) {
+            for (size_t i = 0; i < 14; ++i) {
+                if (plain_[0x127 + i] != 0) { invalid(CheckIdentifier::Moves, "BD/SP records cannot hold TR flags"); break; }
+            }
+        }
+    }
+
+    // IBattleVersion.IsBattleVersionValid: 0, or Sword/Shield for a record that did not
+    // originate in (or side-transfer into) Sword/Shield (LocationsHOME.GetVersionSWSH).
+    void checkBattleVersion() {
+        const uint8_t battle = plain_[0xDF];
+        if (battle == 0) return;
+        const bool swordShieldOrigin = version_ == VersionSW || version_ == VersionSH || version_ == 47 || version_ == 48 ||
+                                       version_ == 49 || version_ == 50 || version_ == 51 || version_ == 56 || version_ == 57;
+        if ((battle != VersionSW && battle != VersionSH) || swordShieldOrigin)
+            invalid(CheckIdentifier::Misc, "Battle version " + std::to_string(battle) + " is not possible for this record");
     }
 
     // MiscVerifierPK8.VerifyTechRecordFlags: a TR flag the species/form cannot learn
@@ -627,11 +675,12 @@ uint8_t originGeneration(uint8_t version, uint16_t metLocation) noexcept {
     }
 }
 
-Report analyze(std::span<const uint8_t> record, const Modern::Input& input) {
+Report analyze(Context ctx, std::span<const uint8_t> record, const Modern::Input& input) {
     Report report{};
+    const std::string name = ctx == Context::BDSP ? "PB8" : "PK8";
     if (!PK8::supportedSize(record.size())) {
         report.coverage.structure = CoverageLevel::None;
-        report.issues.push_back({Severity::Warning, "Not a 328-byte or 344-byte PK8 record", CheckIdentifier::Structure});
+        report.issues.push_back({Severity::Warning, "Not a 328-byte or 344-byte " + name + " record", CheckIdentifier::Structure});
         return report;
     }
     if (std::all_of(record.begin(), record.end(), [](uint8_t b) { return b == 0; })) return report;
@@ -643,22 +692,22 @@ Report analyze(std::span<const uint8_t> record, const Modern::Input& input) {
     if (!pk) {
         report.coverage.structure = CoverageLevel::Partial;
         if (status == PK8::DecodeStatus::BadChecksum)
-            report.issues.push_back({Severity::Invalid, "PK8 checksum does not match its data", CheckIdentifier::Checksum});
+            report.issues.push_back({Severity::Invalid, name + " checksum does not match its data", CheckIdentifier::Checksum});
         else if (status == PK8::DecodeStatus::BadSanity)
-            report.issues.push_back({Severity::Invalid, "PK8 sanity field is set (bad egg)", CheckIdentifier::Structure});
+            report.issues.push_back({Severity::Invalid, name + " sanity field is set (bad egg)", CheckIdentifier::Structure});
         else
-            report.issues.push_back({Severity::Warning, "PK8 record could not be decoded", CheckIdentifier::Structure});
+            report.issues.push_back({Severity::Warning, name + " record could not be decoded", CheckIdentifier::Structure});
         return report;
     }
     if (pk->species() == 0) {
         if (!pk->allZero()) {
             report.coverage.structure = CoverageLevel::Partial;
-            report.issues.push_back({Severity::Warning, "Species is zero but the PK8 payload is not a native blank slot",
+            report.issues.push_back({Severity::Warning, "Species is zero but the " + name + " payload is not a native blank slot",
                                      CheckIdentifier::Structure});
         }
         return report;
     }
-    return Analyzer(*pk, input).run();
+    return Analyzer(ctx, *pk, input).run();
 }
 
 } // namespace Legality::Gen8
