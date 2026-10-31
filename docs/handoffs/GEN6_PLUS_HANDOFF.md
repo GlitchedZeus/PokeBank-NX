@@ -43,7 +43,7 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
 | `2b25f2d7` | Shared surface wired, registry hardware/UI honesty, review fixes | real-screen `test_ui_modern_surface_host` (98), `..._gen7_host` (27) |
 | `b5fe6c0b` | Normal merge of `main` @ `9ce7f737` | docs/workflows only |
 | `3697d77d` | Experimental NRO workflow (`.github/workflows/gen6-plus-experimental-nro.yml`) | run 41231980644 FAILED in host gates: LeakSanitizer (CI sets `detect_leaks=1`) found the vendored FlagBrew `rsa.c` leak; fixed in the next commit |
-| next | Sword/Shield adapter + shared-UI integration; MemeCrypto leak containment | see below |
+| `5f84ed8c` | Sword/Shield adapter + shared-UI integration; MemeCrypto leak containment | CI run 41235138247 **success** (host gates + devkitA64 NRO + RomFS verification); see below |
 
 ## This milestone (Sword/Shield + leak fix)
 
@@ -79,17 +79,23 @@ candidates; #313 open).
 
 ## NRO
 
-Local devkitA64 link proof of `2b25f2d7`/`b5fe6c0b` succeeded (all Gen VI+ entry points in the ELF) but its
-RomFS check failed (trainer portraits cannot be fetched through this container's proxy) → not distributable.
-The CI workflow builds the full RomFS; an NRO is only bound once a run is green. Owner checklist template:
-`docs/hardware/GEN6_PLUS_HARDWARE_CHECKLIST_TEMPLATE.md`.
+- **Experimental CI NRO of `5f84ed8c`**: run 41235138247 (all jobs green: GCC/Clang/ASan/UBSan with
+  `detect_leaks=1`, Gen I–V static contracts, devkitA64 build, ELF symbol check incl. Gen VIII, packaged RomFS
+  verification). Artifact `PokeBank-NX-Gen6Plus-Experimental-5f84ed8c` (id 13055362433, zip
+  sha256 `d8a9a8344158936316d38275faa3de2464ef75d6fbefbe91e9946a1466204315`); the NRO's own SHA-256 is in the
+  artifact's `SHA256SUMS`, with `BUILD_IDENTITY` stating `DEVICE_ACCEPTED=false`, `SAV7_EXPORT=DISABLED`,
+  `GEN1_5_CANDIDATE=false`. Not downloadable from this container (proxy blocks the artifact store).
+- Local devkitA64 link proof of `5f84ed8c`: EXIT 0, all Gen VI–VIII entry points in the ELF; local RomFS lacks
+  trainer portraits (proxy) → not distributable; use the CI artifact.
+- EXPERIMENTAL, NOT DEVICE TESTED, never a Gen I–V candidate. Owner checklist:
+  `docs/hardware/GEN6_PLUS_HARDWARE_CHECKLIST_TEMPLATE.md` (G0, G6, G7, G8).
 
 ## Open work (in order)
 
-1. Green CI run of the experimental NRO workflow → record run id, artifact and NRO SHA-256 here.
-2. Extend the hardware checklist with SWSH linked-file steps (G8-xx).
-3. LGPE adapter (PB7 pointer-backed storage), then BDSP (paired-file authority), PLA, SV, Z-A — each only
+1. Owner: optional experimental device pass of the CI artifact with the G0/G6/G7/G8 checklist (does not
+   affect Gen I–V acceptance).
+2. LGPE adapter (PB7 pointer-backed storage), then BDSP (paired-file authority), PLA, SV, Z-A — each only
    behind its own verified staged session.
-4. Pinned learnsets/personal tables → unlock Moves/Species (Gen VI/VII) and IV/EV/Nature/Level (SWSH).
-5. Licensed artwork only (3DS box art has no redistribution licence; generated fallback cards are used).
-6. After Gen I–V acceptance: reconcile onto the final accepted shared UI, re-test, open the separate integration PR.
+3. Pinned learnsets/personal tables → unlock Moves/Species (Gen VI/VII) and IV/EV/Nature/Level (SWSH).
+4. Licensed artwork only (3DS box art has no redistribution licence; generated fallback cards are used).
+5. After Gen I–V acceptance: reconcile onto the final accepted shared UI, re-test, open the separate integration PR.
