@@ -20,4 +20,6 @@ Round 4 has no separate candidate record (its repairs shipped in Round 5). Earli
 
 ## Archiving one build
 
+**Availability:** the workflow is `workflow_dispatch` only, so GitHub can dispatch it only once it is on the default branch. On October 31, dispatching it from `integration/main-gen15-consolidation` before the merge returned `404 Not Found`. Run it right after the consolidation (#330) merges. Every artifact above is valid until at least January 14, 2027.
+
 Run **Archive candidate NRO (development/testing archive)** (`workflow_dispatch`) with the row's run ID, artifact ID, artifact name (`PokeBank-NX-Gen1-5-Candidate-<sha8>`), NRO file (`<artifact name>.nro`), full application commit, original SHA-256, a short label and the hardware status. Then replace "pending" with the release link and the verification run.
