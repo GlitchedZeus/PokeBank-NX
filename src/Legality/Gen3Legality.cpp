@@ -3781,7 +3781,7 @@ void verifyEvs(const Pk3& pk, Analysis& a) {
                 // A traded egg retains its original game byte. For a hatched
                 // record, certify the action sequence in every possible hatch
                 // game rather than inventing which player performed the hatch.
-                auto result=EvExp::solve(request,evBattles3(pk.version==kVerCXD?kVerE:pk.version,e.kind!=Kind::Trade && pk.version!=kVerCXD));
+                auto result=EvExp::solve(request,evBattles3(pk.version==kVerCXD?kVerE:pk.version,(e.kind==Kind::Slot || e.kind==Kind::Static || e.kind==Kind::Egg) && pk.version!=kVerCXD));
                 if (pk.version==kVerCXD && result.verdict==EvExp::Verdict::Proven)
                     for (uint8_t v=1;v<=5;++v)
                         if (EvExp::solve(request,evBattles3(v,false)).verdict!=EvExp::Verdict::Proven) {
