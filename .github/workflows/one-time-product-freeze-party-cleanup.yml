@@ -1,0 +1,13 @@
+name: Disabled one-time Product Home forwarder source repair
+
+# The FireRed/LeafGreen forwarder save-source split has landed. Keep this workflow inert as an
+# audit breadcrumb; future hardware fixes must be separate forward-only changes.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  disabled:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Forwarder source repair completed; helper disabled."

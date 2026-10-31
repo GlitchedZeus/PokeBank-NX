@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <vector>
 
+#include <switch.h>   // pl: the console shared font (Japanese fallback)
+
 #include <glad/glad.h>
 #include <SDL2/SDL.h>
 
@@ -24,13 +26,18 @@ namespace UI {
     static constexpr const char* kSymPath  = "romfs:/fonts/NotoSansSymbols.ttf";
     static constexpr const char* kSym2Path = "romfs:/fonts/NotoSansSymbols2.ttf";
 
-    // Nunito point size per TextStyle (Body matches the old single-size text).
+    // Handheld-first Nunito scale for the 1280x720 Switch screen.
+    // Caption is secondary information, Body is the normal UI label size, and the display
+    // styles stay large without consuming the compact Product Home card layouts.
     static constexpr float kFontSizes[static_cast<int>(TextStyle::Count)] = {
-        15.0f,  // Caption
-        19.0f,  // Body
-        26.0f,  // Heading
-        34.0f,  // Title
+        17.0f,  // Caption / secondary information
+        20.0f,  // Body / normal labels
+        28.0f,  // Heading
+        32.0f,  // Title
     };
+
+    // Nunito OS/2 sCapHeight 705 / unitsPerEm 1000; used to center visible capitals, not the line box.
+    static constexpr float kNunitoCapHeightPerEm = 0.705f;
 
     static inline NVGcolor toNVG(Color c) { return nvgRGBA(c.r, c.g, c.b, c.a); }
 
@@ -84,6 +91,22 @@ namespace UI {
         if (fontSans >= 0 && fontSym  >= 0) nvgAddFallbackFontId(vg, fontSans, fontSym);
         if (fontSans >= 0 && fontSym2 >= 0) nvgAddFallbackFontId(vg, fontSans, fontSym2);
 
+        // Japanese text (kana in Japanese Gen I-V names, the kana keyboard): the console's own
+        // "Standard" shared font covers Japanese, and every Switch carries it, so nothing is bundled.
+        // It is the LAST fallback, so Nunito and the symbol fonts keep drawing everything they did.
+        // The font memory belongs to the system (freeData = 0). If the service is unavailable the
+        // app draws exactly as before; kana then show as missing glyphs, never as a crash.
+        if (fontSans >= 0 && R_SUCCEEDED(plInitialize(PlServiceType_User))) {
+            plStarted = true;
+            PlFontData standard{};
+            if (R_SUCCEEDED(plGetSharedFontByType(&standard, PlSharedFontType_Standard)) && standard.address) {
+                fontJapanese = nvgCreateFontMem(vg, "jp", static_cast<unsigned char*>(standard.address),
+                                                static_cast<int>(standard.size), 0);
+                if (fontJapanese >= 0) nvgAddFallbackFontId(vg, fontSans, fontJapanese);
+                else logErrorToFile("nvgCreateFontMem shared Standard font failed");
+            }
+        }
+
         s_activeFramebuffer = this;
         SpriteManager::setEvictCallback(&PKSEFramebuffer::onSpriteEvicted);
     }
@@ -111,6 +134,7 @@ namespace UI {
         }
         if (glContext) SDL_GL_DeleteContext(glContext);
         if (window) SDL_DestroyWindow(window);
+        if (plStarted) plExit();   // after nvgDeleteGL3: the font memory it mapped is released last
     }
 
     // Begin a NanoVG frame if one isn't active yet (safety for draws before clear()).
@@ -238,6 +262,83 @@ namespace UI {
         nvgQuadTo(vg, cx - ck, cy - ck, cx,     cy - R);       // -> back to top tip
         nvgClosePath(vg);
         nvgFillColor(vg, toNVG(color)); nvgFill(vg);
+    }
+
+void PKSEFramebuffer::drawBackspaceIcon(int iconX, int iconY, int size, Color color)
+    {
+        // A 16x16 art box scaled to `size`. The tag spans x 1.2..14.8 and y 3.2..12.8, symmetric
+        // about the box's centre; the cross sits in the middle of the tag's square body, not of the
+        // box, or it crowds the point.
+        if (size <= 3 || !ensureFrame())
+            return;
+        const float unitScale = size / 16.0f;
+        const float strokeWidth = std::max(1.5f, 1.6f * unitScale);
+        const float bodyLeft = iconX + 5.4f * unitScale;
+        const float bodyRight = iconX + 14.8f * unitScale;
+        const float bodyTop = iconY + 3.2f * unitScale;
+        const float bodyBottom = iconY + 12.8f * unitScale;
+        const float centerY = iconY + 8.0f * unitScale;
+
+        nvgLineJoin(vg, NVG_ROUND);
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, iconX + 1.2f * unitScale, centerY); // the point
+        nvgLineTo(vg, bodyLeft, bodyTop);
+        nvgLineTo(vg, bodyRight, bodyTop);
+        nvgLineTo(vg, bodyRight, bodyBottom);
+        nvgLineTo(vg, bodyLeft, bodyBottom);
+        nvgClosePath(vg);
+        nvgStrokeColor(vg, toNVG(color));
+        nvgStrokeWidth(vg, strokeWidth);
+        nvgStroke(vg);
+
+        const float crossCenterX = (bodyLeft + bodyRight) * 0.5f;
+        const float crossReach = 2.1f * unitScale;
+        nvgLineCap(vg, NVG_ROUND);
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, crossCenterX - crossReach, centerY - crossReach);
+        nvgLineTo(vg, crossCenterX + crossReach, centerY + crossReach);
+        nvgMoveTo(vg, crossCenterX + crossReach, centerY - crossReach);
+        nvgLineTo(vg, crossCenterX - crossReach, centerY + crossReach);
+        nvgStroke(vg);
+        // Nothing in this file wraps its state in nvgSave/nvgRestore, so the next stroke drawn this
+        // frame would inherit both.
+        nvgLineCap(vg, NVG_BUTT);
+        nvgLineJoin(vg, NVG_MITER);
+    }
+
+void PKSEFramebuffer::drawShiftIcon(int iconX, int iconY, int size, Color color, bool filled)
+    {
+        // A 16x16 art box scaled to `size`: the arrow runs x 1.8..14.2 and y 1.8..14.2. One path, so
+        // the outline has no seam where the head meets the shaft.
+        if (size <= 3 || !ensureFrame())
+            return;
+        const float unitScale = size / 16.0f;
+        const float centerX = iconX + 8.0f * unitScale;
+        const float headBaseY = iconY + 8.4f * unitScale;
+        const float halfShaft = 2.8f * unitScale;
+        const float shaftBottomY = iconY + 14.2f * unitScale;
+
+        nvgLineJoin(vg, NVG_ROUND);
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, centerX, iconY + 1.8f * unitScale); // apex
+        nvgLineTo(vg, iconX + 14.2f * unitScale, headBaseY);
+        nvgLineTo(vg, centerX + halfShaft, headBaseY);
+        nvgLineTo(vg, centerX + halfShaft, shaftBottomY);
+        nvgLineTo(vg, centerX - halfShaft, shaftBottomY);
+        nvgLineTo(vg, centerX - halfShaft, headBaseY);
+        nvgLineTo(vg, iconX + 1.8f * unitScale, headBaseY);
+        nvgClosePath(vg);
+        if (filled)
+        {
+            nvgFillColor(vg, toNVG(color));
+            nvgFill(vg);
+        }
+        // Stroked in both states: the fill alone would sit half a stroke inside the outline's
+        // extents, and the arrow would visibly shrink when shift came on.
+        nvgStrokeColor(vg, toNVG(color));
+        nvgStrokeWidth(vg, std::max(1.5f, 1.6f * unitScale));
+        nvgStroke(vg);
+        nvgLineJoin(vg, NVG_MITER);
     }
 
     void PKSEFramebuffer::drawPointerCursor(int tipX, int tipY, int headHeight, Color color) {
@@ -409,9 +510,15 @@ namespace UI {
         nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
         nvgFillColor(vg, toNVG(color));
         nvgText(vg, (float)x, (float)y, text.c_str(), nullptr);
-        // Faux-bold for the display styles (Nunito is loaded regular; re-stroke slightly offset).
-        if (style == TextStyle::Heading || style == TextStyle::Title)
-            nvgText(vg, x + 0.6f, (float)y, text.c_str(), nullptr);
+        // The bundled face is regular Nunito. Give body text a subtle medium-weight pass and
+        // headings a stronger semibold-style pass so handheld text does not look hairline-thin.
+        // The sub-pixel offset preserves the rounded Nunito shapes without widening layouts.
+        if (style == TextStyle::Caption)
+            nvgText(vg, x + 0.18f, (float)y, text.c_str(), nullptr);
+        else if (style == TextStyle::Body)
+            nvgText(vg, x + 0.30f, (float)y, text.c_str(), nullptr);
+        else if (style == TextStyle::Heading || style == TextStyle::Title)
+            nvgText(vg, x + 0.62f, (float)y, text.c_str(), nullptr);
     }
 
     void PKSEFramebuffer::drawSymbol(int x, int y, const std::string& symbol, Color color, TextStyle style) {
@@ -439,6 +546,15 @@ namespace UI {
         float asc = 0, desc = 0, lh = 0;
         nvgTextMetrics(vg, &asc, &desc, &lh);
         return (int)std::ceil(lh);
+    }
+
+    int PKSEFramebuffer::textYCenteredOn(int centerY, TextStyle style) const {
+        if (!vg) return centerY;
+        applyTextStyle(style);
+        float ascender = 0.0f, descender = 0.0f, lineHeightPixels = 0.0f;
+        nvgTextMetrics(vg, &ascender, &descender, &lineHeightPixels);
+        const float capitalHeight = kFontSizes[static_cast<int>(style)] * kNunitoCapHeightPerEm;
+        return static_cast<int>(std::lround(static_cast<float>(centerY) - ascender + capitalHeight / 2.0f));
     }
 
     // ---- Images / sprites ----
@@ -521,7 +637,8 @@ namespace UI {
     }
 
     void PKSEFramebuffer::drawSelectionHighlight(int x, int y, int w, int h) {
-        drawFilledRoundedRect(x, y, w, h, 10, Colors::SurfaceSelected);
+        // Global focus treatment: preserve the underlying dark surface. A teal outline is enough to
+        // identify focus; callers render selected labels/values with the normal bright text token.
         drawRoundedRect(x, y, w, h, 10, Colors::FocusBorder, 2);
     }
 

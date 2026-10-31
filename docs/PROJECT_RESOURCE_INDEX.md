@@ -1,5 +1,7 @@
 # PokeBank NX — AI / Codex Resource Map
 
+> **AUTHORITY NOTE (2026-09-29):** This is a navigation/reference map, not live branch or task authority. Start with `docs/ENGINEERING_AUTHORITY.md` and re-fetch GitHub. Any older `CURRENT_STATUS` / `NEXT_CODEX_PROMPT` authority chain below is retained only as historical context.
+
 ## CURRENT RECOVERY HEADER — 2026-09-22
 
 The material below this header contains valuable older project/research history and is intentionally retained, but its 2026-09-06/09 checkpoint text is **not** the current continuation point.

@@ -1,6 +1,8 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
+#include "Inventory/ClassicInventoryCatalog.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Trainer/Inventory.h"
 
@@ -62,12 +64,42 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     }
     auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
+
+    // The Gen I writers handle the Japanese layout, but the app keeps Japanese saves read-only until
+    // the owner opens the gate (Integration/Common/JapaneseEditingGate.h). NONE of the three staged
+    // editors exists for such a save: no Pokemon workspace, no Bag editor (the Bag screen offers
+    // edits whenever one exists; Round 8 still created it for Japanese saves), no Trainer editor.
+    const bool japaneseLocked = metadata.region == Integration::Gen1::RegionLayout::Japanese &&
+                                !Integration::Common::kJapaneseClassicEditingEnabled;
+    constexpr const char* kLocked = "Japanese Generation I saves are read-only";
+
+    std::string stagedError;
+    if (japaneseLocked)
+        stagedError = kLocked;
+    else
+        trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
+    trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
+
+    stagedError.clear();
+    if (japaneseLocked)
+        stagedError = kLocked;
+    else
+        trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
+    trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
+
+    stagedError.clear();
+    if (!japaneseLocked)
+        trainer->stagedTrainer_ = Integration::Gen1::StagedTrainerEditor::create(save, stagedError);
     return trainer;
 }
 
 bool RBYReadOnlyTrainer::populate(
     const Integration::Gen1::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
+    nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,8};
+    const auto dex = save.dexProgress();
+    nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
     money = strictTrainer.money;
     TID16 = strictTrainer.trainerId;
@@ -84,14 +116,26 @@ bool RBYReadOnlyTrainer::populate(
     const auto inventory = Integration::Gen1::decodeInventory(
         save.sourceBytes(), save.metadata().region);
     if (inventory.available) {
-        items.resize(Integration::Gen1::kInventoryCategoryCount);
-        auto copyInventory = [](const auto& src, auto& dst) {
-            dst.reserve(src.size());
-            for (const auto& item : src)
-                dst.push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
+        // Gen I stores one Bag plus PC Items. Present six PKSE-style virtual categories by
+        // filtering that real Bag; staged serialization still writes the original pair lists.
+        items.resize(6);
+        const auto game = Inventory::classicGameFromId(sourceGameId_);
+        const Inventory::ClassicPocket virtualPockets[5] = {
+            Inventory::ClassicPocket::Items, Inventory::ClassicPocket::Medicines,
+            Inventory::ClassicPocket::Balls, Inventory::ClassicPocket::KeyItems,
+            Inventory::ClassicPocket::TMHM,
         };
-        copyInventory(inventory.bag, items[0]);
-        copyInventory(inventory.pcItems, items[1]);
+        if (game) {
+            for (const auto& item : inventory.bag) {
+                for (size_t category = 0; category < 5; ++category) {
+                    if (!Inventory::isAddableItem(*game, virtualPockets[category], item.itemId)) continue;
+                    items[category].push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
+                    break;
+                }
+            }
+        }
+        for (const auto& item : inventory.pcItems)
+            items[5].push_back(::Trainer::InventoryItem{item.itemId, item.quantity, false, false});
     }
 
     party.clear();
@@ -124,6 +168,51 @@ bool RBYReadOnlyTrainer::populate(
             boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(record);
         }
     }
+    return true;
+}
+
+bool RBYReadOnlyTrainer::refreshBoxesFromStagedPokemon(std::string& error) {
+    error.clear();
+    if (!stagedPokemon_) {
+        error = stagedPokemonUnavailableReason_.empty()
+            ? "Generation I staged boxed Pokemon editor is unavailable"
+            : stagedPokemonUnavailableReason_;
+        return false;
+    }
+    // The mutation editor is deliberately gated to the validated international R/B/Y layout,
+    // whose physical geometry is exactly 12 contiguous boxes x 20 slots.
+    if (boxes.size() != 12u || slotsPerBox_ != 20u) {
+        error = "staged Generation I editor presentation requires the validated 12x20 international layout";
+        return false;
+    }
+
+    for (size_t box = 0; box < boxes.size(); ++box) {
+        if (boxes[box].size() < slotsPerBox_) {
+            error = "staged Generation I slot count no longer matches presentation geometry";
+            return false;
+        }
+        for (size_t slot = 0; slot < slotsPerBox_; ++slot) {
+            std::string slotError;
+            const auto record = stagedPokemon_->boxedPokemon(box, slot, slotError);
+            if (!slotError.empty()) {
+                error = slotError;
+                return false;
+            }
+            if (!record) {
+                boxes[box][slot].reset();
+                continue;
+            }
+            if (record->partyRecord || record->rawBodySize != 33 || record->species == 0) {
+                error = "staged Generation I editor returned an invalid boxed record";
+                return false;
+            }
+            boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(*record);
+        }
+    }
+    decltype(party) displayParty;
+    for(const auto& record:stagedPokemon_->view().party())
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon1ReadOnly>(record));
+    party.swap(displayParty);
     return true;
 }
 

@@ -1,0 +1,49 @@
+name: One-time Product Home FRLG freeze fix
+
+on:
+  push:
+    branches: [feature/gen4-full-editor-20260928]
+    paths:
+      - .github/workflows/one-time-home-lr-freeze-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify branch did not advance under this patch
+        run: |
+          set -euo pipefail
+          git fetch origin feature/gen4-full-editor-20260928
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$GITHUB_SHA"
+
+      - name: Apply FRLG Product Home freeze fix
+        run: |
+          set -euo pipefail
+          python3 tools/apply_home_lr_freeze_fix.py
+          python3 tests/test_game_hub_contract.py
+          git diff --check
+
+      - name: Commit source fix forward
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            include/Trainer/Trainer3FRLG.h \
+            src/Trainer/Trainer3FRLG.cpp \
+            include/Save/GetSaveFileContents.h \
+            src/Save/GetSaveFileContents.cpp \
+            src/UI/SaveSelectScreen.cpp \
+            tests/test_game_hub_contract.py
+          git diff --cached --quiet && { echo "No source changes produced"; exit 1; }
+          git commit -m "fix(ui): keep Switch FRLG preview off full parser"
+          git push origin HEAD:feature/gen4-full-editor-20260928

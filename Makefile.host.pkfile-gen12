@@ -1,0 +1,31 @@
+# Feature A (owner Oct 28): standalone .pk1 / .pk2 import and export in the Gen I / Gen II staged editors.
+# Included by Makefile.host after Makefile.host.pkse-october.
+
+POKEMON_FILE_GEN12_SOURCES := tests/test_pokemon_file_gen12.cpp $(sort \
+	src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
+	src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1PackedMove.cpp \
+	src/Integration/Gen1/Gen1BattleStats.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+	src/Integration/Gen1/Gen1StagedInventoryEditor.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2PackedMove.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
+	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Names/ItemNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp)
+POKEMON_FILE_GEN12_HEADERS := include/PokemonFile/NativePokemonFile.h \
+	include/Integration/Gen1/Gen1StagedPokemonEditor.h include/Integration/Gen2/Gen2StagedEditor.h \
+	src/Integration/Gen1/Gen1PersonalData.inc tests/fixtures/gsc_pokemon_fixture.h
+PKFILE_GEN12_HOST_TESTS := $(HOST_BUILD)/test_pokemon_file_gen12
+PKFILE_GEN12_SANITIZE_TESTS := $(HOST_BUILD)/test_pokemon_file_gen12_sanitize
+
+HOST_TESTS += $(PKFILE_GEN12_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(PKFILE_GEN12_SANITIZE_TESTS)
+host-test: $(PKFILE_GEN12_HOST_TESTS)
+host-sanitize: $(PKFILE_GEN12_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_pokemon_file_gen12: $(POKEMON_FILE_GEN12_SOURCES) $(POKEMON_FILE_GEN12_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests $(POKEMON_FILE_GEN12_SOURCES) -o $@
+$(HOST_BUILD)/test_pokemon_file_gen12_sanitize: $(POKEMON_FILE_GEN12_SOURCES) $(POKEMON_FILE_GEN12_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(POKEMON_FILE_GEN12_SOURCES) -o $@

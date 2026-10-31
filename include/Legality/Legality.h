@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Enums/GameVersion.h"
@@ -47,7 +48,12 @@ namespace Legality {
     /// Analyze a decrypted Pokemon and return its legality issues (informational).
     /// originGroup = the save's format group (Trainer::getGameGroup()). Returns an
     /// empty report for an empty slot (species 0).
-    Report analyze(const Pokemon::Pokemon& pk, Enums::GameVersion originGroup);
+    /// exactSourceGameId is optional container/save context (for example "ruby_gba"). It is
+    /// deliberately separate from the Pokemon format group: all PK3 records share one entity
+    /// implementation, while Ruby/Sapphire/Emerald/FRLG have different native move pools.
+    /// Pass an empty id for Bank records or callers that do not own exact source context.
+    Report analyze(const Pokemon::Pokemon& pk, Enums::GameVersion originGroup,
+                   std::string_view exactSourceGameId = {});
 }
 
 #endif

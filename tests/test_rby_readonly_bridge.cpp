@@ -70,6 +70,8 @@ std::vector<uint8_t> fixture(){
     itemList(d,PCITEMS,{{0x2D,1}});
     setEntry(d,boxStart(0),CAP,33,0,0xB0,12,"CHAR");
     for(size_t s=0;s<CAP;++s)setEntry(d,boxStart(BOXES-1),CAP,33,s,0x15,5+(s%20),"MEW");
+    d[0x2CED]=123;d[0x2CEE]=0;d[0x2CEF]=45;d[0x2CF0]=59;
+    d[0x25A3]=1;d[0x25B6]=3;
     d[0x2ED5]=0xFF;checksums(d);return d;
 }
 }
@@ -77,12 +79,26 @@ std::vector<uint8_t> fixture(){
 int main(){
     auto raw=fixture();const auto before=raw;auto parsed=parse(raw,SourceGame::Red);assert(parsed);assert(raw==before);
     std::string error;auto trainer=RBYReadOnlyTrainer::create(*parsed.save,error);assert(trainer&&error.empty());
+    assert(PokeVault::Integration::Common::playTimeText(trainer->nativePlayTime)=="123:45:59");
+    assert(trainer->pokedexProgress().seen==2 && trainer->pokedexProgress().caught==1 && trainer->pokedexProgress().total==151);
+    auto badClock=raw;badClock[0x2CEF]=60;checksums(badClock);
+    auto badClockParsed=parse(badClock,SourceGame::Red);
+    assert(badClockParsed && !badClockParsed.save->trainer().playTime);
     assert(trainer->sourceGameId()=="red_gb");assert(!trainer->japaneseLayout());assert(trainer->getBoxCount()==12);assert(trainer->getSlotsPerBox()==20);
     assert(trainer->getGameGroup()==Enums::GameVersion::RBY);
-    assert(trainer->items.size()==2);assert(trainer->items[0].size()==2);assert(trainer->items[1].size()==1);
-    assert(trainer->items[0][0].itemId==0x14&&trainer->items[0][0].count==3);
-    assert(trainer->items[0][1].itemId==0xC9&&trainer->items[0][1].count==2);
-    assert(trainer->items[1][0].itemId==0x2D&&trainer->items[1][0].count==1);
+    // RBY still stores one real Bag plus PC Items, but the accepted classic inventory UI now
+    // presents six filtered views over those same bytes: Items, Medicines, Balls, Key Items,
+    // TM/HM, PC Items. This verifies presentation only; it does not fabricate new save pockets.
+    assert(trainer->items.size()==6);
+    assert(trainer->items[0].empty());
+    assert(trainer->items[1].size()==1);
+    assert(trainer->items[2].empty());
+    assert(trainer->items[3].empty());
+    assert(trainer->items[4].size()==1);
+    assert(trainer->items[5].size()==1);
+    assert(trainer->items[1][0].itemId==0x14&&trainer->items[1][0].count==3);
+    assert(trainer->items[4][0].itemId==0xC9&&trainer->items[4][0].count==2);
+    assert(trainer->items[5][0].itemId==0x2D&&trainer->items[5][0].count==1);
     assert(trainer->trainerName=="WILL");assert(trainer->money==123456);assert(trainer->TID16==0x1234);assert(trainer->SID16==0);assert(trainer->currentBox==2);
     assert(trainer->party.size()==1);auto* party=static_cast<Pokemon::Pokemon1ReadOnly*>(trainer->party[0].get());
     assert(party->speciesID()==25);assert(Utils::utf16ToUtf8(party->nickname())=="SPARKY");assert(Utils::utf16ToUtf8(party->otName())=="RED");
@@ -104,8 +120,8 @@ int main(){
             {SourceGame::Blue,"blue_gb"}
         }}){
         auto p=parse(raw,game);assert(p);std::string e;auto t=RBYReadOnlyTrainer::create(*p.save,e);
-        assert(t&&e.empty()&&t->sourceGameId()==id&&t->items.size()==2);
-        assert(t->items[0][0].itemId==0x14&&t->items[1][0].itemId==0x2D);
+        assert(t&&e.empty()&&t->sourceGameId()==id&&t->items.size()==6);
+        assert(t->items[1][0].itemId==0x14&&t->items[4][0].itemId==0xC9&&t->items[5][0].itemId==0x2D);
     }
     auto bad=fixture();bad[BAG]=21;checksums(bad);const auto badBefore=bad;
     auto badParsed=parse(bad,SourceGame::Red);assert(badParsed);
@@ -115,7 +131,24 @@ int main(){
 
     auto yellowRaw=raw; yellowRaw[0x29C3]=0x54; checksums(yellowRaw);
     auto yp=parse(yellowRaw,SourceGame::Yellow);assert(yp);std::string ye;auto yt=RBYReadOnlyTrainer::create(*yp.save,ye);
-    assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==2);
-    assert(yt->items[0][0].itemId==0x14&&yt->items[1][0].itemId==0x2D);
+    assert(yt&&ye.empty()&&yt->sourceGameId()=="yellow_gb"&&yt->items.size()==6);
+    assert(yt->items[1][0].itemId==0x14&&yt->items[4][0].itemId==0xC9&&yt->items[5][0].itemId==0x2D);
+    {
+        // Japanese Gen I: the writers handle the layout, but the app keeps the save read-only while
+        // Integration/Common/JapaneseEditingGate.h is closed (no staged Pokemon workspace, so no
+        // Trainer / Bag edit and no export either).
+        std::vector<uint8_t> jp(0x8000,0);std::fill(jp.begin()+MAIN,jp.begin()+MAIN+6,0x50);
+        jp[0x2ED6]=0xFF;jp[0x302E]=0xFF;jp[0x25C5]=0xFF;jp[0x27DD]=0xFF;
+        jp[0x3594]=diff8(std::span<const uint8_t>(jp).subspan(MAIN,0x0FFC));
+        auto jpParsed=parse(jp,SourceGame::Red);assert(jpParsed);std::string je;
+        auto jt=RBYReadOnlyTrainer::create(*jpParsed.save,je);
+        assert(jt&&jt->japaneseLayout()&&jt->getBoxCount()==8&&jt->getSlotsPerBox()==30);
+        assert(!jt->stagedPokemon()&&!jt->stagedTrainerEditable());
+        assert(jt->stagedPokemonUnavailableReason()=="Japanese Generation I saves are read-only");
+        // Owner Oct 28: the Bag and Trainer editors are withheld too (the Bag screen edits whenever a
+        // staged Bag editor exists; the Round 8 build still created one for Japanese saves).
+        assert(!jt->stagedInventoryAvailable()&&!jt->stagedTrainer());
+        assert(jt->stagedInventoryUnavailableReason()=="Japanese Generation I saves are read-only");
+    }
     std::cout<<"RBY Trainer/Party/Boxes/Pokemon read-only bridge tests passed\n";return 0;
 }

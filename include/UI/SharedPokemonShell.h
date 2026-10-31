@@ -1,0 +1,213 @@
+#pragma once
+#include <type_traits>
+#include "UI/ClassicGameContext.h"
+#include "UI/SharedScrollbar.h"
+#include "UI/SharedPokemonEditorContract.h"
+#include "UI/SharedEditorPresentation.h"
+#include "UI/SharedDataPaneLayout.h"
+#include "UI/SharedFieldState.h"
+#include "UI/SharedFieldStateColors.h"
+#include "UI/Common.h"
+#include "UI/SpriteManager.h"
+#include "UI/StatsRadar.h"
+#include "Names/SpeciesNames.h"
+
+namespace UI::SharedPokemonShell {
+namespace ClassicContext = PokeBank::UIModel::ClassicGameContext;
+struct Geometry {
+    int y = 96, h;
+    int leftX = 24, leftW = 300, midX = 338, midW = 398, rightX = 750, rightW;
+    constexpr Geometry(int width, int height, int navBarHeight)
+        : h(height - 96 - navBarHeight - 8), rightW(width - 24 - 750) {}
+};
+// The DETAILS row viewport of the shared shell: below the portrait, above the panel's bottom
+// edge (and therefore above the footer). Input handlers and drawing both use this one model.
+constexpr PokeBank::UIModel::SharedEditorPresentation::DetailsViewport
+detailsViewport(const Geometry& g) noexcept {
+    return PokeBank::UIModel::SharedEditorPresentation::detailsViewport(g.y, g.h);
+}
+static_assert(detailsViewport(Geometry(1280, 720, 56)).visibleRows == 8,
+              "input handlers page DETAILS by 8 rows");
+static_assert(detailsViewport(Geometry(1280, 720, 56)).bottom() <= 96 + Geometry(1280, 720, 56).h - 8,
+              "DETAILS rows never reach the panel edge or the footer");
+inline std::string dexLabel(uint16_t species) {
+    auto value = std::to_string(species);
+    while (value.size() < 3) value = "0" + value;
+    return value;
+}
+inline void drawHeaderGender(PKSEFramebuffer& fb, int x, int y, uint8_t gender) {
+    if (gender == 0) fb.drawSymbol(x, y, "♂", g_themeMode == ThemeMode::Light ? Color(24,112,184) : Color(92,205,255));
+    else if (gender == 1) fb.drawSymbol(x, y, "♀", Colors::Magenta);
+}
+inline void drawChrome(PKSEFramebuffer& fb, uint16_t species, const std::string& nickname,
+    uint8_t level, uint8_t gender, bool shiny, ClassicContext::SurfaceMode surfaceMode,
+    const std::string& recordContext, const std::string& sourceGameId) {
+    fb.drawVerticalGradient(0, 0, fb.getWidth(), fb.getHeight(),
+        Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
+        Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 255));
+
+    const std::string name = nickname.empty() ? std::string(Names::getSpeciesName(species)) : nickname;
+    fb.drawText(28, 16, name, Colors::Text, TextStyle::Heading);
+    int nw = 0, nh = 0;
+    fb.measureText(name, nw, nh, TextStyle::Heading);
+    drawHeaderGender(fb, 40 + nw, 22, gender);
+    if (shiny) fb.drawShinyMark(66 + nw, 20, 18, Colors::ShinyStar);
+
+    const std::string rightHeader = "Lv. " + std::to_string(level) + "     No. " + dexLabel(species);
+    int rw = 0, rh = 0;
+    fb.measureText(rightHeader, rw, rh);
+    fb.drawText(fb.getWidth() - 28 - rw, 24, rightHeader, Colors::TextDim);
+
+    const std::string mode = std::string(ClassicContext::modeLabel(surfaceMode));
+    int mw = 0, mh = 0;
+    fb.measureText(mode, mw, mh, TextStyle::Caption);
+    fb.drawText((fb.getWidth() - mw) / 2, 23, mode, Colors::Accent, TextStyle::Caption);
+    fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
+    fb.drawText(28, 66, ClassicContext::contextLine(recordContext, sourceGameId, surfaceMode),
+                Colors::TextDim, TextStyle::Caption);
+
+}
+inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bool shiny, uint8_t form = 0) {
+    if (auto* sprite = SpriteManager::getSprite(species, form, shiny); sprite && sprite->data)
+        fb.drawSpriteStaticContained(x + 63, y + 34, 174, 146,
+            sprite->width, sprite->height, sprite->data, sprite->channels);
+    else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
+}
+// Draw-only wrapper over the one shared scrollbar (UI/SharedScrollbar.h). Surfaces that own a
+// SharedScrollbar::State use drawAndPublish so the same thumb is draggable and the track pages.
+inline void drawVerticalScrollIndicator(PKSEFramebuffer& fb, int x, int y, int height,
+    std::size_t totalRows, std::size_t visibleCapacity, std::size_t firstVisible) {
+    SharedScrollbar::paint(fb, SharedScrollbar::layout(x, y, SharedScrollbar::kTrackWidth, height,
+        SharedScrollbar::rows(totalRows, visibleCapacity, firstVisible)));
+}
+
+// Bound inline text without splitting a UTF-8 code point when adding an ellipsis.
+inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, int available) {
+    int width = 0, height = 0;
+    fb.measureText(text, width, height, TextStyle::Caption);
+    if (width <= available) return text;
+    const std::string suffix = "...";
+    fb.measureText(suffix, width, height, TextStyle::Caption);
+    if (width > available) return {};
+    std::string prefix = text;
+    while (!prefix.empty()) {
+        std::size_t end = prefix.size() - 1;
+        while (end > 0 && (static_cast<unsigned char>(prefix[end]) & 0xc0) == 0x80) --end;
+        prefix.resize(end);
+        fb.measureText(prefix + suffix, width, height, TextStyle::Caption);
+        if (width <= available) return prefix + suffix;
+    }
+    return suffix;
+}
+
+// S03 (owner round 1): ONE value column for every generation's DETAILS rows. It used to start
+// after the widest label, so Gen V's "Language (read-only)" pushed it right and clipped species,
+// nicknames and items. The label column is now fixed, "(read-only)" is no longer label text
+// (a locked value is shown in the gold ReadOnly state of UI/SharedFieldState.h instead), and
+// tests/test_shared_editor_unit.cpp checks every Gen III-V label fits kDetailLabelWidth.
+using PokeBank::UIModel::SharedEditorPresentation::kDetailLabelX;
+using PokeBank::UIModel::SharedEditorPresentation::kDetailValueInset;
+using PokeBank::UIModel::SharedEditorPresentation::kDetailLabelWidth;
+using PokeBank::UIModel::SharedEditorPresentation::detailValueWidth;
+static_assert(Geometry(1280, 720, 56).leftW == PokeBank::UIModel::SharedEditorPresentation::kDetailsPanelWidth,
+              "the DETAILS column model matches the shell's left panel");
+
+// Scroll only the Details rows below the fixed portrait/type header.
+// Shared inline rows keep label and value on one baseline with a full-row focus outline.
+// `state(row)` returns the row's SharedFieldState: Editable rows draw as before, ReadOnly rows
+// keep a gold value (also when focused), Disabled rows are muted; the outline is always drawn.
+template <class Label, class Value, class StateFor>
+    requires std::is_invocable_v<StateFor&, std::size_t>
+inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
+    std::size_t total, std::size_t focus, bool focused, Label label, Value value,
+    StateFor state, int pixelOffset = 0, int independentFirstRow = -1,
+    SharedScrollbar::State* scrollbar = nullptr) {
+    namespace FieldState = PokeBank::UIModel::SharedFieldState;
+    const auto viewport = PokeBank::UIModel::SharedEditorPresentation::detailsViewport(y, h);
+    const std::size_t visibleRows = static_cast<std::size_t>(viewport.visibleRows);
+    const int valueInset = kDetailValueInset;
+    auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
+    if (independentFirstRow >= 0 && total > visibleRows) {
+        // Finger scrolling changes the viewport, not which field is selected.
+        // Controller navigation can separately reveal the selected field.
+        window.first = std::min<std::size_t>(
+            static_cast<std::size_t>(independentFirstRow), total - visibleRows);
+        window.count = visibleRows;
+    }
+    // Scrolling owns one clipped row viewport. Clear it before painting the next window so
+    // an older set of rows can never ghost underneath the current focus position.
+    const int viewportY = viewport.top;
+    const int viewportH = viewport.height;
+    fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
+    fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
+    // Keep one extra row on either side of a live finger drag to avoid
+    // displaying a blank strip at each 38px boundary.
+    const int start = independentFirstRow >= 0 ? -1 : 0;
+    const int end = static_cast<int>(window.count) + (independentFirstRow >= 0 ? 1 : 0);
+    for (int i = start; i < end; ++i) {
+        const int rowIndex = static_cast<int>(window.first) + i;
+        if (rowIndex < 0 || rowIndex >= static_cast<int>(total)) continue;
+        const auto row = static_cast<std::size_t>(rowIndex);
+        const int yy = viewport.firstRowY + i * viewport.rowStep + pixelOffset;
+        const bool selected = focused && row == focus;
+        const auto style = FieldState::style(state(row), selected);
+        if (style.focusOutline)
+            fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
+        const std::string rowLabel = fitDetailsText(fb, label(row), kDetailLabelWidth);
+        const std::string rowValue = fitDetailsText(fb, value(row), std::max(0, detailValueWidth(w)));
+        fb.drawText(x + kDetailLabelX, yy + 7, rowLabel, SharedFieldStateColors::color(style.label),
+                    TextStyle::Caption);
+        fb.drawText(x + valueInset, yy + 7, rowValue, SharedFieldStateColors::color(style.value),
+                    TextStyle::Caption);
+    }
+    fb.clearClip();
+    // Owners that pass their SharedScrollbar::State get the draggable thumb (geometry published
+    // for next frame's hit-test); the draw-only indicator is the same component without capture.
+    if (scrollbar)
+        SharedScrollbar::drawAndPublish(fb, *scrollbar, x + w - 10, viewportY + 6,
+            SharedScrollbar::kTrackWidth, std::max(0, viewportH - 12),
+            SharedScrollbar::rows(total, visibleRows, window.first));
+    else
+        drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
+            std::max(0, viewportH - 12), total, visibleRows, window.first);
+    // No "Rows N-M / T" counter: the scrollbar alone reports position.
+}
+// Rows without per-row state draw as Editable (the previous presentation).
+template <class Label, class Value>
+inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
+    std::size_t total, std::size_t focus, bool focused, Label label, Value value,
+    int pixelOffset = 0, int independentFirstRow = -1,
+    SharedScrollbar::State* scrollbar = nullptr) {
+    drawScrollableDetails(fb, x, y, w, h, total, focus, focused, label, value,
+        [](std::size_t) { return PokeBank::UIModel::SharedFieldState::State::Editable; },
+        pixelOffset, independentFirstRow, scrollbar);
+}
+// The native-data and six-stat radar composition is shared by exact-format providers.
+template <class Rows>
+inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
+    const char* title, const Rows& rows, const std::array<uint16_t,6>& stats) {
+    constexpr int inset = 12, gap = 10, dataW = 198;
+    const int dataX = x + inset, graphX = dataX + dataW + gap;
+    const int graphW = w - 2 * inset - gap - dataW;
+    for (const auto& pane : {std::pair{dataX, dataW}, std::pair{graphX, graphW}}) {
+        fb.drawFilledRoundedRect(pane.first, y, pane.second, h, 12, Colors::Surface);
+        fb.drawRoundedRect(pane.first, y, pane.second, h, 12, Colors::Divider, 1);
+    }
+    fb.drawText(dataX + 10, y + 10, title, Colors::Accent, TextStyle::Caption);
+    // One shared wrap/clip layout (UI/SharedDataPaneLayout.h): long values wrap inside the pane
+    // and overflow ends in "...", so no row can spill into the graph or below the panel.
+    namespace Pane = PokeBank::UIModel::SharedDataPane;
+    static_assert(Pane::kPaneWidth == dataW);
+    const auto lines = Pane::layoutRows(rows, Pane::kTextWidth,
+        h - Pane::kTextTop - Pane::kTextBottom, [&fb](const std::string& text) {
+            int tw = 0, th = 0;
+            fb.measureText(text, tw, th, TextStyle::Caption);
+            return tw;
+        });
+    for (const auto& line : lines)
+        fb.drawText(dataX + Pane::kTextInset, y + Pane::kTextTop + line.y, line.text,
+                    line.label ? Colors::TextDim : Colors::Text, TextStyle::Caption);
+    fb.drawText(graphX + 10, y + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
+    StatsRadar::drawGen3Labeled(fb, graphX + 8, y + 32, graphW - 16, h - 40, stats);
+}
+} // namespace UI::SharedPokemonShell

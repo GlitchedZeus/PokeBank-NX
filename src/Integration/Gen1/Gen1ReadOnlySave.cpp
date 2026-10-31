@@ -83,6 +83,7 @@ bool decodeBCD3(std::span<const uint8_t> raw, std::size_t o, uint32_t& out) {
 
 const char* enSpecial(uint8_t b) {
     switch (b) {
+        case 0x5D: return "*";
         case 0x70: return "@"; case 0x71: return "#"; case 0x72: return "“";
         case 0x73: return "”"; case 0x75: return "…"; case 0x7F: return " ";
         case 0x9A: return "("; case 0x9B: return ")"; case 0x9C: return ":";
@@ -157,12 +158,12 @@ bool isListHeaderValid(std::span<const uint8_t> raw, std::size_t offset, std::si
     if (offset + capacity + 2 > raw.size()) return false;
     const uint8_t count = raw[offset];
     if (count > capacity) return false;
+    // Count plus the immediate 0xFF cap define the logical PokeList. Real saves may retain stale
+    // species markers after that cap when a Pokemon was moved/released; those bytes are not entries.
     if (raw[offset + 1 + count] != 0xFF) return false;
-    for (std::size_t i = 0; i < capacity; ++i) {
+    for (std::size_t i = 0; i < count; ++i) {
         const uint8_t mark = raw[offset + 1 + i];
-        const bool present = mark != 0 && mark != 0xFF;
-        if (present != (i < count)) return false;
-        if (present && gen1InternalToNational(mark) == 0) return false;
+        if (mark == 0 || mark == 0xFF || gen1InternalToNational(mark) == 0) return false;
     }
     return true;
 }
@@ -321,19 +322,45 @@ uint16_t gen1InternalToNational(uint8_t rawSpecies) noexcept {
 
 std::string decodeGen1String(std::span<const uint8_t> bytes, RegionLayout region) {
     std::string out;
+    bool first = true;
     for (uint8_t b : bytes) {
         if (b == 0x00 || b == 0x50) break;
-        if (b == 0x5D) { out += '*'; continue; }
+        // 0x5D at byte zero marks an in-game-trade OT and represents the whole name.
+        if (first && b == 0x5D) return "*";
         if (region == RegionLayout::Japanese) {
-            if (const char* g = jpGlyph(b)) out += g;
-            else out += "�";
+            const char* g = jpGlyph(b);
+            if (!g) break; // PKHeX StringConverter1: a glyphless byte terminates the field.
+            out += g;
+            first = false;
             continue;
         }
-        if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); continue; }
-        if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); continue; }
-        if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); continue; }
-        if (const char* g = enSpecial(b)) out += g;
-        else out += "�";
+        if (b >= 0x80 && b <= 0x99) { out += static_cast<char>('A' + (b - 0x80)); first = false; continue; }
+        if (b >= 0xA0 && b <= 0xB9) { out += static_cast<char>('a' + (b - 0xA0)); first = false; continue; }
+        if (b >= 0xF6) { out += static_cast<char>('0' + (b - 0xF6)); first = false; continue; }
+        const char* g = enSpecial(b);
+        if (!g) break; // Gen I treats unmapped bytes as terminators, not replacement glyphs.
+        out += g;
+        first = false;
+    }
+    return out;
+}
+
+
+DexProgress ReadOnlySave::dexProgress() const noexcept {
+    const std::size_t caughtOffset =
+        metadata_.region == RegionLayout::Japanese ? 0x259E : 0x25A3;
+    const std::size_t seenOffset =
+        metadata_.region == RegionLayout::Japanese ? 0x25B1 : 0x25B6;
+    DexProgress out{};
+    out.total = 151;
+    if (sourceBytes_.size() <= seenOffset + 18 || sourceBytes_.size() <= caughtOffset + 18)
+        return out;
+
+    for (uint16_t species = 1; species <= out.total; ++species) {
+        const uint16_t index = static_cast<uint16_t>(species - 1);
+        const uint8_t mask = static_cast<uint8_t>(1u << (index & 7));
+        if (sourceBytes_[seenOffset + (index >> 3)] & mask) ++out.seen;
+        if (sourceBytes_[caughtOffset + (index >> 3)] & mask) ++out.caught;
     }
     return out;
 }
@@ -401,6 +428,12 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame game) {
 
     save->trainer_.name = decodeGen1String(raw.subspan(kMainStart, l.stringLength), l.region);
     save->trainer_.trainerId = readBE16(raw, l.tid);
+    // PKHeX pinned SAV1Offsets.Badges; international and Japanese layouts differ.
+    save->trainer_.badges=raw[l.region==RegionLayout::Japanese?0x25F8:0x2602];
+    // PKHeX 6042efa241a9 SAV1Offsets / SAV1: hours, maximum flag, minutes, seconds.
+    const size_t clockOffset=l.region==RegionLayout::Japanese?0x2CA0:0x2CED;
+    save->trainer_.playTime=Common::nativePlayTime(raw[clockOffset],raw[clockOffset+2],
+                                                raw[clockOffset+3],raw[clockOffset+1]!=0);
     if (!decodeBCD3(raw, l.money, save->trainer_.money)) {
         result.error = SaveError::InvalidTrainerData;
         result.detail = "Generation I money field is not valid packed BCD";

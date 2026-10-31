@@ -55,9 +55,32 @@ namespace Pokemon {
          */
         explicit Pokemon9LZA(std::span<const std::byte> raw)
         {
-            // Decrypt the Gen 9 Pokemon data
-            buffer = decryptArray9LZA(raw);
-            dataSize = raw.size();
+            const bool stored = raw.size() == SIZE_STORED9_LZA;
+            const bool party = raw.size() == SIZE_PARTY9_LZA;
+            if (!stored && !party) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY9_LZA;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+
+            std::byte* dec = decryptArray9LZA(raw);
+            if (!dec) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY9_LZA;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+            if (party) {
+                buffer = dec;
+            } else {
+                buffer = new std::byte[SIZE_PARTY9_LZA]();
+                for (size_t i = 0; i < raw.size(); ++i) buffer[i] = dec[i];
+                delete[] dec;
+            }
+            dataSize = SIZE_PARTY9_LZA;
             data = std::span<std::byte>(buffer, dataSize);
         }
 
@@ -360,7 +383,7 @@ namespace Pokemon {
          * Checks if the Pokemon is currently infected with Pokerus.
          * @return true if infected, false otherwise
          */
-        bool isPokerusInfected() const noexcept
+        bool isPokerusInfected() const noexcept override
         {
             return (pokerus() & 0xF) > 0;
         }
@@ -370,7 +393,7 @@ namespace Pokemon {
          * Cured Pokemon retain the EV gain bonus but can't spread the virus.
          * @return true if cured, false otherwise
          */
-        bool isPokerusCured() const noexcept
+        bool isPokerusCured() const noexcept override
         {
             return (pokerus() & 0xF0) > 0 && (pokerus() & 0xF) == 0;
         }
@@ -811,7 +834,7 @@ namespace Pokemon {
          * @return true if valid, false if data is corrupted
          */
         bool checksumValid() const noexcept override {
-            return checksum() == calculateChecksum();
+            return inputShapeValid && checksum() == calculateChecksum();
         }
 
         // ========================================

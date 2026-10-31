@@ -45,6 +45,28 @@ namespace Names {
      */
     struct LocationTable { const char* const* names; size_t count; };
     LocationTable getLocationTable(uint8_t originVersion);
+
+    /**
+     * True when a bank-0 Gen IV met-location ID belongs to the Pokémon's exact
+     * origin game. Mirrors PKHeX Locations.IsMetLocation4DP/Pt/HGSS.
+     *
+     * D/P: 0..111, Platinum: 0..125, HG/SS: 126..233.
+     * Special trade/event/egg banks are intentionally not ordinary picker targets.
+     */
+    inline bool isGen4NativeMetLocation(uint8_t originVersion, uint16_t locationId) noexcept {
+        switch (originVersion) {
+            case 10: // Diamond
+            case 11: // Pearl
+                return locationId <= 111;
+            case 12: // Platinum
+                return locationId <= 125;
+            case 7:  // HeartGold
+            case 8:  // SoulSilver
+                return locationId > 125 && locationId < 234;
+            default:
+                return false;
+        }
+    }
 }
 
 #endif

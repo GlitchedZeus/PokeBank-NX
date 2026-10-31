@@ -41,6 +41,7 @@
 
 #include "Pokemon/Pokemon.h"
 #include "Enums/GameVersion.h"
+#include "Conversion/Fidelity.h"
 
 namespace Conversion {
     enum class Result {
@@ -49,6 +50,14 @@ namespace Conversion {
         Unsupported,  // not one of the seven supported mainline games (all of which now interconvert)
         NotInDex,     // species/form does not exist in the destination game's dex
         Blocked,      // destination refuses this species (e.g. BDSP Spinda / Nincada)
+        TraitPreservationFailed, // required PID-derived Gen III traits could not be preserved
+        AbilityNotRepresentable,  // target cannot preserve the source ability semantics
+        TextNotRepresentable,     // target text encoding/length cannot preserve nickname or OT
+        LanguageNotRepresentable, // target language/text encoding is not implemented safely
+        BallNotRepresentable,     // target game cannot represent the source Poke Ball id safely
+        FormNotTransferable,       // source carries a fused/battle-only transient form state
+        RibbonMarkNotRepresentable,// source carries unknown/reserved ribbon/mark semantics
+        UnknownSourceSemantics,    // source uses reserved/unmodeled bits that cannot be interpreted safely
     };
 
     /// Converts `src` into `destGroup`'s entity format, preserving origin identity and refreshing the
@@ -62,14 +71,30 @@ namespace Conversion {
     /// and stamping a fixed member of the pair is wrong half the time. 0 = unknown, which falls back to
     /// the group's representative version (the old, always-FireRed behaviour).
     std::unique_ptr<Pokemon::Pokemon> convert(const Pokemon::Pokemon& src, Enums::GameVersion destGroup, Result& result,
-                                              uint8_t destOriginVersion = 0);
+                                              uint8_t destOriginVersion = 0, Report* report = nullptr);
 
     /// True if `destGroup` can accept `src` (same group, or a supported+allowed conversion). Pure check
     /// (no allocation) for gating UI without performing the conversion.
     bool canConvert(const Pokemon::Pokemon& src, Enums::GameVersion destGroup, Result& result);
 
+    /// Exact dry-run preflight using the production converter itself. Unlike canConvert(), this can
+    /// surface ability/text/language and declared-loss outcomes without duplicating conversion rules.
+    /// The candidate is discarded; the const source remains immutable. This does NOT authorize Move.
+    struct PreflightResult {
+        Result result = Result::Unsupported;
+        Report report{};
+        bool candidateAvailable = false;
+    };
+    PreflightResult preflightConvert(const Pokemon::Pokemon& src, Enums::GameVersion destGroup,
+                                     uint8_t destOriginVersion = 0);
+
     /// Short human-facing reason for a non-Ok/SameGroup result, for on-screen feedback.
     const char* resultMessage(Result r);
+
+    /// Pinned PKHeX FormInfo oracle used by the SWSH<->SV route gate. Returns false only for
+    /// fused or battle-only/transient forms that cannot exist as ordinary standalone transfers.
+    /// Target-game presence is checked separately by the generated personal table.
+    bool swshSvFormTransferable(uint16_t species, uint8_t form) noexcept;
 
     /// Byte offset of **AffixedRibbon** in a game's entity format, or 0 for the formats that have no
     /// such field (Gen 3's PK3 and Let's Go's PB7).
@@ -87,10 +112,10 @@ namespace Conversion {
     /// Repairs an invalid AffixedRibbon on `pk` **in place**, re-checksumming if it changed. Returns
     /// true when it changed something.
     ///
-    /// Invalid means the byte reads 0 -- "display ribbon index 0", the Kalos Champion ribbon -- while
-    /// the mon does not own that ribbon. Verified against real saves: every genuinely game-caught mon
-    /// carries 0xFF, including ones that DO own ribbons, so a 0 here is never something the game wrote.
-    /// The owned-ribbon guard means a deliberately affixed ribbon is never disturbed.
+    /// AffixedRibbon is an index into the shared 128-bit ribbon/mark set. 0xFF means "none".
+    /// Any other value is valid only when the corresponding owned ribbon/mark bit is set; out-of-range
+    /// or dangling indexes are normalized to 0xFF. This generalizes the original index-0/Kalos-Champion
+    /// guard without disturbing any genuinely owned affix, including marks and unnamed reserved bits.
     ///
     /// Call on the way INTO a save (conversion, and the same-group path that skips conversion). Not on
     /// deposit: the bank stores native bytes untouched by design.

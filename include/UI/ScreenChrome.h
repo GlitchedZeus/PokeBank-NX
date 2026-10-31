@@ -3,14 +3,19 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <initializer_list>
 #include <string>
 #include <vector>
 
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedScrollbar.h"
+#include "UI/SharedPopupDismiss.h"
 #include "UI/Common.h"
 #include "UI/ControllerModel.h"
+#include "UI/GlyphInstruction.h"
 #include "UI/TouchInput.h"
+#include "UI/NarrowPokemonActionMenu.h"
 
 namespace UI {
     // ---------------------------------------------------------------------------------------------
@@ -23,18 +28,54 @@ namespace UI {
 
     constexpr int kChromeRadius = 18;   // curve on the content-facing edge of both bars
     constexpr int kHeaderH      = 64;
-    constexpr int kNavBarH      = 46;
+    constexpr int kNavBarH      = 56;  // whole footer is a real 56px fingertip target
+
+    // Product Home selected-game hero geometry. Input capture and draw-time translation must use
+    // the exact same rectangle; keeping one source of truth prevents hitbox/render drift.
+    constexpr int kProductHeroX = 24;
+    constexpr int kProductHeroY = 78;
+    constexpr int kProductHeroW = 720;
+    constexpr int kProductHeroH = 548;
+
+    struct TouchGlyphHit {
+        int x, y, w, h;
+        std::string glyph;
+    };
+
+    // Visible controller glyph buttons collect geometry while the screen is rendered.
+    // Content cards/rows are owned by the screen that draws them.
+    inline std::vector<TouchGlyphHit> g_touchGlyphAccum;
+    inline std::vector<TouchGlyphHit> g_touchGlyphHits;
+
+    // Product Home's hero is rendered with many absolute coordinates. These two values let the
+    // shared card helper place the entire already-established hero subtree under one NanoVG
+    // translation while a finger is dragging it, then restore before the right-hand feature cards.
+    inline bool g_productHeroTransformActive = false;
+    inline bool g_productHeroSwipeRegistered = false;
+    inline int g_productHeroDragXForDraw = 0;
 
     inline Color withAlpha(Color color, std::uint8_t alpha) {
         return Color(color.r, color.g, color.b, alpha);
     }
 
+    inline void finishProductHeroTranslation(PKSEFramebuffer& fb) {
+        if (!g_productHeroTransformActive) return;
+        fb.popTransform();
+        g_productHeroTransformActive = false;
+    }
+
     // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black and keeps only the
     // low-alpha archive rings; the background now extends cleanly to the left edge.
     inline void drawAppBackdrop(PKSEFramebuffer& fb) {
+        // A NanoVG frame resets transforms, so reset the matching bookkeeping at the frame boundary.
+        g_productHeroTransformActive = false;
+        // Input is consumed before draw. Begin each rendered frame with fresh direct-touch geometry;
+        // controls drawn later in this same frame republish the targets used by the next update.
+        g_touchGlyphAccum.clear();
+        g_touchGlyphHits.clear();
         const int w = fb.getWidth();
         fb.clear(Colors::Background);
-        fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::AccentPrimary, 24), 18);
+        fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::BrandAccent, 24), 18);
         fb.drawCircle(w - 58, 126, 76, withAlpha(Colors::AccentSecondary, 20), 10);
     }
 
@@ -78,15 +119,30 @@ namespace UI {
 
     inline void drawFocusedCard(PKSEFramebuffer& fb, int x, int y, int w, int h,
                                 bool focused, int radius = 14) {
+        // Exact Product Home hero geometry. Start one scoped translation here so all subsequent
+        // hero artwork/text/buttons inherit the same finger displacement. The first right-side
+        // feature card ends it below; drawNavHints also provides a defensive restore.
+        const bool productHero = g_productHeroSwipeRegistered &&
+            x == kProductHeroX && y == kProductHeroY &&
+            w == kProductHeroW && h == kProductHeroH;
+        if (productHero && g_productHeroDragXForDraw != 0 && !g_productHeroTransformActive) {
+            const int dx = std::clamp(g_productHeroDragXForDraw, -360, 360);
+            fb.pushTranslation(static_cast<float>(dx), 0.0f);
+            g_productHeroTransformActive = true;
+        } else if (g_productHeroTransformActive && x >= 764) {
+            finishProductHeroTranslation(fb);
+        }
+
         if (focused) fb.drawSoftShadow(x, y, w, h, radius);
-        fb.drawFilledRoundedRect(x, y, w, h, radius,
-                                 focused ? Colors::SurfaceSelected : Colors::Surface);
+        // Focus never changes the card fill: teal outline + readable text carries selection.
+        fb.drawFilledRoundedRect(x, y, w, h, radius, Colors::Surface);
         fb.drawRoundedRect(x, y, w, h, radius,
                            focused ? Colors::FocusBorder : Colors::Divider, focused ? 3 : 1);
     }
 
     inline void drawModalSurface(PKSEFramebuffer& fb, int x, int y, int w, int h,
                                  int radius = 18) {
+        finishProductHeroTranslation(fb);
         fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 150));
         drawPanelSurface(fb, x, y, w, h, true, radius);
     }
@@ -98,19 +154,32 @@ namespace UI {
     // the d-pad is a cross with the unused axis dimmed. `cy` is the badge's vertical CENTRE.
     // Returns the width consumed, or 0 if the token isn't a button PKSE knows how to draw.
     inline int buttonGlyph(PKSEFramebuffer& fb, int x, int cy, const std::string& btn, bool measureOnly) {
-        // Primary foreground maintains contrast in OLED/Dark; Light keeps dark readable badges.
+        // Neutral controller glyphs follow the theme. Face buttons use stable familiar colors so
+        // A/B/X/Y remain instantly distinguishable in Light, Dark and OLED Black.
         const Color fill = Colors::TextPrimary;
         const Color ink  = Colors::Panel;
         constexpr int kR = 12;              // face-button radius
 
-        auto centred = [&](const std::string& s, int bx, int bw) {
+        auto centred = [&](const std::string& s, int bx, int bw, Color textColor) {
             int tw, th; fb.measureText(s, tw, th, TextStyle::Caption);
-            fb.drawText(bx + (bw - tw) / 2, cy - th / 2, s, ink, TextStyle::Caption);
+            fb.drawText(bx + (bw - tw) / 2, cy - th / 2, s, textColor, TextStyle::Caption);
         };
 
-        // Face buttons.
+        // Face buttons. These colors are presentation-only and never imply danger/success state.
         if (btn.size() == 1 && (btn[0] == 'A' || btn[0] == 'B' || btn[0] == 'X' || btn[0] == 'Y')) {
-            if (!measureOnly) { fb.drawFilledCircle(x + kR, cy, kR, fill); centred(btn, x, kR * 2); }
+            Color faceFill = fill;
+            Color faceInk = Colors::White;
+            if (btn[0] == 'A') faceFill = Color(62, 166, 96);
+            else if (btn[0] == 'B') faceFill = Color(210, 72, 78);
+            else if (btn[0] == 'X') faceFill = Color(70, 132, 214);
+            else {
+                faceFill = Color(226, 176, 54);
+                faceInk = Color(40, 32, 12);
+            }
+            if (!measureOnly) {
+                fb.drawFilledCircle(x + kR, cy, kR, faceFill);
+                centred(btn, x, kR * 2, faceInk);
+            }
             return kR * 2;
         }
 
@@ -130,20 +199,20 @@ namespace UI {
         if (btn == "L" || btn == "R" || btn == "ZL" || btn == "ZR" || btn == "L/R" || btn == "ZL/ZR") {
             int tw, th; fb.measureText(btn, tw, th, TextStyle::Caption);
             const int w = tw + 14, h = 22;
-            if (!measureOnly) { fb.drawFilledRoundedRect(x, cy - h / 2, w, h, 7, fill); centred(btn, x, w); }
+            if (!measureOnly) { fb.drawFilledRoundedRect(x, cy - h / 2, w, h, 7, fill); centred(btn, x, w, ink); }
             return w;
         }
 
-        // D-pad. "Up/Down" and "Left/Right" dim the axis they don't use, so the badge itself says
-        // which way the stick moves rather than relying on the label to explain it.
-        if (btn == "Arrows" || btn == "D-Pad" || btn == "Up/Down" || btn == "Left/Right") {
-            constexpr int s = 24, a = 9;    // overall size, arm thickness
+        // D-pad + Left Stick. NavigationRepeat feeds both through the same directional contract, so
+        // the shared legend shows that parity instead of implying D-pad-only navigation.
+        if (btn == "Arrows" || btn == "D-Pad" || btn == "D-pad" || btn == "D-pad/Stick" ||
+            btn == "Up/Down" || btn == "Left/Right") {
+            constexpr int s = 24, a = 9, gap = 5, lsW = 26, lsH = 22;
             if (!measureOnly) {
                 const Color dim(fill.r, fill.g, fill.b, 70);
                 const bool vOnly = (btn == "Up/Down"), hOnly = (btn == "Left/Right");
                 const int vx = x + (s - a) / 2, vy = cy - s / 2;
                 const int hx = x,               hy = cy - a / 2;
-                // Dim arm first, so the solid one wins where they overlap in the middle.
                 if (vOnly) {
                     fb.drawFilledRoundedRect(hx, hy, s, a, 3, dim);
                     fb.drawFilledRoundedRect(vx, vy, a, s, 3, fill);
@@ -154,8 +223,11 @@ namespace UI {
                     fb.drawFilledRoundedRect(vx, vy, a, s, 3, fill);
                     fb.drawFilledRoundedRect(hx, hy, s, a, 3, fill);
                 }
+                const int lsX = x + s + gap;
+                fb.drawFilledRoundedRect(lsX, cy - lsH / 2, lsW, lsH, 7, fill);
+                centred("LS", lsX, lsW, ink);
             }
-            return s;
+            return s + gap + lsW;
         }
 
         // A single d-pad direction: a rounded-square badge with a geometric triangle arrow. Used by
@@ -182,16 +254,153 @@ namespace UI {
         return buttonGlyph(fb, 0, 0, btn, true);
     }
 
-    // A pressable button that carries its controller badge ON the button (glyph + label, centred),
-    // instead of relying on a separate "A: Confirm" guide line below it. `fill` lets destructive
-    // actions stay red; `textColor` keeps the label legible on that fill. Screen-independent (does
-    // NOT register a touch target) so any screen can use it and wire its own hit region --
-    // drawEditChoiceButton wraps this for the TrainerViewScreen dialogs.
+    // --- Instruction text with controller badges (R2-BUG-013) -------------------------------------
+    //
+    // THE way to draw an instruction that names a controller button: help-window rows and modal
+    // text get the same coloured badges as the footer (buttonGlyph), never plain "A/B/X/Y".
+    // Segments come from UIModel::GlyphInstruction (helpLine / sentence). `y` is the text TOP, as
+    // for drawText; badges are centred on the line. Informational only: these badges publish no
+    // touch target (pressable buttons are drawGlyphButton; the footer is drawNavBar).
+    // Returns the drawn width; measureOnly draws nothing (for sizing a box around the text).
+    inline int drawGlyphText(PKSEFramebuffer& fb, int x, int y,
+                             const PokeBank::UIModel::GlyphInstruction::Segments& segments,
+                             Color color, TextStyle style = TextStyle::Body, bool measureOnly = false) {
+        using PokeBank::UIModel::GlyphInstruction::Kind;
+        constexpr int kBadgePad = 3;   // breathing room either side of a badge
+        int lineW = 0, lineH = 0;
+        fb.measureText("Ag", lineW, lineH, style);
+        const int cy = y + lineH / 2;
+        int cx = x;
+        for (const auto& seg : segments) {
+            if (seg.kind == Kind::Glyph) {
+                const int w = buttonGlyph(fb, cx + kBadgePad, cy, seg.text, true);
+                if (w > 0) {
+                    if (!measureOnly) buttonGlyph(fb, cx + kBadgePad, cy, seg.text, false);
+                    cx += w + 2 * kBadgePad;
+                    continue;
+                }
+                // No badge for this token: still readable as text, never dropped.
+            }
+            int tw = 0, th = 0;
+            fb.measureText(seg.text, tw, th, style);
+            if (!measureOnly) fb.drawText(cx, y, seg.text, color, style);
+            cx += tw;
+        }
+        return cx - x;
+    }
+    // Instruction prose: "Press Y to delete; A or B keeps it."
+    inline int drawGlyphSentence(PKSEFramebuffer& fb, int x, int y, const std::string& text,
+                                 Color color, TextStyle style = TextStyle::Body, bool measureOnly = false) {
+        return drawGlyphText(fb, x, y, PokeBank::UIModel::GlyphInstruction::sentence(text), color, style,
+                             measureOnly);
+    }
+    // Help-window row: "A   Open or show Pokémon actions".
+    inline int drawGlyphHelpLine(PKSEFramebuffer& fb, int x, int y, const std::string& line,
+                                 Color color, TextStyle style = TextStyle::Body, bool measureOnly = false) {
+        return drawGlyphText(fb, x, y, PokeBank::UIModel::GlyphInstruction::helpLine(line), color, style,
+                             measureOnly);
+    }
+
+    // A held fingertip paints a transient pressed state while the input owner
+    // still waits for a release-confirmed tap. This is visual feedback only:
+    // no synthetic A/B or hold-to-repeat actions, no accidental save mutation.
+    inline bool touchPressedRect(int x, int y, int w, int h) noexcept {
+        const auto& finger = latestTouchGesture();
+        if (!finger.down) return false;
+        const int dx = finger.deltaX, dy = finger.deltaY;
+        if (std::abs(dx) > 22 || std::abs(dy) > 22) return false;
+        const int px = finger.startX + dx, py = finger.startY + dy;
+        return finger.startX >= x && finger.startX < x + w &&
+               finger.startY >= y && finger.startY < y + h &&
+               px >= x && px < x + w && py >= y && py < y + h;
+    }
+
+    // All staged Gen I-IV Pokémon action sheets use this single touch-friendly
+    // visual row. Navigation and actual capabilities stay with the native
+    // generation's action model, so no greyed-out placeholder can mutate data.
+    inline void drawNativeActionRow(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                    const std::string& label, bool selected, bool enabled = true) {
+        const bool pressed = enabled && touchPressedRect(x, y, w, h);
+        fb.drawFilledRoundedRect(x, y, w, h, 10,
+                                 pressed ? withAlpha(Colors::FocusBorder, 125) : Colors::PanelAlt);
+        fb.drawRoundedRect(x, y, w, h, 10,
+                           selected || pressed ? Colors::FocusBorder : Colors::Divider,
+                           selected || pressed ? 2 : 1);
+        const Color disabledColor(Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
+        const Color color = enabled ? (selected ? Colors::Text : Colors::TextSecondary)
+                                    : disabledColor;
+        int th = 0, tw = 0;
+        fb.measureText(label, tw, th, TextStyle::Body);
+        fb.drawText(x + 16, y + (h - th) / 2, label, color, TextStyle::Body);
+    }
+
+    // The older 440px greyed-out Pokémon popup is the ONE visible action
+    // presentation for all four staged editor generations. This helper is
+    // intentionally draw-only: each enabled row publishes its existing native
+    // action index, so touch and A still reach the same guarded editor command.
+    // Disabled placeholders never acquire a touch target.
+    template <typename TouchButtons>
+    inline void drawNarrowPokemonActions(
+        PKSEFramebuffer& fb, TouchButtons& buttons,
+        const PokeBank::UIModel::NarrowPokemonMenu::Model& model,
+        int selectedNative, const std::string& title,
+        const std::string& context, int touchIdBase) {
+        using namespace PokeBank::UIModel::NarrowPokemonMenu;
+        const auto g = geometry(model.count, fb.getWidth(), fb.getHeight(), kNavBarH);
+        drawModalSurface(fb, g.x, g.y, g.width, g.height, 16);
+        fb.drawText(g.x + 22, g.y + 9, context, Colors::Accent, TextStyle::Caption);
+        fb.drawText(g.x + 22, g.y + 34, title, Colors::TextPrimary, TextStyle::Heading);
+        fb.drawFilledRect(g.x + 16, g.y + g.headerHeight - 4,
+                          g.width - 32, 2, Colors::Accent);
+        buttons.clear();
+        // The original compact grey action sheet uses its own warm yellow
+        // selection outline. Keep global editor navigation teal elsewhere.
+        const Color narrowSelectionBorder = Colors::PartyNumber;
+        for (int visual = 0; visual < model.count; ++visual) {
+            const auto& row = model.rows[static_cast<std::size_t>(visual)];
+            const int yy = g.rowY(visual);
+            const int xx = g.rowX();
+            const int width = g.rowWidth();
+            const bool selected = row.enabled() && row.nativeIndex == selectedNative;
+            const bool pressed = row.enabled() && touchPressedRect(
+                xx, yy + 2, width, g.rowHeight - 4);
+            fb.drawFilledRoundedRect(xx, yy + 3, width, g.rowHeight - 6, 10,
+                pressed ? withAlpha(narrowSelectionBorder, 112) : Colors::Surface);
+            fb.drawRoundedRect(xx, yy + 3, width, g.rowHeight - 6, 10,
+                selected || pressed ? narrowSelectionBorder : Colors::Divider,
+                selected || pressed ? 2 : 1);
+            const Color disabledColor(
+                Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
+            const Color ink = row.enabled()
+                ? (selected ? Colors::TextPrimary : Colors::TextSecondary)
+                : disabledColor;
+            int textW = 0, textH = 0;
+            fb.measureText(row.label, textW, textH, TextStyle::Body);
+            fb.drawText(xx + 18, yy + (g.rowHeight - textH) / 2,
+                        row.label, ink, TextStyle::Body);
+            if (row.enabled())
+                buttons.push_back({touchIdBase + row.nativeIndex,
+                                   xx, yy, width, g.rowHeight});
+        }
+        fb.drawText(g.x + 22, g.y + g.height - 25,
+                    "Original source immutable", Colors::Accent, TextStyle::Caption);
+    }
+
+    // A pressable button that carries its controller badge ON the button (glyph + label, centred).
+    // Geometry is published immediately as well as accumulated for the next footer commit. This is
+    // important for modal buttons drawn after a footer: they must still be real direct-touch targets.
     inline void drawGlyphButton(PKSEFramebuffer& fb, int bx, int by, int bw, int bh,
                                 const std::string& glyph, const std::string& label,
                                 Color fill = Colors::PanelAlt, Color textColor = Colors::Text) {
-        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, fill);
-        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Border, 1);
+        const TouchGlyphHit hit{bx, by, bw, bh, glyph};
+        g_touchGlyphAccum.push_back(hit);
+        g_touchGlyphHits.push_back(hit);
+        const bool pressed = touchPressedRect(bx, by, bw, bh);
+        fb.drawFilledRoundedRect(bx, by, bw, bh, 8,
+                                 pressed ? withAlpha(Colors::FocusBorder, 150) : fill);
+        fb.drawRoundedRect(bx, by, bw, bh, 8,
+                           pressed ? Colors::FocusBorder : Colors::Border,
+                           pressed ? 3 : 1);
         const int gw = buttonGlyphWidth(fb, glyph);
         int lw, lh; fb.measureText(label, lw, lh);
         const int gx = bx + (bw - (gw + 10 + lw)) / 2;
@@ -201,16 +410,21 @@ namespace UI {
 
     // --- Tappable badges --------------------------------------------------------------------
     //
-    // Every screen already publishes a contextual hint string, so making the badges tappable gives
-    // HOME-style on-screen action buttons everywhere at once. A tap resolves to that button's press
-    // and the screen ORs it into padGetButtonsDown, so no existing handler changes -- there is one
-    // input path, not two, and a tap can never diverge from what the physical button does.
-    //
-    // Only badges standing for exactly ONE button get a hit region. "L/R", "ZL/ZR" and the d-pad stay
-    // informational: a single badge can't say whether you meant L or R, and splitting one in half
-    // would leave each half far below a usable touch target.
+    // Every screen already publishes contextual controller hints. Single-button hints use a
+    // release-confirmed tap; paired/directional hints resolve on release as well. Existing controller
+    // handling remains the single action path, so touch does not grow a second set of save/editor
+    // behaviors.
     struct NavHit { int x, y, w, h; uint64_t button; };
+    enum class NavGestureKind : std::uint8_t { None, UpDown, LeftRight, DPad, LR, ZLZR };
+    struct NavGestureHit { int x, y, w, h, glyphW; NavGestureKind kind; };
     inline std::vector<NavHit> g_navHits;
+    inline std::vector<NavGestureHit> g_navGestureHits;
+    inline int g_navSurfaceX = 0;
+    inline int g_navSurfaceW = 0;
+    inline int g_navContentBottom = 0;
+    // Finger-driven Quick Games belongs to the screen, not global nav gestures.
+    inline bool g_productHeroDragActive = false;
+
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -223,18 +437,172 @@ namespace UI {
         if (btn == "R")  return HidNpadButton_R;
         if (btn == "ZL") return HidNpadButton_ZL;
         if (btn == "ZR") return HidNpadButton_ZR;
-        return 0;   // multi-button or directional badge: informational only
+        if (btn == "Left")  return HidNpadButton_Left;
+        if (btn == "Right") return HidNpadButton_Right;
+        if (btn == "Up")    return HidNpadButton_Up;
+        if (btn == "Down")  return HidNpadButton_Down;
+        return 0;
     }
 
-    // Hit-test a fresh tap against the badges captured during the PREVIOUS frame's draw (same
-    // one-frame-late contract as TrainerViewScreen::touchedButtonId). Returns a mask to fold into
-    // kDown, or 0. Edge-triggered, so it behaves exactly like padGetButtonsDown.
+    inline NavGestureKind navGestureFor(const std::string& btn) {
+        if (btn == "Up/Down") return NavGestureKind::UpDown;
+        if (btn == "Left/Right") return NavGestureKind::LeftRight;
+        if (btn == "Arrows" || btn == "D-Pad" || btn == "D-pad" || btn == "D-pad/Stick")
+            return NavGestureKind::DPad;
+        if (btn == "L/R") return NavGestureKind::LR;
+        if (btn == "ZL/ZR") return NavGestureKind::ZLZR;
+        return NavGestureKind::None;
+    }
+
+    // A blocking modal drawn over a screen owns touch exclusively (P0 #320): drop every glyph,
+    // footer badge and gesture target the covered layer published this frame, so a tap can only
+    // inject a button the topmost layer visibly offers. The modal's own glyph buttons and footer
+    // republish their targets after this call.
+    inline void beginTopTouchLayer() {
+        g_touchGlyphAccum.clear();
+        g_touchGlyphHits.clear();
+        g_navHits.clear();
+        g_navGestureHits.clear();
+        g_productHeroSwipeRegistered = false;
+    }
+
+    inline bool navContains(int px, int py, int x, int y, int w, int h) {
+        return px >= x && px < x + w && py >= y && py < y + h;
+    }
+
+    // A touch target on a clipped moving list must occupy only its visible pixels.
+    // Keep this separate from drawing so the touch model cannot hit hidden rows.
+    // TrainerViewScreen's button aggregates are {id, x, y, width, height}.
+    template <class Button>
+    inline void appendClippedTouchButton(std::vector<Button>& buttons, int id,
+                                         int x, int y, int w, int h,
+                                         int clipX, int clipY, int clipW, int clipH) {
+        const int left = std::max(x, clipX);
+        const int top = std::max(y, clipY);
+        const int right = std::min(x + w, clipX + clipW);
+        const int bottom = std::min(y + h, clipY + clipH);
+        if (left < right && top < bottom)
+            buttons.push_back({id, left, top, right - left, bottom - top});
+    }
+
+    // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
+    // release, browser/list content steps while the finger is moving, and a stationary tap on a
+    // visible card follows the same spatial navigation path before pressing A. Screen-owned editor
+    // and storage drag surfaces remain excluded from this generic registry.
     inline uint64_t navTouchButton(const TouchInput& touch) {
-        if (!touch.justPressed()) return 0;
-        for (const NavHit& h : g_navHits) {
-            if (touch.x() >= h.x && touch.x() < h.x + h.w &&
-                touch.y() >= h.y && touch.y() < h.y + h.h)
-                return h.button;
+        if (touch.justTouchedDown()) {
+            // Only Product Home owns a whole-content horizontal drag. Lists/grids publish their
+            // own hitboxes and real TouchScrollState viewports instead of routing through a global
+            // D-pad emulator.
+            g_productHeroDragActive =
+                g_productHeroSwipeRegistered &&
+                touch.startX() >= kProductHeroX && touch.startX() < kProductHeroX + kProductHeroW &&
+                touch.startY() >= kProductHeroY && touch.startY() < kProductHeroY + kProductHeroH;
+            return 0;
+        }
+
+        if (touch.isDown()) {
+            if (g_productHeroDragActive)
+                g_productHeroDragXForDraw = touch.deltaX();
+            return 0;
+        }
+
+        if (!touch.justReleased()) return 0;
+
+        const bool productHeroDrag = g_productHeroDragActive;
+        g_productHeroDragActive = false;
+        g_productHeroDragXForDraw = 0;
+
+        if (!touch.dragged()) {
+            // Any controller-glyph button visibly drawn by the active surface is a real touch button.
+            for (const auto& button : g_touchGlyphHits) {
+                if (navContains(touch.startX(), touch.startY(), button.x, button.y, button.w, button.h) &&
+                    navContains(touch.x(), touch.y(), button.x, button.y, button.w, button.h)) {
+                    const uint64_t mapped = navButtonFor(button.glyph);
+                    if (mapped) return mapped;
+                }
+            }
+
+            for (const NavHit& h : g_navHits) {
+                if (navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h) &&
+                    navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h))
+                    return h.button;
+            }
+        }
+
+        // QuickGamesDrawerMotion now owns physical edge pulls and closing.
+        // Never map these gestures to a synthetic Y/B release action.
+
+        // Product Home is the only whole-content horizontal gesture. Resolve exactly one
+        // previous/next game after the visual drag; all list/grid surfaces own their own touch.
+        // The owner must still be Product Home on release. Controller navigation can open
+        // another overlay while a finger remains on the old hero; never commit that stale drag.
+        if (productHeroDrag && g_productHeroSwipeRegistered && touch.dragged()) {
+            const int dx = touch.deltaX();
+            const int dy = touch.deltaY();
+            const int ax = dx < 0 ? -dx : dx;
+            const int ay = dy < 0 ? -dy : dy;
+            constexpr int kCarouselCommitDistance = 72;
+            if (ax >= kCarouselCommitDistance && ax * 3 >= ay * 4)
+                return dx < 0 ? HidNpadButton_R : HidNpadButton_L;
+        }
+
+        for (const NavGestureHit& h : g_navGestureHits) {
+            if (!navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h)) continue;
+            // Tap release must remain on the SAME explicit glyph region. Intentional
+            // directional swipes may finish outside it, but cross-axis drags are inert.
+            if (!touch.dragged() &&
+                !navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h)) continue;
+
+            const int dx = touch.x() - touch.startX();
+            const int dy = touch.y() - touch.startY();
+            const int ax = dx < 0 ? -dx : dx;
+            const int ay = dy < 0 ? -dy : dy;
+
+            if (h.kind == NavGestureKind::UpDown) {
+                if (touch.dragged()) {
+                    if (ay < 24 || ay <= ax) return 0;
+                    return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                }
+                return touch.startY() < h.y + h.h / 2 ? HidNpadButton_Up : HidNpadButton_Down;
+            }
+            if (h.kind == NavGestureKind::LeftRight) {
+                if (touch.dragged()) {
+                    if (ax < 24 || ax <= ay) return 0;
+                    return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                }
+                return touch.startX() < h.x + h.w / 2 ? HidNpadButton_Left : HidNpadButton_Right;
+            }
+            if (h.kind == NavGestureKind::LR || h.kind == NavGestureKind::ZLZR) {
+                if (touch.dragged() && (ax < 24 || ax <= ay)) return 0;
+                const bool left = touch.dragged()
+                    ? dx < 0
+                    : touch.startX() < h.x + h.w / 2;
+                if (h.kind == NavGestureKind::LR)
+                    return left ? HidNpadButton_L : HidNpadButton_R;
+                return left ? HidNpadButton_ZL : HidNpadButton_ZR;
+            }
+            if (h.kind == NavGestureKind::DPad) {
+                if (touch.dragged()) {
+                    if (std::max(ax, ay) < 24) return 0;
+                    if (ax >= ay) return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                    return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                }
+
+                // A no-drag tap is meaningful only on the actual d-pad glyph. The rest of a
+                // "D-pad/Stick: Navigate" segment is a generous drag surface, not an invisible
+                // right-arrow button just because the label sits to the glyph's right.
+                constexpr int dpadW = 24;
+                if (touch.startX() >= h.x && touch.startX() < h.x + std::min(dpadW, h.glyphW)) {
+                    const int rx = touch.startX() - (h.x + dpadW / 2);
+                    const int ry = touch.startY() - (h.y + h.h / 2);
+                    const int arx = rx < 0 ? -rx : rx;
+                    const int ary = ry < 0 ? -ry : ry;
+                    if (arx >= ary) return rx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                    return ry < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                }
+                return 0;
+            }
         }
         return 0;
     }
@@ -245,12 +613,38 @@ namespace UI {
     // `cy`. A segment with no colon (e.g. "HOLDING") is a state marker and renders as accent text.
     // Shared by the screen nav bar and the dialog footer so the two always match.
     inline void drawNavHints(PKSEFramebuffer& fb, int x, int w, int cy, const std::string& hint) {
+        // Never let a hero translation leak into footer/overlay chrome even if a future Product Home
+        // layout stops drawing the right-hand feature cards.
+        finishProductHeroTranslation(fb);
+
         struct Seg { std::string btn, label; int glyphW, labelW; };
 
-        // Whoever draws last owns the taps, so an open modal's footer replaces the nav bar behind it
-        // rather than leaving the background live. Clearing here (not in drawNavBar) also means the
-        // list can't grow across frames if a screen ever draws a footer without a nav bar.
+        // The footer commits glyph buttons drawn before it; buttons rendered later publish directly
+        // from drawGlyphButton(). Content cards/rows remain owned by their screen.
+        g_touchGlyphHits = g_touchGlyphAccum;
+        g_touchGlyphAccum.clear();
+
         g_navHits.clear();
+        g_navGestureHits.clear();
+        g_navSurfaceX = x;
+        g_navSurfaceW = w;
+        g_navContentBottom = cy - TouchTargetMin / 2 - 8;
+        // Quick Games gesture registration is surface-local.
+
+        // Product Home's selected-game hero card is a real touch carousel. Limit capture to that
+        // exact card, keep the card physically attached to the finger while held, and resolve one
+        // existing L/R change-game action only after release.
+        const bool productHomeHero =
+            hint.find("L/R: Change Game") != std::string::npos &&
+            hint.find("A: Open") != std::string::npos &&
+            hint.find("Y: Quick Games") != std::string::npos;
+        g_productHeroSwipeRegistered = productHomeHero;
+
+        // Quick Games owns direct horizontal dragging and vertical tile scrolling.
+
+        // Full Games, Current Game and all long save/source lists publish direct hitboxes and own
+        // any real overflow scrolling themselves. Shared chrome intentionally does not emulate
+        // content D-pad movement for them.
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
@@ -295,16 +689,38 @@ namespace UI {
         int cx = x + std::max(kPadX, (w - (fixed + gap * (n - 1))) / 2);
         for (const Seg& s : segs) {
             const int segX = cx;
+            const int segmentWidth = s.glyphW + (s.glyphW ? kGapGlyph : 0) + s.labelW;
+            // A visible, theme-aware depression under the touched legend
+            // makes the target obvious to medium-sized fingers. Swipe gestures
+            // never acquire this effect or trigger a virtual button.
+            if (s.glyphW && touchPressedRect(segX, cy - TouchTargetMin / 2,
+                                               segmentWidth, TouchTargetMin)) {
+                fb.drawFilledRoundedRect(segX - 5, cy - TouchTargetMin / 2,
+                                         segmentWidth + 10, TouchTargetMin, 11,
+                                         withAlpha(Colors::FocusBorder, 92));
+                fb.drawRoundedRect(segX - 5, cy - TouchTargetMin / 2,
+                                   segmentWidth + 10, TouchTargetMin, 11,
+                                   Colors::FocusBorder, 2);
+            }
             if (s.glyphW) { buttonGlyph(fb, cx, cy, s.btn, false); cx += s.glyphW + kGapGlyph; }
             int tw, th; fb.measureText(s.label, tw, th, TextStyle::Caption);
             fb.drawText(cx, cy - th / 2, s.label, s.glyphW ? Colors::Text : Colors::Accent,
                         TextStyle::Caption);
             cx += s.labelW;
-            // The badge AND its label are one tap target -- aiming at a 24px circle is unreasonable,
-            // and the label is the part that says what will happen. Height is TouchTargetMin rather
-            // than the bar height (46), so the target stays fingertip-sized.
+
+            // Badge + label is one fingertip-sized target. All footer actions resolve on release so
+            // touch-down never steals a gesture from the content above it.
+            const int hitY = cy - TouchTargetMin / 2;
+            const int hitW = cx - segX;
             const uint64_t button = s.glyphW ? navButtonFor(s.btn) : 0;
-            if (button) g_navHits.push_back({segX, cy - TouchTargetMin / 2, cx - segX, TouchTargetMin, button});
+            if (button) {
+                g_navHits.push_back({segX, hitY, hitW, TouchTargetMin, button});
+                // The Y footer button stays active; edge drags do not emulate Y.
+            } else if (s.glyphW) {
+                const NavGestureKind kind = navGestureFor(s.btn);
+                if (kind != NavGestureKind::None)
+                    g_navGestureHits.push_back({segX, hitY, hitW, TouchTargetMin, s.glyphW, kind});
+            }
             cx += gap;
         }
     }
@@ -326,7 +742,7 @@ namespace UI {
         // Drawing from semantic AccentPrimary keeps the red consistent across all three themes.
         fb.drawFilledCircle(cx, cy, r, ballWhite);
         fb.setClipRect(cx - r, cy - r, r * 2, r);
-        fb.drawFilledCircle(cx, cy, r, Colors::AccentPrimary);
+        fb.drawFilledCircle(cx, cy, r, Colors::BrandAccent);
         fb.clearClip();
         fb.drawFilledRect(cx - r, cy - 3, r * 2, 6, ballBand);
         fb.drawFilledCircle(cx, cy, 8, ballBand);
@@ -338,7 +754,7 @@ namespace UI {
         fb.drawText(brandX, 8, "PokeBank", Colors::TextPrimary, TextStyle::Title);
         int brandW, brandH; fb.measureText("PokeBank", brandW, brandH, TextStyle::Title);
         const int nxX = brandX + brandW + 8;
-        fb.drawFilledRoundedRect(nxX, 15, 40, 28, 9, Colors::AccentPrimary);
+        fb.drawFilledRoundedRect(nxX, 15, 40, 28, 9, Colors::BrandAccent);
         int nxW, nxH; fb.measureText("NX", nxW, nxH, TextStyle::Caption);
         fb.drawText(nxX + (40 - nxW) / 2, 15 + (28 - nxH) / 2, "NX",
                     Colors::Surface, TextStyle::Caption);
@@ -358,6 +774,7 @@ namespace UI {
 
     // Bottom nav bar: a sheet that curves along its top edge, carrying the controller badges.
     inline void drawNavBar(PKSEFramebuffer& fb, const std::string& hint) {
+        finishProductHeroTranslation(fb);
         const int W = fb.getWidth(), barY = fb.getHeight() - kNavBarH;
         fb.drawSoftShadow(0, barY, W, kNavBarH + 40, kChromeRadius);
         fb.drawFilledRoundedRect(0, barY, W, kNavBarH + kChromeRadius, kChromeRadius, Colors::Panel);
@@ -380,40 +797,48 @@ namespace UI {
 
     inline void drawInfoOverlay(PKSEFramebuffer& fb, const std::string& title,
                                 const std::vector<std::string>& lines) {
-        constexpr int w = 700;
+        // Owner Oct 28 (Bag Help #1): sized to its longest row, so no row runs past the edge.
+        // Rows are measured as drawn (glyph badges included); the window stays between 560 px and
+        // the screen width minus the 16 px margins.
+        int widest = 0, titleHeight = 0;
+        fb.measureText(title, widest, titleHeight, TextStyle::Heading);
+        for (const std::string& line : lines)
+            widest = std::max(widest, drawGlyphHelpLine(fb, 0, 0, line, Colors::TextSecondary, TextStyle::Body, true));
+        const int w = std::clamp(widest + 60, 560, fb.getWidth() - 32);
         const int h = std::min(520, 140 + static_cast<int>(lines.size()) * 38);
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
         drawModalSurface(fb, x, y, w, h);
-        fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::AccentPrimary,
+        SharedPopupDismiss::publish(x, y, w, h);   // 7D: Help closes on a tap outside it
+        fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::BrandAccent,
                     TextStyle::Caption);
         fb.drawText(x + 28, y + 44, title, Colors::TextPrimary, TextStyle::Heading);
-        fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::AccentPrimary);
+        fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::BrandAccent);
         int ly = y + 108;
         for (const std::string& line : lines) {
-            fb.drawText(x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
+            // Key rows draw their buttons as badges; banner lines stay plain text (R2-BUG-013).
+            drawGlyphHelpLine(fb, x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
             ly += 38;
         }
-        drawNavBar(fb, {{"B", "Close"}});
+        // Both close every help window (TrainerView, AppShell); the footer says so, matching rows
+        // like "-   Close help" (R2-BUG-013: modal text and footer agree).
+        drawNavBar(fb, {{"B", "Close Help"}});
     }
 
-    // A HOME-style selectable list tile: rounded (stadium), soft shadow, amber when
-    // selected. `accent` marks a special/primary row (indigo-tinted when not selected, e.g. the
-    // "Create New Backup" action); `enabled` false dims it (e.g. a "no saves" placeholder).
+    // A HOME-style selectable list tile. Selection never tints the tile: the normal dark surface
+    // stays put, a teal outline identifies focus, and selected text remains bright/readable.
     inline void drawHomeTile(PKSEFramebuffer& fb, int x, int y, int w, int h,
                              const std::string& label, bool selected, bool accent = false, bool enabled = true) {
         fb.drawSoftShadow(x, y, w, h, h / 2);
-        const Color fill = selected ? Colors::Primary : Colors::PanelAlt;
-        fb.drawPill(x, y, w, h, fill);
-        // An accent (primary-action) row is a normal tile with accent text + a thin accent outline —
-        // NOT a filled highlight, which would read as a false selection next to the real (amber) one.
-        if (accent && !selected) fb.drawPillBorder(x, y, w, h, Colors::Accent, 2);
+        fb.drawPill(x, y, w, h, Colors::PanelAlt);
+        if (selected) fb.drawPillBorder(x, y, w, h, Colors::FocusBorder, 2);
+        else if (accent) fb.drawPillBorder(x, y, w, h, Colors::Accent, 2);
         const Color txt = !enabled ? Colors::TextDim
-                        : selected  ? Colors::PrimaryText
+                        : selected  ? Colors::SelectedText
                         : accent    ? Colors::Accent
                         :             Colors::Text;
         int lx = x + 28;
-        if (selected) { fb.drawSymbol(x + 20, y + h / 2 - 12, "\xE2\x96\xB6", Colors::PrimaryText); lx = x + 48; }
+        if (selected) { fb.drawSymbol(x + 20, y + h / 2 - 12, "\xE2\x96\xB6", Colors::FocusBorder); lx = x + 48; }
         int lw, lh; fb.measureText(label, lw, lh, TextStyle::Body);
         fb.drawText(lx, y + (h - lh) / 2, label, txt, TextStyle::Body);
     }
@@ -423,13 +848,18 @@ namespace UI {
     // contentH the full content height, scroll the current offset. Item lists pass contentH =
     // totalItems * rowH and scroll = firstItem * rowH. One helper so every scrolling surface in the
     // app gets the same thumb the details editor uses.
+    // Draw-only wrapper over the one shared component (UI/SharedScrollbar.h); surfaces that own a
+    // SharedScrollbar::State call drawAndPublish there instead so the thumb is also draggable.
     inline void drawScrollbar(PKSEFramebuffer& fb, int x, int trackY, int trackH, int contentH, int scroll) {
-        if (contentH <= trackH || trackH <= 0) return;
-        const int maxS = contentH - trackH;
-        int s = scroll; if (s < 0) s = 0; if (s > maxS) s = maxS;
-        const int thumbH = std::max(24, trackH * trackH / contentH);
-        const int thumbY = trackY + (trackH - thumbH) * s / maxS;
-        fb.drawFilledRoundedRect(x, thumbY, 3, thumbH, 2, Colors::Border);
+        SharedScrollbar::paint(fb, SharedScrollbar::layout(x, trackY, SharedScrollbar::kTrackWidth, trackH,
+                                                          SharedScrollbar::pixels(contentH, trackH, scroll)));
+    }
+    // Same scrollbar, draggable: publishes the track into the owner's SharedScrollbar::State so
+    // the owner's update() can hit-test a thumb drag / track tap on the next frame.
+    inline void drawScrollbar(PKSEFramebuffer& fb, SharedScrollbar::State& bar,
+                              int x, int trackY, int trackH, int contentH, int scroll) {
+        SharedScrollbar::drawAndPublish(fb, bar, x, trackY, SharedScrollbar::kTrackWidth, trackH,
+                                        SharedScrollbar::pixels(contentH, trackH, scroll));
     }
 }
 

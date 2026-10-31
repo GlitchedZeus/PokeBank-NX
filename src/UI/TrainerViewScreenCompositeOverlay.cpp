@@ -1,0 +1,524 @@
+#include "UI/SharedPanelHeading.h"
+#include "UI/TrainerViewScreen.h"
+#include "UI/Gen1PokemonEditorOverlay.h"
+#include "UI/ClassicDefaultNickname.h"
+#include "UI/ClassicJapaneseNames.h"
+#include "UI/PokemonFileDialog.h"   // Feature A: Import from file / Export to file (every Gen I-V sheet)
+#include "UI/PokemonFileMenus.h"
+
+// Pre-include every dependency used by the preserved GSC source before the narrow rename macros.
+// Their include guards ensure the macros below rename only TrainerViewScreen's two method definitions,
+// never unrelated update()/draw() declarations in headers.
+#include "Enums/GameVersion.h"
+#include "Integration/Gen2/Gen2StagedEditor.h"
+#include "Legacy/GSCReadOnlyTrainer.h"
+#include "Names/MoveNames.h"
+#include "Names/SpeciesNames.h"
+#include "UI/Common.h"
+#include "UI/ClassicInventoryOverlay.h"
+#include "UI/ReviewEntry.h"
+#include "UI/ClassicBrowseReview.h"
+#include "UI/LegacyPresentationRules.h"
+#include "UI/PokemonViewActions.h"
+#include "UI/PKSEFramebuffer.h"
+#include "UI/ScreenChrome.h"
+#include "UI/SharedSpeciesPicker.h"
+#include "UI/SharedBoxedRows.h"   // R2-BUG-012: the one boxed-row modal style (Gen I/II modals)
+
+// Species changes use the shared exact-game level/EXP initialization policy; overlays must not reintroduce inherited level semantics.
+#include "UI/TouchInput.h"
+#include "Trainer/Trainer.h"
+#include "Utils/FileUtilities.h"
+#include "Utils/Keyboard.h"
+#include "Utils/PokeBankPaths.h"
+
+#include <algorithm>
+#include <array>
+#include <cerrno>
+#include <cstdio>
+#include <sstream>
+#include <string>
+#include <sys/stat.h>
+#include <utility>
+#include <vector>
+
+#define update updateGSCOverlay
+#define draw drawGSCOverlay
+#include "TrainerViewScreenGSCOverlay.inc"
+#undef draw
+#undef update
+
+namespace UI::Gen1PokemonEditor {
+using SourceGame = PokeVault::Integration::Gen1::SourceGame;
+using PokeVault::Integration::Gen1::parse;
+
+[[nodiscard]] bool isGen1SourceUXBase(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXBase(TrainerViewScreen& screen, uint64_t down);
+void drawOverlayUXBase(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+[[nodiscard]] bool isGen1SourceUXCleanup2(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXCleanup2(TrainerViewScreen& screen, uint64_t down);
+void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+[[nodiscard]] bool isGen1SourceUXCleanup3(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down);
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                         int stickX, int stickY);
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                         int stickX, int stickY, const TouchInput& touch);
+void drawOverlayUXCleanup3(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+[[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                 int stickX, int stickY);
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                 int stickX, int stickY, const TouchInput& touch);
+void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
+} // namespace UI::Gen1PokemonEditor
+
+#define isGen1Source isGen1SourceUXBase
+#define handleInput handleInputUXBase
+#define drawOverlay drawOverlayUXBase
+#define SelectedText Text
+#include "Gen1PokemonEditorOverlayUX.inc"
+#undef SelectedText
+#undef drawOverlay
+#undef handleInput
+#undef isGen1Source
+
+#define isGen1SourceUX isGen1SourceUXCleanup2
+#define handleInputUX handleInputUXCleanup2
+#define drawOverlayUX drawOverlayUXCleanup2
+#include "Gen1PokemonEditorOverlayUXCleanup2.inc"
+#undef drawOverlayUX
+#undef handleInputUX
+#undef isGen1SourceUX
+
+namespace UI::Gen1PokemonEditor {
+namespace {
+
+bool ux2StageAddWithClassicSelection(TrainerViewScreen& screen) {
+    auto& state = ux2StateFor(screen);
+    const int destinationBox = state.box;
+    const int destinationSlot = state.slot;
+    const std::string displayName = state.draft.nickname.empty()
+        ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname;
+    if (!ux2StageAdd(screen)) return false;
+    screen.selectedBoxIndex = destinationBox;
+    screen.selectedItemIndex = destinationSlot;
+    screen.detailViewActive = true;
+    screen.postStatus(displayName + " added to Box " + std::to_string(destinationBox + 1), 260);
+    return true;
+}
+
+void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
+    constexpr const char* oldLabel = "Stage Add";
+    if (const auto pos = text.find(oldLabel); pos != std::string::npos)
+        text.replace(pos, std::char_traits<char>::length(oldLabel), "Add");
+    drawFooter(fb, text);
+}
+
+} // namespace
+} // namespace UI::Gen1PokemonEditor
+
+#define ux2StageAdd ux2StageAddWithClassicSelection
+#define drawFooter drawFooterWithClassicAddLabel
+#define isGen1SourceUX isGen1SourceUXCleanup3
+#define handleInputUX handleInputUXCleanup3
+#define drawOverlayUX drawOverlayUXCleanup3
+#include "Gen1PokemonEditorOverlayUXCleanup3.inc"
+#undef drawOverlayUX
+#undef handleInputUX
+#undef isGen1SourceUX
+#undef drawFooter
+#undef ux2StageAdd
+
+#include "Gen1PokemonEditorOverlayFoundation.inc"
+#include "Gen1PokemonEditorFoundationHardwareFix.inc"
+#include "Gen1PokemonEditorPassiveView.inc"
+
+#include "Gen2PokemonEditorFoundation.inc"
+
+// Older Gen II presentation layers call the two-argument Held Item renderer. Forward them through
+// the session owner so the touch-aware renderer still publishes real cell hitboxes.
+namespace UI::Gen2PokemonEditor {
+namespace {
+void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+    auto* owner = const_cast<TrainerViewScreen*>(state.owner);
+    if (owner) drawHeldItemPicker(*owner, fb, state);
+}
+} // namespace
+} // namespace UI::Gen2PokemonEditor
+
+#define handlePickerInput handlePickerInputBase
+#define drawPickerOverlay drawPickerOverlayBase
+#include "Gen2PokemonPickerOverlay.inc"
+#undef drawPickerOverlay
+#undef handlePickerInput
+
+#include "Gen2HardwarePickerFix.inc"
+
+#include "Gen2SharedPokemonSurface.inc"
+
+#define handleUnifiedGen2SurfaceInput handleUnifiedGen2SurfaceInputBase
+#define drawUnifiedGen2Surface drawUnifiedGen2SurfaceBase
+#include "Gen2UnifiedPokemonWorkspace.inc"
+#undef drawUnifiedGen2Surface
+#undef handleUnifiedGen2SurfaceInput
+#include "Gen2HardwareWorkspaceFix.inc"
+
+#define drawFinalGen2Surface drawFinalGen2SurfaceBase
+#include "Gen2SharedSurfaceParity.inc"
+#undef drawFinalGen2Surface
+#include "Gen2HardwareFinalFix.inc"
+
+#include "ClassicPackedMoveOverlay.inc"
+#include "ClassicReleaseActionFix.inc"
+
+#include "Gen3SharedPokemonSurface.inc"
+#include "Gen4SharedPokemonSurface.inc"
+#include "Gen5SharedReadOnlySurface.inc"
+#include "ClassicPartyActions.inc"
+#include "PokemonFileMenus.inc"
+
+namespace UI {
+
+bool TrainerViewScreen::openStagedReview(bool exportCopy) {
+    std::string error, exported;
+    if (Gen1PokemonEditor::isGen1SourceUX(*this)) {
+        if (!Gen1PokemonEditor::editorAvailable(*this)) return false;
+        auto& state = Gen1PokemonEditor::ux2StateFor(*this);
+        state.mode = Gen1PokemonEditor::UX2Mode::Review;
+        state.reviewRow = 0;
+        state.reviewDiscard = {};
+        state.reviewReturn = Gen1PokemonEditor::UX2Mode::Closed;   // a workspace entry sets its own
+        if (exportCopy) exported = Gen1PokemonEditor::exportStagedCopy(*this, error);
+    } else if (Gen2PokemonEditor::isGSC(*this)) {
+        auto* editor = stagedEditor(*this);
+        if (!editor) return false;
+        auto& state = editorOverlayState(*this);
+        state.active = true;
+        state.review = true;
+        state.pokemonActions = false;
+        state.pokemonFields = false;
+        state.reviewRow = 0;
+        if (exportCopy) exported = exportStagedCopy(*this, *editor, error);
+    } else if (Gen3SharedEditorSurface::isGen3Gba(*this)) {
+        if (!Gen3SharedEditorSurface::editor(*this)) return false;
+        auto& state = Gen3SharedEditorSurface::stateFor(*this);
+        state.review = true;
+        state.actions = false;
+        state.confirmDiscardAll = false;
+        state.reviewScroll = 0;
+        state.reviewTouchScroll.reset();
+        if (exportCopy) Gen3SharedEditorSurface::exportStagedGen3Copy(*this);
+    } else if (Gen4SharedEditorSurface::isGen4Nds(*this)) {
+        if (!Gen4SharedEditorSurface::editor(*this)) return false;
+        auto& state = Gen4SharedEditorSurface::stateFor(*this);
+        state.review = true;
+        state.actions = false;
+        state.confirmDiscardAll = false;
+        if (exportCopy) Gen4SharedEditorSurface::exportStagedGen4Copy(*this);
+    } else return false;
+    // Opened outside Box Actions: its B returns here, not to an Actions sheet for a stale slot.
+    PokeBank::UIModel::ClassicReviewOrigin::markStandalone(*this);
+    if (exportCopy && !exported.empty()) postStatus("Verified copy exported: " + exported, 600);
+    else if (!error.empty()) postStatus(error, 480);
+    saveConfirmActive = false;
+    exitingWithUnsavedChanges = false;
+    exitingViaPlus = false;
+    exitAfterSave = false;
+    controllerNavigation.reset();
+    return true;
+}
+
+namespace {
+
+void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
+    if (screen.selectedMode != TrainerViewScreen::ViewMode::Boxes ||
+        !screen.detailViewActive || screen.selectedItemIndex < 0) {
+        return;
+    }
+
+    const int capacity = static_cast<int>(screen.trainer.getSlotsPerBox());
+    if (capacity <= 0) {
+        screen.selectedItemIndex = -1;
+        return;
+    }
+    if (screen.selectedItemIndex >= capacity)
+        screen.selectedItemIndex = capacity - 1;
+}
+
+bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
+    // This is PokeBank NX's existing Gen I-III hold-Y/carry/multi overlay,
+    // now reused by Gen IV. The shared editor owns its own modal frames.
+    if (ClassicPackedMove::isGen4(screen))
+        return !Gen4SharedEditorSurface::ownsFrame(screen);
+    if (Gen3SharedEditorSurface::isGen3Gba(screen))
+        return !Gen3SharedEditorSurface::ownsFrame(screen);
+    if (Gen1PokemonEditor::isGen1SourceUX(screen)) {
+        const auto& state = Gen1PokemonEditor::ux2StateFor(screen);
+        return state.mode == decltype(state.mode)::Closed &&
+               !Gen1PokemonEditor::foundationPickerActive(screen) &&
+               !Gen1PokemonEditor::foundationPassiveViewActive(screen);
+    }
+    const bool gsc = screen.sourceGameId == "gold_gbc" ||
+                     screen.sourceGameId == "silver_gbc" ||
+                     screen.sourceGameId == "crystal_gbc";
+    if (gsc) {
+        const auto& state = Gen2PokemonEditor::stateFor(screen);
+        return state.mode == decltype(state.mode)::None && !editorOverlayState(screen).active;
+    }
+    return false;
+}
+
+// Round 6 (B08 / P1-RETURN): Review straight from Gen I-IV Party / Boxes (ClassicBrowseReview.h).
+bool openClassicBrowseReview(TrainerViewScreen& screen, u64 down) {
+    namespace Entry = PokeBank::UIModel::ReviewEntry;
+    static_assert(Entry::kButtonY == HidNpadButton_Y && Entry::kButtonPlus == HidNpadButton_Plus,
+                  "ReviewEntry restates the libnx button bits");
+    if (!ClassicPackedMove::classicSource(screen)) return false;
+    const int generation = ClassicPackedMove::isGen1(screen) ? 1 : ClassicPackedMove::isGen2(screen) ? 2
+                         : ClassicPackedMove::isGen3(screen) ? 3 : 4;
+    const bool gridIdle = classicPackedMoveLayerAvailable(screen) && !ClassicPartyActions::active(screen) &&
+                          ClassicPackedMove::idle(screen);
+    return PokeBank::UIModel::ClassicBrowseReview::open(screen, down, generation, gridIdle);
+}
+
+bool gen2ClassicBoxFooterActive(const TrainerViewScreen& screen) noexcept {
+    const bool gsc = screen.trainer.getGameGroup() == Enums::GameVersion::GSC &&
+        (screen.sourceGameId == "gold_gbc" || screen.sourceGameId == "silver_gbc" ||
+         screen.sourceGameId == "crystal_gbc");
+    return gsc && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes && screen.detailViewActive &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.swapActive && !screen.currentlySelecting;
+}
+
+void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!gen2ClassicBoxFooterActive(screen)) return;
+    bool occupied = false;
+    if (screen.selectedBoxIndex >= 0 && screen.selectedItemIndex >= 0 &&
+        screen.selectedBoxIndex < static_cast<int>(screen.trainer.getBoxCount()) &&
+        screen.selectedItemIndex < static_cast<int>(screen.trainer.getSlotsPerBox())) {
+        occupied = static_cast<bool>(screen.trainer.boxes[static_cast<std::size_t>(screen.selectedBoxIndex)]
+                                                [static_cast<std::size_t>(screen.selectedItemIndex)]);
+    }
+    // Round 7 (ReviewEntry.h): + is the Gen I-IV Boxes Review key (openClassicBrowseReview), so this
+    // footer names it too, in ClassicBrowseFooter's place (after L/R, before B).
+    static_assert(PokeBank::UIModel::ReviewEntry::footerHint(PokeBank::UIModel::ReviewEntry::Screen::Boxes, 2)
+                      .glyph[0] == '+');
+    if (occupied)
+        drawNavBar(fb, {{"A", "Actions"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
+    else
+        drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
+}
+
+constexpr int kPartyTouchBase = 6200;
+
+bool basePartyTouchActive(const TrainerViewScreen& screen) noexcept {
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Party &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.releaseConfirmActive && !screen.storageExitConfirmActive && !screen.groupMenuActive &&
+        !screen.carrying() && !screen.swapActive && !screen.currentlySelecting;
+}
+
+void publishBasePartyTouchTargets(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!basePartyTouchActive(screen)) return;
+    constexpr int x = LEFT_PANEL_X;
+    constexpr int y = CONTENT_PANEL_Y;
+    constexpr int height = CONTENT_PANEL_HEIGHT;
+    constexpr int gutter = 16;
+    constexpr int slotGap = 12;
+    const int width = fb.getWidth() - x;
+    const int gridTop = y + 58;
+    const int colW = (width - 3 * gutter) / 2;
+    const int colX[2] = {x + gutter, x + gutter + colW + gutter};
+    const int slotH = (height - (gridTop - y) - 2 * slotGap - gutter) / 3;
+    for (int i = 0; i < 6; ++i) {
+        const int col = i >= 3 ? 1 : 0;
+        const int row = i >= 3 ? i - 3 : i;
+        screen.touchButtons.push_back({kPartyTouchBase + i, colX[col],
+                                       gridTop + row * (slotH + slotGap), colW, slotH});
+    }
+}
+
+bool handleBasePartyTouch(TrainerViewScreen& screen, const TouchInput& touch) {
+    if (!basePartyTouchActive(screen)) return false;
+    const int downId = screen.touchedButtonDownId(touch);
+    if (downId >= kPartyTouchBase && downId < kPartyTouchBase + 6) {
+        screen.selectedPartyIndex = downId - kPartyTouchBase;
+        return true;
+    }
+    const int tapId = screen.touchedButtonId(touch);
+    if (tapId >= kPartyTouchBase && tapId < kPartyTouchBase + 6) {
+        const int slot = tapId - kPartyTouchBase;
+        screen.selectedPartyIndex = slot;
+        if (slot >= 0 && slot < static_cast<int>(screen.trainer.party.size())) {
+            const auto* pokemon = screen.trainer.party[static_cast<std::size_t>(slot)].get();
+            if (pokemon && pokemon->speciesID() != 0) {
+                screen.openPokemonActionSheet({
+                    PokeVault::UIModel::PokemonLocation::Party, 0, slot});
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
+void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
+    // B08: the Gen II-V surfaces return before the base update, which owns the status
+    // countdown. Expire it exactly once per frame on every path (a path that already
+    // counted down, or posted a new message, changes the value and is left alone).
+    struct StatusExpiry {
+        int& frames; const int atStart;
+        ~StatusExpiry() { if (frames > 0 && frames == atStart) --frames; }
+    } statusExpiry{storageStatusFrames, storageStatusFrames};
+    u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
+    const u64 held = padGetButtons(&pad);
+    const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+
+    // Base navigation still uses the shared modern grid geometry. Normalize the source cursor to
+    // the adapter's native capacity before any source action/move layer sees it.
+    clampSourceBoxSelection(*this);
+
+    // Feature A: the Import from file dialog is modal over every Gen I-V surface.
+    if (PokemonFileDialog::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    // Gen V source isolation precedes all inherited touch and save handlers.
+    if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
+        return;
+    if (ClassicPartyActions::handle(*this,down,held,stick.x,stick.y,touch))return;
+
+    // Storage's legacy touch path fires A on first contact. For the GAME SAVE
+    // pane in Gen I-IV, wait for the completed same-cell tap and route A
+    // through the genuine generation editor. TouchInput::justPressed() is
+    // ALREADY a release-confirmed tap; it is NOT a finger-down edge. Do not
+    // touch the separate Bank pane or interfere with drag/multi/carry input.
+    const bool stagedStorageSave = detailViewActive && selectedMode == ViewMode::Storage &&
+        !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
+        !saveConfirmActive && !pickerActive && !itemEditDialogActive &&
+        !carrying() && !currentlySelecting && !swapActive && !releaseConfirmActive &&
+        !groupMenuActive && !editorOverlayState(*this).active &&
+        !Gen3SharedEditorSurface::ownsFrame(*this) &&
+        !Gen4SharedEditorSurface::ownsFrame(*this) &&
+        !Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this) &&
+        !Gen2PokemonEditor::pickerStateFor(*this).model.active() &&
+        !Gen1PokemonEditor::foundationPickerActive(*this) &&
+        !Gen1PokemonEditor::foundationPassiveViewActive(*this) &&
+        (!Gen1PokemonEditor::isGen1SourceUX(*this) ||
+         Gen1PokemonEditor::ux2StateFor(*this).mode ==
+             decltype(Gen1PokemonEditor::ux2StateFor(*this).mode)::Closed) &&
+        ((Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::editorAvailable(*this)) ||
+         (Gen2PokemonEditor::isGSC(*this) && stagedEditor(*this) != nullptr) ||
+         Gen3SharedEditorSurface::isGen3Gba(*this) ||
+         Gen4SharedEditorSurface::isGen4Nds(*this));
+    if (stagedStorageSave && touch.justTapped()) {
+        const auto saveSlotHit = [&](int x, int y) -> int {
+            for (const auto& target : storageTouchTargets) {
+                if (target.pane != 0 || target.box != stSaveBox ||
+                    target.slot < 0 ||
+                    target.slot >= static_cast<int>(trainer.getSlotsPerBox())) continue;
+                if (x >= target.x && x < target.x + target.w &&
+                    y >= target.y && y < target.y + target.h)
+                    return target.slot;
+            }
+            return -1;
+        };
+        const int first = saveSlotHit(touch.startX(), touch.startY());
+        if (first >= 0 && first == saveSlotHit(touch.x(), touch.y())) {
+            storageFocusPane = 0;
+            stSaveSlot = first;
+            down |= HidNpadButton_A;
+            // The generation's staged Actions handler below owns this A.
+            // Its true return prevents the old storage/menu handler firing.
+        }
+    }
+
+    if (openClassicBrowseReview(*this, down)) return;
+    if (classicPackedMoveLayerAvailable(*this) &&
+        ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen4SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;
+
+    if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
+
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
+        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y, touch)) return;
+    }
+
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
+        Gen1PokemonEditor::handleFoundationPassiveViewInput(*this, down, touchedButtonId(touch), held, stick.x, stick.y);
+        return;
+    }
+
+    if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y, touch)) return;
+    if (handleBasePartyTouch(*this, touch)) return;
+    updateGSCOverlay(pad, touch);
+    clampSourceBoxSelection(*this);
+}
+
+void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    // B08: the status line (export result, refusals) is painted LAST on every path,
+    // including the Gen II-V surfaces below that own the frame and return early.
+    struct StatusOnTop {
+        TrainerViewScreen& screen; PKSEFramebuffer& fb;
+        ~StatusOnTop() { screen.drawTransientStatus(fb); }
+    } statusOnTop{*this, fb};
+    // Feature A: the Import from file dialog owns the frame over every surface. Declared after the
+    // status guard, so it is destroyed (paints) first and the status line still lands on top.
+    struct FileDialogOnTop {
+        TrainerViewScreen& screen; PKSEFramebuffer& fb;
+        ~FileDialogOnTop() { PokemonFileDialog::drawDialog(screen, fb); }
+    } fileDialogOnTop{*this, fb};
+    // Touch input is consumed before draw, so each rendered frame must publish fresh geometry.
+    // Clear both screen-owned targets and visible controller-glyph buttons here because the
+    // Gen I-IV editor frames do not all pass through drawAppBackdrop().
+    touchButtons.clear();
+    g_touchGlyphAccum.clear();
+    g_touchGlyphHits.clear();
+
+    if (ClassicPartyActions::draw(*this,fb))return;
+    if (Gen5SharedReadOnlySurface::draw(*this, fb)) return;
+    if (Gen4SharedEditorSurface::draw(*this, fb)) return;
+    if (Gen3SharedEditorSurface::draw(*this, fb)) return;
+
+    // Prevent a base-navigation transition from ever presenting a non-existent source slot, even
+    // for the single frame in which the shared 30-slot navigation math crosses the native edge.
+    clampSourceBoxSelection(*this);
+
+    if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)) {
+        drawGSCOverlay(fb);
+        publishBasePartyTouchTargets(*this, fb);
+        drawGen2ClassicBoxFooter(*this, fb);
+    }
+
+    if (Gen2PokemonEditor::drawReleaseActionSurface(*this, fb)) return;
+    if (Gen1PokemonEditor::drawReleaseActionSurface(*this, fb)) return;
+
+    if (Gen2PokemonEditor::drawFinalGen2Surface(*this, fb)) {
+        Gen2PokemonEditor::drawPickerOverlay(*this, fb);
+        if (classicPackedMoveLayerAvailable(*this)) ClassicPackedMove::draw(*this, fb);
+        return;
+    }
+
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) &&
+        (Gen1PokemonEditor::foundationPickerActive(*this) || Gen1PokemonEditor::foundationMoveEditorActive(*this))) {
+        Gen1PokemonEditor::drawFoundationPicker(*this, fb);
+        return;
+    }
+
+    if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
+        Gen1PokemonEditor::drawFoundationPassiveView(*this, fb);
+        return;
+    }
+
+    Gen1PokemonEditor::drawOverlayUX(*this, fb);
+    Gen1PokemonEditor::drawFoundationBottomSplit(*this, fb);
+    if (classicPackedMoveLayerAvailable(*this)) ClassicPackedMove::draw(*this, fb);
+}
+
+} // namespace UI

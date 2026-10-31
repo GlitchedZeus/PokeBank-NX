@@ -1,5 +1,7 @@
 # PokeBank NX — Current Research Router
 
+> **AUTHORITY NOTE (2026-09-29):** Research router only. It does not define the active branch, PR, milestone, or task. Start with `docs/ENGINEERING_AUTHORITY.md` and live GitHub state; older authority-chain wording below is historical.
+
 > **2026-09-22 navigation update:** use `docs/REFERENCE_INDEX.md` as the consolidated current lookup for external repositories, license/reuse classification, and “what to use this for.” This file remains valuable deeper research/history and is intentionally preserved.
 
 Last updated: 2026-09-22

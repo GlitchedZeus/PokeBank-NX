@@ -1,8 +1,10 @@
 #ifndef GET_SAVE_FILE_CONTENTS_H
 #define GET_SAVE_FILE_CONTENTS_H
 
+#include <span>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include <switch.h>
 
@@ -36,6 +38,21 @@ namespace Save {
     // ========================================
     // Generic Functions (Auto-detect game)
     // ========================================
+
+    struct WorkspaceImage {
+        std::string fileId;
+        std::vector<uint8_t> bytes;
+    };
+
+    // A04b: construct and validate a complete PokeBank-owned workspace post-image without
+    // persisting it. This is what lets the Move journal exist before either store changes.
+    bool buildWorkspaceImage(Trainer::Trainer& trainer, const char* backupDir, u64 titleId,
+                             WorkspaceImage& out, std::string& error);
+    bool validateWorkspaceImage(u64 titleId, std::span<const uint8_t> bytes, std::string& error);
+    bool persistWorkspaceImage(u64 titleId, const char* backupDir,
+                               const WorkspaceImage& image, std::string& error);
+    std::string authoritativeWorkspaceFileId(const char* backupDir, u64 titleId,
+                                             std::string& error);
 
     /**
      * Reads trainer info from a save file, auto-detecting the game version.
@@ -162,7 +179,7 @@ namespace Save {
 
     /** Reads a GBA FireRed/LeafGreen (SAV3FRLG) 128 KiB save into a Trainer3FRLG (scans the dir for the
      *  128 KiB / *.sav file so Checkpoint exports like "FireRed_e.sav" are found automatically). */
-    Trainer3FRLG readTrainerInfoFRLG(const char* backupDir);
+    Trainer3FRLG readTrainerInfoFRLG(const char* backupDir, bool previewOnly = false);
     /** Saves an FRLG save: re-encrypt party/boxes/items in place + recompute all 14 sector checksums. */
     bool saveTrainerInfoFRLG(Trainer3FRLG& trainer, const char* backupDir, u64 titleId, AccountUid userUid, bool injectToTitle);
 }

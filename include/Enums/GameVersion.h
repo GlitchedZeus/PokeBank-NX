@@ -1,6 +1,7 @@
 #ifndef ENUMS_GAME_VERSION_H
 #define ENUMS_GAME_VERSION_H
 
+#include <cstdint>
 #include <string>
 
 namespace Enums {
@@ -16,6 +17,19 @@ namespace Enums {
         // Gen 3 (GBA) -- values match the Origins version field in PK3
         FR = 4,  // Pokemon FireRed
         LG = 5,  // Pokemon LeafGreen
+
+        // Gen 4 (Nintendo DS) -- exact values stored in PK4 origin/version fields.
+        HG = 7,
+        SS = 8,
+        D = 10,
+        P = 11,
+        Pt = 12,
+
+        // Gen V native PK5 origin values (PKHeX GameVersion IDs).
+        W = 20,
+        B = 21,
+        W2 = 22,
+        B2 = 23,
 
         // Nintendo Switch
         GP = 42, // Pokemon: Let's Go, Pikachu!
@@ -33,13 +47,20 @@ namespace Enums {
         // The following values are not actually stored values in pk data,
         // These values are assigned as properties for various logic branching.
 
-        // Game Groupings
+        // Game Groupings. GSC intentionally occupies the unused value immediately before RBY;
+        // every existing grouping keeps its historical numeric value.
+        GSC = 70,  // Pokemon Gold/Silver/Crystal legacy read-only group (not a stored PKM origin value)
         RBY = 71,  // Pokemon Red/Blue/Yellow legacy read-only group (not a stored PKM origin value)
         FRLG = 72, // Pokemon FireRed & LeafGreen group
         GG = 73,   // Pokemon Let's Go Pikachu & Eevee group
         SWSH = 74, // Pokemon Sword & Shield group
         BDSP = 75, // Pokemon Brilliant Diamond & Shining Pearl group
         SV = 76,   // Pokemon Scarlet & Violet group
+        DP = 77,   // Pokemon Diamond/Pearl NDS save-layout group
+        PT = 78,   // Pokemon Platinum NDS save-layout group
+        HGSS = 79, // Pokemon HeartGold/SoulSilver NDS save-layout group
+        BW = 80,   // Pokemon Black/White NDS read-only source group
+        B2W2 = 81, // Pokemon Black 2/White 2 NDS read-only source group
 
         // Generational Groupings
         Gen7B = 84,
@@ -62,6 +83,17 @@ namespace Enums {
             // Gen 3 - FireRed/LeafGreen (Nintendo Switch Online GBA release)
             case 0x0100554023408000: return GameVersion::FR;  // FireRed   (title ids from real Switch backups)
             case 0x010034D02340E000: return GameVersion::LG;  // LeafGreen
+            // Localized releases (upstream PKSE include/Enums/GameVersion.h:163-174 at a79fe61a).
+            case 0x01006FA0233F8000: return GameVersion::FR;  // FireRed   (Japanese)
+            case 0x01004B3023412000: return GameVersion::FR;  // FireRed   (French)
+            case 0x010092302342A000: return GameVersion::FR;  // FireRed   (Italian)
+            case 0x01007F8023416000: return GameVersion::FR;  // FireRed   (German)
+            case 0x0100EB702342C000: return GameVersion::FR;  // FireRed   (Spanish)
+            case 0x0100F1E0233FA000: return GameVersion::LG;  // LeafGreen (Japanese)
+            case 0x010087C02342E000: return GameVersion::LG;  // LeafGreen (French)
+            case 0x01005C7023432000: return GameVersion::LG;  // LeafGreen (Italian)
+            case 0x0100FD6023430000: return GameVersion::LG;  // LeafGreen (German)
+            case 0x01002B5023434000: return GameVersion::LG;  // LeafGreen (Spanish)
 
             // // Gen 7 - Let's Go
             case 0x010003F003A34000: return GameVersion::GP;  // Let's Go Pikachu
@@ -104,6 +136,21 @@ namespace Enums {
             case GameVersion::LG:
                 return GameVersion::FRLG;  // FireRed/LeafGreen group
 
+            case GameVersion::D:
+            case GameVersion::P:
+                return GameVersion::DP;
+            case GameVersion::Pt:
+                return GameVersion::PT;
+            case GameVersion::HG:
+            case GameVersion::SS:
+                return GameVersion::HGSS;
+            case GameVersion::B:
+            case GameVersion::W:
+                return GameVersion::BW;
+            case GameVersion::B2:
+            case GameVersion::W2:
+                return GameVersion::B2W2;
+
             case GameVersion::GP:
             case GameVersion::GE:
                 return GameVersion::GG;  // Let's Go group
@@ -141,6 +188,21 @@ namespace Enums {
         switch (version) {
             case GameVersion::FR: return "FireRed";
             case GameVersion::LG: return "LeafGreen";
+            case GameVersion::HG: return "HeartGold";
+            case GameVersion::SS: return "SoulSilver";
+            case GameVersion::D: return "Diamond";
+            case GameVersion::P: return "Pearl";
+            case GameVersion::Pt: return "Platinum";
+            case GameVersion::DP: return "Diamond/Pearl";
+            case GameVersion::PT: return "Platinum";
+            case GameVersion::HGSS: return "HeartGold/SoulSilver";
+            case GameVersion::B: return "Black";
+            case GameVersion::W: return "White";
+            case GameVersion::B2: return "Black 2";
+            case GameVersion::W2: return "White 2";
+            case GameVersion::BW: return "Black/White";
+            case GameVersion::B2W2: return "Black 2/White 2";
+            case GameVersion::GSC: return "Gold/Silver/Crystal";
             case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";
             case GameVersion::GP: return "Let's Go Pikachu";
@@ -279,6 +341,10 @@ namespace Enums {
     /** A representative stored version byte for a storage-format game group, for location-table routing. */
     inline uint8_t getGroupRepVersion(GameVersion group) {
         switch (group) {
+            case GameVersion::GSC:  return 39;  // Gold VC id; presentation-only representative for the GSC group
+            case GameVersion::DP:   return 10;  // Diamond; raw DP saves cannot prove D vs P
+            case GameVersion::PT:   return 12;
+            case GameVersion::HGSS: return 7;   // only a presentation representative; save ROMCode retains exact HG/SS
             case GameVersion::FRLG: return 4;   // FireRed
             case GameVersion::GG:   return 42;  // Let's Go Pikachu
             case GameVersion::SWSH: return 44;  // Sword
