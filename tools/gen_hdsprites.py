@@ -42,9 +42,11 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image
+from png_asset_validation import is_valid_png, validate_png
 
 # PokeAPI/sprites pinned commit (raw.githubusercontent; jsDelivr can't serve this repo -- too large).
 PINNED_REF = "8dfa3d97e953caaafaafd4963eff7621811af08e"
@@ -123,12 +125,15 @@ def _save_downscaled(data, path):
 def _one(remote, local, force):
     """Returns 'ok' | 'have' | 'miss'."""
     out = os.path.join(OUT_DIR, local)
-    if not force and os.path.exists(out):
+    if not force and is_valid_png(Path(out)):
         return "have"
     data = _get("%s/%s" % (BASE_URL, remote))
     if data is None:
         return "miss"
     _save_downscaled(data, out)
+    valid, reason, _ = validate_png(Path(out))
+    if not valid:
+        raise RuntimeError("generated sprite is not a valid PNG: %s: %s" % (local, reason))
     return "ok"
 
 

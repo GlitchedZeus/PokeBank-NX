@@ -121,18 +121,11 @@ namespace Trainer {
             // Check if slot has valid Pokemon data (non-zero species)
             // The species ID is at offset 0x08 after decryption, but we can check
             // for an all-zero slot to skip empty slots
-            bool isEmptySlot = true;
-            for (size_t i = 0; i < SIZE_PARTY8_LA && i < slotSpan.size(); ++i) {
-                if (slotSpan[i] != std::byte{0}) {
-                    isEmptySlot = false;
-                    break;
-                }
-            }
-
-            if (!isEmptySlot) {
-                // Decrypt and create Pokemon8LA object as unique_ptr
-                // Pokemon8LA constructor handles decryption automatically
-                party.push_back(std::make_unique<Pokemon8LA>(slotSpan));
+            // Native empty slots are encrypted, non-zero records whose decrypted species is 0.
+            // Construct/decrypt first; only logical Pokemon belong in the party vector.
+            auto parsed = std::make_unique<Pokemon8LA>(slotSpan);
+            if (parsed->speciesID() != 0) {
+                party.push_back(std::move(parsed));
             }
         }
     }
@@ -211,21 +204,10 @@ namespace Trainer {
                 std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_STORED8_LA);
 
                 // Check if slot has a Pokemon (non-zero data)
-                bool isEmptySlot = true;
-                for (size_t i = 0; i < SIZE_STORED8_LA && i < slotSpan.size(); ++i) {
-                    if (slotSpan[i] != std::byte{0}) {
-                        isEmptySlot = false;
-                        break;
-                    }
-                }
-
-                if (!isEmptySlot) {
-                    // Decrypt and create Pokemon8LA object
-                    boxes[boxIndex][slot] = std::make_unique<Pokemon8LA>(slotSpan);
-                } else {
-                    // Empty slot
-                    boxes[boxIndex][slot] = nullptr;
-                }
+                // Native encrypted blanks are non-zero on disk but decrypt to species 0.
+                auto parsed = std::make_unique<Pokemon8LA>(slotSpan);
+                boxes[boxIndex][slot] =
+                    parsed->speciesID() != 0 ? std::move(parsed) : nullptr;
             }
         }
     }
@@ -285,8 +267,8 @@ namespace Trainer {
          * validates it, so a zeroed slot decrypts to garbage and renders a BAD EGG. This path
          * used to memset(0) and corrupted the party into Bad Eggs on any save (even a box-name
          * edit, since the party is re-serialized unconditionally). The PartyCount byte at
-         * 6*0x178 is deliberately left untouched: empty slots load as species-0 "ghosts" that
-         * inflate party.size(), so the save's own count is authoritative, not party.size().
+         * 6*0x178 is deliberately left untouched: the save's own count remains authoritative,
+         * while parsePartyBlock now excludes decrypted species-0 blanks from the logical vector.
          */
         for (auto& block : blocks) {
             if (block.key == PARTY8_LA) {
@@ -556,6 +538,65 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer8LA::pokedexProgress() const
+    {
+        const std::vector<uint8_t>* dex = nullptr;
+        for (const auto& block : blocks) {
+            if (block.key == POKEDEX8_LA) { dex = &block.data; break; }
+        }
+        if (!dex || dex->size() < PLA_BLOCK_SIZE) return {};
+
+        PokedexProgress progress{};
+        for (uint16_t species = 1; species <= ::Pokemon::PLA_MAX_SPECIES; ++species) {
+            bool hasDexEntry = false;
+            bool seen = false;
+            bool obtained = false;
+
+            for (uint16_t form = 0; form <= ::Pokemon::PLA_MAX_FORM; ++form) {
+                const uint16_t statIdx =
+                    ::Pokemon::getPLAStatisticsIndex(species, static_cast<uint8_t>(form));
+                if (statIdx == ::Pokemon::PLA_NO_STAT_ENTRY) continue;
+                hasDexEntry = true;
+                const size_t stats =
+                    PLA_STATS_BASE + static_cast<size_t>(statIdx) * PLA_STATS_SIZE;
+                if (stats + PLA_STATS_SIZE > dex->size()) continue;
+                if ((*dex)[stats + 0x04] != 0 || (*dex)[stats + 0x05] != 0 ||
+                    (*dex)[stats + 0x06] != 0)
+                    seen = true;
+                if ((*dex)[stats + 0x05] != 0)
+                    obtained = true;
+            }
+            if (!hasDexEntry) continue;
+            ++progress.total;
+
+            const size_t research =
+                PLA_RESEARCH_BASE + static_cast<size_t>(species) * PLA_RESEARCH_SIZE;
+            if (research + PLA_RESEARCH_SIZE <= dex->size()) {
+                const uint32_t flags = rdU32(*dex, research + 0x00);
+                const uint16_t numObtained = rdU16(*dex, research + 0x0A);
+                seen = seen || (flags & 0x01u) != 0 || numObtained != 0;
+                obtained = obtained || numObtained != 0;
+            }
+            if (seen) ++progress.seen;
+            if (obtained) ++progress.caught;
+        }
+        return progress;
+    }
+
+    std::vector<uint64_t> Trainer8LA::storedMonKeys() const
+    {
+        std::vector<uint64_t> keys;
+        auto add = [&](const ::Pokemon::Pokemon* pk) {
+            if (pk && pk->speciesID() != 0)
+                keys.push_back((static_cast<uint64_t>(pk->speciesID()) << 32) | pk->encryptionConstant());
+        };
+        for (const auto& pk : party) add(pk.get());
+        for (const auto& box : boxes)
+            for (const auto& pk : box) add(pk.get());
+        std::sort(keys.begin(), keys.end());
+        return keys;
+    }
+
     void Trainer8LA::updatePokedexBlock()
     {
         std::vector<uint8_t>* dex = nullptr;
@@ -569,9 +610,22 @@ namespace Trainer {
             return;
         }
         size_t skippedNoEntry = 0;
+        // Every Pokemon the Zukan already accounted for is skipped exactly once: an unedited build,
+        // a box-to-box move or a re-build leaves research untouched, and only a Pokemon that is new
+        // since the save was read (or since the previous build) registers. Before this, every stored
+        // Pokemon was registered on every build, so "Number caught" grew by the stored count on each
+        // working-copy write and each true Move post-image (PKSE 9a9a731, upstream issue #135).
+        std::vector<uint64_t> alreadyRegistered = m_registeredMons;
 
         auto registerMon = [&](const ::Pokemon::Pokemon* pk) {
-            if (!pk || pk->isEgg()) return;
+            if (!pk || pk->speciesID() == 0) return;
+            const uint64_t key = (static_cast<uint64_t>(pk->speciesID()) << 32) | pk->encryptionConstant();
+            const auto known = std::lower_bound(alreadyRegistered.begin(), alreadyRegistered.end(), key);
+            if (known != alreadyRegistered.end() && *known == key) {
+                alreadyRegistered.erase(known);
+                return;
+            }
+            if (pk->isEgg()) return;
             const uint16_t species = pk->speciesID();
             if (species == 0 || species > ::Pokemon::PLA_MAX_SPECIES) return;
             const uint8_t form = pk->form();
@@ -657,6 +711,7 @@ namespace Trainer {
         for (const auto& pk : party) registerMon(pk.get());
         for (const auto& box : boxes)
             for (const auto& pk : box) registerMon(pk.get());
+        m_registeredMons = storedMonKeys();
 
         // Not an error -- many species+form pairs genuinely have no statistics slot -- but a sudden
         // jump here would mean the lookup table is wrong, and silence is how that hides.

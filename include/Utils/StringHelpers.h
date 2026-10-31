@@ -8,6 +8,12 @@
 namespace Utils {
     constexpr uint16_t TerminatorNull = 0u;
 
+    enum class CheckedTextResult : uint8_t {
+        Accepted,
+        Overlength,
+        MalformedUtf16,
+    };
+
     // Equivalent to C# LoadString
     /// Loads characters into the result buffer and returns the count of characters loaded.
     int loadString(const uint8_t* data, size_t data_size, char16_t* result, size_t result_capacity);
@@ -27,6 +33,12 @@ namespace Utils {
     /// zero-fills the rest of the data_size bytes (null terminator + padding).
     /// data_size is the full field width in bytes (e.g. 26 for a 13-slot name).
     void setString(uint8_t* dest, size_t data_size, const std::u16string& value, size_t maxChars);
+
+    /// Checked modern-text writer. maxUnits is a count of UTF-16 code units, not Unicode code points.
+    /// Rejected input leaves dest unchanged; embedded NUL is rejected because it would terminate the
+    /// stored field before the caller's requested logical string ends.
+    CheckedTextResult setStringChecked(uint8_t* dest, size_t data_size,
+                                       const std::u16string& value, size_t maxUnits);
 }
 
 #endif

@@ -183,6 +183,10 @@ namespace Pokemon {
         // Level/CP 0. Formula per PKHeX PB7 (LoadStats + CalcCP): the 5 non-HP stats carry the friendship
         // scalar + nature amp + AV; CP = min(10000, BaseCP + AwakeCP).
         const uint16_t species = speciesID();
+        const auto* base = getBaseStatsGen7(species, form());
+        if (!base || base->id != species || base->hp == 0) {
+            return; // Unknown/unmodelled species/form: preserve the existing party-stat/CP tail.
+        }
         uint8_t lvl = getLevelFromExp(exp(), getGrowthRate(species));
         if (lvl < 1) lvl = 1; else if (lvl > 100) lvl = 100;
         data[0xEC] = static_cast<std::byte>(lvl);   // Stat_Level

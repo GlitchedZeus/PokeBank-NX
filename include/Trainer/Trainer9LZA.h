@@ -152,7 +152,8 @@ namespace Trainer {
          */
         void updateItemBlock() override;
         void updateTrainerInfoBlock() override;   // money / OT name
-        void updatePokedexBlock() override;       // Zukan9a: seen/caught/shiny/mega/alpha per form
+        void updatePokedexBlock() override;
+        PokedexProgress pokedexProgress() const override;       // Zukan9a: seen/caught/shiny/mega/alpha per form
         bool itemsAreIdIndexed() const override { return true; }   // count at itemId * 0x10
 
         /**

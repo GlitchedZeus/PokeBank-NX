@@ -1,6 +1,7 @@
 #include "Integration/Gen3/FRLGReadModel.h"
 
 #include "Trainer/Inventory3FRLG.h"
+#include "Enums/LanguageID.h"
 #include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
 
@@ -74,26 +75,35 @@ namespace PokeVault::Integration::Gen3::Detail {
             return true;
         }
 
-        std::string decodeTrainerName(std::span<const uint8_t> bytes) {
+        std::string decodeTrainerName(std::span<const uint8_t> bytes, uint8_t languageId) {
             std::u16string text;
             for (uint8_t value : bytes) {
                 if (value == Utils::GEN3_TERMINATOR) break;
-                if (const char16_t character = Utils::gen3ToChar(value)) text.push_back(character);
+                if (const char16_t character = Utils::gen3ToChar(value, languageId)) text.push_back(character);
             }
-            while (!text.empty() && text.back() == u' ') text.pop_back();
+            while (!text.empty() && (text.back() == u' ' || text.back() == u'　')) text.pop_back();
             return Utils::utf16ToUtf8(text);
         }
 
         bool readTrainerIdentity(std::span<const uint8_t> source,
                                  const std::array<size_t, 14>& sectors,
                                  TrainerRecord& trainer) noexcept {
-            std::array<uint8_t, 16> trainerBytes{};
+            std::array<uint8_t, 18> trainerBytes{};
             if (!readLogical(source, sectors, 0, 0, trainerBytes)) return false;
-            trainer.name = decodeTrainerName(std::span<const uint8_t>(trainerBytes.data(), 7));
+            // PKHeX/PKSM detect Japanese Gen III saves from the 5-character trainer-name shape:
+            // bytes 6-7 remain zero on Japanese saves; international saves use the shared table.
+            trainer.language = static_cast<uint8_t>(
+                (trainerBytes[6] == 0 && trainerBytes[7] == 0)
+                    ? Enums::LanguageID::Japanese : Enums::LanguageID::English);
+            trainer.name = decodeTrainerName(
+                std::span<const uint8_t>(trainerBytes.data(), 7), trainer.language);
             trainer.gender = static_cast<uint8_t>(trainerBytes[8] & 1);
             trainer.tid16 = read16(trainerBytes, 0x0A);
             trainer.sid16 = read16(trainerBytes, 0x0C);
             trainer.id32 = read32(trainerBytes, 0x0A);
+            // PKHeX 6042efa241a9 SaveBlock3Small{RS,E,FRLG}: section 0 + 0x0E/10/11.
+            trainer.playTime=Common::nativePlayTime(read16(trainerBytes,0x0E),
+                                                   trainerBytes[0x10],trainerBytes[0x11]);
             return true;
         }
 
@@ -187,6 +197,19 @@ namespace PokeVault::Integration::Gen3::Detail {
         }
     }
 
+    // Pinned PKHeX SaveBlock3LargeRS/E/FRLG: badges are eight event bits,
+    // not the first byte of the flags array. Logical reads cross 0xF80 chunks.
+    static uint8_t readBadges(std::span<const uint8_t> source,
+        const std::array<size_t,14>& sectors,size_t flags,unsigned start) noexcept {
+        uint8_t mask=0;
+        for(unsigned i=0;i<8;++i) {
+            std::array<uint8_t,1> value{};
+            if(!readLogical(source,sectors,1,flags+(start+i)/8,value))return 0;
+            mask|=static_cast<uint8_t>(((value[0]>>((start+i)%8))&1u)<<i);
+        }
+        return mask;
+    }
+
     FRLGReadModelResult readFRLGModel(
         std::span<const uint8_t> source,
         const std::array<size_t, 14>& logicalSectorOffsets) noexcept {
@@ -195,6 +218,8 @@ namespace PokeVault::Integration::Gen3::Detail {
             result.error = SaveError::CoreRejected;
             return result;
         }
+
+        result.trainer.badges=readBadges(source,logicalSectorOffsets,0xEE0,0x820);
 
         std::array<uint8_t, 4> keyBytes{};
         std::array<uint8_t, 4> moneyBytes{};
@@ -255,6 +280,8 @@ namespace PokeVault::Integration::Gen3::Detail {
             result.error = SaveError::CoreRejected;
             return result;
         }
+
+        result.trainer.badges=readBadges(source,logicalSectorOffsets,emerald?0x1270:0x1220,emerald?0x867:0x807);
 
         std::array<uint8_t, 4> moneyBytes{};
         if (!readLogical(source, logicalSectorOffsets, 1, 0x490, moneyBytes)) {

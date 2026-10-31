@@ -1,6 +1,9 @@
 #include "Trainer/Bank.h"
+#include "Trainer/BankRecordValidation.h"
+#include "Trainer/BankLoadPolicy.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <span>
@@ -23,9 +26,11 @@
 #include "Encryption/Encryption8BDSP.h"
 #include "Encryption/Encryption3FRLG.h"
 #include "Utils/FileUtilities.h"
+#include "Utils/DurableFile.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 #include "Globals.h"
+#include "Utils/PokeBankPaths.h"
 
 using namespace Utils;
 using namespace Enums;
@@ -35,7 +40,7 @@ using namespace Encryption;
 namespace Trainer {
     namespace {
         // ---- Unified on-disk format ----------------------------------------------------------
-        // File: BASE_SAVE_DIRECTORY/bank/bank.dat
+        // File: PokeBank NX banks/legacy-pkse/bank.dat (legacy PKSEBANK format)
         //   Header (16 B): char magic[8]="PKSEBANK"; u32 version; u32 boxCount
         //   Then boxCount*BANK_SLOTS_PER_BOX fixed records, each:
         //     u32 groupTag; u8 payload[maxPayload]   (payload = native ENCRYPTED per-gen bytes)
@@ -51,6 +56,24 @@ namespace Trainer {
         // v1 file with it is still read correctly by code that predates the section. Per box:
         // u16 LE length + that many UTF-8 bytes.
         constexpr uint8_t  NAMES_MARKER[4] = { 'N','A','M','S' };
+
+        // Never overwrite earlier corruption evidence. The old fixed
+        // bank.dat.unreadable path deleted the previous casualty before preserving
+        // the next one. Numbered generations remain deterministic even when the
+        // console clock is unset or wrong.
+        std::string uniqueUnreadablePath(const std::string& path) {
+            for (uint64_t generation = 0; generation < 1000000; ++generation) {
+                const std::string candidate =
+                    path + ".unreadable." + std::to_string(generation);
+                struct stat st{};
+                errno = 0;
+                if (stat(candidate.c_str(), &st) != 0) {
+                    if (errno == ENOENT) return candidate;
+                    return {};  // filesystem error: do not guess that the name is free
+                }
+            }
+            return {};  // fail closed rather than overwrite an existing recovery generation
+        }
 
         // Frozen on-disk group tags -- written into every slot record. NEVER renumber these;
         // add-only. (Deliberately independent of the Enums::GameVersion numeric values, which are
@@ -158,7 +181,11 @@ namespace Trainer {
     }
 
     std::string Bank::filePath() const {
-        return BASE_SAVE_DIRECTORY + "/bank/bank.dat";
+        return PokeBank::Paths::legacyBankRoot() + "/bank.dat";
+    }
+
+    std::string Bank::authoritativePath() const {
+        return filePath();
     }
 
     std::string Bank::boxDisplayName(size_t box) const {
@@ -216,23 +243,49 @@ namespace Trainer {
         return buf;
     }
 
+    void Bank::blockWrites(LoadOutcome outcome, std::string reason) {
+        loadOutcome = outcome;
+        writeBlocked = true;
+        writeBlockReasonText = std::move(reason);
+    }
+
     void Bank::load() {
         // Reset every slot first so this is a true reload -- also the "discard changes" path.
         for (auto& box : boxes)
             for (auto& slot : box)
                 slot.reset();
         for (auto& n : boxNames) n.clear();   // names revert on reload/discard too
+        writeBlocked = false;
+        writeBlockReasonText.clear();
+        loadRejects = 0;
+        loadOutcome = LoadOutcome::Loaded;
 
         const std::string path = filePath();
-        size_t fileSize = 0;
-        uint8_t* file = readAllBytes(path.c_str(), &fileSize);
-        if (!file) {
+        // Only a genuinely absent bank.dat with no preserved generation is a first run. A missing
+        // target with a validating .previous.N (interrupted save) is restored first; anything that
+        // cannot be inspected opens empty and write-blocked, never migrated over.
+        const auto start = BankLoadPolicy::decide(path, &Bank::validateStorageImage);
+        if (start.start == BankLoadPolicy::Start::Blocked) {
+            blockWrites(LoadOutcome::Blocked, start.detail);
+            savedImage = serialize();
+            logErrorToFile("Bank: load blocked; no migration, writes blocked", start.detail.c_str());
+            return;
+        }
+        if (start.start == BankLoadPolicy::Start::FirstRun) {
             // No unified bank yet: one-time import of any legacy per-group bank files, then snapshot.
+            loadOutcome = LoadOutcome::FirstRun;
             migrateLegacyBanks();
             savedImage = serialize();
             logInfoToFile("Bank: no unified bank file; migrated legacy banks if present", path.c_str());
             return;
         }
+        if (start.restored) {
+            loadOutcome = LoadOutcome::Restored;
+            logInfoToFile("Bank: interrupted save recovered", start.detail.c_str());
+        }
+
+        size_t fileSize = 0;
+        uint8_t* file = readAllBytes(path.c_str(), &fileSize);
 
         const size_t payload = maxPayloadSize();
         const size_t recSize = 4 + payload;
@@ -242,15 +295,38 @@ namespace Trainer {
         // it is the user's only copy of those Pokemon, and starting empty over the top of it would
         // destroy them. Renaming lets us proceed with an empty bank while the original survives.
         auto abandonFile = [&](const char* why) {
-            const std::string aside = path + ".unreadable";
-            std::remove(aside.c_str());                     // keep only the most recent casualty
-            if (std::rename(path.c_str(), aside.c_str()) == 0)
-                logErrorToFile("Bank: unreadable file preserved as bank.dat.unreadable", why);
-            else
-                logErrorToFile("Bank: unreadable file could NOT be preserved", why);
+            const std::string aside = uniqueUnreadablePath(path);
+            if (!aside.empty() && std::rename(path.c_str(), aside.c_str()) == 0) {
+                logErrorToFile("Bank: unreadable file preserved as unique recovery generation",
+                               aside.c_str());
+                // Preserved, but still the user's Bank: an empty replacement is not committed
+                // until the owner resolves the set-aside copy (BankLoadPolicy keeps blocking).
+                const std::string name = aside.substr(aside.find_last_of('/') + 1);
+                blockWrites(LoadOutcome::Quarantined,
+                    "The Bank file could not be read (" + std::string(why) + ") and was kept as " + name +
+                    ". Saving the Bank is blocked until that file is restored or removed from the Bank folder.");
+            } else {
+                // The authoritative bad file is still in place. Never allow a later
+                // empty-bank save to overwrite it merely because quarantine failed.
+                blockWrites(LoadOutcome::Quarantined,
+                    "Unreadable Bank could not be preserved safely; original file left untouched.");
+                logErrorToFile("Bank: unreadable file could NOT be preserved; writes blocked", why);
+            }
             delete[] file;
             savedImage = serialize();
         };
+
+        if (!file) {
+            // bank.dat exists but could not be read (open/permission, I/O, out of memory, short
+            // read). It may be a transient fault, so it is neither renamed nor replaced: left exactly
+            // where it is, never a first run, never migrated over, and never saved over.
+            blockWrites(LoadOutcome::ReadFailed,
+                "The Bank file exists but could not be read. It was left untouched; saving the Bank "
+                "is blocked. Restart PokeBank NX or check the SD card.");
+            savedImage = serialize();
+            logErrorToFile("Bank: existing file could not be read; left in place, writes blocked", path.c_str());
+            return;
+        }
 
         if (fileSize < HEADER_SIZE || std::memcmp(file, BANK_MAGIC, 8) != 0) {
             abandonFile("bad magic or truncated header");
@@ -268,16 +344,19 @@ namespace Trainer {
         // where its names section begins -- using our own BANK_BOX_COUNT instead would look past the end
         // of any smaller, older bank and silently drop every custom box name the first time the count
         // was raised. Records are position-indexed, so a shorter table simply fills the low boxes.
-        uint32_t fileBoxes = readUInt32LittleEndian(file + 12);
-        if (fileBoxes == 0 || fileBoxes > 4096) {
-            // Header damaged or absurd; fall back to the record count the file can actually hold rather
-            // than trusting it to compute an offset.
-            fileBoxes = static_cast<uint32_t>(BANK_BOX_COUNT);
+        const uint32_t fileBoxes = readUInt32LittleEndian(file + 12);
+        const auto boxDisposition = BankFormatPolicy::classifyBoxCount(fileBoxes);
+        if (boxDisposition == BankFormatPolicy::Disposition::Invalid) {
+            abandonFile("invalid or unsupported bank box-count header");
+            return;
         }
-        if (fileBoxes > BANK_BOX_COUNT) {
-            // The bank was written by a build with MORE boxes. Everything past ours cannot be loaded,
-            // and saving would drop it, so say so loudly rather than quietly truncating someone's bank.
-            logErrorToFile("Bank: file has more boxes than this build supports; extra boxes will be lost if saved",
+        if (boxDisposition == BankFormatPolicy::Disposition::MigrationRequired) {
+            // Load only the prefix this build understands for inspection/export, but NEVER allow
+            // this process to overwrite the authoritative file: doing so would truncate every
+            // unseen box. A future explicit migration must preserve the full original generation.
+            blockWrites(LoadOutcome::NewerLayout,
+                "This Bank was created with more boxes than this build supports; migration is required.");
+            logErrorToFile("Bank: newer/larger layout opened read-only; migration required",
                            std::to_string(fileBoxes).c_str());
         }
         const size_t fileTotal = static_cast<size_t>(fileBoxes) * BANK_SLOTS_PER_BOX;
@@ -286,7 +365,9 @@ namespace Trainer {
         // complete one, which is what keeps the span below inside the buffer.
         const size_t avail = (fileSize > HEADER_SIZE) ? (fileSize - HEADER_SIZE) / recSize : 0;
         const size_t count = std::min({ total, fileTotal, avail });
-        loadRejects = 0;
+        // A record table shorter than the header promises lost its tail. Saving would commit that
+        // loss as the new authoritative Bank, so it is inspectable only.
+        const bool truncated = avail < fileTotal;
         for (size_t n = 0; n < count; ++n) {
             const size_t recOff = HEADER_SIZE + n * recSize;
             const uint32_t tag = readUInt32LittleEndian(file + recOff);
@@ -302,7 +383,8 @@ namespace Trainer {
             // dropped, not stored: a non-null slot holding garbage is a "ghost", and it
             // re-encrypts into a Bad Egg the moment it is withdrawn into a real save. The
             // checksum is the decisive test -- every format carries one.
-            if (!pk || pk->speciesID() == 0 || pk->checksum() != pk->calculateChecksum()) {
+            if (!pk || !BankRecordValidation::accept(
+                    pk->speciesID(), pk->checksum(), pk->calculateChecksum())) {
                 ++loadRejects;
                 continue;
             }
@@ -329,9 +411,20 @@ namespace Trainer {
 
         delete[] file;
         savedImage = serialize();  // baseline snapshot of the just-loaded state
-        if (loadRejects > 0)
+        if (truncated && !writeBlocked) {
+            blockWrites(LoadOutcome::Truncated,
+                "The Bank file is shorter than its header says (truncated). It was opened for viewing "
+                "only; saving is blocked so the missing records are not made permanent.");
+            logErrorToFile("Bank: truncated record table; writes blocked", path.c_str());
+        }
+        if (loadRejects > 0) {
             logErrorToFile("Bank: dropped damaged slot records on load",
                            std::to_string(loadRejects).c_str());
+            if (!writeBlocked)
+                blockWrites(LoadOutcome::DamagedRecords,
+                    std::to_string(loadRejects) + " damaged Bank record(s) could not be read. The Bank was "
+                    "opened for viewing only; saving is blocked so they are not overwritten.");
+        }
         logInfoToFile("Bank: loaded unified bank", path.c_str());
     }
 
@@ -356,9 +449,9 @@ namespace Trainer {
             return false;  // bank full
         };
 
-        int imported = 0, dropped = 0;
+        int imported = 0, dropped = 0, rejectedCorrupt = 0;
         for (const auto& L : legacy) {
-            const std::string p = BASE_SAVE_DIRECTORY + "/bank/" + L.tag + "_bank.dat";
+            const std::string p = PokeBank::Paths::legacyBankRoot() + "/" + L.tag + "_bank.dat";
             size_t sz = 0;
             uint8_t* f = readAllBytes(p.c_str(), &sz);
             if (!f) continue;
@@ -370,15 +463,21 @@ namespace Trainer {
                 if (readUInt32LittleEndian(f + off) == 0) continue;  // legacy empty (EC == 0)
                 std::span<const std::byte> rec(reinterpret_cast<const std::byte*>(f + off), recSize);
                 auto pk = makePokemon(L.group, rec);
-                if (pk && pk->speciesID() != 0) {
-                    if (placeNext(std::move(pk))) ++imported; else ++dropped;
+                if (!pk || !BankRecordValidation::accept(
+                        pk->speciesID(), pk->checksum(), pk->calculateChecksum())) {
+                    ++rejectedCorrupt;
+                    continue;
                 }
+                if (placeNext(std::move(pk))) ++imported; else ++dropped;
             }
             delete[] f;
         }
 
-        if (imported > 0 || dropped > 0) {
-            const std::string msg = std::to_string(imported) + " imported, " + std::to_string(dropped) + " dropped";
+        if (imported > 0 || dropped > 0 || rejectedCorrupt > 0) {
+            const std::string msg =
+                std::to_string(imported) + " imported, " +
+                std::to_string(dropped) + " dropped, " +
+                std::to_string(rejectedCorrupt) + " corrupt rejected";
             logInfoToFile("Bank: migrated legacy per-group banks", msg.c_str());
         }
     }
@@ -425,33 +524,146 @@ namespace Trainer {
         return failures;
     }
 
-    bool Bank::save() const {
-        // Ensure the bank directory exists.
-        const std::string dir = BASE_SAVE_DIRECTORY + "/bank";
-        mkdir(dir.c_str(), 0777);  // ignore EEXIST
-
-        std::vector<uint8_t> buf = serialize();
-
-        // The bank's contract is byte-in == byte-out, and nothing used to check it. Verify the
-        // image reproduces every live Pokemon before it goes to disk.
-        //
-        // Deliberately does NOT abort the save. A failed bank save blocks leaving the storage view
-        // so a false positive here would trap the user in the UI; and if the mismatch is
-        // real, refusing to write leaves them with a stale file rather than a fresh one. Record it,
-        // log which slot, and let the caller surface it.
-        verifyFailures = verifyImage(buf);
-
-        const std::string path = filePath();
-        FILE* f = fopen(path.c_str(), "wb");
-        if (!f) {
-            logErrorToFile("Bank: failed to open bank file for writing", path.c_str());
+    bool Bank::validateStorageImage(std::span<const uint8_t> image, std::string& error) {
+        if (image.size() < HEADER_SIZE || std::memcmp(image.data(), BANK_MAGIC, 8) != 0) {
+            error = "Bank image has bad magic or truncated header";
             return false;
         }
-        const size_t written = fwrite(buf.data(), 1, buf.size(), f);
-        fclose(f);
-        if (written != buf.size()) return false;
+        const uint32_t version = readUInt32LittleEndian(image.data() + 8);
+        if (version != BANK_VERSION) {
+            error = "Bank image version is unsupported";
+            return false;
+        }
+        const uint32_t fileBoxes = readUInt32LittleEndian(image.data() + 12);
+        const auto disposition = BankFormatPolicy::classifyBoxCount(fileBoxes);
+        if (disposition != BankFormatPolicy::Disposition::Supported) {
+            error = disposition == BankFormatPolicy::Disposition::MigrationRequired
+                ? "Bank image requires migration before write"
+                : "Bank image box count is invalid";
+            return false;
+        }
 
-        savedImage = std::move(buf);  // in sync with disk again
+        const size_t payload = maxPayloadSize();
+        const size_t recSize = 4 + payload;
+        const size_t total = static_cast<size_t>(fileBoxes) * BANK_SLOTS_PER_BOX;
+        const size_t tableEnd = HEADER_SIZE + total * recSize;
+        if (tableEnd < HEADER_SIZE || tableEnd > image.size()) {
+            error = "Bank image record table is truncated";
+            return false;
+        }
+
+        for (size_t n = 0; n < total; ++n) {
+            const size_t off = HEADER_SIZE + n * recSize;
+            const uint32_t tag = readUInt32LittleEndian(image.data() + off);
+            if (tag == BTAG_EMPTY) continue;
+            GameVersion group;
+            if (!groupForBankTag(tag, group)) {
+                error = "Bank image contains an unknown Pokemon format tag";
+                return false;
+            }
+            auto pk = makePokemon(group, std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(image.data() + off + 4),
+                recordSizeFor(group)));
+            if (!pk || pk->speciesID() == 0 || pk->checksum() != pk->calculateChecksum()) {
+                error = "Bank image contains an invalid Pokemon record";
+                return false;
+            }
+        }
+
+        if (image.size() == tableEnd) return true;
+        if (image.size() < tableEnd + 4 ||
+            std::memcmp(image.data() + tableEnd, NAMES_MARKER, 4) != 0) {
+            error = "Bank image trailing section is unsupported";
+            return false;
+        }
+        size_t p = tableEnd + 4;
+        for (size_t box = 0; box < fileBoxes; ++box) {
+            if (p + 2 > image.size()) {
+                error = "Bank box-name section is truncated";
+                return false;
+            }
+            const uint16_t len = static_cast<uint16_t>(image[p] | (image[p + 1] << 8));
+            p += 2;
+            if (len > MAX_BOX_NAME_LEN * 4 || p + len > image.size()) {
+                error = "Bank box-name entry is invalid";
+                return false;
+            }
+            p += len;
+        }
+        if (p != image.size()) {
+            error = "Bank image has unexpected trailing bytes";
+            return false;
+        }
+        return true;
+    }
+
+    bool Bank::buildVerifiedImage(std::vector<uint8_t>& out, std::string& error) const {
+        if (writeBlocked) {
+            error = writeBlockReasonText.empty() ? "Bank is write-blocked" : writeBlockReasonText;
+            return false;
+        }
+        out = serialize();
+        verifyFailures = verifyImage(out);
+        if (verifyFailures != 0) {
+            error = "Bank image failed live slot round-trip verification";
+            return false;
+        }
+        return validateStorageImage(out, error);
+    }
+
+    bool Bank::acceptCommittedImage(std::span<const uint8_t> image, std::string& error) const {
+        if (!validateStorageImage(image, error)) return false;
+        const std::vector<uint8_t> current = serialize();
+        if (current.size() != image.size() ||
+            !std::equal(current.begin(), current.end(), image.begin())) {
+            error = "committed Bank image does not match current in-memory Bank";
+            return false;
+        }
+        savedImage.assign(image.begin(), image.end());
+        return true;
+    }
+
+    bool Bank::save() const {
+        if (writeBlocked) {
+            logErrorToFile("Bank: save blocked; the existing Bank is preserved",
+                           writeBlockReasonText.c_str());
+            return false;
+        }
+
+        // Ensure the bank directory exists.
+        const std::string dir = PokeBank::Paths::legacyBankRoot();
+        std::string pathError;
+        if (!PokeBank::Paths::ensureLegacyBankRoot(&pathError)) {
+            logErrorToFile("Bank: failed to create PokeBank NX legacy bank directory", pathError.c_str());
+            return false;
+        }  // ignore EEXIST
+
+        std::vector<uint8_t> buf;
+        std::string imageError;
+        if (!buildVerifiedImage(buf, imageError)) {
+            logErrorToFile("Bank: refusing to persist an invalid image", imageError.c_str());
+            return false;
+        }
+
+        const std::string path = filePath();
+        const auto validator = [this](std::span<const uint8_t> bytes, std::string& error) {
+            std::vector<uint8_t> image(bytes.begin(), bytes.end());
+            verifyFailures = verifyImage(image);
+            if (verifyFailures != 0) {
+                error = "Bank image failed slot round-trip verification";
+                return false;
+            }
+            return true;
+        };
+
+        const auto durable = PokeBank::Storage::DurableFile::replace(
+            path, std::span<const uint8_t>(buf.data(), buf.size()), validator);
+        if (!durable.ok) {
+            logErrorToFile("Bank: durable replacement failed", durable.error.c_str());
+            return false;
+        }
+
+        savedImage = std::move(buf);  // exact promoted image
         return true;
     }
 

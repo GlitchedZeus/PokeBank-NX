@@ -9,18 +9,37 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/TouchScroll.h"
+#include "UI/SharedScrollbar.h"
 
 namespace UI {
     class BackupSelectionScreen : public UIScreen {
     public:
-        BackupSelectionScreen(u64 titleId, const std::string& titleName);
+        BackupSelectionScreen(AccountUid userUid, u64 titleId, const std::string& titleName);
         void update(const PadState& pad, const TouchInput& touch) override;
         void draw(PKSEFramebuffer& fb) override;
         bool shouldExit() const override { return goBack; }
 
         bool hasSelectedBackup() const { return backupSelected; }
+        // One-shot: the user pressed A on "Create backup now" (the only way a backup is made here).
+        bool takeCreateBackupRequest() {
+            const bool requested = createBackupRequested;
+            createBackupRequested = false;
+            return requested;
+        }
+        // After a backup was made: list it and say so, keeping the screen open.
+        void reloadWithNotice(const std::string& message) {
+            loadBackups();
+            statusMessage = message;
+            statusFrames = 300;
+        }
         bool shouldCreateNewBackup() const { return createNewBackup; }
         const std::string& getSelectedBackupPath() const { return selectedBackupPath; }
+        bool selectedBackupIsLegacy() const { return selectedLegacy; }
+        const std::string& getSelectedBackupRoot() const { return selectedBackupRoot; }
+        const std::string& getSelectedBackupStamp() const { return selectedBackupStamp; }
+        // The selected copy's date line ("2026-10-23 12:00:00"), for the editor's provenance banner.
+        const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
 
         /**
          * Report that acting on the selection failed, so the screen can say so and take the choice
@@ -37,20 +56,38 @@ namespace UI {
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
+        TouchScrollState backupScroll;
+        SharedScrollbar::State backupScrollbar;   // draggable thumb beside the backup list
         struct BackupInfo {
             std::string timestamp;
             std::string displayName;
+            std::string path;
+            std::string detail;
+            std::string badge;
+            std::string physicalStamp;
+            bool legacyUnscoped = false;
+            bool createAction = false;   // the "Create backup now" row
         };
 
+        AccountUid userUid{};
         u64 titleId;
         std::string titleName;
+        std::string exactGameId;
         std::string gameDirectory;
+        std::string legacyGameDirectory;
+        bool namespaceReady = false;
         std::vector<BackupInfo> backups;
         int selectedIndex;
+        int backupFirstRow = 0;  // Physical viewport; never reuse the action cursor as scroll position.
         bool backupSelected;
-        bool createNewBackup;  // True if user wants to load from title directly
+        bool createNewBackup;  // True if user wants to browse the installed save (Working copy)
+        bool createBackupRequested = false;
         bool goBack;
         std::string selectedBackupPath;
+        std::string selectedBackupRoot;
+        std::string selectedBackupStamp;
+        bool selectedLegacy=false;
+        std::string selectedBackupLabel;
         bool showDeleteConfirmation;
         int deleteConfirmationIndex;
         // Delete-confirm button rects, captured during draw and hit-tested next frame (this screen

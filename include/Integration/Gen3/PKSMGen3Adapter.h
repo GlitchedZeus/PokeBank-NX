@@ -9,6 +9,10 @@
 #ifndef POKEBANK_INTEGRATION_GEN3_PKSM_GEN3_ADAPTER_H
 #define POKEBANK_INTEGRATION_GEN3_PKSM_GEN3_ADAPTER_H
 
+#include "Integration/Common/NativePlayTime.h"
+
+#include "Integration/Gen3/Gen3Gender.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -21,6 +25,7 @@
 namespace PokeVault::Integration::Gen3 {
     inline constexpr std::string_view PKSM_CORE_REVISION =
         "aa22d7a4f87c0351baf7da5962ba5acd01039a7c";
+    inline constexpr std::size_t GEN3_SAVE_SIZE = 0x20000;
 
     enum class SourceGame : uint8_t {
         FireRedGBA,
@@ -46,13 +51,22 @@ namespace PokeVault::Integration::Gen3 {
         InvalidInventory,
     };
 
+    struct DexProgress {
+        uint16_t seen = 0;
+        uint16_t caught = 0;
+        uint16_t total = 386;
+    };
+
     struct TrainerRecord {
+        std::optional<Common::NativePlayTime> playTime;
         std::string name;
         uint8_t gender = 0;
         uint16_t tid16 = 0;
         uint16_t sid16 = 0;
         uint32_t id32 = 0;
         uint32_t money = 0;
+        uint8_t language = 2; // English represents the shared international Gen III save charset.
+        uint8_t badges = 0;
     };
 
     enum class InventoryPouch : uint8_t {
@@ -101,6 +115,10 @@ namespace PokeVault::Integration::Gen3 {
         std::string otName;
         bool checksumValid = false;
         bool byteIdenticalRoundTrip = false;
+
+        // PID-derived gender for the species' Gen III ratio (Gen3Gender.h); Unknown only when
+        // the species has no Gen III data.
+        [[nodiscard]] Gen3Gender gender() const noexcept { return gen3GenderFromPid(species, pid); }
     };
 
     struct SaveMetadata {
@@ -127,6 +145,8 @@ namespace PokeVault::Integration::Gen3 {
         [[nodiscard]] const SaveMetadata& metadata() const noexcept;
         [[nodiscard]] const TrainerRecord& trainer() const noexcept;
         [[nodiscard]] const std::vector<InventoryPouchRecord>& inventory() const noexcept;
+        [[nodiscard]] std::span<const uint8_t> sourceBytes() const noexcept;
+        [[nodiscard]] DexProgress dexProgress() const noexcept;
         [[nodiscard]] std::vector<PokemonRecord> party() const;
         [[nodiscard]] std::vector<PokemonRecord> boxes() const;
         [[nodiscard]] SaveError lastEnumerationError() const noexcept;

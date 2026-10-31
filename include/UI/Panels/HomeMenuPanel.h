@@ -11,7 +11,7 @@ namespace UI {
 namespace Panels {
     // HOME-style main menu (shown when no mode is entered): a live box-preview card on the
     // left, big rounded destination pills (Pokemon / Party / Storage) + a circular icon row
-    // (Items / Trainer / Settings) on the right. Replaces the old left trainer-info + mode-selector.
+    // (Items / Trainer) on the right. Settings lives only on Product Home.
     void drawHomeMenu(UI::TrainerViewScreen& screen, UI::PKSEFramebuffer& fb);
 }
 }

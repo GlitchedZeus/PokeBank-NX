@@ -52,8 +52,8 @@ namespace Panels {
             // 4px left edge that didn't sit right against rounded corners.
             constexpr int slotR = 12;
             if (selected) fb.drawSoftShadow(cardX, cardY, colW, slotH, slotR);
-            fb.drawFilledRoundedRect(cardX, cardY, colW, slotH, slotR, selected ? Colors::Selected : Colors::PanelAlt);
-            fb.drawRoundedRect(cardX, cardY, colW, slotH, slotR, selected ? Colors::Accent : Colors::Border, selected ? 2 : 1);
+            fb.drawFilledRoundedRect(cardX, cardY, colW, slotH, slotR, Colors::PanelAlt);
+            fb.drawRoundedRect(cardX, cardY, colW, slotH, slotR, selected ? Colors::FocusBorder : Colors::Border, selected ? 2 : 1);
 
             constexpr int pad = 14;
             const Pokemon::Pokemon* pokemon = (i < static_cast<int>(party.size())) ? party[i].get() : nullptr;
@@ -124,7 +124,7 @@ namespace Panels {
                 fb.drawText(cBase,  tY, std::to_string(r.base), Colors::Text,    TextStyle::Caption);
                 fb.drawText(cIV,    tY, std::to_string(r.iv),   Colors::Text,    TextStyle::Caption);
                 fb.drawText(cEV,    tY, std::to_string(r.evav), Colors::Text,    TextStyle::Caption);
-                fb.drawText(cStat,  tY, std::to_string(r.stat), Colors::Accent,  TextStyle::Caption);
+                fb.drawText(cStat,  tY, std::to_string(r.stat), Colors::TextSecondary, TextStyle::Caption);
                 tY += lineH;
             }
 

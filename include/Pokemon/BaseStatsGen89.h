@@ -1480,6 +1480,9 @@ namespace Pokemon {
 
     // Function declarations
     const BaseStatsGen89* getBaseStatsGen89(uint16_t speciesId, uint8_t form = 0);
+    // Sword/Shield differs from the later Gen 9 values for a small set of shared species/forms.
+    // Use this accessor for PK8 battle-stat calculation; other modern formats keep the current table.
+    const BaseStatsGen89* getBaseStatsSWSH(uint16_t speciesId, uint8_t form = 0);
 
     // Name lookup functions (wrappers that forward to Names namespace)
     const char* getSpeciesNameGen89(uint16_t speciesId);

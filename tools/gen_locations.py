@@ -79,12 +79,35 @@ GAMES = [
 ]
 
 
+# Gen III player-facing names. PKHeX text_rsefrlg_00000_en.txt tags entries with the
+# game family they belong to ("(RSE)", "(FRLG)", "(E)"); those are PKHeX data tags, not
+# in-game place names. The in-game names (Bulbapedia "List of locations in Hoenn" / "Kanto",
+# pokeemerald / pokefirered data/region_map/region_map_sections.json) carry no tag, so only
+# places that really share a name get a region suffix: Safari Zone 57 (Hoenn) / 136 (Kanto),
+# Victory Road 70 (Hoenn) / 132 (Kanto), Altering Cave 183 (FRLG Six Island) / 210 (Emerald).
+# Navel Rock 174/211 and Birth Island 187/200 are the same islands, so they are untagged.
+# Ids that differ by origin game (58, 196) list both names; the Gen III editors pick the one
+# for the record's origin (include/Names/LocationDisplayNames.h).
+GEN3_DISPLAY = {
+    57: "Safari Zone (Hoenn)",
+    58: "Battle Tower / Battle Frontier",
+    70: "Victory Road (Hoenn)",
+    174: "Navel Rock",
+    183: "Altering Cave (Sevii Islands)",
+    187: "Birth Island",
+    196: "Celadon Dept. / Special Area",
+    200: "Birth Island",
+    210: "Altering Cave (Hoenn)",
+    211: "Navel Rock",
+}
+
+
 def arr_name(prefix, bank):
     return f"{prefix}_LOC_NAMES" if bank == 0 else f"{prefix}_LOC_NAMES_{bank}"
 
 
 def load_entries(path):
-    with open(path, encoding="utf-8") as fh:
+    with open(path, encoding="utf-8-sig") as fh:
         lines = fh.read().split("\n")
     if lines and lines[-1] == "":
         lines = lines[:-1]
@@ -130,6 +153,8 @@ def main():
         p.append(f"    // Source: PKHeX {os.path.basename(relpath)}  ({len(entries)} entries)\n")
         p.append(f"    static const char* const {arr}[] = {{\n")
         for i, e in enumerate(entries):
+            if prefix == "G3" and bank == 0:
+                e = GEN3_DISPLAY.get(base + i, e)
             p.append(f'        "{esc(e)}",  // {base + i}\n')
         p.append("    };\n")
 

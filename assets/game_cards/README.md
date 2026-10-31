@@ -39,3 +39,15 @@ Existing SHA-256 values:
 - `emerald_gba.png`: `f39a4d3d7044d2ad693a60f6af362619f7268cd9187c6576f3d4e3373dfa49b5`
 
 Pokémon and its artwork are trademarks/copyright of their respective owners. These images are included for game identification in this non-commercial homebrew utility; upstream attribution and project licensing remain intact.
+
+## Generation II Game Boy Color cards
+
+Gold, Silver, and Crystal use permanent representative USA/Europe retail box art from `libretro-thumbnails/Nintendo_-_Game_Boy_Color`, pinned at commit `0931985ba8a3a9f38fb87f006611a13dc094260f`. `manifest.json` records the pinned tree, exact tree entry, resolved Git blob, SHA-256, and local destination for each asset. `make game-card-art` copies the stable IDs into RomFS.
+
+
+## Nintendo DS / Generation IV cards
+
+G4-02 adds Diamond, Pearl, Platinum, HeartGold and SoulSilver from
+`libretro-thumbnails/Nintendo_-_Nintendo_DS`, pinned in `manifest.json` by upstream commit,
+path and Git blob SHA. The repository stores those exact PNG bytes; the build copies them into
+`romfs:/game_cards/` just like the existing legacy cards.

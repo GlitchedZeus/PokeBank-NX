@@ -61,7 +61,12 @@ namespace Pokemon {
          * - Gen 7 LGP/E (PK7): 260 bytes
          * - Gen 9 (PK9): varies by format
          */
-        size_t dataSize;
+        size_t dataSize = 0;
+
+        // False when a concrete entity constructor was given a malformed native record length.
+        // Constructors still provide a full-sized zero buffer so accidental inspection is memory-safe,
+        // but checksumValid() must fail closed for structurally invalid input.
+        bool inputShapeValid = true;
 
     public:
         // Virtual destructor to ensure proper cleanup in derived classes
@@ -76,9 +81,36 @@ namespace Pokemon {
         Pokemon(const Pokemon&) = delete;
         Pokemon& operator=(const Pokemon&) = delete;
 
-        // Allow move operations for efficient transfers
-        Pokemon(Pokemon&&) noexcept = default;
-        Pokemon& operator=(Pokemon&&) noexcept = default;
+        // Transfer sole ownership of the raw allocation. A defaulted move would only copy
+        // the raw pointer/span, leaving both objects to delete the same buffer.
+        Pokemon(Pokemon&& other) noexcept
+            : buffer(other.buffer),
+              data(other.buffer ? std::span<std::byte>(other.buffer, other.dataSize)
+                                : std::span<std::byte>{}),
+              dataSize(other.dataSize),
+              inputShapeValid(other.inputShapeValid) {
+            other.buffer = nullptr;
+            other.data = {};
+            other.dataSize = 0;
+            other.inputShapeValid = false;
+        }
+
+        Pokemon& operator=(Pokemon&& other) noexcept {
+            if (this == &other) return *this;
+
+            delete[] buffer;
+            buffer = other.buffer;
+            dataSize = other.dataSize;
+            inputShapeValid = other.inputShapeValid;
+            data = buffer ? std::span<std::byte>(buffer, dataSize)
+                          : std::span<std::byte>{};
+
+            other.buffer = nullptr;
+            other.data = {};
+            other.dataSize = 0;
+            other.inputShapeValid = false;
+            return *this;
+        }
 
         // ========================================
         // Core Data Properties (Pure Virtual)
@@ -463,7 +495,7 @@ namespace Pokemon {
          * total EXP, refreshes the cached party-level byte, then recalculates stats and
          * checksum. Implementations clamp to [1,100].
          */
-        virtual void setLevel(uint8_t level) noexcept {}   // default no-op; overridden where supported
+        virtual void setLevel(uint8_t level) noexcept { (void)level; }   // default no-op; overridden where supported
 
         /** Sets total EXP directly and re-derives the level; no-op where unwired. */
         virtual void setExp(uint32_t value) noexcept { (void)value; }
@@ -618,6 +650,9 @@ namespace Pokemon {
          * @return Data size in bytes
          */
         size_t getDataSize() const noexcept { return dataSize; }
+
+        /** Whether the constructor received one of this format's supported native record lengths. */
+        bool inputValid() const noexcept { return inputShapeValid; }
 
         /**
          * Gets direct access to the decrypted data buffer.

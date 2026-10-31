@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
 
 #include "UI/Panels/BoxPokemonPanel.h"
+#include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Panels/CarriedSprite.h"   // drawLiftedMon -- shared with the bank
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
@@ -10,6 +12,12 @@
 #include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
 #include "Pokemon/PokemonTypes.h"
+#include "Pokemon/Pokemon1ReadOnly.h"
+#include "Pokemon/Pokemon2ReadOnly.h"
+#include "UI/Gen2WorkspacePresentation.h"
+#include "UI/Gen1PokemonPresentation.h"
+#include "UI/ExactSaveCapabilities.h"
+#include "UI/StatsRadar.h"
 #include "Names/ItemNames.h"
 #include "Names/FormNames.h"   // getDisplayName -- variant prefix ("Alolan Raichu", "Combat Breed Tauros")
 
@@ -64,8 +72,8 @@ namespace Panels {
         // Amber pill when the header is focused (navigate up to it, or tap it, to rename). The name
         // is a touch target between the two arrow zones.
         const bool headerFocused = screen.detailViewActive && screen.selectedItemIndex == -1;
-        fb.drawPill(pillX, pillY, pillW, pillH, headerFocused ? Colors::Primary : Colors::Panel);
-        fb.drawText(x + (width - bnW) / 2, pillY + (pillH - bnH) / 2, boxName, headerFocused ? Colors::PrimaryText : Colors::Text);
+        fb.drawPill(pillX, pillY, pillW, pillH, Colors::Panel);
+        fb.drawText(x + (width - bnW) / 2, pillY + (pillH - bnH) / 2, boxName, Colors::Text);
         screen.touchButtons.push_back({ kBoxNameId, x + 64, y, width - 128, headerH });
 
         // ‹ › box arrows — geometric triangles via the symbol font (guaranteed glyphs, unlike
@@ -84,10 +92,12 @@ namespace Panels {
 
         const auto& currentBox = screen.trainer.boxes[screen.selectedBoxIndex];
 
-        // ---- Grid geometry (LGPE 5x5=25, others 6x5=30) ----
+        // ---- Source/game grid geometry. Keep the established 5- or 6-column pitch, but only
+        // draw the adapter's real native slots. App-owned Legacy Storage remains a separate 30-slot grid.
         const int slotsPerBox = static_cast<int>(screen.trainer.getSlotsPerBox());
         const int GRID_COLS = (slotsPerBox == 25) ? 5 : 6;
         const int GRID_ROWS = 5;
+        const int visibleSlots = std::clamp(slotsPerBox, 0, GRID_COLS * GRID_ROWS);
 
         const int gridTop = y + headerH + 8;
         const int gridBottom = y + height - 12;   // selection info now lives in the summary side-panel
@@ -112,70 +122,79 @@ namespace Panels {
         if (screen.swapActive &&
             screen.swapSourceBox >= 0 && screen.swapSourceBox < static_cast<int>(screen.trainer.boxes.size()) &&
             screen.swapSourceSlot >= 0 && screen.swapSourceSlot < slotsPerBox) {
-            carried = screen.trainer.boxes[screen.swapSourceBox][screen.swapSourceSlot].get();
+            const auto& sourceBox = screen.trainer.boxes[screen.swapSourceBox];
+            if (screen.swapSourceSlot < static_cast<int>(sourceBox.size()))
+                carried = sourceBox[screen.swapSourceSlot].get();
         }
 
         const double nowT = fb.getTimeSeconds();   // drives the cursor's bob
 
-        for (int row = 0; row < GRID_ROWS; ++row) {
-            for (int col = 0; col < GRID_COLS; ++col) {
-                const int slotIndex = row * GRID_COLS + col;
-                const int cellX = gridX + col * colPitch;
-                const int cellY = gridTop + row * rowPitch;
-                const int cx = cellX + colPitch / 2;
-                const int cy = cellY + rowPitch / 2;
+        for (int slotIndex = 0; slotIndex < visibleSlots; ++slotIndex) {
+            const int row = slotIndex / GRID_COLS;
+            const int col = slotIndex % GRID_COLS;
+            const int cellX = gridX + col * colPitch;
+            const int cellY = gridTop + row * rowPitch;
+            const int cx = cellX + colPitch / 2;
+            const int cy = cellY + rowPitch / 2;
 
-                // Whole-cell tap target (finger-friendly, larger than the disc).
-                screen.touchButtons.push_back({ slotIndex, cellX, cellY, colPitch, rowPitch });
+            // Whole-cell tap target (finger-friendly, larger than the disc). Invalid/native-missing
+            // cells are not drawn and never receive touch targets.
+            screen.touchButtons.push_back({ slotIndex, cellX, cellY, colPitch, rowPitch });
 
-                const bool selected = screen.detailViewActive && slotIndex == screen.selectedItemIndex;
-                const bool grabbed  = screen.swapActive &&
-                                      screen.swapSourceBox == screen.selectedBoxIndex &&
-                                      screen.swapSourceSlot == slotIndex;
+            const bool selected = screen.detailViewActive && slotIndex == screen.selectedItemIndex;
+            const bool grabbed  = screen.swapActive &&
+                                  screen.swapSourceBox == screen.selectedBoxIndex &&
+                                  screen.swapSourceSlot == slotIndex;
 
-                const auto& pokemon = currentBox[slotIndex];
-                std::string speciesName = pokemon ? std::string(pokemon->species()) : "";
-                // A grabbed slot renders empty: its occupant is drawn riding the cursor instead, so
-                // showing it here too would put the same Pokemon on screen twice.
-                const bool empty = grabbed || !pokemon || speciesName == "None" || speciesName == "Empty" ||
-                                   pokemon->speciesID() == 0;
+            const ::Pokemon::Pokemon* pokemon = slotIndex < static_cast<int>(currentBox.size())
+                ? currentBox[slotIndex].get() : nullptr;
+            std::string speciesName = pokemon ? std::string(pokemon->species()) : "";
+            // A grabbed slot renders empty: its occupant is drawn riding the cursor instead, so
+            // showing it here too would put the same Pokemon on screen twice.
+            // Gen IV defers PK4 changes until the validated Y drop, unlike
+            // Gen III's temporary staged extraction. Visually treat each
+            // carried source as empty without altering the original record.
+            const bool carriedSource = ClassicPackedMove::hidesGen4CarriedSource(
+                screen, screen.selectedBoxIndex, slotIndex);
+            const bool empty = grabbed || carriedSource || !pokemon ||
+                               speciesName == "None" || speciesName == "Empty" ||
+                               pokemon->speciesID() == 0;
 
-                // Disc: occupied a touch lighter than empty for subtle depth.
-                fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
+            // Disc: occupied a touch lighter than empty for subtle depth.
+            fb.drawFilledCircle(cx, cy, discR, empty ? Colors::Panel : Colors::PanelAlt);
 
-                if (empty) {
-                    fb.drawCircle(cx, cy, discR, Colors::Border, 1);
+            if (empty) {
+                fb.drawCircle(cx, cy, discR, Colors::Border, 1);
+            } else {
+                const bool isShiny = pokemon->isShiny(pokemon->id32(), speciesName);
+                int sz = std::min(static_cast<int>(discR * 1.8), colPitch - 6);
+                if (pokemon->isEgg()) {
+                    // Eggs show as an egg in the grid; the summary panel still shows the species.
+                    fb.drawEgg(cx, cy, sz);
                 } else {
-                    const bool isShiny = pokemon->isShiny(pokemon->id32(), speciesName);
-                    int sz = std::min(static_cast<int>(discR * 1.8), colPitch - 6);
-                    if (pokemon->isEgg()) {
-                        // Eggs show as an egg in the grid; the summary panel still shows the species.
-                        fb.drawEgg(cx, cy, sz);
-                    } else {
-                        Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), pokemon->form(), isShiny);
-                        if (sprite && sprite->data) {
-                            fb.drawImageScaled(cx - sz / 2, cy - sz / 2, sprite->width, sprite->height,
-                                               sz, sz, sprite->data, sprite->channels);
-                        }
+                    Sprite* sprite = SpriteManager::getIconSprite(pokemon->speciesID(), pokemon->form(), isShiny);
+                    if (sprite && sprite->data) {
+                        fb.drawImageScaled(cx - sz / 2, cy - sz / 2, sprite->width, sprite->height,
+                                           sz, sz, sprite->data, sprite->channels);
                     }
-                    // Markers: partner heart (top-left), party number (bottom-left), shiny star (top-right).
-                    if (screen.trainer.isStarterPokemon(screen.selectedBoxIndex, slotIndex))
-                        fb.drawSymbol(cx - discR, cy - discR + 2, "♥", Colors::PartnerHeart);
-                    int partyPos = screen.trainer.getPartyPosition(screen.selectedBoxIndex, slotIndex);
-                    if (partyPos > 0) {
-                        // Gold badge + dark digit (bottom-left), legible on any sprite in either theme.
-                        const std::string n = std::to_string(partyPos);
-                        const int bx = cx - discR + 9, by = cy + discR - 9;
-                        fb.drawFilledCircle(bx, by, 9, Colors::PartyBadge);
-                        int tw, th; fb.measureText(n, tw, th, TextStyle::Caption);
-                        fb.drawText(bx - tw / 2, by - th / 2, n, Colors::PartyBadgeText, TextStyle::Caption);
-                    }
-                    if (isShiny)
-                        fb.drawShinyMark(cx + discR - 15, cy - discR + 1, 15, Colors::ShinyStar);
                 }
-
-                if (selected) { selCx = cx; selDiscTop = cy - discR; selDiscR = discR; haveSel = true; }
+                // Markers: partner heart (top-left), party number (bottom-left), shiny star (top-right).
+                if (screen.trainer.isStarterPokemon(screen.selectedBoxIndex, slotIndex))
+                    fb.drawSymbol(cx - discR, cy - discR + 2, "♥", Colors::PartnerHeart);
+                int partyPos = screen.trainer.getPartyPosition(screen.selectedBoxIndex, slotIndex);
+                if (partyPos > 0) {
+                    // Gold badge + dark digit (bottom-left), legible on any sprite in either theme.
+                    const std::string n = std::to_string(partyPos);
+                    const int bx = cx - discR + 9, by = cy + discR - 9;
+                    fb.drawFilledCircle(bx, by, 9, Colors::PartyBadge);
+                    int tw, th; fb.measureText(n, tw, th, TextStyle::Caption);
+                    fb.drawText(bx - tw / 2, by - th / 2, n, Colors::PartyBadgeText, TextStyle::Caption);
+                }
+                if (isShiny)
+                    fb.drawShinyMark(cx + discR - 15, cy - discR + 1, 15, Colors::ShinyStar);
             }
+
+            if (selected) { selCx = cx; selDiscTop = cy - discR; selDiscR = discR; haveSel = true; }
         }
 
         fb.drawRoundedRect(x, y, width, height, 16, Colors::Border, 1);
@@ -212,7 +231,9 @@ namespace Panels {
         const Pokemon::Pokemon* p = nullptr;
         if (screen.detailViewActive &&
             screen.selectedBoxIndex >= 0 && screen.selectedBoxIndex < static_cast<int>(screen.trainer.boxes.size()) &&
-            screen.selectedItemIndex >= 0 && screen.selectedItemIndex < static_cast<int>(screen.trainer.getSlotsPerBox())) {
+            screen.selectedItemIndex >= 0 && screen.selectedItemIndex < static_cast<int>(screen.trainer.getSlotsPerBox()) &&
+            !ClassicPackedMove::hidesGen4CarriedSource(
+                screen, screen.selectedBoxIndex, screen.selectedItemIndex)) {
             const auto& mon = screen.trainer.boxes[screen.selectedBoxIndex][screen.selectedItemIndex];
             if (mon && mon->speciesID() != 0) p = mon.get();
         }
@@ -222,6 +243,19 @@ namespace Panels {
             fb.drawText(x + (width - tw) / 2, y + height / 2, "No Pokémon selected", Colors::TextDim, TextStyle::Caption);
             return;
         }
+
+        // The no-RTTI PK1 adapter tag identifies the current record format, not origin.
+        const bool gen1 = p->getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup;
+        const auto presentation = gen1 ? PokeBank::UIModel::presentGen1Pokemon(
+            static_cast<const Pokemon::Pokemon1ReadOnly*>(p)->strictRecord())
+            : PokeBank::UIModel::Gen1PokemonPresentation{};
+        namespace Foundation = PokeBank::UIModel::PokemonEditorFoundation;
+        // Only the three quick-info fields are rendered here. Legacy formats reuse
+        // the same capability contract as the editor; modern adapters retain their path.
+        const auto exact = Foundation::capabilitiesForSourceId(screen.sourceGameId);
+        const auto capabilities = exact ? exact->fields : gen1 ? presentation.capabilities :
+            Foundation::capabilitiesForGeneration(p->getGameGroup() == Enums::GameVersion::GSC
+                ? Foundation::Generation::Gen2 : Foundation::Generation::Gen3);
 
         std::string species = std::string(p->species());
         const bool isShiny = p->isShiny(p->id32(), species);
@@ -243,7 +277,7 @@ namespace Panels {
             fb.drawText(x + (width - nW) / 2, cy2, display, Colors::Text, TextStyle::Heading);
             int mx = x + (width + nW) / 2 + 6;
             const char* g = p->genderSymbol();
-            if (g[0] != '\0') { fb.drawSymbol(mx, cy2 + 6, g, (std::string(g) == "♂") ? Colors::Blue : Colors::Magenta); mx += 20; }
+            if (capabilities.supportsGender && g[0] != '\0') { fb.drawSymbol(mx, cy2 + 6, g, (std::string(g) == "♂") ? Colors::Blue : Colors::Magenta); mx += 20; }
             if (isShiny) fb.drawShinyMark(mx, cy2 + 6, 16, Colors::ShinyStar);
             cy2 += nH + 4;
         }
@@ -259,6 +293,11 @@ namespace Panels {
         // Type icons, centered.
         {
             Pokemon::TypePair types = Pokemon::getPokemonTypes(p->speciesID(), p->form(), p->getGameGroup());
+            if (gen1) {
+                const auto& native = presentation.nativeTypes;
+                types = {PokeBank::UIModel::gen1TypeSprite(native[0]),
+                    native[0] == native[1] ? uint8_t{255} : PokeBank::UIModel::gen1TypeSprite(native[1])};
+            }
             Sprite* t1 = SpriteManager::getTypeSprite(types.type1);
             Sprite* t2 = Pokemon::hasSecondType(types) ? SpriteManager::getTypeSprite(types.type2) : nullptr;
             const int th = 20;
@@ -271,53 +310,80 @@ namespace Panels {
             cy2 += th + 10;
         }
 
-        // Stat hexagon (actual stats, HOME vertex order [HP, Atk, Def, Spe, SpD, SpA]).
-        float vals[6] = {
-            static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
-            static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())
-        };
-        const int hexCx = x + width / 2;
-        const int hexR = 70;
-        // Center the hexagon well below the type badges: its top vertex + HP label extend
-        // ~(hexR + 14 + lineHeight) above center, so a small offset would collide with the types.
-        const int hexCy = cy2 + hexR + 32;
-        fb.drawStatHexagon(hexCx, hexCy, hexR, vals, 6, 255.0f,
-                           Color(Colors::Accent.r, Colors::Accent.g, Colors::Accent.b, 110),
-                           Colors::Border, Colors::Accent);
-        // Vertex labels: "ABBR value", anchored by side.
-        static const char* abbr[6] = { "HP", "Atk", "Def", "Spe", "SpD", "SpA" };
-        static const double ang[6]  = { 90, 30, -30, 270, 210, 150 };
-        const double PI = 3.14159265358979323846;
-        for (int i = 0; i < 6; ++i) {
-            double a = ang[i] * PI / 180.0;
-            int vx = hexCx + static_cast<int>(std::lround(std::cos(a) * (hexR + 14)));
-            int vy = hexCy - static_cast<int>(std::lround(std::sin(a) * (hexR + 14)));
-            std::string lbl = std::string(abbr[i]) + " " + std::to_string(static_cast<int>(vals[i]));
-            int lw, lh; fb.measureText(lbl, lw, lh, TextStyle::Caption);
-            double c = std::cos(a);
-            int lx = (c > 0.3) ? vx + 4 : (c < -0.3) ? vx - 4 - lw : vx - lw / 2;
-            int ly = (i == 0) ? vy - lh : (i == 3) ? vy : vy - lh / 2;
-            fb.drawText(lx, ly, lbl, Colors::Text, TextStyle::Caption);
+        int iy = cy2;
+        if (gen1) {
+            // Boxed PK1 records do not store calculated battle stats. Use the same
+            // immutable presentation as Create/Edit, including one Special axis.
+            StatsRadar::drawGen1Labeled(fb, x + 18, cy2 + 4, width - 36,
+                std::min(236, y + height - 36 - (cy2 + 4)), presentation.battleStats);
+        } else if (p->getGameGroup() == Enums::GameVersion::GSC) {
+            const auto& record = static_cast<const Pokemon::Pokemon2ReadOnly*>(p)->strictRecord();
+            StatsRadar::drawGen2Labeled(fb, x + 18, cy2 + 4, width - 36,
+                std::min(236, y + height - 36 - (cy2 + 4)),
+                PokeBank::UIModel::Gen2Workspace::battleStats(record));
+        } else if (p->getGameGroup() == Enums::GameVersion::FRLG ||
+                   (exact && exact->identity.generation == Foundation::Generation::Gen4)) {
+            // Gen III+ uses six battle stats. Gen IV used to fall through to the
+            // legacy fixed-255 renderer, collapsing low-level Pokemon to a dot.
+            // Use the accepted local/headroom scale so the shape stays readable.
+            const std::array<uint16_t,6> stats{
+                p->statHPMax(), p->statATK(), p->statDEF(),
+                p->statSPE(), p->statSPA(), p->statSPD()
+            };
+            const int radarH = std::min(236, y + height - 36 - (cy2 + 4));
+            StatsRadar::drawGen3Labeled(fb, x + 18, cy2 + 4, width - 36, radarH, stats);
+            iy = cy2 + radarH + 8;
+        } else {
+            // Other later formats keep the inherited summary renderer until their shared-editor pass.
+            float vals[6] = {
+                static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
+                static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())
+            };
+            const int hexCx = x + width / 2;
+            const int hexR = 70;
+            // Center the hexagon well below the type badges: its top vertex + HP label extend
+            // ~(hexR + 14 + lineHeight) above center, so a small offset would collide with the types.
+            const int hexCy = cy2 + hexR + 32;
+            fb.drawStatHexagon(hexCx, hexCy, hexR, vals, 6, 255.0f,
+                               Color(Colors::Accent.r, Colors::Accent.g, Colors::Accent.b, 110),
+                               Colors::Border, Colors::Accent);
+            // Vertex labels: "ABBR value", anchored by side.
+            static const char* abbr[6] = { "HP", "Atk", "Def", "Spe", "SpD", "SpA" };
+            static const double ang[6]  = { 90, 30, -30, 270, 210, 150 };
+            const double PI = 3.14159265358979323846;
+            for (int i = 0; i < 6; ++i) {
+                double a = ang[i] * PI / 180.0;
+                int vx = hexCx + static_cast<int>(std::lround(std::cos(a) * (hexR + 14)));
+                int vy = hexCy - static_cast<int>(std::lround(std::sin(a) * (hexR + 14)));
+                std::string lbl = std::string(abbr[i]) + " " + std::to_string(static_cast<int>(vals[i]));
+                int lw, lh; fb.measureText(lbl, lw, lh, TextStyle::Caption);
+                double c = std::cos(a);
+                int lx = (c > 0.3) ? vx + 4 : (c < -0.3) ? vx - 4 - lw : vx - lw / 2;
+                int ly = (i == 0) ? vy - lh : (i == 3) ? vy : vy - lh / 2;
+                fb.drawText(lx, ly, lbl, Colors::Text, TextStyle::Caption);
+            }
+
+            iy = hexCy + hexR + 34;
         }
 
-        // Quick info: Nature / Ability / Held Item (label left, value right).
-        // Start below the bottom (Speed) hexagon label so they don't collide.
-        int iy = hexCy + hexR + 34;
+        // Every quick-info row follows the current adapter's capabilities,
+        // independently of which radar was drawn. PK1 exposes none of these rows.
         auto infoRow = [&](const char* label, const std::string& value) {
             fb.drawText(x + 18, iy, label, Colors::TextDim, TextStyle::Caption);
             int vw, vh; fb.measureText(value, vw, vh, TextStyle::Caption);
             fb.drawText(x + width - 18 - vw, iy, value, Colors::Text, TextStyle::Caption);
             iy += 20;
         };
-        infoRow("Nature",    getNatureName(p->nature()));
-        infoRow("Ability",   getAbilityName(p->ability()));
-        infoRow("Held Item", p->heldItem()
+        if (capabilities.supportsNature) infoRow("Nature", getNatureName(p->nature()));
+        if (capabilities.supportsAbility) infoRow("Ability", getAbilityName(p->ability()));
+        if (capabilities.supportsHeldItem) infoRow("Held Item", p->heldItem()
             ? std::string(p->getGameGroup() == Enums::GameVersion::FRLG
                 ? Names::getItemNameG3(p->heldItem()) : getItemName(p->heldItem()))
             : std::string("None"));
 
         // Edit hint + whole-panel tap target (opens the editor for the selected slot).
-        const char* hint = "A / tap: Edit";
+        const char* hint = (exact && exact->identity.generation == Foundation::Generation::Gen4)
+            ? "A / tap: Actions" : "A / tap: Edit";
         int hw, hh; fb.measureText(hint, hw, hh, TextStyle::Caption);
         fb.drawText(x + (width - hw) / 2, y + height - 24, hint, Colors::Accent, TextStyle::Caption);
         screen.touchButtons.push_back({ 2000, x, y + headerH, width, height - headerH });

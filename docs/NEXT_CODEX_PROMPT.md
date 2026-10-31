@@ -1,5 +1,7 @@
 # NEXT ENGINEERING PROMPT — CONVERSION FIDELITY / GOLDEN FIXTURE AUDIT
 
+> **HISTORICAL PROMPT — DO NOT EXECUTE AS CURRENT WORK.** This was the 2026-09-24 conversion-fidelity audit prompt (PR #79). The earlier Gen II / PR #68 prompt is archived in `docs/history/NEXT_CODEX_PROMPT_GEN2_PR68_2026-09-14.md`. Current engineering routing lives in `docs/ENGINEERING_AUTHORITY.md`, `README.md` and live GitHub.
+
 Continue PokeBank NX from the exact CURRENT LIVE GitHub state.
 
 Repository:

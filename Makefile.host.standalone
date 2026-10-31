@@ -1,0 +1,38 @@
+STANDALONE_HOST_TESTS := \
+	$(HOST_BUILD)/test_pokebank_paths \
+	$(HOST_BUILD)/test_clean_install_runtime \
+	$(HOST_BUILD)/test_runtime_dependency_contract
+
+STANDALONE_SANITIZE_TESTS := \
+	$(HOST_BUILD)/test_pokebank_paths_sanitize \
+	$(HOST_BUILD)/test_clean_install_runtime_sanitize \
+	$(HOST_BUILD)/test_runtime_dependency_contract_sanitize
+
+HOST_TESTS += $(STANDALONE_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(STANDALONE_SANITIZE_TESTS)
+host-test: $(STANDALONE_HOST_TESTS)
+host-sanitize: $(STANDALONE_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_pokebank_paths: tests/test_pokebank_paths.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_clean_install_runtime: tests/test_clean_install_runtime.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_runtime_dependency_contract: tests/test_runtime_dependency_contract.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_pokebank_paths_sanitize: tests/test_pokebank_paths.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_clean_install_runtime_sanitize: tests/test_clean_install_runtime.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_runtime_dependency_contract_sanitize: tests/test_runtime_dependency_contract.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

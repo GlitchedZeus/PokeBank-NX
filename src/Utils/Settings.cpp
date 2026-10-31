@@ -1,4 +1,6 @@
 #include "Utils/Settings.h"
+#include "Utils/SettingsFile.h"
+#include "Utils/AtomicTextFile.h"
 
 #include <cstdio>
 #include <cstring>
@@ -8,32 +10,48 @@
 #include "Globals.h"
 #include "UI/Common.h"
 #include "Utils/Logger.h"
+#include "Utils/PokeBankPaths.h"
 
 namespace Utils {
     static std::string settingsPath() {
-        return BASE_SAVE_DIRECTORY + "/settings.cfg";
+        return PokeBank::Paths::settingsFile();
     }
 
     void loadSettings() {
+        // Recover an interrupted promotion only when the authoritative file is absent.
+        // A complete settings.cfg always wins over transaction artifacts.
+        if (!AtomicTextFile::recoverPreviousIfNeeded(settingsPath())) {
+            logErrorToFile("Failed to recover previous settings generation", settingsPath().c_str());
+        }
         FILE* f = fopen(settingsPath().c_str(), "r");
         if (!f) return;  // no config yet -> keep compiled-in defaults
 
-        char line[128];
-        while (fgets(line, sizeof(line), f)) {
-            // Trim the trailing newline / carriage return.
-            char* nl = strpbrk(line, "\r\n");
-            if (nl) *nl = '\0';
+        // Read the whole (bounded) file and parse it line by line, never in fixed-size chunks: a
+        // long line is handled whole, so its tail can never be read as another setting.
+        std::string text;
+        char chunk[512];
+        size_t got = 0;
+        while ((got = fread(chunk, 1, sizeof(chunk), f)) > 0) {
+            text.append(chunk, got);
+            if (text.size() > SettingsFile::kMaxFile) break;
+        }
+        fclose(f);
+        if (text.size() > SettingsFile::kMaxFile) {
+            logErrorToFile("Settings file is too large; defaults kept", settingsPath().c_str());
+            return;
+        }
 
-            char* eq = strchr(line, '=');
-            if (!eq) continue;
-            *eq = '\0';
-            const char* key = line;
-            const char* val = eq + 1;
+        const auto entries = SettingsFile::parse(text);
+        g_folderPreferences = FolderPreferences::fromSettings(entries);
+        for (const auto& entry : entries) {
+            const char* key = entry.key.c_str();
+            const char* val = entry.value.c_str();
 
             if (strcmp(key, "theme") == 0) {
                 UI::applyTheme(UI::themeModeFromKey(val));
             } else if (strcmp(key, "autoBackup") == 0) {
-                g_autoBackupEnabled = (strcmp(val, "0") != 0);
+                // Retired setting. Opening a save never makes a backup now; backups are made only
+                // by the "Create backup now" rows. Old settings.cfg files may still carry the key.
             } else if (strcmp(key, "allowIllegal") == 0) {
                 g_allowIllegalEdits = (strcmp(val, "0") != 0);
             } else if (strcmp(key, "moveWarn") == 0 || strcmp(key, "lgpeMoveWarn") == 0) {
@@ -48,27 +66,36 @@ namespace Utils {
                 g_debugLogging = (strcmp(val, "0") != 0);
             }
         }
-        fclose(f);
     }
 
-    void saveSettings() {
-        // Make sure the base dir exists (it normally does once a backup has been taken).
-        mkdir(BASE_SAVE_DIRECTORY.c_str(), 0777);
-
-        FILE* f = fopen(settingsPath().c_str(), "w");
-        if (!f) {
-            logErrorToFile("Failed to write settings file", settingsPath().c_str());
-            return;
+    bool saveSettings() {
+        std::string pathError;
+        if (!PokeBank::Paths::ensureConfigRoot(&pathError)) {
+            logErrorToFile("Failed to create PokeBank NX config directory", pathError.c_str());
+            return false;
         }
+
         const std::string_view themeKey = UI::themeModeKey(UI::g_themeMode);
-        fprintf(f, "theme=%.*s\n", static_cast<int>(themeKey.size()), themeKey.data());
-        fprintf(f, "autoBackup=%d\n", g_autoBackupEnabled ? 1 : 0);
-        fprintf(f, "allowIllegal=%d\n", g_allowIllegalEdits ? 1 : 0);
-        fprintf(f, "moveWarn=%d\n", g_moveWarn ? 1 : 0);
+        std::string text;
+        text.reserve(160);
+        text += "theme=";
+        text.append(themeKey.data(), themeKey.size());
+        text += "\nallowIllegal=";
+        text += g_allowIllegalEdits ? "1" : "0";
+        text += "\nmoveWarn=";
+        text += g_moveWarn ? "1" : "0";
         // Keep writing the legacy key as zero so older builds also default to the safe state if the
         // same SD card is used, but never read it as authority in PokeBank NX.
-        fprintf(f, "injectToGame=0\n");
-        fprintf(f, "debugLogging=%d\n", g_debugLogging ? 1 : 0);
-        fclose(f);
+        text += "\ninjectToGame=0";
+        text += "\ndebugLogging=";
+        text += g_debugLogging ? "1" : "0";
+        text += "\n";
+        text += FolderPreferences::toSettingsText(g_folderPreferences);
+
+        if (!AtomicTextFile::replace(settingsPath(), text)) {
+            logErrorToFile("Failed to replace settings file safely", settingsPath().c_str());
+            return false;
+        }
+        return true;
     }
 }
