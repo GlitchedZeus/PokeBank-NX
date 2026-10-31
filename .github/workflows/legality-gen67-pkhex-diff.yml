@@ -1,7 +1,7 @@
 name: Gen VI-VIII legality vs PKHeX
 
-# Gen VI (PK6), Gen VII (PK7) and Gen VIII (PK8) legality through Legality::Modern::analyze:
-#  - the rule tables in include/Legality/Gen67LegalityData.inc and Gen8LegalityData.inc are
+# Gen VI (PK6), Gen VII (PK7, PB7), Gen VIII (PK8, PB8) and PK9 legality through Legality::Modern::analyze:
+#  - the rule tables in include/Legality/Gen67LegalityData.inc, Gen7bLegalityData.inc and Gen8LegalityData.inc are
 #    byte-identical to the pinned PKHeX.Core dump,
 #  - the fixture, rule-edit, interface and fuzz tests pass with GCC and Clang, normal and
 #    ASan/UBSan,
@@ -17,9 +17,11 @@ on:
       - 'src/Legality/ModernLegality.cpp'
       - 'src/Legality/Gen67*'
       - 'src/Legality/Gen8Legality*'
+      - 'src/Legality/Gen7bLegality*'
       - 'include/Legality/ModernLegality.h'
       - 'include/Legality/Gen67*'
       - 'include/Legality/Gen8Legality*'
+      - 'include/Legality/Gen7bLegality*'
       - 'include/Integration/Gen8/Gen8PK8.h'
       - 'include/Legality/Legality.h'
       - 'include/Legality/LegalityContext.h'
@@ -29,6 +31,7 @@ on:
       - 'src/Pokemon/Experience.cpp'
       - 'tests/test_legality_gen67.cpp'
       - 'tests/test_legality_gen8.cpp'
+      - 'tests/test_legality_gen7b.cpp'
       - 'tests/fixtures/gen67/**'
       - 'tools/pkhex_gen67_diff/**'
       - 'Makefile.host.gen67-legality'
@@ -76,13 +79,17 @@ jobs:
           for cxx in g++ clang++; do
             make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
               build/host-$cxx/test_legality_gen67 build/host-$cxx/test_legality_gen67_sanitize \
-              build/host-$cxx/test_legality_gen8 build/host-$cxx/test_legality_gen8_sanitize
+              build/host-$cxx/test_legality_gen8 build/host-$cxx/test_legality_gen8_sanitize \
+              build/host-$cxx/test_legality_gen7b build/host-$cxx/test_legality_gen7b_sanitize
             GEN67_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen67
             GEN8_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen8
+            GEN7B_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen7b
             ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
               build/host-$cxx/test_legality_gen67_sanitize
             ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
               build/host-$cxx/test_legality_gen8_sanitize
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen7b_sanitize
           done
 
       - name: PK6/PK7 verdicts against PKHeX (tables, seeds 1 and 3)
@@ -90,6 +97,12 @@ jobs:
           set -euo pipefail
           tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 4
           tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 8
+
+      - name: PB7 verdicts against PKHeX (tables, seeds 1 and 3)
+        run: |
+          set -euo pipefail
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 8 7b
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 16 7b
 
       - name: PK8 verdicts against PKHeX (tables, seeds 1 and 3)
         run: |

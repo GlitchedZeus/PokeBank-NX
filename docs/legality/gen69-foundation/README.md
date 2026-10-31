@@ -46,7 +46,7 @@ everything else is Incomplete. No modern area claims Complete coverage, so a rec
 a contradiction is **Incomplete**, never "No problems found". The analyzer only reads the
 bytes: no Pokémon object, no mutation, no save write, deterministic.
 
-PK6, PK7, PK8, PB8 and PK9 have rules today. PB7/PA8/PA9 are accepted and reported Incomplete
+PK6, PK7, PB7, PK8, PB8 and PK9 have rules today. PA8/PA9 are accepted and reported Incomplete
 with structure coverage None until their decoders and rules are wired in.
 
 ## PK6 / PK7 rules
@@ -89,6 +89,34 @@ chronology, relearn moves, eggs beyond the structural checks, events/Wonder Card
 encounter, IV/flawless counts, shiny locks, ribbons, memories, geolocation history, trash
 bytes and nicknames/word filter, Bank/Transporter history beyond the PID and met-location
 rules, fateful flags and Super Training.
+
+## PB7 (Let's Go Pikachu/Eevee) rules
+
+PB7 is always 0x104 bytes with PK6/PK7's encryption, checksum and most offsets, so it is decoded
+by the existing `Gen6PK6.h` and analyzed by `src/Legality/Gen7bLegality.cpp`. Tables come from
+`PersonalTable.GG` (abilities, gender, growth, forms, base stats, height, weight and
+`IsPresentInGame`), `EntityContext.Gen7b` PP and held items and format-7b battle forms, dumped
+by `oracle dump7b` into `Gen7bLegalityData.inc` (species ≤ 809, moves ≤ 742, balls ≤ 26). CP,
+height and weight are recomputed in single precision without fused multiply-add, as PKHeX does.
+
+| Area | Rule (Invalid) | PKHeX source |
+|---|---|---|
+| Origin | a version other than Let's Go Pikachu/Eevee, or GO without the GO Park met location (50) | `EncounterGenerator7GG`, `EncounterGeneratorGO` |
+| Species | above 809; a species/form not present in Let's Go; a form outside the species' forms; a battle-only form | `PersonalTable.GG.IsPresentInGame`, `FormVerifier` |
+| Egg | the egg flag (Let's Go has no eggs) | `EggVerifier` |
+| Level | experience above the level-100 total; level below met level | `LevelVerifier` |
+| EVs and AVs | any EV (Let's Go has none); an Awakening Value above 200 | `EffortValueVerifier`, `AwakenedValueVerifier` |
+| Moves and PP | as PK7 (unknown move, empty first slot, gaps, duplicates, PP Ups on an empty slot, PP above its maximum) | `MovePPVerifier`, `MoveVerifier` |
+| Identity | PID = EC; gender against the ratio; ability against the slots and number; nature; language | `PIDVerifier`, `GenderVerifier`, `AbilityVerifier` |
+| Ball, item | ball 0 or above 26; a held item Let's Go cannot hold | `BallVerifier`, `ItemVerifier` |
+| Hyper Training | below level 100; with six perfect IVs; on a perfect IV | `HyperTrainingVerifier` |
+| CP | stored CP is not `PB7.CalcCP` (the partner Pikachu/Eevee excepted) | `MiscVerifierPB7.Verify` |
+| Spirit / mood | not 100 for a record at rest in a box (the partner excepted; party and unknown slots stay undecided) | `MiscVerifierPB7.VerifyMoodSpirit` |
+| Received date | a time outside the day, a date that does not exist, or, on an untraded non-GO record, a date other than the met date | `MiscVerifierPB7.VerifyReceivedDateTime` |
+| Sizes | stored height or weight is not what its scalars give (Meltan and Melmetal excepted: fixed WB7 sizes need the gift) | `MiscVerifierPB7.VerifyCalculatedSizes` |
+
+Not implemented for PB7: encounter tables (wild, static, trades, GO Park), learnsets, WB7 gifts,
+ball per encounter, fateful flags, nicknames, trash bytes and memories.
 
 ## PK8 (Sword/Shield) rules
 
@@ -195,6 +223,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PK6/PK7 | 2 / 8 | 155,118 | 63,201 | 91,917 | 74,064 (80.6%) | 0 | 0 |
 | PK6/PK7 | 3 / 8 | 156,298 | 63,436 | 92,862 | 74,892 (80.6%) | 0 | 0 |
 | PK6/PK7 | 4 / 4 | 89,523 | 42,686 | 46,837 | 37,809 (80.7%) | 0 | 0 |
+| PB7 | 1 / 8 | 5,324 | 1,450 | 3,874 | 3,518 (90.8%) | 0 | 0 |
+| PB7 | 2 / 4 | 3,050 | 1,102 | 1,948 | 1,786 (91.7%) | 0 | 0 |
+| PB7 | 3 / 16 | 9,859 | 2,049 | 7,810 | 7,112 (91.1%) | 0 | 0 |
+| PB7 | 4 / 8 | 5,287 | 1,440 | 3,847 | 3,513 (91.3%) | 0 | 0 |
 | PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,366 (77.1%) | 0 | 0 |
 | PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,615 (76.9%) | 0 | 0 |
 | PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 39,815 (76.9%) | 0 | 0 |
@@ -208,7 +240,8 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 35,065 (83.3%) | 0 | 0 |
 | PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,131 (82.6%) | 0 | 0 |
 
-PK8 runs use `run.sh PKHEX SEED MUTATIONS 8`, PB8 runs `8b` and PK9 runs `9`.
+PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
+The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
 whose EC PKHeX does not check, and the encounter is not resolved here. A few PKHeX verdicts depend on the run date
@@ -250,3 +283,10 @@ and NX rule) locks each record's verdict class in `tests/test_legality_gen67.cpp
 covers rule edits, the interface contract, malformed input, encrypted/decrypted equality,
 input immutability and a deterministic fuzz pass. It runs under GCC and Clang, normal and
 ASan/UBSan (`make -f Makefile.host … test_legality_gen67{,_sanitize}`).
+
+`tests/fixtures/gen67/pkhex7b_seed2_sample.txt` (418 PB7 records from `generate7b 2 4`) is
+checked by `tests/test_legality_gen7b.cpp` (`test_legality_gen7b{,_sanitize}`), with PB7 edits
+(EVs, Awakening Values, CP, spirit, mood, received time and date, height and weight, origin,
+GO without GO Park, species, egg, PID = EC, ball, Hyper Training, held item, checksum), edits
+that must stay undecided (spirit and mood in the party, a traded record's received date, the
+partner's CP and spirit), the source-game warning, the interface contract and a fuzz pass.

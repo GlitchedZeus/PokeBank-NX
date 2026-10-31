@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
         Legality::Modern::Input input;
         input.format = fmt == "6" ? Legality::Modern::Format::PK6
                      : fmt == "7" ? Legality::Modern::Format::PK7
-                     : fmt == "8b" ? Legality::Modern::Format::PB8 : fmt == "9" ? Legality::Modern::Format::PK9 : Legality::Modern::Format::PK8;
+                     : fmt == "7b" ? Legality::Modern::Format::PB7 : fmt == "8b" ? Legality::Modern::Format::PB8 : fmt == "9" ? Legality::Modern::Format::PK9 : Legality::Modern::Format::PK8;
         input.game = static_cast<Legality::Modern::Game>(std::stoi(game));
         input.slot = slot == "party" ? Legality::Modern::Slot::Party : Legality::Modern::Slot::Box;
         input.encrypted = false;
