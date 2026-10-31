@@ -137,6 +137,7 @@ jobs:
             docs/legality/campaign-20261028/HGSS_BREEDING_SOURCE_PINS.json
             docs/legality/campaign-20261028/GEN5_JOINT_FIXTURES.json
             tests/fixtures/gen15_session2/gen5_joint_breeding.txt
+            tests/fixtures/gen15_session2/gen5_bw_paired_family.txt
             build-completion/hgss-swarm-catalog.*
             build-completion/hgss-contest-catalog.*
             build-completion/hgss-contest-protection.log

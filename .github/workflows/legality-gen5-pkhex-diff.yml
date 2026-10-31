@@ -31,6 +31,7 @@ on:
       - 'tests/test_legality_gen5_adapter.cpp'
       - 'tests/test_gen5_joint_breeding.cpp'
       - 'tests/fixtures/gen15_session2/gen5_joint_breeding.txt'
+      - 'tests/fixtures/gen15_session2/gen5_bw_paired_family.txt'
       - 'tests/test_reference_artifact_integrity.py'
       - 'tests/test_reference_evidence_package.py'
       - 'tests/test_bw2_shared_order.py'
