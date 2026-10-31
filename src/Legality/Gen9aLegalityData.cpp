@@ -51,4 +51,12 @@ bool battleOnlyForm(uint16_t species, uint8_t form) noexcept {
 
 bool mintNature(uint8_t nature) noexcept { return nature < 25 && ((kMintNatures9a >> nature) & 1) != 0; }
 
+uint16_t plusCount() noexcept { return kPlusCount9a; }
+
+bool plusLineCanLearn(uint16_t species, uint16_t index) noexcept {
+    constexpr size_t stride = (kPlusCount9a + 7) / 8;
+    if (species > kMaxSpecies9a || index >= kPlusCount9a) return false;
+    return ((kPlusLine9a[species * stride + (index >> 3)] >> (index & 7)) & 1) != 0;
+}
+
 } // namespace Legality::Gen9a::Data

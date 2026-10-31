@@ -159,12 +159,12 @@ into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, b
 | Moves and PP | an unknown or duplicated move; any PP Up; PP above its maximum, or neither full nor 0 (Z-A never uses PP; HOME writes 0) | `Legal.IsPPUpAvailable`, `Legal.IsPPUnused`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability number not 1, 2 or 4 (the ability itself is the encounter species' birth ability); nature; stat nature not the nature or a mint; ball 0 or above 37; language 0, 6, above 11, or Spanish (LATAM) on a non-Z-A origin; held item | `GenderVerifier`, `AbilityVerifier.VerifyBirthAbility`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `LanguageVerifier`, `ItemVerifier` |
 | Hyper Training | six perfect IVs; a perfect IV trained | `HyperTrainingVerifier` |
-| Legends: Z-A | level boost at rest; a Plus flag past the 340 used | `LegendsZAVerifier`, `PA9.GetMovePlusFlagAnyImpossible` |
+| Legends: Z-A | level boost at rest; a Plus flag past the 340 used; a Plus flag for a move that no form of the species or its pre-evolutions learns by TM, level up or Plus learnset | `LegendsZAVerifier`, `LegendsZAVerifier.GetInvalidPlusMove`, `PA9.GetMovePlusFlagAnyImpossible` |
 | Misc | battle version as Sword/Shield; obedience level (untraded: equals met level; traded: between met and current level); an alpha with a HOME tracker whose scalars are not 255 | `MiscVerifierPA9` |
 
 Not decided for PA9: empty or rearranged move slots (moves can be removed through HOME and the
 move menu; PKHeX checks them against the encounter's minimum moveset), encounters, the birth
-ability, Plus moves per level and per evolution line, alpha per encounter, PID = EC, Hyper
+ability, Plus moves per level (a flag the line can learn is not decided), alpha per encounter, PID = EC, Hyper
 Training minimum level, ball per encounter, nicknames, ribbons and memories.
 
 ## PK8 (Sword/Shield) rules
@@ -280,10 +280,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,384 (69.7%) | 0 | 0 |
 | PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 13,737 (70.2%) | 0 | 0 |
 | PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,502 (70.7%) | 0 | 0 |
-| PA9 | 1 / 4 | 20,955 | 9,447 | 11,508 | 7,080 (61.5%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 7,158 (60.9%) | 0 | 0 |
-| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 14,677 (60.5%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 7,202 (61.8%) | 0 | 0 |
+| PA9 | 1 / 4 | 20,953 | 9,460 | 11,493 | 7,504 (65.3%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 7,587 (64.5%) | 0 | 0 |
+| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 15,607 (64.4%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 7,617 (65.4%) | 0 | 0 |
 | PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,366 (77.1%) | 0 | 0 |
 | PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,615 (76.9%) | 0 | 0 |
 | PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 39,815 (76.9%) | 0 | 0 |
@@ -361,10 +361,11 @@ purchase, PID = EC and ball per encounter.
 
 `tests/fixtures/gen67/pkhex9a_seed2_sample.txt` (2,196 PA9 records from `generate9a 2 4`) is
 checked by `tests/test_legality_gen9a.cpp` (`test_legality_gen9a{,_sanitize}`), with PA9 edits
-(EVs, PP Ups, used PP, level boost, Plus flags past the end, battle version, obedience, an alpha
+(EVs, PP Ups, used PP, level boost, Plus flags past the end, a Plus move the line cannot learn, battle version, obedience, an alpha
 through HOME, natures, ability number, duplicate moves, species, ball, languages, Hyper Training,
 held item, checksum, sanity) and edits that must stay undecided (0 PP, an in-range Plus flag, a
+Plus move the line learns, a
 Sword/Shield battle version, a native alpha's scalars, another species' ability, an empty first
 slot, Spanish (LATAM) on a Z-A origin), the source-game warning and a fuzz pass. Its largest
-PKHeX gaps are encounter matching, Plus moves per evolution line, ball per encounter, nickname
+PKHeX gaps are encounter matching, Plus moves per level, ball per encounter, nickname
 language, fateful flags, Hyper Training level and PID = EC.

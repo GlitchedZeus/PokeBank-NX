@@ -573,6 +573,45 @@ static class Dump9a
             }
         }
         o.WriteLine($"constexpr std::array<SpeciesForm, {battle.Count}> kBattleForms9a{{{{{string.Join(",", battle)}}}}};");
+        // LegendsZAVerifier.GetInvalidPlusMove superset: for each species, the Plus move indexes
+        // that any form of the species or of any pre-evolution learns by TM or by level up (at
+        // any level), or holds in its Plus learnset.
+        var plusMoves = PersonalInfo9ZA.PlusMoves;
+        int plusCount = table[1].PlusCountUsed;
+        var plus = new List<int>();
+        for (ushort s = 0; s <= maxSpecies; s++)
+        {
+            var line = new HashSet<ushort>();
+            var todo = new Stack<ushort>();
+            if (s != 0) todo.Push(s);
+            while (todo.Count != 0)
+            {
+                var sp = todo.Pop();
+                if (!line.Add(sp)) continue;
+                for (byte f = 0; f < Math.Max((byte)1, table[sp].FormCount); f++)
+                    foreach (var (pre, _) in EvolutionTree.Evolves9a.Reverse.GetPreEvolutions(sp, f))
+                        todo.Push(pre);
+            }
+            var bits = new byte[(plusCount + 7) / 8];
+            foreach (var sp in line)
+            {
+                for (byte f = 0; f < Math.Max((byte)1, table[sp].FormCount); f++)
+                {
+                    var pi = table.GetFormEntry(sp, f);
+                    var (learn, plusSet) = LearnSource9ZA.GetLearnsetAndPlus(sp, f);
+                    for (int i = 0; i < plusCount; i++)
+                    {
+                        var move = plusMoves[i];
+                        var tm = pi.RecordPermitIndexes.IndexOf(move);
+                        if ((tm != -1 && pi.GetIsLearnTM(tm)) || learn.GetAllMoves().Contains(move) || plusSet.GetAllMoves().Contains(move))
+                            bits[i >> 3] |= (byte)(1 << (i & 7));
+                    }
+                }
+            }
+            plus.AddRange(bits.Select(b => (int)b));
+        }
+        o.WriteLine($"constexpr uint16_t kPlusCount9a = {plusCount};");
+        Dump.Bytes(o, "kPlusLine9a", plus);
         uint mints = 0;
         for (int n = 0; n < 25; n++)
             if (((Nature)n).IsMint) mints |= 1u << n;

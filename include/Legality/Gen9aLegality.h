@@ -39,6 +39,11 @@ uint8_t maxBall() noexcept;
 bool heldItemAllowed(uint16_t item) noexcept;
 bool battleOnlyForm(uint16_t species, uint8_t form) noexcept;
 bool mintNature(uint8_t nature) noexcept;
+/// PersonalInfo9ZA.PlusCountUsed: the Plus move flags in use.
+uint16_t plusCount() noexcept;
+/// Whether any form of the species or of any pre-evolution learns Plus move `index` by TM or
+/// level up, or holds it in its Plus learnset (a superset of LegendsZAVerifier's check).
+bool plusLineCanLearn(uint16_t species, uint16_t index) noexcept;
 } // namespace Data
 
 /// Analyze one PA9 record. Called by Modern::analyze; see ModernLegality.h for the contract.

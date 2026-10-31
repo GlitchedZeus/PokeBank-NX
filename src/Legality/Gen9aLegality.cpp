@@ -65,7 +65,7 @@ public:
         checkLegendsZA();
         checkTrainer();
         report_.issues.push_back({Severity::Info,
-            "Legends: Z-A encounter, learnset, Plus move, alpha, event and HOME history rules are not implemented yet; "
+            "Legends: Z-A encounter, learnset, Plus move by level, alpha, event and HOME history rules are not implemented yet; "
             "a record without a contradiction stays Incomplete", CheckIdentifier::Misc});
         return finish();
     }
@@ -226,6 +226,17 @@ private:
         const auto tail = p_.subspan(0x94, 12);  // PlusFlags1: flags 264-359, 340 used
         if (tail[10] != 0 || tail[11] != 0 || (tail[9] & 0xF0) != 0)
             invalid(CheckIdentifier::Moves, "A Plus move flag past the last Plus move is set");
+        // LegendsZAVerifier.GetInvalidPlusMove: a Plus flag for a move no form of the species'
+        // evolution line can learn.
+        if (personal_) {
+            for (uint16_t i = 0; i < Data::plusCount(); ++i) {
+                const bool set = i < 264 ? ((p_[0xD6 + (i >> 3)] >> (i & 7)) & 1) != 0
+                                         : ((p_[0x94 + ((i - 264) >> 3)] >> ((i - 264) & 7)) & 1) != 0;
+                if (!set || Data::plusLineCanLearn(species_, i)) continue;
+                invalid(CheckIdentifier::Moves, "Plus move flag " + std::to_string(i) + " is set but the species' line cannot learn it");
+                break;
+            }
+        }
         const uint8_t battle = p_[0xCF], v = version();
         if (battle != 0) {
             const bool swordShieldOrigin = v == VersionSW || v == VersionSH || v == 47 || v == 48 || v == 49 ||

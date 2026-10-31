@@ -183,6 +183,28 @@ void testRuleEdits(const std::vector<Record>& records) {
     expectInvalid(n, "ability number", [](auto& b) { b[0x16] = static_cast<uint8_t>((b[0x16] & ~7) | 3); }, "Ability number");
     expectNoIssue(n, "ability of another species", [](auto& b) { PK8::write16(b, 0x14, 26); }, "Ability");
     expectInvalid(n, "duplicate move", [](auto& b) { PK8::write16(b, 0x74, PK8::read16(b, 0x72)); }, "is duplicated");
+    {
+        // A Plus flag the species' evolution line cannot learn, then one it can.
+        const uint16_t species = Legality::Gen8::Data::nationalSpecies9(PK8::read16(n.plain, 0x08));
+        auto flagEdit = [](uint16_t i) {
+            return [i](std::vector<uint8_t>& b) {
+                if (i < 264) b[0xD6 + (i >> 3)] |= static_cast<uint8_t>(1u << (i & 7));
+                else b[0x94 + ((i - 264) >> 3)] |= static_cast<uint8_t>(1u << ((i - 264) & 7));
+            };
+        };
+        uint16_t bad = 0, good = 0;
+        bool foundBad = false, foundGood = false;
+        for (uint16_t i = 0; i < Legality::Gen9a::Data::plusCount(); ++i) {
+            const bool can = Legality::Gen9a::Data::plusLineCanLearn(species, i);
+            if (!can && !foundBad) { bad = i; foundBad = true; }
+            if (can && !foundGood) { good = i; foundGood = true; }
+        }
+        check(foundBad && foundGood, "fixture species has learnable and unlearnable Plus moves");
+        check(!Legality::Gen9a::Data::plusLineCanLearn(species, Legality::Gen9a::Data::plusCount()), "Plus index past the end is never learnable");
+        check(!Legality::Gen9a::Data::plusLineCanLearn(1001, 0), "species past 1000 learns no Plus move");
+        expectInvalid(n, "plus move the line cannot learn", flagEdit(bad), "line cannot learn");
+        expectNoIssue(n, "plus move the line learns", flagEdit(good), "line cannot learn");
+    }
     expectNoIssue(n, "empty first move", [](auto& b) { PK8::write16(b, 0x72, 0); b[0x7A] = 0; }, "move slot");
     {
         // The species field holds the Scarlet/Violet internal id; find one whose national id is above 1000.
