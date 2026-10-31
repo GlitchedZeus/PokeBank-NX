@@ -1,0 +1,133 @@
+name: Gen VI+ experimental NRO (development/gen6-plus)
+
+# One exact-head devkitA64 NRO for the Gen VI-IX lane, with the complete RomFS and the lane's host
+# gates. EXPERIMENTAL and NOT DEVICE TESTED: it is never a Gen I-V candidate and never merged to main.
+on:
+  push:
+    branches:
+      - development/gen6-plus
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen6-plus-nro-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+  ASAN_OPTIONS: detect_leaks=1
+
+jobs:
+  host-gates:
+    name: Gen VI+ host gates (GCC, Clang, ASan/UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+      - name: Lane suites under GCC and sanitizers
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -j4 gen6-host-test gen7-host-test gen8-host-test gen6plus-host-test gen7plus-host-test modern-ui-host-test
+          make -f Makefile.host -j4 gen6plus-host-sanitize gen7plus-host-sanitize modern-ui-host-sanitize
+          make -f Makefile.host capability-matrix-doc-check
+      - name: Backend suites under Clang
+        run: |
+          set -euo pipefail
+          make -f Makefile.host HOST_BUILD=build-clang CXX=clang++ -j4 gen6plus-host-test gen7plus-host-test
+      - name: Gen I-V contracts stay green on this lane
+        run: |
+          set -euo pipefail
+          python3 tests/test_gen5_readonly_ui_contract.py
+          python3 tests/test_home_card_provider_contract.py
+          python3 tests/test_save_instance_architecture_contract.py
+          python3 tests/test_device_no_rtti.py
+          python3 tests/test_qa_cross_gen_contract.py --list | tail -1
+          python3 tests/test_qa_cross_gen_contract.py
+
+  nro:
+    name: devkitA64 NRO + packaged RomFS verification
+    needs: host-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2
+      - name: Identity
+        id: identity
+        run: |
+          set -euo pipefail
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+          echo "short=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+      - name: Stage complete RomFS without replacing branch artwork
+        run: |
+          set -euo pipefail
+          test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
+          (cd recovery-work && python3 tools/recover_workspace.py)
+          tools/prepare_release_romfs.sh recovery-work/romfs
+      - name: Clean devkitA64 compile, link and package
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282 bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work
+            make clean || true
+            make -j2
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+      - name: Every Gen VI+ entry point is linked into the ELF
+        run: |
+          set -euo pipefail
+          nm -C PokeBankNX.elf > elf-symbols.txt
+          for sym in 'UI::ModernSharedSurface::handleInput' 'UI::ModernSharedSurface::draw' 'UI::UIManager::handleModernView' \
+                     'PokeVault::Integration::Gen6::Gen6NativeSession::open' 'PokeVault::Integration::Gen7::Gen7NativeSession::open' \
+                     'PokeVault::Integration::Modern::openAssignedSource' 'PokeVault::Legacy::ModernReadOnlyTrainer::create' \
+                     'memecrypto_verify'; do
+            grep -qF "$sym" elf-symbols.txt || { echo "not linked: $sym"; exit 1; }
+          done
+      - name: Verify packaged RomFS in the final NRO
+        run: python3 tools/verify_nro_romfs.py PokeBankNX.nro
+      - name: Package the experimental NRO
+        run: |
+          set -euo pipefail
+          out="gen6-plus-experimental"
+          name="PokeBank-NX-Gen6Plus-Experimental-${{ steps.identity.outputs.short }}.nro"
+          mkdir -p "$out"
+          cp PokeBankNX.nro "$out/$name"
+          (cd "$out" && sha256sum ./*.nro > SHA256SUMS.txt)
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\nLANE=development/gen6-plus\nSOURCE_SAVE_WRITE=DISABLED\nSAV7_EXPORT=DISABLED\nDEVICE_ACCEPTED=false\nGEN1_5_CANDIDATE=false\n' \
+            "${{ steps.identity.outputs.sha }}" "${{ steps.identity.outputs.tree }}" > "$out/BUILD_IDENTITY.txt"
+          cat "$out/SHA256SUMS.txt" "$out/BUILD_IDENTITY.txt"
+      - name: Upload experimental NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-Gen6Plus-Experimental-${{ steps.identity.outputs.short }}
+          path: |
+            gen6-plus-experimental/
+            native-build.log
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve native failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-Gen6Plus-Failed-Native-${{ github.run_id }}
+          path: native-build.log
+          if-no-files-found: warn
+          retention-days: 14
