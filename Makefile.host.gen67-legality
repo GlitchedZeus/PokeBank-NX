@@ -1,4 +1,4 @@
-# Gen VI (PK6: X/Y/OR/AS), Gen VII (PK7: SN/MN/US/UM, PB7: Let's Go), Gen VIII (PK8, PB8, PA8) and PK9 legality through
+# Gen VI (PK6: X/Y/OR/AS), Gen VII (PK7: SN/MN/US/UM, PB7: Let's Go), Gen VIII (PK8, PB8, PA8) and Gen IX (PK9, PA9) legality through
 # Legality::Modern::analyze. The codec and base stats are the existing Gen VI/VII
 # integration headers (Gen6PK6.h, Gen6PersonalData.h, Gen7PersonalData.h, Gen8PK8.h); rule data is
 # generated from PKHeX by tools/pkhex_gen67_diff/oracle. tools/pkhex_gen67_diff/run.sh
@@ -6,14 +6,16 @@
 GEN67_LEGALITY_SOURCES := src/Legality/ModernLegality.cpp src/Legality/Gen67Legality.cpp \
 	src/Legality/Gen67LegalityData.cpp src/Legality/Gen8Legality.cpp src/Legality/Gen8LegalityData.cpp \
 	src/Legality/Gen7bLegality.cpp src/Legality/Gen7bLegalityData.cpp src/Legality/Gen8aLegality.cpp \
-	src/Legality/Gen8aLegalityData.cpp src/Pokemon/Experience.cpp
+	src/Legality/Gen8aLegalityData.cpp src/Legality/Gen9aLegality.cpp src/Legality/Gen9aLegalityData.cpp \
+	src/Pokemon/Experience.cpp
 GEN67_LEGALITY_HEADERS := include/Legality/ModernLegality.h include/Legality/Gen67Legality.h \
 	include/Legality/Gen67LegalityData.inc include/Legality/Legality.h include/Legality/LegalityContext.h \
 	include/Integration/Gen6/Gen6PK6.h include/Integration/Gen6/Gen6PersonalData.h \
 	include/Integration/Gen7/Gen7PersonalData.h include/Legality/Gen8Legality.h \
 	include/Legality/Gen8LegalityData.inc include/Integration/Gen8/Gen8PK8.h \
 	include/Legality/Gen7bLegality.h include/Legality/Gen7bLegalityData.inc \
-	include/Legality/Gen8aLegality.h include/Legality/Gen8aLegalityData.inc
+	include/Legality/Gen8aLegality.h include/Legality/Gen8aLegalityData.inc \
+	include/Legality/Gen9aLegality.h include/Legality/Gen9aLegalityData.inc
 GEN67_TEST_SOURCES := tests/test_legality_gen67.cpp $(GEN67_LEGALITY_SOURCES)
 HOST_TESTS += $(HOST_BUILD)/test_legality_gen67
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen67_sanitize
@@ -69,3 +71,17 @@ $(HOST_BUILD)/test_legality_gen8a: $(GEN8A_TEST_SOURCES) $(GEN67_LEGALITY_HEADER
 $(HOST_BUILD)/test_legality_gen8a_sanitize: $(GEN8A_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8a_seed2_sample.txt
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN8A_TEST_SOURCES) -o $@
+
+GEN9A_TEST_SOURCES := tests/test_legality_gen9a.cpp $(GEN67_LEGALITY_SOURCES)
+HOST_TESTS += $(HOST_BUILD)/test_legality_gen9a
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen9a_sanitize
+host-test: $(HOST_BUILD)/test_legality_gen9a
+host-sanitize: $(HOST_BUILD)/test_legality_gen9a_sanitize
+
+$(HOST_BUILD)/test_legality_gen9a: $(GEN9A_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex9a_seed2_sample.txt
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN9A_TEST_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_gen9a_sanitize: $(GEN9A_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex9a_seed2_sample.txt
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN9A_TEST_SOURCES) -o $@

@@ -46,8 +46,7 @@ everything else is Incomplete. No modern area claims Complete coverage, so a rec
 a contradiction is **Incomplete**, never "No problems found". The analyzer only reads the
 bytes: no Pokémon object, no mutation, no save write, deterministic.
 
-PK6, PK7, PB7, PK8, PB8, PA8 and PK9 have rules today. PA9 is accepted and reported Incomplete
-with structure coverage None until their decoders and rules are wired in.
+Every format (PK6, PK7, PB7, PK8, PB8, PA8, PK9 and PA9) has rules today.
 
 ## PK6 / PK7 rules
 
@@ -144,6 +143,29 @@ Not decided for PA8: encounters (alpha flag per encounter, alpha scalars, fixed 
 learnsets and mastery by level, PID = EC (fixed-EC gifts), HOME-calculated sizes (fused
 multiply-add) and pre-evolution sizes, Hyper Training minimum level, ball per encounter,
 nicknames, ribbons and memories.
+
+## PA9 (Legends: Z-A) rules
+
+PA9 is a 0x148/0x158-byte record with PK8's encryption (decoded with the unchanged
+`Gen8PK8.h`) and PK9's internal species ids, with its own layout; `src/Legality/Gen9aLegality.cpp`
+analyzes it. Tables come from `PersonalTable.ZA` (abilities, gender, growth, forms, presence),
+`EntityContext.Gen9a` PP and held items and format-9 battle forms, dumped by `oracle dump9a`
+into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, balls ≤ 37).
+
+| Area | Rule (Invalid) | PKHeX source |
+|---|---|---|
+| Species | above 1000; a species/form Legends: Z-A does not hold; a form outside the species' forms; a battle-only form | `TransferVerifier`, `FormVerifier` |
+| Level, EVs | experience above the level-100 total; level below met level; an EV above 252 or a total above 510 | `LevelVerifier`, `EffortValueVerifier` |
+| Moves and PP | an unknown or duplicated move; any PP Up; PP above its maximum, or neither full nor 0 (Z-A never uses PP; HOME writes 0) | `Legal.IsPPUpAvailable`, `Legal.IsPPUnused`, `MovePPVerifier` |
+| Identity | gender against the ratio; ability number not 1, 2 or 4 (the ability itself is the encounter species' birth ability); nature; stat nature not the nature or a mint; ball 0 or above 37; language 0, 6, above 11, or Spanish (LATAM) on a non-Z-A origin; held item | `GenderVerifier`, `AbilityVerifier.VerifyBirthAbility`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `LanguageVerifier`, `ItemVerifier` |
+| Hyper Training | six perfect IVs; a perfect IV trained | `HyperTrainingVerifier` |
+| Legends: Z-A | level boost at rest; a Plus flag past the 340 used | `LegendsZAVerifier`, `PA9.GetMovePlusFlagAnyImpossible` |
+| Misc | battle version as Sword/Shield; obedience level (untraded: equals met level; traded: between met and current level); an alpha with a HOME tracker whose scalars are not 255 | `MiscVerifierPA9` |
+
+Not decided for PA9: empty or rearranged move slots (moves can be removed through HOME and the
+move menu; PKHeX checks them against the encounter's minimum moveset), encounters, the birth
+ability, Plus moves per level and per evolution line, alpha per encounter, PID = EC, Hyper
+Training minimum level, ball per encounter, nicknames, ribbons and memories.
 
 ## PK8 (Sword/Shield) rules
 
@@ -258,6 +280,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA8 | 2 / 4 | 15,521 | 6,361 | 9,160 | 6,384 (69.7%) | 0 | 0 |
 | PA8 | 3 / 8 | 29,114 | 9,546 | 19,568 | 13,737 (70.2%) | 0 | 0 |
 | PA8 | 4 / 4 | 15,706 | 6,505 | 9,201 | 6,502 (70.7%) | 0 | 0 |
+| PA9 | 1 / 4 | 20,955 | 9,447 | 11,508 | 7,080 (61.5%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,203 | 9,446 | 11,757 | 7,158 (60.9%) | 0 | 0 |
+| PA9 | 3 / 8 | 38,040 | 13,798 | 24,242 | 14,677 (60.5%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,136 | 9,481 | 11,655 | 7,202 (61.8%) | 0 | 0 |
 | PK8 | 1 / 4 | 46,387 | 19,987 | 26,400 | 20,366 (77.1%) | 0 | 0 |
 | PK8 | 2 / 4 | 45,298 | 19,779 | 25,519 | 19,615 (76.9%) | 0 | 0 |
 | PK8 | 3 / 8 | 81,530 | 29,728 | 51,802 | 39,815 (76.9%) | 0 | 0 |
@@ -271,7 +297,7 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 35,065 (83.3%) | 0 | 0 |
 | PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,131 (82.6%) | 0 | 0 |
 
-PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
+PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
@@ -332,3 +358,13 @@ alpha move on an alpha, sizes with a HOME tracker, on an alpha or on a transfer)
 source-game warning, the interface contract and a fuzz pass. Its largest PKHeX gaps are
 encounter matching, alpha size and alpha flag per encounter, fateful flags, mastery without a
 purchase, PID = EC and ball per encounter.
+
+`tests/fixtures/gen67/pkhex9a_seed2_sample.txt` (2,196 PA9 records from `generate9a 2 4`) is
+checked by `tests/test_legality_gen9a.cpp` (`test_legality_gen9a{,_sanitize}`), with PA9 edits
+(EVs, PP Ups, used PP, level boost, Plus flags past the end, battle version, obedience, an alpha
+through HOME, natures, ability number, duplicate moves, species, ball, languages, Hyper Training,
+held item, checksum, sanity) and edits that must stay undecided (0 PP, an in-range Plus flag, a
+Sword/Shield battle version, a native alpha's scalars, another species' ability, an empty first
+slot, Spanish (LATAM) on a Z-A origin), the source-game warning and a fuzz pass. Its largest
+PKHeX gaps are encounter matching, Plus moves per evolution line, ball per encounter, nickname
+language, fateful flags, Hyper Training level and PID = EC.

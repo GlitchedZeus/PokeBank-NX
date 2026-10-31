@@ -213,15 +213,16 @@ void testInterface(const std::vector<Record>& records) {
           "native formats");
     check(Legality::Modern::generationOf(Game::SW) == 8 && Legality::Modern::generationOf(Game::SL) == 9, "generations");
 
-    // Formats without rules: Incomplete with structure None, never Invalid (PK8, PB8 and PK9 have their own
-    // analyzer, tests/test_legality_gen8.cpp; PB7 has tests/test_legality_gen7b.cpp and PA8 tests/test_legality_gen8a.cpp).
-    for (Format f : {Format::PA9}) {
+    // Every format now has an analyzer (PK8, PB8 and PK9: tests/test_legality_gen8.cpp; PB7:
+    // tests/test_legality_gen7b.cpp; PA8: tests/test_legality_gen8a.cpp; PA9:
+    // tests/test_legality_gen9a.cpp). Garbage bytes of the right size still never pass.
+    for (Format f : {Format::PK6, Format::PK7, Format::PB7, Format::PK8, Format::PB8, Format::PA8, Format::PK9, Format::PA9}) {
+        check(profile(f)->rulesImplemented, std::string(profile(f)->name) + " has rules");
         std::vector<uint8_t> bytes(profile(f)->partySize, 0x5A);
         Input in;
         in.format = f;
         const auto r = Legality::Modern::analyze(bytes, in);
-        check(r.verdict() == Verdict::Incomplete && r.coverage.structure == Legality::CoverageLevel::None,
-              std::string(profile(f)->name) + " is reported not implemented");
+        check(r.verdict() != Verdict::NoProblemsFound, std::string(profile(f)->name) + " garbage is never clean");
     }
     // Unknown format.
     {
