@@ -50,3 +50,12 @@ A real `git merge-tree --write-tree` rehearsal against d6cc878a reports13 confli
 | tests/test_gen1_pokemon_editor_ui_contract.cpp; tests/test_gen3_hardware_surface_contract.cpp; tests/test_passive_pokemon_view_contract.cpp | Preserve both user-flow guards and legality semantics. Do not weaken either side to obtain green tests. |
 
 Before acceptance, the owner must resolve/rehearse integration, run the combined host and native build, then exercise alltwenty titles on the actual app. Include staged trainer+Pokémon changes, malformed context, zero-warningIncomplete, invalid correlated fields, source selection after navigation, long multi-page issues, Bank ownership, discard/reopen and unchanged original saves. Device rendering, NRO build/deployment and independent reviewer approval are outstanding. No source-write/export authority is added by this handoff.
+
+
+## October31 engine handoff amendment
+
+PR314 adds bounded native III/IV EV/EXP and simultaneous III–V parent certificates.
+New unresolved history/name findings must render as Incomplete. The205 additional
+name patterns signal unverified historical applicability, not proven native
+prohibitions. Invalid still outranks these warnings. No application branch or
+NRO was modified; Round11 and other legality lanes remain owner-controlled.

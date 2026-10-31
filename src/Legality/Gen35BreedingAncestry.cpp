@@ -144,7 +144,7 @@ std::vector<uint16_t> family(uint8_t era,uint16_t baby){
 }
 
 }
-bool Gen35Ancestry::provenOrdinaryBirth(uint8_t era,uint16_t baby,uint8_t version,const std::array<uint16_t,4>& moves,uint8_t paternal,uint8_t shared,bool exact){
+bool Gen35Ancestry::provenOrdinaryBirth(uint8_t era,uint16_t baby,uint8_t version,const std::array<uint16_t,4>& moves,uint8_t paternal,uint8_t shared,bool exact,BirthWitness* witness){
     if(era<3||era>5||!baby||baby>maximum(era)||paternal>15||shared>15||(shared&~paternal)||!canBeBorn(era,baby))return false;
     const bool game=era==3?(version>=1&&version<=5):era==4?(version==7||version==8||version==10||version==11||version==12):(version>=20&&version<=23);
     if(!game)return false;
@@ -181,7 +181,10 @@ bool Gen35Ancestry::provenOrdinaryBirth(uint8_t era,uint16_t baby,uint8_t versio
                 std::array<uint16_t,4> actual{};std::copy(result.begin(),result.end(),actual.begin());
                 bool ok=actual==moves;
                 if(!exact){ok=true;for(size_t i=0;i<4;++i)if((paternal&(1u<<i))&&std::find(result.begin(),result.end(),moves[i])==result.end())ok=false;}
-                if(ok)return true;
+                if(ok){
+                    if(witness){witness->generation=era;witness->version=version;witness->baby=baby;witness->father=father;witness->mother=mother;witness->bornMoves=actual;witness->lightBall=light;std::copy(dad.begin(),dad.end(),witness->fatherMoves.begin());std::copy(mom.begin(),mom.end(),witness->motherMoves.begin());}
+                    return true;
+                }
             }while(std::next_permutation(dad.begin(),dad.end()));
         }
     }
@@ -233,12 +236,6 @@ uint16_t Gen35Ancestry::findFather(uint8_t era,uint16_t baby,uint8_t wanted,uint
 }
 bool Gen35Ancestry::simpleWitness(uint16_t target,uint8_t mask,bool allowBirth)const{
     if(!mask)return true;
-    // A cyclic permissive witness is not a constructive physical ancestry.
-    // These limits only stop positive certification, never prove impossibility.
-    const uint32_t key=static_cast<uint32_t>(target)*16+mask;
-    if(proofStack_.size()>=16||++proofVisits_>256||std::find(proofStack_.begin(),proofStack_.end(),key)!=proofStack_.end())return false;
-    proofStack_.push_back(key);
-    struct Pop {std::vector<uint32_t>& stack;~Pop(){stack.pop_back();}} pop{proofStack_};
     const auto canTeach=[&](uint16_t n,uint8_t wanted,int cap){
         const uint8_t era=3+n/stride;const uint16_t species=n%stride;
         // A cross-form union is not a constructive single-individual witness.
@@ -251,6 +248,13 @@ bool Gen35Ancestry::simpleWitness(uint16_t target,uint8_t mask,bool allowBirth)c
         return true;
     };
     if(canTeach(target,mask,100))return true;
+    // A cyclic permissive witness is not a constructive physical ancestry.
+    // These limits only stop positive certification, never prove impossibility.
+    const uint32_t key=static_cast<uint32_t>(target)*16+mask;
+    if(proofStack_.size()>=16||++proofVisits_>256||std::find(proofStack_.begin(),proofStack_.end(),key)!=proofStack_.end())return false;
+    proofStack_.push_back(key);
+    struct Pop {std::vector<uint32_t>& stack;~Pop(){stack.pop_back();}} pop{proofStack_};
+
     int cap=100;
     for(const auto& step:chain_->witness(target,mask)){
         if(step.kind==StepKind::Gift||step.kind==StepKind::PreviousEra)return false;
@@ -334,12 +338,17 @@ bool Gen35Ancestry::provenBirth(uint8_t era,uint16_t baby,uint8_t version,uint8_
     certifiedBirths_.clear();proofStack_.clear();proofVisits_=0;
     if(era<3||era>5||!baby||baby>maximum(era)||wanted>15||shared>15||(shared&~wanted))return false;
     const bool game=era==3?(version>=1&&version<=5):era==4?(version==7||version==8||version==10||version==11||version==12):(version>=20&&version<=23);
-    if(!game||!possible(era,baby,wanted,shared))return false;
+    if(!game)return false;
+    BirthWitness ordinary;
+    if(provenOrdinaryBirth(era,baby,version,moves_,wanted,shared,exact,&ordinary)){
+        certifiedBirths_.push_back(ordinary);return true;
+    }
+    if(!possible(era,baby,wanted,shared))return false;
     auto mothers=maternalSpecies(era,baby);
     if(mothers.empty()&&!shared)mothers.push_back(132);
     for(auto mother:mothers)if(chain_->canKnow(node(era,mother),shared)&&simpleWitness(node(era,mother),shared))
         for(uint16_t father=1;father<=maximum(era);++father){
-            certifiedBirths_.clear();proofVisits_=0;
+            certifiedBirths_.clear();
             const bool parentAllowed=mother==132?std::find(rules_[node(era,baby)].fathers.begin(),rules_[node(era,baby)].fathers.end(),node(era,father))!=rules_[node(era,baby)].fathers.end():male(father)&&compatible(mother,father);
             if(parentAllowed&&chain_->canKnow(node(era,father),wanted)&&simpleWitness(node(era,father),wanted)&&birthWitness(era,baby,father,wanted,wanted,version,exact,shared))return true;
         }

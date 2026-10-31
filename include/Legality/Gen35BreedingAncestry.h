@@ -20,7 +20,7 @@ public:
     };
     // Fast lower certificate using ordinary, directly teachable parents only.
     // No finite upper graph is built; failure says nothing about impossibility.
-    static bool provenOrdinaryBirth(uint8_t generation,uint16_t baby,uint8_t version,const std::array<uint16_t,4>& moves,uint8_t fatherMoves,uint8_t sharedMoves,bool exact=false);
+    static bool provenOrdinaryBirth(uint8_t generation,uint16_t baby,uint8_t version,const std::array<uint16_t,4>& moves,uint8_t fatherMoves,uint8_t sharedMoves,bool exact=false,BirthWitness* witness=nullptr);
     explicit Gen35Ancestry(const std::array<uint16_t,4>& moves);
     // Positive-only certificate. exact=false proves simultaneous inherited
     // survivors in a hatched record; other current moves may be learned later.

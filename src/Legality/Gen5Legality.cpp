@@ -1994,20 +1994,31 @@ void Gen5Analyzer::movePool() {
             // Reuse the finite joint-state foundation. All permissible local
             // source assignments are tried: failure of the first assignment is
             // not evidence that a different father/mother route is impossible.
-            const Breeding::Gen35Ancestry ancestry(p_.moves);
-            if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry)) {
-                // Original HGSS bodies prove both-parent shared inheritance.
-                // B2W2 role selection is now replayed separately, but the
-                // complete family/event ancestry closure is still unverified.
-                // Exclusive egg/TM absence must also survive that conservative
-                // carrier relaxation; it cannot certify a clean birth.
-                if(Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,false,true)){
-                    ancestryPartial=true;
-                    a_.warn(CheckIdentifier::Egg,"Gen V parent roles or the complete inherited move history have not yet been verified");
-                }else a_.invalid(CheckIdentifier::Egg,"No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model");
-            } else if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,true)) {
+            const bool bwPairedFamily = (p_.version==20||p_.version==21) &&
+                (match_.species==29||match_.species==32||match_.species==313||match_.species==314);
+            if(bwPairedFamily) {
+                // The replayed offspring/parent-role implementation is B2W2.
+                // Shared move ordering agreement alone does not certify BW's
+                // mixed-species birth branch or which parent supplies moves.
+                // Initial-only eggs bypass this missing historical rule above.
                 ancestryPartial=true;
-                a_.warn(CheckIdentifier::Egg,"The complete breeding history, move order, form or transfer path has not yet been verified");
+                a_.warn(CheckIdentifier::Egg,"Black/White paired-species offspring and parental role path has not been verified from native source");
+            } else {
+                const Breeding::Gen35Ancestry ancestry(p_.moves);
+                if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry)) {
+                    // Original HGSS bodies prove both-parent shared inheritance.
+                    // B2W2 role selection is now replayed separately, but the
+                    // complete family/event ancestry closure is still unverified.
+                    // Exclusive egg/TM absence must also survive that conservative
+                    // carrier relaxation; it cannot certify a clean birth.
+                    if(Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,false,true)){
+                        ancestryPartial=true;
+                        a_.warn(CheckIdentifier::Egg,"Gen V parent roles or the complete inherited move history have not yet been verified");
+                    }else a_.invalid(CheckIdentifier::Egg,"No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model");
+                } else if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,true)) {
+                    ancestryPartial=true;
+                    a_.warn(CheckIdentifier::Egg,"The complete breeding history, move order, form or transfer path has not yet been verified");
+                }
             }
         }
     }
