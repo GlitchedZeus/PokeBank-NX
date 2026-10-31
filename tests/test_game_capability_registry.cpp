@@ -55,6 +55,26 @@ int main() {
                   std::string(row.id) + " baseline workflow visible: " + std::string(Cap::workflowName(static_cast<Cap::Workflow>(i))));
     }
 
+    // Hardware honesty: nothing is accepted on an exact build yet; Gen I-V owner rounds were on
+    // earlier candidates; every Gen VI-IX title is untested on hardware.
+    for (const auto& row : rows) {
+        check(row.hardware != Cap::HardwareState::OwnerAcceptedExactBuild, std::string(row.id) + " claims no exact-build acceptance");
+        if (row.generation <= 5) {
+            check(row.hardware == Cap::HardwareState::OwnerTestedEarlierCandidate && row.ui == Cap::UiIntegration::ClassicSharedUi,
+                  std::string(row.id) + " is classic shared UI with owner results on earlier candidates only");
+        } else {
+            check(row.hardware == Cap::HardwareState::NotDeviceTested, std::string(row.id) + " is not device tested");
+        }
+        // A title whose editor is visible must name the host-UI evidence that reaches it.
+        if (row.visible(Cap::Workflow::PokemonEditor) && row.generation >= 6)
+            check(row.ui == Cap::UiIntegration::ModernSurfaceHostTested && !row.uiEvidence.empty(),
+                  std::string(row.id) + " editor claim is backed by a real-screen host test");
+        if (row.ui == Cap::UiIntegration::LegacyReaderOnly)
+            check(!row.supports(Cap::Workflow::PokemonEditor) && !row.supports(Cap::Workflow::Export),
+                  std::string(row.id) + " legacy-reader title claims no editor/export support");
+    }
+    check(Cap::hardwareClaimsAreEvidenced(), "no unevidenced acceptance claim");
+
     // Cumulative inheritance (also a static_assert in the header).
     check(!Cap::firstInheritanceViolation().has_value(), "no inherited workflow is NotImplemented or unexplained");
     for (const auto& row : rows)

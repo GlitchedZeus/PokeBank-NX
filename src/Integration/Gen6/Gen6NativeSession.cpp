@@ -157,10 +157,7 @@ bool Gen6NativeSession::emptyDestination(Modern::SlotRef slot) const {
 }
 
 bool Gen6NativeSession::stagedAt(Modern::SlotRef slot) const {
-    const auto n = toNative(slot);
-    for (const auto& c : session_.changes())
-        if (c.slot == n) return true;
-    return false;
+    return session_.isStaged(toNative(slot));
 }
 
 std::optional<Modern::SlotRef> Gen6NativeSession::firstEmptyBoxSlot() const {
@@ -256,6 +253,10 @@ Modern::OperationSupport Gen6NativeSession::cloneSupport(Modern::SlotRef from) c
     const auto rec = original(from);
     if (!rec.occupied() || stagedAt(from))
         return {false, "Clone needs an unmodified, occupied source record"};
+    // Gen6StagedSession::cloneToBox refuses these (PKHeX SAV6.SetPKM resets the form when boxing);
+    // say so up front so the shared Actions sheet never offers a Clone/Move that would fail.
+    if (rec.pokemon && rec.pokemon->form() != 0 && (rec.pokemon->species() == 676 || rec.pokemon->species() == 720))
+        return {false, "Furfrou and Hoopa must be in their base form to be boxed in Gen VI; this record keeps its form"};
     if (!firstEmptyBoxSlot()) return {false, "No verified blank box slot is available"};
     return {true, {}};
 }
@@ -279,6 +280,10 @@ Modern::OperationSupport Gen6NativeSession::createSupport(Modern::SlotRef) const
 }
 
 bool Gen6NativeSession::clone(Modern::SlotRef from, Modern::SlotRef to, std::string& error) {
+    if (draft_ && (*draft_ == from || *draft_ == to)) {
+        error = "Gen VI slot has an open editor draft; keep or discard it before Clone";
+        return false;
+    }
     if (to.region != Modern::Region::Box) {
         error = "Gen VI clone destination must be a box slot";
         return false;
@@ -287,6 +292,10 @@ bool Gen6NativeSession::clone(Modern::SlotRef from, Modern::SlotRef to, std::str
 }
 
 bool Gen6NativeSession::move(Modern::SlotRef from, Modern::SlotRef to, std::string& error) {
+    if (draft_ && (*draft_ == from || *draft_ == to)) {
+        error = "Gen VI slot has an open editor draft; keep or discard it before Move";
+        return false;
+    }
     if (const auto support = moveSupport(from); !support.available) {
         error = std::string(support.reason);
         return false;
@@ -300,6 +309,10 @@ bool Gen6NativeSession::move(Modern::SlotRef from, Modern::SlotRef to, std::stri
 }
 
 bool Gen6NativeSession::remove(Modern::SlotRef at, std::string& error) {
+    if (draft_ && *draft_ == at) {
+        error = "Gen VI slot has an open editor draft; keep or discard it before Remove";
+        return false;
+    }
     if (at.region != Modern::Region::Box) {
         error = "Party removal is unsupported for Gen VI";
         return false;
@@ -315,7 +328,7 @@ std::vector<Modern::BagPocketView> Gen6NativeSession::bag() const {
     std::vector<Modern::BagPocketView> out;
     const auto f = session_.source().family();
     std::optional<ValidatedBag6> decoded;
-    if (const auto* staged = const_cast<Gen6StagedSession&>(session_).bag()) decoded = staged->current();
+    if (const auto* staged = session_.stagedBag()) decoded = staged->current();
     else decoded = decodeBag6(f, sourceItemsBlock6(session_.source()));
     if (!decoded) return out;
     for (size_t p = 0; p < BagPocket6Count; ++p) {
@@ -377,7 +390,8 @@ std::string Gen6NativeSession::trainerName() const {
 }
 
 uint8_t Gen6NativeSession::trainerGender() const noexcept {
-    const auto g = session_.source().trainer().gender;
+    // MyStatus +5, the byte Gen6Save::trainer() reads; no std::u16string is built in a noexcept member.
+    const auto g = session_.source().bytes()[Layout::MyStatusOffset + 5];
     return g <= 1 ? g : 0;
 }
 
@@ -410,7 +424,7 @@ std::vector<Modern::ReviewRow> Gen6NativeSession::reviewRows() const {
         }
     }
     if (session_.bagDirty()) {
-        if (const auto* b = const_cast<Gen6StagedSession&>(session_).bag()) {
+        if (const auto* b = session_.stagedBag()) {
             const auto f = session_.source().family();
             const auto before = decodeBag6(f, b->original());
             const auto after = decodeBag6(f, b->staged());

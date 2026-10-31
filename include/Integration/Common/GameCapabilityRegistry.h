@@ -13,8 +13,10 @@
 //   * Mechanics are per title: Z-Move data belongs to SM/USUM only, Dynamax to SWSH only, etc.
 //   * A Blocked status always names its prerequisite; a NotApplicable status names the native
 //     reason the game lacks the capability.
-//   * "Supported" means implemented through the shared workflow and covered by host tests. It is
-//     NEVER a hardware-acceptance claim: see HardwareState.
+//   * "Supported" means reachable through the shared application workflow and covered by host
+//     tests. It is NEVER a hardware-acceptance claim: see HardwareState and UiIntegration.
+//   * No title is OwnerAcceptedExactBuild unless hardwareEvidence names the exact NRO the owner
+//     accepted. Owner results on earlier candidates are OwnerTestedEarlierCandidate, not acceptance.
 
 #include <array>
 #include <cstddef>
@@ -59,7 +61,19 @@ struct WorkflowStatus {
     std::string_view reason{};
 };
 
-enum class HardwareState : uint8_t { NotDeviceTested, OwnerAccepted };
+enum class HardwareState : uint8_t {
+    NotDeviceTested,              // no owner result on any build
+    OwnerTestedEarlierCandidate,  // owner rounds ran on earlier candidates; no exact-build acceptance
+    OwnerAcceptedExactBuild,      // requires hardwareEvidence naming the exact NRO SHA-256
+};
+
+// How far the title's application path is actually wired, independent of backend support.
+enum class UiIntegration : uint8_t {
+    LegacyReaderOnly,          // installed-title reader through the pre-shared generic screens
+    ClassicSharedUi,           // Gen I-V shared Trainer/Party/Boxes/editor surfaces (Round 10 source)
+    ModernSurfaceHostTested,   // ModernSharedSurface.inc over a NativeSession, driven by the real
+                               // TrainerViewScreen in a host-UI harness test (not on hardware)
+};
 
 enum class Platform : uint8_t { GameBoy, GameBoyColor, GameBoyAdvance, NintendoDS, Nintendo3DS, NintendoSwitch };
 
@@ -122,6 +136,9 @@ struct GameCapabilities {
     HardwareState hardware = HardwareState::NotDeviceTested;
     std::string_view exportRoot{}; // app-owned export folder stem (empty when export is blocked)
     std::string_view provider{};   // "modern-native" when the shared Modern adapter serves it
+    UiIntegration ui = UiIntegration::LegacyReaderOnly;
+    std::string_view uiEvidence{};       // host-UI test(s) that drive the real screen for this title
+    std::string_view hardwareEvidence{}; // exact NRO SHA-256 + owner record; empty unless accepted
 
     [[nodiscard]] constexpr const WorkflowStatus& status(Workflow w) const noexcept {
         return workflows[static_cast<size_t>(w)];
@@ -311,22 +328,27 @@ constexpr NativeMechanics mech5() noexcept { NativeMechanics m; m.ribbons = true
 constexpr GameCapabilities classicRow(std::string_view id, std::string_view title, uint8_t gen, Platform p,
                                       std::string_view family, std::string_view fmt, StatModel stat,
                                       StorageGeometry geo, NativeMechanics mech) noexcept {
+    // Gen I-V: owner hardware rounds ran on earlier candidates (docs/hardware/ROUND*_RESULTS_*),
+    // but issue #313 (all-20-release acceptance) is open and no exact build is accepted.
     return {id, title, gen, p, family, fmt, stat, geo, mech, classic(gen == 1),
-            HardwareState::OwnerAccepted, "exports", "classic"};
+            HardwareState::OwnerTestedEarlierCandidate, "exports", "classic",
+            UiIntegration::ClassicSharedUi, "Round 10 host-UI harness suite (tests/host-ui)", {}};
 }
 constexpr GameCapabilities gen6Row(std::string_view id, std::string_view title, std::string_view family) noexcept {
     return {id, title, 6, Platform::Nintendo3DS, family, "PK6", StatModel::IVEV,
-            {31, 30, 6, "SparseNative"}, mech6(), gen6(), HardwareState::NotDeviceTested, "exports/gen6", "modern-native"};
+            {31, 30, 6, "SparseNative"}, mech6(), gen6(), HardwareState::NotDeviceTested, "exports/gen6", "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_host", {}};
 }
 constexpr GameCapabilities gen7Row(std::string_view id, std::string_view title, std::string_view family) noexcept {
     return {id, title, 7, Platform::Nintendo3DS, family, "PK7", StatModel::IVEV,
-            {32, 30, 6, "SparseNative"}, mech7(), gen7sm(), HardwareState::NotDeviceTested, {}, "modern-native"};
+            {32, 30, 6, "SparseNative"}, mech7(), gen7sm(), HardwareState::NotDeviceTested, {}, "modern-native",
+            UiIntegration::ModernSurfaceHostTested, "test_ui_modern_surface_gen7_host", {}};
 }
 constexpr GameCapabilities switchRow(std::string_view id, std::string_view title, uint8_t gen, std::string_view family,
                                      std::string_view fmt, StatModel stat, StorageGeometry geo, NativeMechanics mech,
                                      std::string_view adapter) noexcept {
     return {id, title, gen, Platform::NintendoSwitch, family, fmt, stat, geo, mech, switchReader(adapter),
-            HardwareState::NotDeviceTested, {}, "legacy-modern-reader"};
+            HardwareState::NotDeviceTested, {}, "legacy-modern-reader", UiIntegration::LegacyReaderOnly, {}, {}};
 }
 } // namespace Detail
 
@@ -416,6 +438,15 @@ struct InheritanceViolation {
     }
     return std::nullopt;
 }
+
+// No title may claim exact-build owner acceptance without naming the evidence, and no title on the
+// shared Modern surface may claim it while its UI has only host-harness evidence.
+[[nodiscard]] constexpr bool hardwareClaimsAreEvidenced() noexcept {
+    for (const auto& row : Registry)
+        if (row.hardware == HardwareState::OwnerAcceptedExactBuild && row.hardwareEvidence.empty()) return false;
+    return true;
+}
+static_assert(hardwareClaimsAreEvidenced(), "an OwnerAcceptedExactBuild row must name its exact-NRO evidence");
 
 static_assert(!firstInheritanceViolation().has_value(),
               "a later generation dropped an inherited shared workflow without naming why");

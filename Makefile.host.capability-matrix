@@ -1,0 +1,32 @@
+# Capability matrix (development/gen6-plus): docs/gen6-plus/CAPABILITY_MATRIX.md is a generated
+# artifact of include/Integration/Common/GameCapabilityRegistry.h. tools/capability_matrix.cpp
+# prints it; tests/test_capability_matrix_doc.py fails host-test when the committed document is not
+# byte-identical to the tool's output, so the document can never drift from the registry.
+#
+#   make -f Makefile.host $(HOST_BUILD)/capability_matrix    build the generator (GCC or CXX=clang++)
+#   make -f Makefile.host capability-matrix-doc              regenerate docs/gen6-plus/CAPABILITY_MATRIX.md
+#   make -f Makefile.host capability-matrix-doc-check        python drift check (also a host-test step)
+#
+# Include from Makefile.host after `include Makefile.host.gen6-plus` (the fragment only needs
+# Makefile.host.base variables). Same wiring as gen4-safety-contract / save-instance-architecture-
+# contract: a phony python step that host-test and host-sanitize depend on, not a HOST_TESTS entry.
+CAPABILITY_MATRIX_TOOL := $(HOST_BUILD)/capability_matrix
+CAPABILITY_MATRIX_DOC := docs/gen6-plus/CAPABILITY_MATRIX.md
+CAPABILITY_MATRIX_SOURCES := tools/capability_matrix.cpp src/Games/GameIdentity.cpp
+CAPABILITY_MATRIX_HEADERS := include/Integration/Common/GameCapabilityRegistry.h include/Games/GameIdentity.h
+
+$(CAPABILITY_MATRIX_TOOL): $(CAPABILITY_MATRIX_SOURCES) $(CAPABILITY_MATRIX_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CAPABILITY_MATRIX_SOURCES) -o $@
+
+.PHONY: capability-matrix-doc capability-matrix-doc-check
+# Written through a temporary file so a failing generator never truncates the committed document.
+capability-matrix-doc: $(CAPABILITY_MATRIX_TOOL)
+	@mkdir -p $(dir $(CAPABILITY_MATRIX_DOC))
+	$(CAPABILITY_MATRIX_TOOL) > $(CAPABILITY_MATRIX_DOC).tmp && mv $(CAPABILITY_MATRIX_DOC).tmp $(CAPABILITY_MATRIX_DOC)
+
+capability-matrix-doc-check: $(CAPABILITY_MATRIX_TOOL)
+	python3 tests/test_capability_matrix_doc.py --binary $(CAPABILITY_MATRIX_TOOL)
+
+host-test: capability-matrix-doc-check
+host-sanitize: capability-matrix-doc-check

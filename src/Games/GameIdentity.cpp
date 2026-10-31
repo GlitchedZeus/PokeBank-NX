@@ -150,17 +150,9 @@ namespace PokeVault::Games {
         if (id == "white_nds") return "romfs:/game_cards/white_nds.png";
         if (id == "black2_nds") return "romfs:/game_cards/black2_nds.png";
         if (id == "white2_nds") return "romfs:/game_cards/white2_nds.png";
-        // Gen VI/VII 3DS covers: served once the packaged RomFS carries them (tools/check_device_assets.py
-        // lists the required files). An absent cover falls back to the shared text card, never to
-        // another game's artwork.
-        if (id == "x_3ds") return "romfs:/game_cards/x_3ds.png";
-        if (id == "y_3ds") return "romfs:/game_cards/y_3ds.png";
-        if (id == "omegaruby_3ds") return "romfs:/game_cards/omegaruby_3ds.png";
-        if (id == "alphasapphire_3ds") return "romfs:/game_cards/alphasapphire_3ds.png";
-        if (id == "sun_3ds") return "romfs:/game_cards/sun_3ds.png";
-        if (id == "moon_3ds") return "romfs:/game_cards/moon_3ds.png";
-        if (id == "ultrasun_3ds") return "romfs:/game_cards/ultrasun_3ds.png";
-        if (id == "ultramoon_3ds") return "romfs:/game_cards/ultramoon_3ds.png";
+        // Gen VI/VII 3DS titles have no packaged cover: retail box art (Nintendo copyright) has no
+        // redistribution licence in libretro-thumbnails, so these cards use the generated text card
+        // until the owner supplies licensed artwork. No other game's art is ever substituted.
         return {};
     }
 

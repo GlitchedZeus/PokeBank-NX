@@ -1,0 +1,83 @@
+# Gen VI-IX shared application surface (development/gen6-plus): the ONE Trainer/Party/Boxes/Items/
+# Trainer screen for every title served by a Modern::NativeSession adapter.
+#   * test_modern_screen_state: the host-testable state machine (include/Integration/Modern/
+#     ModernScreenState.h) over the real Gen VI adapter and synthetic X save; GCC + Clang, + sanitizers.
+#   * test_ui_modern_surface_host: the REAL TrainerViewScreen::update / draw driven with scripted
+#     pad and touch input through src/UI/ModernSharedSurface.inc (tests/host-ui harness). GCC only,
+#     exactly like Makefile.host.host-ui (the application links under GCC only).
+# Include from Makefile.host right after `include Makefile.host.gen6-plus`.
+MODERN_UI_STATE_TEST := $(HOST_BUILD)/test_modern_screen_state
+MODERN_UI_STATE_SANITIZE := $(HOST_BUILD)/test_modern_screen_state_sanitize
+HOST_TESTS += $(MODERN_UI_STATE_TEST)
+HOST_SANITIZE_TESTS += $(MODERN_UI_STATE_SANITIZE)
+host-test: $(MODERN_UI_STATE_TEST)
+host-sanitize: $(MODERN_UI_STATE_SANITIZE)
+
+MODERN_UI_STATE_SOURCES := tests/test_modern_screen_state.cpp $(GEN6PLUS_SESSION_SOURCES)
+MODERN_UI_STATE_HEADERS := include/Integration/Modern/ModernScreenState.h $(GEN6PLUS_HEADERS) \
+	include/UI/SharedPokemonEditorContract.h include/UI/SharedReviewPresentation.h
+
+$(MODERN_UI_STATE_TEST): $(MODERN_UI_STATE_SOURCES) $(MODERN_UI_STATE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN6PLUS_FLAGS) $(MODERN_UI_STATE_SOURCES) -o $@
+$(MODERN_UI_STATE_SANITIZE): $(MODERN_UI_STATE_SOURCES) $(MODERN_UI_STATE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN6PLUS_FLAGS) $(MODERN_UI_STATE_SOURCES) -o $@
+
+MODERN_UI_TESTS := $(MODERN_UI_STATE_TEST)
+MODERN_UI_SANITIZE_TESTS := $(MODERN_UI_STATE_SANITIZE)
+
+# The host-UI harness test links the application archive and therefore follows Makefile.host.host-ui's
+# GCC-only guard (that file defines the archive only under GCC). This fragment is included before
+# Makefile.host.host-ui, so the archive path and the compiler check are restated here (prerequisite
+# lists expand at parse time); the recipe variables are the host-ui ones, expanded when the rule runs.
+MODERN_UI_COMPILER_IS_CLANG := $(shell $(CXX) --version 2>/dev/null | grep -qi clang && echo yes)
+MODERN_UI_ARCHIVE := $(HOST_BUILD)/host-ui/libpokebank-hostui.a
+MODERN_UI_SANITIZE_ARCHIVE := $(HOST_BUILD)/host-ui/libpokebank-hostui-asan.a
+MODERN_UI_STUBS := tests/host-ui/HostUiStubs.cpp
+MODERN_UI_INCLUDES := -Iinclude -Itests/host-ui -Ivendor/PKSM-Core/memecrypto
+ifneq ($(MODERN_UI_COMPILER_IS_CLANG),yes)
+MODERN_UI_SURFACE_TEST := $(HOST_BUILD)/test_ui_modern_surface_host
+MODERN_UI_SURFACE_SANITIZE := $(HOST_BUILD)/test_ui_modern_surface_host_sanitize
+MODERN_UI_SURFACE_INPUTS := tests/test_ui_modern_surface_host.cpp tests/host-ui/HostUi.h tests/host-ui/switch.h \
+	$(wildcard tests/fixtures/gen6/*.h) include/Integration/Modern/ModernScreenState.h \
+	src/UI/ModernSharedSurface.inc $(MODERN_UI_STUBS)
+MODERN_UI_SURFACE_FLAGS := -Wno-unused-parameter $(MODERN_UI_INCLUDES) -Itests -isystem $(PKSM_CORE_ROOT)/include \
+	-D_PKSMCORE_CONFIGURED -fno-operator-names -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST
+HOST_TESTS += $(MODERN_UI_SURFACE_TEST)
+HOST_SANITIZE_TESTS += $(MODERN_UI_SURFACE_SANITIZE)
+host-test: $(MODERN_UI_SURFACE_TEST)
+host-sanitize: $(MODERN_UI_SURFACE_SANITIZE)
+$(MODERN_UI_SURFACE_TEST): $(MODERN_UI_SURFACE_INPUTS) $(MODERN_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_ARCHIVE) -o $@
+$(MODERN_UI_SURFACE_SANITIZE): $(MODERN_UI_SURFACE_INPUTS) $(MODERN_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
+MODERN_UI_TESTS += $(MODERN_UI_SURFACE_TEST)
+MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_SURFACE_SANITIZE)
+# The same surface over the Gen VII adapter and a MemeCrypto-signed Sun fixture.
+MODERN_UI_GEN7_TEST := $(HOST_BUILD)/test_ui_modern_surface_gen7_host
+MODERN_UI_GEN7_SANITIZE := $(HOST_BUILD)/test_ui_modern_surface_gen7_host_sanitize
+MODERN_UI_GEN7_INPUTS := tests/test_ui_modern_surface_gen7_host.cpp tests/host-ui/HostUi.h tests/host-ui/switch.h \
+	$(wildcard tests/fixtures/gen6/*.h) $(wildcard tests/fixtures/gen7/*.h) include/Integration/Modern/ModernScreenState.h \
+	src/UI/ModernSharedSurface.inc $(MODERN_UI_STUBS)
+HOST_TESTS += $(MODERN_UI_GEN7_TEST)
+HOST_SANITIZE_TESTS += $(MODERN_UI_GEN7_SANITIZE)
+host-test: $(MODERN_UI_GEN7_TEST)
+host-sanitize: $(MODERN_UI_GEN7_SANITIZE)
+$(MODERN_UI_GEN7_TEST): $(MODERN_UI_GEN7_INPUTS) $(MODERN_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen7_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_ARCHIVE) -o $@
+$(MODERN_UI_GEN7_SANITIZE): $(MODERN_UI_GEN7_INPUTS) $(MODERN_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_surface_gen7_host.cpp $(MODERN_UI_STUBS) $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
+MODERN_UI_TESTS += $(MODERN_UI_GEN7_TEST)
+MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_GEN7_SANITIZE)
+endif
+
+.PHONY: modern-ui-host-test modern-ui-host-sanitize
+modern-ui-host-test: $(MODERN_UI_TESTS)
+	@set -e; for test_bin in $(MODERN_UI_TESTS); do ./$$test_bin; done
+modern-ui-host-sanitize: $(MODERN_UI_SANITIZE_TESTS)
+	@set -e; for test_bin in $(MODERN_UI_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done

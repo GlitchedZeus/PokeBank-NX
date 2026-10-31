@@ -102,6 +102,7 @@ public:
     }
 
     bool undo(SlotRef slot) noexcept { return entries_.erase(slot) != 0; }
+    [[nodiscard]] bool isStaged(SlotRef slot) const noexcept { return entries_.count(slot) != 0; }
 
     // One slot's staged entry, copied out so a UI draft can be discarded back to it exactly.
     struct EntrySnapshot {
@@ -145,6 +146,8 @@ public:
 
     // Staged native Bag (MyItem block). Opened on first use from the immutable
     // source; nullptr (with error) when the source bag is not fully recognized.
+    // The staged bag if one has been opened; never creates it (safe from const callers).
+    [[nodiscard]] const Gen6StagedBag* stagedBag() const noexcept { return bag_ ? &*bag_ : nullptr; }
     [[nodiscard]] Gen6StagedBag* bag(std::string* error = nullptr) {
         if (!bag_) bag_ = Gen6StagedBag::create(source_, error);
         return bag_ ? &*bag_ : nullptr;

@@ -139,6 +139,7 @@ namespace UI {
                 case static_cast<int>(Kind::RetroArchFRLG):    return Kind::RetroArchFRLG;
                 case static_cast<int>(Kind::Gen4AssignedFile): return Kind::Gen4AssignedFile;
                 case static_cast<int>(Kind::Gen5AssignedFile): return Kind::Gen5AssignedFile;
+                case static_cast<int>(Kind::ModernAssignedFile): return Kind::ModernAssignedFile;
                 default:                                       return Kind::None;
             }
         }
@@ -922,7 +923,7 @@ namespace UI {
         }
         auto opened=Modern::openAssignedSource(legacySourceBindings,profileIdentity(userUid),gameId,
                                                selectedFingerprint);
-        if (!opened.ready() || opened.instance.gameId!=gameId || !opened.instance.readOnly()) {
+        if (!opened.ready() || opened.session->exactGameId()!=gameId || !opened.instance.readOnly()) {
             error=opened.diagnostic.empty()
                 ? std::string(Modern::generationLabelFor(gameId))+" source changed or failed strict validation"
                 : opened.diagnostic;

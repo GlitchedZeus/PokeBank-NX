@@ -223,6 +223,26 @@ int main() {
     check(s.stageValue(SlotRef::boxed(0, 0), Field::Friendship, 150, 0, error) && s.draftDirty(), "further edit dirties it");
     s.discardDraft();
     check(s.view(SlotRef::boxed(0, 0))->friendship == 200 && s.stagedAt(SlotRef::boxed(0, 0)), "discard returns to the KEPT edit, not the source");
+    // Review finding W5-01: Discard All closes an open bracket; a later discardDraft cannot re-stage.
+    check(s.beginDraft(SlotRef::boxed(0, 0), error), "draft over a kept edit");
+    s.discardAll();
+    check(!s.draftActive() && !s.hasChanges(), "Discard All ends the open draft");
+    s.discardDraft();
+    check(!s.hasChanges() && s.view(SlotRef::boxed(0, 0))->friendship == 70, "discardDraft after Discard All re-stages nothing");
+    // Review finding W5-02: slot operations touching the open draft are refused, so a Move can never
+    // be half-reverted into a Clone by a later discardDraft.
+    check(s.beginDraft(SlotRef::boxed(0, 1), error), "draft on Box 1/2");
+    check(!s.move(SlotRef::boxed(0, 1), SlotRef::boxed(1, 0), error) && error.find("open editor draft") != std::string::npos,
+          "Move of the drafted slot refused with a reason");
+    check(!s.remove(SlotRef::boxed(0, 1), error) && !s.clone(SlotRef::boxed(0, 1), SlotRef::boxed(1, 0), error),
+          "Remove and Clone of the drafted slot refused");
+    check(!s.undo(SlotRef::boxed(0, 1)), "undo of the drafted slot refused");
+    s.discardDraft();
+    check(!s.hasChanges() && s.view(SlotRef::boxed(1, 0))->empty, "nothing half-applied");
+    // W5-11: switching drafts discards the first draft's unkept edit (documented behaviour).
+    check(s.beginDraft(SlotRef::boxed(0, 0), error) && s.stageValue(SlotRef::boxed(0, 0), Field::Friendship, 9, 0, error), "dirty draft");
+    check(s.beginDraft(SlotRef::boxed(0, 1), error) && !s.stagedAt(SlotRef::boxed(0, 0)), "a new draft discards the previous unkept draft");
+    s.discardDraft();
     s.discardAll();
     check(!s.exportSupport().available && !s.exportSupport().reason.empty(), "export unavailable without changes, with reason");
 

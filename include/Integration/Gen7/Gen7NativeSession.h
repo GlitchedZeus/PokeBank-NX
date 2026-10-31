@@ -73,7 +73,10 @@ public:
     bool clone(Modern::SlotRef from, Modern::SlotRef to, std::string& error) override;
     bool move(Modern::SlotRef from, Modern::SlotRef to, std::string& error) override;
     bool remove(Modern::SlotRef at, std::string& error) override;
-    bool undo(Modern::SlotRef at) override { return session_.undo(toNative(at)); }
+    bool undo(Modern::SlotRef at) override {
+        if (draft_ && *draft_ == at) return false;  // the open draft owns this slot until keep/discard
+        return session_.undo(toNative(at));
+    }
 
     bool bagAvailable() const override;
     std::vector<Modern::BagPocketView> bag() const override;

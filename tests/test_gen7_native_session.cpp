@@ -353,6 +353,19 @@ int main() {
     check(s.view(SlotRef::boxed(0, 0))->pokerus == 0 && s.view(SlotRef::boxed(0, 0))->friendship == 200, "the stale bracket was discarded, not kept");
     s.discardDraft();
     s.discardAll();
+    // Review findings W5-01/W5-02 (same contract as Gen VI): Discard All closes an open draft, and
+    // slot operations touching the open draft are refused.
+    check(s.beginDraft(SlotRef::boxed(0, 0), error) && s.stageValue(SlotRef::boxed(0, 0), Field::Friendship, 9, 0, error), "draft before Discard All");
+    s.discardAll();
+    s.discardDraft();
+    check(!s.draftActive() && !s.hasChanges(), "discardDraft after Discard All re-stages nothing");
+    check(s.beginDraft(SlotRef::boxed(0, 1), error), "draft on Box 1/2");
+    check(!s.move(SlotRef::boxed(0, 1), SlotRef::boxed(1, 0), error) && error.find("open editor draft") != std::string::npos &&
+              !s.remove(SlotRef::boxed(0, 1), error) && !s.clone(SlotRef::boxed(0, 1), SlotRef::boxed(1, 0), error) &&
+              !s.undo(SlotRef::boxed(0, 1)),
+          "Move/Remove/Clone/undo of the drafted slot refused");
+    s.discardDraft();
+    check(!s.hasChanges(), "nothing half-applied");
     check(!s.exportSupport().available && !s.exportSupport().reason.empty(), "export unavailable without changes, with reason");
     check(original == pristine, "the source bytes still never changed");
 

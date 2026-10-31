@@ -176,10 +176,7 @@ bool Gen7NativeSession::emptyDestination(Modern::SlotRef slot) const {
 }
 
 bool Gen7NativeSession::stagedAt(Modern::SlotRef slot) const {
-    const auto n = toNative(slot);
-    for (const auto& c : session_.changes())
-        if (c.slot == n) return true;
-    return false;
+    return session_.isStaged(toNative(slot));
 }
 
 std::optional<Modern::SlotRef> Gen7NativeSession::firstEmptyBoxSlot() const {
@@ -299,6 +296,10 @@ Modern::OperationSupport Gen7NativeSession::createSupport(Modern::SlotRef) const
 }
 
 bool Gen7NativeSession::clone(Modern::SlotRef from, Modern::SlotRef to, std::string& error) {
+    if (draft_ && (*draft_ == from || *draft_ == to)) {
+        error = "Gen VII slot has an open editor draft; keep or discard it before Clone";
+        return false;
+    }
     if (to.region != Modern::Region::Box) {
         error = "Gen VII clone destination must be a box slot";
         return false;
@@ -307,6 +308,10 @@ bool Gen7NativeSession::clone(Modern::SlotRef from, Modern::SlotRef to, std::str
 }
 
 bool Gen7NativeSession::move(Modern::SlotRef from, Modern::SlotRef to, std::string& error) {
+    if (draft_ && (*draft_ == from || *draft_ == to)) {
+        error = "Gen VII slot has an open editor draft; keep or discard it before Move";
+        return false;
+    }
     if (const auto support = moveSupport(from); !support.available) {
         error = std::string(support.reason);
         return false;
@@ -320,6 +325,10 @@ bool Gen7NativeSession::move(Modern::SlotRef from, Modern::SlotRef to, std::stri
 }
 
 bool Gen7NativeSession::remove(Modern::SlotRef at, std::string& error) {
+    if (draft_ && *draft_ == at) {
+        error = "Gen VII slot has an open editor draft; keep or discard it before Remove";
+        return false;
+    }
     if (at.region != Modern::Region::Box) {
         error = "Party removal is unsupported for Gen VII";
         return false;
@@ -335,7 +344,7 @@ std::vector<Modern::BagPocketView> Gen7NativeSession::bag() const {
     std::vector<Modern::BagPocketView> out;
     const auto f = session_.source().family();
     std::optional<ValidatedBag7> decoded;
-    if (const auto* staged = const_cast<Gen7StagedSession&>(session_).bag()) decoded = staged->current();
+    if (const auto* staged = session_.stagedBag()) decoded = staged->current();
     else decoded = decodeBag7(f, sourceItemsBlock7(session_.source()));
     if (!decoded) return out;
     for (size_t p = 0; p < BagPocket7Count; ++p) {
@@ -398,7 +407,8 @@ std::string Gen7NativeSession::trainerName() const {
 }
 
 uint8_t Gen7NativeSession::trainerGender() const noexcept {
-    const auto g = session_.source().trainer().gender;
+    // MyStatus +5, the byte Gen7Save::trainer() reads; no std::u16string is built in a noexcept member.
+    const auto g = session_.source().bytes()[myStatusOffset() + 5];
     return g <= 1 ? g : 0;
 }
 
@@ -431,7 +441,7 @@ std::vector<Modern::ReviewRow> Gen7NativeSession::reviewRows() const {
         }
     }
     if (session_.bagDirty()) {
-        if (const auto* b = const_cast<Gen7StagedSession&>(session_).bag()) {
+        if (const auto* b = session_.stagedBag()) {
             const auto f = session_.source().family();
             const auto before = decodeBag7(f, b->original());
             const auto after = decodeBag7(f, b->staged());

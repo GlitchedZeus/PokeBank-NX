@@ -75,6 +75,7 @@ public:
     [[nodiscard]] bool removeFromBox(size_t box, size_t slot, std::string* error = nullptr);
 
     bool undo(SlotRef slot) noexcept { return entries_.erase(slot) != 0; }
+    [[nodiscard]] bool isStaged(SlotRef slot) const noexcept { return entries_.count(slot) != 0; }
 
     // One slot's staged entry, copied out so a UI draft can be discarded back to it exactly.
     // Same shape as Gen6StagedSession::EntrySnapshot; consumed by Gen7NativeSession's draft bracket.
@@ -115,6 +116,8 @@ public:
     [[nodiscard]] size_t changeCount() const noexcept { return entries_.size(); }
 
     // Staged native Bag (MyItem block 0); nullptr (with error) when unrecognized.
+    // The staged bag if one has been opened; never creates it (safe from const callers).
+    [[nodiscard]] const Gen7StagedBag* stagedBag() const noexcept { return bag_ ? &*bag_ : nullptr; }
     [[nodiscard]] Gen7StagedBag* bag(std::string* error = nullptr) {
         if (!bag_) bag_ = Gen7StagedBag::create(source_, error);
         return bag_ ? &*bag_ : nullptr;

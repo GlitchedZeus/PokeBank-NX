@@ -62,7 +62,7 @@ bool ModernReadOnlyTrainer::refreshPresentation(std::string& error) {
     // The shared panels address boxes as fixed BOX_SLOTS-wide rows; every Modern family fits
     // (31x30, 32x30, LGPE 40x25), so a wider native box is refused rather than truncated.
     decltype(boxes) displayBoxes(s.boxCount());
-    if (s.slotsPerBox() > displayBoxes.front().size()) {
+    if (displayBoxes.empty() || s.slotsPerBox() > displayBoxes.front().size()) {
         error = std::string(s.familyLabel()) + " box geometry exceeds the shared presentation";
         return false;
     }
