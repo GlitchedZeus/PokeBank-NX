@@ -98,4 +98,19 @@ Result check(const Input& in) noexcept {
     return Result::NotAnyName;
 }
 
+bool eggNameMatches(Family family, std::span<const uint8_t> nickname, uint8_t language) noexcept {
+    if (nickname.size() < kNicknameChars * 2 || language >= 12) return true;
+    const std::u16string_view expect(kEggNames[language]);
+    if (expect.empty()) return true;
+    size_t length = 0;
+    bool same = true;
+    for (; length < kNicknameChars; ++length) {
+        auto c = static_cast<char16_t>(nickname[2 * length] | (nickname[2 * length + 1] << 8));
+        if (c == 0) break;
+        if (family == Family::Gen7 && (language == 9 || language == 10) && c == kEggNameZh7Stored) c = expect[0];
+        if (length >= expect.size() || c != expect[length]) same = false;
+    }
+    return same && length == expect.size();
+}
+
 } // namespace Legality::ModernNickname

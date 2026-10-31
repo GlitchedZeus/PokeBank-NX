@@ -603,7 +603,8 @@ static class DumpEncounters
         o.WriteLine("// Included once, by src/Legality/ModernEncounter.cpp. Per format and national species: kBalls, a");
         o.WriteLine("// 64-bit ball mask; kFateful, bit 0 = some encounter has the fateful flag, bit 1 = some has it");
         o.WriteLine("// clear. 0 means EncounterMovesetGenerator found no encounter (the rules then do not decide).");
-        o.WriteLine("// kEgg (formats with eggs): unhatched-egg facts of the species, see Egg() in the oracle; 0 = undecided.");
+        o.WriteLine("// kEgg (formats with eggs): egg facts of the species, see Egg() in the oracle; 0 = undecided.");
+        o.WriteLine("// kHatch<game>: the met locations the game hatches eggs at (EggHatchLocation*).");
         var formats = new (string name, Func<PKM> make)[]
         {
             ("6", () => new PK6()), ("7", () => new PK7()), ("7b", () => new PB7()), ("8", () => new PK8()),
@@ -651,6 +652,8 @@ static class DumpEncounters
                                 mask |= EncounterBalls(enc, maxBall);
                                 fate |= Fateful(enc);
                                 if (enc.IsEgg && enc.Species == s && enc.Context == context) egg |= Egg(enc, pk);
+                                if (enc.Context == context)
+                                    egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not 0 } ? 32 : 0;
                             }
                         }
                         catch (ArgumentOutOfRangeException) when (version.Context == EntityContext.None)
@@ -664,11 +667,11 @@ static class DumpEncounters
                         }
                     }
                 }
+                var line = DumpNames.LinePublic(s);
                 if (mask != 0)
                 {
                     // Every mystery gift of the species' line that can reach the format, whatever
                     // the generator's filters: its fixed ball (0 is a Poke Ball).
-                    var line = DumpNames.LinePublic(s);
                     foreach (var g in gifts)
                     {
                         if (!g.IsEntity || !line.Contains(g.Species) || !reach(g)) continue;
@@ -682,6 +685,9 @@ static class DumpEncounters
                 // Mystery gift eggs of the species itself, whatever the generator's filters.
                 foreach (var g in gifts)
                     if (g.IsEgg && g.Species == s && g.Context == context && reach(g)) egg |= Egg(g, pk);
+                foreach (var g in gifts)
+                    if (g.Context == context && reach(g) && line.Contains(g.Species))
+                        egg |= g.IsEgg ? 64 : g.EggLocation != 0 ? 32 : 0;
                 eggs[s] = undecided ? 0 : egg | 0x80;
                 masks[s] = undecided ? 0 : mask;
                 fateful[s] = undecided || mask == 0 ? 0 : fate;
@@ -695,12 +701,36 @@ static class DumpEncounters
             Dump.Bytes(o, $"kFateful{key}", fateful);
             if (name is "6" or "7" or "8" or "8b" or "9") Dump.Bytes(o, $"kEgg{key}", eggs);
         }
+        HatchLocations(o);
+    }
+
+    // EncounterVerifier.VerifyEncounterEgg6/7/8/8BDSP/9: the met locations each game hatches eggs at.
+    public static void HatchLocations(TextWriter o)
+    {
+        var games = new (string name, Func<ushort, bool> ok)[]
+        {
+            ("6XY", EggHatchLocation6.IsValidMet6XY), ("6AO", EggHatchLocation6.IsValidMet6AO),
+            ("7SM", EggHatchLocation7.IsValidMet7SM), ("7USUM", EggHatchLocation7.IsValidMet7USUM),
+            ("8SWSH", EggHatchLocation8.IsValidMet8SWSH), ("8BD", EggHatchLocation8b.IsValidMet8BD),
+            ("8SP", EggHatchLocation8b.IsValidMet8SP), ("9SL", EggHatchLocation9.IsValidMet9SL),
+            ("9VL", EggHatchLocation9.IsValidMet9VL),
+        };
+        foreach (var (name, ok) in games)
+        {
+            var list = Enumerable.Range(0, 65536).Where(l => ok((ushort)l)).ToArray();
+            o.WriteLine($"constexpr std::array<uint16_t, {list.Length}> kHatch{name}{{{{");
+            for (int i = 0; i < list.Length; i += 16)
+                o.WriteLine("    " + string.Join(",", list.Skip(i).Take(16)) + ",");
+            o.WriteLine("}};");
+        }
     }
 
     // Unhatched-egg facts of one egg encounter of the format's own context (eggs never leave it:
     // Poke Transporter, Pokemon Bank and HOME refuse them). 1 = an egg exists; 2 = it is a mystery
     // gift (its met level and locations follow the gift); 4 / 8 = EggStateLegality.IsNicknameFlagSet
-    // may be true / false; 16 = its egg location may be 0. Bit 7 marks a decided species.
+    // may be true / false; 16 = its egg location may be 0. Over every encounter of the species or a
+    // pre-evolution in the format's context (and mystery gifts of its line): 32 = a non-egg encounter
+    // carries a nonzero egg location; 64 = an egg encounter exists. Bit 7 marks a decided species.
     private static int Egg(IEncounterable enc, PKM pk)
     {
         int bits = 1;
@@ -852,6 +882,12 @@ static class DumpNames
         }
         Dump.Bits(o, "kSpecialNickname", excluded);
         Dump.Bits(o, "kNoPreEvolution", root);
+        // NicknameVerifier.VerifyNicknameEgg: SpeciesName.GetEggName for Generation 5+ eggs, and
+        // the stored character of the Chinese egg name in a PK7 (StringConverter7 may remap it).
+        o.WriteLine("const char16_t* const kEggNames[12] = {" + string.Join(",", Enumerable.Range(0, 12).Select(l => Literal(SpeciesName.GetEggName(l, 6)))) + "};");
+        var zh = new PK7 { Language = (int)LanguageID.ChineseS };
+        zh.Nickname = SpeciesName.GetEggName((int)LanguageID.ChineseS, 7);
+        o.WriteLine($"constexpr uint16_t kEggNameZh7Stored = 0x{System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(zh.NicknameTrash):X4};");
         o.WriteLine($"constexpr uint16_t kPrivateZh7First = 0x{0xE800:X4}, kPrivateZh7Last = 0x{(int)(ushort)typeof(PKM).Assembly.GetType("PKHeX.Core.StringConverter7ZH")!.GetField("End", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.GetRawConstantValue()!:X4};");
     }
 }
@@ -1244,6 +1280,9 @@ sealed class Generator(Random rng, int mutations)
         var pk = hatched.Clone();
         pk.IsEgg = true;
         pk.IsNicknamed = EggStateLegality.IsNicknameFlagSet(enc, pk);
+        // TrashBytesVerifier: a BD/SP egg's name field is clean; Sword/Shield and Scarlet/Violet keep
+        // the hatched species' name under the egg name, as the converter left it.
+        if (pk is PB8) pk.NicknameTrash.Clear();
         pk.Nickname = SpeciesName.GetEggName(pk.Language, pk.Format);
         if (enc is IEncounterEgg && pk.EggLocation == Locations.LinkTrade6)
         {

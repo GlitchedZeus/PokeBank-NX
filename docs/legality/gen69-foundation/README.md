@@ -282,7 +282,7 @@ fateful statics, fateful mystery gifts and Gen III event gifts) and whether any 
 accepts is Invalid, in either direction: a Pidgey with the flag set, or a Manaphy without it.
 Gift receivability (version and language restrictions) still needs the gift itself.
 
-## Unhatched-egg rules (PK6, PK7)
+## Egg rules (PK6, PK7)
 
 `dumpencounters` also records, per format with eggs and species, the unhatched-egg facts of the
 egg encounters of that format's own games (bred eggs, in-game gift eggs and mystery gift eggs):
@@ -300,10 +300,18 @@ encounter-independent):
 * when no mystery gift egg of the species exists (its card fixes met level and locations):
   met level other than 1, a met location other than none or link trade (30002), or the
   link-trade egg location (an egg traded unhatched keeps its day-care location);
-* a nickname flag state no egg of the species takes (only Eevee's Gen VII gift egg is clear).
+* a nickname flag state no egg of the species takes (only Eevee's Gen VII gift egg is clear);
+* a name other than `SpeciesName.GetEggName` for the language (oracle `dumpnames`: `kEggNames`,
+  plus the private glyph StringConverter7 stores for the Chinese name).
 
-The egg name itself, hatch counters, and the hatched-record side (hatch location per game, met
-level 1) still need the encounter. The generator now also emits each egg encounter's record
+A hatched PK6/PK7 record of Generation 6/7 origin with an egg location set hatched from an egg:
+no non-egg encounter of those games carries an egg location (the table records it per species,
+and none does). `EncounterVerifier.VerifyEncounterEggHatched` then applies whatever the egg was
+(bred, in-game gift or mystery gift): met level 1, and a met location in the origin game's hatch
+list (`EggHatchLocation6/7`, dumped as `kHatch*`). A species whose line has no egg in its origin
+games cannot carry an egg location. Hatch counters and the egg's own moves still need the encounter.
+
+The generator now also emits each egg encounter's record
 before it hatches (`Unhatched` in the oracle), so every corpus carries PKHeX-valid unhatched
 eggs as positive controls and their mutations as negatives.
 
@@ -338,42 +346,42 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 
 | Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
 |---|---|---:|---:|---:|---:|---:|---:|
-| PK6/PK7 | 1 / 4 | 103,791 | 47,864 | 55,927 | 49,191 (88.0%) | 0 | 0 |
-| PK6/PK7 | 2 / 8 | 182,416 | 71,341 | 111,075 | 98,207 (88.4%) | 0 | 0 |
-| PK6/PK7 | 3 / 8 | 182,943 | 71,063 | 111,880 | 98,766 (88.3%) | 0 | 0 |
-| PK6/PK7 | 4 / 4 | 104,672 | 48,162 | 56,510 | 49,580 (87.7%) | 0 | 0 |
-| PB7 | 1 / 8 | 5,324 | 1,449 | 3,875 | 3,699 (95.5%) | 0 | 0 |
-| PB7 | 2 / 4 | 3,050 | 1,098 | 1,952 | 1,874 (96.0%) | 0 | 0 |
-| PB7 | 3 / 16 | 9,859 | 2,042 | 7,817 | 7,442 (95.2%) | 0 | 0 |
+| PK6/PK7 | 1 / 4 | 103,791 | 47,834 | 55,957 | 50,075 (89.5%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 182,416 | 71,354 | 111,062 | 99,964 (90.0%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 182,943 | 71,070 | 111,873 | 100,424 (89.8%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 104,672 | 48,151 | 56,521 | 50,456 (89.3%) | 0 | 0 |
+| PB7 | 1 / 8 | 5,324 | 1,447 | 3,877 | 3,701 (95.5%) | 0 | 0 |
+| PB7 | 2 / 4 | 3,050 | 1,104 | 1,946 | 1,868 (96.0%) | 0 | 0 |
+| PB7 | 3 / 16 | 9,859 | 2,066 | 7,793 | 7,419 (95.2%) | 0 | 0 |
 | PB7 | 4 / 8 | 5,287 | 1,448 | 3,839 | 3,674 (95.7%) | 0 | 0 |
-| PA8 | 1 / 4 | 16,161 | 6,518 | 9,643 | 6,957 (72.1%) | 0 | 0 |
-| PA8 | 2 / 4 | 15,521 | 6,363 | 9,158 | 6,607 (72.1%) | 0 | 0 |
-| PA8 | 3 / 8 | 29,114 | 9,552 | 19,562 | 14,235 (72.8%) | 0 | 0 |
-| PA8 | 4 / 4 | 15,706 | 6,488 | 9,218 | 6,756 (73.3%) | 0 | 0 |
-| PA9 | 1 / 4 | 20,953 | 9,438 | 11,515 | 8,240 (71.6%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,203 | 9,458 | 11,745 | 8,366 (71.2%) | 0 | 0 |
-| PA9 | 3 / 8 | 38,041 | 13,819 | 24,222 | 17,129 (70.7%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,136 | 9,486 | 11,650 | 8,407 (72.2%) | 0 | 0 |
-| PK8 | 1 / 4 | 49,192 | 21,134 | 28,058 | 22,315 (79.5%) | 0 | 0 |
-| PK8 | 2 / 4 | 49,929 | 21,462 | 28,467 | 22,550 (79.2%) | 0 | 0 |
-| PK8 | 3 / 8 | 88,885 | 31,716 | 57,169 | 45,590 (79.7%) | 0 | 0 |
-| PK8 | 4 / 4 | 51,245 | 22,353 | 28,892 | 22,863 (79.1%) | 0 | 0 |
-| PB8 | 1 / 4 | 46,138 | 18,183 | 27,955 | 23,199 (83.0%) | 0 | 0 |
-| PB8 | 2 / 4 | 46,341 | 18,394 | 27,947 | 23,262 (83.2%) | 0 | 0 |
-| PB8 | 3 / 8 | 82,201 | 26,636 | 55,565 | 46,244 (83.2%) | 0 | 0 |
-| PB8 | 4 / 4 | 47,741 | 18,987 | 28,754 | 23,882 (83.1%) | 0 | 0 |
-| PK9 | 1 / 4 | 43,647 | 20,248 | 23,399 | 20,236 (86.5%) | 0 | 0 |
-| PK9 | 2 / 4 | 43,062 | 19,856 | 23,206 | 20,003 (86.2%) | 0 | 0 |
-| PK9 | 3 / 8 | 76,816 | 29,821 | 46,995 | 40,910 (87.1%) | 0 | 0 |
-| PK9 | 4 / 4 | 42,637 | 19,738 | 22,899 | 19,813 (86.5%) | 0 | 0 |
+| PA8 | 1 / 4 | 16,161 | 6,510 | 9,651 | 6,968 (72.2%) | 0 | 0 |
+| PA8 | 2 / 4 | 15,521 | 6,363 | 9,158 | 6,600 (72.1%) | 0 | 0 |
+| PA8 | 3 / 8 | 29,114 | 9,560 | 19,554 | 14,259 (72.9%) | 0 | 0 |
+| PA8 | 4 / 4 | 15,706 | 6,503 | 9,203 | 6,762 (73.5%) | 0 | 0 |
+| PA9 | 1 / 4 | 20,953 | 9,441 | 11,512 | 8,230 (71.5%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,203 | 9,438 | 11,765 | 8,387 (71.3%) | 0 | 0 |
+| PA9 | 3 / 8 | 38,041 | 13,812 | 24,229 | 17,147 (70.8%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,136 | 9,493 | 11,643 | 8,391 (72.1%) | 0 | 0 |
+| PK8 | 1 / 4 | 49,192 | 21,119 | 28,073 | 22,306 (79.5%) | 0 | 0 |
+| PK8 | 2 / 4 | 49,929 | 21,465 | 28,464 | 22,556 (79.2%) | 0 | 0 |
+| PK8 | 3 / 8 | 88,885 | 31,707 | 57,178 | 45,578 (79.7%) | 0 | 0 |
+| PK8 | 4 / 4 | 51,245 | 22,345 | 28,900 | 22,870 (79.1%) | 0 | 0 |
+| PB8 | 1 / 4 | 46,138 | 18,973 | 27,165 | 23,216 (85.5%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,341 | 19,233 | 27,108 | 23,242 (85.7%) | 0 | 0 |
+| PB8 | 3 / 8 | 82,202 | 27,760 | 54,442 | 46,267 (85.0%) | 0 | 0 |
+| PB8 | 4 / 4 | 47,741 | 19,856 | 27,885 | 23,858 (85.6%) | 0 | 0 |
+| PK9 | 1 / 4 | 43,647 | 20,249 | 23,398 | 20,263 (86.6%) | 0 | 0 |
+| PK9 | 2 / 4 | 43,062 | 19,867 | 23,195 | 19,987 (86.2%) | 0 | 0 |
+| PK9 | 3 / 8 | 76,816 | 29,832 | 46,984 | 40,920 (87.1%) | 0 | 0 |
+| PK9 | 4 / 4 | 42,637 | 19,745 | 22,892 | 19,799 (86.5%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
 whose EC PKHeX does not check, and the encounter is not resolved here. Every corpus grew at this milestone because the generator now also emits each egg
-encounter before it hatches (PK6/PK7, PK8, PB8, PK9); the Switch rates dipped because the egg
-rules there are not implemented yet. A few PKHeX verdicts depend on the run date
+encounter before it hatches (PK6/PK7, PK8, PB8, PK9); the Switch rates dipped slightly because
+the egg rules there are not implemented yet. A few PKHeX verdicts depend on the run date
 (HOME and distribution date windows), so the PKHeX valid/invalid split can move by a few
 records between days; the false-Invalid and false-Valid counts must stay zero.
 
@@ -381,7 +389,7 @@ The corpus is synthetic (PKHeX builds every record from its own templates for a 
 trainer); it is not a personal save and not retail evidence. The detection rate measures how
 much of PKHeX's rejection these encounter-independent rules reproduce. It is not a measure of
 rule completeness. The remaining ~12–30% need encounter, learnset, event or history data
-(largest PK6/PK7 groups: fateful flags, geography consistency, hatched-egg locations, ball per
+(largest PK6/PK7 groups: fateful flags, geography consistency, nickname language, ball per
 encounter, learnset-only moves, nickname language for relaxed species; largest PK8 groups: no matching
 encounter, fateful flags, Gigantamax per encounter, nickname language for relaxed species, PID type per
 encounter, Hyper Training level 50–99, ball per encounter, egg locations; largest PB8

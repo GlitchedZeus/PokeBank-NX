@@ -121,6 +121,7 @@ public:
         checkLanguage();
         checkNickname();
         checkUnhatchedEgg();
+        checkHatchedEgg();
         checkHeldItem();
         checkConsoleRegion();
         checkTransferMetLocation();
@@ -472,6 +473,10 @@ private:
             invalid(CheckIdentifier::Egg, "An unhatched egg cannot be transferred (Poke Transporter and Pokemon Bank refuse eggs)");
             return;
         }
+        const auto lang = pk_.language();
+        if (lang != 0 && lang != 6 && !ModernNickname::eggNameMatches(format_ == 6 ? ModernNickname::Family::Gen6 : ModernNickname::Family::Gen7,
+                                                                      plain_.subspan(0x40, 26), lang))
+            invalid(CheckIdentifier::Egg, "An unhatched egg's name is not the egg name of its language");
         const auto f = ModernEncounter::eggFacts(format_ == 6 ? Modern::Format::PK6 : Modern::Format::PK7, pk_.species());
         if (!f.decided) return;
         if (!f.exists) {
@@ -490,6 +495,22 @@ private:
         if (pk_.isNicknamed() ? !f.nicknameFlagSet : !f.nicknameFlagClear)
             invalid(CheckIdentifier::Egg, pk_.isNicknamed() ? "An unhatched egg's nickname flag is set, but no egg of the species sets it"
                                                             : "An unhatched egg's nickname flag is clear, but every egg of the species sets it");
+    }
+
+    // EncounterVerifier.VerifyEncounterEggHatched for a Generation 6/7 origin. No non-egg encounter of
+    // those games carries an egg location (ModernEncounter.h checks it per species), so a hatched
+    // record with one hatched from an egg: met level 1, at a hatching location of its origin game.
+    void checkHatchedEgg() {
+        if (pk_.isEgg() || (originGen_ != 6 && originGen_ != 7) || pk_.eggLocation() == 0) return;
+        const auto f = ModernEncounter::eggFacts(originGen_ == 6 ? Modern::Format::PK6 : Modern::Format::PK7, pk_.species());
+        if (!f.decided || f.nonEggEggLocation) return;
+        if (!f.lineHasEgg) {
+            invalid(CheckIdentifier::Egg, "Egg location is set but no egg of the species' line exists in its origin games");
+            return;
+        }
+        if (pk_.metLevel() != 1) invalid(CheckIdentifier::Egg, "A hatched egg's met level is not 1");
+        if (!ModernEncounter::hatchLocation(pk_.originVersion(), pk_.metLocation()))
+            invalid(CheckIdentifier::Egg, "A hatched egg's met location is not a hatching location of its origin game");
     }
 
     // BallVerifier: no encounter uses ball 0 or a ball above the format's last ball.

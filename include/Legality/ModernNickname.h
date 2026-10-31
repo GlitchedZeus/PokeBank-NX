@@ -50,6 +50,11 @@ const char* message(Result result) noexcept;
 /// The species' name in a language (Generation 6 and 8+ spelling); empty when unknown.
 std::u16string_view speciesName(uint16_t species, uint8_t language) noexcept;
 
+/// NicknameVerifier.VerifyNicknameEgg for a Generation 5+ egg: false only when the nickname is not
+/// SpeciesName.GetEggName for the language. A language without an egg name is not decided; a PK7
+/// Chinese egg name may be stored as StringConverter7's private glyph.
+bool eggNameMatches(Family family, std::span<const uint8_t> nickname, uint8_t language) noexcept;
+
 /// Whether an encounter of the species' line relaxes the rule (the rule then never decides it).
 bool relaxed(uint16_t species) noexcept;
 

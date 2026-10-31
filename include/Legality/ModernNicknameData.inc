@@ -1594,4 +1594,6 @@ constexpr std::array<uint8_t, 129> kNoPreEvolution{{
     218,127,62,254,239,39,41,169,42,105,85,9,208,125,63,239,7,38,169,82,153,84,213,42,173,107,7,255,159,254,215,243,
     3,
 }};
+const char16_t* const kEggNames[12] = {u"",u"\u30BF\u30DE\u30B4",u"Egg",u"\u0152uf",u"Uovo",u"Ei",u"",u"Huevo",u"\uC54C",u"\u86CB",u"\u86CB",u"Huevo"};
+constexpr uint16_t kEggNameZh7Stored = 0xE800;
 constexpr uint16_t kPrivateZh7First = 0xE800, kPrivateZh7Last = 0xEE26;

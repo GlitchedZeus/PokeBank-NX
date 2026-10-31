@@ -35,7 +35,14 @@ struct EggFacts {
     bool nicknameFlagSet = false;    // EggStateLegality.IsNicknameFlagSet may be true
     bool nicknameFlagClear = false;  // ... may be false
     bool eggLocationZero = false;    // a gift egg may carry egg location 0
+    // Over every encounter of the species or a pre-evolution in the format's own games:
+    bool nonEggEggLocation = false;  // a non-egg encounter carries a nonzero egg location
+    bool lineHasEgg = false;         // some egg encounter (the record may have hatched)
 };
 EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept;
+
+/// EncounterVerifier.VerifyEncounterEgg6/7/8/8BDSP/9 hatch-location lists: whether an egg of the
+/// origin game (version id) hatches at this met location. Games without a list return true.
+bool hatchLocation(uint8_t version, uint16_t location) noexcept;
 
 } // namespace Legality::ModernEncounter

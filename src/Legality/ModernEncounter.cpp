@@ -4,6 +4,7 @@
 // tools/pkhex_gen67_diff/oracle ("dumpencounters") and checked against the pinned PKHeX in CI.
 #include "Legality/ModernEncounter.h"
 
+#include <algorithm>
 #include <array>
 #include <span>
 
@@ -85,7 +86,26 @@ EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept {
     f.nicknameFlagSet = (v & 4) != 0;
     f.nicknameFlagClear = (v & 8) != 0;
     f.eggLocationZero = (v & 16) != 0;
+    f.nonEggEggLocation = (v & 32) != 0;
+    f.lineHasEgg = (v & 64) != 0;
     return f;
+}
+
+bool hatchLocation(uint8_t version, uint16_t location) noexcept {
+    std::span<const uint16_t> list;
+    switch (version) {
+    case 24: case 25: list = kHatch6XY; break;
+    case 26: case 27: list = kHatch6AO; break;
+    case 30: case 31: list = kHatch7SM; break;
+    case 32: case 33: list = kHatch7USUM; break;
+    case 44: case 45: list = kHatch8SWSH; break;
+    case 48: list = kHatch8BD; break;
+    case 49: list = kHatch8SP; break;
+    case 50: list = kHatch9SL; break;
+    case 51: list = kHatch9VL; break;
+    default: return true;
+    }
+    return std::binary_search(list.begin(), list.end(), location);
 }
 
 } // namespace Legality::ModernEncounter

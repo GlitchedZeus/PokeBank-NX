@@ -449,6 +449,35 @@ void testUnhatchedEgg(const std::vector<Record>& records) {
     check(B::eggFacts(Format::PK6, 280).gift, "PK6 Ralts has a mystery gift egg");
     check(!B::eggFacts(Format::PB7, 25).decided && !B::eggFacts(Format::PA8, 25).decided && !B::eggFacts(Format::PK6, 2000).decided,
           "formats without eggs and species outside the table are undecided");
+    // Egg names (SpeciesName.GetEggName) and hatch locations (EggHatchLocation6/7).
+    {
+        namespace N = Legality::ModernNickname;
+        auto field = [](std::u16string_view text) {
+            std::vector<uint8_t> b(26, 0);
+            for (size_t i = 0; i < text.size(); ++i) { b[2 * i] = static_cast<uint8_t>(text[i]); b[2 * i + 1] = static_cast<uint8_t>(text[i] >> 8); }
+            return b;
+        };
+        check(N::eggNameMatches(N::Family::Gen6, field(u"Egg"), 2) && !N::eggNameMatches(N::Family::Gen6, field(u"Ei"), 2) &&
+                  !N::eggNameMatches(N::Family::Gen6, field(u"Eggs"), 2) && N::eggNameMatches(N::Family::Gen6, field(u"Ei"), 5),
+              "egg names");
+        check(N::eggNameMatches(N::Family::Gen7, field(u"\uE800"), 9) && N::eggNameMatches(N::Family::Gen7, field(u"\u86CB"), 10) &&
+                  !N::eggNameMatches(N::Family::Gen6, field(u"\uE800"), 9) && N::eggNameMatches(N::Family::Gen6, field(u"x"), 6),
+              "Chinese PK7 egg name glyph; language 6 undecided");
+        check(B::hatchLocation(24, 6) && !B::hatchLocation(24, 170) && B::hatchLocation(26, 170) && !B::hatchLocation(30, 7) &&
+                  B::hatchLocation(1, 5),
+              "hatch locations per game");
+        check(!B::eggFacts(Format::PK6, 16).nonEggEggLocation && B::eggFacts(Format::PK6, 18).lineHasEgg &&
+                  !B::eggFacts(Format::PK7, 150).lineHasEgg,
+              "Pidgeot's line hatches, Mewtwo's never");
+    }
+    if (const Record* r = find(records, [](const Record& x) {
+            return x.pkhexValid && x.format == Format::PK7 && x.label.rfind("native7:base", 0) == 0 && !(x.plain[0x77] & 0x40) &&
+                   PK6::read16(x.plain, 0xD8) != 0;
+        })) {
+        const auto rep = analyzePlain(*r, edit(r->plain, [](auto& b) { b[0xDD] = static_cast<uint8_t>((b[0xDD] & 0x80) | 2); }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "hatched egg's met level"),
+              "PK7 hatched egg at met level 2: " + describe(rep));
+    }
     // Edits: a hatched native PK7 record turned back into an egg keeps its hatch location (or is
     // not an egg species at all); a transferred PK6 record cannot be an egg.
     if (const Record* r = find(records, [](const Record& x) {
