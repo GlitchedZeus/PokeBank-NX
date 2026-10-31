@@ -1,6 +1,6 @@
 /**
- * Gen8Legality.h - Generation VIII Sword/Shield (PK8) and Brilliant Diamond/Shining Pearl
- * (PB8) native legality.
+ * Gen8Legality.h - Sword/Shield (PK8), Brilliant Diamond/Shining Pearl (PB8) and
+ * Scarlet/Violet (PK9) native legality: the 0x148-byte Switch formats.
  *
  * Reached through Legality::Modern::analyze (ModernLegality.h). Both formats share the G8PKM
  * layout, so the record codec is the existing Gen VIII PK8 decoder (Integration/Gen8/
@@ -26,9 +26,12 @@
 
 namespace Legality::Gen8 {
 
-/// The game family whose tables and rules apply: PK8 (Sword/Shield) or PB8 (Brilliant
-/// Diamond/Shining Pearl, PKHeX EntityContext.Gen8b).
-enum class Context : uint8_t { SwordShield, BDSP };
+/// The game family whose tables and rules apply: PK8 (Sword/Shield), PB8 (Brilliant
+/// Diamond/Shining Pearl, PKHeX EntityContext.Gen8b) or PK9 (Scarlet/Violet, EntityContext.Gen9).
+/// All three are 0x148/0x158-byte records with the same encryption and most offsets; PK9
+/// stores an internal species id and moves the version, battle version, language, gender and
+/// Tera fields (see the analyzer).
+enum class Context : uint8_t { SwordShield, BDSP, ScarletViolet };
 
 /// PKHeX PKM.Generation of a PK8 record: the generation its version byte (and, for
 /// Pokemon GO, its met location) names. 1-2 Virtual Console, 3-7 the handheld games and
@@ -72,11 +75,19 @@ bool battleOnlyForm(uint16_t species, uint8_t form, Context ctx = Context::Sword
 uint8_t arceusForm(uint16_t item, Context ctx = Context::SwordShield) noexcept;
 uint8_t genesectForm(uint16_t item) noexcept;
 uint8_t silvallyForm(uint16_t item) noexcept;
+/// Whether any form of the species or of any pre-evolution (Scarlet/Violet evolution tree) can
+/// learn TM index `index` (PersonalInfo9SV.GetIsLearnTM); false outside the table.
+bool tmLineCanLearn9(uint16_t species, uint16_t index) noexcept;
+uint16_t tmCount9() noexcept;
+/// FormItem.GetFormOgerpon (masks; Scarlet/Violet).
+uint8_t ogerponForm(uint16_t item) noexcept;
+/// SpeciesConverter.GetNational9: the national species of a PK9 internal species id.
+uint16_t nationalSpecies9(uint16_t internal) noexcept;
 /// Nature.IsMint.
 bool mintNature(uint8_t nature) noexcept;
 } // namespace Data
 
-/// Analyze one PK8 (Context::SwordShield) or PB8 (Context::BDSP) record. Called by
+/// Analyze one PK8 (Context::SwordShield), PB8 (Context::BDSP) or PK9 (Context::ScarletViolet) record. Called by
 /// Modern::analyze; see ModernLegality.h for the contract.
 Report analyze(Context ctx, std::span<const uint8_t> record, const Modern::Input& input);
 

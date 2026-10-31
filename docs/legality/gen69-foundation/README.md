@@ -46,7 +46,7 @@ everything else is Incomplete. No modern area claims Complete coverage, so a rec
 a contradiction is **Incomplete**, never "No problems found". The analyzer only reads the
 bytes: no Pokémon object, no mutation, no save write, deterministic.
 
-PK6, PK7, PK8 and PB8 have rules today. PB7/PA8/PK9/PA9 are accepted and reported Incomplete
+PK6, PK7, PK8, PB8 and PK9 have rules today. PB7/PA8/PA9 are accepted and reported Incomplete
 with structure coverage None until their decoders and rules are wired in.
 
 ## PK6 / PK7 rules
@@ -154,6 +154,34 @@ TR learnability (Sword/Shield TRs) is not checked for PB8. Not implemented for P
 tables (wild, Grand Underground, gifts, eggs, roamers), learnsets and TM flags, ball per
 encounter, fateful flags, egg locations, ribbons, memories, trash bytes and nicknames.
 
+## PK9 (Scarlet/Violet) rules
+
+PK9 is a 0x148/0x158-byte record with PK8's encryption and most of its offsets, so the same
+analyzer runs with `Gen8::Context::ScarletViolet`. It reads the fields PK9 moved: the internal
+species id (`SpeciesConverter.GetNational9`, dumped as `kSpecies9National`), gender in bits 1–2
+of 0x22, version 0xCE, battle version 0xCF, language 0xD5, Tera types 0x94/0x95, obedience level
+0x11F, tracker 0x127 and TM flags (0x12F, DLC 0x4B). Tables come from `PersonalTable.SV`,
+`EntityContext.Gen9` PP and held items, format-9 battle forms, Arceus plates and Ogerpon masks
+(species ≤ 1025, moves ≤ 919, items ≤ 2557, balls ≤ 37), all from `oracle dump8`. Every
+non-Sword/Shield-specific PK8 rule applies, with these differences:
+
+| Area | Rule (Invalid) | PKHeX source |
+|---|---|---|
+| Origin | a version no game writes into a PK9; Scarlet/Violet, Z-A and an unhatched egg's version 0 are allowed | `PKM.Generation`, `PK9.IsUnhatchedEgg` |
+| Form | Giratina-Origin ⇔ Griseous Core, Dialga-Origin ⇔ Adamant Crystal, Palkia-Origin ⇔ Lustrous Globe; Ogerpon's form ⇔ its mask; the Vivillon-pattern rule only for non-Scarlet/Violet origins | `FormVerifier` (format ≥ 9), `FormItem.GetFormOgerpon` |
+| Hyper Training | below level 50 (no Info line: Scarlet/Violet trains at 50) | `HyperTrainingVerifier` |
+| Tera type | an egg with an override; Terapagos with an override; Ogerpon's override not its mask type; an original type that does not exist; a record from another game without an override | `MiscVerifierPK9.VerifyTeraType`, `VerifyEncounter` |
+| Obedience | untraded (no handler, Gen IX origin): obedience ≠ met level; traded: below met level or above current level | `MiscVerifierHelpers.IsObedienceLevelValid`, `PK9.IsUntraded` |
+| TM flags | a flag no form of the species or of any pre-evolution can learn | `MiscVerifierPK9.VerifyTechRecordFlags` (superset of its evolution-chain check) |
+| Scale | a record with a HOME tracker whose height scalar is not its scale (not for Legends: Arceus or Z-A origins) | `MiscScaleVerifier.VerifyScale` |
+| Egg | a Scarlet/Violet egg without the nickname flag (Jacq's egg, location 60005, excepted) | `NicknameVerifier.VerifyNicknameEgg` |
+| Battle version | as PK8 | `IBattleVersion` |
+
+Not implemented for PK9: encounter tables (wild, Tera raids, outbreaks, gifts, eggs), learnsets,
+Tera type per encounter or evolution chain, ball per encounter, fateful flags, egg locations,
+ribbons and marks, memories, trash bytes, nicknames, and HOME history (pre-DLC learnset limits,
+height/weight 0/0 after a Legends: Arceus visit).
+
 ## Differential evidence
 
 `tools/pkhex_gen67_diff/run.sh PKHEX [SEED] [MUTATIONS]` builds the oracle against PKHeX,
@@ -175,8 +203,12 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB8 | 2 / 4 | 44,643 | 18,787 | 25,856 | 21,320 (82.5%) | 0 | 0 |
 | PB8 | 3 / 8 | 77,736 | 26,371 | 51,365 | 42,100 (82.0%) | 0 | 0 |
 | PB8 | 4 / 4 | 45,193 | 18,952 | 26,241 | 21,493 (81.9%) | 0 | 0 |
+| PK9 | 1 / 4 | 39,685 | 18,653 | 21,032 | 17,351 (82.5%) | 0 | 0 |
+| PK9 | 2 / 4 | 39,929 | 18,565 | 21,364 | 17,626 (82.5%) | 0 | 0 |
+| PK9 | 3 / 8 | 69,293 | 27,200 | 42,093 | 35,065 (83.3%) | 0 | 0 |
+| PK9 | 4 / 4 | 39,077 | 18,337 | 20,740 | 17,131 (82.6%) | 0 | 0 |
 
-PK8 runs use `run.sh PKHEX SEED MUTATIONS 8`, PB8 runs `run.sh PKHEX SEED MUTATIONS 8b`.
+PK8 runs use `run.sh PKHEX SEED MUTATIONS 8`, PB8 runs `8b` and PK9 runs `9`.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
 whose EC PKHeX does not check, and the encounter is not resolved here. A few PKHeX verdicts depend on the run date
@@ -192,7 +224,9 @@ encounter, learnset-only moves, nickname language; largest PK8 groups: no matchi
 encounter, fateful flags, Gigantamax per encounter, nickname language, PID type per
 encounter, Hyper Training level 50–99, ball per encounter, egg locations; largest PB8
 groups: no matching encounter, ball per encounter, fateful flags, nickname language, PID = EC
-on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg locations). The driver
+on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg locations; largest PK9 groups:
+no matching encounter, ball per encounter, fateful flags, nickname language, Tera type per
+encounter or evolution chain, ball availability, gift matching, learnset-only moves). The driver
 prints this gap list ("left Incomplete, by first PKHeX result") on every run.
 
 `tests/fixtures/gen67/pkhex8_seed2_sample.txt` (1,632 PK8 records from `generate8 2 4`,
@@ -204,7 +238,12 @@ from `generate8b 2 4`) is checked by the same test, with PB8 field edits (sociab
 Dpr-illegal flag, Gigantamax, Dynamax, TR bytes, battle version, Hyper Training below 100,
 species above 493, ball, Spinda tracker, Spinda/Nincada moved in) and edits that must stay
 undecided (PID = EC on a native, EC 0 on a Sword/Shield record, battle version on a moved
-record, TR bytes on an egg). The fuzz pass mixes PK8 and PB8.
+record, TR bytes on an egg). `tests/fixtures/gen67/pkhex9_seed2_sample.txt` (2,202 PK9 records
+from `generate9 2 4`, with up to eight unmutated records per stratum) adds PK9 edits: Tera
+types, obedience level, battle version, origin, internal species id, language, Hyper Training,
+ball, held item, TM flags, the Griseous Core, the Tera override of a moved record, HOME's scale
+copy and egg rules (Tera override, nickname flag, Jacq's egg, version 0), plus edits that must
+stay undecided. The fuzz pass mixes PK8, PB8 and PK9.
 
 `tests/fixtures/gen67/pkhex_seed2_sample.txt` (1,531 records, stratified by group, mutation
 and NX rule) locks each record's verdict class in `tests/test_legality_gen67.cpp`, which also

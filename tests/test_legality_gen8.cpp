@@ -1,4 +1,4 @@
-// Generation VIII Sword/Shield (PK8) and Brilliant Diamond/Shining Pearl (PB8) legality
+// Sword/Shield (PK8), Brilliant Diamond/Shining Pearl (PB8) and Scarlet/Violet (PK9) legality
 // through Legality::Modern::analyze.
 //
 // tests/fixtures/gen67/pkhex8_seed2_sample.txt is a stratified sample of the differential
@@ -8,8 +8,11 @@
 // copies, each with PKHeX's verdict and a single-field mutation.
 // tests/fixtures/gen67/pkhexb8_seed2_sample.txt is the same for PB8 (`generate8b 2 4`): BD/SP
 // encounters, records moved into BD/SP through HOME (Gen III-VII, Virtual Console, Let's Go,
-// Sword/Shield, Legends: Arceus, Scarlet/Violet) and grown copies. One line per record:
-//   <8|8b> <game> <box|party> <decrypted hex> <PKHeX VALID|INVALID> <NX Invalid|Incomplete> <label>
+// Sword/Shield, Legends: Arceus, Scarlet/Violet) and grown copies.
+// tests/fixtures/gen67/pkhex9_seed2_sample.txt is the same for PK9 (`generate9 2 4`): Scarlet/
+// Violet encounters, records moved into Scarlet/Violet through HOME and grown copies (more
+// unmutated records per stratum, so the rule-edit tests have bases). One line per record:
+//   <8|8b|9> <game> <box|party> <decrypted hex> <PKHeX VALID|INVALID> <NX Invalid|Incomplete> <label>
 // Every line must keep its NX verdict class: a PKHeX-valid record is never Invalid, a
 // record this analyzer caught stays caught, and nothing is ever "No problems found".
 // Then rule edits of fixture records, the interface contract, malformed input, encryption
@@ -90,7 +93,7 @@ std::vector<Record> loadFixture(const char* env, const char* fallback, const std
         std::istringstream s(line);
         std::string fmt, game, slot, hex, pkhex, nx, label;
         if (!(s >> fmt >> game >> slot >> hex >> pkhex >> nx >> label) || fmt != want) continue;
-        out.push_back({fmt == "8b" ? Format::PB8 : Format::PK8, static_cast<Game>(std::stoi(game)),
+        out.push_back({fmt == "9" ? Format::PK9 : fmt == "8b" ? Format::PB8 : Format::PK8, static_cast<Game>(std::stoi(game)),
                        slot == "party" ? Slot::Party : Slot::Box, fromHex(hex), pkhex == "VALID", nx == "Invalid", label});
     }
     return out;
@@ -303,6 +306,104 @@ void testBdsp(const std::vector<Record>& records) {
     check(D::presentInGame(13, 0, Context::BDSP), "Weedle is present in BD/SP");
 }
 
+// PK9: the moved fields (internal species id, version, language, gender), MiscVerifierPK9
+// (Tera types, obedience level, battle version, TM flags), Scarlet/Violet form items, scale
+// and egg rules, on PKHeX-valid Scarlet/Violet records from the fixture.
+void testScarletViolet(const std::vector<Record>& records) {
+    namespace D = Legality::Gen8::Data;
+    using Legality::Gen8::Context;
+    check(Legality::Modern::profile(Format::PK9)->rulesImplemented, "PK9 has rules");
+    auto national = [](const Record& r) { return D::nationalSpecies9(PK8::read16(r.plain, 0x08)); };
+    const Record* native = find(records, [&](const Record& r) {
+        const uint16_t s = national(r);
+        return r.pkhexValid && startsWith(r.label, "native9:base") && s != 1017 && s != 1024 && s != 664 && s != 665 &&
+               ((PK8::read32(r.plain, 0x8C) >> 30) & 1) == 0 && (r.plain[0xCE] == 50 || r.plain[0xCE] == 51) &&
+               r.plain[0xA8] == 0 && r.plain[0xA9] == 0;
+    });
+    const Record* home = find(records, [](const Record& r) {
+        return r.pkhexValid && startsWith(r.label, "svhome7:base") && ((PK8::read32(r.plain, 0x8C) >> 30) & 1) == 0;
+    });
+    check(native && home, "fixture has native and HOME PK9 bases");
+    if (!native || !home) return;
+    auto expectInvalid = [&](const Record& base, const char* name, const std::function<void(std::vector<uint8_t>&)>& f, const char* fragment) {
+        const auto r = analyzePlain(base, edit(base.plain, f));
+        check(r.verdict() == Verdict::Invalid && hasIssue(r, Severity::Invalid, fragment),
+              std::string("PK9 ") + name + ": expected Invalid '" + fragment + "', got " + describe(r));
+    };
+    auto expectNotInvalid = [&](const Record& base, const char* name, const std::function<void(std::vector<uint8_t>&)>& f) {
+        const auto r = analyzePlain(base, edit(base.plain, f));
+        check(r.verdict() == Verdict::Incomplete, std::string("PK9 ") + name + ": expected Incomplete, got " + describe(r));
+    };
+    const Record& n = *native;
+    const uint16_t ns = national(n);
+    expectInvalid(n, "tera original", [](auto& b) { b[0x94] = 18; }, "Tera type 18 does not exist");
+    expectInvalid(n, "obedience above met on an untraded record", [](auto& b) { b[0x11F] = static_cast<uint8_t>((b[0x125] & 0x7F) + 1); }, "Obedience level");
+    expectInvalid(n, "battle version", [](auto& b) { b[0xCF] = 50; }, "Battle version 50");
+    expectInvalid(n, "battle version on a native", [](auto& b) { b[0xCF] = 44; }, "Battle version 44");
+    expectInvalid(n, "origin 53", [](auto& b) { b[0xCE] = 53; }, "cannot be stored in a PK9");
+    expectInvalid(n, "species above 1025", [](auto& b) { PK8::write16(b, 0x08, 1100); }, "does not exist in PK9");
+    expectInvalid(n, "language", [](auto& b) { b[0xD5] = 6; }, "is not a language");
+    expectInvalid(n, "hyper training below 50", [](auto& b) { b[0x126] = 1; PK8::write32(b, 0x10, 0); b[0x125] &= 0x80; b[0x11F] = 0; }, "Hyper Training needs level 50");
+    expectInvalid(n, "ball 38", [](auto& b) { b[0x124] = 38; }, "cannot be held by a PK9");
+    {
+        uint16_t item = 1;
+        while (item < 3000 && D::heldItemAllowed(item, Context::ScarletViolet)) ++item;
+        expectInvalid(n, "held item", [item](auto& b) { PK8::write16(b, 0x0A, item); }, "not obtainable in Scarlet/Violet");
+    }
+    {
+        int tm = -1;
+        for (uint16_t i = 0; i < D::tmCount9() && tm < 0; ++i)
+            if (!D::tmLineCanLearn9(ns, i)) tm = i;
+        check(tm >= 0, "native base has an unlearnable TM");
+        if (tm >= 0)
+            expectInvalid(n, "tm flag", [tm](auto& b) {
+                const size_t o = tm < 200 ? 0x12F + (tm >> 3) : 0x4B + ((tm - 200) >> 3);
+                b[o] |= static_cast<uint8_t>(1u << (tm & 7));
+            }, "line cannot learn it");
+    }
+    // A form item rule only Scarlet/Violet has: Giratina-Origin holds the Griseous Core.
+    expectInvalid(n, "giratina origin without core", [](auto& b) { PK8::write16(b, 0x08, 487); b[0x24] = 1; PK8::write16(b, 0x0A, 112); }, "Origin item");
+    // Records from other games: the Tera type override is set, and HOME's scale copy holds.
+    const Record& h = *home;
+    expectInvalid(h, "no tera override on a moved record", [](auto& b) { b[0x95] = 19; }, "must have a Tera type override");
+    expectInvalid(h, "scale differs from height after HOME", [](auto& b) {
+        if (PK8::read32(b, 0x127) == 0 && PK8::read32(b, 0x12B) == 0) PK8::write32(b, 0x127, 1);
+        b[0x4A] = static_cast<uint8_t>(b[0x48] ^ 0x40);
+    }, "Height scalar does not match");
+    // Values a legitimate record can hold stay undecided.
+    expectNotInvalid(n, "mint stat nature", [](auto& b) { b[0x21] = b[0x20] == 1 ? 2 : 1; });
+    expectNotInvalid(n, "stellar tera original", [](auto& b) { b[0x94] = 99; });
+    expectNotInvalid(h, "battle version on a moved record", [](auto& b) { b[0xCF] = 44; });
+    // Eggs: no Tera override, the nickname flag set (except Jacq's egg), no version yet.
+    Record egg = n;
+    egg.plain = edit(n.plain, [](auto& b) {
+        PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) | 0xC0000000u);
+        b[0x95] = 19;
+    });
+    expectInvalid(egg, "egg tera override", [](auto& b) { b[0x95] = 3; }, "egg cannot have a Tera type override");
+    expectInvalid(egg, "egg nickname flag", [](auto& b) { PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) & 0x7FFFFFFFu); }, "nickname flag");
+    {
+        const auto r = analyzePlain(egg, edit(egg.plain, [](auto& b) {
+            PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) & 0x7FFFFFFFu);
+            PK8::write16(b, 0x120, 60005);
+        }));
+        check(!hasIssue(r, Severity::Invalid, "nickname flag"), "PK9 Jacq egg needs no nickname flag: " + describe(r));
+        const auto r0 = analyzePlain(egg, edit(egg.plain, [](auto& b) { b[0xCE] = 0; }));
+        check(!hasIssue(r0, Severity::Invalid, "cannot be stored"), "PK9 unhatched egg with version 0: " + describe(r0));
+    }
+    // The species id is the internal one: a native whose national and internal ids differ.
+    check(D::nationalSpecies9(917) != 917 && D::nationalSpecies9(1100) == 1100 && D::nationalSpecies9(25) == 25, "internal species map");
+    check(D::maxSpecies(Context::ScarletViolet) == 1025 && D::maxBall(Context::ScarletViolet) == 37, "Scarlet/Violet limits");
+    check(D::ogerponForm(0) == 0 && D::ogerponForm(2407) == 1, "Ogerpon masks");
+    {
+        Record moved = n;
+        moved.game = Game::SW;
+        const auto r = analyzePlain(moved, moved.plain);
+        check(r.verdict() == Verdict::Incomplete && hasIssue(r, Severity::Warning, "does not store PK9"),
+              "PK9 in Sword/Shield is a source-game Warning");
+    }
+}
+
 void testInterface(const std::vector<Record>& records) {
     check(Legality::Modern::profile(Format::PK8)->rulesImplemented, "PK8 has rules");
     Input in;
@@ -372,7 +473,7 @@ void testFuzz(const std::vector<Record>& records) {
     std::mt19937 rng(8);
     for (size_t i = 0; i < rounds; ++i) {
         Input in;
-        in.format = (rng() & 1) != 0 ? Format::PK8 : Format::PB8;
+        in.format = std::array<Format, 3>{Format::PK8, Format::PB8, Format::PK9}[rng() % 3];
         in.game = static_cast<Game>(std::array<uint8_t, 5>{0, 44, 45, 48, 30}[rng() % 5]);
         in.slot = static_cast<Slot>(rng() % 4);
         in.encrypted = (rng() & 1) != 0;
@@ -404,14 +505,18 @@ void testFuzz(const std::vector<Record>& records) {
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
+    const auto sv = loadFixture("GEN9_FIXTURE", "tests/fixtures/gen67/pkhex9_seed2_sample.txt", "9");
     testFixture(records, "PK8");
     testFixture(bdsp, "PB8");
+    testFixture(sv, "PK9");
     testRuleEdits(records);
     testBdsp(bdsp);
+    testScarletViolet(sv);
     testInterface(records);
     testHelpers();
     auto all = records;
     all.insert(all.end(), bdsp.begin(), bdsp.end());
+    all.insert(all.end(), sv.begin(), sv.end());
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

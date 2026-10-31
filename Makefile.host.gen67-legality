@@ -31,10 +31,10 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen8_sanitize
 host-test: $(HOST_BUILD)/test_legality_gen8
 host-sanitize: $(HOST_BUILD)/test_legality_gen8_sanitize
 
-$(HOST_BUILD)/test_legality_gen8: $(GEN8_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8_seed2_sample.txt tests/fixtures/gen67/pkhexb8_seed2_sample.txt
+$(HOST_BUILD)/test_legality_gen8: $(GEN8_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8_seed2_sample.txt tests/fixtures/gen67/pkhexb8_seed2_sample.txt tests/fixtures/gen67/pkhex9_seed2_sample.txt
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(GEN8_TEST_SOURCES) -o $@
 
-$(HOST_BUILD)/test_legality_gen8_sanitize: $(GEN8_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8_seed2_sample.txt tests/fixtures/gen67/pkhexb8_seed2_sample.txt
+$(HOST_BUILD)/test_legality_gen8_sanitize: $(GEN8_TEST_SOURCES) $(GEN67_LEGALITY_HEADERS) tests/fixtures/gen67/pkhex8_seed2_sample.txt tests/fixtures/gen67/pkhexb8_seed2_sample.txt tests/fixtures/gen67/pkhex9_seed2_sample.txt
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN8_TEST_SOURCES) -o $@

@@ -1,4 +1,5 @@
-// Gen8LegalityData.cpp - lookups over the PKHeX-generated Sword/Shield and BD/SP rule tables.
+// Gen8LegalityData.cpp - lookups over the PKHeX-generated Sword/Shield, BD/SP and Scarlet/Violet
+// rule tables.
 // The tables themselves are include/Legality/Gen8LegalityData.inc, written by
 // tools/pkhex_gen67_diff/oracle ("dump8") and checked against the pinned PKHeX in CI.
 #include "Legality/Gen8Legality.h"
@@ -43,6 +44,10 @@ ptrdiff_t findRow(const std::array<PersonalRow8, N>& rows, uint16_t species, uin
 }
 
 const PersonalRow8* findPersonal(Context ctx, uint16_t species, uint8_t form) noexcept {
+    if (ctx == Context::ScarletViolet) {
+        const auto i = findRow(kPersonal9, species, form);
+        return i < 0 ? nullptr : &kPersonal9[static_cast<size_t>(i)];
+    }
     if (ctx == Context::BDSP) {
         const auto i = findRow(kPersonal8b, species, form);
         return i < 0 ? nullptr : &kPersonal8b[static_cast<size_t>(i)];
@@ -85,16 +90,22 @@ bool canLearnTechRecord(uint16_t species, uint8_t form, uint8_t index) noexcept 
 uint8_t techRecordCount() noexcept { return kTechRecordCount8; }
 
 uint8_t basePP(uint16_t move, Context ctx) noexcept {
+    if (ctx == Context::ScarletViolet) return move < kBasePP9.size() ? kBasePP9[move] : 0;
     const auto& pp = ctx == Context::BDSP ? kBasePP8b : kBasePP8;
     return move < pp.size() ? pp[move] : 0;
 }
-uint16_t maxSpecies(Context ctx) noexcept { return ctx == Context::BDSP ? kMaxSpecies8b : kMaxSpecies8; }
-uint16_t maxMove(Context ctx) noexcept { return ctx == Context::BDSP ? kMaxMove8b : kMaxMove8; }
-uint16_t maxItem(Context ctx) noexcept { return ctx == Context::BDSP ? kMaxItem8b : kMaxItem8; }
-uint8_t maxBall(Context ctx) noexcept { return static_cast<uint8_t>(ctx == Context::BDSP ? kMaxBall8b : kMaxBall8); }
+uint16_t maxSpecies(Context ctx) noexcept {
+    return ctx == Context::ScarletViolet ? kMaxSpecies9 : ctx == Context::BDSP ? kMaxSpecies8b : kMaxSpecies8;
+}
+uint16_t maxMove(Context ctx) noexcept { return ctx == Context::ScarletViolet ? kMaxMove9 : ctx == Context::BDSP ? kMaxMove8b : kMaxMove8; }
+uint16_t maxItem(Context ctx) noexcept { return ctx == Context::ScarletViolet ? kMaxItem9 : ctx == Context::BDSP ? kMaxItem8b : kMaxItem8; }
+uint8_t maxBall(Context ctx) noexcept {
+    return static_cast<uint8_t>(ctx == Context::ScarletViolet ? kMaxBall9 : ctx == Context::BDSP ? kMaxBall8b : kMaxBall8);
+}
 
 bool heldItemAllowed(uint16_t item, Context ctx) noexcept {
     if (item == 0) return true;
+    if (ctx == Context::ScarletViolet) return item < kHeldItems9Count && ((kHeldItems9[item >> 3] >> (item & 7)) & 1) != 0;
     if (ctx == Context::BDSP) return item < kHeldItems8bCount && ((kHeldItems8b[item >> 3] >> (item & 7)) & 1) != 0;
     return item < kHeldItems8Count && ((kHeldItems8[item >> 3] >> (item & 7)) & 1) != 0;
 }
@@ -103,11 +114,28 @@ bool battleOnlyForm(uint16_t species, uint8_t form, Context ctx) noexcept {
     auto has = [&](const auto& rows) {
         return std::any_of(rows.begin(), rows.end(), [&](const SpeciesForm& r) { return r.species == species && r.form == form; });
     };
+    if (ctx == Context::ScarletViolet) return has(kBattleForms9);
     return ctx == Context::BDSP ? has(kBattleForms8b) : has(kBattleForms8);
 }
 
 uint8_t arceusForm(uint16_t item, Context ctx) noexcept {
+    if (ctx == Context::ScarletViolet) return lookupForm(kArceusItems9, item);
     return ctx == Context::BDSP ? lookupForm(kArceusItems8b, item) : lookupForm(kArceusItems8, item);
+}
+
+bool tmLineCanLearn9(uint16_t species, uint16_t index) noexcept {
+    constexpr size_t bytes = (kTmCount9 + 7) / 8;
+    static_assert(kTmLine9.size() == (kMaxSpecies9 + 1u) * bytes);
+    if (species > kMaxSpecies9 || index >= kTmCount9) return false;
+    return ((kTmLine9[species * bytes + (index >> 3)] >> (index & 7)) & 1) != 0;
+}
+uint16_t tmCount9() noexcept { return kTmCount9; }
+
+uint8_t ogerponForm(uint16_t item) noexcept { return lookupForm(kOgerponItems9, item); }
+
+uint16_t nationalSpecies9(uint16_t internal) noexcept {
+    const size_t shift = static_cast<size_t>(internal) - kSpecies9First;
+    return internal >= kSpecies9First && shift < kSpecies9National.size() ? kSpecies9National[shift] : internal;
 }
 uint8_t genesectForm(uint16_t item) noexcept { return lookupForm(kGenesectItems8, item); }
 uint8_t silvallyForm(uint16_t item) noexcept { return lookupForm(kSilvallyItems8, item); }

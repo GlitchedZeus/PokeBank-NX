@@ -102,3 +102,9 @@ jobs:
           set -euo pipefail
           tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 4 8b
           tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 8 8b
+
+      - name: PK9 verdicts against PKHeX (seeds 1 and 3)
+        run: |
+          set -euo pipefail
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 1 4 9
+          tools/pkhex_gen67_diff/run.sh _ref/PKHeX 3 8 9

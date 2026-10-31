@@ -1,5 +1,5 @@
-// Gen8Legality.cpp - PK8 (Sword/Shield) and PB8 (Brilliant Diamond/Shining Pearl) native legality
-// (see include/Legality/Gen8Legality.h).
+// Gen8Legality.cpp - PK8 (Sword/Shield), PB8 (Brilliant Diamond/Shining Pearl) and PK9
+// (Scarlet/Violet) native legality (see include/Legality/Gen8Legality.h).
 //
 // Every Invalid below names the PKHeX.Core verifier it mirrors (pinned commit in
 // .github/workflows/legality-gen67-pkhex-diff.yml). Rules that need an encounter match, an
@@ -27,7 +27,8 @@ enum : uint16_t {
     Pikachu = 25, Unown = 201, Marill = 183, Azumarill = 184, Giratina = 487, Arceus = 493, Rotom = 479,
     Mothim = 414, Keldeo = 647, Genesect = 649, Kyurem = 646, Scatterbug = 664, Spewpa = 665,
     Furfrou = 676, Meowstic = 678, Hoopa = 720, Rockruff = 744, Lycanroc = 745, Silvally = 773,
-    Zacian = 888, Zamazenta = 889, Eternatus = 890, Calyrex = 898,
+    Zacian = 888, Zamazenta = 889, Eternatus = 890, Calyrex = 898, Dialga = 483, Palkia = 484,
+    Ogerpon = 1017, Terapagos = 1024,
     // PKHeX SpeciesCategory.IsFixedGenderFromDual for species that exist in PK8.
     Shedinja = 292, Wormadam = 413, Vespiquen = 416, Gallade = 475, Froslass = 478, Salazzle = 758,
 };
@@ -35,7 +36,9 @@ enum : uint16_t {
     MoveSketch = 166, MoveSecretSword = 548, MoveFusionFlare = 558, MoveFusionBolt = 559,
     MoveHyperspaceHole = 593, MoveHyperspaceFury = 621, MoveRevivalBlessing = 863,
 };
-constexpr uint16_t ItemGriseousOrb = 112;
+constexpr uint16_t ItemGriseousOrb = 112, ItemAdamantCrystal = 1777, ItemLustrousGlobe = 1778, ItemGriseousCore = 1779;
+// TeraTypeUtil: types 0-17, the "no override" marker and Stellar.
+constexpr uint8_t TeraMaxType = 17, TeraOverrideNone = 19, TeraStellar = 99;
 constexpr uint8_t RatioMale = 0, RatioFemale = 254, RatioGenderless = 255;
 constexpr uint8_t VersionSW = 44, VersionSH = 45;
 
@@ -76,18 +79,19 @@ public:
         report_.coverage.pidRng = CoverageLevel::Partial;   // EC/PID transfer and nature correlation only
         report_.coverage.transfer = CoverageLevel::Partial; // presence in the game and transfer markers only
         checkSource();
-        const uint16_t species = pk_.species();
+        const uint16_t species = this->species();
         if (species > Data::maxSpecies(ctx_)) {
             invalid(CheckIdentifier::Species, "Species " + std::to_string(species) + " does not exist in " + formatName() +
                     " (PKHeX: species above the format's maximum)");
             return finish();
         }
-        version_ = pk_.originVersion();
+        version_ = sv() ? plain_[0xCE] : pk_.originVersion();
         met_ = PK8::read16(plain_, 0x122);
         // Only Sword/Shield remaps a side transfer's version and met location (LocationsHOME).
-        side_ = bdsp() ? 0 : sideTransferOrigin(met_);
+        side_ = ctx_ == Context::SwordShield ? sideTransferOrigin(met_) : 0;
         originGen_ = originGeneration(version_, met_);
-        if (bdsp() && (version_ == 50 || version_ == 51)) originGen_ = 9;  // Scarlet/Violet keeps its version in a PB8
+        if (ctx_ != Context::SwordShield && (version_ == 50 || version_ == 51)) originGen_ = 9;  // Scarlet/Violet keeps its version
+        if (sv() && version_ == 0 && pk_.isEgg()) originGen_ = 9;  // PK9.IsUnhatchedEgg: an egg has no version until it hatches
         personal_ = Data::personal(species, form(), ctx_);
         checkOrigin();
         checkPresence();
@@ -110,6 +114,7 @@ public:
         if (originGen_ == 1 || originGen_ == 2) checkVirtualConsole();
         checkHyperTraining();
         if (bdsp()) checkBdspFields();
+        else if (sv()) checkScarletVioletFields();
         else {
             checkSwordShieldFields();
             checkTechRecords();
@@ -140,8 +145,19 @@ private:
     void info(CheckIdentifier id, std::string text) { report_.issues.push_back({Severity::Info, std::move(text), id}); }
 
     bool bdsp() const noexcept { return ctx_ == Context::BDSP; }
-    const char* formatName() const noexcept { return bdsp() ? "PB8" : "PK8"; }
-    const char* gameName() const noexcept { return bdsp() ? "Brilliant Diamond/Shining Pearl" : "Sword/Shield"; }
+    bool sv() const noexcept { return ctx_ == Context::ScarletViolet; }
+    const char* formatName() const noexcept { return sv() ? "PK9" : bdsp() ? "PB8" : "PK8"; }
+    const char* gameName() const noexcept {
+        return sv() ? "Scarlet/Violet" : bdsp() ? "Brilliant Diamond/Shining Pearl" : "Sword/Shield";
+    }
+    // Fields PK9 stores elsewhere: an internal species id (SpeciesConverter.GetNational9), gender
+    // in bits 1-2 of 0x22, battle version at 0xCF and language at 0xD5.
+    uint16_t species() const noexcept { return sv() ? Data::nationalSpecies9(pk_.species()) : pk_.species(); }
+    uint8_t gender() const noexcept { return sv() ? static_cast<uint8_t>((plain_[0x22] >> 1) & 3) : pk_.gender(); }
+    uint8_t language() const noexcept { return sv() ? plain_[0xD5] : pk_.language(); }
+    uint8_t battleVersion() const noexcept { return plain_[sv() ? 0xCF : 0xDF]; }
+    // A Scarlet/Violet origin (or a Scarlet/Violet egg, which has no version yet).
+    bool svOrigin() const noexcept { return version_ == 50 || version_ == 51 || (sv() && version_ == 0 && pk_.isEgg()); }
 
     // G8PKM.Form reads one byte; the high byte of the 16-bit field is not part of the form.
     uint8_t form() const noexcept { return plain_[0x24]; }
@@ -159,14 +175,15 @@ private:
     }
     // PKM.VC3: a Switch Virtual Console FireRed/LeafGreen record moved in through HOME (PK8
     // overrides it with its HOME met location; PB8 keeps the version).
-    bool vc3() const noexcept { return bdsp() ? (version_ == 56 || version_ == 57) : (met_ == SWFR || met_ == SHLG); }
+    bool vc3() const noexcept { return !swsh() ? (version_ == 56 || version_ == 57) : (met_ == SWFR || met_ == SHLG); }
+    bool swsh() const noexcept { return ctx_ == Context::SwordShield; }
 
     void checkSource() {
         if (in_.game == Game::Unknown) {
             report_.coverage.sourceGame = CoverageLevel::Partial;
             return;
         }
-        if (Modern::nativeFormat(in_.game) != (bdsp() ? Modern::Format::PB8 : Modern::Format::PK8)) {
+        if (Modern::nativeFormat(in_.game) != (sv() ? Modern::Format::PK9 : bdsp() ? Modern::Format::PB8 : Modern::Format::PK8)) {
             report_.coverage.sourceGame = CoverageLevel::None;
             warning(CheckIdentifier::SourceGame, std::string("The source game does not store ") + formatName() +
                     " records; game-specific checks were skipped");
@@ -186,7 +203,7 @@ private:
             invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " cannot be stored in a " + formatName());
             return;
         }
-        if (originGen_ > 8 && !bdsp()) {
+        if (originGen_ > 8 && swsh()) {
             invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " is newer than " + std::string(formatName()));
             return;
         }
@@ -199,13 +216,13 @@ private:
     // TransferVerifier.VerifyTransferLegalityG8: Sword/Shield and BD/SP hold a selection of
     // species and forms; any other species/form cannot be in the format.
     void checkPresence() {
-        if (!Data::presentInGame(pk_.species(), form(), ctx_))
+        if (!Data::presentInGame(species(), form(), ctx_))
             invalid(CheckIdentifier::Transfer, std::string("Species/form is not present in ") + gameName());
     }
 
     // FormVerifier (format 8 branches).
     void checkForm() {
-        const uint16_t species = pk_.species();
+        const uint16_t species = this->species();
         const uint8_t f = form();
         const uint8_t count = Data::formCount(species, ctx_);
         if (count <= 1 && f == 0) return;
@@ -235,8 +252,21 @@ private:
                     return invalid(CheckIdentifier::Species, "Unown letter does not match its Generation III PID");
                 break;
             case Giratina:
-                if ((f == 1) != (item == ItemGriseousOrb))
-                    return invalid(CheckIdentifier::Items, "Giratina's form does not match the Griseous Orb");
+                // Format 9 uses the Griseous Core; earlier formats the Griseous Orb.
+                if ((f == 1) != (item == (sv() ? ItemGriseousCore : ItemGriseousOrb)))
+                    return invalid(CheckIdentifier::Items, "Giratina's form does not match its Origin item");
+                break;
+            case Dialga:
+                if (sv() && (f == 1) != (item == ItemAdamantCrystal))
+                    return invalid(CheckIdentifier::Items, "Dialga's form does not match the Adamant Crystal");
+                break;
+            case Palkia:
+                if (sv() && (f == 1) != (item == ItemLustrousGlobe))
+                    return invalid(CheckIdentifier::Items, "Palkia's form does not match the Lustrous Globe");
+                break;
+            case Ogerpon:
+                if ((f & 3) != Data::ogerponForm(item))
+                    return invalid(CheckIdentifier::Items, "Ogerpon's form does not match its held mask");
                 break;
             case Arceus:
                 if (Data::arceusForm(item, ctx_) != f)
@@ -252,11 +282,12 @@ private:
                     return invalid(CheckIdentifier::Items, "Genesect's form does not match its held Drive");
                 return;
             case Scatterbug: case Spewpa:
-                if (f > Gen67::Data::vivillonMaxWildForm())
+                // A Scarlet/Violet encounter has its own patterns (fixed per encounter, not checked).
+                if (!svOrigin() && f > Gen67::Data::vivillonMaxWildForm())
                     return invalid(CheckIdentifier::Species, "Vivillon pattern is only obtainable as an event");
                 break;
             case Meowstic:
-                if ((f & 1) != pk_.gender())
+                if ((f & 1) != gender())
                     return invalid(CheckIdentifier::Species, "Meowstic's form does not match its gender");
                 break;
             case Silvally:
@@ -323,11 +354,11 @@ private:
         }
         if (!pk_.isEgg()) {
             const uint8_t f = form();
-            if (pk_.species() == Kyurem) {
+            if (species() == Kyurem) {
                 if (f != 1 && hasMove(MoveFusionFlare)) invalid(CheckIdentifier::Moves, "Only White Kyurem knows Fusion Flare");
                 if (f != 2 && hasMove(MoveFusionBolt)) invalid(CheckIdentifier::Moves, "Only Black Kyurem knows Fusion Bolt");
             }
-            if (pk_.species() == Hoopa && hasMove(f != 0 ? MoveHyperspaceHole : MoveHyperspaceFury))
+            if (species() == Hoopa && hasMove(f != 0 ? MoveHyperspaceHole : MoveHyperspaceFury))
                 invalid(CheckIdentifier::Moves, "Hoopa's form does not match its signature move");
         }
         if (pk_.isEgg()) {
@@ -372,7 +403,7 @@ private:
     // GenderVerifier and PKM.IsGenderValid.
     void checkGender() {
         if (!personal_) return;
-        const uint8_t gender = pk_.gender();
+        const uint8_t gender = this->gender();
         const uint8_t ratio = personal_->gender;
         if ((ratio == RatioGenderless) != (gender == 2)) {
             invalid(CheckIdentifier::Misc, "Gender does not match the species' gender ratio");
@@ -386,10 +417,10 @@ private:
             else valid = gender < 2 && gender == (((pk_.pid() & 0xFF) < ratio) ? 1 : 0);
             if (!valid) {
                 const uint8_t lowEc = static_cast<uint8_t>(pk_.encryptionConstant());
-                const bool azurill = (pk_.species() == Marill || pk_.species() == Azumarill) &&
+                const bool azurill = (species() == Marill || species() == Azumarill) &&
                                      gender == 1 && lowEc >= 127 && lowEc < 191;
                 if (!azurill) invalid(CheckIdentifier::Misc, "Gender does not match the PID of a Generation III-V origin");
-            } else if (fixedGenderFromDual(pk_.species())) {
+            } else if (fixedGenderFromDual(species())) {
                 info(CheckIdentifier::Misc, "Gender of the original (pre-evolution) species is not checked");
             }
             return;
@@ -442,7 +473,7 @@ private:
 
     // LanguageVerifier.
     void checkLanguage() {
-        const uint8_t lang = pk_.language();
+        const uint8_t lang = language();
         if (lang == 0 || lang == 6) {
             invalid(CheckIdentifier::Trainer, "Language " + std::to_string(lang) + " is not a language");
             return;
@@ -474,7 +505,7 @@ private:
         if (originGen_ != 3 && originGen_ != 4) return;
         if (met_ == LocationTransfer4) return;
         if (originGen_ == 4) {
-            const uint16_t s = pk_.species();
+            const uint16_t s = species();
             if (s == 251 && (met_ == 30010 || met_ == 30011)) return;
             if ((s == 243 || s == 244 || s == 245) && (met_ == 30012 || met_ == 30013)) return;
         }
@@ -515,7 +546,7 @@ private:
             invalid(CheckIdentifier::Stats, "Hyper Training needs level 50 or more");
             return;
         }
-        if (level() < 100)
+        if (level() < 100 && swsh())
             info(CheckIdentifier::Stats, "Hyper Training below level 100 needs a Scarlet/Violet or Z-A visit (not checked)");
         int total = 0;
         for (size_t i = 0; i < 6; ++i) total += pk_.iv(i);
@@ -544,7 +575,7 @@ private:
         // IDynamaxLevel.CanHaveDynamaxLevel: no egg and no Zacian/Zamazenta/Eternatus; at most 10.
         const uint8_t dynamax = pk_.dynamaxLevel();
         if (dynamax != 0) {
-            const uint16_t s = pk_.species();
+            const uint16_t s = species();
             if (pk_.isEgg() || s == Zacian || s == Zamazenta || s == Eternatus || dynamax > 10)
                 invalid(CheckIdentifier::Misc, "Dynamax level " + std::to_string(dynamax) + " is not possible");
         }
@@ -557,7 +588,7 @@ private:
     void checkBdspFields() {
         if (PK8::read32(plain_, 0x48) != 0) invalid(CheckIdentifier::Misc, "Brilliant Diamond/Shining Pearl has no sociability");
         if (plain_[0x52] != 0) invalid(CheckIdentifier::Transfer, "The BD/SP illegal-record flag is set");
-        const uint16_t s = pk_.species();
+        const uint16_t s = species();
         const bool native = version_ == 48 || version_ == 49;
         if ((s == 327 || s == 290) && !native) invalid(CheckIdentifier::Transfer, "Spinda and Nincada cannot be moved into BD/SP");
         // G8PKM.Tracker: 64 bits at 0x135.
@@ -573,10 +604,64 @@ private:
         }
     }
 
+    // MiscVerifierPK9: battle version (as Sword/Shield), obedience level
+    // (MiscVerifierHelpers.IsObedienceLevelValid) and Tera types (VerifyTeraType, and the
+    // non-Scarlet/Violet-encounter branch of VerifyEncounter: a record from another game always
+    // has a Tera type override).
+    void checkScarletVioletFields() {
+        checkBattleVersion();
+        if (personal_) {
+            const uint8_t obey = plain_[0x11F], met = pk_.metLevel();
+            // PK9.IsUntraded: no handling trainer name and a Gen IX origin (or an unhatched egg).
+            const bool untraded = plain_[0xA8] == 0 && plain_[0xA9] == 0 && (originGen_ == 9 || (version_ == 0 && pk_.isEgg()));
+            if (untraded ? obey != met : (obey < met || level() < obey))
+                invalid(CheckIdentifier::Transfer, "Obedience level " + std::to_string(obey) + " is not possible for this record");
+        }
+        const uint8_t original = plain_[0x94], override_ = plain_[0x95];
+        const uint16_t s = species();
+        if (pk_.isEgg()) {
+            if (override_ != TeraOverrideNone) invalid(CheckIdentifier::Egg, "An egg cannot have a Tera type override");
+        } else if (s == Terapagos) {
+            if (override_ != TeraOverrideNone) invalid(CheckIdentifier::Misc, "Terapagos cannot have a Tera type override");
+        } else if (s == Ogerpon) {
+            static constexpr std::array<uint8_t, 4> maskType = {11, 10, 9, 5};  // Grass, Water, Fire, Rock
+            const uint8_t f = form() & 3;
+            if (override_ != maskType[f] && !(f == 0 && override_ == TeraOverrideNone))
+                invalid(CheckIdentifier::Misc, "Ogerpon's Tera type does not match its mask");
+        } else if (!(original <= TeraMaxType || original == TeraOverrideNone || original == TeraStellar)) {
+            invalid(CheckIdentifier::Misc, "Tera type " + std::to_string(original) + " does not exist");
+        }
+        if (!pk_.isEgg() && !svOrigin() && override_ == TeraOverrideNone)
+            invalid(CheckIdentifier::Misc, "A record from another game must have a Tera type override");
+        checkTechRecords9();
+        // NicknameVerifier.VerifyNicknameEgg (EggStateLegality.IsNicknameFlagSet): a Scarlet/Violet
+        // egg carries the nickname flag, except Jacq's gift egg (egg location 60005).
+        if (pk_.isEgg() && !pk_.isNicknamed() && PK8::read16(plain_, 0x120) != 60005)
+            invalid(CheckIdentifier::Egg, "A Scarlet/Violet egg must have the nickname flag set");
+        // MiscScaleVerifier.VerifyScale: a record HOME has touched (tracker set) has its height
+        // scalar equal to its scale. Legends: Arceus alphas and Z-A records have their own rule.
+        const uint64_t tracker = uint64_t{PK8::read32(plain_, 0x127)} | (uint64_t{PK8::read32(plain_, 0x12B)} << 32);
+        if (tracker != 0 && version_ != 47 && version_ != 52 && plain_[0x48] != plain_[0x4A])
+            invalid(CheckIdentifier::Misc, "Height scalar does not match the scale of a record HOME has touched");
+    }
+
+    // MiscVerifierPK9.VerifyTechRecordFlags: a TM flag that no form of the species or of its
+    // pre-evolutions can learn. TM flags 0-199 are at 0x12F, 200 and up (DLC) at 0x4B.
+    void checkTechRecords9() {
+        const uint16_t s = species();
+        if (!Data::presentInGame(s, form(), ctx_)) return;  // already Invalid
+        for (uint16_t i = 0; i < Data::tmCount9(); ++i) {
+            const size_t offset = i < 200 ? 0x12F + (i >> 3) : 0x4B + ((i - 200) >> 3);
+            if (((plain_[offset] >> (i & 7)) & 1) == 0 || Data::tmLineCanLearn9(s, i)) continue;
+            invalid(CheckIdentifier::Moves, "TM index " + std::to_string(i) + " is flagged but the species' line cannot learn it");
+            return;
+        }
+    }
+
     // IBattleVersion.IsBattleVersionValid: 0, or Sword/Shield for a record that did not
     // originate in (or side-transfer into) Sword/Shield (LocationsHOME.GetVersionSWSH).
     void checkBattleVersion() {
-        const uint8_t battle = plain_[0xDF];
+        const uint8_t battle = battleVersion();
         if (battle == 0) return;
         const bool swordShieldOrigin = version_ == VersionSW || version_ == VersionSH || version_ == 47 || version_ == 48 ||
                                        version_ == 49 || version_ == 50 || version_ == 51 || version_ == 56 || version_ == 57;
@@ -587,7 +672,7 @@ private:
     // MiscVerifierPK8.VerifyTechRecordFlags: a TR flag the species/form cannot learn
     // (Calyrex keeps flags its fused forms learned).
     void checkTechRecords() {
-        const uint16_t s = pk_.species();
+        const uint16_t s = species();
         const uint8_t f = form();
         if (!Data::presentInGame(s, f)) return;  // already Invalid; its TR row is empty
         for (uint8_t i = 0; i < Data::techRecordCount(); ++i) {
@@ -677,7 +762,7 @@ uint8_t originGeneration(uint8_t version, uint16_t metLocation) noexcept {
 
 Report analyze(Context ctx, std::span<const uint8_t> record, const Modern::Input& input) {
     Report report{};
-    const std::string name = ctx == Context::BDSP ? "PB8" : "PK8";
+    const std::string name = ctx == Context::ScarletViolet ? "PK9" : ctx == Context::BDSP ? "PB8" : "PK8";
     if (!PK8::supportedSize(record.size())) {
         report.coverage.structure = CoverageLevel::None;
         report.issues.push_back({Severity::Warning, "Not a 328-byte or 344-byte " + name + " record", CheckIdentifier::Structure});

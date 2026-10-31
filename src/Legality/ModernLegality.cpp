@@ -19,7 +19,7 @@ constexpr std::array<FormatProfile, 8> kProfiles{{
     {Format::PK8, "PK8", 8, 0x148, 0x158, true},
     {Format::PB8, "PB8", 8, 0x148, 0x158, true},
     {Format::PA8, "PA8", 8, 0x168, 0x178, false},
-    {Format::PK9, "PK9", 9, 0x148, 0x158, false},
+    {Format::PK9, "PK9", 9, 0x148, 0x158, true},
     {Format::PA9, "PA9", 9, 0x148, 0x158, false},
 }};
 
@@ -63,6 +63,7 @@ Report analyze(std::span<const uint8_t> record, const Input& input) {
     if (input.format == Format::PK7) return Gen67::analyze(7, record, input);
     if (input.format == Format::PK8) return Gen8::analyze(Gen8::Context::SwordShield, record, input);
     if (input.format == Format::PB8) return Gen8::analyze(Gen8::Context::BDSP, record, input);
+    if (input.format == Format::PK9) return Gen8::analyze(Gen8::Context::ScarletViolet, record, input);
     Report report{};
     report.coverage.structure = CoverageLevel::None;
     if (std::all_of(record.begin(), record.end(), [](uint8_t b) { return b == 0; })) return report;
