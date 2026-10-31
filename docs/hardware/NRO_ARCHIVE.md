@@ -2,7 +2,7 @@
 
 Candidate NROs are first published as GitHub Actions artifacts, which **expire** (90 days for candidate builds). This record lists the important ones with their exact identity, and `.github/workflows/archive-candidate-nro.yml` copies each into a GitHub **pre-release** tagged `nro/<sha8>` on its exact application commit. The workflow downloads the original artifact (no rebuild), verifies the SHA-256 and refuses to overwrite.
 
-A pre-release here is **preservation only**: it is not a release, does not mean the build is accepted, and is never marked "latest". Hardware status is what the owner recorded for that exact file.
+Each pre-release is a **development / testing archive, not an approved release**. It is never marked "latest" and does not mean the build is accepted. Its hardware status is what the owner recorded for that exact file. After publishing, the workflow downloads the release asset again and requires the original SHA-256. The run, artifact and commit are first checked against GitHub's own records.
 
 | Build | Application commit | NRO SHA-256 | Size (bytes) | Original run / artifact | Artifact expires | Hardware status | Pre-release |
 |---|---|---|---:|---|---|---|---|
@@ -20,4 +20,4 @@ Round 4 has no separate candidate record (its repairs shipped in Round 5). Earli
 
 ## Archiving one build
 
-Run **Archive candidate NRO to a pre-release** (`workflow_dispatch`) with the row's run ID, artifact name (`PokeBank-NX-Gen1-5-Candidate-<sha8>`), NRO file (`<artifact name>.nro`), full application commit, SHA-256 and a short label, then change "pending" to the release link here.
+Run **Archive candidate NRO (development/testing archive)** (`workflow_dispatch`) with the row's run ID, artifact ID, artifact name (`PokeBank-NX-Gen1-5-Candidate-<sha8>`), NRO file (`<artifact name>.nro`), full application commit, original SHA-256, a short label and the hardware status. Then replace "pending" with the release link and the verification run.
