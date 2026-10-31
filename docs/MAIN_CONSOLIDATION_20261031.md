@@ -22,7 +22,7 @@
 | Branch | Purpose | When |
 |---|---|---|
 | `main` | Gen I–V application and ongoing bug fixes | when the owner approves and merges the consolidation PR |
-| `development/gen6-plus` | Gen VI–IX application | **exists** since October 31 (`ec5a35b4`): created by the Gen VI–IX application work from the Round 10 application `0842c6f3`, importing #309/#311/#312. Active development: not touched by this consolidation. Once `main` holds the consolidation, the branch should merge `main` forward |
+| `development/gen6-plus` | Gen VI–IX application | **exists** since October 31 (`ec5a35b4`): created by the Gen VI–IX application work from the Round 10 application `0842c6f3`, importing #309/#311/#312. Active development: not touched by this consolidation. **Owner decision (Oct 31):** it is not merged into `main` or the Gen I–V repair branch, and nothing is merged into it from them, until Gen I–V is accepted on hardware; then it adopts the accepted shared UI through a separate integration PR for the owner's approval |
 | `development/legality-engine` *(planned)* | combined, reviewed Gen I–IX legality | created from the integrated `main` after acceptance, then **receives the reviewed engine** (#314 or successor, then #327, then #328). An empty branch is not the completed consolidation |
 
 ## 3. Open pull requests (31, plus the consolidation PR #330)
