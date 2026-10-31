@@ -159,8 +159,17 @@ namespace Legality {
         /// from. Invalid needs a definitive rule; when only unverified rules or an
         /// incomplete event catalog stand against every origin, the report stays
         /// Incomplete with warnings.
+        GB::Storage gbStorage(SlotStorage storage) noexcept {
+            switch (storage) {
+                case SlotStorage::PartyOrBox: return GB::Storage::PartyOrBox;
+                case SlotStorage::DayCare:    return GB::Storage::DayCare;
+                case SlotStorage::Unknown:    break;
+            }
+            return GB::Storage::Unknown;
+        }
+
         Report analyzeNativeGen1(const Pokemon::Pokemon& pk, const Pokemon::Pokemon1ReadOnly& gen1,
-                                 bool sourceFormatMismatch) {
+                                 bool sourceFormatMismatch, SlotStorage storage) {
             Report r;
             const auto& rec = gen1.strictRecord();
             const uint16_t species = pk.speciesID();
@@ -208,6 +217,7 @@ namespace Legality {
             e.species = species <= 151 ? static_cast<uint8_t>(species) : 0;
             e.level = rec.level;
             e.exp = rec.experience;
+            e.storage = gbStorage(storage);
             e.statExp = rec.statExperience;
             e.otName = rec.originalTrainer;
             e.nickname = rec.nickname;
@@ -971,7 +981,7 @@ namespace Legality {
         /// "No problems found"; Invalid needs a definitive rule; a record that only
         /// unverified rules or an incomplete event list stand against stays Incomplete.
         Report analyzeNativeGen2(const Pokemon::Pokemon2ReadOnly& gen2, bool sourceFormatMismatch,
-                                 std::string_view exactSourceGameId, bool sourceKnown) {
+                                 std::string_view exactSourceGameId, bool sourceKnown, SlotStorage storage) {
             Report r;
             const auto& rec = gen2.strictRecord();
             const uint16_t species = rec.species;
@@ -1018,6 +1028,7 @@ namespace Legality {
             e.species = species <= 251 ? static_cast<uint8_t>(species) : 0;
             e.level = rec.level;
             e.exp = rec.experience;
+            e.storage = gbStorage(storage);
             e.statExp = rec.statExperience;
             e.pokerus = rec.pokerus;
             e.isEgg = rec.isEgg;
@@ -1146,10 +1157,10 @@ namespace Legality {
             return r;
         }
         if (const auto* gen1 = pk.nativePk1ReadOnly())
-            return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch);
+            return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch, context.storage);
         if (const auto* gen2 = pk.nativePk2ReadOnly())
             return analyzeNativeGen2(*gen2, sourceFormatMismatch, exactSourceGameId,
-                                     sourceGameProfile(exactSourceGameId) != nullptr);
+                                     sourceGameProfile(exactSourceGameId) != nullptr, context.storage);
         if (sourceFormatMismatch) {
             add(r, Severity::Warning,
                 "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",

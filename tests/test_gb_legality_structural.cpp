@@ -234,6 +234,32 @@ void levelExpGrid() {
                     count2 += p.area == GB::Area::Stats;
                 check(count1 == (above || ahead || stale ? 1 : 0), name + " PK1 one level/EXP problem");
                 check(count2 == (above || ahead || stale ? 1 : 0), name + " PK2 one level/EXP problem");
+                // A party or PC box slot of the source save is never out of step (pokered
+                // _MoveMon and pokecrystal SendGetMonIntoFromBox recompute the level from EXP
+                // on every return to the party): the Day Care exceptions close and turn
+                // definitive. The Day Care's own slot carries them, so nothing is reported.
+                // The level ahead of its EXP and EXP past the Day Care's reach stay Invalid
+                // in every slot.
+                for (const GB::Storage storage : {GB::Storage::PartyOrBox, GB::Storage::DayCare}) {
+                    const bool box = storage == GB::Storage::PartyOrBox;
+                    const std::string where = box ? " (party/box)" : " (Day Care slot)";
+                    GB::Entity2 s2 = e2;
+                    s2.storage = storage;
+                    const auto q2 = GB::formatProblems(s2);
+                    check(hasText(q2, "above the level-100 total") == (above && (!dayCare2 || box)), name + " PK2 cap" + where);
+                    check(!hasWarning(q2, "above the level-100 total"), name + " PK2 cap not tentative" + where);
+                    check(hasText(q2, "does not match EXP") == ahead, name + " PK2 level ahead" + where);
+                    check(hasText(q2, "is below the level the EXP gives") == (stale && box), name + " PK2 stale level" + where);
+                    check(!hasWarning(q2, "is below the level the EXP gives"), name + " PK2 stale not tentative" + where);
+                    GB::Entity1 s1 = e1;
+                    s1.storage = storage;
+                    const auto q1 = GB::formatProblems(s1);
+                    check(hasText(q1, "above the level-100 total") == (above && (!dayCare1 || box)), name + " PK1 cap" + where);
+                    check(!hasWarning(q1, "above the level-100 total"), name + " PK1 cap not tentative" + where);
+                    check(hasText(q1, "does not match EXP") == ahead, name + " PK1 level ahead" + where);
+                    check(hasText(q1, "is below the level the EXP gives") == (stale && box), name + " PK1 stale level" + where);
+                    check(!hasWarning(q1, "is below the level the EXP gives"), name + " PK1 stale not tentative" + where);
+                }
             }
         }
     }
@@ -386,6 +412,26 @@ void realRedSave() {
         if (c.expect == Legality::Verdict::Incomplete)
             check(!report.hasInvalid() && report.coverage.encounter == Legality::CoverageLevel::Partial,
                   name + ": Day Care slot is unfinished, not Invalid");
+        // The same party record with the slot named by its save: the Day Care exception
+        // closes (Invalid); named as the Day Care's own slot it is that slot's behaviour.
+        Legality::Context party{pk.getGameGroup(), "red_gb"};
+        party.storage = Legality::SlotStorage::PartyOrBox;
+        const auto inParty = Legality::analyze(pk, party);
+        const bool reach = c.exp <= 0x50FFFF;
+        if (c.expect == Legality::Verdict::Incomplete) {
+            check(inParty.verdict() == Legality::Verdict::Invalid &&
+                      hasIssue(inParty, Legality::Severity::Invalid, "this one is in the party or a PC box"),
+                  name + ": party slot closes the Day Care exception");
+        } else {
+            check(inParty.verdict() == c.expect, name + ": party slot verdict unchanged");
+        }
+        Legality::Context dayCare{pk.getGameGroup(), "red_gb"};
+        dayCare.storage = Legality::SlotStorage::DayCare;
+        const auto inDayCare = Legality::analyze(pk, dayCare);
+        if (c.expect == Legality::Verdict::Incomplete && reach)
+            check(inDayCare.verdict() == Legality::Verdict::NoProblemsFound, name + ": Day Care slot explains it");
+        else
+            check(inDayCare.verdict() == c.expect, name + ": Day Care slot verdict unchanged");
         check(bytes == original, name + ": save bytes unchanged");
         check(std::equal(parsed.save->sourceBytes().begin(), parsed.save->sourceBytes().end(), original.begin()),
               name + ": parsed source bytes unchanged");
@@ -394,7 +440,8 @@ void realRedSave() {
 
 // ---------------------------------------------------------------- 3. native PK2
 
-Legality::Report nativePk2(uint8_t level, uint32_t exp, std::array<uint8_t, 4> moves) {
+Legality::Report nativePk2(uint8_t level, uint32_t exp, std::array<uint8_t, 4> moves,
+                           Legality::SlotStorage storage = Legality::SlotStorage::Unknown) {
     PokeVault::Integration::Gen2::PokemonRecord rec{};
     rec.species = 1;
     rec.level = level;
@@ -407,7 +454,9 @@ Legality::Report nativePk2(uint8_t level, uint32_t exp, std::array<uint8_t, 4> m
     rec.originalTrainer = "GOLD";
     rec.nickname = "BULBA";
     const Pokemon::Pokemon2ReadOnly pk(rec);
-    return Legality::analyze(pk, Enums::GameVersion::GSC, "gold_gbc");
+    Legality::Context context{Enums::GameVersion::GSC, "gold_gbc"};
+    context.storage = storage;
+    return Legality::analyze(pk, context);
 }
 
 // A Gold/Silver record the way the save parser stores it, run through Legality::analyze.
@@ -478,6 +527,33 @@ void productionPk2() {
           "native PK2 level 99 one EXP above the cap: Incomplete");
     check(hasIssue(nativePk2(99, 0x510000, {33, 45, 0, 0}), Legality::Severity::Invalid, "above the level-100 total"),
           "native PK2 level 99 past the Day Care's reach: Invalid");
+    // The same records with the slot named by their save.
+    const auto staleBox = nativePk2(50, gameExp(MediumSlow, 70), {33, 45, 0, 0}, Legality::SlotStorage::PartyOrBox);
+    check(staleBox.verdict() == Legality::Verdict::Invalid &&
+              hasIssue(staleBox, Legality::Severity::Invalid, "is below the level the EXP gives"),
+          "native PK2 stale level in a party/box slot: Invalid");
+    const auto staleDayCare = nativePk2(50, gameExp(MediumSlow, 70), {33, 45, 0, 0}, Legality::SlotStorage::DayCare);
+    check(staleDayCare.verdict() == Legality::Verdict::NoProblemsFound, "native PK2 stale level in the Day Care slot");
+    const auto capBox = nativePk2(99, max + 1, {33, 45, 0, 0}, Legality::SlotStorage::PartyOrBox);
+    check(capBox.verdict() == Legality::Verdict::Invalid &&
+              hasIssue(capBox, Legality::Severity::Invalid, "above the level-100 total"),
+          "native PK2 level 99 above the cap in a party/box slot: Invalid");
+    check(nativePk2(99, max + 1, {33, 45, 0, 0}, Legality::SlotStorage::DayCare).verdict() ==
+              Legality::Verdict::NoProblemsFound,
+          "native PK2 level 99 above the cap in the Day Care slot");
+    // Gen II's DayCareStep adds nothing to a level-100 deposit, and nothing passes $50FFFF.
+    check(hasIssue(nativePk2(100, max + 1, {33, 45, 0, 0}, Legality::SlotStorage::DayCare), Legality::Severity::Invalid,
+                   "above the level-100 total"),
+          "native PK2 level 100 above the cap in the Day Care slot: Invalid");
+    check(hasIssue(nativePk2(99, 0x510000, {33, 45, 0, 0}, Legality::SlotStorage::DayCare), Legality::Severity::Invalid,
+                   "above the level-100 total"),
+          "native PK2 past the Day Care's reach in the Day Care slot: Invalid");
+    check(hasIssue(nativePk2(50, 0, {33, 45, 0, 0}, Legality::SlotStorage::DayCare), Legality::Severity::Invalid,
+                   "does not match EXP"),
+          "native PK2 level ahead of EXP in the Day Care slot: Invalid");
+    check(nativePk2(50, gameExp(MediumSlow, 50), {33, 45, 0, 0}, Legality::SlotStorage::PartyOrBox).verdict() ==
+              nativePk2(50, gameExp(MediumSlow, 50), {33, 45, 0, 0}).verdict(),
+          "native PK2 in-step record: the slot changes nothing");
     check(hasIssue(nativePk2(5, gameExp(MediumSlow, 5), {33, 45, 33, 0}), Legality::Severity::Invalid,
                    "Duplicate move: Tackle"),
           "native PK2 duplicate Tackle");

@@ -30,6 +30,14 @@ namespace Legality::GB {
     /// Crystal); International is any other non-Japanese language.
     enum class Language : uint8_t { Unknown, Japanese, International, Korean };
 
+    /// Where the validated source save kept the record. Unknown is a standalone file, a
+    /// bank entry or any caller that does not own the slot: the Day Care exceptions to the
+    /// level/EXP rule then stay open (a Warning). PartyOrBox is a party or PC box slot of
+    /// that save: nothing there leaves EXP ahead of the stored level, so those exceptions
+    /// close (an Invalid). DayCare is the Day Care's own deposited slot, where EXP grows a
+    /// step at a time while the stored level stays what it was on deposit.
+    enum class Storage : uint8_t { Unknown, PartyOrBox, DayCare };
+
     /// The fields of a native PK1 that the origin search reads.
     struct Entity1 {
         uint8_t species = 0;                // National Dex number
@@ -47,6 +55,7 @@ namespace Legality::GB {
         std::string otName;                 // decoded; compared against event OTs
         std::string nickname;               // decoded; compared against trade nicknames
         Language language = Language::Unknown;
+        Storage storage = Storage::Unknown;
         // The name fields as stored (11 bytes, 6 in Japanese), when the caller has them.
         // Empty means "not available": the byte-level rules (the trade marker's terminator,
         // glyphless bytes, a Korean Gold/Silver name on a Western record) are then skipped.
@@ -74,6 +83,7 @@ namespace Legality::GB {
         std::string otName;
         std::string nickname;
         Language language = Language::Unknown;
+        Storage storage = Storage::Unknown; // see Entity1
         std::vector<uint8_t> otRaw;         // as stored, when available (see Entity1)
         std::vector<uint8_t> nickRaw;
     };

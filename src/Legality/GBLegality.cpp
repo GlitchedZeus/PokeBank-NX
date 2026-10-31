@@ -2260,7 +2260,16 @@ constexpr uint32_t kDayCareExpMax = 0x50FFFF;
 /// EXP below the stored level's threshold. PKHeX rejects EXP above the level-100 total on
 /// a level-100 Pokemon (LevelVerifier.Verify, LevelEXPTooHigh) and otherwise derives the
 /// level from EXP without comparing the two.
-static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, uint32_t exp) {
+///
+/// The slot decides the Day Care exception when the caller knows it. A party or PC box slot
+/// is never out of step: battle EXP and Rare Candy are above, a Pokemon returning to the
+/// party has its level recomputed from EXP (pokered engine/pokemon/add_mon.asm _MoveMon
+/// CalcLevelFromExperience for box and Day Care withdrawals; pokecrystal
+/// engine/pokemon/move_mon.asm SendGetMonIntoFromBox CalcLevel, RetrieveBreedmon), and a
+/// deposit copies the party level unchanged. So with Storage::PartyOrBox both exceptions
+/// close and the problem is definitive; with Storage::DayCare they are the slot's own
+/// behaviour and nothing is reported.
+static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, uint32_t exp, Storage storage) {
     const uint8_t growth = Pokemon::getGrowthRate(species);
     const uint32_t max = Pokemon::getExpForLevel(100, growth);
     if (exp > max) {
@@ -2271,6 +2280,11 @@ static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, u
         const bool dayCare = exp <= kDayCareExpMax && (format == 1 || level < 100);
         if (!dayCare)
             return {Area::Stats, text};
+        if (storage == Storage::DayCare)
+            return {};
+        if (storage == Storage::PartyOrBox)
+            return {Area::Stats, text + "; only a Pokemon still in the Day Care carries that, and this one is in "
+                                        "the party or a PC box"};
         return {Area::Stats,
                 text + "; only a Pokemon still in the Day Care carries that (Gen I adds EXP there without a "
                        "level check, Gen II until the stored level is 100)",
@@ -2282,16 +2296,19 @@ static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, u
     if (level > expLevel)
         return {Area::Stats, "Level " + std::to_string(level) + " does not match EXP (expected " +
                                  std::to_string(expLevel) + ")"};
-    return {Area::Stats,
-            "Level " + std::to_string(level) + " is below the level the EXP gives (" + std::to_string(expLevel) +
-                "); only a Pokemon still in the Day Care carries a stale level",
-            false};
+    if (storage == Storage::DayCare)
+        return {};
+    const std::string stale = "Level " + std::to_string(level) + " is below the level the EXP gives (" +
+                              std::to_string(expLevel) + "); only a Pokemon still in the Day Care carries a stale level";
+    if (storage == Storage::PartyOrBox)
+        return {Area::Stats, stale + ", and this one is in the party or a PC box"};
+    return {Area::Stats, stale, false};
 }
 
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
     if (e.species != 0 && e.species <= kMaxSpecies1) {
-        if (Problem level = levelExpProblem(1, e.species, e.level, e.exp); !level.text.empty())
+        if (Problem level = levelExpProblem(1, e.species, e.level, e.exp, e.storage); !level.text.empty())
             out.push_back(std::move(level));
     }
     if (Problem stats = statExpProblem(e.statExp, false); !stats.text.empty())
@@ -2309,7 +2326,7 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         out.push_back({Area::Misc, pokerus});
     // An unhatched egg's EXP is judged against its encounter (Odd Eggs carry 125).
     if (!e.isEgg && e.species != 0 && e.species <= kMaxSpecies2) {
-        if (Problem level = levelExpProblem(2, e.species, e.level, e.exp); !level.text.empty())
+        if (Problem level = levelExpProblem(2, e.species, e.level, e.exp, e.storage); !level.text.empty())
             out.push_back(std::move(level));
     }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)
