@@ -610,11 +610,15 @@ Outcome creation(Ctx& c, Matrix& m) {
     need(ui.beginCreateDraft(ws, *request, refresher(*t), error), "beginCreateDraft: " + error);
     need(ui.surface() == Screen::Surface::Edit && ui.createPending(), "Create did not open the Edit draft");
     // Owner Oct 28 (item 4): Keep is refused until a Met Location is chosen; the picker records it.
+    // Round 11 (owner H28): the new Pokemon also starts with no moves; one status names both.
     need(ui.createNeedsMetLocation() && !ui.keepWithPresentation(ws, refresher(*t), error) &&
-             error == "Choose a Met Location before Keep",
+             error == "Choose a Met Location and at least one move before Keep",
          "Create kept without a Met Location choice");
     need(ui.createPending(), "a refused Keep left the Create draft");
     ui.noteCreateMetLocationChosen();
+    need(!ui.keepWithPresentation(ws, refresher(*t), error) && error == "Choose at least one move before Keep" &&
+             ui.createPending(), "Create kept without a move");
+    need(ui.editDraft().stage(NF::Move, 0, 84, error), "choose Thunder Shock: " + error);
     need(ui.keepWithPresentation(ws, refresher(*t), error), "Keep: " + error);
     const auto made = ws.viewBox(0, 1);
     need(made && made->valid() && !made->empty() && made->species() == 25 && !made->partyRecord() &&

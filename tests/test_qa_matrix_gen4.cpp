@@ -680,6 +680,16 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         p.expect(session.creating() && session.dirty(), "create session not dirty");
         p.expect(!session.back() && session.confirmExit, "Back on a Create draft did not ask to confirm");
         session.continueEditing();
+        // Round 11 (owner H07 for all gens / H28): a new Pokemon starts with no moves and no Met
+        // Location; Keep names both and stages nothing until they are chosen.
+        const auto stagedBefore = editor->stagedBytes();
+        p.expect(!session.keepCreate(*editor, 0, 1, err) &&
+                     err == "Choose a Met Location and at least one move before Keep" &&
+                     editor->stagedBytes() == stagedBefore && session.creating(),
+                 "Create kept without a Met Location / move: " + err);
+        bool met = false;
+        for (uint16_t id = 1; id < 300 && !met; ++id) met = session.working->setMetLocation(id);
+        p.expect(met && session.working->setMove(0, 84), "choose a native Met Location and Thunder Shock");
         p.expect(session.keepCreate(*editor, 0, 1, err), "keepCreate: " + err);
         const auto created = editor->boxedPokemon(0, 1, &err);
         p.expect(created && created->species() == 25 && created->originalTrainerName() == u"Kylie",

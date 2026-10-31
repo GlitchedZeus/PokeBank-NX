@@ -1297,8 +1297,9 @@ def contracts(sources: list[Source]) -> list[Result]:
     res.append(r)
 
     r = Result("CG19-species-change-resets-moves",
-               "Every Gen I-V editor path that changes a Pokemon's species also resets its moves through the "
-               "shared SpeciesMoveDefaults policy (R2-BUG-004)")
+               "Every Gen I-V editor path that changes a Pokemon's species also updates its moves through the "
+               "shared SpeciesMoveDefaults policy (R2-BUG-004; since Round 11 it keeps only usable moves and "
+               "never adds one)")
     # Lane R (round 3): one shared species-change policy, called once from every species apply path.
     change_rx = re.compile(r"(?<![\w.>])(?:[\w.>-]*(?:\.|->))?(?:setSpecies|applySpecies)\s*\(")
     # A reference alone (e.g. SpeciesMoveDefaults::forSpecies or a version lookup) is not enough: the

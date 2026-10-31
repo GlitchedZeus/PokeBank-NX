@@ -347,9 +347,13 @@ GUARDS_ROUND3: dict[str, tuple[str, G]] = {
     'R2-BUG-003': ('Gen V Trainer clutter (round 3 PASS)', [
         ('host', 'test_gen5_create_edit_parity', 'tests/test_gen5_create_edit_parity.cpp', '"R2-BUG-003 Trainer page: editable cards, divider, identity rows, language detail");'),
     ]),
-    'R2-BUG-004': ('Species change resets moves (round 3 PASS)', [
+    # Round 11 (owner H28 / Extra 5 / Extra 6): the frozen part is "no Invalid move survives a species
+    # change"; the refill with the new species' moves was dropped at the owner's request (the native
+    # table stays pinned as data, and the move-writer contract CG19 still guards every species path).
+    'R2-BUG-004': ('Species change clears incompatible moves (round 3 PASS; never adds moves since Round 11)', [
         ('cg', 'CG19-species-change-resets-moves'),
-        ('host', 'test_species_change_moves_gen15', 'tests/test_species_change_moves_gen15.cpp', 'require(moves(t, 25, 5) == (std::array<uint16_t, 4>{84, 45, 0, 0}), "Gen I Pikachu Lv5 = Create default");'),
+        ('host', 'test_species_change_moves_gen15', 'tests/test_species_change_moves_gen15.cpp', 'require(moves(t, 25, 5) == (std::array<uint16_t, 4>{84, 45, 0, 0}), "Gen I Pikachu Lv5 native level-up moves");'),
+        ('host', 'test_species_change_moves_gen1', 'tests/test_species_change_moves_gen1.cpp', '"Thunder Shock cleared, Growl kept with its PP and PP Ups, nothing added");'),
     ]),
     'R2-BUG-005': ('TM/HM move information (round 3 PASS)', [
         ('cg', 'CG25-gen5-machine-and-feather-art'),
@@ -654,8 +658,11 @@ GUARDS_ROUND7: dict[str, tuple[str, G]] = {
     'C13': ('Create Review lists the created details (Oct 26 PASS)', [
         ('cg', 'CG74-create-review-details'),
     ]),
-    'C14': ('Gen II Create starts with native level-up moves (Oct 26 PASS)', [
-        ('host', 'test_species_change_moves_gen2', 'tests/test_species_change_moves_gen2.cpp', 'require((fresh.moves == std::array<uint8_t, 4>{84, 45, 0, 0}), "Pikachu Lv 5: Thunder Shock, Growl");'),
+    # C14 reversed by the owner in Round 11 (docs/hardware/ROUND11_OWNER_WORKSHEET.md H28 notes, Extra 5,
+    # Extra 6: "Gen 1/2 have moves when editor is opened, it should be blank"; ROUND11_ENGINEERING_INTAKE.md
+    # section 4 "Moves"). The frozen item is now the owner's newer decision: Gen II Create starts blank.
+    'C14': ('Gen II Create starts with no moves (Oct 26 PASS, reversed by the owner in Round 11 H28)', [
+        ('host', 'test_species_change_moves_gen2', 'tests/test_species_change_moves_gen2.cpp', 'create.working.pp == (std::array<uint8_t, 4>{}), "Create starts with no moves (C14 reversed)");'),
     ]),
     'C15': ('Stored unreleased held item is labelled, kept (Oct 26 PASS)', [
         ('cg', 'CG71-gen3-held-item-vs-caught-ball'),

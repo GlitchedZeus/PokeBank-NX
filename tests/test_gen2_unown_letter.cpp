@@ -129,7 +129,10 @@ int main() {
     other.begin(shiny.working, Rules::SessionMode::Edit);
     require(other.setSpecies(25, "silver_gbc") && other.working.form == 0, "non-Unown form 0");
 
-    // Keep -> reparse: the saved letter (Gen2ReadOnlySave) equals the draft letter.
+    // Keep -> reparse: the saved letter (Gen2ReadOnlySave) equals the draft letter. Round 11 (owner
+    // H28): Unown keeps none of Pikachu's moves and none is filled in, so the user picks Hidden Power
+    // (Unown's only move) before Keep (CreateRequiredFields).
+    require(s.setMove(0, 237), "Hidden Power");
     require(s.keep(*editor, 1, 0, error), "keep: " + error);
     const auto back = editor->boxedPokemon(1, 0, error);
     require(back && back->species == 201 && back->form == s.working.form, "reparsed letter == draft letter");

@@ -279,6 +279,9 @@ void runGame(SourceGame game, Family family) {
             draft.beginCreate(createEditor->trainer(),createEditor->originGame());
             assert(draft.working.species==25);
             draft.working.heldItem=held;draft.working.ball=ball;
+            // Round 11 shared Create rule: a move and a chosen Met Location before Add (this
+            // Ball / Held Item matrix keeps the default location; the Met picker would note it).
+            draft.working.moves[0]=84;draft.working.pp[0]=30;draft.noteMetLocationChosen();
             if(!draft.add(*createEditor,0,1,error)) { std::cerr<<"Create ball="<<int(ball)<<" held="<<held<<": "<<error<<"\n";assert(false); }
             const auto created=createEditor->boxedPokemon(0,1,error);
             assert(created && created->heldItem==held && created->ball==ball);

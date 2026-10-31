@@ -448,6 +448,65 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     if (gen5)
         if (auto* g5 = dynamic_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer*>(&screen.trainer))
             g5->sharedScreen().noteCreateMetLocationChosen();
+    // Round 11 (owner H28 / Extra 5 / Extra 6, CreateRequiredFields): a new Pokemon starts with no
+    // moves and Add needs one, and Gen III / IV need a chosen Met Location. Pick them through the
+    // real controls so the sweep can continue: the first Move from the move picker, and the first
+    // listed encounter location.
+    press(HidNpadButton_X);   // Add before choosing: refused with the one shared status, nothing staged
+    check(screen.storageStatus.find("at least one move") != std::string::npos,
+          game + ": Add of a moveless new Pokemon is refused (" + screen.storageStatus + ")");
+    const auto tap = [&](int id) {
+        frame();
+        for (const auto& b : screen.touchButtons) {
+            if (b.id != id) continue;
+            const auto x = static_cast<u32>(b.x + b.w / 2), y = static_cast<u32>(b.y + b.h / 2);
+            HostUi::touch = {true, x, y};
+            frame();
+            HostUi::touch = {false, x, y};
+            frame();
+            return true;
+        }
+        return false;
+    };
+    const auto has = [&](int id) {
+        for (const auto& b : screen.touchButtons) if (b.id == id) return true;
+        return false;
+    };
+    // Open Move 1's editor (tap the Move 1 row; A if the tap only focused it), choose the first
+    // move after Empty in its picker, then the editor's Apply / Done row.
+    const auto chooseFirstMove = [&](int moveRow, int editorBase) {
+        tap(moveRow);
+        frame();
+        if (!has(editorBase)) press(HidNpadButton_A);
+        tap(editorBase);                 // Move
+        press(HidNpadButton_Down);       // the first move after Empty
+        press(HidNpadButton_A);
+        tap(editorBase + 3);             // Apply / Done
+    };
+    if (game == "Red") {
+        chooseFirstMove(5200, 1100);
+    } else if (game == "FireRed") {
+        for (int i = 0; i < 20 && !has(31000 + 13); ++i) press(HidNpadButton_Down);
+        tap(31000 + 13);                 // Met Location: the first listed encounter
+        press(HidNpadButton_A);
+        chooseFirstMove(31300, 31400);
+    } else if (game == "Platinum" || game == "Black") {
+        if (game == "Platinum") {
+            for (int i = 0; i < 20 && !has(41000 + 13); ++i) press(HidNpadButton_Down);
+            tap(41000 + 13);             // Met Location: the first wild location after the unset row
+            press(HidNpadButton_Down);
+            press(HidNpadButton_A);
+        }
+        chooseFirstMove(41300, 41400);
+    } else {
+        press(HidNpadButton_L);          // Gen II: MOVES panel, Move 1
+        press(HidNpadButton_A);          // Move 1 editor
+        press(HidNpadButton_A);          // Choose Move
+        press(HidNpadButton_Down);       // the first move after Empty
+        press(HidNpadButton_A);
+        for (int i = 0; i < 3; ++i) press(HidNpadButton_Down);   // Done
+        press(HidNpadButton_A);
+    }
     // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
     // its own surface (Boxes' Review key, Y since Round 7 ReviewEntry: Gen5SharedReadOnlySurface
     // openReviewFromBrowse).
@@ -481,7 +540,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         const std::string where = game + " / Review (staged Create)";
         check(row("/ Add Pok\xC3\xA9mon"), where + ": the Add Pokémon header row");
         check(row("/ OT / TID"), where + ": a named OT / TID row");
-        if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (Gen I Create has level-up moves)");
+        if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (the Move the user picked)");
     }
     // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in the shared
     // Gen I-V "<slot> / Field" row shape.

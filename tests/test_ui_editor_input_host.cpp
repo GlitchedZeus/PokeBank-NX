@@ -89,6 +89,19 @@ struct Driver {
     }
 };
 
+// Round 11 (owner H28, CreateRequiredFields): a new Pokemon starts with no moves and Keep / Add
+// need one. Through the real controls: tap Move 1 (A if the tap only focused it), choose the first
+// move after Empty in its picker, then the editor's Apply / Done row (editorBase + 3).
+bool chooseFirstMove(Driver& d, int moveRow, int editorBase) {
+    if (!d.tap(moveRow)) return false;
+    d.frame();
+    if (!d.target(editorBase)) d.press(HidNpadButton_A);
+    if (!d.tap(editorBase)) return false;
+    d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    return d.tap(editorBase + 3);
+}
+
 // A Black save with one party Pikachu (the Gen V Bag-screen fixture shape).
 std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
@@ -250,6 +263,14 @@ void gen5CreatePokerus() {
         d.press(HidNpadButton_A);   // A on the focused Gender row flips it back
         check(genderNow() == before, "Gen V Create: A flips Gender back inline");
     }
+
+    // Round 11: Keep still refuses while the new Pokemon has no move; one shared status says so.
+    d.press(HidNpadButton_X);
+    check(state.createPending() && screen.storageStatus == "Choose at least one move before Keep",
+          "Gen V Create: Keep is refused until a move is chosen (" + screen.storageStatus + ")");
+    check(chooseFirstMove(d, Workspace::kMoveTouchBase, Workspace::kMoveEditorTouchBase),
+          "Gen V Create: Move 1 is chosen through the move editor");
+    check(state.draft().current() && state.draft().current()->moves()[0] != 0, "Gen V Create: Move 1 set");
 
     // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
     d.press(HidNpadButton_X);   // Keep
@@ -479,6 +500,16 @@ void gen3CreatePokerus() {
     // lists it in the shared Gen I-V shape ("<loc> / Add Pokémon", "<loc> / OT / TID / SID", ...).
     for (int i = 0; i < 20 && drawnValue("OT").find("not drawn") != std::string::npos; ++i) d.press(HidNpadButton_Up);
     check(drawnValue("OT") == "RED", "Gen III Create OT defaults to the trainer name (got " + drawnValue("OT") + ")");
+    // Round 11: Add refuses until a move (and, where the game lists encounters, a Met Location) is
+    // chosen; then the real Met picker and move editor satisfy it.
+    d.press(HidNpadButton_X);
+    check(d.screen.storageStatus.find("at least one move") != std::string::npos && g3.trainer->stagedPokemon()->pendingChanges().empty(),
+          "Gen III Create: Add is refused while the Pokemon has no move (" + d.screen.storageStatus + ")");
+    constexpr int kMetRow = 13;
+    for (int i = 0; i < 20 && !d.target(kGen3DetailTouchBase + kMetRow); ++i) d.press(HidNpadButton_Down);
+    check(d.tap(kGen3DetailTouchBase + kMetRow), "Gen III Create: Met Location row publishes a touch target");
+    d.press(HidNpadButton_A);   // the first listed encounter (a game without templates says so instead)
+    check(chooseFirstMove(d, 31300, 31400), "Gen III Create: Move 1 is chosen through the move editor");
     d.press(HidNpadButton_X);   // Keep
     check(d.screen.openStagedReview(false), "Gen III Review opens after Create");
     d.frame();
