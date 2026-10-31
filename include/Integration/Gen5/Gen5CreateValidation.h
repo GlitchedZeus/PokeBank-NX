@@ -51,6 +51,10 @@ struct CreateRequest5 {
     // Native order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     std::array<uint32_t, 6> ivs{}, evs{};
     std::array<CreateMove5, 4> moves{};
+    // Round 11 (owner H28): the shared editor's pending Create draft starts with NO moves; the user
+    // picks them and the editor's Keep refuses until one is chosen (UI/CreateRequiredFields.h). Only
+    // such a draft may be built with four empty slots, and then all four must be empty.
+    bool draftWithoutMoves = false;
     bool operator==(const CreateRequest5&) const = default;
 };
 struct CreateValidation5 {
@@ -132,6 +136,11 @@ inline bool createDate5(const CreateEncounter5& e) noexcept {
     bool empty = false;
     for (size_t i = 0; i < r.moves.size(); ++i) {
         const auto& m = r.moves[i];
+        if (r.draftWithoutMoves) {
+            if (m.id || m.ppUps || m.pp.value_or(0))
+                return {E::Moves, "A moveless Create draft must have four empty move slots"};
+            continue;
+        }
         if (!m.id) {
             if (i == 0 || m.ppUps || m.pp.value_or(0))
                 return {E::Moves, "First move required; empty slots must have zero PP and PP Ups"};

@@ -2,7 +2,7 @@
 # native level-up moves, Gen I-V (20 games). Data + algorithm + apply-path contracts, then one
 # real record round trip per generation (reusing each generation's existing source list).
 SPECIES_MOVES_DEPS := include/Pokemon/SpeciesMoveDefaults.h include/Pokemon/LevelUpLearnsets15Data.inc include/UI/Gen1SpeciesChangeMoves.h \
-	include/UI/SpeciesChangeMoves.h
+	include/UI/SpeciesChangeMoves.h include/UI/SpeciesChangeHistoryPolicy.h include/UI/CreateRequiredFields.h
 
 SPECIES_MOVES_DATA_SOURCES := tests/test_species_change_moves_gen15.cpp
 SPECIES_MOVES_GEN2_SOURCES := tests/test_species_change_moves_gen2.cpp $(GEN2_STAGED_EDITOR_COMMON) \
@@ -19,7 +19,8 @@ SPECIES_MOVES_GEN4_SOURCES := tests/test_species_change_moves_gen4.cpp \
 
 SPECIES_MOVES_TESTS := $(HOST_BUILD)/test_species_change_moves_gen15 $(HOST_BUILD)/test_species_change_moves_gen1 \
 	$(HOST_BUILD)/test_species_change_moves_gen2 $(HOST_BUILD)/test_species_change_moves_gen3 \
-	$(HOST_BUILD)/test_species_change_moves_gen4 $(HOST_BUILD)/test_species_change_moves_gen5
+	$(HOST_BUILD)/test_species_change_moves_gen4 $(HOST_BUILD)/test_species_change_moves_gen5 \
+	$(HOST_BUILD)/test_species_change_history_policy
 SPECIES_MOVES_SANITIZE := $(addsuffix _sanitize,$(SPECIES_MOVES_TESTS))
 HOST_TESTS += $(SPECIES_MOVES_TESTS)
 HOST_SANITIZE_TESTS += $(SPECIES_MOVES_SANITIZE)
@@ -68,8 +69,16 @@ $(HOST_BUILD)/test_species_change_moves_gen4_sanitize: $(SPECIES_MOVES_GEN4_SOUR
 $(HOST_BUILD)/test_species_change_moves_gen5: tests/test_species_change_moves_gen5.cpp $(SPECIES_MOVES_DEPS) \
 	include/Integration/Gen5/Gen5SharedScreenState.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 $(HOST_BUILD)/test_species_change_moves_gen5_sanitize: tests/test_species_change_moves_gen5.cpp $(SPECIES_MOVES_DEPS) \
 	include/Integration/Gen5/Gen5SharedScreenState.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+
+# Round 11 (owner H25 / H28 / H07): shared species-change history, move and Create required-field policy.
+$(HOST_BUILD)/test_species_change_history_policy: tests/test_species_change_history_policy.cpp $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_species_change_history_policy.cpp -o $@
+$(HOST_BUILD)/test_species_change_history_policy_sanitize: tests/test_species_change_history_policy.cpp $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_history_policy.cpp -o $@

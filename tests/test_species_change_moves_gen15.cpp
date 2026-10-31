@@ -1,6 +1,11 @@
-// R2-BUG-004: a species change resets all four moves to the new species' native moves.
-// Part 1 of the host coverage (data, algorithm, all 20 Gen I-V games, apply-path contracts).
-// The per-generation record round trips are tests/test_species_change_moves_gen1.cpp ... _gen5.cpp.
+// Species change and Create moves, Gen I-V. Part 1 of the host coverage: the native level-up data
+// and algorithm for all 20 Gen I-V games (kept as table tests: the R2-BUG-004 data stays correct and
+// pinned), the shared keep-learnable policy, and the apply-path contracts. Round 11 (owner H28 /
+// Extra 5 / Extra 6) replaced the round 3 refill: no editor fills moves in any more -- a new Create
+// draft starts blank and a species change keeps only usable moves, never adding one -- and every
+// Keep/Add asks the shared CreateRequiredFields rule. The per-generation record round trips are
+// tests/test_species_change_moves_gen1.cpp ... _gen5.cpp; the pure policies are
+// tests/test_species_change_history_policy.cpp.
 //
 // Sources behind the data (tools/gen_levelup_learnsets15.py, cross-checked at generation):
 // pret pokered / pokeyellow / pokegold / pokecrystal / pokeruby / pokeemerald / pokefirered and
@@ -8,6 +13,7 @@
 #include "Pokemon/SpeciesMoveDefaults.h"
 #include "UI/SpeciesChangeMoves.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -175,7 +181,7 @@ void knownNativeMovesets() {
     // pokeyellow / pokered base_stats/pikachu.asm: THUNDERSHOCK (84), GROWL (45).
     // base_stats/fearow.asm: PECK (64), GROWL (45), LEER (43); evos_moves Fearow learns LEER at 9.
     for (const T t : {T::Yellow, T::RedBlue}) {
-        require(moves(t, 25, 5) == (std::array<uint16_t, 4>{84, 45, 0, 0}), "Gen I Pikachu Lv5 = Create default");
+        require(moves(t, 25, 5) == (std::array<uint16_t, 4>{84, 45, 0, 0}), "Gen I Pikachu Lv5 native level-up moves");
         require(moves(t, 22, 5) == (std::array<uint16_t, 4>{64, 45, 43, 0}), "Gen I Fearow Lv5: Peck, Growl, Leer");
     }
     // Yellow differs from Red/Blue: Pikachu learns TAIL_WHIP at 6 in Yellow (RB: THUNDER_WAVE 9).
@@ -199,148 +205,155 @@ void knownNativeMovesets() {
             "Rotom form falls back to the base learnset");
 }
 
-// The shared policy: base PP, no PP Ups, empty slots without data, writers and stagers.
-struct FakeGen4 {
-    std::array<uint16_t, 4> moves{9, 9, 9, 9};
-    int refuseAt = -1;
-    bool setMove(std::size_t slot, uint16_t move) {
-        if (static_cast<int>(slot) == refuseAt) return false;
-        moves[slot] = move;
-        return true;
-    }
-};
-enum class FakeField { Move, Ups, PP };
-struct FakeGen5 {
-    std::vector<std::tuple<FakeField, std::size_t, uint32_t>> log;
-    bool stage(FakeField f, std::size_t slot, uint32_t value, std::string&) {
-        log.emplace_back(f, slot, value);
-        return true;
-    }
-};
-struct FakeEdit {
-    std::optional<std::array<uint8_t, 4>> moves, pp, ppUps;
-};
-
+// The shared policy over real data: an old moveset (Pikachu's native Lv 30 moves) changed to a
+// species that shares only some of them keeps exactly those, never one of the new species' own.
 void sharedPolicy() {
-    const auto basePP = [](uint16_t move) { return static_cast<uint8_t>(move % 40 + 5); };
-    const auto s = R::forSpecies(T::Yellow, 22, 0, 5, basePP);
-    require(s.known && s.moves == (std::array<uint16_t, 4>{64, 45, 43, 0}), "slots for Fearow");
-    require(s.pp == (std::array<uint8_t, 4>{basePP(64), basePP(45), basePP(43), 0}), "base PP, empty slot 0 PP");
-    require(s.ppUps == (std::array<uint8_t, 4>{}), "PP Ups 0");
-    const auto none = R::forSpecies(T::Count, 22, 0, 5, basePP);
-    require(!none.known && none.moves == (std::array<uint16_t, 4>{}) && none.pp == (std::array<uint8_t, 4>{}),
-            "no table: all four slots empty, never kept");
-
-    std::array<uint8_t, 4> m8{1, 2, 3, 4}, pp{9, 9, 9, 9}, ups{3, 3, 3, 3};
-    R::writeArrays(s, m8, pp, ups);
-    require(m8 == (std::array<uint8_t, 4>{64, 45, 43, 0}) && ups == (std::array<uint8_t, 4>{}) &&
-            pp[3] == 0, "array writer replaces every slot");
-    std::array<uint16_t, 4> m16{1, 2, 3, 4};
-    require(R::refreshArrays(T::Count, 22, 0, 5, basePP, m16, pp, ups) == false &&
-            m16 == (std::array<uint16_t, 4>{}), "refreshArrays without data clears the old moves");
-
-    FakeEdit edit;
-    R::writeEdit(s, edit);
-    require(edit.moves && edit.pp && edit.ppUps && (*edit.moves)[0] == 64 && (*edit.ppUps)[0] == 0,
-            "edit request carries all three arrays");
-
-    FakeGen4 g4;
-    require(R::setMoves(g4, s) && g4.moves == s.moves, "Gen IV writer sets all four slots, slot 4 empty");
-    FakeGen4 refusing;
-    refusing.refuseAt = 2;
-    require(!R::setMoves(refusing, s), "Gen IV writer reports a refusal (caller rolls back)");
-
-    FakeGen5 g5;
-    std::string error;
-    require(R::stageMoves<FakeField::Move, FakeField::Ups, FakeField::PP>(g5, s, error), "Gen V stager");
-    require(g5.log.size() == 12, "Gen V: three stages per slot");
-    for (std::size_t slot = 0; slot < 4; ++slot) {
-        const auto& [f0, s0, v0] = g5.log[slot * 3];
-        const auto& [f1, s1, v1] = g5.log[slot * 3 + 1];
-        const auto& [f2, s2, v2] = g5.log[slot * 3 + 2];
-        require(f0 == FakeField::Move && f1 == FakeField::Ups && f2 == FakeField::PP &&
-                s0 == slot && s1 == slot && s2 == slot, "Gen V replay order Move, PP Ups, PP");
-        require(v0 == s.moves[slot] && v1 == 0 && v2 == s.pp[slot], "Gen V staged values");
-    }
+    const auto pikachu = moves(T::Crystal, 25, 30);
+    const auto raichuOwn = moves(T::Crystal, 26, 30);
+    const std::array<uint8_t, 4> pp{11, 12, 13, 14}, ups{1, 2, 3, 0};
+    const std::set<uint16_t> learns{pikachu[1], pikachu[3]};
+    const auto s = R::keepLearnable(pikachu, pp, ups, [&](uint16_t m) { return learns.count(m) != 0; });
+    require(s.moves == (std::array<uint16_t, 4>{pikachu[1], pikachu[3], 0, 0}) &&
+            s.pp == (std::array<uint8_t, 4>{12, 14, 0, 0}) && s.ppUps == (std::array<uint8_t, 4>{2, 0, 0, 0}),
+            "only the learnable old moves stay, with their own PP / PP Ups, moved up");
+    for (const auto m : raichuOwn)
+        if (m && std::find(pikachu.begin(), pikachu.end(), m) == pikachu.end())
+            require(std::find(s.moves.begin(), s.moves.end(), m) == s.moves.end(), "no new species' default is added");
+    std::array<uint16_t, 4> blank{};
+    std::array<uint8_t, 4> zero{};
+    R::refreshArrays(blank, zero, zero, [](uint16_t) { return true; });
+    require(blank == (std::array<uint16_t, 4>{}), "a blank draft stays blank");
 }
 
-// The five apply paths call the shared policy, and only on a real species change.
+// The five apply paths call the shared keep-learnable policy only on a real species change, no
+// editor fills moves in, and every Keep/Add entry asks the shared required-fields rule.
 void applyPathContracts() {
     const auto gen1 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
     const auto g1 = functionBody(gen1, "bool ux3ApplySpeciesPicker(TrainerViewScreen& screen)");
-    require(g1.find("Moves stay intact") == std::string::npos, "Gen I no longer keeps the old moves");
-    require(g1.find("writeArrays(\n                ux3SpeciesChangeMoves(screen, species, state.draft.level)") != std::string::npos,
-            "Gen I Add draft refreshes moves");
-    require(g1.find("writeEdit(\n                ux3SpeciesChangeMoves(screen, species, *edit.level), edit)") != std::string::npos,
-            "Gen I Edit refreshes moves");
+    require(g1.find("writeArrays(\n                ux3SpeciesChangeMoves(screen, species, state.draft.moves, state.draft.pp, state.draft.ppUps)") != std::string::npos,
+            "Gen I Add draft keeps its own usable moves");
+    require(g1.find("writeEdit(\n                ux3SpeciesChangeMoves(screen, species, pokemon->moves, pokemon->pp, pokemon->ppUps), edit)") != std::string::npos,
+            "Gen I Edit keeps the record's own usable moves");
+    require(g1.find("CreateRequiredFields::forEdit(pokemon->moves, *edit.moves).move") < g1.find("ux2CommitEdit("),
+            "Gen I Edit refuses (before staging) a change that leaves no move");
     const auto g1Helper = functionBody(gen1, "PokeBank::UIModel::SpeciesMoveDefaults::Slots ux3SpeciesChangeMoves(");
-    require(g1Helper.find("SpeciesMoveDefaults::gen1(editor(screen), species, level)") != std::string::npos,
+    require(g1Helper.find("SpeciesMoveDefaults::gen1(editor(screen), species, moves, pp, ppUps)") != std::string::npos,
             "Gen I ux3 uses the one Gen I binding");
     const auto gen1Binding = read("include/UI/Gen1SpeciesChangeMoves.h");
-    require(gen1Binding.find("SourceGame::Yellow") != std::string::npos &&
-            gen1Binding.find("levelUpTableGen1(yellow)") != std::string::npos &&
-            gen1Binding.find("StagedPokemonEditor::moveBasePP(move)") != std::string::npos,
-            "Gen I binding: Yellow vs Red/Blue table, Gen I base PP");
+    require(gen1Binding.find("MoveCompatibility::canLearnMove(game, species, move)") != std::string::npos &&
+            gen1Binding.find("keepLearnable(") != std::string::npos,
+            "Gen I binding: exact-game Gen I compatibility, keep-learnable");
     // Every other Gen I species-apply path (QA CG19) goes through the same binding, only on a real change.
     const auto cleanup2 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc");
     const auto ux2 = functionBody(cleanup2, "bool ux2ApplySpeciesPicker(TrainerViewScreen& screen)");
-    require(ux2.find("if (selected != state.draft.species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.level)") != std::string::npos &&
-            ux2.find("if (pokemon && selected != pokemon->species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->level), edit);") != std::string::npos,
-            "Gen I ux2ApplySpeciesPicker refreshes moves (Add and Edit)");
+    require(ux2.find("if (selected != state.draft.species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.moves, state.draft.pp, state.draft.ppUps)") != std::string::npos &&
+            ux2.find("if (pokemon && selected != pokemon->species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);") != std::string::npos,
+            "Gen I ux2ApplySpeciesPicker keeps usable moves (Add and Edit)");
     for (const char* path : {"src/UI/Gen1PokemonEditorOverlayUX.inc", "src/UI/Gen1PokemonEditorOverlay.cpp"}) {
         const auto text = read(path);
         const auto apply = functionBody(text, "bool applyPicker(TrainerViewScreen& screen)");
-        require(apply.find("if (species != state.draft.species)\n                PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(\n                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.level),") != std::string::npos &&
-                apply.find("if (*edit.species != pokemon->species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(\n                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->level), edit);") != std::string::npos,
-                std::string(path) + " applyPicker refreshes moves (Add and Edit)");
+        require(apply.find("if (species != state.draft.species)\n                PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(\n                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.moves, state.draft.pp, state.draft.ppUps),") != std::string::npos &&
+                apply.find("if (*edit.species != pokemon->species)\n            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(\n                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);") != std::string::npos,
+                std::string(path) + " applyPicker keeps usable moves (Add and Edit)");
     }
-    // Both Gen I refreshes sit inside the species-changed branches.
+    // Both Gen I updates sit inside the species-changed branches.
     require(g1.find("if (species != state.draft.species) {") < g1.find("writeArrays(") &&
             g1.find("if (species != pokemon->species) {") < g1.find("writeEdit("), "Gen I: same species changes nothing");
 
     const auto gen2 = read("include/UI/Gen2PokemonSession.h");
     const auto g2 = functionBody(gen2, "bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept");
     require(g2.find("if (species == working.species) return true;") < g2.find("SpeciesMoveDefaults::refreshArrays("),
-            "Gen II: same species returns before the refresh");
-    require(g2.find("gen2MoveBasePP(move)") != std::string::npos && g2.find("levelUpTableGen2(") != std::string::npos,
-            "Gen II: Gold/Silver vs Crystal table, Gen II base PP");
+            "Gen II: same species returns before the update");
+    require(g2.find("Gen2::MoveCompatibility::canLearnMove(*game, species, move)") != std::string::npos &&
+            g2.find("SpeciesChangeHistoryPolicy::reconcile(") != std::string::npos,
+            "Gen II: exact-game compatibility and the shared history policy");
 
     const auto gen3 = read("include/UI/Gen3SharedPokemonSession.h");
     const auto g3 = functionBody(gen3, "bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept");
     require(g3.find("if (species == working.species) return true;") < g3.find("SpeciesMoveDefaults::refreshArrays("),
-            "Gen III: same species returns before the refresh");
-    require(g3.find("gen3VersionForSourceId(sourceGameId, working.originGame)") != std::string::npos,
-            "Gen III: exact game (FireRed / LeafGreen / Emerald / Ruby / Sapphire)");
+            "Gen III: same species returns before the update");
+    require(g3.find("exactGame(sourceGameId, working.originGame)") != std::string::npos &&
+            g3.find("SpeciesChangeHistoryPolicy::reconcile(") != std::string::npos,
+            "Gen III: exact game (source id, else origin) and the shared history policy");
     const auto gen3Surface = read("src/UI/Gen3SharedPokemonSurface.inc");
-    require(gen3Surface.find("state.session.setSpecies(state.speciesPreview, screen.sourceGameId)") != std::string::npos,
-            "Gen III picker applies through Session::setSpecies with the exact source id");
+    require(gen3Surface.find("state.session.setSpecies(state.speciesPreview, screen.sourceGameId)") != std::string::npos &&
+            gen3Surface.find("SpeciesChangeHistoryPolicy::kChooseEncounterStatus") != std::string::npos &&
+            gen3Surface.find("state.session.noteMetLocationChosen();") != std::string::npos,
+            "Gen III picker applies through Session::setSpecies; the Met picker records the choice");
 
     const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
     const auto g4 = functionBody(gen4, "bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget target,");
-    require(g4.find("if (ok && value != previousSpecies) {") < g4.find("PokeBank::UIModel::SpeciesMoveDefaults::setMoves(*state.session.working"),
-            "Gen IV: refresh only on a real species change");
-    require(g4.find("PokeBank::UIModel::SpeciesMoveDefaults::setMoves(") < g4.find("if (!ok) {\n            auto restored"),
-            "Gen IV: a refused move write rolls the whole draft back");
+    require(g4.find("state.session.changeSpecies(value, state.speciesPreviewShiny, screen.sourceGameId,") != std::string::npos,
+            "Gen IV picker applies through Session::changeSpecies");
     require(g4.find("Could not reconcile Species/Shiny while preserving PID-linked traits") != std::string::npos,
             "Gen IV rollback message kept");
+    const auto gen4Session = read("include/UI/Gen4SharedPokemonSession.h");
+    const auto g4s = functionBody(gen4Session, "bool changeSpecies(uint16_t value, bool shinyWanted, std::string_view exactGameId,");
+    require(g4s.find("if (ok && value != previousSpecies) {") < g4s.find("SpeciesMoveDefaults::setMoves(*working,") &&
+            g4s.find("SpeciesChangeHistoryPolicy") != std::string::npos,
+            "Gen IV: moves and history only on a real species change");
+    require(g4s.find("SpeciesMoveDefaults::setMoves(") < g4s.find("if (!ok) {\n            auto restored"),
+            "Gen IV: a refused write rolls the whole draft back");
 
     const auto gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
     const auto g5 = functionBody(gen5, "static bool applySpecies(TrainerViewScreen& screen, EditorSurface::EditorState& state,");
-    require(g5.find("PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,") != std::string::npos,
-            "Gen V edit stages the new moves on the probe in replay order");
-    require(g5.find("if (species != p.species()) {\n            // R2-BUG-004") != std::string::npos,
-            "Gen V: refresh only on a real species change");
+    require(g5.find("PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,\n                    PokeVault::Integration::Gen5::speciesChangeMoves5(screen.sourceGameId, species, 0, p), error)") != std::string::npos,
+            "Gen V edit stages the kept moves on the probe in replay order");
+    require(g5.find("if (species != p.species()) {\n            // Round 11") != std::string::npos,
+            "Gen V: update only on a real species change");
     require(g5.find("backendState.recreateCreateSpecies(") != std::string::npos &&
             g5.find("backendState.speciesRefusal(species)") != std::string::npos, "Gen V pinned calls kept");
     const auto gen5State = read("include/Integration/Gen5/Gen5SharedScreenState.h");
-    const auto rebuild = functionBody(gen5State, "[[nodiscard]] bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,");
-    require(rebuild.find("if(species!=p->species()) {") < rebuild.find("PokeBank::Moves::defaultMoves("),
-            "Gen V Create rebuild: new species gets native moves; same species keeps the draft's");
+    const auto rebuild = functionBody(gen5State, "                                             bool& encounterReset)");
+    require(rebuild.find("if(species!=p->species()) {") < rebuild.find("speciesChangeMoves5("),
+            "Gen V Create rebuild: a new species keeps only usable moves; same species keeps the draft's");
+    const auto keepWith = functionBody(gen5State, "[[nodiscard]] bool keepWithPresentation(Workspace& workspace,");
+    require(keepWith.find("missingRequiredFields()") < keepWith.find("if(createPending_ && !draft_.dirty())"),
+            "Gen V Keep asks the shared required-fields rule first");
 
-    // Gen I Create default is untouched (and equals the native default above).
+    // No editor fills moves in: no UI path calls the native default-moveset helpers any more.
+    for (const char* path : {"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
+                             "src/UI/Gen1PokemonEditorOverlayUX.inc", "src/UI/Gen1PokemonEditorOverlay.cpp",
+                             "src/UI/Gen2PokemonEditorFoundation.inc", "include/UI/Gen2PokemonSession.h",
+                             "include/UI/Gen3SharedPokemonSession.h", "src/UI/Gen4SharedPokemonSurface.inc",
+                             "include/UI/Gen4SharedPokemonSession.h", "src/UI/Gen5SharedReadOnlySurface.inc",
+                             "include/Integration/Gen5/Gen5SharedScreenState.h", "include/UI/Gen1SpeciesChangeMoves.h",
+                             "include/UI/SpeciesChangeMoves.h"}) {
+        const auto text = read(path);
+        for (const char* banned : {"defaultMoves(", "forSpecies(", "seedNativeMoves", "kSharedCreateMove"})
+            require(text.find(banned) == std::string::npos, std::string(path) + " never auto-fills moves (" + banned + ")");
+    }
+
+    // A new Create draft starts with no moves in every generation (Gen III / IV never had any).
     const auto gen1Editor = read("include/Integration/Gen1/Gen1StagedPokemonEditor.h");
-    require(gen1Editor.find("std::array<uint8_t,4> moves{84,45,0,0}, pp{30,40,0,0}") != std::string::npos,
-            "Gen I Pikachu Lv5 Create default kept");
+    require(gen1Editor.find("std::array<uint8_t,4> moves{}, pp{}, ppUps{}, dvs{};") != std::string::npos,
+            "Gen I Create default has no moves");
+    require(gen5State.find("r.moves={};\n        r.draftWithoutMoves=true;") != std::string::npos,
+            "Gen V Create default has no moves");
+
+    // Every Keep/Add entry consults the shared required-fields rule before staging.
+    const auto ux2Add = functionBody(cleanup2, "bool ux2StageAdd(TrainerViewScreen& screen)");
+    require(ux2Add.find("CreateRequiredFields::forCreate(1, false, state.draft.moves)") < ux2Add.find("e->stageAdd("),
+            "Gen I ux2/ux3 Stage Add");
+    const auto uxAdd = functionBody(read("src/UI/Gen1PokemonEditorOverlayUX.inc"), "bool stageAdd(TrainerViewScreen& screen)");
+    require(uxAdd.find("CreateRequiredFields::forCreate(1, false, state.draft.moves)") < uxAdd.find("e->stageAdd("),
+            "Gen I older overlay Stage Add");
+    const auto overlay = read("src/UI/Gen1PokemonEditorOverlay.cpp");
+    require(overlay.find("CreateRequiredFields::forCreate(1, false, state.draft.moves)") < overlay.find("if (!e->stageAdd("),
+            "Gen I oldest overlay Add");
+    const auto legacyGen2 = functionBody(read("src/UI/TrainerViewScreenGSCOverlay.inc"), "bool stageAddPokemon(TrainerViewScreen& screen, int box)");
+    require(legacyGen2.find("CreateRequiredFields::forCreate(2, false, create.moves)") < legacyGen2.find("stageAddBoxPokemon("),
+            "Gen II legacy prompt Add");
+    for (const auto& [text, fn] : {std::pair{gen2, std::string("bool add(Gen2::StagedEditor& editor,size_t box,size_t& slot,std::string& error)")},
+                                   std::pair{gen2, std::string("bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error,bool party=false)")},
+                                   std::pair{gen3, std::string("bool add(Gen3::StagedPokemonEditor& editor, std::size_t box, std::size_t slot,")},
+                                   std::pair{gen3, std::string("bool keep(Gen3::StagedPokemonEditor& editor, std::size_t box, std::size_t slot,")},
+                                   std::pair{gen4Session, std::string("bool keepCreate(Gen4::Gen4StagedPokemonEditor& editor,")},
+                                   std::pair{gen4Session, std::string("bool keep(Gen4::Gen4StagedPokemonEditor& editor,")},
+                                   std::pair{gen4Session, std::string("bool keepParty(Gen4::Gen4StagedPokemonEditor& editor,")}}) {
+        const auto body = functionBody(text, fn);
+        require(body.find("missingRequiredFields(") != std::string::npos, fn + " asks the required-fields rule");
+    }
 }
 
 } // namespace
@@ -352,7 +365,7 @@ int main() {
     sharedPolicy();
     applyPathContracts();
     require(failures == 0, "all species-change move checks");
-    std::cout << "Species change resets moves (R2-BUG-004): 20 games, 13 native tables, every species x "
-                 "level 1-100 vs PKHeX SetEncounterMoves, five apply paths: PASS\n";
+    std::cout << "Species change moves: 20 games, 13 native tables, every species x level 1-100 vs PKHeX "
+                 "SetEncounterMoves; keep-learnable policy; five apply paths, no auto-fill, required fields: PASS\n";
     return 0;
 }

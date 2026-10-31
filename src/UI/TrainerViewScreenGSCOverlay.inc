@@ -1,4 +1,5 @@
 #include "UI/ClassicSourceGuard.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
@@ -386,6 +387,11 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     if (!caught.accepted) return false;
     create.caughtData = static_cast<uint16_t>(caught.value);
 
+    // Round 11 shared Create rule (UI/CreateRequiredFields.h): never add a Pokemon with no move.
+    if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreate(2, false, create.moves); missing.any()) {
+        screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message(missing, "Add"), 300);
+        return false;
+    }
     std::size_t slot = 0;
     std::string error;
     if (!editor->stageAddBoxPokemon(static_cast<std::size_t>(box), create, slot, error)) {

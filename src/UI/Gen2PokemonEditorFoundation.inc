@@ -204,10 +204,9 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
     state.column = 0;
+    // Round 11 (owner H28 / Extra 5 / Extra 6): a new Pokemon starts with no moves in every
+    // generation; the user picks them, and Add refuses until one is chosen.
     state.working = defaultCreateRecord(*editor);
-    // A new Pokemon starts with its species' native level-up moves, like a species change during
-    // Create and Gen I / III-V Create (Pikachu Lv 5: Thunder Shock, Growl).
-    Rules::seedNativeMoves(state.working, screen.sourceGameId);
     state.begin(state.working, Mode::Create);
     state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
     state.crystalMetTime = 0;
@@ -312,6 +311,10 @@ bool stageCreate(TrainerViewScreen& screen) {
     if (!editor || state.mode != Mode::Create) return false;
     if (!movesAllowCommit(screen, state)) {
         screen.postStatus("Add blocked: correct red incompatible move rows first", 300);
+        return false;
+    }
+    if (const auto missing = state.missingRequiredFields(); !missing.empty()) {
+        screen.postStatus(missing, 300);
         return false;
     }
 
