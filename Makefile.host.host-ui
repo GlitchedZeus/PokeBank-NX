@@ -16,7 +16,7 @@ HOST_UI_EXCLUDED := src/main.cpp src/UI/UI.cpp src/UI/BackupSelectionScreen.cpp 
 	src/Utils/FileUtilities.cpp src/Utils/Keyboard.cpp src/Utils/PhysicalMoveAudit.cpp \
 	src/Integration/Gen3/PKSMGen3Adapter.cpp
 HOST_UI_APP_SOURCES := $(filter-out $(HOST_UI_EXCLUDED),$(shell find src -name '*.cpp' | sort))
-HOST_UI_INCLUDES := -Iinclude -Itests/host-ui
+HOST_UI_INCLUDES := -Iinclude -Itests/host-ui -Ivendor/PKSM-Core/memecrypto
 HOST_UI_APP_FLAGS := -std=c++20 -O1 -w -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST
 HOST_UI_DIR := $(HOST_BUILD)/host-ui
 HOST_UI_OBJECTS := $(patsubst src/%.cpp,$(HOST_UI_DIR)/obj/%.o,$(HOST_UI_APP_SOURCES))
@@ -36,10 +36,12 @@ $(HOST_UI_DIR)/asan/UI/TrainerViewScreenCompositeOverlay.o: HOST_UI_SANITIZE := 
 $(HOST_UI_DIR)/asan/%.o: src/%.cpp tests/host-ui/switch.h
 	@mkdir -p $(dir $@)
 	$(CXX) $(HOST_UI_APP_FLAGS) $(HOST_UI_SANITIZE) -w $(HOST_UI_INCLUDES) -c $< -o $@
-$(HOST_UI_ARCHIVE): $(HOST_UI_OBJECTS)
+# The vendored MemeCrypto C objects (Makefile.host.gen7) ride along: src/Integration/Gen7/Gen7Save.cpp
+# verifies SAV7 signatures with them, and the shared Modern layer reaches that parser from the app.
+$(HOST_UI_ARCHIVE): $(HOST_UI_OBJECTS) $(GEN7_MEME_OBJECTS)
 	@rm -f $@
 	ar rcs $@ $^
-$(HOST_UI_SANITIZE_ARCHIVE): $(HOST_UI_SANITIZE_OBJECTS)
+$(HOST_UI_SANITIZE_ARCHIVE): $(HOST_UI_SANITIZE_OBJECTS) $(GEN7_MEME_SANITIZE_OBJECTS)
 	@rm -f $@
 	ar rcs $@ $^
 
