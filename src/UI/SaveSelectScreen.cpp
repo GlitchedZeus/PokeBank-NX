@@ -2414,7 +2414,9 @@ namespace UI {
     void SaveSelectScreen::discoverGen4Candidates() {
         gen4Candidates.clear();
         gen4Instances.clear();
-        auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
+        auto discovered = PokeVault::Integration::Gen4::discoverKnownSources(
+            {}, "sdmc:/retroarch/retroarch.cfg", "sdmc:/retroarch/cores/savefiles",
+            gen4TargetGameId == linkTargetGameId ? linkProviderFilter : std::string{});
         size_t wrappers = 0;
         size_t savestates = 0;
         std::string rememberedDiagnostic;
@@ -2422,7 +2424,10 @@ namespace UI {
         auto appendReady = [&](PokeVault::Integration::Gen4::SourceCandidate candidate,
                                bool rememberedSource = false) {
             if (!candidate.ready() ||
-                !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+                !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId) ||
+                (gen4TargetGameId == linkTargetGameId && !linkProviderFilter.empty() &&
+                 !PokeBank::UIModel::LinkEmulator::providerMatches(
+                     candidate.sourceType, linkProviderFilter)))
                 return;
             auto instance = PokeVault::Integration::Gen4::toSaveInstance(
                 candidate, gen4TargetGameId, gen4Candidates.size(), rememberedSource,
@@ -2658,7 +2663,9 @@ namespace UI {
             gen5Instances,gen5CandidateIndex);
         gen5Instances.clear();
         gen5CandidateTouchScroll.stop();
-        const auto discovered=PokeVault::Integration::Gen5::discoverKnownSources();
+        const auto discovered=PokeVault::Integration::Gen5::discoverKnownSources(
+            {}, "sdmc:/retroarch/retroarch.cfg", "sdmc:/retroarch/cores/savefiles",
+            gen5TargetGameId == linkTargetGameId ? linkProviderFilter : std::string{});
         std::vector<PokeVault::Source::SaveInstance> rows=discovered.instances;
         // Preserve exact manually assigned paths outside known emulator roots,
         // but never accept an invalid, ambiguous, or replaced source as ready.
@@ -2700,6 +2707,12 @@ namespace UI {
             overlay=Overlay::Gen5Setup;
             return;
         }
+        if (gen5TargetGameId == linkTargetGameId && !linkProviderFilter.empty())
+            rows.erase(std::remove_if(rows.begin(), rows.end(),
+                [&](const auto& row) {
+                    return !PokeBank::UIModel::LinkEmulator::providerMatches(
+                        row.providerLabel, linkProviderFilter);
+                }), rows.end());
         const auto catalog=PokeVault::Integration::Gen5::forGameAndProfile(
             rows,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
         gen5Instances=catalog.rows;
@@ -3061,6 +3074,12 @@ namespace UI {
         } else if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ambiguous) {
             rememberedWarning = "Multiple remembered sources; explicitly choose a replacement.";
         }
+        if (gen5TargetGameId == linkTargetGameId && !linkProviderFilter.empty())
+            rows.erase(std::remove_if(rows.begin(), rows.end(),
+                [&](const auto& row) {
+                    return !PokeBank::UIModel::LinkEmulator::providerMatches(
+                        row.providerLabel, linkProviderFilter);
+                }), rows.end());
         const auto catalog = Modern::forGameAndProfile(rows, *legacyBindings, currentProfileIdentity(), gen5TargetGameId);
         gen5Instances = catalog.rows;
         logInfoToFile(gen + " scan: game=" + gen5TargetGameId +
