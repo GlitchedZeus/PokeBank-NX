@@ -3,12 +3,18 @@
 // Shared Create required-fields rule, Generation I-V (Round 11, owner H07 "this needs to be added
 // for all gens", H28, Extra 6 "universal rule").
 //
-// A new Pokemon cannot be added until it has what the native format and the games need:
-//  - a Met Location the user chose, in Gen III, IV and V (Gen V's H07 behaviour, now everywhere
-//    it applies). Gen I has no met data and Gold/Silver have none; Crystal's caught data stays
-//    optional because "no caught data" is native for a traded Pokemon. No field is invented.
-//  - at least one move, in every generation: a Pokemon with no move cannot act in battle. A new
-//    Create draft starts with no moves (the user picks them), so this is checked at Keep/Add.
+// A new Pokemon is not added until it has:
+//  - a Met Location the user explicitly CHOSE from the exact game's own list, in Gen III, IV and V
+//    (Gen V's H07 behaviour, now everywhere it applies). "Chosen" is a flag the Met Location picker
+//    sets, never "value != 0": a real native Pokemon can carry location 0 (Gen III R/S/E index 0)
+//    or a special / "----" / trade / event entry (Gen IV / V). Gen I has no met data and
+//    Gold/Silver have none; Crystal's caught data stays optional because "no caught data" is
+//    native for a traded Pokemon. No field is invented.
+//  - at least one move, in every generation. This is a PokeBank APP POLICY, not a legality or
+//    native-format rule: the formats store a moveless Pokemon without complaint, but PokeBank wants
+//    every Pokemon it adds to be usable in battle. A new Create draft starts with no moves (the
+//    user picks them), so this is checked at Keep/Add, and the message only asks for a choice; it
+//    never calls the Pokemon illegal.
 // There is deliberately NO move-count or "moves for this level" rule: the games generate up to
 // four level-up moves and nothing limits a level 100 Pokemon to one or two.
 //
@@ -54,7 +60,8 @@ template <class Before, class After>
 }
 
 // One status naming everything missing, e.g. "Choose a Met Location and at least one move before Keep".
-// Empty when nothing is missing. `action` is the generation's own commit word ("Keep" / "Add").
+// Empty when nothing is missing. The wording asks for a choice (app policy / required native
+// field); it never implies the Pokemon is illegal. `action` is the generation's own commit word ("Keep" / "Add").
 [[nodiscard]] inline std::string message(Missing missing, std::string_view action = "Keep") {
     if (!missing.any()) return {};
     std::string text = "Choose ";

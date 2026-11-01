@@ -60,7 +60,10 @@ struct SpecialBlock {
     static constexpr int kSpDValueX = 272;    // its number
 };
 struct DataRow { std::string label, value; };
-inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {
+// `caution`: Round 11 (owner H25 clarification 2) history flags for an existing Crystal Pokemon
+// whose species changed (Session::historyFlags, joined); shown right under "Met", never a change.
+inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game,
+                                     const std::string& caution = {}) {
     const auto* personal = G::personalRecord(p.species);
     const auto next = personal && p.level < 100 ? Pokemon::getExpForLevel(p.level + 1, personal->experienceGrowth) : p.experience;
     std::vector<DataRow> rows{
@@ -77,6 +80,7 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
         rows.push_back({"Caught history", game == G::SourceGame::Crystal
             ? "Crystal caught data" : "Retained Crystal data"});
         rows.push_back({"Met", Gen2Native::crystalCaughtLocationName(caught.location)});
+        if (!caution.empty()) rows.push_back({"Caution", caution});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
@@ -103,8 +107,9 @@ namespace UI::Gen2WorkspacePresentation {
 // Sibling native-data and graph panels use the accepted Gen I split composition.
 // Values also exposes the editable Held Item / Friendship / Pokerus capabilities.
 inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
-    const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game) {
-    auto rows = PokeBank::UIModel::Gen2Workspace::dataRows(p, game);
+    const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game,
+    const std::string& caution = {}) {
+    auto rows = PokeBank::UIModel::Gen2Workspace::dataRows(p, game, caution);
     // The accepted shared legacy layer gives this sibling panel only 260 px.
     // When genuine caught history is present, prioritize those record bytes over
     // auxiliary party HP/status here. The final 1280x720 hardware surface is

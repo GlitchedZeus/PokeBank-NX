@@ -689,6 +689,11 @@ void runVersion(Matrix& m, const VersionSpec& v) {
                  "Create kept without a Met Location / move: " + err);
         bool met = false;
         for (uint16_t id = 1; id < 300 && !met; ++id) met = session.working->setMetLocation(id);
+        // Round 11 follow-up (updated): Create needs the picker's explicit choice (the chosen flag),
+        // never just a non-zero value; the Met Location picker records it as it applies the row.
+        p.expect(!session.keepCreate(*editor, 0, 1, err) && err == "Choose a Met Location and at least one move before Keep",
+                 "a Met Location value the picker did not apply is not a choice: " + err);
+        session.noteMetLocationChosen();
         p.expect(met && session.working->setMove(0, 84), "choose a native Met Location and Thunder Shock");
         p.expect(session.keepCreate(*editor, 0, 1, err), "keepCreate: " + err);
         const auto created = editor->boxedPokemon(0, 1, &err);

@@ -210,12 +210,22 @@ int main() {
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
     contains(surface, "Encounter::forGameSpeciesWithGen3Provenance");
-    contains(surface, "EncounterPicker::rowValues");
+    // Round 11 follow-up (updated pins): the Met Location picker's model and apply moved out of the
+    // surface into Session::metLocationPicker / applyMetLocationRow (Gen3SharedPokemonSession.h) and
+    // the row text into Gen3EncounterPickerModel.h rowText, so the explicit-choice rule and the
+    // verified / unverified labels are unit-tested (tests/test_species_change_moves_gen3.cpp). The
+    // surface calls them; the pinned code is checked where it now lives.
+    const auto metModel = surface + read("include/UI/Gen3SharedPokemonSession.h") +
+                          read("include/UI/Gen3EncounterPickerModel.h");
+    contains(surface, "state.session.metLocationPicker()");
+    contains(surface, "state.session.applyMetLocationRow(picker, value, applied)");
+    contains(surface, "EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,");
+    contains(metModel, "Gen3EncounterPicker::rowValuesWithNative(");
     contains(surface, "EncounterPicker::selectedRow");
-    contains(surface, "EncounterPicker::choiceAt");
+    contains(metModel, "Gen3EncounterPicker::choiceAt");
     contains(surface, "forGameSpeciesWithGen3Provenance");
     contains(surface, "Encounter origin");
-    contains(surface, "met as ");
+    contains(metModel, "met as ");
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
     // Round 11 FRLG (owner Extra 2): the picker no longer fails closed when the exact game has no
     // catch template for the species (Rayquaza / Charizard in FireRed). Deliberately updated: the
@@ -223,10 +233,10 @@ int main() {
     // origin-game templates plus every other native location (Kanto for FR/LG), honestly labelled.
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") == std::string::npos);
     contains(surface, "EncounterPicker::templatesForOrigin(");
-    contains(surface, "EncounterPicker::rowValuesWithNative(");
+    contains(metModel, "Gen3EncounterPicker::rowValuesWithNative(picker.choices, working.metLocation, working.originGame)");
     contains(surface, "EncounterPicker::selectedRowWithNative(");
-    contains(surface, "MetRows::isOtherNativeRow(value)");
-    contains(surface, "MetRows::gen3OtherDetail(");
+    contains(metModel, "ExactGameMetLocations::isOtherNativeRow(row)");
+    contains(metModel, "MetRows::gen3OtherDetail(");
     {
         // The Met Location picker, Met Level row and Encounter origin text read the RECORD's origin
         // game, never the save's (a Ruby-origin Pokemon in a FireRed save is not offered Kanto rows).
@@ -235,7 +245,12 @@ int main() {
         const auto openEnd = surface.find("} else if (target == PickerTarget::Nature) {", open);
         const std::string body = surface.substr(open, openEnd - open);
         assert(body.find("screen.sourceGameId") == std::string::npos);
-        assert(body.find("state.session.working.originGame") != std::string::npos);
+        assert(body.find("state.session.metLocationPicker()") != std::string::npos);
+        // ... whose model reads the record's own origin game (Session::metLocationPicker).
+        const auto session = read("include/UI/Gen3SharedPokemonSession.h");
+        const auto model = session.substr(session.find("MetLocationPicker metLocationPicker() const {"));
+        assert(model.find("templatesForOrigin(working.originGame, working.species)") <
+               model.find("\n    }\n"));
         const auto origin = surface.find("std::string encounterOriginText(");
         const std::string originBody = surface.substr(origin, surface.find("\n}\n", origin) - origin);
         assert(originBody.find("screen.sourceGameId") == std::string::npos);
@@ -243,7 +258,7 @@ int main() {
     }
     contains(surface, "Met Level for selected encounter");
     contains(surface, "Met Level (not a listed encounter)");
-    contains(surface, "state.session.setEncounterMetLevel(choice->encounter.minLevel)");
+    contains(metModel, "setEncounterMetLevel(choice->encounter.minLevel)");
     contains(surface, "state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value))");
     contains(surface, "only native Generation III ability");
     contains(surface, "normalizeEditableFocus(state");

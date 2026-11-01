@@ -276,10 +276,20 @@ void applyPathContracts() {
             g3.find("SpeciesChangeHistoryPolicy::reconcile(") != std::string::npos,
             "Gen III: exact game (source id, else origin) and the shared history policy");
     const auto gen3Surface = read("src/UI/Gen3SharedPokemonSurface.inc");
+    // Round 11 follow-up (updated pin): the Create reset status is now resetStatus() naming what was
+    // reset (Session::speciesChangeResetStatus), and every Met Location row -- template, other
+    // native location, marker, keep-stored -- is applied by Session::applyMetLocationRow, which
+    // records the explicit choice (the old pin only covered the template branch).
     require(gen3Surface.find("state.session.setSpecies(state.speciesPreview, screen.sourceGameId)") != std::string::npos &&
-            gen3Surface.find("SpeciesChangeHistoryPolicy::kChooseEncounterStatus") != std::string::npos &&
-            gen3Surface.find("state.session.noteMetLocationChosen();") != std::string::npos,
+            gen3Surface.find("state.session.speciesChangeResetStatus()") != std::string::npos &&
+            gen3Surface.find("state.session.applyMetLocationRow(picker, value, applied)") != std::string::npos,
             "Gen III picker applies through Session::setSpecies; the Met picker records the choice");
+    {
+        const auto apply = functionBody(gen3, "bool applyMetLocationRow(const MetLocationPicker& picker, uint16_t row,");
+        require(apply.find("noteMetLocationChosen();") != std::string::npos &&
+                apply.find("isOtherNativeRow(row)") < apply.find("noteMetLocationChosen();"),
+                "Gen III: every applied Met Location row (other native and markers too) is an explicit choice");
+    }
 
     const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
     const auto g4 = functionBody(gen4, "bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget target,");

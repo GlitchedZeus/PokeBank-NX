@@ -7,6 +7,7 @@
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "UI/CreateRequiredFields.h"
+#include "UI/HistoryConsistencyFacts.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/SpeciesChangeMoves.h"
@@ -45,7 +46,13 @@ struct Session {
     bool confirmExit = false;
     std::vector<std::byte> baselineEncrypted;
     std::array<uint16_t, 4> baselineMoves{};  // Edit: the moves the record had when the session began
+    uint16_t baselineSpecies = 0;              // Edit: the species the record had when the session began
     std::optional<Pokemon::Pokemon4Mutable> working;
+    // Round 11 follow-up (owner clarification 1): a Create draft's Met Location counts only once the
+    // user picked it from the exact game's own list (noteMetLocationChosen). The flag, never the
+    // value: 0 and the special / "----" entries are real stored values in Gen IV.
+    bool metLocationChosen = false;
+    bool pokerusCleared = false;               // the last Create species change cleared Pokerus
 
     bool begin(const Pokemon::Pokemon4ReadOnly& record,
                Enums::GameVersion group, Mode next, std::string& error) {
@@ -61,9 +68,12 @@ struct Session {
             record.originalEncryptedBytes().begin(),
             record.originalEncryptedBytes().end());
         baselineMoves = editable->moves();
+        baselineSpecies = editable->species();
         working = std::move(*editable);
         mode = next;
         confirmExit = false;
+        metLocationChosen = false;
+        pokerusCleared = false;
         return true;
     }
 
@@ -75,9 +85,12 @@ struct Session {
         }
         baselineEncrypted.clear(); // Empty native destination is the Create baseline.
         baselineMoves = {};
+        baselineSpecies = 0;
         working = std::move(draft);
         mode = Mode::Create;
         confirmExit = false;
+        metLocationChosen = false;
+        pokerusCleared = false;
         return true;
     }
 
@@ -122,8 +135,10 @@ struct Session {
     bool changeSpecies(uint16_t value, bool shinyWanted, std::string_view exactGameId,
                        Enums::GameVersion group, bool& encounterReset) {
         encounterReset = false;
+        pokerusCleared = false;
         if (!editable()) return false;
         const auto before = working->encryptedBytes();
+        const bool chosenBefore = metLocationChosen;
         const uint16_t previousSpecies = working->species();
         bool ok = working->setSpecies(value);
         if (ok && working->shiny() != shinyWanted) ok = working->setShiny(shinyWanted);
@@ -140,35 +155,56 @@ struct Session {
             const auto met = ok ? metLocationOf(*working, group) : std::nullopt;
             ok = ok && met.has_value();
             const auto decision = !ok ? History::Decision{} : History::reconcile(
-                creating() ? History::Mode::Create : History::Mode::Edit, met->location != 0, [&] {
+                creating() ? History::Mode::Create : History::Mode::Edit, metLocationChosen, [&] {
                     const PokeVault::Integration::EncounterContext45::Catalogue context(
                         met->origin, value, met->location, {}, {});
                     return context.wildRow(met->location) != nullptr ||
                            !::Names::specialMetLocation(met->origin, met->location).empty();
                 });
+            const bool hadPokerus = ok && working->pokerus() != 0;
             if (ok && decision.resetPokerus) ok = working->setPokerusMode(Pokemon::PokerusMode::None);
             if (ok && decision.resetMetLocation)
                 ok = working->setMetLocation(0) && working->setMetLevel(working->level());
             encounterReset = ok && decision.resetMetLocation;
+            pokerusCleared = ok && decision.resetPokerus && hadPokerus;
+            if (encounterReset) metLocationChosen = false;
         }
         if (!ok) {
             auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(before, group);
             if (restored) working = std::move(*restored);
             encounterReset = false;
+            pokerusCleared = false;
+            metLocationChosen = chosenBefore;
         }
         return ok;
     }
 
-    // The shared Round 11 rule (UI/CreateRequiredFields.h): a Create draft needs a chosen Met
-    // Location (never the 0 "not chosen" placeholder, which the Create picker does not offer) and
-    // at least one move; an Edit is refused only when this session took the last move away.
-    std::string missingRequiredFields(Enums::GameVersion group) const {
+    // The Met Location picker applied a location the user chose (Create only).
+    void noteMetLocationChosen() noexcept { if (creating()) metLocationChosen = true; }
+
+    // The status a Create species change posts: what it reset ("" when nothing was).
+    std::string speciesChangeResetStatus(bool encounterReset) const {
+        return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, encounterReset);
+    }
+
+    // Round 11 (owner clarification 2): an existing Pokemon whose species was changed in this
+    // session keeps its history; a combination that no longer fits is flagged, never cleared.
+    std::vector<std::string> historyFlags(Enums::GameVersion group) const {
+        if (mode != Mode::Edit || !working || working->species() == baselineSpecies) return {};
+        const auto met = metLocationOf(*working, group);
+        if (!met) return {};
+        return HistoryConsistency::gen45Flags(working->species(), met->origin, met->location,
+                                              working->metLevel(), working->level());
+    }
+
+    // The shared Round 11 rule (UI/CreateRequiredFields.h): a Create draft needs a Met Location the
+    // user explicitly chose from the exact game's list (the chosen flag, never "value != 0") and at
+    // least one move; an Edit is refused only when this session took the last move away.
+    std::string missingRequiredFields(Enums::GameVersion) const {
         namespace Required = PokeBank::UIModel::CreateRequiredFields;
         if (!working) return {};
-        if (creating()) {
-            const auto met = metLocationOf(*working, group);
-            return Required::message(Required::forCreate(4, met && met->location != 0, working->moves()));
-        }
+        if (creating())
+            return Required::message(Required::forCreate(4, metLocationChosen, working->moves()));
         if (mode == Mode::Edit) return Required::message(Required::forEdit(baselineMoves, working->moves()));
         return {};
     }
@@ -239,6 +275,9 @@ struct Session {
         confirmExit = false;
         baselineEncrypted.clear();
         baselineMoves = {};
+        baselineSpecies = 0;
+        metLocationChosen = false;
+        pokerusCleared = false;
         working.reset();
     }
 };

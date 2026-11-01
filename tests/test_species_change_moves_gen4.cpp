@@ -42,6 +42,7 @@ using PokeBank::UIModel::Gen4SharedEditor::Session;
 using PokeBank::UIModel::Gen4SharedEditor::Mode;
 
 namespace {
+int flaggedGames = 0;   // Round 11 follow-up: games where Pikachu -> Fearow was flagged
 
 void require(bool ok, const std::string& what) {
     if (!ok) std::cerr << "FAILED: " << what << '\n';
@@ -313,16 +314,36 @@ void run(Layout layout, uint8_t romCode, const char* id) {
 
     // Pikachu -> Fearow, Keep, Review, export -> strict reparse, byte scope.
     Session f;
-    f.mode = Mode::Edit;
+    std::string beginError;
+    require(f.begin(Pokemon::Pokemon4ReadOnly(mon.encryptedBytes(), group), group,
+                    Mode::Edit, beginError), "Edit session: " + beginError);
     f.baselineMoves = storedMoves;
-    f.working = mon;
     bool reset = false;
     require(f.changeSpecies(22, shiny, id, group, reset), "Pikachu -> Fearow");
+    // Round 11 follow-up (owner H25 clarification 2): the history is kept, and a misfit is flagged
+    // in the editor (Session::historyFlags -> the Caution data row) and in Review; never refused.
+    const uint8_t originGame = static_cast<uint8_t>(Pokemon::Pokemon4ReadOnly(mon.encryptedBytes(), group).originVersion());
+    const auto expectedFlags = PokeBank::UIModel::HistoryConsistency::gen45Flags(22, originGame, met, metLevel,
+                                                                                f.working->level());
+    require(f.historyFlags(group) == expectedFlags, std::string(id) + ": editor flags are the shared check's");
+    flaggedGames += !expectedFlags.empty();
     require(f.working->moves()[0] == 45 && f.working->pp()[0] == 33, "Fearow: Thunder Shock cleared, Growl kept with its PP");
     const auto fearow = *f.working;
     require(f.keep(*editor, 0, 0, error), std::string(id) + " keep: " + error);
     const auto review = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
     require(!review.empty(), "Review describes the changed slot");
+    {
+        const auto rows = PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor);
+        const auto caution = std::find_if(rows.begin(), rows.end(), [](const auto& row) {
+            return row.first == "Box 1 / Slot 1 / Caution";
+        });
+        if (expectedFlags.empty())
+            require(caution == rows.end(), std::string(id) + ": nothing flagged, no caution note");
+        else
+            require(caution != rows.end() &&
+                        caution->second == PokeBank::UIModel::HistoryConsistency::joined(expectedFlags),
+                    std::string(id) + ": Review carries the caution note");
+    }
     const auto out = editor->finalizedBytes(&error);
     require(!out.empty() && error.empty(), std::string(id) + " export: " + error);
     const auto sp = spec(layout);
@@ -341,6 +362,14 @@ void run(Layout layout, uint8_t romCode, const char* id) {
     require(back.moves() == fearow.moves() && back.pp() == fearow.pp() && back.ppUps() == fearow.ppUps(),
             "reparsed moves, PP, PP Ups");
     require(back.ivs() == ivs && back.evs() == evs, "reparsed IVs / EVs");
+    {
+        const Pokemon::Pokemon4ReadOnlyView view(back);
+        const uint16_t backMet = back.originVersion() == 7 || back.originVersion() == 8
+            ? back.metLocationExtended() : view.metLocation();
+        require(backMet == met && back.metLevel() == metLevel && back.pokerusState() == pokerus &&
+                    back.originVersion() == originGame,
+                std::string(id) + ": Edit species change kept Met Location / Level, Pokerus and origin through reparse");
+    }
     require(source == original, "source bytes never change");
     editor->discard();
 
@@ -358,6 +387,10 @@ void run(Layout layout, uint8_t romCode, const char* id) {
         if (!pikachuAt) break;
         require(c.working->setMetLocation(*pikachuAt) && c.working->setPokerusMode(Pokemon::PokerusMode::Infected),
                 "Pikachu met where wild Pikachu live, with Pokerus");
+        // Round 11 follow-up (updated): the picker records the explicit choice (the chosen flag, not
+        // "location != 0"); the draft's value alone no longer counts as chosen.
+        require(!c.metLocationChosen, "a value the picker did not apply is not a choice");
+        c.noteMetLocationChosen();
         bool arbokThere = false;
         for (const auto& entry : Context::kWild45)
             arbokThere |= entry.sourceGameId == id && (entry.species == 24 || entry.species == 23) &&
@@ -372,6 +405,12 @@ void run(Layout layout, uint8_t romCode, const char* id) {
         if (next == 26)
             require(!cleared && metLocation(*c.working, group) == *pikachuAt,
                     std::string(id) + ": a Pikachu location stays valid for Raichu");
+        // The reset is visible: the status names what was reset.
+        require(c.speciesChangeResetStatus(cleared) ==
+                    (cleared ? std::string("Species changed: Pokérus cleared and Met Location needs a new choice")
+                             : std::string("Species changed: Pokérus cleared")),
+                std::string(id) + " Create reset status: " + c.speciesChangeResetStatus(cleared));
+        require(c.metLocationChosen == !cleared, "a reset location must be chosen again");
         const auto reparsed = Pokemon::Pokemon4ReadOnly(c.working->encryptedBytes(), group);
         require(reparsed.valid() && !reparsed.empty() && reparsed.species() == next, "draft bytes reparse");
 
@@ -380,6 +419,7 @@ void run(Layout layout, uint8_t romCode, const char* id) {
             require(!c.keepCreate(*editor, 0, 1, error) &&
                     error == "Choose a Met Location and at least one move before Keep", std::string(id) + ": " + error);
             require(c.working->setMetLocation(*pikachuAt), "choose a location");
+            c.noteMetLocationChosen();
         }
         require(!c.keepCreate(*editor, 0, 1, error) && error == "Choose at least one move before Keep",
                 std::string(id) + ": " + error);
@@ -395,11 +435,13 @@ void run(Layout layout, uint8_t romCode, const char* id) {
 } // namespace
 
 int main() {
+    // Pikachu's fixture location must make at least one game's Fearow a flagged (suspect) case.
     run(Layout::DiamondPearl, 10, "diamond_nds");
     run(Layout::DiamondPearl, 11, "pearl_nds");
     run(Layout::Platinum, 12, "platinum_nds");
     run(Layout::HeartGoldSoulSilver, 7, "heartgold_nds");
     run(Layout::HeartGoldSoulSilver, 8, "soulsilver_nds");
+    require(flaggedGames > 0, "the H25 caution is exercised in at least one Gen IV game");
     std::cout << "Gen IV species change keeps usable moves, Create history reset and required fields (Diamond, "
                  "Pearl, Platinum, HeartGold, SoulSilver; keep, Review, export, reparse, byte scope): PASS\n";
     return 0;

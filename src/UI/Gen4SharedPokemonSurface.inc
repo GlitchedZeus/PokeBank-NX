@@ -769,8 +769,9 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
                 360);
             return false;
         }
-        if (encounterReset)
-            screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
+        // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
+        if (const auto reset = state.session.speciesChangeResetStatus(encounterReset); !reset.empty())
+            screen.postStatus(reset, 300);
     } else if (target == PickerTarget::HeldItem) {
         ok = state.session.working->setHeldItem(value);
     } else if (target == PickerTarget::Language) {
@@ -779,6 +780,8 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
         ok = state.session.working->setBall(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::MetLocation) {
         ok = state.session.working->setMetLocation(value);
+        // Round 11 follow-up: an explicit choice from the exact game's list (the flag, not != 0).
+        if (ok) state.session.noteMetLocationChosen();
     } else if (target == PickerTarget::Form) {
         ok = state.session.working->setForm(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::Pokerus) {
@@ -1363,17 +1366,15 @@ struct Gen4Editor {
             default: return false;
         }
     }
-    static std::string detailValue(const TrainerViewScreen& screen, const Surface::EditorState& state,
+    static std::string detailValue(const TrainerViewScreen&, const Surface::EditorState& state,
                                    const Record& p, int row) {
         const auto& s = gen4(state);
         if (row == 15 && s.session.working && s.session.working->formCount() <= 1)
             return std::string("Default (fixed)");
         Pokemon::Pokemon4ReadOnlyView view(p);
         // Round 11 (H07 for all gens): a new Pokemon's Met Location is not chosen until picked.
-        if (row == 13 && s.session.creating()) {
-            const auto met = PokeBank::UIModel::Gen4SharedEditor::metLocationOf(*s.session.working, family(screen));
-            if (met && met->location == 0) return std::string("Choose a location");
-        }
+        if (row == 13 && s.session.creating() && !s.session.metLocationChosen)
+            return std::string("Choose a location");
         return UI::Gen4SharedEditorSurface::detailValue(p, view, row);
     }
     static bool editDetail(TrainerViewScreen& screen, Surface::EditorState& state, int row,
@@ -1539,8 +1540,19 @@ struct Gen4Editor {
     static std::array<uint8_t,2> portraitTypes(const TrainerViewScreen&, const Record& raw) {
         return {{raw.personal().type1, raw.personal().type2}};
     }
+    // Accepting the stored location (no change staged) is still the user's explicit choice.
+    static void metLocationAccepted(TrainerViewScreen& screen) { stateFor(screen).session.noteMetLocationChosen(); }
     static std::vector<Surface::DataRow> dataRows(TrainerViewScreen& screen,
-                                                  const Surface::EditorState&, const Record& r) {
+                                                  const Surface::EditorState& state, const Record& r) {
+        auto rows = dataRowsWithoutCaution(screen, r);
+        // Round 11 (owner H25 clarification 2): an existing Pokemon whose species changed keeps its
+        // history; a misfit is a caution line right under "Met", never a change.
+        namespace History = PokeBank::UIModel::HistoryConsistency;
+        if (const auto caution = History::joined(gen4(state).session.historyFlags(family(screen))); !caution.empty())
+            rows.insert(rows.begin() + 5, {History::kCautionLabel, caution});
+        return rows;
+    }
+    static std::vector<Surface::DataRow> dataRowsWithoutCaution(TrainerViewScreen& screen, const Record& r) {
         const auto* raw = &r;
         Pokemon::Pokemon4ReadOnlyView view(r);
         return {

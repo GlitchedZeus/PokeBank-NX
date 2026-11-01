@@ -1,6 +1,7 @@
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "UI/HistoryConsistencyFacts.h"
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
@@ -703,6 +704,15 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             location+" "+label,oldValue,value,party});
     };
     field("Species",Names::getSpeciesName(before->species),Names::getSpeciesName(after->species));
+    // Round 11 (owner H25 clarification 2): the species changed and the record kept its own history;
+    // a misfit is one caution note on this entry (value alone, like a CG74 detail). Nothing is
+    // changed or refused because of it.
+    if(before->species!=after->species)
+        if(const auto caution=PokeBank::UIModel::HistoryConsistency::joined(
+               PokeBank::UIModel::HistoryConsistency::gen3Flags(after->species,after->originGame,
+                   after->metLocation,after->metLevel,after->level));!caution.empty())
+            changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
+                location+" "+PokeBank::UIModel::HistoryConsistency::kCautionLabel,"",caution,party,true});
     field("Nickname",before->nickname,after->nickname);
     field("OT Name",before->otName,after->otName);
     field("Trainer ID",std::to_string(before->tid),std::to_string(after->tid));

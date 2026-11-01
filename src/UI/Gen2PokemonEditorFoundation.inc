@@ -508,6 +508,9 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
+            // A Create reset is visible: the status names what was reset (Pokerus, caught data).
+            if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
+                screen.postStatus(reset, 300);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
             refreshDerived(p);

@@ -601,36 +601,14 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
 
 // One encounter choice as {place, "method · level [· origin species]"} for the picker row.
 std::pair<std::string, std::string> metLocationChoiceText(const State& state, uint16_t value) {
+    // Round 11 follow-up: the row text lives in the picker model (Gen3EncounterPickerModel.h
+    // rowText) so the verified-catch / unverified distinction is unit-tested: catch templates say
+    // their method and level, every other native location says "Not a listed catch; unverified",
+    // markers name themselves, and keep-stored is the save's own value, never judged.
     const auto& stored = state.session.working;
-    if (value == EncounterPicker::kKeepStoredRow) {
-        // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
-        return {"Keep stored: " + Names::getMetLocationDisplayName(stored.originGame, stored.metLocation),
-                "Met Lv. " + std::to_string(stored.metLevel)};   // the name already says "Keep stored"
-    }
-    if (MetRows::isOtherNativeRow(value)) {
-        // Round 11 FRLG: a location native to the record's origin game where this species is not a
-        // listed catch (or a trade / egg / event marker): honest, never presented as a catch.
-        const auto location = MetRows::otherNativeRowLocation(value);
-        return {Names::getMetLocationDisplayName(stored.originGame, location), MetRows::gen3OtherDetail(location)};
-    }
-    const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
-    if (!selected) return {"Unknown location", {}};
-    const auto& encounter = selected->encounter;
-    std::string place = Names::getMetLocationDisplayName(state.session.working.originGame, encounter.location);
-    // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
-    // (tests/test_met_location_fit.cpp).
-    std::string detail = std::string(Encounter::methodName(encounter.method)) +
-                         " Lv. " + std::to_string(encounter.minLevel);
-    if (encounter.maxLevel != encounter.minLevel)
-        detail += "–" + std::to_string(encounter.maxLevel);
-    if (selected->evolved) {
-        detail += ", met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
-        if (selected->minimumEvolutionLevel != 0)
-            detail += " (evo. " + std::to_string(selected->minimumEvolutionLevel) + ")";
-    }
-    // R2-BUG-008: the save's own met data is the "Keep stored" row; candidate rows show only the
-    // encounter itself (NEW-10 / Round 3 L03: no "not stored" filler on every other row).
-    return {std::move(place), std::move(detail)};
+    auto text = EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,
+                                         stored.metLocation, stored.metLevel);
+    return {std::move(text.place), std::move(text.detail)};
 }
 
 std::string pickerValueLabel(const State& state, uint16_t value) {
@@ -737,11 +715,11 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         // Round 11 FRLG: the record's origin game decides the list (FireRed / LeafGreen: Kanto and
         // Sevii; R/S/E: Hoenn), never the save's. A species with no catch template in that game
         // (a traded Rayquaza, an evolved Charizard) still gets every native location.
-        const uint8_t origin = state.session.working.originGame;
-        state.encounterChoices = EncounterPicker::templatesForOrigin(origin, state.session.working.species);
+        // Session::metLocationPicker is the one model (templates + rows) the tests drive.
+        auto picker = state.session.metLocationPicker();
+        state.encounterChoices = std::move(picker.choices);
         // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
-        state.pickerValues = EncounterPicker::rowValuesWithNative(
-            state.encounterChoices, state.session.working.metLocation, origin);
+        state.pickerValues = std::move(picker.rows);
         if (state.pickerValues.empty()) {
             state.pickerTarget = PickerTarget::None;
             screen.postStatus("Met Location has no native Generation III list for this origin game", 300);
@@ -832,15 +810,16 @@ void applyValuePicker(State& state) {
             state.session.setUnownLetter(static_cast<uint8_t>(value));
             break;
         case PickerTarget::MetLocation: {
-            if (MetRows::isOtherNativeRow(value)) {
-                // No template: the met level stays as entered (Met Level row prompts 0-100).
-                p.metLocation = MetRows::otherNativeRowLocation(value);
-                state.selectedEncounter.reset();
-            } else if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
-                p.metLocation = choice->encounter.location;
-                state.session.setEncounterMetLevel(choice->encounter.minLevel);
-                state.selectedEncounter = *choice;
-                state.session.noteMetLocationChosen();   // Round 11: the Create Met Location is chosen
+            // Round 11 follow-up: Session::applyMetLocationRow applies every offered row -- a catch
+            // template, another location native to the record's origin game, a trade / egg / event
+            // marker (labelled unverified), or keep-stored -- and marks the Create Met Location
+            // explicitly chosen for each one (a FireRed Rayquaza or Charizard has only non-template
+            // rows). The chosen flag, never "location != 0", is what Create requires.
+            const SessionModel::Session::MetLocationPicker picker{state.encounterChoices, state.pickerValues};
+            const Encounter::EncounterProvenanceChoice* applied = nullptr;
+            if (state.session.applyMetLocationRow(picker, value, applied)) {
+                if (applied) state.selectedEncounter = *applied;
+                else if (value != EncounterPicker::kKeepStoredRow) state.selectedEncounter.reset();
             }
             break;
         }
@@ -1376,8 +1355,9 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
             state.session.setShiny(state.speciesPreviewShiny);
             state.speciesPicker = false;
             if (state.session.working.species != previousSpecies) state.selectedEncounter.reset();
-            if (state.session.encounterReset)
-                screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
+            // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
+            if (const auto reset = state.session.speciesChangeResetStatus(); !reset.empty())
+                screen.postStatus(reset, 300);
         }
         else
             screen.postStatus("Species is not representable in Generation III");
@@ -2412,7 +2392,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     struct DataRow { std::string label, value; };
     // Same data pane as Gen IV/V: the PID is shown once, in gold (ReadOnly field state), in the
     // STATS panel's PID-linked block; no "(read-only)" text row here (QA CG16).
-    const std::vector<DataRow> rows{
+    std::vector<DataRow> rows{
         {"Origin", Enums::getOriginGameName(p.originGame)},
         {"Language", Enums::getLanguageName(p.language)},
         {"Ball", Enums::getBallName(p.ball)},
@@ -2420,6 +2400,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Encounter origin", encounterOriginText(screen, p)},
         {"Legality", Presentation::legalityLabel(Presentation::LegalityState::NotChecked)}
     };
+    // Round 11 (owner H25 clarification 2): an existing Pokemon whose species changed keeps its
+    // history; a misfit is a caution line right under the encounter rows, never a change.
+    if (const auto caution = PokeBank::UIModel::HistoryConsistency::joined(state.session.historyFlags());
+        !caution.empty())
+        rows.insert(rows.begin() + 5, {PokeBank::UIModel::HistoryConsistency::kCautionLabel, caution});
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
         Presentation::kOriginLegalityHeading, rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
 
