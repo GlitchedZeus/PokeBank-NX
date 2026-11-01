@@ -465,6 +465,34 @@ void run(Case& c) {
     } else {
         check(false, g + ": Move row");
     }
+    // Round 11 ACTIONS (review): the Gen II / Gen III Actions -> Move entry points are new, so the
+    // drop is driven too: Y drops the carried Pokemon into an empty cell (Gen II: the next box, a
+    // packed append to its first slot; Gen III: the cell one row down in the same sparse box); the
+    // move is staged and the source cell no longer holds it.
+    auto staged3 = staged2;
+    if (c.generation == 2 || c.generation == 3) {
+        const auto species = c.speciesAt(c.importBox, c.importSlot);
+        openSheet(d, View::Boxes, c.importBox, c.importSlot);
+        if (species && chooseAction(d, "Move")) {
+            int dropBox = c.importBox, dropSlot = c.importSlot + 6;   // Gen III: one row down
+            if (c.generation == 2) {
+                d.press(HidNpadButton_R);
+                dropBox = c.importBox + 1;
+                dropSlot = 0;
+            } else {
+                check(!c.speciesAt(dropBox, dropSlot), g + ": the drop cell starts empty");
+                d.press(HidNpadButton_Down);
+            }
+            d.press(HidNpadButton_Y);
+            check(c.speciesAt(dropBox, dropSlot) == species && c.speciesAt(c.importBox, c.importSlot) != species,
+                  g + ": Actions -> Move, Y drops into Box " + std::to_string(dropBox + 1) + " / Slot " +
+                      std::to_string(dropSlot + 1) + " (" + d.screen.storageStatus + ")");
+            check(c.snapshot() != staged2, g + ": the drop is staged");
+            staged3 = c.snapshot();
+        } else {
+            check(false, g + ": Move row for the drop");
+        }
+    }
     // Party (where the save has one): Review Pending Changes is listed while changes are staged and
     // opens the shared Review.
     if (d.screen.trainer.getPartySize() > 0) {
@@ -475,7 +503,7 @@ void run(Case& c) {
         if (chooseAction(d, "Review Pending Changes"))
             check(drawn("Review Pending Changes") && sheetRows().empty(), g + ": Party Review opens the shared Review");
         d.press(HidNpadButton_B);
-        check(c.snapshot() == staged2, g + ": opening Review from Party changes nothing");
+        check(c.snapshot() == staged3, g + ": opening Review from Party changes nothing");
     }
     std::cout << g << ": Export / Import from file checked\n";
 }
