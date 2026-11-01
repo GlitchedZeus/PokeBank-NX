@@ -9,6 +9,9 @@
 //   B                go up one folder; at the start folder (or the SD root) close the dialog
 //   Y                add / remove the current folder as a favourite
 //   X                show the favourite folders (A opens one, Y removes it, B / X return)
+//   -                Cancel: close the dialog from any folder or list; nothing is imported (Round 11
+//                    H39). Inside this modal '-' means Cancel, as in the keyboard dialog; on ordinary
+//                    screens '-' stays Help. B keeps its folder navigation above.
 // A file larger than the largest native record (PokemonFileBrowser::kMaxFileBytes) is listed so the
 // user sees it, but picking it is refused before any byte is read.
 //
@@ -27,7 +30,7 @@ namespace PokeBank::UIModel::PokemonFileDialog {
 namespace Browser = PokemonFileBrowser;
 namespace Prefs = Utils::FolderPreferences;
 
-enum class Key : uint8_t { None, Up, Down, PageUp, PageDown, A, B, X, Y };
+enum class Key : uint8_t { None, Up, Down, PageUp, PageDown, A, B, X, Y, Cancel };
 enum class Mode : uint8_t { Browse, Favorites };
 
 struct State {
@@ -113,9 +116,22 @@ inline void move(int& cursor, int count, int delta, bool wrap) noexcept {
     else cursor = std::clamp(cursor + delta, 0, count - 1);
 }
 
+// True when B closes the dialog (Browse at the start folder or the SD root); otherwise B goes up one
+// folder (Browse) or back to Browse (Favourites). The B footer label reads this, so the label and
+// press() cannot disagree.
+[[nodiscard]] inline bool bCloses(const State& s) {
+    if (s.mode == Mode::Favorites) return false;
+    return !Browser::parentOf(s.listing.folder) || Prefs::sameFolder(s.listing.folder, s.startFolder);
+}
+
 [[nodiscard]] inline Outcome press(State& s, Key key, const Prefs::Preferences& prefs, int pageRows) {
     Outcome out;
     pageRows = std::max(1, pageRows);
+    // Cancel closes from any folder or list and changes nothing (no folder, no mode, no pick).
+    if (key == Key::Cancel) {
+        out.command = Command::Close;
+        return out;
+    }
     if (s.mode == Mode::Favorites) {
         const int count = static_cast<int>(prefs.favorites.size());
         s.favoriteCursor = std::clamp(s.favoriteCursor, 0, std::max(0, count - 1));
@@ -139,6 +155,7 @@ inline void move(int& cursor, int count, int delta, bool wrap) noexcept {
                     out.path = prefs.favorites[static_cast<std::size_t>(s.favoriteCursor)];
                 }
                 break;
+            case Key::Cancel:   // handled above
             case Key::None: break;
         }
         return out;
@@ -160,12 +177,11 @@ inline void move(int& cursor, int count, int delta, bool wrap) noexcept {
             out.path = s.listing.folder;
             break;
         case Key::B: {
-            const auto parent = Browser::parentOf(s.listing.folder);
-            if (!parent || Prefs::sameFolder(s.listing.folder, s.startFolder)) {
+            if (bCloses(s)) {
                 out.command = Command::Close;
             } else {
                 out.command = Command::OpenFolder;
-                out.path = *parent;
+                out.path = *Browser::parentOf(s.listing.folder);
                 const auto slash = s.listing.folder.find_last_of('/');
                 out.focus = slash == std::string::npos ? std::string{} : s.listing.folder.substr(slash + 1);
             }
@@ -196,6 +212,7 @@ inline void move(int& cursor, int count, int delta, bool wrap) noexcept {
             }
             break;
         }
+        case Key::Cancel:   // handled above
         case Key::None: break;
     }
     keepVisible(s.first, s.cursor, count, pageRows);

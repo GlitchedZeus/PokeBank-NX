@@ -11,7 +11,9 @@
 //     D-pad + A opens a sub-folder, Y marks it a favourite, a tap on the exported file imports it:
 //     the slot holds the record (Gen I / II: the box's first empty slot), the status says
 //     "Imported <species> into Box n / Slot m (staged; the source save is unchanged)", the folder is
-//     remembered and Review lists the slot; B at the start folder closes the dialog.
+//     remembered and Review lists the slot; B at the start folder closes the dialog;
+//   * '-' cancels the import from a folder above the start folder, from the favourites list and by
+//     a tap on its footer badge: nothing read, staged or remembered (Round 11 H39).
 // The SD card is a private mkdtemp working directory; every save is synthetic, built in code: Gen I /
 // II / IV from the QA builders (tests/fuzz_synthetic_saves.h, gsc fixture), Gen III / V from the
 // L06 harness fixtures (tests/host-ui/HostUiFixtures.h). No real save, ROM or Pokemon file is read.
@@ -34,6 +36,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/PokemonFileIo.h"
 #include "UI/ReviewEntry.h"
+#include "UI/ScreenChrome.h"
 #include "UI/TouchInput.h"
 #include "UI/TrainerViewScreen.h"
 #include "Utils/Settings.h"
@@ -89,6 +92,24 @@ struct Driver {
         for (const auto& b : screen.touchButtons)
             if (b.id == id) return &b;
         return nullptr;
+    }
+    // A completed tap on the footer badge of `button` (the nav-bar hits drawNavBar publishes).
+    bool tapNav(u64 button) {
+        for (const auto& h : UI::g_navHits) {
+            if (h.button != button) continue;
+            return tapAt(static_cast<u32>(h.x + h.w / 2), static_cast<u32>(h.y + h.h / 2));
+        }
+        return false;
+    }
+    bool tapAt(u32 x, u32 y) {
+        HostUi::touch = {true, x, y};
+        frame();
+        HostUi::touch = {true, x, y};
+        frame();
+        HostUi::touch = {false, x, y};
+        frame();
+        frame();
+        return true;
     }
     bool tap(int id) {
         const auto* b = target(id);
@@ -298,8 +319,11 @@ void run(Case& c) {
     check(dialogShown(c.generation) && drawn(mons), g + ": the file dialog opens on the remembered folder " + allTexts());
     const std::vector<std::string> expected{"..", "ok/", "big" + ext(c.generation), "wrong" + ext(otherGeneration)};
     check(dialogRows() == expected, g + ": the folder lists .., the sub-folder, then the files (" + joined(dialogRows()) + ")");
-    check(drawn("Open") && drawn("Favourite") && drawn("Favourites") && drawn("Back"),
-          g + ": the dialog footer names A Open / Y Favourite / X Favourites / B Back");
+    // Round 11 H39: the B badge names what B does here (Close at the start folder, Up Folder deeper)
+    // and '-' Cancel is always listed (deliberately replaces the old single "B Back" label).
+    check(drawn("Open") && drawn("Favourite") && drawn("Favourites") && drawn("Close") && drawn("Cancel") &&
+              !drawn("Up Folder"),
+          g + ": the dialog footer names A Open / Y Favourite / X Favourites / B Close / - Cancel");
 
     const auto staged0 = c.snapshot();
     const std::size_t opened0 = Io::openedFileCount();
@@ -325,6 +349,8 @@ void run(Case& c) {
     d.press(HidNpadButton_A);   // ok/
     check(drawn(mons + "/ok") && dialogRows().size() == 2 && dialogRows()[1] == fs::path(exported[0]).filename().string(),
           g + ": A opens the sub-folder (" + joined(dialogRows()) + ")");
+    check(drawn("Up Folder") && drawn("Cancel") && !drawn("Close"),
+          g + ": in a sub-folder the footer says B Up Folder and - Cancel");
     d.press(HidNpadButton_Y);
     check(Utils::g_folderPreferences.isFavorite(mons + "/ok") && drawn("Unfavourite"),
           g + ": Y marks the folder a favourite");
@@ -363,6 +389,34 @@ void run(Case& c) {
     check(dialogShown(c.generation) && drawnContaining(mons + "/ok"), g + ": the next import opens on the remembered folder");
     d.press(HidNpadButton_B);
     check(!dialogShown(c.generation) && c.snapshot() == staged1, g + ": B at the start folder closes, nothing staged");
+
+    // Round 11 H39: '-' cancels the import from any folder or list. Nothing is read, staged or
+    // remembered, and '-' does not reach the screen's Help while the dialog is open.
+    const std::string remembered = Utils::g_folderPreferences.lastImport;
+    const std::size_t opened2 = Io::openedFileCount();
+    const auto cancelFrom = [&](const std::string& where, const std::function<void()>& navigate,
+                                const std::function<void()>& cancel) {
+        openSheet(d, View::Boxes, c.spareBox, c.spareCell);
+        if (!chooseAction(d, "Import from file")) { check(false, g + ": Import from file row (" + where + ")"); return; }
+        navigate();
+        check(dialogShown(c.generation) || drawn("Favourite folders"), g + ": dialog open before Cancel (" + where + ")");
+        cancel();
+        check(!dialogShown(c.generation) && !drawn("Favourite folders"), g + ": '-' closes the dialog from " + where);
+        check(c.snapshot() == staged1 && Io::openedFileCount() == opened2 &&
+                  Utils::g_folderPreferences.lastImport == remembered,
+              g + ": Cancel from " + where + " stages nothing, opens no file, remembers no folder");
+        check(!d.screen.helpOverlayActive, g + ": '-' in the dialog does not open Help (" + where + ")");
+    };
+    const auto minus = [&] { d.press(HidNpadButton_Minus); };
+    // ".." from the start folder lands above it, where B would only go up a folder.
+    cancelFrom("a folder above the start folder", [&] {
+        d.press(HidNpadButton_A);
+        check(drawn(mons) && drawn("Up Folder"), g + ": .. went above the start folder " + allTexts());
+    }, minus);
+    cancelFrom("the favourites list", [&] { d.press(HidNpadButton_X); }, minus);
+    cancelFrom("a footer tap on - Cancel", [&] {}, [&] {
+        check(d.tapNav(HidNpadButton_Minus), g + ": the - Cancel footer badge is tappable");
+    });
     std::cout << g << ": Export / Import from file checked\n";
 }
 

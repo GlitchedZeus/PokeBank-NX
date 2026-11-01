@@ -5370,7 +5370,7 @@ int reviewGeneration(const std::string& gameId) {
                 if (details.active) {
                     instructions = "Up/Down: Category  |  A: Edit  |  B: Close";
                 } else if (storageExitConfirmActive) {
-                    instructions = "Up/Down: Choose  |  A: Confirm  |  B: Stay";
+                    instructions = "Up/Down: Choose  |  A: Confirm  |  B: Cancel";   // Round 11: B is the Cancel row
                 } else if (actionSheet.isOpen() || groupMenuActive) {
                     instructions = "Up/Down: Choose  |  A: Select  |  B: Cancel";
                 } else if (releaseConfirmActive) {

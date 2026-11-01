@@ -132,6 +132,47 @@ void modelControls() {
     check(D::fileId(1, list.data(), 4) == 0, "a short buffer has no id");
 }
 
+// Round 11 H39 (owner: "B goes to the parent directory … we need to add a button that is cancel …
+// can we make it '-'"): '-' (Key::Cancel) closes the dialog from ANY folder or list without changing
+// the folder or the mode; B keeps its parent-folder navigation, and bCloses() (the B footer label)
+// says exactly when B closes instead.
+void cancelKey() {
+    P::Preferences prefs;
+    const std::vector<B::RawEntry> raw{{"Box", true, 0}, {"a.pk3", false, 80}};
+    // Deeper than the start folder: B goes up, '-' closes and leaves the folder as it was.
+    auto deep = stateAt("sdmc:/mons/Box", {}, prefs, "sdmc:/mons");
+    check(!D::bCloses(deep), "B does not close deeper than the start folder (footer says Up Folder)");
+    auto out = D::press(deep, D::Key::Cancel, prefs, 4);
+    check(out.command == D::Command::Close && out.path.empty() && deep.listing.folder == "sdmc:/mons/Box" &&
+              deep.mode == D::Mode::Browse,
+          "'-' in a sub-folder closes the dialog without changing folder or mode");
+    check(D::press(deep, D::Key::B, prefs, 4).command == D::Command::OpenFolder, "B there still goes up one folder");
+    // At the start folder and at the SD root '-' closes as B does, and bCloses() agrees with B.
+    auto start = stateAt("sdmc:/mons", raw, prefs, "sdmc:/mons");
+    check(D::bCloses(start) && D::press(start, D::Key::Cancel, prefs, 4).command == D::Command::Close,
+          "'-' closes at the start folder");
+    auto root = stateAt("sdmc:/", raw, prefs, "sdmc:/mons");
+    check(D::bCloses(root) && D::press(root, D::Key::Cancel, prefs, 4).command == D::Command::Close,
+          "'-' closes at the SD root");
+    // Above the start folder (reached with ..): B goes up, so it does not close.
+    auto above = stateAt("sdmc:/switch", raw, prefs, "sdmc:/switch/PokeBank-NX");
+    check(!D::bCloses(above) && D::press(above, D::Key::B, prefs, 4).command == D::Command::OpenFolder,
+          "above the start folder B goes up and bCloses() says so");
+    for (auto* s : {&deep, &start, &root, &above}) {
+        const bool closes = D::bCloses(*s);
+        auto copy = *s;
+        check((D::press(copy, D::Key::B, prefs, 4).command == D::Command::Close) == closes,
+              "bCloses() matches what B does in " + s->listing.folder);
+    }
+    // Favourites list: B / X return to Browse; '-' closes the whole dialog.
+    check(prefs.toggleFavorite("sdmc:/mons"), "one favourite");
+    (void)D::press(deep, D::Key::X, prefs, 4);
+    check(deep.mode == D::Mode::Favorites && D::bCloses(deep) == false, "in Favourites B only returns to Browse");
+    out = D::press(deep, D::Key::Cancel, prefs, 4);
+    check(out.command == D::Command::Close && out.path.empty(), "'-' in Favourites closes the dialog");
+    check(!D::press(deep, D::Key::Cancel, prefs, 4).path.size(), "Cancel never names a path (nothing is picked)");
+}
+
 void sdCard() {
     char pattern[] = "/tmp/pokebank-file-dialog-XXXXXX";
     const char* dir = ::mkdtemp(pattern);
@@ -192,6 +233,7 @@ void sdCard() {
 
 int main() {
     modelControls();
+    cancelKey();
     sdCard();
     if (failures) {
         std::cerr << failures << " check(s) failed\n";

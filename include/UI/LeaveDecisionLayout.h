@@ -5,7 +5,8 @@
 // rule (content-driven, no fixed oversized box). This header only decides WHAT goes on its three
 // message lines: the consequence sentence, then the emulator quit-route notice word-wrapped with
 // the bundled font's real advances (NunitoMetrics via SharedMenuGeometry::textWidth), so nothing
-// is clipped. Buttons, left to right: B Back, A Stay, Y Launch / Quit. Only Y commits (frozen).
+// is clipped. Buttons, left to right: B Cancel, Y Launch / Quit (Round 11 QUIT removed the redundant
+// A Stay; A still stays, unlabelled). Only Y commits (frozen).
 // Pure and host-tested (tests/test_leave_decision_layout.cpp).
 
 #include "UI/SharedMenuGeometry.h"

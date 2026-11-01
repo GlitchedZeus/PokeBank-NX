@@ -26,6 +26,10 @@ SCREENS = {
     "HOME / game selection / Game Browser": (
         ["src/UI/SaveSelectScreen.cpp"],
         ["src/UI/SaveSelectScreen.cpp"]),
+    # Round 11 H39: the Import from file dialog (every Gen I-V session) names '-' Cancel.
+    "Import from file dialog": (
+        ["src/UI/PokemonFileDialog.cpp"],
+        ["src/UI/PokemonFileDialog.cpp", "include/UI/PokemonFileDialogModel.h"]),
     "App shell / Settings": (
         ["src/UI/AppShellScreen.cpp"],
         ["src/UI/AppShellScreen.cpp"]),
