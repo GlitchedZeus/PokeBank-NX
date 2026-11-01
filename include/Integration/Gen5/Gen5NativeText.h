@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_NATIVE_TEXT_H
 
 #include "Encryption/Encryption5.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -40,6 +41,21 @@ namespace PokeVault::Integration::Gen5 {
         result.push_back(static_cast<char>(code));
     }
     return result;
+}
+// Display only (Round 11 H27): the stored nickname / OT name in the record's own language, read
+// to the first 0xFFFF / 0x0000 or the field's character limit, through the same decoder as Gen V
+// trainer names. Never use it to seed or replay an edit: asciiName5 is the write gate.
+[[nodiscard]] inline std::optional<std::string> displayName5(
+    std::span<const uint8_t> plain,bool nickname) {
+    const size_t off=nameOffset5(nickname),cap=nameCapacity5(nickname);
+    if(plain.size()<off+cap*2)return std::nullopt;
+    std::u16string raw;
+    for(size_t i=0;i<nameMaxLength5(nickname);++i) {
+        const uint16_t code=Crypto::read16(plain,off+i*2);
+        if(code==0 || code==0xFFFF)break;
+        raw.push_back(static_cast<char16_t>(code));
+    }
+    return displayGen5Text(raw,nameMaxLength5(nickname));
 }
 [[nodiscard]] inline bool nativeNameBytesDiffer5(
     std::span<const uint8_t> a,std::span<const uint8_t> b,bool nickname) {

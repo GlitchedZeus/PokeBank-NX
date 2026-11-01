@@ -1,12 +1,13 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteLayout.h"
+#include "UI/SystemFontFallbacks.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <vector>
 
-#include <switch.h>   // pl: the console shared font (Japanese fallback)
+#include <switch.h>   // pl: the console shared fonts (Japanese / Korean fallbacks)
 
 #include <glad/glad.h>
 #include <SDL2/SDL.h>
@@ -91,20 +92,33 @@ namespace UI {
         if (fontSans >= 0 && fontSym  >= 0) nvgAddFallbackFontId(vg, fontSans, fontSym);
         if (fontSans >= 0 && fontSym2 >= 0) nvgAddFallbackFontId(vg, fontSans, fontSym2);
 
-        // Japanese text (kana in Japanese Gen I-V names, the kana keyboard): the console's own
-        // "Standard" shared font covers Japanese, and every Switch carries it, so nothing is bundled.
-        // It is the LAST fallback, so Nunito and the symbol fonts keep drawing everything they did.
-        // The font memory belongs to the system (freeData = 0). If the service is unavailable the
-        // app draws exactly as before; kana then show as missing glyphs, never as a crash.
+        // Japanese and Korean text (kana / Hangul in Gen I-V names, the kana keyboard): the console's
+        // own shared fonts cover them, and every Switch carries them, so nothing is bundled.
+        // SystemFontFallbacks orders them -- Standard (Japanese), then Korean, which then only adds
+        // Hangul (Round 11 H27) -- as the LAST fallbacks, so Nunito and the symbol fonts keep drawing
+        // everything they did. The font memory belongs to the system (freeData = 0). If the service
+        // or a font is unavailable the app draws exactly as before; those glyphs then show as
+        // missing, never as a crash.
         if (fontSans >= 0 && R_SUCCEEDED(plInitialize(PlServiceType_User))) {
             plStarted = true;
-            PlFontData standard{};
-            if (R_SUCCEEDED(plGetSharedFontByType(&standard, PlSharedFontType_Standard)) && standard.address) {
-                fontJapanese = nvgCreateFontMem(vg, "jp", static_cast<unsigned char*>(standard.address),
-                                                static_cast<int>(standard.size), 0);
-                if (fontJapanese >= 0) nvgAddFallbackFontId(vg, fontSans, fontJapanese);
-                else logErrorToFile("nvgCreateFontMem shared Standard font failed");
-            }
+            const auto registered = SystemFontFallbacks::registerAll(
+                [this](SystemFontFallbacks::SharedFont font, const char* face) {
+                    const bool korean = font == SystemFontFallbacks::SharedFont::Korean;
+                    PlFontData data{};
+                    if (R_FAILED(plGetSharedFontByType(&data, korean ? PlSharedFontType_KO
+                                                                     : PlSharedFontType_Standard)) ||
+                        !data.address)
+                        return -1;
+                    const int id = nvgCreateFontMem(vg, face, static_cast<unsigned char*>(data.address),
+                                                    static_cast<int>(data.size), 0);
+                    if (id < 0)
+                        logErrorToFile(korean ? "nvgCreateFontMem shared Korean font failed"
+                                              : "nvgCreateFontMem shared Standard font failed");
+                    return id;
+                },
+                [this](int id) { nvgAddFallbackFontId(vg, fontSans, id); });
+            fontJapanese = registered.japanese;
+            fontKorean = registered.korean;
         }
 
         s_activeFramebuffer = this;

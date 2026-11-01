@@ -1,11 +1,15 @@
 # Multilingual Gen I-V naming (feature/multilingual-gen15). See docs/multilingual/.
 MULTILINGUAL_HOST_TESTS := \
 	$(HOST_BUILD)/test_default_species_names \
-	$(HOST_BUILD)/test_gen5_language_default_name
+	$(HOST_BUILD)/test_gen5_language_default_name \
+	$(HOST_BUILD)/test_gen5_display_name \
+	$(HOST_BUILD)/test_system_font_fallbacks
 
 MULTILINGUAL_SANITIZE_TESTS := \
 	$(HOST_BUILD)/test_default_species_names_sanitize \
-	$(HOST_BUILD)/test_gen5_language_default_name_sanitize
+	$(HOST_BUILD)/test_gen5_language_default_name_sanitize \
+	$(HOST_BUILD)/test_gen5_display_name_sanitize \
+	$(HOST_BUILD)/test_system_font_fallbacks_sanitize
 
 HOST_TESTS += $(MULTILINGUAL_HOST_TESTS)
 HOST_SANITIZE_TESTS += $(MULTILINGUAL_SANITIZE_TESTS)
@@ -33,3 +37,24 @@ $(HOST_BUILD)/test_gen5_language_default_name: $(GEN5_LANGUAGE_DEFAULT_NAME_SOUR
 $(HOST_BUILD)/test_gen5_language_default_name_sanitize: $(GEN5_LANGUAGE_DEFAULT_NAME_SOURCES) $(wildcard include/Integration/Gen5/*.h) include/Names/DefaultSpeciesName.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_LANGUAGE_DEFAULT_NAME_SOURCES) -o $@
+
+# Round 11 H27: Gen V names display in their stored language (one decoder for Pokemon and trainers).
+GEN5_DISPLAY_NAME_SOURCES := tests/test_gen5_display_name.cpp src/Names/SpeciesNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+
+$(HOST_BUILD)/test_gen5_display_name: $(GEN5_DISPLAY_NAME_SOURCES) $(wildcard include/Integration/Gen5/*.h) include/Names/DefaultSpeciesName.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN5_DISPLAY_NAME_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen5_display_name_sanitize: $(GEN5_DISPLAY_NAME_SOURCES) $(wildcard include/Integration/Gen5/*.h) include/Names/DefaultSpeciesName.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_DISPLAY_NAME_SOURCES) -o $@
+
+# Round 11 H27: console shared-font fallback selection (Standard, then Korean for Hangul).
+$(HOST_BUILD)/test_system_font_fallbacks: tests/test_system_font_fallbacks.cpp include/UI/SystemFontFallbacks.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(HOST_BUILD)/test_system_font_fallbacks_sanitize: tests/test_system_font_fallbacks.cpp include/UI/SystemFontFallbacks.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
