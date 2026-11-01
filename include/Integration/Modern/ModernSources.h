@@ -62,13 +62,40 @@ struct DiscoveryRoots {
     std::string dekoponPointerFile = "sdmc:/switch/dekopon/user_dir.txt";
     std::string dekoponDefaultUserDir = "sdmc:/switch/dekopon/";
 };
+// Discovery is bounded and symlink-safe (QA D3). Nothing is followed through a symbolic link: a
+// symlinked root, title folder, backup folder or `main` is counted and skipped, and every ancestor of
+// an inspected file must be a real directory. Candidates are found with lstat() only, ordered
+// newest-first deterministically (mtime desc, then path asc), and only the newest `maxInspected`
+// are read and validated; the rest are reported, never silently dropped. An explicitly assigned
+// file is inspected by the caller outside these limits (SaveSelectScreen::refreshModernSources).
+struct DiscoveryLimits {
+    size_t maxEntriesPerDirectory = 512;   // directory entries read from any one folder
+    size_t maxTitleFolders = 16;           // matching Checkpoint title folders walked
+    size_t maxCandidates = 2048;           // `main` files listed before ordering
+    size_t maxInspected = 24;              // newest candidates actually read + strictly validated
+};
 struct DiscoveryResult {
     std::vector<Source::SaveInstance> instances;
     size_t rootsConsidered = 0;
     size_t rootsOpened = 0;
-    size_t filesExamined = 0;
+    size_t filesExamined = 0;       // candidates read and validated
+    size_t candidatesFound = 0;     // `main` files listed (bounded by maxCandidates)
+    size_t candidatesNotInspected = 0;  // older candidates beyond maxInspected
+    size_t symlinksSkipped = 0;     // links never followed
+    bool directoryLimitHit = false; // some folder had more entries than maxEntriesPerDirectory
+    bool candidateLimitHit = false; // listing stopped at maxCandidates
+    [[nodiscard]] bool truncated() const noexcept {
+        return candidatesNotInspected > 0 || directoryLimitHit || candidateLimitHit;
+    }
 };
-[[nodiscard]] DiscoveryResult discoverKnownSources(std::string_view exactGame, const DiscoveryRoots& roots = {});
+[[nodiscard]] DiscoveryResult discoverKnownSources(std::string_view exactGame, const DiscoveryRoots& roots = {},
+                                                   const DiscoveryLimits& limits = {});
+// The Save Instances notice for the bounded scan ("" when there is nothing to say). `gen` is the short
+// generation label ("Gen VI"). Used verbatim by SaveSelectScreen.
+[[nodiscard]] std::string discoveryLimitNotice(const DiscoveryResult& result, std::string_view gen);
+// True when every existing component of `path` is a real directory (no symbolic link anywhere); the
+// final component is checked by the caller. A leading device ("sdmc:") is not a filesystem entry.
+[[nodiscard]] bool pathHasNoSymlinkAncestors(const std::string& path);
 
 // ---- catalog / assignment / open (same contract as Gen5GameSourceCatalog / Gen5AssignedSource) ----
 struct GameSourceCatalog {

@@ -20,7 +20,9 @@
 #include <dirent.h>
 #include <fstream>
 #include <iterator>
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <utility>
 
 namespace PokeVault::Integration::Modern {
@@ -193,23 +195,56 @@ bool readSourceFileReadOnly(const std::string& path, std::vector<uint8_t>& bytes
         diagnostic = "source file is missing";
         return false;
     }
+    if (S_ISLNK(st.st_mode)) {
+        diagnostic = "source path is a symbolic link; links are never followed";
+        return false;
+    }
     if (!S_ISREG(st.st_mode)) {
         diagnostic = "source path is not a regular file";
         return false;
     }
+    if (!pathHasNoSymlinkAncestors(path)) {
+        diagnostic = "source path goes through a symbolic link or a non-directory; links are never followed";
+        return false;
+    }
+    // Largest supported Gen VI-IX save: Scarlet/Violet with Indigo Disk (~4.3 MiB, SaveUtil.IsSizeGen9SV).
+    constexpr size_t MaxSourceBytes = 8u << 20;
     const auto size = static_cast<size_t>(st.st_size);
-    if (size == 0 || size > (4u << 20)) {
+    if (size == 0 || size > MaxSourceBytes) {
         diagnostic = "source file size is outside every supported save size";
         return false;
     }
-    FILE* file = std::fopen(path.c_str(), "rb");
-    if (!file) {
+    int flags = O_RDONLY;
+#ifdef O_NOFOLLOW
+    flags |= O_NOFOLLOW;
+#endif
+#ifdef O_CLOEXEC
+    flags |= O_CLOEXEC;
+#endif
+    const int fd = ::open(path.c_str(), flags);
+    if (fd < 0) {
         diagnostic = "source file cannot be opened for reading";
         return false;
     }
+    struct stat opened{};
+    // The descriptor must be the very file that was checked (no swap between lstat and open).
+    if (::fstat(fd, &opened) != 0 || !S_ISREG(opened.st_mode) || opened.st_size != st.st_size ||
+        (st.st_ino != 0 && (opened.st_ino != st.st_ino || opened.st_dev != st.st_dev))) {
+        ::close(fd);
+        diagnostic = "source file changed while it was being opened";
+        return false;
+    }
     bytes.resize(size);
-    const bool ok = std::fread(bytes.data(), 1, size, file) == size && std::fgetc(file) == EOF;
-    std::fclose(file);
+    size_t done = 0;
+    bool ok = true;
+    while (done < size) {
+        const auto n = ::read(fd, bytes.data() + done, size - done);
+        if (n <= 0) { ok = false; break; }
+        done += static_cast<size_t>(n);
+    }
+    uint8_t extra = 0;
+    if (ok && ::read(fd, &extra, 1) != 0) ok = false;  // the file grew after it was measured
+    ::close(fd);
     if (!ok) {
         bytes.clear();
         diagnostic = "source file changed size or could not be read completely";
@@ -410,59 +445,125 @@ std::vector<Source::SaveInstance> inspectSourceChoices(const std::string& path, 
 }
 
 namespace {
-std::vector<std::string> listDirectories(const std::string& path) {
-    std::vector<std::string> out;
+enum class EntryKind : uint8_t { Missing, Directory, RegularFile, Symlink, Other };
+struct EntryInfo {
+    EntryKind kind = EntryKind::Missing;
+    int64_t mtime = 0;
+};
+EntryInfo entryInfo(const std::string& path) {
+    struct stat st{};
+    if (::lstat(path.c_str(), &st) != 0) return {};
+    EntryInfo info;
+    info.mtime = static_cast<int64_t>(st.st_mtime);
+    if (S_ISLNK(st.st_mode)) info.kind = EntryKind::Symlink;
+    else if (S_ISDIR(st.st_mode)) info.kind = EntryKind::Directory;
+    else if (S_ISREG(st.st_mode)) info.kind = EntryKind::RegularFile;
+    else info.kind = EntryKind::Other;
+    return info;
+}
+// Child directories of `path`, never following links, reading at most maxEntriesPerDirectory entries.
+std::vector<std::string> childDirectories(const std::string& path, const DiscoveryLimits& limits, DiscoveryResult& out) {
+    std::vector<std::string> dirs;
     DIR* dir = ::opendir(path.c_str());
-    if (!dir) return out;
+    if (!dir) return dirs;
+    size_t seen = 0;
     while (const dirent* entry = ::readdir(dir)) {
         const std::string name = entry->d_name;
         if (name == "." || name == "..") continue;
-        struct stat st{};
-        if (::stat((path + "/" + name).c_str(), &st) == 0 && S_ISDIR(st.st_mode)) out.push_back(name);
+        if (++seen > limits.maxEntriesPerDirectory) {
+            out.directoryLimitHit = true;
+            break;
+        }
+        const auto info = entryInfo(path + "/" + name);
+        if (info.kind == EntryKind::Symlink) ++out.symlinksSkipped;
+        else if (info.kind == EntryKind::Directory) dirs.push_back(name);
     }
     ::closedir(dir);
-    std::sort(out.begin(), out.end());
-    return out;
+    std::sort(dirs.begin(), dirs.end());  // readdir order is filesystem-dependent; never rely on it
+    return dirs;
 }
-bool regularFile(const std::string& path) {
-    struct stat st{};
-    return ::stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode);
+struct Candidate {
+    std::string path;
+    int64_t mtime = 0;
+    std::string_view provider;
+    std::string_view evidence;
+};
+void addCandidate(std::vector<Candidate>& candidates, const std::string& file, std::string_view provider,
+                  std::string_view evidence, const DiscoveryLimits& limits, DiscoveryResult& out) {
+    const auto info = entryInfo(file);
+    if (info.kind == EntryKind::Symlink) {
+        ++out.symlinksSkipped;
+        return;
+    }
+    if (info.kind != EntryKind::RegularFile) return;
+    if (candidates.size() >= limits.maxCandidates) {
+        out.candidateLimitHit = true;
+        return;
+    }
+    candidates.push_back({file, info.mtime, provider, evidence});
 }
 // "<checkpointRoot>/<0xUNIQUE Title>/<backup>/main" for the 3DS family whose folder prefix matches.
-void walkCheckpointExports(const std::string& checkpointRoot, std::string_view exactGame,
-                           std::string_view (*gameIdFromFolder)(std::string_view), DiscoveryResult& out) {
-    for (const auto& folder : listDirectories(checkpointRoot)) {
+void listCheckpointExports(const std::string& checkpointRoot, std::string_view exactGame,
+                           std::string_view (*gameIdFromFolder)(std::string_view), const DiscoveryLimits& limits,
+                           DiscoveryResult& out, std::vector<Candidate>& candidates) {
+    size_t titles = 0;
+    for (const auto& folder : childDirectories(checkpointRoot, limits, out)) {
         const auto evidence = gameIdFromFolder(folder);
         if (evidence.empty() || evidence != exactGame) continue;
+        if (++titles > limits.maxTitleFolders) {
+            out.directoryLimitHit = true;
+            break;
+        }
         const std::string titleDir = checkpointRoot + "/" + folder;
-        for (const auto& backup : listDirectories(titleDir)) {
-            const std::string file = titleDir + "/" + backup + "/main";
-            if (!regularFile(file)) continue;
-            ++out.filesExamined;
-            Source::appendDeduplicated(out.instances, inspectSourceFile(file, kProviderCheckpoint, exactGame, evidence));
+        for (const auto& backup : childDirectories(titleDir, limits, out)) {
+            addCandidate(candidates, titleDir + "/" + backup + "/main", kProviderCheckpoint, evidence, limits, out);
+            if (out.candidateLimitHit) return;
         }
     }
 }
 } // namespace
 
-DiscoveryResult discoverKnownSources(std::string_view exactGame, const DiscoveryRoots& roots) {
+bool pathHasNoSymlinkAncestors(const std::string& path) {
+    // Walk "a/b/c/file": every prefix before the last component must be a real directory.
+    size_t pos = 0;
+    if (!path.empty() && path[0] == '/') pos = 1;
+    if (const auto colon = path.find(":/"); colon != std::string::npos && colon < path.find('/')) pos = colon + 2;  // "sdmc:/"
+    while (true) {
+        const auto slash = path.find('/', pos);
+        if (slash == std::string::npos) return true;
+        const std::string prefix = path.substr(0, slash);
+        if (!prefix.empty() && prefix.back() != ':') {
+            const auto info = entryInfo(prefix);
+            if (info.kind != EntryKind::Directory) return false;  // a symlink, a file or missing
+        }
+        pos = slash + 1;
+    }
+}
+
+DiscoveryResult discoverKnownSources(std::string_view exactGame, const DiscoveryRoots& roots, const DiscoveryLimits& limits) {
     DiscoveryResult out;
     const auto* reg = registered(exactGame);
     if (!reg || reg->platform != Capability::Platform::Nintendo3DS) return out;
     const auto consider = [&](const std::string& dir) {
         ++out.rootsConsidered;
-        struct stat st{};
-        if (::stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
-            ++out.rootsOpened;
-            return true;
+        std::string trimmed = dir;
+        while (trimmed.size() > 1 && trimmed.back() == '/') trimmed.pop_back();
+        const auto info = entryInfo(trimmed);
+        if (info.kind == EntryKind::Symlink) {
+            ++out.symlinksSkipped;
+            return false;
         }
-        return false;
+        if (info.kind != EntryKind::Directory || !pathHasNoSymlinkAncestors(trimmed + "/x")) return false;
+        ++out.rootsOpened;
+        return true;
     };
     const bool gen6 = reg->generation == 6;
+    std::vector<Candidate> candidates;
     // Checkpoint-layout exports (verified layout: FlagBrew/Checkpoint@740f221a paths.cpp).
     if (consider(roots.checkpointRoot))
-        walkCheckpointExports(roots.checkpointRoot, exactGame,
-                              gen6 ? &Gen6::Sources::gameIdFromCheckpointFolder : &Gen7::Sources::gameIdFromCheckpointFolder, out);
+        listCheckpointExports(roots.checkpointRoot, exactGame,
+                              gen6 ? &Gen6::Sources::gameIdFromCheckpointFolder : &Gen7::Sources::gameIdFromCheckpointFolder,
+                              limits, out, candidates);
     // Dekopon (Switch 3DS emulator) user directory: one in-emulator save per title-ID path.
     std::string pointer;
     std::optional<std::string_view> pointerContents;
@@ -471,12 +572,43 @@ DiscoveryResult discoverKnownSources(std::string_view exactGame, const Discovery
     if (consider(userDir)) {
         const std::string file = gen6 ? Gen6::Sources::emulatorSaveFile(userDir, exactGame)
                                       : Gen7::Sources::emulatorSaveFile(userDir, exactGame);
-        if (regularFile(file)) {
-            ++out.filesExamined;
-            Source::appendDeduplicated(out.instances, inspectSourceFile(file, kProviderDekopon, exactGame, exactGame));
+        if (!file.empty()) {
+            if (pathHasNoSymlinkAncestors(file)) addCandidate(candidates, file, kProviderDekopon, exactGame, limits, out);
+            else if (entryInfo(file).kind != EntryKind::Missing) ++out.symlinksSkipped;
         }
     }
+    out.candidatesFound = candidates.size();
+    // Deterministic newest-first selection BEFORE any file is read: the expensive part (read + hash +
+    // strict parse) is bounded by maxInspected regardless of how many backups exist.
+    std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
+        if (a.mtime != b.mtime) return a.mtime > b.mtime;
+        return a.path < b.path;
+    });
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        if (i >= limits.maxInspected) {
+            out.candidatesNotInspected = candidates.size() - i;
+            break;
+        }
+        const auto& c = candidates[i];
+        ++out.filesExamined;
+        Source::appendDeduplicated(out.instances, inspectSourceFile(c.path, c.provider, exactGame, c.evidence));
+    }
     Source::sortNewestFirst(out.instances);
+    return out;
+}
+
+std::string discoveryLimitNotice(const DiscoveryResult& r, std::string_view gen) {
+    std::string out;
+    if (r.candidatesNotInspected > 0)
+        out = "Showing the newest " + std::to_string(r.filesExamined) + " of " + std::to_string(r.candidatesFound) + " " +
+              std::string(gen) + " backups; " + std::to_string(r.candidatesNotInspected) +
+              " older backup(s) were not inspected. Use Assign Save File Manually for an older one.";
+    if (r.directoryLimitHit || r.candidateLimitHit)
+        out += std::string(out.empty() ? "" : " ") +
+               "Scan stopped at a folder size limit; some backups were not listed. Use Assign Save File Manually.";
+    if (r.symlinksSkipped > 0)
+        out += std::string(out.empty() ? "" : " ") + std::to_string(r.symlinksSkipped) +
+               " symbolic link(s) were skipped; links are never followed.";
     return out;
 }
 

@@ -19,8 +19,9 @@ std::string join(const std::string& parent, const std::string& child) {
 }
 
 bool isDirectory(const std::string& path) {
+    // lstat: a symbolic link to a directory is never followed (QA D3).
     struct stat st{};
-    return ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+    return ::lstat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 bool isRegularFile(const std::string& path) {
     struct stat st{};

@@ -2984,6 +2984,9 @@ namespace UI {
         if (!rememberedWarning.empty()) gen5Notice = rememberedWarning;
         else if (gen5Instances.empty() && catalog.ambiguousOwnership)
             gen5Notice = "Source ownership is ambiguous; repair or forget the stale assignment.";
+        // QA D3: a bounded scan always says what it did not inspect (and which links it skipped).
+        if (const auto limitNotice = Modern::discoveryLimitNotice(discovered, gen); !limitNotice.empty())
+            gen5Notice += (gen5Notice.empty() ? "" : " ") + limitNotice;
         PokeVault::Integration::Gen5::restoreSourceFocus(gen5Instances, previousFocus, gen5CandidateIndex, gen5CandidateScroll);
     }
 

@@ -62,3 +62,21 @@ GEN7PLUS_TESTS += $(MINIGMP_TEST)
 gen7plus-host-test: $(MINIGMP_TEST)
 GEN7PLUS_SANITIZE_TESTS += $(MINIGMP_SANITIZE)
 gen7plus-host-sanitize: $(MINIGMP_SANITIZE)
+
+# QA D2 independent stress regression (8 threads x 40 nested scopes with real sign/verify).
+MINIGMP_STRESS := $(HOST_BUILD)/test_mini_gmp_stress
+MINIGMP_STRESS_SANITIZE := $(HOST_BUILD)/test_mini_gmp_stress_sanitize
+HOST_TESTS += $(MINIGMP_STRESS)
+HOST_SANITIZE_TESTS += $(MINIGMP_STRESS_SANITIZE)
+host-test: $(MINIGMP_STRESS)
+host-sanitize: $(MINIGMP_STRESS_SANITIZE)
+$(MINIGMP_STRESS): tests/test_mini_gmp_stress.cpp include/Integration/Gen7/MiniGmpAllocationScope.h $(GEN7_MEME_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN7PLUS_FLAGS) -pthread tests/test_mini_gmp_stress.cpp $(GEN7_MEME_OBJECTS) -o $@
+$(MINIGMP_STRESS_SANITIZE): tests/test_mini_gmp_stress.cpp include/Integration/Gen7/MiniGmpAllocationScope.h $(GEN7_MEME_SANITIZE_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN7PLUS_FLAGS) -pthread tests/test_mini_gmp_stress.cpp $(GEN7_MEME_SANITIZE_OBJECTS) -o $@
+GEN7PLUS_TESTS += $(MINIGMP_STRESS)
+gen7plus-host-test: $(MINIGMP_STRESS)
+GEN7PLUS_SANITIZE_TESTS += $(MINIGMP_STRESS_SANITIZE)
+gen7plus-host-sanitize: $(MINIGMP_STRESS_SANITIZE)
