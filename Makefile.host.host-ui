@@ -103,6 +103,22 @@ $(HOST_UI_CLASSIC_DISMISS_SANITIZE): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 
+# Round 11 (HOME card): region scenery is drawn as rounded shapes, never through a rectangular clip.
+HOST_UI_HOME_SCENERY_TEST := $(HOST_BUILD)/test_ui_home_card_scenery_host
+HOST_UI_HOME_SCENERY_SANITIZE := $(HOST_BUILD)/test_ui_home_card_scenery_host_sanitize
+HOST_UI_HOME_SCENERY_INPUTS := tests/test_ui_home_card_scenery_host.cpp tests/host-ui/HostUi.h \
+	include/UI/CardScenery.h include/UI/RoundedArtwork.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_HOME_SCENERY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_HOME_SCENERY_SANITIZE)
+host-test: $(HOST_UI_HOME_SCENERY_TEST)
+host-sanitize: $(HOST_UI_HOME_SCENERY_SANITIZE)
+$(HOST_UI_HOME_SCENERY_TEST): $(HOST_UI_HOME_SCENERY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_home_card_scenery_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_HOME_SCENERY_SANITIZE): $(HOST_UI_HOME_SCENERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_home_card_scenery_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
 # Round 7 C04 (lane P): Quick Games and Product Home Help close on an outside tap, through the
 # real SaveSelectScreen (Product Home builds on the host with no account or saves, switch.h).
 HOST_UI_QUICK_GAMES_TEST := $(HOST_BUILD)/test_ui_quick_games_host

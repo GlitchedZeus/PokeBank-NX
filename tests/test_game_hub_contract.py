@@ -5,6 +5,8 @@ source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
 launcher_source = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
 launcher_header = (ROOT / "include/UI/GameLauncher.h").read_text(encoding="utf-8")
 main_source = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+# Round 11: the region scenery band (artwork + scrim, rounded mask) lives in UI/CardScenery.h.
+scenery_header = (ROOT / "include/UI/CardScenery.h").read_text(encoding="utf-8")
 root_makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 return_host_source = (ROOT / "runtime/return_host/source/main.c").read_text(encoding="utf-8")
 return_host_license = (ROOT / "runtime/return_host/LICENSE.nx-hbloader.txt").read_text(encoding="utf-8")
@@ -515,8 +517,10 @@ require("partySpriteH = 82" in source and
 require("gameRegionBackdropKey(title.gameId)" in source and
         "SystemIcons::regionBackdrop(regionKey)" in source and
         "regionH = 270" in source and
-        "Color(5, 14, 30, 40)" in source,
-        "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
+        "CardScenery::drawTopBand(fb, DETAIL_X, HUB_Y, DETAIL_W, regionH," in source and
+        "kHomeSceneryScrim{5, 14, 30, 40}" in scenery_header,
+        "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim "
+        "(drawn by the rounded CardScenery band, Round 11)")
 region_loader = system_icons[system_icons.index("const IconImage& SystemIcons::regionBackdrop"):
                              system_icons.index("const IconImage& SystemIcons::trainerPortrait")]
 require('"brilliant_diamond_switch"' in game_identity and
@@ -692,7 +696,7 @@ require("drawTrainerPortrait" not in classic_fn,
 require("focused ? Colors::Info : Colors::TextSecondary" in source and
         ": i == 0 ? Colors::Info" not in source,
         "Games/Banks/Items/Search/More must turn blue only when focused")
-require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
+require("kHomeSceneryScrim{5, 14, 30, 40}" in scenery_header and "Color(3, 10, 24, 104)" in source,
         "Product Home region artwork must remain visible under lighter glass")
 require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,

@@ -36,3 +36,15 @@ $(HOST_BUILD)/test_clean_install_runtime_sanitize: tests/test_clean_install_runt
 $(HOST_BUILD)/test_runtime_dependency_contract_sanitize: tests/test_runtime_dependency_contract.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+# Round 11 (HOME card): rounded artwork mask geometry (pure; GCC and Clang).
+HOST_TESTS += $(HOST_BUILD)/test_rounded_artwork
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rounded_artwork_sanitize
+host-test: $(HOST_BUILD)/test_rounded_artwork
+host-sanitize: $(HOST_BUILD)/test_rounded_artwork_sanitize
+$(HOST_BUILD)/test_rounded_artwork: tests/test_rounded_artwork.cpp include/UI/RoundedArtwork.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_rounded_artwork_sanitize: tests/test_rounded_artwork.cpp include/UI/RoundedArtwork.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

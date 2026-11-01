@@ -18,6 +18,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/ProductChrome.h"
 #include "UI/SystemIcons.h"
+#include "UI/CardScenery.h"
 #include "UI/SpriteManager.h"
 #include "UI/SpriteLayout.h"
 #include "UI/GameLauncher.h"
@@ -4940,9 +4941,9 @@ namespace UI {
         // Right: selected-game hero card.
         // ScreenChrome owns the scoped phone-style drag transform for this exact geometry.
         const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0 && headerActionIndex < 0;
-        drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
+        drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, CardScenery::kHomeCardRadius);
         if (gameFocused)
-            fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
+            fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, CardScenery::kHomeCardRadius, Colors::Info, 3);
 
         if (u && titleIndex >= 0 && titleIndex < count) {
             const auto& title = u->titles[static_cast<size_t>(titleIndex)];
@@ -4955,28 +4956,17 @@ namespace UI {
             const IconImage& regionBackdrop = SystemIcons::regionBackdrop(regionKey);
             if (regionBackdrop.valid()) {
                 constexpr int regionH = 270;
-                fb.setClipRect(DETAIL_X + 2, HUB_Y + 2, DETAIL_W - 4, regionH - 2);
-                // Region art is real packaged artwork, so preserve its aspect ratio.
-                // Scale-to-cover under the existing card clip instead of stretching the image.
-                const int regionW = DETAIL_W - 4;
-                const int regionDrawH = regionH - 2;
-                int drawW = regionW;
-                int drawH = std::max(1, regionBackdrop.height * drawW / regionBackdrop.width);
-                if (drawH < regionDrawH) {
-                    drawH = regionDrawH;
-                    drawW = std::max(1, regionBackdrop.width * drawH / regionBackdrop.height);
-                }
-                const int drawX = DETAIL_X + 2 + (regionW - drawW) / 2;
-                const int drawY = HUB_Y + 2 + (regionDrawH - drawH) / 2;
-                fb.drawImageScaled(drawX, drawY,
-                                   regionBackdrop.width, regionBackdrop.height,
-                                   drawW, drawH,
-                                   regionBackdrop.data, 4);
-                // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
-                fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,
-                                  DETAIL_W - 4, regionH - 2,
-                                  Color(5, 14, 30, 40));
-                fb.clearClip();
+                // Round 11: the artwork and its scrim are masked by the card's own rounded top
+                // corners (one vector path each), never by a rectangular clip, so the scenery
+                // cannot protrude past the card's radius or its focus ring. Scale-to-cover keeps
+                // the packaged artwork's aspect ratio.
+                CardScenery::drawTopBand(fb, DETAIL_X, HUB_Y, DETAIL_W, regionH,
+                                         regionBackdrop.width, regionBackdrop.height,
+                                         regionBackdrop.data);
+                // The focus ring stays on top of the scenery.
+                if (gameFocused)
+                    fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, CardScenery::kHomeCardRadius,
+                                       Colors::Info, 3);
                 fb.drawFilledRoundedRect(DETAIL_X + 12, HUB_Y + regionH - 2,
                                          DETAIL_W - 24, 2, 1,
                                          withAlpha(Colors::Divider, 180));
