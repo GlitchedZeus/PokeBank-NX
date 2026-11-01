@@ -143,6 +143,16 @@ Hardware UX repair, what changed:
   `PokeBank-NX-Gen6Plus-Experimental-7f23ca44.nro` sha256
   `36857430336439417a75e23756d0105fe449458a5fb0e8f2bcd64560ca4e7f7e` (CI SHA256SUMS). EXPERIMENTAL, NOT DEVICE TESTED.
 
+- **Experimental NRO of `5895e6b9` (UX repair + PKSE 1.2.2 audit: storage-integrity test, Gen VII Battle Box
+  guard, Hyper Training; current code head)**: CI run 41272664794 green (host gates incl. leak-checked sanitizers
+  and Clang, devkitA64 build, ELF symbol check, RomFS verification). Artifact
+  `PokeBank-NX-Gen6Plus-Experimental-5895e6b9` (id 13070375880, zip sha256
+  `afa4285d195a7030ff5d1a50f70567540b900f15e0a75ac4c424153df86404d9`); NRO
+  `PokeBank-NX-Gen6Plus-Experimental-5895e6b9.nro` sha256
+  `dc6427244aff9cee3016ddd930bf65075059dc152e126878b039e3faa9204b41`. Local gates on the same tree: GCC, ASan/UBSan,
+  Clang, matrix, 7 Python contracts, 12 Gen I–V host-UI suites, full `host-test` (63 suites) all green.
+  EXPERIMENTAL, NOT DEVICE TESTED.
+
 ## PKSE 1.2.2 differential audit and port (owner request 2026-11-01)
 
 Upstream `kiasta/PKSE` v1.2.1..v1.2.2 (`fc555b1`, `65dff1d`, `c671aa4`, `474ad9e`, `f4fd79a`) read at source level;
