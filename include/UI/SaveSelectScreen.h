@@ -377,6 +377,7 @@ namespace UI {
         std::string linkTargetGameId;
         PokeVault::Games::Platform linkPlatform = PokeVault::Games::Platform::NintendoSwitch;
         std::string linkProviderFilter;
+        std::string linkManualProviderLabel;
         int linkEmulatorIndex = 0;
         bool linkFromGamesDrawer = false;
         bool linkFromClassicGames = false;
