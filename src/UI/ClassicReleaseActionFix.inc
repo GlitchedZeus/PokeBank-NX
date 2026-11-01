@@ -427,7 +427,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             screen.controllerNavigation.reset();
             return true;
         case Action::Move: {
-            // Round 11 ACTIONS: the accepted hold-Y packed carry, picked up (Y drops, B cancels).
+            // Round 11 ACTIONS: the accepted hold-Y packed carry, picked up (A places, B cancels: Round 11 H23).
             // Close the sheet fully first: the carry layer only runs with no Gen II overlay active.
             if (!pokemon) return true;
             const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;

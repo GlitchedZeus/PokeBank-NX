@@ -1778,7 +1778,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             break;
         }
         case Shared::Action::Move: {
-            // Round 11 ACTIONS: the accepted sparse hold-Y carry, picked up (Y drops, B restores).
+            // Round 11 ACTIONS: the accepted sparse hold-Y carry, picked up (A places, B restores: Round 11 H23).
             // The sheet closes first so the carry layer (not this surface) owns the next keys.
             state.actions = false;
             screen.controllerNavigation.reset();
