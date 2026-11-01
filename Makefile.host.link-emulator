@@ -1,0 +1,14 @@
+# Shared generation-aware Link Emulator chooser, presentation only.
+LINK_EMULATOR_INPUTS := tests/test_link_emulator_model.cpp include/UI/LinkEmulatorModel.h include/Games/GameIdentity.h
+HOST_TESTS += $(HOST_BUILD)/test_link_emulator_model
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_link_emulator_model_sanitize
+host-test: $(HOST_BUILD)/test_link_emulator_model
+host-sanitize: $(HOST_BUILD)/test_link_emulator_model_sanitize
+
+$(HOST_BUILD)/test_link_emulator_model: $(LINK_EMULATOR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_link_emulator_model.cpp -o $@
+
+$(HOST_BUILD)/test_link_emulator_model_sanitize: $(LINK_EMULATOR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_link_emulator_model.cpp -o $@

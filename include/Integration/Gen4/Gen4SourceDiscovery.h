@@ -114,7 +114,8 @@ struct SourcePayloadRead {
 [[nodiscard]] DiscoveryResult discoverKnownSources(
     DiscoveryLimits limits = {},
     const std::string& retroArchConfig = "sdmc:/retroarch/retroarch.cfg",
-    const std::string& retroArchFallback = "sdmc:/retroarch/cores/savefiles");
+    const std::string& retroArchFallback = "sdmc:/retroarch/cores/savefiles",
+    std::string_view providerFilter = {});
 
 [[nodiscard]] bool candidateMatchesGame(
     const SourceCandidate& candidate, std::string_view gameId) noexcept;

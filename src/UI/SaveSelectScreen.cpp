@@ -2414,7 +2414,11 @@ namespace UI {
     void SaveSelectScreen::discoverGen4Candidates() {
         gen4Candidates.clear();
         gen4Instances.clear();
-        auto discovered = PokeVault::Integration::Gen4::discoverKnownSources();
+        const auto discovered = gen4TargetGameId == linkTargetGameId && !linkProviderFilter.empty()
+            ? PokeVault::Integration::Gen4::discoverKnownSources(
+                {}, "sdmc:/retroarch/retroarch.cfg", "sdmc:/retroarch/cores/savefiles",
+                linkProviderFilter)
+            : PokeVault::Integration::Gen4::discoverKnownSources();
         size_t wrappers = 0;
         size_t savestates = 0;
         std::string rememberedDiagnostic;
@@ -2422,7 +2426,10 @@ namespace UI {
         auto appendReady = [&](PokeVault::Integration::Gen4::SourceCandidate candidate,
                                bool rememberedSource = false) {
             if (!candidate.ready() ||
-                !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId))
+                !PokeVault::Integration::Gen4::candidateMatchesGame(candidate, gen4TargetGameId) ||
+                (gen4TargetGameId == linkTargetGameId && !linkProviderFilter.empty() &&
+                 !PokeBank::UIModel::LinkEmulator::providerMatches(
+                     candidate.sourceType, linkProviderFilter)))
                 return;
             auto instance = PokeVault::Integration::Gen4::toSaveInstance(
                 candidate, gen4TargetGameId, gen4Candidates.size(), rememberedSource,
@@ -2658,7 +2665,9 @@ namespace UI {
             gen5Instances,gen5CandidateIndex);
         gen5Instances.clear();
         gen5CandidateTouchScroll.stop();
-        const auto discovered=PokeVault::Integration::Gen5::discoverKnownSources();
+        const auto discovered=PokeVault::Integration::Gen5::discoverKnownSources(
+            {}, "sdmc:/retroarch/retroarch.cfg", "sdmc:/retroarch/cores/savefiles",
+            gen5TargetGameId == linkTargetGameId ? linkProviderFilter : std::string{});
         std::vector<PokeVault::Source::SaveInstance> rows=discovered.instances;
         // Preserve exact manually assigned paths outside known emulator roots,
         // but never accept an invalid, ambiguous, or replaced source as ready.
@@ -2700,6 +2709,12 @@ namespace UI {
             overlay=Overlay::Gen5Setup;
             return;
         }
+        if (gen5TargetGameId == linkTargetGameId && !linkProviderFilter.empty())
+            rows.erase(std::remove_if(rows.begin(), rows.end(),
+                [&](const auto& row) {
+                    return !PokeBank::UIModel::LinkEmulator::providerMatches(
+                        row.providerLabel, linkProviderFilter);
+                }), rows.end());
         const auto catalog=PokeVault::Integration::Gen5::forGameAndProfile(
             rows,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
         gen5Instances=catalog.rows;
@@ -3061,6 +3076,12 @@ namespace UI {
         } else if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ambiguous) {
             rememberedWarning = "Multiple remembered sources; explicitly choose a replacement.";
         }
+        if (gen5TargetGameId == linkTargetGameId && !linkProviderFilter.empty())
+            rows.erase(std::remove_if(rows.begin(), rows.end(),
+                [&](const auto& row) {
+                    return !PokeBank::UIModel::LinkEmulator::providerMatches(
+                        row.providerLabel, linkProviderFilter);
+                }), rows.end());
         const auto catalog = Modern::forGameAndProfile(rows, *legacyBindings, currentProfileIdentity(), gen5TargetGameId);
         gen5Instances = catalog.rows;
         logInfoToFile(gen + " scan: game=" + gen5TargetGameId +
@@ -3192,7 +3213,9 @@ namespace UI {
             gen5Notice = "Profile assignments unavailable; no save was opened.";
             return;
         }
-        const auto choices = Modern::inspectSourceChoices(chosen.text, std::string(Modern::kProviderManual), gen5TargetGameId);
+        const auto choices = Modern::inspectSourceChoices(chosen.text,
+            linkManualProviderLabel.empty() ? std::string(Modern::kProviderManual) : linkManualProviderLabel,
+            gen5TargetGameId);
         const auto catalog = Modern::forGameAndProfile(choices, *legacyBindings, currentProfileIdentity(), gen5TargetGameId);
         if (catalog.rows.empty()) {
             gen5Notice = catalog.ambiguousOwnership
@@ -3596,6 +3619,53 @@ namespace UI {
         }
     }
 
+
+    void SaveSelectScreen::openLinkEmulatorForCurrentTitle(bool fromGamesDrawer, bool fromClassicGames) {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        const auto* descriptor = PokeVault::Games::findGame(title.gameId);
+        if (!descriptor) return;
+        const bool gbaForwarder = title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+            descriptor->platform == PokeVault::Games::Platform::NintendoSwitch;
+        linkPlatform = PokeBank::UIModel::LinkEmulator::effectivePlatform(descriptor->platform, gbaForwarder);
+        if (PokeBank::UIModel::LinkEmulator::nativeSwitch(descriptor->platform, gbaForwarder))
+            return; // Native Switch: no emulator guessing; use installed snapshot or exported copy.
+        linkTargetGameId = title.gameId;
+        linkFromGamesDrawer = fromGamesDrawer;
+        linkFromClassicGames = fromClassicGames;
+        linkEmulatorIndex = 0; // Always offer automatic discovery first.
+        linkProviderFilter.clear();
+        linkManualProviderLabel.clear();
+        linkNotice = "Choose your emulator. Only validated cartridge saves can be linked.";
+        overlay = Overlay::LinkEmulator;
+    }
+
+    void SaveSelectScreen::activateLinkEmulator() {
+        namespace Link = PokeBank::UIModel::LinkEmulator;
+        const auto choices = Link::choices(linkPlatform);
+        if (linkEmulatorIndex < 0 || linkEmulatorIndex >= static_cast<int>(choices.size())) return;
+        const auto& choice = choices[static_cast<size_t>(linkEmulatorIndex)];
+        linkProviderFilter = choice.manualFile ? std::string{} : std::string(choice.provider);
+        linkManualProviderLabel = choice.title == "Azahar File" ? "Azahar" : "Manual";
+        linkBypassNextSourceOpen = true;
+        openSaveSourceForCurrentTitle(linkFromGamesDrawer, linkFromClassicGames);
+        // The same native validators and profile claims run whether selected by
+        // emulator or automatic discovery. Manual selection remains strictly read-only.
+        const auto* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto sourceKind = user->titles[static_cast<size_t>(titleIndex)].sourceKind;
+        if (choice.manualFile) {
+            if (sourceKind == SelectedSourceKind::Gen4AssignedFile && overlay == Overlay::Gen4Setup)
+                chooseGen4ManualFile();
+            else if (sourceKind == SelectedSourceKind::Gen5AssignedFile && overlay == Overlay::Gen5Setup)
+                chooseGen5ManualFile();
+            else if (sourceKind == SelectedSourceKind::ModernAssignedFile && overlay == Overlay::Gen5Setup)
+                chooseModernManualFile();
+        }
+        linkManualProviderLabel.clear();
+    }
+
     void SaveSelectScreen::openSaveSourceForCurrentTitle(
         bool fromGamesDrawer, bool fromClassicGames) {
         const UserEntry* user = currentUser();
@@ -3604,9 +3674,23 @@ namespace UI {
             return;
         }
         const auto& game = user->titles[static_cast<size_t>(titleIndex)];
+        if (linkBypassNextSourceOpen) {
+            linkBypassNextSourceOpen = false;
+        } else if (const auto* descriptor = PokeVault::Games::findGame(game.gameId)) {
+            const bool gbaForwarder = game.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                descriptor->platform == PokeVault::Games::Platform::NintendoSwitch;
+            if (!PokeBank::UIModel::LinkEmulator::nativeSwitch(descriptor->platform, gbaForwarder) &&
+                (game.sourceKind == SelectedSourceKind::RetroArchFRLG ||
+                 game.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                 game.sourceKind == SelectedSourceKind::Gen5AssignedFile ||
+                 game.sourceKind == SelectedSourceKind::ModernAssignedFile)) {
+                openLinkEmulatorForCurrentTitle(fromGamesDrawer, fromClassicGames);
+                return;
+            }
+        }
         if (game.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             openGen5Setup(game.gameId,
-                "Assign or change a validated Gen V read-only save.",fromGamesDrawer);
+                "Review or change this Gen V profile/save assignment.",fromGamesDrawer);
         } else if (game.sourceKind == SelectedSourceKind::ModernAssignedFile) {
             openGen5Setup(game.gameId,
                 "Assign or change a validated "+modernGenerationShort(game.gameId)+" read-only save.",fromGamesDrawer);
@@ -3621,6 +3705,19 @@ namespace UI {
                 std::remove_if(unassignedLegacySources.begin(), unassignedLegacySources.end(),
                     [&](const LegacyAssignmentEntry& entry) { return entry.gameId != game.gameId; }),
                 unassignedLegacySources.end());
+            if (!linkProviderFilter.empty()) {
+                unassignedLegacySources.erase(std::remove_if(unassignedLegacySources.begin(),
+                    unassignedLegacySources.end(), [&](const LegacyAssignmentEntry& entry) {
+                        return !PokeBank::UIModel::LinkEmulator::providerMatches(
+                            entry.instance.providerLabel, linkProviderFilter);
+                    }), unassignedLegacySources.end());
+                if (unassignedLegacySources.empty()) {
+                    linkNotice = "No unassigned, validated " + linkProviderFilter +
+                                 " save for this game. Try automatic discovery or another emulator.";
+                    overlay = Overlay::LinkEmulator;
+                    return;
+                }
+            }
             if (!unassignedLegacySources.empty()) {
                 legacyAssignmentIndex = 0;
                 legacyAssignmentScroll = 0;
@@ -3844,25 +3941,9 @@ namespace UI {
                 }
                 return;
             case 7: // Source / Game File
-                if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-                    legacyInstanceIndex = 0;
-                    legacyInstanceScroll = 0;
-                    legacyNotice.clear();
-                    overlay = Overlay::LegacyInstances;
-                } else if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-                    openGen5Setup(title.gameId,
-                        "Review or change this Gen V profile/save assignment.");
-                } else if (title.sourceKind == SelectedSourceKind::ModernAssignedFile) {
-                    openGen5Setup(title.gameId,
-                        "Review or change this "+modernGenerationShort(title.gameId)+" profile/save assignment.");
-                } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                    openGen4Setup(title.gameId,
-                        "Review or change this game's remembered read-only save source.");
-                } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
-                    beginLaunchLinkForCurrentTitle();
-                } else {
-                    hubNotice = "Nintendo save data is console-managed. Use Launch if a separate game file needs linking.";
-                }
+                // All emulator-backed titles use the one Link Emulator frontend.
+                // Native Switch save snapshots never ask which emulator is running.
+                openSaveSourceForCurrentTitle(false, classicGamesActive);
                 return;
             default:
                 return;
@@ -4143,6 +4224,7 @@ namespace UI {
                         case Overlay::LegacyInstances: legacyInstanceIndex = r.idx; break;
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
+                        case Overlay::LinkEmulator: linkEmulatorIndex = r.idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
                         case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
@@ -4175,6 +4257,7 @@ namespace UI {
                         case Overlay::LegacyInstances: legacyInstanceIndex = idx; break;
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = idx; break;
+                        case Overlay::LinkEmulator: linkEmulatorIndex = idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = idx; break;
                         case Overlay::Gen5Candidates: gen5CandidateIndex = idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
@@ -4375,6 +4458,24 @@ namespace UI {
             return;
         }
 
+        if (overlay == Overlay::LinkEmulator) {
+            namespace Link = PokeBank::UIModel::LinkEmulator;
+            const auto rows = Link::choices(linkPlatform);
+            if (kDown & HidNpadButton_B) {
+                overlay = linkFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                if (overlay == Overlay::GamesDrawer) {
+                    gamesDrawerIndex = titleIndex;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
+                }
+                return;
+            }
+            if (kDown & HidNpadButton_Up)
+                linkEmulatorIndex = Link::wrapIndex(linkEmulatorIndex, -1, rows.size());
+            if (kDown & HidNpadButton_Down)
+                linkEmulatorIndex = Link::wrapIndex(linkEmulatorIndex, 1, rows.size());
+            if (kDown & HidNpadButton_A) activateLinkEmulator();
+            return;
+        }
         if (overlay == Overlay::GameFilePicker) {
             const int count = static_cast<int>(launchFileEntries.size());
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
@@ -6400,6 +6501,41 @@ namespace UI {
             for (size_t offset = 70; offset < path.size() && offset < 210; offset += 70)
                 drawLine("", path.substr(offset, 70));
             drawNavBar(fb, {{"B", "Back to Save List"}});
+        } else if (overlay == Overlay::LinkEmulator && u) {
+            namespace Link = PokeBank::UIModel::LinkEmulator;
+            const auto choices = Link::choices(linkPlatform);
+            constexpr int w = 900, h = 608, rowH = 68;
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const auto* game = PokeVault::Games::findGame(linkTargetGameId);
+            fb.drawText(x + 28, y + 18,
+                        std::string(Link::platformLabel(linkPlatform)) + " / SAVE SOURCES",
+                        Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44,
+                        game ? "Pokémon " + std::string(game->title) : "Link Emulator",
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 78,
+                        "Choose emulator to find saves. The source stays read-only.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            for (int i = 0; i < static_cast<int>(choices.size()); ++i) {
+                const int ry = y + 116 + i * rowH;
+                const auto& choice = choices[static_cast<size_t>(i)];
+                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
+                                i == linkEmulatorIndex, 10);
+                overlayRects.push_back({x + 24, ry, w - 48, rowH - 6, i});
+                fb.drawText(x + 46, ry + 4, std::string(choice.title),
+                            i == linkEmulatorIndex ? Colors::TextPrimary :
+                                                     Colors::TextSecondary, TextStyle::Body);
+                fb.drawText(x + 46, ry + 34, std::string(choice.description),
+                            Colors::TextMuted, TextStyle::Caption);
+            }
+            if (!linkNotice.empty())
+                fb.drawText(x + 28, y + h - 55,
+                            fitTextToWidth(fb, linkNotice, w - 60, TextStyle::Caption),
+                            Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"D-pad/Stick", "Choose Emulator"},
+                            {"A", "Find Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Gen5Setup && u) {
             constexpr int w=800,h=520,rowH=62;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
