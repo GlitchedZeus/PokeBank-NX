@@ -309,6 +309,22 @@ $(HOST_BUILD)/test_gen3_encounter_keep_stored_sanitize: tests/test_gen3_encounte
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_encounter_keep_stored.cpp -o $@
 
+# Round 11 FRLG: Gen III Met Location offers exact-origin native locations (Kanto for FR/LG), never fails closed.
+GEN3_EXACT_MET_DEPS := include/UI/Gen3EncounterPickerModel.h include/UI/ExactGameMetLocations.h \
+	include/Names/LocationNames.h include/Names/LocationDisplayNames.h \
+	include/Integration/Encounter/EncounterGuardrails.h include/Integration/Encounter/EncounterGuardrailsData.inc
+GEN3_EXACT_MET_SOURCES := tests/test_gen3_exact_game_met_locations.cpp src/Names/LocationNames.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen3_exact_game_met_locations
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_exact_game_met_locations_sanitize
+host-test: $(HOST_BUILD)/test_gen3_exact_game_met_locations
+host-sanitize: $(HOST_BUILD)/test_gen3_exact_game_met_locations_sanitize
+$(HOST_BUILD)/test_gen3_exact_game_met_locations: $(GEN3_EXACT_MET_SOURCES) $(GEN3_EXACT_MET_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_EXACT_MET_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_exact_game_met_locations_sanitize: $(GEN3_EXACT_MET_SOURCES) $(GEN3_EXACT_MET_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_EXACT_MET_SOURCES) -o $@
+
 # R2-CHECK-009: Gen I/II packed moves, including Gen I Box Actions -> Move, now in host-test (the
 # focused CI workflow builds the same sources).
 GEN12_PACKED_MOVE_SOURCES := tests/test_gen12_packed_move.cpp \

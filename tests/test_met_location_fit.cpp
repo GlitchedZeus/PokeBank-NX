@@ -9,6 +9,7 @@
 #include "Integration/Encounter/EncounterContext45.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Names/LocationDisplayNames.h"
+#include "UI/ExactGameMetLocations.h"
 #include "UI/SharedMenuGeometry.h"
 
 #include <cassert>
@@ -139,6 +140,16 @@ void testGen3RowsFit() {
             const std::string name = "Keep stored: " + Names::getMetLocationDisplayName(origin, location);
             ++rows;
             const int w = rowWidth(name, "Met Lv. 100");
+            if (w > widest) { widest = w; worst = name; }
+        }
+    // Round 11 FRLG: every other-native row (a native place that is not a listed catch, or a trade /
+    // egg / event marker) of each exact origin game, with the text metLocationChoiceText() builds.
+    assert(src.find("Names::getMetLocationDisplayName(stored.originGame, location), MetRows::gen3OtherDetail(location)") != std::string::npos);
+    for (uint8_t origin = 1; origin <= 5; ++origin)
+        for (const auto location : PokeBank::UIModel::ExactGameMetLocations::gen3OfferedLocations(origin)) {
+            const std::string name = Names::getMetLocationDisplayName(origin, location);
+            ++rows;
+            const int w = rowWidth(name, PokeBank::UIModel::ExactGameMetLocations::gen3OtherDetail(location));
             if (w > widest) { widest = w; worst = name; }
         }
     if (widest > kTextRoom) std::cerr << "clipped: " << worst << " (" << widest << " > " << kTextRoom << ")\n";
