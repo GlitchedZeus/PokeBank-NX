@@ -1,0 +1,90 @@
+{
+  "gcc-normal": {
+    "exit": 0,
+    "passed_binaries": 13,
+    "checks": 66078,
+    "binaries": {
+      "test_gen6_pk6": "591",
+      "test_gen6_save": "567",
+      "test_gen6_staged": "166",
+      "test_gen6_editor_sources": "232",
+      "test_gen6_stats": "31270",
+      "test_gen6_bag": "87",
+      "test_gen6_readouts": "31",
+      "test_gen7_save": "350",
+      "test_gen7_staged": "574",
+      "test_gen7_stats": "30932",
+      "test_gen7_readouts": "17",
+      "test_gen7_bag": "102",
+      "test_gen8_swsh": "1159"
+    },
+    "source_sha": "2f065ee2b0768d01bf621f969aef01120c6231e3",
+    "sanitizer_vendor_exemptions_preserved": true
+  },
+  "clang-normal": {
+    "exit": 0,
+    "passed_binaries": 13,
+    "checks": 66078,
+    "binaries": {
+      "test_gen6_pk6": "591",
+      "test_gen6_save": "567",
+      "test_gen6_staged": "166",
+      "test_gen6_editor_sources": "232",
+      "test_gen6_stats": "31270",
+      "test_gen6_bag": "87",
+      "test_gen6_readouts": "31",
+      "test_gen7_save": "350",
+      "test_gen7_staged": "574",
+      "test_gen7_stats": "30932",
+      "test_gen7_readouts": "17",
+      "test_gen7_bag": "102",
+      "test_gen8_swsh": "1159"
+    },
+    "source_sha": "2f065ee2b0768d01bf621f969aef01120c6231e3",
+    "sanitizer_vendor_exemptions_preserved": true
+  },
+  "gcc-san": {
+    "exit": 0,
+    "passed_binaries": 13,
+    "checks": 66078,
+    "binaries": {
+      "test_gen6_pk6": "591",
+      "test_gen6_save": "567",
+      "test_gen6_staged": "166",
+      "test_gen6_editor_sources": "232",
+      "test_gen6_stats": "31270",
+      "test_gen6_bag": "87",
+      "test_gen6_readouts": "31",
+      "test_gen7_save": "350",
+      "test_gen7_staged": "574",
+      "test_gen7_stats": "30932",
+      "test_gen7_readouts": "17",
+      "test_gen7_bag": "102",
+      "test_gen8_swsh": "1159"
+    },
+    "source_sha": "2f065ee2b0768d01bf621f969aef01120c6231e3",
+    "sanitizer_vendor_exemptions_preserved": true
+  },
+  "clang-san": {
+    "exit": 0,
+    "passed_binaries": 13,
+    "checks": 66078,
+    "binaries": {
+      "test_gen6_pk6": "591",
+      "test_gen6_save": "567",
+      "test_gen6_staged": "166",
+      "test_gen6_editor_sources": "232",
+      "test_gen6_stats": "31270",
+      "test_gen6_bag": "87",
+      "test_gen6_readouts": "31",
+      "test_gen7_save": "350",
+      "test_gen7_staged": "574",
+      "test_gen7_stats": "30932",
+      "test_gen7_readouts": "17",
+      "test_gen7_bag": "102",
+      "test_gen8_swsh": "1159"
+    },
+    "source_sha": "2f065ee2b0768d01bf621f969aef01120c6231e3",
+    "sanitizer_vendor_exemptions_preserved": true
+  }
+}
