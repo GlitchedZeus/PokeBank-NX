@@ -255,9 +255,11 @@ PKHeX differential (same seed, 60 records appended after the stream):
 - Controls: 14 eggs without met data and 15 male-OT Kenya/Shuckle are legal in both.
 - Defects: 14 PKHeX-shaped egg met data and 15 female-OT gifts are classified
   `deliberate: egg-met-data` / `gift-ot-gender`. One more egg defect is Invalid in both.
-- One appended control egg, #12264, is the Oddish Absorb/Swords Dance/Synthesis egg that
-  PKHeX rejects as EggMoveCombination. It has the same moves as the hand-verified #9716
-  (Bulbasaur-father ancestry), so it is the same known disagreement.
+- The appended eggs carry only their level-5 moves. A first run with random egg moves drew
+  the Oddish Absorb/Swords Dance/Synthesis egg that PKHeX rejects as EggMoveCombination, which
+  is the same move set as the hand-verified #9716 (Bulbasaur-father ancestry). That is the
+  ancestry search's job, not what these records test. With level-5 moves, CI seeds 1-3
+  (3 x 50,000) put none of the 750 appended records in a differing class.
 - The first 12,240 verdicts are byte-identical to Milestone 5's run, and PK2 production
   parity passes.
 

@@ -877,6 +877,9 @@ def main():
     for i in range(max(1, args.count // 200)):
         if i % 4 < 2:
             mon = egg_mon(d, rng, False, crystal=True)
+            # Level-5 moves only: an egg-move chain is judged by the ancestry search, which is
+            # not what these records test (see #9716 for a known ancestry disagreement).
+            mon.moves = encounter_moves(d, mon.species, 5, True)
             if i % 4 == 1:
                 mon.caught = caught(rng.randint(1, 3), 1, rng.randrange(2), 0)
             emit("control2-egg-no-met" if i % 4 == 0 else "defect2-egg-met", mon)
