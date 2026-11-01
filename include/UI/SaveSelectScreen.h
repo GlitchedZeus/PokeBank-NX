@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 #include "UI/SourceBackupClassification.h"
+#include "UI/DSLinkEmulatorModel.h"
 #include "UI/RecoveryManagementFs.h"
 #include <string>
 
@@ -254,7 +255,7 @@ namespace UI {
         int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
-                             Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
+                             Gen4Candidates, DsEmulatorPicker, Gen5Setup, Gen5UnassignConfirm,
                              Gen5Candidates, GameFilePicker, QuitConfirm,
                              EmulatorBackups, EmulatorBackupDeleteConfirm,
                              RecoveryFiles, RecoveryConfirm };
@@ -345,6 +346,10 @@ namespace UI {
         // instances and always shows a chooser before opening. The existing assignment database is
         // retained only as a remembered/manual source so paths outside known emulator roots remain
         // reachable; it must never bypass the Save Instances chooser.
+        // Provider selection only filters discovery; assignments use Save Instances verification.
+        bool dsLinkFromGen5 = false;
+        int dsLinkIndex = 0;
+        std::string dsProviderFilter;
         std::string gen4TargetGameId;
         std::string gen4Notice;
         bool gen4SetupFromGamesDrawer = false;
@@ -446,6 +451,7 @@ namespace UI {
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {},
                            bool returnToGamesDrawer = false, bool returnToClassicGames = false);
+        void openDsEmulatorPicker(bool gen5);
         void discoverGen4Candidates();
         bool assignGen4Candidate(const PokeVault::Integration::Gen4::SourceCandidate& candidate);
         void chooseGen4ManualFile();
