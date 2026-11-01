@@ -65,6 +65,7 @@ public:
         checkFateful(Modern::Format::PA9, species_, (p_[0x22] & 1) != 0);
         checkLanguage();
         checkNickname();
+        checkRelearn();
         if (!Data::heldItemAllowed(u16(0x0A)))
             invalid(CheckIdentifier::Items, "Held item " + std::to_string(u16(0x0A)) + " is not obtainable in Legends: Z-A");
         checkHyperTraining();
@@ -86,6 +87,21 @@ private:
     Report finish() { return std::move(report_); }
     void invalid(CheckIdentifier id, std::string text) { report_.issues.push_back({Severity::Invalid, std::move(text), id}); }
     void warning(CheckIdentifier id, std::string text) { report_.issues.push_back({Severity::Warning, std::move(text), id}); }
+
+    // LearnVerifierRelearn (Legal.IsOriginalMovesetDeleted): a record from another game moved in through
+    // HOME has no relearn moves; no repeated relearn move.
+    void checkRelearn() {
+        std::array<uint16_t, 4> moves{};
+        for (size_t i = 0; i < 4; ++i) moves[i] = u16(0x82 + 2 * i);
+        for (size_t i = 0; i < 4; ++i)
+            for (size_t j = 0; j < i; ++j)
+                if (moves[i] != 0 && moves[i] == moves[j]) {
+                    invalid(CheckIdentifier::Moves, "Relearn move " + std::to_string(moves[i]) + " is repeated");
+                    return;
+                }
+        if (moves != std::array<uint16_t, 4>{} && version() != VersionZA)
+            invalid(CheckIdentifier::Moves, "Relearn moves are set but the original moveset was deleted (moved into Legends: Z-A through HOME)");
+    }
 
     uint16_t u16(size_t o) const noexcept { return PK8::read16(p_, o); }
     uint32_t u32(size_t o) const noexcept { return PK8::read32(p_, o); }

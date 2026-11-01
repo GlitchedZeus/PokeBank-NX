@@ -41,6 +41,13 @@ struct EggFacts {
 };
 EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept;
 
+/// LearnVerifierRelearn for a Generation 6/7 origin (format PK6 or PK7 = the origin games): false
+/// only when no encounter of the species' line in those games can leave this move in a relearn
+/// slot. `fromEgg` picks the egg encounters (an egg's level-up and egg moves, a gift egg's fixed
+/// moves) or the others (fixed relearn movesets, DexNav-style bonus moves). Undecided species and
+/// other formats return true.
+bool relearnPossible(Modern::Format origin, uint16_t species, uint16_t move, bool fromEgg) noexcept;
+
 /// EncounterVerifier.VerifyEncounterEgg6/7/8/8BDSP/9 hatch-location lists: whether an egg of the
 /// origin game (version id) hatches at this met location. Games without a list return true.
 bool hatchLocation(uint8_t version, uint16_t location) noexcept;

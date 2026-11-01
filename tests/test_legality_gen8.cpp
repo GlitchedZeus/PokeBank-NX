@@ -207,7 +207,13 @@ void testRuleEdits(const std::vector<Record>& records) {
     // Values a legitimate record can hold stay undecided.
     expectNotInvalid(n, "mint stat nature", [](auto& b) { b[0x21] = b[0x20] == 1 ? 2 : 1; });
     expectNotInvalid(n, "dynamax 10", [](auto& b) { b[0x90] = 10; });
-    expectNotInvalid(*home7, "battle version on a Gen VII record", [](auto& b) { b[0xDF] = 45; });
+    // A battle version deletes the original moveset (relearn moves included).
+    expectNotInvalid(*home7, "battle version on a Gen VII record", [](auto& b) {
+        b[0xDF] = 45;
+        for (size_t i = 0; i < 8; ++i) b[0x82 + i] = 0;
+    });
+    if (PK8::read16(home7->plain, 0x82) != 0)
+        expectInvalid(*home7, "battle version keeping relearn moves", [](auto& b) { b[0xDF] = 45; }, "original moveset was deleted");
     // Egg rules, on the native record turned into an egg (egg and nickname flags set).
     Record egg = n;
     egg.plain = edit(n.plain, [](auto& b) {
@@ -542,6 +548,37 @@ void testEggs(const std::vector<Record>& all) {
     }
 }
 
+void testRelearn(const std::vector<Record>& all) {
+    auto setRelearn = [](std::vector<uint8_t>& b, size_t slot, uint16_t move) { PK8::write16(b, 0x82 + 2 * slot, move); };
+    for (Format f : {Format::PK8, Format::PB8, Format::PK9}) {
+        const size_t versionAt = f == Format::PK9 ? 0xCE : 0xDE;
+        const uint8_t own0 = f == Format::PK8 ? 44 : f == Format::PB8 ? 48 : 50;
+        const std::string name = f == Format::PK8 ? "PK8" : f == Format::PB8 ? "PB8" : "PK9";
+        // A record moved in from another game through HOME has its original moveset deleted.
+        const Record* moved = find(all, [&](const Record& r) {
+            return r.pkhexValid && r.format == f && r.plain[versionAt] != own0 && r.plain[versionAt] != own0 + 1 && r.plain[versionAt] != 0 &&
+                   r.label.find("home") != std::string::npos && PK8::read16(r.plain, 0x82) == 0;
+        });
+        if (moved) {
+            const auto rep = analyzePlain(*moved, edit(moved->plain, [&](auto& b) { setRelearn(b, 0, 33); }));
+            check(rep.verdict() == Verdict::Invalid && (hasIssue(rep, Severity::Invalid, "original moveset was deleted") ||
+                                                        hasIssue(rep, Severity::Invalid, "has no relearn moves")),
+                  name + " HOME record with a relearn move: " + describe(rep));
+        }
+        // A native record repeating a relearn move.
+        const Record* native = find(all, [&](const Record& r) {
+            return r.pkhexValid && r.format == f && r.label.rfind("native", 0) == 0 && PK8::read16(r.plain, 0x82) != 0 &&
+                   PK8::read16(r.plain, 0x84) == 0;
+        });
+        if (native) {
+            const uint16_t first = PK8::read16(native->plain, 0x82);
+            const auto rep = analyzePlain(*native, edit(native->plain, [&](auto& b) { setRelearn(b, 1, first); }));
+            check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "is repeated"), name + " repeated relearn move: " + describe(rep));
+        }
+        check(moved != nullptr || native != nullptr, name + " fixture has relearn controls");
+    }
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -558,6 +595,7 @@ int main() {
     all.insert(all.end(), bdsp.begin(), bdsp.end());
     all.insert(all.end(), sv.begin(), sv.end());
     testEggs(all);
+    testRelearn(all);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

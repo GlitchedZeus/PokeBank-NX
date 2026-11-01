@@ -324,6 +324,27 @@ The generator now also emits each egg encounter's record
 before it hatches (`Unhatched` in the oracle), so every corpus carries PKHeX-valid unhatched
 eggs as positive controls and their mutations as negatives.
 
+## Relearn moves (every format)
+
+`LearnVerifierRelearn` is mirrored in the encounter-independent part:
+
+* a repeated non-zero relearn move is Invalid in every format;
+* a record whose original moveset was deleted (`IsOriginalMovesetDeleted`) has no relearn moves:
+  a PK8 with a battle version, or moved in through HOME (except Celebi from the Virtual Console
+  games); a PB8 not from BD/SP; a PK9 not from Scarlet/Violet (an unhatched egg has version 0);
+  a PA8 not from Legends: Arceus; a PA9 not from Legends: Z-A;
+* a Generation 1–5 origin has no relearn moves (`ShouldNotHaveRelearnMoves`);
+* a PK6/PK7 record of Generation 6/7 origin may only carry relearn moves some encounter of its
+  evolution line in the origin games can give. `dumpencounters` writes two unions per format
+  (`kRelearn6/7` and `kRelearnEgg6/7`): non-egg encounters (fixed `IRelearn` movesets and
+  `ISingleMoveBonus` moves such as DexNav's), and egg encounters (the egg's level-up learnset,
+  egg moves, Volt Tackle for Pichu, and gift eggs' fixed moves). The record's egg location picks
+  the union: no non-egg encounter of Generation 6/7 carries one, and every egg does (Egg rules).
+
+A hatched record's relearn moves must also equal the moves its egg could have had in that order,
+and a Switch-game native's relearn move needs its encounter; both stay Incomplete. PB7 relearn
+moves are not checked yet.
+
 ## Nickname rule (every format)
 
 `src/Legality/ModernNickname.cpp`, called by all five analyzers, mirrors two parts of
@@ -351,45 +372,50 @@ species' name) are not decided yet.
 `tools/pkhex_gen67_diff/run.sh PKHEX [SEED] [MUTATIONS]` builds the oracle against PKHeX,
 checks the generated tables byte for byte, generates a corpus and runs `gen67_diff.cpp`.
 It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX invalid, NX
-"No problems found"). Results on 2026-10-31 (local, .NET 10.0.114, g++ 13.3):
+"No problems found"). Results on 2026-11-01 (local, .NET 10.0.114, g++ 13.3):
 
 | Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
 |---|---|---:|---:|---:|---:|---:|---:|
-| PK6/PK7 | 1 / 4 | 103,791 | 47,834 | 55,957 | 50,075 (89.5%) | 0 | 0 |
-| PK6/PK7 | 2 / 8 | 182,416 | 71,354 | 111,062 | 99,964 (90.0%) | 0 | 0 |
-| PK6/PK7 | 3 / 8 | 182,943 | 71,070 | 111,873 | 100,424 (89.8%) | 0 | 0 |
-| PK6/PK7 | 4 / 4 | 104,672 | 48,151 | 56,521 | 50,456 (89.3%) | 0 | 0 |
-| PB7 | 1 / 8 | 5,324 | 1,447 | 3,877 | 3,701 (95.5%) | 0 | 0 |
-| PB7 | 2 / 4 | 3,050 | 1,104 | 1,946 | 1,868 (96.0%) | 0 | 0 |
-| PB7 | 3 / 16 | 9,859 | 2,066 | 7,793 | 7,419 (95.2%) | 0 | 0 |
-| PB7 | 4 / 8 | 5,287 | 1,448 | 3,839 | 3,674 (95.7%) | 0 | 0 |
-| PA8 | 1 / 4 | 16,161 | 6,510 | 9,651 | 6,968 (72.2%) | 0 | 0 |
-| PA8 | 2 / 4 | 15,521 | 6,363 | 9,158 | 6,600 (72.1%) | 0 | 0 |
-| PA8 | 3 / 8 | 29,114 | 9,560 | 19,554 | 14,259 (72.9%) | 0 | 0 |
-| PA8 | 4 / 4 | 15,706 | 6,503 | 9,203 | 6,762 (73.5%) | 0 | 0 |
-| PA9 | 1 / 4 | 20,953 | 9,441 | 11,512 | 8,230 (71.5%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,203 | 9,438 | 11,765 | 8,387 (71.3%) | 0 | 0 |
-| PA9 | 3 / 8 | 38,041 | 13,812 | 24,229 | 17,147 (70.8%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,136 | 9,493 | 11,643 | 8,391 (72.1%) | 0 | 0 |
-| PK8 | 1 / 4 | 49,192 | 21,119 | 28,073 | 22,932 (81.7%) | 0 | 0 |
-| PK8 | 2 / 4 | 49,929 | 21,465 | 28,464 | 23,190 (81.5%) | 0 | 0 |
-| PK8 | 3 / 8 | 88,885 | 31,707 | 57,178 | 46,824 (81.9%) | 0 | 0 |
-| PK8 | 4 / 4 | 51,245 | 22,345 | 28,900 | 23,504 (81.3%) | 0 | 0 |
-| PB8 | 1 / 4 | 46,138 | 18,973 | 27,165 | 24,014 (88.4%) | 0 | 0 |
-| PB8 | 2 / 4 | 46,341 | 19,233 | 27,108 | 24,054 (88.7%) | 0 | 0 |
-| PB8 | 3 / 8 | 82,202 | 27,760 | 54,442 | 48,004 (88.2%) | 0 | 0 |
-| PB8 | 4 / 4 | 47,741 | 19,856 | 27,885 | 24,707 (88.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 43,647 | 20,249 | 23,398 | 20,403 (87.2%) | 0 | 0 |
-| PK9 | 2 / 4 | 43,062 | 19,867 | 23,195 | 20,123 (86.8%) | 0 | 0 |
-| PK9 | 3 / 8 | 76,816 | 29,832 | 46,984 | 41,160 (87.6%) | 0 | 0 |
-| PK9 | 4 / 4 | 42,637 | 19,745 | 22,892 | 19,926 (87.0%) | 0 | 0 |
+| PK6/PK7 | 1 / 4 | 103,150 | 47,064 | 56,086 | 50,454 (90.0%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 184,357 | 71,471 | 112,886 | 101,913 (90.3%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 184,610 | 71,239 | 113,371 | 102,351 (90.3%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 105,922 | 48,247 | 57,675 | 51,836 (89.9%) | 0 | 0 |
+| PB7 | 1 / 8 | 5,322 | 1,452 | 3,870 | 3,526 (91.1%) | 0 | 0 |
+| PB7 | 2 / 4 | 3,050 | 1,132 | 1,918 | 1,765 (92.0%) | 0 | 0 |
+| PB7 | 3 / 16 | 9,865 | 2,144 | 7,721 | 7,025 (91.0%) | 0 | 0 |
+| PB7 | 4 / 8 | 5,286 | 1,437 | 3,849 | 3,547 (92.2%) | 0 | 0 |
+| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,364 (72.4%) | 0 | 0 |
+| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 6,950 (72.3%) | 0 | 0 |
+| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 12,856 (73.5%) | 0 | 0 |
+| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 6,934 (73.2%) | 0 | 0 |
+| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 8,595 (71.1%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 8,671 (71.2%) | 0 | 0 |
+| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 16,870 (71.5%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 8,696 (71.9%) | 0 | 0 |
+| PK8 | 1 / 4 | 49,195 | 21,531 | 27,664 | 22,110 (79.9%) | 0 | 0 |
+| PK8 | 2 / 4 | 47,964 | 20,517 | 27,447 | 21,975 (80.1%) | 0 | 0 |
+| PK8 | 3 / 8 | 87,799 | 31,825 | 55,974 | 44,754 (80.0%) | 0 | 0 |
+| PK8 | 4 / 4 | 50,156 | 21,633 | 28,523 | 22,919 (80.4%) | 0 | 0 |
+| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,246 (87.2%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
+| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |
+| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 24,740 (87.6%) | 0 | 0 |
+| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,173 (85.6%) | 0 | 0 |
+| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,408 (85.9%) | 0 | 0 |
+| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,409 (86.0%) | 0 | 0 |
+| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,297 (86.1%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
 The PK8 counts dropped by a few records from the previous milestone because a Sword/Shield
 record with EC 0 is no longer Invalid for PID = EC: it may be a HOME gift (`WC8.IsHOMEGift`),
 whose EC PKHeX does not check, and the encounter is not resolved here. Every corpus grew at this milestone because the generator now also emits each egg
-encounter before it hatches (PK6/PK7, PK8, PB8, PK9). A few PKHeX verdicts depend on the run date
+encounter before it hatches (PK6/PK7, PK8, PB8, PK9). At this milestone the generator also writes a
+random relearn move, a current move as a relearn move, or a repeated relearn move into some
+records (mutations `relearn`, `relearncurrent`, `relearndup`). The rules below catch the ones that
+contradict every history; the rest (an egg whose relearn moves must equal its egg moveset, a
+Switch-game native whose relearn move needs the encounter's learnset) stay Incomplete, which is why
+the PB7, PA8, PA9 and Switch-format rates dropped by one to two points. A few PKHeX verdicts depend on the run date
 (HOME and distribution date windows), so the PKHeX valid/invalid split can move by a few
 records between days; the false-Invalid and false-Valid counts must stay zero.
 

@@ -122,6 +122,7 @@ public:
         checkNickname();
         checkUnhatchedEgg();
         checkHatchedEgg();
+        checkRelearn();
         checkHeldItem();
         checkConsoleRegion();
         checkTransferMetLocation();
@@ -511,6 +512,37 @@ private:
         if (pk_.metLevel() != 1) invalid(CheckIdentifier::Egg, "A hatched egg's met level is not 1");
         if (!ModernEncounter::hatchLocation(pk_.originVersion(), pk_.metLocation()))
             invalid(CheckIdentifier::Egg, "A hatched egg's met location is not a hatching location of its origin game");
+    }
+
+    // LearnVerifierRelearn: a Generation 1-5 origin never has relearn moves (ShouldNotHaveRelearnMoves);
+    // no encounter repeats a relearn move; a Generation 6/7 origin's relearn moves must be ones some
+    // egg (or, without an egg location, some other encounter) of the species' line in its origin
+    // games can give (ModernEncounter.h).
+    void checkRelearn() {
+        std::array<uint16_t, 4> moves{};
+        for (size_t i = 0; i < 4; ++i) moves[i] = static_cast<uint16_t>(plain_[0x6A + 2 * i] | (plain_[0x6B + 2 * i] << 8));
+        if (originGen_ == 0) return;
+        if (originGen_ < 6) {
+            if (moves != std::array<uint16_t, 4>{})
+                invalid(CheckIdentifier::Moves, "A Generation " + std::to_string(originGen_) + " origin has no relearn moves");
+            return;
+        }
+        for (size_t i = 0; i < 4; ++i)
+            for (size_t j = 0; j < i; ++j)
+                if (moves[i] != 0 && moves[i] == moves[j]) {
+                    invalid(CheckIdentifier::Moves, "Relearn move " + std::to_string(moves[i]) + " is repeated");
+                    return;
+                }
+        const auto origin = originGen_ == 6 ? Modern::Format::PK6 : Modern::Format::PK7;
+        // No non-egg encounter of Generation 6/7 carries an egg location, and every egg does
+        // (ModernEncounter::eggFacts), so the egg location tells which encounters apply.
+        const bool fromEgg = pk_.eggLocation() != 0;
+        for (const uint16_t m : moves)
+            if (m != 0 && !ModernEncounter::relearnPossible(origin, pk_.species(), m, fromEgg)) {
+                invalid(CheckIdentifier::Moves, "Relearn move " + std::to_string(m) + " is not possible for any " +
+                                                    (fromEgg ? "egg" : "non-egg encounter") + " of the species");
+                return;
+            }
     }
 
     // BallVerifier: no encounter uses ball 0 or a ball above the format's last ball.

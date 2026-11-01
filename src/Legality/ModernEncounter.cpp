@@ -91,6 +91,24 @@ EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept {
     return f;
 }
 
+bool relearnPossible(Modern::Format origin, uint16_t species, uint16_t move, bool fromEgg) noexcept {
+    std::span<const uint32_t> index;
+    std::span<const uint16_t> moves;
+    if (origin == Modern::Format::PK6) {
+        index = fromEgg ? std::span<const uint32_t>(kRelearnEggIndex6) : kRelearnIndex6;
+        moves = fromEgg ? std::span<const uint16_t>(kRelearnEgg6) : kRelearn6;
+    } else if (origin == Modern::Format::PK7) {
+        index = fromEgg ? std::span<const uint32_t>(kRelearnEggIndex7) : kRelearnIndex7;
+        moves = fromEgg ? std::span<const uint16_t>(kRelearnEgg7) : kRelearn7;
+    } else {
+        return true;
+    }
+    if (static_cast<size_t>(species) + 1 >= index.size()) return true;
+    const auto list = moves.subspan(index[species], index[species + 1] - index[species]);
+    if (list.size() == 1 && list[0] == 0xFFFF) return true;  // undecided
+    return std::binary_search(list.begin(), list.end(), move);
+}
+
 bool hatchLocation(uint8_t version, uint16_t location) noexcept {
     std::span<const uint16_t> list;
     switch (version) {

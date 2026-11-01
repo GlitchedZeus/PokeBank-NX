@@ -115,6 +115,7 @@ public:
         checkNickname();
         checkUnhatchedEgg();
         checkHatchedEgg();
+        checkRelearn();
         checkHeldItem();
         checkTransferMetLocation();
         if (originGen_ == 1 || originGen_ == 2) checkVirtualConsole();
@@ -544,6 +545,30 @@ private:
         if (pk_.metLevel() != 1) invalid(CheckIdentifier::Egg, "A hatched egg's met level is not 1");
         if (!ModernEncounter::hatchLocation(version_, met_))
             invalid(CheckIdentifier::Egg, "A hatched egg's met location is not a hatching location of its origin game");
+    }
+
+    // LearnVerifierRelearn: no relearn moves for a Generation 1-5 origin or once the original moveset
+    // was deleted (Legal.IsOriginalMovesetDeleted: a record from another game moved in through HOME,
+    // or a Sword/Shield record that entered a battle version); no repeated relearn move.
+    void checkRelearn() {
+        std::array<uint16_t, 4> moves{};
+        for (size_t i = 0; i < 4; ++i) moves[i] = PK8::read16(plain_, 0x82 + 2 * i);
+        for (size_t i = 0; i < 4; ++i)
+            for (size_t j = 0; j < i; ++j)
+                if (moves[i] != 0 && moves[i] == moves[j]) {
+                    invalid(CheckIdentifier::Moves, "Relearn move " + std::to_string(moves[i]) + " is repeated");
+                    return;
+                }
+        if (moves == std::array<uint16_t, 4>{}) return;
+        bool deleted;
+        if (sv()) deleted = !(version_ == 50 || version_ == 51 || (pk_.isEgg() && version_ == 0));
+        else if (bdsp()) deleted = !(version_ == 48 || version_ == 49);
+        else deleted = battleVersion() != 0 || (side_ != 0 && !(species() == 251 && (side_ == 56 || side_ == 57)));
+        if (deleted)
+            invalid(CheckIdentifier::Moves, std::string("Relearn moves are set but the original moveset was deleted (moved in through HOME") +
+                                                (!sv() && !bdsp() && battleVersion() != 0 ? " or battle version set)" : ")"));
+        else if (originGen_ != 0 && originGen_ < 6)
+            invalid(CheckIdentifier::Moves, "A Generation " + std::to_string(originGen_) + " origin has no relearn moves");
     }
 
     // NicknameVerifier: NickLengthShort, and VerifyUnNicknamed (ModernNickname.h).

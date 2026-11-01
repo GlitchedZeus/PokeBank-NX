@@ -497,6 +497,53 @@ void testUnhatchedEgg(const std::vector<Record>& records) {
     }
 }
 
+void testRelearn(const std::vector<Record>& records) {
+    namespace B = Legality::ModernEncounter;
+    using Legality::Modern::Format;
+    // Table facts: Pichu's (172) egg can know Volt Tackle (344) only as a bred egg move.
+    check(B::relearnPossible(Format::PK6, 172, 344, true) && !B::relearnPossible(Format::PK6, 172, 344, false),
+          "PK6 Pichu Volt Tackle only from an egg");
+    check(B::relearnPossible(Format::PB7, 25, 1, false) && B::relearnPossible(Format::PK6, 2000, 1, false),
+          "other formats and species outside the table are undecided");
+    auto setRelearn = [](std::vector<uint8_t>& b, size_t slot, uint16_t move) {
+        b[0x6A + 2 * slot] = static_cast<uint8_t>(move);
+        b[0x6B + 2 * slot] = static_cast<uint8_t>(move >> 8);
+    };
+    // A wild native record (no egg location) given a move no non-egg encounter of its line has.
+    if (const Record* r = find(records, [](const Record& x) {
+            return x.pkhexValid && x.label.rfind("native", 0) == 0 && PK6::read16(x.plain, 0xD8) == 0 &&
+                   PK6::read16(x.plain, 0x6A) == 0;
+        })) {
+        const auto origin = r->format;
+        const uint16_t species = PK6::read16(r->plain, 0x08);
+        uint16_t move = 0;
+        for (uint16_t m = 1; m < 600 && move == 0; ++m)
+            if (!B::relearnPossible(origin, species, m, false)) move = m;
+        check(move != 0, "a foreign relearn move exists");
+        const auto rep = analyzePlain(*r, edit(r->plain, [&](auto& b) { setRelearn(b, 0, move); }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "non-egg encounter"),
+              "wild record with a foreign relearn move: " + describe(rep));
+    }
+    // A hatched record repeating its first relearn move.
+    if (const Record* r = find(records, [](const Record& x) {
+            return x.pkhexValid && x.label.rfind("native", 0) == 0 && PK6::read16(x.plain, 0xD8) != 0 &&
+                   PK6::read16(x.plain, 0x6A) != 0 && PK6::read16(x.plain, 0x6C) == 0;
+        })) {
+        const uint16_t first = PK6::read16(r->plain, 0x6A);
+        const auto rep = analyzePlain(*r, edit(r->plain, [&](auto& b) { setRelearn(b, 1, first); }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "is repeated"),
+              "repeated relearn move: " + describe(rep));
+    }
+    // A Generation 3-5 origin transferred to PK6 has no relearn moves.
+    if (const Record* r = find(records, [](const Record& x) {
+            return x.pkhexValid && x.format == Format::PK6 && x.label.rfind("transfer6", 0) == 0;
+        })) {
+        const auto rep = analyzePlain(*r, edit(r->plain, [&](auto& b) { setRelearn(b, 0, 33); }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "has no relearn moves"),
+              "transferred record with a relearn move: " + describe(rep));
+    }
+}
+
 void testFuzz(const std::vector<Record>& records) {
     const char* env = std::getenv("GEN67_FUZZ_ROUNDS");
     const size_t rounds = env ? std::strtoul(env, nullptr, 10) : 20000;
@@ -540,6 +587,7 @@ int main() {
     testNickname(records);
     testBall(records);
     testUnhatchedEgg(records);
+    testRelearn(records);
     testFuzz(records);
     std::cout << "test_legality_gen67: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

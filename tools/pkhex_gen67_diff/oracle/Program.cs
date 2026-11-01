@@ -627,6 +627,8 @@ static class DumpEncounters
             var masks = new ulong[maxSpecies + 1];
             var fateful = new int[maxSpecies + 1];
             var eggs = new int[maxSpecies + 1];
+            var relearn = new List<ushort>[maxSpecies + 1];
+            var relearnEgg = new List<ushort>[maxSpecies + 1];
             var context = proto.Context;
             var failed = new HashSet<GameVersion>();
             for (ushort s = 1; s <= maxSpecies; s++)
@@ -636,6 +638,8 @@ static class DumpEncounters
                 var forms = Math.Max((byte)1, pk.PersonalInfo.FormCount);
                 ulong mask = 0;
                 int fate = 0, egg = 0;
+                var relearnSet = new SortedSet<ushort>();
+                var relearnEggSet = new SortedSet<ushort>();
                 bool undecided = false;
                 for (byte f = 0; f < forms; f++)
                 {
@@ -652,6 +656,8 @@ static class DumpEncounters
                                 mask |= EncounterBalls(enc, maxBall);
                                 fate |= Fateful(enc);
                                 if (enc.IsEgg && enc.Species == s && enc.Context == context) egg |= Egg(enc, pk);
+                                if (enc.Context == context && name is "6" or "7")
+                                    AddRelearn(enc, enc.IsEgg ? relearnEggSet : relearnSet);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -688,6 +694,11 @@ static class DumpEncounters
                 foreach (var g in gifts)
                     if (g.Context == context && reach(g) && line.Contains(g.Species))
                         egg |= g.IsEgg ? 64 : g.EggLocation is not (0 or Locations.Default8bNone) ? 32 : 0;
+                foreach (var g in gifts)
+                    if (g.Context == context && reach(g) && line.Contains(g.Species) && name is "6" or "7")
+                        AddRelearn(g, g.IsEgg ? relearnEggSet : relearnSet);
+                relearn[s] = undecided ? [0xFFFF] : [.. relearnSet];
+                relearnEgg[s] = undecided ? [0xFFFF] : [.. relearnEggSet];
                 eggs[s] = undecided ? 0 : egg | 0x80;
                 masks[s] = undecided ? 0 : mask;
                 fateful[s] = undecided || mask == 0 ? 0 : fate;
@@ -700,8 +711,48 @@ static class DumpEncounters
             o.WriteLine("}};");
             Dump.Bytes(o, $"kFateful{key}", fateful);
             if (name is "6" or "7" or "8" or "8b" or "9") Dump.Bytes(o, $"kEgg{key}", eggs);
+            if (name is "6" or "7")
+            {
+                // kRelearn / kRelearnEgg: per species, the sorted moves any non-egg / egg encounter of the
+                // format's own games can put in a relearn slot; kRelearn*Index[s]..[s+1] delimits them;
+                // {0xFFFF} = undecided.
+                foreach (var (label, lists) in new[] { ("", relearn), ("Egg", relearnEgg) })
+                {
+                    var index = new List<int> { 0 };
+                    var all = new List<ushort>();
+                    for (int sp = 0; sp <= maxSpecies; sp++) { all.AddRange(lists[sp] ?? []); index.Add(all.Count); }
+                    o.WriteLine($"constexpr std::array<uint32_t, {index.Count}> kRelearn{label}Index{key}{{{{");
+                    for (int i = 0; i < index.Count; i += 16) o.WriteLine("    " + string.Join(",", index.Skip(i).Take(16)) + ",");
+                    o.WriteLine("}};");
+                    o.WriteLine($"constexpr std::array<uint16_t, {Math.Max(1, all.Count)}> kRelearn{label}{key}{{{{");
+                    for (int i = 0; i < all.Count; i += 24) o.WriteLine("    " + string.Join(",", all.Skip(i).Take(24)) + ",");
+                    o.WriteLine("}};");
+                }
+            }
         }
         HatchLocations(o);
+    }
+
+    // LearnVerifierRelearn: the moves an encounter can leave in the relearn slots. A fixed moveset
+    // (IRelearn), a DexNav-style bonus move (ISingleMoveBonus), or an egg's inherited moves: every
+    // level-up move of the baby (MoveBreed6 base and inherited moves), its egg moves, and Volt Tackle
+    // for Pichu. A superset of what MoveBreed6.Validate accepts.
+    private static void AddRelearn(IEncounterable enc, SortedSet<ushort> set)
+    {
+        if (enc is IRelearn { Relearn.HasMoves: true } r)
+        {
+            foreach (var m in new[] { r.Relearn.Move1, r.Relearn.Move2, r.Relearn.Move3, r.Relearn.Move4 })
+                if (m != 0) set.Add(m);
+        }
+        if (enc is ISingleMoveBonus { IsMoveBonusPossible: true } b)
+            foreach (var m in b.GetMoveBonusPossible()) if (m != 0) set.Add(m);
+        if (enc is IEncounterEgg)
+        {
+            var learn = GameData.GetLearnSource(enc.Version);
+            foreach (var m in learn.GetLearnset(enc.Species, enc.Form).GetAllMoves()) set.Add(m);
+            foreach (var m in learn.GetEggMoves(enc.Species, enc.Form)) set.Add(m);
+            if (enc.Species == (int)Species.Pichu) set.Add((ushort)Move.VoltTackle);
+        }
     }
 
     // EncounterVerifier.VerifyEncounterEgg6/7/8/8BDSP/9: the met locations each game hatches eggs at.
@@ -1359,8 +1410,11 @@ sealed class Generator(Random rng, int mutations)
             return Mutate9a(a9);
         var maxSpecies = pk.Format switch { 6 => 721, 7 => pk is PB7 ? 809 : 807, 9 => pk is PA9 ? 1000 : 1025, _ => pk is PB8 ? 493 : pk is PA8 ? 905 : 898 };
         var maxMove = pk.Format switch { 6 => 621, 7 => pk is PB7 ? 742 : 728, 9 => 919, _ => pk is PA8 ? 850 : 826 };
-        switch (rng.Next(32))
+        switch (rng.Next(35))
         {
+            case 32: SetRelearn(pk, rng.Next(4), (ushort)rng.Next(0, maxMove + 4)); return "relearn";
+            case 33: SetRelearn(pk, rng.Next(4), pk.GetMove(rng.Next(4))); return "relearncurrent";
+            case 34: SetRelearn(pk, rng.Next(1, 4), pk.RelearnMove1); return "relearndup";
             case 0: pk.Ball = (byte)rng.Next(0, 28); return "ball";
             case 1: pk.MetLevel = (byte)Math.Clamp(pk.MetLevel + rng.Next(-3, 4), 0, 100); return "metlevel";
             case 2: pk.AbilityNumber = new[] { 0, 1, 2, 3, 4, 5, 6, 8 }[rng.Next(8)]; return "abilitynumber";
@@ -1393,6 +1447,17 @@ sealed class Generator(Random rng, int mutations)
             case 29: if (pk is IRegionOrigin r) { r.ConsoleRegion = (byte)rng.Next(0, 8); return "consoleregion"; } return "none";
             case 30: pk.CurrentLevel = (byte)Math.Max(1, pk.MetLevel - rng.Next(1, 5)); return "levelbelowmet";
             default: pk.SetEVs([252, 252, 6, 0, 0, 1]); return "ev511";
+        }
+    }
+
+    private static void SetRelearn(PKM pk, int slot, ushort move)
+    {
+        switch (slot)
+        {
+            case 0: pk.RelearnMove1 = move; break;
+            case 1: pk.RelearnMove2 = move; break;
+            case 2: pk.RelearnMove3 = move; break;
+            default: pk.RelearnMove4 = move; break;
         }
     }
 

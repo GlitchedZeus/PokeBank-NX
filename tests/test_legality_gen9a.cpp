@@ -164,6 +164,12 @@ void testRuleEdits(const std::vector<Record>& records) {
               std::string(name) + ": expected no Invalid '" + fragment + "', got " + describe(r));
     };
     expectInvalid(n, "ev", [](auto& b) { b[0x26] = 253; }, "An EV is above 252");
+    if (PK8::read16(n.plain, 0x82) != 0 && PK8::read16(n.plain, 0x84) == 0)
+        expectInvalid(n, "relearn repeated", [](auto& b) { PK8::write16(b, 0x84, PK8::read16(b, 0x82)); }, "is repeated");
+    if (const Record* moved = find(records, [](const Record& r) {
+            return r.pkhexValid && r.plain[0xCE] != 52 && PK8::read16(r.plain, 0x82) == 0;
+        }))
+        expectInvalid(*moved, "relearn after HOME", [](auto& b) { PK8::write16(b, 0x82, 33); }, "original moveset was deleted");
     expectInvalid(n, "ev total", [](auto& b) { b[0x26] = 252; b[0x27] = 252; b[0x28] = 7; }, "EV total is above 510");
     expectInvalid(n, "pp ups", [](auto& b) { b[0x7E] = 1; }, "has PP Ups");
     expectInvalid(n, "pp above", [](auto& b) { b[0x7A] = 99; }, "PP is above its maximum");
