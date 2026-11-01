@@ -1,0 +1,14 @@
+# Nintendo DS Link Emulator picker: platform/provider choice never grants save write access.
+DS_LINK_MODEL_INPUTS := tests/test_ds_link_emulator_model.cpp include/UI/DSLinkEmulatorModel.h
+HOST_TESTS += $(HOST_BUILD)/test_ds_link_emulator_model
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_ds_link_emulator_model_sanitize
+host-test: $(HOST_BUILD)/test_ds_link_emulator_model
+host-sanitize: $(HOST_BUILD)/test_ds_link_emulator_model_sanitize
+
+$(HOST_BUILD)/test_ds_link_emulator_model: $(DS_LINK_MODEL_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_ds_link_emulator_model.cpp -o $@
+
+$(HOST_BUILD)/test_ds_link_emulator_model_sanitize: $(DS_LINK_MODEL_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_ds_link_emulator_model.cpp -o $@
