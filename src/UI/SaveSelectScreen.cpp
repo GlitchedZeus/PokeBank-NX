@@ -2414,9 +2414,11 @@ namespace UI {
     void SaveSelectScreen::discoverGen4Candidates() {
         gen4Candidates.clear();
         gen4Instances.clear();
-        auto discovered = PokeVault::Integration::Gen4::discoverKnownSources(
-            {}, "sdmc:/retroarch/retroarch.cfg", "sdmc:/retroarch/cores/savefiles",
-            gen4TargetGameId == linkTargetGameId ? linkProviderFilter : std::string{});
+        const auto discovered = gen4TargetGameId == linkTargetGameId && !linkProviderFilter.empty()
+            ? PokeVault::Integration::Gen4::discoverKnownSources(
+                {}, "sdmc:/retroarch/retroarch.cfg", "sdmc:/retroarch/cores/savefiles",
+                linkProviderFilter)
+            : PokeVault::Integration::Gen4::discoverKnownSources();
         size_t wrappers = 0;
         size_t savestates = 0;
         std::string rememberedDiagnostic;
@@ -3688,7 +3690,7 @@ namespace UI {
         }
         if (game.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             openGen5Setup(game.gameId,
-                "Assign or change a validated Gen V read-only save.",fromGamesDrawer);
+                "Review or change this Gen V profile/save assignment.",fromGamesDrawer);
         } else if (game.sourceKind == SelectedSourceKind::ModernAssignedFile) {
             openGen5Setup(game.gameId,
                 "Assign or change a validated "+modernGenerationShort(game.gameId)+" read-only save.",fromGamesDrawer);
