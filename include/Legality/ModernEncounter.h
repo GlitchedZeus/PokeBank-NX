@@ -41,6 +41,11 @@ bool teraImportPossible(uint16_t species, uint8_t original) noexcept;
 /// has this type, so a Scarlet/Violet egg of the line cannot have hatched with it.
 bool teraEggPossible(uint16_t species, uint8_t original) noexcept;
 
+/// LegendsArceusVerifier / MiscVerifierPA9 (the alpha flag is the encounter's IAlphaReadOnly.IsAlpha):
+/// false only when no encounter or mystery gift of the species' line reaching PA8 or PA9 has this
+/// alpha state. Other formats and undecided species return true.
+bool alphaPossible(Modern::Format format, uint16_t species, bool alpha) noexcept;
+
 /// LegendsArceusVerifier.VerifyTutorMoveIndex: false only when no encounter or mystery gift of
 /// the species' line that reaches PA8 carries move shop move `index` in a fixed moveset.
 bool masteryFromEncounterPossible(uint16_t species, size_t index) noexcept;

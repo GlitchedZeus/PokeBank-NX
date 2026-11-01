@@ -134,6 +134,7 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 | Moves and PP | unknown move, empty first slot, gaps, duplicates; any PP Up (Legends: Arceus has none); PP above its maximum | `Legal.IsPPUpAvailable`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability against the slots and number; nature; stat nature not the nature or a mint; ball 0 or above 37; language; held item | `GenderVerifier`, `AbilityVerifier`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `ItemVerifier` |
 | PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, so any Legends: Arceus or BD/SP origin), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
+| Alpha | an alpha flag state no encounter or mystery gift of the line reaching the format has (`kAlpha8A`/`kAlpha9A`, `IAlphaReadOnly`) | `LegendsArceusVerifier`, `MiscVerifierPA9` |
 | Hyper Training | no HOME tracker (`IsHyperTrainingAvailable`: Legends: Arceus has no Hyper Training); below level 50; below 100 when no species of the line is in Scarlet/Violet or Z-A (`kVisit9`, so the evolution history cannot have visited them); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Arceus | noble flag; displayed scale not the height scalar; an Effort Level above its IV's cap | `LegendsArceusVerifier` |
 | Move shop | an alpha move on a non-alpha, not masterable by the species, or not mastered; a purchased move the species cannot buy; a mastered move the species cannot buy that is not the alpha move and that no encounter or mystery gift of the line carries in a fixed moveset (`kMastery8a`) | `LegendsArceusVerifier.CheckMastery` |
@@ -161,6 +162,7 @@ into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, b
 | Moves and PP | an unknown or duplicated move; any PP Up; PP above its maximum, or neither full nor 0 (Z-A never uses PP; HOME writes 0) | `Legal.IsPPUpAvailable`, `Legal.IsPPUnused`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability number not 1, 2 or 4 (the ability itself is the encounter species' birth ability); nature; stat nature not the nature or a mint; ball 0 or above 37; language 0, 6, above 11, or Spanish (LATAM) on a non-Z-A origin; held item | `GenderVerifier`, `AbilityVerifier.VerifyBirthAbility`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `LanguageVerifier`, `ItemVerifier` |
 | PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, so any Legends: Arceus or BD/SP origin), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
+| Alpha | an alpha flag state no encounter or mystery gift of the line reaching the format has (`kAlpha8A`/`kAlpha9A`, `IAlphaReadOnly`) | `LegendsArceusVerifier`, `MiscVerifierPA9` |
 | Hyper Training | below level 50 (a Z-A record has visited Z-A); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Z-A | level boost at rest; a Plus flag past the 340 used; a Plus flag for a move that no form of the species or its pre-evolutions learns by TM, level up or Plus learnset | `LegendsZAVerifier`, `LegendsZAVerifier.GetInvalidPlusMove`, `PA9.GetMovePlusFlagAnyImpossible` |
 | Misc | battle version as Sword/Shield; obedience level (untraded: equals met level; traded: between met and current level); an alpha with a HOME tracker whose scalars are not 255 | `MiscVerifierPA9` |
@@ -438,14 +440,14 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB7 | 2 / 4 | 3,050 | 1,132 | 1,918 | 1,765 (92.0%) | 0 | 0 |
 | PB7 | 3 / 16 | 9,865 | 2,144 | 7,721 | 7,025 (91.0%) | 0 | 0 |
 | PB7 | 4 / 8 | 5,286 | 1,437 | 3,849 | 3,547 (92.2%) | 0 | 0 |
-| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,928 (78.8%) | 0 | 0 |
-| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,620 (79.2%) | 0 | 0 |
-| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 13,943 (79.7%) | 0 | 0 |
-| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,540 (79.6%) | 0 | 0 |
-| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 9,398 (77.8%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,480 (77.8%) | 0 | 0 |
-| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 18,319 (77.7%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 9,487 (78.5%) | 0 | 0 |
+| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,935 (78.9%) | 0 | 0 |
+| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,629 (79.3%) | 0 | 0 |
+| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 13,953 (79.7%) | 0 | 0 |
+| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,549 (79.7%) | 0 | 0 |
+| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 9,404 (77.8%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,484 (77.9%) | 0 | 0 |
+| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 18,327 (77.7%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 9,495 (78.5%) | 0 | 0 |
 | PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,234 (85.9%) | 0 | 0 |
 | PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,194 (85.9%) | 0 | 0 |
 | PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,547 (85.9%) | 0 | 0 |

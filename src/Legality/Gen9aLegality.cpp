@@ -59,6 +59,10 @@ public:
         checkGender();
         checkAbility();
         checkPidEc();
+        // The alpha flag is the encounter's (IAlphaReadOnly): no encounter of the line has this state.
+        if (!ModernEncounter::alphaPossible(Modern::Format::PA9, species_, alpha()))
+            invalid(CheckIdentifier::Encounter, alpha() ? "No encounter of the species' line is an alpha"
+                                                        : "Every encounter of the species' line is an alpha");
         checkNature();
         if (p_[0x124] == 0 || p_[0x124] > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(p_[0x124]) + " cannot be held by a PA9");

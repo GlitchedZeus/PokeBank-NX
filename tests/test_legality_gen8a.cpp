@@ -222,6 +222,14 @@ void testRuleEdits(const std::vector<Record>& records) {
                       "PID equals the encryption constant");
         expectInvalid(n, "Generation V PID", [](auto& b) { b[0xEE] = 21; PK8::write32(b, 0x1C, PK8::read32(b, 0x00) ^ 0x10000u); },
                       "Poke Transporter PID");
+        {
+            // The alpha flag must be some encounter's: a species of the format with no alpha encounter exists.
+            int noAlpha = 0;
+            for (uint16_t sp = 1; sp < 1100; ++sp)
+                if (!Legality::ModernEncounter::alphaPossible(Legality::Modern::Format::PA8, sp, true)) ++noAlpha;
+            check(noAlpha > 0, "some PA8 species line has no alpha encounter");
+            check(Legality::ModernEncounter::alphaPossible(Legality::Modern::Format::PK8, 25, true), "only PA8/PA9 decide the alpha flag");
+        }
     expectInvalid(n, "hyper training", [growth](auto& b) {
             PK8::write32(b, 0x10, Pokemon::getExpForLevel(100, growth));
             PK8::write32(b, 0x14D, 1);

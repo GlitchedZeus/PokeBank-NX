@@ -642,6 +642,7 @@ static class DumpEncounters
             var raids = new List<int>[maxSpecies + 1];
             var swshFree = new int[maxSpecies + 1];
             var mastery = new ulong[maxSpecies + 1];
+            var alphas = new int[maxSpecies + 1];
             var shop = PersonalTable.LA[1].RecordPermitIndexes.ToArray();
             var swshOverworld = new int[maxSpecies + 1];
             var context = proto.Context;
@@ -659,6 +660,7 @@ static class DumpEncounters
                 var gmaxForms = new int[forms];
                 var raidSet = new SortedSet<int>();
                 ulong masteryMask = 0;
+                int alphaBits = 0;
                 var free = new RaidLocations();
                 var overworld = new RaidLocations();
                 for (byte f = 0; f < forms; f++)
@@ -681,6 +683,7 @@ static class DumpEncounters
                                 if (name == "8") gmaxForms[f] |= GmaxStates(enc, s, f, enc.IsEgg);
                                 if (name == "8") Raid(enc, raidSet, free, overworld);
                                 if (name == "8a") masteryMask |= ShopMoves(enc, shop);
+                                if (name is "8a" or "9a") alphaBits |= Alpha(enc);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -720,6 +723,12 @@ static class DumpEncounters
                 foreach (var g in gifts)
                     if (g.Context == context && reach(g) && line.Contains(g.Species) && name is "6" or "7")
                         AddRelearn(g, g.IsEgg ? relearnEggSet : relearnSet);
+                if (name is "8a" or "9a")
+                {
+                    foreach (var g in gifts)
+                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) alphaBits |= Alpha(g);
+                    alphas[s] = undecided || alphaBits == 0 ? 0 : alphaBits | 0x80;
+                }
                 if (name == "8a")
                 {
                     foreach (var g in gifts)
@@ -801,6 +810,13 @@ static class DumpEncounters
                     o.WriteLine("}};");
                 }
             }
+            if (name is "8a" or "9a")
+            {
+                // LegendsArceusVerifier / MiscVerifierPA9: the alpha flag must be the encounter's
+                // (IAlphaReadOnly). kAlpha[s]: bit 0 = some encounter or mystery gift of the line is an
+                // alpha, bit 1 = some is not, 0x80 = decided.
+                Dump.Bytes(o, $"kAlpha{key}", alphas);
+            }
             if (name == "8a")
             {
                 // LegendsArceusVerifier.VerifyTutorMoveIndex: a mastered move shop move the species cannot
@@ -832,6 +848,8 @@ static class DumpEncounters
         }
         HatchLocations(o);
     }
+
+    private static int Alpha(IEncounterTemplate enc) => enc is IAlphaReadOnly { IsAlpha: true } ? 1 : 2;
 
     private static ulong ShopMoves(IEncounterTemplate enc, ushort[] shop)
     {

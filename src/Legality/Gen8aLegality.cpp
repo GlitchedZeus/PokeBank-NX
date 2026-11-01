@@ -111,6 +111,10 @@ public:
         checkGender();
         checkAbility();
         checkPidEc();
+        // The alpha flag is the encounter's (IAlphaReadOnly): no encounter of the line has this state.
+        if (!isEgg() && !ModernEncounter::alphaPossible(Modern::Format::PA8, species(), alpha()))
+            invalid(CheckIdentifier::Encounter, alpha() ? "No encounter of the species' line is an alpha"
+                                                        : "Every encounter of the species' line is an alpha");
         checkNature();
         if (ball() == 0 || ball() > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(ball()) + " cannot be held by a PA8");

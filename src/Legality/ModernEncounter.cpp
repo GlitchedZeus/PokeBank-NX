@@ -136,6 +136,15 @@ bool masteryFromEncounterPossible(uint16_t species, size_t index) noexcept {
     return species >= kMastery8a.size() || index >= 64 || ((kMastery8a[species] >> index) & 1) != 0;
 }
 
+bool alphaPossible(Modern::Format format, uint16_t species, bool alpha) noexcept {
+    std::span<const uint8_t> table;
+    if (format == Modern::Format::PA8) table = kAlpha8A;
+    else if (format == Modern::Format::PA9) table = kAlpha9A;
+    else return true;
+    if (species >= table.size() || (table[species] & 0x80) == 0) return true;
+    return (table[species] & (alpha ? 1 : 2)) != 0;
+}
+
 bool visitNinePossible(uint16_t species) noexcept {
     return species >= kVisit9.size() || kVisit9[species] != 0;
 }
