@@ -93,7 +93,11 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   EXPERIMENTAL, NOT DEVICE TESTED.
 - **Experimental NRO of `b1cfc9e7` (+ Scarlet/Violet)**: CI run 41253352389 green (same gates). Artifact
   `PokeBank-NX-Gen6Plus-Experimental-b1cfc9e7` (id 13061654379, zip sha256
-  `2d5c21d1f8c19ccf3e67ec8e9573cc2c99276a7654cb4cc23bfd34e85c3cd0e9`). The Z-A head is built by the next run.
+  `2d5c21d1f8c19ccf3e67ec8e9573cc2c99276a7654cb4cc23bfd34e85c3cd0e9`). 
+- **Experimental NRO of `3e41c820` (all 18 Gen VI–IX titles adapter-served; current head)**: CI run 41254557918
+  green (host gates incl. leak-checked sanitizers and Clang, devkitA64 build, ELF symbol check for every
+  adapter, RomFS verification). Artifact `PokeBank-NX-Gen6Plus-Experimental-3e41c820` (id 13061909874, zip
+  sha256 `3f276ef9239248d9780946fe51632853ac91e41d141d0072186c36b04a8c9039`). EXPERIMENTAL, NOT DEVICE TESTED.
 - **Scarlet/Violet**: PK9 shares PK8's size, encryption and every offset the shared editor writes, so the
   verified PK8 codec and the shared `Gen8RecordEdits` whitelist are reused; PK9-only reads (language 0xD5,
   Tera 0x94/0x95, scale 0x4A) feed the view. PKHeX's exact SV size rule + SwishCrypto hash, KMyStatus/KParty/
