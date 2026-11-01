@@ -3596,6 +3596,50 @@ namespace UI {
         }
     }
 
+
+    void SaveSelectScreen::openLinkEmulatorForCurrentTitle(bool fromGamesDrawer, bool fromClassicGames) {
+        const UserEntry* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto& title = user->titles[static_cast<size_t>(titleIndex)];
+        const auto* descriptor = PokeVault::Games::findGame(title.gameId);
+        if (!descriptor) return;
+        const bool gbaForwarder = title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+            descriptor->platform == PokeVault::Games::Platform::NintendoSwitch;
+        linkPlatform = PokeBank::UIModel::LinkEmulator::effectivePlatform(descriptor->platform, gbaForwarder);
+        if (PokeBank::UIModel::LinkEmulator::nativeSwitch(descriptor->platform, gbaForwarder))
+            return; // Native Switch: no emulator guessing; use installed snapshot or exported copy.
+        linkTargetGameId = title.gameId;
+        linkFromGamesDrawer = fromGamesDrawer;
+        linkFromClassicGames = fromClassicGames;
+        linkEmulatorIndex = 0; // Always offer automatic discovery first.
+        linkProviderFilter.clear();
+        linkNotice = "Choose your emulator. Only validated cartridge saves can be linked.";
+        overlay = Overlay::LinkEmulator;
+    }
+
+    void SaveSelectScreen::activateLinkEmulator() {
+        namespace Link = PokeBank::UIModel::LinkEmulator;
+        const auto choices = Link::choices(linkPlatform);
+        if (linkEmulatorIndex < 0 || linkEmulatorIndex >= static_cast<int>(choices.size())) return;
+        const auto& choice = choices[static_cast<size_t>(linkEmulatorIndex)];
+        linkProviderFilter = std::string(choice.provider);
+        linkBypassNextSourceOpen = true;
+        openSaveSourceForCurrentTitle(linkFromGamesDrawer, linkFromClassicGames);
+        // The same native validators and profile claims run whether selected by
+        // emulator or automatic discovery. Manual selection remains strictly read-only.
+        const auto* user = currentUser();
+        if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
+        const auto sourceKind = user->titles[static_cast<size_t>(titleIndex)].sourceKind;
+        if (choice.manualFile) {
+            if (sourceKind == SelectedSourceKind::Gen4AssignedFile && overlay == Overlay::Gen4Setup)
+                chooseGen4ManualFile();
+            else if (sourceKind == SelectedSourceKind::Gen5AssignedFile && overlay == Overlay::Gen5Setup)
+                chooseGen5ManualFile();
+            else if (sourceKind == SelectedSourceKind::ModernAssignedFile && overlay == Overlay::Gen5Setup)
+                chooseModernManualFile();
+        }
+    }
+
     void SaveSelectScreen::openSaveSourceForCurrentTitle(
         bool fromGamesDrawer, bool fromClassicGames) {
         const UserEntry* user = currentUser();
@@ -3604,6 +3648,20 @@ namespace UI {
             return;
         }
         const auto& game = user->titles[static_cast<size_t>(titleIndex)];
+        if (linkBypassNextSourceOpen) {
+            linkBypassNextSourceOpen = false;
+        } else if (const auto* descriptor = PokeVault::Games::findGame(game.gameId)) {
+            const bool gbaForwarder = game.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                descriptor->platform == PokeVault::Games::Platform::NintendoSwitch;
+            if (!PokeBank::UIModel::LinkEmulator::nativeSwitch(descriptor->platform, gbaForwarder) &&
+                (game.sourceKind == SelectedSourceKind::RetroArchFRLG ||
+                 game.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                 game.sourceKind == SelectedSourceKind::Gen5AssignedFile ||
+                 game.sourceKind == SelectedSourceKind::ModernAssignedFile)) {
+                openLinkEmulatorForCurrentTitle(fromGamesDrawer, fromClassicGames);
+                return;
+            }
+        }
         if (game.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             openGen5Setup(game.gameId,
                 "Assign or change a validated Gen V read-only save.",fromGamesDrawer);
@@ -3621,6 +3679,19 @@ namespace UI {
                 std::remove_if(unassignedLegacySources.begin(), unassignedLegacySources.end(),
                     [&](const LegacyAssignmentEntry& entry) { return entry.gameId != game.gameId; }),
                 unassignedLegacySources.end());
+            if (!linkProviderFilter.empty()) {
+                unassignedLegacySources.erase(std::remove_if(unassignedLegacySources.begin(),
+                    unassignedLegacySources.end(), [&](const LegacyAssignmentEntry& entry) {
+                        return !PokeBank::UIModel::LinkEmulator::providerMatches(
+                            entry.instance.providerLabel, linkProviderFilter);
+                    }), unassignedLegacySources.end());
+                if (unassignedLegacySources.empty()) {
+                    linkNotice = "No unassigned, validated " + linkProviderFilter +
+                                 " save for this game. Try automatic discovery or another emulator.";
+                    overlay = Overlay::LinkEmulator;
+                    return;
+                }
+            }
             if (!unassignedLegacySources.empty()) {
                 legacyAssignmentIndex = 0;
                 legacyAssignmentScroll = 0;
@@ -3844,25 +3915,9 @@ namespace UI {
                 }
                 return;
             case 7: // Source / Game File
-                if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-                    legacyInstanceIndex = 0;
-                    legacyInstanceScroll = 0;
-                    legacyNotice.clear();
-                    overlay = Overlay::LegacyInstances;
-                } else if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-                    openGen5Setup(title.gameId,
-                        "Review or change this Gen V profile/save assignment.");
-                } else if (title.sourceKind == SelectedSourceKind::ModernAssignedFile) {
-                    openGen5Setup(title.gameId,
-                        "Review or change this "+modernGenerationShort(title.gameId)+" profile/save assignment.");
-                } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
-                    openGen4Setup(title.gameId,
-                        "Review or change this game's remembered read-only save source.");
-                } else if (launchDescriptor.state == GameLaunchState::NeedsContentLink) {
-                    beginLaunchLinkForCurrentTitle();
-                } else {
-                    hubNotice = "Nintendo save data is console-managed. Use Launch if a separate game file needs linking.";
-                }
+                // All emulator-backed titles use the one Link Emulator frontend.
+                // Native Switch save snapshots never ask which emulator is running.
+                openSaveSourceForCurrentTitle(false, classicGamesActive);
                 return;
             default:
                 return;
