@@ -133,7 +133,7 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 | Level, EVs | experience above the level-100 total; level below met level; an EV above 252 or a total above 510 | `LevelVerifier`, `EffortValueVerifier` |
 | Moves and PP | unknown move, empty first slot, gaps, duplicates; any PP Up (Legends: Arceus has none); PP above its maximum | `Legal.IsPPUpAvailable`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability against the slots and number; nature; stat nature not the nature or a mint; ball 0 or above 37; language; held item | `GenderVerifier`, `AbilityVerifier`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `ItemVerifier` |
-| Hyper Training | six perfect IVs; a perfect IV trained (the minimum level depends on the games visited and is not decided) | `HyperTrainingVerifier` |
+| Hyper Training | no HOME tracker (`IsHyperTrainingAvailable`: Legends: Arceus has no Hyper Training); below level 50; below 100 when no species of the line is in Scarlet/Violet or Z-A (`kVisit9`, so the evolution history cannot have visited them); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Arceus | noble flag; displayed scale not the height scalar; an Effort Level above its IV's cap | `LegendsArceusVerifier` |
 | Move shop | an alpha move on a non-alpha, not masterable by the species, or not mastered; a purchased move the species cannot buy | `LegendsArceusVerifier.CheckMastery` |
 | Misc | sociability, Gigantamax, Dynamax level, TR flags, fullness or enjoyment set; battle version as Sword/Shield | `MiscVerifierPA8`, `FullnessRules` |
@@ -141,7 +141,8 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 
 Not decided for PA8: encounters (alpha flag per encounter, alpha scalars, fixed gifts),
 learnsets and mastery by level, PID = EC (fixed-EC gifts), HOME-calculated sizes (fused
-multiply-add) and pre-evolution sizes, Hyper Training minimum level, ball per encounter,
+multiply-add) and pre-evolution sizes, Hyper Training at level 50–99 for a line present in
+Scarlet/Violet or Z-A, ball per encounter,
 nicknamed records, ribbons and memories.
 
 ## PA9 (Legends: Z-A) rules
@@ -158,14 +159,13 @@ into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, b
 | Level, EVs | experience above the level-100 total; level below met level; an EV above 252 or a total above 510 | `LevelVerifier`, `EffortValueVerifier` |
 | Moves and PP | an unknown or duplicated move; any PP Up; PP above its maximum, or neither full nor 0 (Z-A never uses PP; HOME writes 0) | `Legal.IsPPUpAvailable`, `Legal.IsPPUnused`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability number not 1, 2 or 4 (the ability itself is the encounter species' birth ability); nature; stat nature not the nature or a mint; ball 0 or above 37; language 0, 6, above 11, or Spanish (LATAM) on a non-Z-A origin; held item | `GenderVerifier`, `AbilityVerifier.VerifyBirthAbility`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `LanguageVerifier`, `ItemVerifier` |
-| Hyper Training | six perfect IVs; a perfect IV trained | `HyperTrainingVerifier` |
+| Hyper Training | below level 50 (a Z-A record has visited Z-A); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Z-A | level boost at rest; a Plus flag past the 340 used; a Plus flag for a move that no form of the species or its pre-evolutions learns by TM, level up or Plus learnset | `LegendsZAVerifier`, `LegendsZAVerifier.GetInvalidPlusMove`, `PA9.GetMovePlusFlagAnyImpossible` |
 | Misc | battle version as Sword/Shield; obedience level (untraded: equals met level; traded: between met and current level); an alpha with a HOME tracker whose scalars are not 255 | `MiscVerifierPA9` |
 
 Not decided for PA9: empty or rearranged move slots (moves can be removed through HOME and the
 move menu; PKHeX checks them against the encounter's minimum moveset), encounters, the birth
-ability, Plus moves per level (a flag the line can learn is not decided), alpha per encounter, PID = EC, Hyper
-Training minimum level, ball per encounter, nicknamed records, ribbons and memories.
+ability, Plus moves per level (a flag the line can learn is not decided), alpha per encounter, PID = EC, ball per encounter, nicknamed records, ribbons and memories.
 
 ## PK8 (Sword/Shield) rules
 
@@ -197,14 +197,14 @@ Switch FireRed/LeafGreen), where the version byte reads Sword or Shield.
 | Held item | egg holding an item; item not released in Sword/Shield | `ItemVerifier`, `ItemRestrictions` |
 | Transfer | Gen III/IV origin met location must be Poké Transporter's (Celebi / Crown beast exceptions) | `TransferVerifier.VerifyTransferLegalityG3/G4` |
 | Virtual Console | met location 30013/30017; female OT outside Crystal; met level 100 nature = EXP % 25; met level ≤ 2 nature set | `TransferVerifier.VerifyVCEncounter`, `VerifyTransferLegalityG12` |
-| Hyper Training | below level 50; six perfect IVs; a trained perfect IV | `HyperTrainingVerifier` |
+| Hyper Training | below level 50; below 100 when no species of the line is in Scarlet/Violet or Z-A (`kVisit9`); six perfect IVs; a trained perfect IV | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Sword/Shield fields | Dynamax level above 10, on an egg, or on Zacian/Zamazenta/Eternatus; battle version other than 0/Sword/Shield, or Sword/Shield on a record that originated in or side-transferred to Sword/Shield; sociability above 255 or on an egg; a TR flag the species/form cannot learn (Calyrex exception); a Sword/Shield egg without the nickname flag | `MiscVerifierPK8` (`VerifyDynamax`, `IsBattleVersionValid`, `VerifySociability`, `VerifyTechRecordFlags`), `NicknameVerifier` (`EggStateLegality.IsNicknameFlagSet`) |
 
 Warnings (never Invalid): a PK8 in a game that does not store PK8; party level or stats that
 do not match (stats use the stat nature); same trainer IDs as the save with another OT; a
-container that failed its own integrity check. Hyper Training between level 50 and 99 is an
-Info line: it is valid only after a Scarlet/Violet or Z-A visit, which needs the evolution
-history.
+container that failed its own integrity check. Hyper Training between level 50 and 99 on a
+line present in Scarlet/Violet or Z-A is an Info line: it is valid only after a visit there,
+which needs the evolution history.
 
 Not implemented for PK8 (keeps the report Incomplete): encounter tables (wild, raids, dens,
 gifts, eggs), learnsets and relearn moves, Gigantamax per encounter, HOME tracker and size
@@ -436,18 +436,18 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB7 | 2 / 4 | 3,050 | 1,132 | 1,918 | 1,765 (92.0%) | 0 | 0 |
 | PB7 | 3 / 16 | 9,865 | 2,144 | 7,721 | 7,025 (91.0%) | 0 | 0 |
 | PB7 | 4 / 8 | 5,286 | 1,437 | 3,849 | 3,547 (92.2%) | 0 | 0 |
-| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,364 (72.4%) | 0 | 0 |
-| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 6,950 (72.3%) | 0 | 0 |
-| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 12,856 (73.5%) | 0 | 0 |
-| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 6,934 (73.2%) | 0 | 0 |
-| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 8,595 (71.1%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 8,671 (71.2%) | 0 | 0 |
-| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 16,870 (71.5%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 8,696 (71.9%) | 0 | 0 |
-| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,180 (85.7%) | 0 | 0 |
-| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,127 (85.7%) | 0 | 0 |
-| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,408 (85.7%) | 0 | 0 |
-| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 29,805 (85.9%) | 0 | 0 |
+| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,496 (73.9%) | 0 | 0 |
+| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,107 (73.9%) | 0 | 0 |
+| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 13,041 (74.5%) | 0 | 0 |
+| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,075 (74.7%) | 0 | 0 |
+| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 8,940 (74.0%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,019 (74.0%) | 0 | 0 |
+| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 17,506 (74.2%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 9,004 (74.5%) | 0 | 0 |
+| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,234 (85.9%) | 0 | 0 |
+| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,194 (85.9%) | 0 | 0 |
+| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,547 (85.9%) | 0 | 0 |
+| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 29,866 (86.0%) | 0 | 0 |
 | PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,246 (87.2%) | 0 | 0 |
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |
@@ -478,7 +478,7 @@ rule completeness. The remaining ~12–30% need encounter, learnset, event or hi
 (largest PK6/PK7 groups: fateful flags, geography consistency, nickname language, ball per
 encounter, learnset-only moves, nickname language for relaxed species; largest PK8 groups: no matching
 encounter, fateful flags, Gigantamax on species with some Gigantamax encounter, nickname language for relaxed species, PID type per
-encounter, Hyper Training level 50–99, ball per encounter, egg histories from other games; largest PB8
+encounter, ball per encounter, egg histories from other games; largest PB8
 groups: no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, PID = EC
 on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg histories from other games; largest PK9 groups:
 no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, Tera type per
@@ -536,4 +536,4 @@ Plus move the line learns, a
 Sword/Shield battle version, a native alpha's scalars, another species' ability, an empty first
 slot, Spanish (LATAM) on a Z-A origin), the source-game warning and a fuzz pass. Its largest
 PKHeX gaps are encounter matching, Plus moves per level, ball per encounter, nickname
-language, fateful flags, Hyper Training level and PID = EC.
+language, fateful flags and PID = EC.

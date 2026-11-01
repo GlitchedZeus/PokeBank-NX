@@ -954,6 +954,26 @@ static class DumpEncounters
                 o.WriteLine("    " + string.Join(",", list.Skip(i).Take(16)) + ",");
             o.WriteLine("}};");
         }
+        // IHyperTrain.GetHyperTrainMinLevel: level 50 once the evolution history has visited
+        // Scarlet/Violet or Z-A, else 100. kVisit9[s] = 1 when the species or any pre-evolution
+        // (any form, any game's tree) is present in Scarlet/Violet or Z-A, so such a visit is possible.
+        int max = Math.Max(PersonalTable.SV.MaxSpeciesID, PersonalTable.ZA.MaxSpeciesID);
+        var visit = new int[max + 1];
+        for (ushort sp = 1; sp <= max; sp++)
+        {
+            foreach (var member in DumpNames.LinePublic(sp))
+            {
+                foreach (IPersonalTable table in new IPersonalTable[] { PersonalTable.SV, PersonalTable.ZA })
+                {
+                    if (member > table.MaxSpeciesID) continue;
+                    for (byte f = 0; f < Math.Max((byte)1, table[member].FormCount); f++)
+                        if (table.IsPresentInGame(member, f)) visit[sp] = 1;
+                }
+            }
+        }
+        o.WriteLine($"constexpr std::array<uint8_t, {max + 1}> kVisit9{{{{");
+        for (int i = 0; i <= max; i += 32) o.WriteLine("    " + string.Join(",", visit.Skip(i).Take(32)) + ",");
+        o.WriteLine("}};");
     }
 
     // Unhatched-egg facts of one egg encounter of the format's own context (eggs never leave it:

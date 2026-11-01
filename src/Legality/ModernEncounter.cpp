@@ -124,6 +124,10 @@ bool relearnPossible(Modern::Format origin, uint16_t species, uint16_t move, boo
     return std::binary_search(list.begin(), list.end(), move);
 }
 
+bool visitNinePossible(uint16_t species) noexcept {
+    return species >= kVisit9.size() || kVisit9[species] != 0;
+}
+
 bool hatchLocation(uint8_t version, uint16_t location) noexcept {
     std::span<const uint16_t> list;
     switch (version) {

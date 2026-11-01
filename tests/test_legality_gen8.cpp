@@ -695,6 +695,15 @@ void testOverworldSeeds(const std::vector<Record>& records) {
     check(found > 0, "fixture has overworld-correlated records");
 }
 
+// IHyperTrain.GetHyperTrainMinLevel: whether the line can have visited Scarlet/Violet or Z-A.
+void testVisitNine() {
+    namespace E = Legality::ModernEncounter;
+    check(!E::visitNinePossible(19), "Rattata's line is in neither Scarlet/Violet nor Z-A");
+    check(E::visitNinePossible(25), "Pikachu is in Scarlet/Violet");
+    check(E::visitNinePossible(26), "Raichu's line includes Pikachu");
+    check(E::visitNinePossible(5000), "an unknown species is not decided");
+}
+
 // The same seeds for a Sword/Shield record moved to Scarlet/Violet through HOME (PK9): a PKHeX-valid
 // record keeps its seed, and another EC loses it wherever the met location is seed-bound.
 void testOverworldSeedsPK9(const std::vector<Record>& records) {
@@ -730,6 +739,7 @@ int main() {
     testRelearn(all);
     testRaidSeeds(records);
     testOverworldSeeds(records);
+    testVisitNine();
     testOverworldSeedsPK9(sv);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";

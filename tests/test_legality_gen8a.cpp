@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "Integration/Gen8/Gen8PK8.h"
+#include "Pokemon/Experience.h"
 #include "Legality/Gen8aLegality.h"
 #include "Legality/ModernLegality.h"
 
@@ -209,10 +210,29 @@ void testRuleEdits(const std::vector<Record>& records) {
     expectInvalid(n, "not in hisui", [](auto& b) { PK8::write16(b, 0x08, 1); b[0x24] = 0; }, "not present in Legends: Arceus");
     expectInvalid(n, "ball", [](auto& b) { b[0x137] = 38; }, "cannot be held by a PA8");
     expectInvalid(n, "language", [](auto& b) { b[0xF2] = 6; }, "is not a language");
-    expectInvalid(n, "hyper training", [](auto& b) {
-        PK8::write32(b, 0x94, (PK8::read32(b, 0x94) & ~0x1Fu) | 31u);
-        b[0x13E] = 1;
-    }, "Hyper Training on a perfect IV");
+    {
+        // HyperTrainingVerifier: level 50 or more, and a HOME tracker (Legends: Arceus has no Hyper Training).
+        const auto personal = Legality::Gen8a::Data::personal(PK8::read16(n.plain, 0x08), n.plain[0x24]);
+        check(personal.has_value(), "hyper training fixture species has personal data");
+        const uint8_t growth = personal ? personal->growth : 0;
+        expectInvalid(n, "hyper training", [growth](auto& b) {
+            PK8::write32(b, 0x10, Pokemon::getExpForLevel(100, growth));
+            PK8::write32(b, 0x14D, 1);
+            PK8::write32(b, 0x94, (PK8::read32(b, 0x94) & ~0x1Fu) | 31u);
+            b[0x13E] = 1;
+        }, "Hyper Training on a perfect IV");
+        expectInvalid(n, "hyper training below level 50", [growth](auto& b) {
+            PK8::write32(b, 0x10, Pokemon::getExpForLevel(49, growth));
+            PK8::write32(b, 0x14D, 1);
+            b[0x13E] = 2;
+        }, "Hyper Training needs level 50 or more");
+        expectInvalid(n, "hyper training without a HOME tracker", [growth](auto& b) {
+            PK8::write32(b, 0x10, Pokemon::getExpForLevel(100, growth));
+            PK8::write32(b, 0x14D, 0);
+            PK8::write32(b, 0x151, 0);
+            b[0x13E] = 2;
+        }, "never left through HOME");
+    }
     expectInvalid(n, "first move empty", [](auto& b) { PK8::write16(b, 0x54, 0); }, "first move slot is empty");
     {
         uint16_t item = 1;

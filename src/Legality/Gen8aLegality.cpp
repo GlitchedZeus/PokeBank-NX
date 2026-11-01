@@ -309,11 +309,27 @@ private:
         else if (lang > 10) invalid(CheckIdentifier::Trainer, "Language " + std::to_string(lang) + " does not exist in Legends: Arceus");
     }
 
-    // HyperTrainingVerifier: never with six perfect IVs, never on a perfect IV. The minimum level
-    // depends on which games the record visited, so it is not decided here.
+    // HyperTrainingVerifier: Legends: Arceus has no Hyper Training, so a trained record must have
+    // left through HOME (IHyperTrain.IsHyperTrainingAvailable: a HOME tracker); the minimum level
+    // is 50 after a Scarlet/Violet or Z-A visit and 100 otherwise (a level from 50 to 99 is decided
+    // only when no species of the line is in those games); never with six perfect IVs, never on a
+    // perfect IV.
     void checkHyperTraining() {
         const uint8_t flags = p_[0x13E];
         if ((flags & 0x3F) == 0) return;
+        if (tracker() == 0) {
+            invalid(CheckIdentifier::Stats, "Hyper Training on a Legends: Arceus record that never left through HOME");
+            return;
+        }
+        if (personal_) {
+            const uint8_t lvl = level();
+            if (lvl < 50 || (lvl < 100 && !ModernEncounter::visitNinePossible(species()))) {
+                invalid(CheckIdentifier::Stats, lvl < 50 ? "Hyper Training needs level 50 or more"
+                                                         : "Hyper Training below level 100 needs a Scarlet/Violet or Z-A visit, and "
+                                                           "no species of its line is in those games");
+                return;
+            }
+        }
         int total = 0;
         for (size_t i = 0; i < 6; ++i) total += iv(i);
         if (total == 31 * 6) {

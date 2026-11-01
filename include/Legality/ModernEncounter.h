@@ -31,6 +31,11 @@ bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noex
 /// Soup cannot toggle it (never on an unhatched egg). Undecided species/forms return true.
 bool gigantamaxPossible(uint16_t species, uint8_t form, bool flag, bool egg) noexcept;
 
+/// IHyperTrain.GetHyperTrainMinLevel: false only when neither the species nor any of its
+/// pre-evolutions (in any form) is present in Scarlet/Violet or Z-A, so the record's evolution
+/// history cannot have visited those games and Hyper Training needs level 100.
+bool visitNinePossible(uint16_t species) noexcept;
+
 /// A Sword/Shield record's fields that a Max Raid seed fixes (RaidRNG.Verify).
 struct RaidRecord {
     uint16_t species = 0;

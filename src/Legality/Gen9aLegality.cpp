@@ -237,10 +237,15 @@ private:
             invalid(CheckIdentifier::Trainer, "Language " + std::to_string(lang) + " does not exist in the origin game");
     }
 
-    // HyperTrainingVerifier: never with six perfect IVs, never on a perfect IV.
+    // HyperTrainingVerifier: level 50 or more (a Z-A record has always visited Z-A, so
+    // IHyperTrain.GetHyperTrainMinLevel is 50), never with six perfect IVs, never on a perfect IV.
     void checkHyperTraining() {
         const uint8_t flags = p_[0x126];
         if ((flags & 0x3F) == 0) return;
+        if (personal_ && level() < 50) {
+            invalid(CheckIdentifier::Stats, "Hyper Training needs level 50 or more");
+            return;
+        }
         int total = 0;
         for (size_t i = 0; i < 6; ++i) total += iv(i);
         if (total == 31 * 6) {

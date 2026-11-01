@@ -641,8 +641,8 @@ private:
     }
 
     // HyperTrainingVerifier. Sword/Shield trains at level 100, Scarlet/Violet and Z-A at 50;
-    // whether a PK8 visited those games needs its evolution history, so only a level below 50
-    // is decided for it. BD/SP always needs level 100 (HOME refuses lower trained records).
+    // a PK8 between 50 and 99 is decided only when no species of its line is in those games
+    // (ModernEncounter::visitNinePossible). BD/SP always needs level 100 (HOME refuses lower trained records).
     void checkHyperTraining() {
         const uint8_t flags = plain_[0x126];
         if ((flags & 0x3F) == 0 || !personal_) return;
@@ -654,8 +654,14 @@ private:
             invalid(CheckIdentifier::Stats, "Hyper Training needs level 50 or more");
             return;
         }
-        if (level() < 100 && swsh())
+        if (level() < 100 && swsh()) {
+            if (!ModernEncounter::visitNinePossible(species())) {
+                invalid(CheckIdentifier::Stats, "Hyper Training below level 100 needs a Scarlet/Violet or Z-A visit, and no species "
+                                                "of its line is in those games");
+                return;
+            }
             info(CheckIdentifier::Stats, "Hyper Training below level 100 needs a Scarlet/Violet or Z-A visit (not checked)");
+        }
         int total = 0;
         for (size_t i = 0; i < 6; ++i) total += pk_.iv(i);
         if (total == 31 * 6) {

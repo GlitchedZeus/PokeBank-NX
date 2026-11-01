@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "Integration/Gen8/Gen8PK8.h"
+#include "Pokemon/Experience.h"
 #include "Legality/Gen8Legality.h"
 #include "Legality/Gen9aLegality.h"
 #include "Legality/ModernLegality.h"
@@ -222,10 +223,21 @@ void testRuleEdits(const std::vector<Record>& records) {
     expectInvalid(n, "language 6", [](auto& b) { b[0xD5] = 6; }, "is not a language");
     expectNoIssue(n, "Spanish (LATAM) on a Z-A origin", [](auto& b) { b[0xD5] = 11; }, "Language");
     expectInvalid(n, "Spanish (LATAM) on a Scarlet origin", [](auto& b) { b[0xD5] = 11; b[0xCE] = 50; }, "does not exist in the origin game");
-    expectInvalid(n, "hyper training", [](auto& b) {
-        PK8::write32(b, 0x8C, (PK8::read32(b, 0x8C) & ~0x1Fu) | 31u);
-        b[0x126] = 1;
-    }, "Hyper Training on a perfect IV");
+    {
+        // HyperTrainingVerifier: level 50 or more.
+        const auto personal = Legality::Gen9a::Data::personal(Legality::Gen8::Data::nationalSpecies9(PK8::read16(n.plain, 0x08)), n.plain[0x24]);
+        check(personal.has_value(), "hyper training fixture species has personal data");
+        const uint8_t growth = personal ? personal->growth : 0;
+        expectInvalid(n, "hyper training", [growth](auto& b) {
+            PK8::write32(b, 0x10, Pokemon::getExpForLevel(100, growth));
+            PK8::write32(b, 0x8C, (PK8::read32(b, 0x8C) & ~0x1Fu) | 31u);
+            b[0x126] = 1;
+        }, "Hyper Training on a perfect IV");
+        expectInvalid(n, "hyper training below level 50", [growth](auto& b) {
+            PK8::write32(b, 0x10, Pokemon::getExpForLevel(49, growth));
+            b[0x126] = 2;
+        }, "Hyper Training needs level 50 or more");
+    }
     {
         uint16_t item = 1;
         while (item < 3000 && Legality::Gen9a::Data::heldItemAllowed(item)) ++item;
