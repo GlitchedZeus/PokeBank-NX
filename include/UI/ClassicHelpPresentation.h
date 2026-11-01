@@ -36,8 +36,8 @@ inline std::vector<std::string> lines(Page page,int generation) {
             break;
         case Page::Pokemon:
             // Round 11: the shared Actions order (NarrowPokemonActionMenu.h) and X = file shortcut.
-            out.push_back("A   Actions: View, Edit, Clone, Move, Release, Origin, Export");
-            out.push_back("A   On an empty slot: Add Pokemon or Import from file");
+            // One A row (the X row below already names Import): the page stays within 10 rows.
+            out.push_back("A   Actions: View, Edit, Clone, Move, Release, Origin, Export     A   Empty slot: Add Pokemon");
             out.push_back("X   Export to file; on an empty slot: Import from file");
             out.push_back("L / R   Previous / next box     ZL / ZR   Jump boxes");
             out.push_back(generation==5?kYReview:kPlusReview);   // Gen I-IV Boxes: Y is Move

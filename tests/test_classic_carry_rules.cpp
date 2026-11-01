@@ -144,7 +144,9 @@ void testOverlayUsesTheRules() {
         check(!has(overlay, stale), std::string("no stale Y-place text: ") + stale);
     check(has(overlay, "Carry::carryFooter(state.intent, state.visuals.size() > 1)"), "footer from the shared model");
     // The browse footer and the multi-select hold keep Y (pickup, unchanged).
-    check(has(overlay, "{\"Y\", \"Move / Hold Multi\"}") && has(overlay, "{\"Y\", \"Hold / Release Pick Up\"}"),
+    // (Round 11 X-IMPEXP builds the browse footer from one capability model: Y is still the pickup.)
+    check(has(overlay, "{\"Y\", occupied ? \"Move / Hold Multi\" : \"Hold Multi\"}") &&
+              has(overlay, "{\"Y\", \"Hold / Release Pick Up\"}"),
           "Y stays the pickup key in the browse and multi-select footers");
     // The libnx bits the model restates.
     check(has(overlay, "static_assert(Carry::kButtonA == HidNpadButton_A"), "button bits pinned");
