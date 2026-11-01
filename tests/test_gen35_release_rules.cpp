@@ -101,6 +101,30 @@ int main() {
         ++cases;
     }
     assert(eggPid.eof()&&eggPidClean==3&&eggPidInvalid==1&&cases==144);
+    // Production joint-budget negatives. Every individual excess is small,
+    // but29 combined EVs above vitamin ceilings cannot fit two native actions.
+    // Preserve the exact old positive as the source of these mutations.
+    std::ifstream jointInput("tests/fixtures/gen15_session2/ev_exp.txt");
+    jointInput>>id>>expected>>hex; // unchanged zero-EV control
+    jointInput>>id>>expected>>hex; assert(jointInput && id=="correlated" && expected=="NOPROBLEMS");
+    auto joint=fromHex(hex.c_str());
+    auto setExp=[&](uint32_t value) { for(unsigned i=0;i<4;++i)joint[0x10+i]=value>>(8*i); };
+    const auto originalExp=uint32_t(joint[0x10])|(uint32_t(joint[0x11])<<8)|(uint32_t(joint[0x12])<<16)|(uint32_t(joint[0x13])<<24);
+    setExp(originalExp+1); // existing control has gained1 EXP; now2
+    const std::array<uint8_t,6> target{114,114,101,0,0,0};
+    std::copy(target.begin(),target.end(),joint.begin()+0x18);refreshChecksum(joint);
+    const auto saved=joint;
+    const auto impossible=Legality::analyzePk4(joint,"diamond_nds");
+    assert(impossible.verdict()==Verdict::Invalid);
+    assert(hasText(impossible,Legality::Severity::Invalid,"joint EV gains"));
+    assert(joint==saved && consistent(impossible));
+    // Search/catalog failure must keep an otherwise supported report uncertain.
+    // This total is within the global necessary bound but the deliberately
+    // limited positive catalog cannot certify its low-EXP multi-stat history.
+    joint[0x18]=110;joint[0x19]=110;joint[0x1A]=101;refreshChecksum(joint);
+    const auto unresolved=Legality::analyzePk4(joint,"diamond_nds");
+    assert(unresolved.verdict()==Verdict::Incomplete && consistent(unresolved));
+    assert(hasText(unresolved,Legality::Severity::Warning,"joint EV/EXP"));
     // A known full RNG state must survive reversal for both sign-bit aliases.
     uint32_t seed=0x20261027;
     for(size_t i=0;i<256;++i) {

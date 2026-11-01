@@ -1,0 +1,11 @@
+# Source-aware joint EV/EXP action proof core.
+HOST_TESTS += $(HOST_BUILD)/test_gen34_ev_exp
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_ev_exp_sanitize
+host-test: $(HOST_BUILD)/test_gen34_ev_exp
+host-sanitize: $(HOST_BUILD)/test_gen34_ev_exp_sanitize
+$(HOST_BUILD)/test_gen34_ev_exp: tests/test_gen34_ev_exp.cpp include/Legality/Gen34EvExpFeasibility.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_gen34_ev_exp_sanitize: tests/test_gen34_ev_exp.cpp include/Legality/Gen34EvExpFeasibility.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

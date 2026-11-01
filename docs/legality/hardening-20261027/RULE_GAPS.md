@@ -98,3 +98,31 @@ The older detailed inventories remain symbol/specification references: `GB_PKHEX
 | X02 | G1–5 | Bulk duplicates/trainer handlers/settings | Bulk-save heuristics, nondefault glitch settings and modern handlers are separate from ordinary individual native reports. Their applicability is not silently counted as implemented. |
 
 Remaining audit work: independently trace **every applicable result-producing source branch** to these rows, its native implementation, positive/negative fixtures and title/region/context applicability. The existing source-site inventory intentionally leaves uncertified fields unknown; it is not a semantic denominator. In particular, unchanged upstream files are not automatically proven equivalent, generated helpers are not production wiring, and green L1–L6 gates do not close the named missing rules.
+
+
+## October31 production milestone (PR314, ca03ebcf)
+
+Native PK3/PK4 ordinary egg checks now require a simultaneous parent certificate;
+hatched PK5 tries all matching encounter alternatives and certifies ordinary
+parent births through the actual version-specific four-slot writer. Exact
+unhatched and inherited-survivor hatched queries share the GenIII–V API.
+Recursive positive traversal has cycle/depth/visit guards; unsupported complex,
+event and cross-era lower witnesses remain Incomplete. This supersedes the
+“not integrated” wording in B03/B04/B05 for these scoped adapters, and does not
+certify complete recursive ancestry. Seven retained original uncertain eggs remain.
+
+S05 joint EV/EXP now has production native III/IV action certificates, six-stat
+vitamin/berry/item/Pokerus/clamp modeling, a global12/14 EV/action necessary
+bound, explicit exhaustion and incomplete-history outcomes. Source-based battle
+catalogs are sufficient positive subsets; their absence cannot prove Invalid.
+Exact existing event/Orre models retain zero initial EV state, with conservative
+foreign-trainer battle EXP. Transferred/later-era training remains a separate gap.
+Original HGSS HP+1/ATK+4 for1EXP remains accepted. Full encounter-action and
+chronological move preservation certification is still incomplete.
+
+All38 retained GenV name disputes now produce Incomplete, without declaring the
+new Switch lookback expressions native-game prohibitions. All205 newly added
+source expressions are represented as supplemental uncertainty;38 benign rename
+controls stay clean. All647 reference exceptions reproduce in a diagnostic-only
+copy as MoveBreed5 array-index failures and are excluded from successful-reference
+agreement. Original raw measurements and records remain preserved.

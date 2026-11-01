@@ -62,6 +62,9 @@ struct FilterHit {
 /// inside the domain.
 FilterHit wordFilter(std::u16string_view message, uint8_t originGeneration);
 /// PKHeX TrainerNameVerifier.ContainsTooManyNumbers.
+/// Newly introduced modern lookback pattern. A hit means historical applicability
+/// is unverified; it must never alone produce Invalid for a Gen III-V record.
+std::u16string_view unverifiedLookbackPattern(std::u16string_view message, uint8_t originGeneration);
 bool tooManyNumbers(std::u16string_view text, uint8_t originGeneration);
 
 /// Pattern of a filter list as stored (lower-cased); empty when out of range.

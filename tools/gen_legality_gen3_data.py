@@ -511,10 +511,14 @@ def generate(pkhex):
     # analyzer stores one table, so every field it reads must agree across the four games.
     for game in ("e", "fr", "lg"):
         for sp in range(1, MAX_SPECIES + 1):
-            for off, field in ((0x10, "gender ratio"), (0x11, "hatch cycles"), (0x12, "friendship"),
+            for off, field in ((0x09, "base EXP"), (0x0A, "EV yield low"), (0x0B, "EV yield high"), (0x10, "gender ratio"), (0x11, "hatch cycles"), (0x12, "friendship"),
                                (0x13, "growth"), (0x16, "ability 1"), (0x17, "ability 2")):
                 if personal[game][sp][off] != rs[sp][off]:
                     die(f"personal_{game} {field} differs from RS for species {sp}")
+    for sp in range(1, MAX_SPECIES + 1):
+        ev_yield = int.from_bytes(rs[sp][0x0A:0x0C], "little")
+        if sum((ev_yield >> (2*i)) & 3 for i in range(6)) > 3:
+            die(f"native EV action bound exceeded by species {sp}")
     machine = binlinker32(src("Resources/byte/personal/hmtm_g3.pkl").read_bytes(), b"g3")
     tutors = binlinker32(src("Resources/byte/personal/tutors_g3.pkl").read_bytes(), b"g3")
     if len(machine) != MAX_SPECIES + 1 or len(tutors) != MAX_SPECIES + 1:
@@ -842,7 +846,7 @@ def render(v):
          "",
          "/// PersonalInfo3 fields read by the analyzer (personal_rs; PK3.PersonalInfo is RS).",
          "struct Personal { uint8_t gender; uint8_t hatchCycles; uint8_t friendship; uint8_t growth;",
-         "                  uint8_t ability1; uint8_t ability2; };",
+         "                  uint8_t ability1; uint8_t ability2; uint8_t baseExperience; uint16_t evYield; };",
          f"inline constexpr std::size_t kMaxSpecies = {MAX_SPECIES};",
          f"inline constexpr std::size_t kMaxMove = {MAX_MOVE};",
          "extern const Personal kPersonal[kMaxSpecies + 1];",
@@ -965,7 +969,7 @@ def render(v):
     c = [header, '#include "Legality/Gen3LegalityData.h"', "", "namespace Legality::Gen3Data {", ""]
     c.append("const Personal kPersonal[kMaxSpecies + 1] = {")
     for rec in rs:
-        c.append(f"    {{{rec[0x10]}, {rec[0x11]}, {rec[0x12]}, {rec[0x13]}, {rec[0x16]}, {rec[0x17]}}},")
+        c.append(f"    {{{rec[0x10]}, {rec[0x11]}, {rec[0x12]}, {rec[0x13]}, {rec[0x16]}, {rec[0x17]}, {rec[0x09]}, {int.from_bytes(rec[0x0A:0x0C], 'little')}}},")
     c += ["};", ""]
     c += ["const uint64_t kMachineBits[kMaxSpecies + 1] = {",
           arr((f"0x{x:016X}ull" for x in v["machine_bits"]), 4), "};",

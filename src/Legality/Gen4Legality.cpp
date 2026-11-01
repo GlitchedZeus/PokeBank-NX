@@ -20,6 +20,8 @@
  */
 #include "Gen4LegalityInternal.h"
 #include "Legality/Gen4RanchIV.h"
+#include "Legality/Gen34EvExpFeasibility.h"
+#include "Legality/Gen35BreedingAncestry.h"
 
 #include <algorithm>
 #include <cstring>
@@ -978,6 +980,43 @@ void Analyzer::verifyIvs() {
     if (hp < 30 && same) fishy(CheckIdentifier::Stats, "All IVs are equal");
 }
 
+const std::vector<EvExp::Battle>& evBattles4(uint8_t version, bool ownTrainer, bool foreignTraining) {
+    static const auto catalogs=[] {
+        std::array<std::array<std::vector<EvExp::Battle>,2>,13> result;
+        for (uint8_t v:{uint8_t(7),uint8_t(8),uint8_t(10),uint8_t(11),uint8_t(12)}) for (unsigned own=0;own<2;++own) {
+            std::array<EvExp::Battle,6> best{};
+            for (size_t i=0;i<D::kAreaCount;++i) {
+                const auto& area=D::kAreas[i];
+                if (area.version!=v || area.type>7 || area.location==52 || area.location==202) continue;
+                for (size_t j=area.slotStart;j<area.slotStart+area.slotCount;++j) {
+                    const auto& slot=D::kSlots[j];if (!slot.species || slot.species>493 || slot.form) continue;
+                    const auto p=personal(learnTable(v),slot.species,0);EvExp::Evs yield{};
+                    for (unsigned stat=0;stat<6;++stat) yield[stat]=static_cast<uint8_t>((p.evYield()>>(2*stat))&3);
+                    if (EvExp::total(yield)!=1) continue;
+                    const unsigned base=unsigned(p.p[9])*slot.levelMin/7;
+                    const unsigned split=std::max(1u,(base/2)/6);
+                    // HGSS applies the traded/international factor AFTER
+                    // splitting and clamping EXP. In particular1*170/100=1.
+                    const unsigned cost=isHGSS(v)?(own?split:split*170/100):2*std::max(1u,base);
+                    for (size_t stat=0;stat<6;++stat) if (yield[stat] && (!best[stat].experience || cost<best[stat].experience))
+                        best[stat]={yield,cost,slot.species,slot.levelMin,v};
+                }
+            }
+            for (const auto& b:best) if (b.experience) result[v][own].push_back(b);
+        }
+        return result;
+    }();
+    static const auto withTravel=[&] {
+        auto result=catalogs;
+        for (uint8_t v:{uint8_t(7),uint8_t(8),uint8_t(10),uint8_t(11),uint8_t(12)}) for (unsigned own=0;own<2;++own)
+            for (uint8_t destination:{uint8_t(7),uint8_t(8)}) if(destination!=v)
+                result[v][own].insert(result[v][own].end(),catalogs[destination][0].begin(),catalogs[destination][0].end());
+        return result;
+    }();
+    static const std::vector<EvExp::Battle> empty;
+    return isGen4Version(version)?(foreignTraining?withTravel:catalogs)[version][ownTrainer]:empty;
+}
+
 void Analyzer::verifyEvs() {
     int sum = 0;
     for (uint8_t ev : pk_.evs) sum += ev;
@@ -988,7 +1027,34 @@ void Analyzer::verifyEvs() {
     if (sum > 510) { invalid(CheckIdentifier::Stats, "EV total is above 510"); return; }
     bool vitamins = true;
     for (uint8_t ev : pk_.evs) if (ev != 0 && (ev > 100 || ev % 10 != 0)) vitamins = false;
-    if (!vitamins && !cxdUndecided_) { // the encounter level is unknown for an unverified Colosseum/XD origin
+    if (!vitamins && !format5() && encGeneration()==4) {
+        const bool knownZero=enc_.kind==EncKind::Slot || enc_.kind==EncKind::Static || enc_.kind==EncKind::Egg || enc_.kind==EncKind::Trade;
+        if (!knownZero) {
+            fishy(CheckIdentifier::Stats,"The initial EV/EXP state of this encounter is not verified");
+        } else {
+            const uint8_t met=std::max(pk_.metLevel,enc_.levelMin);
+            const auto start=expForLevel(met,personalAt(Table::HGSS,enc_.species).expGrowth());
+            if (pk_.exp>=start) {
+                EvExp::Request request{pk_.evs,pk_.exp-start,4,true,true,pk_.pokerus!=0,true,2048};
+                // Kadabra evolves unconditionally when traded in Gen IV.
+                // Do not invent a return trip retaining that species. Other
+                // trade evolutions can remove their item/use an Everstone.
+                const bool travel=pk_.species!=64;
+                auto result=EvExp::solve(request,evBattles4(pk_.version,enc_.kind!=EncKind::Trade,travel));
+                if (enc_.kind==EncKind::Egg && result.verdict==EvExp::Verdict::Proven)
+                    for (uint8_t v:{uint8_t(7),uint8_t(8),uint8_t(10),uint8_t(11),uint8_t(12)})
+                        if (EvExp::solve(request,evBattles4(v,true,travel)).verdict!=EvExp::Verdict::Proven) {
+                            result.verdict=EvExp::Verdict::Incomplete;break;
+                        }
+                if (result.verdict==EvExp::Verdict::Impossible)
+                    invalid(CheckIdentifier::Stats,request.availableExperience==0?
+                        "EVs above vitamin limits need battles, but the Pokemon has gained no EXP":
+                        "The joint EV gains require more EXP-bearing battle actions than the available EXP permits");
+                else if (result.verdict==EvExp::Verdict::Incomplete)
+                    fishy(CheckIdentifier::Stats,"The joint EV/EXP action history is not yet verified; search limits or missing action routes are not impossibility proofs");
+            }
+        }
+    } else if (!vitamins && !cxdUndecided_) { // transferred origins need their distinct EXP history
         if (enc_.levelMin == 100) {
             invalid(CheckIdentifier::Stats, "EVs above vitamin limits cannot be gained by a level 100 encounter");
         } else {
@@ -1706,6 +1772,31 @@ Report Analyzer::run() {
     findVerifiedEncounter();
 
     verifyPid();
+    // A per-slot move source does not certify simultaneous parent ancestry.
+    // Missing certificates are uncertainty, including bounded/cyclic histories.
+    if (enc_.kind==EncKind::Egg && !format5()) {
+        uint8_t paternal=0,shared=0;
+        if (pk_.isEgg) {
+            std::array<uint8_t,4> sources{};
+            if (moveBreed4Validate(enc_.species,enc_.version,pk_.moves,sources))
+                for (unsigned i=0;i<4;++i) {
+                    if (sources[i]>=2 && sources[i]<=4) paternal|=1u<<i;
+                    if (sources[i]==4) shared|=1u<<i;
+                }
+        } else for (unsigned i=0;i<4;++i) {
+            if (moves_[i].method==LearnMethod::EggMove || moves_[i].method==LearnMethod::InheritLevelUp) paternal|=1u<<i;
+            if (moves_[i].method==LearnMethod::InheritLevelUp) shared|=1u<<i;
+        }
+        if (paternal) {
+            bool certified=Breeding::Gen35Ancestry::provenOrdinaryBirth(4,enc_.species,enc_.version,pk_.moves,paternal,shared,pk_.isEgg);
+            if (!certified && pk_.isEgg) {
+                Breeding::Gen35Ancestry ancestry(pk_.moves);
+                certified=ancestry.provenBirth(4,enc_.species,enc_.version,paternal,shared,true);
+            }
+            if (!certified)
+                fishy(CheckIdentifier::Egg,"The simultaneous Gen IV parent move ancestry is not yet certified");
+        }
+    }
     verifyLanguage();
     verifyNickname();
     verifyTrainerName();

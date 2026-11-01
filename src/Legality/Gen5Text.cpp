@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Legality/Gen5LegalityData.h"
+#include "Legality/Gen5UnverifiedNameFilters.h"
 
 namespace Legality::Gen5Text {
 
@@ -449,7 +450,7 @@ struct CompiledList {
     std::vector<std::u16string> required;
 };
 struct Compiled {
-    CompiledList nx, ds;
+    CompiledList nx, ds, unverified;
     std::size_t unsupported = 0;
 };
 
@@ -465,6 +466,7 @@ const Compiled& compiled() {
         };
         add(out.nx, D::kBadWordsSwitch, D::kBadWordsSwitchCount);
         add(out.ds, D::kBadWords3DS, D::kBadWords3DSCount);
+        add(out.unverified, kUnverifiedLookbackPatterns, std::size(kUnverifiedLookbackPatterns));
         return out;
     }();
     return c;
@@ -518,6 +520,15 @@ FilterHit wordFilter(std::u16string_view message, uint8_t originGeneration) {
         }
     }
     return hit;
+}
+
+std::u16string_view unverifiedLookbackPattern(std::u16string_view message, uint8_t originGeneration) {
+    if (message.size() <= 1 || std::all_of(message.begin(), message.end(), isWhiteSpace)) return {};
+    const uint16_t species = speciesAnyLanguageCaseInsensitive(message, originGeneration);
+    if (species != 0 && species <= maxSpecies(originGeneration)) return {};
+    std::size_t index = 0;
+    if (tryMatch(compiled().unverified, message, index)) return kUnverifiedLookbackPatterns[index];
+    return {};
 }
 
 bool tooManyNumbers(std::u16string_view text, uint8_t originGeneration) {

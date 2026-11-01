@@ -1068,6 +1068,12 @@ void Gen5Analyzer::abilities() {
         return;
     }
     if (!gen5Origin_) {
+        // Gen III (including Orre) has no hidden-ability source. Neither the
+        // flag nor a hidden-only ability value can bypass origin matching.
+        if (isGen3Version(p_.version) && (p_.hiddenAbility || (p_.ability != a0 && p_.ability != a1))) {
+            a_.invalid(CheckIdentifier::Ability, "Hidden ability flag or hidden-only ability is set on a Gen III-origin Pokemon");
+            return;
+        }
         // The origin analysis ran AbilityVerifier.VerifyAbility345 with the Gen III/IV encounter.
         if (origin_.analyzed) return;
         // PKHeX rejects the flag for every Gen III/IV encounter (CheckMatch) except an
@@ -1979,8 +1985,8 @@ void Gen5Analyzer::movePool() {
     if (!found)
         for (uint16_t m : best) a_.invalid(CheckIdentifier::Moves, moveName(m) + " cannot be learned by this Pokemon in Gen V");
     // An unhatched bred egg's moves must follow the inheritance order (PKHeX
-    // LearnVerifierRelearn.VerifyEggMoveset -> MoveBreed5.Validate); once hatched, each
-    // move only needs a source.
+    // LearnVerifierRelearn.VerifyEggMoveset -> MoveBreed5.Validate). Hatched
+    // inherited survivors still require one simultaneous birth recipe.
     bool ancestryPartial=false;
     if (p_.isEgg && match_.kind == Kind::Egg) {
         // The independently pinned reconstruction targets the English US/EU
@@ -1994,21 +2000,60 @@ void Gen5Analyzer::movePool() {
             // Reuse the finite joint-state foundation. All permissible local
             // source assignments are tried: failure of the first assignment is
             // not evidence that a different father/mother route is impossible.
-            const Breeding::Gen35Ancestry ancestry(p_.moves);
-            if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry)) {
-                // Original HGSS bodies prove both-parent shared inheritance.
-                // B2W2 role selection is now replayed separately, but the
-                // complete family/event ancestry closure is still unverified.
-                // Exclusive egg/TM absence must also survive that conservative
-                // carrier relaxation; it cannot certify a clean birth.
-                if(Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,false,true)){
-                    ancestryPartial=true;
-                    a_.warn(CheckIdentifier::Egg,"Gen V parent roles or the complete inherited move history have not yet been verified");
-                }else a_.invalid(CheckIdentifier::Egg,"No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model");
-            } else if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,true)) {
+            const bool bwPairedFamily = (p_.version==20||p_.version==21) &&
+                (match_.species==29||match_.species==32||match_.species==313||match_.species==314);
+            if(bwPairedFamily) {
+                // The replayed offspring/parent-role implementation is B2W2.
+                // Shared move ordering agreement alone does not certify BW's
+                // mixed-species birth branch or which parent supplies moves.
+                // Initial-only eggs bypass this missing historical rule above.
                 ancestryPartial=true;
-                a_.warn(CheckIdentifier::Egg,"The complete breeding history, move order, form or transfer path has not yet been verified");
+                a_.warn(CheckIdentifier::Egg,"Black/White paired-species offspring and parental role path has not been verified from native source");
+            } else {
+                const Breeding::Gen35Ancestry ancestry(p_.moves);
+                if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry)) {
+                    // Original HGSS bodies prove both-parent shared inheritance.
+                    // B2W2 role selection is now replayed separately, but the
+                    // complete family/event ancestry closure is still unverified.
+                    // Exclusive egg/TM absence must also survive that conservative
+                    // carrier relaxation; it cannot certify a clean birth.
+                    if(Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,false,true)){
+                        ancestryPartial=true;
+                        a_.warn(CheckIdentifier::Egg,"Gen V parent roles or the complete inherited move history have not yet been verified");
+                    }else a_.invalid(CheckIdentifier::Egg,"No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model");
+                } else if (!Breed5::valid(match_.species,p_.version,p_.moves,&ancestry,false,true)) {
+                    ancestryPartial=true;
+                    a_.warn(CheckIdentifier::Egg,"The complete breeding history, move order, form or transfer path has not yet been verified");
+                }
             }
+        }
+    }
+    if (!p_.isEgg && found) {
+        bool certified=false;
+        // A different matching acquisition can remove the need for a breeding
+        // history. Do not reject the first egg candidate in isolation.
+        for(const auto& t:matchAll_) {
+            if(!missing(movesFor(&t)).empty())continue;
+            if(t.kind!=Kind::Egg){certified=true;break;}
+            Template ordinary=t;ordinary.kind=Kind::Static;
+            const auto teachable=movesFor(&ordinary);
+            uint8_t inherited=0;
+            for(size_t i=0;i<4;++i)if(p_.moves[i]&&p_.moves[i]<=kMaxMove&&!teachable.test(p_.moves[i])) {
+                // Light Ball is a birth action, not a queried parental move.
+                if(t.species==172&&p_.moves[i]==344)continue;
+                inherited|=static_cast<uint8_t>(1u<<i);
+            }
+            if(!inherited){certified=true;break;}
+            if(p_.form!=0)continue; // no cross-form lower certificate
+            for(uint8_t shared=0;shared<16;++shared) {
+                if(shared&~inherited)continue;
+                if(Breeding::Gen35Ancestry::provenOrdinaryBirth(5,t.species,p_.version,p_.moves,inherited,shared,false)){certified=true;break;}
+            }
+            if(certified)break;
+        }
+        if(!certified){
+            ancestryPartial=true;
+            a_.warn(CheckIdentifier::Egg,"Hatched inherited moves lack a verified simultaneous parental birth history");
         }
     }
     cov.moves = ancestryPartial ? CoverageLevel::Partial : CoverageLevel::Complete;
@@ -2225,6 +2270,10 @@ void Gen5Analyzer::filterName(std::u16string_view text, uint8_t origin, const ch
         const char* list = hit.list == T::Filter::Switch ? "Switch" : hit.list == T::Filter::Console3DS ? "3DS" : "Gen V";
         report(std::string(what) + " \"" + utf8(text) + "\" is blocked by the " + list + " word filter (\"" +
                utf8(T::filterPattern(hit.list, hit.index)) + "\")");
+    }
+    if (hit.list == T::Filter::None && !T::unverifiedLookbackPattern(text, origin).empty()) {
+        textUnknown_ = true;
+        a_.warn(CheckIdentifier::Trainer, std::string(what) + " matches a newer lookback word-filter pattern whose applicability to original Gen III-V games is unverified");
     }
     if (T::tooManyNumbers(text, origin)) report(std::string(what) + " \"" + utf8(text) + "\" has more than 4 digits");
 }

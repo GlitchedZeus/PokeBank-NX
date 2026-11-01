@@ -24,6 +24,10 @@ on:
       - 'tests/test_gen5_app_context.cpp'
       - 'tests/test_gen5_joint_breeding.cpp'
       - 'tests/test_gen35_release_rules.cpp'
+      - 'tests/test_gen34_ev_exp.cpp'
+      - 'tests/test_gen5_name_uncertainty.cpp'
+      - 'tests/test_release_metrics_errors.py'
+      - 'Makefile.host.ev-exp'
       - 'tests/test_public_fixture_selection.py'
       - 'tests/test_hgss_reference_adjudication.py'
       - 'tests/test_reference_evidence_package.py'
@@ -64,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          names=(test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm test_gen4_hgss_contest test_gen4_ranch_ability test_gen5_joint_breeding)
+          names=(test_gen5_name_uncertainty test_gen34_ev_exp test_gen2_korean_save test_gen3_berry_context test_gen3_berry_source test_legality_report_presentation test_legality_gen5_adapter test_gb_legality_names test_gb_breeding_chain test_finite_breeding_chain test_gen3_workspace_legality test_gen5_gift_receivability test_gen5_full_wonder_card test_gen5_full_card_evidence test_gen4_ground_tile test_gen5_app_context test_gen35_release_rules test_gen4_hgss_swarm test_gen4_hgss_contest test_gen4_ranch_ability test_gen5_joint_breeding)
           targets=()
           for name in "${names[@]}"; do targets+=("build-completion/$name" "build-completion/${name}_sanitize"); done
           make -f Makefile.host -j2 HOST_BUILD=build-completion "${targets[@]}"
@@ -76,6 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tests/test_release_metrics_errors.py
           python3 tests/test_reference_evidence_package.py | tee build-completion/reference-evidence-package.log
           python3 tests/test_public_fixture_selection.py | tee build-completion/public-fixture-selection.log
           python3 tests/test_hgss_reference_adjudication.py | tee build-completion/hgss-reference-adjudication.log
@@ -132,6 +137,7 @@ jobs:
             docs/legality/campaign-20261028/HGSS_BREEDING_SOURCE_PINS.json
             docs/legality/campaign-20261028/GEN5_JOINT_FIXTURES.json
             tests/fixtures/gen15_session2/gen5_joint_breeding.txt
+            tests/fixtures/gen15_session2/gen5_bw_paired_family.txt
             build-completion/hgss-swarm-catalog.*
             build-completion/hgss-contest-catalog.*
             build-completion/hgss-contest-protection.log

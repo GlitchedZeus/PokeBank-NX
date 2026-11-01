@@ -33,7 +33,18 @@ def read(root, group):
 def metric(rows):
     cross=collections.Counter((r['reference'],r['nx']) for r in rows)
     agree=cross['VALID','NOPROBLEMS']+cross['INVALID','INVALID']
+    # Preserve the original binary table, but never describe a swallowed oracle
+    # execution failure as a successful legality comparison. Keep both denominators.
+    comparable=[r for r in rows if not r['misc_error']]
+    comparable_cross=collections.Counter((r['reference'],r['nx']) for r in comparable)
+    comparable_agree=comparable_cross['VALID','NOPROBLEMS']+comparable_cross['INVALID','INVALID']
     return {'records':len(rows),'raw_agreement':agree,
+        'reference_success_records':len(comparable),
+        'reference_success_agreement':comparable_agree,
+        'reference_success_agreement_percent':100*comparable_agree/len(comparable) if comparable else None,
+        'reference_error_raw_agreements':agree-comparable_agree,
+        'reference_success_false_invalid':comparable_cross['VALID','INVALID'],
+        'reference_success_false_clean':comparable_cross['INVALID','NOPROBLEMS'],
         'raw_agreement_percent':100*agree/len(rows) if rows else None,
         'raw_false_invalid':cross['VALID','INVALID'],
         'raw_false_clean':cross['INVALID','NOPROBLEMS'],
