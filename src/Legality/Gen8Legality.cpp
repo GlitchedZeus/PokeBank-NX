@@ -686,6 +686,7 @@ private:
         if (!ModernEncounter::gigantamaxPossible(species(), form(), gmax, pk_.isEgg()))
             invalid(CheckIdentifier::Misc, std::string("No encounter of the species and form allows the Gigantamax flag ") +
                                                (gmax ? "set" : "clear") + (pk_.isEgg() ? " on an egg" : ", and Gigantamax Soup cannot change it"));
+        checkRaidSeed();
         // IDynamaxLevel.CanHaveDynamaxLevel: no egg and no Zacian/Zamazenta/Eternatus; at most 10.
         const uint8_t dynamax = pk_.dynamaxLevel();
         if (dynamax != 0) {
@@ -693,6 +694,30 @@ private:
             if (pk_.isEgg() || s == Zacian || s == Zamazenta || s == Eternatus || dynamax > 10)
                 invalid(CheckIdentifier::Misc, "Dynamax level " + std::to_string(dynamax) + " is not possible");
         }
+    }
+
+    // EncounterStatic8Nest.TryGetSeed: a Sword/Shield record met at the shared raid den location
+    // (162) or Max Lair (244), where only raids of its line occur, must come from a raid seed
+    // (ModernEncounter::raidSeed). Shiny records are not checked, as in PKHeX.
+    void checkRaidSeed() {
+        if (pk_.isEgg() || side_ != 0 || (version_ != VersionSW && version_ != VersionSH) || PK8::read16(plain_, 0x120) != 0) return;
+        ModernEncounter::RaidRecord r;
+        r.species = species();
+        r.form = form();
+        r.metLocation = PK8::read16(plain_, 0x122);
+        r.ec = pk_.encryptionConstant();
+        r.pid = pk_.pid();
+        r.id32 = PK8::read32(plain_, 0x0C);
+        r.ivs = {pk_.iv(0), pk_.iv(1), pk_.iv(2), pk_.iv(4), pk_.iv(5), pk_.iv(3)};
+        r.abilityNumber = pk_.abilityNumber();
+        r.gender = pk_.gender();
+        r.nature = pk_.nature();
+        r.height = plain_[0x50];
+        r.weight = plain_[0x51];
+        r.homeTracker = (PK8::read32(plain_, 0x135) | PK8::read32(plain_, 0x139)) != 0;
+        if (ModernEncounter::raidSeed(r) == ModernEncounter::RaidResult::NoSeed)
+            invalid(CheckIdentifier::PidRng, "No Max Raid seed of the species' line gives this EC, PID, IVs, ability, gender, nature "
+                                          "and size, and only raids use this met location");
     }
 
     // MiscVerifierPB8: BD/SP has no sociability, Dynamax, Gigantamax or TR flags (a

@@ -11,6 +11,12 @@
 namespace Legality::ModernEncounter {
 namespace {
 
+// One raid's RaidRNG.Verify parameters (GenerateParam8); see the oracle's Raid().
+struct RaidParam8 {
+    uint8_t genderRatio, flawless, ability, toxtricity;
+    std::array<int8_t, 6> ivs;  // HP, Atk, Def, SpA, SpD, Spe; -1 = random
+};
+
 #include "Legality/ModernEncounterData.inc"
 
 template <typename T>
@@ -133,6 +139,178 @@ bool hatchLocation(uint8_t version, uint16_t location) noexcept {
     default: return true;
     }
     return std::binary_search(list.begin(), list.end(), location);
+}
+
+namespace {
+
+// Xoroshiro128Plus as PKHeX.Core implements it.
+struct Xoro {
+    static constexpr uint64_t kConst = 0x82A2B175229D6A5Bull;
+    uint64_t s0, s1;
+    explicit Xoro(uint64_t seed) noexcept : s0(seed), s1(kConst) {}
+    static uint64_t rotl(uint64_t x, int k) noexcept { return (x << k) | (x >> (64 - k)); }
+    uint64_t next() noexcept {
+        const uint64_t a = s0, result = s0 + s1;
+        uint64_t b = s1 ^ a;
+        s0 = rotl(a, 24) ^ b ^ (b << 16);
+        s1 = rotl(b, 37);
+        return result;
+    }
+    uint64_t nextInt(uint64_t max = 0xFFFFFFFFull) noexcept {
+        // GetBitmask: the smallest all-ones mask covering max - 1.
+        const uint64_t m = max - 1;
+        uint64_t mask = 0;
+        while (mask < m) mask = (mask << 1) | 1;
+        for (;;) {
+            const uint64_t r = next() & mask;
+            if (r < max) return r;
+        }
+    }
+};
+
+// Xoroshiro128PlusReversal.ExploreDouble: seeds whose 1st and 3rd outputs (low 32 bits) are given.
+bool exploreDouble(uint64_t& seed, uint32_t out1, uint32_t out2, uint8_t assume2, uint8_t carry1, uint8_t carry2) noexcept {
+    constexpr uint64_t C = Xoro::kConst;
+    const uint64_t baseSeed = static_cast<uint32_t>(out1 - static_cast<uint32_t>(C));
+    const uint64_t bitsCheck = baseSeed & 7;
+    uint64_t x0 = baseSeed ^ C;
+    uint64_t x1_ = (baseSeed >> 19) ^ (x0 >> 6) ^ 0x56;
+    uint64_t x2_ = (x0 >> 16) ^ 0x65;
+    uint64_t x3_ = x1_ ^ (x0 >> 27);
+    uint64_t x4_ = x2_ ^ (x0 >> 27);
+    const uint64_t x5 = (baseSeed >> 16) ^ x0 ^ 0x2B1;
+    const uint64_t x6 = (baseSeed >> 3) ^ (x0 >> 11) ^ 0xE0A;
+    const uint64_t x7 = C ^ (x0 >> 24);
+    const uint64_t t0 = out2 >> 16;
+    const uint64_t t1 = out2 >> 27;
+    const uint64_t assume = baseSeed | (uint64_t{assume2} << 43);
+    x1_ ^= assume2;
+    x2_ ^= assume2;
+    x3_ ^= assume2;
+    x4_ ^= assume2;
+    const uint64_t sub0 = t0 - carry1;
+    uint64_t tmp = ((((sub0 - x3_) ^ x4_) & 0x1F) << 32) | assume;
+    x0 = tmp ^ C;
+    tmp |= (((sub0 - (x1_ ^ (x0 >> 27))) ^ x2_ ^ (x0 >> 27)) & 0xFF) << 32;
+    x0 = tmp ^ C;
+    uint64_t r = (((uint64_t{out2} - (x5 ^ (x0 >> 27) ^ (x0 >> 24))) ^ x6 ^ (x0 >> 27)) & 0x1FFF);
+    if ((r >> 10) != bitsCheck) { seed = 0; return false; }
+    tmp |= (r & 0x3FF) << 54;
+    x0 = tmp ^ C;
+    const uint64_t x8 = (tmp >> 30) ^ (x0 >> 17) ^ (x0 >> 54);
+    const uint64_t x9 = (tmp >> 43) ^ (tmp >> 51) ^ (x0 >> 27) ^ (x0 >> 54) ^ 3;
+    const uint64_t x10 = x8 ^ (x0 >> 38);
+    const uint64_t x11 = x9 ^ (x0 >> 38);
+    const uint64_t x12 = x7 ^ (x0 >> 35) ^ (tmp >> 48);
+    const uint64_t x13 = (tmp >> 19) ^ (x0 >> 6);
+    const uint64_t x14 = x13 ^ (x0 >> 27);
+    const uint64_t sub1 = t1 - carry2;
+    seed = ((((sub1 - x10) ^ x11) & 3) << 51) | tmp;
+    x0 = seed ^ C;
+    seed |= ((((sub0 - (x14 ^ (x0 >> 43))) >> 8) ^ x12 ^ (x0 >> 51)) & 3) << 40;
+    x0 = seed ^ C;
+    seed |= (((sub1 - (x8 ^ (x0 >> 38))) ^ x9 ^ (x0 >> 38)) & 7) << 51;
+    x0 = seed ^ C;
+    r = ((((sub0 - (x13 ^ (x0 >> 27) ^ (x0 >> 43))) >> 8) ^ x7 ^ (x0 >> 35) ^ (seed >> 48) ^ (x0 >> 51)) & 0x7F);
+    if ((assume2 & 0xFu) != (r >> 3)) return false;
+    seed |= r << 40;
+    Xoro check(seed);
+    if (static_cast<uint32_t>(check.next()) != out1) return false;
+    (void)check.next();
+    return static_cast<uint32_t>(check.next()) == out2;
+}
+
+template <typename F>
+bool forEachSeed(uint32_t first, uint32_t third, F&& f) {
+    // XoroMachineSkip: every assumption of bits 43-50 and both carries.
+    for (unsigned assume = 0; assume < 256; ++assume)
+        for (uint8_t carry2 = 0; carry2 < 2; ++carry2)
+            for (uint8_t carry1 = 0; carry1 < 2; ++carry1) {
+                uint64_t seed = 0;
+                if (exploreDouble(seed, first, third, static_cast<uint8_t>(assume), carry1, carry2) && f(seed)) return true;
+            }
+    return false;
+}
+
+uint32_t shinyXor(uint32_t v) noexcept { return (v ^ (v >> 16)) & 0xFFFF; }
+
+constexpr std::array<uint8_t, 13> kToxNature0{3, 4, 2, 8, 9, 19, 22, 11, 13, 14, 0, 6, 24};
+constexpr std::array<uint8_t, 12> kToxNature1{1, 5, 7, 10, 12, 15, 16, 17, 18, 20, 21, 23};
+
+// RaidRNG.Verify, made a superset: either forceNoShiny state; Ability Patch, HOME size resets
+// and the HOME re-roll of a 0/0 size are all allowed.
+bool raidVerify(const RaidRecord& pk, uint64_t seed, const RaidParam8& p, bool forceNoShiny) noexcept {
+    Xoro rng(seed);
+    if (static_cast<uint32_t>(rng.nextInt()) != pk.ec) return false;
+    const auto trId = static_cast<uint32_t>(rng.nextInt());
+    auto pid = static_cast<uint32_t>(rng.nextInt());
+    bool shiny = shinyXor(pid ^ trId) < 16;
+    if (shiny && forceNoShiny) {
+        pid ^= 0x10000000u;  // ForceShinyState(false) against the fake trainer
+        shiny = false;
+    }
+    if (shiny) return false;  // the record is not shiny (checked by the caller)
+    if (shinyXor(pid ^ pk.id32) < 16) pid ^= 0x10000000u;
+    if (pid != pk.pid) return false;
+    std::array<int, 6> ivs{};
+    for (size_t i = 0; i < 6; ++i) ivs[i] = p.ivs[i];
+    int perfect = 0;
+    for (int v : ivs) perfect += v == 31;
+    for (int i = perfect; i < p.flawless; ++i) {
+        auto index = static_cast<size_t>(rng.nextInt(6));
+        while (ivs[index] != -1) index = static_cast<size_t>(rng.nextInt(6));
+        ivs[index] = 31;
+    }
+    for (int& v : ivs)
+        if (v == -1) v = static_cast<int>(rng.nextInt(32));
+    for (size_t i = 0; i < 6; ++i)
+        if (ivs[i] != pk.ivs[i]) return false;
+    int ability = p.ability == 0 ? static_cast<int>(rng.nextInt(3)) : p.ability == 1 ? static_cast<int>(rng.nextInt(2)) : p.ability == 3 ? 2 : 0;
+    if (ability == 2 && pk.abilityNumber != 4 && !pk.homeTracker) return false;
+    switch (p.genderRatio) {
+    case 255: if (pk.gender != 2) return false; break;
+    case 254: if (pk.gender != 1) return false; break;
+    case 0: if (pk.gender != 0) return false; break;
+    default: {
+        const int gender = static_cast<int>(rng.nextInt(253)) + 1 < p.genderRatio ? 1 : 0;
+        if (pk.gender != gender && pk.gender != 2) return false;
+    }
+    }
+    int nature;
+    if (p.toxtricity) {
+        if (pk.form == 0) nature = kToxNature0[rng.nextInt(kToxNature0.size())];
+        else nature = kToxNature1[rng.nextInt(kToxNature1.size())];
+    } else {
+        nature = static_cast<int>(rng.nextInt(25));
+    }
+    if (pk.nature != nature) return false;
+    const auto h = static_cast<uint8_t>(rng.nextInt(0x81) + rng.nextInt(0x80));
+    const auto w = static_cast<uint8_t>(rng.nextInt(0x81) + rng.nextInt(0x80));
+    if (pk.homeTracker && ((h == 0 && w == 0) || (pk.height == 0 && pk.weight == 0))) return true;
+    if (pk.height != h) return false;
+    return pk.weight == w || (h == 0 && pk.weight == 0 && pk.homeTracker);
+}
+
+}  // namespace
+
+RaidResult raidSeed(const RaidRecord& pk) noexcept {
+    if (pk.metLocation != 162 && pk.metLocation != 244) return RaidResult::Undecided;
+    if (pk.species + 1u >= kRaid8Index.size() || pk.species >= kRaidFlags8.size()) return RaidResult::Undecided;
+    const uint8_t flags = kRaidFlags8[pk.species];
+    const bool lair = pk.metLocation == 244;
+    if ((flags & 0x80) == 0 || (flags & (lair ? 2 : 1)) != 0) return RaidResult::Undecided;
+    if (shinyXor(pk.pid ^ pk.id32) < 16) return RaidResult::Undecided;
+    bool any = false;
+    for (uint32_t i = kRaid8Index[pk.species]; i < kRaid8Index[pk.species + 1u]; ++i) {
+        const uint16_t e = kRaid8[i];
+        if (((e & 0x8000) != 0) != lair) continue;
+        any = true;
+        const RaidParam8& p = kRaidParams8[e & 0x7FFF];
+        for (uint32_t third : {pk.pid, pk.pid ^ 0x10000000u})
+            if (forEachSeed(pk.ec, third, [&](uint64_t seed) { return raidVerify(pk, seed, p, false) || raidVerify(pk, seed, p, true); }))
+                return RaidResult::SeedFound;
+    }
+    return any ? RaidResult::NoSeed : RaidResult::Undecided;
 }
 
 } // namespace Legality::ModernEncounter

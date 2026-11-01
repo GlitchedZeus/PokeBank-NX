@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 #include "Legality/ModernLegality.h"
@@ -29,6 +30,26 @@ bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noex
 /// only when no encounter of the species and form gives this Gigantamax flag state and Gigantamax
 /// Soup cannot toggle it (never on an unhatched egg). Undecided species/forms return true.
 bool gigantamaxPossible(uint16_t species, uint8_t form, bool flag, bool egg) noexcept;
+
+/// A Sword/Shield record's fields that a Max Raid seed fixes (RaidRNG.Verify).
+struct RaidRecord {
+    uint16_t species = 0;
+    uint16_t metLocation = 0;
+    uint32_t ec = 0, pid = 0, id32 = 0;
+    std::array<uint8_t, 6> ivs{};  // HP, Atk, Def, SpA, SpD, Spe
+    uint8_t form = 0, abilityNumber = 0, gender = 0, nature = 0, height = 0, weight = 0;
+    bool homeTracker = false;
+};
+
+enum class RaidResult : uint8_t { Undecided, SeedFound, NoSeed };
+
+/// EncounterStatic8Nest.TryGetSeed over every raid of the species' line that can carry the met
+/// location: the shared den location 162 (dens, Watchtower crystals, distributions) or Max Lair
+/// 244. Undecided for any other location, a shiny record (PKHeX does not check its seed), a
+/// species/location some non-raid encounter also uses, or a species without generated encounters.
+/// NoSeed: no seed from (EC, PID) generates the record's IVs, ability, gender, nature and sizes
+/// for any of those raids' parameters.
+RaidResult raidSeed(const RaidRecord& record) noexcept;
 
 /// Unhatched-egg facts of the species in a format that has eggs (PK6, PK7, PK8, PB8, PK9), over
 /// the egg encounters of that format's own games only: transfer services and HOME never accept an

@@ -630,6 +630,8 @@ static class DumpEncounters
             var relearn = new List<ushort>[maxSpecies + 1];
             var relearnEgg = new List<ushort>[maxSpecies + 1];
             var gmax = new List<int>[maxSpecies + 1];
+            var raids = new List<int>[maxSpecies + 1];
+            var raidFlags = new int[maxSpecies + 1];
             var context = proto.Context;
             var failed = new HashSet<GameVersion>();
             for (ushort s = 1; s <= maxSpecies; s++)
@@ -643,6 +645,8 @@ static class DumpEncounters
                 var relearnEggSet = new SortedSet<ushort>();
                 bool undecided = false;
                 var gmaxForms = new int[forms];
+                var raidSet = new SortedSet<int>();
+                int raidFlag = 0;
                 for (byte f = 0; f < forms; f++)
                 {
                     pk = make();
@@ -661,6 +665,7 @@ static class DumpEncounters
                                 if (enc.Context == context && name is "6" or "7")
                                     AddRelearn(enc, enc.IsEgg ? relearnEggSet : relearnSet);
                                 if (name == "8") gmaxForms[f] |= GmaxStates(enc, s, f, enc.IsEgg);
+                                if (name == "8") raidFlag |= Raid(enc, raidSet);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -708,6 +713,10 @@ static class DumpEncounters
                         if (g.IsEntity && line.Contains(g.Species) && reach(g))
                             for (byte f = 0; f < forms; f++) gmaxForms[f] |= GmaxStates(g, s, f, g.IsEgg);
                     gmax[s] = undecided ? [.. gmaxForms.Select(_ => 0)] : [.. gmaxForms.Select(v => v | 0x80)];
+                    foreach (var g in gifts)
+                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) raidFlag |= Raid(g, raidSet);
+                    raids[s] = undecided ? [] : [.. raidSet];
+                    raidFlags[s] = undecided ? 0 : raidFlag | 0x80;
                 }
                 relearn[s] = undecided ? [0xFFFF] : [.. relearnSet];
                 relearnEgg[s] = undecided ? [0xFFFF] : [.. relearnEggSet];
@@ -735,6 +744,25 @@ static class DumpEncounters
                 for (int i = 0; i < index.Count; i += 16) o.WriteLine("    " + string.Join(",", index.Skip(i).Take(16)) + ",");
                 o.WriteLine("}};");
                 Dump.Bytes(o, "kGmax8", [.. all]);
+                // Raids (EncounterStatic8Nest): kRaidParams8 lists each distinct GenerateParam8 (gender
+                // ratio, flawless IV count, ability kind 0 = Any12H / 1 = Any12 / 2 = fixed first or
+                // second / 3 = fixed hidden, Toxtricity nature table, fixed IVs HP/Atk/Def/SpA/SpD/Spe or -1);
+                // kRaid8[kRaid8Index[s]..[s+1]] the params of every raid of the species' line, bit 15 set for
+                // Max Lair (met location 244), clear for the shared den location 162. kRaidFlags8: bit 0 =
+                // some non-raid encounter of the line uses met location 162, bit 1 = 244; 0x80 = decided.
+                var rindex = new List<int> { 0 };
+                var rall = new List<int>();
+                for (int sp = 0; sp <= maxSpecies; sp++) { rall.AddRange(raids[sp] ?? []); rindex.Add(rall.Count); }
+                o.WriteLine($"constexpr std::array<RaidParam8, {RaidParams.Count}> kRaidParams8{{{{");
+                foreach (var r in RaidParams) o.WriteLine($"    {{{r}}},");
+                o.WriteLine("}};");
+                o.WriteLine($"constexpr std::array<uint16_t, {rindex.Count}> kRaid8Index{{{{");
+                for (int i = 0; i < rindex.Count; i += 16) o.WriteLine("    " + string.Join(",", rindex.Skip(i).Take(16)) + ",");
+                o.WriteLine("}};");
+                o.WriteLine($"constexpr std::array<uint16_t, {Math.Max(1, rall.Count)}> kRaid8{{{{");
+                for (int i = 0; i < rall.Count; i += 24) o.WriteLine("    " + string.Join(",", rall.Skip(i).Take(24)) + ",");
+                o.WriteLine("}};");
+                Dump.Bytes(o, "kRaidFlags8", raidFlags);
             }
             if (name is "6" or "7")
             {
@@ -756,6 +784,41 @@ static class DumpEncounters
             }
         }
         HatchLocations(o);
+    }
+
+    private static readonly List<string> RaidParams = [];
+
+    // A raid template's RaidRNG.Verify parameters (added to RaidParams, index | 0x8000 for Max Lair)
+    // into set; or, for any other Sword/Shield encounter or gift whose met location is the shared
+    // den (162) or Max Lair (244), flag bit 0 / 1.
+    private static int Raid(IEncounterTemplate enc, SortedSet<int> set)
+    {
+        if (enc.Version is not (GameVersion.SW or GameVersion.SH or GameVersion.SWSH)) return 0;
+        if (enc is EncounterStatic8N or EncounterStatic8NC or EncounterStatic8ND or EncounterStatic8U)
+        {
+            var type = enc.GetType();
+            while (type != null && !(type.IsGenericType && type.GetGenericTypeDefinition() == typeof(EncounterStatic8Nest<>))) type = type.BaseType;
+            var method = type!.GetMethod("GetParam", BindingFlags.NonPublic | BindingFlags.Instance, Type.EmptyTypes)!;
+            var p = (GenerateParam8)method.Invoke(enc, null)!;
+            int ability = p.Ability switch
+            {
+                AbilityPermission.Any12H => 0,
+                AbilityPermission.Any12 => 1,
+                AbilityPermission.OnlyHidden => 3,
+                _ => 2,
+            };
+            Span<int> iv = stackalloc int[6];
+            iv.Fill(-1);
+            if (p.IVs.IsSpecified) p.IVs.CopyToSpeedLast(iv);
+            var key = $"{p.GenderRatio},{p.FlawlessIVs},{ability},{(p.Species == (int)Species.Toxtricity ? 1 : 0)},{{{string.Join(",", iv.ToArray())}}}";
+            int index = RaidParams.IndexOf(key);
+            if (index < 0) { index = RaidParams.Count; RaidParams.Add(key); }
+            set.Add(enc is EncounterStatic8U ? index | 0x8000 : index);
+            return 0;
+        }
+        if (enc.IsEgg) return 0;
+        var loc = enc is ILocation l ? l.Location : (ushort)0;
+        return loc == 162 ? 1 : loc == 244 ? 2 : 0;
     }
 
     // MiscVerifierPK8.VerifyGigantamax for a record of species s, form f from this encounter: the

@@ -595,6 +595,26 @@ void testRelearn(const std::vector<Record>& all) {
     }
 }
 
+// Max Raid seeds (ModernEncounter::raidSeed): a PKHeX-valid non-shiny raid record from the shared den
+// location keeps a seed; changing a value the seed fixes leaves none.
+void testRaidSeeds(const std::vector<Record>& records) {
+    namespace E = Legality::ModernEncounter;
+    int checked = 0;
+    for (const Record& r : records) {
+        if (!r.pkhexValid || r.format != Format::PK8 || r.label.rfind("native8:base", 0) != 0 || PK8::read16(r.plain, 0x122) != 162) continue;
+        const uint32_t pid = PK8::read32(r.plain, 0x1C), id32 = PK8::read32(r.plain, 0x0C);
+        if ((((pid ^ id32) ^ ((pid ^ id32) >> 16)) & 0xFFFF) < 16) continue;
+        const auto base = analyzePlain(r, r.plain);
+        check(!hasIssue(base, Severity::Invalid, "Max Raid"), "valid raid record keeps a seed: " + describe(base));
+        auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0x00] ^= 1; }));
+        check(hasIssue(rep, Severity::Invalid, "No Max Raid seed"), "raid record with a changed EC: " + describe(rep));
+        rep = analyzePlain(r, edit(r.plain, [](auto& b) { PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) ^ 1u); }));
+        check(hasIssue(rep, Severity::Invalid, "No Max Raid seed"), "raid record with a changed HP IV: " + describe(rep));
+        if (++checked == 20) break;
+    }
+    check(checked > 0, "fixture has non-shiny raid records");
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -612,6 +632,7 @@ int main() {
     all.insert(all.end(), sv.begin(), sv.end());
     testEggs(all);
     testRelearn(all);
+    testRaidSeeds(records);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;
