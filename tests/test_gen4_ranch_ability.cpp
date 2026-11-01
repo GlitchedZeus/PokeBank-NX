@@ -42,6 +42,6 @@ int main(){
         }
         ++cases;
     }
-    assert(in.eof()&&cases==5&&reports==25);
-    std::cout<<"Ranch ability:retained uncertainty,PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS\n";
+    assert(in.eof()&&cases==6&&reports==30);
+    std::cout<<"Ranch ability:retained trained-EV uncertainty,zero-EV PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS\n";
 }

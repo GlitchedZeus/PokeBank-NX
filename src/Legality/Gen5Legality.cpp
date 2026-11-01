@@ -1068,6 +1068,12 @@ void Gen5Analyzer::abilities() {
         return;
     }
     if (!gen5Origin_) {
+        // Gen III (including Orre) has no hidden-ability source. This stored
+        // format-5 flag must be checked even when origin matching succeeded.
+        if (p_.hiddenAbility && isGen3Version(p_.version)) {
+            a_.invalid(CheckIdentifier::Ability, "Hidden ability flag is set on a Gen III-origin Pokemon");
+            return;
+        }
         // The origin analysis ran AbilityVerifier.VerifyAbility345 with the Gen III/IV encounter.
         if (origin_.analyzed) return;
         // PKHeX rejects the flag for every Gen III/IV encounter (CheckMatch) except an

@@ -426,6 +426,23 @@ int main() {
         checked += 3;
     }
 
+    // Retained CI m130044-ability: origin matching must not bypass the
+    // Gen III hidden-ability flag prohibition (including evolved Orre origins).
+    {
+        const auto ci=fromHex("8DA4AAA20000190531010000222FDB1857FB030046860004BFD43A00310000000000000000000000D800CD00B400BC011C181007020103022047022200000000010C0100000000004C006100690072006F006E00FFFF0000000000000000000F0000000000000000500072006F0076006100FFFF000000000000001A0A1F00003175000411000000");const auto original=ci;
+        const auto invalid=Legality::analyzePk5(ci,{.encrypted=false});
+        if(invalid.verdict()!=Verdict::Invalid || !hasText(invalid,Severity::Invalid,"Hidden ability flag"))
+            fail("evolved XD origin with hidden flag: expected Invalid",invalid);
+        if(ci!=original)fail("hidden flag regression modified input",invalid);
+        for(uint8_t ability:{uint8_t(5),uint8_t(69)}) {
+            auto ordinary=ci;ordinary[0x42]&=0xFE;ordinary[0x15]=ability;refreshChecksum(ordinary);
+            const auto report=Legality::analyzePk5(ordinary,{.encrypted=false});
+            if(report.verdict()!=Verdict::NoProblemsFound)
+                fail("evolved XD origin with ordinary ability: expected clean",report);
+        }
+        checked+=3;
+    }
+
     // Fuzz: random bytes at every size class (both decoding paths), then single-byte
     // and multi-byte mutations of valid records with a fixed-up checksum. Nothing may
     // crash, read out of bounds or touch the input.
