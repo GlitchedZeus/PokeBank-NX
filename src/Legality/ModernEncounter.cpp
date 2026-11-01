@@ -291,21 +291,29 @@ bool raidVerify(const RaidRecord& pk, uint64_t seed, const RaidParam8& p, bool f
     return pk.weight == w || (h == 0 && pk.weight == 0 && pk.homeTracker);
 }
 
+bool hasLocation(uint32_t set, uint16_t location) noexcept {
+    return set < kRaidLocations8.size() && location < 256 && ((kRaidLocations8[set][location >> 6] >> (location & 63)) & 1) != 0;
+}
+
 }  // namespace
 
 RaidResult raidSeed(const RaidRecord& pk) noexcept {
-    if (pk.metLocation != 162 && pk.metLocation != 244) return RaidResult::Undecided;
-    if (pk.species + 1u >= kRaid8Index.size() || pk.species >= kRaidFlags8.size()) return RaidResult::Undecided;
-    const uint8_t flags = kRaidFlags8[pk.species];
-    const bool lair = pk.metLocation == 244;
-    if ((flags & 0x80) == 0 || (flags & (lair ? 2 : 1)) != 0) return RaidResult::Undecided;
+    // Pokemon Den (162) and Max Lair (244) are raid-only met locations in Sword/Shield's own text;
+    // elsewhere a wandering symbol encounter may have crossed over from another area.
+    constexpr uint16_t kDen = 162, kLair = 244;
+    const uint16_t loc = pk.metLocation;
+    if (loc >= 256 || pk.species + 1u >= kRaid8Index.size() || pk.species >= kRaidNonRaid8.size()) return RaidResult::Undecided;
+    const uint16_t nonRaid = kRaidNonRaid8[pk.species];
+    if (nonRaid == 0xFFFF) return RaidResult::Undecided;
+    if ((nonRaid & 0x8000) != 0 && loc != kDen && loc != kLair) return RaidResult::Undecided;
+    if (hasLocation(nonRaid & 0x7FFF, loc)) return RaidResult::Undecided;
     if (shinyXor(pk.pid ^ pk.id32) < 16) return RaidResult::Undecided;
     bool any = false;
     for (uint32_t i = kRaid8Index[pk.species]; i < kRaid8Index[pk.species + 1u]; ++i) {
-        const uint16_t e = kRaid8[i];
-        if (((e & 0x8000) != 0) != lair) continue;
+        const uint32_t e = kRaid8[i];
+        if (!hasLocation(e >> 16, loc)) continue;
         any = true;
-        const RaidParam8& p = kRaidParams8[e & 0x7FFF];
+        const RaidParam8& p = kRaidParams8[e & 0xFFFF];
         for (uint32_t third : {pk.pid, pk.pid ^ 0x10000000u})
             if (forEachSeed(pk.ec, third, [&](uint64_t seed) { return raidVerify(pk, seed, p, false) || raidVerify(pk, seed, p, true); }))
                 return RaidResult::SeedFound;

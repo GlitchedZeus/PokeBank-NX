@@ -43,12 +43,13 @@ struct RaidRecord {
 
 enum class RaidResult : uint8_t { Undecided, SeedFound, NoSeed };
 
-/// EncounterStatic8Nest.TryGetSeed over every raid of the species' line that can carry the met
-/// location: the shared den location 162 (dens, Watchtower crystals, distributions) or Max Lair
-/// 244. Undecided for any other location, a shiny record (PKHeX does not check its seed), a
-/// species/location some non-raid encounter also uses, or a species without generated encounters.
-/// NoSeed: no seed from (EC, PID) generates the record's IVs, ability, gender, nature and sizes
-/// for any of those raids' parameters.
+/// EncounterStatic8Nest.TryGetSeed over every raid of the species' line whose own location check
+/// accepts the met location: the Pokemon Den (162), Max Lair (244), Watchtower Ruins or a den's
+/// Wild Area location. Undecided for a shiny record (PKHeX does not check its seed), a met location
+/// some non-raid encounter of the line can carry (any location but 162/244 when a wandering symbol
+/// slot of the line can cross over), a location no raid of the line accepts, or a species without
+/// generated encounters. NoSeed: no seed from (EC, PID) generates the record's IVs, ability,
+/// gender, nature and sizes for any of those raids' parameters.
 RaidResult raidSeed(const RaidRecord& record) noexcept;
 
 /// Unhatched-egg facts of the species in a format that has eggs (PK6, PK7, PK8, PB8, PK9), over

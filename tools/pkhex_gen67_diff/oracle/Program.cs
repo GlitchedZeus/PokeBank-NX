@@ -640,7 +640,7 @@ static class DumpEncounters
             var relearnEgg = new List<ushort>[maxSpecies + 1];
             var gmax = new List<int>[maxSpecies + 1];
             var raids = new List<int>[maxSpecies + 1];
-            var raidFlags = new int[maxSpecies + 1];
+            var raidNonRaid = new int[maxSpecies + 1];
             var context = proto.Context;
             var failed = new HashSet<GameVersion>();
             for (ushort s = 1; s <= maxSpecies; s++)
@@ -655,7 +655,7 @@ static class DumpEncounters
                 bool undecided = false;
                 var gmaxForms = new int[forms];
                 var raidSet = new SortedSet<int>();
-                int raidFlag = 0;
+                var nonRaid = new RaidLocations();
                 for (byte f = 0; f < forms; f++)
                 {
                     pk = make();
@@ -674,7 +674,7 @@ static class DumpEncounters
                                 if (enc.Context == context && name is "6" or "7")
                                     AddRelearn(enc, enc.IsEgg ? relearnEggSet : relearnSet);
                                 if (name == "8") gmaxForms[f] |= GmaxStates(enc, s, f, enc.IsEgg);
-                                if (name == "8") raidFlag |= Raid(enc, raidSet);
+                                if (name == "8") Raid(enc, raidSet, nonRaid);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -723,9 +723,9 @@ static class DumpEncounters
                             for (byte f = 0; f < forms; f++) gmaxForms[f] |= GmaxStates(g, s, f, g.IsEgg);
                     gmax[s] = undecided ? [.. gmaxForms.Select(_ => 0)] : [.. gmaxForms.Select(v => v | 0x80)];
                     foreach (var g in gifts)
-                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) raidFlag |= Raid(g, raidSet);
+                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) Raid(g, raidSet, nonRaid);
                     raids[s] = undecided ? [] : [.. raidSet];
-                    raidFlags[s] = undecided ? 0 : raidFlag | 0x80;
+                    raidNonRaid[s] = undecided ? 0xFFFF : LocationSet(nonRaid.Bits) | (nonRaid.Anywhere ? 0x8000 : 0);
                 }
                 relearn[s] = undecided ? [0xFFFF] : [.. relearnSet];
                 relearnEgg[s] = undecided ? [0xFFFF] : [.. relearnEggSet];
@@ -755,23 +755,30 @@ static class DumpEncounters
                 Dump.Bytes(o, "kGmax8", [.. all]);
                 // Raids (EncounterStatic8Nest): kRaidParams8 lists each distinct GenerateParam8 (gender
                 // ratio, flawless IV count, ability kind 0 = Any12H / 1 = Any12 / 2 = fixed first or
-                // second / 3 = fixed hidden, Toxtricity nature table, fixed IVs HP/Atk/Def/SpA/SpD/Spe or -1);
-                // kRaid8[kRaid8Index[s]..[s+1]] the params of every raid of the species' line, bit 15 set for
-                // Max Lair (met location 244), clear for the shared den location 162. kRaidFlags8: bit 0 =
-                // some non-raid encounter of the line uses met location 162, bit 1 = 244; 0x80 = decided.
+                // second / 3 = fixed hidden, Toxtricity nature table, fixed IVs HP/Atk/Def/SpA/SpD/Spe or -1).
+                // kRaid8[kRaid8Index[s]..[s+1]]: every raid of the species' line, param index | (index of
+                // its met-location set in kRaidLocations8 << 16). kRaidNonRaid8[s]: the kRaidLocations8 set
+                // of met locations some non-raid Sword/Shield encounter or gift of the line uses, | 0x8000
+                // when a wandering symbol slot of the line may be caught in any area (EncounterArea8.
+                // CanCrossoverTo); 0xFFFF = undecided. Location sets are 256-bit masks, low word first.
                 var rindex = new List<int> { 0 };
-                var rall = new List<int>();
-                for (int sp = 0; sp <= maxSpecies; sp++) { rall.AddRange(raids[sp] ?? []); rindex.Add(rall.Count); }
+                var rall = new List<long>();
+                for (int sp = 0; sp <= maxSpecies; sp++) { rall.AddRange((raids[sp] ?? []).Select(v => (long)v)); rindex.Add(rall.Count); }
                 o.WriteLine($"constexpr std::array<RaidParam8, {RaidParams.Count}> kRaidParams8{{{{");
                 foreach (var r in RaidParams) o.WriteLine($"    {{{r}}},");
                 o.WriteLine("}};");
                 o.WriteLine($"constexpr std::array<uint16_t, {rindex.Count}> kRaid8Index{{{{");
                 for (int i = 0; i < rindex.Count; i += 16) o.WriteLine("    " + string.Join(",", rindex.Skip(i).Take(16)) + ",");
                 o.WriteLine("}};");
-                o.WriteLine($"constexpr std::array<uint16_t, {Math.Max(1, rall.Count)}> kRaid8{{{{");
-                for (int i = 0; i < rall.Count; i += 24) o.WriteLine("    " + string.Join(",", rall.Skip(i).Take(24)) + ",");
+                o.WriteLine($"constexpr std::array<uint32_t, {Math.Max(1, rall.Count)}> kRaid8{{{{");
+                for (int i = 0; i < rall.Count; i += 16) o.WriteLine("    " + string.Join(",", rall.Skip(i).Take(16)) + ",");
                 o.WriteLine("}};");
-                Dump.Bytes(o, "kRaidFlags8", raidFlags);
+                o.WriteLine($"constexpr std::array<std::array<uint64_t, 4>, {LocationSets.Count}> kRaidLocations8{{{{");
+                foreach (var b in LocationSets) o.WriteLine($"    {{{b}}},");
+                o.WriteLine("}};");
+                o.WriteLine($"constexpr std::array<uint16_t, {maxSpecies + 1}> kRaidNonRaid8{{{{");
+                for (int i = 0; i <= maxSpecies; i += 16) o.WriteLine("    " + string.Join(",", raidNonRaid.Skip(i).Take(16)) + ",");
+                o.WriteLine("}};");
             }
             if (name is "6" or "7")
             {
@@ -796,13 +803,29 @@ static class DumpEncounters
     }
 
     private static readonly List<string> RaidParams = [];
+    private static readonly List<string> LocationSets = [];
 
-    // A raid template's RaidRNG.Verify parameters (added to RaidParams, index | 0x8000 for Max Lair)
-    // into set; or, for any other Sword/Shield encounter or gift whose met location is the shared
-    // den (162) or Max Lair (244), flag bit 0 / 1.
-    private static int Raid(IEncounterTemplate enc, SortedSet<int> set)
+    private sealed class RaidLocations
     {
-        if (enc.Version is not (GameVersion.SW or GameVersion.SH or GameVersion.SWSH)) return 0;
+        public readonly ulong[] Bits = new ulong[4];
+        public bool Anywhere;
+        public void Add(int location) { if ((uint)location < 256) Bits[location >> 6] |= 1UL << (location & 63); }
+    }
+
+    private static int LocationSet(ulong[] bits)
+    {
+        var key = string.Join(",", bits.Select(b => $"0x{b:X}ull"));
+        int index = LocationSets.IndexOf(key);
+        if (index < 0) { index = LocationSets.Count; LocationSets.Add(key); }
+        return index;
+    }
+
+    // A raid template's RaidRNG.Verify parameters (RaidParams) and the met locations it accepts
+    // (its own IsMatchLocation, asked for every byte location) into set; or, for any other Sword/Shield
+    // encounter or gift, the met locations it can carry into nonRaid.
+    private static void Raid(IEncounterTemplate enc, SortedSet<int> set, RaidLocations nonRaid)
+    {
+        if (enc.Version is not (GameVersion.SW or GameVersion.SH or GameVersion.SWSH)) return;
         if (enc is EncounterStatic8N or EncounterStatic8NC or EncounterStatic8ND or EncounterStatic8U)
         {
             var type = enc.GetType();
@@ -822,12 +845,33 @@ static class DumpEncounters
             var key = $"{p.GenderRatio},{p.FlawlessIVs},{ability},{(p.Species == (int)Species.Toxtricity ? 1 : 0)},{{{string.Join(",", iv.ToArray())}}}";
             int index = RaidParams.IndexOf(key);
             if (index < 0) { index = RaidParams.Count; RaidParams.Add(key); }
-            set.Add(enc is EncounterStatic8U ? index | 0x8000 : index);
-            return 0;
+            var match = type.GetMethod("IsMatchLocation", BindingFlags.NonPublic | BindingFlags.Instance, [typeof(PKM)])!;
+            var locations = new RaidLocations();
+            var probe = new PK8();
+            for (int l = 0; l < 256; l++)
+            {
+                probe.MetLocation = (ushort)l;
+                if ((bool)match.Invoke(enc, [probe])!) locations.Add(l);
+            }
+            set.Add(index | (LocationSet(locations.Bits) << 16));
+            return;
         }
-        if (enc.IsEgg) return 0;
-        var loc = enc is ILocation l ? l.Location : (ushort)0;
-        return loc == 162 ? 1 : loc == 244 ? 2 : 0;
+        if (enc.IsEgg) return;
+        switch (enc)
+        {
+            case EncounterSlot8 slot:
+                nonRaid.Add(slot.Location);
+                if (slot.Type.CanCrossover()) nonRaid.Anywhere = true;
+                break;
+            case EncounterStatic8 st:
+                nonRaid.Add(st.Location);
+                foreach (var l in new[] { st.Crossover.L1, st.Crossover.L2, st.Crossover.L3, st.Crossover.L4, st.Crossover.L5, st.Crossover.L6, st.Crossover.L7 })
+                    if (l != 0) nonRaid.Add(l);
+                break;
+            default:
+                if (enc is ILocation l2) nonRaid.Add(l2.Location);
+                break;
+        }
     }
 
     // MiscVerifierPK8.VerifyGigantamax for a record of species s, form f from this encounter: the
@@ -1290,6 +1334,10 @@ sealed class Generator(Random rng, int mutations)
                         if (TryConvert(enc, tr) is { } pk && pk.Context == context)
                         {
                             Emit(pk, version, group, true);
+                            // A Sword/Shield raid also met at one of its own dens' Wild Area locations
+                            // (the converter writes the shared Pokemon Den location).
+                            if (pk is PK8 && enc is EncounterStatic8N or EncounterStatic8ND or EncounterStatic8NC && DenCopy(pk, enc) is { } den)
+                                Emit(den, version, group + "den", true);
                             // The same egg before it hatches (the converter hatches eggs): positive and
                             // negative controls for the unhatched-egg rules.
                             if (enc is { IsEgg: true } && !pk.IsEgg && Unhatched(pk, enc) is { } egg)
@@ -1435,6 +1483,26 @@ sealed class Generator(Random rng, int mutations)
     };
 
     // An egg encounter's record as it is before hatching: in the box of the game that received it.
+    private PKM? DenCopy(PKM pk, IEncounterable enc)
+    {
+        var type = enc.GetType();
+        while (type != null && !(type.IsGenericType && type.GetGenericTypeDefinition() == typeof(EncounterStatic8Nest<>))) type = type.BaseType;
+        if (type == null) return null;
+        var match = type.GetMethod("IsMatchLocation", BindingFlags.NonPublic | BindingFlags.Instance, [typeof(PKM)])!;
+        var probe = pk.Clone();
+        var options = new List<ushort>();
+        for (ushort l = 1; l < 256; l++)
+        {
+            if (l == 162) continue;
+            probe.MetLocation = l;
+            if ((bool)match.Invoke(enc, [probe])!) options.Add(l);
+        }
+        if (options.Count == 0) return null;
+        probe.MetLocation = options[rng.Next(options.Count)];
+        probe.RefreshChecksum();
+        return probe;
+    }
+
     private static PKM? Unhatched(PKM hatched, IEncounterable enc)
     {
         if (hatched.Format < 6) return null;

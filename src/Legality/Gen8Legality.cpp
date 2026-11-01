@@ -696,9 +696,10 @@ private:
         }
     }
 
-    // EncounterStatic8Nest.TryGetSeed: a Sword/Shield record met at the shared raid den location
-    // (162) or Max Lair (244), where only raids of its line occur, must come from a raid seed
-    // (ModernEncounter::raidSeed). Shiny records are not checked, as in PKHeX.
+    // EncounterStatic8Nest.TryGetSeed: a Sword/Shield record met where only raids of its line occur
+    // (the Pokemon Den 162, Max Lair 244, or a raid's Wild Area location no other encounter of the
+    // line uses) must come from a raid seed (ModernEncounter::raidSeed). Shiny records are not
+    // checked, as in PKHeX.
     void checkRaidSeed() {
         if (pk_.isEgg() || side_ != 0 || (version_ != VersionSW && version_ != VersionSH) || PK8::read16(plain_, 0x120) != 0) return;
         ModernEncounter::RaidRecord r;
@@ -717,7 +718,7 @@ private:
         r.homeTracker = (PK8::read32(plain_, 0x135) | PK8::read32(plain_, 0x139)) != 0;
         if (ModernEncounter::raidSeed(r) == ModernEncounter::RaidResult::NoSeed)
             invalid(CheckIdentifier::PidRng, "No Max Raid seed of the species' line gives this EC, PID, IVs, ability, gender, nature "
-                                          "and size, and only raids use this met location");
+                                          "and size, and only raids of its line use this met location");
     }
 
     // MiscVerifierPB8: BD/SP has no sociability, Dynamax, Gigantamax or TR flags (a

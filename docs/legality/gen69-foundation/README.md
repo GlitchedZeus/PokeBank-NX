@@ -365,17 +365,27 @@ bit 28 flipped, the non-shiny fix-up), and the raid generation order (EC, fake t
 flawless IV slots, IVs, ability, gender, nature or Toxtricity's nature table, height, weight).
 `dumpencounters` writes each raid template's `GenerateParam8` (gender ratio, flawless IV count,
 ability permission, fixed IVs) as `kRaidParams8`, the raids of each species' line (dens, Watchtower
-crystals and distributions, which may all carry the shared den location 162, and Max Lair
-adventures at 244) as `kRaid8`, and whether any non-raid encounter or gift of the line uses
-either location (`kRaidFlags8`; it is set for two species, which then stay undecided).
+crystals, distributions and Max Lair adventures) with the met locations each one's own
+`IsMatchLocation` accepts as `kRaid8` / `kRaidLocations8`, and the met locations any non-raid
+Sword/Shield encounter or gift of the line can carry as `kRaidNonRaid8` (wild slots, statics and
+their `Crossover8` areas, gifts and trades), with a mark when a wandering symbol slot of the line
+may be caught in any area (`EncounterArea8.CanCrossoverTo`).
 
-A non-shiny, untransferred Sword/Shield record (not an egg, no egg location) met at 162 or 244
-is Invalid when no recovered seed of any raid of its line reproduces its IVs, ability, gender,
-nature and sizes. The check is a superset of PKHeX's: both forced-non-shiny states are tried; raid
+A non-shiny, untransferred Sword/Shield record (not an egg, no egg location) is Invalid when its
+met location is used only by raids of its line and no recovered seed of any of those raids
+reproduces its IVs, ability, gender, nature and sizes. That covers the Pokémon Den (162) and Max
+Lair (244), which the games' own location text gives only to raid captures (crossover cannot
+produce them), and a raid's Wild Area den location when no wild, static or gift encounter of the
+line can be met there (any Wild Area location is undecided for a line with a crossover-capable
+symbol slot). The check is a superset of PKHeX's: both forced-non-shiny states are tried; raid
 level, rank and Dynamax level are not checked; a HOME-tracked record may have Ability Patch on a
-hidden-ability raid and HOME's 0/0 size reset. Shiny records stay undecided, as in PKHeX. Raids
-recorded at a Wild Area location share it with wild encounters and are not decided yet; nor are
-Overworld8 (wild and static) seeds.
+hidden-ability raid and HOME's 0/0 size reset. Shiny records stay undecided, as in PKHeX.
+Overworld8 (wild and static) seeds are not decided yet.
+
+The PK8 generator now also emits every den, crystal and distribution raid re-met at one of its
+own Wild Area locations (about 1,700 PKHeX-valid records per seed, plus their mutations). Those
+mutations are mostly on lines with crossover slots and stay Incomplete, which is why the PK8
+caught rate is lower than at the previous milestone on the larger corpus.
 
 ## Nickname rule (every format)
 
@@ -424,10 +434,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 8,671 (71.2%) | 0 | 0 |
 | PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 16,870 (71.5%) | 0 | 0 |
 | PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 8,696 (71.9%) | 0 | 0 |
-| PK8 | 1 / 4 | 49,195 | 21,531 | 27,664 | 23,897 (86.4%) | 0 | 0 |
-| PK8 | 2 / 4 | 47,964 | 20,517 | 27,447 | 23,651 (86.2%) | 0 | 0 |
-| PK8 | 3 / 8 | 87,799 | 31,825 | 55,974 | 48,492 (86.6%) | 0 | 0 |
-| PK8 | 4 / 4 | 50,156 | 21,633 | 28,523 | 24,701 (86.6%) | 0 | 0 |
+| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 28,215 (82.9%) | 0 | 0 |
+| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 29,171 (83.0%) | 0 | 0 |
+| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 57,470 (82.9%) | 0 | 0 |
+| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 28,837 (83.1%) | 0 | 0 |
 | PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,246 (87.2%) | 0 | 0 |
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |

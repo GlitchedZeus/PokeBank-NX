@@ -599,7 +599,7 @@ void testRelearn(const std::vector<Record>& all) {
 // location keeps a seed; changing a value the seed fixes leaves none.
 void testRaidSeeds(const std::vector<Record>& records) {
     namespace E = Legality::ModernEncounter;
-    int checked = 0;
+    int checked = 0, dens = 0;
     for (const Record& r : records) {
         if (!r.pkhexValid || r.format != Format::PK8 || r.label.rfind("native8:base", 0) != 0 || PK8::read16(r.plain, 0x122) != 162) continue;
         const uint32_t pid = PK8::read32(r.plain, 0x1C), id32 = PK8::read32(r.plain, 0x0C);
@@ -610,9 +610,37 @@ void testRaidSeeds(const std::vector<Record>& records) {
         check(hasIssue(rep, Severity::Invalid, "No Max Raid seed"), "raid record with a changed EC: " + describe(rep));
         rep = analyzePlain(r, edit(r.plain, [](auto& b) { PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) ^ 1u); }));
         check(hasIssue(rep, Severity::Invalid, "No Max Raid seed"), "raid record with a changed HP IV: " + describe(rep));
+        // The same record met at one of its raids' Wild Area dens, when no other encounter of its
+        // line can carry that location: still a seed; with another EC, none.
+        E::RaidRecord rr;
+        rr.species = PK8::read16(r.plain, 0x08);
+        rr.form = r.plain[0x24];
+        rr.ec = PK8::read32(r.plain, 0x00);
+        rr.pid = pid;
+        rr.id32 = id32;
+        const uint32_t iv32 = PK8::read32(r.plain, 0x8C);
+        auto iv = [&](int i) { return static_cast<uint8_t>((iv32 >> (5 * i)) & 31); };
+        rr.ivs = {iv(0), iv(1), iv(2), iv(4), iv(5), iv(3)};
+        rr.abilityNumber = r.plain[0x16] & 7;
+        rr.gender = (r.plain[0x22] >> 2) & 3;
+        rr.nature = r.plain[0x20];
+        rr.height = r.plain[0x50];
+        rr.weight = r.plain[0x51];
+        rr.metLocation = 162;
+        check(E::raidSeed(rr) != E::RaidResult::NoSeed, "raid record keeps a seed at the Pokemon Den");
+        for (uint16_t loc = 122; loc < 235; ++loc) {
+            rr.metLocation = loc;
+            if (E::raidSeed(rr) != E::RaidResult::SeedFound) continue;
+            auto other = rr;
+            other.ec ^= 1;
+            check(E::raidSeed(other) == E::RaidResult::NoSeed, "raid record at Wild Area den " + std::to_string(loc) + " with another EC");
+            ++dens;
+            break;
+        }
         if (++checked == 20) break;
     }
     check(checked > 0, "fixture has non-shiny raid records");
+    check(dens > 0, "some raid record is decidable at a Wild Area den");
 }
 
 int main() {
