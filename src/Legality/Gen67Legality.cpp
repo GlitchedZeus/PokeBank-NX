@@ -374,17 +374,22 @@ private:
             if (pk_.movePPUps(i) != 0 && (m[i] == 0 || m[i] == MoveSketch))
                 invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " cannot have PP Ups");
         }
-        // PK7 Virtual Console records keep their Gen I/II PP until they leave the box
-        // (MovePPVerifier.IsVirtualConsoleUntouched); that exception needs the VC PP
-        // tables, so a boxed VC record's PP is left undecided here.
-        const bool vcBoxed = format_ == 7 && originGen_ <= 2 && !partySlot();
+        // PK7 Virtual Console records keep the PP Poke Transporter wrote until they leave the box
+        // (MovePPVerifier.IsVirtualConsoleUntouched): a boxed VC record whose PP all match a
+        // Transporter language's table is not checked further.
+        if (format_ == 7 && originGen_ <= 2 && !partySlot()) {
+            std::array<uint16_t, 4> moves{};
+            std::array<uint8_t, 4> pp{};
+            for (size_t i = 0; i < 4; ++i) { moves[i] = m[i]; pp[i] = static_cast<uint8_t>(pk_.movePP(i)); }
+            if (Data::virtualConsolePPMatches(originGen_, moves, pp)) {
+                info(CheckIdentifier::Moves, "PP match the values Poke Transporter writes (untouched in a box)");
+                return;
+            }
+        }
         for (size_t i = 0; i < 4; ++i) {
             const uint32_t ups = pk_.movePPUps(i);
             const uint32_t healed = Data::basePP(format_, m[i]) * (5 + ups) / 5;
-            if (pk_.movePP(i) > healed) {
-                if (vcBoxed) info(CheckIdentifier::Moves, "Virtual Console PP above the 3DS value (allowed while untouched in a box)");
-                else invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is above its maximum");
-            }
+            if (pk_.movePP(i) > healed) invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is above its maximum");
         }
     }
 

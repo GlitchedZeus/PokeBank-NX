@@ -544,6 +544,23 @@ void testRelearn(const std::vector<Record>& records) {
     }
 }
 
+// Virtual Console PP (MovePPVerifier.IsVirtualConsoleUntouched): a boxed VC record may keep the PP
+// Poke Transporter wrote; any other PP above the maximum is Invalid.
+void testVirtualConsolePP(const std::vector<Record>& records) {
+    namespace D = Legality::Gen67::Data;
+    check(D::virtualConsolePPMatches(1, {33, 0, 0, 0}, {35, 0, 0, 0}) && !D::virtualConsolePPMatches(1, {33, 0, 0, 0}, {36, 0, 0, 0}) &&
+              !D::virtualConsolePPMatches(1, {200, 0, 0, 0}, {0, 0, 0, 0}),
+          "VC PP table: Tackle keeps 35, Gen II moves are not Gen I");
+    int checked = 0;
+    for (const Record& r : records) {
+        if (!r.pkhexValid || r.format != Format::PK7 || r.slot != Slot::Box || r.label.find("vc7") == std::string::npos) continue;
+        const auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0x62] = 99; }));
+        check(rep.verdict() == Verdict::Invalid && hasIssue(rep, Severity::Invalid, "PP is above its maximum"), "VC record with PP 99: " + describe(rep));
+        if (++checked == 5) break;
+    }
+    check(checked > 0, "fixture has boxed VC records");
+}
+
 void testFuzz(const std::vector<Record>& records) {
     const char* env = std::getenv("GEN67_FUZZ_ROUNDS");
     const size_t rounds = env ? std::strtoul(env, nullptr, 10) : 20000;
@@ -588,6 +605,7 @@ int main() {
     testBall(records);
     testUnhatchedEgg(records);
     testRelearn(records);
+    testVirtualConsolePP(records);
     testFuzz(records);
     std::cout << "test_legality_gen67: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

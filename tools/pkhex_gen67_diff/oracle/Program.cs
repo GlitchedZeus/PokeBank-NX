@@ -159,6 +159,15 @@ static class Dump
         Personal(o, "kPersonal7", PersonalTable.USUM, Const("MaxSpeciesID_7_USUM"));
         Bytes(o, "kBasePP6", Enumerable.Range(0, Const("MaxMoveID_6_AO") + 1).Select(m => (int)MoveInfo.GetPP(EntityContext.Gen6, (ushort)m)));
         Bytes(o, "kBasePP7", Enumerable.Range(0, Const("MaxMoveID_7_USUM") + 1).Select(m => (int)MoveInfo.GetPP(EntityContext.Gen7, (ushort)m)));
+        // VirtualConsolePP: the PP Poke Transporter writes for each move from Withdraw (110) on, per
+        // Transporter language (Japanese..Chinese Traditional, without 6), one row each.
+        {
+            var vcLanguages = Enumerable.Range((int)LanguageID.Japanese, (int)LanguageID.ChineseT).Where(l => l != (int)LanguageID.UNUSED_6).ToArray();
+            var width = VirtualConsolePP.GetTable(LanguageID.English).Length;
+            o.WriteLine($"constexpr uint16_t kVcPPFirstMove = 110;");
+            Bytes(o, "kVcPP", vcLanguages.SelectMany(l => { var t = VirtualConsolePP.GetTable((LanguageID)l).ToArray(); if (t.Length != width) throw new Exception("VC PP width"); return t.Select(b => (int)b); }));
+            o.WriteLine($"constexpr size_t kVcPPWidth = {width};");
+        }
         Bits(o, "kHeldItems6", Enumerable.Range(0, Const("MaxItemID_6_AO") + 1).Select(i => ItemRestrictions.IsHeldItemAllowed(i, EntityContext.Gen6)));
         Bits(o, "kHeldItems7", Enumerable.Range(0, Const("MaxItemID_7_USUM") + 1).Select(i => ItemRestrictions.IsHeldItemAllowed(i, EntityContext.Gen7)));
         foreach (var (name, format, table, max) in new[] { ("kBattleForms6", (byte)6, (IPersonalTable)PersonalTable.AO, Const("MaxSpeciesID_6")), ("kBattleForms7", (byte)7, PersonalTable.USUM, Const("MaxSpeciesID_7_USUM")) })

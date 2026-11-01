@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstddef>
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -58,6 +59,10 @@ std::optional<Personal> personal(uint8_t format, uint16_t species, uint8_t form)
 uint8_t formCount(uint8_t format, uint16_t species) noexcept;
 /// MoveInfo.GetPP for the format's context; 0 above the format's last move.
 uint8_t basePP(uint8_t format, uint16_t move) noexcept;
+/// MovePPVerifier.IsVirtualConsoleUntouched without the nickname trash test: every move exists in
+/// the origin generation (Gen I up to move 165, Gen II up to 251) and every PP equals what Poke
+/// Transporter writes for that move in some Transporter language (VirtualConsolePP).
+bool virtualConsolePPMatches(uint8_t originGen, const std::array<uint16_t, 4>& moves, const std::array<uint8_t, 4>& pp) noexcept;
 uint16_t maxSpecies(uint8_t format) noexcept;
 uint16_t maxMove(uint8_t format) noexcept;
 uint8_t maxBall(uint8_t format) noexcept;

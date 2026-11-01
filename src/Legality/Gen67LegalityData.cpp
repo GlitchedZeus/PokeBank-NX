@@ -70,6 +70,25 @@ uint8_t basePP(uint8_t format, uint16_t move) noexcept {
     return 0;
 }
 
+bool virtualConsolePPMatches(uint8_t originGen, const std::array<uint16_t, 4>& moves, const std::array<uint8_t, 4>& pp) noexcept {
+    const uint16_t maxMove = originGen == 1 ? 165 : 251;
+    for (uint16_t m : moves)
+        if (m > maxMove) return false;
+    for (size_t language = 0; language * kVcPPWidth < kVcPP.size(); ++language) {
+        bool match = true;
+        for (size_t i = 0; i < 4 && match; ++i) {
+            const uint16_t m = moves[i];
+            uint8_t expected;
+            if (m < kVcPPFirstMove) expected = basePP(7, m);
+            else if (size_t{m} - kVcPPFirstMove < kVcPPWidth) expected = kVcPP[language * kVcPPWidth + (size_t{m} - kVcPPFirstMove)];
+            else return false;
+            match = pp[i] == expected;
+        }
+        if (match) return true;
+    }
+    return false;
+}
+
 uint16_t maxSpecies(uint8_t format) noexcept { return format == 6 ? kMaxSpecies6 : format == 7 ? kMaxSpecies7 : 0; }
 uint16_t maxMove(uint8_t format) noexcept { return format == 6 ? kMaxMove6AO : format == 7 ? kMaxMove7 : 0; }
 uint8_t maxBall(uint8_t format) noexcept {

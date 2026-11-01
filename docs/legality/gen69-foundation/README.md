@@ -64,7 +64,7 @@ CI fails if it drifts.
 | Level | EXP above the level-100 total; level below met level | `LevelVerifier` |
 | EVs | egg with EVs; total above 510; any EV above 252 | `EffortValueVerifier` |
 | Moves | move above the format maximum; empty first slot; empty slot before a move; duplicates; Kyurem fusion-move interlocks | `LearnVerifier.Finalize`, `FlagFormExclusiveKyurem` |
-| PP | PP Ups on an empty slot or Sketch; PP above the PP-Up maximum (except boxed Virtual Console records, left undecided); egg PP Ups; egg PP not base PP | `MovePPVerifier` |
+| PP | PP Ups on an empty slot or Sketch; PP above the PP-Up maximum, except a boxed Virtual Console record whose moves all exist in its origin generation and whose PP all equal what Poké Transporter writes in some Transporter language (`VirtualConsolePP`, dumped as `kVcPP`; the nickname-trash language test is not applied, so this exception is wider than PKHeX's); egg PP Ups; egg PP not base PP | `MovePPVerifier`, `VirtualConsolePP` |
 | EC/PID | Gen III–V origin: PID must be the Poké Transporter PID for its EC; other origins: PID ≠ EC | `PIDVerifier.VerifyEC`, `PK5.GetTransferPID` |
 | Gender | genderless mismatch; Gen III–V origin: PID gender (Azurill/Marill exception); fixed-gender species | `GenderVerifier`, `PKM.IsGenderValid` |
 | Nature | out of range; Gen III/IV origin: EC % 25 | `PIDVerifier`, `GenderVerifier.VerifyNaturePID` |
@@ -408,10 +408,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 
 | Format | Seed / mutations | Records | PKHeX valid | PKHeX invalid | NX Invalid of PKHeX-invalid | False Invalid | False Valid |
 |---|---|---:|---:|---:|---:|---:|---:|
-| PK6/PK7 | 1 / 4 | 103,150 | 47,064 | 56,086 | 50,454 (90.0%) | 0 | 0 |
-| PK6/PK7 | 2 / 8 | 184,357 | 71,471 | 112,886 | 101,913 (90.3%) | 0 | 0 |
-| PK6/PK7 | 3 / 8 | 184,610 | 71,239 | 113,371 | 102,351 (90.3%) | 0 | 0 |
-| PK6/PK7 | 4 / 4 | 105,922 | 48,247 | 57,675 | 51,836 (89.9%) | 0 | 0 |
+| PK6/PK7 | 1 / 4 | 103,150 | 47,064 | 56,086 | 50,668 (90.3%) | 0 | 0 |
+| PK6/PK7 | 2 / 8 | 184,357 | 71,471 | 112,886 | 102,362 (90.7%) | 0 | 0 |
+| PK6/PK7 | 3 / 8 | 184,610 | 71,239 | 113,371 | 102,797 (90.7%) | 0 | 0 |
+| PK6/PK7 | 4 / 4 | 105,922 | 48,247 | 57,675 | 52,025 (90.2%) | 0 | 0 |
 | PB7 | 1 / 8 | 5,322 | 1,452 | 3,870 | 3,526 (91.1%) | 0 | 0 |
 | PB7 | 2 / 4 | 3,050 | 1,132 | 1,918 | 1,765 (92.0%) | 0 | 0 |
 | PB7 | 3 / 16 | 9,865 | 2,144 | 7,721 | 7,025 (91.0%) | 0 | 0 |
