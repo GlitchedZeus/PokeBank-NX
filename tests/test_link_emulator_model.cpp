@@ -20,6 +20,7 @@ static_assert(providerMatches("melonDS", "melonDS"));
 static_assert(!providerMatches("DraStic", "melonDS"));
 static_assert(providerMatches("DraStic Savestate", "DraStic"));
 static_assert(providerMatches("RetroArch", ""));
+static_assert(providerMatches("RetroArch/DeSmuME", "RetroArch"));
 static_assert(!providerMatches("RetroArch", "Checkpoint"));
 
 int main() {
