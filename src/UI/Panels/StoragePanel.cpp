@@ -201,7 +201,7 @@ namespace UI
                     const Pokemon::Pokemon *pk = savePane ? screen.trainer.boxes[boxIndex][i].get()
                                                           : (screen.bank ? screen.bank->boxes[boxIndex][i].get() : nullptr);
                     // A Gen IV Pokemon picked up from the save pane rides the cursor until the
-                    // validated Y drop (Part 9 item 8), so its source cell renders empty, as in Boxes.
+                    // validated A drop (Part 9 item 8), so its source cell renders empty, as in Boxes.
                     if (savePane && ClassicPackedMove::hidesGen4CarriedSource(screen, boxIndex, i))
                         pk = nullptr;
                     const bool empty = !pk || pk->speciesID() == 0;

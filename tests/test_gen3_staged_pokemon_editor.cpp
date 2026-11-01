@@ -694,6 +694,13 @@ void runGame(SourceGame game, Family family) {
     // Hardware regression: exact sparse slots, transactional carry, no overwrite/compaction.
     assert(editor->stageCloneBoxPokemon(0, 0, 0, 7, error));
     assert(editor->stageCloneBoxPokemon(0, 0, 0, 2, error));
+    {   // Round 11 H32: Clone onto an occupied slot (or onto its own source) is refused, nothing staged.
+        const auto beforeRefusal = editor->stagedBytes();
+        const auto rowsBeforeRefusal = editor->pendingChanges().size();
+        assert(!editor->stageCloneBoxPokemon(0, 0, 0, 7, error) && !error.empty());
+        assert(!editor->stageCloneBoxPokemon(0, 0, 0, 0, error) && !error.empty());
+        assert(editor->stagedBytes() == beforeRefusal && editor->pendingChanges().size() == rowsBeforeRefusal);
+    }
     const auto beforeCarry = editor->stagedBytes();
     const auto changesBeforeCarry = editor->pendingChanges().size();
     const auto originalMon = editor->boxedPokemon(0, 0, error)->encryptedBytes;
@@ -705,6 +712,9 @@ void runGame(SourceGame game, Family family) {
     assert(!editor->boxedPokemon(0, 7, error));
     assert(editor->boxedPokemon(0, 2, error)->encryptedBytes == originalMon);
     const auto carried = editor->stagedBytes();
+    // Round 11 H32: no Clone while a Pokemon is carried, even into an empty slot.
+    assert(!editor->stageCloneBoxPokemon(0, 2, 0, 9, error) && !error.empty());
+    assert(editor->stagedBytes() == carried);
     assert(!editor->placeSparseMove(0, 2, error)); // occupied target, whole group rejected
     assert(!editor->placeSparseMove(0, 5, error)); // row wrap
     assert(!editor->placeSparseMove(0, 29, error)); // bottom edge

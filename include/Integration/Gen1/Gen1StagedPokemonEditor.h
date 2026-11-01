@@ -146,6 +146,10 @@ private:
 
     explicit StagedPokemonEditor(std::shared_ptr<const ReadOnlySave> source);
     bool destination(size_t box, size_t slot, std::string& error) const;
+    // Round 11 H32: true (with the reason) while a packed carry is active.
+    bool refuseWhileCarrying(std::string& error) const;
+    // stageRemove without the carry guard: the pickup itself removes the carried slots.
+    bool removeBoxedSlot(size_t box, size_t slot, std::string& error);
     bool commit(std::vector<uint8_t> candidate, std::string& error);
     bool stageRecordEdit(bool party, size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
     void rebuildChanges();

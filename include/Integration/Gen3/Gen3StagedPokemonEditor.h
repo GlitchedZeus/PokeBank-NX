@@ -175,6 +175,11 @@ public:
     void discard() noexcept;
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string& error) const;
 
+    // True when the slot holds a nonzero species index that boxedPokemon cannot read (an internal
+    // index with no National Dex number): such bytes are not an empty slot and are never overwritten.
+    // Public (read-only) so the shared Clone carry can show the slot as protected before A (H32).
+    [[nodiscard]] bool holdsUnreadableRecord(std::size_t box, std::size_t slot) const;
+
     // PID-correlated fields remain read-only in the first Gen III device candidate.
     static constexpr bool pidCorrelatedEditingEnabled() noexcept { return true; }
     static constexpr bool moveSelectionEditingEnabled() noexcept { return false; }
@@ -191,9 +196,6 @@ private:
                      std::string& error);
     [[nodiscard]] std::array<uint8_t, 80> readBoxRaw(
         std::size_t box, std::size_t slot, bool& ok) const noexcept;
-    // True when the slot holds a nonzero species index that boxedPokemon cannot read (an internal
-    // index with no National Dex number): such bytes are not an empty slot and are never overwritten.
-    [[nodiscard]] bool holdsUnreadableRecord(std::size_t box, std::size_t slot) const;
 
     std::vector<std::size_t> carrySlots_;
     std::vector<std::array<uint8_t, 80>> carryRecords_;

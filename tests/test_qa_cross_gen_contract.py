@@ -1418,7 +1418,12 @@ def contracts(sources: list[Source]) -> list[Result]:
         "src/UI/Gen2SharedPokemonSurface.inc": ("drawSharedDetails", "drawSharedMoves"),
     }
     # Files with no modal rows at all (Foundation's only modal, the exit confirm, is drawGlyphButton choices).
-    NO_MODAL_ROWS = {"src/UI/Gen1PokemonEditorOverlayFoundation.inc"}
+    NO_MODAL_ROWS = {"src/UI/Gen1PokemonEditorOverlayFoundation.inc",
+                     # Round 11 H31: their only focused modal rows were the Gen II Clone destination
+                     # grid, now removed (Clone is the shared box carry on the real grid). Actions is
+                     # drawNarrowPokemonActions and Review the shared panel; drawSelectionHighlight is
+                     # still refused in both files below.
+                     "src/UI/Gen2SharedPokemonSurface.inc", "src/UI/Gen2SharedSurfaceParity.inc"}
     # R2-BUG-012 (lane S): one shared boxed-row style for every focused modal row / cell.
     boxed_api = r"\bSharedBoxedRows::(?:drawBox|drawRow|drawGlyphChoices)\s*\(|\bdrawMenuCell\s*\("
     for cid, title, files in (

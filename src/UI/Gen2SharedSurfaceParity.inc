@@ -134,43 +134,6 @@ void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawSharedReviewSurface(screen,fb);
 }
 
-void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto& shared = sharedSurfaceStateFor(screen);
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
-    constexpr int w = 930, h = 540;
-    constexpr int x = (1280 - w) / 2;
-    constexpr int y = (672 - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Clone Pokemon — Destination", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        "Box " + std::to_string(shared.cloneBox + 1) + "  •  first writable slot  •  staged copy only",
-        Colors::TextDim, TextStyle::Caption);
-
-    constexpr int cols = 5;
-    constexpr int cellW = 164, cellH = 72;
-    const int startX = x + 48, startY = y + 96;
-    for (int slot = 0; slot < static_cast<int>(editor->metadata().boxCapacity); ++slot) {
-        const int col = slot % cols, row = slot / cols;
-        const int xx = startX + col * cellW, yy = startY + row * cellH;
-        std::string error;
-        const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(shared.cloneBox),
-                                                   static_cast<std::size_t>(slot), error);
-        const bool target = slot == destination;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(xx, yy, cellW - 10, cellH - 10), {target});  // R2-BUG-012 boxed row
-        fb.drawRoundedRect(xx, yy, cellW - 10, cellH - 10, 8, target ? Colors::Accent : Colors::Divider, 1);
-        fb.drawText(xx + 10, yy + 8, "Slot " + std::to_string(slot + 1), Colors::TextDim, TextStyle::Caption);
-        fb.drawText(xx + 10, yy + 34,
-            pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (target ? "Clone here" : "Empty"),
-            target ? Colors::Accent : Colors::Text, TextStyle::Caption);
-    }
-    if (destination < 0)
-        fb.drawText(x + 24, y + h - 44, "This box is full — choose another box with L/R", Colors::Error, TextStyle::Caption);
-    drawNavBar(fb, {{"L/R", "Box"}, {"A", "Stage Clone"}, {"B", "Cancel"}});
-}
-
 } // namespace
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -186,7 +149,6 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return true;
     }
     if (shared.provenanceActive) { drawSharedProvenanceSurface(screen, fb); return true; }
-    if (shared.cloneActive) { drawParityGen2Clone(screen, fb); return true; }
     if (legacy.active && legacy.review) { drawParityGen2Review(screen, fb); return true; }
     if (legacy.active && legacy.pokemonActions) { drawParityGen2Actions(screen, fb); return true; }
     return false;

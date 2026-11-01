@@ -1055,8 +1055,8 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             beginViewOrEdit(screen, SessionModel::Mode::Edit);
             break;
         case MenuAction::MovePokemon:
-            // This menu shortcut enters the SAME hold-Y picker and carried
-            // visual as Gens I-III, rather than a second native move handler.
+            // This menu shortcut enters the SAME carry and carried visual as
+            // Gens I-III (A places, B cancels), not a second native move handler.
             state.actions = false;
             if (!ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot))
                 screen.postStatus("Gen IV move could not start", 260);
@@ -1066,18 +1066,14 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             break;
         case MenuAction::Clone: {
             if (!staged || state.target != TargetKind::Box) break;
-            const auto box = Utils::promptNumber("Clone to Gen IV Box", state.box + 1, 1, 18);
-            if (!box.accepted) break;
-            const auto slot = Utils::promptNumber("Clone to Slot", state.slot + 1, 1, 30);
-            if (!slot.accepted) break;
-            if (!staged->stageCloneBoxPokemon(
-                    static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
-                    static_cast<size_t>(box.value - 1), static_cast<size_t>(slot.value - 1),
-                    &error)) {
-                screen.postStatus(error.empty() ? "Generation IV Clone failed" : error, 360);
-            } else if (refreshPresentation(screen)) {
-                screen.postStatus("Generation IV Clone staged; external source unchanged", 300);
-            }
+            // Round 11 H31 (owner): the shared visual Clone carry, never number keypads (whose slot
+            // default was the occupied source). Actions closes; the copy rides the box cursor from the
+            // first empty slot of this box (the Storage save pane keeps it in that pane); A places it
+            // on an empty slot (an occupied slot is refused, never swapped), B cancels.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, state.box, state.slot))
+                screen.postStatus("Clone could not start from here", 240);
             break;
         }
         case MenuAction::Release:

@@ -1460,36 +1460,6 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
 }
 } // namespace
 
-// Clone and Move Pokemon use the SAME box / slot keypads as the Gen IV Clone
-// action (Gen I-IV share them), defaulting to the first verified empty slot.
-// Cancelling either keypad stages nothing.
-void stageCloneOrMoveByKeypad(TrainerViewScreen& screen) {
-    auto& trainer=nativeTrainer(screen);
-    auto& state=trainer.sharedScreen();
-    auto& staged=trainer.stagedPokemon();
-    const bool move=state.moveDestination();
-    const int first=static_cast<int>(state.cloneDestinationIndex());
-    const auto box=Utils::promptNumber(move?"Move to Gen V Box":"Clone to Gen V Box",
-                                       first/30+1,1,24);
-    if(!box.accepted) {state.cancelBoxAction();return;}
-    const auto slot=Utils::promptNumber(move?"Move to Slot":"Clone to Slot",first%30+1,1,30);
-    if(!slot.accepted) {state.cancelBoxAction();return;}
-    const int target=(box.value-1)*30+(slot.value-1);
-    state.moveCloneCursor(target-static_cast<int>(state.cloneDestinationIndex()));
-    std::string error;
-    if(static_cast<int>(state.cloneDestinationIndex())!=target ||
-       !state.confirmClone(staged,[&](std::string& why) {
-           return trainer.refreshStagedPokemonPresentation(why);
-       },error)) {
-        state.cancelBoxAction();
-        screen.postStatus(error.empty()?"Box "+std::to_string(box.value)+" / Slot "+
-            std::to_string(slot.value)+" is not an empty verified Gen V box slot":error,320);
-        return;
-    }
-    screen.postStatus(move?"Gen V Pokemon moved in the staged copy; source SAV5 unchanged"
-                          :"Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
-}
-
 bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                  int stickX,int stickY,const TouchInput& touch) {
     if(!isGen5Source(screen))return false;
@@ -1586,8 +1556,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             HidNpadButton_Left,HidNpadButton_Right);
         return handleSharedWorkspace(screen,workspaceKeys,touch);
     }
-    // A Move carry (shared ClassicPackedMove overlay) owns Y / B / A / X and
-    // cell taps; navigation keys fall through to the box grid below.
+    // A Move or Clone carry (shared ClassicPackedMove overlay) owns A / B / Y / X
+    // and cell taps; navigation keys fall through to the box grid below.
     if(state.surface()==Surface::Browse && screen.detailViewActive &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
        ClassicPackedMove::gen5CarryActive(screen)) {
@@ -1667,6 +1637,10 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     static_cast<size_t>(state.actionRow())<allowed.count &&
                     allowed[static_cast<size_t>(state.actionRow())]==
                         PokeBank::UIModel::SharedPokemonEditor::Action::Move;
+                const bool clone=state.actionRow()>=0 &&
+                    static_cast<size_t>(state.actionRow())<allowed.count &&
+                    allowed[static_cast<size_t>(state.actionRow())]==
+                        PokeBank::UIModel::SharedPokemonEditor::Action::Clone;
                 const auto selected=state.actionRow()>=0 &&
                     static_cast<size_t>(state.actionRow())<allowed.count ?
                     allowed[static_cast<size_t>(state.actionRow())] :
@@ -1683,19 +1657,29 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                             static_cast<int>(where.box),static_cast<int>(where.slot));
                 } else if(move) {
                     // Move Pokemon: the SHARED Gen I-IV carry (Round 3 Part 9),
-                    // not Box / Slot number keypads. Nothing is staged until Y.
+                    // not Box / Slot number keypads. Nothing is staged until A.
                     const auto from=state.target();
                     if(!state.beginMoveCarry(staged,error))screen.postStatus(error,300);
                     else (void)ClassicPackedMove::beginGen5FromAction(
                         screen,static_cast<int>(from.box),static_cast<int>(from.slot));
+                } else if(clone) {
+                    // Round 11 H31 (owner): Clone is the same shared visual carry, never
+                    // number keypads. The menu closes, the copy rides the box cursor
+                    // (a Party Pokemon is carried over the current box), A places it on
+                    // a verified empty slot, B cancels; nothing is staged until A.
+                    const auto from=state.target();
+                    if(!state.beginCloneCarry(staged,error))screen.postStatus(error,300);
+                    else if(!ClassicPackedMove::beginCloneFromAction(
+                        screen,static_cast<int>(from.box),static_cast<int>(from.slot),
+                        from.region==Region::Party))
+                        screen.postStatus("Clone could not start from here",240);
                 } else if(!state.activateSelected(staged,error))
                     screen.postStatus(error,300);
                 else if(state.surface()==Surface::ConfirmCreateBox &&
                         !beginSharedCreate(screen,error)) {
                     state.cancelBoxAction();
                     screen.postStatus(error,360);
-                } else if(state.surface()==Surface::CloneDestination)
-                    stageCloneOrMoveByKeypad(screen);
+                }
                 screen.controllerNavigation.reset();
             }
             return true;
@@ -1804,7 +1788,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             return true;
         }
         case Surface::CloneDestination:
-            state.cancelBoxAction(); // only transient while the keypads are open
+            // Never entered from this screen (Round 11 H31: Clone and Move are the shared
+            // carry); leave it defensively without staging anything.
+            state.cancelBoxAction();
             return true;
         case Surface::Legality:
             if(keys&HidNpadButton_B)(void)state.back();
@@ -2296,7 +2282,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     }
     if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
        ClassicPackedMove::gen5CarryActive(screen))
-        ClassicPackedMove::draw(screen,fb); // carried sprite + "Y Drop / L/R Box / B Cancel"
+        ClassicPackedMove::draw(screen,fb); // carried sprite + "A Place / L/R Box / B Cancel"
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
         drawNavBar(fb,{{"D-pad","Navigate"},{"L/R","Box"},
                        {"ZL/ZR","Jump 5"},{"A","Actions"},{"Y","Review"},{"B","Back"}});

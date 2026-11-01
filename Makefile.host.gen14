@@ -316,6 +316,8 @@ GEN12_PACKED_MOVE_SOURCES := tests/test_gen12_packed_move.cpp \
 	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2StagedEditor.cpp \
 	src/Integration/Gen2/Gen2PackedMove.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Integration/Gen2/Gen2UniversalInventory.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Inventory/ItemQuantityPolicy.cpp src/Names/ItemNames.cpp \
 	src/Pokemon/Experience.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	src/Names/SpeciesNames.cpp \
 	src/Names/MoveNames.cpp

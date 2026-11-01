@@ -1047,10 +1047,10 @@ require(native_screen,"Surface::CloneDestination",
         "workspace.cloneToEmptyBox(target_",
         "workspace.removeBox(target_.box,target_.slot",
         "workspace=std::move(snapshot)")
-require(surface,"void stageCloneOrMoveByKeypad(TrainerViewScreen& screen)",
-        '"Clone to Gen V Box"', '"Move to Gen V Box"',
+# Round 11 H31 (owner): Clone is the shared visual carry, not Box / Slot keypads.
+require(surface,"state.beginCloneCarry(staged,error)",
+        "ClassicPackedMove::beginCloneFromAction(",
         "case Surface::ConfirmRemoveBox:",
-        "!state.confirmClone(staged,",
         "state.confirmRemoveBox(staged",
         '"Release this Pokemon?"', '"Y","Confirm Release"',
         "SharedEditorChrome::drawReviewPanel(")
@@ -1144,10 +1144,11 @@ require(trainer, "staged_.bagPresentation()")
 assert "writeFile" not in bag_model and "fopen" not in bag_model
 require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocketRefusesAdd();")
 
-# Gen IV parity: Clone and Move Pokemon use the Gen IV box / slot keypads
-# over the verified empty-destination check; origin dates are View-only (no dynamic_cast under -fno-rtti).
-require(surface, "state.moveDestination()", '"Move to Slot"',
-        )
+# Gen IV parity: Clone and Move Pokemon use the shared box carry (Round 11 H31 replaced the box /
+# slot keypads) over the verified empty-destination check; origin dates are View-only (no
+# dynamic_cast under -fno-rtti).
+require(surface, "state.beginMoveCarry(staged,error)", "state.beginCloneCarry(staged,error)")
+assert '"Move to Slot"' not in surface and '"Clone to Slot"' not in surface
 assert "dynamic_cast" not in surface
 require(native_bridge, "append(Shared::Action::Move);")
 require(native_screen, "workspace.moveToEmptyBox(target_,")

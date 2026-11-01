@@ -80,7 +80,8 @@ void gen2Routes() {
     has(review, "if (down & HidNpadButton_X)");
     assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_X)"));
     const auto parity = read("src/UI/Gen2SharedSurfaceParity.inc");
-    const auto draw = between(parity, "void drawParityGen2Review(", "void drawParityGen2Clone(");
+    // Round 11 H31: the Gen II Clone dialog (drawParityGen2Clone, the old end marker) was removed.
+    const auto draw = between(parity, "void drawParityGen2Review(", "bool drawFinalGen2Surface(");
     has(draw, "drawSharedReviewSurface(screen,fb)");
     const auto sharedDraw=between(surface,"void drawSharedReviewSurface(","void drawSharedDetails(");
     has(sharedDraw,"reviewDiscard.confirming");
