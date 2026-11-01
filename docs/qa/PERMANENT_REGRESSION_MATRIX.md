@@ -440,3 +440,4 @@ Known gate caveats: the Oct 26 table keys rows by Round 6 sheet number (its B01/
 2. Every ledger row with status Fixed in Code — Awaiting Hardware (its acceptance candidate).
 3. Every safety function in §5 that an ordinary owner save can exercise.
 4. No row may be removed from a checklist unless it is owner-PASSed or the owner records a decision; the ledger records the reason.
+

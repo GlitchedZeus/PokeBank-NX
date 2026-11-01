@@ -382,7 +382,7 @@ Owner words are verbatim. Occurrences list every historical record (round · can
 - **Basis:** Gen V AddPicker input handles grid navigation, A and B only: src/UI/Gen5SharedReadOnlySurface.inc:1165-1200; footer include/Integration/Gen5/Gen5BagScreen.h:81-82 lists no Sort; no ItemPickerSort use in Gen5SharedReadOnlySurface.inc. Gen I-III: src/UI/ClassicInventoryOverlay.cpp:909-925; Gen IV: src/UI/Gen4SharedPokemonSurface.inc:1920-1923. No app supports reordering the Bag itself (include/UI/ItemPickerSort.h:12-13 'Never reorder a game inventory pouch').
 - **Hardware acceptance:** none (not on any checklist)
 - **Next action:** Owner decision: add X Sort to the Gen V Add picker for parity, or record that Bag 'sort' means picker sort only.
-- **Occurrences (0):** 
+- **Occurrences (0):**
 
 ### `PBX-BKP-001` Durability / interruption gate accepted on FAT32 only; exFAT physical acceptance never tested
 
@@ -3317,3 +3317,4 @@ Owner words are verbatim. Occurrences list every historical record (round · can
 - **Hardware acceptance:** none (policy; not a checklist item)
 - **Next action:** Keep locked; revisit only per adapter after Vault v1 and write/readback verification (TRANSFER_MODEL enablement gate).
 - **Occurrences (3):** REQ Current alpha rule n/a [docs/TRANSFER_MODEL.md]; REQ True Move enablement gate n/a [docs/TRANSFER_MODEL.md]; REQ Permanent safety policy n/a [docs/GAME_SUPPORT_MATRIX.md]
+
