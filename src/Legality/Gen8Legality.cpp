@@ -228,6 +228,23 @@ private:
         }
         else if (originGen_ != 8)
             info(CheckIdentifier::Transfer, "Transferred from generation " + std::to_string(originGen_));
+        if (ctx_ != Context::SwordShield && sideTransferOrigin(met_) != 0 && !sideMetKept())
+            invalid(CheckIdentifier::Origin, "Met location " + std::to_string(met_) + " is a HOME location for Sword/Shield, which a " +
+                                                 formatName() + " from game " + std::to_string(version_) + " cannot keep");
+    }
+
+    // LocationsHOME.GetRemapState / IsMatchLocation: outside Sword/Shield a HOME side-transfer met
+    // location survives only where the remap state allows Remapped and GetMetSWSH maps the version
+    // to it: a Legends: Arceus or BD/SP origin in another format (Gen 8 origins are "Either"), and a
+    // Scarlet/Violet origin only in BD/SP. A native, or any other origin, keeps its original location.
+    // A Legends: Arceus origin is left undecided: EncounterArea8a.IsMatchLocation compares the met
+    // location as a byte, so PKHeX matches some side locations to Hisui areas.
+    bool sideMetKept() const {
+        if (version_ == 47) return true;
+        if (sideTransferOrigin(met_) != version_) return false;
+        if (version_ == 48 || version_ == 49) return ctx_ != Context::BDSP;
+        if (version_ == 50 || version_ == 51) return ctx_ == Context::BDSP;
+        return false;
     }
 
     // TransferVerifier.VerifyTransferLegalityG8: Sword/Shield and BD/SP hold a selection of

@@ -776,6 +776,26 @@ void testSideTransfers(const std::vector<Record>& records) {
     check(checked > 0, "PK8 fixture has side transfers");
 }
 
+// LocationsHOME.GetRemapState outside Sword/Shield: a BD/SP native keeps its own met location,
+// so a HOME side-transfer location on it is Invalid; a Legends: Arceus origin stays undecided.
+void testSideMetOutsideSwsh(const std::vector<Record>& bdsp) {
+    int checked = 0;
+    for (const Record& r : bdsp) {
+        if (!r.pkhexValid || (r.plain[0xDE] != 48 && r.plain[0xDE] != 49) || r.plain[0xDE] == 0) continue;
+        const uint16_t loc = r.plain[0xDE] == 48 ? 59999 : 59998;
+        const auto rep = analyzePlain(r, edit(r.plain, [loc](auto& b) { PK8::write16(b, 0x122, loc); }));
+        check(hasIssue(rep, Severity::Invalid, "is a HOME location for Sword/Shield"), r.label + ": BD/SP native with a HOME met: " + describe(rep));
+        if (++checked == 20) break;
+    }
+    check(checked > 0, "PB8 fixture has BD/SP natives");
+    for (const Record& r : bdsp) {
+        if (!r.pkhexValid || r.plain[0xDE] != 47) continue;
+        const auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { PK8::write16(b, 0x122, 59997); }));
+        check(!hasIssue(rep, Severity::Invalid, "is a HOME location for Sword/Shield"), r.label + ": Legends: Arceus origin stays undecided");
+        break;
+    }
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -799,6 +819,7 @@ int main() {
     testTeraTypes(sv);
     testOverworldSeedsPK9(sv);
     testSideTransfers(records);
+    testSideMetOutsideSwsh(bdsp);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

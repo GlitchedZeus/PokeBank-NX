@@ -229,6 +229,7 @@ above that is not Sword/Shield-specific applies, with these differences:
 |---|---|---|
 | Origin | a version no game writes into a PB8; Scarlet/Violet and Legends: Z-A are allowed (HOME) | `PKM.Generation` |
 | Hyper Training | below level 100 | `HyperTrainingVerifier` (`Legal.GetMinLevelHyperTraining`, BD/SP) |
+| HOME met location | a `LocationsHOME` side-transfer met location (59994–60000) that HOME would not leave on the record: on a BD/SP native, on any origin other than BD/SP (PK9) or Scarlet/Violet (PB8), or one that is not the origin's own location (Legends: Arceus origins undecided: `EncounterArea8a.IsMatchLocation` compares the location as a byte) | `LocationsHOME.GetRemapState`, `IsMatchLocation`, `GetMetSWSH` |
 | BD/SP fields | sociability set; the Dpr-illegal flag set; Spinda or Nincada not from BD/SP; a Spinda with a HOME tracker; Gigantamax flag; Dynamax level; any TR byte on a non-egg; battle version rule as PK8 | `MiscVerifierPB8`, `IBattleVersion` |
 | PID = EC | Invalid unless the record is a Legends: Arceus or BD/SP origin whose line has a fixed-EC `WA8`/`WB8` gift (`kFixedEcGift`), a Sword/Shield record with EC 0 (`WC8` HOME gifts) or a HOME side transfer | `PIDVerifier.VerifyEC` |
 
@@ -453,10 +454,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,675 (87.3%) | 0 | 0 |
 | PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 60,482 (87.3%) | 0 | 0 |
 | PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 30,310 (87.3%) | 0 | 0 |
-| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,541 (88.3%) | 0 | 0 |
-| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,707 (88.3%) | 0 | 0 |
-| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 48,444 (88.4%) | 0 | 0 |
-| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 25,034 (88.6%) | 0 | 0 |
+| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,914 (89.6%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 24,032 (89.5%) | 0 | 0 |
+| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 49,138 (89.6%) | 0 | 0 |
+| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 25,403 (90.0%) | 0 | 0 |
 | PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,461 (86.8%) | 0 | 0 |
 | PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,733 (87.3%) | 0 | 0 |
 | PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,989 (87.3%) | 0 | 0 |
