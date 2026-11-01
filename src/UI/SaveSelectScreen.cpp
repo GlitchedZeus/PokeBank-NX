@@ -3231,7 +3231,8 @@ namespace UI {
     }
 
     // Owner item #10: Backups -> X. Lists this profile's backup / export history and DurableFile
-    // leftovers, classified by UI/RecoveryManagementModel.h. Reading only; nothing is selected.
+    // leftovers, classified by UI/RecoveryManagementModel.h. Nothing is selected when it opens; A
+    // picks Removable copies and Y removes them only after a confirmation listing every file.
     void SaveSelectScreen::openRecoveryFiles(const std::string& notice) {
         namespace RM = PokeBank::UIModel::RecoveryManagement;
         recoveryRequest = {};
@@ -3260,9 +3261,15 @@ namespace UI {
         recoveryIndex = 0;
         recoveryScroll = 0;
         rebuildRecoveryRows();
-        // Focus the first copy, not a heading.
-        for (int i = 0; i < static_cast<int>(recoveryRows.size()); ++i)
-            if (recoveryRows[static_cast<size_t>(i)].item >= 0) { recoveryIndex = i; break; }
+        // Round 11 H12: the list stays global (protection is computed over every source), but focus
+        // starts in the opening game's group (the Backups screen's exact source paths), on its first
+        // Removable copy when it has one; never on a heading.
+        std::vector<std::string> openingSources;
+        for (const auto& listing : emuBackupListings) openingSources.push_back(listing.sourcePath);
+        recoveryIndex = RM::initialFocus(recoveryRows, recoveryListing.items, openingSources);
+        namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+        const auto layout = EB::layout(static_cast<int>(recoveryRows.size()));
+        recoveryScroll = EB::clampScroll(layout, EB::revealRow(layout, 0, recoveryIndex));
         overlay = Overlay::RecoveryFiles;
     }
 
@@ -4168,6 +4175,12 @@ namespace UI {
             namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
             const int count = static_cast<int>(recoveryRows.size());
             if (kDown & HidNpadButton_B) { openEmulatorBackups(); return; }
+            if (kDown & HidNpadButton_Minus) {
+                // Round 11 H12: Help; B / - return here with the selection kept.
+                helpReturnOverlay = Overlay::RecoveryFiles;
+                overlay = Overlay::Help;
+                return;
+            }
             if (count == 0) return;
             const auto bar = SharedScrollbar::handleTouch(recoveryScrollbar, barTouch, recoveryScroll);
             if (bar.changed) recoveryScroll = bar.scroll;
@@ -4181,8 +4194,10 @@ namespace UI {
             if (kDown & HidNpadButton_Up) step(-1);
             if (kDown & HidNpadButton_Down) step(1);
             const auto layout = EB::layout(count);
-            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
                 recoveryScroll = EB::revealRow(layout, recoveryScroll, recoveryIndex);
+                recoveryNotice.clear();   // a "why kept" toast belongs to the row it was asked on
+            }
             recoveryScroll = EB::clampScroll(layout, recoveryScroll);
             const auto& row = recoveryRows[static_cast<size_t>(recoveryIndex)];
             if ((kDown & HidNpadButton_A) && row.item >= 0) {
@@ -4191,13 +4206,15 @@ namespace UI {
                     recoveryNotice.clear();
                     rebuildRecoveryRows();
                 } else {
-                    recoveryNotice = recoveryListing.verdicts[item].reason;
+                    recoveryNotice = RM::protectedNotice(recoveryListing.verdicts[item]);
                 }
             }
             if (kDown & HidNpadButton_Y) {
                 recoveryPlan = RM::buildPlan(recoveryListing.items, recoveryListing.verdicts, recoverySelection);
                 if (recoveryPlan.items.empty())
-                    recoveryNotice = "Select removable copies with A first. Nothing is removed without a confirmation.";
+                    recoveryNotice = RM::anyRemovable(recoveryListing.verdicts)
+                        ? "Select removable copies with A first. Nothing is removed without a confirmation."
+                        : "Nothing here can be removed: every copy is protected.";
                 else {
                     recoveryConfirmScroll = 0;
                     overlay = Overlay::RecoveryConfirm;
@@ -4859,7 +4876,8 @@ namespace UI {
                 titleIndex = 0;
             scrollClassicSelectionIntoView();
             drawClassicGameSources(fb);
-            if (overlay == Overlay::Help) {
+            // Recovery files' own Help (Round 11 H12) is drawn by the modal section below.
+            if (overlay == Overlay::Help && helpReturnOverlay != Overlay::RecoveryFiles) {
                 std::vector<ControllerHint> rows = {
                     {"D-pad/Stick", "Choose a game"},
                     {"A", "Open the selected game"},
@@ -5987,7 +6005,14 @@ namespace UI {
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
-            if (helpReturnOverlay == Overlay::GameWorkspace) {
+            if (helpReturnOverlay == Overlay::RecoveryFiles) {
+                // Round 11 H12: Recovery files Help (B / - return with the selection kept).
+                std::vector<ControllerHint> rows;
+                for (const auto& line : PokeBank::UIModel::RecoveryManagement::helpLines())
+                    rows.push_back({line.glyph, line.label});
+                drawProductHelpOverlay(fb, "Recovery files Controls", rows,
+                                       "Newest copies, Bank files and original saves are never removed.");
+            } else if (helpReturnOverlay == Overlay::GameWorkspace) {
                 drawProductHelpOverlay(fb, "Current Game Controls", {
                     {"D-pad/Stick", "Navigate Overview / Party / Boxes / Trainer / Backups"},
                     {"A", "Open the focused game tool"},
@@ -6119,8 +6144,14 @@ namespace UI {
             for (int i = recoveryScroll; i < std::min(rows, recoveryScroll + visible); ++i) {
                 const auto& row = recoveryRows[static_cast<size_t>(i)];
                 const G::Rect cell = G::cellRect(layout, i - recoveryScroll);
+                // Round 11 H12: a save heading is an unboxed label with no touch target, so a tap can
+                // never focus it; a picked copy is drawn with the shared marked style.
+                if (row.heading) {
+                    BackupBrowserChrome::drawHeading(fb, cell.x, cell.y, cell.w, cell.h, row.title, row.detail);
+                    continue;
+                }
                 BackupBrowserChrome::drawRow(fb, cell.x, cell.y, cell.w, cell.h, row.title, row.detail, row.badge,
-                                             i == recoveryIndex);
+                                             i == recoveryIndex, row.picked);
                 overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
             }
             if (rows == 0)
@@ -6137,17 +6168,11 @@ namespace UI {
                 fb.drawText(toast.x + EB::kNoticePadX, toast.y + 7, recoveryNotice, Colors::Text,
                             TextStyle::Caption);
             }
-            bool removable = false;
-            if (recoveryIndex >= 0 && recoveryIndex < rows) {
-                const int item = recoveryRows[static_cast<size_t>(recoveryIndex)].item;
-                removable = item >= 0 &&
-                    recoveryListing.verdicts[static_cast<size_t>(item)].status == RM::Status::Removable;
-            }
-            const size_t picked = RM::selectedCount(recoverySelection);
-            std::vector<ControllerHint> hints = {{"D-pad/Stick", "Choose"},
-                                                 {"A", removable ? "Select" : "Why kept"}};
-            if (picked > 0) hints.push_back({"Y", "Remove selected (" + std::to_string(picked) + ")"});
-            hints.push_back({"B", "Back"});
+            // Round 11 H12: A Select / Deselect / Why kept for the focused row, Y only with a
+            // selection, - Help, B Back (RecoveryManagementModel footerHints).
+            std::vector<ControllerHint> hints;
+            for (const auto& hint : RM::footerHints(recoveryRows, recoveryIndex, RM::selectedCount(recoverySelection)))
+                hints.push_back({hint.glyph, hint.label});
             drawNavBar(fb, hints);
         } else if (overlay == Overlay::RecoveryConfirm) {
             namespace RM = PokeBank::UIModel::RecoveryManagement;
@@ -6177,8 +6202,8 @@ namespace UI {
             }
             fb.drawText(x + 30, ly + 14, "Newest copies, Bank files and original saves are never removed.",
                         Colors::TextMuted, TextStyle::Caption);
-            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
-                                                   "Y", "Remove", "A", "Cancel"));
+            // Round 11 H12: the footer names B, as the sentence above does (A also keeps them).
+            drawNavBar(fb, {{"B", "Keep"}, {"Y", "Remove"}});
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
