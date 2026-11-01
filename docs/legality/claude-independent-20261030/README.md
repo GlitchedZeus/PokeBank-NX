@@ -194,6 +194,41 @@ Differential, same seed: the corpora end with `defect-current-hp` / `defect2-cur
 are byte-identical. PK1: 0 differing. PK2: the same two pre-existing records. Production
 parity passes for both formats.
 
+## Milestone 5: status byte and the Gen I box-level byte (beyond PKHeX)
+
+Status condition byte (PK1 party and box structs offset 0x04, PK2 party struct offset 32):
+0, a sleep counter 1–7, or exactly one of PSN (0x08), BRN (0x10), FRZ (0x20), PAR (0x40).
+Every writer was audited in pokered, pokeyellow, pokecrystal and pokegold:
+- Whole-value stores: sleep counters (`SleepEffect`, `BattleCommand_SleepTarget`, the
+  disobedient nap, Rest), the side-effect burn/freeze/paralysis (`ld a, 1 << X`), cures (0).
+- Bit sets only after the byte was checked to be 0: pokered `effects.asm` `PoisonEffect`,
+  `move_effects/paralyze.asm`; pokecrystal/pokegold `effect_commands.asm` `PoisonOpponent`
+  (both callers check `and a / jr nz`), `BurnTarget`, `FreezeTarget`, `ParalyzeTarget`,
+  `BattleCommand_Paralyze`.
+- Party/box structs copy the battle byte (`ReadPlayerMonCurHPAndStatus`,
+  `UpdateBattleMonInParty`, catches, deposits). Bit 7 has no writer.
+
+A fainted Pokemon may keep its status: a skeptic review found that recoil or Destiny Bond can
+knock out both sides and save HP 0 with PSN/BRN/PAR (pokered `HandleEnemyMonFainted` skips
+`RemoveFaintedPlayerMon` in that case; pokecrystal `UpdateBattleMonInParty` on the wild
+path), so "fainted means no status" is deliberately **not** a rule. A PK2 egg must have status
+0: eggs are made with 0 (Day Care `ByteFill`, `GiveEgg` → `TryAddMonToParty`, the Odd Egg
+table) and never battle.
+
+Gen I party struct box-level byte (0x03): `_AddPartyMon` writes 0 for catches, gifts and
+trades into the party; `_MoveMon` writes the party level on PARTY_TO_BOX/PARTY_TO_DAYCARE and
+leaves it on withdrawal; level-up, Rare Candy and evolution write only the party level; the
+battle struct copies it out and back unchanged (Transform skips it); the Time Capsule writes 0
+(`.ConvertPartyStruct2to1`). So it is at most the party level. Assumption, stated: Pokemon
+Stadium (not disassembled) moves Pokemon by copying, and cannot lower a level.
+
+PKHeX 26.10.18 checks neither (no PK1/PK2 status or box-level verifier). Differential, same
+seed: appended controls with a single condition (20 PK1, 30 PK2) are legal in both; 20 PK1 and
+30 PK2 two-condition/bit-7 bytes and 20 PK1 box-level bytes above the level are classified
+`deliberate: status-byte` / `box-level`. First 12,000 verdicts byte-identical; production
+parity passes. Structural tests: every status value for PK1, fainted PK1, PK2 and PK2 eggs,
+every box-level value, and Red save party and box records (3,899,104 checks).
+
 ## Gen IV grown corpus (A3)
 
 `tools/pkhex_gen34_diff/run.sh` with PKHeX 26.10.18, seed 2026103102, 3 mutations, Gen IV,

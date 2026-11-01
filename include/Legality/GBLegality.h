@@ -66,6 +66,12 @@ namespace Legality::GB {
         // caller has the struct's bytes. hpKnown false: the current-HP rule is skipped.
         bool hpKnown = false;
         uint16_t currentHP = 0;
+        // The stored status condition byte (party and box structs), and a party struct's
+        // box-level byte (0x03), under the same condition. Unknown: the rules are skipped.
+        bool statusKnown = false;
+        uint8_t status = 0;
+        bool boxLevelKnown = false;
+        uint8_t boxLevel = 0;
         // The name fields as stored (11 bytes, 6 in Japanese), when the caller has them.
         // Empty means "not available": the byte-level rules (the trade marker's terminator,
         // glyphless bytes, a Korean Gold/Silver name on a Western record) are then skipped.
@@ -99,6 +105,8 @@ namespace Legality::GB {
         std::array<uint16_t, 5> stats{};    // Attack, Defense, Speed, Special Attack, Special Defense
         bool hpKnown = false;               // party structs only (a Gen II box struct has no HP)
         uint16_t currentHP = 0;
+        bool statusKnown = false;           // party structs only, as for hpKnown
+        uint8_t status = 0;
         std::vector<uint8_t> otRaw;         // as stored, when available (see Entity1)
         std::vector<uint8_t> nickRaw;
     };

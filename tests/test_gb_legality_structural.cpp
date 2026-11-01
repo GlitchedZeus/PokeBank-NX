@@ -1010,6 +1010,95 @@ void currentHpRule() {
           "Red save box current HP 264 with full HP stat experience");
 }
 
+void resum(std::vector<uint8_t>& b) {
+    unsigned sum = 0xFF;
+    for (unsigned i = kMain; i < kMain + kMainLength; ++i)
+        sum = (sum - b[i]) & 0xFF;
+    b[kChecksum] = static_cast<uint8_t>(sum);
+}
+
+void statusAndBoxLevelRules() {
+    // Engine: every status byte value, PK1 and PK2 (party), and a PK2 egg.
+    for (unsigned s = 0; s < 256; ++s) {
+        const bool ok = s <= 7 || s == 0x08 || s == 0x10 || s == 0x20 || s == 0x40;
+        GB::Entity1 e1 = bulbasaur1({33, 45, 0, 0});
+        e1.statusKnown = true;
+        e1.status = static_cast<uint8_t>(s);
+        check(hasText(GB::formatProblems(e1), "Status byte") == !ok, "PK1 status " + std::to_string(s));
+        // A fainted Pokemon may keep its status (recoil or Destiny Bond knocking both out).
+        e1.hpKnown = true;
+        e1.currentHP = 0;
+        check(hasText(GB::formatProblems(e1), "Status byte") == !ok, "PK1 fainted, status " + std::to_string(s));
+        e1.statusKnown = false;
+        check(!hasText(GB::formatProblems(e1), "Status byte"), "PK1 status not known " + std::to_string(s));
+        GB::Entity2 e2 = bulbasaur2({33, 45, 0, 0});
+        e2.statusKnown = true;
+        e2.status = static_cast<uint8_t>(s);
+        check(hasText(GB::formatProblems(e2), "Status byte") == !ok, "PK2 status " + std::to_string(s));
+        GB::Entity2 egg = e2;
+        egg.isEgg = true;
+        egg.nickname = "EGG";
+        const auto eggProblems = GB::formatProblems(egg);
+        check(hasText(eggProblems, "Status byte") == !ok, "PK2 egg status pattern " + std::to_string(s));
+        check(hasText(eggProblems, "An unhatched egg has no status condition") == (ok && s != 0),
+              "PK2 egg status " + std::to_string(s));
+    }
+    // Engine: a party struct's box-level byte is 0 or at most the party level.
+    for (unsigned box = 0; box < 256; ++box) {
+        GB::Entity1 e = bulbasaur1({33, 45, 0, 0});
+        e.boxLevelKnown = true;
+        e.boxLevel = static_cast<uint8_t>(box);
+        check(hasText(GB::formatProblems(e), "Box-level byte") == (box > e.level), "PK1 box level " + std::to_string(box));
+        e.boxLevelKnown = false;
+        check(!hasText(GB::formatProblems(e), "Box-level byte"), "PK1 box level not known " + std::to_string(box));
+    }
+
+    // Production: the Red save's party Bulbasaur (level 100) and a box Bulbasaur.
+    using namespace PokeVault::Integration::Gen1;
+    const unsigned party = kParty + 8, boxed = kBox + 20 + 2;
+    const auto analyze = [](std::vector<uint8_t> bytes, bool fromBox) {
+        const std::vector<uint8_t> original = bytes;
+        const auto parsed = parse(bytes, SourceGame::Red);
+        const bool ok = parsed && parsed.save &&
+                        (fromBox ? !parsed.save->boxes().empty() && parsed.save->boxes().front().slots.size() > 0 &&
+                                       parsed.save->boxes().front().slots[0].has_value()
+                                 : parsed.save->party().size() == 1);
+        check(ok, "Red save status/box level: parses");
+        check(bytes == original, "Red save status/box level: bytes unchanged");
+        if (!ok)
+            return Legality::Report{};
+        const Pokemon::Pokemon1ReadOnly pk(fromBox ? *parsed.save->boxes().front().slots[0]
+                                                   : parsed.save->party().front());
+        Legality::Context context{pk.getGameGroup(), "red_gb"};
+        context.storage = Legality::SlotStorage::PartyOrBox;
+        return Legality::analyze(pk, context);
+    };
+    for (const uint8_t status : {0x00, 0x03, 0x08, 0x40, 0x09, 0x18, 0x80}) {
+        const bool ok = status <= 7 || status == 0x08 || status == 0x40;
+        std::vector<uint8_t> b = redSave(gameExp(MediumSlow, 100));
+        b[party + 4] = status;
+        resum(b);
+        const auto r = analyze(b, false);
+        check((r.verdict() == Legality::Verdict::Invalid) == !ok && hasIssue(r, Legality::Severity::Invalid, "Status byte") == !ok,
+              "Red save party status " + std::to_string(status));
+        std::vector<uint8_t> bx = redBoxSave(200, 0);
+        bx[boxed + 4] = status;
+        resum(bx);
+        const auto rb = analyze(bx, true);
+        check(hasIssue(rb, Legality::Severity::Invalid, "Status byte") == !ok, "Red save box status " + std::to_string(status));
+    }
+    for (const uint8_t box : {0, 5, 100, 101, 255}) {
+        std::vector<uint8_t> b = redSave(gameExp(MediumSlow, 100));
+        b[party + 3] = box;
+        resum(b);
+        const auto r = analyze(b, false);
+        check(hasIssue(r, Legality::Severity::Invalid, "Box-level byte") == (box > 100),
+              "Red save party box level " + std::to_string(box));
+        check((r.verdict() == Legality::Verdict::NoProblemsFound) == (box <= 100),
+              "Red save party box level verdict " + std::to_string(box));
+    }
+}
+
 void partyStatProduction() {
     using namespace PokeVault::Integration::Gen1;
     // Red save, level-100 Bulbasaur, DVs 8: Attack 119, Defense 119, Speed 111, Special 151.
@@ -1054,6 +1143,7 @@ int main() {
     partySpecialSplit();
     partyStatProduction();
     currentHpRule();
+    statusAndBoxLevelRules();
     if (failures != 0) {
         std::fprintf(stderr, "Gen I/II structural legality: %d of %d checks FAILED\n", failures, checks);
         return EXIT_FAILURE;

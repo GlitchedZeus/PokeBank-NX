@@ -119,6 +119,7 @@ int main() {
             rec.level = body[31];
             rec.maxHP = be16(body, 36);
             rec.currentHP = be16(body, 34);
+            rec.status = body[32];
             rec.isEgg = egg;
             rec.nameEncoding = region;
             rec.originalTrainer = Gen2::decodeGen2String(ot, region);
@@ -162,6 +163,10 @@ int main() {
                 e.stats[i] = be16(body, 0x24 + i * 2);
             e.hpKnown = true;
             e.currentHP = be16(body, 1);
+            e.statusKnown = true;
+            e.status = body[4];
+            e.boxLevelKnown = true;
+            e.boxLevel = body[3];
             e.tradeTrainer = ot[0] == 0x5D;
             e.otName = Gen1::decodeGen1String(ot, region);
             e.nickname = Gen1::decodeGen1String(nick, region);

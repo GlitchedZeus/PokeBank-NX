@@ -392,6 +392,12 @@ DELIBERATE = (
     # current HP above the stored max HP (currentHpProblem). PKHeX does not compare stored
     # party stats or current HP. Recomputed here from PKHeX's own base stats.
     ("party-stats", "VALID", "INVALID", lambda r, ctx, pk, pb: party_stats(r, ctx, pb)),
+    # A status byte holding two conditions or bit 7 (GBLegality.cpp statusProblem: every game
+    # writer stores one condition), or a PK1 party struct's box-level byte above its party
+    # level (pokered _AddPartyMon/_MoveMon write 0 or the level at deposit). PKHeX checks
+    # neither for PK1/PK2.
+    ("status-byte", "VALID", "INVALID", lambda r, ctx, pk, pb: status_byte(r, pb)),
+    ("box-level", "VALID", "INVALID", lambda r, ctx, pk, pb: box_level(r, pb)),
 )
 
 
@@ -443,6 +449,19 @@ def party_stats(r, ctx, pb):
                  for s in range(stat_exp + 1)}
         bad = bad or value not in reach
     return bad
+
+
+def status_byte(r, pb):
+    s = r.body[4] if r.format == 1 else r.body[32]
+    problems = pokebank_problems(pb[1])
+    return (s > 7 and s not in (0x08, 0x10, 0x20, 0x40) and problems and
+            all(p.startswith("Status byte ") for p in problems))
+
+
+def box_level(r, pb):
+    problems = pokebank_problems(pb[1])
+    return (r.format == 1 and r.body[3] > r.body[0x21] and problems and
+            all(p.startswith("Box-level byte ") for p in problems))
 
 
 def korean_pk1_origin(r, ctx, pk, pb):

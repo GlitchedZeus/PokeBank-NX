@@ -251,6 +251,10 @@ namespace Legality {
                             rec.rawBody[rec.rawBodySize == 44 ? 0x21 : 0x03] == rec.level &&
                             ((rec.rawBody[1] << 8) | rec.rawBody[2]) == rec.currentHP;
                 e.currentHP = rec.currentHP;
+                e.statusKnown = e.hpKnown && rec.rawBody[0x04] == rec.status;
+                e.status = rec.status;
+                e.boxLevelKnown = e.partyStats;
+                e.boxLevel = rec.rawBody[0x03];
                 e.tradeTrainer = rec.originalTrainer == "*";
                 e.language = gen1Language(rec.originalTrainer, rec.nickname);
                 const GB::Result origin = GB::checkGen1(e);
@@ -1071,6 +1075,8 @@ namespace Legality {
                     e.stats[i] = static_cast<uint16_t>((rec.rawBody[38 + i * 2] << 8) | rec.rawBody[39 + i * 2]);
                 e.hpKnown = e.partyStats && ((rec.rawBody[34] << 8) | rec.rawBody[35]) == rec.currentHP;
                 e.currentHP = rec.currentHP;
+                e.statusKnown = e.partyStats && rec.rawBody[32] == rec.status;
+                e.status = rec.status;
                 e.tradeTrainer = rec.originalTrainer == "*";
                 // The strict parser carries record encoding. Do not infer Korean Hangul
                 // as unknown/Western from UTF-8, or mistake low Japanese glyph bytes for pages.

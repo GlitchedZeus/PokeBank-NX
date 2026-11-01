@@ -23,6 +23,7 @@
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cctype>
 #include <cstddef>
 
@@ -2413,6 +2414,24 @@ static Problem currentHpProblem(uint8_t generation, uint8_t species, uint8_t lev
     return {};
 }
 
+/// The status condition byte holds one condition at a time: 0, a sleep counter 1-7, or
+/// exactly one of PSN, BRN, FRZ and PAR. Every writer in both generations either stores a
+/// whole value (sleep counters, the side-effect burn/freeze/paralysis, Rest, the disobedient
+/// nap, cures) or sets a bit only after checking that the byte is 0 (pokered
+/// engine/battle/effects.asm and move_effects/paralyze.asm; pokecrystal and pokegold
+/// engine/battle/effect_commands.asm PoisonTarget/BattleCommand_Poison, BurnTarget,
+/// FreezeTarget, ParalyzeTarget, BattleCommand_Paralyze, BattleCommand_SleepTarget), and the
+/// party and box structs copy the battle byte. Bit 7 has no writer. A fainted Pokemon can keep
+/// its status (recoil or Destiny Bond knocking both out), so HP 0 is not judged here.
+static Problem statusProblem(uint8_t status) {
+    if (status <= 7 || status == 0x08 || status == 0x10 || status == 0x20 || status == 0x40)
+        return {};
+    char hex[8];
+    std::snprintf(hex, sizeof hex, "%02X", status);
+    return {Area::Misc, std::string("Status byte $") + hex +
+                            " is not a single condition (a sleep counter 1-7, poison, burn, freeze or paralysis)"};
+}
+
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
     if (e.species != 0 && e.species <= kMaxSpecies1) {
@@ -2431,6 +2450,19 @@ std::vector<Problem> formatProblems(const Entity1& e) {
             !hp.text.empty())
             out.push_back(std::move(hp));
     }
+    if (e.statusKnown) {
+        if (Problem status = statusProblem(e.status); !status.text.empty())
+            out.push_back(std::move(status));
+    }
+    // A party struct's box-level byte is 0 (pokered _AddPartyMon for catches, gifts and
+    // trades into the party; the Time Capsule's .ConvertPartyStruct2to1) or the party level
+    // at the last deposit (_MoveMon PARTY_TO_BOX / PARTY_TO_DAYCARE); a withdrawal, level-up,
+    // Rare Candy or evolution writes only the party level, battle copies the byte out and
+    // back unchanged (Transform skips it), and the level never goes down.
+    if (e.boxLevelKnown && e.boxLevel > e.level)
+        out.push_back({Area::Stats, "Box-level byte " + std::to_string(e.boxLevel) + " is above the party level " +
+                                        std::to_string(e.level) +
+                                        " (the games store 0 or the level at the last deposit)"});
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)  // the stored bytes decide when they are known (Korean names decode to nothing in a Western decoder)
         out.push_back({Area::Trainer, "Nickname is empty"});
     return out;
@@ -2456,6 +2488,14 @@ std::vector<Problem> formatProblems(const Entity2& e) {
                 !hp.text.empty())
                 out.push_back(std::move(hp));
         }
+    }
+    if (e.statusKnown) {
+        if (Problem status = statusProblem(e.status); !status.text.empty())
+            out.push_back(std::move(status));
+        // An egg is made with status 0 (Day Care ByteFill, GiveEgg/TryAddMonToParty, the Odd
+        // Egg table) and never battles, so nothing writes it.
+        else if (e.isEgg && e.status != 0)
+            out.push_back({Area::Egg, "An unhatched egg has no status condition"});
     }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)
         out.push_back({Area::Trainer, "Nickname is empty"});

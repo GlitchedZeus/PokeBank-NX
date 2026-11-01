@@ -166,6 +166,8 @@ class Mon:
         self.max_hp_delta = 0  # added to the stored party max HP (a defect)
         self.stat_delta = [0] * 4  # added to the stored Attack, Defense, Speed, Special (a defect)
         self.hp_delta = 0  # added to the stored current HP (a defect)
+        self.status = 0  # the stored status byte
+        self.box_level = None  # the party struct's box-level byte; None: the level
 
 
 # Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
@@ -276,7 +278,8 @@ def finish(d, mon, rng, japanese):
     stats = p["stats"]
     hp = stat(stats[0], hp_dv, mon.level, True)
     body[1:3] = (hp + mon.hp_delta).to_bytes(2, "big")
-    body[3] = mon.level
+    body[3] = mon.level if mon.box_level is None else mon.box_level
+    body[4] = mon.status
     body[5], body[6] = mon.types
     body[7] = mon.catch
     for i, m in enumerate((mon.moves + [0, 0, 0, 0])[:4]):
@@ -696,6 +699,24 @@ def main():
         mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
         mon.hp_delta = 1
         emit("defect-current-hp", mon, False)
+
+    # A status byte with two conditions or bit 7, and a box-level byte above the party level
+    # (GBLegality.cpp statusProblem and the box-level rule); appended last as well. A single
+    # condition (or a sleep counter) is a legal control.
+    for i in range(max(1, args.count // 200)):
+        species, lmin, lmax, v = rng.choice(d.wild)
+        yellow = v == YW
+        level = rng.randint(lmin, min(lmax, 99))
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        if i % 3 == 0:
+            mon.status = rng.choice((0x01, 0x07, 0x08, 0x10, 0x20, 0x40))
+            emit("control-status", mon, False)
+        elif i % 3 == 1:
+            mon.status = rng.choice((0x09, 0x18, 0x30, 0x48, 0x80, 0xFF))
+            emit("defect-status", mon, False)
+        else:
+            mon.box_level = rng.randint(level + 1, 255)
+            emit("defect-box-level", mon, False)
 
 
 if __name__ == "__main__":

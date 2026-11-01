@@ -161,6 +161,7 @@ class Mon:
         self.max_hp_delta = 0  # added to the stored party max HP (a defect)
         self.stat_delta = [0] * 5  # added to the stored Attack ... Special Defense (a defect)
         self.hp_delta = 0  # added to the stored current HP (a defect)
+        self.status = 0  # the stored status byte
 
 
 def encounter_moves(d, species, level, crystal):
@@ -248,6 +249,7 @@ def finish(d, mon, rng):
     body[28] = mon.pokerus
     body[29:31] = mon.caught.to_bytes(2, "big")
     body[31] = mon.level
+    body[32] = mon.status
     stats = p["stats"]  # HP ATK DEF SPE SPA SPD
     hp = g1.stat(stats[0], hp_dv, mon.level, True)
     body[34:36] = (hp + mon.hp_delta).to_bytes(2, "big")
@@ -854,6 +856,18 @@ def main():
         mon.statexp = [0] * 5
         mon.hp_delta = 1
         emit("defect2-current-hp", mon)
+
+    # A status byte with two conditions or bit 7 (GBLegality.cpp statusProblem), and single
+    # conditions as legal controls; appended last as well.
+    for i in range(max(1, args.count // 200)):
+        mon = wild_mon(d, rng, rng.choice(d.wild))
+        mon.statexp = [0] * 5
+        if i % 2 == 0:
+            mon.status = rng.choice((0x01, 0x07, 0x08, 0x10, 0x20, 0x40))
+            emit("control2-status", mon)
+        else:
+            mon.status = rng.choice((0x09, 0x18, 0x30, 0x48, 0x80, 0xFF))
+            emit("defect2-status", mon)
 
 
 if __name__ == "__main__":
