@@ -214,8 +214,18 @@ private:
             invalid(CheckIdentifier::Origin, "Origin game " + std::to_string(version_) + " is newer than " + std::string(formatName()));
             return;
         }
-        if (side_ != 0)
+        if (side_ != 0) {
             info(CheckIdentifier::Transfer, "Moved into Sword/Shield through HOME from game " + std::to_string(side_));
+            // LocationsHOME.GetVersionSWSH: HOME writes Sword for Legends: Arceus, Brilliant Diamond,
+            // Scarlet and FireRed, and Shield for Shining Pearl, Violet and LeafGreen.
+            const uint8_t expected = (side_ == 47 || side_ == 48 || side_ == 50 || side_ == 56) ? VersionSW : VersionSH;
+            if (version_ != expected)
+                invalid(CheckIdentifier::Origin, "A record moved in from game " + std::to_string(side_) + " through HOME has version " +
+                                                     std::to_string(expected) + ", not " + std::to_string(version_));
+            if (!ModernEncounter::lineInGame(species(), side_))
+                invalid(CheckIdentifier::Origin, "No species of the line is in game " + std::to_string(side_) +
+                                                     ", which the HOME met location names as its origin");
+        }
         else if (originGen_ != 8)
             info(CheckIdentifier::Transfer, "Transferred from generation " + std::to_string(originGen_));
     }

@@ -55,6 +55,11 @@ bool masteryFromEncounterPossible(uint16_t species, size_t index) noexcept;
 /// (47) or BD/SP (48/49) origin whose line has such a gift. Other versions return false.
 bool fixedEcGiftPossible(uint16_t species, uint8_t version) noexcept;
 
+/// Whether the species or any pre-evolution (any form) is present in a Switch game: Legends:
+/// Arceus (47), BD/SP (48/49), Scarlet/Violet (50/51) or FR/LG Virtual Console (56/57, species up
+/// to 386). Other versions and unknown species return true.
+bool lineInGame(uint16_t species, uint8_t version) noexcept;
+
 /// IHyperTrain.GetHyperTrainMinLevel: false only when neither the species nor any of its
 /// pre-evolutions (in any form) is present in Scarlet/Violet or Z-A, so the record's evolution
 /// history cannot have visited those games and Hyper Training needs level 100.

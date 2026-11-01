@@ -1061,6 +1061,24 @@ static class DumpEncounters
                 if (g is WB8 { IsEquivalentFixedECPID: true } && line.Contains(g.Species)) fixedEc[sp] |= 2;
         }
         Dump.Bytes(o, "kFixedEcGift", fixedEc);
+        // LocationsHOME side transfers into Sword/Shield (met 59994-60000): the record came from
+        // another Switch game, so the species or a pre-evolution (any form) must be in that game.
+        // kLineGames[s]: bit 0 = Legends: Arceus, 1 = BD/SP, 2 = Scarlet/Violet, 3 = FR/LG (species <= 386).
+        var lineGames = new int[max + 1];
+        for (ushort sp = 1; sp <= max; sp++)
+        {
+            foreach (var member in DumpNames.LinePublic(sp))
+            {
+                foreach (var (bit, table) in new (int, IPersonalTable)[] { (1, PersonalTable.LA), (2, PersonalTable.BDSP), (4, PersonalTable.SV) })
+                {
+                    if (member > table.MaxSpeciesID) continue;
+                    for (byte f = 0; f < Math.Max((byte)1, table[member].FormCount); f++)
+                        if (table.IsPresentInGame(member, f)) lineGames[sp] |= bit;
+                }
+                if (member <= 386) lineGames[sp] |= 8;
+            }
+        }
+        Dump.Bytes(o, "kLineGames", lineGames);
         foreach (var (label, table) in new[] { ("kTera9Import", import), ("kTera9Egg", egg) })
         {
             o.WriteLine($"constexpr std::array<uint32_t, {table.Length}> {label}{{{{");

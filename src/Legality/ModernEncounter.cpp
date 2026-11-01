@@ -151,6 +151,18 @@ bool fixedEcGiftPossible(uint16_t species, uint8_t version) noexcept {
     return species >= kFixedEcGift.size() || (kFixedEcGift[species] & bit) != 0;
 }
 
+bool lineInGame(uint16_t species, uint8_t version) noexcept {
+    uint8_t bit = 0;
+    switch (version) {
+        case 47: bit = 1; break;
+        case 48: case 49: bit = 2; break;
+        case 50: case 51: bit = 4; break;
+        case 56: case 57: bit = 8; break;
+        default: return true;
+    }
+    return species >= kLineGames.size() || (kLineGames[species] & bit) != 0;
+}
+
 bool visitNinePossible(uint16_t species) noexcept {
     return species >= kVisit9.size() || kVisit9[species] != 0;
 }

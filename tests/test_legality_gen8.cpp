@@ -753,6 +753,29 @@ void testOverworldSeedsPK9(const std::vector<Record>& records) {
     check(decided > 0, "some PK9 Sword/Shield record has a seed-bound met location");
 }
 
+// LocationsHOME.IsValidMetBDSP/FRLG/SV with GetVersionSWSH: a record moved into Sword/Shield
+// from another Switch game keeps the version HOME writes for that game, and its line is in it.
+void testSideTransfers(const std::vector<Record>& records) {
+    namespace E = Legality::ModernEncounter;
+    check(E::lineInGame(25, 47) && E::lineInGame(25, 48) && E::lineInGame(25, 50) && E::lineInGame(25, 56), "Pikachu is everywhere");
+    check(!E::lineInGame(387, 56), "Turtwig was never in FR/LG");
+    check(E::lineInGame(387, 48), "Turtwig is in BD/SP");
+    check(E::lineInGame(5000, 47) && E::lineInGame(19, 44), "unknown species and other versions are not decided");
+    int checked = 0;
+    for (const Record& r : records) {
+        if (!r.pkhexValid) continue;
+        const uint8_t side = Legality::Gen8::sideTransferOrigin(PK8::read16(r.plain, 0x122));
+        if (side == 0) continue;
+        const auto base = analyzePlain(r, r.plain);
+        check(!hasIssue(base, Severity::Invalid, "through HOME has version"), r.label + ": PKHeX-valid side transfer: " + describe(base));
+        check(!hasIssue(base, Severity::Invalid, "which the HOME met location names"), r.label + ": side transfer line: " + describe(base));
+        const auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0xDE] ^= (44 ^ 45); }));
+        check(hasIssue(rep, Severity::Invalid, "through HOME has version"), r.label + ": swapped Sword/Shield version: " + describe(rep));
+        ++checked;
+    }
+    check(checked > 0, "PK8 fixture has side transfers");
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -775,6 +798,7 @@ int main() {
     testVisitNine();
     testTeraTypes(sv);
     testOverworldSeedsPK9(sv);
+    testSideTransfers(records);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

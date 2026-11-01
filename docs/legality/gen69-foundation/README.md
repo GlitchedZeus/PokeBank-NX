@@ -202,6 +202,7 @@ Switch FireRed/LeafGreen), where the version byte reads Sword or Shield.
 | Transfer | Gen III/IV origin met location must be Poké Transporter's (Celebi / Crown beast exceptions) | `TransferVerifier.VerifyTransferLegalityG3/G4` |
 | Virtual Console | met location 30013/30017; female OT outside Crystal; met level 100 nature = EXP % 25; met level ≤ 2 nature set | `TransferVerifier.VerifyVCEncounter`, `VerifyTransferLegalityG12` |
 | Hyper Training | below level 50; below 100 when no species of the line is in Scarlet/Violet or Z-A (`kVisit9`); six perfect IVs; a trained perfect IV | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
+| HOME side transfer | a `LocationsHOME` side-transfer met location (59994–60000) with the wrong Sword/Shield version (Sword for Legends: Arceus, Brilliant Diamond, Scarlet and FireRed; Shield for Shining Pearl, Violet and LeafGreen), or a line with no member (any form) in the origin game (`kLineGames` from the personal tables; FR/LG = species up to 386) | `LocationsHOME.IsValidMetBDSP/FRLG/SV`, `GetVersionSWSH`; `PersonalTable.IsPresentInGame` |
 | Sword/Shield fields | Dynamax level above 10, on an egg, or on Zacian/Zamazenta/Eternatus; battle version other than 0/Sword/Shield, or Sword/Shield on a record that originated in or side-transferred to Sword/Shield; sociability above 255 or on an egg; a TR flag the species/form cannot learn (Calyrex exception); a Sword/Shield egg without the nickname flag | `MiscVerifierPK8` (`VerifyDynamax`, `IsBattleVersionValid`, `VerifySociability`, `VerifyTechRecordFlags`), `NicknameVerifier` (`EggStateLegality.IsNicknameFlagSet`) |
 
 Warnings (never Invalid): a PK8 in a game that does not store PK8; party level or stats that
@@ -448,10 +449,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,519 (78.1%) | 0 | 0 |
 | PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 18,385 (78.0%) | 0 | 0 |
 | PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 9,515 (78.7%) | 0 | 0 |
-| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,243 (85.9%) | 0 | 0 |
-| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,205 (85.9%) | 0 | 0 |
-| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,558 (86.0%) | 0 | 0 |
-| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 29,872 (86.1%) | 0 | 0 |
+| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,691 (87.2%) | 0 | 0 |
+| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,675 (87.3%) | 0 | 0 |
+| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 60,482 (87.3%) | 0 | 0 |
+| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 30,310 (87.3%) | 0 | 0 |
 | PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,541 (88.3%) | 0 | 0 |
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,707 (88.3%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 48,444 (88.4%) | 0 | 0 |
