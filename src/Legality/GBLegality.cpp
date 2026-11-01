@@ -23,6 +23,7 @@
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cctype>
 #include <cstddef>
 
@@ -423,6 +424,7 @@ struct Candidate {
     bool trade1 = false;
     bool gift2 = false;                   // Gen II event distribution
     bool oddEgg = false;
+    uint8_t tradeOtGender = 0;            // Gen II in-game trade or gift: the OT gender bit it writes
     uint8_t eggCycles = 0;                // fixed hatch cycles of a gift egg (0 = species')
     bool partial = false;                 // matched, but trainer/nickname/catch rate disagree
     std::string partialReason;
@@ -1126,12 +1128,15 @@ std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
             continue;
         if (t.dvs[0] != 255 && (!fixedDVsMatch(t.dvs, pk.dvs) || pk.tid != t.tid))
             continue;
+        // Kenya and the Mania Shuckle (random DVs) are kept here and judged on their OT
+        // gender bit below (tradeOtGender), so that the verdict names the reason.
         if (hasMet && (pk.metLocation != kLocationLinkTrade2 || pk.metLevel != 0 ||
                        (t.dvs[0] != 255 && pk.otGender != t.otGender)))
             continue;
         Candidate c;
         c.kind = EncounterKind::Trade;
         c.generation = 2;
+        c.tradeOtGender = t.otGender;
         c.species = t.species;
         c.level = t.level;
         c.versions = Gold | Silver | Crystal;
@@ -1984,7 +1989,17 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
     } else {
         // EncounterVerifier.VerifyEncounterEgg2 / VerifyUnhatchedEgg2: Crystal records eggs at
         // met level 1, with no location until they hatch.
-        if (enc.egg && pk.caught) {
+        // An unhatched Day Care, Togepi or Odd Egg has no met data at all: Day Care eggs start
+        // from a zero-filled wEggMon (pokecrystal engine/events/daycare.asm
+        // DayCare_InitBreeding), GiveEgg zeroes CaughtData in TryAddMonToParty
+        // (engine/pokemon/move_mon.asm), the Odd Egg table stores "db 0, 0, 0 ; Pokerus, Caught
+        // data" (data/events/odd_eggs.asm), and SetEggMonCaughtData runs only when the egg
+        // hatches (engine/pokemon/breeding.asm). Gold/Silver zero the two bytes too, and a link
+        // trade copies them. Event eggs (gift2) are left to their distribution rules.
+        if (enc.egg && pk.egg && pk.caught && !enc.gift2) {
+            ev.problems.push_back({Area::MetData, "An unhatched Day Care, Togepi or Odd Egg has no Crystal met "
+                                                  "data until it hatches"});
+        } else if (enc.egg && pk.caught) {
             if (pk.metLevel != 1)
                 ev.problems.push_back({Area::MetData, "Crystal records a hatched egg at met level 1"});
             else if (pk.egg ? pk.metLocation != 0 : pk.metLocation > 95)
@@ -1993,6 +2008,16 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
         // TrainerNameVerifier.VerifyOTGB: Gen I and non-egg event Pokemon have a male OT.
         if (pk.caught && pk.otGender == 1 && (enc.generation == 1 || (enc.gift2 && !enc.egg)))
             ev.problems.push_back({Area::Trainer, "This origin cannot have a female original trainer"});
+        // Every Gen II in-game trade and gift writes a fixed OT gender bit with its met data.
+        // Kenya and the Mania Shuckle are male: givepoke reads the byte after "RANDY@"
+        // (pokecrystal maps/Route35GoldenrodGate.asm, "db 0") and GiveShuckle loads
+        // CAUGHT_BY_UNKNOWN (engine/events/shuckle.asm) before SetGift*MonCaughtData, which
+        // shifts bit 0 into the gender bit. PKHeX checks the fixed-DV trades only.
+        if (pk.caught && enc.kind == EncounterKind::Trade && enc.generation == 2 &&
+            pk.otGender != enc.tradeOtGender)
+            ev.problems.push_back({Area::Trainer, std::string("This in-game gift records a ") +
+                                                      (enc.tradeOtGender ? "female" : "male") +
+                                                      " original trainer with its Crystal met data"});
         // MiscG1Verifier: Crystal records the time of day, except for gifts and trades.
         if (pk.caught) {
             const bool fixedTime = (enc.gift2 && (!enc.egg || pk.egg)) ||
@@ -2260,7 +2285,16 @@ constexpr uint32_t kDayCareExpMax = 0x50FFFF;
 /// EXP below the stored level's threshold. PKHeX rejects EXP above the level-100 total on
 /// a level-100 Pokemon (LevelVerifier.Verify, LevelEXPTooHigh) and otherwise derives the
 /// level from EXP without comparing the two.
-static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, uint32_t exp) {
+///
+/// The slot decides the Day Care exception when the caller knows it. A party or PC box slot
+/// is never out of step: battle EXP and Rare Candy are above, a Pokemon returning to the
+/// party has its level recomputed from EXP (pokered engine/pokemon/add_mon.asm _MoveMon
+/// CalcLevelFromExperience for box and Day Care withdrawals; pokecrystal
+/// engine/pokemon/move_mon.asm SendGetMonIntoFromBox CalcLevel, RetrieveBreedmon), and a
+/// deposit copies the party level unchanged. So with Storage::PartyOrBox both exceptions
+/// close and the problem is definitive; with Storage::DayCare they are the slot's own
+/// behaviour and nothing is reported.
+static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, uint32_t exp, Storage storage) {
     const uint8_t growth = Pokemon::getGrowthRate(species);
     const uint32_t max = Pokemon::getExpForLevel(100, growth);
     if (exp > max) {
@@ -2271,6 +2305,11 @@ static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, u
         const bool dayCare = exp <= kDayCareExpMax && (format == 1 || level < 100);
         if (!dayCare)
             return {Area::Stats, text};
+        if (storage == Storage::DayCare)
+            return {};
+        if (storage == Storage::PartyOrBox)
+            return {Area::Stats, text + "; only a Pokemon still in the Day Care carries that, and this one is in "
+                                        "the party or a PC box"};
         return {Area::Stats,
                 text + "; only a Pokemon still in the Day Care carries that (Gen I adds EXP there without a "
                        "level check, Gen II until the stored level is 100)",
@@ -2282,20 +2321,172 @@ static Problem levelExpProblem(uint8_t format, uint8_t species, uint8_t level, u
     if (level > expLevel)
         return {Area::Stats, "Level " + std::to_string(level) + " does not match EXP (expected " +
                                  std::to_string(expLevel) + ")"};
-    return {Area::Stats,
-            "Level " + std::to_string(level) + " is below the level the EXP gives (" + std::to_string(expLevel) +
-                "); only a Pokemon still in the Day Care carries a stale level",
-            false};
+    if (storage == Storage::DayCare)
+        return {};
+    const std::string stale = "Level " + std::to_string(level) + " is below the level the EXP gives (" +
+                              std::to_string(expLevel) + "); only a Pokemon still in the Day Care carries a stale level";
+    if (storage == Storage::PartyOrBox)
+        return {Area::Stats, stale + ", and this one is in the party or a PC box"};
+    return {Area::Stats, stale, false};
+}
+
+/// Base stats of species 0-251 from pret (tools/gen_gb_base_stats.py): HP, Attack, Defense,
+/// Speed, Special Attack, Special Defense, then the Gen I Special. Gen II kept Gen I's HP,
+/// Attack, Defense and Speed; the generator checks that.
+constexpr uint8_t kBaseStats[][7] = {
+#include "Legality/GBBaseStats.inc"
+};
+static_assert(sizeof(kBaseStats) == 252 * 7);
+
+/// A party struct's stored stats. Both games compute them the same way (pokered
+/// home/move_mon.asm CalcStat, pokecrystal engine/pokemon/move_mon.asm CalcMonStatC):
+/// ((base + DV) * 2 + b / 4) * level / 100 + 5, or + level + 10 for HP, capped at 999, where
+/// b is the smallest of 1..255 whose square reaches that stat's stat experience. The HP DV is
+/// the low bit of the other four; Gen II's Special Attack and Special Defense both use the
+/// Special DV and Special stat experience. The games write the stats only from the record's
+/// own level, DVs and stat experience: fresh stats on a gift, trade, hatch or catch (a caught
+/// Pokemon's stats are reloaded from its own species, level and original DVs even after
+/// Transform, so battle stages, burn and paralysis never reach them: pokered ItemUseBall
+/// LoadEnemyMonData, pokecrystal PokeBallEffect LoadEnemyMon), and a recalculation with the
+/// stat experience of that moment on every level-up, Rare Candy, vitamin, evolution and
+/// return to the party. The Time Capsule copies HP, Attack, Defense and Speed (the same
+/// bases in both generations) and recomputes the Special stats from the receiving
+/// generation's bases with the current stat experience (pokecrystal engine/link/link.asm
+/// Link_ConvertPartyStruct1to2 and .ConvertPartyStruct2to1, the latter from
+/// KantoMonSpecials). Stat experience never goes down and the level never changes without a
+/// recalculation, so each stored stat is the formula at the current level for some stat
+/// experience between 0 and the current one. Each stat is checked on its own, which is
+/// weaker than the games (one recalculation sets all of them) but never stricter.
+/// A stored max HP of 0 is no party snapshot at all (a box struct exported in party layout,
+/// as the PKHeX test files from boxes are), so the stats are skipped rather than judged.
+static std::vector<Problem> partyStatProblems(uint8_t generation, uint8_t species, uint8_t level,
+                                              const std::array<uint8_t, 4>& dvs,
+                                              const std::array<uint16_t, 5>& statExp, uint16_t maxHP,
+                                              const std::array<uint16_t, 5>& stats) {
+    std::vector<Problem> out;
+    const uint8_t maxSpecies = generation == 1 ? kMaxSpecies1 : kMaxSpecies2;
+    if (maxHP == 0 || species == 0 || species > maxSpecies || level == 0 || level > 100)
+        return out;
+    const unsigned hpDV = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+    struct Stat { const char* name; const char* source; unsigned base, dv; uint16_t exp, stored; bool hp; };
+    const uint8_t* base = kBaseStats[species];
+    std::vector<Stat> list = {
+        {"Max HP", "HP", base[0], hpDV, statExp[0], maxHP, true},
+        {"Attack", "Attack", base[1], dvs[0], statExp[1], stats[0], false},
+        {"Defense", "Defense", base[2], dvs[1], statExp[2], stats[1], false},
+        {"Speed", "Speed", base[3], dvs[2], statExp[3], stats[2], false},
+    };
+    if (generation == 1) {
+        list.push_back({"Special", "Special", base[6], dvs[3], statExp[4], stats[3], false});
+    } else {
+        list.push_back({"Special Attack", "Special", base[4], dvs[3], statExp[4], stats[3], false});
+        list.push_back({"Special Defense", "Special", base[5], dvs[3], statExp[4], stats[4], false});
+    }
+    for (const Stat& s : list) {
+        unsigned root = 1;
+        while (root < 255 && root * root < s.exp)
+            ++root;
+        const auto value = [&](unsigned bonus) {
+            const unsigned v = ((s.base + s.dv) * 2 + bonus) * level / 100;
+            return std::min(999u, s.hp ? v + level + 10 : v + 5);
+        };
+        bool reachable = false;
+        for (unsigned bonus = 0; bonus <= root / 4 && !reachable; ++bonus)
+            reachable = value(bonus) == s.stored;
+        if (reachable)
+            continue;
+        out.push_back({Area::Stats, std::string(s.name) + " " + std::to_string(s.stored) + " is not what level " +
+                                        std::to_string(level) + " and " + s.source + " DV " + std::to_string(s.dv) +
+                                        " give with at most its " + std::to_string(s.exp) + " " + s.source +
+                                        " stat experience (" + std::to_string(value(0)) +
+                                        (root / 4 ? "-" + std::to_string(value(root / 4)) : std::string()) + ")"});
+    }
+    return out;
+}
+
+/// Current HP never exceeds max HP. Battle damage and healing are capped at the battle max
+/// HP, which is the party max HP; a level-up, Rare Candy or evolution adds the max-HP gain
+/// to the current HP (the CalcStats callers in pokered experience.asm, evos_moves.asm and
+/// item_effects.asm; the CalcMonStats callers in pokecrystal evolve.asm, battle/core.asm and
+/// item_effects.asm), and every other stat recalculation (a return to the party, vitamins,
+/// the Time Capsule) keeps the current HP while max HP stays or grows, as stat experience
+/// and EXP only grow. A catch saves and restores the wild Pokemon's current HP around the
+/// stat reload. A Gen I box struct keeps the current HP it had when it was
+/// deposited (pokered _MoveMon copies the box part, then the party level into its level byte),
+/// so it is at most the formula's max HP at that stored level with its own stat experience.
+/// partyMaxHP 0 means no stored max HP (a box struct, or a box struct in party layout).
+static Problem currentHpProblem(uint8_t generation, uint8_t species, uint8_t level, const std::array<uint8_t, 4>& dvs,
+                                uint16_t hpStatExp, uint16_t partyMaxHP, uint16_t currentHP) {
+    const uint8_t maxSpecies = generation == 1 ? kMaxSpecies1 : kMaxSpecies2;
+    if (species == 0 || species > maxSpecies || level == 0 || level > 100)
+        return {};
+    if (partyMaxHP != 0) {
+        if (currentHP > partyMaxHP)
+            return {Area::Stats, "Current HP " + std::to_string(currentHP) + " is above its max HP " +
+                                     std::to_string(partyMaxHP)};
+        return {};
+    }
+    const unsigned dv = ((dvs[0] & 1u) << 3) | ((dvs[1] & 1u) << 2) | ((dvs[2] & 1u) << 1) | (dvs[3] & 1u);
+    unsigned root = 1;
+    while (root < 255 && root * root < hpStatExp)
+        ++root;
+    const unsigned top = std::min(999u, ((kBaseStats[species][0] + dv) * 2 + root / 4) * level / 100 + level + 10);
+    if (currentHP > top)
+        return {Area::Stats, "Current HP " + std::to_string(currentHP) + " is above the highest max HP level " +
+                                 std::to_string(level) + " and HP DV " + std::to_string(dv) + " give with its " +
+                                 std::to_string(hpStatExp) + " HP stat experience (" + std::to_string(top) + ")"};
+    return {};
+}
+
+/// The status condition byte holds one condition at a time: 0, a sleep counter 1-7, or
+/// exactly one of PSN, BRN, FRZ and PAR. Every writer in both generations either stores a
+/// whole value (sleep counters, the side-effect burn/freeze/paralysis, Rest, the disobedient
+/// nap, cures) or sets a bit only after checking that the byte is 0 (pokered
+/// engine/battle/effects.asm and move_effects/paralyze.asm; pokecrystal and pokegold
+/// engine/battle/effect_commands.asm PoisonTarget/BattleCommand_Poison, BurnTarget,
+/// FreezeTarget, ParalyzeTarget, BattleCommand_Paralyze, BattleCommand_SleepTarget), and the
+/// party and box structs copy the battle byte. Bit 7 has no writer. A fainted Pokemon can keep
+/// its status (recoil or Destiny Bond knocking both out), so HP 0 is not judged here.
+static Problem statusProblem(uint8_t status) {
+    if (status <= 7 || status == 0x08 || status == 0x10 || status == 0x20 || status == 0x40)
+        return {};
+    char hex[8];
+    std::snprintf(hex, sizeof hex, "%02X", status);
+    return {Area::Misc, std::string("Status byte $") + hex +
+                            " is not a single condition (a sleep counter 1-7, poison, burn, freeze or paralysis)"};
 }
 
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
     if (e.species != 0 && e.species <= kMaxSpecies1) {
-        if (Problem level = levelExpProblem(1, e.species, e.level, e.exp); !level.text.empty())
+        if (Problem level = levelExpProblem(1, e.species, e.level, e.exp, e.storage); !level.text.empty())
             out.push_back(std::move(level));
     }
     if (Problem stats = statExpProblem(e.statExp, false); !stats.text.empty())
         out.push_back(std::move(stats));
+    if (e.partyStats) {
+        for (Problem& stat : partyStatProblems(1, e.species, e.level, e.dvs, e.statExp, e.maxHP, e.stats))
+            out.push_back(std::move(stat));
+    }
+    if (e.hpKnown) {
+        if (Problem hp = currentHpProblem(1, e.species, e.level, e.dvs, e.statExp[0], e.partyStats ? e.maxHP : 0,
+                                          e.currentHP);
+            !hp.text.empty())
+            out.push_back(std::move(hp));
+    }
+    if (e.statusKnown) {
+        if (Problem status = statusProblem(e.status); !status.text.empty())
+            out.push_back(std::move(status));
+    }
+    // A party struct's box-level byte is 0 (pokered _AddPartyMon for catches, gifts and
+    // trades into the party; the Time Capsule's .ConvertPartyStruct2to1) or the party level
+    // at the last deposit (_MoveMon PARTY_TO_BOX / PARTY_TO_DAYCARE); a withdrawal, level-up,
+    // Rare Candy or evolution writes only the party level, battle copies the byte out and
+    // back unchanged (Transform skips it), and the level never goes down.
+    if (e.boxLevelKnown && e.boxLevel > e.level)
+        out.push_back({Area::Stats, "Box-level byte " + std::to_string(e.boxLevel) + " is above the party level " +
+                                        std::to_string(e.level) +
+                                        " (the games store 0 or the level at the last deposit)"});
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)  // the stored bytes decide when they are known (Korean names decode to nothing in a Western decoder)
         out.push_back({Area::Trainer, "Nickname is empty"});
     return out;
@@ -2309,8 +2500,26 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         out.push_back({Area::Misc, pokerus});
     // An unhatched egg's EXP is judged against its encounter (Odd Eggs carry 125).
     if (!e.isEgg && e.species != 0 && e.species <= kMaxSpecies2) {
-        if (Problem level = levelExpProblem(2, e.species, e.level, e.exp); !level.text.empty())
+        if (Problem level = levelExpProblem(2, e.species, e.level, e.exp, e.storage); !level.text.empty())
             out.push_back(std::move(level));
+        if (e.partyStats) {
+            for (Problem& stat : partyStatProblems(2, e.species, e.level, e.dvs, e.statExp, e.maxHP, e.stats))
+                out.push_back(std::move(stat));
+        }
+        if (e.hpKnown) {
+            if (Problem hp = currentHpProblem(2, e.species, e.level, e.dvs, e.statExp[0], e.partyStats ? e.maxHP : 0,
+                                              e.currentHP);
+                !hp.text.empty())
+                out.push_back(std::move(hp));
+        }
+    }
+    if (e.statusKnown) {
+        if (Problem status = statusProblem(e.status); !status.text.empty())
+            out.push_back(std::move(status));
+        // An egg is made with status 0 (Day Care ByteFill, GiveEgg/TryAddMonToParty, the Odd
+        // Egg table) and never battles, so nothing writes it.
+        else if (e.isEgg && e.status != 0)
+            out.push_back({Area::Egg, "An unhatched egg has no status condition"});
     }
     if (e.nickname.empty() && nameEnd(e.nickRaw) == 0)
         out.push_back({Area::Trainer, "Nickname is empty"});

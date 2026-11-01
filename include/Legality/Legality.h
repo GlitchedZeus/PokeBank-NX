@@ -110,11 +110,18 @@ namespace Legality {
 
     class Gen3BerryContext;
 
+    /// Which slot of the validated source save holds the record. Unknown (the default) is
+    /// any caller that does not own the slot: a standalone file, a bank entry, an import.
+    enum class SlotStorage : uint8_t { Unknown, PartyOrBox, DayCare };
+
     struct Context {
         Enums::GameVersion originGroup;
         std::string_view exactSourceGameId{};
         // Optional immutable evidence from the actual validated source save.
         const Gen3BerryContext* gen3Berry = nullptr;
+        // Optional slot evidence from that same save. Read by the native PK1/PK2 analysis,
+        // where it settles the Day Care exception to the level/EXP rule (GB::Storage).
+        SlotStorage storage = SlotStorage::Unknown;
     };
 
     /// Preferred context-aware API for the Gen I-IV legality engine.

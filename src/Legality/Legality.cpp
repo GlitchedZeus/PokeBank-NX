@@ -159,8 +159,17 @@ namespace Legality {
         /// from. Invalid needs a definitive rule; when only unverified rules or an
         /// incomplete event catalog stand against every origin, the report stays
         /// Incomplete with warnings.
+        GB::Storage gbStorage(SlotStorage storage) noexcept {
+            switch (storage) {
+                case SlotStorage::PartyOrBox: return GB::Storage::PartyOrBox;
+                case SlotStorage::DayCare:    return GB::Storage::DayCare;
+                case SlotStorage::Unknown:    break;
+            }
+            return GB::Storage::Unknown;
+        }
+
         Report analyzeNativeGen1(const Pokemon::Pokemon& pk, const Pokemon::Pokemon1ReadOnly& gen1,
-                                 bool sourceFormatMismatch) {
+                                 bool sourceFormatMismatch, SlotStorage storage) {
             Report r;
             const auto& rec = gen1.strictRecord();
             const uint16_t species = pk.speciesID();
@@ -208,6 +217,7 @@ namespace Legality {
             e.species = species <= 151 ? static_cast<uint8_t>(species) : 0;
             e.level = rec.level;
             e.exp = rec.experience;
+            e.storage = gbStorage(storage);
             e.statExp = rec.statExperience;
             e.otName = rec.originalTrainer;
             e.nickname = rec.nickname;
@@ -228,6 +238,23 @@ namespace Legality {
                 e.type2 = rec.type2;
                 e.dvs = {rec.dvs[1], rec.dvs[2], rec.dvs[3], rec.dvs[4]};
                 e.tid = rec.trainerId;
+                // The party stat rule reads the stored party struct, only when the
+                // record's own fields were parsed from those very bytes.
+                e.partyStats = rec.partyRecord && rec.rawBodySize == 44 && rec.rawBody[0x21] == rec.level &&
+                               ((rec.rawBody[0x22] << 8) | rec.rawBody[0x23]) == rec.maxHP;
+                e.maxHP = rec.maxHP;
+                for (std::size_t i = 0; i < 4; ++i)
+                    e.stats[i] = static_cast<uint16_t>((rec.rawBody[0x24 + i * 2] << 8) | rec.rawBody[0x25 + i * 2]);
+                // Party and box structs both keep the current HP; the level must be the one
+                // the struct stores for its kind (party 0x21, box 0x03).
+                e.hpKnown = (rec.rawBodySize == 44 || rec.rawBodySize == 33) &&
+                            rec.rawBody[rec.rawBodySize == 44 ? 0x21 : 0x03] == rec.level &&
+                            ((rec.rawBody[1] << 8) | rec.rawBody[2]) == rec.currentHP;
+                e.currentHP = rec.currentHP;
+                e.statusKnown = e.hpKnown && rec.rawBody[0x04] == rec.status;
+                e.status = rec.status;
+                e.boxLevelKnown = e.partyStats;
+                e.boxLevel = rec.rawBody[0x03];
                 e.tradeTrainer = rec.originalTrainer == "*";
                 e.language = gen1Language(rec.originalTrainer, rec.nickname);
                 const GB::Result origin = GB::checkGen1(e);
@@ -971,7 +998,7 @@ namespace Legality {
         /// "No problems found"; Invalid needs a definitive rule; a record that only
         /// unverified rules or an incomplete event list stand against stays Incomplete.
         Report analyzeNativeGen2(const Pokemon::Pokemon2ReadOnly& gen2, bool sourceFormatMismatch,
-                                 std::string_view exactSourceGameId, bool sourceKnown) {
+                                 std::string_view exactSourceGameId, bool sourceKnown, SlotStorage storage) {
             Report r;
             const auto& rec = gen2.strictRecord();
             const uint16_t species = rec.species;
@@ -1018,6 +1045,7 @@ namespace Legality {
             e.species = species <= 251 ? static_cast<uint8_t>(species) : 0;
             e.level = rec.level;
             e.exp = rec.experience;
+            e.storage = gbStorage(storage);
             e.statExp = rec.statExperience;
             e.pokerus = rec.pokerus;
             e.isEgg = rec.isEgg;
@@ -1039,6 +1067,16 @@ namespace Legality {
                 e.tid = rec.trainerId;
                 e.friendship = rec.friendship;
                 e.caughtData = rec.caughtData;
+                // As for PK1: the party struct's own bytes, when the record was parsed from them.
+                e.partyStats = rec.partyRecord && rec.rawBodySize == 48 && rec.rawBody[31] == rec.level &&
+                               ((rec.rawBody[36] << 8) | rec.rawBody[37]) == rec.maxHP;
+                e.maxHP = rec.maxHP;
+                for (std::size_t i = 0; i < 5; ++i)
+                    e.stats[i] = static_cast<uint16_t>((rec.rawBody[38 + i * 2] << 8) | rec.rawBody[39 + i * 2]);
+                e.hpKnown = e.partyStats && ((rec.rawBody[34] << 8) | rec.rawBody[35]) == rec.currentHP;
+                e.currentHP = rec.currentHP;
+                e.statusKnown = e.partyStats && rec.rawBody[32] == rec.status;
+                e.status = rec.status;
                 e.tradeTrainer = rec.originalTrainer == "*";
                 // The strict parser carries record encoding. Do not infer Korean Hangul
                 // as unknown/Western from UTF-8, or mistake low Japanese glyph bytes for pages.
@@ -1146,10 +1184,10 @@ namespace Legality {
             return r;
         }
         if (const auto* gen1 = pk.nativePk1ReadOnly())
-            return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch);
+            return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch, context.storage);
         if (const auto* gen2 = pk.nativePk2ReadOnly())
             return analyzeNativeGen2(*gen2, sourceFormatMismatch, exactSourceGameId,
-                                     sourceGameProfile(exactSourceGameId) != nullptr);
+                                     sourceGameProfile(exactSourceGameId) != nullptr, context.storage);
         if (sourceFormatMismatch) {
             add(r, Severity::Warning,
                 "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
