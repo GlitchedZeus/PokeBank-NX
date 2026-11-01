@@ -116,10 +116,13 @@ int main() {
     }
     const auto chooserSource = read("include/UI/SharedSpeciesPicker.h");
     const auto chooserOverlay = read("src/UI/Gen2PokemonPickerOverlay.inc");
+    // Round 11 SPRITE: one preview artwork in the current shiny state, so the native letter
+    // computed for that state is never paired with the other appearance.
     require(chooserSource.find("getIconSprite(species, form, previewShiny)") != std::string::npos &&
-            chooserSource.find("getSprite(preview, form, false)") != std::string::npos &&
-            chooserSource.find("getSprite(preview, form, true)") != std::string::npos,
-            "picker renders previews using native Unown form");
+            chooserSource.find("getSprite(preview, form, previewShiny)") != std::string::npos &&
+            chooserSource.find("getSprite(preview, form, false)") == std::string::npos &&
+            chooserSource.find("getSprite(preview, form, true)") == std::string::npos,
+            "picker renders one preview using the native Unown form for its shiny state");
     require(chooserOverlay.find("Gen2Picker::previewUnownForm(") != std::string::npos &&
             chooserOverlay.find("&overlay.speciesChooser, unownForm)") != std::string::npos,
             "Gen II supplies computed form to shared chooser");

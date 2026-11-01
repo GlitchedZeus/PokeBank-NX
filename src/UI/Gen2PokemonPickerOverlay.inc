@@ -338,6 +338,8 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, gen2SpeciesAvailable, gen2SpeciesName);
         picker.model.index = static_cast<int>(chosen) - 1;
         speciesTouchOwned = handled.touch;
+        // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y does.
+        if (handled.previewShinyTapped) down |= HidNpadButton_Y;
         // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
         // semantic preview cursor only on release so the gesture cannot accidentally activate A.
         const int dy = touch.deltaY();

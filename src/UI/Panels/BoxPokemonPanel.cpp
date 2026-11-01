@@ -17,6 +17,7 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/ExactSaveCapabilities.h"
+#include "UI/BoxSummaryRadar.h"
 #include "UI/StatsRadar.h"
 #include "Names/ItemNames.h"
 #include "Names/FormNames.h"   // getDisplayName -- variant prefix ("Alolan Raichu", "Combat Breed Tauros")
@@ -215,7 +216,7 @@ namespace Panels {
     }
 
     // HOME-style summary side-panel (shown right of the box when entered): big idle HD
-    // render, name/level/gender/shiny, type icons, the stat hexagon (actual stats), and a
+    // render, name/level/gender/shiny, type icons, the editor's stat radar (actual stats), and a
     // Nature/Ability/Held Item card. Tapping it (id 2000) opens the full editor. Read-only display.
     void drawBoxSummaryPanel(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int width, int height) {
         fb.drawFilledRoundedRect(x, y, width, height, 16, Colors::Panel);
@@ -311,30 +312,38 @@ namespace Panels {
         }
 
         int iy = cy2;
-        if (gen1) {
+        // One route per record (UI/BoxSummaryRadar.h): every Gen I-V quick view draws the same
+        // shared radar, scale and size as its editor and View, so it follows the cursor exactly.
+        namespace Radar = PokeBank::UIModel::BoxSummaryRadar;
+        const int radarH = std::min(236, y + height - 36 - (cy2 + 4));
+        switch (Radar::route(gen1, p->getGameGroup() == Enums::GameVersion::GSC,
+                             p->getGameGroup() == Enums::GameVersion::FRLG,
+                             exact ? std::optional<Foundation::Generation>(exact->identity.generation)
+                                   : std::nullopt)) {
+        case Radar::Route::Gen1Special:
             // Boxed PK1 records do not store calculated battle stats. Use the same
             // immutable presentation as Create/Edit, including one Special axis.
             StatsRadar::drawGen1Labeled(fb, x + 18, cy2 + 4, width - 36,
                 std::min(236, y + height - 36 - (cy2 + 4)), presentation.battleStats);
-        } else if (p->getGameGroup() == Enums::GameVersion::GSC) {
+            break;
+        case Radar::Route::Gen2Calculated: {
             const auto& record = static_cast<const Pokemon::Pokemon2ReadOnly*>(p)->strictRecord();
             StatsRadar::drawGen2Labeled(fb, x + 18, cy2 + 4, width - 36,
                 std::min(236, y + height - 36 - (cy2 + 4)),
                 PokeBank::UIModel::Gen2Workspace::battleStats(record));
-        } else if (p->getGameGroup() == Enums::GameVersion::FRLG ||
-                   (exact && exact->identity.generation == Foundation::Generation::Gen4)) {
-            // Gen III+ uses six battle stats. Gen IV used to fall through to the
-            // legacy fixed-255 renderer, collapsing low-level Pokemon to a dot.
-            // Use the accepted local/headroom scale so the shape stays readable.
-            const std::array<uint16_t,6> stats{
-                p->statHPMax(), p->statATK(), p->statDEF(),
-                p->statSPE(), p->statSPA(), p->statSPD()
-            };
-            const int radarH = std::min(236, y + height - 36 - (cy2 + 4));
-            StatsRadar::drawGen3Labeled(fb, x + 18, cy2 + 4, width - 36, radarH, stats);
+            break;
+        }
+        case Radar::Route::SharedSixStat:
+            // Gen III-V: six battle stats from the record's display getters (Gen V: displayStats5,
+            // the editor's own values) at the editor's adaptive scale. Gen IV and then Gen V used
+            // to fall through to the inherited fixed-255 hexagon, collapsing low-level Pokemon to
+            // the same small blob (Round 11 G5-RADAR).
+            StatsRadar::drawGen3Labeled(fb, x + 18, cy2 + 4, width - 36, radarH,
+                Radar::sixStats(*p));
             iy = cy2 + radarH + 8;
-        } else {
-            // Other later formats keep the inherited summary renderer until their shared-editor pass.
+            break;
+        case Radar::Route::InheritedHexagon: {
+            // Later inherited formats without a shared editor keep the inherited summary renderer.
             float vals[6] = {
                 static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
                 static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())
@@ -364,6 +373,8 @@ namespace Panels {
             }
 
             iy = hexCy + hexR + 34;
+            break;
+        }
         }
 
         // Every quick-info row follows the current adapter's capabilities,

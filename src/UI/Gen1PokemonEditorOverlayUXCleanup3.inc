@@ -789,6 +789,8 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
             state.speciesChooser, SharedSearchInput::sample(touch), chosen, 151,
             SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, ux3SpeciesAvailable, ux3SpeciesName);
         state.pickerValue = chosen;
+        // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y does.
+        if (handled.previewShinyTapped) down |= HidNpadButton_Y;
         if (handled.touch) return down;
         // Keep the existing preview steady while a contact may become a swipe.
         // The release-confirmed row target is the only direct-tap selection.
