@@ -80,6 +80,8 @@ using FieldState = PokeBank::UIModel::ExactFormatEditor::FieldState;
         case Field::MoveCompatibility:
         case Field::EncounterLegality:
         case Field::Provenance:
+        // PB7.cs HyperTrainFlags 0xDE: shown, not edited (cached stats and CP would need recomputing).
+        case Field::HyperTraining:
             return FieldState::ReadOnly;
         case Field::Pokerus:          // no Pokerus in Let's Go
         case Field::DV:

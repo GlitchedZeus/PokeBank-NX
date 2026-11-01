@@ -289,6 +289,10 @@ public:
     }
     void setOriginalTrainerFriendship(uint8_t v) noexcept { plain_[0xCA] = v; }
     void setBall(uint8_t v) noexcept { plain_[0xDC] = v; }
+    // PK7-ONLY (PKHeX PK7.cs HyperTrainFlags 0xDE). In PK6 the same byte is the Gen IV encounter type, so
+    // Gen VI code never calls these; Gen7StagedSession is the only writer.
+    [[nodiscard]] uint8_t pk7HyperTrainFlags() const noexcept { return plain_[0xDE]; }
+    void setPk7HyperTrainFlags(uint8_t v) noexcept { plain_[0xDE] = v; }
     void setOriginalTrainerGender(uint8_t v) noexcept {
         plain_[0xDD] = static_cast<uint8_t>((plain_[0xDD] & 0x7F) | ((v & 1) << 7));
     }

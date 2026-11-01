@@ -187,6 +187,60 @@ void battleBoxGuard() {
     check(demo.ready() && demo.session->moveSupport(SlotRef::boxed(0, 0)).available,
           "a Sun/Moon demo save has no Battle Box teams (PKHeX ReloadBattleTeams)");
 }
+
+// Hyper Training (PKSE 1.2.2 port; rules from PKHeX 6501f0ab IHyperTrain + HyperTrainingVerifier). Fixture
+// IVs in storage order HP 31, Atk 16, Def 15, Spe 31, SpA 2, SpD 30; flag bits HP0 Atk1 Def2 SpA3 SpD4 Spe5.
+void hyperTraining() {
+    using G7::Gen7NativeSession;
+    std::string error;
+    const auto bytes = saveWithBag(Layout::Family::SunMoon, Layout::VersionSun);
+    auto opened = Gen7NativeSession::open(bytes, "sun_3ds");
+    check(opened.ready(), "HT fixture opens");
+    if (!opened.ready()) return;
+    auto& s = *opened.session;
+    const auto box = SlotRef::boxed(0, 0), party = SlotRef::party(0);
+    check(s.fieldState(Field::HyperTraining, Modern::Region::Box) == State::Editable &&
+              s.fieldState(Field::HyperTraining, Modern::Region::Party) == State::Editable,
+          "Hyper Training is editable for SM/USUM box and party records");
+    check(s.view(box)->hyperTrainFlags == 0, "fixture starts untrained");
+    check(!s.stageValue(box, Field::HyperTraining, 0x02, 0, error) && error.find("level 100") != std::string::npos,
+          "below level 100 Hyper Training is refused: " + error);
+    check(s.stageValue(box, Field::Level, 100, 0, error), "stage level 100: " + error);
+    const auto before = s.view(box)->stats;
+    check(s.stageValue(box, Field::HyperTraining, 0x02, 0, error), "train Atk at level 100: " + error);
+    auto v = s.view(box);
+    check(v && v->hyperTrainFlags == 0x02, "the Atk flag (bit 1) is stored");
+    check(v && v->stats[1] > before[1] && v->stats[0] == before[0] && v->stats[2] == before[2],
+          "only the trained stat rises (computed with IV 31)");
+    check(v && v->ivs[1] == 16, "the stored IV itself is unchanged");
+    check(!s.stageValue(box, Field::HyperTraining, 0x03, 0, error) && error.find("perfect HP") != std::string::npos,
+          "a perfect HP IV is never hyper trained: " + error);
+    check(!s.stageValue(box, Field::HyperTraining, 0x22, 0, error) && error.find("perfect Spe") != std::string::npos,
+          "bit 5 is Speed (storage stat 3) and its 31 IV is refused: " + error);
+    check(!s.stageValue(box, Field::HyperTraining, 0x42, 0, error), "flags beyond six bits are refused");
+    bool reviewed = false;
+    for (const auto& r : s.reviewRows()) reviewed |= r.value.find("Hyper Training -> Atk") != std::string::npos ||
+                                                     r.label.find("Hyper Training -> Atk") != std::string::npos;
+    check(reviewed, "Review lists the Hyper Training change");
+    const auto trainedAtk = s.view(box)->stats[1];
+    check(s.stageValue(box, Field::IV, 31, 1, error) && s.view(box)->hyperTrainFlags == 0,
+          "raising a trained IV to 31 clears its flag: " + error);
+    check(s.view(box)->stats[1] == trainedAtk, "IV 31 untrained equals the trained stat");
+    check(s.stageValue(box, Field::HyperTraining, 0x08, 0, error) && s.view(box)->hyperTrainFlags == 0x08,
+          "train SpA (bit 3, IV 2): " + error);
+    check(s.stageValue(box, Field::HyperTraining, 0, 0, error) && s.view(box)->hyperTrainFlags == 0,
+          "clearing is always allowed: " + error);
+
+    // Party: cached stats are recomputed hyper-training aware.
+    check(s.stageValue(party, Field::Level, 100, 0, error), "party level 100: " + error);
+    const auto partyBefore = s.view(party)->stats;
+    check(s.stageValue(party, Field::HyperTraining, 0x04, 0, error), "train party Def: " + error);
+    check(s.view(party)->stats[2] > partyBefore[2] && s.view(party)->stats[1] == partyBefore[1],
+          "party Def stat recomputed with IV 31, others unchanged");
+    check(std::equal(s.sourceBytes().begin(), s.sourceBytes().end(), bytes.begin(), bytes.end()), "HT: source immutable");
+    s.discardAll();
+    check(s.view(box)->hyperTrainFlags == 0 && !s.hasChanges(), "Discard All restores the flags");
+}
 } // namespace
 
 int main() {
@@ -511,6 +565,7 @@ int main() {
     }
 
     battleBoxGuard();
+    hyperTraining();
 
     std::cout << "test_gen7_native_session: " << (failures ? "FAILED " : "all ") << checks << " checks"
               << (failures ? " (" + std::to_string(failures) + " failed)" : " passed") << '\n';

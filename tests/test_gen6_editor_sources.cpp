@@ -27,7 +27,7 @@ void testFieldTable() {
     std::set<int> seen;
     for (const auto f : Provider::AllFields) seen.insert(static_cast<int>(f));
     GEN6_CHECK(seen.size() == Provider::AllFields.size());
-    GEN6_CHECK(static_cast<int>(Field::FatefulEncounter) + 1 == static_cast<int>(Provider::AllFields.size()));
+    GEN6_CHECK(static_cast<int>(Field::HyperTraining) + 1 == static_cast<int>(Provider::AllFields.size()));  // last enumerator
 
     const auto box = [](Field f) { return Provider::fieldState(f, RecordRegion::Box); };
     const auto party = [](Field f) { return Provider::fieldState(f, RecordRegion::Party); };

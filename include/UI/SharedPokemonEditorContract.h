@@ -244,6 +244,9 @@ enum class FieldIdentity : uint8_t {
     MovePP,
     MovePPUps,
     FatefulEncounter,
+    // Gen VII+ Hyper Training flags (PKHeX IHyperTrain: bits HP0 Atk1 Def2 SpA3 SpD4 Spe5); staged as
+    // the whole flag byte. Appended last so every earlier enumerator keeps its value.
+    HyperTraining,
 };
 
 enum class FieldAccess : uint8_t { Hidden, Derived, ReadOnly, Editable };

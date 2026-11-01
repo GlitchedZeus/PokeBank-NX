@@ -136,6 +136,35 @@ Hardware UX repair, what changed:
 - Limits: the host cannot mount a console save, so the installed snapshot is proven only up to the
   selection handed to UIManager; the device build links it. 3DS box art has no licence → fallback art remains.
 
+- **Experimental NRO of `7f23ca44` (hardware UX repair; the build to retest with group GUX)**: CI run 41269675592
+  green (host gates incl. leak-checked sanitizers and Clang, devkitA64 build, ELF symbol check, RomFS verification).
+  Artifact `PokeBank-NX-Gen6Plus-Experimental-7f23ca44` (id 13069750412, zip sha256
+  `1f4d7e22e85ee28f681c4198367bd64260de75e9e0687a309488fc1e77d2b0f8`); NRO
+  `PokeBank-NX-Gen6Plus-Experimental-7f23ca44.nro` sha256
+  `36857430336439417a75e23756d0105fe449458a5fb0e8f2bcd64560ca4e7f7e` (CI SHA256SUMS). EXPERIMENTAL, NOT DEVICE TESTED.
+
+## PKSE 1.2.2 differential audit and port (owner request 2026-11-01)
+
+Upstream `kiasta/PKSE` v1.2.1..v1.2.2 (`fc555b1`, `65dff1d`, `c671aa4`, `474ad9e`, `f4fd79a`) read at source level;
+every rule re-checked against pinned PKHeX `6501f0ab` before use.
+
+| # | Finding | Our code | Action |
+| --- | --- | --- | --- |
+| 1 | Mass cloning on box Move (SWSH/PLA/SV/Z-A): PKSE's whole-box writer reused one "harvested" blank, which after a Move held the moved record's stale bytes | Root cause absent: only staged record ranges are rebuilt, verifier rejects any other byte; Move = clone into a verified blank + remove | `test_modern_storage_integrity` pins it for all 18 titles (mutation-checked) |
+| 2 | Untouched slots re-encrypted / gap bytes zeroed | Absent (byte-preserving rebuild) | same test: untouched slots + flat-format bytes preserved |
+| 3 | SwishCrypto accepted partial parses / no hash check; BDSP size table | Already fail-closed | truncation / zero / flip refusal for all 18 titles |
+| 4 | Battle teams | **Gen VII had no guard** (latent: SAV7 export blocked) | `Gen7BattleTeams.h` (PKHeX BoxLayout7 +0x4C4, locks 0x5C0-6-team, SM demo rule) |
+| 5 | Checksums/size | Covered by verifiers + exact-size export checks | storage-integrity test asserts exact size |
+| 6 | Hyper Training | Read-only before | **SM/USUM editable** (PK7 0xDE; level 100; never on a 31 IV; a 31 clears the flag; party stats recomputed). LGPE/SWSH/BDSP/PLA/SV/Z-A shown read-only: their records cache battle stats and no PKHeX-pinned per-form base-stat table exists here (`BaseStatsGen89` is species-only, pokemondb-sourced) |
+| 7 | Ribbons/marks | none | not started (needs PKHeX-generated ribbon index tables per format) |
+| 8 | Alpha | read-only | PLA blocked: Alpha also needs HeightAbsolute/WeightAbsolute (0xAC/0xB0) recomputed from PLA personal height/weight (not pinned). Z-A feasible exactly (PA9 0x23 + Scale 0x4A=255 per PKHeX `EncounterSlot9a`); needs a title-specific Details row (shared Gen V shell is fixed at 18 rows) |
+| 9 | Species/stats/moves | blocked on verified tables | unchanged |
+| 10 | Favourite folders | — | later |
+
+UI: the modern Details row 3 is now **HyperTrain** (the read-only Experience value moved into the Level row:
+"100 • EXP 1059860"), because the shared Gen V shell (`SharedPokemonEditorContract::layoutFor`, shared with Gen I–V)
+navigates exactly 18 rows; changing that contract is left to the post-acceptance reconciliation.
+
 ## Status per game (host evidence only; NOT DEVICE TESTED)
 
 `docs/gen6-plus/CAPABILITY_MATRIX.md` (generated) is the 12-column table. Summary:

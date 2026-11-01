@@ -83,6 +83,9 @@ enum class Region : uint8_t { Box, Party };
         case Field::MoveCompatibility:
         case Field::EncounterLegality:
         case Field::Provenance:
+        // PA8.cs HyperTrainFlags 0x13E: shown, not edited (cached stats need a pinned PLA base-stat table;
+        // PKHeX also requires a HOME tracker before PLA Hyper Training is valid).
+        case Field::HyperTraining:
             return FieldState::ReadOnly;
         case Field::Pokerus:  // stored, unused by Legends: Arceus
         case Field::EV:       // stored, unused (Effort Levels replace EVs)

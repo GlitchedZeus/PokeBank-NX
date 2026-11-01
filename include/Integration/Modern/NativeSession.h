@@ -92,6 +92,9 @@ struct RecordView {
     uint16_t metLocation = 0, eggLocation = 0;
     Date metDate{}, eggDate{};
     std::array<uint8_t, 2> types{0xFF, 0xFF};   // canonical type ids, 0xFF unknown
+    // Hyper Training flags as stored natively (PKHeX IHyperTrain bit order HP0 Atk1 Def2 SpA3 SpD4 Spe5);
+    // 0 when none or when the format has no Hyper Training (Gen VI).
+    uint8_t hyperTrainFlags = 0;
     std::vector<std::pair<std::string, std::string>> nativeFacts;
 };
 

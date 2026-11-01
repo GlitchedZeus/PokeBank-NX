@@ -224,18 +224,32 @@ std::string bagItemLabel(const TrainerViewScreen& screen, uint16_t id) {
 // per-field states (session.fieldState) and the staging calls; every change goes through the
 // adapter's draft bracket.
 enum DetailRow : int {
-    Species = 0, Nickname, Level, Experience, OriginalTrainer, TrainerId, SecretId, HeldItem, Friendship,
+    // The shared Gen V shell has exactly 18 DETAILS rows (SharedPokemonEditorContract::layoutFor, shared with
+    // Gen I-V and not changed by this lane). Experience is read-only in every modern provider, so its value is
+    // shown inside the Level row and its slot carries Hyper Training (next to Level, which gates it).
+    Species = 0, Nickname, Level, HyperTraining, OriginalTrainer, TrainerId, SecretId, HeldItem, Friendship,
     Language, Origin, Ball, MetLevel, MetLocation, Pokerus, Form, OriginalTrainerGender, FatefulEncounter,
     RowCount
 };
 constexpr std::array<const char*, RowCount> kDetailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID", "Held Item", "Friendship",
+    "Species", "Nickname", "Level", "HyperTrain", "OT", "Trainer ID", "SID", "Held Item", "Friendship",
     "Language", "Origin", "Ball", "Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful"}};
 constexpr std::array<MField, RowCount> kDetailFields{{
-    MField::Species, MField::Nickname, MField::Level, MField::Experience, MField::OriginalTrainer,
+    MField::Species, MField::Nickname, MField::Level, MField::HyperTraining, MField::OriginalTrainer,
     MField::TrainerId, MField::SecretId, MField::HeldItem, MField::Friendship, MField::Language,
     MField::OriginGame, MField::Ball, MField::MetLevel, MField::MetLocation, MField::Pokerus, MField::Form,
     MField::OriginalTrainerGender, MField::FatefulEncounter}};
+static_assert(RowCount == 18, "the shared Gen V shell navigates exactly 18 DETAILS rows");
+// Shared stat order (HP Atk Def Spe SpA SpD) -> native Hyper Training bit (PKHeX IHyperTrain HP0 Atk1 Def2 SpA3
+// SpD4 Spe5), and the text every view shows for a flag byte.
+constexpr std::array<uint8_t, 6> kHyperTrainBit{{0, 1, 2, 5, 3, 4}};
+constexpr std::array<const char*, 6> kHyperTrainStat{{"HP", "Atk", "Def", "Spe", "SpA", "SpD"}};
+inline std::string hyperTrainingText(uint8_t flags) {
+    std::string out;
+    for (size_t stat = 0; stat < 6; ++stat)
+        if ((flags >> kHyperTrainBit[stat]) & 1) out += (out.empty() ? "" : ", ") + std::string(kHyperTrainStat[stat]);
+    return out.empty() ? std::string("None") : out;
+}
 
 struct ModernEditor {
     using Record = Modern::RecordView;
@@ -364,8 +378,7 @@ struct ModernEditor {
             case Species: return std::string(Names::getSpeciesName(p.species)) + " #" + std::to_string(p.species);
             case Nickname: return p.nickname.empty() ? std::string("(none)") : p.nickname;
             case OriginalTrainer: return p.otName.empty() ? std::string("(none)") : p.otName;
-            case Level: return std::to_string(p.level);
-            case Experience: return std::to_string(p.experience);
+            case Level: return std::to_string(p.level) + " • EXP " + std::to_string(p.experience);
             case TrainerId: return std::to_string(p.tid);
             case SecretId: return std::to_string(p.sid);
             case HeldItem: return p.heldItem == 0 ? "(none)" : Names::getItemName(p.heldItem);
@@ -379,6 +392,7 @@ struct ModernEditor {
             case Form: return p.form == 0 ? "Default" : "Form " + std::to_string(p.form);
             case OriginalTrainerGender: return p.otGender == 0 ? "Male" : "Female";
             case FatefulEncounter: return p.fatefulEncounter ? "Yes" : "No";
+            case HyperTraining: return hyperTrainingText(p.hyperTrainFlags);
             default: return {};
         }
     }
@@ -410,14 +424,6 @@ struct ModernEditor {
             case Level: {
                 const auto r = Utils::promptNumber("Level", p.level, 1, static_cast<int>(maximumOr(screen, MField::Level, 100)));
                 if (r.accepted) (void)stage(screen, MField::Level, 0, static_cast<uint32_t>(r.value));
-                return true;
-            }
-            case Experience: {
-                const auto maximum = s.fieldMaximum(MField::Experience);
-                if (maximum == 0) { readOnly(screen, "Experience"); return true; }
-                const auto r = Utils::promptNumber("Experience", static_cast<int>(std::min<uint32_t>(p.experience, maximum)),
-                                                   0, static_cast<int>(maximum));
-                if (r.accepted) (void)stage(screen, MField::Experience, 0, static_cast<uint32_t>(r.value));
                 return true;
             }
             case TrainerId: case SecretId: {
@@ -464,6 +470,9 @@ struct ModernEditor {
                 return true;
             case FatefulEncounter:
                 (void)stage(screen, MField::FatefulEncounter, 0, p.fatefulEncounter ? 0u : 1u);
+                return true;
+            case HyperTraining:
+                EditorSurface::openPicker(screen, state, PickerTarget::HyperTraining, {0, 1, 2, 3, 4, 5}, 0);
                 return true;
             default:
                 // Origin, Met Location and Form have no verified choice list in this build.
@@ -568,7 +577,7 @@ struct ModernEditor {
         color = Colors::TextDim;
     }
     static Enums::GameVersion moveGame(const TrainerViewScreen& screen) { return screen.trainer.getGameGroup(); }
-    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState&,
+    static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState& state,
                                    PickerTarget target, uint16_t value) {
         switch (target) {
             case PickerTarget::Species: return EditorSurface::dexLabel(value);
@@ -579,6 +588,12 @@ struct ModernEditor {
             case PickerTarget::Form: return value == 0 ? "Default" : "Form " + std::to_string(value);
             case PickerTarget::Move: return MoveUI::numberedName(value);
             case PickerTarget::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
+            case PickerTarget::HyperTraining: {
+                if (value >= 6) return std::to_string(value);
+                const auto p = preview(screen, state);
+                const bool on = p && ((p->hyperTrainFlags >> kHyperTrainBit[value]) & 1);
+                return std::string(kHyperTrainStat[value]) + (on ? ": trained (A clears)" : ": not trained (A trains)");
+            }
             default: return std::to_string(value);
         }
     }
@@ -590,6 +605,11 @@ struct ModernEditor {
             case PickerTarget::Ball: return stage(screen, MField::Ball, 0, value);
             case PickerTarget::Nature: return stage(screen, MField::Nature, 0, value);
             case PickerTarget::Move: return stage(screen, MField::Move, static_cast<size_t>(state.moveEditorSlot), value);
+            case PickerTarget::HyperTraining: {
+                const auto p = preview(screen, state);
+                if (!p || value >= 6) return false;
+                return stage(screen, MField::HyperTraining, 0, p->hyperTrainFlags ^ (1u << kHyperTrainBit[value]));
+            }
             default: return false;
         }
     }

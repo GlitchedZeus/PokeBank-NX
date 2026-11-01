@@ -124,10 +124,10 @@ constexpr int kActionTouchBase = 79000;
 constexpr int kPartyTouchBase = 79400;
 constexpr int kTrainerRowTouchBase = 82000;
 constexpr int kFriendshipRow = 8;   // ModernSharedSurface DetailRow::Friendship
-// Edit opens focused on the first editable DETAILS row (Nickname, row 1) and Down skips the rows
-// the Gen VI provider marks read-only: Level 2, OT 4, Trainer ID 5, SID 6, Held Item 7,
-// Friendship 8, so Friendship is six presses away.
-constexpr int kDownsToFriendship = 6;
+// Edit opens focused on the first editable DETAILS row (Nickname, row 1); Down visits every row the
+// Gen VII provider marks editable: Level 2, Hyper Training 3, OT 4, Trainer ID 5, SID 6, Held Item 7,
+// Friendship 8, so Friendship is seven presses away.
+constexpr int kDownsToFriendship = 7;
 
 
 constexpr size_t P(BagPocket7 p) { return static_cast<size_t>(p); }
@@ -208,6 +208,35 @@ int main() {
     d.press(HidNpadButton_X);
     check(!session.draftActive() && session.stagedAt(SlotRef::party(0)) && trainer->party[0]->otFriendship() == 222,
           "Keep stages the change and refreshes the presentation");
+    // ---- Hyper Training through the same workspace: Level 100 (keypad), then the Hyper Training row ----
+    d.press(HidNpadButton_A);                       // Actions sheet again (View / Edit / ...)
+    d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    check(session.draftActive(), "Edit reopens a draft for Hyper Training");
+    d.press(HidNpadButton_Down);                    // Nickname -> Level (editable in SM/USUM)
+    HostUi::numbers.push_back({true, 100});
+    d.press(HidNpadButton_A);
+    check(session.view(SlotRef::party(0))->level == 100, "the Level keypad staged level 100");
+    d.press(HidNpadButton_Down);                    // Level -> Hyper Training (row 3, editable in SM/USUM)
+    check(drawn("HyperTrain") && drawn("None"), "the HyperTrain row is drawn in full and shows None");
+    check(drawnContaining("EXP"), "the Level row shows the stored EXP");
+    d.press(HidNpadButton_A);
+    check(drawnContaining("Hyper Training: toggle a stat") && drawnContaining("Atk: not trained"),
+          "A opens the stat picker");
+    const auto atkBefore = session.view(SlotRef::party(0))->stats[1];
+    d.press(HidNpadButton_Down);                    // HP -> Atk
+    d.press(HidNpadButton_A);
+    check(session.view(SlotRef::party(0))->hyperTrainFlags == 0x02, "choosing Atk trains Atk (bit 1)");
+    check(session.view(SlotRef::party(0))->stats[1] > atkBefore, "the party Atk stat is recomputed with IV 31");
+    d.frame();
+    check(drawnContaining("Atk"), "the row shows the trained stat");
+    d.press(HidNpadButton_X);
+    check(!session.draftActive() && session.stagedAt(SlotRef::party(0)), "Keep stages Hyper Training");
+    bool reviewRow = false;
+    for (const auto& r : session.reviewRows())
+        reviewRow |= (r.label + r.value).find("Hyper Training -> Atk") != std::string::npos;
+    check(reviewRow, "Review lists the Hyper Training change");
+
     d.press(HidNpadButton_B);   // Party -> hub
     check(!screen.detailViewActive, "back on the hub");
 

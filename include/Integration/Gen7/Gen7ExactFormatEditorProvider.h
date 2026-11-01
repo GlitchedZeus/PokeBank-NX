@@ -44,6 +44,9 @@ enum class RecordRegion : uint8_t { Box, Party };
         case Field::EV:
         case Field::Nature:
         case Field::Level:  // staged as the growth-rate minimum EXP
+        // PK7.cs HyperTrainFlags 0xDE. Box records carry no cached stats; party stats are recomputed
+        // hyper-training aware (Gen7Stats.h). PKHeX HyperTrainingVerifier rules are enforced on set.
+        case Field::HyperTraining:
             return State::Editable;
         case Field::Shiny:  // PSV == TSV (xor < 16), as in Gen VI
             return State::Derived;

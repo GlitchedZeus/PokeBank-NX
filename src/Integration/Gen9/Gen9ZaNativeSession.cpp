@@ -101,6 +101,7 @@ std::optional<Modern::RecordView> Gen9ZaNativeSession::view(Modern::SlotRef slot
         v.relearnMoves[i] = PK8::read16(plain, 0x82 + 2 * i);
     }
     v.ball = mon->ball();
+    v.hyperTrainFlags = static_cast<uint8_t>(mon->plain()[0x126] & 0x3F);  // PA9.cs HyperTrainFlags 0x126
     v.language = plain[0xD5];  // PA9 language (PKHeX PA9.cs), not the PK8 offset
     v.friendship = mon->originalTrainerFriendship();
     v.pokerus = mon->pokerus();

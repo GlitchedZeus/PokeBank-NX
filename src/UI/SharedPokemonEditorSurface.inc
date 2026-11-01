@@ -68,7 +68,8 @@ namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
 
 enum class PickerTarget : uint8_t {
-    None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
+    None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability,
+    HyperTraining   // Gen VII+ adapters only: the six stats, choosing one toggles its flag
 };
 
 // Editor focus, picker and move-editor state shared by every generation.
@@ -178,6 +179,7 @@ const char* pickerTitle(PickerTarget target) noexcept {
         case PickerTarget::Move: return "Choose Move";
         case PickerTarget::Nature: return "Choose Nature";
         case PickerTarget::Ability: return "Choose Ability";
+        case PickerTarget::HyperTraining: return "Hyper Training: toggle a stat";
         default: return "Choose Value";
     }
 }
@@ -237,7 +239,7 @@ inline bool compactPicker(PickerTarget target) noexcept {
     return target == PickerTarget::Language || target == PickerTarget::Ball ||
            target == PickerTarget::MetLocation || target == PickerTarget::Nature ||
            target == PickerTarget::Ability || target == PickerTarget::Pokerus ||
-           target == PickerTarget::Form;
+           target == PickerTarget::Form || target == PickerTarget::HyperTraining;
 }
 
 // R2-SEARCH: the species chooser filters the game's NATIVE species list (pickerValues) by the

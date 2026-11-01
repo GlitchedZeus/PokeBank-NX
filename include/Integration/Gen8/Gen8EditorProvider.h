@@ -75,6 +75,10 @@ enum class RecordRegion : uint8_t { Box, Party };
         case Field::MoveCompatibility:
         case Field::EncounterLegality:
         case Field::Provenance:
+        // G8PKM/PK9/PA9 HyperTrainFlags 0x126: shown, not edited. Setting a flag changes the effective IV of
+        // the cached battle stats every record carries, and this build has no PKHeX-pinned per-form base-stat
+        // table to recompute them (BaseStatsGen89 is species-only, not PKHeX-derived).
+        case Field::HyperTraining:
             return State::ReadOnly;
         // Not part of the PK8 format (AV/EffortLevel are Let's Go / Legends mechanics).
         case Field::DV:
@@ -100,7 +104,7 @@ struct ValueLimits {
 };
 inline constexpr ValueLimits Limits{};
 
-inline constexpr std::array<Field, 41> AllFields = {
+inline constexpr std::array<Field, 42> AllFields = {
     Field::Species, Field::Nickname, Field::Form, Field::Gender, Field::Shiny, Field::Language,
     Field::Level, Field::Experience, Field::Friendship, Field::DV, Field::IV,
     Field::StatExperience, Field::EV, Field::AV, Field::EffortLevel, Field::Nature,
@@ -109,7 +113,7 @@ inline constexpr std::array<Field, 41> AllFields = {
     Field::OriginGame, Field::Ball, Field::MetLevel, Field::MetLocation, Field::MetDate,
     Field::Egg, Field::EggLocation, Field::EggDate, Field::MoveCompatibility,
     Field::EncounterLegality, Field::Provenance, Field::OriginalTrainerGender, Field::Move,
-    Field::MovePP, Field::MovePPUps, Field::FatefulEncounter,
+    Field::MovePP, Field::MovePPUps, Field::FatefulEncounter, Field::HyperTraining,
 };
 
 } // namespace PokeVault::Integration::Gen8EditorProvider

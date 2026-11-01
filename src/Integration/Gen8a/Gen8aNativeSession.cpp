@@ -67,6 +67,7 @@ std::optional<Modern::RecordView> Gen8aNativeSession::view(Modern::SlotRef slot)
     v.currentHp = mon->currentHp();
     for (size_t i = 0; i < 4; ++i) v.moves[i] = mon->move(i);
     v.ball = mon->ball();
+    v.hyperTrainFlags = static_cast<uint8_t>(mon->plain()[0x13E] & 0x3F);  // PA8.cs HyperTrainFlags 0x13E
     v.language = mon->language();
     v.friendship = mon->originalTrainerFriendship();
     v.originGame = mon->originVersion();

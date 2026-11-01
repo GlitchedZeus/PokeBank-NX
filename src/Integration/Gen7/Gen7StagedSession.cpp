@@ -48,6 +48,7 @@ std::array<uint8_t, Layout::PartyRecordSize> editMask(RecordRegion region) {
     if (editable(Field::Friendship, region)) m[0xCA] = 0xFF;
     if (editable(Field::Ball, region)) m[0xDC] = 0xFF;
     if (editable(Field::OriginalTrainerGender, region)) m[0xDD] |= 0x80;
+    if (editable(Field::HyperTraining, region)) m[0xDE] |= 0x3F;   // PK7.cs HyperTrainFlags bits 0..5
     return m;
 }
 
@@ -56,6 +57,7 @@ bool statInputsChanged(std::span<const uint8_t> a, std::span<const uint8_t> b) {
     for (size_t i = 0x10; i < 0x14; ++i) if (a[i] != b[i]) return true;
     if (a[0x1C] != b[0x1C]) return true;
     for (size_t i = 0x1E; i < 0x24; ++i) if (a[i] != b[i]) return true;
+    if (a[0xDE] != b[0xDE]) return true;   // a hyper-trained stat uses 31 for its IV
     return (PK7::read32(a, 0x74) & 0x3FFFFFFFu) != (PK7::read32(b, 0x74) & 0x3FFFFFFFu);
 }
 
@@ -139,6 +141,11 @@ bool Gen7StagedSession::stageValue(SlotRef slot, Field field, uint32_t value, si
             if (index >= 6 || value > lim.maxIV) return fail("Gen VII IV stat/value out of range");
             note += std::string("IV ") + StatNames[index] + " -> " + std::to_string(value);
             rec->setIv(index, static_cast<uint8_t>(value));
+            // PKHeX HyperTrainingVerifier flags Hyper Training on a perfect IV: a 31 drops that stat's flag.
+            if (value >= lim.maxIV && ((rec->pk7HyperTrainFlags() >> Stats::HyperTrainBit[index]) & 1)) {
+                rec->setPk7HyperTrainFlags(static_cast<uint8_t>(rec->pk7HyperTrainFlags() & ~(1u << Stats::HyperTrainBit[index])));
+                note += " (Hyper Training cleared)";
+            }
             break;
         case Field::Level: {
             const auto exp = Stats::experienceForLevel(*rec, static_cast<uint8_t>(value > 255 ? 0 : value));
@@ -164,6 +171,27 @@ bool Gen7StagedSession::stageValue(SlotRef slot, Field field, uint32_t value, si
             note += "ball -> " + std::to_string(value);
             rec->setBall(static_cast<uint8_t>(value));
             break;
+        case Field::HyperTraining: {
+            // PKHeX 6501f0ab IHyperTrain/HyperTrainingVerifier: Gen VII minimum level 100, never on an IV
+            // that is already 31, flags bits 0..5. Clearing a flag is always allowed.
+            if (value > 0x3F) return fail("Gen VII Hyper Training flags are six bits");
+            const uint8_t before = rec->pk7HyperTrainFlags(), set = static_cast<uint8_t>(value & ~before);
+            if (set != 0) {
+                const auto lvl = Stats::level(*rec);
+                if (!lvl) return fail("Gen VII Hyper Training needs verified growth data for this species/form");
+                if (*lvl < 100) return fail("Hyper Training requires level 100 in Sun/Moon/Ultra Sun/Ultra Moon");
+                for (size_t stat = 0; stat < 6; ++stat)
+                    if (((set >> Stats::HyperTrainBit[stat]) & 1) && rec->iv(stat) >= lim.maxIV)
+                        return fail(std::string("Hyper Training cannot apply to a perfect ") + StatNames[stat] + " IV");
+            }
+            note += "Hyper Training -> ";
+            bool any = false;
+            for (size_t stat = 0; stat < 6; ++stat)
+                if ((value >> Stats::HyperTrainBit[stat]) & 1) { note += (any ? ", " : "") + std::string(StatNames[stat]); any = true; }
+            if (!any) note += "none";
+            rec->setPk7HyperTrainFlags(static_cast<uint8_t>(value));
+            break;
+        }
         case Field::OriginalTrainerGender:
             if (value > 1) return fail("Gen VII OT gender is a single bit");
             note += "OT gender -> " + std::to_string(value);

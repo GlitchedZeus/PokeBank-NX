@@ -142,6 +142,21 @@ int main() {
         if (row->status(Cap::Workflow::Move).support == Cap::Support::Blocked)
             check(!s.moveSupport(SlotRef::boxed(0, 2)).available, t.id + " registry-blocked Move is refused by the adapter");
 
+        // ---- Hyper Training (PKSE 1.2.2 port): PK6 has none; SM/USUM edit it (stats recomputed); every other
+        //      format shows it read-only because its cached stats cannot be recomputed from a pinned table ----
+        {
+            const bool gen6 = t.id == "x_3ds" || t.id == "y_3ds" || t.id == "omegaruby_3ds" || t.id == "alphasapphire_3ds";
+            const bool gen7 = t.id == "sun_3ds" || t.id == "moon_3ds" || t.id == "ultrasun_3ds" || t.id == "ultramoon_3ds";
+            const auto ht = s.fieldState(Field::HyperTraining, Modern::Region::Box);
+            check(ht == (gen6 ? Modern::FieldState::Hidden : gen7 ? Modern::FieldState::Editable : Modern::FieldState::ReadOnly),
+                  t.id + " Hyper Training field state");
+            std::string htError;
+            if (!gen7)
+                check(!s.stageValue(SlotRef::party(0), Field::HyperTraining, 0x01, 0, htError) && !s.hasChanges(),
+                      t.id + " Hyper Training is never staged where it is not editable");
+            check(s.view(SlotRef::party(0)) && s.view(SlotRef::party(0))->hyperTrainFlags <= 0x3F, t.id + " flags are six bits");
+        }
+
         // ---- team / partner restrictions ----
         if (t.teams == Title::Teams::BattleTeamBox1Slot2) {
             const auto r = s.removeSupport(SlotRef::boxed(0, 1));

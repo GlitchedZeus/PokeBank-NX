@@ -82,6 +82,7 @@ enum class RecordRegion : uint8_t { Box, Party };
         case Field::AV:
         case Field::EffortLevel:
         case Field::StatNature:
+        case Field::HyperTraining:   // introduced in Gen VII (PKHeX IHyperTrain is PK7+)
             return State::Hidden;
     }
     return State::Hidden;
@@ -165,7 +166,7 @@ struct Gen6EditorDescriptor {
 }
 
 // Every shared field identity, for exhaustive tests and the integration patch.
-inline constexpr std::array<Field, 41> AllFields = {
+inline constexpr std::array<Field, 42> AllFields = {
     Field::Species, Field::Nickname, Field::Form, Field::Gender, Field::Shiny, Field::Language,
     Field::Level, Field::Experience, Field::Friendship, Field::DV, Field::IV,
     Field::StatExperience, Field::EV, Field::AV, Field::EffortLevel, Field::Nature,
@@ -174,7 +175,7 @@ inline constexpr std::array<Field, 41> AllFields = {
     Field::OriginGame, Field::Ball, Field::MetLevel, Field::MetLocation, Field::MetDate,
     Field::Egg, Field::EggLocation, Field::EggDate, Field::MoveCompatibility,
     Field::EncounterLegality, Field::Provenance, Field::OriginalTrainerGender, Field::Move,
-    Field::MovePP, Field::MovePPUps, Field::FatefulEncounter,
+    Field::MovePP, Field::MovePPUps, Field::FatefulEncounter, Field::HyperTraining,
 };
 
 } // namespace PokeVault::Integration::Gen6EditorProvider

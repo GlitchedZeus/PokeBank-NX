@@ -269,6 +269,23 @@ folder appears under `exports/`; Discard All still works; B-exit still guards.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+### G7-04 · Battle Box teams are protected
+**Steps:** On a Sun/Moon/Ultra save with a Battle Box team, open Boxes, select a team member → Move / Release;
+if the team is locked, also try Edit.
+**Expected:** Move and Release are refused with "in a Gen VII Battle Box team"; a locked team member cannot be
+edited; Pokémon outside every team move normally.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### G7-05 · Hyper Training (shared editor)
+**Steps:** Edit a level-100 Pokémon → Details row "HyperTrain" → A → pick a stat whose IV is below 31 → Keep →
+Review. Repeat on a level < 100 Pokémon and on a stat with IV 31.
+**Expected:** The flag is staged, the party stat rises as if the IV were 31, Review lists "Hyper Training -> …";
+below level 100 or on a 31 IV the editor refuses with the reason. (Export stays blocked for SAV7.) On Switch
+titles the HyperTrain row is read-only.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Group G7b · Pokémon Let's Go Pikachu / Eevee (linked `main` file)
 
 Prerequisite: a COPY of the game's `main` (0xB8800 or 1 MiB) on the SD card, exported by your save manager.

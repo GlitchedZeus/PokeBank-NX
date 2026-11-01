@@ -86,6 +86,7 @@ std::optional<Modern::RecordView> Gen7bNativeSession::view(Modern::SlotRef slot)
         v.relearnMoves[i] = PK6::read16(p, 0x6A + 2 * i);
     }
     v.ball = mon->ball();
+    v.hyperTrainFlags = static_cast<uint8_t>(mon->plain()[0xDE] & 0x3F);   // PB7.cs HyperTrainFlags 0xDE
     v.language = mon->language();
     v.friendship = mon->originalTrainerFriendship();
     v.originGame = mon->originVersion();
