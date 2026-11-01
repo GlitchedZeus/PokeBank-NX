@@ -82,6 +82,8 @@ inline constexpr std::array<Choice, 5> ThreeDS{{
     if (selected.empty()) return true;
     if (selected == "DraStic")
         return candidate == "DraStic" || candidate == "DraStic Savestate";
+    if (selected == "RetroArch")
+        return candidate == "RetroArch" || candidate == "RetroArch/DeSmuME";
     return candidate == selected;
 }
 } // namespace PokeBank::UIModel::LinkEmulator
