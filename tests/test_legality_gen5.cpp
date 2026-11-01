@@ -434,13 +434,17 @@ int main() {
         if(invalid.verdict()!=Verdict::Invalid || !hasText(invalid,Severity::Invalid,"Hidden ability flag"))
             fail("evolved XD origin with hidden flag: expected Invalid",invalid);
         if(ci!=original)fail("hidden flag regression modified input",invalid);
+        auto valueOnly=ci;valueOnly[0x42]&=0xFE;refreshChecksum(valueOnly);
+        const auto invalidValue=Legality::analyzePk5(valueOnly,{.encrypted=false});
+        if(invalidValue.verdict()!=Verdict::Invalid || !hasText(invalidValue,Severity::Invalid,"hidden-only ability"))
+            fail("evolved XD origin with hidden-only value but no flag: expected Invalid",invalidValue);
         for(uint8_t ability:{uint8_t(5),uint8_t(69)}) {
             auto ordinary=ci;ordinary[0x42]&=0xFE;ordinary[0x15]=ability;refreshChecksum(ordinary);
             const auto report=Legality::analyzePk5(ordinary,{.encrypted=false});
             if(report.verdict()!=Verdict::NoProblemsFound)
                 fail("evolved XD origin with ordinary ability: expected clean",report);
         }
-        checked+=3;
+        checked+=4;
     }
 
     // Fuzz: random bytes at every size class (both decoding paths), then single-byte
