@@ -869,6 +869,26 @@ def main():
             mon.status = rng.choice((0x09, 0x18, 0x30, 0x48, 0x80, 0xFF))
             emit("defect2-status", mon)
 
+    # Crystal caught data on unhatched eggs and on Kenya/Shuckle (GBLegality.cpp: an unhatched
+    # Day Care, Togepi or Odd Egg has no met data; the two random-DV gifts carry a male OT bit).
+    # PKHeX accepts an unhatched egg at met level 1 with no location, and checks the OT gender
+    # of the fixed-DV trades only. Controls first in each pair; appended last as well.
+    gifts = [t for t in d.trades if not t["dvs"]]
+    for i in range(max(1, args.count // 200)):
+        if i % 4 < 2:
+            mon = egg_mon(d, rng, False, crystal=True)
+            if i % 4 == 1:
+                mon.caught = caught(rng.randint(1, 3), 1, rng.randrange(2), 0)
+            emit("control2-egg-no-met" if i % 4 == 0 else "defect2-egg-met", mon)
+        else:
+            while True:
+                mon = trade_mon(d, rng, rng.choice(gifts), "trade2")
+                if mon.crystal:
+                    break
+            if i % 4 == 3:
+                mon.caught |= 1 << 7
+            emit("control2-gift-ot-gender" if i % 4 == 2 else "defect2-gift-ot-gender", mon)
+
 
 if __name__ == "__main__":
     main()

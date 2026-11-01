@@ -1099,6 +1099,67 @@ void statusAndBoxLevelRules() {
     }
 }
 
+// Crystal caught data, judged on the engine (checkGen2): an unhatched Day Care egg has none,
+// and Kenya carries a male OT bit with its gift met data.
+void caughtDataRules() {
+    auto problemsText = [](const GB::Result& r) {
+        std::string t;
+        for (const auto& pr : r.problems)
+            t += pr.text + "; ";
+        return t;
+    };
+    GB::Entity2 egg;
+    egg.species = 1;  // Bulbasaur, hatch cycles 20
+    egg.level = 5;
+    egg.exp = gameExp(MediumSlow, 5);
+    egg.moves = {33, 45, 0, 0};
+    egg.pp = {35, 40, 0, 0};
+    egg.dvs = {8, 8, 8, 8};
+    egg.tid = 1234;
+    egg.friendship = 20;
+    egg.isEgg = true;
+    egg.otName = "GOLD";
+    egg.nickname = "EGG";
+    egg.language = GB::Language::International;
+    const GB::Result clean = GB::checkGen2(egg);
+    check(clean.status == GB::Status::Legal, "unhatched egg without met data is legal: " + problemsText(clean));
+    unsigned shaped = 0;
+    for (unsigned c = 1; c < 0x10000; ++c) {
+        egg.caughtData = static_cast<uint16_t>(c);
+        const GB::Result r = GB::checkGen2(egg);
+        check(r.status != GB::Status::Legal, "unhatched egg with caught data " + std::to_string(c));
+        const unsigned time = c >> 14, level = (c >> 8) & 0x3F, location = c & 0x7F;
+        if (time >= 1 && level == 1 && location == 0) {  // the shape PKHeX accepts
+            ++shaped;
+            check(r.status == GB::Status::Illegal && hasText(r.problems, "An unhatched Day Care, Togepi or Odd Egg"),
+                  "unhatched egg at met level 1, no location: " + problemsText(r));
+        }
+    }
+    check(shaped == 6, "PKHeX-shaped egg met data count");
+
+    GB::Entity2 kenya;
+    kenya.species = 21;  // Spearow, given at level 10 on Route 35
+    kenya.level = 10;
+    kenya.exp = gameExp(MediumFast, 10);
+    kenya.moves = {64, 45, 43, 0};  // Peck, Growl, Leer
+    kenya.pp = {35, 40, 30, 0};
+    kenya.dvs = {9, 4, 12, 3};
+    kenya.tid = 1001;
+    kenya.friendship = 70;
+    kenya.otName = "RANDY";
+    kenya.nickname = "KENYA";
+    kenya.language = GB::Language::International;
+    kenya.caughtData = 126;  // time 0, level 0, male, LANDMARK_GIFT
+    const GB::Result male = GB::checkGen2(kenya);
+    check(male.status == GB::Status::Legal, "Crystal Kenya with a male OT bit: " + problemsText(male));
+    kenya.caughtData = 126 | 0x80;
+    const GB::Result female = GB::checkGen2(kenya);
+    check(female.status == GB::Status::Illegal && hasText(female.problems, "This in-game gift records a male"),
+          "Crystal Kenya with a female OT bit: " + problemsText(female));
+    kenya.caughtData = 0;  // Gold/Silver, or met data wiped
+    check(GB::checkGen2(kenya).status == GB::Status::Legal, "Kenya without met data");
+}
+
 void partyStatProduction() {
     using namespace PokeVault::Integration::Gen1;
     // Red save, level-100 Bulbasaur, DVs 8: Attack 119, Defense 119, Speed 111, Special 151.
@@ -1144,6 +1205,7 @@ int main() {
     partyStatProduction();
     currentHpRule();
     statusAndBoxLevelRules();
+    caughtDataRules();
     if (failures != 0) {
         std::fprintf(stderr, "Gen I/II structural legality: %d of %d checks FAILED\n", failures, checks);
         return EXIT_FAILURE;

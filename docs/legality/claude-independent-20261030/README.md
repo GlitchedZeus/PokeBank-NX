@@ -229,6 +229,42 @@ seed: appended controls with a single condition (20 PK1, 30 PK2) are legal in bo
 parity passes. Structural tests: every status value for PK1, fainted PK1, PK2 and PK2 eggs,
 every box-level value, and Red save party and box records (3,899,104 checks).
 
+## Milestone 6: Gen II Crystal caught data (beyond PKHeX)
+
+Unhatched eggs carry no met data. Every egg the games create starts with both caught-data
+bytes at 0:
+- Day Care eggs come from a zero-filled `wEggMon` (pokecrystal `engine/events/daycare.asm`
+  `DayCare_InitBreeding`, whose final stores also clear PokerusStatus and CaughtData).
+- `GiveEgg` (Elm's Togepi egg) adds the egg through `TryAddMonToParty`, which writes 0 to
+  CaughtData.
+- The Odd Egg table stores `db 0, 0, 0 ; Pokerus, Caught data` (`data/events/odd_eggs.asm`).
+
+`SetEggMonCaughtData` (met level 1, time of day, location, player gender) runs only in
+`HatchEggs` (`engine/pokemon/breeding.asm`). Gold/Silver zero the bytes, and link trades copy
+them. PKHeX `VerifyUnhatchedEgg2` accepts an unhatched egg at met level 1 with no location, so
+such eggs are now Invalid here when every origin is a Day Care, Togepi or Odd Egg. Event eggs
+(gift2) are left to their distribution rules.
+
+Kenya and the Mania Shuckle have a male OT bit. `givepoke` reads the byte after `"RANDY@"`
+(`maps/Route35GoldenrodGate.asm`, `db 0`), and `GiveShuckle` loads `CAUGHT_BY_UNKNOWN`. Both
+then call `SetGift*MonCaughtData`, which rotates bit 0 into the gender bit. PKHeX compares the
+OT gender of the fixed-DV in-game trades only. The engine now judges every Gen II in-game
+trade or gift with Crystal met data on its table OT gender, and names the reason.
+
+PKHeX differential (same seed, 60 records appended after the stream):
+- Controls: 14 eggs without met data and 15 male-OT Kenya/Shuckle are legal in both.
+- Defects: 14 PKHeX-shaped egg met data and 15 female-OT gifts are classified
+  `deliberate: egg-met-data` / `gift-ot-gender`. One more egg defect is Invalid in both.
+- One appended control egg, #12264, is the Oddish Absorb/Swords Dance/Synthesis egg that
+  PKHeX rejects as EggMoveCombination. It has the same moves as the hand-verified #9716
+  (Bulbasaur-father ancestry), so it is the same known disagreement.
+- The first 12,240 verdicts are byte-identical to Milestone 5's run, and PK2 production
+  parity passes.
+
+Structural tests cover all 65,535 non-zero caught-data words on an unhatched Bulbasaur egg
+(none is legal, and the 6 PKHeX-shaped ones name the egg rule), plus Kenya with and without
+met data (3,964,650 checks).
+
 ## Gen IV grown corpus (A3)
 
 `tools/pkhex_gen34_diff/run.sh` with PKHeX 26.10.18, seed 2026103102, 3 mutations, Gen IV,

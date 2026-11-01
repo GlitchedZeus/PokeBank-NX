@@ -424,6 +424,7 @@ struct Candidate {
     bool trade1 = false;
     bool gift2 = false;                   // Gen II event distribution
     bool oddEgg = false;
+    uint8_t tradeOtGender = 0;            // Gen II in-game trade or gift: the OT gender bit it writes
     uint8_t eggCycles = 0;                // fixed hatch cycles of a gift egg (0 = species')
     bool partial = false;                 // matched, but trainer/nickname/catch rate disagree
     std::string partialReason;
@@ -1127,12 +1128,15 @@ std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
             continue;
         if (t.dvs[0] != 255 && (!fixedDVsMatch(t.dvs, pk.dvs) || pk.tid != t.tid))
             continue;
+        // Kenya and the Mania Shuckle (random DVs) are kept here and judged on their OT
+        // gender bit below (tradeOtGender), so that the verdict names the reason.
         if (hasMet && (pk.metLocation != kLocationLinkTrade2 || pk.metLevel != 0 ||
                        (t.dvs[0] != 255 && pk.otGender != t.otGender)))
             continue;
         Candidate c;
         c.kind = EncounterKind::Trade;
         c.generation = 2;
+        c.tradeOtGender = t.otGender;
         c.species = t.species;
         c.level = t.level;
         c.versions = Gold | Silver | Crystal;
@@ -1985,7 +1989,17 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
     } else {
         // EncounterVerifier.VerifyEncounterEgg2 / VerifyUnhatchedEgg2: Crystal records eggs at
         // met level 1, with no location until they hatch.
-        if (enc.egg && pk.caught) {
+        // An unhatched Day Care, Togepi or Odd Egg has no met data at all: Day Care eggs start
+        // from a zero-filled wEggMon (pokecrystal engine/events/daycare.asm
+        // DayCare_InitBreeding), GiveEgg zeroes CaughtData in TryAddMonToParty
+        // (engine/pokemon/move_mon.asm), the Odd Egg table stores "db 0, 0, 0 ; Pokerus, Caught
+        // data" (data/events/odd_eggs.asm), and SetEggMonCaughtData runs only when the egg
+        // hatches (engine/pokemon/breeding.asm). Gold/Silver zero the two bytes too, and a link
+        // trade copies them. Event eggs (gift2) are left to their distribution rules.
+        if (enc.egg && pk.egg && pk.caught && !enc.gift2) {
+            ev.problems.push_back({Area::MetData, "An unhatched Day Care, Togepi or Odd Egg has no Crystal met "
+                                                  "data until it hatches"});
+        } else if (enc.egg && pk.caught) {
             if (pk.metLevel != 1)
                 ev.problems.push_back({Area::MetData, "Crystal records a hatched egg at met level 1"});
             else if (pk.egg ? pk.metLocation != 0 : pk.metLocation > 95)
@@ -1994,6 +2008,16 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
         // TrainerNameVerifier.VerifyOTGB: Gen I and non-egg event Pokemon have a male OT.
         if (pk.caught && pk.otGender == 1 && (enc.generation == 1 || (enc.gift2 && !enc.egg)))
             ev.problems.push_back({Area::Trainer, "This origin cannot have a female original trainer"});
+        // Every Gen II in-game trade and gift writes a fixed OT gender bit with its met data.
+        // Kenya and the Mania Shuckle are male: givepoke reads the byte after "RANDY@"
+        // (pokecrystal maps/Route35GoldenrodGate.asm, "db 0") and GiveShuckle loads
+        // CAUGHT_BY_UNKNOWN (engine/events/shuckle.asm) before SetGift*MonCaughtData, which
+        // shifts bit 0 into the gender bit. PKHeX checks the fixed-DV trades only.
+        if (pk.caught && enc.kind == EncounterKind::Trade && enc.generation == 2 &&
+            pk.otGender != enc.tradeOtGender)
+            ev.problems.push_back({Area::Trainer, std::string("This in-game gift records a ") +
+                                                      (enc.tradeOtGender ? "female" : "male") +
+                                                      " original trainer with its Crystal met data"});
         // MiscG1Verifier: Crystal records the time of day, except for gifts and trades.
         if (pk.caught) {
             const bool fixedTime = (enc.gift2 && (!enc.egg || pk.egg)) ||

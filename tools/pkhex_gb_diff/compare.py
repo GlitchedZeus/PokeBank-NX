@@ -398,7 +398,16 @@ DELIBERATE = (
     # neither for PK1/PK2.
     ("status-byte", "VALID", "INVALID", lambda r, ctx, pk, pb: status_byte(r, pb)),
     ("box-level", "VALID", "INVALID", lambda r, ctx, pk, pb: box_level(r, pb)),
+    # Crystal never writes met data to an unhatched egg (SetEggMonCaughtData runs at hatch),
+    # and Kenya and the Mania Shuckle carry a male OT bit (GBLegality.cpp); PKHeX checks neither.
+    ("egg-met-data", "VALID", "INVALID", lambda r, ctx, pk, pb: only_problems(pb, "An unhatched Day Care")),
+    ("gift-ot-gender", "VALID", "INVALID", lambda r, ctx, pk, pb: only_problems(pb, "This in-game gift records a ")),
 )
+
+
+def only_problems(pb, prefix):
+    problems = pokebank_problems(pb[1])
+    return bool(problems) and all(p.startswith(prefix) for p in problems)
 
 
 def game_root(stat_exp):
