@@ -65,7 +65,7 @@ Summary (fill in at the end): PASS ____ / FAIL ____ / NOT TESTED / NO FIXTURE __
 
 ### H03 · Move · Move: Y picks up, A places, B cancels (every generation)
 - **Steps:** In one save per generation you have (I–V), on the Boxes grid pick a Pokémon up (Gen I–IV: Y; Gen V: A → Move), move to an empty slot and press **A**. Repeat once and press **B** instead. Try A on an occupied slot.
-- **Expected:** A places it; B cancels with nothing changed; A on an occupied slot is refused with a message and nothing is overwritten. Y or X while carrying only shows the hint "A places it here, B cancels". The footer reads A Place / L/R Box / B Cancel.
+- **Expected:** A places it; B cancels with nothing changed. A on an occupied slot never overwrites anything: **Gen III and Gen V** refuse it with a message (the carry stays); **Gen IV** swaps the two Pokémon (both kept); **Gen I and Gen II** insert it into the box's list (boxes have no gaps, nothing is lost). Y or X while carrying only shows the hint "A places it here, B cancels". The footer reads A Place / L/R Box / B Cancel.
 - **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED / NO FIXTURE
 - **Game / save used:**
 - **Comment:**

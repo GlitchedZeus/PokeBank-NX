@@ -1,0 +1,5574 @@
+{
+ "areas": [
+  "help-footer-controls",
+  "touch",
+  "launch-quit",
+  "install-home",
+  "settings",
+  "search"
+ ],
+ "issues": [
+  {
+   "id": "PBX-CTL-001",
+   "title": "Left Stick gives no navigation input; held stick repeat (issue #19); D-pad/stick parity",
+   "gens": [
+    "app"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0002",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0020",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0021",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0034",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-01.md"
+    },
+    {
+     "rid": "A0051",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0058",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0059",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0060",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0087",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0088",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0089",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0090",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0091",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0092",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0093",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0094",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0095",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0166",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0167",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0168",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "D0249",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": "LEFT STICK + HOLD",
+     "result": "FAIL",
+     "src": "issue #8 (comment 2026-09-02)"
+    },
+    {
+     "rid": "A0252",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0253",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0254",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0255",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0256",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0257",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0258",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0259",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0260",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0261",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0262",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0263",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0375",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0376",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0377",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0378",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0379",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0380",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0381",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0382",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0383",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0384",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0385",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0386",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0387",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0534",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0622",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "G-1",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0645",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A12",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0685",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C18",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0701",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D15",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0729",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "G02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0835",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "navigation",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0870",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG10",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0811",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "navigation",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0584",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Controller",
+     "result": "n/a",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "D0067",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": "H02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_6ec5ccb9.md (same items in RETEST_ROUND8_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0265",
+     "round": "PRE",
+     "candidate": "0ea98cc1",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #19 (comment 2026-09-06)"
+    },
+    {
+     "rid": "E0017",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H18",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0018",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H19",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "A0150",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0225",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0343",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "B0044",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0045",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0047",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0104",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N01",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0105",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N02",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0107",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N04",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0362",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N01",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0363",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N02",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0365",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N04",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0524",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "N01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0525",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "N02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0527",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "N04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0650",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0651",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0653",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0058",
+     "text": "FAIL — no input/action"
+    },
+    {
+     "rid": "D0265",
+     "text": "User report: Left Stick now works on hardware. Right Stick remains intentionally deferred and is not part of this issue."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner reported Left Stick working on 0ea98cc1 (issue #19 comment 2026-09-06, D0265; #19 closed). Latest owner result R11 3634d1e6 H18 'D-pad and joystick parity' PASS (E0017) and H19 'B closes nested menus' PASS (E0018). Current source: include/UI/NavigationRepeat.h:41-158 (AnalogNavigation converts left stick with hysteresis into the shared D-pad repeat engine, CG10). NavigationRepeat.h has no commits between 3634d1e6 and 066e1db9.",
+   "repair_commits": [
+    "16ecd415 fix(ui): use PokeBank analog navigation in keyboard",
+    "98f57b82 fix: restore Gen III analog menu navigation",
+    "57fb0ace fix(gen1): pass held keys and the stick to the Gen I read-only View"
+   ],
+   "automated_tests": [
+    "tests/test_navigation_repeat.cpp : first move immediate, held repeat after INITIAL_DELAY_MS then every REPEAT_INTERVAL_MS, never a burst (CG10 single repeat engine)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H18: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H18 (D-pad and joystick parity)",
+   "r12_checklist_item": null,
+   "next_action": "None required; keep H18 parity in the R12/R13 smoke set. Gen I long-list stick repeat request (A0534, 6ecd9c28) is subsumed by H18."
+  },
+  {
+   "id": "PBX-CTL-002",
+   "title": "Inherited L/R account switching and inert ZL/ZR (controller normalization #26); L/R Profile in full Games browser",
+   "gens": [
+    "app"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0023",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0072",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0073",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0128",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0129",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0130",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0131",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0173",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0174",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0388",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0389",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0390",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0392",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "B0003",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0071",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C04",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0141",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0164",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0194",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0261",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0329",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C04",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0379",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0487",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0617",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0604",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #9",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0578",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-09",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0690",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-09",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0128",
+     "text": "switches accounts"
+    },
+    {
+     "rid": "A0072",
+     "text": "account switching in tested context"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R1 7fea1797 C04 'L/R behave correctly' PASS (Home changes games, no accidental save opening) and R3 62a2f8c3 C04 PASS (B0487). Current Product Home footer src/UI/SaveSelectScreen.cpp:5314-5315 'L/R Change Game'; Games browser keeps 'L/R Profile' only when >1 user (SaveSelectScreen.cpp:4855, 4892), documented limitation B0164. Guard: tests/test_home_input_guard.cpp (L/R/ZL/ZR never quit). R11 SaveSelectScreen commits (aace6021, c21d3747, 98b6deaf) do not touch L/R routing.",
+   "repair_commits": [
+    "(issue #26 normalization; P0 #320 Home input guard in 7fea1797)"
+   ],
+   "automated_tests": [
+    "tests/test_home_input_guard.cpp : A,B,R,L,ZL,ZR,X, D-pad never quit; only Y in the visible decision",
+    "tests/test_hw_round1_regression_gate.py : C04 frozen guards"
+   ],
+   "last_owner_result": "R3/62a2f8c3/C04: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 C04",
+   "r12_checklist_item": null,
+   "next_action": "None; optional: confirm Games-browser L/R Profile on a 2-profile console (never explicitly checked)."
+  },
+  {
+   "id": "PBX-CTL-003",
+   "title": "Inherited Boxes face buttons: X sorts by Dex, Y opens Menu/Move/Multi; X/Y inert on Select Game",
+   "gens": [
+    "app"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0070",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0071",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0096",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0097",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0099",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0100",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0170",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0171",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0393",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0394",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0395",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0396",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0070",
+     "text": "Dex-sort behavior"
+    },
+    {
+     "rid": "A0071",
+     "text": "inherited Menu / Move / Multi"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Boxes X/Y have been redefined twice; the inherited Dex-sort X is gone. Current: X = Export (occupied) / Import (empty) via SharedPokemonEditorContract boxActivation (dd69bc93, Round 11 Extra 4), Y = pick up to move in Gen I-IV (include/UI/ClassicHelpPresentation.h Page::Pokemon rows, Round 11 H23). The Y pick-up passed R11 H23 (move-carry area) but X semantics are new in 066e1db9 and have no owner result.",
+   "repair_commits": [
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V",
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels"
+   ],
+   "automated_tests": [
+    "tests/test_classic_help_accuracy.cpp : Help names only controls that act; Pokemon page names X Export/Import in every generation",
+    "tests/test_footer_help_handlers.py : every footer key token has a handler in that screen's input layer"
+   ],
+   "last_owner_result": "PRE/3be4de6b: FAIL (inherited behaviour); no owner result for the current X mapping",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05 (X Export/Import) and H03 (Y pick-up)",
+   "r12_checklist_item": "H05",
+   "next_action": "Owner runs R12 H05 (X on occupied/empty slot in each generation) and H03."
+  },
+  {
+   "id": "PBX-CTL-004",
+   "title": "Right Stick has no action (future model rotation, #25)",
+   "gens": [
+    "app"
+   ],
+   "area": "help-footer-controls",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0074",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0102",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0169",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0406",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0265",
+     "text": "User report: Left Stick now works on hardware. Right Stick remains intentionally deferred and is not part of this issue."
+    }
+   ],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "No right-stick handling exists outside the left-stick AnalogNavigation path (include/UI/NavigationRepeat.h:73-158 samples the left stick only). Owner: 'Right Stick remains intentionally deferred' (issue #19, D0265) - deferral, not a recorded won't-support decision.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/3be4de6b: no action observed (not a failure)",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner decision: keep deferred past v1.0 or schedule #25 (model rotation)."
+  },
+  {
+   "id": "PBX-CTL-005",
+   "title": "Bottom controller-hint bar low contrast in OLED Black/Dark; hints should stand out (coloured button glyphs)",
+   "gens": [
+    "app"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0024",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0401",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0402",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0403",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0404",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0195",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PARTIAL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0196",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0203",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0407",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0408",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0409",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0410",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0411",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0412",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0413",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "B0435",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-013",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0540",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-013",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0541",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-013",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0679",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-013",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0195",
+     "text": "NEEDS POLISH"
+    },
+    {
+     "rid": "B0540",
+     "text": "Some windows still need light cleanup."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Coloured controller glyph badges replaced plain text (R2-BUG-013: 11b185d4, 678627f, 796ba212). Owner R3 62a2f8c3 R2-BUG-013 'Colored controller buttons in Help' PASS with note 'Some windows still need light cleanup' (B0540; polish tracked under PBX-CTL-010). Contrast in OLED Black/Dark specifically was not re-scored after the PRE PARTIAL. Also holds the PRE '+ / -' and Help-readability acceptance rows (A0024, A0401-A0404): + Options and - Help PASSed on 3be4de6b (A0007/A0008/A0039/A0040).",
+   "repair_commits": [
+    "11b185d4 feat(ui): GlyphInstruction splits help rows and instruction prose into button badges (R2-BUG-013)",
+    "678627f fix(ui): R2-BUG-013 Gen I-III Inventory Help draws button glyphs",
+    "796ba212 feat(ui): button badges in help and modal text; provider names in sessions; profile focus kept"
+   ],
+   "automated_tests": [
+    "tests/test_glyph_instruction.cpp : every controller button named in Help/modal text is a coloured badge, never plain A/B/X/Y text"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-BUG-013: PASS (note-qualified)",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 R2-BUG-013",
+   "r12_checklist_item": null,
+   "next_action": "Optional: owner glance at footer contrast in OLED Black and Dark during R12 (H01 invites two themes)."
+  },
+  {
+   "id": "PBX-CTL-006",
+   "title": "Gen I editor step navigation confusing (R bumper as next step); L/R sections, A edit, B back",
+   "gens": [
+    "I"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2 (574d604b)",
+   "occurrences": [
+    {
+     "rid": "A0523",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "2",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0546",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner accepted 'L/R panel navigation' on 69668bc8 (GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14, A0546). Gen I editor overlay changed in Round 11 (src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc 121 lines, Cleanup3, UX.inc in 3634d1e6..066e1db9).",
+   "repair_commits": [
+    "(Gen I UX cleanup series, PR #66, accepted at 69668bc8)"
+   ],
+   "automated_tests": [
+    "tests/test_gen1_view_navigation.cpp : Gen I View navigation keys"
+   ],
+   "last_owner_result": "PRE/69668bc8: PASS",
+   "hardware_acceptance_candidate": "69668bc8 (PRE Gen I acceptance); recheck on 066e1db9",
+   "r12_checklist_item": null,
+   "next_action": "Include a Gen I Edit L/R panel pass in the R12 smoke (H18)."
+  },
+  {
+   "id": "PBX-CTL-007",
+   "title": "Gen I/II Create footer 'X Stage Add' wording and Gen II box A/X control parity with Gen I",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (501093ae)",
+   "occurrences": [
+    {
+     "rid": "D0296",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #68 (comment 2026-09-15)"
+    },
+    {
+     "rid": "D0297",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-15)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0296",
+     "text": "- **Create footer wording:** `X Stage Add` should become user-facing `X Add` (or equivalent concise PokeBank wording). Keep staging semantics under the hood."
+    },
+    {
+     "rid": "D0297",
+     "text": "- **Gen II box/footer parity:** live GSC box screen still does not use the same A/X control language as Gen I. Empty-slot entry is still behaviorally different."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Accepted on cfb70357 (PR #68 body: 'cfb70357 accepted'). The X key on the box grid was redefined in 066e1db9 (dd69bc93: X = Export/Import, no longer Add), so the accepted footer wording is superseded.",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS (supersedes X Add)"
+   ],
+   "automated_tests": [
+    "tests/test_footer_help_handlers.py : footer tokens match handlers"
+   ],
+   "last_owner_result": "PRE/cfb70357: PASS",
+   "hardware_acceptance_candidate": "cfb70357 (PRE); recheck 066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "Verify Gen I/II box footers in R12 H05."
+  },
+  {
+   "id": "PBX-CTL-008",
+   "title": "Gen V editor navigation differs from Gen I-IV; moving focus changes values (P1)",
+   "gens": [
+    "V"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE P1 (35cbf163)",
+   "occurrences": [
+    {
+     "rid": "A0929",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P1",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Gen V View/Edit/Create runs through the one shared editor surface (5d8b833e, de22e35f, both in 7fea1797). No owner result records this specific behaviour (focus movement not changing values) as PASS; later Gen V edit PASSes (e.g. R6 C12, R11 H24) are indirect. Flagged safety-critical because an unintended value change would alter a Pokemon on Keep.",
+   "repair_commits": [
+    "5d8b833e refactor(ui): extract the Gen IV editor workspace into one shared editor surface",
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface"
+   ],
+   "automated_tests": [
+    "(shared editor contract tests; no test named for focus-without-mutation found)"
+   ],
+   "last_owner_result": "PRE/35cbf163/P1: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist); verify on 066e1db9",
+   "r12_checklist_item": null,
+   "next_action": "Add an explicit Gen V Edit step: move focus across every field with D-pad/stick, then Review shows no change."
+  },
+  {
+   "id": "PBX-CTL-009",
+   "title": "P0 #320 global input regression: A exits without warning, R opens current save, Gen II Create A/B misrouted",
+   "gens": [
+    "app",
+    "II"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (a0633b6d)",
+   "occurrences": [
+    {
+     "rid": "D0216",
+     "round": "PRE",
+     "candidate": "a0633b6d",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #320 (body 2026-10-16)"
+    },
+    {
+     "rid": "D0217",
+     "round": "PRE",
+     "candidate": "a0633b6d",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #307 (comment 2026-10-16)"
+    },
+    {
+     "rid": "D0236",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C01–C09",
+     "result": "PASS",
+     "src": "issue #320 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0000",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0068",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C01",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0191",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0258",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0326",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C01",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0376",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0614",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0027",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A28",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "B0008",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C09",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0076",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C09",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0199",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0266",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0334",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C09",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0384",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0492",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C09",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0622",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C09",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0246",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0247",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0216",
+     "text": "the controls for the whole app now have changed and they get fucked up and A exits now without warning whenit should never do that hell a advances in the app its does go back to quit so it makes no sense this is bugged, hell i just pressed the R trigger and it opened the current save, like what the hell i cant find bugs when i cant even navigate the app"
+    },
+    {
+     "rid": "D0236",
+     "text": "Owner explicitly marked C01–C09 PASS, including A selection, B guarded quit, launch confirmation, L/R navigation, Gen II Create A/B, blocked background popup input, deliberate Y confirmation and second controller."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner marked C01-C09 PASS on R1 7fea1797 (issue #320 comment 2026-10-17, D0236). R3 62a2f8c3: C09 PASS (B0492), C04 PASS; C01 FAIL only for the Gen V Choose-Save behaviour (tracked as PBX-CTL-011). Home guard source: include/UI/HomeQuitConfirm.h:19-37 (decide(): only Y commits, A/B stay, A+Y stays).",
+   "repair_commits": [
+    "(P0 #320 repairs landed in 7fea1797; Home input guard)"
+   ],
+   "automated_tests": [
+    "tests/test_home_input_guard.cpp : no single non-Y button quits; opt-in input trace",
+    "tests/test_hw_round1_regression_gate.py : C01-C09 frozen guards"
+   ],
+   "last_owner_result": "R3/62a2f8c3/C09: PASS (C01-C09 all PASS R1/7fea1797)",
+   "hardware_acceptance_candidate": "7fea1797 R1 C01-C09; 62a2f8c3 R3 C02/C04/C09",
+   "r12_checklist_item": null,
+   "next_action": "None; C01 regression item for Gen V tracked separately."
+  },
+  {
+   "id": "PBX-CTL-010",
+   "title": "E05 controller glyphs and footers consistent app-wide; Help/footer names only controls that act (incl. Inventory Help wording/title/fit)",
+   "gens": [
+    "all"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 E05 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0029",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0091",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E05",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0146",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0159",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0214",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "E05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0281",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0349",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E05",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0399",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0507",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E05",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0637",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0026",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "E05",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0079",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "E05",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0113",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "4",
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0130",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "E05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0168",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "E05",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0210",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0256",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B04 · E05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0315",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B04 · E05",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0368",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "E05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0050",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "B02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0087",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0116",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0002",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "A0865",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG05",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "F0087",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Global controls",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "C0352",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B04, B03 follow-up",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "E0093",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    },
+    {
+     "rid": "D0056",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0346",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B03 · B08",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0507",
+     "text": "Some windows and Help need updated glyphs/unused buttons removed."
+    },
+    {
+     "rid": "C0168",
+     "text": "Controller glyphs are missing or inconsistent: Game Browser Controls, Party footers, and stale Review lines in Game Browser Help."
+    },
+    {
+     "rid": "C0315",
+     "text": "Problems with Inventory Help and glyphs:<br>• Gen I/II/III Inventory Help has stale wording such as \"X Add remains available\".<br>• Bag Help describes + as Options although + opens Review.<br>• Gen V Bag Help is titled \"Game Browser Controls\" but should be \"Inventory Controls\".<br>• Gen IV/V Inventory is closer to the preferred layout."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner FAILs: R3 B0507, R5 C0168 (Game Browser Controls, Party footers, stale Review lines), R6 26186464 B04 (Inventory Help: 'X Add remains available', + described as Options, Gen V titled 'Game Browser Controls'). R7 repairs: src/UI/TrainerViewScreenBase.inc:5593-5594 Bag Help titled InventoryHelp::kTitle 'Inventory Controls' in every generation; include/UI/InventoryHelp.h:7-9,28. Latest owner result R11 3634d1e6 H03 'Inventory Controls help fits' PASS (E0002). CAVEAT: the non-inventory screens named in R5 C0168 have no explicit later item-level PASS (R6 B04 FAIL text lists inventory problems only). Recheck needed: InventoryHelp.h ZR row text lengthened in 642a7931 and ClassicHelpPresentation.h Pokemon page rewritten (3cacfa98, dd69bc93, 6f62b69e) after 3634d1e6.",
+   "repair_commits": [
+    "88f974da (R4: glyph choices in Bag dialogs; redundant Help footer removed)",
+    "edff856e Round 5 4D: Gen I-V Help names only controls that act there",
+    "642a7931 Top Up / Add Missing: discoverable Scope (InventoryHelp ZR row)",
+    "3cacfa98 Round 11 integration: Pokemon Help keeps 10 rows"
+   ],
+   "automated_tests": [
+    "tests/test_classic_help_accuracy.cpp : each Help claim tied to the code that handles it",
+    "tests/test_footer_help_handlers.py : footer/Help key tokens have handlers",
+    "tests/test_glyph_instruction.cpp : coloured badges",
+    "CG05/CG36/CG29/CG63 (tests/test_qa_cross_gen_contract.py)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H03: PASS (prior R6/26186464/B04: FAIL)",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H03; recheck 066e1db9 R12 H18 (smoke includes Bag Help)",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18: open Bag Help in Gen I-III and IV/V and confirm the longer ZR line fits; glance at Game Browser Controls and Party footers (R5 C0168 screens) to close the caveat."
+  },
+  {
+   "id": "PBX-CTL-011",
+   "title": "Gen V Home A opens a Choose Save popup instead of the assigned save (C01 regression, dup NEW-16)",
+   "gens": [
+    "V"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 C01 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0484",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C01",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0484",
+     "text": "Gen V Home A opens Choose Save popup instead of current already-assigned save directly; duplicate with NEW-16."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Same defect as NEW-16 (open-save area): owner PASS OCT24 c60d4da0 NEW-16, R5 1ca2faec NEW-16 PASS, R6 26186464 A18 'Gen V Home A opens the assigned save' PASS. R7 A28 (D0027) retest had no recorded result. Guard CG57.",
+   "repair_commits": [
+    "(app58 retained; assigned Gen V direct open, Oct 24 repair 8804f8f8)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG57 Gen V Home A opens the assigned source"
+   ],
+   "last_owner_result": "R6/26186464/A18 (NEW-16): PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A18",
+   "r12_checklist_item": null,
+   "next_action": "None; owned jointly with open-save NEW-16."
+  },
+  {
+   "id": "PBX-CTL-012",
+   "title": "Help closes with B; remove redundant '- Close/Help' footer everywhere",
+   "gens": [
+    "app"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-01 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0549",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0550",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-01",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0683",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0550",
+     "text": "B works now; remaining minor fix is remove redundant \\`- Close/Help\\` footer everywhere."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R3 62a2f8c3 NEW-01 PASS (B works) with polish request; redundant Help footer removed in 88f974da (R4 C0026); owner OCT24 c60d4da0 E05 'Footer glyphs and Help close on B' PASS (C0079/C0368). Current Help close: src/UI/TrainerViewScreenBase.inc kCloseHelp 'B / -   Close this Help' (include/UI/ClassicHelpPresentation.h:24); no '{\"-\",\"Close\"}' footer token in src/include.",
+   "repair_commits": [
+    "88f974da (R4) redundant Help footer removed"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : NEW-01 and E05 (Oct 24) guards"
+   ],
+   "last_owner_result": "OCT24/c60d4da0/E05: PASS",
+   "hardware_acceptance_candidate": "c60d4da0 OCT24 E05",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-CTL-013",
+   "title": "Remove obsolete 'Touch: Back' footer text while keeping touch Back (NEW-02)",
+   "gens": [
+    "all"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-02 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0551",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-02",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0030",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-02",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0082",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-02",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0133",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0181",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0227",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A06 · NEW-02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0286",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A06 · NEW-02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0371",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0005",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0551",
+     "text": "Remove obsolete footer across View/Overview and all windows while retaining touch functionality."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R3 FAIL (B0551) -> 88f974da -> OCT24 PASS, R5 1ca2faec PASS, R6 26186464 A06 PASS (C0286). No 'Touch: Back' / 'Touch:Back' string in current src/ or include/.",
+   "repair_commits": [
+    "88f974da (R4) Obsolete Touch:Back text removed"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : NEW-02 guard (CG37)"
+   ],
+   "last_owner_result": "R6/26186464/A06: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A06",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-CTL-014",
+   "title": "4D: Gen I-IV Help claims '+ Review' where + does something else; Help must name real controls",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "area": "help-footer-controls",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 4D Help (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0163",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "4D Help",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0206",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "4D-HELP",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0252",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A31 · 4D-HELP",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0311",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A31 · 4D-HELP",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0397",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "4D-HELP",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0029",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A30",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Fixed edff856e (Round 5); owner R5 1ca2faec 4D-HELP PASS and R6 26186464 A31 PASS (C0311). include/UI/ClassicHelpPresentation.h Pokemon/Party pages changed after 3634d1e6 (Actions order, X Export/Import, Y pick-up/carry rows; 3cacfa98, dd69bc93, 6f62b69e), so the R12 build needs a Help recheck.",
+   "repair_commits": [
+    "edff856e Round 5 4D: Gen I-V Help names only controls that act there"
+   ],
+   "automated_tests": [
+    "tests/test_classic_help_accuracy.cpp : every Help claim tied to its handler; no vague 'Tools'"
+   ],
+   "last_owner_result": "R6/26186464/A31: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A31; recheck 066e1db9",
+   "r12_checklist_item": null,
+   "next_action": "Add 'open Help on Pokemon/Party page per generation' to R12 smoke (not explicit on the R12 list)."
+  },
+  {
+   "id": "PBX-CTL-015",
+   "title": "Extra 4: X = Export on a Pokemon / Import on an empty slot, app-wide footers and Help",
+   "gens": [
+    "all"
+   ],
+   "area": "help-footer-controls",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 Extra 4 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0055",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0083",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0055",
+     "text": "is it possible to change the contorls in the save editored when in the box, can we get rid of the X to add and change it to import/export instead like if the cursor is on a pokemon X would say export but it its on a blank space it would say import, makes this app wide for all gens and change the footer as needed, and change the help menus app wide as need as well. "
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "dd69bc93: boxActivation(occupied, A, X, caps) returns Actions / ImportFile / ExportFile in Gen I-V; footers name 'X Export / Import' only where X works; Help Pokemon page row 'X   Export to file; on an empty slot: Import from file' (include/UI/ClassicHelpPresentation.h Page::Pokemon). Only in 066e1db9, never device tested.",
+   "repair_commits": [
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_classic_help_accuracy.cpp : Pokemon page names X Export/Import in every generation"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "Owner runs R12 H05."
+  },
+  {
+   "id": "PBX-LQT-001",
+   "title": "Boot, idle stability, relaunch, exit-and-relaunch after discard",
+   "gens": [
+    "app"
+   ],
+   "area": "launch-quit",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0019",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0028",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0239",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0240",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0241",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0242",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0243",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0347",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0363",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0365",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0366",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0367",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0368",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0369",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0370",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0371",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0372",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0373",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0374",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0575",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Return path",
+     "result": "n/a",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "A0599",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B4",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0634",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A01",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0635",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0821",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "relaunch",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0859",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "E0047",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H48",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "D0263",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": "CRASHES",
+     "result": "PASS",
+     "src": "issue #8 (comment 2026-09-02)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0263",
+     "text": "CRASHES: NONE"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS boot/idle/5 relaunches on 3be4de6b (A0000-A0079, A0154-A0156); latest owner result R11 3634d1e6 H48 'Exit and relaunch after discard' PASS (E0047) and H01 'Install and open' PASS. 066e1db9 is a new build (92 src/include files changed) so boot must be re-verified.",
+   "repair_commits": [],
+   "automated_tests": [
+    "host qa-matrix 'relaunch' cell (docs/qa/GEN1_5_MATRIX.md)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H48: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H48/H01; recheck 066e1db9 R12 H01",
+   "r12_checklist_item": "H01",
+   "next_action": "R12 H01 covers boot; no separate exit/relaunch item on R12."
+  },
+  {
+   "id": "PBX-LQT-002",
+   "title": "HOME button resume, sleep/wake, controller disconnect/reconnect lifecycle",
+   "gens": [
+    "app"
+   ],
+   "area": "launch-quit",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0142",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0309",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0310",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0311",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0312",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0313",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0636",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A03",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0158",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0159",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0160",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0161",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0162",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0163",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "A0142 NOT TESTED in the extended pass, then PASS on the same 3be4de6b binary (DEVICE_TEST_FOLLOWUP_2026-09-03: HOME->resume, sleep->wake, Joy-Con detach/reconnect, input after reconnect). Never re-tested on any later candidate; the app has been substantially rewritten since.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/3be4de6b: PASS",
+   "hardware_acceptance_candidate": "3be4de6b (PRE); needs recheck on 066e1db9",
+   "r12_checklist_item": null,
+   "next_action": "Add a lifecycle item (HOME/resume, sleep/wake, Joy-Con reconnect, ideally with a staged edit open) to the R12/R13 checklist."
+  },
+  {
+   "id": "PBX-LQT-003",
+   "title": "Quick Games: pressing A on a game freezes the app (synchronous refreshHubPreview)",
+   "gens": [
+    "app"
+   ],
+   "area": "launch-quit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (adc92fd0)",
+   "occurrences": [
+    {
+     "rid": "D0324",
+     "round": "PRE",
+     "candidate": "adc92fd0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #92 (comment 2026-10-05)"
+    },
+    {
+     "rid": "A0957",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/hardware/2026-10-05-hotpath-validation.md"
+    },
+    {
+     "rid": "D0332",
+     "round": "PRE",
+     "candidate": "2d2d7bc2",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #92 (body, updated 2026-10-12)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0324",
+     "text": "**DEVICE REJECTED**. On physical Switch, opening **Quick Games** and pressing **A** on a game freezes the app."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Quick Games A made cache-only (PR #92); owner '- Quick View / Quick Games still works' on 2d2d7bc2 (D0332) and '100% pass' on 0760334f (D0337). Quick Games overlay changed later (727fad5d tap-outside close, e88957f2; Quick Games touch commits 498c0687/55204e21) without an explicit later owner Quick Games A item.",
+   "repair_commits": [
+    "498c0687 Open validated game on Quick Games clean tap/A; preserve live drag ownership",
+    "55204e21 Contract Quick Games clean tap to native validated game open"
+   ],
+   "automated_tests": [
+    "tests/fuzz_home_cache.cpp : Home cache handling"
+   ],
+   "last_owner_result": "PRE/0760334f: PASS (owner '100% pass')",
+   "hardware_acceptance_candidate": "0760334f (PRE)",
+   "r12_checklist_item": null,
+   "next_action": "Include 'Y Quick Games -> A on a game' in R12 smoke."
+  },
+  {
+   "id": "PBX-LQT-004",
+   "title": "Gen I-III RetroArch quit drops/crashes to Nintendo HOME instead of returning to PokeBank NX",
+   "gens": [
+    "I",
+    "II",
+    "III"
+   ],
+   "area": "launch-quit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (97f540e4)",
+   "occurrences": [
+    {
+     "rid": "A0921",
+     "round": "PRE",
+     "candidate": "97f540e4",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "D0326",
+     "round": "PRE",
+     "candidate": "97f540e4",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #92 (comment 2026-10-06)"
+    },
+    {
+     "rid": "A0925",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "A0665",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B20",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0666",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B21",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0746",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0621",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F2",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "B0573",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0599",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #4",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0607",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0326",
+     "text": "- RetroArch quit lifecycle: FAIL — quitting RetroArch drops/crashes to Nintendo HOME instead of returning to PokeBank NX. Treat this as a separate lifecycle issue, not content resolution."
+    },
+    {
+     "rid": "A0921",
+     "text": "RetroArch quit lifecycle: FAIL — quitting RetroArch drops/crashes to Nintendo HOME instead of returning to PokeBank NX."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Diagnosis (docs/handoffs/LAUNCH_RETURN_PROGRESS.md:27-37): after RetroArch's normal Quit the outer loader picks hbmenu or ends the process (NSP forwarder) - not a PokeBank code path. Returning to PokeBank needs the experimental return host, which runs only when <configRoot>/experimental_return_host.enable exists (src/UI/GameLauncher.cpp:41) and crashed on launch when put on the default path (698ea4d1). Owner accepted 0760334f with the direct handoff ('100% pass'), but PR #307 (2026-10-15) still lists the 'Gen I-III RetroArch exit crash' as open and R3 AUD-04 'Game launch and return' was NOT TESTED. Unknown: (a) whether the owner accepts 'quit returns to Homebrew Menu/HOME' (no recorded decision, unlike DraStic), (b) whether the launch dialog's quit-route notice matches device behaviour, (c) the 698ea4d1 return-host crash cause (LAUNCH_RETURN_PROGRESS.md:48 'still open').",
+   "repair_commits": [
+    "8803c9ea fix(launch): restore hardware-safe RetroArch startup",
+    "(returnHostReadiness() preview/launch consistency fix, docs/handoffs/LAUNCH_RETURN_PROGRESS.md:110-112)"
+   ],
+   "automated_tests": [
+    "tests/test_game_launch_model.cpp : libnx argvSetup tokenisation of every argv PokeBank/return host builds",
+    "tests/test_qa_cross_gen_contract.py : CG27 retroarch core-from-save evidence"
+   ],
+   "last_owner_result": "R3/62a2f8c3/AUD-04: NOT TESTED (last explicit quit result PRE/97f540e4: FAIL)",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Ask owner for a decision (accept return-to-hbmenu as for DraStic, or require return host); if required, add R3-4 style check to a checklist."
+  },
+  {
+   "id": "PBX-LQT-005",
+   "title": "Gen IV/V DraStic 'Quit to Launcher' returns to DraStic, not PokeBank NX",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "launch-quit",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (97f540e4)",
+   "occurrences": [
+    {
+     "rid": "A0922",
+     "round": "PRE",
+     "candidate": "97f540e4",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "D0328",
+     "round": "PRE",
+     "candidate": "97f540e4",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #92 (comment 2026-10-06)"
+    },
+    {
+     "rid": "A0926",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "A0667",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B22",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0328",
+     "text": "- DraStic return-to-PokeBank is no longer an acceptance requirement: DraStic exposes Quit to Launcher rather than a return-to-caller contract. DS acceptance should be direct exact-ROM boot with no freeze/chooser; quit behavior follows DraStic's launcher semantics."
+    }
+   ],
+   "status": "Intentionally Unsupported",
+   "rechecked_needed": false,
+   "status_basis": "Owner decision PR #92 comment 2026-10-06 (D0328/A0922): 'DraStic return-to-PokeBank is no longer an acceptance requirement ... quit behavior follows DraStic's launcher semantics.' Engineering (LAUNCH_RETURN_PROGRESS.md:40-46) rejects changing DraStic's stored launcher path.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/97f540e4: decision",
+   "hardware_acceptance_candidate": "n/a (decision)",
+   "r12_checklist_item": null,
+   "next_action": "Close the stale PR #307 open-bug entry citing the decision."
+  },
+  {
+   "id": "PBX-LQT-006",
+   "title": "Return host on default path: Gen I-III RetroArch crash on launch (698ea4d1, 2d2d7bc2)",
+   "gens": [
+    "I",
+    "II",
+    "III"
+   ],
+   "area": "launch-quit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (698ea4d1)",
+   "occurrences": [
+    {
+     "rid": "A0923",
+     "round": "PRE",
+     "candidate": "698ea4d1",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "D0334",
+     "round": "PRE",
+     "candidate": "2d2d7bc2",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #92 (body, updated 2026-10-12)"
+    },
+    {
+     "rid": "A0924",
+     "round": "PRE",
+     "candidate": "0760334f",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "A0959",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/hardware/2026-10-05-hotpath-validation.md"
+    },
+    {
+     "rid": "A0961",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "5",
+     "result": "n/a",
+     "src": "docs/hardware/2026-10-05-hotpath-validation.md"
+    },
+    {
+     "rid": "A0920",
+     "round": "PRE",
+     "candidate": "97f540e4",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/handoffs/LAUNCH_RETURN_PROGRESS.md"
+    },
+    {
+     "rid": "D0325",
+     "round": "PRE",
+     "candidate": "97f540e4",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #92 (comment 2026-10-06)"
+    },
+    {
+     "rid": "D0337",
+     "round": "PRE",
+     "candidate": "0760334f",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #92 (body, updated 2026-10-12)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0923",
+     "text": "crash on launch"
+    },
+    {
+     "rid": "D0334",
+     "text": "- Red / Blue / Yellow, Gold / Silver / Crystal, Ruby / Sapphire / FireRed / LeafGreen / Emerald now crash when launched through RetroArch"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "8803c9ea restored the direct handoff; owner accepted 0760334f ('100% pass', D0337; A0924 'Owner-accepted with the direct handoff'). GameLauncher.cpp changed after 0760334f (core-from-save choice 7ed1cc16, returnHostReadiness), and no later owner RetroArch launch result exists.",
+   "repair_commits": [
+    "8803c9ea fix(launch): restore hardware-safe RetroArch startup"
+   ],
+   "automated_tests": [
+    "tests/test_retroarch_launch_resolution.cpp : cartridge header identity, Red vs FireRed guards",
+    "tests/test_game_launch_model.cpp : argv tokenisation"
+   ],
+   "last_owner_result": "PRE/0760334f: PASS",
+   "hardware_acceptance_candidate": "0760334f (PRE)",
+   "r12_checklist_item": null,
+   "next_action": "Add one Gen I-III RetroArch launch to R12 smoke (launch path untested since 0760334f)."
+  },
+  {
+   "id": "PBX-LQT-007",
+   "title": "B on Product Home must never quit without a visible Y-confirmed decision (Quit guard)",
+   "gens": [
+    "app"
+   ],
+   "area": "launch-quit",
+   "category": "safety",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 C02 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0001",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0069",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C02",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0135",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0136",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0144",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0192",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0259",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0327",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C02",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0377",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0485",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0615",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0867",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG07",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0397",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R1 7fea1797 C02 PASS; R3 62a2f8c3 C02 PASS (B0485). Decision logic unchanged (include/UI/HomeQuitConfirm.h decide()), but the dialog drawing changed in aace6021 (two buttons B Cancel / Y Quit, empty nav bar; src/UI/SaveSelectScreen.cpp:5321-5352).",
+   "repair_commits": [
+    "aace6021 Round 11 H39 + QUIT: '-' cancels SD browsers; two-button quit dialog"
+   ],
+   "automated_tests": [
+    "tests/test_home_input_guard.cpp : only Y quits",
+    "tests/test_game_hub_contract.py : two-button B Cancel / Y leave decision, empty nav bar",
+    "tests/test_leave_decision_layout.cpp : buttons from buttonRect(..,2); text fits"
+   ],
+   "last_owner_result": "R3/62a2f8c3/C02: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 C02; recheck 066e1db9 R12 H02",
+   "r12_checklist_item": "H02",
+   "next_action": "Owner runs R12 H02."
+  },
+  {
+   "id": "PBX-LQT-008",
+   "title": "Launch requires confirmation (ZR -> Y); launch menu resize and coloured A/B glyph buttons",
+   "gens": [
+    "app"
+   ],
+   "area": "launch-quit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 C03 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0002",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0059",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0070",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C03",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0126",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0137",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0138",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0139",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0140",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0183",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "Launch menu (Phase 6)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0193",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0250",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "Launch menu (Phase 6)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0260",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0328",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C03",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0378",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0476",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-LAUNCH",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0486",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0616",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0667",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-LAUNCH",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0059",
+     "text": "the launch menu also needs resizes and the A and B proper colored buttons added instead of just the text."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 62a2f8c3 R2-LAUNCH 'Game Launch confirmation' PASS (B0476) and C03 PASS (B0486). Launch dialog redrawn in aace6021 (B Cancel / Y Launch, no A Stay).",
+   "repair_commits": [
+    "(R2-LAUNCH Phase 6, e10f307f)",
+    "aace6021 two-button leave decision"
+   ],
+   "automated_tests": [
+    "tests/test_leave_decision_layout.cpp : all four quit-route notices and long game names fit",
+    "tests/test_game_hub_contract.py : CG07 single launch site behind Y"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-LAUNCH: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 R2-LAUNCH; recheck 066e1db9 R12 H02",
+   "r12_checklist_item": "H02",
+   "next_action": "Owner runs R12 H02 including the Launch question."
+  },
+  {
+   "id": "PBX-LQT-009",
+   "title": "melonDS/DeSmuME DS save must launch the matching RetroArch core (core chosen from game ID only)",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "launch-quit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 Part 9 #4 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0438",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "Part 9 #4",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "A0960",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "4",
+     "result": "n/a",
+     "src": "docs/hardware/2026-10-05-hotpath-validation.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Source defect confirmed (B0599; LAUNCH_RETURN_PROGRESS.md:89 'defaultRetroArchCore() chose DeSmuME first from the game ID alone'), corrected on #307 at 7ed1cc16 (in 62a2f8c3). Launch dialog notice from gameLaunchDialogNotice() (src/UI/GameLauncher.cpp:1445, used at src/UI/SaveSelectScreen.cpp:2160). R3 checklist B0438 has no owner result.",
+   "repair_commits": [
+    "7ed1cc16 Merge claude/gen14-campaign-20261015 (core-from-save evidence, CG27)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG27-retroarch-core-from-save-evidence"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist; R3-1..R3-3 steps in LAUNCH_RETURN_PROGRESS.md:116-118)",
+   "r12_checklist_item": null,
+   "next_action": "Owner with a melonDS-core DS save runs R3-1/R3-3 steps."
+  },
+  {
+   "id": "PBX-LQT-010",
+   "title": "Extra 5: quit dialog cleanup - no highlighted Y, no redundant footer, drop 'Stay' (Cancel only)",
+   "gens": [
+    "app"
+   ],
+   "area": "launch-quit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 Extra 5 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0056",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 5",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0084",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 5",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "D0148",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0056",
+     "text": "The quit option in the nro has a highlighted option in the Y exit option, it also has a footer which isn't needed cause the buttons we need are the options in the menu, can we also get rid of \"stay\" we have cancel in that menu and those 2 options are the same just different names. In the species picker instead of having the 2 pictures one shiny and one normal can we have it where its 1 photo and if we can shiny or not it changes the photo, instead of the 2 photo thing. Gen 1/2 have moves when editor is opened, it should be blank, same as for gen 1-5 when a pokemon is selected it should leave moves clear not add or fill the moves just cause that pokemon was selected in species selector"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "aace6021: Product Home leave decision draws two neutral buttons B Cancel / Y Quit|Launch, no accent fill, empty nav bar (src/UI/SaveSelectScreen.cpp:5328-5352); Bank/Storage exit prompt B relabelled Cancel. Note: E0056 also carries SPRITE (species picker single picture, eb7fe8c9, R12 H16) and CREATE-MOVES requests owned by species-change/create.",
+   "repair_commits": [
+    "aace6021 Round 11 H39 + QUIT: '-' cancels SD browsers; two-button quit dialog"
+   ],
+   "automated_tests": [
+    "tests/test_game_hub_contract.py : leave-decision pins B Cancel / Y with empty nav bar; Storage B Cancel",
+    "tests/test_leave_decision_layout.cpp : two buttons"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H02",
+   "r12_checklist_item": "H02",
+   "next_action": "Owner runs R12 H02."
+  },
+  {
+   "id": "PBX-TCH-001",
+   "title": "Touch app-wide: popups/modals never activate background controls; touch scroll and joystick coexist; no accidental mutation",
+   "gens": [
+    "all"
+   ],
+   "area": "touch",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE Box touch (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0585",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Box touch",
+     "result": "n/a",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "A0587",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Unsupported touch",
+     "result": "n/a",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "A0623",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "G-2",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0686",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C19",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0728",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "G01",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0730",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "G03",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0868",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG08",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "B0005",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0046",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0073",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C06",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0106",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N03",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0143",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0196",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0229",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "N03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0263",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0296",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "N03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0331",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C06",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0364",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N03",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0381",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0414",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "N03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0489",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0526",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "N03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0619",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C06",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0652",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "N03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0612",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #5",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "E0046",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H47",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0170",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 5",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R1 C06/N03 PASS, R3 62a2f8c3 C06/N03 PASS, latest R11 3634d1e6 H47 'Touch and controls agreement' PASS (E0046). Test gap B0612 closed: tests/test_touch_scroll_state.cpp is now built by Makefile.host.pickers. Recheck: new touch targets in 066e1db9 (quit dialog buttons aace6021, X Export/Import box handlers dd69bc93, Recovery files 98b6deaf). Safety: G-2 requires a single tap never deletes/releases/overwrites. V1_ROADMAP Phase 5 (F0170) lists controller+touch coexistence and physical touch-only acceptance.",
+   "repair_commits": [
+    "(P0 #320 top touch layer; beginTopTouchLayer in src/UI/SaveSelectScreen.cpp:5321)"
+   ],
+   "automated_tests": [
+    "tests/test_touch_modal_list_contract.py : contact and release on same hit rect; modal lists",
+    "tests/test_touch_appwide_surface_contract.py : app-wide touch surfaces",
+    "tests/test_touch_scroll_state.cpp : horizontal swipe never owns a vertical list",
+    "tests/test_gen5_box_touch.cpp : Gen V box touch (first tap focuses, second opens Actions)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H47: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H47; recheck 066e1db9 (no explicit R12 item)",
+   "r12_checklist_item": null,
+   "next_action": "Fold a touch-only pass of the new R12 dialogs (H02 quit buttons, H05 X/A actions, H11 Recovery) into those items."
+  },
+  {
+   "id": "PBX-TCH-002",
+   "title": "Quick Games / Quick View finger drag, vertical scroll, momentum, tap opens the right game",
+   "gens": [
+    "app"
+   ],
+   "area": "touch",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE B2 (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0597",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B2",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0647",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0574",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0600",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #5",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0608",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0686",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 62a2f8c3 AUD-05 'Quick View touch' PASS (B0574). Part 9 #5 found no host repro (B0600). Quick Games overlay changed afterwards by 727fad5d (tap-outside close, e88957f2).",
+   "repair_commits": [
+    "d0a45909 Fix Quick Games vertical finger scrolling without breaking draggable drawer",
+    "498c0687 Open validated game on Quick Games clean tap/A; preserve live drag ownership"
+   ],
+   "automated_tests": [
+    "tests/test_touch_scroll_state.cpp : swipe direction ownership"
+   ],
+   "last_owner_result": "R3/62a2f8c3/AUD-05: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 AUD-05",
+   "r12_checklist_item": null,
+   "next_action": "Smoke Quick Games drag/tap with PBX-TCH-007 on 066e1db9."
+  },
+  {
+   "id": "PBX-TCH-003",
+   "title": "L06: Party / summary-panel taps must open the generation's Actions popup (not View)",
+   "gens": [
+    "all"
+   ],
+   "area": "touch",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 L06 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "A0754",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0043",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0119",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0156",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0175",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "L06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0242",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "L06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0309",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "L06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0323",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L06",
+     "result": "NOT TESTED",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0373",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "L06",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0445",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0452",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L06",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "B0457",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L06",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "B0467",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L06",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "D0232",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L06",
+     "result": "NOT TESTED",
+     "src": "issue #313 (comment 2026-10-17)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0467",
+     "text": "Touch goes directly to View; expected Actions popup."
+    },
+    {
+     "rid": "B0043",
+     "text": "L06 i dont know"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R1/R2 NOT VERIFIED, R3 62a2f8c3 FAIL 'Touch goes directly to View; expected Actions popup' (B0467). Fixed c81853da (c60d4da0); owner OCT24 c60d4da0 L06 PASS ('Touch Party / summary opens Actions'), R6 26186464 A21 NEW-20 'Gen I-III Party Actions popup' (A or tap) PASS. src/UI/ClassicPartyActions.inc changed in 066e1db9 (dd69bc93 adds Export / Review rows).",
+   "repair_commits": [
+    "c81853da feat(editor): route classic Party Actions to native staged edits"
+   ],
+   "automated_tests": [
+    "tests/test_party_summary_tap_routing.cpp : Boxes summary-panel / Party tap opens native Actions (Gen III-V); Gen I/II only CG11",
+    "CG11/CG33 (tests/test_qa_cross_gen_contract.py)"
+   ],
+   "last_owner_result": "R6/26186464/A21: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A21",
+   "r12_checklist_item": null,
+   "next_action": "Tap a Party Pokemon in Gen I-III during R12 H05 to confirm the new Export/Review rows."
+  },
+  {
+   "id": "PBX-TCH-004",
+   "title": "Scrollbars draggable / track-tappable for fast scrolling app-wide",
+   "gens": [
+    "app"
+   ],
+   "area": "touch",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 - (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0061",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0128",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0185",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "R2-SCROLLBAR (Phase 8)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0252",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "R2-SCROLLBAR (Phase 8)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0478",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-SCROLLBAR",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0668",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-SCROLLBAR",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0878",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG14",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0061",
+     "text": "SCROLL BARS if they are in a menu can i use them to fast scroll in stead of swiping with finger repeatly, this is for all scoll bar in the pokebank app."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "5bea036d (e10f307f) shared draggable scrollbar; owner R3 62a2f8c3 R2-SCROLLBAR PASS (B0478).",
+   "repair_commits": [
+    "5bea036d feat(ui): R2-SCROLLBAR draggable scrollbars on every existing scroll surface"
+   ],
+   "automated_tests": [
+    "tests/test_shared_scrollbar.cpp : drag/track behaviour; selection never touched (CG14)"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-SCROLLBAR: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 R2-SCROLLBAR",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-TCH-005",
+   "title": "Games-browser profile avatar touch rect pushed but never hit-tested",
+   "gens": [
+    "app"
+   ],
+   "area": "touch",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 Part 9 #9 (0faf7e9c)",
+   "occurrences": [
+    {
+     "rid": "B0613",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #9",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "796ba212 (in 62a2f8c3): src/UI/SaveSelectScreen.cpp:4412-4425 Games browser hit-tests headerRects idx 0 on touch-down/tap and opens the Profile picker. No owner result for this tap.",
+   "repair_commits": [
+    "796ba212 feat(ui): button badges in help and modal text; provider names in sessions; profile focus kept"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner with >1 Switch profile taps the avatar in the full Games browser."
+  },
+  {
+   "id": "PBX-TCH-006",
+   "title": "7D: tap outside closes non-destructive popups (destructive confirmations stay); no tap-through",
+   "gens": [
+    "all"
+   ],
+   "area": "touch",
+   "category": "request",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R5 7D (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0216",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7D",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0264",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C04 · 7D",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0270",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C10",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0329",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C10 · Tap-through",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0403",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0407",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C10",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0035",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A36",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0039",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A40",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "55f31d27/c6e3aef6 (26186464); owner R6 26186464 C04 and C10 PASS (C0323, C0329). SharedPopupDismiss unchanged since 26186464. Safety: tap-through could open/move a slot under a popup.",
+   "repair_commits": [
+    "55f31d27 feat(pickers): Round 6 L06 held-item tap/A reliability, 7D tap-outside dismissal",
+    "efb687eb test(7D): Gen I Species and Gen II Move pickers close on an outside tap"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND7 C04/C10"
+   ],
+   "last_owner_result": "R6/26186464/C04+C10: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 C04/C10",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-TCH-007",
+   "title": "Tap-outside dismissal also on the Quick Games panel and other ordinary Home/browser popups",
+   "gens": [
+    "app"
+   ],
+   "area": "touch",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R6 C04 · 7D (26186464)",
+   "occurrences": [
+    {
+     "rid": "C0323",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C04 · 7D",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0347",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C04 · 7D",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0059",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0359",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C04 follow-up",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0347",
+     "text": "Also wants tap-outside dismissal on the **Quick Games** panel and other ordinary popups"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "727fad5d (first in e88957f2): src/UI/SaveSelectScreen.cpp:3533-3538 a completed tap outside an ordinary open overlay (Quick Games, ...) closes it via SharedPopupDismiss::tappedOutside; Quick Games drawer publishes its rect (SaveSelectScreen.cpp:5406). R7 D0059 retest has no recorded result (NRO archive) and the item is absent from R8-R12 lists.",
+   "repair_commits": [
+    "727fad5d feat(C04): Quick Games and other ordinary overlays close on an outside tap"
+   ],
+   "automated_tests": [
+    "CG80-CG89 round 7 contracts (tests/test_qa_cross_gen_contract.py, a52d5c5b/8b92d716)"
+   ],
+   "last_owner_result": "none (R6 C04 PASS carried this as a follow-up request)",
+   "hardware_acceptance_candidate": "none (not on any checklist); verify on 066e1db9",
+   "r12_checklist_item": null,
+   "next_action": "Add 'Quick Games -> tap outside, including on a game card' to the R12 smoke."
+  },
+  {
+   "id": "PBX-HOM-001",
+   "title": "Install and open to Product Home (standalone, no PKSE); HOME card renders correctly",
+   "gens": [
+    "app"
+   ],
+   "area": "install-home",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (n/a)",
+   "occurrences": [
+    {
+     "rid": "D0282",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #29 (comment 2026-09-12)"
+    },
+    {
+     "rid": "A0637",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A04",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0644",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A11",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0646",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B01",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0852",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "D0066",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": "H01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_6ec5ccb9.md (same items in RETEST_ROUND8_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0085",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0114",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0147",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    },
+    {
+     "rid": "E0000",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0282",
+     "text": "Standalone PokeBank NX has now been physically tested on real Switch hardware with PKSE removed: app launches, does not recreate `/PKSE/`, and native supported games remain usable."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R11 3634d1e6 H01 'Install and open' PASS (E0000). HOME card scenery rewritten in 066e1db9 (c21d3747: region scenery masked with rounded corners; include/UI/CardScenery.h, RoundedArtwork.h) and covered by R12 H01.",
+   "repair_commits": [
+    "c21d3747 HOME card: mask region scenery with the card's rounded corners (Round 11)"
+   ],
+   "automated_tests": [
+    "tests/test_ui_home_card_scenery_host.cpp : scenery painted as rounded shapes concentric with the card, no rectangular clip",
+    "tests/test_home_card_scenery_contract.py"
+   ],
+   "last_owner_result": "R11/3634d1e6/H01: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H01",
+   "r12_checklist_item": "H01",
+   "next_action": "Owner runs R12 H01."
+  },
+  {
+   "id": "PBX-HOM-002",
+   "title": "Native Shield / Scarlet-Violet / Legends Z-A Home cards show 'Party preview unavailable.'",
+   "gens": [
+    "app"
+   ],
+   "area": "install-home",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (2d2d7bc2)",
+   "occurrences": [
+    {
+     "rid": "D0336",
+     "round": "PRE",
+     "candidate": "2d2d7bc2",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #92 (body, updated 2026-10-12)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0336",
+     "text": "- Shield / Scarlet-Violet / Legends Z-A still show `Party preview unavailable.`"
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Owner FAIL on 2d2d7bc2. Current src/UI/SaveSelectScreen.cpp:1856-1907: installed Switch titles preview only when Save::validateTrainerSaveForOpen succeeds, else 'Party preview unavailable.'. The 0760334f '100% pass' (D0337) is scoped to Gen I-IV; no later owner result for SwSh/SV/Z-A cards, and Round 11/12 builds are Gen I-V scope. Unknown whether these titles now produce a party preview.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/2d2d7bc2: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner states whether Gen VIII/IX Home party previews are in v1 scope; if yes, retest on 066e1db9."
+  },
+  {
+   "id": "PBX-HOM-003",
+   "title": "Home party strip previews drop form (Gen V) / pass form 0, Gen III level 0, shiny only for Gen V",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "install-home",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE QA-F5 (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0789",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F5",
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0799",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0773",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F5",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0846",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "home.party.level / form / shiny / gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "b3f88716 (7fea1797) 'one Gen I-V Home party rule (species/level/form/shiny/gender)' via Integration/Common/HomePartyPreview.h; SaveSelectScreen.cpp:1814-1815 fills form and shiny; include/Integration/Gen5/Gen5GameCardPreview.h:27 PK5 form. No owner result names Home party form/shiny/level.",
+   "repair_commits": [
+    "b3f88716 feat(home): one Gen I-V Home party rule (species/level/form/shiny/gender)",
+    "ca967840 feat(home): Gen III Home party gender from the PID"
+   ],
+   "automated_tests": [
+    "tests/test_home_party_preview.cpp : Gen I-III adapters fill species/level/form/shiny/gender only where the format defines them",
+    "tests/test_home_card_gen4_snapshot.cpp / test_home_card_gen5_snapshot.cpp"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist); observable on 066e1db9 R12 H01",
+   "r12_checklist_item": null,
+   "next_action": "During R12 H01 note whether a shiny/Unown/forme party member shows correctly on the Home card."
+  },
+  {
+   "id": "PBX-HOM-004",
+   "title": "Home refresh (save size/mtime watch, party sprite drawing) never device tested",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "install-home",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE home-refresh (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0820",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "home-refresh",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0838",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "home-refresh (Gen I–III)",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0839",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "home-refresh (Gen IV/V)",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0847",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "home.refresh",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Host qa-matrix 'home-refresh' PASS only (docs/qa/GEN1_5_MATRIX.md); listed as hardware-only residue NOT DEVICE TESTED. Unknown: whether Home refreshes after an emulator writes the save, on hardware.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_qa_matrix_home.h : home-refresh cell (host)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add a step: play/save in emulator, return, confirm Home card party updates."
+  },
+  {
+   "id": "PBX-SET-001",
+   "title": "Themes OLED Black / Dark / Light (and variants) readable, switchable and persisted after restart",
+   "gens": [
+    "app"
+   ],
+   "area": "settings",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0025",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0026",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0141",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0290",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0291",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0292",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0293",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0294",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0295",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0296",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0297",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0414",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0415",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0416",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0417",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0418",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0419",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0420",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0421",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0422",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0423",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0424",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0425",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0426",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0427",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0428",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0429",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0430",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0594",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A5",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0595",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A6",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0642",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0643",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A10",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0142",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS on 3be4de6b (A0009-A0012, A0041-A0044, D0256-D0259; theme torture A0188-A0194 incl. persistence after restart/sleep). Never re-scored since; palettes changed in d1a9aad6 (Dark/OLED/Light values, 7 new themes) and 18 ThemeModes now exist (include/Utils/Settings.h:21; include/UI/Common.h:181-198).",
+   "repair_commits": [
+    "d1a9aad6 fix: finish Gen III polish and expand readable themes"
+   ],
+   "automated_tests": [
+    "tests/test_theme.cpp : theme palettes / persistence parsing"
+   ],
+   "last_owner_result": "PRE/3be4de6b: PASS",
+   "hardware_acceptance_candidate": "3be4de6b (PRE); R12 H01 optionally uses two themes",
+   "r12_checklist_item": "H01",
+   "next_action": "Ask owner to switch theme and restart once during R12 H01."
+  },
+  {
+   "id": "PBX-SET-002",
+   "title": "Dark theme ~10% darker; keep Light as-is; OLED Black preferred dark Action Sheet",
+   "gens": [
+    "app"
+   ],
+   "area": "settings",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE - (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0197",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0198",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0199",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "d1a9aad6 (first owner-tested in 0760334f): DARK_PALETTE background 24,27,38 -> 20,23,32 and surface 35,39,53 -> 31,35,47 (~15% darker; include/UI/Common.h:50-55). Light background unchanged (246,247,252) but text roles darkened and comment changed to 'bright high-contrast' - check it still matches 'Light should remain substantially as-is'. No owner result on the darker Dark.",
+   "repair_commits": [
+    "d1a9aad6 fix: finish Gen III polish and expand readable themes"
+   ],
+   "automated_tests": [
+    "tests/test_theme.cpp"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner compares Dark and Light on 066e1db9 (can be done in R12 H01)."
+  },
+  {
+   "id": "PBX-SET-003",
+   "title": "Second Switch profile: saves owned by another profile show 'belongs to another Switch profile'",
+   "gens": [
+    "app"
+   ],
+   "area": "settings",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE A08 (n/a)",
+   "occurrences": [
+    {
+     "rid": "A0641",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A08",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0609",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Source message at src/UI/SaveSelectScreen.cpp:2562 (validated saves belonging to another Switch profile) and current-profile assignment at :2674. Device check listed (ROUND3_PART9_REPRO_0faf7e9c) but never run; no owner result. Safety: opening another profile's save would risk cross-profile writes.",
+   "repair_commits": [
+    "aeccd13 fix(home): same-profile guard lives in setUser"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner with two profiles checks profile switching and foreign-save messaging."
+  },
+  {
+   "id": "PBX-SRC-001",
+   "title": "Live incremental species search in the shared Gen I-V species picker",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "search",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 - (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0055",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0123",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "F0067",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner request 2",
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "A0873",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG15",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "B0179",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "R2-SEARCH (Phase 3)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0246",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "R2-SEARCH (Phase 3)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0472",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-SEARCH",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0665",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-SEARCH",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0055",
+     "text": "can we add a search to the pokemon species picker, so we click on search or press a button like \"+ or -\" and than we can type what pokemon we want, but can we have it so the search is active like if i press C than all pokemon with C popup and then if i enter O than all pokemon that start with CO and so on and so on, and if i detlete a letter it reverts to just the pokemon with said letters, is called active search ??."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "2876ffe2 (e10f307f); owner R3 62a2f8c3 R2-SEARCH PASS (B0472); search typing also exercised by R11 3634d1e6 H11 PASS. include/UI/SharedSpeciesPicker.h changed after 3634d1e6 (eb7fe8c9 single sprite) - layout around the search changed.",
+   "repair_commits": [
+    "2876ffe2 feat(ui): R2-SEARCH live incremental species search in the shared Gen I-V chooser (Phase 3)"
+   ],
+   "automated_tests": [
+    "tests/test_species_search_gen15.cpp : prefix filter narrows per character, Backspace widens, all Gen I-V (CG15)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H11: PASS (R3/62a2f8c3/R2-SEARCH: PASS)",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H11; recheck with R12 H16",
+   "r12_checklist_item": "H16",
+   "next_action": "During R12 H16 also type a few letters in the species search."
+  },
+  {
+   "id": "PBX-SRC-002",
+   "title": "NEW-05: species search keyboard covers the list; dock keys under the art, keep list visible",
+   "gens": [
+    "all"
+   ],
+   "area": "search",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-05 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0554",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-05",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0033",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-05",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0085",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-05",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0136",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0184",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0230",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A09 · NEW-05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0289",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A09 · NEW-05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0374",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0008",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0554",
+     "text": "Put search keyboard under species artwork/shift art upward, keep list visible."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 FAIL -> OCT24 PASS, R5 PASS, R6 26186464 A09 PASS (C0289). Species picker art area changed in 066e1db9 (eb7fe8c9 one centred sprite), which is where the keyboard docks.",
+   "repair_commits": [
+    "eb7fe8c9 SPRITE: species picker shows one sprite in the current shiny state (layout change after acceptance)"
+   ],
+   "automated_tests": [
+    "CG39 (tests/test_qa_cross_gen_contract.py) species keyboard beside list"
+   ],
+   "last_owner_result": "R6/26186464/A09: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A09; recheck 066e1db9 R12 H16",
+   "r12_checklist_item": "H16",
+   "next_action": "R12 H16: open the search keyboard with the new single picture."
+  },
+  {
+   "id": "PBX-SRC-003",
+   "title": "NEW-06: Held Item picker needs search alongside Sort (docked keyboard, live filter)",
+   "gens": [
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "search",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-06 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0555",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-06",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0034",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-06",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0086",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-06",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0137",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0185",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0231",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A10 · NEW-06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0290",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A10 · NEW-06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0375",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-06",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0418",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-06",
+     "result": "n/a",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0555",
+     "text": "Add search alongside sorting for supported held-item generations."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R3 FAIL -> OCT24 PASS, R5 PASS, R6 26186464 A10 'Held Item search and Sort' PASS (C0290). include/UI/SharedHeldItemSearch.h has no commits after 26186464.",
+   "repair_commits": [
+    "20955b20 (live Held Item search callback)",
+    "(Oct 24 8804f8f8 docked Held Item keyboard)"
+   ],
+   "automated_tests": [
+    "tests/test_item_picker_search.cpp : Held Item search alongside sort in Gen II/III/IV/V pickers; native list never changed",
+    "CG40"
+   ],
+   "last_owner_result": "R6/26186464/A10: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A10",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-SRC-004",
+   "title": "L/R while searching: L deletes last letter, R inert, screen behind never moves",
+   "gens": [
+    "all"
+   ],
+   "area": "search",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R9 H11 (d6a20a2a)",
+   "occurrences": [
+    {
+     "rid": "D0095",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H11",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0124",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H11",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0010",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H11",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "b4bfcc93 (d6a20a2a); owner R11 3634d1e6 H11 PASS (E0010). include/UI/SharedSearchInput.h:210-216 (L = Backspace) unchanged after 3634d1e6.",
+   "repair_commits": [
+    "b4bfcc93 Owner UI batch: ... L/R in search, folder preferences"
+   ],
+   "automated_tests": [
+    "tests/test_search_shoulder_keys.cpp : with the key grid open L is Backspace, R consumed, L/R never page the list behind"
+   ],
+   "last_owner_result": "R11/3634d1e6/H11: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H11 (R12 H18 smoke repeats it)",
+   "r12_checklist_item": "H18",
+   "next_action": "None beyond R12 H18 smoke."
+  },
+  {
+   "id": "PBX-HOM-005",
+   "title": "Emulator/provider names: Home cards name the real provider (DraStic, melonDS, RetroArch (DeSmuME), mGBA), but the Trainer / Game Browser header showed raw or generic labels (RETROARCH, EXTERNAL, Source) (Part 9 #3, CG26, AUD-03)",
+   "gens": [
+    "app"
+   ],
+   "area": "install-home",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 Part 9 #3 repro (0faf7e9c) / R3 AUD-03 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0572",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0598",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #3",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0685",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "QA repro on 0faf7e9c: legacyProviderLabel() returned sourceProviderLabel raw, so the Trainer / Game Browser header showed 'RetroArch/DeSmuME', 'Source', 'Remembered' or hard-coded 'RETROARCH'/'EXTERNAL' (docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md:23-27). Fixed by aeccd13a (2026-10-19), an ancestor of R3 candidate 62a2f8c3; owner PASS R3 62a2f8c3 AUD-03 'Emulator names' (B0572, frozen guard B0685). Current source: include/UI/TrainerViewScreenBase.h:349-351 legacyProviderLabel() returns PokeVault::Source::providerDisplayName(sourceProviderLabel), identical to 62a2f8c3; include/Source/SaveProviderIdentity.h:67-86 has no commits in 62a2f8c3..HEAD. The label feeds the header (src/UI/TrainerViewScreenBase.inc:5170) and the Gen II/IV/V source banners (src/UI/Gen2SharedSurfaceParity.inc:129, src/UI/Gen4SharedPokemonSurface.inc:1618, src/UI/Gen5SharedReadOnlySurface.inc:1985).",
+   "repair_commits": [
+    "796ba212 feat(ui): button badges in help and modal text; provider names in sessions; profile focus kept",
+    "aeccd13a fix(home): same-profile guard lives in setUser; header calls providerDisplayName directly (CG26/CG28)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py:1526-1540 CG26-trainer-provider-display-name : legacyProviderLabel() must go through providerDisplayName(), never raw sourceProviderLabel / RETROARCH / EXTERNAL",
+    "tests/test_home_card_providers.cpp : Home cards name real providers Gen I-V",
+    "tests/test_session_provider_names.cpp : each provider (mGBA, RetroArch + DeSmuME core, melonDS, DraStic, Switch title) named in sessions",
+    "tests/test_hw_round1_regression_gate.py:397-400 GUARDS_ROUND3['AUD-03'] : frozen guard for the R3 owner PASS"
+   ],
+   "last_owner_result": "R3/62a2f8c3/AUD-03: PASS",
+   "hardware_acceptance_candidate": "accepted 62a2f8c3 R3 AUD-03 (not on the R12 checklist)",
+   "r12_checklist_item": null,
+   "next_action": "No change needed; include provider names in the next smoke check of earlier passes (code unchanged since 62a2f8c3)."
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "app",
+   "feature": "D-pad single and held navigation (all four directions)",
+   "latest_pass": "R11 3634d1e6 H18 (first PASS PRE 3be4de6b A0001/A0083-A0086/A0165/D0248)",
+   "code_changed_since": false,
+   "evidence": "NavigationRepeat.h unchanged since 3634d1e6"
+  },
+  {
+   "gen": "app",
+   "feature": "Left Stick navigation with held repeat",
+   "latest_pass": "R11 3634d1e6 H18 (first PASS 0ea98cc1, issue #19 D0265)",
+   "code_changed_since": false,
+   "evidence": "PBX-CTL-001"
+  },
+  {
+   "gen": "app",
+   "feature": "L/R change game on Product Home; ZL/ZR safe",
+   "latest_pass": "R3 62a2f8c3 C04 (PRE 3be4de6b A0005/A0006/A0037/A0038/D0252/D0253)",
+   "code_changed_since": false,
+   "evidence": "PBX-CTL-002"
+  },
+  {
+   "gen": "app",
+   "feature": "B back/cancel; B closes nested menus one layer at a time",
+   "latest_pass": "R11 3634d1e6 H19 (PRE D0251)",
+   "code_changed_since": false,
+   "evidence": "E0018"
+  },
+  {
+   "gen": "app",
+   "feature": "+ contextual Options/Settings and - Help/Controls",
+   "latest_pass": "PRE 3be4de6b A0007/A0008/A0039/A0040/A0124/A0125/D0254/D0255; Help B-close R3 62a2f8c3 NEW-01, OCT24 c60d4da0 E05",
+   "code_changed_since": true,
+   "evidence": "Help pages rewritten through R11 (ClassicHelpPresentation.h)"
+  },
+  {
+   "gen": "app",
+   "feature": "Navigation torture: rapid mixed input, no focus corruption, stutter or crash",
+   "latest_pass": "PRE 3be4de6b A0132-A0136",
+   "code_changed_since": true,
+   "evidence": "never re-run since first binary"
+  },
+  {
+   "gen": "app",
+   "feature": "X/Y/+/- on an empty game-save slot do nothing unsafe",
+   "latest_pass": "PRE 3be4de6b A0122-A0125",
+   "code_changed_since": true,
+   "evidence": "Home rewritten since"
+  },
+  {
+   "gen": "app",
+   "feature": "Second controller (Joy-Con/Pro) inputs",
+   "latest_pass": "R3 62a2f8c3 C09",
+   "code_changed_since": false,
+   "evidence": "PBX-CTL-009"
+  },
+  {
+   "gen": "app",
+   "feature": "A selects and advances; no single button quits (P0 #320)",
+   "latest_pass": "R1 7fea1797 C01-C09 (D0236); R3 62a2f8c3 C02/C04/C09",
+   "code_changed_since": true,
+   "evidence": "quit dialog redrawn aace6021 (R12 H02)"
+  },
+  {
+   "gen": "app",
+   "feature": "Keyboard and numpad entry",
+   "latest_pass": "PRE 2d2d7bc2 D0333",
+   "code_changed_since": true,
+   "evidence": "src/UI/Dialogs/KeyboardDialog.cpp changed in 066e1db9 (Hangul page db414ae7)"
+  },
+  {
+   "gen": "I,II,III",
+   "feature": "Classic inventory + Options / - Help / B Back",
+   "latest_pass": "PRE fc1e6de2 A0508-A0510",
+   "code_changed_since": true,
+   "evidence": "Gen I-III Bag + now opens Review; Help rewritten (R11 H03 PASS on 3634d1e6 covers Help)"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I editor L/R panel navigation",
+   "latest_pass": "PRE 69668bc8 A0546",
+   "code_changed_since": true,
+   "evidence": "Gen I editor overlays changed in 066e1db9"
+  },
+  {
+   "gen": "all",
+   "feature": "Coloured controller glyph badges in Help",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-013",
+   "code_changed_since": false,
+   "evidence": "PBX-CTL-005"
+  },
+  {
+   "gen": "all",
+   "feature": "No 'Touch: Back' footer; touch Back kept",
+   "latest_pass": "R6 26186464 A06",
+   "code_changed_since": false,
+   "evidence": "PBX-CTL-013"
+  },
+  {
+   "gen": "I,II,III,IV",
+   "feature": "Help names only controls that act there (no false + Review)",
+   "latest_pass": "R6 26186464 A31",
+   "code_changed_since": true,
+   "evidence": "PBX-CTL-014"
+  },
+  {
+   "gen": "I,II,III,IV,V",
+   "feature": "Inventory Controls help fits (same window Gen I-V)",
+   "latest_pass": "R11 3634d1e6 H03",
+   "code_changed_since": true,
+   "evidence": "InventoryHelp.h ZR line lengthened (642a7931)"
+  },
+  {
+   "gen": "app",
+   "feature": "Boot, 5-minute idle, repeated relaunch, no crash",
+   "latest_pass": "R11 3634d1e6 H48 + H01 (PRE 3be4de6b A0000-A0079, D0247)",
+   "code_changed_since": true,
+   "evidence": "new build 066e1db9"
+  },
+  {
+   "gen": "app",
+   "feature": "Exit and relaunch after discard",
+   "latest_pass": "R11 3634d1e6 H48",
+   "code_changed_since": true,
+   "evidence": "new build"
+  },
+  {
+   "gen": "app",
+   "feature": "HOME->resume, sleep->wake, Joy-Con reconnect, no stuck focus",
+   "latest_pass": "PRE 3be4de6b A0158-A0163",
+   "code_changed_since": true,
+   "evidence": "PBX-LQT-002; never retested"
+  },
+  {
+   "gen": "app",
+   "feature": "B on Home opens Quit decision; only Y quits",
+   "latest_pass": "R3 62a2f8c3 C02",
+   "code_changed_since": true,
+   "evidence": "aace6021 (R12 H02)"
+  },
+  {
+   "gen": "app",
+   "feature": "Launch requires confirmation (only Y launches)",
+   "latest_pass": "R3 62a2f8c3 C03 / R2-LAUNCH",
+   "code_changed_since": true,
+   "evidence": "aace6021 (R12 H02)"
+  },
+  {
+   "gen": "I,II,III",
+   "feature": "RetroArch launch via direct handoff",
+   "latest_pass": "PRE 0760334f (owner '100% pass'; A0920/D0325 on 97f540e4)",
+   "code_changed_since": true,
+   "evidence": "GameLauncher core-choice changes 7ed1cc16"
+  },
+  {
+   "gen": "IV",
+   "feature": "Nintendo DS direct launch (DraStic)",
+   "latest_pass": "PRE 0760334f (D0327 97f540e4, D0329 2d2d7bc2)",
+   "code_changed_since": true,
+   "evidence": "GameLauncher changes since"
+  },
+  {
+   "gen": "app",
+   "feature": "Quick Games / Quick View opens and A on a game works",
+   "latest_pass": "PRE 0760334f (D0332 on 2d2d7bc2)",
+   "code_changed_since": true,
+   "evidence": "727fad5d tap-outside"
+  },
+  {
+   "gen": "app",
+   "feature": "Standalone PokeBank NX without PKSE installed",
+   "latest_pass": "PRE issue #29 2026-09-12 (D0282)",
+   "code_changed_since": true,
+   "evidence": "many builds since; implicitly R11 H01"
+  },
+  {
+   "gen": "app",
+   "feature": "Install and open to Product Home",
+   "latest_pass": "R11 3634d1e6 H01",
+   "code_changed_since": true,
+   "evidence": "HOME card c21d3747 (R12 H01)"
+  },
+  {
+   "gen": "III",
+   "feature": "FireRed HOME-forwarder shows correct assigned GBA party; party card wording 'Current save party'",
+   "latest_pass": "PRE 2d2d7bc2 D0330/D0331 (0760334f 100% pass)",
+   "code_changed_since": true,
+   "evidence": "Home party rule b3f88716"
+  },
+  {
+   "gen": "app",
+   "feature": "Touch and controls agreement (no layering, double activation, background selection)",
+   "latest_pass": "R11 3634d1e6 H47",
+   "code_changed_since": true,
+   "evidence": "PBX-TCH-001"
+  },
+  {
+   "gen": "app",
+   "feature": "Popups never activate background controls; touch scroll + joystick together",
+   "latest_pass": "R3 62a2f8c3 C06/N03",
+   "code_changed_since": true,
+   "evidence": "PBX-TCH-001"
+  },
+  {
+   "gen": "app",
+   "feature": "Draggable scrollbars",
+   "latest_pass": "R3 62a2f8c3 R2-SCROLLBAR",
+   "code_changed_since": false,
+   "evidence": "PBX-TCH-004"
+  },
+  {
+   "gen": "app",
+   "feature": "Quick View touch",
+   "latest_pass": "R3 62a2f8c3 AUD-05",
+   "code_changed_since": true,
+   "evidence": "PBX-TCH-002"
+  },
+  {
+   "gen": "all",
+   "feature": "Tap outside closes non-destructive popups; no tap-through",
+   "latest_pass": "R6 26186464 C04/C10",
+   "code_changed_since": false,
+   "evidence": "PBX-TCH-006"
+  },
+  {
+   "gen": "I,II,III",
+   "feature": "Party A/tap opens Party Actions popup",
+   "latest_pass": "R6 26186464 A21 (OCT24 c60d4da0 L06)",
+   "code_changed_since": true,
+   "evidence": "ClassicPartyActions.inc dd69bc93"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Home A opens the assigned save",
+   "latest_pass": "R6 26186464 A18",
+   "code_changed_since": false,
+   "evidence": "PBX-CTL-011"
+  },
+  {
+   "gen": "app",
+   "feature": "Themes OLED Black/Dark/Light, Action Sheets, persistence after restart/sleep",
+   "latest_pass": "PRE 3be4de6b A0188-A0194, D0256-D0259",
+   "code_changed_since": true,
+   "evidence": "palettes changed d1a9aad6"
+  },
+  {
+   "gen": "I,II,III,IV,V",
+   "feature": "Live species search",
+   "latest_pass": "R11 3634d1e6 H11 / R3 62a2f8c3 R2-SEARCH",
+   "code_changed_since": true,
+   "evidence": "SharedSpeciesPicker eb7fe8c9"
+  },
+  {
+   "gen": "all",
+   "feature": "Species search keyboard beside the list",
+   "latest_pass": "R6 26186464 A09",
+   "code_changed_since": true,
+   "evidence": "eb7fe8c9 (R12 H16)"
+  },
+  {
+   "gen": "II,III,IV,V",
+   "feature": "Held Item search with Sort, docked keyboard",
+   "latest_pass": "R6 26186464 A10",
+   "code_changed_since": false,
+   "evidence": "PBX-SRC-003"
+  },
+  {
+   "gen": "all",
+   "feature": "L/R while searching (L Backspace, R inert)",
+   "latest_pass": "R11 3634d1e6 H11",
+   "code_changed_since": false,
+   "evidence": "PBX-SRC-004"
+  },
+  {
+   "gen": "app",
+   "feature": "Emulator/provider names on Home cards and the Trainer / Game Browser header (AUD-03)",
+   "latest_pass": "R3 62a2f8c3 AUD-03",
+   "code_changed_since": false,
+   "evidence": "include/UI/TrainerViewScreenBase.h:349-351 unchanged since 62a2f8c3; SaveProviderIdentity.h no commits since (PBX-HOM-005)"
+  }
+ ],
+ "noise": [
+  {
+   "rid": "A0244",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0245",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0248",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0249",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0250",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0251",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0391",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0398",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0400",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0405",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0596",
+   "reason": "Unfilled checklist template row (second device checklist af2acf04 / standing DEVICE_TEST_CHECKLIST / Gen I-IV checklist); no owner result; behaviour covered by accepted controller items (3be4de6b PASS rows, R11 H18/H19)"
+  },
+  {
+   "rid": "A0399",
+   "reason": "Unfilled standing-checklist aspiration ('Summary eventually reserves + for Compatible Games / Transfer Compatibility'); no owner result, no request; future transfer feature, not a controls defect"
+  }
+ ],
+ "misfiled": []
+}

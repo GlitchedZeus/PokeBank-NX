@@ -1,0 +1,3395 @@
+{
+ "areas": [
+  "bag-items",
+  "pc-items",
+  "bulk-topup",
+  "trainer"
+ ],
+ "issues": [
+  {
+   "id": "PBX-BAG-001",
+   "title": "Gen III Bag/Items read in early browser builds (FRLG checklist unrun; RSE Items screen empty)",
+   "gens": [
+    "III"
+   ],
+   "area": "bag-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE FRLG browser checklist (5d3e5e23)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "RSE Items FAIL on 46e0c161 (D0275); corrected artifact 1c96df25 (issue #48 Gen III accepted per later_refs). Gen III Items later owner PASS: fc1e6de2 classic inventory (A0504-A0515, gens I-III) and R3 62a2f8c3 B03 PASS (B0460). Current read path: src/UI/ClassicInventoryOverlay.cpp:209-219 (Gen3 inventoryEntries), pouch table src/Integration/Gen3/Gen3StagedInventoryEditor.cpp:34-52.",
+   "repair_commits": [
+    "1c96df25 tests: expect RSE game-card artwork (corrected RSE artifact per issue #6/#48)",
+    "fc1e6de2 ui: polish classic staged inventory footer and picker readability"
+   ],
+   "automated_tests": [
+    "tests/test_gen3_staged_inventory.cpp : Gen III pouches decode/stage",
+    "tests/test_gen3_inventory_byte_fidelity.cpp : only edited slot + checksum change"
+   ],
+   "last_owner_result": "R3/62a2f8c3/B03: PASS (Gen III Add Item)",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 B03 (also fc1e6de2 PRE classic inventory)",
+   "r12_checklist_item": null,
+   "next_action": "None beyond R12 H18 smoke; close.",
+   "occurrences": [
+    {
+     "rid": "A0354",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0355",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0356",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0357",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0358",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "D0275",
+     "round": "PRE",
+     "candidate": "46e0c161",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #6 (comment 2026-09-10)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0275",
+     "text": "Items screen: **FAIL — empty**"
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-002",
+   "title": "RBY Items: Invalid category / Medicines fallback defect (first RBY runtime)",
+   "gens": [
+    "I"
+   ],
+   "area": "bag-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE First RBY device test (d9077e2d)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Fixed in ItemsFix 50dac31f; owner 'RBY Items DEVICE ACCEPTED' (A0895 'YES', A0902/A0903/A0905 PASS). Current Gen I categories: src/Inventory/ClassicInventoryCatalog.cpp:31-34 (kGen1Pockets), entries src/UI/ClassicInventoryOverlay.cpp:189-197.",
+   "repair_commits": [
+    "50dac31f gen1: add read-only RBY inventory support (ItemsFix)"
+   ],
+   "automated_tests": [
+    "tests/test_rby_inventory.cpp : RBY category mapping",
+    "tests/test_classic_inventory_catalog.cpp : exact-game catalogs"
+   ],
+   "last_owner_result": "PRE/50dac31f/RBY ItemsFix: PASS",
+   "hardware_acceptance_candidate": "50dac31f PRE (BUILD_RECORD RBY ItemsFix)",
+   "r12_checklist_item": null,
+   "next_action": "None; close.",
+   "occurrences": [
+    {
+     "rid": "A0912",
+     "round": "PRE",
+     "candidate": "d9077e2d",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/BUILD_RECORD.md"
+    },
+    {
+     "rid": "D0280",
+     "round": "PRE",
+     "candidate": "d9077e2d",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #52 (body 2026-09-11)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0280",
+     "text": "The first RBY runtime `d9077e2da3909b6fbe9d8db9ce7384a71b8b98e7` was physically tested first. Trainer, Party, Boxes, Pokémon details and general browsing passed, but that exact binary exposed the Items/category defect and the incorrect GBA platform label for Yellow."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-003",
+   "title": "Add Item picker size OK but item names / control hints too dim",
+   "gens": [
+    "I",
+    "II",
+    "III"
+   ],
+   "area": "bag-items",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE issue #59 comment 2026-09-13",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "fc1e6de2 'polish classic staged inventory footer and picker readability'; owner accepted fc1e6de2 'slim centered Add Item picker' (A0511) and 'visible picker controls' (A0512) PASS. Picker later replaced by the shared compact grid (R2-BUG-006, PASS R3).",
+   "repair_commits": [
+    "fc1e6de2 ui: polish classic staged inventory footer and picker readability"
+   ],
+   "automated_tests": [
+    "tests/test_item_grid_picker.cpp : shared grid geometry"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-BUG-006: PASS (compact grid, successor picker)",
+   "hardware_acceptance_candidate": "fc1e6de2 PRE A0511/A0512; 62a2f8c3 R3 R2-BUG-006",
+   "r12_checklist_item": null,
+   "next_action": "None; close.",
+   "occurrences": [
+    {
+     "rid": "D0304",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #59 (comment 2026-09-13)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0304",
+     "text": "Latest hardware feedback also confirms the new narrow Add Item picker is a good size, but normal selectable item names and picker control hints are too dim/faded on the physical Switch."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-004",
+   "title": "Item editor screenshot defects: TM/HM art, wrong Ruby TM names, missing Gen IV machine names (+ X Sort request); TM/HM move detail",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "bag-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE PR #208 comment 2026-10-11 (ba628409)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner 'nro tested and 100% pass' on b1fcbd3e (D0338), which contains picker X Sort 646c4f50 (ancestor of b1fcbd3e). TM/HM move detail R2-BUG-005 PASS R3 (B0535) and latest R11 3634d1e6 H35 'Held item and TM/HM details' PASS (E0034). include/Inventory/MachineMoves.h and src/Inventory/MachineMoves.cpp unchanged since 3634d1e6. X Sort: include/UI/ItemPickerSort.h:12-24, wired at src/UI/ClassicInventoryOverlay.cpp:909-925 and src/UI/Gen4SharedPokemonSurface.inc:1920-1923 (Gen V Bag Add has none, see PBX-BAG-014).",
+   "repair_commits": [
+    "646c4f50 feat(ui): shared non-mutating Native/A-Z/Z-A item-picker sort retaining selected native ID",
+    "b1fcbd3e Run real Gen IV native bag add/edit bounds, rollback and source-integrity tests across DP Pt HGSS",
+    "7ed1cc16 Merge ... (R2-BUG-005 machine data)"
+   ],
+   "automated_tests": [
+    "tests/test_machine_moves_gen15.cpp : TM/HM move per game",
+    "tests/test_machine_display.cpp : HM labels (Gen V HM01-06)",
+    "tests/test_item_picker_sort.cpp : Native/A-Z/Z-A presentation-only sort keeps selection"
+   ],
+   "last_owner_result": "R11/3634d1e6/H35: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H35 (sort: b1fcbd3e PRE)",
+   "r12_checklist_item": null,
+   "next_action": "None; covered by R12 H18 smoke.",
+   "occurrences": [
+    {
+     "rid": "D0339",
+     "round": "PRE",
+     "candidate": "ba628409",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #208 (comment 2026-10-11)"
+    },
+    {
+     "rid": "B0431",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-005 / Part 9 #6",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0339",
+     "text": "Screenshots: Gen I/II TM/HM legacy placeholder art, Gen III Ruby TM43 erroneously “Volt Switch” and TM49 erroneously “Scald”, TM/HM sprite fallbacks in PC storage, missing Gen IV machine move names and request for X Sort in Add/Held item menus."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-005",
+   "title": "Bag Add must place the item at x1 immediately (no numpad first), quantity edited afterwards from the row (B01/B02/B03/B06)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "all"
+   ],
+   "area": "bag-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R1 B01 (7fea1797)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R2 e10f307f (B0300-B0303) and again R3 62a2f8c3 B01/B02/B03/B06 (B0458-B0461). Current code: shared decision UI/SharedBagAddFlow.h; Gen I-III stage x1 with no numpad src/UI/ClassicInventoryOverlay.cpp:549-560 (selectPickerItem), quantity only from a row :1100-1118 (decideRow + promptNumber). ClassicInventoryOverlay.cpp changed after 62a2f8c3 (8915b018 Top Up, d9105fae Help, 642a7931/153e5aca Top Up scope) so re-verify. NOTE: R11 H34 'Add and pocket capacity' was marked FAIL (E0033) but the owner's comment is entirely about Top Up/PC Items (tracked in PBX-BLK-002).",
+   "repair_commits": [
+    "0b70f023 fix(bag): B01/B02/B03/B06 + B04 - one shared Gen I-V Add flow, item lands at x1 with no numpad",
+    "74b55e88 feat(bag): B01-B06/B04 - one shared Add picker on SharedMenuGeometry for Gen I-V",
+    "28707782 feat(inventory): classic quantity rule delegates to QuantityPolicy (Gen I-III)",
+    "3dcce1fd feat(classic-bag): Remove asks first; one per-item quantity query"
+   ],
+   "automated_tests": [
+    "tests/test_bag_add_flow_gen15.cpp : Add stages x1 with no keypad, existing stack focused, invalid ids refused",
+    "tests/test_item_quantity_policy.cpp : per-game caps (CG09)",
+    "tests/test_shared_bag_quantity.cpp : quantity editor bounds",
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND2 B01/B02/B03/B06 frozen"
+   ],
+   "last_owner_result": "R3/62a2f8c3/B01,B02,B03,B06: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 B01/B02/B03/B06; recheck on 066e1db9 R12 H18 smoke",
+   "r12_checklist_item": "H18",
+   "next_action": "In R12 H18 smoke, Add a new item in Gen I/II/III and confirm x1 with no numpad, then A edits quantity.",
+   "occurrences": [
+    {
+     "rid": "A0948",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "2",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0952",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "item 1",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0869",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG09",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0872",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG12",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0822",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "bag-add",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0841",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "bag-add",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "B0017",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B01",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0018",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B02",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0019",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B03",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0022",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B06",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0064",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0110",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B01",
+     "result": "FAIL",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0111",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B02",
+     "result": "FAIL",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0112",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B03",
+     "result": "FAIL",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0113",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B06",
+     "result": "FAIL",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0158",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0166",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0167",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0168",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0169",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0233",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0234",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0235",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0236",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0314",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B01",
+     "result": "FAIL",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0315",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B02",
+     "result": "FAIL",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0316",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B03",
+     "result": "FAIL",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0317",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B06",
+     "result": "FAIL",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "D0223",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B01",
+     "result": "FAIL",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "D0224",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B02",
+     "result": "FAIL",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "D0225",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B03",
+     "result": "FAIL",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "D0226",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B06",
+     "result": "FAIL",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "F0097",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Next app work",
+     "result": "n/a",
+     "src": "CURRENT_STATUS.md"
+    },
+    {
+     "rid": "F0098",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Repair priorities",
+     "result": "n/a",
+     "src": "PROJECT_STATUS.md"
+    },
+    {
+     "rid": "F0099",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Release order 1",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "B0300",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0301",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0302",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0303",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0458",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0459",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0460",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0461",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0017",
+     "text": "B01:vgen on still has the numpad pop up before its put in my bag, i shou have it in my bag and than i can add more quantity."
+    },
+    {
+     "rid": "B0064",
+     "text": "in some of the menu like \"items\" it still makes me pick a quanity beofre it goes into my bag, i should pick it it pops up in bag and from there i can edit the quanity."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-006",
+   "title": "Gen IV / V Add Item follows the shared Add flow (B04); Gen IV physical Items milestone",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "bag-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE GEN14 checklist D6 / Gen IV Items milestone 2026-10-09",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "NOT VERIFIED in R1/R2 (B0020, B0306), owner PASS R3 62a2f8c3 B04 (B0464, guard B0662). Gen IV Add ordering later PASS R11 3634d1e6 H17 (E0016). Current: Gen IV X Add src/UI/Gen4SharedPokemonSurface.inc:2106-2131 -> stageGen4BagAdd :1731-1740; Gen V X Add src/UI/Gen5SharedReadOnlySurface.inc:1288-1290 -> include/Integration/Gen5/Gen5BagScreen.h:187 openAdd / :281 pickAdd. Gen5BagScreen.h changed after 62a2f8c3 (88f974da NEW-17, 8915b018 Top Up).",
+   "repair_commits": [
+    "0b70f023 fix(bag): B01/B02/B03/B06 + B04 - one shared Gen I-V Add flow, item lands at x1 with no numpad",
+    "52017cd1 test(gen5): B04 contract - Gen V Add goes through Gen5BagScreen::pickAdd (no keypad)",
+    "3634d1e6 fix(gen4): reconcile native Berry/TM Add sort with Remove packing; refuse damaged pockets"
+   ],
+   "automated_tests": [
+    "tests/test_bag_add_flow_gen15.cpp : Gen IV stageBagAdd / Gen V pickAdd at x1",
+    "tests/test_gen5_bag_screen.cpp : Gen V Add/Remove/quantity screen model",
+    "tests/test_gen4_bag_remove_pack.cpp : Gen IV add/remove packing"
+   ],
+   "last_owner_result": "R3/62a2f8c3/B04: PASS (Gen IV ordering: R11/3634d1e6/H17 PASS)",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 B04",
+   "r12_checklist_item": "H18",
+   "next_action": "Gen V Add on 066e1db9 during R12 H18 smoke (Gen5BagScreen changed since acceptance).",
+   "occurrences": [
+    {
+     "rid": "A0612",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D6",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0962",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN4_ITEMS_AND_PICKER_POLISH_2026-10-09.md"
+    },
+    {
+     "rid": "A0965",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN4_ITEMS_AND_PICKER_POLISH_2026-10-09.md"
+    },
+    {
+     "rid": "A0751",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0020",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0116",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0172",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0239",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0306",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0320",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B04",
+     "result": "NOT TESTED",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0370",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B04",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0442",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0454",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B04",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "D0229",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B04",
+     "result": "NOT TESTED",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0464",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0662",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-BAG-007",
+   "title": "Bag Remove asks first; compact Remove / Key Item warning dialog with coloured A/B glyphs, A confirms, B cancels, no duplicate footer (B07 / NEW-03)",
+   "gens": [
+    "all"
+   ],
+   "area": "bag-items",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE GEN14 campaign item 2 (Remove asks first)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "NEW-03 FAIL R3 (B0552) fixed 88f974da; owner PASS OCT24/R5/R6 A07 26186464 (C0287) and latest R11 3634d1e6 H33 'Remove confirmation and cancel' PASS (E0032). Current: Y -> confirm src/UI/ClassicInventoryOverlay.cpp:1091-1099, A/B handling :834-850, dialog :1143-1153 (SharedBagAddPicker::drawRemoveConfirm); Gen IV stageBagRemove src/UI/Gen4SharedPokemonSurface.inc:2064; Gen V include/Integration/Gen5/Gen5BagScreen.h:316/329. include/UI/SharedBagAddPicker.h unchanged since 26186464; remove path unchanged since 3634d1e6.",
+   "repair_commits": [
+    "3dcce1fd feat(classic-bag): Remove asks first; one per-item quantity query",
+    "88f974da Stage native PK5 language and unique inventory with zero creation stats and shared UI repairs (NEW-03 glyph dialogs)"
+   ],
+   "automated_tests": [
+    "tests/test_classic_inventory_ui_model.cpp : classicRemoveConfirmStep A removes / B cancels",
+    "tests/test_gen5_bag_screen.cpp : ConfirmRemove",
+    "tests/test_hw_round1_regression_gate.py : B07 / NEW-03 guards (CG38)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H33: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H33 (NEW-03: 26186464 R6 A07)",
+   "r12_checklist_item": null,
+   "next_action": "None; close.",
+   "occurrences": [
+    {
+     "rid": "B0063",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0547",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-010",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0552",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-03",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0589",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0031",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-03",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0134",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0228",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A07 · NEW-03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "D0006",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "B0209",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0276",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0394",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0023",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0086",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B07",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0344",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B07",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0632",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B07",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0502",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0546",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-010",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0682",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-010",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0083",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-03",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0182",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0287",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A07 · NEW-03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0372",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "E0032",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H33",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0063",
+     "text": "in the bag item menu the delete confirmation menu thing needs shirinked down to a proper size."
+    },
+    {
+     "rid": "B0552",
+     "text": "Colored A/B glyphs inside dedicated Remove and Key Item Warning dialogs. Bag Remove confirmation should use A (not Y) to confirm and B to cancel. Don't repeat modal option buttons in bottom footer. Do not change other destructive-action safeguards."
+    },
+    {
+     "rid": "B0547",
+     "text": "Warning needs correctly colored controller glyphs."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-008",
+   "title": "Bag changes appear in Review and in the exported copy; R3 'Export does nothing across generations'",
+   "gens": [
+    "all"
+   ],
+   "area": "bag-items",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R1 B08 (7fea1797) PASS; regression R3 B08 FAIL (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R3 FAIL (B0503) was an app-wide Export Copy problem. Later owner PASS: R6 26186464 B03·B08 'Bag Review is discoverable' (C0314, review area) and R11 3634d1e6 H14 'Export Copy is separate' + H46 'Export Copy reload and compare' PASS (export-copy area). Bag Review entry: src/UI/ClassicInventoryOverlay.cpp:1058-1063 (+ opens shared Review); export src/UI/ClassicInventoryOverlay.cpp:393 exportStagedCopy.",
+   "repair_commits": [
+    "a7244a64 fix(gen1-4): Review opened outside Box Actions returns to its screen; Bag uses the shared Review (round 5 P1)"
+   ],
+   "automated_tests": [
+    "tests/test_gen1_export_transaction.cpp : verified export of staged Bag",
+    "tests/test_qa_export_contracts.py : export contracts",
+    "tests/test_gen2_inventory_byte_fidelity.cpp / test_gen3_inventory_byte_fidelity.cpp : only edited slot + checksum"
+   ],
+   "last_owner_result": "R11/3634d1e6/H14,H46: PASS (export-copy area); R6/26186464/B03(B08): PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H14/H46",
+   "r12_checklist_item": "H17",
+   "next_action": "R12 H17 (Review/Keep/Discard/Export Copy) includes a Bag edit.",
+   "occurrences": [
+    {
+     "rid": "B0503",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B08",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0210",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "B08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0277",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "B08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0395",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "B08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0024",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0087",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B08",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0345",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B08",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0633",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "B08",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0503",
+     "text": "Owner reports Export does nothing across generations; investigate event handling, output path, error/reporting and safe export separately from source writes."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-009",
+   "title": "Compact item grid: short lists (<~20) should use balanced rows/columns",
+   "gens": [
+    "all"
+   ],
+   "area": "bag-items",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 R2-BUG-006 owner note (62a2f8c3)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Grid itself PASS R3 (B0536). The balanced-short-list request is implemented in e3c81745: include/UI/SharedItemGridPicker.h:105-125 (kBalancedBelow=20, balancedGrid). No later owner result names balanced short grids.",
+   "repair_commits": [
+    "e3c81745 R2-BUG-006: short item grids use balanced rows and a narrower frame",
+    "6e015b5b WIP: feat(ui): R2-BUG-006 shared compact grid item picker for Bag Add (Gen I-V)"
+   ],
+   "automated_tests": [
+    "tests/test_item_grid_picker.cpp : grid geometry incl. balanced short lists"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-BUG-006: PASS (with polish request)",
+   "hardware_acceptance_candidate": "none (not on any checklist since R3)",
+   "r12_checklist_item": null,
+   "next_action": "Add a one-line check (open Bag Add on a pocket with <20 choices, e.g. Gen I Balls) to R12/R13.",
+   "occurrences": [
+    {
+     "rid": "B0432",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-006",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0537",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-006",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0536",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-006",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0676",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-006",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0537",
+     "text": "Short lists (fewer than ~20 entries) should use better balanced rows/columns instead of awkward long sparse rows."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-010",
+   "title": "Gen V Key Items / TMs & HMs pockets were view-only; need native-safe staged Add/Remove (NEW-17)",
+   "gens": [
+    "V"
+   ],
+   "area": "bag-items",
+   "category": "missing-feature",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE GEN15 gate E07 (view-only expectation); R3 NEW-17 FAIL (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Implemented 88f974da; owner PASS OCT24 c60d4da0, R5 1ca2faec and R6 26186464 A19 (C0299). Current: mutablePocket covers every pocket include/Integration/Gen5/Gen5BagScreen.h:57-59; Key Item story warning :100; footer X/Y/ZR :80-95. Gen5BagScreen.h changed after 26186464 (8915b018 Top Up); R11 H37 PASS covered read/navigation only.",
+   "repair_commits": [
+    "88f974da Stage native PK5 language and unique inventory with zero creation stats and shared UI repairs"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_bag_screen.cpp : Key Item/TM add/remove, unique cap 1, warning",
+    "tests/test_gen5_bag.cpp : native SAV5 pockets",
+    "tests/fuzz_gen5_bag.cpp : malformed pocket safety"
+   ],
+   "last_owner_result": "R6/26186464/A19: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A19; recheck on 066e1db9 R12 H18",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke: Gen V Key Items Add -> warning -> Remove.",
+   "occurrences": [
+    {
+     "rid": "A0709",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E07",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0566",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-17",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0584",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0045",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-17",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0146",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-17",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0240",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A19 · NEW-17",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "D0018",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A19",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0095",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-17",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0194",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-17",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0299",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A19 · NEW-17",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0384",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-17",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0566",
+     "text": "Add supported native-safe Add/Remove/Edit in staged workspace and remove blanket view-only footer once implemented."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BAG-011",
+   "title": "[MANDATORY 7] Complete Bag operations: every native pocket, quantity bounds, Add/Remove, no lost edits (E04-E09)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "bag-items",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE GEN15 acceptance gate E04-E09 (2026-10-15)",
+   "status": "Needs Investigation",
+   "rechecked_needed": true,
+   "status_basis": "Per-op state in item_ops_matrix. Accepted on hardware: add/remove/quantity Gen I-V (PBX-BAG-005/006/007), Gen V pockets (PBX-BAG-010, R11 H37). UNKNOWN: E04 (Product Home Items vs Trainer Y Bag open the same source and return) and E08 (Gen III/IV Bag + Pokemon edits in one session lose nothing) have no owner result in any round; Top Up part is not accepted (R11 H04/H34 FAIL, see PBX-BLK-001/002). Host-only PASS rows (A0810, A0855) are not hardware acceptance.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_qa_matrix (bag / bag-add cells) : host PASS all 20 games",
+    "tests/test_inventory_ui_contract.cpp : shared A/X/Y availability"
+   ],
+   "last_owner_result": "none for E04/E08; see matrix for other ops",
+   "hardware_acceptance_candidate": "066e1db9 R12 H10 (Top Up) + H17/H18; E04/E08 not on any checklist",
+   "r12_checklist_item": "H10",
+   "next_action": "Add E04 and E08 steps to the next hardware checklist; close after R12 H10 PASS.",
+   "occurrences": [
+    {
+     "rid": "F0096",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "E04-E09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0706",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E04",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0707",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E05",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0708",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E06",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0710",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E08",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0711",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0810",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "bag",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0855",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-BAG-012",
+   "title": "Ordinary Bag edit: changing a quantity back to the original leaves no pending Review change (R8 H05)",
+   "gens": [
+    "all"
+   ],
+   "area": "bag-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R8 H05 (6ec5ccb9)",
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Checklist only; R8 has no owner results and the item was not carried into R9/R10/R11/R12 checklists. Pending state comes from the staged editors' hasPendingChanges (src/UI/ClassicInventoryOverlay.cpp:265-279); not verified whether net-zero edits clear it for every generation on hardware.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_gen3_staged_inventory.cpp / tests/test_gen5_bag_screen.cpp : staged restore cases (host)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist after R8)",
+   "r12_checklist_item": null,
+   "next_action": "Re-add H05 steps to the next owner checklist (it silently dropped after R8).",
+   "occurrences": [
+    {
+     "rid": "D0070",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": "H05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_6ec5ccb9.md (same items in RETEST_ROUND8_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-BAG-013",
+   "title": "Gen V Bag Add picker has no X Sort (Gen I-IV Add pickers have Native / A-Z / Z-A)",
+   "gens": [
+    "V"
+   ],
+   "area": "bag-items",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "none (found by this trace's item_ops_matrix; parity gap vs owner request D0339 'X Sort in Add/Held item menus')",
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "Gen V AddPicker input handles grid navigation, A and B only: src/UI/Gen5SharedReadOnlySurface.inc:1165-1200; footer include/Integration/Gen5/Gen5BagScreen.h:81-82 lists no Sort; no ItemPickerSort use in Gen5SharedReadOnlySurface.inc. Gen I-III: src/UI/ClassicInventoryOverlay.cpp:909-925; Gen IV: src/UI/Gen4SharedPokemonSurface.inc:1920-1923. No app supports reordering the Bag itself (include/UI/ItemPickerSort.h:12-13 'Never reorder a game inventory pouch').",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner decision: add X Sort to the Gen V Add picker for parity, or record that Bag 'sort' means picker sort only.",
+   "occurrences": [],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-PCI-001",
+   "title": "PC Items view/edit in Gen I-III (Gen I foundation includes Bag/PC Items)",
+   "gens": [
+    "I",
+    "II",
+    "III"
+   ],
+   "area": "pc-items",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE FRLG browser checklist PC Items (5d3e5e23)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen I explicit PASS 'RBY ItemsFix: PC Items' 50dac31f (A0904). Gen II/III only implicit: fc1e6de2 classic inventory PASS (L/R category, exact-game catalogs, A0507/A0515, gens I-III) and b1fcbd3e '100% pass' (D0338); no item-level PC Items PASS for Gen II or III. Current: PC Items is a category in src/Inventory/ClassicInventoryCatalog.cpp:31-42; staged via src/UI/ClassicInventoryOverlay.cpp:135,150,237-257. Catalog/adapters changed since (f565cc63, 642a7931 PC Top Up).",
+   "repair_commits": [
+    "50dac31f gen1: add read-only RBY inventory support",
+    "fc1e6de2 ui: polish classic staged inventory footer and picker readability"
+   ],
+   "automated_tests": [
+    "tests/test_classic_inventory_catalog.cpp : PC Items catalogs per game",
+    "tests/test_bag_top_up_adapters.cpp : Gen I/II/III PC Items state (hasPcItems)"
+   ],
+   "last_owner_result": "PRE/50dac31f/RBY PC Items: PASS (Gen II/III: implicit fc1e6de2 PASS)",
+   "hardware_acceptance_candidate": "50dac31f PRE (Gen I); Gen II/III should be explicit in 066e1db9 R12 H10 (PC Items scope)",
+   "r12_checklist_item": "H10",
+   "next_action": "During R12 H10 also open PC Items in Crystal and a Gen III game, edit one quantity, Review.",
+   "occurrences": [
+    {
+     "rid": "A0359",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "F0100",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Generation I",
+     "result": "n/a",
+     "src": "docs/GAME_SUPPORT_MATRIX.md"
+    },
+    {
+     "rid": "A0904",
+     "round": "PRE",
+     "candidate": "50dac31f",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/BUILD_RECORD.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-PCI-002",
+   "title": "R2-CHECK-010: PC Items catalogs (R/S no Devon Goods/Letter/Orbs, Emerald corrections) and Sapphire Super Rod pocket warning",
+   "gens": [
+    "III"
+   ],
+   "area": "pc-items",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 R2-CHECK-010 (62a2f8c3)",
+   "status": "Needs Investigation",
+   "rechecked_needed": true,
+   "status_basis": "R3 PASS row for R2-CHECK-010 (B0546/B0682) is titled 'Sapphire Super Rod pocket warning'; no owner result explicitly confirms the R/S/E PC Items catalog changes. Current catalog: src/Inventory/ClassicInventoryCatalog.cpp:300 (gen3Pc), changed since R3 (cfcc5f98 Meteorite, f565cc63).",
+   "repair_commits": [
+    "cfcc5f98 Q06 FRLG: Meteorite (280) is a valid FireRed/LeafGreen Key Item"
+   ],
+   "automated_tests": [
+    "tests/test_classic_inventory_catalog.cpp : Gen III PC catalogs"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-CHECK-010: PASS (Super Rod warning only)",
+   "hardware_acceptance_candidate": "none (not on any checklist after R3)",
+   "r12_checklist_item": null,
+   "next_action": "Owner: Ruby/Sapphire/Emerald PC Items -> X Add, confirm story items are absent.",
+   "occurrences": [
+    {
+     "rid": "B0448",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-010",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0546",
+     "text": "Warning needs correctly colored controller glyphs."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BLK-001",
+   "title": "Top Up / Add Missing only fills the current pocket; Bag categories not filled; 'add all' option wanted (H04)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "bulk-topup",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R9 H04 checklist (d6a20a2a); owner FAIL R11 H04 (3634d1e6)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "At 3634d1e6 Scope was the 2nd row, defaulting to 'This pocket' (git show 3634d1e6:include/UI/BagTopUpModel.h:28,103). Now Scope is the first row and defaults to All Bag pockets on a Bag tab: include/UI/BagTopUpModel.h:35-36,75-85,88-101,200-215; wired Gen I-III src/UI/ClassicInventoryOverlay.cpp:670-689,700-703; Gen IV src/UI/Gen4SharedPokemonSurface.inc:1786-1800; Gen V src/UI/Gen5SharedReadOnlySurface.inc:1087,1281-1287. Key Items/HMs stay excluded (include/Inventory/BulkItemPlan.h:131,193).",
+   "repair_commits": [
+    "642a7931 Top Up / Add Missing: discoverable Scope, PC Items and Bag + PC scopes (Gen I-V)",
+    "f565cc63 Bulk planner: explain full native lists, unique across Bag + PC, Gen I Max Elixer",
+    "8915b018 wip(bag): Top Up / Add Missing on the Gen I-V Bag (checkpoint before full gates)"
+   ],
+   "automated_tests": [
+    "tests/test_ui_bag_top_up_host.cpp : SETUP opens on Scope at '< All Bag pockets >' and stages via preview",
+    "tests/test_bag_top_up_adapters.cpp : model() scope order/cycle/default, All Bag plans per gen",
+    "tests/test_bulk_item_plan.cpp : bagPockets/pcPockets, Key/HM skipped"
+   ],
+   "last_owner_result": "R11/3634d1e6/H04: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H10",
+   "r12_checklist_item": "H10",
+   "next_action": "Owner runs R12 H10 on Gen I-V (Scope row, All Bag pockets, preview, A stages, Review).",
+   "occurrences": [
+    {
+     "rid": "D0088",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0117",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0003",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H04",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0061",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H04",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0092",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H04",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0095",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H04-H34",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "D0156",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H10",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0003",
+     "text": "top up and add only fill the current menu, the bag categoties arnt filled which they should be it and option of add all i think"
+    }
+   ]
+  },
+  {
+   "id": "PBX-BLK-002",
+   "title": "Top Up does not fill PC Items; must work for every pocket and PC Items in all gens (Key Items excluded) (H34)",
+   "gens": [
+    "I",
+    "II",
+    "III"
+   ],
+   "area": "bulk-topup",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R11 H34 (3634d1e6)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "At 3634d1e6 planTopUp passed BI::bagPockets(pockets) so PC Items was never planned (diff 3634d1e6..066e1db9 src/UI/ClassicInventoryOverlay.cpp). Now PC Items / Bag + PC Items scopes exist where the save has PC storage: include/UI/BagTopUpModel.h:73,81-85,207-211; pcAvailable from src/UI/ClassicInventoryOverlay.cpp:687-688; adapters include PCItems include/Inventory/BulkItemAdaptersClassic.h:63,143,224; Key Items excluded include/Inventory/BulkItemPlan.h:131. Gen IV/V have no PC storage (BagTopUpModel.h:15; Gen4SharedPokemonSurface.inc:1797-1799).",
+   "repair_commits": [
+    "642a7931 Top Up / Add Missing: discoverable Scope, PC Items and Bag + PC scopes (Gen I-V)",
+    "f565cc63 Bulk planner: explain full native lists, unique across Bag + PC, Gen I Max Elixer"
+   ],
+   "automated_tests": [
+    "tests/test_bag_top_up_adapters.cpp : PC Items scope fills Gen I 50-slot PC, Crystal PC, Gen III PC; Bag+PC; Gen IV/V !hasPcItems",
+    "tests/test_ui_bag_top_up_host.cpp : other scopes on the same screen"
+   ],
+   "last_owner_result": "R11/3634d1e6/H34: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H10",
+   "r12_checklist_item": "H10",
+   "next_action": "R12 H10: Gen I-III PC Items and Bag + PC Items scopes, preview, A, Review, Export reopen.",
+   "occurrences": [
+    {
+     "rid": "E0033",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H34",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0073",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H34",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0093",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H34",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0033",
+     "text": "the pc items doesnt get filled with top up feature and also gen 1 doesnt seems to work, check out all gesn for that make sure they all work for every pocket and bag categotry and pc items, key items dont worrry about tho cause that could mess up users saves"
+    }
+   ]
+  },
+  {
+   "id": "PBX-BLK-003",
+   "title": "Gen I fill-all only fills the current category (not TMs / items); misleading on the shared 20-slot Bag",
+   "gens": [
+    "I"
+   ],
+   "area": "bulk-topup",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R11 Extra 1 (3634d1e6)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Gen I Bag is one 20-slot list; scope now 'Whole Bag (20 slots shared)' (include/UI/BagTopUpModel.h:61-64,134-140; src/UI/ClassicInventoryOverlay.cpp:686), preview names full lists (:224-229) and partial results say 'Partly staged ... did not fit ... Nothing overflowed' (:303-318, used at src/UI/ClassicInventoryOverlay.cpp:758). Native limit remains: Add Missing cannot reach every category once 20 slots are used (fill order unresolved, PBX-BLK-004).",
+   "repair_commits": [
+    "153e5aca R11 QA: Gen I/II clone wording is append-only; Gen I shared-Bag Top Up reports partial fits",
+    "642a7931 Top Up / Add Missing: discoverable Scope, PC Items and Bag + PC scopes (Gen I-V)",
+    "f565cc63 Bulk planner: explain full native lists, unique across Bag + PC, Gen I Max Elixer"
+   ],
+   "automated_tests": [
+    "tests/test_bag_top_up_adapters.cpp : Gen I shared 20-slot skips ('Bag full: its 20 slots are shared'), Max Elixer in Medicines",
+    "tests/test_ui_bag_top_up_host.cpp : 'Whole Bag (20 slots shared)' label and '19 free' preview"
+   ],
+   "last_owner_result": "R11/3634d1e6/Extra 1: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H10",
+   "r12_checklist_item": "H10",
+   "next_action": "R12 H10 Gen I step; tell owner TMs can be topped up but not all missing items fit in 20 slots.",
+   "occurrences": [
+    {
+     "rid": "E0052",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 1",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0080",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 1",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0094",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 1",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0118",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "owner message 2026-11-01 (independent Round 11 QA)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0052",
+     "text": "Gen 1 bag items, fill all doesn't fill all bags, only does current bag not tm or items"
+    },
+    {
+     "rid": "E0118",
+     "text": "Gen I \"All Bag pockets\" Add Missing hits the native shared 20-slot Bag capacity, filling the earliest categories first. Fix the misleading UI behavior and report capacity/partial completion accurately. Never overflow the native Bag."
+    }
+   ]
+  },
+  {
+   "id": "PBX-BLK-004",
+   "title": "Gen I Add Missing fill order on the 20-slot Bag (ascending item id) - owner priority decision pending",
+   "gens": [
+    "I"
+   ],
+   "area": "bulk-topup",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R12 PR #332 body (066e1db9)",
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Deferred in PR #332: order unchanged (ascending item id), 'Choosing a different priority is an owner decision.' No owner decision recorded. Owner's Extra 1 wording asks for TMs and items, which ascending order may starve.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (decision needed)",
+   "r12_checklist_item": null,
+   "next_action": "Ask owner for Gen I fill priority (e.g. one per category first) before v1.",
+   "occurrences": [
+    {
+     "rid": "D0246",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #332 (body 2026-11-01)"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-TRN-001",
+   "title": "Gen III trainer read model (FRLG trainer name/gender/TID/SID/money); FireRed trainer/item reads only PARTIAL",
+   "gens": [
+    "III"
+   ],
+   "area": "trainer",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE FRLG browser checklist (5d3e5e23)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "FRLG reads PASS/PARTIAL on ea0b806b (D0268); RSE trainer PASS 46e0c161 (D0271); Gen III trainer later accepted with staged edits R6 26186464 A05 (C0285). Trainer page painter changed after R6 (7eab05cf).",
+   "repair_commits": [
+    "ea1a7a4a feat(gen3): stage Trainer Name / Money for Ruby, Sapphire, Emerald, FireRed, LeafGreen (R2-BUG-002)"
+   ],
+   "automated_tests": [
+    "tests/test_gen3_trainer_edit.cpp : Gen III trainer fields stage/round-trip"
+   ],
+   "last_owner_result": "R6/26186464/A05: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A05",
+   "r12_checklist_item": "H18",
+   "next_action": "Gen III Trainer page in R12 H18 smoke.",
+   "occurrences": [
+    {
+     "rid": "A0353",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "D0268",
+     "round": "PRE",
+     "candidate": "ea0b806b",
+     "item_id": null,
+     "result": "PARTIAL",
+     "src": "issue #6 (comment 2026-09-09)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0268",
+     "text": "FIRERED TRAINER/ITEM READS: PHYSICAL PASS/PARTIAL"
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-002",
+   "title": "Gen II Trainer screen read-only/unusable for staged editing",
+   "gens": [
+    "II"
+   ],
+   "area": "trainer",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE PR #68 comment 2026-09-14 (91a42970)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "cfb70357 accepted (PR #68); Gen II trainer edits later PASS R6 26186464 A30 (C0310, 'Supported Trainer editing works. Keep it.'). Current: include/Integration/Gen2/Gen2StagedEditor.h:92-116. Painter changed after R6 (7eab05cf).",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions"
+   ],
+   "automated_tests": [
+    "tests/test_trainer_playtime_gender_rows.cpp : Gen II Play Time / Crystal Gender rows"
+   ],
+   "last_owner_result": "R6/26186464/A30: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A30",
+   "r12_checklist_item": "H18",
+   "next_action": "Gen II Trainer page in R12 H18 smoke.",
+   "occurrences": [
+    {
+     "rid": "D0290",
+     "round": "PRE",
+     "candidate": "91a42970",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-14)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0290",
+     "text": "- Gen II Trainer screen is effectively read-only/unusable for staged editing."
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-003",
+   "title": "Gen V newly initialized save showed a fake male trainer portrait; must report new game / no trainer, never guess gender",
+   "gens": [
+    "V"
+   ],
+   "area": "trainer",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE GEN15 acceptance gate (2026-10-15)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "35cbf163 adds explicit new-game state: include/Integration/Gen5/Gen5TrainerName.h:16 newGameNoTrainer5 used at include/Integration/Gen5/Gen5SharedScreenState.h:478 and Gen5GameCardPreview.h:58. No later owner result on a new-game Gen V save.",
+   "repair_commits": [
+    "35cbf163 fix(gen5): explicit new-game save state; never show an uninitialized trainer as Male"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_trainer_footer.cpp : new-game trainer shows neutral",
+    "tests/test_gen5_save_diagnostics.cpp : new-game diagnostics"
+   ],
+   "last_owner_result": "PRE/(gate doc)/Black 2 new-game: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist since the GEN15 gate)",
+   "r12_checklist_item": null,
+   "next_action": "Owner opens a fresh Black 2 DraStic save on 066e1db9: expect new game / no trainer, neutral portrait.",
+   "occurrences": [
+    {
+     "rid": "A0640",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "A07",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0705",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0742",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-TRN-004",
+   "title": "Gen V Trainer: separate popup and list conventions (clamp, first-tap focus, focusable read-only rows); clutter (R2-BUG-003)",
+   "gens": [
+    "V"
+   ],
+   "area": "trainer",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE GEN15 gate / 35cbf163 owner finding P6",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "7123035d (shared panel) + ad95b2de (conventions); R2-BUG-003 PASS R3 62a2f8c3 (B0532); Gen V Trainer used in R11 3634d1e6 H09 PASS (E0008). Current: include/Integration/Gen5/Gen5TrainerScreen.h:25-47. Gen5TrainerName.h display changed after 3634d1e6 (d1954551).",
+   "repair_commits": [
+    "7123035d fix(gen5): open on the shared loaded-game hub; Trainer is the shared panel",
+    "ad95b2de fix(gen5): Trainer and Items follow the Gen I-IV list conventions",
+    "4f549775 feat(gen5): Gen V Trainer on the one Trainer page model; CG83 / CG84 / CG90 enforced"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_trainer.cpp : rows, editability, Up/Down wrap",
+    "tests/test_gen5_trainer_footer.cpp : A: Edit only on editable rows"
+   ],
+   "last_owner_result": "R11/3634d1e6/H09: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H09",
+   "r12_checklist_item": "H14",
+   "next_action": "R12 H14 (Gen V names) exercises the Gen V trainer name display change.",
+   "occurrences": [
+    {
+     "rid": "A0743",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0937",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P6",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0703",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E01",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0704",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0429",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-003",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0532",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-003",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0673",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-003",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-TRN-005",
+   "title": "Gen I Trainer Name/Money editable; 'A: Edit' footer wherever a field is editable, all gens (R2-TRAINER / R2-BUG-001)",
+   "gens": [
+    "I",
+    "all"
+   ],
+   "area": "trainer",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 owner request (7fea1797)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R2-BUG-001 PASS R3 62a2f8c3 (B0530); Gen I Name/Money PASS OCT24 c60d4da0 R2-TRAINER (C0074) and R6 26186464 B02·R2-TRAINER (C0313). Current: include/Integration/Gen1/Gen1StagedTrainerEditor.h:59-67,161-181; editability include/UI/ClassicTrainerEditability.h; page rows include/UI/ClassicTrainerPage.h:55-71. Page painter changed after R6 (7eab05cf, 4f549775).",
+   "repair_commits": [
+    "6d6c55d5 feat(gen1): staged Trainer Name / Money editing; honest A Edit Trainer footer for every generation",
+    "cccec27b WIP: fix(trainer): editable Trainer page keeps its A: Edit footer on a read-only source (R2-BUG-001)",
+    "06329b5a R2-BUG-001 parity: Gen V Trainer footer shows A: Edit only when the focused row is editable"
+   ],
+   "automated_tests": [
+    "tests/test_gen1_trainer_edit.cpp : Gen I name/money stage + export",
+    "tests/test_classic_trainer_page.cpp : rows/editability",
+    "tests/test_hw_round1_regression_gate.py : R2-BUG-001 guard (CG18)"
+   ],
+   "last_owner_result": "R6/26186464/B02 (R2-TRAINER): PASS",
+   "hardware_acceptance_candidate": "26186464 R6 B02; 62a2f8c3 R3 R2-BUG-001",
+   "r12_checklist_item": "H18",
+   "next_action": "Gen I Trainer Name/Money edit in R12 H18 smoke (new painter).",
+   "occurrences": [
+    {
+     "rid": "B0057",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0125",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0182",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "R2-TRAINER (Phase 5)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0249",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "R2-TRAINER (Phase 5)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0427",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-001",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "A0805",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-name",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0823",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-edit",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0842",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-edit",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0877",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG18",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "B0530",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-001",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0672",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-001",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0057",
+     "text": "gen 1 trainer menu doesnt allow me to edit the trainer and money stats, but in gen 2 i can we need to add a footer saying A to edit and also the ablity to edit in gen 1 and the footer in both gens and this needs done for all gens btw,"
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-006",
+   "title": "Trainer edits must reach Review; staged exit offers Review / Continue / Discard / Export Copy (Gen I-IV, R2-BUG-002)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "area": "trainer",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R3 R2-BUG-002 / R2-TRAINER (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "FAILs R3 (B0475, B0531) fixed 29084707 / a7244a64; owner PASS OCT24 c60d4da0, R5 1ca2faec, R6 26186464 A05 (C0285). Gen I Review also exercised R11 3634d1e6 H10 PASS (E0009). Current session/exit: include/UI/ClassicTrainerSession.h; include/UI/ClassicStagedExit.h. Trainer page code changed after R6 (7eab05cf).",
+   "repair_commits": [
+    "29084707 Open classic Trainer Review and stage-safe exit choices with named changes",
+    "a7244a64 fix(gen1-4): Review opened outside Box Actions returns to its screen; Bag uses the shared Review (round 5 P1)",
+    "ea1a7a4a feat(gen3): stage Trainer Name / Money for Ruby, Sapphire, Emerald, FireRed, LeafGreen (R2-BUG-002)",
+    "e5dec3a2 WIP: feat(gen4): stage Trainer Name / Money in the Gen IV workspace (R2-BUG-002)"
+   ],
+   "automated_tests": [
+    "tests/test_gen3_trainer_edit.cpp : Gen III name/money stage, Review, export",
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND5 R2-TRAINER / R2-BUG-002"
+   ],
+   "last_owner_result": "R6/26186464/A05: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A05",
+   "r12_checklist_item": "H17",
+   "next_action": "Include a Trainer edit in R12 H17 Review/Keep/Discard/Export pass for Gen III/IV.",
+   "occurrences": [
+    {
+     "rid": "B0428",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-002",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0475",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-TRAINER",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0531",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-002",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0016",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-TRAINER",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0028",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-BUG-002",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0125",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-TRAINER",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0131",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-BUG-002",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0226",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A05 · R2-BUG-002",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "D0004",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0074",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-TRAINER",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0080",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-BUG-002",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0180",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-BUG-002",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0285",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A05 · R2-BUG-002",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0363",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-TRAINER",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0369",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-BUG-002",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0475",
+     "text": "No Review; Review needs adding to Gen I–IV."
+    },
+    {
+     "rid": "B0531",
+     "text": "No way to access Review; exiting shows Discard/Cancel only, even with staged changes."
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-007",
+   "title": "Gen I-IV Trainer: native Play Time and Pokedex seen/caught like Gen V (NEW-18 data)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "area": "trainer",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 R2-BUG-003 PASS note / NEW-18 FAIL (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "20955b20 native classic summaries; owner PASS OCT24 c60d4da0 NEW-18 (C0096). Rows: include/UI/ClassicTrainerPage.h:30,64-71 (Play Time, Badges, Pokedex). The later NEW-18 FAILs (R5/R6) are about visual design and are tracked in PBX-TRN-010.",
+   "repair_commits": [
+    "20955b20 Share truthful Origin panels and native classic Trainer summaries with picker regressions guarded"
+   ],
+   "automated_tests": [
+    "tests/test_native_trainer_badges.cpp : native badges incl. Johto/Kanto",
+    "tests/test_classic_trainer_page.cpp : Play Time / Pokedex rows"
+   ],
+   "last_owner_result": "OCT24/c60d4da0/NEW-18: PASS",
+   "hardware_acceptance_candidate": "c60d4da0 OCT24 NEW-18",
+   "r12_checklist_item": "H18",
+   "next_action": "Covered by the visual retest in PBX-TRN-010.",
+   "occurrences": [
+    {
+     "rid": "B0533",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-003",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0567",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-18",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0046",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-18",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0147",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-18",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0096",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-18",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0385",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-18",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0809",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "pokedex",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0533",
+     "text": "Owner wants Play Time and Pokédex on Gen I–IV too."
+    },
+    {
+     "rid": "B0567",
+     "text": "Add native Play Time and Pokédex seen/caught summaries to Gen I–IV like Gen V."
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-008",
+   "title": "Trainer Info parity: badges, Trainer Gender visible where stored, editable Play Time (Gen II-IV) and Gender (Crystal, Gen III-IV)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "trainer",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R4 owner request #323 (c60d4da0)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "f775db01 stages Play Time (Gen II-IV) and Gender (Crystal, Gen III-IV); owner PASS R5 1ca2faec P3-TRAINER and R6 26186464 A30 ('Supported Trainer editing works. Keep it.'). Current: include/Integration/Gen2/Gen2StagedEditor.h:113-116; include/Integration/Gen3/Gen3StagedTrainerEditor.h:180-190; include/Integration/Gen4/Gen4StagedTrainerEditor.h:50-54; rows include/UI/ClassicTrainerPage.h:55-71. Painter changed after R6 (7eab05cf). Badges row display-only (ClassicTrainerPage.h:26-27,70).",
+   "repair_commits": [
+    "f775db01 P3: stage Play Time (Gen II-IV) and Trainer Gender (Crystal, Gen III-IV)",
+    "20955b20 Share truthful Origin panels and native classic Trainer summaries with picker regressions guarded"
+   ],
+   "automated_tests": [
+    "tests/test_trainer_playtime_gender_rows.cpp : editable rows only with native writers",
+    "tests/test_native_trainer_badges.cpp : badges",
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND6 P3-TRAINER"
+   ],
+   "last_owner_result": "R6/26186464/A30: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A30",
+   "r12_checklist_item": "H18",
+   "next_action": "Gen II-IV Play Time / Gender edit in R12 H18 smoke (new painter).",
+   "occurrences": [
+    {
+     "rid": "C0005",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0209",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #323 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0112",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0120",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0160",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P3 Trainer",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0251",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A30 · P3-TRAINER",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0343",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A30 · P3-TRAINER",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0028",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A29",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0205",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P3-TRAINER",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0310",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A30 · P3-TRAINER",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0396",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "P3-TRAINER",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0209",
+     "text": "The owner requests badges + Trainer Gender on Gen I–IV Trainer Info and editable Trainer Gender / Play Time where the native save permits."
+    },
+    {
+     "rid": "C0310",
+     "text": "Supported Trainer editing works. Keep it."
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-009",
+   "title": "Gold/Silver Trainer Gender rows overlap ('Male' under new row); Gold/Silver/Gen I store no gender",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "trainer",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE host matrix trainer-gender N/A (Gen I/GS); owner FAIL R5 (1ca2faec)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "d2a7f7d9 Gold/Silver report no gender; eb0ae8ee rebuilt layout; owner PASS R6 26186464 B02 ('The Gold/Silver gender overlap is gone.'). Current: no Gender row when not stored include/UI/ClassicTrainerPage.h:24,63-66. Painter changed after R6 (7eab05cf).",
+   "repair_commits": [
+    "d2a7f7d9 fix(gen2): Gold / Silver report no trainer gender (CG72, round 6 P2)",
+    "eb0ae8ee feat(gen1-4): Trainer Info in the Gen V design, gated (round 6 P2)"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : B02 guard 'no Gold / Silver gender overlap'",
+    "tests/test_classic_trainer_page.cpp : no Gender row for Gold/Silver/Gen I"
+   ],
+   "last_owner_result": "R6/26186464/B02: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 B02",
+   "r12_checklist_item": "H18",
+   "next_action": "Recheck Gold/Silver Trainer during PBX-TRN-010 visual retest.",
+   "occurrences": [
+    {
+     "rid": "A0806",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-gender",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0827",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0828",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0829",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0830",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0831",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer-gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "C0166",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-TRAINER",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0254",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B02 · R2-TRAINER",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "D0031",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A32",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0313",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B02 · R2-TRAINER",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0399",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "B02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0849",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "trainer.gender",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0166",
+     "text": "The Gold/Silver Trainer Gender rows overlap: an old \"Male\" label sits under the new row. Older Trainer layouts are inconsistent."
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-010",
+   "title": "Gen I-IV Trainer must match the Gen V visual standard (neutral values, consistent rows, no patched boxes); Y Review Changes button too large / overlaps rows",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "trainer",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 NEW-18 / R2-TRAINER FAIL (1ca2faec)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Last owner result R6 26186464 B06 and C06 FAIL. Fix: one shared Trainer painter include/UI/SharedTrainerPanel.h:9-27 (neutral valueColor :22) and page model include/UI/ClassicTrainerPage.h:87-141 (measured Review slot kReviewW=200,kReviewH=36 :96, fits check :141). In e88957f2 (R7) and every later candidate; R7 B04/C06 had no owner results and the item was not on R8-R12 checklists. R11 H09/H10 PASS touched the Trainer page but did not test the visual standard.",
+   "repair_commits": [
+    "7eab05cf feat(ui): Gen I-IV Trainer painted by Gen V's Trainer painter (round 7 B06 / C06)",
+    "4f549775 feat(gen5): Gen V Trainer on the one Trainer page model; CG83 / CG84 / CG90 enforced",
+    "8c5d89af Merge lane C 73248a15: one shared Trainer painter Gen I-V incl. Gen V measured Review slot (B06/C06)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG83/CG84/CG90 Trainer page layout, Review slot below last row, no overlap",
+    "tests/test_classic_trainer_page.cpp : page geometry"
+   ],
+   "last_owner_result": "R6/26186464/B06,C06: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist since R7 e88957f2 B04/C06, which have no owner results)",
+   "r12_checklist_item": null,
+   "next_action": "Put 'Trainer Gen I-IV side by side with Gen V; Review button placement' back on the R12/R13 checklist.",
+   "occurrences": [
+    {
+     "rid": "C0170",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-18",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0208",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0218",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7F",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0258",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B06 · NEW-18",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0266",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C06 · 7F",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0317",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B06 · NEW-18",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0325",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C06 · 7F",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0345",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B02 · R2-TRAINER",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0052",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "B04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0061",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0353",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B06, C06, B02/A30 follow-ups",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0317",
+     "text": "Gen I–IV Trainer still looks like a hybrid:<br>• yellow values where Gen V uses neutral text;<br>• awkward boxes and inconsistent row backgrounds;<br>• layout pieces that look patched together.<br>Gen V Trainer is the standard."
+    },
+    {
+     "rid": "C0325",
+     "text": "Trainer looks inconsistent with Gen V. The Y Review Changes button is too large or badly placed and overlaps rows."
+    }
+   ]
+  },
+  {
+   "id": "PBX-TRN-011",
+   "title": "Gen V Trainer Gender editable (native writer) and Pokedex in the read-only section (H09)",
+   "gens": [
+    "V"
+   ],
+   "area": "trainer",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R9 H09 (d6a20a2a)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "edb7bda1; owner PASS R11 3634d1e6 H09 (E0008). Current include/Integration/Gen5/Gen5TrainerScreen.h:19,25-35. Gen5TrainerName.h changed after 3634d1e6 (d1954551, display text only).",
+   "repair_commits": [
+    "edb7bda1 Gen V: Trainer Gender staged with a native writer, Pokedex with the read-only rows (#5); inline Pokemon Gender (#6)"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_trainer.cpp : Gender editable/focusable, value 'Female' after stage"
+   ],
+   "last_owner_result": "R11/3634d1e6/H09: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H09",
+   "r12_checklist_item": "H14",
+   "next_action": "None beyond R12 H14/H18.",
+   "occurrences": [
+    {
+     "rid": "D0093",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0122",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0008",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H09",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-TRN-012",
+   "title": "Gen I Play Time editable (hours up to 255) and listed in Review (H10)",
+   "gens": [
+    "I"
+   ],
+   "area": "trainer",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R9 H10 (d6a20a2a)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "b4bfcc93; owner PASS R11 3634d1e6 H10 (E0009). include/Integration/Gen1/Gen1StagedTrainerEditor.h:67,181; no change to Gen I trainer editor / ClassicTrainerPage.h / ClassicTrainerSessionInput.h since 3634d1e6.",
+   "repair_commits": [
+    "b4bfcc93 Owner UI batch: Gen V Create Met Location choice, Gen I Play Time, L/R in search, folder preferences"
+   ],
+   "automated_tests": [
+    "tests/test_gen1_trainer_edit.cpp : Play Time stage bounds"
+   ],
+   "last_owner_result": "R11/3634d1e6/H10: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H10",
+   "r12_checklist_item": null,
+   "next_action": "None; close.",
+   "occurrences": [
+    {
+     "rid": "D0094",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H10",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0123",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H10",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0009",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H10",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-TRN-013",
+   "title": "Gen IV trainer-name propagation: Product Home / Games cards show the real Gen IV trainer name read from the save (V1 roadmap Phase 4, checked)",
+   "gens": [
+    "IV"
+   ],
+   "area": "trainer",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "REQ docs/V1_ROADMAP.md Phase 4 (checked 2026-09-29)",
+   "occurrences": [
+    {
+     "rid": "F0131",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 4",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "docs/V1_ROADMAP.md:101 '[x] Gen IV trainer-name propagation'; docs/GAME_SUPPORT_MATRIX.md:99. Implemented by b20b91ba (2026-09-29, 'ui: show real Pokedex progress and Gen IV trainer names'): SaveSelectScreen reads the trainer from the opened Gen IV save (Utils::utf16ToUtf8(opened.save->trainer().name)); current source copies it from the assigned-source snapshot into the card at src/UI/SaveSelectScreen.cpp:1174-1180 and previews at :1205-1211. tests/test_home_card_gen4_snapshot.cpp:160-166 asserts the snapshot trainerName equals the save's own trainer name ('ASH') and gender. No owner hardware item names the Gen IV trainer name on Home; broad Home PASSes are not counted.",
+   "repair_commits": [
+    "b20b91ba ui: show real Pokedex progress and Gen IV trainer names"
+   ],
+   "automated_tests": [
+    "tests/test_home_card_gen4_snapshot.cpp:160-166 : Home card snapshot trainerName/gender equal the Gen IV save's trainer"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add 'Gen IV Home card shows the save's trainer name and gender' to the next hardware checklist (can be observed during R12 H01)."
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "I",
+   "feature": "Bag Add at x1 / quantity from row",
+   "latest_pass": "R3 62a2f8c3 B01",
+   "code_changed_since": true,
+   "evidence": "B0458; ClassicInventoryOverlay.cpp changed by Top Up/Help commits after 62a2f8c3"
+  },
+  {
+   "gen": "II",
+   "feature": "Bag Add at x1 / quantity from row",
+   "latest_pass": "R3 62a2f8c3 B02",
+   "code_changed_since": true,
+   "evidence": "B0459"
+  },
+  {
+   "gen": "III",
+   "feature": "Bag Add at x1 / quantity from row",
+   "latest_pass": "R3 62a2f8c3 B03",
+   "code_changed_since": true,
+   "evidence": "B0460"
+  },
+  {
+   "gen": "all",
+   "feature": "Stackable quantity editing within native range",
+   "latest_pass": "R3 62a2f8c3 B06",
+   "code_changed_since": true,
+   "evidence": "B0461"
+  },
+  {
+   "gen": "IV,V",
+   "feature": "Gen IV/V Add Item through shared flow",
+   "latest_pass": "R3 62a2f8c3 B04",
+   "code_changed_since": true,
+   "evidence": "B0464; Gen5BagScreen.h changed (88f974da, 8915b018)"
+  },
+  {
+   "gen": "all",
+   "feature": "Unique items (bikes, rods, Key Items) limited to one",
+   "latest_pass": "R3 62a2f8c3 B05",
+   "code_changed_since": false,
+   "evidence": "B0501; quantity policy guards CG09"
+  },
+  {
+   "gen": "all",
+   "feature": "Bag Remove confirmation and cancel",
+   "latest_pass": "R11 3634d1e6 H33",
+   "code_changed_since": false,
+   "evidence": "E0032"
+  },
+  {
+   "gen": "all",
+   "feature": "Remove/Key Item warning dialogs A/B glyphs (NEW-03)",
+   "latest_pass": "R6 26186464 A07",
+   "code_changed_since": false,
+   "evidence": "C0287; SharedBagAddPicker.h unchanged since"
+  },
+  {
+   "gen": "all",
+   "feature": "TM/HM move information in Bag and held item picker",
+   "latest_pass": "R11 3634d1e6 H35",
+   "code_changed_since": false,
+   "evidence": "E0034"
+  },
+  {
+   "gen": "all",
+   "feature": "Compact item grid Add picker (R2-BUG-006)",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-006",
+   "code_changed_since": true,
+   "evidence": "B0536; e3c81745 balanced short lists after"
+  },
+  {
+   "gen": "IV",
+   "feature": "Remove keeps later items visible (Gen IV packing)",
+   "latest_pass": "R11 3634d1e6 H16",
+   "code_changed_since": false,
+   "evidence": "E0015"
+  },
+  {
+   "gen": "IV",
+   "feature": "Berry/TM/HM Add native ordering",
+   "latest_pass": "R11 3634d1e6 H17",
+   "code_changed_since": false,
+   "evidence": "E0016"
+  },
+  {
+   "gen": "IV",
+   "feature": "Malformed pocket safe refusal",
+   "latest_pass": "R11 3634d1e6 H36",
+   "code_changed_since": false,
+   "evidence": "E0035"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Bag read/navigation",
+   "latest_pass": "R11 3634d1e6 H37",
+   "code_changed_since": false,
+   "evidence": "E0036"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Key Items / TMs editable (NEW-17)",
+   "latest_pass": "R6 26186464 A19",
+   "code_changed_since": true,
+   "evidence": "C0299; Gen5BagScreen.h Top Up added"
+  },
+  {
+   "gen": "I",
+   "feature": "RBY Items/Bag/PC Items/navigation (ItemsFix)",
+   "latest_pass": "PRE 50dac31f BUILD_RECORD",
+   "code_changed_since": true,
+   "evidence": "A0895, A0902-A0905"
+  },
+  {
+   "gen": "I,II,III",
+   "feature": "Classic inventory X Add / Y Remove / A Edit Amount / L/R category / catalogs",
+   "latest_pass": "PRE fc1e6de2",
+   "code_changed_since": true,
+   "evidence": "A0504-A0515 (superseded by later rounds)"
+  },
+  {
+   "gen": "I,II,III,IV",
+   "feature": "Consolidated Gen I-IV item editor incl. X Sort in Add picker",
+   "latest_pass": "PRE b1fcbd3e (PR #208 comment)",
+   "code_changed_since": true,
+   "evidence": "D0338 'nro tested and 100% pass'"
+  },
+  {
+   "gen": "III",
+   "feature": "Sapphire Super Rod pocket warning (R2-CHECK-010)",
+   "latest_pass": "R3 62a2f8c3 R2-CHECK-010",
+   "code_changed_since": true,
+   "evidence": "B0546; catalog changed since"
+  },
+  {
+   "gen": "I",
+   "feature": "RBY Trainer page",
+   "latest_pass": "PRE 50dac31f / d9077e2d",
+   "code_changed_since": true,
+   "evidence": "A0897, A0907"
+  },
+  {
+   "gen": "III",
+   "feature": "RSE trainer read model",
+   "latest_pass": "PRE 46e0c161 issue #6",
+   "code_changed_since": true,
+   "evidence": "D0271"
+  },
+  {
+   "gen": "all",
+   "feature": "Trainer 'A: Edit' only where editable (R2-BUG-001)",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-001",
+   "code_changed_since": true,
+   "evidence": "B0530"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I Trainer Name/Money to Review",
+   "latest_pass": "R6 26186464 B02 (R2-TRAINER)",
+   "code_changed_since": true,
+   "evidence": "C0313, C0074"
+  },
+  {
+   "gen": "III,IV",
+   "feature": "Gen III/IV Trainer Name/Money reach Review + staged exit",
+   "latest_pass": "R6 26186464 A05",
+   "code_changed_since": true,
+   "evidence": "C0285"
+  },
+  {
+   "gen": "II,III,IV",
+   "feature": "Trainer Play Time / Gender staged edit",
+   "latest_pass": "R6 26186464 A30",
+   "code_changed_since": true,
+   "evidence": "C0310"
+  },
+  {
+   "gen": "I,II,III,IV",
+   "feature": "Classic Trainer Play Time and Pokedex shown",
+   "latest_pass": "OCT24 c60d4da0 NEW-18",
+   "code_changed_since": true,
+   "evidence": "C0096"
+  },
+  {
+   "gen": "II",
+   "feature": "No Gold/Silver gender overlap",
+   "latest_pass": "R6 26186464 B02",
+   "code_changed_since": true,
+   "evidence": "C0313"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Trainer clutter / layout (R2-BUG-003)",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-003",
+   "code_changed_since": true,
+   "evidence": "B0532"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Trainer Gender + Pokedex",
+   "latest_pass": "R11 3634d1e6 H09",
+   "code_changed_since": true,
+   "evidence": "E0008; d1954551 display change"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I Play Time editable",
+   "latest_pass": "R11 3634d1e6 H10",
+   "code_changed_since": false,
+   "evidence": "E0009"
+  }
+ ],
+ "noise": [
+  {
+   "rid": "A0964",
+   "reason": "Unrun Gen IV milestone checklist line (header readability / TID-SID spacing); no result; superseded by shared Trainer painter (PBX-TRN-010)."
+  }
+ ],
+ "misfiled": [],
+ "item_ops_matrix": [
+  {
+   "gen": "I",
+   "games": "Red/Blue/Yellow",
+   "add": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1087-1089 (X -> openAddPicker), :549-560 (stage x1, no numpad)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B01 PASS (B0458)"
+   },
+   "remove": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1091-1099 (Y -> confirm), :834-850 (A removes / B cancels)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R11 3634d1e6 H33 PASS (E0032); R6 26186464 A07 NEW-03 PASS"
+   },
+   "quantity": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1100-1118 (A -> decideRow -> promptNumber within native max)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B06 PASS (B0461)"
+   },
+   "sort": {
+    "exists": "picker-only",
+    "source": "src/UI/ClassicInventoryOverlay.cpp:909-925 (X cycles Native/A-Z/Z-A in Add picker); include/UI/ItemPickerSort.h:12-13 never reorders a pouch; no Bag-content sort exists",
+    "hardware_accepted": "yes (picker sort)",
+    "hardware_evidence": "PRE b1fcbd3e D0338 '100% pass' (Gen I-IV item editor incl. 646c4f50)"
+   },
+   "pc_items_view_edit": {
+    "exists": true,
+    "source": "src/Inventory/ClassicInventoryCatalog.cpp:31-34 (PCItems pocket); src/Integration/Gen1/Gen1StagedInventoryEditor.cpp:38; src/UI/ClassicInventoryOverlay.cpp:189-197,241-242",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "PRE 50dac31f 'RBY ItemsFix: PC Items' PASS (A0904)"
+   },
+   "top_up_add_missing": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1016-1020 (ZR), :670-689 (open: PC scopes, sharedBagSlots=20); include/UI/BagTopUpModel.h:81-85,134-140,303-318",
+    "hardware_accepted": "no",
+    "hardware_evidence": "R11 3634d1e6 H04/H34/Extra 1 FAIL; fix awaits 066e1db9 R12 H10"
+   }
+  },
+  {
+   "gen": "II",
+   "games": "Gold/Silver/Crystal",
+   "add": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1087-1089 (X -> openAddPicker), :549-560 (stage x1, no numpad)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B02 PASS (B0459)"
+   },
+   "remove": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1091-1099 (Y -> confirm), :834-850 (A removes / B cancels)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R11 3634d1e6 H33 PASS (E0032); R6 26186464 A07 NEW-03 PASS"
+   },
+   "quantity": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1100-1118 (A -> decideRow -> promptNumber within native max)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B06 PASS (B0461)"
+   },
+   "sort": {
+    "exists": "picker-only",
+    "source": "src/UI/ClassicInventoryOverlay.cpp:909-925 (X cycles Native/A-Z/Z-A in Add picker); include/UI/ItemPickerSort.h:12-13 never reorders a pouch; no Bag-content sort exists",
+    "hardware_accepted": "yes (picker sort)",
+    "hardware_evidence": "PRE b1fcbd3e D0338 '100% pass' (Gen I-IV item editor incl. 646c4f50)"
+   },
+   "pc_items_view_edit": {
+    "exists": true,
+    "source": "src/Inventory/ClassicInventoryCatalog.cpp:35-38; src/UI/ClassicInventoryOverlay.cpp:135 (gen2Pocket PCItems), :243-251 (stageInventoryQuantity)",
+    "hardware_accepted": "implicit only",
+    "hardware_evidence": "PRE fc1e6de2 classic inventory PASS (A0507 L/R category, A0515 catalogs); no item-level Gen II PC Items PASS"
+   },
+   "top_up_add_missing": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1016-1020, :670-689; include/Inventory/BulkItemAdaptersClassic.h:132-143 (Gen2 PCItems)",
+    "hardware_accepted": "no",
+    "hardware_evidence": "R11 3634d1e6 H04/H34 FAIL; awaits R12 H10"
+   }
+  },
+  {
+   "gen": "III",
+   "games": "Ruby/Sapphire/Emerald/FireRed/LeafGreen",
+   "add": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1087-1089 (X -> openAddPicker), :549-560 (stage x1, no numpad)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B03 PASS (B0460)"
+   },
+   "remove": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1091-1099 (Y -> confirm), :834-850 (A removes / B cancels)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R11 3634d1e6 H33 PASS (E0032); R6 26186464 A07 NEW-03 PASS"
+   },
+   "quantity": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1100-1118 (A -> decideRow -> promptNumber within native max)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B06 PASS (B0461)"
+   },
+   "sort": {
+    "exists": "picker-only",
+    "source": "src/UI/ClassicInventoryOverlay.cpp:909-925 (X cycles Native/A-Z/Z-A in Add picker); include/UI/ItemPickerSort.h:12-13 never reorders a pouch; no Bag-content sort exists",
+    "hardware_accepted": "yes (picker sort)",
+    "hardware_evidence": "PRE b1fcbd3e D0338 '100% pass' (Gen I-IV item editor incl. 646c4f50)"
+   },
+   "pc_items_view_edit": {
+    "exists": true,
+    "source": "src/Inventory/ClassicInventoryCatalog.cpp:39-42,300; src/Integration/Gen3/Gen3StagedInventoryEditor.cpp:34,43,52 (PC 0x498/50, FRLG 0x298/30); src/UI/ClassicInventoryOverlay.cpp:150,252-256",
+    "hardware_accepted": "implicit only",
+    "hardware_evidence": "PRE fc1e6de2 classic inventory PASS (gens I-III); no item-level Gen III PC Items PASS"
+   },
+   "top_up_add_missing": {
+    "exists": true,
+    "source": "src/UI/ClassicInventoryOverlay.cpp:1016-1020, :670-689; include/Inventory/BulkItemAdaptersClassic.h:216-224 (Gen3 PCItems)",
+    "hardware_accepted": "no",
+    "hardware_evidence": "R11 3634d1e6 H04/H34 FAIL; awaits R12 H10"
+   }
+  },
+  {
+   "gen": "IV",
+   "games": "Diamond/Pearl/Platinum/HeartGold/SoulSilver",
+   "add": {
+    "exists": true,
+    "source": "src/UI/Gen4SharedPokemonSurface.inc:2106-2131 (X -> picker), :1731-1740 stageGen4BagAdd; native Berry/TM sort src/Integration/Gen4/Gen4StagedPokemonEditor.cpp:1140-1143",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B04 PASS (B0464); R11 3634d1e6 H17 PASS (E0016)"
+   },
+   "remove": {
+    "exists": true,
+    "source": "src/UI/Gen4SharedPokemonSurface.inc:2055-2070 (stageBagRemove after confirm), drawItemRemoveConfirm :2282",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R11 3634d1e6 H16 + H33 PASS (E0015, E0032)"
+   },
+   "quantity": {
+    "exists": true,
+    "source": "src/UI/Gen4SharedPokemonSurface.inc:2180-2192 (promptNumber 1..native limit; unique fixed at 1)",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B06 PASS (all gens); PRE b1fcbd3e D0338"
+   },
+   "sort": {
+    "exists": "picker-only",
+    "source": "src/UI/Gen4SharedPokemonSurface.inc:1920-1923 (X sorts Add picker), :2253 'Sort:' label; pouch order is native (Gen4StagedPokemonEditor.cpp:1140-1143)",
+    "hardware_accepted": "yes (picker sort, Gen IV in b1fcbd3e)",
+    "hardware_evidence": "PRE b1fcbd3e D0338; native ordering R11 H17 PASS"
+   },
+   "pc_items_view_edit": {
+    "exists": "n/a",
+    "source": "No PC item storage in Gen IV: include/Inventory/BulkItemAdaptersNds.h:36 (kPockets = Bag pockets only); src/UI/Gen4SharedPokemonSurface.inc:1797-1799 (pcAvailable=false)",
+    "hardware_accepted": "n/a",
+    "hardware_evidence": "n/a (owner/brief: Gen IV has no PC Items)"
+   },
+   "top_up_add_missing": {
+    "exists": true,
+    "source": "src/UI/Gen4SharedPokemonSurface.inc:2100-2104 (ZR), :1778-1800 (plan/open, scopes This pocket / All Bag); include/UI/BagTopUpModel.h:81-85",
+    "hardware_accepted": "no",
+    "hardware_evidence": "R11 3634d1e6 H04 FAIL; awaits R12 H10"
+   }
+  },
+  {
+   "gen": "V",
+   "games": "Black/White/Black 2/White 2",
+   "add": {
+    "exists": true,
+    "source": "src/UI/Gen5SharedReadOnlySurface.inc:1288-1290 (X -> openAdd), :1200-1220 (A -> pickAdd x1); include/Integration/Gen5/Gen5BagScreen.h:187,281",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B04 PASS (B0464); Key Items/TMs R6 26186464 A19 PASS"
+   },
+   "remove": {
+    "exists": true,
+    "source": "src/UI/Gen5SharedReadOnlySurface.inc:1291-1293, :1230 (confirmRemove); include/Integration/Gen5/Gen5BagScreen.h:316,329",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R1 7fea1797 B07 / R3 B07 PASS (all gens); R11 H33 PASS (all gens); R6 A19 PASS"
+   },
+   "quantity": {
+    "exists": true,
+    "source": "src/UI/Gen5SharedReadOnlySurface.inc:1294-1310 (decideRow -> promptNumber -> applyQuantity); include/Integration/Gen5/Gen5BagScreen.h:155-169",
+    "hardware_accepted": "yes",
+    "hardware_evidence": "R3 62a2f8c3 B06 PASS (all gens)"
+   },
+   "sort": {
+    "exists": false,
+    "source": "src/UI/Gen5SharedReadOnlySurface.inc:1165-1200 (Add picker: grid nav, A, B only); include/Integration/Gen5/Gen5BagScreen.h:81-82 footer has no Sort; no ItemPickerSort in Gen V surface",
+    "hardware_accepted": "n/a",
+    "hardware_evidence": "not implemented (PBX-BAG-013)"
+   },
+   "pc_items_view_edit": {
+    "exists": "n/a",
+    "source": "No PC item storage in Gen V: include/Inventory/BulkItemAdaptersNds.h:125 (kPockets = Bag pockets only); tests/test_bag_top_up_adapters.cpp:805",
+    "hardware_accepted": "n/a",
+    "hardware_evidence": "n/a (owner/brief: Gen V has no PC Items)"
+   },
+   "top_up_add_missing": {
+    "exists": true,
+    "source": "src/UI/Gen5SharedReadOnlySurface.inc:1281-1287 (ZR -> BagTopUp::open), :1087 (request with full pocket state); include/Integration/Gen5/Gen5BagScreen.h:29,91",
+    "hardware_accepted": "no",
+    "hardware_evidence": "R11 3634d1e6 H04 FAIL; awaits R12 H10"
+   }
+  }
+ ]
+}

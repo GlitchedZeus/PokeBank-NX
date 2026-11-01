@@ -1,0 +1,31 @@
+{
+ "unique_issues": 276,
+ "historical_unique_defects": 152,
+ "by_status": {
+  "Hardware Accepted": 143,
+  "Fixed in Code \u2014 Awaiting Hardware": 72,
+  "Open Defect": 11,
+  "Missing Feature": 20,
+  "Intentionally Unsupported": 5,
+  "Needs Investigation": 25
+ },
+ "defects_by_status": {
+  "Hardware Accepted": 85,
+  "Fixed in Code \u2014 Awaiting Hardware": 50,
+  "Open Defect": 6,
+  "Missing Feature": 0,
+  "Intentionally Unsupported": 0,
+  "Needs Investigation": 11
+ },
+ "hardware_accepted": 143,
+ "hardware_accepted_needing_r12_recheck": 94,
+ "fixed_awaiting_hardware": 72,
+ "still_open_defects": 11,
+ "needs_investigation": 25,
+ "missing_features_total": 20,
+ "missing_v1_features": 13,
+ "safety_critical_issues": 62,
+ "safety_critical_without_hw_acceptance": 35,
+ "untested_safety_functions": 16,
+ "v1_required": 69
+}

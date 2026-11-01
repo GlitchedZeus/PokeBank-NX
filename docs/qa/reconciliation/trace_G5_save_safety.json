@@ -1,0 +1,4304 @@
+{
+ "areas": [
+  "backups-recovery",
+  "export-copy",
+  "review-keep-discard",
+  "open-save",
+  "save-discovery",
+  "import-export-file"
+ ],
+ "issues": [
+  {
+   "id": "PBX-BKP-001",
+   "title": "Durability / interruption gate accepted on FAT32 only; exFAT physical acceptance never tested",
+   "gens": [
+    "app"
+   ],
+   "area": "backups-recovery",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE Physical durability/interruption gate on FAT32 (cf1e390f)",
+   "occurrences": [
+    {
+     "rid": "D0305",
+     "round": "PRE",
+     "candidate": "cf1e390f",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #69 (body 2026-09-14)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0305",
+     "text": "- tested filesystem: FAT32;\n- FAT32 PHYSICAL ACCEPTANCE: DEVICE ACCEPTED;\n- exFAT PHYSICAL ACCEPTANCE: PENDING / NOT TESTED."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Owner accepted FAT32 durability on cf1e390f (issue #69, 8/8 RESULT files) but explicitly recorded 'exFAT PHYSICAL ACCEPTANCE: PENDING / NOT TESTED'. No later record tests exFAT. DurableFile (src/Utils/DurableFile.cpp:237-372 rename/previous/failed protocol) changed 2 commits since cf1e390f. Unknown: whether the owner's SD card is exFAT and whether exFAT rename/fsync semantics hold on hardware.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_backup_workspace_durability.cpp : DurableFile previous/failed/incomplete generations on host",
+    "tests/test_bank_recovery_contract.cpp : Bank recovery from .previous/.failed leftovers"
+   ],
+   "last_owner_result": "PRE cf1e390f issue #69: PASS (FAT32 only); exFAT NOT TESTED",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Ask owner which filesystem the SD card uses; if exFAT, add a non-destructive durability smoke item (no power-loss simulation) to the next checklist."
+  },
+  {
+   "id": "PBX-BKP-002",
+   "title": "Backup deletion requires explicit Y confirmation; originals / last copy undeletable (C07)",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R1 C07 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0006",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0620",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C07",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0490",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C07",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0001",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "C07",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0021",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "C07",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0206",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "C07",
+     "result": "NOT TESTED",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0075",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "C07",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0364",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "C07",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0126",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "C07",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0177",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "C07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0223",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A02 · C07",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0282",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A02 · C07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0001",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A02",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0203",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #322 (body 2026-10-24)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0490",
+     "text": "Current backup screen has no expected action; restore older PKSE-style browse/choose/save backup screen."
+    },
+    {
+     "rid": "D0206",
+     "text": "**C07/S05 remain unverified** unless owner explicitly tests those behaviors."
+    },
+    {
+     "rid": "D0203",
+     "text": "4. Copy creation works; retain current explicit-create / original read-only / Y-delete confirmation with last-copy guard."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Latest owner result R6 26186464 A02·C07 PASS (C0282). Current source: Save Backups delete dialog only deletes on Y via HomeQuit::decide (src/UI/BackupSelectionScreen.cpp:164-197, include/UI/HomeQuitConfirm.h:26-32); emulator export-record delete EmulatorBackupDeleteConfirm (src/UI/SaveSelectScreen.cpp:3452-3468) with SourceBackups::deleteRecord refusals OriginalSource / StagedWorkingCopy / OnlyRemainingCopy (include/UI/SourceBackupClassification.h:356-404). Code changed after 26186464: 55635234 (Gen V exports listed/opened/deleted in Save Backups) touched SourceBackupClassification.h, so Gen V deletion has never been exercised on hardware.",
+   "repair_commits": [
+    "9cc6caa9 feat(home): emulator-save Backups list; only app-owned export records are deletable (R2-EMUBACKUP)",
+    "fe5c3ad7 (R4) eligible app-owned backup deletion with explicit Y confirmation, last-copy protection",
+    "55635234 feat(backups): Gen V exports listed, opened and deleted in Save Backups (7E G1)"
+   ],
+   "automated_tests": [
+    "tests/test_emulator_backup_access.cpp : original emulator file never deletable and byte-identical; only app export records deletable",
+    "tests/test_gen5_backup_listing_host.cpp : delete removes exactly one record of this profile; refuses other profile, foreign files, last copy",
+    "tests/test_hw_round1_regression_gate.py : C07 per-ID guards (round 1 / GUARDS_ROUND5)"
+   ],
+   "last_owner_result": "R6/26186464/A02·C07: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A02 (accepted); recheck on 066e1db9 not itemised in R12 (closest: H17/H18 smoke)",
+   "r12_checklist_item": null,
+   "next_action": "Add a C07 regression line (incl. a Gen V export record) to the R12/R13 checklist: B cancels, Y deletes, original and last copy refused."
+  },
+  {
+   "id": "PBX-BKP-003",
+   "title": "Original source saves never change (S05 source-save immutability)",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R1 S05 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0052",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0655",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0529",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S05",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0002",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "S05",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0027",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "S05",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0207",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "S05",
+     "result": "NOT TESTED",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0102",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "S05",
+     "result": "FAIL",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0153",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "S05",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0200",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "S05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0391",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "S05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0246",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A25 · S05",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0305",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A25 · S05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0023",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A24",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "F0139",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Permanent source safety / safety policy",
+     "result": "requirement",
+     "src": "docs/GAME_SUPPORT_MATRIX.md"
+    },
+    {
+     "rid": "F0140",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Permanent guardrails / transaction model",
+     "result": "requirement",
+     "src": "README.md"
+    },
+    {
+     "rid": "F0141",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Safety invariants",
+     "result": "requirement",
+     "src": "docs/POKEMON_EDITOR_UI_CONTRACT.md"
+    },
+    {
+     "rid": "F0144",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "F10 / F12 / F13",
+     "result": "requirement",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0148",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Governance",
+     "result": "requirement",
+     "src": "CURRENT_STATUS.md"
+    },
+    {
+     "rid": "F0149",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Safety/governance",
+     "result": "requirement",
+     "src": "PROJECT_STATUS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0529",
+     "text": "Owner cannot verify backup protection because backup flow isn't working; not evidence of actual original-save corruption."
+    },
+    {
+     "rid": "D0207",
+     "text": "**C07/S05 remain unverified** unless owner explicitly tests those behaviors."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Latest owner results: R6 26186464 A25·S05 PASS (C0305) and R11 3634d1e6 H14 PASS ('source save is byte-unchanged; no live overwrite', E0013) plus H46 PASS. History: R3 FAIL (could not verify because backup flow broken, not corruption), OCT24 FAIL, R5 PASS after 1eec6f18 (Switch backups opened through a copy). Current source: exports only write inside the claimed export directory (src/Integration/Common/VerifiedStagedExport.cpp:311-340; Gen2ExportTransaction.cpp:232-266); Gen I-III export re-checks the source snapshot (include/UI/ClassicSourceGuard.h:45). Code paths producing staged bytes changed in Round 11 (Gen I/II carry 53330345, species history ab072252), so R12 recheck needed.",
+   "repair_commits": [
+    "1eec6f18 (R5) Switch backups are opened through a staged copy",
+    "4fa35a60 feat(review): ... Gen I-III source guard"
+   ],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : contracts C1-C6, source bytes unchanged for every export path",
+    "tests/test_qa_matrix (immutability cell) : source bytes, size and ns mtime unchanged after discovery/link/edit/export in all 20 games",
+    "tests/test_hw_round1_regression_gate.py : S05 guards (round 1, GUARDS_ROUND6)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H14: PASS (R6/26186464/A25: PASS)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "Owner runs R12 H17 and records original save size/date (and SHA-256 if possible) before and after."
+  },
+  {
+   "id": "PBX-BKP-004",
+   "title": "Emulator / Switch Save Backups browser: full-screen list, newest first, explicit create, A opens exact copy as staged session, legacy backups readable (R2-EMUBACKUP)",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "request",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R1 C07 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0060",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C07",
+     "result": "owner-correction",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0127",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "owner-request",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "F0147",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner request 6",
+     "result": "requirement",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0184",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "R2-EMUBACKUP (Phase 7)",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0251",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "R2-EMUBACKUP (Phase 7)",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0477",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-EMUBACKUP",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0580",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "engineering-finding",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0000",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-EMUBACKUP",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0017",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-EMUBACKUP",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0199",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-EMUBACKUP",
+     "result": "FAIL",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "D0200",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-EMUBACKUP",
+     "result": "FAIL",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "D0201",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-EMUBACKUP",
+     "result": "FAIL",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "D0202",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "owner-request",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "D0204",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "owner-request",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "D0205",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "requirement",
+     "src": "issue #322 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0105",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-EMUBACKUP",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0111",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "2",
+     "result": "checklist-item",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0121",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": null,
+     "result": "deferred",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0156",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-EMUBACKUP (unmarked)",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0203",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-EMUBACKUP",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0394",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "R2-EMUBACKUP",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0249",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A28 · R2-EMUBACKUP",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0308",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A28 · R2-EMUBACKUP",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0026",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A27",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0060",
+     "text": "\"[ ] Backup deletion requires Y confirmation\" this only works for the native switch games when i try to goin to my emulator backups its says they are read only source and i can open that menu (when i press + on a game card)."
+    },
+    {
+     "rid": "B0477",
+     "text": "Existing screen is weird and nonfunctional. Restore earlier PKSE-style save/backup browser: select a game, inspect available saves, browse current save and deliberately create backup. **Opening an unchanged save must not automatically create an unnecessary backup.**"
+    },
+    {
+     "rid": "D0200",
+     "text": "1. **Emulator games (Gen I–V):** Current Game > Backups uses a floating hybrid, four-row list (`Create backup now`, `Original RetroArch save`, `Backup • timestamp`, `Staged edits`) layered on Product Home, not the full-screen PKSE Save Backups browser. A on manual/app/export backup says **Details** and never opens the backup. The user wants A to open a selected **validated backup as a separate staged/read-only-source session**."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Latest owner result R6 26186464 A28·R2-EMUBACKUP PASS (C0308), also R5 PASS (C0203). Earlier: R3 FAIL ('weird and nonfunctional'), R4 FAIL (hybrid modal; A only Details; legacy PKSE backups refused). Current source: createEmulatorBackup is the only place a backup is made, never on open (src/UI/SaveSelectScreen.cpp:3283-3300; include/UI/SourceBackupClassification.h:16,479); exact copy opened via openSnapshot (include/UI/SourceBackupOpen.h:38). Backup code changed after 26186464 by 55635234 (Gen V exports in the list) - never owner-tested.",
+   "repair_commits": [
+    "9cc6caa9 feat(home): emulator-save Backups list (R2-EMUBACKUP)",
+    "fe5c3ad7 (R4) explicit source/backups browser, deliberate creation, newest first",
+    "80377153 feat(backups): open exact immutable historical copies in shared Gen I-V sessions",
+    "1eec6f18 (R5) Switch backups open as isolated staged copy",
+    "55635234 feat(backups): Gen V exports listed, opened and deleted in Save Backups (7E G1)"
+   ],
+   "automated_tests": [
+    "tests/test_emulator_backup_access.cpp : RetroArch/DraStic/melonDS export records listed, originals read-only",
+    "tests/test_backup_snapshot_open.cpp : A opens the exact immutable historical copy",
+    "tests/test_emulator_backup_layout.cpp : full-screen layout, newest first",
+    "tests/test_round4_backup_contract_mutations.py : mutation tests of the R4 backup contract"
+   ],
+   "last_owner_result": "R6/26186464/A28: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A28 (accepted); not itemised in R12",
+   "r12_checklist_item": null,
+   "next_action": "Include a Backups list/open regression (emulator + Switch + Gen V export row) in the next checklist; confirm no backup is created on plain open."
+  },
+  {
+   "id": "PBX-BKP-005",
+   "title": "No live emulator/installed writes, Inject Save or restore-backup-to-source",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "decision",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R1 live emulator or installed-game writes; Inject Save stays disabled. (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0165",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "deferred",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "A0767",
+     "round": "R6",
+     "candidate": null,
+     "item_id": "G3",
+     "result": "requirement",
+     "src": "docs/audits/ROUND6_SAVE_SAFETY_PKSE.md"
+    },
+    {
+     "rid": "F0132",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Non-negotiable rule",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "F0138",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "User-facing confirmations",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Intentionally Unsupported",
+   "rechecked_needed": false,
+   "status_basis": "Recorded policy: R1 doc 'live emulator or installed-game writes; Inject Save stays disabled' (B0165); Round 6 save-safety audit G3 'Intentional policy: no live writes/Inject Save' (docs/audits/ROUND6_SAVE_SAFETY_PKSE.md:40); owner deferral of S06 'is not permission for direct writing or injection' (C0221); CURRENT_STATUS.md:11 'No source-save writeback ... before owner sign-off'. Current source: no restore path; include/Integration/Gen5/Gen5StagedSaveCandidate.h:20 'does not authorize Inject Save or emulator writes'.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : no export path opens a source path for writing"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (policy; not a hardware item)",
+   "r12_checklist_item": null,
+   "next_action": "Keep; re-evaluate only with PBX-BKP-009 (approved per-adapter write pipeline) after owner sign-off."
+  },
+  {
+   "id": "PBX-BKP-006",
+   "title": "7E: audit save safety and backups against PKSE principles",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "request",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R5 7E (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0217",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7E",
+     "result": "owner-request",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0265",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C05 · 7E",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0324",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C05 · 7E",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0404",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0036",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A37",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner request R5 7E (C0217) -> audit docs/audits/ROUND6_SAVE_SAFETY_PKSE.md (G1-G5) -> R6 26186464 C05·7E PASS (C0324). G1 and G5 were later changed (55635234, 4fa35a60), so recheck.",
+   "repair_commits": [
+    "55635234 (G1)",
+    "4fa35a60 (G5 Gen I-III source guard)"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND7 C05 entry"
+   ],
+   "last_owner_result": "R6/26186464/C05·7E: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 C05",
+   "r12_checklist_item": null,
+   "next_action": "None beyond PBX-BKP-007/008 follow-ups."
+  },
+  {
+   "id": "PBX-BKP-007",
+   "title": "Gen V exports were not listed in Save Backups (7E G1)",
+   "gens": [
+    "V"
+   ],
+   "area": "backups-recovery",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R6 G1 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0765",
+     "round": "R6",
+     "candidate": null,
+     "item_id": "G1",
+     "result": "engineering-finding",
+     "src": "docs/audits/ROUND6_SAVE_SAFETY_PKSE.md"
+    },
+    {
+     "rid": "C0348",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C12 · Gen V Pokérus (G1)",
+     "result": "owner-request",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0423",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "7E G1",
+     "result": "deferred",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "D0057",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C02",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0356",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C12 follow-up",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0348",
+     "text": "**New bug:** after exporting an edited Gen V save, the exported copy does not appear in Save Backups, unlike the other generations."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Owner reported in R6 (C0348). Fixed in 55635234 (R7): SourceBackups lists/opens/deletes Gen V exports for the current profile (include/UI/SourceBackupClassification.h; exports/gen5/account-<profile>/...). R7 C02 checklist item exists but R7/R8/R9 have no owner results and R10/R11/R12 checklists do not include it. No owner PASS.",
+   "repair_commits": [
+    "55635234 feat(backups): Gen V exports listed, opened and deleted in Save Backups (7E G1)",
+    "ab46883e Merge lane L (... Gen V exports in Save Backups)"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_backup_listing_host.cpp : valid Gen V exports listed newest first, foreign-profile/malformed never listed, A opens exact export with edit present, originals byte-identical"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist since R7 C02, which has no results)",
+   "r12_checklist_item": null,
+   "next_action": "Add 'Gen V export appears in Save Backups and opens as staged copy' to the R12/R13 checklist."
+  },
+  {
+   "id": "PBX-BKP-008",
+   "title": "Recovery files view: selection invisible (H12 FAIL); nothing preselected; protections and both confirmations",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "backups-recovery",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R6 G2 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0766",
+     "round": "R6",
+     "candidate": null,
+     "item_id": "G2",
+     "result": "deferred",
+     "src": "docs/audits/ROUND6_SAVE_SAFETY_PKSE.md"
+    },
+    {
+     "rid": "C0424",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "7E G2–G4",
+     "result": "deferred",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "D0096",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H12",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0125",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H12",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0011",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H12",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0063",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H12",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0100",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "owner-decision",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 decisions"
+    },
+    {
+     "rid": "E0104",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Owner safety clarification 3",
+     "result": "owner-decision",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 owner safety clarifications"
+    },
+    {
+     "rid": "E0121",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "engineering-finding",
+     "src": "owner message 2026-11-01 (independent Round 11 QA)"
+    },
+    {
+     "rid": "F0145",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner safety clarification 3",
+     "result": "requirement",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0146",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H12",
+     "result": "requirement",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0043",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H44",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "D0157",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H11",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0011",
+     "text": "this doesnt work i cant see what is selected and nothing in the footer and nothing on screen changes for it, this needs worked on"
+    },
+    {
+     "rid": "E0104",
+     "text": "**Recovery files.** Focus may start on the current game's backups, but **nothing starts selected for deletion**. All protection (newest copy, Bank, unverified) and both confirmation steps stay exactly as they are."
+    },
+    {
+     "rid": "E0121",
+     "text": "Recovery model tests passed 3,000 randomized cases. Prioritize the actual H12 rendering/footer defect rather than rewriting a model that currently passes."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "G2 (leftover .previous/.failed/.incomplete invisible) led to the Recovery files view 742df4dd. R11 3634d1e6 H12 FAIL: selection/footer invisible (E0011). Round 11 repair d9b10029 + 98b6deaf (merged 72fa9fa8): nothing starts selected (RecoveryManagementModel.h:254 emptySelection; SaveSelectScreen.cpp:3258), focus on opening game's group (RecoveryManagementModel.h:415 initialFocus), picked rows marked (row.picked, badge 'Selected' :365), footer A/Y(n)/-/B (:380-387). Two-step removal kept: Y on list builds plan and opens RecoveryConfirm (SaveSelectScreen.cpp:4214-4224); only Y there removes, A/B keep (:3472-3500, HomeQuit::decide); every item re-checked before removal (RecoveryManagementFs.h:376 removePlanned). H44 PASS (protected labels) on 3634d1e6 is the only owner pass; actual deletion and the cancel path were never PASSed.",
+   "repair_commits": [
+    "742df4dd Recovery files view: review and remove older copies and leftovers, with confirmation",
+    "d9b10029 R11 H12: shared marked row style and structured Recovery files rows",
+    "98b6deaf R11 H12: Recovery files shows selection, footer, Help and focus",
+    "86218c18 Round 11 intake: owner safety clarifications (... nothing preselected in Recovery files ...)"
+   ],
+   "automated_tests": [
+    "tests/test_recovery_management_model.cpp : classify/protect newest copy, Bank, unverified; A on protected selects nothing; randomized cases",
+    "tests/test_recovery_management_fs.cpp : enumerate -> select -> confirm plan -> remove on a mkdtemp tree",
+    "tests/test_ui_recovery_files_host.cpp : real screen: nothing selected on open, marked rows, footer hints, Help return"
+   ],
+   "last_owner_result": "R11/3634d1e6/H12: FAIL (H44: PASS for protected display)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H11",
+   "r12_checklist_item": "H11",
+   "next_action": "Owner runs R12 H11 including one real removal of a Removable copy through both confirmations, and a B-cancel at the second confirmation."
+  },
+  {
+   "id": "PBX-BKP-009",
+   "title": "Approved per-adapter source writeback pipeline (backup -> stage -> reparse -> explicit write -> readback -> rollback)",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "REQ Future write pipeline (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0133",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Future write pipeline",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "F0134",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Backup requirements",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "F0137",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Per-game enablement / Gate to remove the hard lock",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "F0142",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "v1 target / Phase 12 / Phase 13",
+     "result": "requirement",
+     "src": "docs/V1_ROADMAP.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "docs/V1_ROADMAP.md:41 v1 target 'only perform source writeback through individually approved transaction adapters'; Phase 12 (docs/V1_ROADMAP.md:211-222) all unchecked. No write-to-source code exists in current source (only app-owned exports; PBX-BKP-005). Gated by owner decision (CURRENT_STATUS.md:11) - deferred, not rejected.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner decision needed: is source writeback in v1.0 scope (roadmap Phase 12) or explicitly post-1.0? Record the decision."
+  },
+  {
+   "id": "PBX-BKP-010",
+   "title": "Save Health Center / Disaster recovery / Save Time Machine",
+   "gens": [
+    "all"
+   ],
+   "area": "backups-recovery",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "REQ #14 / #18 / #58 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0150",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#14 / #18 / #58",
+     "result": "requirement",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "docs/FEATURE_FEASIBILITY_MATRIX.md #18 Save Health Center v1.0/v1.x, #58 Disaster recovery v1.0/v1.x, #14 Time Machine v1.x. Current app has Save Backups + Recovery files only; no health-center or rescue-flow UI found in src/UI. v1 flag: target is 'v1.0/v1.x' (ambiguous).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner to confirm whether any of #18/#58 is v1.0 scope."
+  },
+  {
+   "id": "PBX-EXP-001",
+   "title": "Export Copy writes a separate verified copy (original_backup + edited + manifest) in an app-owned folder; result visible",
+   "gens": [
+    "all"
+   ],
+   "area": "export-copy",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE E2 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0615",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E2",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0616",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E3",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0717",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F05",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0718",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F06",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0818",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "export",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0840",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "export",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0885",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Export",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "B0160",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "C0024",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "B08",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0077",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "B08",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0366",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "B08",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0074",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": "H09",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_6ec5ccb9.md (same items in RETEST_ROUND8_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0098",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H14",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0127",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H14",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0013",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H14",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0156",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "F01-F09 / F11 / F14",
+     "result": "requirement",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0161",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Export",
+     "result": "requirement",
+     "src": "docs/TRANSFER_MODEL.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Latest owner result R11 3634d1e6 H14 PASS (E0013); OCT24 B08 'export outcome visible' PASS (C0077). Current source: VerifiedStagedExport.cpp:311-340 publishes into an exclusively claimed new directory after strict reparse; same protocol in Gen2ExportTransaction.cpp:232-266 and Gen5WorkingCopyExport.cpp:292-333; manifest SOURCE_PATH written (VerifiedStagedExport.cpp:267). Export callers changed in Round 11 (staged editors: Gen I/II carry, species-history), so recheck in R12.",
+   "repair_commits": [
+    "24e730a0 test(qa): Gen I-V parser fuzzing and export-safety contracts",
+    "fa9cfcea (QA-F3 publish fix)",
+    "0bac3cf1 fix(gen2): publish verified exports with an exclusive mkdir (QA-F3b)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : C1 source unchanged, C2 strict reparse, C3 whitelist, C4 never overwrites, C5 no partial output, C6 Discard All then export refused",
+    "tests/test_classic_verified_export.cpp : Gen I/II exact original backup, checksum-valid edited save, fault cleanup",
+    "tests/test_gen5_export_validation.cpp : Gen V candidates strict-reparse with same title/copy"
+   ],
+   "last_owner_result": "R11/3634d1e6/H14: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "Owner runs R12 H17 (Export Copy part)."
+  },
+  {
+   "id": "PBX-EXP-002",
+   "title": "Stale-export guard: refuse export when source changed since open (F09; Gen I-III G5)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "export-copy",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE F09 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0721",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F09",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0769",
+     "round": "R6",
+     "candidate": null,
+     "item_id": "G5",
+     "result": "engineering-finding",
+     "src": "docs/audits/ROUND6_SAVE_SAFETY_PKSE.md"
+    },
+    {
+     "rid": "C0277",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C17",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0336",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C17 · Source guard",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0414",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C17",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0046",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A47",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R6 26186464 C17 PASS for Gen I-III (C0336). Current source: ClassicSourceGuard::unchangedSinceOpen (include/UI/ClassicSourceGuard.h:45) called before export (src/UI/ClassicInventoryOverlay.cpp:399-400, src/UI/Gen1PokemonEditorOverlayUX.inc:718); ClassicSourceGuard.h unchanged since 26186464. Gen IV/V rely on their own open-snapshot checks; no owner test of the Gen IV/V stale refusal.",
+   "repair_commits": [
+    "4fa35a60 feat(review): ... Gen I-III source guard"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND7 C17"
+   ],
+   "last_owner_result": "R6/26186464/C17: PASS (Gen I-III)",
+   "hardware_acceptance_candidate": "26186464 R6 C17",
+   "r12_checklist_item": null,
+   "next_action": "Optional: add a Gen IV/V stale-source refusal item."
+  },
+  {
+   "id": "PBX-EXP-003",
+   "title": "Export / backup fault handling: no space, read error, permission, existing folder, power loss; never claim success from partial file",
+   "gens": [
+    "all"
+   ],
+   "area": "export-copy",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE F10 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0722",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F10",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0136",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Low-space / crash recovery journal",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "F0153",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Error/dialog rules",
+     "result": "requirement",
+     "src": "docs/UI_FLOW.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Implemented and host-tested only: ExportFailurePoint injection and cleanup in VerifiedStagedExport.cpp:300-340 (destination appears, partial publish -> unpublish); DurableFile previous/failed generations (src/Utils/DurableFile.cpp:237-372). Owner instructed not to simulate power loss on hardware (R11 H44 note). No hardware result.",
+   "repair_commits": [
+    "fa9cfcea (QA-F3)",
+    "0bac3cf1 (QA-F3b)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : C5 no partial output under injected failures",
+    "tests/test_backup_workspace_durability.cpp : interrupted writes leave recoverable generations"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Keep host-only; optionally a safe 'SD nearly full' manual check."
+  },
+  {
+   "id": "PBX-EXP-004",
+   "title": "Exports change only whitelisted bytes and repair native checksums (F11); no-op edits produce no byte change",
+   "gens": [
+    "all"
+   ],
+   "area": "export-copy",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE F11 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0723",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F11",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0793",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F8b",
+     "result": "engineering-finding",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "F0135",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Staging / change-budget",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "F0166",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Beta / RC gates",
+     "result": "requirement",
+     "src": "docs/RELEASE_CHECKLIST.md"
+    },
+    {
+     "rid": "A0777",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F8b",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Host-verified: qa-matrix export cell checks only whitelisted record/block/checksum bytes differ (docs/qa/GEN1_5_MATRIX.md); QA-F8b Gen IV release zero-fill fixed f883f4d0. Not directly observable on hardware; no owner result.",
+   "repair_commits": [
+    "f883f4d0 (QA-F8b Gen IV release blank fix)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : C3 whitelist",
+    "tests/test_verified_export_verbatim.cpp : unchanged regions verbatim"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (host-only)",
+   "r12_checklist_item": null,
+   "next_action": "None (host gate)."
+  },
+  {
+   "id": "PBX-EXP-005",
+   "title": "Repeat export gets a fresh unique destination; race-safe publish (QA-F3 common/Gen V, QA-F3b Gen II)",
+   "gens": [
+    "all"
+   ],
+   "area": "export-copy",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE F14 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0726",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F14",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0748",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F3b",
+     "result": "engineering-finding",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0750",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F3",
+     "result": "PASS",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0785",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F3",
+     "result": "engineering-finding",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0786",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F3b",
+     "result": "engineering-finding",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0771",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F3b",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Fixed: exclusive mkdir claim, EEXIST -> 'nothing was replaced' (VerifiedStagedExport.cpp:311-321, Gen2ExportTransaction.cpp:239-248, Gen5WorkingCopyExport.cpp:321-333). Never owner-tested (repeat Export Copy twice is not a checklist item; R11 H05 'export twice' is the .pkX file feature).",
+   "repair_commits": [
+    "fa9cfcea (QA-F3)",
+    "0bac3cf1 fix(gen2): publish verified exports with an exclusive mkdir (QA-F3b)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : DestinationAppearsAsEmptyDirectory/AsFile -> refused, nothing replaced",
+    "tests/test_gsc_export_transaction.cpp : Gen II publish"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add 'Export Copy twice -> two separate folders' to a future checklist."
+  },
+  {
+   "id": "PBX-EXP-006",
+   "title": "S06: exported edited save loads in an emulator as a separate save (round-trip)",
+   "gens": [
+    "all"
+   ],
+   "area": "export-copy",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE F08 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0720",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F08",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0756",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0053",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0121",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0325",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "D0234",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0132",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "owner-request",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0177",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0244",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0311",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0375",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0447",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0453",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "B0470",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0070",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0109",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0238",
+     "round": "OCT24",
+     "candidate": null,
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "PR #307 (body, updated 2026-10-24)"
+    },
+    {
+     "rid": "C0164",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0175",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0221",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "S06",
+     "result": "owner-decision",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0280",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D03 · S06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0339",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D03 · S06",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0065",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "D01",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0045",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H46",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0143",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Release order 2 / 5",
+     "result": "requirement",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0165",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner request 11",
+     "result": "requirement",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0053",
+     "text": "S06 we havent added writing to the app yet  i wouldnt know yet"
+    },
+    {
+     "rid": "B0470",
+     "text": "Owner explicitly declines live emulator-save write testing right now."
+    },
+    {
+     "rid": "C0339",
+     "text": "Deferred on purpose. Not permission for direct writing."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "S06 NOT TESTED in R1-R6 (owner deferred on purpose, C0175/C0339). R11 3634d1e6 H46 'Export Copy reload and compare (OPTIONAL)' is recorded PASS (E0045) but its steps allowed 'load ONLY that copy in an emulator OR compare on PC' and the worksheet records no game/emulator, so it is unknown whether an emulator ever loaded an export. v1 roadmap release order requires 'Test exported edited.sav with the corresponding emulator' (F0143).",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : C2 strict reparse as same game",
+    "QA matrix export.checksum=detects-corruption (20/20) : reparse catches a corrupted checksum byte"
+   ],
+   "last_owner_result": "R11/3634d1e6/H46: PASS (method unrecorded); S06 R6/26186464/D03: NOT TESTED",
+   "hardware_acceptance_candidate": "none (not on R12 checklist; R12 header says emulator load is optional)",
+   "r12_checklist_item": null,
+   "next_action": "Ask the owner what H46 actually did (emulator load or PC compare, which games). If no emulator load, schedule an optional per-generation emulator load of an export copy (never overwriting the original) before v1.0."
+  },
+  {
+   "id": "PBX-EXP-007",
+   "title": "Verified strict reparse of the written edited save before publish (C2); checksum corruption detected",
+   "gens": [
+    "all"
+   ],
+   "area": "export-copy",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE F07 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0719",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F07",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0886",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Verify",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "A0851",
+     "round": "R3",
+     "candidate": null,
+     "item_id": "S06",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "B0441",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S06 host probe",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "F0155",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Staging requirements",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "D0184",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md (Known gaps)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Implemented: strict staged reparse before write and of written file (VerifiedStagedExport.cpp:179,259; Gen2ExportTransaction.cpp:160,221; Gen5WorkingCopyExport.cpp:292-296). Success path ran on device whenever an export succeeded (R11 H14 PASS) but the refusal path (corrupt/failed reparse) is host-only; no owner item exercises it.",
+   "repair_commits": [
+    "9d4b8b7 (R3 exportCorruptionProbe in QA matrix)"
+   ],
+   "automated_tests": [
+    "QA matrix export.checksum (exportCorruptionProbe) : one corrupted checksummed byte stops reparse, all 20 games",
+    "tests/test_qa_export_contracts.cpp : C2"
+   ],
+   "last_owner_result": "none (refusal path)",
+   "hardware_acceptance_candidate": "none (host-only)",
+   "r12_checklist_item": null,
+   "next_action": "None (host gate); keep in untested-safety list."
+  },
+  {
+   "id": "PBX-EXP-008",
+   "title": "Export Copy made from a backup session records the backup as SOURCE_PATH (7E G4)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "export-copy",
+   "category": "engineering",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R6 G4 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0768",
+     "round": "R6",
+     "candidate": null,
+     "item_id": "G4",
+     "result": "engineering-finding",
+     "src": "docs/audits/ROUND6_SAVE_SAFETY_PKSE.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Still true in current source: manifest SOURCE_PATH=request.sourcePath (VerifiedStagedExport.cpp:267, Gen2ExportTransaction.cpp:124, Gen5WorkingCopyExport.cpp:140); such an export groups under the backup's history, and Recovery files groups protection by SOURCE_PATH (include/UI/RecoveryManagementModel.h:86). Audit called it 'Documented; grouping only'; no owner decision recorded. Unknown: whether the owner accepts this grouping, and whether it can make a live save's newest export look removable in Recovery files.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner decision on grouping; add a host test that a backup-session export never lowers protection of the live save's copies."
+  },
+  {
+   "id": "PBX-REV-001",
+   "title": "Inherited apply/save-style mutation flow reachable in game-save views (#23)",
+   "gens": [
+    "app"
+   ],
+   "area": "review-keep-discard",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE Mutation-oriented control reachable in game-save views: apply/save-style flow (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0065",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0118",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "engineering-finding",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "PRE 3be4de6b FAIL; #23 hardening 0ea98cc1 'safety: lock installed-source UI'. The second-device checklist (af2acf04, A0271-A0278, 'NO SAVE-CHANGES PATH TO INSTALLED SOURCE') was never filled in. Gen I-V emulator saves later get a staged/export-only model (S05 PASS R6, H14 PASS R11), but no owner result specifically confirms native installed-title saves have no save-changes path in the current NRO. TrainerViewScreenBase.h:301 still has a 'Save & Exit' storage exit (app-owned Storage).",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "PRE/3be4de6b: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Confirm with owner whether native Switch titles are in v1 scope; if yes, add an installed-source no-write check."
+  },
+  {
+   "id": "PBX-REV-002",
+   "title": "Gen I Pending Changes panel content-aware sizing",
+   "gens": [
+    "I"
+   ],
+   "area": "review-keep-discard",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 5 (6ecd9c28)",
+   "occurrences": [
+    {
+     "rid": "A0538",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": "5",
+     "result": "owner-request",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "C0162",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P1 Gen I Review",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0174",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P1-GEN1",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0279",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D02 · P1-GEN1",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0338",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D02 · P1-GEN1",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0416",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "D02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Superseded by the shared paged Review: R6 26186464 D02·P1-GEN1 PASS 'Only the shared Review panel ... a swipe turns one page' (C0338). Gen I UX files changed in R11.",
+   "repair_commits": [
+    "8f0e1210 (R5 Gen I shared Review panel)"
+   ],
+   "automated_tests": [
+    "tests/test_gen12_review_parity.cpp"
+   ],
+   "last_owner_result": "R6/26186464/D02: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 D02",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-REV-003",
+   "title": "Gen V Review / Discard / Export Copy parity and reachability (S04, Gen V Review not reachable)",
+   "gens": [
+    "V"
+   ],
+   "area": "review-keep-discard",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE Review (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0583",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Review",
+     "result": "checklist-item",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "A0755",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0051",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0120",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0324",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S04",
+     "result": "NOT TESTED",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "D0233",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S04",
+     "result": "NOT TESTED",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0176",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "S04",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0243",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S04",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0310",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S04",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0374",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "S04",
+     "result": "checklist-item",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0446",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S04",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0455",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S04",
+     "result": "checklist-item",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "B0468",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0663",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0004",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0049",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "AUD-01",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0051",
+     "text": "S04 gen 5 needs more work i dont think this work properly like the others do."
+    },
+    {
+     "rid": "B0468",
+     "text": "Owner wants Gen V review workflow added to all Gen I–IV."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 62a2f8c3 S04 PASS (B0468); R4 Gen V Review not reachable FAIL (C0004); OCT24 repair 'Gen V Trainer Y/Review accessible'; R6 26186464 D01 AUD-01 Review consistency PASS across Gen I-V. Gen V surface changed heavily in R11 (src/UI/Gen5SharedReadOnlySurface.inc 222 lines), so recheck.",
+   "repair_commits": [
+    "0f132ebc S04 host trace",
+    "e061f03c (R4) IV/V one paged Review presenter",
+    "42bf612d fix(review): the Gen V save hub footer names its + Review"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_review_discard_export_trace.cpp : 372 checks W/B/W2/B2 Review/Discard/Export"
+   ],
+   "last_owner_result": "R6/26186464/D01: PASS (Gen V-specific: R3/62a2f8c3/S04 PASS)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "R12 H17 on a Gen V save."
+  },
+  {
+   "id": "PBX-REV-004",
+   "title": "Staged working copy, Review lists only staged changes, Discard All restores original (Discard)",
+   "gens": [
+    "all"
+   ],
+   "area": "review-keep-discard",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE E1 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0614",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E1",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0617",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E4",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0618",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E5",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0619",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "E6",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0697",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D11",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0713",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F01",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0714",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F02",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0715",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F03",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0716",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "F04",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0816",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "working-copy",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0817",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "review",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0857",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0882",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Working copy",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "A0884",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Review",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "A0887",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Exit",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "D0073",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": "H08",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_6ec5ccb9.md (same items in RETEST_ROUND8_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0044",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H45",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "D0163",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H17",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Latest owner result R11 3634d1e6 H45 PASS 'discard restores both changes; no source mutation' (E0044); also R11 H24/H48 PASS (other areas). Discard confirmation is the shared Y-then-Y path (include/UI/Gen12ReviewDiscardConfirm.h, SharedEditorChrome.h:179-181 'Discard & Exit'). Round 11 changed staged editors (Gen I/II carry owns staged save; Discard ends a carry 53330345), so recheck in R12 H17.",
+   "repair_commits": [
+    "29084707 (R4 staged exit I-IV)",
+    "53330345 H32: Gen I/II carry transaction owns the staged save until place/cancel"
+   ],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : C6 Discard All restores; later export refused",
+    "QA matrix working-copy/review cells (20 games)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H45: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "R12 H17 (Discard B then Y)."
+  },
+  {
+   "id": "PBX-REV-005",
+   "title": "Gen IV net no-op clone + release appeared in Review as an edit (QA-F8a)",
+   "gens": [
+    "IV"
+   ],
+   "area": "review-keep-discard",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE QA-F8a (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0792",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F8a",
+     "result": "engineering-finding",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0776",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F8a",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Fixed c7b0f97 (docs/qa/FINDINGS.md). Host-only; no owner item.",
+   "repair_commits": [
+    "c7b0f97 (QA-F8a)"
+   ],
+   "automated_tests": [
+    "QA matrix review cell"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-REV-006",
+   "title": "Review shows one row per Move and readable move/item names (R2-REVIEWMOVE)",
+   "gens": [
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "review-keep-discard",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R2 Review: one row per Move (no candidate)",
+   "occurrences": [
+    {
+     "rid": "B0190",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "Review: one row per Move",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0257",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "Review: one row per Move",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0483",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-REVIEWMOVE",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0110",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "1",
+     "result": "checklist-item",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0483",
+     "text": "One row now works, but displayed move changes use numeric IDs instead of readable names; show old/new move and item names etc."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 FAIL numeric IDs (B0483); OCT24 repair 'Review rows retain named moves/items'; R6 26186464 D01 PASS 'same pages, names and before/after values' (C0337). Note: the ID R2-REVIEWMOVE was later reused for 'Gen III Create with Safari Ball' (create area). Review row code changed in R11 (Gen4ExportTransaction.cpp:225-236 caution rows).",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND7 D01"
+   ],
+   "last_owner_result": "R6/26186464/D01: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "Covered by R12 H17."
+  },
+  {
+   "id": "PBX-REV-007",
+   "title": "Gen I-IV staged exit menu: A Review, B Continue, Y Discard & Exit, X Export Copy (NEW-19; Gen V-like review flow for I-IV)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "area": "review-keep-discard",
+   "category": "request",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R3 S04 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0469",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S04",
+     "result": "owner-request",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0568",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-19",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0047",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-19",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0097",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-19",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0386",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-19",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0148",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-19",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0195",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-19",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0241",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A20 · NEW-19",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0300",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A20 · NEW-19",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0019",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A20",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0469",
+     "text": "Owner wants Gen V review workflow added to all Gen I–IV."
+    },
+    {
+     "rid": "B0568",
+     "text": "Bring Gen V-like Review/Continue/Discard/Export Copy to Gen I–IV, safely and without duplicated controls."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "R6 26186464 A20 PASS 'Four-choice staged exit' (C0300). include/UI/ClassicStagedExit.h and SharedEditorChrome.h:179-181 unchanged since 26186464.",
+   "repair_commits": [
+    "29084707 (R4) one staged Review/Continue/Discard and Exit/Export Copy flow I-IV",
+    "a7244a64 (R5) Review returns to the screen underneath"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND5 NEW-19"
+   ],
+   "last_owner_result": "R6/26186464/A20: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A20",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-REV-008",
+   "title": "One shared Gen I-V Review presentation (AUD-01); owner: do not redesign",
+   "gens": [
+    "all"
+   ],
+   "area": "review-keep-discard",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R4 AUD-01 (c60d4da0)",
+   "occurrences": [
+    {
+     "rid": "C0003",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "AUD-01",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0208",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #323 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0108",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "AUD-01",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0159",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "AUD-01 (unmarked)",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0173",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "AUD-01",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0278",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D01 · AUD-01",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0337",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D01 · AUD-01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0344",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "D01 · AUD-01",
+     "result": "owner-decision",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0415",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "D01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0047",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A48",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "B0570",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-01",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0208",
+     "text": "**Owner verdict: FAIL / needs implementation.** Review presentation changes from generation to generation, and owner cannot reach a functioning Review screen in Gen V."
+    },
+    {
+     "rid": "C0344",
+     "text": "The shared Review is much improved. Do not redesign it."
+    },
+    {
+     "rid": "B0570",
+     "text": "Review screen differs from Gen IV and other parity gaps."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R4 FAIL (C0003/D0208); R6 26186464 D01 PASS (C0337) with owner decision 'Do not redesign it' (C0344). ReviewEntry.h changed after R6 (acc0b772 R7) -> recheck.",
+   "repair_commits": [
+    "4e1532d3, 9f034431 (R5 shared paged Review I-IV)",
+    "acc0b772 fix(review): one Review key per screen"
+   ],
+   "automated_tests": [
+    "tests/test_gen12_review_parity.cpp",
+    "tests/test_classic_party_review_path.cpp"
+   ],
+   "last_owner_result": "R6/26186464/D01: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "Keep presentation frozen per owner decision."
+  },
+  {
+   "id": "PBX-REV-009",
+   "title": "Review easy to find from every screen and returns where opened; Gen II Create Review invisible; + opened Review on Party (P1-RETURN, P3)",
+   "gens": [
+    "all"
+   ],
+   "area": "review-keep-discard",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 P1 Review return (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0161",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P1 Review return",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0172",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P1-RETURN",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0209",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P3",
+     "result": "requirement",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0260",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B08 · P1-RETURN",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0319",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B08 · P1-RETURN",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0042",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A43",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0054",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "B06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0055",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "B07",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0063",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C08",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0350",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B08 (1)",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0351",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B08 (2)",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0172",
+     "text": "Review is hard to find from Bag and the other editor screens, and there is no visible control prompt for it."
+    },
+    {
+     "rid": "C0319",
+     "text": "Two separate defects:<br>(1) \"While creating Unown in Gen II, opening Review displays what appears to be an invisible screen. The application appears frozen, but pressing B exits the invisible screen and returns it to normal.\"<br>(2) \"Review also works by pressing + in the Party menu. This needs fixed to just the Y button, or whatever the correct button is in the current menu or window.\""
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "R5 FAIL (C0172) and R6 FAIL (C0319: Gen II Unown Create Review invisible; + opens Review in Party). Fixes R7: 146511e2 (Gen II Create/Edit Review drawn), acc0b772 (one Review key per screen, the one its footer shows), 698314e6/7152178b (visible Review entry everywhere), CG81 enforced (2b8e9791). R7-R9 checklists have no results; R10/R11/R12 have no specific item. No owner PASS since the R6 FAIL.",
+   "repair_commits": [
+    "146511e2 fix(review): Gen II Create / Edit Review is drawn, not hidden under the workspace",
+    "acc0b772 fix(review): one Review key per screen, the one its footer shows",
+    "698314e6 feat(review): visible Review entry from every editor screen, Gen I-V",
+    "2b8e9791 test(qa): CG81 enforced (one Review key per screen)"
+   ],
+   "automated_tests": [
+    "tests/test_ui_review_entry_host.cpp : real TrainerViewScreen, every gen's Trainer/Party/Boxes/Bag opens Review with its key, B returns",
+    "tests/test_ui_gen2_create_review_host.cpp : Gen II Create Review drawn"
+   ],
+   "last_owner_result": "R6/26186464/B08·P1-RETURN: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist since R7 B06/B07, which have no results)",
+   "r12_checklist_item": null,
+   "next_action": "Add to next checklist: Gen II Create Unown -> Review visible; + in Party does not open Review; footer key opens Review on each screen."
+  },
+  {
+   "id": "PBX-REV-010",
+   "title": "Bag Review discoverability (B08 / 7G)",
+   "gens": [
+    "all"
+   ],
+   "area": "review-keep-discard",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 B08 (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0167",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "B08",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0219",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7G",
+     "result": "owner-request",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0255",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B03 · B08",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0267",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C07 · 7G",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0314",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B03 · B08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0326",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C07 · 7G",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0400",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "B03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0405",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C07",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0032",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A33",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0037",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A38",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0167",
+     "text": "Bag Review is not directly discoverable. It is buried in the `+` options and the save-exit flow."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R5 FAIL (C0167); R6 26186464 B03 and C07 PASS (C0314, C0326). Bag Help wording follow-up (C0346) belongs to help-footer-controls. ReviewEntry.h changed after R6 -> recheck. Note: ID B08 earlier meant 'export outcome visible' (OCT24), reused.",
+   "repair_commits": [
+    "698314e6 feat(review): visible Review entry ..."
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND7 B03, C07"
+   ],
+   "last_owner_result": "R6/26186464/B03: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 B03",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-OPN-001",
+   "title": "Older Legends: Arceus save crashes on open (#24)",
+   "gens": [
+    "app"
+   ],
+   "area": "open-save",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE Old Legends Arceus save crash (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0069",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0081",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0082",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PARTIAL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0164",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0283",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "checklist-item",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0284",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "checklist-item",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0289",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "checklist-item",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0149",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "2",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0224",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "2",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0344",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0081",
+     "text": "REPRODUCIBLE CRASH"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Hardening 0ea98cc1 (bounded SC decoding, block validation; docs/SESSION2_6_SAFETY_IMPLEMENTATION.md:40-54) explicitly 'DEVICE FIXED is not claimed', #24 left open. The exact failing save was never retested. Out of the current Gen I-V release scope (CURRENT_STATUS.md:5).",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads"
+   ],
+   "automated_tests": [
+    "Session 2.6 synthetic PLA/container host suites"
+   ],
+   "last_owner_result": "PRE/3be4de6b: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist; Gen VI-IX out of scope)",
+   "r12_checklist_item": null,
+   "next_action": "Retest the exact old PLA save when Switch-native titles return to scope."
+  },
+  {
+   "id": "PBX-OPN-002",
+   "title": "Gen V Home A opens the assigned save directly (no second chooser; shared hub, never direct-to-Party)",
+   "gens": [
+    "V"
+   ],
+   "area": "open-save",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE Gen V opened directly into Party rather than shared hub (fa9cfcea)",
+   "occurrences": [
+    {
+     "rid": "A0740",
+     "round": "PRE",
+     "candidate": "fa9cfcea",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0574",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Assignment",
+     "result": "checklist-item",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "A0668",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C01",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0565",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-16",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0020",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "C01",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0044",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-16",
+     "result": "checklist-item",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0094",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-16",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0107",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "C01",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0145",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-16",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0158",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "C01 (unmarked)",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0193",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-16",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0204",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "C01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0239",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A18 · NEW-16",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0250",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A29 · C01",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0298",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A18 · NEW-16",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0309",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A29 · C01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0017",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A18",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0565",
+     "text": "Home A should directly open currently assigned/read save; change save via Game Card + → Source/Game File → Refresh/Choose Save or Backups."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "fa9cfcea FAIL (direct-to-Party), R3 FAIL (extra chooser, B0565); R5 and R6 26186464 A18·NEW-16 and A29·C01 PASS (C0298, C0309); R11 H02 (open one save per generation) PASS. Round 11 diff of SaveSelectScreen.cpp touches only recovery, '-' browser cancel, HOME card and quit dialog, not the open route.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : GUARDS_ROUND5/6 NEW-16, C01 (CG57)"
+   ],
+   "last_owner_result": "R6/26186464/A18: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A18",
+   "r12_checklist_item": null,
+   "next_action": "None (H18 smoke covers opening)."
+  },
+  {
+   "id": "PBX-OPN-003",
+   "title": "Strict open/validate: exact game identity, ambiguous held back, corrupt input refused without crash; untouched round-trip",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "open-save",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE Open (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0880",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Open",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "A0881",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Validate",
+     "result": "requirement",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "F0154",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Round-trip invariant",
+     "result": "requirement",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "A0606",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C7",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0659",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B14",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Host gates (qa-matrix identity/discovery, parser fuzzing 24e730a0). Hardware: ordinary saves open (R11 H02 PASS) but corrupt/truncated refusal was never owner-tested (GEN14 C7, GEN15 B14 unfilled).",
+   "repair_commits": [
+    "24e730a0 test(qa): Gen I-V parser fuzzing and export-safety contracts"
+   ],
+   "automated_tests": [
+    "QA matrix identity cell; parser fuzz suites"
+   ],
+   "last_owner_result": "none (refusal path); R11/3634d1e6/H02 PASS for ordinary open",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Host gate; optional hardware check with a copied truncated file."
+  },
+  {
+   "id": "PBX-OPN-004",
+   "title": "Native Shield / Scarlet-Violet / Legends Z-A do not open from Product Home",
+   "gens": [
+    "app"
+   ],
+   "area": "open-save",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE Native Shield/SV/Z-A do not open (2d2d7bc2)",
+   "occurrences": [
+    {
+     "rid": "D0335",
+     "round": "PRE",
+     "candidate": "2d2d7bc2",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #92 (body, updated 2026-10-12)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0335",
+     "text": "- Shield / Scarlet-Violet / Legends Z-A do not open from Product Home or Games; the attempted native open returns immediately to the card"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "2d2d7bc2 FAIL; owner reported '100% pass' on 0760334f (D0337, 2026-10-08). Large code churn since; native titles outside current Gen I-V release scope.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/0760334f: PASS",
+   "hardware_acceptance_candidate": "0760334f PRE (accepted); not in Gen I-V checklists",
+   "r12_checklist_item": null,
+   "next_action": "Recheck when native titles return to scope."
+  },
+  {
+   "id": "PBX-DSC-001",
+   "title": "Full installed-game / FRLG identity detection matrix left incomplete (native discovery PARTIAL)",
+   "gens": [
+    "app"
+   ],
+   "area": "save-discovery",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE full FireRed/LeafGreen identity / all-installed-game detection matrix (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0147",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0220",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PARTIAL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0206",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0207",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0208",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "D0186",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md (Known gaps)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "PRE 3be4de6b: native Switch discovery 'PASS / PARTIAL based on sampled titles'; full matrix NOT TESTED. No later round tests native-title discovery. Unknown: whether the full matrix matters for the Gen I-V v1 scope.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/3be4de6b: PARTIAL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Decide scope; otherwise close as out of scope."
+  },
+  {
+   "id": "PBX-DSC-002",
+   "title": "Emulator save discovery for RetroArch / mGBA / Tico / DraStic / melonDS without moving files (legacy GB/GBC/GBA discovery)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "save-discovery",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE RetroArch legacy GB/GBC/GBA save discovery (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0213",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "deferred",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0745",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "requirement",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0801",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "discovery",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0802",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "linking",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0803",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "provider",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0804",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "identity",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0834",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "discovery / relaunch",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "D0270",
+     "round": "PRE",
+     "candidate": "46e0c161",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #6 (comment 2026-09-10)"
+    },
+    {
+     "rid": "D0274",
+     "round": "PRE",
+     "candidate": "46e0c161",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #6 (comment 2026-09-10)"
+    },
+    {
+     "rid": "D0307",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #84 (body 2026-09-28)"
+    },
+    {
+     "rid": "D0311",
+     "round": "PRE",
+     "candidate": "d49efd0c",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #85 (comment 2026-09-28)"
+    },
+    {
+     "rid": "D0312",
+     "round": "PRE",
+     "candidate": "00ee7a6e",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #85 (comment 2026-09-28)"
+    },
+    {
+     "rid": "E0019",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H20",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0213",
+     "text": "NOT IMPLEMENTED / not detected"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "PRE 'NOT IMPLEMENTED' (A0213) -> implemented (issue #6/#85); owner PASSes for RSE (46e0c161), DraStic Platinum .dsv, multi-provider Save Instances (d49efd0c/00ee7a6e), and R11 3634d1e6 H20 'Emulator/provider identification' PASS (E0019). No discovery code changed after 3634d1e6 (git log src/Legacy, Gen4/Gen5 SourceDiscovery: 0 commits).",
+   "repair_commits": [],
+   "automated_tests": [
+    "QA matrix discovery/linking/provider/identity cells (20 games)"
+   ],
+   "last_owner_result": "R11/3634d1e6/H20: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H20",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-DSC-003",
+   "title": "Gen III discovery release hint taken from a raw substring of the whole path (QA-F6)",
+   "gens": [
+    "III"
+   ],
+   "area": "save-discovery",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE QA-F6 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0790",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F6",
+     "result": "engineering-finding",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0774",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F6",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0848",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "identity.source",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Fixed 82032a9 (docs/qa/FINDINGS.md); host-only.",
+   "repair_commits": [
+    "82032a9 (QA-F6)"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (host-only)",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-DSC-004",
+   "title": "FRLG opened an older save instead of the current in-game save",
+   "gens": [
+    "III"
+   ],
+   "area": "save-discovery",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE FRLG complete browser artifact device acceptance (5d3e5e23)",
+   "occurrences": [
+    {
+     "rid": "A0889",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md"
+    },
+    {
+     "rid": "A0890",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": "1",
+     "result": "FAIL",
+     "src": "docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md"
+    },
+    {
+     "rid": "D0267",
+     "round": "PRE",
+     "candidate": "ea0b806b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #6 (comment 2026-09-09)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0889",
+     "text": "DEVICE ACCEPTED: NO"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "5d3e5e23 FAIL; ea0b806b removed the arbitrary Main Save guess; owner 'FIRERED CURRENT IN-GAME SAVE SELECTION: PHYSICAL PASS' (D0267); later R11 H20 PASS (save instances distinct, no unrelated save attached).",
+   "repair_commits": [
+    "ea0b806b legacy: bind FRLG sources to profiles and expose diagnostics"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "R11/3634d1e6/H20: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H20",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-DSC-005",
+   "title": "Profile-scoped save assignment: FRLG sources appeared under both profiles; LeafGreen assignment could not be saved",
+   "gens": [
+    "III",
+    "V"
+   ],
+   "area": "save-discovery",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2 (5d3e5e23)",
+   "occurrences": [
+    {
+     "rid": "A0891",
+     "round": "PRE",
+     "candidate": "5d3e5e23",
+     "item_id": "2",
+     "result": "FAIL",
+     "src": "docs/history/CURRENT_STATUS_PRE_LEAFGREEN_2026-09-09.md"
+    },
+    {
+     "rid": "D0269",
+     "round": "PRE",
+     "candidate": "ea0b806b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #6 (comment 2026-09-09)"
+    },
+    {
+     "rid": "B0602",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #7",
+     "result": "engineering-finding",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0576",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0688",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-07",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0598",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B3",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0651",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "B06",
+     "result": "checklist-item",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0269",
+     "text": "LEAFGREEN PROFILE ASSIGNMENT: PHYSICAL FAIL"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "ea0b806b introduced profile-scoped bindings (src/Legacy/LegacySourceBindings.cpp:118,145,306-310). Assignment later accepted (Gen III read-only #48 PRE; R3 62a2f8c3 AUD-07 Gen V assigned to profile PASS), but no owner record ever tests a SECOND profile (GEN14 B3 / GEN15 B06 unfilled), so the cross-profile isolation fix is unverified on hardware.",
+   "repair_commits": [
+    "ea0b806b legacy: bind FRLG sources to profiles"
+   ],
+   "automated_tests": [
+    "tests/test_save_instance_model, test_gen5_source_e2e (per B0602)"
+   ],
+   "last_owner_result": "R3/62a2f8c3/AUD-07: PASS (assignment); isolation: none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add a two-profile isolation check if the owner has a second profile."
+  },
+  {
+   "id": "PBX-FIL-001",
+   "title": "Standalone .pk1-.pk5 / .ek3-.ek5 export and import (staged, new file names, cross-gen refused)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "import-export-file",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R9 H05 (d6a20a2a)",
+   "occurrences": [
+    {
+     "rid": "D0089",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H05",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0090",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0118",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H05",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0119",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0004",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0005",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0037",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H38",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0157",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Pokémon and inventory",
+     "result": "requirement",
+     "src": "README.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0037",
+     "text": "how are we suppose to move a gen 1 pokemon  to like gen 5 ?? does it have to go through bank first or how we doing that ??"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R11 3634d1e6 H05 (export twice, ' (2)' name) and H06 (import into empty slot, staged, Review lists it) PASS; H38 cross-gen refusal PASS. Import refuses occupied slots (Gen3StagedPokemonEditor.cpp:1134+, Gen4StagedPokemonEditor.cpp:636-638 'refuses to overwrite an occupied box slot', Gen5PokemonFile.h:27) and Gen I/II append to first empty packed slot (src/UI/PokemonFileMenus.inc:27,46). Changed after 3634d1e6: '-' Cancel (aace6021) and X binding (dd69bc93) -> recheck. Occupied-slot refusal never owner-tested (R11 H32 NOT TESTED).",
+   "repair_commits": [
+    "f3959d67 Pokemon Actions: Import from file / Export to file in every Gen I-V sheet",
+    "4be9bbd7, bf9ba508, 1a6e6a74, 8579c5c4 Feature A per-gen import/export"
+   ],
+   "automated_tests": [
+    "tests/test_pokemon_file_gen12.cpp / gen3 / gen4 / gen5 : import into empty slot, refuse occupied/out-of-range/wrong-gen, non-mutating export",
+    "tests/test_ui_pokemon_file_menus_host.cpp : Actions -> Import/Export through the real screen"
+   ],
+   "last_owner_result": "R11/3634d1e6/H06: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05/H06",
+   "r12_checklist_item": "H05",
+   "next_action": "R12 H05/H06; add an occupied-slot import refusal check (H32 was NOT TESTED)."
+  },
+  {
+   "id": "PBX-FIL-002",
+   "title": "SD file browser needs a Cancel ('-') that closes and cancels import (H39)",
+   "gens": [
+    "all"
+   ],
+   "area": "import-export-file",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R11 H39 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0038",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H39",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0075",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H39",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0108",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "engineering-finding",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    },
+    {
+     "rid": "F0158",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H39",
+     "result": "requirement",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "D0152",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H06",
+     "result": "checklist-item",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0038",
+     "text": "can we add a cancel feature, right now A opens stuff and confirms and B goes to the parent directory or \"goes back\" we need to add a buttoin that is cancel which closes the menu and cancel the import can we make it \"-\" add the footer for all needed spaces and gens and app wide"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "R11 FAIL/request. aace6021: Key::Cancel closes from any folder/Favourites with nothing imported (include/UI/PokemonFileDialogModel.h:12-14,130-134); '-' mapped first (src/UI/PokemonFileDialog.cpp:204-206); Link Game File browser B/- close (SaveSelectScreen.cpp). Footer shows both. Not yet owner-tested.",
+   "repair_commits": [
+    "aace6021 Round 11 H39 + QUIT: '-' cancels SD browsers; two-button quit dialog"
+   ],
+   "automated_tests": [
+    "tests/test_pokemon_file_dialog_model.cpp:136-152 : '-' (Key::Cancel) closes from any folder or list without changing state"
+   ],
+   "last_owner_result": "R11/3634d1e6/H39: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H06",
+   "r12_checklist_item": "H06",
+   "next_action": "Owner runs R12 H06."
+  },
+  {
+   "id": "PBX-FIL-003",
+   "title": "X = Import on an empty slot / Export on an occupied slot, app-wide (Extra 4)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "import-export-file",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ Extra 4 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0159",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 4",
+     "result": "requirement",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0160",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "X-IMPEXP",
+     "result": "requirement",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "F0159",
+     "text": "is it possible to change the contorls in the save editored when in the box, can we get rid of the X to add and change it to import/export instead like if the cursor is on a pokemon X would say export but it its on a blank space it would say import, makes this app wide for all gens and change the footer as needed, and change the help menus app wide as need as well. "
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "dd69bc93: SharedPokemonEditorContract::boxActivation / boxXLabel (include/UI/SharedPokemonEditorContract.h:168-188) returns ImportFile/ExportFile, wired in Gen I-V Boxes grids; footers and Help updated. Not yet owner-tested.",
+   "repair_commits": [
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_ui_pokemon_file_menus_host.cpp : X on occupied exports, X on empty imports"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "Owner runs R12 H05."
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "app",
+   "feature": "FAT32 durability / interruption gate",
+   "latest_pass": "PRE cf1e390f issue #69",
+   "code_changed_since": true,
+   "evidence": "D0305; DurableFile.cpp changed 2 commits since"
+  },
+  {
+   "gen": "all",
+   "feature": "Backup deletion protected: Y confirms, B cancels, original undeletable (C07)",
+   "latest_pass": "R6 26186464 A02",
+   "code_changed_since": true,
+   "evidence": "C0282; 55635234 changed SourceBackupClassification.h after"
+  },
+  {
+   "gen": "all",
+   "feature": "Manual backup creation (explicit, never on open)",
+   "latest_pass": "R4 c60d4da0 issue #322 item 4",
+   "code_changed_since": true,
+   "evidence": "D0203 'Copy creation works'; fe5c3ad7 and later backup changes"
+  },
+  {
+   "gen": "all",
+   "feature": "Backups list newest first, A opens exact copy as staged session (R2-EMUBACKUP)",
+   "latest_pass": "R6 26186464 A28",
+   "code_changed_since": true,
+   "evidence": "C0308; 55635234"
+  },
+  {
+   "gen": "all",
+   "feature": "Original saves never change (S05)",
+   "latest_pass": "R11 3634d1e6 H14 (also R6 26186464 A25)",
+   "code_changed_since": true,
+   "evidence": "E0013, C0305; R11 staged editor changes"
+  },
+  {
+   "gen": "all",
+   "feature": "7E save safety and backups audit vs PKSE",
+   "latest_pass": "R6 26186464 C05",
+   "code_changed_since": true,
+   "evidence": "C0324"
+  },
+  {
+   "gen": "I,II,III",
+   "feature": "Export refuses a changed original (source guard)",
+   "latest_pass": "R6 26186464 C17",
+   "code_changed_since": false,
+   "evidence": "C0336; ClassicSourceGuard.h unchanged"
+  },
+  {
+   "gen": "all",
+   "feature": "Export Copy writes a separate file; source unchanged",
+   "latest_pass": "R11 3634d1e6 H14",
+   "code_changed_since": true,
+   "evidence": "E0013"
+  },
+  {
+   "gen": "all",
+   "feature": "Export Copy reload and compare (optional; method not recorded)",
+   "latest_pass": "R11 3634d1e6 H46",
+   "code_changed_since": true,
+   "evidence": "E0045 (see PBX-EXP-006)"
+  },
+  {
+   "gen": "app",
+   "feature": "Recovery files show latest copy protected; cancel deletes nothing (display only)",
+   "latest_pass": "R11 3634d1e6 H44",
+   "code_changed_since": true,
+   "evidence": "E0043; 98b6deaf"
+  },
+  {
+   "gen": "all",
+   "feature": "Multiple edits -> Review -> Discard restores",
+   "latest_pass": "R11 3634d1e6 H45",
+   "code_changed_since": true,
+   "evidence": "E0044"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Review / Discard / Export",
+   "latest_pass": "R3 62a2f8c3 S04 (shared Review R6 26186464 D01)",
+   "code_changed_since": true,
+   "evidence": "B0468, C0337"
+  },
+  {
+   "gen": "I,II,III,IV",
+   "feature": "Staged exit menu A Review / B Continue / Y Discard & Exit / X Export Copy",
+   "latest_pass": "R6 26186464 A20",
+   "code_changed_since": false,
+   "evidence": "C0300; ClassicStagedExit.h unchanged"
+  },
+  {
+   "gen": "all",
+   "feature": "One shared Review (names, before/after)",
+   "latest_pass": "R6 26186464 D01",
+   "code_changed_since": true,
+   "evidence": "C0337; acc0b772 R7"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I Review presentation (shared panel only)",
+   "latest_pass": "R6 26186464 D02",
+   "code_changed_since": true,
+   "evidence": "C0338"
+  },
+  {
+   "gen": "all",
+   "feature": "Bag Review discoverable",
+   "latest_pass": "R6 26186464 B03 / C07",
+   "code_changed_since": true,
+   "evidence": "C0314, C0326"
+  },
+  {
+   "gen": "I",
+   "feature": "Transactional existing-Pokemon Edit exit; session discard to pre-edit state",
+   "latest_pass": "PRE 69668bc8",
+   "code_changed_since": true,
+   "evidence": "A0543, A0544"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Home A opens the assigned save; A selects and advances",
+   "latest_pass": "R6 26186464 A18 / A29",
+   "code_changed_since": false,
+   "evidence": "C0298, C0309"
+  },
+  {
+   "gen": "all",
+   "feature": "Switching saves never carries a draft over",
+   "latest_pass": "R6 26186464 C16",
+   "code_changed_since": true,
+   "evidence": "C0335; R11 carry changes"
+  },
+  {
+   "gen": "I,II,III,IV,V",
+   "feature": "Open one ordinary save per generation",
+   "latest_pass": "R11 3634d1e6 H02",
+   "code_changed_since": true,
+   "evidence": "E0001"
+  },
+  {
+   "gen": "I",
+   "feature": "Red/Blue/Yellow read-only open (legacy milestone)",
+   "latest_pass": "PRE 50dac31f",
+   "code_changed_since": true,
+   "evidence": "A0892-A0896, D0279"
+  },
+  {
+   "gen": "II",
+   "feature": "Gold/Silver/Crystal read-only open (legacy milestone)",
+   "latest_pass": "PRE issue #6",
+   "code_changed_since": true,
+   "evidence": "D0281"
+  },
+  {
+   "gen": "III",
+   "feature": "FRLG/RSE read-only open (legacy milestone)",
+   "latest_pass": "PRE a2df4c1a / 46e0c161",
+   "code_changed_since": true,
+   "evidence": "A0914-A0918, D0273, D0278"
+  },
+  {
+   "gen": "app",
+   "feature": "Native Shield/SV/Z-A open",
+   "latest_pass": "PRE 0760334f",
+   "code_changed_since": true,
+   "evidence": "D0337"
+  },
+  {
+   "gen": "all",
+   "feature": "Emulator/provider identification in Save Instances",
+   "latest_pass": "R11 3634d1e6 H20",
+   "code_changed_since": false,
+   "evidence": "E0019"
+  },
+  {
+   "gen": "III",
+   "feature": "FireRed current in-game save selected",
+   "latest_pass": "PRE ea0b806b issue #6",
+   "code_changed_since": true,
+   "evidence": "D0267"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V save assigned to profile",
+   "latest_pass": "R3 62a2f8c3 AUD-07",
+   "code_changed_since": true,
+   "evidence": "B0576"
+  },
+  {
+   "gen": "app",
+   "feature": "Native card detection (Shining Diamond, Let's Go, FRLG Switch identities distinct, no false positives)",
+   "latest_pass": "PRE 3be4de6b",
+   "code_changed_since": true,
+   "evidence": "A0137-A0212"
+  },
+  {
+   "gen": "all",
+   "feature": "Export a Pokemon to file twice (' (2)')",
+   "latest_pass": "R11 3634d1e6 H05",
+   "code_changed_since": true,
+   "evidence": "E0004"
+  },
+  {
+   "gen": "all",
+   "feature": "Import .pkX into an empty slot (staged)",
+   "latest_pass": "R11 3634d1e6 H06",
+   "code_changed_since": true,
+   "evidence": "E0005"
+  },
+  {
+   "gen": "all",
+   "feature": "Cross-generation import refused",
+   "latest_pass": "R11 3634d1e6 H38",
+   "code_changed_since": true,
+   "evidence": "E0037"
+  }
+ ],
+ "noise": [
+  {
+   "rid": "D0309",
+   "reason": "Platinum 'all six slots Empty' was a genuinely empty cartridge save, accepted in issue #84 comment 2026-09-28; not a defect."
+  },
+  {
+   "rid": "A0795",
+   "reason": "Observation (no defect): Gen II export rewrites whole secondary copy by design."
+  },
+  {
+   "rid": "A0796",
+   "reason": "Observation (no defect): Gen V export touches footer block checksum, expected."
+  },
+  {
+   "rid": "A0797",
+   "reason": "Observation (no defect): all-zero PK4/PK5 accepted as blank slots."
+  },
+  {
+   "rid": "A0798",
+   "reason": "Observation (no defect): no manifest line injection reachable."
+  }
+ ],
+ "misfiled": [],
+ "untested_safety_functions": [
+  {
+   "function": "Recovery-file deletion through both confirmations (Y on list -> Y on file-list confirmation), incl. B cancel at step 2",
+   "gens": "I-V (app-wide)",
+   "evidence": "Only R11 H44 PASS (display); R11 H12 FAIL (selection invisible). Repaired 98b6deaf; R12 H11 not device tested. Host: test_recovery_management_fs/model, test_ui_recovery_files_host."
+  },
+  {
+   "function": "Recovery files: nothing preselected / protected copies unselectable (owner clarification 3)",
+   "gens": "I-V",
+   "evidence": "RecoveryManagementModel.h:254-262; host only; R12 H11 pending."
+  },
+  {
+   "function": "Gen V export-record deletion in Save Backups (Y confirm, last-copy and other-profile refusal)",
+   "gens": "V",
+   "evidence": "Added 55635234 after the last C07 PASS (R6 26186464); test_gen5_backup_listing_host only."
+  },
+  {
+   "function": "Gen V exports listed/opened as staged copies in Save Backups (G1)",
+   "gens": "V",
+   "evidence": "55635234; R7 C02 never had results; not on R10-R12 checklists."
+  },
+  {
+   "function": "Verified reparse refusal path (corrupt/failed strict reparse blocks publish)",
+   "gens": "all",
+   "evidence": "VerifiedStagedExport.cpp:179,259; exportCorruptionProbe host only; hardware only ever saw the success path (R11 H14)."
+  },
+  {
+   "function": "Exclusive, race-safe export publish / repeat Export Copy gets new folder (QA-F3, QA-F3b)",
+   "gens": "all",
+   "evidence": "fa9cfcea, 0bac3cf1; host tests only; never a checklist item."
+  },
+  {
+   "function": "Export/backup fault handling (no space, permission, partial output cleanup, power loss)",
+   "gens": "all",
+   "evidence": "ExportFailurePoint host injection; DurableFile host tests; owner told not to simulate power loss."
+  },
+  {
+   "function": "Export byte whitelist / native checksum repair (F11) and no-op edit = no byte change",
+   "gens": "all",
+   "evidence": "QA matrix + test_qa_export_contracts C3 only."
+  },
+  {
+   "function": "Exported copy loads in an emulator (S06 round-trip)",
+   "gens": "all",
+   "evidence": "S06 NOT TESTED R1-R6; R11 H46 PASS does not record whether an emulator load was done (PBX-EXP-006)."
+  },
+  {
+   "function": "Stale-export guard for Gen IV / Gen V",
+   "gens": "IV, V",
+   "evidence": "Only Gen I-III owner PASS (R6 C17)."
+  },
+  {
+   "function": ".pkX import into an occupied slot is refused (never overwrites)",
+   "gens": "III, IV, V (I/II append to first empty packed slot)",
+   "evidence": "Gen3StagedPokemonEditor.cpp:1134+, Gen4StagedPokemonEditor.cpp:636-638, Gen5PokemonFile.h:27; R11 H32 NOT TESTED ('dont know how to test this'); host tests test_pokemon_file_gen3/4/5."
+  },
+  {
+   "function": "Import cancel ('-') leaves nothing staged",
+   "gens": "all",
+   "evidence": "aace6021; test_pokemon_file_dialog_model only; R12 H06 pending."
+  },
+  {
+   "function": "Corrupt / truncated / wrong-game save refused without crash or write",
+   "gens": "I-V",
+   "evidence": "Parser fuzzing host only; GEN14 C7 / GEN15 B14 never filled."
+  },
+  {
+   "function": "Cross-profile isolation of save assignments",
+   "gens": "III, V",
+   "evidence": "ea0b806b profile bindings; no owner test with a second profile."
+  },
+  {
+   "function": "exFAT durability (FAT32 accepted only)",
+   "gens": "app",
+   "evidence": "issue #69: exFAT PENDING / NOT TESTED."
+  },
+  {
+   "function": "Installed (native Switch) source has no save-changes path in current NRO (#23)",
+   "gens": "app",
+   "evidence": "0ea98cc1; af2acf04 checklist never filled."
+  }
+ ]
+}
