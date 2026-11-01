@@ -4,6 +4,7 @@
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "UI/ExactGameMetLocations.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -38,9 +39,12 @@ struct Model {
     bool previewShiny = false;
     std::size_t moveSlot = 0;
     std::vector<Encounter::EncounterTemplate> encounterChoices;
+    // Round 11 FRLG / Crystal: the other native Crystal landmarks, after the catch templates
+    // (ExactGameMetLocations.h). Row i >= encounterChoices.size() is otherLocations[i - size].
+    std::vector<uint16_t> otherLocations;
 
     bool active() const noexcept { return kind != Kind::None; }
-    void close() noexcept { kind = Kind::None; encounterChoices.clear(); }
+    void close() noexcept { kind = Kind::None; encounterChoices.clear(); otherLocations.clear(); }
 
     void openSpecies(uint16_t current, bool shiny = false) noexcept {
         previewShiny = shiny;
@@ -64,20 +68,46 @@ struct Model {
                       uint8_t currentLocation, uint8_t currentLevel) {
         kind = Kind::Location;
         encounterChoices = Encounter::forGameSpecies(sourceGameId, species);
+        // Never a closed list: a species with no Crystal catch template (traded in, evolved, or
+        // not wild in Crystal) still gets every native landmark, labelled as unverified history.
+        namespace MetRows = PokeBank::UIModel::ExactGameMetLocations;
+        otherLocations.clear();
+        for (const auto row : MetRows::otherNativeRows(
+                 MetRows::crystalOfferedLocations(),
+                 [&](uint16_t id) {
+                     return std::any_of(encounterChoices.begin(), encounterChoices.end(),
+                                        [id](const auto& e) { return e.location == id; });
+                 },
+                 false, 0))
+            otherLocations.push_back(MetRows::otherNativeRowLocation(row));
         index = 0;
         for (int i = 0; i < static_cast<int>(encounterChoices.size()); ++i) {
             const auto& encounter = encounterChoices[static_cast<std::size_t>(i)];
             if (encounter.location == currentLocation &&
                 (currentLevel <= 1 || encounter.containsLevel(currentLevel))) {
                 index = i;
-                break;
+                return;
             }
         }
+        for (std::size_t i = 0; i < otherLocations.size(); ++i)
+            if (currentLocation != 0 && otherLocations[i] == currentLocation) {
+                index = static_cast<int>(encounterChoices.size() + i);
+                return;
+            }
     }
-    int locationCount() const noexcept { return static_cast<int>(encounterChoices.size()); }
+    int locationCount() const noexcept {
+        return static_cast<int>(encounterChoices.size() + otherLocations.size());
+    }
+    // The catch template under the cursor, or nullptr on an other-native row.
     const Encounter::EncounterTemplate* locationChoice() const noexcept {
         return index >= 0 && index < static_cast<int>(encounterChoices.size())
             ? &encounterChoices[static_cast<std::size_t>(index)] : nullptr;
+    }
+    // The landmark of an other-native row under the cursor (no template; unverified history).
+    std::optional<uint8_t> otherLocationChoice() const noexcept {
+        const int other = index - static_cast<int>(encounterChoices.size());
+        if (index < 0 || other < 0 || other >= static_cast<int>(otherLocations.size())) return std::nullopt;
+        return static_cast<uint8_t>(otherLocations[static_cast<std::size_t>(other)]);
     }
     void stepList(int delta) noexcept {
         const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 :
@@ -187,6 +217,18 @@ inline LocationRowText locationRowText(const Encounter::EncounterTemplate& encou
     const auto time = encounterTimeLabel(encounter.timeMask);
     if (!time.empty()) out.detail += " · " + time;
     return out;
+}
+
+// Row `row` of the open Crystal Met Location chooser: a catch template, or an other native landmark
+// whose detail says it is not a listed catch (or names the Gift / Event marker), never a catch.
+inline LocationRowText locationRowTextAt(const Model& model, int row) {
+    if (row >= 0 && row < static_cast<int>(model.encounterChoices.size()))
+        return locationRowText(model.encounterChoices[static_cast<std::size_t>(row)]);
+    const int other = row - static_cast<int>(model.encounterChoices.size());
+    if (row < 0 || other >= static_cast<int>(model.otherLocations.size())) return {"Unknown location", {}};
+    const auto location = model.otherLocations[static_cast<std::size_t>(other)];
+    return {Gen2Native::crystalCaughtLocationName(static_cast<uint8_t>(location)),
+            PokeBank::UIModel::ExactGameMetLocations::crystalOtherDetail(location)};
 }
 
 } // namespace PokeBank::UIModel::Gen2PokemonPicker

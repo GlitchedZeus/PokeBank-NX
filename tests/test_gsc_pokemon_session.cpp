@@ -118,7 +118,13 @@ void runSession(const L& layout,SourceGame game) {
     assert(selectedLocation->minLevel == 25 && selectedLocation->maxLevel == 25);
     assert(selectedLocation->containsLevel(25));
     assert(!selectedLocation->containsLevel(83));
+    // Round 11 (FRLG closed-list fix, Crystal path; deliberately updated): the Gift row at 71 is
+    // Pikachu's last catch template, and the rows after it are now the other native landmarks
+    // (no template, honestly labelled), so stepping down leaves the templates.
     locations.stepList(1);
+    assert(!locations.locationChoice() && locations.otherLocationChoice());
+    assert(*locations.otherLocationChoice() != 50 && *locations.otherLocationChoice() != 71);
+    locations.stepList(-2);
     selectedLocation = locations.locationChoice();
     assert(selectedLocation);
     assert(selectedLocation->sourceGameId == "crystal_gbc");

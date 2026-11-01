@@ -576,10 +576,15 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                     if (!selected) selected = &encounter;
                 }
                 if (!selected) {
-                    screen.postStatus("Choose a legitimate Crystal encounter first", 300);
-                    return true;
-                }
-                if (selected->method == Encounter::Method::Egg) {
+                    // Round 11: a native landmark with no Crystal catch template (traded / gift /
+                    // hatched history): any native caught level up to the current level.
+                    const int maxLevel = std::clamp<int>(p.level, 2, 63);
+                    const int current = std::clamp<int>(caught.levelCode, 2, maxLevel);
+                    const auto result = Utils::promptNumber("Met Level (not a listed Crystal encounter)",
+                                                             current, 2, maxLevel);
+                    if (!result.accepted) return true;
+                    caught.levelCode = static_cast<uint8_t>(result.value);
+                } else if (selected->method == Encounter::Method::Egg) {
                     caught.levelCode = 1;
                     screen.postStatus("Egg encounter uses Crystal's native egg marker", 240);
                 } else if (selected->fixedLevel()) {
@@ -600,9 +605,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             if (focus.row == 11) {
                 pickerStateFor(screen).model.openLocation(
                     screen.sourceGameId, p.species, caught.location, caught.levelCode);
+                // Round 11: never a closed list; catch templates first, then every other native
+                // Crystal landmark (Gen2PokemonPickerModel.h / ExactGameMetLocations.h).
                 if (pickerStateFor(screen).model.locationCount() == 0) {
                     pickerStateFor(screen).model.close();
-                    screen.postStatus("No supported Crystal encounter templates for this species", 300);
                     return true;
                 }
                 screen.controllerNavigation.reset();
