@@ -26,7 +26,9 @@
 #include "UI/TrainerViewScreen.h"
 #include "Utils/CRC16.h"
 
+#include <algorithm>
 #include <array>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <new>
@@ -90,7 +92,10 @@ struct Driver {
 };
 
 // A Black save with one party Pikachu (the Gen V Bag-screen fixture shape).
-std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
+// `origin` != 0 makes it a Gen V-origin record whose stored gender / ability follow its PID
+// (0x123: low byte 0x23 < Pikachu's ratio 127 = female; PID bit 16 clear = Static), so its
+// PID-linked rows are editable.
+std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0, uint8_t origin = 0) {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
     // An established trainer "NX" (TID 12345 / SID 54321, 12:34:56), as test_gen5_trainer_footer.
     const size_t player = 0x19400;
@@ -111,6 +116,11 @@ std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
     party[0x8C] = 30;
     party[0x82] = pokerus;   // native Pokérus byte: strain << 4 | days
     C5::write16(party, 0x28, move1);   // first move slot
+    if (origin) {
+        party[0x15] = 9;          // Static, PID ability slot 0
+        party[0x40] = 0x02;       // female
+        party[0x5F] = origin;
+    }
     const auto encrypted = C5::encryptCandidate(party);
     std::copy(encrypted.begin(), encrypted.end(), sav.begin() + static_cast<std::ptrdiff_t>(L5::PartyOffset + 8));
     auto copy = std::span<uint8_t>(sav).subspan(0, L5::BlackWhiteCopySize);
@@ -251,6 +261,40 @@ void gen5CreatePokerus() {
         check(genderNow() == before, "Gen V Create: A flips Gender back inline");
     }
 
+    // Round 11 H29 (owner: "gen 5 ... opens a menu and warns about pid, this needs changed to be
+    // inline like every other gen"): Shiny is an inline toggle on the PID panel (row 8), like
+    // Gender: no "Change PID?" dialog. Only the PID's high half moves (withShiny5), so gender,
+    // nature and ability stay; a routine Shiny edit posts no toast (H22, UI/EditFeedback.h).
+    {
+        constexpr int kShinyPidRow = 8;
+        const auto now = [&] { return state.draft().current(); };
+        const auto start = now();
+        check(start.has_value(), "Gen V Create: a draft is open for Shiny");
+        if (!start) return;
+        screen.storageStatus.clear();
+        check(d.tap(Workspace::kPidTouchBase + kShinyPidRow), "Gen V Create: Shiny row publishes a touch target");
+        d.frame();
+        const auto on = now();
+        check(on && on->shiny() != start->shiny(), "Gen V Create: Shiny flips inline");
+        check(on && on->pid() != start->pid() && (on->pid() & 0xFFFFu) == (start->pid() & 0xFFFFu),
+              "Gen V Create: Shiny rewrites only the PID's high half");
+        check(on && on->gender() == start->gender() && on->nature() == start->nature() &&
+                  on->ability() == start->ability() && ((on->pid() >> 16) & 1u) == ((start->pid() >> 16) & 1u),
+              "Gen V Create: Shiny keeps gender, nature and the ability slot");
+        check(std::none_of(HostUi::texts.begin(), HostUi::texts.end(),
+                           [](const std::string& t) { return t == "Change PID?"; }),
+              "Gen V Create: no Change PID dialog for Shiny");
+        check(screen.storageStatus.empty(), "Gen V Create: an inline Shiny posts no toast (got \"" +
+                                                screen.storageStatus + "\")");
+        d.press(HidNpadButton_A);   // A on the focused Shiny row flips it back
+        const auto off = now();
+        check(off && off->shiny() == start->shiny() && off->gender() == start->gender() &&
+                  off->nature() == start->nature() && off->ability() == start->ability(),
+              "Gen V Create: A flips Shiny back inline, traits kept");
+        d.press(HidNpadButton_A);   // and on again: Review lists the created shiny state
+        check(now() && now()->shiny() != start->shiny(), "Gen V Create: A flips Shiny on again");
+    }
+
     // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
     d.press(HidNpadButton_X);   // Keep
     check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Create");
@@ -281,6 +325,7 @@ void gen5CreatePokerus() {
         check(labelled(field), std::string("Gen V Create Review has a \"<loc> / ") + field + "\" row");
     check(exact("Empty -> Pikachu Lv 5") || exact("Empty -> PIKACHU Lv 5"), "Gen V Create Review header value");
     check(exact("Cured"), "Gen V Create Review shows the created Pokérus value");
+    check(labelled("Shiny"), "Gen V Create Review lists the inline Shiny choice");
     check(!labelled("Held Item") && !labelled("IVs") && !labelled("EVs") && !labelled("Trainer ID"),
           "Gen V Create Review adds no default noise and one OT / TID / SID row");
     check(!shown("Create in Box: ") && !shown(" -> Cured"),
@@ -474,6 +519,11 @@ void gen3CreatePokerus() {
     check(drawnValue("Pokerus") == "Infected", "Gen III Create tap on Pokérus toggles None -> Infected (got " + drawnValue("Pokerus") + ")");
     d.press(HidNpadButton_A);
     check(drawnValue("Pokerus") == "Cured", "Gen III Create A on Pokérus toggles Infected -> Cured (got " + drawnValue("Pokerus") + ")");
+
+    // Round 11 H22 (UI/EditFeedback.h): Y re-rolls the IVs / EVs with no toast; the values are the feedback.
+    d.screen.storageStatus.clear();
+    d.press(HidNpadButton_Y);
+    check(d.screen.storageStatus.empty(), "Gen III Create: Y reroll posts no toast (got \"" + d.screen.storageStatus + "\")");
 
     // Coordinator R7 (R's capture): Create defaults the OT to the save's trainer name, and Review
     // lists it in the shared Gen I-V shape ("<loc> / Add Pokémon", "<loc> / OT / TID / SID", ...).
@@ -862,6 +912,83 @@ void gen3SafariBallRoles() {
 
 // Owner Oct 25 7C: Gen V Language cycles inline on A and on a tap; the changed value is the
 // feedback, so neither posts a "Language: ..." status toast.
+// Round 11 H29 / H22 on a Gen V-origin Edit: A on Shiny flips it inline with no dialog and no toast,
+// Y re-rolls IVs / EVs with no toast, and Review lists the exact PID change ("PID" row).
+// An earlier-origin record (the plain fixture) still refuses the Shiny row with its reason.
+void gen5EditShinyInline() {
+    for (const bool gen5Origin : {false, true}) {
+        const auto input = gen5Fixture(0, 0, gen5Origin ? 21 : 3);   // Black, or Emerald (Gen III)
+        std::string error;
+        const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+        auto trainer = parsed ? PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error) : nullptr;
+        check(trainer != nullptr, "Gen V Shiny fixture opens: " + error);
+        if (!trainer) return;
+        UI::TrainerViewScreen screen(*trainer, "Pokemon Black", "/host/black.sav", 0, AccountUid{},
+                                     PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+        Driver d{screen, {}, {}};
+        d.frame();
+        screen.detailViewActive = true;
+        screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        screen.selectedPartyIndex = 0;
+        d.frame();
+        auto& state = trainer->sharedScreen();
+        const G5::Gen5StagedPokemonWorkspace::Slot slot{G5::Gen5StagedPokemonWorkspace::Region::Party, 0, 0};
+        check(state.openActions(trainer->stagedPokemon(), slot, error) &&
+                  state.activate(trainer->stagedPokemon(), PokeBank::UIModel::SharedPokemonEditor::Action::Edit, error),
+              "Gen V Shiny: party Pikachu opens in Edit: " + error);
+        d.frame();
+        if (state.surface() != G5::Gen5SharedScreenState::Surface::Edit) return;
+        const auto now = [&] { return state.draft().current(); };
+        const auto start = now();
+        if (!start) return;
+        const std::string where = gen5Origin ? "Gen V-origin Edit" : "earlier-origin Edit";
+        constexpr int kShinyPidRow = 8;
+        screen.storageStatus.clear();
+        check(d.tap(Workspace::kPidTouchBase + kShinyPidRow), where + ": Shiny row publishes a touch target");
+        d.frame();
+        check(std::none_of(HostUi::texts.begin(), HostUi::texts.end(),
+                           [](const std::string& t) { return t == "Change PID?"; }),
+              where + ": no Change PID dialog for Shiny");
+        if (!gen5Origin) {
+            check(now() && now()->pid() == start->pid() && now()->shiny() == start->shiny(),
+                  where + ": Shiny is refused and nothing changes");
+            check(screen.storageStatus.find("original PID") != std::string::npos,
+                  where + ": the refusal says why (" + screen.storageStatus + ")");
+            continue;
+        }
+        const auto on = now();
+        check(on && on->shiny() != start->shiny() && on->pid() != start->pid(), where + ": Shiny flips inline");
+        check(on && on->gender() == start->gender() && on->nature() == start->nature() &&
+                  on->ability() == start->ability(), where + ": Shiny keeps gender, nature and ability");
+        check(screen.storageStatus.empty(), where + ": an inline Shiny posts no toast (got \"" + screen.storageStatus + "\")");
+        // H22 for Gen IV / V (SharedPokemonEditorSurface Y): a reroll posts no toast either.
+        const auto ivsBefore = on ? on->ivs() : std::array<uint8_t, 6>{};
+        screen.storageStatus.clear();
+        d.press(HidNpadButton_Y);
+        check(now() && (now()->ivs() != ivsBefore || now()->evs() != on->evs()), where + ": Y re-rolls IVs / EVs");
+        check(now() && now()->shiny() == on->shiny() && now()->pid() == on->pid(), where + ": Y keeps the PID");
+        check(screen.storageStatus.empty(), where + ": Y reroll posts no toast (got \"" + screen.storageStatus + "\")");
+        const uint32_t pidBefore = start->pid(), pidAfter = on ? on->pid() : 0;
+        d.press(HidNpadButton_X);   // Keep
+        check(state.openReviewFromBrowse(trainer->stagedPokemon()), where + ": Review opens after Keep");
+        std::vector<std::string> drawn;
+        for (int page = 0; page < 6; ++page) {
+            d.frame();
+            drawn.insert(drawn.end(), HostUi::texts.begin(), HostUi::texts.end());
+            d.press(HidNpadButton_R);
+        }
+        const auto shown = [&](const std::string& part) {
+            return std::any_of(drawn.begin(), drawn.end(),
+                               [&](const std::string& t) { return t.find(part) != std::string::npos; });
+        };
+        char hexBefore[16], hexAfter[16];
+        std::snprintf(hexBefore, sizeof hexBefore, "%08X", pidBefore);
+        std::snprintf(hexAfter, sizeof hexAfter, "%08X", pidAfter);
+        check(shown("PID"), where + ": Review lists the PID change");
+        check(shown(hexBefore) && shown(hexAfter), where + ": Review shows the PID values " + hexBefore + " -> " + hexAfter);
+    }
+}
+
 void gen5LanguageNoToast() {
     const auto input = gen5Fixture(0, 84);   // Pikachu knows Thunder Shock (a level-up move)
     std::string error;
@@ -1059,6 +1186,7 @@ int main() {
     gen5PokerusKeepWithStoredStrain();
     gen3SafariBallRoles();
     gen5LanguageNoToast();
+    gen5EditShinyInline();
     gen3ViewOnly();
     gen5ViewOnly();
     gen4ViewOnly();

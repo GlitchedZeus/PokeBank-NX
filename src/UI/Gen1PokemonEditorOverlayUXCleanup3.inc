@@ -128,11 +128,10 @@ bool ux3SetExistingShiny(TrainerViewScreen& screen, bool shiny) {
         dvs = ux3.preShinyEditDVs.value_or(ShinyDVs::makeNormalFallback(dvs));
         ux3.preShinyEditDVs.reset();
     }
+    // Round 11 H22: the Shiny value and sprite are the feedback (as in Create); no success toast.
     BoxPokemonEdit edit;
     edit.dvs = dvs;
-    return ux2CommitEdit(screen, edit, shiny
-        ? "Shiny appearance staged through Generation I DVs; source .srm unchanged"
-        : "Normal appearance staged through Generation I DVs; source .srm unchanged");
+    return ux2CommitEdit(screen, edit, nullptr, PokeBank::UIModel::EditFeedback::Kind::Shiny);
 }
 
 std::vector<uint8_t> ux3MoveChoices(TrainerViewScreen& screen) {

@@ -50,6 +50,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
+#include "UI/EditFeedback.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemInput.h"
@@ -1612,7 +1613,9 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         w.ivs = next.ivs;
         w.evs = next.evs;
         state.previewValid = false;
-        screen.postStatus(Reroll::kRerollStatus, 200);
+        // Round 11 H22: the new IVs / EVs and stats are the feedback; no success toast.
+        namespace EditFeedback = PokeBank::UIModel::EditFeedback;
+        EditFeedback::applied(screen, EditFeedback::Kind::Reroll);
         return true;
     }
     if ((down & HidNpadButton_A) && passiveView) {

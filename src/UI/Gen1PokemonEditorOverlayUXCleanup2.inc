@@ -193,7 +193,12 @@ void ux2BeginAdd(TrainerViewScreen& screen) {
     state.picker = UX2Picker::None;
 }
 
-bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const char* success) {
+// Stages one Edit-draft change. `kind` is the Round 11 H22 routine-edit rule (UI/EditFeedback.h): a
+// field edit posts its `success` line; a routine edit (reroll, Shiny) posts nothing on success.
+// A rejected edit always posts its error.
+bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const char* success,
+                   PokeBank::UIModel::EditFeedback::Kind kind = PokeBank::UIModel::EditFeedback::Kind::Field) {
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     auto& state = ux2StateFor(screen);
     auto* e = editor(screen);
     if (!e) return false;
@@ -205,7 +210,8 @@ bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const 
         return false;
     }
     refreshBoxes(screen);
-    screen.postStatus(success ? success : "Pokemon change staged only; original .srm unchanged", 240);
+    EditFeedback::report(screen, kind, EditFeedback::Outcome::Applied,
+                         success ? success : "Pokemon change staged only; original .srm unchanged", 240);
     return true;
 }
 
