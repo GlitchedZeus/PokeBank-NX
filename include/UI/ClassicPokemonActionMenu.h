@@ -2,10 +2,10 @@
 #include "UI/NarrowPokemonActionMenu.h"
 
 // The Gen I / Gen II Pokemon Actions sheet is the shared narrow menu (UI/NarrowPokemonActionMenu.h):
-// one vocabulary and one order for every generation (View, Edit, Clone, Release, Origin &
-// Legality, Review Pending Changes, Cancel; empty slot: Add Pokemon, Review, Cancel). Only commands
-// the staged editor really performs are listed. Moving a Pokemon stays the box-grid hold-Y carry;
-// the Gen I/II native action sets have no Move command.
+// one vocabulary and one order for every generation (View, Edit, Clone, Move, Release, Origin &
+// Legality, Export to file, Review Pending Changes, Cancel; empty slot: Add Pokemon, Import from
+// file, Review, Cancel). Only commands the staged editor really performs are listed. Round 11:
+// Move (Boxes view) starts the same box-grid hold-Y carry in Gen I and Gen II (and Gen III).
 //
 // Each row keeps its generation's native action index, so controller order, touch targets
 // (touchIdBase + native index) and dispatch are unchanged. These are thin adapters kept so the

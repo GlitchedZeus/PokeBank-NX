@@ -675,8 +675,9 @@ namespace UI
                 PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
             if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             drawPopupMenu(screen, fb, "Save bank changes?", items, 3, screen.storageExitConfirmIndex);
+            // Round 11 QUIT: B does what the Cancel row does, so it is labelled Cancel (was "Stay").
             if (classicSessionPrompt)
-                drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Confirm"}, {"B", "Stay"}});
+                drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Confirm"}, {"B", "Cancel"}});
         }
     }
 }

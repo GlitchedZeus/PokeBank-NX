@@ -1167,8 +1167,11 @@ std::string ux2FooterText(const TrainerViewScreen& screen, const UX2State& state
         std::string error;
         auto* mutableScreen = const_cast<TrainerViewScreen*>(&screen);
         const auto p = pokemonAt(*mutableScreen, screen.selectedBoxIndex, screen.selectedItemIndex, error);
-        if (p) return "A: Actions | Y: Remove | L/R: Box | B: Back";
-        return "A: Actions | X: Add | L/R: Box | B: Back";
+        // Round 11 X-IMPEXP: X Export / Import on the Boxes grid only (none on the Storage pane).
+        if (screen.selectedMode == TrainerViewScreen::ViewMode::Storage)
+            return p ? "A: Actions | Y: Remove | L/R: Box | B: Back" : "A: Actions | L/R: Box | B: Back";
+        if (p) return "A: Actions | X: Export | Y: Remove | L/R: Box | B: Back";
+        return "A: Actions | X: Import | L/R: Box | B: Back";
     }
     return {};
 }
@@ -1228,8 +1231,18 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     std::string error;
     const auto pokemon = ux2SelectedPokemon(screen, error);
     if (down & HidNpadButton_X) {
-        if (pokemon) { screen.postStatus("X Add is available on an empty writable Gen I slot", 240); return true; }
-        ux2BeginAdd(screen); return true;
+        // Round 11 X-IMPEXP: on the Boxes grid X exports an occupied slot / imports into the box
+        // (its first empty slot; Gen I boxes are packed lists). Add Pokemon stays on the A sheet.
+        // The Storage save pane has no X shortcut. editorAvailable() was checked above.
+        namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+        const auto activation = Shared::boxActivation(static_cast<bool>(pokemon), false, !storage,
+                                                      Shared::fileCapabilities(true));
+        if (activation == Shared::BoxActivation::ImportFile)
+            PokemonFileMenus::beginImport(screen, 1, state.box, state.slot);
+        else if (activation == Shared::BoxActivation::ExportFile)
+            PokemonFileMenus::exportPokemon(screen, 1, false, state.box, state.slot);
+        screen.controllerNavigation.reset();
+        return true;
     }
     if (down & HidNpadButton_Y) {
         if (!pokemon) { screen.postStatus("Y Remove is available only on an occupied Gen I slot", 240); return true; }

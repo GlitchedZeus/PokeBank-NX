@@ -88,6 +88,31 @@ void beginActions(TrainerViewScreen& screen) {
         screen.postStatus(error,300);
     screen.controllerNavigation.reset();
 }
+// Round 11 X-IMPEXP: X on the Boxes grid exports an occupied slot / imports into an empty one,
+// exactly when the A sheet lists that file row (Gen5SharedEditorBridge::fileCapabilities). A carry
+// keeps priority: handleGen5CarryInput refuses X while a Pokemon is held.
+namespace Bridge5=PokeVault::Integration::Gen5;
+std::optional<Bridge5::SharedEditorSlot> boxFileSlot(TrainerViewScreen& screen,
+                                                     const Bridge5::Gen5StagedPokemonWorkspace& staged) {
+    if(screen.selectedMode!=TrainerViewScreen::ViewMode::Boxes)return std::nullopt;
+    return Bridge5::selectedSlot(staged,selectedNativeSlot(screen));
+}
+const char* boxFileLabel(TrainerViewScreen& screen,const Bridge5::Gen5StagedPokemonWorkspace& staged) {
+    const auto slot=boxFileSlot(screen,staged);
+    if(!slot)return nullptr;
+    return PokeBank::UIModel::SharedPokemonEditor::boxXLabel(slot->occupied,Bridge5::fileCapabilities(staged,*slot));
+}
+void boxFileShortcut(TrainerViewScreen& screen,const Bridge5::Gen5StagedPokemonWorkspace& staged) {
+    namespace Shared=PokeBank::UIModel::SharedPokemonEditor;
+    const auto slot=boxFileSlot(screen,staged);
+    if(!slot)return;
+    const auto activation=Shared::boxActivation(slot->occupied,false,true,Bridge5::fileCapabilities(staged,*slot));
+    if(activation==Shared::BoxActivation::ImportFile)
+        PokemonFileMenus::beginImport(screen,5,screen.selectedBoxIndex,screen.selectedItemIndex);
+    else if(activation==Shared::BoxActivation::ExportFile)
+        PokemonFileMenus::exportPokemon(screen,5,false,screen.selectedBoxIndex,screen.selectedItemIndex);
+    screen.controllerNavigation.reset();
+}
 void keepDraft(TrainerViewScreen& screen) {
     auto& trainer=nativeTrainer(screen);
     std::string error;
@@ -1897,6 +1922,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         if(keys&HidNpadButton_Right)
             screen.selectedItemIndex=(screen.selectedItemIndex+1)%capacity;
         if(keys&HidNpadButton_A)beginActions(screen);
+        else if(keys&HidNpadButton_X)boxFileShortcut(screen,staged);
     }
     return true;
 }
@@ -2315,9 +2341,14 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
        ClassicPackedMove::gen5CarryActive(screen))
         ClassicPackedMove::draw(screen,fb); // carried sprite + "A Place / L/R Box / B Cancel"
-    else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
-        drawNavBar(fb,{{"D-pad","Navigate"},{"L/R","Box"},
-                       {"ZL/ZR","Jump 5"},{"A","Actions"},{"Y","Review"},{"B","Back"}});
+    else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes) {
+        // Round 11 X-IMPEXP: X Export / Import after A, before Y, from the same decision as the key.
+        std::vector<ControllerHint> hints{{"D-pad","Navigate"},{"L/R","Box"},{"ZL/ZR","Jump 5"},{"A","Actions"}};
+        if(const char* x=boxFileLabel(screen,nativeTrainer(screen).stagedPokemon()))hints.push_back({"X",x});
+        hints.push_back({"Y","Review"});
+        hints.push_back({"B","Back"});
+        drawNavBar(fb,hints);
+    }
     else
         drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Actions"},
                        {"Y","Review"},{"B","Back"}});

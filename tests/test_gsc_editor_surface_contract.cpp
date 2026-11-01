@@ -133,12 +133,20 @@ int main() {
     assert(foundation.find("legacy.pokemonActions = false") != std::string::npos);
     assert(foundation.find("added to Box") != std::string::npos);
 
+    // Round 11 X-IMPEXP (owner request; replaces the PR #280 "X Add on an empty cell"): Gen II box
+    // X goes through the shared decision to Import / Export to file, never to Create.
     assert(parity.find("SharedEditor::boxActivation") != std::string::npos);
-    assert(parity.find("SharedEditor::BoxActivation::Add") != std::string::npos);
+    assert(parity.find("SharedEditor::BoxActivation::ImportFile") != std::string::npos);
+    assert(parity.find("SharedEditor::BoxActivation::ExportFile") != std::string::npos);
+    assert(parity.find("PokemonFileMenus::beginImport(screen, 2, box, slot)") != std::string::npos);
+    assert(parity.find("PokemonFileMenus::exportPokemon(screen, 2, false, box, slot)") != std::string::npos);
+    assert(parity.find("SharedEditor::BoxActivation::Add") == std::string::npos);
     assert(parity.find("SharedEditor::BoxActivation::Actions") != std::string::npos);
     assert(parity.find("if (down & HidNpadButton_X) return true") != std::string::npos);
     assert(composite.find("{\"A\", \"Actions\"}") != std::string::npos);
-    assert(composite.find("{\"X\", \"Add\"}") != std::string::npos);
+    assert(composite.find("Shared::boxXLabel(occupied, Shared::fileCapabilities(stagedEditor(screen) != nullptr))") !=
+           std::string::npos);
+    assert(composite.find("{\"X\", \"Add\"}") == std::string::npos);
     assert(composite.find("{\"L/R\", \"Box\"}") != std::string::npos);
     assert(composite.find("drawGen2ClassicBoxFooter") != std::string::npos);
 

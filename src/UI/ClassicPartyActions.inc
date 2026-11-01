@@ -26,10 +26,22 @@ int& row(TrainerViewScreen& screen) {
     if(generation(screen)==2)return editorOverlayState(screen).pokemonRow;
     return Gen3SharedEditorSurface::stateFor(screen).actionRow;
 }
-auto actions() {
+// Round 11 ACTIONS (owner Extra 7, like the Gen IV / V Party sheets): Review Pending Changes is
+// listed while the generation's staged workspace has changes (it was hard-coded off, E02 / NEW-20).
+bool pendingChanges(TrainerViewScreen& screen) {
+    switch(generation(screen)) {
+        case 1: {const auto* e=Gen1PokemonEditor::editor(screen);return e && !e->pendingChanges().empty();}
+        case 2: {const auto* e=stagedEditor(screen);return e && !e->pendingChanges().empty();}
+        case 3:return Gen3SharedEditorSurface::editor(screen) && !Gen3SharedEditorSurface::reviewRows(screen).empty();
+        default:return false;
+    }
+}
+auto actions(TrainerViewScreen& screen) {
     namespace Shared=PokeBank::UIModel::SharedPokemonEditor;
-    // The sheet only opens with a staged editor (open()), so Feature A's Export to file joins it.
-    return Shared::withAction(Shared::actionsForSlot(true,{false,false,true},false),Shared::Action::ExportFile);
+    // The ONE shared capability model: View, Edit, Origin & Legality, Export to file (the sheet only
+    // opens with a staged editor, open()), [Review], Cancel. Party Clone / Move / Release are not
+    // Gen I-III staged Party commands, so they are not listed.
+    return Shared::actionsForSlot(true,{false,false,true,false,true},pendingChanges(screen));
 }
 int partySlot(TrainerViewScreen& screen) {
     switch(generation(screen)) {
@@ -89,7 +101,7 @@ bool handle(TrainerViewScreen& screen,uint64_t down,uint64_t held,int stickX,int
     // 7D: a completed tap outside the actions sheet closes it like B; the return consumes it.
     if(SharedPopupDismiss::tappedOutside(touch)){close(screen);return true;}
     auto& selected=row(screen);
-    const auto list=actions();
+    const auto list=actions(screen);
     const uint64_t nav=screen.controllerNavigation.apply(down,held,stickX,stickY,
         HidNpadButton_Up,HidNpadButton_Down,HidNpadButton_Left,HidNpadButton_Right);
     if(nav&HidNpadButton_Up)selected=(selected+static_cast<int>(list.count)-1)%static_cast<int>(list.count);
@@ -102,6 +114,12 @@ bool handle(TrainerViewScreen& screen,uint64_t down,uint64_t held,int stickX,int
     using Action=PokeBank::UIModel::SharedPokemonEditor::Action;
     const auto action=list[static_cast<size_t>(selected)];
     if(action==Action::Close){close(screen);return true;}
+    if(action==Action::Review) {
+        // The generation's standalone shared Review; B there returns to the Party grid.
+        close(screen);
+        (void)screen.openStagedReview(false);
+        return true;
+    }
     if(action==Action::ExportFile) {
         const int gen=generation(screen),slot=partySlot(screen);
         close(screen);
@@ -142,7 +160,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(!active(screen))return false;
     screen.drawLegacyBase(fb);
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-48,Color(0,0,0,105));
-    const auto model=PokeBank::UIModel::NarrowPokemonMenu::classic(actions());
+    const auto model=PokeBank::UIModel::NarrowPokemonMenu::classic(actions(screen));
     const auto* pokemon=screen.selectedPartyIndex>=0 && screen.selectedPartyIndex<static_cast<int>(screen.trainer.party.size())?
         screen.trainer.party[static_cast<size_t>(screen.selectedPartyIndex)].get():nullptr;
     drawNarrowPokemonActions(fb,screen.touchButtons,model,row(screen),

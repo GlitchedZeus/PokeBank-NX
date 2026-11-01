@@ -69,12 +69,21 @@ void sharedBadge(PKSEFramebuffer& fb, int x, int y, const std::string& text) {
     fb.drawText(x + 12, y + 6, text, Colors::Text, TextStyle::Caption);
 }
 
-SharedEditor::ActionCapabilities gen2ActionCapabilities() noexcept {
+// Round 11 ACTIONS: the ONE Gen II box-sheet capability set. The live sheet
+// (ClassicReleaseActionFix.inc, input and draw) and the shadow sheets below and in
+// Gen2SharedSurfaceParity.inc all list from it, so their rows, touch ids and dispatch cannot drift.
+// Every Gen II box sheet opens only with a staged editor: Clone, Release (staged packed compaction,
+// stageReleaseBoxPokemon), Origin & Legality (informational: legality stays "Not checked"), and
+// Feature A's Import / Export to file. Move is the accepted hold-Y packed carry, started from the
+// sheet only on the Boxes view (the Storage pane has no carry entry), like Gen I's boxMoveAvailable.
+SharedEditor::ActionCapabilities gen2ActionCapabilities(const TrainerViewScreen& screen) noexcept {
     SharedEditor::ActionCapabilities caps;
     caps.canClone = true;
-    caps.canRemove = false; // Gen2 StagedEditor has no proven remove/compaction adapter yet.
-    // This is an informational shell: encounter legality remains explicitly PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked).
+    caps.canRemove = true;
     caps.hasLegalityProvenance = true;
+    caps.canImportFile = true;
+    caps.canExportFile = true;
+    caps.canMove = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes && screen.detailViewActive;
     return caps;
 }
 
@@ -108,7 +117,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
     auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                         static_cast<std::size_t>(legacy.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
-    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(), !editor->pendingChanges().empty());
+    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(screen), !editor->pendingChanges().empty());
     if (actions.count == 0) return true;
 
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -269,7 +278,7 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                               static_cast<std::size_t>(legacy.pokemonSlot), error);
     const auto actions = SharedEditor::actionsForSlot(
-        pokemon.has_value(), gen2ActionCapabilities(), !editor->pendingChanges().empty());
+        pokemon.has_value(), gen2ActionCapabilities(screen), !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(
         legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);

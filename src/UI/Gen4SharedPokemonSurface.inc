@@ -2405,11 +2405,20 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         if (partyEntry || boxEntry || storageEntry) beginActions(screen);
         return true;
     }
-    if ((navigated & HidNpadButton_X) && boxEntry && !selectedOccupied(screen)) {
-        beginActions(screen);
-        auto& createState = stateFor(screen);
-        createState.actionRow = 0; // Add
-        beginCreate(screen);
+    // Round 11 X-IMPEXP: X on the Boxes grid exports an occupied slot / imports into an empty one
+    // through the shared decision (Add Pokemon stays on the A sheet). Every other X on these grids
+    // (the Storage save pane, no staged editor) is consumed so it never falls through to the
+    // inherited source-writable box handler (old X = Release).
+    if ((navigated & HidNpadButton_X) && (boxEntry || storageEntry)) {
+        const auto activation = Shared::boxActivation(
+            selectedOccupied(screen), false, boxEntry, Shared::fileCapabilities(editor(screen) != nullptr));
+        if (activation == Shared::BoxActivation::ImportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 4, screen.selectedBoxIndex, screen.selectedItemIndex);
+        } else if (activation == Shared::BoxActivation::ExportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 4, false, screen.selectedBoxIndex, screen.selectedItemIndex);
+        }
         return true;
     }
     return false;

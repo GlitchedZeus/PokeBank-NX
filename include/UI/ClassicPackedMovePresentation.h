@@ -17,6 +17,9 @@ bool beginGen1FromAction(TrainerViewScreen& screen, int box, int slot);
 // then holds a ghost copy (nothing staged) until A places it on an empty slot or B cancels. `party`
 // (Gen V only) clones Party slot `slot` into a box. False when no carry could start.
 bool beginCloneFromAction(TrainerViewScreen& screen, int box, int slot, bool party = false);
+// Round 11 ACTIONS: the same for Gen II (packed box) and Gen III (sparse box) Box Actions -> Move.
+bool beginGen2FromAction(TrainerViewScreen& screen, int box, int slot);
+bool beginGen3FromAction(TrainerViewScreen& screen, int box, int slot);
 } // namespace ClassicPackedMove
 } // namespace UI
 

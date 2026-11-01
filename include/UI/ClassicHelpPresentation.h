@@ -35,8 +35,10 @@ inline std::vector<std::string> lines(Page page,int generation) {
             if(generation==5)out.push_back("+   Review staged Pokemon, Bag and Trainer changes");
             break;
         case Page::Pokemon:
-            out.push_back("A   Actions: View, Edit, Move, Clone, Origin or Release");
-            out.push_back("A   On an empty slot: create a Pokemon draft");
+            // Round 11: the shared Actions order (NarrowPokemonActionMenu.h) and X = file shortcut.
+            out.push_back("A   Actions: View, Edit, Clone, Move, Release, Origin, Export");
+            out.push_back("A   On an empty slot: Add Pokemon or Import from file");
+            out.push_back("X   Export to file; on an empty slot: Import from file");
             out.push_back("L / R   Previous / next box     ZL / ZR   Jump boxes");
             out.push_back(generation==5?kYReview:kPlusReview);   // Gen I-IV Boxes: Y is Move
             // Round 11 H23 (owner): Y picks up, A places, B cancels (ClassicCarryRules, every
@@ -47,7 +49,7 @@ inline std::vector<std::string> lines(Page page,int generation) {
             break;
         case Page::Party:
             out.push_back("A   Open the action menu for the highlighted Party Pokemon");
-            out.push_back("A   In that menu: View, Edit, Origin & Legality or Cancel (tap works too)");
+            out.push_back("A   In that menu: View, Edit, Origin & Legality, Export, Review or Cancel");
             out.push_back(kYReview);
             break;
         case Page::Items:

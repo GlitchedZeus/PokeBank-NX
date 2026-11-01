@@ -1667,6 +1667,17 @@ const Pokemon::Pokemon* sourceBoxPokemon(TrainerViewScreen& screen, const State&
     return pokemon && pokemon->speciesID() != 0 ? pokemon : nullptr;
 }
 
+// Round 11 ACTIONS: the ONE Gen III staged-sheet capability set, used by the input and the draw
+// so rows, touch ids (31600 + native index) and dispatch stay aligned. Move is the accepted
+// sparse hold-Y carry, started from the sheet only for a Boxes-view slot (never Party or the
+// Storage save pane, which have no carry entry here).
+Shared::ActionCapabilities gen3ActionCapabilities(const TrainerViewScreen& screen, const State& state) noexcept {
+    Shared::ActionCapabilities caps{/*clone*/true, /*remove*/true, /*legality*/true, /*import*/true, /*export*/true};
+    caps.canMove = !state.party && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
+                   screen.detailViewActive;
+    return caps;
+}
+
 bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.actions) return false;
     auto* staged = editor(screen);
@@ -1706,8 +1717,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {/*clone*/true, /*remove*/true, /*legality*/true, /*import*/true, /*export*/true},
-        !reviewRows(screen).empty());
+        occupied, gen3ActionCapabilities(screen, state), !reviewRows(screen).empty());
     if (actions.count == 0) return true;
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
@@ -1763,6 +1773,15 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             screen.controllerNavigation.reset();
             if (!ClassicPackedMove::beginCloneFromAction(screen, state.box, state.slot))
                 screen.postStatus("Clone could not start from here", 240);
+            break;
+        }
+        case Shared::Action::Move: {
+            // Round 11 ACTIONS: the accepted sparse hold-Y carry, picked up (Y drops, B restores).
+            // The sheet closes first so the carry layer (not this surface) owns the next keys.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginGen3FromAction(screen, state.box, state.slot))
+                screen.postStatus("Move could not start from here", 240);
             break;
         }
         case Shared::Action::Close:
@@ -2528,7 +2547,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                                                static_cast<std::size_t>(state.slot), error);
     const bool occupied = pokemon.has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {true, true, true, true, true}, !reviewRows(screen).empty());
+        occupied, gen3ActionCapabilities(screen, state), !reviewRows(screen).empty());
     screen.drawGSCOverlay(fb);
     // One narrow, greyed-out menu for touch and A. Underlying box hitboxes
     // are replaced by enabled native command IDs only.
@@ -2727,20 +2746,28 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     const bool inBoxes = boxEntrySurface(screen);
     if (!inBoxes && !storageEntrySurface(screen)) return false;
     const bool occupied = selectedOccupied(screen);
+    // Round 11 X-IMPEXP: X on the Boxes grid exports an occupied slot / imports into an empty one
+    // (Add Pokemon stays on the A sheet). The Storage save pane has no X shortcut.
     const auto activation = Shared::boxActivation(
-        occupied, (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
+        occupied, (down & HidNpadButton_A) != 0, inBoxes && (down & HidNpadButton_X) != 0,
+        Shared::fileCapabilities(editor(screen) != nullptr));
     if (activation == Shared::BoxActivation::Actions) {
         beginActions(screen);
         return true;
     }
-    if (activation == Shared::BoxActivation::Add) {
-        // Consume X even if validation rejects the staged Create. Otherwise
-        // the old source-writable base creator sees the same X input.
-        (void)beginCreate(screen,
-            inBoxes ? screen.selectedBoxIndex : screen.stSaveBox,
-            inBoxes ? screen.selectedItemIndex : screen.stSaveSlot);
+    if (activation == Shared::BoxActivation::ImportFile) {
+        screen.controllerNavigation.reset();
+        PokemonFileMenus::beginImport(screen, 3, screen.selectedBoxIndex, screen.selectedItemIndex);
         return true;
     }
+    if (activation == Shared::BoxActivation::ExportFile) {
+        screen.controllerNavigation.reset();
+        PokemonFileMenus::exportPokemon(screen, 3, false, screen.selectedBoxIndex, screen.selectedItemIndex);
+        return true;
+    }
+    // Consume any other X here (Storage pane, no staged editor): it must never fall through to the
+    // inherited source-writable box handlers (old X = Add / Release).
+    if (down & HidNpadButton_X) return true;
     return false;
 }
 

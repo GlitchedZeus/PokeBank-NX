@@ -3884,7 +3884,9 @@ namespace UI {
             } else {
                 launchFileTouchScroll.stop();
             }
-            if (kDown & HidNpadButton_B) {
+            // B closes the browser; '-' is the app-wide SD-browser Cancel (Round 11 H39, as in the
+            // Import from file dialog). Neither links anything: only A on a file writes the binding.
+            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) {
                 launchFileTouchScroll.stop();
                 overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
                 return;
@@ -5324,6 +5326,10 @@ namespace UI {
             // LeaveDecisionLayout (word-wrapped with the bundled font's advances). The buttons
             // carry the real coloured face-button badges and are touch targets. Semantics are
             // frozen: only Y commits (Launch / Quit), A and B stay, an ambiguous press stays.
+            // Round 11 QUIT: two neutral buttons, B Cancel (the safe choice, left) and Y Quit /
+            // Launch; no redundant A Stay, no pre-selected-looking highlight, and no footer that
+            // repeats the buttons. A still stays, unlabelled. The empty nav bar covers the Home
+            // footer underneath and republishes only the two buttons as touch targets.
             namespace G = PokeBank::UIModel::SharedMenuGeometry;
             const bool quitting = leaveKind == LeaveKind::Quit;
             const auto text = PokeBank::UIModel::LeaveDecisionLayout::build(
@@ -5341,15 +5347,11 @@ namespace UI {
                             i == 0 ? Colors::TextSecondary : Colors::TextMuted,
                             i == 0 ? TextStyle::Body : TextStyle::Caption);
             }
-            const G::Rect back = G::buttonRect(layout, 0, 3);
-            const G::Rect stay = G::buttonRect(layout, 1, 3);
-            const G::Rect commit = G::buttonRect(layout, 2, 3);
-            drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");
-            drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");
-            drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y",
-                            quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);
-            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
-                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay"));
+            const G::Rect cancel = G::buttonRect(layout, 0, 2);
+            const G::Rect commit = G::buttonRect(layout, 1, 2);
+            drawGlyphButton(fb, cancel.x, cancel.y, cancel.w, cancel.h, "B", "Cancel");
+            drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y", quitting ? "Quit" : "Launch");
+            drawNavBar(fb, std::string());
         } else if (overlay == Overlay::OpenFailure) {
             constexpr int w = 860, h = 280;
             const int x = (fb.getWidth() - w) / 2;
@@ -5732,7 +5734,7 @@ namespace UI {
                 fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
                             Colors::Info, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Open / Link"},
-                            {"Y", "Up Folder"}, {"X", "Start Folder"}, {"B", "Cancel"}});
+                            {"Y", "Up Folder"}, {"X", "Start Folder"}, {"B", "Close"}, {"-", "Cancel"}});
         } else if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& parent = u->titles[titleIndex];

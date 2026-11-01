@@ -113,7 +113,7 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                                static_cast<std::size_t>(legacy.pokemonSlot), error);
     const auto actions = SharedEditor::actionsForSlot(
-        static_cast<bool>(pokemon), gen2ActionCapabilities(),
+        static_cast<bool>(pokemon), gen2ActionCapabilities(screen),
         !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(
         legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
@@ -214,15 +214,24 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         legacy.reviewRow = 0;
         return true;
     }
-    // Gen II Boxes now use the same primary interaction language as accepted Gen I:
-    // A opens Empty Slot/Pokemon Actions; X is a direct Add shortcut only on an empty cell.
+    // Gen II Boxes use the same primary interaction language as every Gen I-V box grid:
+    // A opens Empty Slot/Pokemon Actions; X exports an occupied slot / imports into an empty one
+    // (Round 11 X-IMPEXP; Add Pokemon stays on the A sheet).
     if (caps.canEditStagedCopy && surface == Access::Surface::Boxes && screen.detailViewActive && !blocked && validSlot) {
         std::string error;
         const bool occupied = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error).has_value();
         const auto activation = SharedEditor::boxActivation(occupied,
-            (down & HidNpadButton_A) != 0 || boxTap, (down & HidNpadButton_X) != 0);
-        if (activation == SharedEditor::BoxActivation::Add) {
-            return beginCreate(screen, box);
+            (down & HidNpadButton_A) != 0 || boxTap, (down & HidNpadButton_X) != 0,
+            SharedEditor::fileCapabilities(true));
+        if (activation == SharedEditor::BoxActivation::ImportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 2, box, slot);
+            return true;
+        }
+        if (activation == SharedEditor::BoxActivation::ExportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 2, false, box, slot);
+            return true;
         }
         if (activation == SharedEditor::BoxActivation::Actions) {
             auto& legacy = editorOverlayState(screen);
@@ -238,7 +247,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             screen.controllerNavigation.reset();
             return true;
         }
-        if (down & HidNpadButton_X) return true; // occupied X is intentionally not a hidden edit/add action.
+        if (down & HidNpadButton_X) return true; // X is only Import / Export here, never a hidden edit / add.
     }
 
     // Save-side Storage retains the same contextual action menu; it has no direct-X shortcut contract.
