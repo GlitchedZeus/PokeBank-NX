@@ -137,4 +137,3 @@ These come from the requirement extraction; each pair of documents states the re
 - Safety-critical issues without hardware acceptance: **35**; untested safety-critical functions: **16**
 
 v1.0 must not be declared while any line above for missing v1.0 features is non-zero.
-

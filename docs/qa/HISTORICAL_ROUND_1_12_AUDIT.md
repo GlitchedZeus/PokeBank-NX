@@ -3317,4 +3317,3 @@ Owner words are verbatim. Occurrences list every historical record (round · can
 - **Hardware acceptance:** none (policy; not a checklist item)
 - **Next action:** Keep locked; revisit only per adapter after Vault v1 and write/readback verification (TRANSFER_MODEL enablement gate).
 - **Occurrences (3):** REQ Current alpha rule n/a [docs/TRANSFER_MODEL.md]; REQ True Move enablement gate n/a [docs/TRANSFER_MODEL.md]; REQ Permanent safety policy n/a [docs/GAME_SUPPORT_MATRIX.md]
-

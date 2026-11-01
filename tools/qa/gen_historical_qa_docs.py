@@ -177,7 +177,7 @@ def write_ledger(issues, C):
     for area in leftovers:
         out += [f"## {area}", ""] + [f"- `{i['id']}` {cell(i.get('title'))} — {i['status']}" for i in by_area[area]] + [""]
     out += ["Legend: ⚠️ safety-critical · 🎯v1 required for v1.0.", ""]
-    open(os.path.join(OUT, "MASTER_HARDWARE_ACCEPTANCE_LEDGER.md"), "w").write("\n".join(line.rstrip() for line in out) + "\n")
+    open(os.path.join(OUT, "MASTER_HARDWARE_ACCEPTANCE_LEDGER.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 
 
 def write_audit(recs, issues, lineage, C):
@@ -308,7 +308,7 @@ def write_audit(recs, issues, lineage, C):
             f"{o.get('round')} {o.get('candidate') or ''} {o.get('item_id') or ''} {o.get('result') or ''} [{cell(o.get('src'), 70)}]".replace("  ", " ")
             for o in occ))
         out.append("")
-    open(os.path.join(OUT, "HISTORICAL_ROUND_1_12_AUDIT.md"), "w").write("\n".join(line.rstrip() for line in out) + "\n")
+    open(os.path.join(OUT, "HISTORICAL_ROUND_1_12_AUDIT.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 
 
 MANDATORY = [
@@ -416,7 +416,7 @@ def write_gaps(issues, C):
             f"- Safety-critical issues without hardware acceptance: **{C['safety_critical_without_hw_acceptance']}**; "
             f"untested safety-critical functions: **{C['untested_safety_functions']}**",
             "", "v1.0 must not be declared while any line above for missing v1.0 features is non-zero.", ""]
-    open(os.path.join(OUT, "V1_RELEASE_FEATURE_GAPS.md"), "w").write("\n".join(line.rstrip() for line in out) + "\n")
+    open(os.path.join(OUT, "V1_RELEASE_FEATURE_GAPS.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 
 
 def write_matrix(issues, accepted, extras, lineage, C):
@@ -483,7 +483,7 @@ def write_matrix(issues, accepted, extras, lineage, C):
             "3. Every safety function in §5 that an ordinary owner save can exercise.",
             "4. No row may be removed from a checklist unless it is owner-PASSed or the owner records a decision; "
             "the ledger records the reason.", ""]
-    open(os.path.join(OUT, "PERMANENT_REGRESSION_MATRIX.md"), "w").write("\n".join(line.rstrip() for line in out) + "\n")
+    open(os.path.join(OUT, "PERMANENT_REGRESSION_MATRIX.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 
 
 def main():
