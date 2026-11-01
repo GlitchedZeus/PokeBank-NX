@@ -228,7 +228,13 @@ void testRuleEdits(const std::vector<Record>& records) {
         const auto personal = Legality::Gen9a::Data::personal(Legality::Gen8::Data::nationalSpecies9(PK8::read16(n.plain, 0x08)), n.plain[0x24]);
         check(personal.has_value(), "hyper training fixture species has personal data");
         const uint8_t growth = personal ? personal->growth : 0;
-        expectInvalid(n, "hyper training", [growth](auto& b) {
+            expectInvalid(n, "PID equals EC", [](auto& b) { b[0xCE] = 50; PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); },
+                      "PID equals the encryption constant");
+        expectNoIssue(n, "PID equals EC on a BD/SP origin", [](auto& b) { b[0xCE] = 48; PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); },
+                      "PID equals the encryption constant");
+        expectInvalid(n, "Generation V PID", [](auto& b) { b[0xCE] = 21; PK8::write32(b, 0x1C, PK8::read32(b, 0x00) ^ 0x10000u); },
+                      "Poke Transporter PID");
+    expectInvalid(n, "hyper training", [growth](auto& b) {
             PK8::write32(b, 0x10, Pokemon::getExpForLevel(100, growth));
             PK8::write32(b, 0x8C, (PK8::read32(b, 0x8C) & ~0x1Fu) | 31u);
             b[0x126] = 1;

@@ -14,6 +14,7 @@
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Legality/Gen8Legality.h"
 #include "Legality/ModernNickname.h"
+#include "Legality/Gen67Legality.h"
 #include "Legality/ModernEncounter.h"
 #include "Pokemon/Experience.h"
 
@@ -57,6 +58,7 @@ public:
         checkMoves();
         checkGender();
         checkAbility();
+        checkPidEc();
         checkNature();
         if (p_[0x124] == 0 || p_[0x124] > Data::maxBall())
             invalid(CheckIdentifier::Origin, "Ball " + std::to_string(p_[0x124]) + " cannot be held by a PA9");
@@ -235,6 +237,27 @@ private:
         if (lang == 0 || lang == 6) invalid(CheckIdentifier::Trainer, "Language " + std::to_string(lang) + " is not a language");
         else if (lang > LanguageSpanishL || (lang == LanguageSpanishL && version() != VersionZA))
             invalid(CheckIdentifier::Trainer, "Language " + std::to_string(lang) + " does not exist in the origin game");
+    }
+
+    // PIDVerifier.VerifyEC: a Generation III-V origin carries the Poke Transporter PID
+    // (PK5.GetTransferPID); any other origin has PID != EC (VerifyFutureOriginEC), except the
+    // fixed-EC Legends: Arceus and BD/SP gifts (WA8/WB8.IsEquivalentFixedECPID), a Sword/Shield
+    // HOME gift with EC 0 (WC8.IsHOMEGift), and the Switch Virtual Console records, whose HOME PID
+    // is not checked here.
+    void checkPidEc() {
+        const uint8_t v = version();
+        if (v == 0 || v == 56 || v == 57) return;
+        const uint32_t pid = u32(0x1C), ec = u32(0x00), id32 = u32(0x0C);
+        const uint8_t gen = Gen67::originGeneration(v);
+        if (gen >= 3 && gen <= 5) {
+            if (pid != Gen67::transferPid(ec, id32))
+                invalid(CheckIdentifier::PidRng, "PID does not match the Poke Transporter PID for its encryption constant");
+            return;
+        }
+        const bool fixedEcGift = v == 47 || v == 48 || v == 49;
+        const bool homeGift = ec == 0 && (v == 44 || v == 45);
+        if (pid == ec && !fixedEcGift && !homeGift)
+            invalid(CheckIdentifier::PidRng, "PID equals the encryption constant");
     }
 
     // HyperTrainingVerifier: level 50 or more (a Z-A record has always visited Z-A, so
