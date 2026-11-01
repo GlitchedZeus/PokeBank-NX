@@ -713,7 +713,8 @@ std::vector<DiscoveryRoot> defaultDraSticRoots() {
 
 DiscoveryResult discoverKnownSources(DiscoveryLimits limits,
                                     const std::string& retroArchConfig,
-                                    const std::string& retroArchFallback) {
+                                    const std::string& retroArchFallback,
+                                    std::string_view providerFilter) {
     std::vector<DiscoveryRoot> roots;
     const std::string configured=retroArchConfiguredRoot(retroArchConfig);
     if(safeScanRoot(configured) && safeDirectory(configured))
@@ -726,6 +727,10 @@ DiscoveryResult discoverKnownSources(DiscoveryLimits limits,
             DiscoveryRoot{"sdmc:/switch/melonds","melonDS",2},
             DiscoveryRoot{"sdmc:/melonds","melonDS",2}})
         if(safeDirectory(root.path))roots.push_back(root);
+    if (!providerFilter.empty())
+        roots.erase(std::remove_if(roots.begin(), roots.end(),
+            [&](const DiscoveryRoot& root) { return root.providerLabel != providerFilter; }),
+            roots.end());
     return discoverSources(roots,limits);
 }
 
