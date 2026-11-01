@@ -3524,12 +3524,14 @@ def round7_contracts(sources):
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
-    # A22 / C01 R2-SPECIAL (lane C): Gen II's calculated Sp. Atk / Sp. Def are NOT in the numeric
-    # Calculated column; they sit in the lower-middle of the STATS panel, as Gen I's block does.
+    # A22 / C01 R2-SPECIAL (lane C): Gen II's calculated Sp. Atk / Sp. Def are explained, labelled, in
+    # the lower-middle of the STATS panel, as Gen I's block does; the numeric Calculated column never
+    # carries "Sp." tags, a slash, or a sixth SpD grid row. Round 11 (owner H22) adds plain numbers
+    # to the Special row's Calculated cell (number plus block, as in Gen I); CG51 still forbids "a/b".
     # ------------------------------------------------------------------------------------------
     r = Result("CG84-gen2-special-lower-middle",
-               "Gen II calculated Special is in the lower-middle STATS area like Gen I, not the numeric column "
-               "(owner Oct 26 A22 / C01)")
+               "Gen II calculated Special: plain numbers in the Calculated column plus the labelled lower-middle "
+               "block, as in Gen I (owner Oct 26 A22 / C01, Round 11 H22)")
     wp = src("include/UI/Gen2WorkspacePresentation.h")
     cc = body_of(wp, "calculatedCell")
     if cc and re.search(r'"Sp\.\s*(?:Atk|Def)"', cc):

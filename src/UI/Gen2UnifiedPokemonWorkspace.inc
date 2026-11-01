@@ -917,12 +917,12 @@ inline uint8_t gen2ShownHpDv(const PokeVault::Integration::Gen2::PokemonRecord& 
 }
 
 // Round 7 (owner A22 / C01): the STATS Calculated column for every Gen II painter holds plain
-// numbers only (HP, Attack, Defense, Speed); the Special row's cell stays empty because Gen II
-// splits Special into two calculated stats, shown by drawGen2SpecialBlock below the grid.
+// numbers only. Round 11 (owner H22): the Special row included, as in Gen I; its cell holds the two
+// calculated Special stats (Gen2Workspace::calculatedCell), labelled by drawGen2SpecialBlock below.
 void drawGen2CalculatedColumn(PKSEFramebuffer& fb, const std::array<uint16_t, 6>& battle,
                               int x, int y, int) {
     namespace W = PokeBank::UIModel::Gen2Workspace;
-    for (int row = 0; row < W::kSpecialRow; ++row)
+    for (int row = 0; row <= W::kSpecialRow; ++row)
         fb.drawText(x + W::StatsGrid::kCalculatedX, y + W::StatsGrid::rowY(row), W::calculatedCell(battle, row),
                     gen2StatCellColor(row, 2), TextStyle::Caption);
 }

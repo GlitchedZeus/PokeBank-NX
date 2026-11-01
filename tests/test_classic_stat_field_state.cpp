@@ -84,7 +84,8 @@ int main() {
     }
     const auto gen2View = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp");
     assert(gen2View.find("CSF::derivedHpDv(") != std::string::npos);
-    assert(gen2View.find("std::to_string(battleStats[static_cast<std::size_t>(i)]), cellColor(i, 2)") != std::string::npos);
+    // Round 11 H22: the View modal's Stat cells come from the shared Gen II cell rule (Special row included).
+    assert(gen2View.find("calculatedCell(battleStats, i), cellColor(i, 2)") != std::string::npos);
     assert(gen2View.find("std::to_string(battleStats[5]), cellColor(4, 2)") != std::string::npos);
     // QA CG16: Shiny is an Editable inline toggle (never gold); the split SpA / SpD display is
     // ReadOnly gold. No Gen I / II editor value is drawn in a raw gold token; each goes through
