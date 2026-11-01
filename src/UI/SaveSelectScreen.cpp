@@ -3211,7 +3211,9 @@ namespace UI {
             gen5Notice = "Profile assignments unavailable; no save was opened.";
             return;
         }
-        const auto choices = Modern::inspectSourceChoices(chosen.text, std::string(Modern::kProviderManual), gen5TargetGameId);
+        const auto choices = Modern::inspectSourceChoices(chosen.text,
+            linkManualProviderLabel.empty() ? std::string(Modern::kProviderManual) : linkManualProviderLabel,
+            gen5TargetGameId);
         const auto catalog = Modern::forGameAndProfile(choices, *legacyBindings, currentProfileIdentity(), gen5TargetGameId);
         if (catalog.rows.empty()) {
             gen5Notice = catalog.ambiguousOwnership
@@ -3632,6 +3634,7 @@ namespace UI {
         linkFromClassicGames = fromClassicGames;
         linkEmulatorIndex = 0; // Always offer automatic discovery first.
         linkProviderFilter.clear();
+        linkManualProviderLabel.clear();
         linkNotice = "Choose your emulator. Only validated cartridge saves can be linked.";
         overlay = Overlay::LinkEmulator;
     }
@@ -3641,7 +3644,8 @@ namespace UI {
         const auto choices = Link::choices(linkPlatform);
         if (linkEmulatorIndex < 0 || linkEmulatorIndex >= static_cast<int>(choices.size())) return;
         const auto& choice = choices[static_cast<size_t>(linkEmulatorIndex)];
-        linkProviderFilter = std::string(choice.provider);
+        linkProviderFilter = choice.manualFile ? std::string{} : std::string(choice.provider);
+        linkManualProviderLabel = choice.title == "Azahar File" ? "Azahar" : "Manual";
         linkBypassNextSourceOpen = true;
         openSaveSourceForCurrentTitle(linkFromGamesDrawer, linkFromClassicGames);
         // The same native validators and profile claims run whether selected by
@@ -3657,6 +3661,7 @@ namespace UI {
             else if (sourceKind == SelectedSourceKind::ModernAssignedFile && overlay == Overlay::Gen5Setup)
                 chooseModernManualFile();
         }
+        linkManualProviderLabel.clear();
     }
 
     void SaveSelectScreen::openSaveSourceForCurrentTitle(
