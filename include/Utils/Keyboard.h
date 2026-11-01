@@ -44,6 +44,9 @@ namespace Utils {
         /// A Japanese Gen I / II name: the card opens on kana pages (あ -> ア -> １２３, with ゛ ゜ 小
         /// modifier keys, Utils/Gen12KanaText.h) and Space types the full-width space the font has.
         bool japaneseKana = false;
+        /// A Korean-language Gen IV name: the card opens on the Hangul page (two-set jamo keys that
+        /// compose into syllables, Utils/HangulComposer.h), with Letters and Symbols one key away.
+        bool koreanHangul = false;
         /// Runs after every edit while the keyboard is open, with the text as it now stands -- how a
         /// search re-filters under the keyboard. Empty when the caller only wants the final answer.
         std::function<void(const std::string &)> textChanged;
@@ -72,6 +75,13 @@ namespace Utils {
     /// encodes the answer with Utils::Gen12Kana::encode, which is the rule; the keyboard only offers
     /// keys that encoder accepts. Falls back to the console keyboard when no presenter is registered.
     KeyboardResult promptJapaneseName(const std::string& header, const std::string& initial, int maxChars);
+
+    /// A Korean-language Gen IV name prompt: the in-app keyboard on its Hangul page. The keyboard only
+    /// builds Unicode text; the caller's writer (Pokemon4Mutable, through the Gen 4 character table)
+    /// still decides what the game can store and refuses the rest. Falls back to the console
+    /// keyboard when no presenter is registered.
+    KeyboardResult promptKoreanName(const std::string& header, const std::string& guide,
+                                    const std::string& initial, int maxChars);
 
     /// The console's own keyboard, whatever presenter is registered. It is the only way to type
     /// Japanese, Chinese or Korean -- PKSE's keyboard carries no input method -- and it is a library

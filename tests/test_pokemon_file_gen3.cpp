@@ -429,6 +429,8 @@ void refusals(SourceGame game, Family family) {
         auto oddEditor = StagedPokemonEditor::create(odd, game, error);
         assert(oddEditor);
         assert(!oddEditor->boxedPokemon(0, 7, error) && error.empty());
+        // Round 11 H32: the shared Clone carry reads this to show the slot as protected before A.
+        assert(oddEditor->holdsUnreadableRecord(0, 7) && !oddEditor->holdsUnreadableRecord(0, 8));
         assert(!oddEditor->stageImportBoxPokemon(0, 7, decodeOk(good, "a.pk3"), error) &&
                error.find("unreadable record") != std::string::npos);
         assert(oddEditor->stagedBytes() == odd && !oddEditor->hasPendingChanges());

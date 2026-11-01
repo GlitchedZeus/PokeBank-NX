@@ -133,12 +133,20 @@ int main() {
     assert(foundation.find("legacy.pokemonActions = false") != std::string::npos);
     assert(foundation.find("added to Box") != std::string::npos);
 
+    // Round 11 X-IMPEXP (owner request; replaces the PR #280 "X Add on an empty cell"): Gen II box
+    // X goes through the shared decision to Import / Export to file, never to Create.
     assert(parity.find("SharedEditor::boxActivation") != std::string::npos);
-    assert(parity.find("SharedEditor::BoxActivation::Add") != std::string::npos);
+    assert(parity.find("SharedEditor::BoxActivation::ImportFile") != std::string::npos);
+    assert(parity.find("SharedEditor::BoxActivation::ExportFile") != std::string::npos);
+    assert(parity.find("PokemonFileMenus::beginImport(screen, 2, box, slot)") != std::string::npos);
+    assert(parity.find("PokemonFileMenus::exportPokemon(screen, 2, false, box, slot)") != std::string::npos);
+    assert(parity.find("SharedEditor::BoxActivation::Add") == std::string::npos);
     assert(parity.find("SharedEditor::BoxActivation::Actions") != std::string::npos);
     assert(parity.find("if (down & HidNpadButton_X) return true") != std::string::npos);
     assert(composite.find("{\"A\", \"Actions\"}") != std::string::npos);
-    assert(composite.find("{\"X\", \"Add\"}") != std::string::npos);
+    assert(composite.find("Shared::boxXLabel(occupied, Shared::fileCapabilities(stagedEditor(screen) != nullptr))") !=
+           std::string::npos);
+    assert(composite.find("{\"X\", \"Add\"}") == std::string::npos);
     assert(composite.find("{\"L/R\", \"Box\"}") != std::string::npos);
     assert(composite.find("drawGen2ClassicBoxFooter") != std::string::npos);
 
@@ -190,16 +198,19 @@ int main() {
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
-    // Round 7 (owner Round 6 A22 / C01): the owner rejected squeezing the calculated Special
-    // values into the numeric STATS column. Gen I is the reference: plain numbers in the columns
-    // (the Special row's Calculated cell is empty), and SpA / SpD in the lower-middle "CALCULATED
-    // SPECIAL STATS" block below the grid. No off-grid SpD line, no tags in the column.
+    // Round 7 (owner Round 6 A22 / C01): the owner rejected squeezing tagged / slashed Special
+    // values into the numeric STATS column. Gen I is the reference: plain numbers in the columns,
+    // and SpA / SpD in the lower-middle "CALCULATED SPECIAL STATS" block below the grid. No
+    // off-grid SpD line, no tags in the column. Round 11 (owner H22, deliberate change): the
+    // Special row's Calculated cell shows the two numbers (Sp. Atk then Sp. Def) instead of nothing.
     assert(unified.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
     assert(unified.find("drawGen2SpecialBlock(fb, battle, x, y);") != std::string::npos);
     assert(unified.find("y + 246") == std::string::npos);
     assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") == std::string::npos);
     const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
     assert(gen2Presentation.find("if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);") !=
+           std::string::npos);
+    assert(gen2Presentation.find("if (row == kSpecialRow) return std::to_string(battle[4]) + kSpecialCellGap + std::to_string(battle[5]);") !=
            std::string::npos);
     assert(unified.find("y + B::kCaptionY, \"CALCULATED SPECIAL STATS\"") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
@@ -255,7 +266,11 @@ int main() {
     assert(finalFix.find("std::max(0, w - 36)") != std::string::npos);
     assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
     assert(nativePresentation.find("Current level below met level") != std::string::npos);
-    assert(picker.find("Gen2Picker::locationRowText(") != std::string::npos);
+    // Round 11 (deliberately updated): the chooser draws each row through locationRowTextAt, which
+    // keeps locationRowText for every catch template and labels the other native landmarks.
+    assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find(
+               "return locationRowText(model.encounterChoices[static_cast<std::size_t>(row)]);") != std::string::npos);
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
            std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
@@ -295,7 +310,13 @@ int main() {
     // actual species-scoped encounters and native minimum-level presentation.
     assert(picker.find("\"Met Location\"") != std::string::npos);
     assert(picker.find("model.locationCount()") != std::string::npos);
-    assert(picker.find("model.encounterChoices[") != std::string::npos);
+    // Round 11 (deliberately updated from model.encounterChoices[): rows are drawn through
+    // locationRowTextAt, catch templates first; the other native landmarks follow, labelled
+    // unverified, and choosing one writes only the landmark (otherLocationChoice), never a
+    // template's level.
+    assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
+    assert(pickerModel.find("model.encounterChoices[static_cast<std::size_t>(row)]") != std::string::npos);
+    assert(picker.find("picker.model.otherLocationChoice()") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("Encounter::timeAllowed(*encounter, resolvedMetTime)") != std::string::npos);
     assert(picker.find("drawPokerusPicker") == std::string::npos);
@@ -308,7 +329,12 @@ int main() {
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
     assert(unified.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
-    assert(picker.find("state.working.caughtData = 0") != std::string::npos);
+    // Round 11 follow-up (updated pin, owner H25 clarification 2): the species picker used to clear
+    // Crystal caught data itself after ANY species change -- an existing Pokemon's (Edit) history
+    // too. Session::setSpecies owns the policy now: a Create draft's no-longer-valid location resets
+    // with a visible status; an existing Pokemon keeps its caught data and is flagged instead.
+    assert(picker.find("state.working.caughtData = 0") == std::string::npos);
+    assert(picker.find("state.speciesChangeResetStatus()") != std::string::npos);
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.
     const auto contextualMoveEditor = unified.substr(unified.find("bool handleUnifiedMoveEditor("),

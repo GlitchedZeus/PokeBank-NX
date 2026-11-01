@@ -70,6 +70,13 @@ public:
         if(!working_)return std::nullopt;
         return working_->current();
     }
+    // The record as it was when this draft opened (Round 11: an Edit Keep may not take its last move).
+    [[nodiscard]] std::optional<Pokemon5ReadOnly> originalRecord() const {
+        if(!working_)return std::nullopt;
+        Pokemon5ReadOnly source(working_->originalBytes());
+        if(!source.valid())return std::nullopt;
+        return source;
+    }
     // The species transaction deliberately requires the ORIGINAL PK5 to
     // be a base form. Editing Form to zero inside this draft cannot bypass
     // independent Keep / Review replay ordering.

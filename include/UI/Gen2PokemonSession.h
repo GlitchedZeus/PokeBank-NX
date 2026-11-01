@@ -4,6 +4,11 @@
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "UI/Gen12DVReroll.h"
 #include "UI/SpeciesChangeMoves.h"
+#include "UI/SpeciesChangeHistoryPolicy.h"
+#include "UI/CreateRequiredFields.h"
+#include "UI/HistoryConsistencyFacts.h"
+#include "UI/Gen2NativePresentation.h"
+#include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen2PokemonEditorRules.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
@@ -27,25 +32,19 @@ inline bool sameEditableRecord(const Gen2::PokemonRecord& a, const Gen2::Pokemon
 
 // UI-owned transaction. Only keep/add below can mutate the staged copy; field
 // browsing and Back/Discard/Continue never call the backend.
-// Round 6: a new Gen II Create record starts with its species' native default moveset at its
-// level, the same R2-BUG-004 rule Session::setSpecies applies on a species change (pret
-// pokegold / pokecrystal FillMoves over evos_attacks: the last four level-up moves at or below
-// the level), base PP, no PP Ups. An unknown game selects no table: the slots stay empty.
-inline bool seedNativeMoves(Gen2::PokemonRecord& p, std::string_view sourceGameId) {
-    const auto game = exactGameFromSourceId(sourceGameId);
-    const auto table = !game ? ::PokeBank::Moves::LevelUpTable15::Count
-                             : ::PokeBank::Moves::levelUpTableGen2(*game == Gen2::SourceGame::Crystal);
-    return SpeciesMoveDefaults::refreshArrays(table, p.species, 0, p.level,
-        [](uint16_t move) { return Gen2::StagedEditor::gen2MoveBasePP(move); }, p.moves, p.pp, p.ppUps);
-}
+// Round 11 (owner H28 / Extra 5 / Extra 6): a new Gen II Create record starts with NO moves; the
+// user picks them, and add() refuses until at least one is chosen (UI/CreateRequiredFields.h).
 
 struct Session {
     SessionMode mode = SessionMode::None;
     bool confirmExit = false;
     ProgressionSource progression = ProgressionSource::Unchanged;
     Gen2::PokemonRecord baseline{}, working{};
+    // The last Create species change cleared a non-zero Pokerus / the chosen caught data.
+    bool pokerusCleared = false, caughtDataCleared = false;
     void begin(const Gen2::PokemonRecord& p, SessionMode next) {
         baseline = working = p; mode = next; confirmExit = false;
+        pokerusCleared = caughtDataCleared = false;
         progression = next == SessionMode::Create ? ProgressionSource::Level : ProgressionSource::Unchanged;
     }
     bool editable() const noexcept { return mode == SessionMode::Create || mode == SessionMode::Edit; }
@@ -71,6 +70,7 @@ struct Session {
         return true;
     }
     bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
+        pokerusCleared = caughtDataCleared = false;
         if (!editable() || !Gen2::personalRecord(species)) return false;
         if (species == working.species) return true;
         const uint8_t nextLevel =
@@ -84,16 +84,48 @@ struct Session {
         // Unown's letter comes from the same DVs (pokecrystal GetUnownLetter); any other species has form 0.
         working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
         if (!setLevel(nextLevel)) return false;
-        // R2-BUG-004: the new species' native Gen II default moveset at the new level
-        // (pret pokegold / pokecrystal FillMoves over evos_attacks), base PP, no PP Ups.
-        // An unknown game selects no table, so the slots are cleared, never carried over.
+        // Round 11 (owner H28): keep each current move the new species can use in this exact
+        // Gold / Silver / Crystal ruleset (Gen2MoveCompatibility, the move picker's filter) with
+        // its PP and PP Ups; clear the rest; never add one. An unknown game proves nothing
+        // compatible, so the slots are cleared, never carried over.
         const auto game = exactGameFromSourceId(sourceGameId);
-        const auto table = !game ? ::PokeBank::Moves::LevelUpTable15::Count
-                                 : ::PokeBank::Moves::levelUpTableGen2(*game == Gen2::SourceGame::Crystal);
-        SpeciesMoveDefaults::refreshArrays(table, species, 0, working.level,
-            [](uint16_t move) { return Gen2::StagedEditor::gen2MoveBasePP(move); },
-            working.moves, working.pp, working.ppUps);
+        SpeciesMoveDefaults::refreshArrays(working.moves, working.pp, working.ppUps, [&](uint16_t move) {
+            return game && Gen2::MoveCompatibility::canLearnMove(*game, species, move);
+        });
+        // Round 11 (owner H25, SpeciesChangeHistoryPolicy.h): a Create draft's Pokerus resets, and
+        // Crystal caught data the user chose stays only while its location is still an encounter of
+        // the new species (the same exact-game templates the Crystal location picker offers). An
+        // existing Pokemon keeps its own Pokerus and caught data.
+        const auto caught = Gen2Native::decodeCrystalCaughtData(working.caughtData);
+        const auto history = SpeciesChangeHistoryPolicy::reconcile(
+            mode == SessionMode::Create ? SpeciesChangeHistoryPolicy::Mode::Create : SpeciesChangeHistoryPolicy::Mode::Edit,
+            caught.present, [&] {
+                for (const auto& encounter :
+                     PokeVault::Integration::EncounterGuardrails::forGameSpecies(sourceGameId, species))
+                    if (encounter.location == caught.location) return true;
+                return false;
+            });
+        pokerusCleared = history.resetPokerus && working.pokerus != 0;
+        caughtDataCleared = history.resetMetLocation;
+        if (history.resetPokerus) working.pokerus = 0;
+        if (history.resetMetLocation) working.caughtData = 0;
         return true;
+    }
+    // The status a Create species change posts: what it reset ("" when nothing was). Crystal caught
+    // data is optional, so a cleared location is reported, not demanded again.
+    std::string speciesChangeResetStatus() const {
+        return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, caughtDataCleared, false);
+    }
+    // Round 11 (owner H25 clarification 2): an existing Crystal Pokemon whose species was changed
+    // in this session keeps its caught data; a misfit is flagged (editor + Review), never cleared.
+    // Gold / Silver have no caught data to judge.
+    std::vector<std::string> historyFlags(std::string_view sourceGameId) const {
+        if (mode != SessionMode::Edit || working.species == baseline.species) return {};
+        if (exactGameFromSourceId(sourceGameId) != Gen2::SourceGame::Crystal) return {};
+        const auto caught = Gen2Native::decodeCrystalCaughtData(working.caughtData);
+        if (!caught.present) return {};
+        return HistoryConsistency::crystalFlags(working.species, sourceGameId, caught.location,
+                                                caught.levelCode, working.level);
     }
     uint8_t maximumPP(size_t slot) const noexcept {
         return slot < 4 ? Gen2::StagedEditor::gen2MoveMaxPP(working.moves[slot],working.ppUps[slot]) : 0;
@@ -186,10 +218,20 @@ struct Session {
         if (progression == ProgressionSource::Experience) create.experience = working.experience;
         return create;
     }
+    // The shared Round 11 rule (UI/CreateRequiredFields.h): Create needs at least one move (Gen II
+    // has no required met data; Crystal caught data stays optional); an Edit is refused only when
+    // this session took the last move away. Checked before anything is staged.
+    std::string missingRequiredFields() const {
+        namespace Required = PokeBank::UIModel::CreateRequiredFields;
+        if (mode == SessionMode::Create) return Required::message(Required::forCreate(2, false, working.moves), "Add");
+        if (mode == SessionMode::Edit) return Required::message(Required::forEdit(baseline.moves, working.moves));
+        return {};
+    }
     bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error,bool party=false) {
         if (mode != SessionMode::Edit || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Keep unavailable or incompatible new move"; return false;
         }
+        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
         if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
                     editor.stageBoxPokemonEdit(box,slot,editRequest(),error))) return false;
         mode = SessionMode::None; confirmExit = false; return true;
@@ -198,6 +240,7 @@ struct Session {
         if (mode != SessionMode::Create || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Create unavailable or incompatible move"; return false;
         }
+        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
         if (!editor.stageAddBoxPokemon(box,createRequest(),slot,error)) return false;
         mode = SessionMode::None; return true;
     }

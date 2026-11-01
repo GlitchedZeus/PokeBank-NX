@@ -610,9 +610,12 @@ void gen3Create(Driver& d) {
     d.screen.selectedBoxIndex = 0;
     d.screen.selectedItemIndex = 0;
     d.frame();
-    d.press(HidNpadButton_X);
+    // Round 11 X-IMPEXP (owner request): X on an empty box slot is Import from file, so Create is
+    // reached the documented way: A (Empty Slot Actions) -> Add Pokemon (the first row) -> A.
+    d.press(HidNpadButton_A);
+    d.press(HidNpadButton_A);
     const std::string created = drawnValue("Species");
-    check(created.rfind("<", 0) != 0, "Gen III X on an empty box slot opens Create (" + created + ")");
+    check(created.rfind("<", 0) != 0, "Gen III A -> Add Pokemon on an empty box slot opens Create (" + created + ")");
     d.frame();
     const auto createTexts = HostUi::texts;
     d.press(HidNpadButton_Plus);

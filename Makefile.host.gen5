@@ -66,6 +66,28 @@ $(GEN5_SAVE_SANITIZE): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 
+# Round 11 G5-RADAR: the Box summary radar is the editor's shared radar in every Gen I-V
+# generation; a boxed PK5 shows displayStats5 at the editor's adaptive scale.
+BOX_SUMMARY_RADAR_TEST := $(HOST_BUILD)/test_box_summary_radar
+BOX_SUMMARY_RADAR_SANITIZE := $(HOST_BUILD)/test_box_summary_radar_sanitize
+BOX_SUMMARY_RADAR_INPUTS := tests/test_box_summary_radar.cpp include/UI/BoxSummaryRadar.h \
+    include/UI/BattleStatRadarModel.h include/Pokemon/Pokemon5ReadOnlyView.h \
+    include/Integration/Gen5/Gen5DisplayStats.h src/UI/Panels/BoxPokemonPanel.cpp \
+    include/UI/SharedPokemonShell.h src/UI/Gen5SharedReadOnlySurface.inc
+
+HOST_TESTS += $(BOX_SUMMARY_RADAR_TEST)
+HOST_SANITIZE_TESTS += $(BOX_SUMMARY_RADAR_SANITIZE)
+host-test: $(BOX_SUMMARY_RADAR_TEST)
+host-sanitize: $(BOX_SUMMARY_RADAR_SANITIZE)
+
+$(BOX_SUMMARY_RADAR_TEST): $(BOX_SUMMARY_RADAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_box_summary_radar.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+
+$(BOX_SUMMARY_RADAR_SANITIZE): $(BOX_SUMMARY_RADAR_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_box_summary_radar.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+
 # Generation V full-SAV export candidate: no source I/O or Inject.
 # Run independently from the broad save-discovery fixture in both modes.
 GEN5_EXPORT_TEST := $(HOST_BUILD)/test_gen5_staged_save_candidate
@@ -156,11 +178,11 @@ host-sanitize: $(GEN5_PARITY_SANITIZE)
 
 $(GEN5_PARITY_TEST): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 
 $(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 
 # Round 3 Part 9: Gen V Clone / Move / Release on slots staged this session
 # (Create, Clone, field edit), the shared Move carry, neutral Origin & Legality.

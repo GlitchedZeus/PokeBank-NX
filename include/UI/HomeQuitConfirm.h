@@ -31,7 +31,9 @@ enum class Decision : std::uint8_t {
     return Decision::None;
 }
 
-// Touch parity: the dialog's footer badges (Y Quit, B Stay) are tapped through the same
-// nav-bar touch path as every other Product Home footer, so a tap is exactly a button press.
+// Touch parity: the dialog's two glyph buttons (B Cancel, Y Quit / Launch) are its touch targets;
+// a tap maps to that button through the shared glyph-hit path, so a tap is exactly a button press.
+// Round 11 QUIT: the dialog draws no footer of its own (an empty nav bar covers Home's) and no
+// "Stay" button; A remains an unlabelled Stay.
 
 } // namespace PokeBank::UIModel::HomeQuit

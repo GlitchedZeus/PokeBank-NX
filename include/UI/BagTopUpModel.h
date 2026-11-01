@@ -3,11 +3,17 @@
 // framebuffer), shared by the Gen I-III classic inventory overlay, the Gen IV Bag and the Gen V Bag.
 //
 //   ZR on the Bag (or the Gen I-III Inventory Options row) opens SETUP:
-//       Mode    Top up held stacks / Add missing items / Both   (A, Left / Right change it)
-//       Scope   This pocket / All Bag pockets (PC Items is storage, never included in "all")
+//       Scope   This pocket / All Bag pockets / PC Items / Bag + PC Items   (A, Left / Right change it)
+//       Mode    Top up held stacks / Add missing items / Both
 //       Amount  target per item (A opens the numpad; the planner caps each item natively)
 //       Preview changes
 //       Cancel
+//   Round 11 (owner H04 / H34: "the bag categories arnt filled", "the pc items doesnt get filled"):
+//   Scope is the FIRST row, so the cursor starts on it and its choices are visible ("< ... >").
+//   Until the player picks a scope it follows the tab: All Bag pockets on a Bag tab, PC Items on the
+//   PC Items tab; a picked scope is kept for the session. PC Items and Bag + PC Items are offered
+//   only where the save has PC item storage (Gen I-III); Gen IV / V never list them. PC Items stays
+//   out of "All Bag pockets": the PC is storage, so it is filled only when a PC scope says so.
 //   "Preview changes" builds the exact plan (Inventory/BulkItemPlan.h) and opens PREVIEW: every
 //   change ("Potion 3 → 99", "+ Ultra Ball ×99") and every skip with its reason, scrollable, with
 //   totals. A stages it all through Inventory/BulkItemApply.h (all or nothing, read back); B goes
@@ -17,6 +23,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -25,7 +32,8 @@ namespace PokeBank::UIModel::BagTopUp {
 namespace BI = PokeVault::Inventory::BulkItems;
 
 enum class Step : uint8_t { Closed, Setup, Preview };
-enum class Row : int { Mode = 0, Scope, Amount, Preview, Cancel };
+enum class Row : int { Scope = 0, Mode, Amount, Preview, Cancel };
+enum class Scope : uint8_t { ThisPocket, AllBag, PcItems, BagAndPc };
 inline constexpr int kRows = 5;
 inline constexpr uint16_t kDefaultQuantity = 99;
 inline constexpr uint16_t kMaxQuantity = 999;   // highest native per-slot cap in Gen I-V (PKHeX bags)
@@ -47,7 +55,13 @@ struct State {
     Step step = Step::Closed;
     int row = 0;
     BI::Mode mode = BI::Mode::Both;
-    bool allPockets = false;
+    Scope scope = Scope::ThisPocket;   // open() sets the tab's default (defaultScope)
+    bool scopeChosen = false;     // the player picked a scope this session (else it follows the tab)
+    bool pcAvailable = false;     // the save has PC item storage (Gen I-III)
+    // > 0: every Bag category shares ONE native list of this many slots (Gen I: 20). Round 11 QA:
+    // "All Bag pockets" is then one shared Bag, so SETUP / PREVIEW say so instead of implying
+    // per-pocket room.
+    std::size_t sharedBagSlots = 0;
     uint16_t quantity = kDefaultQuantity;
     BI::Plan plan;
     std::vector<Line> lines;
@@ -56,13 +70,33 @@ struct State {
     [[nodiscard]] bool active() const noexcept { return step != Step::Closed; }
 };
 
-inline void open(State& s) {
+[[nodiscard]] inline bool pcScope(Scope scope) noexcept { return scope == Scope::PcItems || scope == Scope::BagAndPc; }
+
+// The scope SETUP starts with until the player picks one: the PC on the PC Items tab, else the Bag.
+[[nodiscard]] inline Scope defaultScope(BI::Pocket current, bool pcAvailable) noexcept {
+    return pcAvailable && current == BI::Pocket::PCItems ? Scope::PcItems : Scope::AllBag;
+}
+
+// The choices Left / Right cycle through for this save, in order.
+[[nodiscard]] inline std::vector<Scope> scopes(const State& s) {
+    std::vector<Scope> out{Scope::ThisPocket, Scope::AllBag};
+    if (s.pcAvailable) { out.push_back(Scope::PcItems); out.push_back(Scope::BagAndPc); }
+    return out;
+}
+
+// `current` is the pocket on screen; `pcAvailable` whether the save has PC item storage.
+inline void open(State& s, BI::Pocket current = BI::Pocket::Items, bool pcAvailable = false,
+                 std::size_t sharedBagSlots = 0) {
     const auto mode = s.mode;
-    const bool all = s.allPockets;
+    const auto scope = s.scope;
+    const bool chosen = s.scopeChosen;
     const uint16_t quantity = s.quantity;
     s = {};
     s.mode = mode;          // the last choices are kept for the next run in this session
-    s.allPockets = all;
+    s.pcAvailable = pcAvailable;
+    s.sharedBagSlots = sharedBagSlots;
+    s.scopeChosen = chosen && (pcAvailable || !pcScope(scope));
+    s.scope = s.scopeChosen ? scope : defaultScope(current, pcAvailable);
     s.quantity = quantity == 0 ? kDefaultQuantity : quantity;
     s.step = Step::Setup;
 }
@@ -87,6 +121,29 @@ inline void close(State& s) {
     return static_cast<BI::Mode>(i);
 }
 
+[[nodiscard]] inline Scope nextScope(const State& s, int delta) {
+    const auto list = scopes(s);
+    const auto at = std::find(list.begin(), list.end(), s.scope);
+    const int n = static_cast<int>(list.size());
+    const int i = at == list.end() ? 0 : static_cast<int>(at - list.begin());
+    return list[static_cast<std::size_t>((i + (delta < 0 ? n - 1 : 1)) % n)];
+}
+
+// What a scope covers, in words (SETUP's Scope row and the PREVIEW caption).
+// `sharedBagSlots` > 0: one shared Bag list (Gen I), named with its native size.
+[[nodiscard]] inline std::string scopeLabel(Scope scope, const std::string& pocketName,
+                                            std::size_t sharedBagSlots = 0) {
+    switch (scope) {
+        case Scope::ThisPocket: return "This pocket (" + pocketName + ")";
+        case Scope::AllBag:
+            return sharedBagSlots > 0 ? "Whole Bag (" + std::to_string(sharedBagSlots) + " slots shared)"
+                                      : "All Bag pockets";
+        case Scope::PcItems: return "PC Items";
+        case Scope::BagAndPc: return "Bag + PC Items";
+    }
+    return {};
+}
+
 [[nodiscard]] inline const char* rowLabel(Row r) noexcept {
     switch (r) {
         case Row::Mode: return "Mode";
@@ -100,7 +157,8 @@ inline void close(State& s) {
 [[nodiscard]] inline std::string rowDetail(const State& s, Row r, const std::string& pocketName) {
     switch (r) {
         case Row::Mode: return modeLabel(s.mode);
-        case Row::Scope: return s.allPockets ? "All Bag pockets" : "This pocket (" + pocketName + ")";
+        // "< ... >": the row says it has more choices (Left / Right), not only the one shown.
+        case Row::Scope: return "< " + scopeLabel(s.scope, pocketName, s.sharedBagSlots) + " >";
         case Row::Amount: return std::to_string(s.quantity) + " per item (capped natively)";
         default: return {};
     }
@@ -118,7 +176,11 @@ inline void close(State& s) {
     const auto row = static_cast<Row>(s.row);
     const int delta = k.left ? -1 : (k.right || a) ? 1 : 0;
     if (delta != 0 && row == Row::Mode) { s.mode = nextMode(s.mode, delta); return Action::None; }
-    if (delta != 0 && row == Row::Scope) { s.allPockets = !s.allPockets; return Action::None; }
+    if (delta != 0 && row == Row::Scope) {
+        s.scope = nextScope(s, delta);
+        s.scopeChosen = true;
+        return Action::None;
+    }
     if (!a) return Action::None;
     switch (row) {
         case Row::Amount: return Action::PromptAmount;
@@ -132,12 +194,22 @@ inline void setAmount(State& s, int value) {
     s.quantity = static_cast<uint16_t>(std::clamp(value, 1, static_cast<int>(kMaxQuantity)));
 }
 
-// The request the SETUP choices describe. `current` is the pocket on screen; `bag` every Bag pocket.
-[[nodiscard]] inline BI::Request request(const State& s, BI::Pocket current, std::vector<BI::Pocket> bag) {
+// The request the SETUP choices describe. `current` is the pocket on screen; `state` every pocket
+// the save has (Bag and, in Gen I-III, PC Items). The request never comes out empty (the planner
+// would read an empty list as "every pocket"): a scope the save cannot serve falls back to `current`.
+[[nodiscard]] inline BI::Request request(const State& s, BI::Pocket current, std::span<const BI::PocketState> state) {
     BI::Request r;
     r.mode = s.mode;
     r.quantity = s.quantity;
-    r.pockets = s.allPockets ? std::move(bag) : std::vector<BI::Pocket>{current};
+    switch (s.scope) {
+        case Scope::ThisPocket: r.pockets = {current}; break;
+        case Scope::AllBag: r.pockets = BI::bagPockets(state); break;
+        case Scope::PcItems: r.pockets = BI::pcPockets(state); break;
+        case Scope::BagAndPc:
+            r.pockets = BI::bagPockets(state);
+            for (const auto p : BI::pcPockets(state)) r.pockets.push_back(p);
+            break;
+    }
     if (r.pockets.empty()) r.pockets = {current};
     return r;
 }
@@ -147,6 +219,14 @@ template <class ItemName, class PocketName>
 [[nodiscard]] inline std::vector<Line> previewLines(const BI::Plan& plan, const std::vector<BI::Pocket>& pockets,
                                                     ItemName&& itemName, PocketName&& pocketName) {
     std::vector<Line> out;
+    // A list that ran out of slots says so first, with its native size: the "pocket full" lines
+    // below are the game's own limit, not a failure (Gen I: one 20-slot Bag for every category).
+    for (const auto& f : plan.full) {
+        const std::string where = f.sharedList ? std::string("Bag (every category shares ") + std::to_string(f.slots) + " slots)"
+                                               : std::string(pocketName(f.pocket)) + " (" + std::to_string(f.slots) + " slots)";
+        out.push_back({LineKind::Note, where + ": " + std::to_string(f.freeBefore) + " free, " +
+                                           std::to_string(f.notFitted) + " more did not fit"});
+    }
     for (const auto pocket : pockets) {
         const auto first = out.size();
         for (const auto& t : plan.topUps)
@@ -158,7 +238,7 @@ template <class ItemName, class PocketName>
                 out.push_back({LineKind::Add, "+ " + itemName(pocket, a.itemId) + " \xC3\x97" + std::to_string(a.quantity)});
         for (const auto& k : plan.skipped)
             if (k.pocket == pocket)
-                out.push_back({LineKind::Skip, itemName(pocket, k.itemId) + ": " + std::string(BI::skipReasonText(k.reason))});
+                out.push_back({LineKind::Skip, itemName(pocket, k.itemId) + ": " + BI::skipText(k)});
         if (out.size() != first && pockets.size() > 1)
             out.insert(out.begin() + static_cast<std::ptrdiff_t>(first), Line{LineKind::Heading, std::string(pocketName(pocket))});
     }
@@ -211,6 +291,30 @@ inline void showPreview(State& s, BI::Plan plan, const std::vector<BI::Pocket>& 
 [[nodiscard]] inline std::string appliedStatus(std::size_t toppedUp, std::size_t added) {
     return "Staged: " + std::to_string(toppedUp) + " topped up, " + std::to_string(added) +
            " added; source save unchanged (Review lists them)";
+}
+
+// Items the plan could not fit because a native list was full (never overflowed).
+[[nodiscard]] inline std::size_t notFitted(const BI::Plan& plan) noexcept {
+    std::size_t n = 0;
+    for (const auto& f : plan.full) n += f.notFitted;
+    return n;
+}
+
+// Round 11 QA: a partial result says so. When a native list ran out of slots the status names how
+// many items did not fit and why (Gen I: the 20 shared Bag slots), so a partial Add Missing is
+// never reported as complete.
+[[nodiscard]] inline std::string appliedStatus(std::size_t toppedUp, std::size_t added, const BI::Plan& plan) {
+    const std::size_t missed = notFitted(plan);
+    if (missed == 0) return appliedStatus(toppedUp, added);
+    bool shared = false;
+    std::size_t sharedSlots = 0;
+    for (const auto& f : plan.full)
+        if (f.sharedList) { shared = true; sharedSlots = f.slots; }
+    std::string why = shared ? "the Bag is full (" + std::to_string(sharedSlots) + " slots shared by every category)"
+                             : "a pocket is full";
+    return "Partly staged: " + std::to_string(toppedUp) + " topped up, " + std::to_string(added) + " added; " +
+           std::to_string(missed) + " did not fit because " + why +
+           ". Nothing overflowed; source save unchanged (Review lists them)";
 }
 
 // Same plan twice (the Bag cannot change under the modal, but a confirm re-plans to be sure).

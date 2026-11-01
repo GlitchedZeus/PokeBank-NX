@@ -7,6 +7,7 @@
 #include "UI/SharedBagTopUp.h"
 #include "Inventory/BulkItemAdaptersNds.h"
 #include "Names/LocationDisplayNames.h"
+#include "Enums/LanguageID.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
@@ -46,6 +47,7 @@
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/SpeciesChangeMoves.h"
+#include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "SharedPokemonEditorSurface.inc"
@@ -676,8 +678,11 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
     }
     std::vector<uint16_t> native;
     const auto table = Names::getLocationTable(record.originVersion());
+    // Round 11: 0 is a Create draft's "not chosen" placeholder (D/P/Pt Mystery Zone), so a new
+    // Pokemon cannot satisfy the required Met Location with it; existing records still show it.
+    const bool creating = state.session.creating();
     for (size_t id = 0; id < table.count && id <= 0xFFFFu; ++id)
-        if (table.names && table.names[id] && table.names[id][0] != '\0' &&
+        if (table.names && table.names[id] && table.names[id][0] != '\0' && !(creating && id == 0) &&
             Names::isGen4NativeMetLocation(
                 record.originVersion(), static_cast<uint16_t>(id)))
             native.push_back(static_cast<uint16_t>(id));
@@ -752,29 +757,21 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
     if (!state.session.working) return false;
     bool ok = false;
     if (target == PickerTarget::Species) {
-        const auto before = state.session.working->encryptedBytes();
-        const uint16_t previousSpecies = state.session.working->species();
-        ok = state.session.working->setSpecies(value);
-        if (ok && state.session.working->shiny() != state.speciesPreviewShiny)
-            ok = state.session.working->setShiny(state.speciesPreviewShiny);
-        if (ok && value != previousSpecies) {
-            // R2-BUG-004: the new species' native default moveset at its level for this game's
-            // DP / Pt / HGSS table (PKHeX lvlmove_*), base PP, no PP Ups (setMove writes both).
-            const auto group = bridge(screen).sourceSave().rawFamily();
-            ok = PokeBank::UIModel::SpeciesMoveDefaults::setMoves(*state.session.working, PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(
-                PokeBank::UIModel::SpeciesMoveDefaults::gen4TableForGroup(group), value, state.session.working->form(),
-                state.session.working->level(),
-                [group](uint16_t move) { return Names::getMoveBasePP(move, group); }));
-        }
+        // Round 11: Session::changeSpecies owns the whole species change (PID-linked traits, the
+        // shiny preview, SpeciesMoveDefaults::setMoves keeping only usable moves, and the
+        // SpeciesChangeHistoryPolicy Create reset) and rolls the draft back on any refusal.
+        bool encounterReset = false;
+        ok = state.session.changeSpecies(value, state.speciesPreviewShiny, screen.sourceGameId,
+                                         bridge(screen).sourceSave().rawFamily(), encounterReset);
         if (!ok) {
-            auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(
-                before, bridge(screen).sourceSave().rawFamily());
-            if (restored) state.session.working = std::move(*restored);
             screen.postStatus(
                 "Could not reconcile Species/Shiny while preserving PID-linked traits",
                 360);
             return false;
         }
+        // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
+        if (const auto reset = state.session.speciesChangeResetStatus(encounterReset); !reset.empty())
+            screen.postStatus(reset, 300);
     } else if (target == PickerTarget::HeldItem) {
         ok = state.session.working->setHeldItem(value);
     } else if (target == PickerTarget::Language) {
@@ -783,6 +780,8 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
         ok = state.session.working->setBall(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::MetLocation) {
         ok = state.session.working->setMetLocation(value);
+        // Round 11 follow-up: an explicit choice from the exact game's list (the flag, not != 0).
+        if (ok) state.session.noteMetLocationChosen();
     } else if (target == PickerTarget::Form) {
         ok = state.session.working->setForm(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::Pokerus) {
@@ -817,10 +816,15 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         openSpeciesPicker(screen, state);
         return true;
     }
+    // Round 11 H27: a Korean-language Pokemon's names open the keyboard on its Hangul page. The
+    // record's own language picks the script; setNickname / setOriginalTrainerName still round-trip
+    // through the Gen 4 character table and refuse what the game cannot store.
+    const bool korean = mon.language() == static_cast<uint8_t>(Enums::LanguageID::Korean);
     if (row == 1) {
         const auto current = Utils::utf16ToUtf8(mon.nickname());
-        const auto result = Utils::promptText(
-            "Nickname", "Pokemon nickname", current, 10);
+        const auto result = korean
+            ? Utils::promptKoreanName("Nickname", "Pokemon nickname", current, 10)
+            : Utils::promptText("Nickname", "Pokemon nickname", current, 10);
         if (result.accepted && !mon.setNickname(Utils::utf8ToUtf16(result.text)))
             screen.postStatus("That nickname cannot be represented by this Generation IV save", 300);
         return true;
@@ -842,8 +846,9 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
     }
     if (row == 4) {
         const auto current = Utils::utf16ToUtf8(p.originalTrainerName());
-        const auto r = Utils::promptText(
-            "Original Trainer", "1-7 Generation IV characters", current, 7);
+        const auto r = korean
+            ? Utils::promptKoreanName("Original Trainer", "1-7 Generation IV characters", current, 7)
+            : Utils::promptText("Original Trainer", "1-7 Generation IV characters", current, 7);
         if (r.accepted &&
             !mon.setOriginalTrainerName(Utils::utf8ToUtf16(r.text)))
             screen.postStatus("That OT name cannot be represented by this Generation IV save", 300);
@@ -1055,8 +1060,8 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             beginViewOrEdit(screen, SessionModel::Mode::Edit);
             break;
         case MenuAction::MovePokemon:
-            // This menu shortcut enters the SAME hold-Y picker and carried
-            // visual as Gens I-III, rather than a second native move handler.
+            // This menu shortcut enters the SAME carry and carried visual as
+            // Gens I-III (A places, B cancels), not a second native move handler.
             state.actions = false;
             if (!ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot))
                 screen.postStatus("Gen IV move could not start", 260);
@@ -1066,18 +1071,14 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             break;
         case MenuAction::Clone: {
             if (!staged || state.target != TargetKind::Box) break;
-            const auto box = Utils::promptNumber("Clone to Gen IV Box", state.box + 1, 1, 18);
-            if (!box.accepted) break;
-            const auto slot = Utils::promptNumber("Clone to Slot", state.slot + 1, 1, 30);
-            if (!slot.accepted) break;
-            if (!staged->stageCloneBoxPokemon(
-                    static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
-                    static_cast<size_t>(box.value - 1), static_cast<size_t>(slot.value - 1),
-                    &error)) {
-                screen.postStatus(error.empty() ? "Generation IV Clone failed" : error, 360);
-            } else if (refreshPresentation(screen)) {
-                screen.postStatus("Generation IV Clone staged; external source unchanged", 300);
-            }
+            // Round 11 H31 (owner): the shared visual Clone carry, never number keypads (whose slot
+            // default was the occupied source). Actions closes; the copy rides the box cursor from the
+            // first empty slot of this box (the Storage save pane keeps it in that pane); A places it
+            // on an empty slot (an occupied slot is refused, never swapped), B cancels.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, state.box, state.slot))
+                screen.postStatus("Clone could not start from here", 240);
             break;
         }
         case MenuAction::Release:
@@ -1371,6 +1372,9 @@ struct Gen4Editor {
         if (row == 15 && s.session.working && s.session.working->formCount() <= 1)
             return std::string("Default (fixed)");
         Pokemon::Pokemon4ReadOnlyView view(p);
+        // Round 11 (H07 for all gens): a new Pokemon's Met Location is not chosen until picked.
+        if (row == 13 && s.session.creating() && !s.session.metLocationChosen)
+            return std::string("Choose a location");
         return UI::Gen4SharedEditorSurface::detailValue(p, view, row);
     }
     static bool editDetail(TrainerViewScreen& screen, Surface::EditorState& state, int row,
@@ -1536,8 +1540,19 @@ struct Gen4Editor {
     static std::array<uint8_t,2> portraitTypes(const TrainerViewScreen&, const Record& raw) {
         return {{raw.personal().type1, raw.personal().type2}};
     }
+    // Accepting the stored location (no change staged) is still the user's explicit choice.
+    static void metLocationAccepted(TrainerViewScreen& screen) { stateFor(screen).session.noteMetLocationChosen(); }
     static std::vector<Surface::DataRow> dataRows(TrainerViewScreen& screen,
-                                                  const Surface::EditorState&, const Record& r) {
+                                                  const Surface::EditorState& state, const Record& r) {
+        auto rows = dataRowsWithoutCaution(screen, r);
+        // Round 11 (owner H25 clarification 2): an existing Pokemon whose species changed keeps its
+        // history; a misfit is a caution line right under "Met", never a change.
+        namespace History = PokeBank::UIModel::HistoryConsistency;
+        if (const auto caution = History::joined(gen4(state).session.historyFlags(family(screen))); !caution.empty())
+            rows.insert(rows.begin() + 5, {History::kCautionLabel, caution});
+        return rows;
+    }
+    static std::vector<Surface::DataRow> dataRowsWithoutCaution(TrainerViewScreen& screen, const Record& r) {
         const auto* raw = &r;
         Pokemon::Pokemon4ReadOnlyView view(r);
         return {
@@ -1769,7 +1784,7 @@ bool planGen4TopUp(TrainerViewScreen& screen,const State& state,BI::Plan& out,
     const auto pockets=BI::Gen4Bag::pockets(*staged,error);
     if(pockets.empty())return false;
     const auto request=PokeBank::UIModel::BagTopUp::request(state.itemTopUp.model,
-        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],BI::bagPockets(pockets));
+        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],pockets);
     covered=request.pockets;
     out=BI::plan(*game,request,pockets);
     return true;
@@ -1779,7 +1794,9 @@ void openGen4TopUp(TrainerViewScreen& screen,State& state) {
         screen.postStatus("Gen IV Top Up requires a validated native source bag",300);
         return;
     }
-    PokeBank::UIModel::BagTopUp::open(state.itemTopUp.model);
+    // No PC item storage in Gen IV: SETUP offers This pocket / All Bag pockets only.
+    PokeBank::UIModel::BagTopUp::open(state.itemTopUp.model,
+        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],false);
     screen.controllerNavigation.reset();
 }
 void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const TouchInput& touch) {
@@ -1828,7 +1845,7 @@ void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const Touch
             const auto rows=screen.visibleItemIndices().size();
             if(screen.selectedItemIndex>=static_cast<int>(rows))
                 screen.selectedItemIndex=rows?static_cast<int>(rows)-1:0;
-            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added),400);
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again),400);   // again == the applied plan
             return;
         }
     }
@@ -2407,11 +2424,20 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         if (partyEntry || boxEntry || storageEntry) beginActions(screen);
         return true;
     }
-    if ((navigated & HidNpadButton_X) && boxEntry && !selectedOccupied(screen)) {
-        beginActions(screen);
-        auto& createState = stateFor(screen);
-        createState.actionRow = 0; // Add
-        beginCreate(screen);
+    // Round 11 X-IMPEXP: X on the Boxes grid exports an occupied slot / imports into an empty one
+    // through the shared decision (Add Pokemon stays on the A sheet). Every other X on these grids
+    // (the Storage save pane, no staged editor) is consumed so it never falls through to the
+    // inherited source-writable box handler (old X = Release).
+    if ((navigated & HidNpadButton_X) && (boxEntry || storageEntry)) {
+        const auto activation = Shared::boxActivation(
+            selectedOccupied(screen), false, boxEntry, Shared::fileCapabilities(editor(screen) != nullptr));
+        if (activation == Shared::BoxActivation::ImportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 4, screen.selectedBoxIndex, screen.selectedItemIndex);
+        } else if (activation == Shared::BoxActivation::ExportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 4, false, screen.selectedBoxIndex, screen.selectedItemIndex);
+        }
         return true;
     }
     return false;

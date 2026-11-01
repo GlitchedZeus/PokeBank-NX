@@ -680,7 +680,12 @@ void openTopUp(TrainerViewScreen& screen) {
         screen.postStatus("This inventory category is not supported by the selected classic game", 300);
         return;
     }
-    PokeBank::UIModel::BagTopUp::open(stateFor(screen).topUp.model);
+    // Gen I-III keep PC Items, so SETUP also offers the PC Items and Bag + PC Items scopes; the
+    // scope starts on the tab's own storage (PC Items tab: the PC, else every Bag pocket).
+    // Gen I (pret pokered wNumBagItems): every Bag category is a view of ONE 20-slot list.
+    const std::size_t sharedBagSlots = game <= ClassicGame::Yellow ? 20 : 0;
+    PokeBank::UIModel::BagTopUp::open(stateFor(screen).topUp.model, PokeVault::Inventory::quantityPolicyPocket(pocket),
+                                      PokeVault::Inventory::supportsPocket(game, ClassicPocket::PCItems), sharedBagSlots);
 }
 
 // Builds the exact plan for the SETUP choices; `out` receives it with the pockets it covers.
@@ -693,7 +698,7 @@ bool planTopUp(TrainerViewScreen& screen, BI::Plan& out, std::vector<BI::Pocket>
     const auto pockets = topUpPockets(screen, policyGame, error);
     if (pockets.empty()) return false;
     const auto request = PokeBank::UIModel::BagTopUp::request(
-        ui.model, PokeVault::Inventory::quantityPolicyPocket(pocket), BI::bagPockets(pockets));
+        ui.model, PokeVault::Inventory::quantityPolicyPocket(pocket), pockets);
     covered = request.pockets;
     out = BI::plan(policyGame, request, pockets);
     return true;
@@ -736,6 +741,7 @@ void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, con
                 return;
             }
             const auto result = applyTopUp(screen, ui.model.plan);
+            const BI::Plan applied = ui.model.plan;   // kept for the result status (partial fits)
             Model::close(ui.model);
             ui.scrollbar.reset();
             if (!result.applied) {
@@ -749,7 +755,7 @@ void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, con
             const auto visible = screen.visibleItemIndices();
             if (screen.selectedItemIndex >= static_cast<int>(visible.size()))
                 screen.selectedItemIndex = std::max(0, static_cast<int>(visible.size()) - 1);
-            screen.postStatus(Model::appliedStatus(result.toppedUp, result.added), 420);
+            screen.postStatus(Model::appliedStatus(result.toppedUp, result.added, applied), 420);
             return;
         }
     }

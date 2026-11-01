@@ -30,14 +30,17 @@ std::string routeBetween(const std::string& text, const char* begin, const char*
 
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
-    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
-    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
-    // or no input does nothing.
-    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
-    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
-    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
-    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
-    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap.
+    // Round 11 X-IMPEXP (owner: "if the cursor is on a pokemon X would say export but if its on a
+    // blank space it would say import"), deliberately replacing X = Add: X exports an occupied slot
+    // and imports into an empty one where the staged editor can; Add stays on the A Actions sheet.
+    constexpr Shared::ActionCapabilities files{true, true, true, true, true};
+    static_assert(Shared::boxActivation(false, true, false, files) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false, files) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true, files) == Shared::BoxActivation::ImportFile);
+    static_assert(Shared::boxActivation(true, false, true, files) == Shared::BoxActivation::ExportFile);
+    static_assert(Shared::boxActivation(false, false, true, {}) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false, files) == Shared::BoxActivation::None);
     namespace Multi = PokeBank::UIModel::ClassicPackedMove;
     constexpr UI::SharedPokemonShell::Geometry geometry(1280, 720, 46);
     namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
@@ -207,16 +210,55 @@ int main() {
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
     contains(surface, "SessionModel::sameEditableRecord");
     contains(surface, "Encounter::forGameSpeciesWithGen3Provenance");
-    contains(surface, "EncounterPicker::rowValues");
+    // Round 11 follow-up (updated pins): the Met Location picker's model and apply moved out of the
+    // surface into Session::metLocationPicker / applyMetLocationRow (Gen3SharedPokemonSession.h) and
+    // the row text into Gen3EncounterPickerModel.h rowText, so the explicit-choice rule and the
+    // verified / unverified labels are unit-tested (tests/test_species_change_moves_gen3.cpp). The
+    // surface calls them; the pinned code is checked where it now lives.
+    const auto metModel = surface + read("include/UI/Gen3SharedPokemonSession.h") +
+                          read("include/UI/Gen3EncounterPickerModel.h");
+    contains(surface, "state.session.metLocationPicker()");
+    contains(surface, "state.session.applyMetLocationRow(picker, value, applied)");
+    contains(surface, "EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,");
+    contains(metModel, "Gen3EncounterPicker::rowValuesWithNative(");
     contains(surface, "EncounterPicker::selectedRow");
-    contains(surface, "EncounterPicker::choiceAt");
+    contains(metModel, "Gen3EncounterPicker::choiceAt");
     contains(surface, "forGameSpeciesWithGen3Provenance");
     contains(surface, "Encounter origin");
-    contains(surface, "met as ");
+    contains(metModel, "met as ");
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
-    assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
+    // Round 11 FRLG (owner Extra 2): the picker no longer fails closed when the exact game has no
+    // catch template for the species (Rayquaza / Charizard in FireRed). Deliberately updated: the
+    // old refusal literal was pinned here; it is now forbidden, and the picker lists the record's
+    // origin-game templates plus every other native location (Kanto for FR/LG), honestly labelled.
+    assert(surface.find("No supported exact-game encounter templates for this Pokemon") == std::string::npos);
+    contains(surface, "EncounterPicker::templatesForOrigin(");
+    contains(metModel, "Gen3EncounterPicker::rowValuesWithNative(picker.choices, working.metLocation, working.originGame)");
+    contains(surface, "EncounterPicker::selectedRowWithNative(");
+    contains(metModel, "ExactGameMetLocations::isOtherNativeRow(row)");
+    contains(metModel, "MetRows::gen3OtherDetail(");
+    {
+        // The Met Location picker, Met Level row and Encounter origin text read the RECORD's origin
+        // game, never the save's (a Ruby-origin Pokemon in a FireRed save is not offered Kanto rows).
+        const auto open = surface.find("} else if (target == PickerTarget::MetLocation) {");
+        assert(open != std::string::npos);
+        const auto openEnd = surface.find("} else if (target == PickerTarget::Nature) {", open);
+        const std::string body = surface.substr(open, openEnd - open);
+        assert(body.find("screen.sourceGameId") == std::string::npos);
+        assert(body.find("state.session.metLocationPicker()") != std::string::npos);
+        // ... whose model reads the record's own origin game (Session::metLocationPicker).
+        const auto session = read("include/UI/Gen3SharedPokemonSession.h");
+        const auto model = session.substr(session.find("MetLocationPicker metLocationPicker() const {"));
+        assert(model.find("templatesForOrigin(working.originGame, working.species)") <
+               model.find("\n    }\n"));
+        const auto origin = surface.find("std::string encounterOriginText(");
+        const std::string originBody = surface.substr(origin, surface.find("\n}\n", origin) - origin);
+        assert(originBody.find("screen.sourceGameId") == std::string::npos);
+        assert(originBody.find("templatesForOrigin(p.originGame") != std::string::npos);
+    }
     contains(surface, "Met Level for selected encounter");
-    contains(surface, "state.session.setEncounterMetLevel(choice->encounter.minLevel)");
+    contains(surface, "Met Level (not a listed encounter)");
+    contains(metModel, "setEncounterMetLevel(choice->encounter.minLevel)");
     contains(surface, "state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value))");
     contains(surface, "only native Generation III ability");
     contains(surface, "normalizeEditableFocus(state");
@@ -312,9 +354,10 @@ int main() {
     contains(move, "if (isGen3(screen)) return beginGen3");
     contains(move, "The selected sparse rectangle contains no Pokemon");
     contains(move, "if (state.active)");
-    contains(move, "if (down & HidNpadButton_B) return cancel(screen, state)");
-    contains(move, "if (down & HidNpadButton_Y) return place(screen, state)");
-    contains(move, "down & (HidNpadButton_A | HidNpadButton_X)");
+    // Round 11 H23 (owner): A places, B cancels, Y / X are refused with a hint (ClassicCarryRules).
+    contains(move, "case Carry::Key::Cancel: return cancel(screen, state);");
+    contains(move, "case Carry::Key::Place: return place(screen, state);");
+    contains(move, "screen.postStatus(Carry::refuseHint(state.intent, (state.generation == CarryGeneration::Gen1 || state.generation == CarryGeneration::Gen2)), 180);");
     contains(move, "D-pad and L/R keep using the accepted box navigation path");
     contains(move, "screen.currentlySelecting = true");
     contains(move, "int stickX, int stickY, const TouchInput& touch");

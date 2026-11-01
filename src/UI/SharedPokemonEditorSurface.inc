@@ -38,6 +38,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
+#include "UI/EditFeedback.h"
 #include "UI/SharedViewOnlyNotice.h"
 #include "UI/SharedPanelHeading.h"
 #include "UI/ReviewEntry.h"
@@ -350,6 +351,9 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                 available, sharedSpeciesName);
             state.pickerRow = speciesRowIn(state.pickerValues, chosen, state.pickerRow);
             speciesTouchOwned = touched.touch;
+            // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y
+            // does (Gen IV and Gen V both run this shared handler).
+            if (touched.previewShinyTapped) down |= HidNpadButton_Y;
             if (touched.keys || keyed.keys)
                 down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
                           HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
@@ -779,7 +783,9 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         for (size_t stat = 0; stat < 6; ++stat) A::setEv(screen, state, stat, 0);
         for (size_t stat = 0; stat < 6; ++stat) A::setIv(screen, state, stat, next.ivs[stat]);
         for (size_t stat = 0; stat < 6; ++stat) A::setEv(screen, state, stat, next.evs[stat]);
-        screen.postStatus(Reroll::kRerollStatus, 200);
+        // Round 11 H22: the new IVs / EVs and stats are the feedback; no success toast.
+        namespace EditFeedback = PokeBank::UIModel::EditFeedback;
+        EditFeedback::applied(screen, EditFeedback::Kind::Reroll);
         return true;
     }
     if ((down & HidNpadButton_A) && passive)

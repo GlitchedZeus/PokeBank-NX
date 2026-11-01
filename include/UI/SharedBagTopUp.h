@@ -122,7 +122,7 @@ inline void drawTopUpModal(PKSEFramebuffer& fb, Buttons& touchButtons, Ui& ui, i
     fb.drawText(f.x + l.rule.padX, f.y + 14, "Preview: Top Up / Add Missing", Colors::Text, TextStyle::Heading);
     fb.drawText(f.x + l.rule.padX, f.y + 56,
                 s.totals + "  |  " + Model::modeLabel(s.mode) + ", " +
-                    (s.allPockets ? std::string("all Bag pockets") : pocketName) + ", up to " + std::to_string(s.quantity),
+                    Model::scopeLabel(s.scope, pocketName, s.sharedBagSlots) + ", up to " + std::to_string(s.quantity),
                 Colors::TextSecondary, TextStyle::Caption);
     s.scroll = std::clamp(s.scroll, 0, Model::maxScroll(s, l.visibleRows));
     const int textW = l.list.w - SharedScrollbar::kTrackWidth - 12;

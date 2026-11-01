@@ -26,7 +26,9 @@
 #include "UI/TrainerViewScreen.h"
 #include "Utils/CRC16.h"
 
+#include <algorithm>
 #include <array>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <new>
@@ -89,8 +91,24 @@ struct Driver {
     }
 };
 
+// Round 11 (owner H28, CreateRequiredFields): a new Pokemon starts with no moves and Keep / Add
+// need one. Through the real controls: tap Move 1 (A if the tap only focused it), choose the first
+// move after Empty in its picker, then the editor's Apply / Done row (editorBase + 3).
+bool chooseFirstMove(Driver& d, int moveRow, int editorBase) {
+    if (!d.tap(moveRow)) return false;
+    d.frame();
+    if (!d.target(editorBase)) d.press(HidNpadButton_A);
+    if (!d.tap(editorBase)) return false;
+    d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    return d.tap(editorBase + 3);
+}
+
 // A Black save with one party Pikachu (the Gen V Bag-screen fixture shape).
-std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
+// `origin` != 0 makes it a Gen V-origin record whose stored gender / ability follow its PID
+// (0x123: low byte 0x23 < Pikachu's ratio 127 = female; PID bit 16 clear = Static), so its
+// PID-linked rows are editable.
+std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0, uint8_t origin = 0) {
     std::vector<uint8_t> sav(L5::FullSaveSize, 0);
     // An established trainer "NX" (TID 12345 / SID 54321, 12:34:56), as test_gen5_trainer_footer.
     const size_t player = 0x19400;
@@ -111,6 +129,11 @@ std::vector<uint8_t> gen5Fixture(uint8_t pokerus = 0, uint16_t move1 = 0) {
     party[0x8C] = 30;
     party[0x82] = pokerus;   // native Pokérus byte: strain << 4 | days
     C5::write16(party, 0x28, move1);   // first move slot
+    if (origin) {
+        party[0x15] = 9;          // Static, PID ability slot 0
+        party[0x40] = 0x02;       // female
+        party[0x5F] = origin;
+    }
     const auto encrypted = C5::encryptCandidate(party);
     std::copy(encrypted.begin(), encrypted.end(), sav.begin() + static_cast<std::ptrdiff_t>(L5::PartyOffset + 8));
     auto copy = std::span<uint8_t>(sav).subspan(0, L5::BlackWhiteCopySize);
@@ -251,6 +274,48 @@ void gen5CreatePokerus() {
         check(genderNow() == before, "Gen V Create: A flips Gender back inline");
     }
 
+    // Round 11 H29 (owner: "gen 5 ... opens a menu and warns about pid, this needs changed to be
+    // inline like every other gen"): Shiny is an inline toggle on the PID panel (row 8), like
+    // Gender: no "Change PID?" dialog. Only the PID's high half moves (withShiny5), so gender,
+    // nature and ability stay; a routine Shiny edit posts no toast (H22, UI/EditFeedback.h).
+    {
+        constexpr int kShinyPidRow = 8;
+        const auto now = [&] { return state.draft().current(); };
+        const auto start = now();
+        check(start.has_value(), "Gen V Create: a draft is open for Shiny");
+        if (!start) return;
+        screen.storageStatus.clear();
+        check(d.tap(Workspace::kPidTouchBase + kShinyPidRow), "Gen V Create: Shiny row publishes a touch target");
+        d.frame();
+        const auto on = now();
+        check(on && on->shiny() != start->shiny(), "Gen V Create: Shiny flips inline");
+        check(on && on->pid() != start->pid() && (on->pid() & 0xFFFFu) == (start->pid() & 0xFFFFu),
+              "Gen V Create: Shiny rewrites only the PID's high half");
+        check(on && on->gender() == start->gender() && on->nature() == start->nature() &&
+                  on->ability() == start->ability() && ((on->pid() >> 16) & 1u) == ((start->pid() >> 16) & 1u),
+              "Gen V Create: Shiny keeps gender, nature and the ability slot");
+        check(std::none_of(HostUi::texts.begin(), HostUi::texts.end(),
+                           [](const std::string& t) { return t == "Change PID?"; }),
+              "Gen V Create: no Change PID dialog for Shiny");
+        check(screen.storageStatus.empty(), "Gen V Create: an inline Shiny posts no toast (got \"" +
+                                                screen.storageStatus + "\")");
+        d.press(HidNpadButton_A);   // A on the focused Shiny row flips it back
+        const auto off = now();
+        check(off && off->shiny() == start->shiny() && off->gender() == start->gender() &&
+                  off->nature() == start->nature() && off->ability() == start->ability(),
+              "Gen V Create: A flips Shiny back inline, traits kept");
+        d.press(HidNpadButton_A);   // and on again: Review lists the created shiny state
+        check(now() && now()->shiny() != start->shiny(), "Gen V Create: A flips Shiny on again");
+    }
+
+    // Round 11: Keep still refuses while the new Pokemon has no move; one shared status says so.
+    d.press(HidNpadButton_X);
+    check(state.createPending() && screen.storageStatus == "Choose at least one move before Keep",
+          "Gen V Create: Keep is refused until a move is chosen (" + screen.storageStatus + ")");
+    check(chooseFirstMove(d, Workspace::kMoveTouchBase, Workspace::kMoveEditorTouchBase),
+          "Gen V Create: Move 1 is chosen through the move editor");
+    check(state.draft().current() && state.draft().current()->moves()[0] != 0, "Gen V Create: Move 1 set");
+
     // CG74 (owner Oct 25 P3): Review of the created Pokemon lists its values, not just the species.
     d.press(HidNpadButton_X);   // Keep
     check(state.openReviewFromBrowse(trainer->stagedPokemon()), "Gen V Review opens after Create");
@@ -281,6 +346,7 @@ void gen5CreatePokerus() {
         check(labelled(field), std::string("Gen V Create Review has a \"<loc> / ") + field + "\" row");
     check(exact("Empty -> Pikachu Lv 5") || exact("Empty -> PIKACHU Lv 5"), "Gen V Create Review header value");
     check(exact("Cured"), "Gen V Create Review shows the created Pokérus value");
+    check(labelled("Shiny"), "Gen V Create Review lists the inline Shiny choice");
     check(!labelled("Held Item") && !labelled("IVs") && !labelled("EVs") && !labelled("Trainer ID"),
           "Gen V Create Review adds no default noise and one OT / TID / SID row");
     check(!shown("Create in Box: ") && !shown(" -> Cured"),
@@ -465,9 +531,12 @@ void gen3CreatePokerus() {
     d.screen.selectedBoxIndex = 0;
     d.screen.selectedItemIndex = 0;   // the fixture's boxes are empty
     d.frame();
-    d.press(HidNpadButton_X);         // X on an empty box slot: Add (staged Create)
+    // Round 11 X-IMPEXP (owner request): X on an empty box slot is Import from file now, so Create
+    // is reached the documented way: A (Empty Slot Actions) -> Add Pokemon (the first row) -> A.
+    d.press(HidNpadButton_A);
+    d.press(HidNpadButton_A);
     check(drawnValue("Species").find("Pikachu") != std::string::npos || drawnValue("Species").find("#") != std::string::npos,
-          "Gen III X on an empty box slot opens Create (status: " + d.screen.storageStatus + ", species " + drawnValue("Species") + ")");
+          "Gen III A -> Add Pokemon on an empty box slot opens Create (status: " + d.screen.storageStatus + ", species " + drawnValue("Species") + ")");
     constexpr int kGen3DetailTouchBase = 31000, kPokerusRow = 14;
     for (int i = 0; i < 20 && !d.target(kGen3DetailTouchBase + kPokerusRow); ++i) d.press(HidNpadButton_Down);
     check(d.tap(kGen3DetailTouchBase + kPokerusRow), "Gen III Create: Pokérus row publishes a touch target");
@@ -475,10 +544,25 @@ void gen3CreatePokerus() {
     d.press(HidNpadButton_A);
     check(drawnValue("Pokerus") == "Cured", "Gen III Create A on Pokérus toggles Infected -> Cured (got " + drawnValue("Pokerus") + ")");
 
+    // Round 11 H22 (UI/EditFeedback.h): Y re-rolls the IVs / EVs with no toast; the values are the feedback.
+    d.screen.storageStatus.clear();
+    d.press(HidNpadButton_Y);
+    check(d.screen.storageStatus.empty(), "Gen III Create: Y reroll posts no toast (got \"" + d.screen.storageStatus + "\")");
+
     // Coordinator R7 (R's capture): Create defaults the OT to the save's trainer name, and Review
     // lists it in the shared Gen I-V shape ("<loc> / Add Pokémon", "<loc> / OT / TID / SID", ...).
     for (int i = 0; i < 20 && drawnValue("OT").find("not drawn") != std::string::npos; ++i) d.press(HidNpadButton_Up);
     check(drawnValue("OT") == "RED", "Gen III Create OT defaults to the trainer name (got " + drawnValue("OT") + ")");
+    // Round 11: Add refuses until a move (and, where the game lists encounters, a Met Location) is
+    // chosen; then the real Met picker and move editor satisfy it.
+    d.press(HidNpadButton_X);
+    check(d.screen.storageStatus.find("at least one move") != std::string::npos && g3.trainer->stagedPokemon()->pendingChanges().empty(),
+          "Gen III Create: Add is refused while the Pokemon has no move (" + d.screen.storageStatus + ")");
+    constexpr int kMetRow = 13;
+    for (int i = 0; i < 20 && !d.target(kGen3DetailTouchBase + kMetRow); ++i) d.press(HidNpadButton_Down);
+    check(d.tap(kGen3DetailTouchBase + kMetRow), "Gen III Create: Met Location row publishes a touch target");
+    d.press(HidNpadButton_A);   // the first listed encounter (a game without templates says so instead)
+    check(chooseFirstMove(d, 31300, 31400), "Gen III Create: Move 1 is chosen through the move editor");
     d.press(HidNpadButton_X);   // Keep
     check(d.screen.openStagedReview(false), "Gen III Review opens after Create");
     d.frame();
@@ -500,6 +584,53 @@ void gen3CreatePokerus() {
         drawnHeader = drawnHeader || t == "Empty -> Pikachu Lv 5";
     }
     check(drawnOt && drawnHeader, "Gen III Review draws the created OT and header values");
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_B);
+}
+
+// Round 11 follow-up (owner H25 clarification 2), through the real screen: an EXISTING FireRed Pikachu
+// (Met Location 1, a Hoenn id that is no FireRed place) changed to Rattata keeps its history; the
+// editor draws a Caution line in its Origin & Legality pane and Review draws the same caution note on
+// the entry. Keep is not refused, and no Met Location / Pokerus change is staged.
+std::string drawnJoined() {
+    std::string all;
+    for (const auto& t : HostUi::texts) all += t + " ";
+    return all;
+}
+void gen3EditSpeciesChangeCaution() {
+    auto& g3 = openGen3(13);
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyEdit(d)) return;
+    const std::string flag = "Origin game has no record of this Met Location (history kept)";
+    d.frame();
+    check(drawnJoined().find(flag) == std::string::npos, "no caution before the species changes");
+    d.press(HidNpadButton_A);                          // Species row: open the species picker
+    for (int i = 0; i < 6; ++i) d.press(HidNpadButton_Up);   // Pikachu #25 -> Rattata #19
+    d.press(HidNpadButton_A);
+    check(drawnValue("Species").find("Rattata") != std::string::npos,
+          "Gen III Edit species is Rattata (got " + drawnValue("Species") + ")");
+    d.frame();
+    const auto editor = drawnJoined();
+    check(editor.find("Caution") != std::string::npos && editor.find(flag) != std::string::npos,
+          "Gen III Edit draws the history caution in the Origin & Legality pane");
+    check(d.screen.storageStatus.find("Pok\xC3\xA9rus cleared") == std::string::npos &&
+              d.screen.storageStatus.find("needs a new choice") == std::string::npos,
+          "an Edit species change resets nothing and says nothing about a reset");
+    d.press(HidNpadButton_X);                          // Keep: a flag never refuses it
+    const auto& rows = g3.trainer->stagedPokemon()->pendingChanges();
+    bool caution = false, metOrPokerus = false;
+    std::string labels;
+    for (const auto& r : rows) {
+        labels += r.label + "=" + r.afterValue + "; ";
+        caution = caution || (r.label == "Party 1 Caution" && r.afterValue.find(flag) == 0 && r.createdDetail);
+        metOrPokerus = metOrPokerus || r.label.find("Met Location") != std::string::npos ||
+                       r.label.find("Met Level") != std::string::npos || r.label.find("Pok") != std::string::npos;
+    }
+    check(!rows.empty() && caution, "Gen III Keep stages the change with one caution note (" + labels + ")");
+    check(!metOrPokerus, "the kept history stages no Met Location / Met Level / Pokerus change");
+    check(d.screen.openStagedReview(false), "Gen III Review opens after Keep");
+    d.frame();
+    check(drawnJoined().find(flag) != std::string::npos, "Gen III Review draws the caution note on the entry");
     for (int i = 0; i < 3; ++i) d.press(HidNpadButton_B);
 }
 
@@ -675,10 +806,13 @@ void gen3NoStateAcrossScreens() {
         d.frame();
         check(cells(d, 4000).empty(), "save B: no picker carried over");
         check(drawnValue("Pokerus").front() == '<', "save B: no editor carried over");
-        d.press(HidNpadButton_X);           // X here must be B's own Add, never A's stale Keep
+        // Round 11 X-IMPEXP: Create is A -> Add Pokemon (X is Import from file); it must be B's own
+        // Add, never A's stale draft.
+        d.press(HidNpadButton_A);
+        d.press(HidNpadButton_A);
         check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");
         check(drawnValue("Species").find("#") != std::string::npos && trainerB->stagedPokemon()->pendingChanges().empty(),
-              "save B: X opens a fresh Create draft (species " + drawnValue("Species") + ")");
+              "save B: A -> Add Pokemon opens a fresh Create draft (species " + drawnValue("Species") + ")");
     }
     b->~TrainerViewScreen();
 }
@@ -862,6 +996,83 @@ void gen3SafariBallRoles() {
 
 // Owner Oct 25 7C: Gen V Language cycles inline on A and on a tap; the changed value is the
 // feedback, so neither posts a "Language: ..." status toast.
+// Round 11 H29 / H22 on a Gen V-origin Edit: A on Shiny flips it inline with no dialog and no toast,
+// Y re-rolls IVs / EVs with no toast, and Review lists the exact PID change ("PID" row).
+// An earlier-origin record (the plain fixture) still refuses the Shiny row with its reason.
+void gen5EditShinyInline() {
+    for (const bool gen5Origin : {false, true}) {
+        const auto input = gen5Fixture(0, 0, gen5Origin ? 21 : 3);   // Black, or Emerald (Gen III)
+        std::string error;
+        const auto parsed = G5::Gen5ReadOnlySave::parse(input, "black_nds", &error, G5::SaveCopySelection::Primary);
+        auto trainer = parsed ? PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black_nds", error) : nullptr;
+        check(trainer != nullptr, "Gen V Shiny fixture opens: " + error);
+        if (!trainer) return;
+        UI::TrainerViewScreen screen(*trainer, "Pokemon Black", "/host/black.sav", 0, AccountUid{},
+                                     PokeVault::Safety::SourceKind::ExternalLegacy, "black_nds", "DraStic");
+        Driver d{screen, {}, {}};
+        d.frame();
+        screen.detailViewActive = true;
+        screen.selectedMode = UI::TrainerViewScreen::ViewMode::Party;
+        screen.selectedPartyIndex = 0;
+        d.frame();
+        auto& state = trainer->sharedScreen();
+        const G5::Gen5StagedPokemonWorkspace::Slot slot{G5::Gen5StagedPokemonWorkspace::Region::Party, 0, 0};
+        check(state.openActions(trainer->stagedPokemon(), slot, error) &&
+                  state.activate(trainer->stagedPokemon(), PokeBank::UIModel::SharedPokemonEditor::Action::Edit, error),
+              "Gen V Shiny: party Pikachu opens in Edit: " + error);
+        d.frame();
+        if (state.surface() != G5::Gen5SharedScreenState::Surface::Edit) return;
+        const auto now = [&] { return state.draft().current(); };
+        const auto start = now();
+        if (!start) return;
+        const std::string where = gen5Origin ? "Gen V-origin Edit" : "earlier-origin Edit";
+        constexpr int kShinyPidRow = 8;
+        screen.storageStatus.clear();
+        check(d.tap(Workspace::kPidTouchBase + kShinyPidRow), where + ": Shiny row publishes a touch target");
+        d.frame();
+        check(std::none_of(HostUi::texts.begin(), HostUi::texts.end(),
+                           [](const std::string& t) { return t == "Change PID?"; }),
+              where + ": no Change PID dialog for Shiny");
+        if (!gen5Origin) {
+            check(now() && now()->pid() == start->pid() && now()->shiny() == start->shiny(),
+                  where + ": Shiny is refused and nothing changes");
+            check(screen.storageStatus.find("original PID") != std::string::npos,
+                  where + ": the refusal says why (" + screen.storageStatus + ")");
+            continue;
+        }
+        const auto on = now();
+        check(on && on->shiny() != start->shiny() && on->pid() != start->pid(), where + ": Shiny flips inline");
+        check(on && on->gender() == start->gender() && on->nature() == start->nature() &&
+                  on->ability() == start->ability(), where + ": Shiny keeps gender, nature and ability");
+        check(screen.storageStatus.empty(), where + ": an inline Shiny posts no toast (got \"" + screen.storageStatus + "\")");
+        // H22 for Gen IV / V (SharedPokemonEditorSurface Y): a reroll posts no toast either.
+        const auto ivsBefore = on ? on->ivs() : std::array<uint8_t, 6>{};
+        screen.storageStatus.clear();
+        d.press(HidNpadButton_Y);
+        check(now() && (now()->ivs() != ivsBefore || now()->evs() != on->evs()), where + ": Y re-rolls IVs / EVs");
+        check(now() && now()->shiny() == on->shiny() && now()->pid() == on->pid(), where + ": Y keeps the PID");
+        check(screen.storageStatus.empty(), where + ": Y reroll posts no toast (got \"" + screen.storageStatus + "\")");
+        const uint32_t pidBefore = start->pid(), pidAfter = on ? on->pid() : 0;
+        d.press(HidNpadButton_X);   // Keep
+        check(state.openReviewFromBrowse(trainer->stagedPokemon()), where + ": Review opens after Keep");
+        std::vector<std::string> drawn;
+        for (int page = 0; page < 6; ++page) {
+            d.frame();
+            drawn.insert(drawn.end(), HostUi::texts.begin(), HostUi::texts.end());
+            d.press(HidNpadButton_R);
+        }
+        const auto shown = [&](const std::string& part) {
+            return std::any_of(drawn.begin(), drawn.end(),
+                               [&](const std::string& t) { return t.find(part) != std::string::npos; });
+        };
+        char hexBefore[16], hexAfter[16];
+        std::snprintf(hexBefore, sizeof hexBefore, "%08X", pidBefore);
+        std::snprintf(hexAfter, sizeof hexAfter, "%08X", pidAfter);
+        check(shown("PID"), where + ": Review lists the PID change");
+        check(shown(hexBefore) && shown(hexAfter), where + ": Review shows the PID values " + hexBefore + " -> " + hexAfter);
+    }
+}
+
 void gen5LanguageNoToast() {
     const auto input = gen5Fixture(0, 84);   // Pikachu knows Thunder Shock (a level-up move)
     std::string error;
@@ -1059,7 +1270,9 @@ int main() {
     gen5PokerusKeepWithStoredStrain();
     gen3SafariBallRoles();
     gen5LanguageNoToast();
+    gen5EditShinyInline();
     gen3ViewOnly();
+    gen3EditSpeciesChangeCaution();
     gen5ViewOnly();
     gen4ViewOnly();
     if (failures) {

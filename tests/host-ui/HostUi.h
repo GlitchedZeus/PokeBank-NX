@@ -40,17 +40,30 @@ struct Fill {
     uint32_t rgba = 0;
 };
 inline std::vector<Fill> fills;
+// Rounded artwork / per-corner fills (PKSEFramebuffer::drawImageRoundedCover / drawFilledRoundedRectVarying).
+struct RoundedShape {
+    int x, y, w, h;
+    float topLeft, topRight, bottomRight, bottomLeft;
+    bool image;          // true: drawImageRoundedCover; false: drawFilledRoundedRectVarying
+    uint32_t rgba;       // fill colour (0 for an image)
+};
+inline std::vector<RoundedShape> roundedShapes;
+inline int rectImageDraws = 0;   // plain drawImage / drawImageScaled calls (rectangular, unmasked)
 inline constexpr int kFontPx[4] = {17, 20, 28, 32};
 inline constexpr int charWidth(int style) noexcept { return style == 0 ? 9 : style == 1 ? 10 : style == 2 ? 14 : 16; }
 inline std::vector<TextRect> visibleText;
 inline int footerBars = 0;
 inline bool clipOn = false;
+inline int clipSets = 0;   // setClipRect calls since resetLayout()
 inline int clipX = 0, clipY = 0, clipW = 0, clipH = 0;
 inline void resetLayout() {
     visibleText.clear();
     fills.clear();
+    roundedShapes.clear();
+    rectImageDraws = 0;
     footerBars = 0;
     clipOn = false;
+    clipSets = 0;
 }
 inline void recordText(int x, int y, const std::string& text, int style, uint32_t rgba = 0) {
     if (text.empty() || style < 0 || style > 3) return;
@@ -75,6 +88,8 @@ inline std::deque<Utils::KeyboardResult> textAnswers;  // answers for promptText
 inline int promptCount = 0;                            // prompts shown so far
 inline int japanesePromptCount = 0;                    // of which kana name prompts (promptJapaneseName)
 inline int lastJapaneseMaxChars = 0;                   // the cap the last kana name prompt was opened with
+inline int koreanPromptCount = 0;                      // of which Hangul name prompts (promptKoreanName)
+inline int lastKoreanMaxChars = 0;                     // the cap the last Hangul name prompt was opened with
 
 inline Utils::NumberResult nextNumber() {
     ++promptCount;

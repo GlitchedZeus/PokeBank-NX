@@ -57,6 +57,11 @@ struct ActionCapabilities {
     // canImportFile; canExportFile needs the same editor's non-mutating file export.
     bool canImportFile = false;
     bool canExportFile = false;
+    // Round 11 ACTIONS: appended LAST (callers initialise positionally). canMove lists Move on an
+    // occupied BOX slot where the generation's staged carry can start from the sheet; canAdd = false
+    // drops Add Pokemon where no Create can stage (Gen V invalid / party cells).
+    bool canMove = false;
+    bool canAdd = true;
 };
 
 struct ActionSet {
@@ -76,7 +81,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     };
 
     if (!occupied) {
-        append(Action::Add);
+        if (capabilities.canAdd) append(Action::Add);
         if (capabilities.canImportFile) append(Action::ImportFile);
         if (hasPendingChanges) append(Action::Review);
         append(Action::Close);
@@ -86,6 +91,9 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     append(Action::View);
     append(Action::Edit);
     if (capabilities.canClone) append(Action::Clone);
+    // Move sits between Clone and Release in the NATIVE set as well as the shared presentation
+    // rank, so controller rows, touch ids (base + native index) and dispatch stay aligned.
+    if (capabilities.canMove) append(Action::Move);
     if (capabilities.canRemove) append(Action::Remove);
     if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
     if (capabilities.canExportFile) append(Action::ExportFile);
@@ -151,14 +159,39 @@ constexpr Surface surfaceForAction(Action action) noexcept {
     return Surface::Actions;
 }
 
-// Box interaction is shared across classic generations: A opens the contextual
-// Empty Slot/Pokemon Actions menu, while X is a direct Add shortcut only on an
-// empty visual cell. Packed native formats still choose the real append slot.
-enum class BoxActivation : uint8_t { None, Actions, Add };
-constexpr BoxActivation boxActivation(bool occupied, bool pressA, bool pressX) noexcept {
-    if (pressX && !occupied) return BoxActivation::Add;
+// Box interaction is shared across Gen I-V: A opens the contextual Empty Slot / Pokemon Actions
+// menu. Round 11 X-IMPEXP (owner Extra 4): X is the file shortcut of the Boxes grid, Export to file
+// on an occupied slot and Import from file on an empty one, offered only where the same staged
+// editor capability lists that row in the sheet. Add Pokemon stays on the A sheet. Packed native
+// formats (Gen I / II) still choose the real append slot for an import.
+enum class BoxActivation : uint8_t { None, Actions, ImportFile, ExportFile };
+constexpr BoxActivation boxActivation(bool occupied, bool pressA, bool pressX,
+                                      ActionCapabilities capabilities) noexcept {
+    if (pressX && occupied && capabilities.canExportFile) return BoxActivation::ExportFile;
+    if (pressX && !occupied && capabilities.canImportFile) return BoxActivation::ImportFile;
     if (pressA) return BoxActivation::Actions;
     return BoxActivation::None;
+}
+// The file capabilities of a box slot: Import / Export to file need the generation's validated
+// staged editor (the same editor the sheet's file rows need). Every Gen I-V box X press and footer
+// derives from this, so the footer, the X key and the sheet cannot disagree.
+constexpr ActionCapabilities fileCapabilities(bool stagedEditor) noexcept {
+    ActionCapabilities capabilities;
+    capabilities.canImportFile = stagedEditor;
+    capabilities.canExportFile = stagedEditor;
+    return capabilities;
+}
+// The X badge of the Boxes footer, from the same decision: "Export" / "Import", or nullptr when X
+// does nothing there (so the footer never names X while X is inert). Not "Export Copy": that is
+// Review's X.
+constexpr const char* boxXLabel(bool occupied, ActionCapabilities capabilities) noexcept {
+    switch (boxActivation(occupied, false, true, capabilities)) {
+        case BoxActivation::ExportFile: return "Export";
+        case BoxActivation::ImportFile: return "Import";
+        case BoxActivation::None:
+        case BoxActivation::Actions: break;
+    }
+    return nullptr;
 }
 
 struct PostAddSelection {

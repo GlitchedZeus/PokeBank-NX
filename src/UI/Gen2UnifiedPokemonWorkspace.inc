@@ -367,13 +367,13 @@ constexpr int kUnownPickerTouchBase = 1780;   // + letter (0..25)
 constexpr int kUnownConfirmTouch = 1810;
 constexpr int kUnownCancelTouch = 1811;
 
+// Round 11 H22 (owner: "when i switch unowns i get a pop ... i dont need it"): an applied letter is a
+// routine edit. The Letter row, sprite, DVs and calculated stats change in place, and the shiny
+// state was already stated by the grid title and the question, so no toast follows.
 void applyUnownDVs(TrainerViewScreen& screen, State& state, const std::array<uint8_t, 4>& dvs) {
-    namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
-    const auto before = editableDVs(state.working);
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     applyEditableDVs(state.working, dvs);
-    screen.postStatus("Unown " + Letter::letterText(PokeBank::UIModel::Gen12DVReroll::unownLetter(dvs)) +
-                      (state.working.shiny ? ", shiny" : ", not shiny") + ": " +
-                      Letter::dvChanges(before, dvs) + " (stats follow)", 360);
+    EditFeedback::applied(screen, EditFeedback::Kind::UnownLetter);
 }
 
 bool handleUnownQuestion(TrainerViewScreen& screen, State& state, uint64_t down, const TouchInput& touch) {
@@ -576,10 +576,15 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                     if (!selected) selected = &encounter;
                 }
                 if (!selected) {
-                    screen.postStatus("Choose a legitimate Crystal encounter first", 300);
-                    return true;
-                }
-                if (selected->method == Encounter::Method::Egg) {
+                    // Round 11: a native landmark with no Crystal catch template (traded / gift /
+                    // hatched history): any native caught level up to the current level.
+                    const int maxLevel = std::clamp<int>(p.level, 2, 63);
+                    const int current = std::clamp<int>(caught.levelCode, 2, maxLevel);
+                    const auto result = Utils::promptNumber("Met Level (not a listed Crystal encounter)",
+                                                             current, 2, maxLevel);
+                    if (!result.accepted) return true;
+                    caught.levelCode = static_cast<uint8_t>(result.value);
+                } else if (selected->method == Encounter::Method::Egg) {
                     caught.levelCode = 1;
                     screen.postStatus("Egg encounter uses Crystal's native egg marker", 240);
                 } else if (selected->fixedLevel()) {
@@ -600,9 +605,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             if (focus.row == 11) {
                 pickerStateFor(screen).model.openLocation(
                     screen.sourceGameId, p.species, caught.location, caught.levelCode);
+                // Round 11: never a closed list; catch templates first, then every other native
+                // Crystal landmark (Gen2PokemonPickerModel.h / ExactGameMetLocations.h).
                 if (pickerStateFor(screen).model.locationCount() == 0) {
                     pickerStateFor(screen).model.close();
-                    screen.postStatus("No supported Crystal encounter templates for this species", 300);
                     return true;
                 }
                 screen.controllerNavigation.reset();
@@ -803,16 +809,15 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
 
     // Y Random DVs re-rolls this draft at once (Gen12DVReroll.h): every press is a new roll that
     // keeps the shiny state, the gender and the Unown letter. Nothing is staged until Keep/Add.
-    // Round 7 (B07): Unown keeps its letter and shiny state, so its sprite does not change; the
-    // status names what was kept and the DVs that changed (or exactly why none could).
+    // Round 11 H22 (UI/EditFeedback.h): a successful roll is a routine edit and posts no toast;
+    // the DV / Calculated values change in place. A roll that cannot change anything still says
+    // exactly why (Round 7 B07: otherwise Y would look broken).
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     const auto rerollBefore = editableDVs(state.working);
     const bool rerollUnown = state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies;
     if (down & HidNpadButton_Y) {
         if (randomizeDVs(state))
-            screen.postStatus(rerollUnown
-                ? PokeBank::UIModel::Gen2UnownLetter::rerollStatus(rerollBefore, editableDVs(state.working), true)
-                : std::string("Generation II DVs re-rolled in this draft; Keep/Add stages them"),
-                rerollUnown ? 360 : 240);
+            EditFeedback::applied(screen, EditFeedback::Kind::Reroll);
         else if (rerollUnown)
             screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(rerollBefore, rerollBefore, false), 300);
         else
@@ -917,12 +922,12 @@ inline uint8_t gen2ShownHpDv(const PokeVault::Integration::Gen2::PokemonRecord& 
 }
 
 // Round 7 (owner A22 / C01): the STATS Calculated column for every Gen II painter holds plain
-// numbers only (HP, Attack, Defense, Speed); the Special row's cell stays empty because Gen II
-// splits Special into two calculated stats, shown by drawGen2SpecialBlock below the grid.
+// numbers only. Round 11 (owner H22): the Special row included, as in Gen I; its cell holds the two
+// calculated Special stats (Gen2Workspace::calculatedCell), labelled by drawGen2SpecialBlock below.
 void drawGen2CalculatedColumn(PKSEFramebuffer& fb, const std::array<uint16_t, 6>& battle,
                               int x, int y, int) {
     namespace W = PokeBank::UIModel::Gen2Workspace;
-    for (int row = 0; row < W::kSpecialRow; ++row)
+    for (int row = 0; row <= W::kSpecialRow; ++row)
         fb.drawText(x + W::StatsGrid::kCalculatedX, y + W::StatsGrid::rowY(row), W::calculatedCell(battle, row),
                     gen2StatCellColor(row, 2), TextStyle::Caption);
 }
@@ -1143,7 +1148,9 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
     drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + UI::SharedMovesPanel::kDataPaneOffset,
-                                                   w, h - 256, state.working, *game);
+                                                   w, h - 256, state.working, *game,
+                                                   PokeBank::UIModel::HistoryConsistency::joined(
+                                                       state.historyFlags(screen.sourceGameId)));
 }
 
 void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified) {

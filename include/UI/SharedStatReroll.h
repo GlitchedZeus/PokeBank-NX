@@ -88,6 +88,6 @@ constexpr Stats reroll(Rng& rng, const Stats& previous) noexcept {
 }
 
 inline constexpr const char* kRerollHint = "Reroll IVs/EVs";
-inline constexpr const char* kRerollStatus = "IVs and EVs re-rolled; Shiny, Gender, Nature and Ability kept";
+// No success status: a reroll is a routine edit and posts no toast (Round 11 H22, UI/EditFeedback.h).
 
 } // namespace PokeBank::UIModel::SharedStatReroll

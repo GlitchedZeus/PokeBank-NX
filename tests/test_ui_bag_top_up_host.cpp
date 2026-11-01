@@ -7,6 +7,9 @@
 //   lists the Bag change; Discard restores the source.
 // A Japanese Gen I save (read-only while Integration/Common/JapaneseEditingGate.h is closed) never
 // offers it: no footer entry, ZR opens nothing, nothing is staged.
+// Round 11 (owner H04 / H34): SETUP opens on the Scope row at "< All Bag pockets >" on a Bag tab; the
+// owner's H04 steps then pick "This pocket" (Left), which the flow below follows. scopeFlow previews
+// All Bag pockets and, in Gen I-III, PC Items (Gen IV / V never offer a PC scope), staging nothing.
 // Synthetic saves only (HostUiFixtures / fuzz_synthetic_saves.h).
 #include "HostUi.h"
 #include "HostUiFixtures.h"
@@ -96,6 +99,12 @@ bool noOverlaps() {
     return true;
 }
 
+// Round 11 QA: Gen I's Bag is ONE 20-slot list shared by every category (pret pokered
+// wNumBagItems), so its whole-Bag scope says so instead of implying per-pocket room.
+std::string allBagLabel(const std::string& game) {
+    return game == "Red" ? "Whole Bag (20 slots shared)" : "All Bag pockets";
+}
+
 bool isChangeRow(const std::string& t) {
     return t.rfind("+ ", 0) == 0 || t.find("\xE2\x86\x92") != std::string::npos;
 }
@@ -121,6 +130,11 @@ void flow(const std::string& game, UI::TrainerViewScreen& screen, const std::fun
     d.press(HidNpadButton_ZR);
     check(d.drawn("Top Up / Add Missing") && d.drawn("Preview changes") && d.drawn("Scope") && d.drawn("Amount"),
           game + ": ZR opens SETUP");
+    check(d.drawn("< " + allBagLabel(game) + " >"), game + ": SETUP starts on Scope = " + allBagLabel(game) + " (a Bag tab)");
+    if (game == "Red") check(!d.drawn("All Bag pockets"), "Red: no per-pocket wording for the shared 20-slot Bag");
+    // H04 steps: Scope -> This pocket.
+    d.press(HidNpadButton_Left);
+    check(d.drawn("< This pocket ("), game + ": Left picks This pocket");
     check(HostUi::footerBars >= 1 && footerShows("Close") && footerShows("OK") && !footerShows("Add Item"),
           game + ": SETUP draws its own footer over the Bag's");
     check(noOverlaps(), game + ": SETUP text never overlaps");
@@ -183,6 +197,44 @@ void flow(const std::string& game, UI::TrainerViewScreen& screen, const std::fun
     check(visible("Review Pending Changes") && visible(probeName) &&
               visible(std::to_string(heldBefore) + " -> 50"),
           game + ": Review lists the staged Bag change (" + probeName + " " + std::to_string(heldBefore) + " -> 50)");
+}
+
+// Round 11 (H04 / H34): the other scopes on the same screen (the flow above left it on This pocket):
+// All Bag pockets previews every Bag pocket (a full list says how many slots it has: `fullNote`);
+// Gen I-III then offer PC Items, Gen IV / V go back to This pocket. B everywhere: nothing staged.
+void scopeFlow(const std::string& game, UI::TrainerViewScreen& screen, const std::function<bool()>& staged,
+               bool pc, const std::string& fullNote) {
+    Driver d(screen);
+    d.frame();
+    if (d.drawn("Review Pending Changes")) d.press(HidNpadButton_B);   // the flow ended in Review
+    check(!d.drawn("Review Pending Changes"), game + ": back on the Bag");
+    d.press(HidNpadButton_ZR);
+    check(d.drawn("< This pocket ("), game + ": the picked scope is kept for the session");
+    d.press(HidNpadButton_Right);
+    check(d.drawn("< " + allBagLabel(game) + " >"), game + ": Right picks " + allBagLabel(game));
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    check(d.drawn("Preview: Top Up / Add Missing") && d.drawn(allBagLabel(game) + ", up to"), game + ": whole-Bag preview");
+    check(fullNote.empty() || d.drawn(fullNote), game + ": the preview names the full list (" + fullNote + ")");
+    check(!staged(), game + ": the All Bag preview stages nothing");
+    d.press(HidNpadButton_B);
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Up);
+    d.press(HidNpadButton_Right);
+    if (pc) {
+        check(d.drawn("< PC Items >"), game + ": Right then offers PC Items");
+        for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Down);
+        d.press(HidNpadButton_A);
+        check(d.drawn("Preview: Top Up / Add Missing") && d.drawn("PC Items, up to"), game + ": PC Items preview");
+        d.press(HidNpadButton_B);
+        for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Up);
+        d.press(HidNpadButton_Right);
+        check(d.drawn("< Bag + PC Items >"), game + ": then Bag + PC Items");
+    } else {
+        check(d.drawn("< This pocket (") && !d.drawn("PC Items"), game + ": no PC scope without PC item storage");
+    }
+    check(!staged(), game + ": changing scope stages nothing");
+    d.press(HidNpadButton_B);
+    check(!d.drawn("Preview changes") && !staged(), game + ": B closes SETUP with nothing staged");
 }
 
 // Screens stay alive for the whole run: surfaces key per-screen state by a construction serial.
@@ -254,6 +306,10 @@ int main(int argc, char** argv) {
                 flow("Red", *screen, [inv] { return inv->hasPendingChanges(); }, held, 3, "Potion");
                 inv->discard();
                 check(!inv->hasPendingChanges() && held() == 3, "Red: Discard restores");
+                // One Potion stack: 19 of the 20 shared Bag slots are free; the Items category's 19
+                // candidates take them and every other category's new items are reported.
+                scopeFlow("Red", *screen, [inv] { return inv->hasPendingChanges(); }, true,
+                          "Bag (every category shares 20 slots): 19 free");
             }
         }
     }
@@ -314,13 +370,15 @@ int main(int argc, char** argv) {
             check(trainer && trainer->stagedInventory(), "Gen III staged inventory: " + error);
             if (trainer && trainer->stagedInventory()) {
                 auto* inv = trainer->stagedInventory();
-                flow("FireRed", *open(*trainer, "Pokemon FireRed", "firered_gba", "mGBA"),
+                auto* frScreen = open(*trainer, "Pokemon FireRed", "firered_gba", "mGBA");
+                flow("FireRed", *frScreen,
                      [inv] { return inv->hasPendingChanges(); },
                      [inv] { return inv->stagedInventoryQuantity(G3::InventoryPouch::Items, 13); }, 3, "Potion");
                 std::string keyErr;
                 check(inv->inventoryEntries(G3::InventoryPouch::KeyItems, keyErr).empty(), "FireRed: no Key Item staged");
                 inv->discard();
                 check(!inv->hasPendingChanges() && inv->stagedBytes() == inv->originalBytes(), "FireRed: Discard restores");
+                scopeFlow("FireRed", *frScreen, [inv] { return inv->hasPendingChanges(); }, true, "(42 slots): 41 free");
             }
         }
     }
@@ -360,6 +418,7 @@ int main(int argc, char** argv) {
                 check(stackOf(1, 450) == 1, "Platinum: the Bicycle is untouched");
                 trainer->stagedPokemon()->discard();
                 check(!trainer->stagedPokemon()->hasChanges(), "Platinum: Discard restores");
+                scopeFlow("Platinum", *screen, [trainer] { return trainer->stagedPokemon()->hasChanges(); }, false, "");
             }
         }
     }
@@ -401,6 +460,7 @@ int main(int argc, char** argv) {
                 std::string why;
                 check(trainer->refreshStagedPokemonPresentation(why) && !trainer->stagedPokemon().hasChanges() && held() == 3,
                       "Black: Discard restores");
+                scopeFlow("Black", *screen, [trainer] { return trainer->stagedPokemon().hasChanges(); }, false, "");
             }
         }
     }
@@ -410,7 +470,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     std::cout << "Top Up / Add Missing through the real Gen I / III / IV / V Bag screens (ZR, preview, B, A, Review; "
-                 "Japanese Gen I not offered) ("
+                 "Scope: This pocket / All Bag / PC Items only in Gen I-III; Japanese Gen I not offered) ("
               << checks << " checks): PASS\n";
     return 0;
 }

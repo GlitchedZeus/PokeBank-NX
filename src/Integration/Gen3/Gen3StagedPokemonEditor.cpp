@@ -1,6 +1,7 @@
 #include "Integration/Gen3/Gen3HeldItems.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
+#include "UI/HistoryConsistencyFacts.h"
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
@@ -575,6 +576,16 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             error = "Generation III met location must fit the native 8-bit field";
             return false;
         }
+        // Round 11 FRLG: a CHANGED met location of an R/S/E/FR/LG-origin record must be native to
+        // that origin game (FireRed / LeafGreen: Kanto and Sevii; R/S/E: Hoenn). The stored value
+        // is always kept, even an unusual one, because an unchanged field is never re-judged; an
+        // origin with no Gen III GBA list (Colosseum / XD, unset) keeps the previous 8-bit rule.
+        const uint8_t origin = pokemon.originGame();
+        if (*edit.metLocation != pokemon.metLocation() && origin >= 1 && origin <= 5 &&
+            !Names::isGen3NativeMetLocation(origin, *edit.metLocation)) {
+            error = "Generation III met location is not native to this Pokemon's origin game";
+            return false;
+        }
         pokemon.setMetLocation(*edit.metLocation);
     }
 
@@ -693,6 +704,15 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             location+" "+label,oldValue,value,party});
     };
     field("Species",Names::getSpeciesName(before->species),Names::getSpeciesName(after->species));
+    // Round 11 (owner H25 clarification 2): the species changed and the record kept its own history;
+    // a misfit is one caution note on this entry (value alone, like a CG74 detail). Nothing is
+    // changed or refused because of it.
+    if(before->species!=after->species)
+        if(const auto caution=PokeBank::UIModel::HistoryConsistency::joined(
+               PokeBank::UIModel::HistoryConsistency::gen3Flags(after->species,after->originGame,
+                   after->metLocation,after->metLevel,after->level));!caution.empty())
+            changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
+                location+" "+PokeBank::UIModel::HistoryConsistency::kCautionLabel,"",caution,party,true});
     field("Nickname",before->nickname,after->nickname);
     field("OT Name",before->otName,after->otName);
     field("Trainer ID",std::to_string(before->tid),std::to_string(after->tid));
@@ -773,6 +793,14 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         create.ball < 1 || create.ball > 12 ||
         create.metLevel > 100 || create.metLocation > 255) {
         error = "Generation III Create draft contains an unsupported field value";
+        return false;
+    }
+    // Round 11 FRLG (owner Extra 2): Create records the save's own game as origin, so a chosen met
+    // location must be native to it: FireRed / LeafGreen never write a Hoenn id, R/S/E never a Kanto
+    // id. 0 is the unchosen draft value (the Create required-field check owns that case).
+    if (create.metLocation != 0 &&
+        !Names::isGen3NativeMetLocation(originVersion(sourceGame_), create.metLocation)) {
+        error = "Generation III Create met location is not native to this game";
         return false;
     }
 

@@ -48,7 +48,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             case Action::Edit: state.mode = UX2Mode::Edit; state.row = 0; break;
             case Action::Clone: ux2OpenClone(screen); break;
             case Action::Move: {
-                // R2-CHECK-009: the existing Boxes carry, picked up; Y drops, B cancels.
+                // R2-CHECK-009: the existing Boxes carry, picked up; A places, B cancels.
                 const int box = state.box, slot = state.slot;
                 ux2Close(state);
                 screen.controllerNavigation.reset();
@@ -159,17 +159,6 @@ ReleaseConfirmState& releaseConfirmStateFor(const TrainerViewScreen& screen) {
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
-}
-
-PokeBank::UIModel::SharedPokemonEditor::ActionCapabilities releaseActionCapabilities() noexcept {
-    PokeBank::UIModel::SharedPokemonEditor::ActionCapabilities caps;
-    caps.canClone = true;
-    caps.canRemove = true;
-    caps.hasLegalityProvenance = true;
-    // Feature A: this sheet exists only with a staged Gen II editor (Import / Export to file).
-    caps.canImportFile = true;
-    caps.canExportFile = true;
-    return caps;
 }
 
 void dismissActionSheetForWorkspace(TrainerViewScreen& screen) {
@@ -310,9 +299,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                               int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
     if (handlePassiveViewTouch(screen, touch)) return true;
-    // Defence in depth: never own input under the Clone or Provenance dialogs.
-    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
-        return false;
+    // Defence in depth: never own input under the Provenance dialog.
+    if (sharedSurfaceStateFor(screen).provenanceActive) return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -337,7 +325,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                                         static_cast<std::size_t>(legacy.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
     const auto actions = PokeBank::UIModel::SharedPokemonEditor::actionsForSlot(
-        occupied, releaseActionCapabilities(), !editor->pendingChanges().empty());
+        occupied, gen2ActionCapabilities(screen), !editor->pendingChanges().empty());
     if (actions.count == 0) return true;
 
     // Gen II matches Gen I, III and IV: never shift the action cursor on
@@ -383,14 +371,15 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             return true;
         case Action::Clone: {
             if (!pokemon) return true;
-            auto& shared = sharedSurfaceStateFor(screen);
-            shared.cloneActive = true;
-            shared.cloneBox = legacy.pokemonBox;
-            // The Clone destination dialog owns input and the frame (as Legality & Provenance
-            // does). Leaving the action sheet "open" underneath kept this handler capturing
-            // every input, so Clone looked inert and B revealed the dialog instead of cancelling.
+            // Round 11 H31 (owner): the shared visual Clone carry, as in Gen I. The sheet closes, the
+            // copy rides the box cursor, A places it at the chosen box's next free slot (packed list),
+            // B cancels; no Actions menu reopens afterwards (the old dialog returned to Actions).
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
             legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+                screen.postStatus("Clone could not start from here", 240);
             return true;
         }
         case Action::Remove:
@@ -437,8 +426,19 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
+        case Action::Move: {
+            // Round 11 ACTIONS: the accepted hold-Y packed carry, picked up (A places, B cancels: Round 11 H23).
+            // Close the sheet fully first: the carry layer only runs with no Gen II overlay active.
+            if (!pokemon) return true;
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginGen2FromAction(screen, box, slot))
+                screen.postStatus("Move could not start from here", 240);
+            return true;
+        }
         case Action::None:
-        case Action::Move: // Not offered by the Gen II action set.
             return true;
     }
     return true;
@@ -446,8 +446,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
 
 bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
-    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
-        return false;
+    if (sharedSurfaceStateFor(screen).provenanceActive) return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -482,7 +481,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                                static_cast<std::size_t>(legacy.pokemonSlot), error);
     const auto actions = PokeBank::UIModel::SharedPokemonEditor::actionsForSlot(
-        static_cast<bool>(pokemon), releaseActionCapabilities(),
+        static_cast<bool>(pokemon), gen2ActionCapabilities(screen),
         !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0,
         std::max(0, static_cast<int>(actions.count) - 1));

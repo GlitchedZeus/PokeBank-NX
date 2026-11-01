@@ -15,6 +15,12 @@ struct Text { int x, y, w, h; std::string value; UI::Color color; };
 std::vector<Text> texts;
 std::vector<std::pair<uint16_t, bool>> sprites;
 std::vector<uint8_t> spriteForms;
+// Round 11 SPRITE: full-size artwork draws (drawSpriteStaticContained boxes) and an optional
+// stand-in artwork so the preview's drawn box can be measured.
+struct Box { int x, y, w, h; };
+std::vector<Box> artDraws;
+bool artAvailable = false;
+unsigned char artPixel[4] = {255, 255, 255, 255};
 // The native framebuffer clips extra rows for smooth touch scrolling. The
 // renderer test double must record only visible pixels, not every drawText call.
 bool clipActive = false;
@@ -56,11 +62,17 @@ void PKSEFramebuffer::setClipRect(int x,int y,int w,int h) {
 }
 void PKSEFramebuffer::clearClip() { clipActive = false; }
 void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
-void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
+void PKSEFramebuffer::drawSpriteStaticContained(int x,int y,int w,int h,int,int,const unsigned char*,int) {
+    artDraws.push_back({x, y, w, h});
+}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
+Sprite::~Sprite() = default;   // the stand-in artwork points at a static pixel
 Sprite* SpriteManager::getSprite(uint16_t species, uint8_t form, bool shiny) {
-    sprites.emplace_back(species,shiny); spriteForms.push_back(form); return nullptr;
+    sprites.emplace_back(species,shiny); spriteForms.push_back(form);
+    static Sprite art;
+    art.data = artPixel; art.width = 1; art.height = 1; art.channels = 4;
+    return artAvailable ? &art : nullptr;
 }
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 // Shared Gen II held-item picker optionally renders matching ROMFS artwork.
@@ -353,16 +365,111 @@ int main() {
     assert(Held::move(5, items.size(), 0, 0, 1) == 45);
     assert(Held::move(45, items.size(), 0, 0, -1) == 5);
 
-    // The actual shared renderer must request both sprite appearances for the
-    // hovered species, including the Gen II-only dex range, without a session write.
-    // Type drawing is deliberately mocked here; generation-correct type data has its
-    // own executable contract in test_classic_picker_type_contract.
-    for (uint16_t dex : {1,151,152,251}) {
-        texts.clear(); sprites.clear();
-        UI::SharedSpeciesPicker::drawContent(fb,100,76,dex,251,true,
+    // Round 11 SPRITE (owner, Extra 5: "In the species picker ... 1 photo"): the shared
+    // renderer requests ONE artwork for the hovered species, in the current preview state,
+    // including the Gen II-only dex range, without a session write. This deliberately replaces
+    // the old {normal, shiny} pair assertion. Type drawing is mocked here; generation-correct
+    // type data has its own executable contract in test_classic_picker_type_contract.
+    namespace Picker = UI::SharedSpeciesPicker;
+    const auto hasText = [](const char* value) {
+        return std::any_of(texts.begin(),texts.end(),[&](const Text& t){return t.value == value;});
+    };
+    const auto overlaps = [](const Box& a, int x, int y, int w, int h) {
+        return a.x < x + w && a.x + a.w > x && a.y < y + h && a.y + a.h > y;
+    };
+    for (bool previewShiny : {false, true}) {
+        for (uint16_t dex : {1,151,152,251,386,493}) {
+            // Without a chooser (the plain list) and with one, browsing and while searching.
+            for (int mode = 0; mode < 3; ++mode) {
+                Picker::Chooser chooser;
+                Picker::refilter(chooser, 493, [](uint16_t) { return true; },
+                                 [](uint16_t id) { return std::to_string(id); });
+                if (mode == 2) chooser.search.toggleGrid();
+                texts.clear(); sprites.clear(); spriteForms.clear(); artDraws.clear();
+                artAvailable = true;
+                Picker::drawContent(fb,100,76,dex,493,previewShiny,
+                    [](uint16_t id){ return std::to_string(id); }, [](uint16_t id){ return std::to_string(id); },
+                    nullptr, true, {0xFF, 0xFF}, mode == 0 ? nullptr : &chooser);
+                assert((sprites == std::vector<std::pair<uint16_t,bool>>{{dex,previewShiny}}));
+                assert(artDraws.size() == 1);
+                // One state caption, never the old fixed NORMAL + SHINY pair.
+                assert(hasText(previewShiny ? "SHINY" : "NORMAL"));
+                assert(!hasText(previewShiny ? "NORMAL" : "SHINY"));
+                // The drawn artwork is the shared preview box: inside the preview column, clear of
+                // the type badges (browsing) or the key grid (searching), and the tap target.
+                const auto art = Picker::previewArtRect(100, 76, mode == 2);
+                assert(artDraws[0].x == art.x && artDraws[0].y == art.y &&
+                       artDraws[0].w == art.w && artDraws[0].h == art.h);
+                assert(art.x >= 100 + Picker::kPreviewX &&
+                       art.x + art.w <= 100 + Picker::kPreviewX + Picker::kPreviewW);
+                if (mode == 2) {
+                    const auto grid = Picker::keyGridRect(100, 76);
+                    assert(!overlaps(artDraws[0], grid.x, grid.y, grid.w, grid.h));
+                    assert(art.y == 76 + Picker::kSearchArtY && art.h == Picker::kSearchArtH);
+                } else {
+                    assert(art.y + art.h <= 76 + 344);   // type badge row
+                    assert(hasText(previewShiny ? "Shiny: Yes" : "Shiny: No"));
+                }
+            }
+        }
+    }
+    // Missing artwork never shows the other appearance: the shiny state says shiny.
+    for (bool previewShiny : {false, true}) {
+        texts.clear(); sprites.clear(); artDraws.clear();
+        artAvailable = false;
+        Picker::drawContent(fb,100,76,25,251,previewShiny,
             [](uint16_t id){ return std::to_string(id); }, [](uint16_t id){ return std::to_string(id); });
-        assert((sprites == std::vector<std::pair<uint16_t,bool>>{{dex,false},{dex,true}}));
-        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Shiny: Yes";}));
+        assert((sprites == std::vector<std::pair<uint16_t,bool>>{{25,previewShiny}}));
+        assert(artDraws.empty());
+        assert(hasText(previewShiny ? "No shiny sprite" : "No sprite"));
+        assert(!hasText(previewShiny ? "No sprite" : "No shiny sprite"));
+    }
+    // Gen II Unown: the single artwork uses the native letter for the SAME shiny state, so the
+    // preview can never pair a shiny-only letter (I/V) with normal artwork or vice versa.
+    for (const auto& [previewShiny, letter] : {std::pair{false, 3}, std::pair{true, 8}}) {
+        sprites.clear(); spriteForms.clear(); artDraws.clear();
+        artAvailable = true;
+        Picker::drawContent(fb,100,76,201,251,previewShiny,
+            [](uint16_t id){ return std::to_string(id); }, [](uint16_t id){ return std::to_string(id); },
+            nullptr, true, {0xFF, 0xFF}, nullptr, letter);
+        assert((sprites == std::vector<std::pair<uint16_t,bool>>{{201,previewShiny}}));
+        assert((spriteForms == std::vector<uint8_t>{static_cast<uint8_t>(letter)}));
+    }
+    artAvailable = false;
+
+    // A way to preview shiny by touch, too: a tap released on the artwork flips the preview
+    // (the owner applies it exactly like Y); swipes, list taps and grid keys never do.
+    {
+        Picker::Chooser chooser;
+        uint16_t species = 25;
+        const auto available = [](uint16_t s) { return s >= 1 && s <= 251; };
+        const auto name = [](uint16_t s) { return std::to_string(s); };
+        const auto art = Picker::previewArtRect(Picker::ModalX, Picker::ModalY, false);
+        const int cx = art.x + art.w / 2, cy = art.y + art.h / 2;
+        auto tap = [&](int sx, int sy, int ex, int ey) {
+            UI::SharedSearchInput::Touch t;
+            t.justReleased = true; t.x = ex; t.y = ey; t.startX = sx; t.startY = sy;
+            return Picker::handleTouch(chooser, t, species, 251, Picker::ModalX, Picker::ModalY,
+                                       available, name);
+        };
+        auto h = tap(cx, cy, cx + 3, cy + 2);
+        assert(h.previewShinyTapped && h.touch && species == 25);
+        h = tap(cx, cy, cx, cy + 300);                      // dragged off the artwork
+        assert(!h.previewShinyTapped);
+        h = tap(Picker::ModalX + Picker::kListX + 40, Picker::ModalY + Picker::kListY + 10,
+                Picker::ModalX + Picker::kListX + 40, Picker::ModalY + Picker::kListY + 10);
+        assert(!h.previewShinyTapped);                      // a list row tap stays a row tap
+        UI::SharedSearchInput::Touch held;
+        held.down = true; held.justDown = true; held.x = held.startX = cx; held.y = held.startY = cy;
+        assert(!Picker::handleTouch(chooser, held, species, 251, Picker::ModalX, Picker::ModalY,
+                                    available, name).previewShinyTapped);   // only the release flips
+        // While searching, the compact artwork above the grid is the target.
+        chooser.search.toggleGrid();
+        const auto searchArt = Picker::previewArtRect(Picker::ModalX, Picker::ModalY, true);
+        const int sx = searchArt.x + searchArt.w / 2, sy = searchArt.y + searchArt.h / 2;
+        assert(tap(sx, sy, sx, sy).previewShinyTapped);
+        const auto grid = Picker::keyGridRect(Picker::ModalX, Picker::ModalY);
+        assert(!tap(grid.x + 20, grid.y + 20, grid.x + 20, grid.y + 20).previewShinyTapped);
     }
     std::cout << "Gen II production Data/Graph and shared species renderer: native gating, exact generation title, bounded nonoverlapping text, sprite identity PASS\n";
 }

@@ -29,6 +29,8 @@
 #include "Enums/LanguageID.h"
 #include "Enums/GameVersion.h"
 #include "Legality/Legality.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorPresentation.h"
 
 using namespace Trainer;
 using namespace Utils;
@@ -64,6 +66,16 @@ namespace Modals {
                 ? std::string_view{} : std::string_view(screen.sourceGameId);
         const Legality::Report legalityRep =
             Legality::analyze(*p, p->getGameGroup(), legalitySource);
+        // Round 11 (CG48): in a Gen I-V session (e.g. a Bank Pokemon opened from Storage) the legacy
+        // checker's coverage is incomplete (#329), so a report without issues is the shared
+        // "Incomplete" state in the warning colour, never a green clean verdict. Gen VI+ sessions
+        // keep their wording. Wording only: the analysis above is unchanged.
+        const bool partialLegalityCoverage =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        const std::string incompleteLegality = std::string("Legality: ") +
+            PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete) +
+            " (partial checks only)";
 
         screen.touchButtons.clear();
 
@@ -313,7 +325,9 @@ namespace Modals {
         // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
         {
             const int ly = colY + colH - legalityH + 6;
-            if (legalityRep.ok()) {
+            if (legalityRep.ok() && partialLegalityCoverage) {
+                fb.drawText(Lx + 18, ly, incompleteLegality, Colors::Warning, TextStyle::Caption);
+            } else if (legalityRep.ok()) {
                 fb.drawText(Lx + 18, ly, "Legality: no problems found", Color(120, 205, 140), TextStyle::Caption);
             } else {
                 const std::string label = "Legality: " + std::to_string(legalityRep.problemCount())
@@ -525,7 +539,10 @@ namespace Modals {
         if (screen.details.legalityOverlay) {
             struct ReportLine { std::string text; Color color; };
             std::vector<ReportLine> lines;
-            if (legalityRep.ok()) {
+            if (legalityRep.ok() && partialLegalityCoverage) {
+                lines.push_back({incompleteLegality + ": no issues were reported, but this is not a full "
+                                 "legality check.", Colors::Warning});
+            } else if (legalityRep.ok()) {
                 lines.push_back({"No problems found.", Color(120, 205, 140)});
             } else {
                 for (const auto& issue : legalityRep.issues) {

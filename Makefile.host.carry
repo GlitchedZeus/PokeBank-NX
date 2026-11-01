@@ -1,0 +1,38 @@
+# Round 11 H23 / H31 / H32: the one Gen I-V box carry (include/UI/ClassicCarryRules.h). Pure rules plus
+# the source contracts tying every generation's Move and Clone to the shared carry overlay.
+CARRY_RULES_TEST := $(HOST_BUILD)/test_classic_carry_rules
+CARRY_RULES_SANITIZE := $(HOST_BUILD)/test_classic_carry_rules_sanitize
+CARRY_RULES_INPUTS := tests/test_classic_carry_rules.cpp include/UI/ClassicCarryRules.h \
+	include/UI/ClassicHelpPresentation.h src/UI/ClassicPackedMoveOverlay.inc src/UI/ClassicReleaseActionFix.inc \
+	src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc src/UI/Gen2SharedPokemonSurface.inc \
+	src/UI/Gen2SharedSurfaceParity.inc src/UI/TrainerViewScreenGSCOverlay.inc \
+	src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+HOST_TESTS += $(CARRY_RULES_TEST)
+HOST_SANITIZE_TESTS += $(CARRY_RULES_SANITIZE)
+host-test: $(CARRY_RULES_TEST)
+host-sanitize: $(CARRY_RULES_SANITIZE)
+$(CARRY_RULES_TEST): $(CARRY_RULES_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_classic_carry_rules.cpp -o $@
+$(CARRY_RULES_SANITIZE): $(CARRY_RULES_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_carry_rules.cpp -o $@
+
+# The same Clone / Move carry through the REAL TrainerViewScreen (tests/host-ui harness, GCC only),
+# Gen I-V: Actions -> Clone, A on occupied / empty, Y hint, B cancel, no Actions reopen, Y pickup + A place.
+ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
+HOST_UI_CLONE_CARRY_TEST := $(HOST_BUILD)/test_ui_clone_carry_host
+HOST_UI_CLONE_CARRY_SANITIZE := $(HOST_BUILD)/test_ui_clone_carry_host_sanitize
+HOST_UI_CLONE_CARRY_INPUTS := tests/test_ui_clone_carry_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h include/UI/ClassicCarryRules.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_CLONE_CARRY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_CLONE_CARRY_SANITIZE)
+host-test: $(HOST_UI_CLONE_CARRY_TEST)
+host-sanitize: $(HOST_UI_CLONE_CARRY_SANITIZE)
+$(HOST_UI_CLONE_CARRY_TEST): $(HOST_UI_CLONE_CARRY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_clone_carry_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_CLONE_CARRY_SANITIZE): $(HOST_UI_CLONE_CARRY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_clone_carry_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+endif

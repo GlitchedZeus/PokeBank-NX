@@ -51,7 +51,9 @@ void runSession(const L& layout,SourceGame game) {
     }
     if (game == SourceGame::Crystal) {
         Session caughtSession; caughtSession.begin(entry, SessionMode::Edit);
-        caughtSession.working.moves = {}; caughtSession.working.pp = {}; caughtSession.working.ppUps = {};
+        // Round 11: Keep may not leave a Pokemon without moves (CreateRequiredFields), so this caught-data
+        // case keeps one native Pikachu move instead of an empty set.
+        caughtSession.working.moves = {84, 0, 0, 0}; caughtSession.working.pp = {30, 0, 0, 0}; caughtSession.working.ppUps = {};
         auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(0);
         caught.timeOfDay = 3; caught.levelCode = 20; caught.location = 16; caught.originalTrainerFemale = true;
         caughtSession.working.caughtData = PokeBank::UIModel::Gen2Native::encodeCrystalCaughtData(caught);
@@ -69,6 +71,9 @@ void runSession(const L& layout,SourceGame game) {
         const auto expectedLevel =
             PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16);
         assert(species.setSpecies(16, sourceId));
+        // Round 11 (owner H28): a species change adds no move and Add/Keep need one, so pick Tackle.
+        assert(species.working.moves == (std::array<uint8_t, 4>{}));
+        assert(species.setMove(0, 33));
         assert(species.working.level == expectedLevel);
         assert(species.working.level != 50);
         assert(expectedLevel == (game == SourceGame::Crystal ? 2 : 5));
@@ -118,7 +123,13 @@ void runSession(const L& layout,SourceGame game) {
     assert(selectedLocation->minLevel == 25 && selectedLocation->maxLevel == 25);
     assert(selectedLocation->containsLevel(25));
     assert(!selectedLocation->containsLevel(83));
+    // Round 11 (FRLG closed-list fix, Crystal path; deliberately updated): the Gift row at 71 is
+    // Pikachu's last catch template, and the rows after it are now the other native landmarks
+    // (no template, honestly labelled), so stepping down leaves the templates.
     locations.stepList(1);
+    assert(!locations.locationChoice() && locations.otherLocationChoice());
+    assert(*locations.otherLocationChoice() != 50 && *locations.otherLocationChoice() != 71);
+    locations.stepList(-2);
     selectedLocation = locations.locationChoice();
     assert(selectedLocation);
     assert(selectedLocation->sourceGameId == "crystal_gbc");
@@ -261,7 +272,8 @@ void runSession(const L& layout,SourceGame game) {
     assert(!session.back());session.discard();assert(session.working.nickname==kept.nickname);
     assert(std::equal(prior.begin(),prior.end(),editor->stagedBytes().begin()));
 
-    session.begin(kept,SessionMode::Create);session.working.moves={};session.working.pp={};session.working.ppUps={};
+    // Round 11: a Create needs at least one move (CreateRequiredFields); one native Pikachu move.
+    session.begin(kept,SessionMode::Create);session.working.moves={84,0,0,0};session.working.pp={30,0,0,0};session.working.ppUps={};
     session.working.heldItem=0;session.working.caughtData=0;
     assert(session.setExperience(9267));assert(session.working.level==21);
     const auto visible=session.working;

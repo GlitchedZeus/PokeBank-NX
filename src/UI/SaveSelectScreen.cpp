@@ -18,6 +18,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/ProductChrome.h"
 #include "UI/SystemIcons.h"
+#include "UI/CardScenery.h"
 #include "UI/SpriteManager.h"
 #include "UI/SpriteLayout.h"
 #include "UI/GameLauncher.h"
@@ -3231,7 +3232,8 @@ namespace UI {
     }
 
     // Owner item #10: Backups -> X. Lists this profile's backup / export history and DurableFile
-    // leftovers, classified by UI/RecoveryManagementModel.h. Reading only; nothing is selected.
+    // leftovers, classified by UI/RecoveryManagementModel.h. Nothing is selected when it opens; A
+    // picks Removable copies and Y removes them only after a confirmation listing every file.
     void SaveSelectScreen::openRecoveryFiles(const std::string& notice) {
         namespace RM = PokeBank::UIModel::RecoveryManagement;
         recoveryRequest = {};
@@ -3260,9 +3262,15 @@ namespace UI {
         recoveryIndex = 0;
         recoveryScroll = 0;
         rebuildRecoveryRows();
-        // Focus the first copy, not a heading.
-        for (int i = 0; i < static_cast<int>(recoveryRows.size()); ++i)
-            if (recoveryRows[static_cast<size_t>(i)].item >= 0) { recoveryIndex = i; break; }
+        // Round 11 H12: the list stays global (protection is computed over every source), but focus
+        // starts in the opening game's group (the Backups screen's exact source paths), on its first
+        // Removable copy when it has one; never on a heading.
+        std::vector<std::string> openingSources;
+        for (const auto& listing : emuBackupListings) openingSources.push_back(listing.sourcePath);
+        recoveryIndex = RM::initialFocus(recoveryRows, recoveryListing.items, openingSources);
+        namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
+        const auto layout = EB::layout(static_cast<int>(recoveryRows.size()));
+        recoveryScroll = EB::clampScroll(layout, EB::revealRow(layout, 0, recoveryIndex));
         overlay = Overlay::RecoveryFiles;
     }
 
@@ -3876,7 +3884,9 @@ namespace UI {
             } else {
                 launchFileTouchScroll.stop();
             }
-            if (kDown & HidNpadButton_B) {
+            // B closes the browser; '-' is the app-wide SD-browser Cancel (Round 11 H39, as in the
+            // Import from file dialog). Neither links anything: only A on a file writes the binding.
+            if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) {
                 launchFileTouchScroll.stop();
                 overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
                 return;
@@ -4168,6 +4178,12 @@ namespace UI {
             namespace EB = PokeBank::UIModel::EmulatorBackupLayout;
             const int count = static_cast<int>(recoveryRows.size());
             if (kDown & HidNpadButton_B) { openEmulatorBackups(); return; }
+            if (kDown & HidNpadButton_Minus) {
+                // Round 11 H12: Help; B / - return here with the selection kept.
+                helpReturnOverlay = Overlay::RecoveryFiles;
+                overlay = Overlay::Help;
+                return;
+            }
             if (count == 0) return;
             const auto bar = SharedScrollbar::handleTouch(recoveryScrollbar, barTouch, recoveryScroll);
             if (bar.changed) recoveryScroll = bar.scroll;
@@ -4181,8 +4197,10 @@ namespace UI {
             if (kDown & HidNpadButton_Up) step(-1);
             if (kDown & HidNpadButton_Down) step(1);
             const auto layout = EB::layout(count);
-            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
                 recoveryScroll = EB::revealRow(layout, recoveryScroll, recoveryIndex);
+                recoveryNotice.clear();   // a "why kept" toast belongs to the row it was asked on
+            }
             recoveryScroll = EB::clampScroll(layout, recoveryScroll);
             const auto& row = recoveryRows[static_cast<size_t>(recoveryIndex)];
             if ((kDown & HidNpadButton_A) && row.item >= 0) {
@@ -4191,13 +4209,15 @@ namespace UI {
                     recoveryNotice.clear();
                     rebuildRecoveryRows();
                 } else {
-                    recoveryNotice = recoveryListing.verdicts[item].reason;
+                    recoveryNotice = RM::protectedNotice(recoveryListing.verdicts[item]);
                 }
             }
             if (kDown & HidNpadButton_Y) {
                 recoveryPlan = RM::buildPlan(recoveryListing.items, recoveryListing.verdicts, recoverySelection);
                 if (recoveryPlan.items.empty())
-                    recoveryNotice = "Select removable copies with A first. Nothing is removed without a confirmation.";
+                    recoveryNotice = RM::anyRemovable(recoveryListing.verdicts)
+                        ? "Select removable copies with A first. Nothing is removed without a confirmation."
+                        : "Nothing here can be removed: every copy is protected.";
                 else {
                     recoveryConfirmScroll = 0;
                     overlay = Overlay::RecoveryConfirm;
@@ -4859,7 +4879,8 @@ namespace UI {
                 titleIndex = 0;
             scrollClassicSelectionIntoView();
             drawClassicGameSources(fb);
-            if (overlay == Overlay::Help) {
+            // Recovery files' own Help (Round 11 H12) is drawn by the modal section below.
+            if (overlay == Overlay::Help && helpReturnOverlay != Overlay::RecoveryFiles) {
                 std::vector<ControllerHint> rows = {
                     {"D-pad/Stick", "Choose a game"},
                     {"A", "Open the selected game"},
@@ -4922,9 +4943,9 @@ namespace UI {
         // Right: selected-game hero card.
         // ScreenChrome owns the scoped phone-style drag transform for this exact geometry.
         const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0 && headerActionIndex < 0;
-        drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
+        drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, CardScenery::kHomeCardRadius);
         if (gameFocused)
-            fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
+            fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, CardScenery::kHomeCardRadius, Colors::Info, 3);
 
         if (u && titleIndex >= 0 && titleIndex < count) {
             const auto& title = u->titles[static_cast<size_t>(titleIndex)];
@@ -4937,28 +4958,17 @@ namespace UI {
             const IconImage& regionBackdrop = SystemIcons::regionBackdrop(regionKey);
             if (regionBackdrop.valid()) {
                 constexpr int regionH = 270;
-                fb.setClipRect(DETAIL_X + 2, HUB_Y + 2, DETAIL_W - 4, regionH - 2);
-                // Region art is real packaged artwork, so preserve its aspect ratio.
-                // Scale-to-cover under the existing card clip instead of stretching the image.
-                const int regionW = DETAIL_W - 4;
-                const int regionDrawH = regionH - 2;
-                int drawW = regionW;
-                int drawH = std::max(1, regionBackdrop.height * drawW / regionBackdrop.width);
-                if (drawH < regionDrawH) {
-                    drawH = regionDrawH;
-                    drawW = std::max(1, regionBackdrop.width * drawH / regionBackdrop.height);
-                }
-                const int drawX = DETAIL_X + 2 + (regionW - drawW) / 2;
-                const int drawY = HUB_Y + 2 + (regionDrawH - drawH) / 2;
-                fb.drawImageScaled(drawX, drawY,
-                                   regionBackdrop.width, regionBackdrop.height,
-                                   drawW, drawH,
-                                   regionBackdrop.data, 4);
-                // A dark glass scrim keeps title/trainer/source text readable in handheld mode.
-                fb.drawFilledRect(DETAIL_X + 2, HUB_Y + 2,
-                                  DETAIL_W - 4, regionH - 2,
-                                  Color(5, 14, 30, 40));
-                fb.clearClip();
+                // Round 11: the artwork and its scrim are masked by the card's own rounded top
+                // corners (one vector path each), never by a rectangular clip, so the scenery
+                // cannot protrude past the card's radius or its focus ring. Scale-to-cover keeps
+                // the packaged artwork's aspect ratio.
+                CardScenery::drawTopBand(fb, DETAIL_X, HUB_Y, DETAIL_W, regionH,
+                                         regionBackdrop.width, regionBackdrop.height,
+                                         regionBackdrop.data);
+                // The focus ring stays on top of the scenery.
+                if (gameFocused)
+                    fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, CardScenery::kHomeCardRadius,
+                                       Colors::Info, 3);
                 fb.drawFilledRoundedRect(DETAIL_X + 12, HUB_Y + regionH - 2,
                                          DETAIL_W - 24, 2, 1,
                                          withAlpha(Colors::Divider, 180));
@@ -5316,6 +5326,10 @@ namespace UI {
             // LeaveDecisionLayout (word-wrapped with the bundled font's advances). The buttons
             // carry the real coloured face-button badges and are touch targets. Semantics are
             // frozen: only Y commits (Launch / Quit), A and B stay, an ambiguous press stays.
+            // Round 11 QUIT: two neutral buttons, B Cancel (the safe choice, left) and Y Quit /
+            // Launch; no redundant A Stay, no pre-selected-looking highlight, and no footer that
+            // repeats the buttons. A still stays, unlabelled. The empty nav bar covers the Home
+            // footer underneath and republishes only the two buttons as touch targets.
             namespace G = PokeBank::UIModel::SharedMenuGeometry;
             const bool quitting = leaveKind == LeaveKind::Quit;
             const auto text = PokeBank::UIModel::LeaveDecisionLayout::build(
@@ -5333,15 +5347,11 @@ namespace UI {
                             i == 0 ? Colors::TextSecondary : Colors::TextMuted,
                             i == 0 ? TextStyle::Body : TextStyle::Caption);
             }
-            const G::Rect back = G::buttonRect(layout, 0, 3);
-            const G::Rect stay = G::buttonRect(layout, 1, 3);
-            const G::Rect commit = G::buttonRect(layout, 2, 3);
-            drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");
-            drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");
-            drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y",
-                            quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);
-            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
-                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay"));
+            const G::Rect cancel = G::buttonRect(layout, 0, 2);
+            const G::Rect commit = G::buttonRect(layout, 1, 2);
+            drawGlyphButton(fb, cancel.x, cancel.y, cancel.w, cancel.h, "B", "Cancel");
+            drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y", quitting ? "Quit" : "Launch");
+            drawNavBar(fb, std::string());
         } else if (overlay == Overlay::OpenFailure) {
             constexpr int w = 860, h = 280;
             const int x = (fb.getWidth() - w) / 2;
@@ -5724,7 +5734,7 @@ namespace UI {
                 fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
                             Colors::Info, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Open / Link"},
-                            {"Y", "Up Folder"}, {"X", "Start Folder"}, {"B", "Cancel"}});
+                            {"Y", "Up Folder"}, {"X", "Start Folder"}, {"B", "Close"}, {"-", "Cancel"}});
         } else if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& parent = u->titles[titleIndex];
@@ -5987,7 +5997,14 @@ namespace UI {
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
                             {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
-            if (helpReturnOverlay == Overlay::GameWorkspace) {
+            if (helpReturnOverlay == Overlay::RecoveryFiles) {
+                // Round 11 H12: Recovery files Help (B / - return with the selection kept).
+                std::vector<ControllerHint> rows;
+                for (const auto& line : PokeBank::UIModel::RecoveryManagement::helpLines())
+                    rows.push_back({line.glyph, line.label});
+                drawProductHelpOverlay(fb, "Recovery files Controls", rows,
+                                       "Newest copies, Bank files and original saves are never removed.");
+            } else if (helpReturnOverlay == Overlay::GameWorkspace) {
                 drawProductHelpOverlay(fb, "Current Game Controls", {
                     {"D-pad/Stick", "Navigate Overview / Party / Boxes / Trainer / Backups"},
                     {"A", "Open the focused game tool"},
@@ -6119,8 +6136,14 @@ namespace UI {
             for (int i = recoveryScroll; i < std::min(rows, recoveryScroll + visible); ++i) {
                 const auto& row = recoveryRows[static_cast<size_t>(i)];
                 const G::Rect cell = G::cellRect(layout, i - recoveryScroll);
+                // Round 11 H12: a save heading is an unboxed label with no touch target, so a tap can
+                // never focus it; a picked copy is drawn with the shared marked style.
+                if (row.heading) {
+                    BackupBrowserChrome::drawHeading(fb, cell.x, cell.y, cell.w, cell.h, row.title, row.detail);
+                    continue;
+                }
                 BackupBrowserChrome::drawRow(fb, cell.x, cell.y, cell.w, cell.h, row.title, row.detail, row.badge,
-                                             i == recoveryIndex);
+                                             i == recoveryIndex, row.picked);
                 overlayRects.push_back({cell.x, cell.y, cell.w, cell.h, i});
             }
             if (rows == 0)
@@ -6137,17 +6160,11 @@ namespace UI {
                 fb.drawText(toast.x + EB::kNoticePadX, toast.y + 7, recoveryNotice, Colors::Text,
                             TextStyle::Caption);
             }
-            bool removable = false;
-            if (recoveryIndex >= 0 && recoveryIndex < rows) {
-                const int item = recoveryRows[static_cast<size_t>(recoveryIndex)].item;
-                removable = item >= 0 &&
-                    recoveryListing.verdicts[static_cast<size_t>(item)].status == RM::Status::Removable;
-            }
-            const size_t picked = RM::selectedCount(recoverySelection);
-            std::vector<ControllerHint> hints = {{"D-pad/Stick", "Choose"},
-                                                 {"A", removable ? "Select" : "Why kept"}};
-            if (picked > 0) hints.push_back({"Y", "Remove selected (" + std::to_string(picked) + ")"});
-            hints.push_back({"B", "Back"});
+            // Round 11 H12: A Select / Deselect / Why kept for the focused row, Y only with a
+            // selection, - Help, B Back (RecoveryManagementModel footerHints).
+            std::vector<ControllerHint> hints;
+            for (const auto& hint : RM::footerHints(recoveryRows, recoveryIndex, RM::selectedCount(recoverySelection)))
+                hints.push_back({hint.glyph, hint.label});
             drawNavBar(fb, hints);
         } else if (overlay == Overlay::RecoveryConfirm) {
             namespace RM = PokeBank::UIModel::RecoveryManagement;
@@ -6177,8 +6194,8 @@ namespace UI {
             }
             fb.drawText(x + 30, ly + 14, "Newest copies, Bank files and original saves are never removed.",
                         Colors::TextMuted, TextStyle::Caption);
-            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
-                                                   "Y", "Remove", "A", "Cancel"));
+            // Round 11 H12: the footer names B, as the sentence above does (A also keeps them).
+            drawNavBar(fb, {{"B", "Keep"}, {"Y", "Remove"}});
         } else if (overlay == Overlay::Options) {
             constexpr int w = 560, h = 326, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;

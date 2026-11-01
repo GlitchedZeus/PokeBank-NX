@@ -1,3 +1,4 @@
+#include "UI/CreateRequiredFields.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
@@ -21,7 +22,7 @@ enum class UX2Mode : uint8_t {
     MoveEditor,
     DVEditor,
     StatExpEditor,
-    CloneDestination,
+    CloneDestination,   // no longer entered: Round 11 H31 Clone is the shared box carry (ux2OpenClone)
     RemoveConfirm,
     Review,
     Provenance,
@@ -193,7 +194,12 @@ void ux2BeginAdd(TrainerViewScreen& screen) {
     state.picker = UX2Picker::None;
 }
 
-bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const char* success) {
+// Stages one Edit-draft change. `kind` is the Round 11 H22 routine-edit rule (UI/EditFeedback.h): a
+// field edit posts its `success` line; a routine edit (reroll, Shiny) posts nothing on success.
+// A rejected edit always posts its error.
+bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const char* success,
+                   PokeBank::UIModel::EditFeedback::Kind kind = PokeBank::UIModel::EditFeedback::Kind::Field) {
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     auto& state = ux2StateFor(screen);
     auto* e = editor(screen);
     if (!e) return false;
@@ -205,7 +211,8 @@ bool ux2CommitEdit(TrainerViewScreen& screen, const BoxPokemonEdit& edit, const 
         return false;
     }
     refreshBoxes(screen);
-    screen.postStatus(success ? success : "Pokemon change staged only; original .srm unchanged", 240);
+    EditFeedback::report(screen, kind, EditFeedback::Outcome::Applied,
+                         success ? success : "Pokemon change staged only; original .srm unchanged", 240);
     return true;
 }
 
@@ -213,6 +220,11 @@ bool ux2StageAdd(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     auto* e = editor(screen);
     if (!e) return false;
+    // Round 11 shared Create rule (UI/CreateRequiredFields.h): at least one move; Gen I has no met data.
+    if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreate(1, false, state.draft.moves); missing.any()) {
+        screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message(missing, "Add"), 360);
+        return false;
+    }
     std::string error;
     if (!e->stageAdd(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), state.draft, error)) {
         screen.postStatus(error.empty() ? "Generation I Add was rejected" : error, 360);
@@ -268,9 +280,10 @@ bool ux2ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     const auto selected = static_cast<uint16_t>(state.pickerValue);
     if (state.mode == UX2Mode::AddDraft) {
-        // R2-BUG-004: a real species change brings the new species' native moves (Gen1SpeciesChangeMoves.h).
+        // Round 11: a real species change keeps only the draft's moves the new species can use
+        // (Gen1SpeciesChangeMoves.h); it never adds one.
         if (selected != state.draft.species)
-            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.level),
+            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.moves, state.draft.pp, state.draft.ppUps),
                                    state.draft.moves, state.draft.pp, state.draft.ppUps);
         state.draft.species = selected;
         state.picker = UX2Picker::None;
@@ -282,7 +295,12 @@ bool ux2ApplySpeciesPicker(TrainerViewScreen& screen) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
         if (pokemon && selected != pokemon->species)
-            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->level), edit);
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);
+        if (pokemon && edit.moves && PokeBank::UIModel::CreateRequiredFields::forEdit(pokemon->moves, *edit.moves).move) {
+            screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message({false, true}), 360);
+            state.picker = UX2Picker::None;
+            return false;
+        }
         const bool ok = ux2CommitEdit(screen, edit, "Species change staged; source .srm unchanged");
         state.picker = UX2Picker::None;
         return ok;
@@ -432,47 +450,18 @@ bool ux2ApplyStatExp(TrainerViewScreen& screen) {
     return true;
 }
 
+// Round 11 H31 (owner): Clone is the shared visual carry (ClassicPackedMoveOverlay), as in every other
+// generation. Actions closes, the copy rides the box cursor from the box's next free slot, A places
+// it there (Gen I boxes are packed lists, so any empty cell of the chosen box lands at its next free
+// slot), an occupied slot or a full box is refused, B cancels. Nothing is staged before A, and no
+// Actions menu reopens. Both Gen I Actions sheets (ClassicReleaseActionFix and this one) come here.
 void ux2OpenClone(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
-    auto* e = editor(screen);
-    if (!e) return;
-    state.cloneBox = std::clamp(state.box, 0, std::max(0, ux2BoxCount(*e) - 1));
-    const int first = ux2FirstEmpty(*e, state.cloneBox);
-    state.cloneSlot = first >= 0 ? first : 0;
-    state.mode = UX2Mode::CloneDestination;
-}
-
-bool ux2StageClone(TrainerViewScreen& screen) {
-    auto& state = ux2StateFor(screen);
-    auto* e = editor(screen);
-    if (!e) return false;
-    const int slots = ux2SlotCount(*e, state.cloneBox);
-    if (state.cloneSlot < 0 || state.cloneSlot >= slots) return false;
-    std::string error;
-    const auto occupied = e->boxedPokemon(static_cast<size_t>(state.cloneBox), static_cast<size_t>(state.cloneSlot), error);
-    if (!error.empty()) { screen.postStatus(error, 300); return false; }
-    if (occupied) {
-        screen.postStatus("Choose an empty destination slot", 240);
-        return false;
-    }
-    const int writable = ux2FirstEmpty(*e, state.cloneBox);
-    if (writable < 0) {
-        screen.postStatus("Destination Generation I box is full", 240);
-        return false;
-    }
-    if (state.cloneSlot != writable) {
-        screen.postStatus("Gen I boxes are contiguous; only the next writable empty slot can store a clone", 360);
-        return false;
-    }
-    if (!e->stageClone(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
-                       static_cast<size_t>(state.cloneBox), static_cast<size_t>(state.cloneSlot), error)) {
-        screen.postStatus(error.empty() ? "Generation I clone was rejected" : error, 300);
-        return false;
-    }
-    refreshBoxes(screen);
-    screen.postStatus("Clone staged at chosen writable slot; source Pokemon and original .srm unchanged", 300);
+    const int box = state.box, slot = state.slot;
     ux2Close(state);
-    return true;
+    screen.controllerNavigation.reset();
+    if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+        screen.postStatus("Clone could not start from here", 240);
 }
 
 void ux2HandlePicker(TrainerViewScreen& screen, uint64_t down) {
@@ -715,29 +704,6 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.mode == UX2Mode::LevelExpEditor || state.mode == UX2Mode::MoveEditor ||
         state.mode == UX2Mode::DVEditor || state.mode == UX2Mode::StatExpEditor) {
         ux2HandleSubEditor(screen, down);
-        return;
-    }
-
-    if (state.mode == UX2Mode::CloneDestination) {
-        const int boxes = ux2BoxCount(*e);
-        const int slots = ux2SlotCount(*e, state.cloneBox);
-        constexpr int cols = 5;
-        if (down & HidNpadButton_L) {
-            state.cloneBox = (state.cloneBox + boxes - 1) % boxes;
-            const int first = ux2FirstEmpty(*e, state.cloneBox); state.cloneSlot = first >= 0 ? first : 0;
-        }
-        if (down & HidNpadButton_R) {
-            state.cloneBox = (state.cloneBox + 1) % boxes;
-            const int first = ux2FirstEmpty(*e, state.cloneBox); state.cloneSlot = first >= 0 ? first : 0;
-        }
-        if (slots > 0) {
-            if (down & HidNpadButton_Left) state.cloneSlot = (state.cloneSlot + slots - 1) % slots;
-            if (down & HidNpadButton_Right) state.cloneSlot = (state.cloneSlot + 1) % slots;
-            if (down & HidNpadButton_Up) state.cloneSlot = (state.cloneSlot - cols + slots) % slots;
-            if (down & HidNpadButton_Down) state.cloneSlot = (state.cloneSlot + cols) % slots;
-        }
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return; }
-        if (down & HidNpadButton_A) ux2StageClone(screen);
         return;
     }
 
@@ -1201,8 +1167,11 @@ std::string ux2FooterText(const TrainerViewScreen& screen, const UX2State& state
         std::string error;
         auto* mutableScreen = const_cast<TrainerViewScreen*>(&screen);
         const auto p = pokemonAt(*mutableScreen, screen.selectedBoxIndex, screen.selectedItemIndex, error);
-        if (p) return "A: Actions | Y: Remove | L/R: Box | B: Back";
-        return "A: Actions | X: Add | L/R: Box | B: Back";
+        // Round 11 X-IMPEXP: X Export / Import on the Boxes grid only (none on the Storage pane).
+        if (screen.selectedMode == TrainerViewScreen::ViewMode::Storage)
+            return p ? "A: Actions | Y: Remove | L/R: Box | B: Back" : "A: Actions | L/R: Box | B: Back";
+        if (p) return "A: Actions | X: Export | Y: Remove | L/R: Box | B: Back";
+        return "A: Actions | X: Import | L/R: Box | B: Back";
     }
     return {};
 }
@@ -1262,8 +1231,18 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     std::string error;
     const auto pokemon = ux2SelectedPokemon(screen, error);
     if (down & HidNpadButton_X) {
-        if (pokemon) { screen.postStatus("X Add is available on an empty writable Gen I slot", 240); return true; }
-        ux2BeginAdd(screen); return true;
+        // Round 11 X-IMPEXP: on the Boxes grid X exports an occupied slot / imports into the box
+        // (its first empty slot; Gen I boxes are packed lists). Add Pokemon stays on the A sheet.
+        // The Storage save pane has no X shortcut. editorAvailable() was checked above.
+        namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+        const auto activation = Shared::boxActivation(static_cast<bool>(pokemon), false, !storage,
+                                                      Shared::fileCapabilities(true));
+        if (activation == Shared::BoxActivation::ImportFile)
+            PokemonFileMenus::beginImport(screen, 1, state.box, state.slot);
+        else if (activation == Shared::BoxActivation::ExportFile)
+            PokemonFileMenus::exportPokemon(screen, 1, false, state.box, state.slot);
+        screen.controllerNavigation.reset();
+        return true;
     }
     if (down & HidNpadButton_Y) {
         if (!pokemon) { screen.postStatus("Y Remove is available only on an occupied Gen I slot", 240); return true; }

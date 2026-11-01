@@ -43,7 +43,10 @@ namespace UI
             HiraganaB,
             KatakanaA,
             KatakanaB,
-            KanaSymbols
+            KanaSymbols,
+            // Korean names (request.koreanHangul): two-set jamo keys composed into syllables,
+            // Utils/HangulComposer.h.
+            Hangul
         };
 
         enum class KeyboardKeyAction : uint8_t
@@ -65,7 +68,8 @@ namespace UI
             KanaHandakuten,
             KanaSmall,
             KanaNextMode,
-            KanaOtherHalf
+            KanaOtherHalf,
+            ShowHangul
         };
 
         /// Shift is one-shot unless pressed twice: Once applies to the next letter only, Locked
@@ -101,6 +105,10 @@ namespace UI
             bool textSelected = false;
 
             KeyboardPage page = KeyboardPage::Letters;
+            /// The character before the caret was produced by a Hangul key in this run, so the next
+            /// jamo may combine with it. Any other edit or caret move ends the run, so text that was
+            /// already there (or typed on another page) is never recomposed.
+            bool hangulComposing = false;
             ShiftMode shift = ShiftMode::Off;
             std::vector<KeyboardKey> keys; // the current page, row by row
             int selectedKeyIndex = 0;
@@ -162,6 +170,7 @@ namespace UI
             void toggleSign();
             void handOffToSystemKeyboard();
             void applyKanaModifier(KeyboardKeyAction modifier);
+            void typeHangul(const std::string &jamo);
             void finish(bool acceptText);
         };
 

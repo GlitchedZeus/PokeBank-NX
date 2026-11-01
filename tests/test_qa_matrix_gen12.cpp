@@ -833,11 +833,12 @@ void runRound2Gen2(Row& row, const Spec& spec, const G2::ReadOnlySave& save, con
                      "SpA/SpD " + std::to_string(battle[4]) + "/" + std::to_string(battle[5]) + " != formula " +
                          std::to_string(spa) + "/" + std::to_string(spd));
             // Round 7 (owner A22 / C01, Gen I reference): the numeric STATS columns hold plain
-            // numbers; the Special row's Calculated cell is empty and SpA / SpD (battle[4] /
-            // battle[5], checked against the formula above) are shown in the Special block below
-            // the grid. Neither value is a second DV or Stat Exp input.
-            c.expect(W::calculatedCell(battle, W::kSpecialRow).empty(),
-                     "the Special row's Calculated cell holds no squeezed SpA / SpD value");
+            // numbers and SpA / SpD (battle[4] / battle[5], checked against the formula above) are
+            // shown in the Special block below the grid. Round 11 (owner H22, deliberate change of
+            // the Round 7 "empty cell" check): the Special row's Calculated cell shows both numbers
+            // too, plain and in the block's order. Neither value is a second DV or Stat Exp input.
+            c.expect(W::calculatedCell(battle, W::kSpecialRow) == std::to_string(spa) + "  " + std::to_string(spd),
+                     "the Special row's Calculated cell shows Sp. Atk then Sp. Def");
             for (int r = 0; r < W::kSpecialRow; ++r)
                 c.expect(W::calculatedCell(battle, r) == std::to_string(battle[static_cast<size_t>(r)]),
                          "calculated row " + std::to_string(r));

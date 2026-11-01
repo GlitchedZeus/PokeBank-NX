@@ -201,7 +201,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY, HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int page = std::max(1, layout.visibleRows);
+    // '-' (Cancel, Round 11 H39) comes first so it wins over A pressed in the same frame.
     const std::pair<uint64_t, Model::Key> keys[] = {
+        {down & HidNpadButton_Minus, Model::Key::Cancel},
         {nav & HidNpadButton_Up, Model::Key::Up},
         {nav & HidNpadButton_Down, Model::Key::Down},
         {down & (HidNpadButton_L | HidNpadButton_Left), Model::Key::PageUp},
@@ -293,11 +295,13 @@ void drawDialog(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
     SharedScrollbar::drawAndPublish(fb, s.scrollbar, frame.right() - 14, l.list.y, SharedScrollbar::kTrackWidth,
                                     l.list.h, SharedScrollbar::rows(count, l.visibleRows, first));
+    // B names what it does here (Model::bCloses); '-' always cancels the import (Round 11 H39).
     if (favorites)
-        drawNavBar(fb, {{"A", "Open"}, {"Y", "Remove"}, {"B", "Back"}});
+        drawNavBar(fb, {{"A", "Open"}, {"Y", "Remove"}, {"B", "Back"}, {"-", "Cancel"}});
     else
         drawNavBar(fb, {{"A", "Open"}, {"Y", s.model.listing.favorite ? "Unfavourite" : "Favourite"},
-                        {"X", "Favourites"}, {"L/R", "Page"}, {"B", "Back"}});
+                        {"X", "Favourites"}, {"L/R", "Page"}, {"B", Model::bCloses(s.model) ? "Close" : "Up Folder"},
+                        {"-", "Cancel"}});
 }
 
 } // namespace UI::PokemonFileDialog

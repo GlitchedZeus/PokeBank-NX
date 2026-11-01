@@ -9,6 +9,7 @@
 #include "Integration/Encounter/EncounterContext45.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Names/LocationDisplayNames.h"
+#include "UI/ExactGameMetLocations.h"
 #include "UI/SharedMenuGeometry.h"
 
 #include <cassert>
@@ -108,12 +109,17 @@ void testGen45RowsFit() {
 }
 
 void testGen3RowsFit() {
-    // The exact text Gen3SharedPokemonSurface.inc metLocationChoiceText() builds.
-    const std::string src = read("src/UI/Gen3SharedPokemonSurface.inc");
+    // The exact text the Gen III Met Location picker draws. Round 11 follow-up (updated pin): it moved
+    // from Gen3SharedPokemonSurface.inc metLocationChoiceText() into the picker model
+    // (Gen3EncounterPickerModel.h rowText), which the surface now calls, so the verified-catch /
+    // unverified labelling is unit-tested; the strings are unchanged.
+    const std::string surface = read("src/UI/Gen3SharedPokemonSurface.inc");
+    assert(surface.find("EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,") != std::string::npos);
+    const std::string src = read("include/UI/Gen3EncounterPickerModel.h");
     assert(src.find("\" Lv. \" + std::to_string(encounter.minLevel);") != std::string::npos);
     assert(src.find("detail += \", met as \" + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));") != std::string::npos);
     assert(src.find("detail += \" (evo. \" + std::to_string(selected->minimumEvolutionLevel) + \")\";") != std::string::npos);
-    assert(src.find("\"Met Lv. \" + std::to_string(stored.metLevel)};") != std::string::npos);
+    assert(src.find("\"Met Lv. \" + std::to_string(storedMetLevel), false};") != std::string::npos);
     int widest = 0, rows = 0;
     std::string worst;
     const std::pair<const char*, uint8_t> games[] = {
@@ -139,6 +145,16 @@ void testGen3RowsFit() {
             const std::string name = "Keep stored: " + Names::getMetLocationDisplayName(origin, location);
             ++rows;
             const int w = rowWidth(name, "Met Lv. 100");
+            if (w > widest) { widest = w; worst = name; }
+        }
+    // Round 11 FRLG: every other-native row (a native place that is not a listed catch, or a trade /
+    // egg / event marker) of each exact origin game, with the text metLocationChoiceText() builds.
+    assert(src.find("Names::getMetLocationDisplayName(origin, location), MetRows::gen3OtherDetail(location), false}") != std::string::npos);
+    for (uint8_t origin = 1; origin <= 5; ++origin)
+        for (const auto location : PokeBank::UIModel::ExactGameMetLocations::gen3OfferedLocations(origin)) {
+            const std::string name = Names::getMetLocationDisplayName(origin, location);
+            ++rows;
+            const int w = rowWidth(name, PokeBank::UIModel::ExactGameMetLocations::gen3OtherDetail(location));
             if (w > widest) { widest = w; worst = name; }
         }
     if (widest > kTextRoom) std::cerr << "clipped: " << worst << " (" << widest << " > " << kTextRoom << ")\n";

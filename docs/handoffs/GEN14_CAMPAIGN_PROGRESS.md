@@ -133,7 +133,9 @@ Base: #307 `0faf7e9c` (fast-forward). Branch `claude/gen14-campaign-20261015`.
 ### R2-CHECK-009 — findings and fix
 
 - Gen I Move was supported (the Boxes-view hold-Y carry, ClassicPackedMove beginGen1) but absent
-  from Box Actions, while Gen II-V list it in the shared E02 order. Per the owner directive
+  from Box Actions, while Gen II-V list it in the shared E02 order. (Round 11 correction: Gen II
+  and Gen III did NOT list Move until Round 11, which added it through the shared
+  SharedPokemonEditor capability model, canMove, with beginGen2FromAction / beginGen3FromAction.) Per the owner directive
   ("repair the actual action routing" when supported but absent), Gen I Box Actions now lists
   View, Edit, Clone, Move, Release, Origin & Legality (+ Review while staged changes exist),
   Cancel. Move starts the SAME Boxes carry with the Pokemon picked up

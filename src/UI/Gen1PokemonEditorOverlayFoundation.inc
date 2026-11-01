@@ -206,16 +206,19 @@ void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
         screen.postStatus("No other DVs keep this Pokemon shiny; DVs unchanged", 280);
         return;
     }
+    // Round 11 H22 (UI/EditFeedback.h): a successful roll is a routine edit and posts no toast; the
+    // DVs and calculated stats change in place. A roll that cannot change anything says why (above).
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     const auto dvs = rolled.dvs;
     if (add) {
         state.draft.dvs = dvs;
         ux3.preShinyDraftDVs.reset();
-        screen.postStatus("Generation I DVs re-rolled in this draft; Add stages them", 280);
+        EditFeedback::applied(screen, EditFeedback::Kind::Reroll);
         return;
     }
     BoxPokemonEdit edit;
     edit.dvs = dvs;
-    if (ux2CommitEdit(screen, edit, "Randomized DVs set in this edit draft; X Keep stages it"))
+    if (ux2CommitEdit(screen, edit, nullptr, EditFeedback::Kind::Reroll))
         ux3.preShinyEditDVs.reset();
 }
 

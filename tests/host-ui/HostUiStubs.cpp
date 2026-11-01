@@ -27,13 +27,21 @@ void PKSEFramebuffer::drawText(int x, int y, const std::string& text, Color colo
     HostUi::recordText(x, y, text, static_cast<int>(style), color.toRGBA8());
 }
 void PKSEFramebuffer::drawSymbol(int, int, const std::string&, Color, TextStyle) {}
-void PKSEFramebuffer::drawImage(int, int, int, int, const unsigned char*, int) {}
-void PKSEFramebuffer::drawImageScaled(int, int, int, int, int, int, const unsigned char*, int) {}
+void PKSEFramebuffer::drawImage(int, int, int, int, const unsigned char*, int) { ++HostUi::rectImageDraws; }
+void PKSEFramebuffer::drawImageScaled(int, int, int, int, int, int, const unsigned char*, int) { ++HostUi::rectImageDraws; }
+void PKSEFramebuffer::drawImageRoundedCover(int x, int y, int w, int h, RoundedArtwork::CornerRadii c, int, int,
+                                            const unsigned char*, int) {
+    HostUi::roundedShapes.push_back({x, y, w, h, c.topLeft, c.topRight, c.bottomRight, c.bottomLeft, true, 0});
+}
+void PKSEFramebuffer::drawFilledRoundedRectVarying(int x, int y, int w, int h, RoundedArtwork::CornerRadii c, Color col) {
+    HostUi::occlude(x, y, w, h, col.a);
+    HostUi::roundedShapes.push_back({x, y, w, h, c.topLeft, c.topRight, c.bottomRight, c.bottomLeft, false, col.toRGBA8()});
+}
 void PKSEFramebuffer::flush() {}
 void PKSEFramebuffer::invalidateImage(const unsigned char*) {}
 void PKSEFramebuffer::onSpriteEvicted(const unsigned char*) {}
 void PKSEFramebuffer::setClipRect(int x, int y, int w, int h) {
-    HostUi::clipOn = true; HostUi::clipX = x; HostUi::clipY = y; HostUi::clipW = w; HostUi::clipH = h;
+    ++HostUi::clipSets; HostUi::clipOn = true; HostUi::clipX = x; HostUi::clipY = y; HostUi::clipW = w; HostUi::clipH = h;
 }
 void PKSEFramebuffer::clearClip() { HostUi::clipOn = false; }
 void PKSEFramebuffer::pushTranslation(float, float) {}
@@ -94,6 +102,11 @@ NumberResult promptNumber(const std::string&, int, int, int) { return HostUi::ne
 KeyboardResult promptJapaneseName(const std::string&, const std::string&, int maxChars) {
     ++HostUi::japanesePromptCount;
     HostUi::lastJapaneseMaxChars = maxChars;
+    return HostUi::nextText();
+}
+KeyboardResult promptKoreanName(const std::string&, const std::string&, const std::string&, int maxChars) {
+    ++HostUi::koreanPromptCount;
+    HostUi::lastKoreanMaxChars = maxChars;
     return HostUi::nextText();
 }
 bool copyDirectoryTransactional(const char*, const char*) { return false; }
