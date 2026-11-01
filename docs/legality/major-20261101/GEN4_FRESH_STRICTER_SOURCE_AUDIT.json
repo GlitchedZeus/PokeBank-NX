@@ -1,0 +1,267 @@
+{
+  "policy": "All 21 remain raw false Invalid. Independently recomputed original-game coupled setter predicate on every fresh byte sequence; scoped ordinary nonfateful wild/no-egg histories. Static native source review, not acquired specimen or hardware replay. No ID-based exception or denominator change.",
+  "source_pins": {
+    "platinum": {
+      "commit": "637bb186e11b5ce1ee578981311c057498e57126",
+      "files": {
+        "src/pokemon.c": "84838b196abe0d851f76e2f1ea75e04473b158ede6d517a4229f2c337b4dda8b",
+        "src/unk_02017038.c": "78515bffdbfa9a9c5bd95c51e8141ea8c15f6550dcefb990ed3790617727fb27"
+      }
+    },
+    "heartgold": {
+      "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+      "files": {
+        "src/pokemon.c": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+        "include/constants/map_sections.h": "1102c63c2637718fa28aeb57038c78c5d614f6c8cca0018ca1d199a07613431a"
+      }
+    }
+  },
+  "prior_source_review_sha256": "f6ae1e8ce25586d3aff49a83862c68d9f6c27d5721a0d2d24a8473aa5a0370cb",
+  "native_ranges": [
+    [
+      1,
+      111
+    ],
+    [
+      2000,
+      2010
+    ],
+    [
+      3000,
+      3076
+    ]
+  ],
+  "rows": [
+    {
+      "id": "m29195-metlocext",
+      "sha256": "359082030a96bd78931eb1fe3b108603eccb124a7f34b73dc7f39566ded68359",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 18,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m29195-metlocext P 0CC7FD2400001F72360000001929CC33E34C000046060002000000000000000000000000000000002700370032005D001E191419000000008A329B180000000002000000000001003A013D0143012E013F012D013501FFFF000000000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B010000120000041B070000 VALID EncounterSlot4:54 ; ",
+      "raw_production": "m29195-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 18 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m29800-metlocext",
+      "sha256": "4439dd109015da59e1da18e94075d536eaa21493984beba4221c14358e0959a3",
+      "stored_origin": 12,
+      "extended_met": 1,
+      "dp_met": 19,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m29800-metlocext Pt 717C7BF2000061F13700000040CE78E6C0550000460D0002000000000000000000000000000000002700370032005D001E19141900000000D24CFC140000000002000000000001003101390136012E013F012D013501FFFF000000000000000C00000000000000003E0149015701580149015601FFFF00000000001A0B010000130000041C070000 VALID EncounterSlot4:55 ; ",
+      "raw_production": "m29800-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 19 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m37888-metlocext",
+      "sha256": "bf13a4d2162f9f6d407b78ed0a0240d3d3052a933f3c20160d05ec3f65e4de40",
+      "stored_origin": 10,
+      "extended_met": 1,
+      "dp_met": 18,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m37888-metlocext D 37D8CE0A0000A938770000000D3DFC8700B0010046290002000000000000000000000000000000005A0130001E0060010F141914000000003CF5EB360000000002000000000001003D012F012B013501330138013101FFFF000000000000000A00000000000000003E0149015701580149015601FFFF00000000001A0B0100001200000430070000 VALID EncounterSlot4:119 ; ",
+      "raw_production": "m37888-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 18 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m37903-metlocext",
+      "sha256": "1c764a0a41dc142642bbb40fdd60121fd33d7eed26a9a7231acd196d442cccc5",
+      "stored_origin": 10,
+      "extended_met": 1,
+      "dp_met": 27,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m37903-metlocext D 26B0E44D00003013770000000D3DFC87B7E7000046210002000000000000000000000000000000001E006001AF00880119140F140000000074D2D7030000000002000000000001003D012F012B013501330138013101FFFF000000000000000A00000000000000003E0149015701580149015601FFFF00000000001A0B0100001B00000427070000 VALID EncounterSlot4:119 ; ",
+      "raw_production": "m37903-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 27 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m37931-metlocext",
+      "sha256": "76d82b266a47e17bf5d8f5038d6b474377a5627d79dcba21c522c2da07ce28ea",
+      "stored_origin": 10,
+      "extended_met": 1,
+      "dp_met": 77,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m37931-metlocext D 0908FEA80000486D770000000D3DFC8700B0010046290002000000000000000000000000000000005A0130001E0060010F141914000000000D287E380000000002000000000001003D012F012B013501330138013101FFFF000000000000000A00000000000000003E0149015701580149015601FFFF00000000001A0B0100004D00000430070000 VALID EncounterSlot4:119 ; ",
+      "raw_production": "m37931-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 77 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m37951-metlocext",
+      "sha256": "a30aa2c60b56d37878fbf776a7d7d83b4d590954c55ca0144db11a3dbe0c710a",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 18,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m37951-metlocext P D26CFA910000268A77000000CC54CE545F74000046210002000000000000000000000000000000001E006001AF00880119140F1400000000D5AA46300000000000000000000001003D012F012B013501330138013101FFFF000000000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B010000120000041F070000 VALID EncounterSlot4:119 ; ",
+      "raw_production": "m37951-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 18 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m38029-metlocext",
+      "sha256": "1285f794470c5bfb7ba5710a20b4def63d56c576cc0fa746b6b11d90efc09129",
+      "stored_origin": 12,
+      "extended_met": 1,
+      "dp_met": 19,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m38029-metlocext Pt 73739A360000520477000000C28DFF4A00B001004629000200000000000000000000000000000000AF0088011F007F000F14140F000000009AD0B5160000000002000000000001003D012F012B013501330138013101FFFF000000000000000C00000000000000003E0149015701580149015601FFFF00000000001A0B0100001300000430070000 VALID EncounterSlot4:119 ; ",
+      "raw_production": "m38029-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 19 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39397-metlocext",
+      "sha256": "4d0a8ca91d3c3a0f7021b1445acb767dd38ef4aa069d4386f6b800dec3934dd3",
+      "stored_origin": 10,
+      "extended_met": 1,
+      "dp_met": 45,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39397-metlocext D B59D7B0E0000471681000000C1958860102700004621000200000000000000000000000000000000960021000000000028230000000000006E471E2800000000000000000000010037012B013101330135012B013C013A01FFFF00000000000A00000000000000003E0149015701580149015601FFFF00000000001A0B0100002D00000414070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39397-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 45 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39521-metlocext",
+      "sha256": "22c0fc5b94640dc2bfda3880e99673c29b7c6cbc3c0dce61563207e47676b4c8",
+      "stored_origin": 10,
+      "extended_met": 1,
+      "dp_met": 61,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39521-metlocext D 344198990000DBDA81000000C19588607D21000046210002000000000000000000000000000000009600000000000000280000000000000084323F2A00000000020000000000010037012B013101330135012B013C013A01FFFF00000000000A00000000000000003E0149015701580149015601FFFF00000000001A0B0100003D00000413070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39521-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 61 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39547-metlocext",
+      "sha256": "abc9a5ca58e695b73fe269dec3637e11ce7e771c1869d0f42728a7a7f99efd40",
+      "stored_origin": 10,
+      "extended_met": 1,
+      "dp_met": 76,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39547-metlocext D B103829A0000FBCC81000000C19588600014000046210002000000000000000000000000000000009600210000000000282300000000000017101E2900000000000000000000010037012B013101330135012B013C013A01FFFF00000000000A00000000000000003E0149015701580149015601FFFF00000000001A0B0100004C00000410070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39547-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 76 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39667-metlocext",
+      "sha256": "4a52b2b8e95e92e55c541b0134227befa257771a82b09788f07e3a59da8b33cc",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 11,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39667-metlocext P BD6F492A00002FB88100000091C22AFF9C0000004621000200000000000000000000000000000000960000000000000028000000000000004F8D790100000000000000000000010037012B013101330135012B013C013A01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100000B00000405070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39667-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 11 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39680-metlocext",
+      "sha256": "61cfec8b9522067e1ba88fdf599274837c84ff4a7e5f5af0d9f3bddd1c149f18",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 13,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39680-metlocext P 0981E09400006BEE8100000091C22AFF50000000462100020000000000000000000000000000000096000000000000002800000000000000659AE82A00000000020000000000010037012B013101330135012B013C013A01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100000D00000404070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39680-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 13 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39874-metlocext",
+      "sha256": "171ff6c8488439bf9b73a523be288e29caf7af327dc9ef61a4b53e48ad9948b4",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 35,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39874-metlocext P 70689BCB00004A238100000091C22AFF5000000046210002000000000000000000000000000000009600000000000000280000000000000072F3A40600000000020000000000010037012B013101330135012B013C013A01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100002300000404070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39874-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 35 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39895-metlocext",
+      "sha256": "9a9b011be71732a3093f0c4d9a8aa041a5088d6b65b8ace8847a5ff32898be78",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 36,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39895-metlocext P 9163B8030000B4918100000091C22AFFE20400004621000200000000000000000000000000000000960000000000000028000000000000000D60DC0300000000000000000000010037012B013101330135012B013C013A01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B010000240000040A070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39895-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 36 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39913-metlocext",
+      "sha256": "639aafebebd9b5d112828218697f167086b3b03f9005683c1a9ad0980bbea5f8",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 37,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39913-metlocext P A54DA1FF000080358100000091C22AFF7D21000046210002000000000000000000000000000000009600210000000000282300000000000083BE6C0900000000000000000000010037012B013101330135012B013C013A01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100002500000413070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39913-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 37 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m39979-metlocext",
+      "sha256": "60b9ca85714f266da7850ae4e35a06d41982289c0e6e760784c890a041c56e62",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 42,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m39979-metlocext P 63790EE700007E698100000091C22AFF0E0100004621000200000000000000000000000000000000960000000000000028000000000000003025531A00000000020000000000010037012B013101330135012B013C013A01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100002A00000406070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m39979-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 42 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m40709-metlocext",
+      "sha256": "d48902863a9bd75bf8d315008f1c3be1eda9b186d4ac410549cf357c83f3fe3d",
+      "stored_origin": 12,
+      "extended_met": 1,
+      "dp_met": 50,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m40709-metlocext Pt 0D484A060000A37B8100000000C8977A0E0100004621000200000000000000000000000000000000960000000000000028000000000000004FC2750D00000000020000000000010037012B013101330135012B013C013A01FFFF00000000000C00000000000000003E0149015701580149015601FFFF00000000001A0B0100003200000406070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m40709-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 50 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m40792-metlocext",
+      "sha256": "e9816744e902acdb4234836be0980276d59c1328ea9177bd2cae46c7845dd49f",
+      "stored_origin": 12,
+      "extended_met": 1,
+      "dp_met": 61,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m40792-metlocext Pt 171D842B0000A6048100000000C8977AE20400004621000200000000000000000000000000000000960000000000000028000000000000005318913C00000000020000000000010037012B013101330135012B013C013A01FFFF00000000000C00000000000000003E0149015701580149015601FFFF00000000001A0B0100003D0000040A070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m40792-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 61 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m40802-metlocext",
+      "sha256": "73018f71c60573dcdac1ccd656860f20f7406639c1745af351a843db4f717465",
+      "stored_origin": 12,
+      "extended_met": 1,
+      "dp_met": 69,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m40802-metlocext Pt 6C8F3FCC0000B2A88100000000C8977AAC01000046210002000000000000000000000000000000009600000000000000280000000000000061C5C03600000000020000000000010037012B013101330135012B013C013A01FFFF00000000000C00000000000000003E0149015701580149015601FFFF00000000001A0B0100004500000407070000 VALID EncounterSlot4:129 ; ",
+      "raw_production": "m40802-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 69 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m42314-metlocext",
+      "sha256": "e2a7e2414eeec5204651aafbb8bcd0495fe2621de3d02b398f42b782242a7dea",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 43,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m42314-metlocext P 3CB90DC1000019B082000000BEC03991C26901004616000200000000000000000000000000000000EF00A7019101F000140F0A050000000008677A18000000000200000000000100310143012B013C012B012E0139013D01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100002B0000042A070000 VALID EncounterSlot4:130 ; ",
+      "raw_production": "m42314-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 43 where Pt/HG/SS write 1 for met location 1"
+    },
+    {
+      "id": "m42397-metlocext",
+      "sha256": "670dbc99e2cd0bf68ff3894108d12ae711aa655000b77519a6ca5dfb789206ec",
+      "stored_origin": 11,
+      "extended_met": 1,
+      "dp_met": 83,
+      "native_setter_requires_dp": 1,
+      "classification": "ordinary-native-coupled-met-setter-contradiction",
+      "raw_reference": "m42397-metlocext P 537FC2B90000BC9A82000000BEC03991803801004616000200000000000000000000000000000000EF00A7019101F000140F0A05000000006387DE13000000000200000000000100310143012B013C012B012E0139013D01FFFF00000000000B00000000000000003E0149015701580149015601FFFF00000000001A0B0100005300000428070000 VALID EncounterSlot4:130 ; ",
+      "raw_production": "m42397-metlocext INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; D/P met location field holds 83 where Pt/HG/SS write 1 for met location 1"
+    }
+  ]
+}

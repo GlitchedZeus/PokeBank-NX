@@ -1,0 +1,21 @@
+{
+  "production_head": "3576a74e1a612bc8c0b56c215baa87ca8cf2d32e",
+  "verified_source_runtime_files": 808,
+  "source_differences": [],
+  "source_manifest_sha256": "eac9bccc21e8bc06cf0a747404cf575542de1f15a248360921f03f8e71676ec1",
+  "drivers": {
+    "gen34": {
+      "sha256": "789ca2ee868fc475ddf9071e82054afa8a36f431dfb790ff47b7c2206560c7a4"
+    },
+    "gen5": {
+      "sha256": "43bbe5b82deb9973fba6420d576a2be2686838861ccf4e1827bcc86332897c88"
+    }
+  },
+  "reference_source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "earlier_repair_ci_head": "3f620c791634736d293ae69bf2686b0790f344f1",
+  "earlier_repair_ci": {
+    "workflows": "24/24",
+    "jobs": "49/49"
+  },
+  "new_head_ci": "See PR314 exact-head checks; prior green result certifies only the stated prior head."
+}

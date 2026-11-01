@@ -33,10 +33,10 @@ The older detailed inventories remain symbol/specification references: `GB_PKHEX
 | E16 | G3–5 | Candidate priority / alternative encounter history | Represented. Supported complete alternatives win; uncertain move history cannot be discarded to invent Invalid. Full all-family priority equivalence still unproved. |
 | B01 | G2 | Native four-slot donor, sex, Ditto, maternal groups, evolution | Evidence-backed finite solver integrated in GBLegality, no depth cutoff; independent pret witness checks in completion-session2. Some gift-dependent witnesses remain Incomplete. |
 | B02 | G2 | Recursive previous-era TM/level/tutor inheritance | Represented and source-backed for reviewed native routes, including Stadium2 reminder and three tutor/TM combinations. Twelve old chain cases all retained; no claim that every historical gift is known. |
-| B03 | G3 | Native inherited slot/order, move source, event-egg distinctions | Represented by native egg verifier. General recursive joint father ancestry from new ChainBreedLegality is **not integrated**. The complete public census exposed a lost birth-source propagation bug; this is repaired with native Emerald support and four PID/initial-only controls. General recursion remains missing. |
-| B04 | G4 | Native inherited move slots, HGSS/Pt sources, Nidoran/Volbeat PID | Represented. Full recursive joint father, event and cross-era chronology is **not integrated**. |
-| B05 | G5 | BW/B2W2 inheritance, hidden ability, incense, male/genderless | Partial production integration for ordinary unhatched PK5: finite Gen III–V ancestry plus actual four-slot birth certificates. Native III/IV and hatched V adapters remain missing. Seven original shared-level cases and uncertified family histories stay Incomplete. Published English B2W2 shared-level child-order proof and regional guard: `../campaign-20261028/BW2_BREEDING_REPAIR.md`. |
-| B06 | G2–5 | Separate event individuals as donor seeds | G2 and new Gen III–V finite models preserve distinct gift seeds. The latter is wired only to ordinary unhatched Gen V eggs; complete historical gift ancestry and native III/IV/hatched V wiring remain missing. |
+| B03 | G3 | Native inherited slot/order, move source, event-egg distinctions | Partial production integration: ordinary exact eggs and hatched inherited survivors require simultaneous parent certificates. Bounded recursive native routes now include the five-title Chikorita Flail chain. Missing/event/cross-era lower witnesses remain Incomplete; no failed search proves impossibility. Full ancestry and original regional birth writers remain uncertified. |
+| B04 | G4 | Native inherited move slots, HGSS/Pt sources, Nidoran/Volbeat PID | Partial production integration: exact eggs, hatched records and Gen III/IV-origin PK5 histories require joint ancestry, beyond per-slot source unions. Five-title Tangela Flail controls have recursive certificates. Complex/shared/event/cross-era chronology and all original regional writers remain incomplete. |
+| B05 | G5 | BW/B2W2 inheritance, hidden ability, incense, male/genderless | Partial production integration for ordinary exact and hatched PK5, with bounded recursive four-slot positive certificates. Existing Munchlax incense history is preserved before alternate search spends the budget. All matching ordinary hatched acquisitions are considered. Seven original shared-level uncertainties, native BW paired-species role dispatch and broader regional/form/event histories remain Incomplete. Published English B2W2 child-order proof: `../campaign-20261028/BW2_BREEDING_REPAIR.md`. |
+| B06 | G2–5 | Separate event individuals as donor seeds | Gen III–V finite upper models preserve distinct gift seeds; constructive ordinary lower witnesses are integrated in native III/IV and exact/hatched V. General historical event ancestry is still uncertified and cannot silently become clean. G2 work remains owned separately. |
 | B07 | G3 | Unhatched ordinary/event eggs, native met level | Represented; new valid-reference egg mutations are rejected by the older structural guard. Original-game exception adjudication pending; no automatic waiver. |
 | B08 | G4 | Unhatched/hatched/traded egg met and egg-location state | Partial. Basic state represented. Current hatch-map flag and traded hatch-game ball reconstruction repaired. Native HGSS/Pt routines rebuild on hatch and preserve origin version; public Pt→HG/HG→Pt positives and contradictory-ball negatives retained. DP native hatch routine and all regional cases still need independent review. |
 | B09 | G5 | Egg met location, level1, nickname, hatch counter, PP and stats | Represented. Gift recipient/hatch-language exception remains separate. Recursive donor completeness not implied. |
@@ -58,13 +58,13 @@ The older detailed inventories remain symbol/specification references: `GB_PKHEX
 | A01 | G3 | Ability bit, duplicate abilities, GameCube mismatch | Represented with native transfer ability interpretation. Full fixed-template evolution cases need current reference review. |
 | A02 | G4–5 origins | GenIII one-ability retention and later evolution | Partial. Preserves uncertainty when GenIII→IV/V history is not identified. All transfer/evolution orders not certified. |
 | A03 | G4 | Stored ability versus PID, fixed encounter slot | Represented. Original and transferred checks run; all fixed-template evolved branches need audit. |
-| A04 | G5 | Hidden flag versus actual hidden ability | Repaired uncertain mismatch before current-species early return. Unsupported mismatch stays Incomplete; existing Basculin/Scizor controls retained. |
+| A04 | G5 | Hidden flag versus actual hidden ability | Unsupported Scizor/Basculin/event ability histories preserve explicit Partial independently of warning text. Gen III/CXD origins reject both the hidden flag and a hidden-only ability value before origin delegation; the literal failed-CI evolved Lairon value-only record and both ordinary ability controls are retained. Full native Gen V ability-writer/event chronology remains incomplete. |
 | A05 | G5 | Fixed first/second slot after evolution | Released VerifyFixedAbility evolved branch repaired for normal slots: evolved PID-slot match, unevolved fixed-slot and hidden permission all retained. Public evolved Munchlax→Snorlax is a permanent regression; original GenV executable proof remains absent. |
 | A06 | G5 | Blue-Striped Basculin origin/egg/trade exceptions | Represented; ambiguous hidden ability histories deliberately Incomplete without native proof. |
 | V01 | G1–2 | Stat EXP vitamin/battle invariants | Represented native rule families. Fresh stricter and lenient disagreements remain individually reviewable. |
 | V02 | G3–5 | EV total510, native per-stat byte, eggEV0 | Represented. No unsupported GenVI252 cap imposed on native formats. |
-| V03 | G3–4 | Zero gained EXP versus battle-only EV | Represented; zeroEXP negative preserved. Acquisition alternatives (vitamins, berries, levels, Pokerus, held items, ExpShare) need joint reachability. |
-| V04 | G3–4 | New minimum required EXP for aggregate EVs | **Incomplete**. Do not port current per-stat sum: native HGSS replay givesHP+1/Atk+4 for1EXP while reference requires4. Need a joint action-budget solver, including generations' different EV/EXP rules. |
+| V03 | G3–4 | Zero gained EXP versus battle-only EV | Joint production solver preserves the zero-EXP contradiction under known zero initial EVs, including vitamins, berries, held items, Pokerus, EXP Shares and native caps. Unknown initial gift/Orre histories cannot use this premise to establish either impossibility or a clean history. |
+| V04 | G3–4 | New minimum required EXP for aggregate EVs | Partial production integration: joint six-stat action witnesses and necessary global 12/14 EV-per-action bounds replace independent per-stat minima. Native HGSS HP+1/ATK+4 for 1 EXP remains legal. Positive catalog/search exhaustion is Incomplete. General action catalogs, Orre deferred shadow EXP, native gift initial states and chronological move preservation remain uncertified. |
 | V05 | G3–4 | Power item and multi-recipient EV/EXP accounting | **Evidence-backed improvement** for the explicit native one-battle counterexample in ev_exp.txt. Actual HGSS EXP split and EV body compiled unchanged with pinned encounter/item evidence. Not a proof of full solver correctness or hardware execution. |
 | V06 | G1–5 | Level bracket, EXP cap, encounter minimum, DayCare stale level | Represented. Native stored-level checks can be stricter than reference. Public PK1 files with zero party level need storage/custody adjudication, not silent normalization. |
 | N01 | G1–5 | Name buffers, terminators, empty names, language limits | Represented, including rawGB and PK5 buffers. Native/regional exceptions and original event trash evidence remain incomplete. |
@@ -91,7 +91,7 @@ The older detailed inventories remain symbol/specification references: `GB_PKHEX
 | H04 | G5 | PGF payload identity and paired language/game metadata | Model-equivalent pairing for709 frozen payloads;3515 old unsupported claims deliberately became Incomplete. Actual receipt scope is not authenticated by metadata. |
 | H05 | G5 | WC5FULL game flags and metadata conflicts | Evidence reader and81 original released/debug files retained; unsupported0x83/0x23 World11 conflict unresolved. No new authenticated distributor receipt. |
 | H06 | G3–5 | Unmatched fateful events | Partial.298 old unmatched fateful records plus9 other histories remain Incomplete; missing catalog coverage is not proof of impossibility. |
-| P01 | G1–5 | Invalid / clean / Incomplete aggregation | Equivalent for exercised nine-area coverage lattice. Zero-warningPartial is still Incomplete; Invalid wins. `ok()` alone is not a clean verdict. |
+| P01 | G1–5 | Invalid / clean / Incomplete aggregation | Exercised nine-area lattice keeps zero-warning Partial as Incomplete and Invalid above uncertainty. Native III/IV merges now retain authoritative incomplete coverage over stale Complete reports; same-text Warnings cannot hide Invalid. Origin5 clean requires an explicit breeding certificate. Remaining audit: Gen III RNG-cap aggregation currently downgrades all internal Invalid findings, including potentially independent contradictions; no universal aggregation-completeness claim. |
 | P02 | G1–5 | Actual current classic app report wiring | **Missing integration** on PR307 d6cc878a. GenI/II/III active panels areNotChecked, GenIV/V Incomplete placeholders. Old branch call graphs cannot establish current application wiring. |
 | P03 | G5 | Current staged trainer, slot, title and checked identity | Engine/app bridge tested on allfour exact titles and staged edits; native renderer call, complete issue paging and deployment remain missing. |
 | X01 | nativeG1–5 | Memories, relearn, EC, hypertraining, marks, HOME/FRX/LGX modern conversion | Not applicable to native format1–5 outputs where fields/contexts do not exist. OriginalFR/LG Switch-exclusive profile is a distinct requested-context question, not a license to add GenVI–IX work. Shared diffs still require applicability review. |
@@ -111,12 +111,14 @@ event and cross-era lower witnesses remain Incomplete. This supersedes the
 “not integrated” wording in B03/B04/B05 for these scoped adapters, and does not
 certify complete recursive ancestry. Seven retained original uncertain eggs remain.
 
-S05 joint EV/EXP now has production native III/IV action certificates, six-stat
+V04 joint EV/EXP now has production native III/IV action certificates, six-stat
 vitamin/berry/item/Pokerus/clamp modeling, a global12/14 EV/action necessary
 bound, explicit exhaustion and incomplete-history outcomes. Source-based battle
 catalogs are sufficient positive subsets; their absence cannot prove Invalid.
-Exact existing event/Orre models retain zero initial EV state, with conservative
-foreign-trainer battle EXP. Transferred/later-era training remains a separate gap.
+The initial milestone used exact event/Orre zero-EV models. The current audit
+withdraws native Orre clean certification for non-vitamin EV histories until
+initial EV/deferred shadow EXP evidence is established. Transferred/later-era
+training remains a separate gap.
 Original HGSS HP+1/ATK+4 for1EXP remains accepted. Full encounter-action and
 chronological move preservation certification is still incomplete.
 
@@ -126,3 +128,19 @@ source expressions are represented as supplemental uncertainty;38 benign rename
 controls stay clean. All647 reference exceptions reproduce in a diagnostic-only
 copy as MoveBreed5 array-index failures and are excluded from successful-reference
 agreement. Original raw measurements and records remain preserved.
+
+## November 1 continuation after the verified CI repair
+
+The build-only duplicate translation-unit repair and separate Ranch/Gen III-origin
+hidden-ability repairs pass all 24 workflows / 49 jobs at `3f620c79`. This evidence
+certifies that exact head, not subsequent changes. The follow-up production work
+is recorded in `../major-20261031/COVERAGE_INTEGRITY_EVIDENCE.md`; the rows above
+distinguish newly wired scoped certificates from missing family coverage.
+
+The published BW2 EV-item helper independently demonstrates the no-EXP wing/berry
+operations for its stated domain. HP increases on Shedinja, the reconstruction's
+48/51 dispatcher-parameter discrepancy and lack of an independent ROM rebuild
+remain explicit limitations. It is not a universal Gen V EV-history certificate.
+No new authenticated real-acquisition specimens or deployed application reports
+were established by this milestone. PR307/main and the Gen I/II and modern
+legality branches remain separate.

@@ -1,0 +1,375 @@
+{
+  "production_head": "3576a74e1a612bc8c0b56c215baa87ca8cf2d32e",
+  "samples": {
+    "same-original": {
+      "metrics_sha256": "fcc55e1f2427150eb307f826b64735fb3f12e5ad346077a1a10c36bb8138de7a",
+      "all_transitions_sha256": "e36552e03915188ab86b6a261baac6e42df190a258c01825b8d8693e63850b87",
+      "transitions": [
+        {
+          "generation": 3,
+          "before": "INVALID",
+          "after": "INCOMPLETE",
+          "records": 171
+        },
+        {
+          "generation": 5,
+          "before": "INCOMPLETE",
+          "after": "NOPROBLEMS",
+          "records": 84
+        },
+        {
+          "generation": 5,
+          "before": "NOPROBLEMS",
+          "after": "INCOMPLETE",
+          "records": 1
+        }
+      ]
+    },
+    "same-prior-independent": {
+      "metrics_sha256": "c8edb5b43aab18f084741e4016e9a9eaf2175183e53fc8469a4733f828145d36",
+      "all_transitions_sha256": "dbc0fae816cb5f3c2ce00073c902b92cbc346928c4fd6fd7009aeba2a7801eda",
+      "transitions": [
+        {
+          "generation": 3,
+          "before": "INVALID",
+          "after": "INCOMPLETE",
+          "records": 49
+        },
+        {
+          "generation": 5,
+          "before": "INCOMPLETE",
+          "after": "NOPROBLEMS",
+          "records": 32
+        },
+        {
+          "generation": 5,
+          "before": "NOPROBLEMS",
+          "after": "INCOMPLETE",
+          "records": 1
+        }
+      ]
+    },
+    "fresh-independent": {
+      "metrics_sha256": "2b8aa42257e5f59cfe5a11bdd73606b3b9da87421f91ef77084fdc68e4c82ad3",
+      "all_transitions_sha256": "888ccad50bec4e6674eb67503f5005b7ed19c42db17531e9a5d8f115e52f5e4e",
+      "transitions": [
+        {
+          "generation": 3,
+          "before": "INVALID",
+          "after": "INCOMPLETE",
+          "records": 88
+        },
+        {
+          "generation": 5,
+          "before": "INCOMPLETE",
+          "after": "NOPROBLEMS",
+          "records": 26
+        },
+        {
+          "generation": 5,
+          "before": "NOPROBLEMS",
+          "after": "INCOMPLETE",
+          "records": 3
+        }
+      ]
+    }
+  },
+  "matrix": {
+    "gcc-normal": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 56.60171914100647
+    },
+    "clang-normal": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 61.98795485496521
+    },
+    "clang-sanitize": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 262.433491230011
+    },
+    "gcc-sanitize": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 450.3394892215729
+    }
+  },
+  "native_witnesses": [
+    {
+      "label": "ev_exp_native_witness-gcc-normal",
+      "exit": 0,
+      "seconds": 2.7993829250335693,
+      "command": [
+        "python3",
+        "tools/legality_completion/ev_exp_native_witness.py",
+        "--source",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/ev_exp_native_witness-gcc-normal",
+        "--compiler",
+        "g++",
+        "--fetch"
+      ]
+    },
+    {
+      "label": "ev_exp_native_witness-gcc-sanitize",
+      "exit": 0,
+      "seconds": 1.287562608718872,
+      "command": [
+        "python3",
+        "tools/legality_completion/ev_exp_native_witness.py",
+        "--source",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/ev_exp_native_witness-gcc-sanitize",
+        "--compiler",
+        "g++",
+        "--sanitize"
+      ]
+    },
+    {
+      "label": "ev_exp_native_witness-clang-normal",
+      "exit": 0,
+      "seconds": 1.004065752029419,
+      "command": [
+        "python3",
+        "tools/legality_completion/ev_exp_native_witness.py",
+        "--source",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/ev_exp_native_witness-clang-normal",
+        "--compiler",
+        "clang++"
+      ]
+    },
+    {
+      "label": "ev_exp_native_witness-clang-sanitize",
+      "exit": 0,
+      "seconds": 1.2064423561096191,
+      "command": [
+        "python3",
+        "tools/legality_completion/ev_exp_native_witness.py",
+        "--source",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/ev_exp_native_witness-clang-sanitize",
+        "--compiler",
+        "clang++",
+        "--sanitize"
+      ]
+    },
+    {
+      "label": "breeding_native_witness-gcc-normal",
+      "exit": 0,
+      "seconds": 2.4718265533447266,
+      "command": [
+        "python3",
+        "tools/legality_completion/breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/breeding_native_witness-gcc-normal",
+        "--compiler",
+        "g++",
+        "--fetch"
+      ]
+    },
+    {
+      "label": "breeding_native_witness-gcc-sanitize",
+      "exit": 0,
+      "seconds": 4.460361003875732,
+      "command": [
+        "python3",
+        "tools/legality_completion/breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/breeding_native_witness-gcc-sanitize",
+        "--compiler",
+        "g++",
+        "--sanitize"
+      ]
+    },
+    {
+      "label": "breeding_native_witness-clang-normal",
+      "exit": 0,
+      "seconds": 1.6488852500915527,
+      "command": [
+        "python3",
+        "tools/legality_completion/breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/breeding_native_witness-clang-normal",
+        "--compiler",
+        "clang++"
+      ]
+    },
+    {
+      "label": "breeding_native_witness-clang-sanitize",
+      "exit": 0,
+      "seconds": 2.470905065536499,
+      "command": [
+        "python3",
+        "tools/legality_completion/breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-hgss",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/breeding_native_witness-clang-sanitize",
+        "--compiler",
+        "clang++",
+        "--sanitize"
+      ]
+    },
+    {
+      "label": "bw2_breeding_native_witness-gcc-normal",
+      "exit": 0,
+      "seconds": 2.669476270675659,
+      "command": [
+        "python3",
+        "tools/legality_completion/bw2_breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-bw2",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/bw2_breeding_native_witness-gcc-normal",
+        "--compiler",
+        "g++",
+        "--fetch"
+      ]
+    },
+    {
+      "label": "bw2_breeding_native_witness-gcc-sanitize",
+      "exit": 0,
+      "seconds": 5.0045692920684814,
+      "command": [
+        "python3",
+        "tools/legality_completion/bw2_breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-bw2",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/bw2_breeding_native_witness-gcc-sanitize",
+        "--compiler",
+        "g++",
+        "--sanitize"
+      ]
+    },
+    {
+      "label": "bw2_breeding_native_witness-clang-normal",
+      "exit": 0,
+      "seconds": 1.6631784439086914,
+      "command": [
+        "python3",
+        "tools/legality_completion/bw2_breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-bw2",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/bw2_breeding_native_witness-clang-normal",
+        "--compiler",
+        "clang++"
+      ]
+    },
+    {
+      "label": "bw2_breeding_native_witness-clang-sanitize",
+      "exit": 0,
+      "seconds": 2.47007417678833,
+      "command": [
+        "python3",
+        "tools/legality_completion/bw2_breeding_native_witness.py",
+        "--native",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/.cache/legality-major-20261101/native-bw2",
+        "--work",
+        "/home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/outputs/legality-major-20261101/native-evidence/bw2_breeding_native_witness-clang-sanitize",
+        "--compiler",
+        "clang++",
+        "--sanitize"
+      ]
+    }
+  ],
+  "reference_errors": {
+    "records": 344,
+    "error_types": {
+      "System.IndexOutOfRangeException": 344
+    },
+    "move_breed_5": 344,
+    "diagnostic_only": true,
+    "official_reference_unmodified": true,
+    "probe_sha256": "10703bd1333d761c7910a219f384b44be4349b4e705766d7f990057a0c1c6749",
+    "diagnostic_core_sha256": "738d568b013c1e60d635f7e365317eeebd234c465d033287b6cb1f046591a5ed"
+  },
+  "public_census": {
+    "policy": "No selected file excluded after enumeration; errors remain in denominator. Not an authenticated real-world sample or independent oracle. Native source save identity unavailable.",
+    "selected": 105,
+    "processed": 105,
+    "errors": 0,
+    "by_generation": {
+      "1": {
+        "VALID/NOPROBLEMS": 6,
+        "VALID/INVALID": 3
+      },
+      "2": {
+        "INVALID/INVALID": 3,
+        "INVALID/INCOMPLETE": 2,
+        "VALID/NOPROBLEMS": 15,
+        "VALID/INCOMPLETE": 1
+      },
+      "3": {
+        "INVALID/INVALID": 7,
+        "VALID/NOPROBLEMS": 13,
+        "VALID/INCOMPLETE": 5
+      },
+      "4": {
+        "INVALID/INVALID": 2,
+        "VALID/INCOMPLETE": 11,
+        "VALID/NOPROBLEMS": 19,
+        "VALID/INVALID": 1
+      },
+      "5": {
+        "INVALID/INVALID": 1,
+        "VALID/INCOMPLETE": 6,
+        "VALID/NOPROBLEMS": 10
+      }
+    }
+  }
+}
