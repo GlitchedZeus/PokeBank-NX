@@ -397,8 +397,8 @@ shiny fix-up and a 0/0 size on any record for overworld seeds; both forced-non-s
 raid level, rank or Dynamax filter, and HOME's Ability Patch and size resets for raids.
 
 HOME keeps every field these seeds fix, so the same rule runs for a Sword/Shield record in
-Scarlet/Violet (PK9, sizes at 0x48/0x49): every such record has been through HOME, so HOME's size
-and Ability Patch quirks are always allowed for it.
+BD/SP (PB8, where "no egg location" is 65535) and Scarlet/Violet (PK9, sizes at 0x48/0x49): every
+such record has been through HOME, so HOME's size and Ability Patch quirks are always allowed for it.
 
 The PK8 generator also emits every den, crystal and distribution raid re-met at one of its own
 Wild Area locations (about 1,700 PKHeX-valid records per seed, plus their mutations).
@@ -454,10 +454,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,675 (87.3%) | 0 | 0 |
 | PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 60,482 (87.3%) | 0 | 0 |
 | PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 30,310 (87.3%) | 0 | 0 |
-| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,914 (89.6%) | 0 | 0 |
-| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 24,032 (89.5%) | 0 | 0 |
-| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 49,138 (89.6%) | 0 | 0 |
-| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 25,403 (90.0%) | 0 | 0 |
+| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,944 (89.7%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 24,066 (89.7%) | 0 | 0 |
+| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 49,186 (89.7%) | 0 | 0 |
+| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 25,436 (90.1%) | 0 | 0 |
 | PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,461 (86.8%) | 0 | 0 |
 | PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,733 (87.3%) | 0 | 0 |
 | PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,989 (87.3%) | 0 | 0 |

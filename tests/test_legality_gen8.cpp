@@ -737,20 +737,20 @@ void testTeraTypes(const std::vector<Record>& records) {
     check(checked > 0, "PK9 fixture has imports");
 }
 
-// The same seeds for a Sword/Shield record moved to Scarlet/Violet through HOME (PK9): a PKHeX-valid
+// The same seeds for a Sword/Shield record moved to BD/SP or Scarlet/Violet through HOME (PB8, PK9): a PKHeX-valid
 // record keeps its seed, and another EC loses it wherever the met location is seed-bound.
-void testOverworldSeedsPK9(const std::vector<Record>& records) {
+void testOverworldSeedsMoved(const std::vector<Record>& records, Format format, size_t versionOffset, const std::string& name) {
     int valid = 0, decided = 0;
     for (const Record& r : records) {
-        if (!r.pkhexValid || r.format != Format::PK9 || (r.plain[0xCE] != 44 && r.plain[0xCE] != 45)) continue;
+        if (!r.pkhexValid || r.format != format || (r.plain[versionOffset] != 44 && r.plain[versionOffset] != 45)) continue;
         const auto base = analyzePlain(r, r.plain);
-        check(!hasIssue(base, Severity::Invalid, "Max Raid seed"), r.label + ": PK9 from Sword/Shield keeps a seed: " + describe(base));
+        check(!hasIssue(base, Severity::Invalid, "Max Raid seed"), r.label + ": " + name + " from Sword/Shield keeps a seed: " + describe(base));
         ++valid;
         const auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0x01] ^= 1; }));
         if (hasIssue(rep, Severity::Invalid, "No overworld or Max Raid seed")) ++decided;
     }
-    check(valid > 0, "PK9 fixture has Sword/Shield records");
-    check(decided > 0, "some PK9 Sword/Shield record has a seed-bound met location");
+    check(valid > 0, name + " fixture has Sword/Shield records");
+    check(decided > 0, "some " + name + " Sword/Shield record has a seed-bound met location");
 }
 
 // LocationsHOME.IsValidMetBDSP/FRLG/SV with GetVersionSWSH: a record moved into Sword/Shield
@@ -817,7 +817,8 @@ int main() {
     testOverworldSeeds(records);
     testVisitNine();
     testTeraTypes(sv);
-    testOverworldSeedsPK9(sv);
+    testOverworldSeedsMoved(sv, Format::PK9, 0xCE, "PK9");
+    testOverworldSeedsMoved(bdsp, Format::PB8, 0xDE, "PB8");
     testSideTransfers(records);
     testSideMetOutsideSwsh(bdsp);
     testFuzz(all);

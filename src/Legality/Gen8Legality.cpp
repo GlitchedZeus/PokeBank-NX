@@ -735,10 +735,13 @@ private:
     // Pokemon Den 162, Max Lair 244 or their Wild Area locations) must come from one of those seeds
     // (ModernEncounter::raidSeed). Curry-marked records, Shedinja, and shiny records that could only
     // be raids are not checked, as in PKHeX. HOME keeps every field these seeds fix, so the same
-    // rule holds for a Sword/Shield record in Scarlet/Violet (PK9, whose sizes sit at 0x48/0x49);
+    // rule holds for a Sword/Shield record in BD/SP (PB8) and Scarlet/Violet (PK9, whose sizes sit at 0x48/0x49);
     // HOME's size and Ability Patch quirks are allowed for any record with a HOME tracker.
     void checkRaidSeed() {
-        if (pk_.isEgg() || side_ != 0 || (version_ != VersionSW && version_ != VersionSH) || PK8::read16(plain_, 0x120) != 0) return;
+        const uint16_t egg = PK8::read16(plain_, 0x120);
+        // No egg location: 0 in Sword/Shield and Scarlet/Violet, 65535 (Locations.Default8bNone) in BD/SP.
+        const bool hatched = ctx_ == Context::BDSP ? egg != 0xFFFF : egg != 0;
+        if (pk_.isEgg() || side_ != 0 || (version_ != VersionSW && version_ != VersionSH) || hatched) return;
         ModernEncounter::RaidRecord r;
         r.species = species();
         r.form = form();
@@ -753,7 +756,7 @@ private:
         const size_t size = sv() ? 0x48 : 0x50, tracker = sv() ? 0x127 : 0x135;
         r.height = plain_[size];
         r.weight = plain_[size + 1];
-        r.homeTracker = sv() || (PK8::read32(plain_, tracker) | PK8::read32(plain_, tracker + 4)) != 0;
+        r.homeTracker = ctx_ != Context::SwordShield || (PK8::read32(plain_, tracker) | PK8::read32(plain_, tracker + 4)) != 0;
         r.curryMark = (plain_[0x40] & 0x08) != 0;  // G8PKM.RibbonMarkCurry
         if (ModernEncounter::raidSeed(r) == ModernEncounter::RaidResult::NoSeed)
             invalid(CheckIdentifier::PidRng, "No overworld or Max Raid seed of the species' line gives this EC, PID, IVs, ability, "
@@ -774,6 +777,7 @@ private:
         if (s == 327 && (PK8::read32(plain_, 0x135) | PK8::read32(plain_, 0x139)) != 0)
             invalid(CheckIdentifier::Transfer, "A BD/SP Spinda has no HOME tracker");
         checkBattleVersion();
+        checkRaidSeed();
         if ((plain_[0x16] & 0x10) != 0) invalid(CheckIdentifier::Misc, "BD/SP records cannot Gigantamax");
         if (pk_.dynamaxLevel() != 0) invalid(CheckIdentifier::Misc, "BD/SP records have no Dynamax level");
         if (!pk_.isEgg()) {
