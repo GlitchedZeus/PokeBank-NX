@@ -1,3 +1,4 @@
+#include "UI/CreateRequiredFields.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
@@ -213,6 +214,11 @@ bool ux2StageAdd(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     auto* e = editor(screen);
     if (!e) return false;
+    // Round 11 shared Create rule (UI/CreateRequiredFields.h): at least one move; Gen I has no met data.
+    if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreate(1, false, state.draft.moves); missing.any()) {
+        screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message(missing, "Add"), 360);
+        return false;
+    }
     std::string error;
     if (!e->stageAdd(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), state.draft, error)) {
         screen.postStatus(error.empty() ? "Generation I Add was rejected" : error, 360);
@@ -268,9 +274,10 @@ bool ux2ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
     const auto selected = static_cast<uint16_t>(state.pickerValue);
     if (state.mode == UX2Mode::AddDraft) {
-        // R2-BUG-004: a real species change brings the new species' native moves (Gen1SpeciesChangeMoves.h).
+        // Round 11: a real species change keeps only the draft's moves the new species can use
+        // (Gen1SpeciesChangeMoves.h); it never adds one.
         if (selected != state.draft.species)
-            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.level),
+            PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, state.draft.moves, state.draft.pp, state.draft.ppUps),
                                    state.draft.moves, state.draft.pp, state.draft.ppUps);
         state.draft.species = selected;
         state.picker = UX2Picker::None;
@@ -282,7 +289,12 @@ bool ux2ApplySpeciesPicker(TrainerViewScreen& screen) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
         if (pokemon && selected != pokemon->species)
-            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->level), edit);
+            PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), selected, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);
+        if (pokemon && edit.moves && PokeBank::UIModel::CreateRequiredFields::forEdit(pokemon->moves, *edit.moves).move) {
+            screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message({false, true}), 360);
+            state.picker = UX2Picker::None;
+            return false;
+        }
         const bool ok = ux2CommitEdit(screen, edit, "Species change staged; source .srm unchanged");
         state.picker = UX2Picker::None;
         return ok;

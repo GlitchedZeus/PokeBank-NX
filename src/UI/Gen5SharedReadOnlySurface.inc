@@ -759,14 +759,17 @@ struct Gen5Editor {
         }
         if (backendState.createPending()) {
             auto& trainer = nativeTrainer(screen);
+            bool encounterReset = false;
             if (!backendState.recreateCreateSpecies(trainer.stagedPokemon(), species,
                     state.speciesPreviewShiny, Names::getSpeciesName(species),
                     Names::getSpeciesName(p.species()),
                     [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); },
-                    error)) {
+                    error, encounterReset)) {
                 screen.postStatus(error, 360);
                 return false;
             }
+            if (encounterReset)
+                screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
             return true;
         }
         const auto why = backendState.speciesRefusal(species);
@@ -780,15 +783,13 @@ struct Gen5Editor {
             return false;
         }
         if (species != p.species()) {
-            // R2-BUG-004: the new species' native default moveset at this level from the BW or
-            // B2W2 table (PKHeX lvlmove_bw / _b2w2), base PP, no PP Ups; staged in Keep/Review's
-            // replay order (Move, PP Ups, PP) so the replay reproduces these bytes exactly.
+            // Round 11 (owner H28): keep only the moves the new species can use in this exact game,
+            // with their PP and PP Ups; never add one. Staged in Keep/Review's replay order (Move,
+            // PP Ups, PP) so the replay reproduces these bytes exactly. An existing Pokemon keeps
+            // its Met Location and Pokerus (SpeciesChangeHistoryPolicy Edit).
             if (!PokeBank::UIModel::SpeciesMoveDefaults::stageMoves<Field::Move, Field::MovePPUps, Field::MovePP>(probe,
-                    PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(PokeBank::UIModel::SpeciesMoveDefaults::gen5Table(b2w2(screen)), species, 0,
-                        static_cast<uint8_t>(Fields::level(p, b2w2(screen))),
-                        [](uint16_t move) { return PokeVault::Integration::Gen5::basePP5(move); }),
-                    error)) {
-                screen.postStatus("Could not reset moves for the new species: " + error, 360);
+                    PokeVault::Integration::Gen5::speciesChangeMoves5(screen.sourceGameId, species, 0, p), error)) {
+                screen.postStatus("Could not update moves for the new species: " + error, 360);
                 return false;
             }
         }
@@ -885,10 +886,14 @@ bool handlePidConfirmation(TrainerViewScreen& screen, Gen5EditorState& state, u6
     if (pending.rebuildCreate) {
         auto& trainer = nativeTrainer(screen);
         const auto current = trainer.sharedScreen().draft().current();
+        bool encounterReset = false;
         applied = current && trainer.sharedScreen().recreateCreateSpecies(
             trainer.stagedPokemon(), pending.species, pending.shiny,
             Names::getSpeciesName(pending.species), Names::getSpeciesName(current->species()),
-            [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); }, error);
+            [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); }, error,
+            encounterReset);
+        if (applied && encounterReset)
+            screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
         const auto rebuilt = trainer.sharedScreen().draft().current();
         applied = applied && rebuilt && Gen5Editor::pidLinksHold(*rebuilt, b2w2);
     } else if (pending.probe) {

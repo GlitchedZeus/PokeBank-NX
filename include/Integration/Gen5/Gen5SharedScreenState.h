@@ -6,8 +6,12 @@
 #include "Integration/Gen5/Gen5CreateInputRules.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Integration/Gen5/Gen5ReviewRows.h"
+#include "Integration/Gen5/Gen5MoveCompatibility.h"
+#include "Integration/Encounter/EncounterContext45.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/SharedReviewPresentation.h"
-#include "Pokemon/SpeciesMoveDefaults.h"
+#include "UI/SpeciesChangeHistoryPolicy.h"
+#include "UI/SpeciesChangeMoves.h"
 
 #include <algorithm>
 #include <array>
@@ -21,6 +25,18 @@
 #include <utility>
 
 namespace PokeVault::Integration::Gen5 {
+
+// Round 11 (owner H28, UI/SpeciesChangeMoves.h): the moves a Gen V Pokemon keeps when it becomes
+// `species` -- each current move the new species can use in this exact game (Gen5MoveCompatibility:
+// native, Transfer or Form history) with its own PP and PP Ups; the rest clear; nothing is added.
+// Edit (applySpecies) and the Create rebuild (recreateCreateSpecies) both use it.
+[[nodiscard]] inline PokeBank::UIModel::SpeciesMoveDefaults::Slots speciesChangeMoves5(
+    std::string_view game, uint32_t species, uint8_t form, const Pokemon5ReadOnly& p) {
+    return PokeBank::UIModel::SpeciesMoveDefaults::keepLearnable(p.moves(), p.pp(), p.ppUps(), [&](uint16_t move) {
+        return Gen5MoveCompatibility::classify(game, static_cast<uint16_t>(species), form, move, false) !=
+               Gen5MoveCompatibility::Availability::Unavailable;
+    });
+}
 
 // Session-local control model for the ONE shared Trainer/Party/Boxes screen.
 // It owns app-memory PK5 drafts and the existing shared Add action.
@@ -408,6 +424,19 @@ public:
     // placeholder's own value explicitly counts as a choice).
     [[nodiscard]] bool createNeedsMetLocation() const noexcept { return createPending_ && !createMetLocationChosen_; }
     void noteCreateMetLocationChosen() noexcept { if(createPending_) createMetLocationChosen_=true; }
+    // Round 11: the shared Gen I-V Keep rule (UI/CreateRequiredFields.h) for the open draft. A
+    // pending Create needs a chosen Met Location and at least one move (it starts with none); an
+    // Edit is refused only when this session took the record's last move away. Empty: Keep may run.
+    [[nodiscard]] std::string missingRequiredFields() const {
+        namespace Required = PokeBank::UIModel::CreateRequiredFields;
+        const auto current=draft_.current();
+        if(!current || !current->valid() || current->empty())return {};
+        if(createPending_)
+            return Required::message(Required::forCreate(5,!createNeedsMetLocation(),current->moves()));
+        const auto original=draft_.originalRecord();
+        if(!original)return {};
+        return Required::message(Required::forEdit(original->moves(),current->moves()));
+    }
     struct CreateDate5 { uint32_t year=0, month=0, day=0; };
     [[nodiscard]] static std::optional<CreateRequest5> sharedCreateDefaults(
         const Workspace& ws, uint32_t pid, std::string_view nickname,
@@ -461,7 +490,10 @@ public:
                      kSharedCreateBall,date.year,date.month,date.day};
         r.ivs={};
         r.evs={};
-        r.moves[0]={kSharedCreateMove,0,std::nullopt};
+        // Round 11 (owner H28 / Extra 5 / Extra 6): a new Pokemon starts with no moves; the user
+        // picks them and Keep refuses until one is chosen (missingRequiredFields).
+        r.moves={};
+        r.draftWithoutMoves=true;
         if(const auto checked=validateCreate5(r);!checked) {
             error=std::string(checked.message);
             return std::nullopt;
@@ -559,15 +591,31 @@ public:
     // A pending Create has no history to preserve, so a species choice rebuilds
     // the created PK5 natively (validateCreate5) with the draft's own values:
     // PID (shiny state as requested), nature, level, IVs, EVs, item, met data
-    // and nickname (a default nickname follows the new species). Moves: a real
-    // species change gets the new species' native default moveset at this level
-    // (R2-BUG-004; PKHeX lvlmove_bw / _b2w2, full PP, no PP Ups); the same
-    // species (a shiny-only rebuild) keeps the draft's own moves.
+    // and nickname (a default nickname follows the new species). Round 11:
+    // moves -- a real species change keeps only the draft's moves the new
+    // species can use (speciesChangeMoves5) and never adds one, so a blank draft
+    // stays blank; the same species (a shiny-only rebuild) keeps the draft's own
+    // moves. History (SpeciesChangeHistoryPolicy, owner H25) -- Pokerus is never
+    // carried (the rebuild has none), and a chosen Met Location that is neither
+    // a wild encounter of the new species or its ancestry nor a noted special
+    // location goes back to the placeholder and "Choose a location".
+    // `encounterReset` reports that last case to the caller's status line.
     template<class Refresh>
     [[nodiscard]] bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,
                                              std::string_view newDefaultName,
                                              std::string_view oldDefaultName,
                                              Refresh&& refresh,std::string& error) {
+        bool encounterReset=false;
+        return recreateCreateSpecies(ws,species,shiny,newDefaultName,oldDefaultName,
+                                     std::forward<Refresh>(refresh),error,encounterReset);
+    }
+    template<class Refresh>
+    [[nodiscard]] bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,
+                                             std::string_view newDefaultName,
+                                             std::string_view oldDefaultName,
+                                             Refresh&& refresh,std::string& error,
+                                             bool& encounterReset) {
+        encounterReset=false;
         const auto p=draft_.current();
         if(!createPending_ || surface_!=Surface::Edit || !p ||
            target_.region!=Workspace::Region::Box) {
@@ -605,21 +653,31 @@ public:
         const auto nickname=asciiName5(p->decodedBytes(),true);
         r.nickname=nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
         const auto met=p->metDate();
-        r.encounter={CreateHistory5::CallerSuppliedNative,p->metLocation(),
+        namespace History=PokeBank::UIModel::SpeciesChangeHistoryPolicy;
+        const uint8_t origin=static_cast<uint8_t>(trainer.gameVersion);
+        const auto history=species==p->species() ? History::Decision{} : History::reconcile(
+            History::Mode::Create,createMetLocationChosen_,[&] {
+                const uint16_t location=static_cast<uint16_t>(p->metLocation());
+                const EncounterContext45::Catalogue context(origin,static_cast<uint16_t>(species),location,{},{});
+                return context.wildRow(location)!=nullptr ||
+                       !::Names::specialMetLocation(origin,location).empty();
+            });
+        const uint32_t metLocation=history.resetMetLocation?kSharedCreateMetLocation:p->metLocation();
+        r.encounter={CreateHistory5::CallerSuppliedNative,metLocation,
                      std::min<uint32_t>(std::max<uint32_t>(p->metLevel(),1),r.level),
                      p->ball(),met.year,met.month,met.day};
         const auto ivs=p->ivs(); const auto evs=p->evs();
         for(size_t i=0;i<6;++i){r.ivs[i]=ivs[i];r.evs[i]=evs[i];}
         if(species!=p->species()) {
-            const auto defaults=PokeBank::Moves::defaultMoves(
-                PokeBank::Moves::levelUpTableForGen45Version(trainer.gameVersion),
-                static_cast<uint16_t>(species),0,static_cast<uint8_t>(r.level));
-            for(size_t i=0;i<4;++i)r.moves[i]={defaults.moves[i],0u,std::nullopt};
+            const auto kept=speciesChangeMoves5(EncounterContext45::gameId(origin),species,0,*p);
+            for(size_t i=0;i<4;++i)r.moves[i]={kept.moves[i],kept.moves[i]?kept.ppUps[i]:0u,
+                                               kept.moves[i]?std::optional<uint32_t>(kept.pp[i]):std::nullopt};
         } else {
             const auto moves=p->moves(); const auto ups=p->ppUps(); const auto pp=p->pp();
             for(size_t i=0;i<4;++i)r.moves[i]={moves[i],moves[i]?ups[i]:0u,
                                                moves[i]?std::optional<uint32_t>(pp[i]):std::nullopt};
         }
+        r.draftWithoutMoves=r.moves[0].id==0;
         if(const auto checked=validateCreate5(r);!checked) {
             error=std::string(checked.message);
             return false;
@@ -642,6 +700,8 @@ public:
             if(error.empty())error="Gen V Create presentation failed; previous draft kept";
             return false;
         }
+        if(history.resetMetLocation)createMetLocationChosen_=false;
+        encounterReset=history.resetMetLocation;
         error.clear();
         return true;
     }
@@ -694,6 +754,10 @@ public:
             error="Generation V Keep requires an active Edit draft";
             return false;
         }
+        if(auto missing=missingRequiredFields();!missing.empty()) {
+            error=std::move(missing);
+            return false;
+        }
         if(!draft_.keep(workspace,error))return false;
         surface_=Surface::Browse;
         return true;
@@ -712,8 +776,9 @@ public:
             error="Generation V presentation Keep requires an active Edit draft";
             return false;
         }
-        if(createNeedsMetLocation()) {
-            error="Choose a Met Location before Keep";
+        // H07 (owner PASS, now for every generation): one status naming every missing field.
+        if(auto missing=missingRequiredFields();!missing.empty()) {
+            error=std::move(missing);
             return false;
         }
         if(createPending_ && !draft_.dirty()) {
@@ -877,8 +942,7 @@ private:
 public:
     // Shared Create defaults (not format rules): a native species, move and
     // met data the Gen V validators accept, all editable before Keep.
-    static constexpr uint32_t kSharedCreateSpecies=25;    // Pikachu
-    static constexpr uint32_t kSharedCreateMove=84;       // Thunder Shock
+    static constexpr uint32_t kSharedCreateSpecies=25;    // Pikachu (no moves: Round 11)
     static constexpr uint32_t kSharedCreateMetLocation=1; // native location list entry
     static constexpr uint32_t kSharedCreateBall=4;        // Poke Ball
 };

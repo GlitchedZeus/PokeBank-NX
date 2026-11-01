@@ -6,7 +6,10 @@
 #include "Names/MoveInfo.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "UI/SpeciesChangeMoves.h"
+#include "UI/SpeciesChangeHistoryPolicy.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/PokemonEditorExitGuard.h"
+#include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
 
 #include <algorithm>
 #include <array>
@@ -67,9 +70,34 @@ inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
            a.form == b.form;
 }
 
+constexpr std::string_view sourceIdForOrigin(uint8_t originGame) noexcept {
+    return originGame == 1 ? "sapphire_gba" : originGame == 2 ? "ruby_gba" : originGame == 3 ? "emerald_gba"
+         : originGame == 4 ? "firered_gba" : originGame == 5 ? "leafgreen_gba" : std::string_view{};
+}
+
+// The exact game a draft is edited for: the source save's id, else the draft's own origin game
+// (PK3 origin 1 Sapphire, 2 Ruby, 3 Emerald, 4 FireRed, 5 LeafGreen).
+inline std::optional<Gen3::SourceGame> exactGame(std::string_view sourceGameId, uint8_t originGame) noexcept {
+    if (const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(sourceGameId)) return game;
+    switch (originGame) {
+        case 1: return Gen3::SourceGame::SapphireGBA;
+        case 2: return Gen3::SourceGame::RubyGBA;
+        case 3: return Gen3::SourceGame::EmeraldGBA;
+        case 4: return Gen3::SourceGame::FireRedGBA;
+        case 5: return Gen3::SourceGame::LeafGreenGBA;
+        default: return std::nullopt;
+    }
+}
+
 struct Session {
     Mode mode = Mode::None;
     bool confirmExit = false;
+    // Round 11 (owner H07 for all gens): a Create draft's Met Location counts only once the user
+    // picked an encounter (noteMetLocationChosen); the record's 0 placeholder is Littleroot Town,
+    // a real R/S/E place, so the value alone cannot tell. A species change that makes the chosen
+    // encounter invalid clears it again (encounterReset tells the surface to say so).
+    bool metLocationChosen = false;
+    bool encounterReset = false;
     ProgressionSource progression = ProgressionSource::Unchanged;
     Gen3::StagedPokemonRecord baseline{};
     Gen3::StagedPokemonRecord working{};
@@ -83,6 +111,8 @@ struct Session {
         baseline = working = record;
         mode = next;
         confirmExit = false;
+        metLocationChosen = false;
+        encounterReset = false;
         requestedNature.reset();
         requestedGender.reset();
         requestedShiny.reset();
@@ -125,16 +155,59 @@ struct Session {
         if (species != 201) requestedForm.reset();
         normalizeRequests();
         if (!setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species))) return false;
-        // R2-BUG-004: the new species' native default moveset at the new level for this exact
-        // game (pret pokeruby / pokeemerald / pokefirered GiveMonInitialMoveset; FireRed and
-        // LeafGreen differ), base PP, no PP Ups. The editing game comes from the source id; a
+        // Round 11 (owner H28): keep each current move the new species can use in this exact game
+        // (pret-generated Gen3 Learnset: native, or Transfer from another Gen III game) with its PP
+        // and PP Ups, clear the rest, never add one. The editing game comes from the source id; a
         // draft with none uses its own origin game. No game: the slots are cleared.
-        SpeciesMoveDefaults::refreshArrays(::PokeBank::Moves::levelUpTableForGen3Version(
-                SpeciesMoveDefaults::gen3VersionForSourceId(sourceGameId, working.originGame)),
-            species, 0, working.level,
-            [](uint16_t move) { return ::Names::getMoveBasePP(move, ::Enums::GameVersion::FRLG); },
-            working.moves, working.pp, working.ppUps);
+        const auto game = exactGame(sourceGameId, working.originGame);
+        SpeciesMoveDefaults::refreshArrays(working.moves, working.pp, working.ppUps, [&](uint16_t move) {
+            return game && Gen3::Learnset::classify(*game, species, move, {}) != Gen3::Learnset::Availability::Invalid;
+        });
+        // Round 11 (owner H25, SpeciesChangeHistoryPolicy.h): a Create draft's Pokerus resets and a
+        // chosen encounter that is no longer an exact-game encounter of the new species (or its
+        // ancestry, R2 provenance) is cleared. An existing Pokemon keeps its recorded history.
+        const auto history = SpeciesChangeHistoryPolicy::reconcile(
+            mode == Mode::Create ? SpeciesChangeHistoryPolicy::Mode::Create : SpeciesChangeHistoryPolicy::Mode::Edit,
+            metLocationChosen, [&] { return encounterStillValid(sourceGameId); });
+        encounterReset = history.resetMetLocation;
+        if (history.resetPokerus) working.pokerus = 0;
+        if (history.resetMetLocation) {
+            working.metLocation = 0;
+            working.metLevel = 0;
+            metLocationChosen = false;
+        }
         return true;
+    }
+
+    // The draft's Met Location / Met Level is an exact-game encounter of its current species.
+    bool encounterStillValid(std::string_view sourceGameId) const {
+        for (const auto& choice :
+             PokeVault::Integration::EncounterGuardrails::forGameSpeciesWithGen3Provenance(sourceGameId, working.species))
+            if (choice.encounter.location == working.metLocation && choice.encounter.containsLevel(working.metLevel))
+                return true;
+        return false;
+    }
+    // The surface's Met Location picker applied an encounter the user chose.
+    void noteMetLocationChosen() noexcept { if (mode == Mode::Create) metLocationChosen = true; }
+
+    // Gen III chooses a Met Location only from the exact game's encounter templates (species plus
+    // R2 provenance). A species with none in this game has nothing the picker could offer, so the
+    // requirement cannot be met there and is not imposed (the picker says why); see the Round 11
+    // report. A Create draft's origin game is the save's own game.
+    bool metLocationChoosable() const {
+        return !PokeVault::Integration::EncounterGuardrails::forGameSpeciesWithGen3Provenance(
+            sourceIdForOrigin(working.originGame), working.species).empty();
+    }
+
+    // The shared Round 11 rule (UI/CreateRequiredFields.h): a Create draft needs a chosen Met
+    // Location and at least one move; an Edit is refused only when this session took the last
+    // move away. Empty when Keep/Add may stage.
+    std::string missingRequiredFields() const {
+        namespace Required = PokeBank::UIModel::CreateRequiredFields;
+        if (mode == Mode::Create)
+            return Required::message(Required::forCreate(3, metLocationChosen || !metLocationChoosable(), working.moves));
+        if (mode == Mode::Edit) return Required::message(Required::forEdit(baseline.moves, working.moves));
+        return {};
     }
 
     // Trainer ID is part of the Gen III shiny check. Changing it alone must not silently flip
@@ -327,6 +400,7 @@ struct Session {
             error = "Generation III Keep is only available for an edit draft";
             return false;
         }
+        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
         if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
                     editor.stageBoxPokemonEdit(box, slot, editRequest(), error))) return false;
         mode = Mode::None;
@@ -340,6 +414,7 @@ struct Session {
             error = "Generation III Add is only available for a create draft";
             return false;
         }
+        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
         if (!editor.stageAddBoxPokemon(box, slot, createRequest(), error)) return false;
         mode = Mode::None;
         confirmExit = false;

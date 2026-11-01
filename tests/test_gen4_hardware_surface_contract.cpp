@@ -498,9 +498,13 @@ int main() {
     assert(surface.find("add(MenuAction::AddMasterVault") == std::string::npos);
     contains(surface, "PickerTarget::Species");
     assert(surface.find("createSpeciesInitialized") == std::string::npos);
-    contains(surface, "state.session.working->setSpecies(value)");
+    // Round 11: the Species apply moved into the host-tested Session::changeSpecies (setSpecies, the
+    // shiny preview, shared move / history policies, rollback); the surface calls it.
+    contains(surface, "state.session.changeSpecies(value, state.speciesPreviewShiny, screen.sourceGameId,");
+    contains(session, "bool ok = working->setSpecies(value);");
+    contains(session, "ok = working->setShiny(shinyWanted);");
     contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
-    contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
+    contains(surface, "state.speciesPreviewShiny");   // the preview reaches changeSpecies (pinned in session above)
     contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
     contains(surface, "PickerTarget::HeldItem");

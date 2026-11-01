@@ -46,6 +46,7 @@
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/SpeciesChangeMoves.h"
+#include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "SharedPokemonEditorSurface.inc"
@@ -676,8 +677,11 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
     }
     std::vector<uint16_t> native;
     const auto table = Names::getLocationTable(record.originVersion());
+    // Round 11: 0 is a Create draft's "not chosen" placeholder (D/P/Pt Mystery Zone), so a new
+    // Pokemon cannot satisfy the required Met Location with it; existing records still show it.
+    const bool creating = state.session.creating();
     for (size_t id = 0; id < table.count && id <= 0xFFFFu; ++id)
-        if (table.names && table.names[id] && table.names[id][0] != '\0' &&
+        if (table.names && table.names[id] && table.names[id][0] != '\0' && !(creating && id == 0) &&
             Names::isGen4NativeMetLocation(
                 record.originVersion(), static_cast<uint16_t>(id)))
             native.push_back(static_cast<uint16_t>(id));
@@ -752,29 +756,20 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
     if (!state.session.working) return false;
     bool ok = false;
     if (target == PickerTarget::Species) {
-        const auto before = state.session.working->encryptedBytes();
-        const uint16_t previousSpecies = state.session.working->species();
-        ok = state.session.working->setSpecies(value);
-        if (ok && state.session.working->shiny() != state.speciesPreviewShiny)
-            ok = state.session.working->setShiny(state.speciesPreviewShiny);
-        if (ok && value != previousSpecies) {
-            // R2-BUG-004: the new species' native default moveset at its level for this game's
-            // DP / Pt / HGSS table (PKHeX lvlmove_*), base PP, no PP Ups (setMove writes both).
-            const auto group = bridge(screen).sourceSave().rawFamily();
-            ok = PokeBank::UIModel::SpeciesMoveDefaults::setMoves(*state.session.working, PokeBank::UIModel::SpeciesMoveDefaults::forSpecies(
-                PokeBank::UIModel::SpeciesMoveDefaults::gen4TableForGroup(group), value, state.session.working->form(),
-                state.session.working->level(),
-                [group](uint16_t move) { return Names::getMoveBasePP(move, group); }));
-        }
+        // Round 11: Session::changeSpecies owns the whole species change (PID-linked traits, the
+        // shiny preview, SpeciesMoveDefaults::setMoves keeping only usable moves, and the
+        // SpeciesChangeHistoryPolicy Create reset) and rolls the draft back on any refusal.
+        bool encounterReset = false;
+        ok = state.session.changeSpecies(value, state.speciesPreviewShiny, screen.sourceGameId,
+                                         bridge(screen).sourceSave().rawFamily(), encounterReset);
         if (!ok) {
-            auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(
-                before, bridge(screen).sourceSave().rawFamily());
-            if (restored) state.session.working = std::move(*restored);
             screen.postStatus(
                 "Could not reconcile Species/Shiny while preserving PID-linked traits",
                 360);
             return false;
         }
+        if (encounterReset)
+            screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
     } else if (target == PickerTarget::HeldItem) {
         ok = state.session.working->setHeldItem(value);
     } else if (target == PickerTarget::Language) {
@@ -1361,12 +1356,17 @@ struct Gen4Editor {
             default: return false;
         }
     }
-    static std::string detailValue(const TrainerViewScreen&, const Surface::EditorState& state,
+    static std::string detailValue(const TrainerViewScreen& screen, const Surface::EditorState& state,
                                    const Record& p, int row) {
         const auto& s = gen4(state);
         if (row == 15 && s.session.working && s.session.working->formCount() <= 1)
             return std::string("Default (fixed)");
         Pokemon::Pokemon4ReadOnlyView view(p);
+        // Round 11 (H07 for all gens): a new Pokemon's Met Location is not chosen until picked.
+        if (row == 13 && s.session.creating()) {
+            const auto met = PokeBank::UIModel::Gen4SharedEditor::metLocationOf(*s.session.working, family(screen));
+            if (met && met->location == 0) return std::string("Choose a location");
+        }
         return UI::Gen4SharedEditorSurface::detailValue(p, view, row);
     }
     static bool editDetail(TrainerViewScreen& screen, Surface::EditorState& state, int row,

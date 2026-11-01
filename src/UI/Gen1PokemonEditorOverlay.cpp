@@ -1,5 +1,6 @@
 #include "UI/ClassicSourceGuard.h"
 #include "Names/ItemNames.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedEditorPresentation.h"
@@ -263,11 +264,11 @@ bool applyPicker(TrainerViewScreen& screen) {
     if (!e) return false;
     if (state.pickerForDraft) {
         if (state.picker == PickerKind::Species) {
-            // R2-BUG-004: a real species change brings the new species' native moves.
+            // Round 11: a real species change keeps only the draft's moves the new species can use.
             const auto species = static_cast<uint16_t>(state.pickerValue);
             if (species != state.draft.species)
                 PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(
-                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.level),
+                    PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, species, state.draft.moves, state.draft.pp, state.draft.ppUps),
                     state.draft.moves, state.draft.pp, state.draft.ppUps);
             state.draft.species = species;
         } else if (state.picker == PickerKind::Move) {
@@ -292,7 +293,12 @@ bool applyPicker(TrainerViewScreen& screen) {
         edit.species = static_cast<uint16_t>(state.pickerValue);
         if (*edit.species != pokemon->species)
             PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
-                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->level), edit);
+                PokeBank::UIModel::SpeciesMoveDefaults::gen1(e, *edit.species, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);
+        if (edit.moves && PokeBank::UIModel::CreateRequiredFields::forEdit(pokemon->moves, *edit.moves).move) {
+            screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message({false, true}), 360);
+            state.picker = PickerKind::None;
+            return false;
+        }
     } else if (state.picker == PickerKind::Move) {
         auto moves = pokemon->moves;
         moves[state.pickerMoveSlot] = static_cast<uint8_t>(state.pickerValue);
@@ -472,6 +478,10 @@ bool editDraftField(TrainerViewScreen& screen) {
             }
             return true;
         case 7: {
+            if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreate(1, false, state.draft.moves); missing.any()) {
+                screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message(missing, "Add"), 300);
+                return false;
+            }
             std::string error;
             if (!e->stageAdd(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), state.draft, error)) {
                 screen.postStatus(error.empty() ? "Generation I Add was rejected" : error, 300);

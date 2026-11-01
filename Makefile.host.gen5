@@ -156,11 +156,11 @@ host-sanitize: $(GEN5_PARITY_SANITIZE)
 
 $(GEN5_PARITY_TEST): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 
 $(GEN5_PARITY_SANITIZE): $(GEN5_PARITY_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_party_box_parity.cpp src/Names/SpeciesNames.cpp src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
 
 # Round 3 Part 9: Gen V Clone / Move / Release on slots staged this session
 # (Create, Clone, field edit), the shared Move carry, neutral Origin & Legality.

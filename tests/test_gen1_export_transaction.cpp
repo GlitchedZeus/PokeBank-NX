@@ -160,7 +160,9 @@ std::vector<uint8_t> verifyPublished(const Common::VerifiedExportResult& result,
 void createReview(const fs::path& source, SourceGame game) {
     auto s = open(source, game);
     std::string error;
-    BoxPokemonCreate create; // Pikachu Lv 5, Thunder Shock / Growl
+    BoxPokemonCreate create; // Pikachu Lv 5; Round 11: the default has no moves, so pick two here
+    create.moves = {84, 45, 0, 0};   // Thunder Shock, Growl at base PP
+    create.pp = {30, 40, 0, 0};
     create.otName = "RED";
     create.trainerId = 1234;
     create.dvs = {0, 9, 0, 12};

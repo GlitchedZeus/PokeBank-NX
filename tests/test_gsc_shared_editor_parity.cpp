@@ -79,8 +79,9 @@ void runCreateParity(const L& layout, SourceGame game) {
     assert(Picker::applySpeciesChoice(session, picker.speciesChoice()));
     assert(session.working.species == 152);
     session.working.nickname = "CHIKORITA";
-    session.working.moves = {0, 0, 0, 0};
-    session.working.pp = {0, 0, 0, 0};
+    // Round 11 (owner H28): no move is filled in and Add needs one (CreateRequiredFields): Tackle.
+    session.working.moves = {33, 0, 0, 0};
+    session.working.pp = {35, 0, 0, 0};
     session.working.ppUps = {0, 0, 0, 0};
     session.working.heldItem = 0;
     session.working.caughtData = 0;

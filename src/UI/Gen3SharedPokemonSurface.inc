@@ -824,6 +824,7 @@ void applyValuePicker(State& state) {
                 p.metLocation = choice->encounter.location;
                 state.session.setEncounterMetLevel(choice->encounter.minLevel);
                 state.selectedEncounter = *choice;
+                state.session.noteMetLocationChosen();   // Round 11: the Create Met Location is chosen
             }
             break;
         }
@@ -1341,29 +1342,17 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         return true;
     }
     if (down & HidNpadButton_A) {
+        // Session::setSpecies applies the shared Round 11 policies: moves (SpeciesChangeMoves.h)
+        // and history (SpeciesChangeHistoryPolicy.h, checked against
+        // Encounter::forGameSpeciesWithGen3Provenance). A Create draft's invalid encounter and
+        // Pokerus reset; an existing Pokemon keeps its recorded Met Location and Pokerus.
+        const uint16_t previousSpecies = state.session.working.species;
         if (state.session.setSpecies(state.speciesPreview, screen.sourceGameId)) {
             state.session.setShiny(state.speciesPreviewShiny);
             state.speciesPicker = false;
-            const auto& p = state.session.working;
-            if (p.metLocation != 0) {
-                const auto encounters = Encounter::forGameSpeciesWithGen3Provenance(
-                    screen.sourceGameId, p.species);
-                bool stillValid = false;
-                for (const auto& choice : encounters) {
-                    if (choice.encounter.location == p.metLocation &&
-                        choice.encounter.containsLevel(p.metLevel)) {
-                        stillValid = true;
-                        state.selectedEncounter = choice;
-                        break;
-                    }
-                }
-                if (!stillValid) {
-                    state.session.working.metLocation = 0;
-                    state.session.working.metLevel = 0;
-                    state.selectedEncounter.reset();
-                    screen.postStatus("Species changed; choose a new legitimate encounter", 300);
-                }
-            }
+            if (state.session.working.species != previousSpecies) state.selectedEncounter.reset();
+            if (state.session.encounterReset)
+                screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
         }
         else
             screen.postStatus("Species is not representable in Generation III");
@@ -2240,7 +2229,13 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         detailLabels.size(), static_cast<std::size_t>(state.detailsFocus),
         state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
-        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); },
+        [&](std::size_t row) {
+            // Round 11 (H07 for all gens): a new Pokemon's Met Location is not chosen until picked.
+            if (row == 13 && state.session.mode == SessionModel::Mode::Create && !state.session.metLocationChosen &&
+                state.session.metLocationChoosable())
+                return std::string("Choose a location");
+            return detailsValue(screen, p, static_cast<int>(row));
+        },
         [&](std::size_t row) {
             return detailLocked(p, static_cast<int>(row))
                 ? PokeBank::UIModel::SharedFieldState::State::ReadOnly

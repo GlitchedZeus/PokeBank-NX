@@ -396,6 +396,9 @@ void runRound2Gen3(Row& row, const Spec& spec, const G3::ReadOnlySave& save, con
             SessionModel::Session setup;
             setup.begin(*rec, SessionModel::Mode::Edit);
             if (k.species) e.expect(setup.setSpecies(k.species, spec.gameId), "setSpecies " + str(k.species));
+            // Round 11 (owner H28): Unown keeps none of the old moves and none is filled in; Keep
+            // needs one (CreateRequiredFields), so the start state teaches Hidden Power.
+            if (k.species == 201) { setup.working.moves[0] = 237; setup.working.pp[0] = 15; }
             e.expect(setup.setShiny(k.shiny), "setShiny");
             if (k.gender) e.expect(setup.setGender(*k.gender), "setGender " + str(*k.gender));
             if (!setup.keep(editor, 0, 0, error)) {
@@ -712,6 +715,14 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
             badOt.working.otName = "TOOLONGOT";
             e.expect(!badOt.add(editor, 0, 1, err) && editor.stagedBytes() == stagedBefore,
                      "Create with an 8-character OT was accepted");
+            // Round 11 (owner H07 for all gens / H28): a new Pokemon starts with no moves, and Add
+            // refuses until a move and (where the game lists encounters) a Met Location are chosen.
+            e.expect(create.working.moves == (std::array<uint16_t, 4>{}), "Create draft starts with moves");
+            e.expect(!create.add(editor, 0, 1, err) && err.find("at least one move") != std::string::npos &&
+                         editor.stagedBytes() == stagedBefore, "Create without a move was accepted: " + err);
+            create.working.moves[0] = 84;   // Thunder Shock, as the move picker applies it
+            create.working.pp[0] = 30;
+            create.noteMetLocationChosen();  // the Met picker's choice (its encounter list is pinned elsewhere)
             err.clear();
             e.expect(create.add(editor, 0, 1, err), "Create add: " + err);
             const auto added = editor.boxedPokemon(0, 1, err);
