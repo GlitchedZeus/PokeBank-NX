@@ -50,7 +50,7 @@ const char* getItemName(uint16_t itemId) { return Names::getItemName(itemId); }
 
 namespace {
 
-enum class Expect { Valid, Fishy, Invalid, Unknown };
+enum class Expect { Valid, Fishy, Invalid, Unknown, EvHistory };
 
 struct Case {
     const char* name;
@@ -259,7 +259,7 @@ const Case kCases[] = {
     {"bonus-disc-celebi-jpn", Expect::Valid, true, "ruby_gba", "EncounterGift3Colo:251", "18BE6C35917900005E7A9780FF00000000000102518A64FF0000000087910000FB00000030020000006400005D006900D700DB001914051900000000000000000000000000FF0AA11D3B9F1F00000000"},  // PKHeX: VALID (Japanese bonus disc, Version R)
     {"bonus-disc-pikachu-jpn", Expect::Valid, true, "ruby_gba", "EncounterGift3Colo:25", "E819603F917900009C56618553FF0000000001025A7B5C5171FF0000EC0E000019000000E80300000046000054002D00270056001E281E1400000000000000000000000000FF0A218A2B1D3C00000000"},  // PKHeX: VALID (Japanese bonus disc)
     {"bonus-disc-hooh", Expect::Valid, true, "sapphire_gba", "EncounterGift3Colo:250", "64EA810A40270000C2C9AEC9C2FF000000000202C7BBCECEC6BFFF00453D0000FA000000CE8A06000000000069007E00F10081001405051400000000000000000000000000FFC620BB5B841A00000000"},  // PKHeX: VALID (Mt. Battle Ho-Oh, Version S)
-    {"pkhex-vaporeon-split-evo", Expect::Valid, true, "emerald_gba", "EncounterStatic3XD:133", "2F104A98D4ED598FD0BBCAC9CCBFC9C8FF000202C7BBCECEFF000000D7B200008600000000B205000000000037002C0062003E0019191E14375D3A6B784D00000000000000008A272DF8721A00000082"},  // PKHeX: VALID (134 - VAPOREON - B2D7984A102F XD split evo starter.pk3; Fishy Level:LevelEXPThreshold is Info here)
+    {"pkhex-vaporeon-split-evo", Expect::EvHistory, false, "emerald_gba", "EncounterStatic3XD:133", "2F104A98D4ED598FD0BBCAC9CCBFC9C8FF000202C7BBCECEFF000000D7B200008600000000B205000000000037002C0062003E0019191E14375D3A6B784D00000000000000008A272DF8721A00000082"},  // PKHeX: VALID retained; native Orre initial EV/deferred EXP history is unverified, so production is Incomplete (payload unchanged).
     {"pkhex-shuckle-nofateful-xk3", Expect::Valid, true, "emerald_gba", "EncounterTrade3XD:213", "A30311411D91598FCDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF00ED420000D500000054150000004700005C00A400BC00E3000A0A0A05000000000000000000000000007494274795362300000080"},  // PKHeX: VALID (213 - SHUCKLE - 1904411103A3 NoFateful.xk3: the flag is set on conversion)
     {"pkhex-hooh-italian-longot", Expect::Valid, true, "sapphire_gba", "EncounterGift3Colo:250", "05EB25C640270000C2C9AEC9C2FF000000000402C7C9C8CEBF00C600AB660000FA000000CE8A06000046000069007E00F10081001405051400000000000000000000000000FFC620691E3C3B00000000"},  // PKHeX: VALID (250 - HO-OH - 2241C625EB05 Italian longOT.ck3)
     {"pkhex-entei-missing-winning", Expect::Fishy, false, "emerald_gba", "EncounterShadow3Colo:248", "3B126F9F393031D4CED3CCBBC8C3CEBBCCFF0202D1BFCDFF00000000B1AA0000F8000000B01E040000FF0000F20057009D003B000F0A0A050000000000000000000000000076B72791EF512124C90E03"},  // PKHeX: VALID, Fishy Trainer:OTSuspicious (Legal (Missing Winning Ribbon).ck3, Tyranitar)
@@ -402,6 +402,7 @@ int main() {
                 validCases.push_back(&c);
                 break;
             case Expect::Fishy:
+            case Expect::EvHistory:
             case Expect::Unknown:
                 if (has(r, Severity::Invalid) || !has(r, Severity::Warning) || r.verdict() != Verdict::Incomplete)
                     fail(label + ": expected Warning and no Invalid", r);
@@ -433,6 +434,22 @@ int main() {
             if (!certified(r)) fail(std::string(validCases[i]->name) + " in " + game + ": expected No problems found", r);
         }
         ++checked;
+    }
+
+    // Retain the same all-title coverage for a modeled Orre encounter whose
+    // initial/deferred EV/EXP history is not independently certified. The
+    // origin judge still verifies its encounter; whole-record Clean is stronger.
+    for (const Case& c:kCases) if(c.expect==Expect::EvHistory) {
+        const auto pk=fromHex(c.hex);
+        for(const char* game:kGames) {
+            const auto report=Legality::analyzePk3(pk,game);
+            if(report.verdict()!=Verdict::Incomplete || report.coverage.internal!=Legality::CoverageLevel::Partial)
+                fail(std::string(c.name)+" in "+game+": Orre EV history must remain Incomplete",report);
+            auto contradiction=pk;contradiction[0x38]=255;contradiction[0x39]=255;contradiction[0x3A]=1;refreshChecksum(contradiction);
+            const auto invalid=Legality::analyzePk3(contradiction,game);
+            if(invalid.verdict()!=Verdict::Invalid)fail("Orre impossible EV total must outrank unknown history",invalid);
+        }
+        checked += 2;
     }
 
     // Constructed rule cases on a certified wild-free base (the first Valid fixture).
@@ -614,7 +631,7 @@ int main() {
             for (bool metKnown : {true, false}) {
                 const auto j = judgeOf(pk, metKnown);
                 const std::string what = std::string("judge ") + c.name + (metKnown ? " (met known)" : " (met unknown)");
-                if (c.expect == Expect::Valid || c.expect == Expect::Fishy) {
+                if (c.expect == Expect::Valid || c.expect == Expect::Fishy || c.expect == Expect::EvHistory) {
                     if (j.verdict != JV::Matched || j.matched == Legality::Gen3Cxd::Template::None || j.encounter.empty() ||
                         j.encounterSpecies == 0 || j.candidates.empty())
                         failJudge(what + ": expected Matched", j);

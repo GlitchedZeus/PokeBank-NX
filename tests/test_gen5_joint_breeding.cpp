@@ -78,6 +78,24 @@ int main() {
         Gen5TestHelpers::refreshChecksum(bytes);
         const auto initial=analyzePk5(bytes,{.encrypted=false});
         assert(initial.verdict()==Verdict::NoProblemsFound);
+        const auto hatch=[](std::vector<uint8_t> record){
+            record[0x3b]&=static_cast<uint8_t>(~0x40u);
+            for(size_t i=0;i<11;++i){const char* name="Illumise";const uint16_t c=i<8?static_cast<uint8_t>(name[i]):uint16_t{0xffff};record[0x48+2*i]=static_cast<uint8_t>(c);record[0x49+2*i]=static_cast<uint8_t>(c>>8);}
+            std::copy(record.begin()+0x78,record.begin()+0x7b,record.begin()+0x7b);
+            record[0x80]=64;record[0x81]=0;
+            Gen5TestHelpers::refreshChecksum(record);return record;
+        };
+        const auto inheritedHatch=analyzePk5(hatch(before),{.encrypted=false});
+        assert(inheritedHatch.verdict()==Verdict::Incomplete&&inheritedHatch.coverage.moves==CoverageLevel::Partial&&inheritedHatch.coverage.eggBreeding==CoverageLevel::Partial);
+        assert(Gen5TestHelpers::hasText(inheritedHatch,Severity::Warning,"Black/White paired-species offspring and parental role path"));
+        auto taught=bytes;
+        // Retain the original record's fourth move (Thunder / Aerial Ace),
+        // which each specimen can learn from a BW TM after an ordinary hatch.
+        const uint16_t tm=static_cast<uint16_t>(before[0x2e]|(before[0x2f]<<8));
+        assert(tm==87||tm==332);
+        taught[0x2a]=static_cast<uint8_t>(tm);taught[0x2b]=static_cast<uint8_t>(tm>>8);taught[0x31]=Gen5Data::kMovePP[tm];
+        const auto teachableHatch=analyzePk5(hatch(taught),{.encrypted=false});
+        assert(teachableHatch.verdict()==Verdict::NoProblemsFound&&Gen5TestHelpers::consistent(teachableHatch));
         ++pairedCases;
     }
     assert(pairedInput.eof()&&pairedCases==2);
@@ -107,15 +125,65 @@ int main() {
         assert(!invalidQuery.provenBirth(4,650,12,4,4,true));
         assert(!invalidQuery.provenBirth(5,1,22,4,8,true));
     }
+    // Ordinary parents do not suffice: both histories need intermediate eggs.
+    for(const auto era:std::array<uint8_t,3>{3,4,5}){
+        const uint16_t baby=era==3?152:114;
+        const uint8_t game=era==3?3:era==4?12:20;
+        Breeding::Gen35Ancestry ancestry({175,0,0,0});
+        assert(!Breeding::Gen35Ancestry::provenOrdinaryBirth(era,baby,game,{175,0,0,0},1,0,false));
+        assert(ancestry.provenHatchedBirth(era,baby,game,1));
+        assert(ancestry.certifiedBirths().size()>=2&&ancestry.certifiedBirths().back().baby==baby);
+        assert(ancestry.proofStates()<=256);
+        std::cout<<"Recursive survivor era="<<unsigned(era)<<" baby="<<baby<<" states="<<ancestry.proofStates()<<" recipes="<<ancestry.certifiedBirths().size()<<'\n';
+        if(era<=4){
+            const auto games=era==3?std::array<uint8_t,5>{1,2,3,4,5}:std::array<uint8_t,5>{7,8,10,11,12};
+            for(auto version:games){
+                Breeding::Gen35Ancestry native({175,0,0,0});
+                assert(native.provenBirth(era,baby,version,1,0,false));
+                assert(native.certifiedBirths().size()>=2);
+            }
+        }
+        Breeding::Gen35Ancestry bounded({175,0,0,0},0);
+        assert(!bounded.provenHatchedBirth(era,baby,game,1)&&bounded.proofExhausted());
+        assert(bounded.certifiedBirths().empty());
+    }
+    {
+        // The independent frozen b3184 record needs Sewaddle -> Paras ->
+        // Grass-group carrier -> Tangela, then Bind and Grass Knot on one dad.
+        Breeding::Gen35Ancestry ancestry({132,175,20,447});
+        assert(!Breeding::Gen35Ancestry::provenOrdinaryBirth(5,114,20,{132,175,20,447},14,4,true));
+        assert(ancestry.provenBirth(5,114,20,14,4,true));
+        assert(ancestry.certifiedBirths().size()>=3);
+        assert((ancestry.certifiedBirths().back().bornMoves==std::array<uint16_t,4>{132,175,20,447}));
+        std::ifstream tangelaInput("tests/fixtures/gen15_session2/gen5_recursive_tangela.txt");
+        assert(tangelaInput>>id>>expected>>hex);assert(expected=="NOPROBLEMS");
+        auto bytes=Gen5TestHelpers::fromHex(hex.c_str());const auto before=bytes;
+        assert(analyzePk5(bytes,{.encrypted=false}).verdict()==Verdict::NoProblemsFound&&bytes==before);
+        // Hatch the retained model specimen at permitted BW location 64. No source move is
+        // invented; it retains the same inherited quartet and original OT.
+        bytes[0x3b]&=static_cast<uint8_t>(~0x40u);
+        for(size_t i=0;i<11;++i){const char* name="Tangela";const uint16_t c=i<7?static_cast<uint8_t>(name[i]):uint16_t{0xffff};bytes[0x48+2*i]=static_cast<uint8_t>(c);bytes[0x49+2*i]=static_cast<uint8_t>(c>>8);}
+        std::copy(bytes.begin()+0x78,bytes.begin()+0x7b,bytes.begin()+0x7b);
+        assert(Gen5::validHatchLocation(64,20));
+        bytes[0x80]=64;bytes[0x81]=0;
+        Gen5TestHelpers::refreshChecksum(bytes);
+        const auto hatched=analyzePk5(bytes,{.encrypted=false});
+        if(hatched.verdict()!=Verdict::NoProblemsFound)for(const auto& issue:hatched.issues)std::cerr<<"Tangela hatched: "<<issue.text<<"\n";
+        assert(hatched.verdict()==Verdict::NoProblemsFound&&Gen5TestHelpers::consistent(hatched));
+    }
+
     // Construct actual four-slot parent/birth recipes, beyond a union of donors.
     struct Proof {std::array<uint16_t,4> moves;uint16_t baby;uint8_t version,father,shared;};
-    const std::array<Proof,6> proofs{{
+    const std::array<Proof,7> proofs{{
         {{1,45,118,516},113,22,12,8},
         {{1,357,113,263},238,23,14,0},
         {{33,227,343,0},314,21,6,4},
         {{28,226,404,86},632,23,14,0},
         {{4,43,306,263},115,22,12,0},
         {{33,97,17,0},16,23,6,6},
+        // Retained egg-b11015: alternate recursive searches must not exhaust
+        // the shared budget before its already constructive incense route.
+        {{316,33,363,256},446,20,12,8},
     }};
     bool intermediateBirth=false;
     for(const auto& p:proofs) {
@@ -156,5 +224,5 @@ int main() {
     Breeding::Gen35Ancestry exclusive({1,357,252,263});
     assert(!exclusive.possible(5,238,14,0));
     assert(!exclusive.possibleWithUncertifiedParentRole5(238,14));
-    std::cout<<"Joint Gen III-V ancestry / Gen V adapter:41 frozen records,1 newly uncertified BW paired family,2 fresh paired-family regressions with initial-only clean controls,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS\n";
+    std::cout<<"Joint Gen III-V ancestry / Gen V adapter:41 frozen records,recursive native III/IV/V births and bound controls,Tangela exact/hatched controls,1 newly uncertified BW paired family,2 fresh paired-family regressions with initial-only clean controls,7 retained Incomplete,exclusive-paternal negative,parent-role uncertainty,native B2W2 shared-order pair,Japanese guard and constructive intermediate births PASS\n";
 }

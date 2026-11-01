@@ -21,11 +21,16 @@ public:
     // Fast lower certificate using ordinary, directly teachable parents only.
     // No finite upper graph is built; failure says nothing about impossibility.
     static bool provenOrdinaryBirth(uint8_t generation,uint16_t baby,uint8_t version,const std::array<uint16_t,4>& moves,uint8_t fatherMoves,uint8_t sharedMoves,bool exact=false,BirthWitness* witness=nullptr);
-    explicit Gen35Ancestry(const std::array<uint16_t,4>& moves);
+    explicit Gen35Ancestry(const std::array<uint16_t,4>& moves,size_t maxRecursiveStates=256);
+    bool proofExhausted() const {return proofExhausted_;}
+    size_t proofStates() const {return proofVisits_;}
     // Positive-only certificate. exact=false proves simultaneous inherited
     // survivors in a hatched record; other current moves may be learned later.
     // Failure (including bounded search exhaustion) is never an impossibility.
     bool provenBirth(uint8_t generation,uint16_t baby,uint8_t version,uint8_t fatherMoves,uint8_t sharedMoves,bool exact=false) const;
+    // One shared recursion budget across all maternal source assignments for
+    // survivors in a hatched record. Never certifies absence or impossibility.
+    bool provenHatchedBirth(uint8_t generation,uint16_t baby,uint8_t version,uint8_t fatherMoves) const;
     bool provenBirth5(uint16_t baby,uint8_t version,uint8_t fatherMoves,uint8_t sharedMoves) const;
     bool provenSimple(uint8_t generation,uint16_t baby,uint8_t fatherMoves,uint8_t sharedMoves) const;
     bool possible(uint8_t generation,uint16_t baby,uint8_t fatherMoves,uint8_t sharedMoves) const;
@@ -42,6 +47,9 @@ private:
     mutable std::vector<BirthWitness> certifiedBirths_;
     mutable std::vector<uint32_t> proofStack_;
     mutable size_t proofVisits_=0;
+    mutable std::vector<uint32_t> failedProofs_;
+    size_t maxProofStates_;
+    mutable bool proofExhausted_=false;
     std::vector<uint16_t> maternalSpecies(uint8_t generation,uint16_t baby) const;
     uint16_t findFather(uint8_t generation,uint16_t baby,uint8_t fatherMoves,uint8_t sharedMoves,bool simple=false) const;
     bool simpleWitness(uint16_t node,uint8_t mask,bool allowBirth=true) const;

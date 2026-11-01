@@ -5,6 +5,7 @@
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <fstream>
@@ -37,11 +38,32 @@ int main(){
             if(direct.verdict()!=wanted||shared.verdict()!=wanted){std::cerr<<id<<" on "<<games[i]<<": wrong direct/shared verdict\n";return 1;}
             Legality::applyGen4Analyzer(shared,view,games[i]);
             assert(shared.verdict()==wanted&&bytes==before);
-            if(wanted==Legality::Verdict::Incomplete)assert(!shared.hasInvalid()&&shared.coverage.pidRng==Legality::CoverageLevel::Partial);
+            // An earlier independent analyzer may already have marked areas
+            // complete. Authoritative native uncertainty must downgrade those
+            // areas, independently of whether its Warning text is displayed.
+            Legality::Report composed;
+            for(auto*area:{&composed.coverage.structure,&composed.coverage.sourceGame,&composed.coverage.internal,
+                &composed.coverage.moves,&composed.coverage.encounter,&composed.coverage.eventGift,
+                &composed.coverage.pidRng,&composed.coverage.eggBreeding,&composed.coverage.transfer})
+                *area=Legality::CoverageLevel::Complete;
+            Legality::applyGen4Analyzer(composed,view,games[i]);
+            if(direct.coverage.internal!=Legality::CoverageLevel::Complete)
+                assert(composed.coverage.internal!=Legality::CoverageLevel::Complete);
+            if(direct.coverage.pidRng!=Legality::CoverageLevel::Complete)
+                assert(composed.coverage.pidRng!=Legality::CoverageLevel::Complete);
+            assert(composed.verdict()==wanted);
+            if(wanted==Legality::Verdict::Incomplete) {
+                assert(!shared.hasInvalid());
+                const bool evUnknown=std::any_of(shared.issues.begin(),shared.issues.end(),[](const Legality::Issue& issue){
+                    return issue.severity==Legality::Severity::Warning && issue.text.find("initial EV/EXP state")!=std::string::npos;
+                });
+                if(evUnknown)assert(shared.coverage.internal==Legality::CoverageLevel::Partial);
+                else assert(shared.coverage.pidRng==Legality::CoverageLevel::Partial);
+            }
             ++reports;
         }
         ++cases;
     }
     assert(in.eof()&&cases==6&&reports==30);
-    std::cout<<"Ranch ability:retained trained-EV uncertainty,zero-EV PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS\n";
+    std::cout<<"Ranch ability:retained uncertainty,uncertified trained EV history,zero-EV PID-matched and foreign-ability controls,ordinary PID negatives,direct/shared/encrypted paths on all5 titles and repeated hook PASS\n";
 }

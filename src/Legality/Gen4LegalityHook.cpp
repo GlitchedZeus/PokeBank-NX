@@ -5,6 +5,7 @@
  * Pokemon model: the hook only reads the decrypted bytes of a native PK4 record.
  */
 #include "Legality/Gen4Legality.h"
+#include "Legality/CoverageMerge.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -72,6 +73,8 @@ void applyGen4Analyzer(Report& report, const Pokemon::Pokemon& pk, std::string_v
         CoverageSummary& c = report.coverage;
         c.structure = c.sourceGame = c.internal = c.moves = c.encounter = CoverageLevel::Complete;
         c.eventGift = c.pidRng = c.eggBreeding = c.transfer = CoverageLevel::Complete;
+    } else {
+        retainIncompleteCoverage(report.coverage, g.coverage);
     }
 }
 

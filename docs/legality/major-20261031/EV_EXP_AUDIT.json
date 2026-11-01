@@ -152,6 +152,22 @@
       "status": "limitation",
       "rule": "Native source/table provenance",
       "evidence": "This audit checks the immutable HGSS source and all raw personal records at both pinned PKHeX references. It does not claim all game tables were independently rebuilt from original regional ROMs."
+    },
+    {
+      "status": "conservative repair",
+      "rule": "Orre initial EV / deferred shadow EXP premise",
+      "evidence": "PKHeX zero-initial-EV templates do not independently establish the native Orre initial state or deferred shadow EXP history. Production Gen III no longer certifies non-vitamin Orre EV histories through the retail solver. They remain Incomplete; independent EV511 contradictions still reject. No new definitive native Orre EXP bound is invented."
+    },
+    {
+      "status": "supported within stated helper domain",
+      "rule": "BW2 wings and EV berries without EXP",
+      "evidence": "BW2_WING_SOURCE_AUDIT.json pins 15 original reconstruction blobs. The unchanged StatusRcv_AddEffort body was compiled and exercised with GCC/Clang: every stat0..255 can be cleared, incremented by wings through255 and constrained by total510. HP-positive Shedinja restriction, published48/51 dispatcher-parameter mismatch and absent independent ROM rebuild prevent universal native-history certification."
+    },
+    {
+      "status": "explicit coverage repair",
+      "rule": "Required EV certificates must survive warning removal",
+      "evidence": "Gen III and IV track evExpVerified separately from finding text. Public native merges retain Partial by coverage-area minimum, so deleting display warnings or retaining stale Complete metadata cannot promote unsupported history to NoProblemsFound. Regression tests exercise actual production reports and existing clean controls."
     }
-  ]
+  ],
+  "continuation_date": "2026-11-01"
 }

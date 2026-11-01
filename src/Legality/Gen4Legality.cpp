@@ -294,6 +294,8 @@ private:
     bool gtsSanitized_ = false;
     bool encounterSearched_ = false;
     const CxdOriginJudgement* cxd_ = nullptr; // Colosseum/XD origin: the judge's answer (see findCxdEncounter)
+    bool ancestryVerified_ = true; // required birth history, independent of warning text
+    bool evExpVerified_ = true;    // required acquisition history
     bool cxdUndecided_ = false;               // Colosseum/XD origin left unverified: encounter-dependent rules are skipped
 
     void add(uint8_t severity, CheckIdentifier id, std::string text) {
@@ -353,6 +355,7 @@ private:
     void verifyTrainerId();
     void verifyIvs();
     void verifyEvs();
+    void verifyAncestry();
     void verifyLevel();
     void verifyRibbons();
     void verifyAbility();
@@ -1028,6 +1031,7 @@ void Analyzer::verifyEvs() {
     bool vitamins = true;
     for (uint8_t ev : pk_.evs) if (ev != 0 && (ev > 100 || ev % 10 != 0)) vitamins = false;
     if (!vitamins && !format5() && encGeneration()==4) {
+        evExpVerified_ = false;
         const bool knownZero=enc_.kind==EncKind::Slot || enc_.kind==EncKind::Static || enc_.kind==EncKind::Egg || enc_.kind==EncKind::Trade;
         if (!knownZero) {
             fishy(CheckIdentifier::Stats,"The initial EV/EXP state of this encounter is not verified");
@@ -1046,6 +1050,7 @@ void Analyzer::verifyEvs() {
                         if (EvExp::solve(request,evBattles4(v,true,travel)).verdict!=EvExp::Verdict::Proven) {
                             result.verdict=EvExp::Verdict::Incomplete;break;
                         }
+                evExpVerified_ = result.verdict!=EvExp::Verdict::Incomplete;
                 if (result.verdict==EvExp::Verdict::Impossible)
                     invalid(CheckIdentifier::Stats,request.availableExperience==0?
                         "EVs above vitamin limits need battles, but the Pokemon has gained no EXP":
@@ -1759,6 +1764,36 @@ void Analyzer::verifyMoveResults() {
     }
 }
 
+void Analyzer::verifyAncestry() {
+    // A per-slot move source does not certify simultaneous parent ancestry.
+    // Missing certificates are uncertainty, including bounded/cyclic histories.
+    if (enc_.kind==EncKind::Egg || enc_.kind==EncKind::Egg3) {
+        uint8_t paternal=0,shared=0;
+        const uint8_t era=enc_.kind==EncKind::Egg3?3:4;
+        if (pk_.isEgg) {
+            std::array<uint8_t,4> sources{};
+            if (moveBreed4Validate(enc_.species,enc_.version,pk_.moves,sources))
+                for (unsigned i=0;i<4;++i) {
+                    if (sources[i]>=2 && sources[i]<=4) paternal|=1u<<i;
+                    if (sources[i]==4) shared|=1u<<i;
+                }
+        } else for (unsigned i=0;i<4;++i) {
+            if (moves_[i].method==LearnMethod::EggMove || moves_[i].method==LearnMethod::InheritLevelUp) paternal|=1u<<i;
+            if (moves_[i].method==LearnMethod::InheritLevelUp) shared|=1u<<i;
+        }
+        if (paternal) {
+            bool certified=Breeding::Gen35Ancestry::provenOrdinaryBirth(era,enc_.species,enc_.version,pk_.moves,paternal,shared,pk_.isEgg);
+            if (!certified) {
+                Breeding::Gen35Ancestry ancestry(pk_.moves);
+                certified=ancestry.provenBirth(era,enc_.species,enc_.version,paternal,shared,pk_.isEgg);
+            }
+            ancestryVerified_ = certified;
+            if (!certified)
+                fishy(CheckIdentifier::Egg,"The simultaneous original parent move ancestry is not yet certified");
+        }
+    }
+}
+
 // ----------------------------------------------------------------------- run
 Report Analyzer::run() {
     Report r;
@@ -1772,31 +1807,7 @@ Report Analyzer::run() {
     findVerifiedEncounter();
 
     verifyPid();
-    // A per-slot move source does not certify simultaneous parent ancestry.
-    // Missing certificates are uncertainty, including bounded/cyclic histories.
-    if (enc_.kind==EncKind::Egg && !format5()) {
-        uint8_t paternal=0,shared=0;
-        if (pk_.isEgg) {
-            std::array<uint8_t,4> sources{};
-            if (moveBreed4Validate(enc_.species,enc_.version,pk_.moves,sources))
-                for (unsigned i=0;i<4;++i) {
-                    if (sources[i]>=2 && sources[i]<=4) paternal|=1u<<i;
-                    if (sources[i]==4) shared|=1u<<i;
-                }
-        } else for (unsigned i=0;i<4;++i) {
-            if (moves_[i].method==LearnMethod::EggMove || moves_[i].method==LearnMethod::InheritLevelUp) paternal|=1u<<i;
-            if (moves_[i].method==LearnMethod::InheritLevelUp) shared|=1u<<i;
-        }
-        if (paternal) {
-            bool certified=Breeding::Gen35Ancestry::provenOrdinaryBirth(4,enc_.species,enc_.version,pk_.moves,paternal,shared,pk_.isEgg);
-            if (!certified && pk_.isEgg) {
-                Breeding::Gen35Ancestry ancestry(pk_.moves);
-                certified=ancestry.provenBirth(4,enc_.species,enc_.version,paternal,shared,true);
-            }
-            if (!certified)
-                fishy(CheckIdentifier::Egg,"The simultaneous Gen IV parent move ancestry is not yet certified");
-        }
-    }
+    verifyAncestry();
     verifyLanguage();
     verifyNickname();
     verifyTrainerName();
@@ -1842,6 +1853,8 @@ Report Analyzer::run() {
         r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
         r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Partial;
     }
+    if (!ancestryVerified_) r.coverage.moves = r.coverage.eggBreeding = CoverageLevel::Partial;
+    if (!evExpVerified_) r.coverage.internal = CoverageLevel::Partial;
     return r;
 }
 
@@ -1857,6 +1870,7 @@ Origin5 Analyzer::run5(uint8_t currentLevel) {
     // encounter and history. Names, item, form, PP, markings, EXP, dates, Pokerus, nature, the
     // species-ratio gender and the transfer location are the Gen V analyzer's.
     verifyPid();
+    verifyAncestry();
     verifyLanguage();
     verifyNickname();
     verifyTrainerId();
@@ -1880,6 +1894,7 @@ Origin5 Analyzer::run5(uint8_t currentLevel) {
     o.analyzed = true;
     o.encounterMatched = !search_.list.empty() && enc_.kind != EncKind::Invalid;
     o.allMovesVerified = allValid(moves_);
+    o.breedingCoverage = ancestryVerified_ ? CoverageLevel::Complete : CoverageLevel::Partial;
     for (const Check& c : parse_) if (c.severity != kValid) o.checks.push_back(c);
     o.kind = enc_.kind;
     o.encSpecies = enc_.species;

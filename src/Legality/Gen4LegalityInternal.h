@@ -435,6 +435,7 @@ Search searchEncounters3(const Pk4& pk, const std::vector<Evo>& chain);
 struct Origin5 {
     bool analyzed = false;          // the analysis ran (a Gen III/IV origin it handles)
     bool encounterMatched = false;  // an encounter template matched (not EncounterInvalid)
+    CoverageLevel breedingCoverage = CoverageLevel::Partial; // explicit required-history certificate
     bool allMovesVerified = false;  // every move slot has a source
     std::vector<Check> checks;      // PKHeX results the Gen V analyzer does not produce itself
     // Facts the Gen V name rules need.
@@ -450,7 +451,7 @@ struct Origin5 {
     std::array<const char*, 4> moveSource{}; // how each move slot was verified (nullptr: not verified)
     bool clean() const noexcept {
         for (const Check& c : checks) if (c.severity == kInvalid || c.severity == kFishy) return false;
-        return analyzed && encounterMatched && allMovesVerified;
+        return analyzed && encounterMatched && allMovesVerified && breedingCoverage == CoverageLevel::Complete;
     }
 };
 /// Runs PKHeX's encounter search, move/evolution history and the encounter-dependent verifiers

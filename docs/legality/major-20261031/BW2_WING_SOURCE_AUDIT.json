@@ -1,0 +1,109 @@
+{
+  "repository": "fuddlesworth/pokebw2",
+  "commit": "705f87189f1328f58b438891ed50c333183da928",
+  "files": [
+    {
+      "path": "include/pml/item.h",
+      "sha256": "53f382b761521f3a15e6043d028319028fa9b107bb5e2da1a8389de8789a8754",
+      "git_blob": "93e5a0848ca1af9f06c0d625ce6d8034c91ac951",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/clever_wing/data.json",
+      "sha256": "777c7ed897ba6f8b463eab232176c6bd63c747726e200bf76f745bf4ba31a9ef",
+      "git_blob": "8323eccc2ee6387dace1e58ce63e322b4f46b9db",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/genius_wing/data.json",
+      "sha256": "436c223a59752d66ff77ef48c546fdee758def6294073166bbebced1d4fbafc4",
+      "git_blob": "6856d6a0a422050eb83aff36462ba96d131f8f8e",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/grepa_berry/data.json",
+      "sha256": "4ef6712c56c6dc0a6bbd38cf5ed557722875171f3ef870551a2fa0b62e4fbca0",
+      "git_blob": "6be9571eea8ca47d484e7e29f0e9d05884d382bc",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/health_wing/data.json",
+      "sha256": "8262ddf09e7d4d52f88d23af32ea94cd91b494fd835cb041b383851e9af722d9",
+      "git_blob": "f7c420f7975ed27a61ab3b383d35a8c74693572f",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/hondew_berry/data.json",
+      "sha256": "28392c08518131f5cb52ff0305f18dd640d0bd76aec34c9645ef598455144a14",
+      "git_blob": "da8d4f17ddcb71c915dff2650fbde6efbb7a9c01",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/kelpsy_berry/data.json",
+      "sha256": "a467af4f420451ef8fda19c94bf0e2a33dc50049a26d96e6d89c49ebafd8aedb",
+      "git_blob": "6133f9ae57d8e15b3c9bbb129025a9504a5b72d4",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/muscle_wing/data.json",
+      "sha256": "f3d5faf4d87259a38ff3bffa80c4b424f8bc66abda0db7dfefbd800f6af01eca",
+      "git_blob": "e090a34d69213e5d3327a942a9c62bb624c84e31",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/pomeg_berry/data.json",
+      "sha256": "4ab1e2fc9c6364d8ba9945799cf0f55d189d6005741e221f847179afe3ffd3d0",
+      "git_blob": "4ba56049875eaf4c65cacccef5e621f91ecc7a35",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/qualot_berry/data.json",
+      "sha256": "7453924d114447cbec9a6d2115b00466dbfe11d780a8740f25e39bf2647a8530",
+      "git_blob": "ebbe11234e41b9ae1987dccfd03ea9ff6c139ebf",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/resist_wing/data.json",
+      "sha256": "c00a5b1611bbc0e9bf46cdfd6b70bb8fc745257b58f8cf9e24fbfd37407d94aa",
+      "git_blob": "17819653f5752b15405bc8d9e6f74beae2cb7603",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/swift_wing/data.json",
+      "sha256": "f0975af9654129f4f965be0be006edac084d85a9be7ed26fcea16f884ceb205e",
+      "git_blob": "652d54de1c75fd02d07da8bc33a5e35a2b99949e",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "res/items/tamato_berry/data.json",
+      "sha256": "d0bca61344d36042c254f81076c4e2781c153373129505664fd2b1bb84c08b23",
+      "git_blob": "80b471ef9ff12867589ce0bc60aad61f1570d98d",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "src/ov165/status_rcv.c",
+      "sha256": "12bf850649f1f23cc091dbba8dd4be2a535aa204e0bac23b65caec96928da6fb",
+      "git_blob": "792f0c8f38b4efcdb392f824d6a693fe0a96940e",
+      "git_blob_matches_remote": true
+    },
+    {
+      "path": "src/system/pml_item.c",
+      "sha256": "548c34cf95df851158131bca533ee95e93966f29a71822792b9eadbcf9255a1d",
+      "git_blob": "ff80578e23920f1cadd2d61294a2b8f0761c70de",
+      "git_blob_matches_remote": true
+    }
+  ],
+  "source_cache": "Local cache only; reproducible via tools/legality_completion/gen5_wing_native_witness.py --source PATH --fetch --out PATH",
+  "native_body_sha256": "cdf2627324bf3586005890a23c4414d2cc6aea6ac79822330c4988998ad83b84",
+  "native_helper_result": "101811 native helper assertions PASS; repeated identical paths removed; full ROM/item dispatcher validation remains separate",
+  "findings": [
+    "All six Wing JSON records set exactly one EV increment +1, own EV-up flag, level_up=false, evolve=false and unk6_4=true; friendship_up_1=true also. Six corresponding berries use -10; repeated use clamps at0.",
+    "Published StatusRcv_UseItem changes EXP only in the level-up effect branch; Wing/berry JSONs disable it. No EXP/level restriction is applied to their EV branches.",
+    "StatusRcv_AddEffort allows +1 beyond100 with noLimit, blocks starting255 and total510, and clamps negative outcomes to0. PokeParty_SetParam independently clamps EV255/total510.",
+    "Shedinja is explicitly excluded from the HP-positive item branch in both CanUseItem and UseItem. HP-negative berries remain usable. Thus a direct six-stat Wing proof cannot be applied universally to Shedinja.",
+    "For other hatched species, a finite route is at most26 berries per stat to clear an arbitrary initial state, then target_i Wings per stat; no EXP change and no intermediate total above target_total<=510. This establishes modeled EV reachability independent of previous EV acquisition, including transferred origins, IF item availability/dispatcher reconstruction is accepted.",
+    "This published reconstruction is not an independently rebuilt regional ROM. StatusRcv noLimit uses numeric parameter48, while its header assigns48=friendship_up_1 and51=unk6_4. Both are true on Wings so the traced Wing route is unchanged, but vitamin/control dispatcher equivalence remains unverified. Do not claim full native certification from this helper alone."
+  ],
+  "scope": "Published B2W2 US source-body/item-data evidence and native helper extraction; not BW/regional binary certification and not blanket legitimacy.",
+  "native_helper_original_result_repeated_paths": "8522932 native helper assertions PASS; full ROM/item dispatcher validation remains separate"
+}

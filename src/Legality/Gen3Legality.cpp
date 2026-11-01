@@ -31,6 +31,7 @@
 #include "Legality/Gen3LegalityDataCxd.h"
 #include "Legality/Gen34EvExpFeasibility.h"
 #include "Legality/Gen35BreedingAncestry.h"
+#include "Legality/CoverageMerge.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon.h"
@@ -3333,6 +3334,9 @@ struct Analysis {
     PidIv pidiv;
     bool capped = false;        // a reversal guard was hit: the result is Unknown
     bool unsupported = false;   // a filter pattern could not be evaluated: Unknown
+    // Required history certificates are independent of diagnostic text.
+    bool evExpVerified = true;
+    bool ancestryVerified = true;
     std::vector<Finding> findings;
 
     void add(uint8_t sev, CheckIdentifier id, std::string text) {
@@ -3766,10 +3770,11 @@ void verifyEvs(const Pk3& pk, Analysis& a) {
     for (uint8_t ev : pk.evs)
         if (ev != 0 && (ev > 100 || ev % 10 != 0)) vitamin = false;
     if (!vitamin) {
-        // Existing exact event/Orre encounter models also initialize EVs to
-        // zero. Their receipt/RNG uncertainty remains handled separately;
-        // do not discard that modeled initial state merely for being gifts.
-        const bool native=(isGbaVersion(pk.version) || pk.version==kVerCXD) && e.kind!=Kind::Invalid &&
+        a.evExpVerified = false;
+        // Exact retail gift models initialize EVs to zero. Orre requires
+        // its own native proof for initial EVs and deferred shadow EXP; the
+        // retail action bound must not silently certify that history.
+        const bool native=isGbaVersion(pk.version) && e.kind!=Kind::Invalid &&
             (pk.metKnown || e.kind==Kind::Gift || e.kind==Kind::GiftNY || e.kind==Kind::GiftJPN);
         if (!native) {
             a.fishy(CheckIdentifier::Stats,"The initial EV/EXP state of this encounter or transfer is not verified");
@@ -3781,12 +3786,7 @@ void verifyEvs(const Pk3& pk, Analysis& a) {
                 // A traded egg retains its original game byte. For a hatched
                 // record, certify the action sequence in every possible hatch
                 // game rather than inventing which player performed the hatch.
-                auto result=EvExp::solve(request,evBattles3(pk.version==kVerCXD?kVerE:pk.version,(e.kind==Kind::Slot || e.kind==Kind::Static || e.kind==Kind::Egg) && pk.version!=kVerCXD));
-                if (pk.version==kVerCXD && result.verdict==EvExp::Verdict::Proven)
-                    for (uint8_t v=1;v<=5;++v)
-                        if (EvExp::solve(request,evBattles3(v,false)).verdict!=EvExp::Verdict::Proven) {
-                            result.verdict=EvExp::Verdict::Incomplete;break;
-                        }
+                auto result=EvExp::solve(request,evBattles3(pk.version,e.kind==Kind::Slot || e.kind==Kind::Static || e.kind==Kind::Egg));
                 if (e.kind==Kind::Egg && result.verdict==EvExp::Verdict::Proven)
                     for (uint8_t v=1;v<=5;++v) {
                         request.berriesAvailable=v==kVerE;
@@ -3794,6 +3794,7 @@ void verifyEvs(const Pk3& pk, Analysis& a) {
                             result.verdict=EvExp::Verdict::Incomplete;break;
                         }
                     }
+                a.evExpVerified = result.verdict!=EvExp::Verdict::Incomplete;
                 if (result.verdict==EvExp::Verdict::Impossible)
                     a.invalid(CheckIdentifier::Stats,"The joint EV gains require more EXP-bearing battle actions than the available EXP permits");
                 else if (result.verdict==EvExp::Verdict::Incomplete)
@@ -4266,10 +4267,11 @@ void verifyJointAncestry(const Pk3& pk, Analysis& a) {
     }
     if (!paternal) return;
     bool certified=Breeding::Gen35Ancestry::provenOrdinaryBirth(3,a.enc.species,a.enc.eggVersion,pk.moves,paternal,shared,pk.isEgg);
-    if (!certified && pk.isEgg) {
+    if (!certified) {
         Breeding::Gen35Ancestry ancestry(pk.moves);
-        certified=ancestry.provenBirth(3,a.enc.species,a.enc.eggVersion,paternal,shared,true);
+        certified=ancestry.provenBirth(3,a.enc.species,a.enc.eggVersion,paternal,shared,pk.isEgg);
     }
+    a.ancestryVerified = certified;
     if (!certified)
         a.fishy(CheckIdentifier::Egg,"The simultaneous Gen III parent move ancestry is not yet certified");
 }
@@ -4460,8 +4462,10 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
         add(Severity::Warning, CheckIdentifier::Trainer, "A word-filter pattern could not be evaluated");
     }
     r.coverage.structure = certify ? CoverageLevel::Complete : CoverageLevel::Partial;
-    if (certify && !problem && a.enc.kind != Kind::Invalid && isGbaSourceGame(exactSourceGameId))
+    if (certify && !problem && a.evExpVerified && a.ancestryVerified && a.enc.kind != Kind::Invalid && isGbaSourceGame(exactSourceGameId))
         setAllCoverage(r.coverage, CoverageLevel::Complete);
+    if (!a.evExpVerified) r.coverage.internal = CoverageLevel::Partial;
+    if (!a.ancestryVerified) r.coverage.moves = r.coverage.eggBreeding = CoverageLevel::Partial;
     if (out != nullptr && a.enc.kind != Kind::Invalid) {
         out->encounter = describeEncounter(pk, a.enc);
         out->inGameTrade = a.enc.kind == Kind::Trade;
@@ -4483,11 +4487,12 @@ void applyGen3Analyzer(Report& r, const Gen3Pk3::Verification& verified, std::st
         if (issue.severity == Severity::Info) continue;
         bool duplicate = false;
         for (const auto& existing : r.issues)
-            if (existing.text == issue.text) { duplicate = true; break; }
+            if (existing.severity == issue.severity && existing.text == issue.text) { duplicate = true; break; }
         if (!duplicate) r.issues.push_back(issue);
     }
-    if (verified.certified && r.problemCount() == 0 && Gen3Pk3::isGbaSourceGame(exactSourceGameId))
+    if (verified.certified && Gen3Pk3::isCertified(verified.report) && r.problemCount() == 0 && Gen3Pk3::isGbaSourceGame(exactSourceGameId))
         Gen3Pk3::setAllCoverage(r.coverage, CoverageLevel::Complete);
+    else retainIncompleteCoverage(r.coverage, verified.report.coverage);
 }
 
 void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {

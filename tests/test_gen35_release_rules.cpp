@@ -5,6 +5,8 @@
 #include "Legality/Gen3Legality.h"
 #include "Legality/Gen5GlobalLinkCatalog.h"
 #include "Legality/Gen4RanchIV.h"
+#include "../src/Legality/Gen4LegalityInternal.h"
+#include <sstream>
 #include "legality_gen5_test_helpers.h"
 #include <cassert>
 #include <fstream>
@@ -125,6 +127,29 @@ int main() {
     const auto unresolved=Legality::analyzePk4(joint,"diamond_nds");
     assert(unresolved.verdict()==Verdict::Incomplete && consistent(unresolved));
     assert(hasText(unresolved,Legality::Severity::Warning,"joint EV/EXP"));
+    // Matching encounter and per-slot learnability cannot certify a missing
+    // required origin history, even with no warning strings at all.
+    Legality::Gen4::Origin5 origin;
+    origin.analyzed=origin.encounterMatched=origin.allMovesVerified=true;
+    assert(origin.checks.empty() && !origin.clean());
+    origin.breedingCoverage=Legality::CoverageLevel::Complete;
+    assert(origin.clean());
+    origin.breedingCoverage=Legality::CoverageLevel::Partial;
+    assert(!origin.clean());
+    // Constructed hatched records retain a multi-step inherited move after
+    // Move Deleter. Official release accepts all10; old native adapters could
+    // not certify any of their complete parent chains.
+    std::ifstream recursive("tests/fixtures/gen15_session2/native_recursive_breeding.txt");assert(recursive);
+    size_t recursiveCases=0;std::string row,cart;
+    while(std::getline(recursive,row)) {
+        std::istringstream fields(row);fields>>id>>cart>>hex;assert(fields);
+        const auto bytes=fromHex(hex.c_str()),before=bytes;
+        const std::string game=cart=="R"?"ruby_gba":cart=="S"?"sapphire_gba":cart=="E"?"emerald_gba":cart=="FR"?"firered_gba":cart=="LG"?"leafgreen_gba":cart=="D"?"diamond_nds":cart=="P"?"pearl_nds":cart=="Pt"?"platinum_nds":cart=="HG"?"heartgold_nds":"soulsilver_nds";
+        const auto report=bytes.size()==80?Legality::analyzePk3(bytes,game):Legality::analyzePk4(bytes,game);
+        if(report.verdict()!=Verdict::NoProblemsFound) {std::cerr<<id<<" lacks full parent proof\n";for(const auto& issue:report.issues)std::cerr<<issue.text<<"\n";assert(false);}
+        assert(consistent(report)&&bytes==before);++recursiveCases;
+    }
+    assert(recursiveCases==10);
     // A known full RNG state must survive reversal for both sign-bit aliases.
     uint32_t seed=0x20261027;
     for(size_t i=0;i<256;++i) {
@@ -138,6 +163,6 @@ int main() {
             static_cast<uint8_t>((first>>5)&31),static_cast<uint8_t>((first>>10)&31)};
         assert(Legality::Gen4RanchIV::hasState(ivs));
     }
-    std::cout<<"Official release rules: "<<cases<<" cases; 40 unsupported PGL histories, supported regional controls, "
+    std::cout<<"Official release rules: "<<cases<<" original fixtures +2 joint EV checks +10 native recursive controls; 40 unsupported PGL histories, supported regional controls, "
         "native joint EV/EXP counterexample, zero-EXP negative, Ranch PK4/PK5, Berry Fix PK3/PK4/PK5 and256 RNG states PASS\n";
 }

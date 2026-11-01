@@ -21,7 +21,9 @@ jobs:
   host-tests:
     name: Host tests (GCC)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # The full normal + sanitizer suite took 39m56s at 3f620c79.
+    # Keep every check and allow the added ancestry/coverage suites to finish.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout

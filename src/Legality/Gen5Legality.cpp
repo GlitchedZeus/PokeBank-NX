@@ -923,6 +923,7 @@ private:
     void playerNickname(const std::u16string& nick);
     void filterName(std::u16string_view text, uint8_t origin, const char* what, bool definite = true);
     bool textUnknown_ = false; // a name rule could not be decided
+    bool abilityUnknown_ = false; // preserve uncertainty independently of name checks
 
     std::vector<Candidate> candidates();
     void slotCandidates(std::vector<Candidate>& out);
@@ -1056,11 +1057,13 @@ void Gen5Analyzer::abilities() {
         if ((p_.version == 22 || p_.version == 23) && match_.kind == Kind::Egg) expect = 120;
         else if ((p_.version == 20 || p_.version == 21) && !(match_.kind == Kind::Trade)) expect = 120;
         if (p_.ability != expect) a_.invalid(CheckIdentifier::Ability, "Blue-Striped Basculin cannot have this ability from this game and encounter");
-        else if (match_.ability == OnlyHidden)
+        else if (match_.ability == OnlyHidden) {
+            abilityUnknown_ = true;
             // PKHeX returns VALID here, but every Dream World Pokemon carries its hidden ability.
             // Without original-game evidence for the Dream World side this stays a Warning.
             a_.warn(CheckIdentifier::Ability, "Blue-Striped Basculin without its hidden ability matched a Dream World "
                                               "encounter that gives the hidden ability; PKHeX accepts it");
+        }
         return;
     }
     if (p_.ability != a0 && p_.ability != a1 && p_.ability != ah) {
@@ -1079,14 +1082,17 @@ void Gen5Analyzer::abilities() {
         // PKHeX rejects the flag for every Gen III/IV encounter (CheckMatch) except an
         // unevolved Gen IV card (VerifyAbilityPCD compares the ability only), and a
         // fateful Gen IV Pokemon may be one.
-        if (p_.hiddenAbility && p_.fateful && isGen4Version(p_.version))
+        if (p_.hiddenAbility && p_.fateful && isGen4Version(p_.version)) {
+            abilityUnknown_ = true;
             a_.warn(CheckIdentifier::Ability, "Hidden ability flag is set on a Gen IV event Pokemon; PKHeX accepts it on "
                                               "an unevolved Gen IV card, which is not identified here");
-        else if (p_.hiddenAbility)
+        } else if (p_.hiddenAbility)
             a_.invalid(CheckIdentifier::Ability, "Hidden ability flag is set on a Gen III/IV-origin Pokemon");
-        else if (p_.ability != (p_.pid & 1u ? a1 : a0) && a0 != a1)
+        else if (p_.ability != (p_.pid & 1u ? a1 : a0) && a0 != a1) {
+            abilityUnknown_ = true;
             // Gen III species that gained a second ability later keep their old one.
             a_.warn(CheckIdentifier::Ability, "Ability does not match the PID slot; Gen III/IV ability history is not checked here");
+        }
         return;
     }
     // The PID must pick the stored ability only for encounters that let the
@@ -1101,6 +1107,7 @@ void Gen5Analyzer::abilities() {
         // but nothing from the games proves it (no Gen V decompilation), and PKHeX accepts
         // the record when it matches the current species' template (AbilityVerifier
         // VerifyFixedAbility). Unproven, so a Warning: docs/legality/PKHEX_DISAGREEMENT_REVIEW.md.
+        abilityUnknown_ = true;
         a_.report.coverage.internal = CoverageLevel::Partial;
         a_.warn(CheckIdentifier::Ability, "Hidden ability flag is set but the ability is not the hidden ability "
                                           "(not shown impossible in Gen V; not treated as Invalid)");
@@ -2029,7 +2036,8 @@ void Gen5Analyzer::movePool() {
         }
     }
     if (!p_.isEgg && found) {
-        bool certified=false;
+        bool certified=false,bwPairedRoleUnknown=false;
+        std::vector<std::pair<uint16_t,uint8_t>> recursiveCandidates;
         // A different matching acquisition can remove the need for a breeding
         // history. Do not reject the first egg candidate in isolation.
         for(const auto& t:matchAll_) {
@@ -2044,16 +2052,31 @@ void Gen5Analyzer::movePool() {
                 inherited|=static_cast<uint8_t>(1u<<i);
             }
             if(!inherited){certified=true;break;}
+            if((p_.version==20||p_.version==21)&&(t.species==29||t.species==32||t.species==313||t.species==314)){
+                // Hatching does not establish the unreplayed BW paired-species
+                // offspring dispatch. A non-egg or fully teachable alternative
+                // can still establish a history without that inherited route.
+                bwPairedRoleUnknown=true;
+                continue;
+            }
             if(p_.form!=0)continue; // no cross-form lower certificate
             for(uint8_t shared=0;shared<16;++shared) {
                 if(shared&~inherited)continue;
                 if(Breeding::Gen35Ancestry::provenOrdinaryBirth(5,t.species,p_.version,p_.moves,inherited,shared,false)){certified=true;break;}
             }
             if(certified)break;
+            recursiveCandidates.emplace_back(t.species,inherited);
+        }
+        if(!certified&&!recursiveCandidates.empty()){
+            const Breeding::Gen35Ancestry ancestry(p_.moves);
+            for(const auto& [baby,inherited]:recursiveCandidates)
+                if(ancestry.provenHatchedBirth(5,baby,p_.version,inherited)){certified=true;break;}
         }
         if(!certified){
             ancestryPartial=true;
-            a_.warn(CheckIdentifier::Egg,"Hatched inherited moves lack a verified simultaneous parental birth history");
+            a_.warn(CheckIdentifier::Egg,bwPairedRoleUnknown
+                ? "Black/White paired-species offspring and parental role path is unverified for these hatched inherited moves"
+                : "Hatched inherited moves lack a verified simultaneous parental birth history");
         }
     }
     cov.moves = ancestryPartial ? CoverageLevel::Partial : CoverageLevel::Complete;
@@ -2581,7 +2604,7 @@ Report Gen5Analyzer::run() {
     if (gen5Origin_) namesGen5();
     else if (originMatched()) namesOrigin();
     else namesTransfer();
-    cov.internal = textUnknown_ ? CoverageLevel::Partial : CoverageLevel::Complete;
+    cov.internal = (textUnknown_ || abilityUnknown_) ? CoverageLevel::Partial : CoverageLevel::Complete;
     if (!gen5Origin_) cov.eggBreeding = CoverageLevel::Partial;
     mergeOrigin();
     saveContext();

@@ -21,17 +21,17 @@ host-sanitize: $(HOST_BUILD)/test_legality_gen5_sanitize
 
 GEN5_FULL_CARD_HEADERS := include/Legality/Gen5FullWonderCard.h include/Legality/Gen5FullCardCatalog.h include/Legality/Gen5GlobalLinkCatalog.h
 GEN5_ORIGIN_HEADERS := src/Legality/Gen4LegalityInternal.h include/Legality/Gen4Legality.h include/Legality/Gen4LegalityData.h include/Legality/Gen4RanchIV.h \
-	include/Legality/Gen35BreedingAncestry.h include/Legality/FiniteBreedingChain.h include/Legality/BreedingBirthMoves.h
+	include/Legality/Gen35BreedingAncestry.h include/Legality/FiniteBreedingChain.h include/Legality/BreedingBirthMoves.h include/Legality/CoverageMerge.h
 
 GEN5_JOINT_BREEDING_SOURCES := tests/test_gen5_joint_breeding.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
 HOST_TESTS += $(HOST_BUILD)/test_gen5_joint_breeding
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_joint_breeding_sanitize
 host-test: $(HOST_BUILD)/test_gen5_joint_breeding
 host-sanitize: $(HOST_BUILD)/test_gen5_joint_breeding_sanitize
-$(HOST_BUILD)/test_gen5_joint_breeding: tests/fixtures/gen15_session2/gen5_bw_paired_family.txt $(GEN5_JOINT_BREEDING_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+$(HOST_BUILD)/test_gen5_joint_breeding: tests/fixtures/gen15_session2/gen5_bw_paired_family.txt tests/fixtures/gen15_session2/gen5_recursive_tangela.txt $(GEN5_JOINT_BREEDING_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_JOINT_BREEDING_SOURCES) -o $@
-$(HOST_BUILD)/test_gen5_joint_breeding_sanitize: tests/fixtures/gen15_session2/gen5_bw_paired_family.txt $(GEN5_JOINT_BREEDING_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+$(HOST_BUILD)/test_gen5_joint_breeding_sanitize: tests/fixtures/gen15_session2/gen5_bw_paired_family.txt tests/fixtures/gen15_session2/gen5_recursive_tangela.txt $(GEN5_JOINT_BREEDING_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_JOINT_BREEDING_SOURCES) -o $@
 
@@ -128,10 +128,10 @@ HOST_TESTS += $(HOST_BUILD)/test_gen35_release_rules
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen35_release_rules_sanitize
 host-test: $(HOST_BUILD)/test_gen35_release_rules
 host-sanitize: $(HOST_BUILD)/test_gen35_release_rules_sanitize
-$(HOST_BUILD)/test_gen35_release_rules: $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+$(HOST_BUILD)/test_gen35_release_rules: tests/fixtures/gen15_session2/native_recursive_breeding.txt $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@
-$(HOST_BUILD)/test_gen35_release_rules_sanitize: $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+$(HOST_BUILD)/test_gen35_release_rules_sanitize: tests/fixtures/gen15_session2/native_recursive_breeding.txt $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@
 
@@ -146,3 +146,16 @@ $(HOST_BUILD)/test_gen5_name_uncertainty: $(GEN5_NAME_UNCERTAINTY_SOURCES) inclu
 $(HOST_BUILD)/test_gen5_name_uncertainty_sanitize: $(GEN5_NAME_UNCERTAINTY_SOURCES) include/Legality/Gen5UnverifiedNameFilters.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_NAME_UNCERTAINTY_SOURCES) -o $@
+
+GEN35_COVERAGE_INTEGRITY_SOURCES := tests/test_gen35_coverage_integrity.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+GEN35_COVERAGE_INTEGRITY_FIXTURES := tests/fixtures/gen15_session2/global_link.txt tests/fixtures/gen15_session2/ranch_ability.txt tests/fixtures/gen15_session2/gen5_bw_paired_family.txt tests/fixtures/gen15_session2/transferred_joint_coverage.txt
+HOST_TESTS += $(HOST_BUILD)/test_gen35_coverage_integrity
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen35_coverage_integrity_sanitize
+host-test: $(HOST_BUILD)/test_gen35_coverage_integrity
+host-sanitize: $(HOST_BUILD)/test_gen35_coverage_integrity_sanitize
+$(HOST_BUILD)/test_gen35_coverage_integrity: $(GEN35_COVERAGE_INTEGRITY_SOURCES) $(GEN35_COVERAGE_INTEGRITY_FIXTURES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN35_COVERAGE_INTEGRITY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen35_coverage_integrity_sanitize: $(GEN35_COVERAGE_INTEGRITY_SOURCES) $(GEN35_COVERAGE_INTEGRITY_FIXTURES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN35_COVERAGE_INTEGRITY_SOURCES) -o $@
