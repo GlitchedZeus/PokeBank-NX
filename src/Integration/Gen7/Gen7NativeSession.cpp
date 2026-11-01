@@ -59,10 +59,26 @@ Modern::OpenedSession Gen7NativeSession::open(std::span<const uint8_t> bytes, st
 }
 
 Gen7NativeSession::Gen7NativeSession(Gen7Save source)
-    : session_(std::move(source)), capabilities_(Capability::find(session_.source().exactGameId())) {
+    : session_(std::move(source)), teams_(BattleTeams::read(session_.source())),
+      capabilities_(Capability::find(session_.source().exactGameId())) {
     // Every Gen VII exact id is registered; a missing row would be a programming error that the
     // registry test catches, so fall back to the Sun row rather than dereferencing null.
     if (!capabilities_) capabilities_ = Capability::find("sun_3ds");
+}
+
+std::string_view Gen7NativeSession::editBlockedReason(Modern::SlotRef slot) const noexcept {
+    if (slot.region != Modern::Region::Box) return {};
+    if (!teams_.readable) return "Gen VII Battle Box team data could not be read; box changes are refused";
+    if (const auto* m = teams_.at(slot.box, slot.slot); m && m->locked)
+        return "This Pokemon is in a locked Battle Box team; unlock the team in game first";
+    return {};
+}
+
+std::string_view Gen7NativeSession::storageBlockedReason(Modern::SlotRef slot) const noexcept {
+    if (const auto reason = editBlockedReason(slot); !reason.empty()) return reason;
+    if (slot.region == Modern::Region::Box && teams_.at(slot.box, slot.slot))
+        return "This box slot is in a Gen VII Battle Box team; remove it from the team in game first";
+    return {};
 }
 
 Enums::GameVersion Gen7NativeSession::gameGroup() const noexcept {
@@ -172,7 +188,8 @@ bool Gen7NativeSession::emptyDestination(Modern::SlotRef slot) const {
     if (slot.region != Modern::Region::Box) return false;
     // The same "verified blank" Gen7StagedSession::cloneToBox demands: decodes, species 0, all-zero plain.
     const auto rec = original(slot);
-    return rec.state == SlotState::Empty && rec.pokemon && rec.pokemon->allZero() && !stagedAt(slot);
+    return rec.state == SlotState::Empty && rec.pokemon && rec.pokemon->allZero() && !stagedAt(slot) &&
+           storageBlockedReason(slot).empty();
 }
 
 bool Gen7NativeSession::stagedAt(Modern::SlotRef slot) const {
@@ -192,10 +209,18 @@ Modern::FieldState Gen7NativeSession::fieldState(Modern::Field field, Modern::Re
 
 bool Gen7NativeSession::stageValue(Modern::SlotRef slot, Modern::Field field, uint32_t value, size_t index,
                                    std::string& error) {
+    if (const auto reason = editBlockedReason(slot); !reason.empty()) {
+        error = std::string(reason);
+        return false;
+    }
     return session_.stageValue(toNative(slot), field, value, index, &error);
 }
 
 bool Gen7NativeSession::stageText(Modern::SlotRef slot, Modern::Field field, std::string_view utf8, std::string& error) {
+    if (const auto reason = editBlockedReason(slot); !reason.empty()) {
+        error = std::string(reason);
+        return false;
+    }
     return session_.stageText(toNative(slot), field, utf8, &error);
 }
 
@@ -251,6 +276,10 @@ bool Gen7NativeSession::beginDraft(Modern::SlotRef slot, std::string& error) {
         error = "Gen VII draft requires a valid occupied record";
         return false;
     }
+    if (const auto reason = editBlockedReason(slot); !reason.empty()) {
+        error = std::string(reason);
+        return false;
+    }
     if (draft_) discardDraft();  // a stale bracket is never silently kept
     draftSnapshot_ = session_.snapshotEntry(n);
     draft_ = slot;
@@ -279,12 +308,14 @@ Modern::OperationSupport Gen7NativeSession::cloneSupport(Modern::SlotRef from) c
 Modern::OperationSupport Gen7NativeSession::moveSupport(Modern::SlotRef from) const {
     if (from.region != Modern::Region::Box)
         return {false, "Party removal is unsupported for Gen VII (party count/compaction not verified); Move is box-to-box"};
+    if (const auto reason = storageBlockedReason(from); !reason.empty()) return {false, reason};
     return cloneSupport(from);
 }
 
 Modern::OperationSupport Gen7NativeSession::removeSupport(Modern::SlotRef at) const {
     if (at.region != Modern::Region::Box)
         return {false, "Party removal is unsupported for Gen VII (party count/compaction not verified)"};
+    if (const auto reason = storageBlockedReason(at); !reason.empty()) return {false, reason};
     if (!original(at).occupied() || stagedAt(at))
         return {false, "Remove needs an unmodified, occupied box record"};
     return {true, {}};
@@ -331,6 +362,10 @@ bool Gen7NativeSession::remove(Modern::SlotRef at, std::string& error) {
     }
     if (at.region != Modern::Region::Box) {
         error = "Party removal is unsupported for Gen VII";
+        return false;
+    }
+    if (const auto support = removeSupport(at); !support.available) {
+        error = std::string(support.reason);
         return false;
     }
     return session_.removeFromBox(at.box, at.slot, &error);

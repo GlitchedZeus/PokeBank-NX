@@ -10,6 +10,7 @@
 // writes a file. Nothing here writes the original save.
 
 #include "Enums/GameVersion.h"
+#include "Integration/Gen7/Gen7BattleTeams.h"
 #include "Integration/Gen7/Gen7StagedSession.h"
 #include "Integration/Modern/NativeSession.h"
 
@@ -118,7 +119,12 @@ private:
         return Layout::blocks(session_.source().family())[Layout::MyStatusBlock].offset;
     }
 
+    // Battle Box teams (Gen7BattleTeams.h): referenced slots never move/release, locked ones never edit.
+    [[nodiscard]] std::string_view editBlockedReason(Modern::SlotRef slot) const noexcept;
+    [[nodiscard]] std::string_view storageBlockedReason(Modern::SlotRef slot) const noexcept;
+
     Gen7StagedSession session_;
+    BattleTeams::Table teams_;
     const Capability::GameCapabilities* capabilities_ = nullptr;
     std::optional<Modern::SlotRef> draft_;
     Gen7StagedSession::EntrySnapshot draftSnapshot_;

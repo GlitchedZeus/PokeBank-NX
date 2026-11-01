@@ -99,6 +99,94 @@ bool hasNativeFact(const Modern::RecordView& v, const std::string& label) {
     for (const auto& f : v.nativeFacts) if (f.first == label) return true;
     return false;
 }
+
+// Battle Box fixture (PKSE 1.2.2 audit: Gen VII had no team guard). Box 1 slots 1-3 hold species
+// 100-102; Box 32 slot 30 holds Tapu Koko; the team table comes from `teams` (PKHeX BoxLayout7 layout).
+std::vector<uint8_t> saveWithTeams(Layout::Family f, uint8_t version, const Gen7Fixture::TeamSpec& teams,
+                                   bool sunMoonDemo = false) {
+    auto save = Gen7Fixture::makeSave({f, version, 2, false, false}, teams);
+    for (size_t s = 0; s < 3; ++s) {
+        Gen6Fixture::MonSpec m;
+        m.species = static_cast<uint16_t>(100 + s);
+        m.ec = 0xB0000000u + static_cast<uint32_t>(s) * 0x01010101u;
+        m.pid = 0x0C000000u + static_cast<uint32_t>(s) * 0x00FF00FFu;
+        m.version = version;
+        Gen6Fixture::put(save, G7::Gen7Save::boxRecordOffset(f, 0, s), Gen6Fixture::encryptedMon(m, false));
+    }
+    if (sunMoonDemo) {   // PKHeX SAV7.ReloadBattleTeams: BoxLayout [0, 0x4C4) all zero = demo, no teams
+        const size_t layout = Layout::blocks(f)[13].offset;
+        std::fill_n(save.begin() + static_cast<std::ptrdiff_t>(layout), 0x4C4 + 72, uint8_t{0});
+    }
+    Gen7Fixture::resignBlocks(save, f);
+    Gen7Fixture::signMeme(save, f);
+    return save;
+}
+
+void battleBoxGuard() {
+    using G7::Gen7NativeSession;
+    std::string error;
+    // Team 1 (unlocked): Box 1 slot 1 and an EMPTY Box 1 slot 6; team 2 (locked): Box 1 slot 2.
+    Gen7Fixture::TeamSpec teams;
+    teams.members = {{0, 0, 0, false}, {0, 0, 5, false}, {1, 0, 1, true}};
+    const auto bytes = saveWithTeams(Layout::Family::SunMoon, Layout::VersionSun, teams);
+    auto opened = Gen7NativeSession::open(bytes, "sun_3ds");
+    check(opened.ready(), "Battle Box fixture opens: " + opened.diagnostic);
+    if (!opened.ready()) return;
+    auto& s = *opened.session;
+    const auto inTeam = SlotRef::boxed(0, 0), locked = SlotRef::boxed(0, 1), free = SlotRef::boxed(0, 2);
+    const auto teamBlank = SlotRef::boxed(0, 5);
+    check(!s.moveSupport(inTeam).available && std::string(s.moveSupport(inTeam).reason).find("Battle Box") != std::string::npos,
+          "a Battle Box member is never moved");
+    check(!s.removeSupport(inTeam).available, "a Battle Box member is never released");
+    check(!s.remove(inTeam, error) && error.find("Battle Box") != std::string::npos, "remove() itself refuses: " + error);
+    const auto dest = s.firstEmptyBoxSlot();
+    check(dest && *dest != teamBlank, "the first free slot is never a team-referenced blank");
+    check(!s.emptyDestination(teamBlank), "a team-referenced empty slot is not a clone/move destination");
+    check(dest && !s.move(inTeam, *dest, error), "move() itself refuses a team member");
+    check(s.stageText(inTeam, Field::Nickname, "TEAM", error), "an UNLOCKED team member stays editable: " + error);
+    check(!s.stageText(locked, Field::Nickname, "LOCK", error) && error.find("locked") != std::string::npos,
+          "a LOCKED team member is never edited: " + error);
+    check(!s.beginDraft(locked, error) && error.find("locked") != std::string::npos, "no editor draft on a locked member");
+    check(!s.moveSupport(locked).available && !s.removeSupport(locked).available, "a locked member is never moved/released");
+    check(s.moveSupport(free).available && s.removeSupport(free).available, "a slot outside every team moves/releases normally");
+    check(dest && s.move(free, *dest, error), "a free box Pokemon moves: " + error);
+    check(std::equal(s.sourceBytes().begin(), s.sourceBytes().end(), bytes.begin(), bytes.end()), "Battle Box: source immutable");
+
+    // A pointer outside 32 x 30 makes the table unreadable: every box storage change is refused.
+    Gen7Fixture::TeamSpec bad;
+    bad.rawPointer = true;
+    bad.rawValue = static_cast<uint16_t>((40u << 8) | 3u);
+    auto broken = Gen7NativeSession::open(saveWithTeams(Layout::Family::SunMoon, Layout::VersionSun, bad), "sun_3ds");
+    check(broken.ready(), "a save with a malformed team pointer still opens read-only");
+    if (broken.ready()) {
+        auto& b = *broken.session;
+        check(!b.moveSupport(free).available && std::string(b.moveSupport(free).reason).find("could not be read") != std::string::npos,
+              "unreadable teams refuse every box Move");
+        check(!b.removeSupport(free).available && !b.firstEmptyBoxSlot(), "unreadable teams refuse Release and every destination");
+        check(!b.stageText(free, Field::Nickname, "NOPE", error), "unreadable teams refuse box edits");
+        check(b.stageText(SlotRef::party(0), Field::Nickname, "PARTY", error), "party edits are unaffected: " + error);
+    }
+
+    // Ultra Sun: same table in the USUM BoxLayout block.
+    Gen7Fixture::TeamSpec usumTeams;
+    usumTeams.members = {{3, 31, 29, true}};
+    auto us = Gen7NativeSession::open(saveWithTeams(Layout::Family::UltraSunUltraMoon, Layout::VersionUltraSun, usumTeams),
+                                      "ultrasun_3ds");
+    check(us.ready(), "USUM Battle Box fixture opens: " + us.diagnostic);
+    if (us.ready()) {
+        check(!us.session->moveSupport(SlotRef::boxed(31, 29)).available, "USUM locked team member never moved");
+        check(!us.session->stageText(SlotRef::boxed(31, 29), Field::Nickname, "KOKO", error), "USUM locked member never edited");
+        check(us.session->moveSupport(SlotRef::boxed(0, 0)).available, "USUM non-member moves");
+    }
+
+    // Sun/Moon demo save (PKHeX: BoxLayout bytes before 0x4C4 all zero): zero pointers are NOT box 1 slot 1.
+    Gen7Fixture::TeamSpec zeros;
+    zeros.rawPointer = true;
+    zeros.rawValue = 0;
+    auto demo = Gen7NativeSession::open(saveWithTeams(Layout::Family::SunMoon, Layout::VersionSun, zeros, true), "sun_3ds");
+    check(demo.ready() && demo.session->moveSupport(SlotRef::boxed(0, 0)).available,
+          "a Sun/Moon demo save has no Battle Box teams (PKHeX ReloadBattleTeams)");
+}
 } // namespace
 
 int main() {
@@ -421,6 +509,8 @@ int main() {
             check(std::equal(us.sourceBytes().begin(), us.sourceBytes().end(), usum.begin(), usum.end()), "USUM source immutable");
         }
     }
+
+    battleBoxGuard();
 
     std::cout << "test_gen7_native_session: " << (failures ? "FAILED " : "all ") << checks << " checks"
               << (failures ? " (" + std::to_string(failures) + " failed)" : " passed") << '\n';

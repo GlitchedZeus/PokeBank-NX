@@ -50,7 +50,16 @@ struct SaveSpec {
     bool sign = true;
 };
 
-inline std::vector<uint8_t> makeSave(const SaveSpec& spec = {}) {
+// Battle Box (PKHeX BoxLayout7: block 13 +0x4C4, 6 teams x 6 int16, -1 empty; lock byte 0x5BA - team).
+// A real save initialises every pointer to -1; members are {team, box, slot, locked}.
+struct TeamMember { size_t team = 0, box = 0, slot = 0; bool locked = false; };
+struct TeamSpec {
+    std::vector<TeamMember> members;
+    bool rawPointer = false;           // write `rawValue` into team 0 slot 0 (malformed-table tests)
+    uint16_t rawValue = 0;
+};
+
+inline std::vector<uint8_t> makeSave(const SaveSpec& spec = {}, const TeamSpec& teams = {}) {
     const auto f = spec.family;
     std::vector<uint8_t> save(Layout::saveSize(f), 0);
     for (size_t i = 0; i < save.size(); ++i) save[i] = static_cast<uint8_t>((i * 13 + 5) & 0xFF);
@@ -71,6 +80,18 @@ inline std::vector<uint8_t> makeSave(const SaveSpec& spec = {}) {
     save[ms + 0x35] = 2;
     const std::u16string name = u"ALOLA";
     for (size_t i = 0; i < 13; ++i) PK7::write16(save, ms + 0x38 + 2 * i, i < name.size() ? name[i] : 0);
+    {
+        const size_t layout = table[13].offset;   // BoxLayout7
+        for (size_t i = 0; i < 36; ++i) PK7::write16(save, layout + 0x4C4 + 2 * i, 0xFFFF);
+        for (size_t t = 0; t < 6; ++t) save[layout + 0x5C0 - 6 - t] = 0;
+        std::array<size_t, 6> used{};
+        for (const auto& m : teams.members) {
+            PK7::write16(save, layout + 0x4C4 + 2 * (m.team * 6 + used[m.team]++),
+                         static_cast<uint16_t>((m.box << 8) | m.slot));
+            if (m.locked) save[layout + 0x5C0 - 6 - m.team] = 1;
+        }
+        if (teams.rawPointer) PK7::write16(save, layout + 0x4C4, teams.rawValue);
+    }
     const size_t play = table[Layout::PlayTimeBlock].offset;
     PK7::write16(save, play, 300);
     save[play + 2] = 1;
