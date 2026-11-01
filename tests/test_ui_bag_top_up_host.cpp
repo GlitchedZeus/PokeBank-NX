@@ -99,6 +99,12 @@ bool noOverlaps() {
     return true;
 }
 
+// Round 11 QA: Gen I's Bag is ONE 20-slot list shared by every category (pret pokered
+// wNumBagItems), so its whole-Bag scope says so instead of implying per-pocket room.
+std::string allBagLabel(const std::string& game) {
+    return game == "Red" ? "Whole Bag (20 slots shared)" : "All Bag pockets";
+}
+
 bool isChangeRow(const std::string& t) {
     return t.rfind("+ ", 0) == 0 || t.find("\xE2\x86\x92") != std::string::npos;
 }
@@ -124,7 +130,8 @@ void flow(const std::string& game, UI::TrainerViewScreen& screen, const std::fun
     d.press(HidNpadButton_ZR);
     check(d.drawn("Top Up / Add Missing") && d.drawn("Preview changes") && d.drawn("Scope") && d.drawn("Amount"),
           game + ": ZR opens SETUP");
-    check(d.drawn("< All Bag pockets >"), game + ": SETUP starts on Scope = All Bag pockets (a Bag tab)");
+    check(d.drawn("< " + allBagLabel(game) + " >"), game + ": SETUP starts on Scope = " + allBagLabel(game) + " (a Bag tab)");
+    if (game == "Red") check(!d.drawn("All Bag pockets"), "Red: no per-pocket wording for the shared 20-slot Bag");
     // H04 steps: Scope -> This pocket.
     d.press(HidNpadButton_Left);
     check(d.drawn("< This pocket ("), game + ": Left picks This pocket");
@@ -204,10 +211,10 @@ void scopeFlow(const std::string& game, UI::TrainerViewScreen& screen, const std
     d.press(HidNpadButton_ZR);
     check(d.drawn("< This pocket ("), game + ": the picked scope is kept for the session");
     d.press(HidNpadButton_Right);
-    check(d.drawn("< All Bag pockets >"), game + ": Right picks All Bag pockets");
+    check(d.drawn("< " + allBagLabel(game) + " >"), game + ": Right picks " + allBagLabel(game));
     for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Down);
     d.press(HidNpadButton_A);
-    check(d.drawn("Preview: Top Up / Add Missing") && d.drawn("All Bag pockets, up to"), game + ": All Bag pockets preview");
+    check(d.drawn("Preview: Top Up / Add Missing") && d.drawn(allBagLabel(game) + ", up to"), game + ": whole-Bag preview");
     check(fullNote.empty() || d.drawn(fullNote), game + ": the preview names the full list (" + fullNote + ")");
     check(!staged(), game + ": the All Bag preview stages nothing");
     d.press(HidNpadButton_B);

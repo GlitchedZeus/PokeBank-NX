@@ -42,14 +42,24 @@ constexpr Key carryKey(std::uint64_t down) noexcept {
 }
 
 // The status a refused Y / X shows (the key is consumed, nothing else happens).
-constexpr const char* refuseHint(Intent intent) noexcept {
-    return intent == Intent::Clone ? "A places the clone in an empty slot, B cancels"
-                                   : "A places it here, B cancels";
+// `packed`: Gen I / II, whose boxes are packed lists with no gaps (R11 QA: never advertise an
+// arbitrary empty position there; the copy is appended after the box's last Pokemon).
+constexpr const char* refuseHint(Intent intent, bool packed = false) noexcept {
+    if (intent == Intent::Clone)
+        return packed ? "A adds the clone at the end of this box, B cancels"
+                      : "A places the clone in an empty slot, B cancels";
+    return "A places it here, B cancels";
 }
 
 // The status shown when Actions -> Clone picks the copy up.
 inline constexpr const char* kClonePickupStatus =
     "Clone: choose an empty slot, A places the copy, B cancels (nothing staged yet)";
+// Gen I / II: boxes have no gaps, so the only destination is the end of the chosen box.
+inline constexpr const char* kClonePickupStatusPacked =
+    "Clone: choose a box with L/R - A adds the copy after its last Pokemon, B cancels (nothing staged yet)";
+constexpr const char* clonePickupStatus(bool packed) noexcept {
+    return packed ? kClonePickupStatusPacked : kClonePickupStatus;
+}
 
 struct FooterHint {
     const char* glyph;
@@ -103,7 +113,9 @@ constexpr int ghostSlot(const CloneTarget& t) noexcept {
     return decision.outcome == Drop::Accept ? decision.slot : t.slot;
 }
 
-constexpr const char* dropStatus(Drop outcome) noexcept {
+constexpr const char* dropStatus(Drop outcome, bool packed = false) noexcept {
+    if (packed && outcome == Drop::Occupied)
+        return "Gen I/II boxes have no gaps - the clone is added at the end of the box. Move to an empty slot, or B cancels";
     switch (outcome) {
         case Drop::Occupied: return "That slot is occupied - nothing was overwritten. Choose an empty slot, or B cancels";
         case Drop::Protected: return "That slot is protected and cannot take a clone - choose another empty slot, or B cancels";
@@ -126,6 +138,9 @@ static_assert(decideCloneDrop({true, 20, 3, 7, false, false}).slot == 3, "packed
 static_assert(decideCloneDrop({true, 20, 3, 1, true, false}).outcome == Drop::Occupied);
 static_assert(decideCloneDrop({true, 20, 20, 5, true, false}).outcome == Drop::BoxFull);
 static_assert(decideCloneDrop({false, 30, 0, 12, false, false}).slot == 12, "sparse: the hovered slot");
+// Packed boxes: any empty cell the cursor is on shows (and places) the copy at the box's end only.
+static_assert(ghostSlot({true, 20, 3, 15, false, false}) == 3 && ghostSlot({true, 20, 3, 4, false, false}) == 3,
+              "packed: the ghost never advertises the hovered empty position");
 static_assert(decideCloneDrop({false, 30, 0, 12, false, true}).outcome == Drop::Protected);
 
 } // namespace PokeBank::UIModel::ClassicCarry

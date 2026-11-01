@@ -843,7 +843,7 @@ bool beginClone(TrainerViewScreen& screen, CarryState& state, int box, int slot,
             break;
         }
     }
-    screen.postStatus(Carry::kClonePickupStatus, 300);
+    screen.postStatus(Carry::clonePickupStatus((state.generation == CarryGeneration::Gen1 || state.generation == CarryGeneration::Gen2)), 300);
     return true;
 }
 
@@ -866,7 +866,7 @@ bool placeClone(TrainerViewScreen& screen, CarryState& state) {
     const auto decision = Carry::decideCloneDrop(cloneTarget(screen, state, box, slot));
     if (decision.outcome != Carry::Drop::Accept) {
         // Refused: nothing is written and the carry stays so another slot can be chosen.
-        screen.postStatus(Carry::dropStatus(decision.outcome), 280);
+        screen.postStatus(Carry::dropStatus(decision.outcome, (state.generation == CarryGeneration::Gen1 || state.generation == CarryGeneration::Gen2)), 280);
         return true;
     }
     const auto sourceChanged = [&] {
@@ -1378,7 +1378,7 @@ bool handleGen5CarryInput(TrainerViewScreen& screen, uint64_t down, int tap) {
             cancel(screen, state);
             return false;
         case Carry::Key::RefuseHint:
-            screen.postStatus(Carry::refuseHint(state.intent), 180);
+            screen.postStatus(Carry::refuseHint(state.intent, (state.generation == CarryGeneration::Gen1 || state.generation == CarryGeneration::Gen2)), 180);
             return true;
         case Carry::Key::None: break;
     }
@@ -1458,7 +1458,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                 cancel(screen, state);
                 return false;
             case Carry::Key::RefuseHint:
-                screen.postStatus(Carry::refuseHint(state.intent), 180);
+                screen.postStatus(Carry::refuseHint(state.intent, (state.generation == CarryGeneration::Gen1 || state.generation == CarryGeneration::Gen2)), 180);
                 return true;
             case Carry::Key::None: break;
         }

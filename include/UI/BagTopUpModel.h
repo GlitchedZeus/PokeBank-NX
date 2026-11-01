@@ -58,6 +58,10 @@ struct State {
     Scope scope = Scope::ThisPocket;   // open() sets the tab's default (defaultScope)
     bool scopeChosen = false;     // the player picked a scope this session (else it follows the tab)
     bool pcAvailable = false;     // the save has PC item storage (Gen I-III)
+    // > 0: every Bag category shares ONE native list of this many slots (Gen I: 20). Round 11 QA:
+    // "All Bag pockets" is then one shared Bag, so SETUP / PREVIEW say so instead of implying
+    // per-pocket room.
+    std::size_t sharedBagSlots = 0;
     uint16_t quantity = kDefaultQuantity;
     BI::Plan plan;
     std::vector<Line> lines;
@@ -81,7 +85,8 @@ struct State {
 }
 
 // `current` is the pocket on screen; `pcAvailable` whether the save has PC item storage.
-inline void open(State& s, BI::Pocket current = BI::Pocket::Items, bool pcAvailable = false) {
+inline void open(State& s, BI::Pocket current = BI::Pocket::Items, bool pcAvailable = false,
+                 std::size_t sharedBagSlots = 0) {
     const auto mode = s.mode;
     const auto scope = s.scope;
     const bool chosen = s.scopeChosen;
@@ -89,6 +94,7 @@ inline void open(State& s, BI::Pocket current = BI::Pocket::Items, bool pcAvaila
     s = {};
     s.mode = mode;          // the last choices are kept for the next run in this session
     s.pcAvailable = pcAvailable;
+    s.sharedBagSlots = sharedBagSlots;
     s.scopeChosen = chosen && (pcAvailable || !pcScope(scope));
     s.scope = s.scopeChosen ? scope : defaultScope(current, pcAvailable);
     s.quantity = quantity == 0 ? kDefaultQuantity : quantity;
@@ -124,10 +130,14 @@ inline void close(State& s) {
 }
 
 // What a scope covers, in words (SETUP's Scope row and the PREVIEW caption).
-[[nodiscard]] inline std::string scopeLabel(Scope scope, const std::string& pocketName) {
+// `sharedBagSlots` > 0: one shared Bag list (Gen I), named with its native size.
+[[nodiscard]] inline std::string scopeLabel(Scope scope, const std::string& pocketName,
+                                            std::size_t sharedBagSlots = 0) {
     switch (scope) {
         case Scope::ThisPocket: return "This pocket (" + pocketName + ")";
-        case Scope::AllBag: return "All Bag pockets";
+        case Scope::AllBag:
+            return sharedBagSlots > 0 ? "Whole Bag (" + std::to_string(sharedBagSlots) + " slots shared)"
+                                      : "All Bag pockets";
         case Scope::PcItems: return "PC Items";
         case Scope::BagAndPc: return "Bag + PC Items";
     }
@@ -148,7 +158,7 @@ inline void close(State& s) {
     switch (r) {
         case Row::Mode: return modeLabel(s.mode);
         // "< ... >": the row says it has more choices (Left / Right), not only the one shown.
-        case Row::Scope: return "< " + scopeLabel(s.scope, pocketName) + " >";
+        case Row::Scope: return "< " + scopeLabel(s.scope, pocketName, s.sharedBagSlots) + " >";
         case Row::Amount: return std::to_string(s.quantity) + " per item (capped natively)";
         default: return {};
     }
@@ -281,6 +291,30 @@ inline void showPreview(State& s, BI::Plan plan, const std::vector<BI::Pocket>& 
 [[nodiscard]] inline std::string appliedStatus(std::size_t toppedUp, std::size_t added) {
     return "Staged: " + std::to_string(toppedUp) + " topped up, " + std::to_string(added) +
            " added; source save unchanged (Review lists them)";
+}
+
+// Items the plan could not fit because a native list was full (never overflowed).
+[[nodiscard]] inline std::size_t notFitted(const BI::Plan& plan) noexcept {
+    std::size_t n = 0;
+    for (const auto& f : plan.full) n += f.notFitted;
+    return n;
+}
+
+// Round 11 QA: a partial result says so. When a native list ran out of slots the status names how
+// many items did not fit and why (Gen I: the 20 shared Bag slots), so a partial Add Missing is
+// never reported as complete.
+[[nodiscard]] inline std::string appliedStatus(std::size_t toppedUp, std::size_t added, const BI::Plan& plan) {
+    const std::size_t missed = notFitted(plan);
+    if (missed == 0) return appliedStatus(toppedUp, added);
+    bool shared = false;
+    std::size_t sharedSlots = 0;
+    for (const auto& f : plan.full)
+        if (f.sharedList) { shared = true; sharedSlots = f.slots; }
+    std::string why = shared ? "the Bag is full (" + std::to_string(sharedSlots) + " slots shared by every category)"
+                             : "a pocket is full";
+    return "Partly staged: " + std::to_string(toppedUp) + " topped up, " + std::to_string(added) + " added; " +
+           std::to_string(missed) + " did not fit because " + why +
+           ". Nothing overflowed; source save unchanged (Review lists them)";
 }
 
 // Same plan twice (the Bag cannot change under the modal, but a confirm re-plans to be sure).

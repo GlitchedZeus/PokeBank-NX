@@ -63,6 +63,12 @@ void testKeys() {
     for (const auto intent : {Carry::Intent::Move, Carry::Intent::Clone}) {
         const std::string hint = Carry::refuseHint(intent);
         check(has(hint, "A places") && has(hint, "B cancels"), "refusal hint names A and B: " + hint);
+        const std::string packedHint = Carry::refuseHint(intent, true);
+        check((has(packedHint, "A places") || has(packedHint, "A adds")) && has(packedHint, "B cancels"),
+              "packed refusal hint names A and B: " + packedHint);
+        if (intent == Carry::Intent::Clone)
+            check(!has(packedHint, "empty slot") && has(packedHint, "end of this box"),
+                  "Gen I/II Clone hint names the box end, not an arbitrary empty slot");
         const auto footer = Carry::carryFooter(intent, false);
         check(std::strcmp(footer.hints[0].glyph, "A") == 0 && std::strcmp(footer.hints[2].glyph, "B") == 0 &&
                   std::strcmp(footer.hints[2].label, "Cancel") == 0 && std::strcmp(footer.hints[1].glyph, "L/R") == 0,
@@ -128,7 +134,8 @@ void testOverlayUsesTheRules() {
         check(has(*site, "switch (Carry::carryKey(down))"), "dispatch routes through ClassicCarry::carryKey");
         check(has(*site, "case Carry::Key::Place: return place(screen, state);"), "A -> place()");
         check(has(*site, "case Carry::Key::Cancel: return cancel(screen, state);"), "B -> cancel()");
-        check(has(*site, "Carry::refuseHint(state.intent)"), "Y / X -> the hint, consumed");
+        check(has(*site, "Carry::refuseHint(state.intent, (state.generation == CarryGeneration::Gen1 || "
+                         "state.generation == CarryGeneration::Gen2))"), "Y / X -> the hint (packed-aware), consumed");
         check(!has(*site, "HidNpadButton_Y) return place("), "Y no longer places");
     }
     check(has(classic, "D-pad and L/R keep using the accepted box navigation path"), "navigation comment kept");

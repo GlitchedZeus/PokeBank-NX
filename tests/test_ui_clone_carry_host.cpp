@@ -164,21 +164,26 @@ void runClone(Case& c) {
     check(sheetRows().empty(), g + "the Actions sheet closed (" + joined(sheetRows()) + ")");
     check(carryingClone() && drawn("Box") && drawn("Cancel"), g + "the carry footer reads A Place Clone / L/R Box / B Cancel");
     check(d.screen.selectedMode == View::Boxes, g + "the carry runs on the box grid");
-    check(d.screen.storageStatus == Carry::kClonePickupStatus, g + "pickup status: " + d.screen.storageStatus);
+    // Gen I / II boxes are packed lists: the status names the box's end, never an arbitrary empty slot.
+    const bool packed = c.generation <= 2;
+    check(d.screen.storageStatus == Carry::clonePickupStatus(packed), g + "pickup status: " + d.screen.storageStatus);
+    if (packed)
+        check(d.screen.storageStatus.find("empty slot") == std::string::npos,
+              g + "a packed box never advertises an arbitrary empty slot");
     check(c.snapshot() == before, g + "picking the clone up stages nothing");
 
     // A on an occupied slot: refused, nothing overwritten, the carry stays.
     hover(d, c.occupied);
     const auto occupiedSpecies = c.speciesAt(c.occupied);
     d.press(HidNpadButton_A);
-    check(d.screen.storageStatus == Carry::dropStatus(Carry::Drop::Occupied),
+    check(d.screen.storageStatus == Carry::dropStatus(Carry::Drop::Occupied, packed),
           g + "A on an occupied slot is refused (" + d.screen.storageStatus + ")");
     check(c.snapshot() == before && c.speciesAt(c.occupied) == occupiedSpecies,
           g + "the occupied slot is not overwritten and nothing is staged");
     check(carryingClone() && sheetRows().empty(), g + "the carry stays after the refusal");
     // Y is refused with the hint and consumed.
     d.press(HidNpadButton_Y);
-    check(d.screen.storageStatus == Carry::refuseHint(Carry::Intent::Clone), g + "Y shows the A / B hint");
+    check(d.screen.storageStatus == Carry::refuseHint(Carry::Intent::Clone, packed), g + "Y shows the A / B hint");
     check(c.snapshot() == before && carryingClone(), g + "Y changes nothing");
     // B cancels: nothing staged, no Actions menu.
     d.press(HidNpadButton_B);

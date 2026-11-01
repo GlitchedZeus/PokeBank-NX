@@ -1073,7 +1073,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
                 return;
             }
             syncBagCursor(screen);
-            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added),400);
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again),400);   // again == the applied plan
             return;
         }
     }

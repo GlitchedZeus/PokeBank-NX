@@ -849,6 +849,22 @@ void model() {
     CHECK(s.step == Model::Step::Setup && s.row == 0 && s.mode == B::Mode::Both && s.quantity == 99);
     CHECK(static_cast<Model::Row>(s.row) == Model::Row::Scope && s.scope == Model::Scope::AllBag && !s.scopeChosen);
     CHECK(Model::rowDetail(s, Model::Row::Scope, "Medicine") == "< All Bag pockets >");
+    {
+        // Round 11 QA: Gen I's one 20-slot shared Bag is named as such, never as per-pocket room.
+        Model::State g1;
+        Model::open(g1, B::Pocket::Medicine, true, 20);
+        CHECK(Model::rowDetail(g1, Model::Row::Scope, "Medicine") == "< Whole Bag (20 slots shared) >");
+        // A partial fill reports what did not fit and why; a complete one keeps the plain status.
+        B::Plan full;
+        full.full.push_back({B::Pocket::Items, 20, 3, 17, true});
+        const std::string partial = Model::appliedStatus(0, 3, full);
+        CHECK(partial.rfind("Partly staged: 0 topped up, 3 added; 17 did not fit because the Bag is full (20 slots shared", 0) == 0);
+        CHECK(partial.find("Nothing overflowed") != std::string::npos);
+        CHECK(Model::appliedStatus(1, 2, B::Plan{}) == Model::appliedStatus(1, 2));
+        B::Plan pocketFull;
+        pocketFull.full.push_back({B::Pocket::Items, 30, 0, 4, false});
+        CHECK(Model::appliedStatus(0, 0, pocketFull).find("4 did not fit because a pocket is full") != std::string::npos);
+    }
     // Gen I-III (PC item storage): This pocket -> All Bag -> PC Items -> Bag + PC Items, both ways.
     CHECK((Model::scopes(s) == std::vector<Model::Scope>{Model::Scope::ThisPocket, Model::Scope::AllBag,
                                                          Model::Scope::PcItems, Model::Scope::BagAndPc}));
