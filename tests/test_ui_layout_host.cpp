@@ -95,9 +95,10 @@ void verifyFrame(const std::string& where) {
 
 // Round 7 (owner Round 6 A22 / C01, lane C): Gen II Special uses the Gen I calculated-Special
 // presentation. One Special DV / Stat Exp row; the numeric Calculated column holds plain numbers
-// for HP, Attack, Defense and Speed only (nothing on the Special row, no tags, no "x / y"); the
-// derived values sit in the lower-middle of the STATS panel: "CALCULATED SPECIAL STATS", then one
-// line "Sp. Atk n   Sp. Def n", below the grid and the HP note and above Shiny.
+// (no tags, no "x / y"); the derived values sit in the lower-middle of the STATS panel:
+// "CALCULATED SPECIAL STATS", then one line "Sp. Atk n   Sp. Def n", below the grid and the HP
+// note and above Shiny. Round 11 (owner H22, deliberate change of the Round 7 "nothing on the
+// Special row" check): the Special row's Calculated cell shows the same two numbers, "<SpA>  <SpD>".
 void checkGen2Special(const std::string& where) {
     const HostUi::TextRect* find[7] = {};
     const char* names[7] = {"Calculated", "Special", "* HP DV derived / read-only", "CALCULATED SPECIAL STATS",
@@ -132,15 +133,23 @@ void checkGen2Special(const std::string& where) {
           where + ": the Special block is below the grid and the HP note, above Shiny");
     check(spa && spa->x + spa->w < spdTag.x, where + ": the Sp. Atk number ends before Sp. Def");
     // The numeric Calculated column (texts starting at its header's x, between the header and the
-    // Special row): exactly HP / Attack / Defense / Speed, plain numbers; nothing on the Special row.
+    // Special row): HP / Attack / Defense / Speed plain numbers, then on the Special row the block's
+    // two numbers, Sp. Atk then Sp. Def.
     int column = 0;
+    bool specialCell = false;
     for (const auto& t : HostUi::visibleText) {
         if (t.x != calculated.x || t.y <= calculated.y || t.y > special.y + 4) continue;
-        check(numeric(t), where + ": plain number in the Calculated column (\"" + t.text + "\")");
-        check(t.y + t.h <= special.y, where + ": nothing in the Special row's Calculated cell (\"" + t.text + "\")");
+        if (t.y == special.y) {
+            specialCell = true;
+            check(spa && spd && t.text == spa->text + "  " + spd->text,
+                  where + ": the Special row's Calculated cell shows Sp. Atk then Sp. Def (\"" + t.text + "\")");
+        } else {
+            check(numeric(t), where + ": plain number in the Calculated column (\"" + t.text + "\")");
+        }
         ++column;
     }
-    check(column == 4, where + ": four calculated values (HP, Attack, Defense, Speed), found " + std::to_string(column));
+    check(specialCell, where + ": the Special row's Calculated cell is drawn");
+    check(column == 5, where + ": five calculated cells (HP, Attack, Defense, Speed, Special), found " + std::to_string(column));
     for (const auto& t : HostUi::visibleText)
         if (t.x >= calculated.x - 100 && t.y > calculated.y && t.y <= special.y + 4)
             check(t.text.rfind("Sp", 0) != 0 && t.text.find(" / ") == std::string::npos,

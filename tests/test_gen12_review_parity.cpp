@@ -177,12 +177,16 @@ void lowSeverityRoutes() {
     const auto fix = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     has(fix, "const int w = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;");
 
-    // Gen II Shiny toggle always reports the DVs it rewrote.
+    // Gen II Shiny toggle. Round 11 H22 (owner: the routine-edit pop-ups are not needed; deliberate
+    // change of the Round 6 "Shiny off: DVs ..." / "Shiny on: ..." success lines): a successful
+    // toggle is silent through the shared rule (UI/EditFeedback.h); a gender change the player did
+    // not ask for is still stated with the DVs it rewrote.
     const auto gen2 = read("src/UI/Gen2PokemonEditorFoundation.inc");
     const auto toggle = between(gen2, "void toggleShiny(", "bool randomizeDVs(");
-    has(toggle, "\"Shiny off: DVs \" + describeDVChanges(before, dvs)");
-    has(toggle, "\"Shiny on: \" + changes");
-    has(toggle, "changed gender for this species ratio; \" + changes");
+    lacks(toggle, "\"Shiny off: DVs \"");
+    lacks(toggle, "\"Shiny on: \"");
+    has(toggle, "EditFeedback::applied(screen, EditFeedback::Kind::Shiny);");
+    has(toggle, "changed gender for this species ratio; DVs \" +\n                             describeDVChanges(before, shiny)");
 }
 
 } // namespace

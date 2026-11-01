@@ -402,3 +402,20 @@ $(HOST_BUILD)/test_classic_trainer_page: tests/test_classic_trainer_page.cpp $(C
 $(HOST_BUILD)/test_classic_trainer_page_sanitize: tests/test_classic_trainer_page.cpp $(CLASSIC_TRAINER_PAGE_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_classic_trainer_page.cpp -o $@
+
+# Round 11 H22: the one Gen I-V routine-edit toast rule (UI/EditFeedback.h) and its wiring.
+EDIT_FEEDBACK_DEPS := include/UI/EditFeedback.h include/UI/SharedStatReroll.h \
+	src/UI/Gen1PokemonEditorOverlayFoundation.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc \
+	src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen3SharedPokemonSurface.inc \
+	src/UI/SharedPokemonEditorSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+HOST_TESTS += $(HOST_BUILD)/test_edit_feedback
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_edit_feedback_sanitize
+host-test: $(HOST_BUILD)/test_edit_feedback
+host-sanitize: $(HOST_BUILD)/test_edit_feedback_sanitize
+$(HOST_BUILD)/test_edit_feedback: tests/test_edit_feedback.cpp $(EDIT_FEEDBACK_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_edit_feedback.cpp -o $@
+$(HOST_BUILD)/test_edit_feedback_sanitize: tests/test_edit_feedback.cpp $(EDIT_FEEDBACK_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_edit_feedback.cpp -o $@

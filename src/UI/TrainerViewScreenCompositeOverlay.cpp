@@ -5,6 +5,7 @@
 #include "UI/ClassicJapaneseNames.h"
 #include "UI/PokemonFileDialog.h"   // Feature A: Import from file / Export to file (every Gen I-V sheet)
 #include "UI/PokemonFileMenus.h"
+#include "UI/EditFeedback.h"   // Round 11 H22: the Gen I-V routine-edit toast rule
 
 // Pre-include every dependency used by the preserved GSC source before the narrow rename macros.
 // Their include guards ensure the macros below rename only TrainerViewScreen's two method definitions,

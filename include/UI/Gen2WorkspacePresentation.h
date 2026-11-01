@@ -22,16 +22,21 @@ inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=
 // CalcMonStats); neither derived value is a second editable DV or Stat Exp.
 //
 // Round 7 (owner Round 6 A22 / C01, R2-SPECIAL): the Gen I calculated-Special presentation is the
-// reference. The STATS grid keeps plain numbers: HP, Attack, Defense and Speed show their
-// calculated stat in the Calculated column; the Special row has no single calculated value (Gen II
-// splits it), so its Calculated cell stays empty. The two derived values are explained in the
-// lower-middle of the STATS panel, below the grid and above Shiny, as Gen I shows its Special:
-// "CALCULATED SPECIAL STATS", then "Sp. Atk <n>   Sp. Def <n>", then one note line. No slash
-// display and no tags squeezed into the numeric column.
+// reference: the two derived values are explained in the lower-middle of the STATS panel, below
+// the grid and above Shiny, as Gen I shows its Special: "CALCULATED SPECIAL STATS", then
+// "Sp. Atk <n>   Sp. Def <n>", then one note line.
+// Round 11 (owner H22: "we still dont have a number in the calculated column for special
+// calculated stat, add it"): like Gen I, the Special row's Calculated cell also holds numbers. The
+// one Special DV / Stat Exp row feeds both stats, so the cell shows both, Sp. Atk then Sp. Def, in
+// the block's order: plain numbers separated by spaces (no "a/b" slash, owner Round 3; no "Sp."
+// tags in the numeric column, CG51 / CG84). Neither number is an editable DV or Stat Exp.
 inline constexpr int kSpecialRow = 4;
-// The Calculated column's value for a grid row ("" for the Special row and out of range).
+inline constexpr const char* kSpecialCellGap = "  ";   // between Sp. Atk and Sp. Def
+// The Calculated column's value for a grid row ("" out of range). Every Gen II STATS painter
+// (unified workspace, final hardware repaint, legacy Foundation, View modal) uses it.
 inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
     if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);
+    if (row == kSpecialRow) return std::to_string(battle[4]) + kSpecialCellGap + std::to_string(battle[5]);
     return {};
 }
 // STATS geometry shared by every Gen II painter (relative to the STATS panel origin).

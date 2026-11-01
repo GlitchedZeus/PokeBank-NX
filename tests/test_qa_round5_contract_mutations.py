@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Negative controls for the enforced round 5 and round 7 cross-gen contracts (tests/test_qa_cross_gen_contract.py).
+"""Negative controls for the enforced round 5, round 7 and round 11 cross-gen contracts (tests/test_qa_cross_gen_contract.py).
 
 The unmutated tree must pass each enforced contract (CG43, CG64, CG76), and each deliberately broken
 source path must be reported by its contract. CG61-CG63 stay XFAIL until their lane lands (the
@@ -120,6 +120,33 @@ MUTATIONS = [
      "include/UI/ReviewEntry.h", "&& !yOpensReview(screen, generation)", ""),
     ("Quick Games stops publishing its frame", "CG88-quick-games-tap-outside", "src/UI/SaveSelectScreen.cpp",
      "SharedPopupDismiss::publish(x + offset, 0, w, h);", "(void)offset;"),
+    # Round 11 H22 / H29.
+    ("Gen II Unown letter toasts again", "CG91-routine-edit-no-toast", "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+     "    EditFeedback::applied(screen, EditFeedback::Kind::UnownLetter);\n",
+     "    screen.postStatus(\"Unown letter changed\", 360);\n"),
+    ("Gen II Y reroll success toasts again", "CG91-routine-edit-no-toast", "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+     "        if (randomizeDVs(state))\n            EditFeedback::applied(screen, EditFeedback::Kind::Reroll);",
+     "        if (randomizeDVs(state))\n            screen.postStatus(\"Generation II DVs re-rolled\", 240);"),
+    ("Gen III Y reroll toasts again", "CG91-routine-edit-no-toast", "src/UI/Gen3SharedPokemonSurface.inc",
+     "        EditFeedback::applied(screen, EditFeedback::Kind::Reroll);",
+     "        screen.postStatus(\"IVs and EVs re-rolled\", 200);"),
+    ("Gen IV / V Y reroll toasts again", "CG91-routine-edit-no-toast", "src/UI/SharedPokemonEditorSurface.inc",
+     "        EditFeedback::applied(screen, EditFeedback::Kind::Reroll);",
+     "        screen.postStatus(\"IVs and EVs re-rolled\", 200);"),
+    ("Gen I Edit reroll posts its success line again", "CG91-routine-edit-no-toast",
+     "src/UI/Gen1PokemonEditorOverlayFoundation.inc",
+     "ux2CommitEdit(screen, edit, nullptr, EditFeedback::Kind::Reroll)",
+     "ux2CommitEdit(screen, edit, \"Randomized DVs set\")"),
+    ("Gen II Shiny off toasts again", "CG91-routine-edit-no-toast", "src/UI/Gen2PokemonEditorFoundation.inc",
+     "        applyEditableDVs(p, dvs);\n        EditFeedback::applied(screen, EditFeedback::Kind::Shiny);",
+     "        applyEditableDVs(p, dvs);\n        screen.postStatus(\"Shiny off\", 300);"),
+    ("Gen II reroll that changes nothing is silent", "CG91-routine-edit-no-toast",
+     "src/UI/Gen2UnifiedPokemonWorkspace.inc", "rerollStatus(rerollBefore, rerollBefore, false)", "rerollStatus()"),
+    ("Gen V Shiny back on the Change PID dialog", "CG92-gen5-shiny-inline", "src/UI/Gen5SharedReadOnlySurface.inc",
+     "            } else if (const auto after = verifiedPidProbe(screen, probe)) {\n                if (after->shiny()",
+     "            } else if (offer(screen, state, std::move(probe), \"Shiny\")) {\n                if (p.shiny()"),
+    ("Gen V inline PID check skips pidLinksHold", "CG92-gen5-shiny-inline", "src/UI/Gen5SharedReadOnlySurface.inc",
+     "if (!after || !pidLinksHold(*after, b2w2(screen))) {", "if (!after) {"),
 ]
 
 
@@ -129,7 +156,7 @@ def main() -> int:
     for cid in ("CG43-nature-stat-colours", "CG64-trainer-playtime-gender-staged", "CG76-gen2-unown-letter-from-dvs",
                 "CG74-create-review-details", "CG87-event-locations-described", "CG88-quick-games-tap-outside",
                 "CG85-unown-letter-shiny-confirmed", "CG80-gen2-create-review-visible", "CG82-gen5-exports-in-save-backups",
-                "CG81-one-review-key-per-screen"):
+                "CG81-one-review-key-per-screen", "CG91-routine-edit-no-toast", "CG92-gen5-shiny-inline"):
         if base[cid].violations:
             print(f"FAIL  unmutated tree: {cid}: {base[cid].violations[:2]}")
             failures += 1

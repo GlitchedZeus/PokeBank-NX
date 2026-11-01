@@ -2310,6 +2310,7 @@ def contracts(sources: list[Source]) -> list[Result]:
     res.extend(round5_contracts(sources))
     res.extend(round6_contracts(sources))
     res.extend(round7_contracts(sources))
+    res.extend(round11_contracts(sources))
     return res
 
 
@@ -3530,12 +3531,14 @@ def round7_contracts(sources):
     res.append(r)
 
     # ------------------------------------------------------------------------------------------
-    # A22 / C01 R2-SPECIAL (lane C): Gen II's calculated Sp. Atk / Sp. Def are NOT in the numeric
-    # Calculated column; they sit in the lower-middle of the STATS panel, as Gen I's block does.
+    # A22 / C01 R2-SPECIAL (lane C): Gen II's calculated Sp. Atk / Sp. Def are explained, labelled, in
+    # the lower-middle of the STATS panel, as Gen I's block does; the numeric Calculated column never
+    # carries "Sp." tags, a slash, or a sixth SpD grid row. Round 11 (owner H22) adds plain numbers
+    # to the Special row's Calculated cell (number plus block, as in Gen I); CG51 still forbids "a/b".
     # ------------------------------------------------------------------------------------------
     r = Result("CG84-gen2-special-lower-middle",
-               "Gen II calculated Special is in the lower-middle STATS area like Gen I, not the numeric column "
-               "(owner Oct 26 A22 / C01)")
+               "Gen II calculated Special: plain numbers in the Calculated column plus the labelled lower-middle "
+               "block, as in Gen I (owner Oct 26 A22 / C01, Round 11 H22)")
     wp = src("include/UI/Gen2WorkspacePresentation.h")
     cc = body_of(wp, "calculatedCell")
     if cc and re.search(r'"Sp\.\s*(?:Atk|Def)"', cc):
@@ -3557,12 +3560,14 @@ def round7_contracts(sources):
 
     # ------------------------------------------------------------------------------------------
     # B07 / C09 R2-REROLL, UNOWN-LETTER (lane R): the Unown letter, Shiny and Reroll never change
-    # silently or do nothing: a change of letter or Shiny is confirmed first, choosing a letter says
-    # the resulting shiny state, and a reroll names the DVs it changed.
+    # unexpectedly or do nothing: a change of letter or Shiny is confirmed first, choosing a letter
+    # says the resulting shiny state, and a reroll that cannot change anything says why.
+    # Round 11 H22 (deliberate change): a SUCCESSFUL letter / reroll posts no toast (UI/EditFeedback.h,
+    # CG91); the changed Letter row, sprite and DVs are the feedback.
     # ------------------------------------------------------------------------------------------
     r = Result("CG85-unown-letter-shiny-confirmed",
-               "Gen II Unown: letter / Shiny changes are confirmed, a letter choice states shiny, reroll is "
-               "never silent (owner Oct 26 B07 / C09)")
+               "Gen II Unown: letter / Shiny changes are confirmed, a letter choice states shiny, a reroll that "
+               "changes nothing says why (owner Oct 26 B07 / C09, Round 11 H22)")
     # Lane R 47b8097e: the rules live in include/UI/Gen2UnownLetter.h (pick / requestShinyToggle return a
     # Question instead of applying; rerollStatus names what was kept and the DVs that changed) and the
     # unified Gen II workspace wires them (Letter grid, question A confirm / B cancel, Y reroll status).
@@ -3608,15 +3613,16 @@ def round7_contracts(sources):
                 "applyUnownDVs" not in hpk:
             r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: a Letter pick is applied without its question")
     ap = body_of(uw, "applyUnownDVs")
-    if not ap or not re.search(r"shiny", ap) or "dvChanges" not in ap:
-        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: an applied letter does not state shiny and the "
-                            "changed DVs")
-    hy, _ = block(uw, r"if\s*\(\s*down\s*&\s*HidNpadButton_Y\s*\)\s*\{(?=\s*if\s*\(\s*randomizeDVs)")
+    if not ap or "applyEditableDVs" not in ap:
+        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: an applied letter does not set the DVs")
+    hy, _ = block(uw, r"if\s*\(\s*down\s*&\s*HidNpadButton_Y\s*\)\s*\{(?=\s*(?:namespace\s+\w+\s*=[^;]*;\s*)?"
+                      r"if\s*\(\s*randomizeDVs)")
     if hy is None:
         missing(r, "src/UI/Gen2UnifiedPokemonWorkspace.inc", "Y reroll branch")
-    elif len(re.findall(r"rerollStatus\s*\(", hy)) < 2 and not re.search(r"describeDVChanges|dvChanges", hy):
-        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: Y reroll keeps the letter and sprite but does "
-                            "not say so or name the changed DVs (success and no-change)")
+    elif not re.search(r"rerollStatus\s*\(\s*rerollBefore\s*,\s*rerollBefore\s*,\s*false\s*\)", hy) or \
+            "DVs unchanged" not in hy:
+        r.violations.append("src/UI/Gen2UnifiedPokemonWorkspace.inc: a Y reroll that changes nothing does not say why "
+                            "(Unown and other species)")
     # The legacy Foundation input path (Gen2PokemonEditor::handleInput) is not dispatched by the composite
     # overlay; its Y branch counts only if something calls it again.
     legacy_called = any(re.search(r"Gen2PokemonEditor::handleInput\s*\(", f.code) for f in sources
@@ -3824,6 +3830,120 @@ def round7_contracts(sources):
                                 "page model")
     else:
         r.violations.extend(_gen5_trainer_slot(te, tvb, sources))
+    res.append(r)
+    return res
+
+
+def round11_contracts(sources):
+    """Round 11: owner FAIL items H22 / H29 (docs/hardware/ROUND11_OWNER_WORKSHEET.md,
+    docs/hardware/ROUND11_ENGINEERING_INTAKE.md). Called from contracts()."""
+    res = []
+
+    def src(rel):
+        return next((x for x in sources if x.rel == rel), None)
+
+    def body_of(f, name):
+        return "\n".join(b for _, _, b in function_bodies(f.code, re.compile("^" + re.escape(name) + "$"))) if f else ""
+
+    def span(f, start, end):
+        """f's text from the start anchor up to the end anchor ("" when either is missing)."""
+        if not f:
+            return ""
+        a = f.code.find(start)
+        b = f.code.find(end, a + len(start)) if a >= 0 else -1
+        return f.code[a:b] if b >= 0 else ""
+
+    def missing(r, rel, what):
+        r.violations.append(f"{rel}: {what} not found (update this check)")
+
+    # ------------------------------------------------------------------------------------------
+    # H22 (owner: "when i switch unowns i get a pop ... i dont need it ... the pop up for rerolling
+    # ... can we fix this for all gens"): one Gen I-V rule, include/UI/EditFeedback.h. A successful
+    # routine edit (Unown letter, DV / IV / EV reroll, Shiny toggle) posts no status toast; refusals,
+    # no-change outcomes and warnings still do. Same class as CG79 (Gen V Language).
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG91-routine-edit-no-toast",
+               "Gen I-V: a successful reroll / Unown letter / Shiny toggle posts no status toast; no-change, "
+               "warnings and refusals still do (owner Round 11 H22)")
+    fb = src("include/UI/EditFeedback.h")
+    if not fb or not re.search(r"outcome\s*==\s*Outcome::Applied\s*&&\s*routine\s*\(\s*kind\s*\)", fb.code):
+        missing(r, "include/UI/EditFeedback.h", "postsStatus: Applied + routine kind posts nothing")
+    checks = []   # (file, label, text, must-contain)
+    g1 = src("src/UI/Gen1PokemonEditorOverlayFoundation.inc")
+    g1r = body_of(g1, "foundationRandomizeDVs")
+    checks.append(("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "Gen I Y reroll success",
+                   g1r[g1r.find("const auto dvs = rolled.dvs;"):] if "const auto dvs = rolled.dvs;" in g1r else "",
+                   "Kind::Reroll"))
+    checks.append(("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "Gen I Shiny (Edit)",
+                   body_of(src("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"), "ux3SetExistingShiny").split(
+                       "BoxPokemonEdit edit;")[-1], "Kind::Shiny"))
+    uw = src("src/UI/Gen2UnifiedPokemonWorkspace.inc")
+    checks.append(("src/UI/Gen2UnifiedPokemonWorkspace.inc", "Gen II applied Unown letter",
+                   body_of(uw, "applyUnownDVs"), "Kind::UnownLetter"))
+    checks.append(("src/UI/Gen2UnifiedPokemonWorkspace.inc", "Gen II Y reroll success",
+                   span(uw, "if (randomizeDVs(state))", "else if (rerollUnown)"), "Kind::Reroll"))
+    fd = src("src/UI/Gen2PokemonEditorFoundation.inc")
+    for fn in ("toggleShiny", "toggleUnownShiny"):
+        checks.append(("src/UI/Gen2PokemonEditorFoundation.inc", f"Gen II {fn}", body_of(fd, fn), "Kind::Shiny"))
+    for rel, label in (("src/UI/Gen3SharedPokemonSurface.inc", "Gen III Y reroll"),
+                       ("src/UI/SharedPokemonEditorSurface.inc", "Gen IV / V Y reroll")):
+        checks.append((rel, label, span(src(rel), "namespace Reroll = PokeBank::UIModel::SharedStatReroll;", "return true;"),
+                       "Kind::Reroll"))
+    g5 = src("src/UI/Gen5SharedReadOnlySurface.inc")
+    checks.append(("src/UI/Gen5SharedReadOnlySurface.inc", "Gen V Shiny",
+                   span(g5, "d = std::move(probe);\n                    EditFeedback", "} else if (row == Fields::AbilityRow)"),
+                   "Kind::Shiny"))
+    for rel, label, text, kind in checks:
+        if not text:
+            missing(r, rel, label)
+        elif re.search(r"\bpostStatus\s*\(", text) or kind not in text:
+            r.violations.append(f"{rel}: {label} posts a status toast on success instead of the routine-edit rule "
+                                "(UI/EditFeedback.h)")
+    # Gen I Edit stages through ux2CommitEdit: the reroll and Shiny commits pass their routine kind.
+    for rel, fn, kind in (("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "foundationRandomizeDVs", "Reroll"),
+                          ("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", "ux3SetExistingShiny", "Shiny")):
+        if not re.search(r"ux2CommitEdit\s*\([^;]*EditFeedback::Kind::" + kind + r"\s*\)", body_of(src(rel), fn)):
+            r.violations.append(f"{rel}: {fn} commits through ux2CommitEdit without Kind::{kind}, so its success "
+                                "line is posted")
+    cm = body_of(src("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc"), "ux2CommitEdit")
+    if not re.search(r"EditFeedback::report\s*\(\s*screen\s*,\s*kind\s*,\s*EditFeedback::Outcome::Applied", cm):
+        r.violations.append("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc: ux2CommitEdit posts its success line "
+                            "without the routine-edit rule")
+    # The no-change explanations stay (owner Round 6 B07: a Y that changes nothing must say why).
+    for rel, needle in (("src/UI/Gen1PokemonEditorOverlayFoundation.inc", "No other DVs keep this Pokemon shiny; DVs unchanged"),
+                        ("src/UI/Gen2UnifiedPokemonWorkspace.inc", "rerollStatus(rerollBefore, rerollBefore, false)")):
+        f = src(rel)
+        if not f or needle not in f.code:
+            r.violations.append(f"{rel}: a reroll that changes nothing no longer says why")
+    res.append(r)
+
+    # ------------------------------------------------------------------------------------------
+    # H29 (owner: "gen 5 ... opens a menu and warns about pid, this needs changed to be inline like
+    # every other gen (1-4)"): Gen V Shiny cycles in place like Gender (H08), through the same strict
+    # PID re-verification; no "Change PID?" dialog. Review shows the PID change.
+    # ------------------------------------------------------------------------------------------
+    r = Result("CG92-gen5-shiny-inline",
+               "Gen V Shiny toggles inline with the Gender row's strict PID re-verification, not the Change PID "
+               "dialog (owner Round 11 H29)")
+    shiny = span(g5, "} else if (row == Fields::ShinyRow) {", "} else if (row == Fields::AbilityRow) {")
+    gender = span(g5, "} else if (row == Fields::GenderRow) {", "} else if (row == Fields::ShinyRow) {")
+    verify = body_of(g5, "verifiedPidProbe")
+    if not shiny or not gender:
+        missing(r, "src/UI/Gen5SharedReadOnlySurface.inc", "editPidRow Gender / Shiny branches")
+    else:
+        if re.search(r"\boffer\s*\(", shiny):
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Shiny still opens the Change PID dialog (offer)")
+        if "Fields::toggleShiny(probe, error)" not in shiny or "verifiedPidProbe(screen, probe)" not in shiny:
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: the inline Shiny is not probed and re-verified "
+                                "like Gender")
+        if "verifiedPidProbe(screen, probe)" not in gender:
+            r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Gender and Shiny no longer share one PID check")
+    if not re.search(r"pidLinksHold\s*\(\s*\*after\s*,\s*b2w2\s*\(\s*screen\s*\)\s*\)", verify):
+        r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: verifiedPidProbe does not run the strict PID "
+                            "re-verification (pidLinksHold)")
+    rv = body_of(g5, "reviewedFieldValue")
+    if not re.search(r"case\s+Field::Personality\s*:\s*return\s+pidHex5\s*\(", rv):
+        r.violations.append("src/UI/Gen5SharedReadOnlySurface.inc: Review does not show the PID change as 0x........")
     res.append(r)
     return res
 

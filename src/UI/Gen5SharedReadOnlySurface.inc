@@ -160,9 +160,11 @@ namespace Fields = PokeVault::Integration::Gen5::EditorFields;
 namespace EditorSurface = UI::SharedPokemonEditorSurface;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
-// A PID-changing edit (Gender, Shiny, Ability slot, TID/SID keeping
-// shininess, Species with a shiny choice) is never applied silently: it waits
-// here until the player confirms a dialog that states the PID change.
+// A PID-changing edit (Ability slot, TID/SID keeping shininess, Species with a
+// shiny choice) waits here until the player confirms a dialog that states the
+// PID change. Gender (owner Oct 28 #6) and Shiny (Round 11 H29) are inline
+// toggles instead, behind the same strict re-verification (verifiedPidProbe);
+// Review lists every PID change ("PID: 0x.. -> 0x..").
 struct PendingPidChange5 {
     bool active = false;
     std::string what;
@@ -315,6 +317,18 @@ struct Gen5Editor {
                (p.hiddenAbility() ||
                 PokeVault::Integration::Gen5::abilityForSlot5(
                     *personal.info, PokeVault::Integration::Gen5::abilityBit5(p.pid())) == p.ability());
+    }
+    // An inline PID-row toggle (Gender, Shiny) applies its probe only when it
+    // passes the same strict re-verification the "Change PID?" dialog's confirm
+    // uses; otherwise it says so and the draft is untouched. The caller assigns.
+    static std::optional<Record> verifiedPidProbe(TrainerViewScreen& screen,
+                                                  const PokeVault::Integration::Gen5::Gen5SharedPokemonSession& probe) {
+        auto after = probe.current();
+        if (!after || !pidLinksHold(*after, b2w2(screen))) {
+            screen.postStatus("The new PID failed strict re-verification; nothing was changed", 320);
+            return std::nullopt;
+        }
+        return after;
     }
     // Apply a probe draft at once when the PID is unchanged; otherwise hold it
     // for the explicit "Change PID?" confirmation.
@@ -578,9 +592,7 @@ struct Gen5Editor {
             auto probe = d;
             if (!Fields::toggleGender(probe, error)) {
                 screen.postStatus(error, 300);
-            } else if (const auto after = probe.current(); !after || !pidLinksHold(*after, b2w2(screen))) {
-                screen.postStatus("The new PID failed strict re-verification; nothing was changed", 320);
-            } else {
+            } else if (const auto after = verifiedPidProbe(screen, probe)) {
                 const std::string note = std::string("Gender ") + EditorSurface::genderText(p.gender()) + " -> " +
                     EditorSurface::genderText(after->gender()) + "  |  PID " + pidHex5(p.pid()) + " -> " +
                     pidHex5(after->pid()) + " (nature, shininess and ability kept)";
@@ -588,10 +600,24 @@ struct Gen5Editor {
                 screen.postStatus(note, 420);
             }
         } else if (row == Fields::ShinyRow) {
+            // Round 11 H29 (owner: "inline like every other gen (1-4)"): Shiny cycles in place like
+            // Gen I-IV and the Gender row above; no "Change PID?" dialog. Field::Shiny (withShiny5)
+            // rewrites only the PID's high half, so gender, nature and the ability slot are kept,
+            // and the probe passes the same strict re-verification as Gender before it is applied.
+            // A routine edit (H22, UI/EditFeedback.h): the Shiny value, sprite and PID row are the
+            // feedback; Review lists the PID change.
+            namespace EditFeedback = PokeBank::UIModel::EditFeedback;
             auto probe = d;
-            if (!Fields::toggleShiny(probe, error)) screen.postStatus(error, 300);
-            else offer(screen, state, std::move(probe),
-                       std::string("Shiny ") + (p.shiny() ? "Yes -> No" : "No -> Yes"));
+            if (!Fields::toggleShiny(probe, error)) {
+                screen.postStatus(error, 300);
+            } else if (const auto after = verifiedPidProbe(screen, probe)) {
+                if (after->shiny() == p.shiny()) {
+                    screen.postStatus("Shiny could not change while keeping this PID's traits; nothing was changed", 320);
+                } else {
+                    d = std::move(probe);
+                    EditFeedback::applied(screen, EditFeedback::Kind::Shiny);
+                }
+            }
         } else if (row == Fields::AbilityRow) {
             EditorSurface::openPicker(screen, state, PickerTarget::Ability,
                                       Fields::abilityChoices(p, b2w2(screen)),
@@ -1979,6 +2005,7 @@ std::string reviewedFieldValue(PokeVault::Integration::Gen5::StagedPokemon5Recor
             // Round 6 L06: Review names values instead of raw native modes ("Pokerus: 2 -> 1").
             case Field::Pokerus: return Fields::pokerusLabel(value);
             case Field::OriginalTrainerGender: return value == 0 ? "Male" : "Female";
+            case Field::Personality: return pidHex5(value);   // Round 11 H29: the inline Shiny / Gender PID
             case Field::Gender: return value == 0 ? "Male" : value == 1 ? "Female" : "Genderless";
             case Field::FatefulEncounter: return value ? "Yes" : "No";
             default: return std::to_string(value);

@@ -190,16 +190,19 @@ int main() {
     assert(foundation.find("HP DV is derived") != std::string::npos);
     assert(unified.find("\"DV\"") != std::string::npos);
     assert(unified.find("\"Stat Exp\"") != std::string::npos);
-    // Round 7 (owner Round 6 A22 / C01): the owner rejected squeezing the calculated Special
-    // values into the numeric STATS column. Gen I is the reference: plain numbers in the columns
-    // (the Special row's Calculated cell is empty), and SpA / SpD in the lower-middle "CALCULATED
-    // SPECIAL STATS" block below the grid. No off-grid SpD line, no tags in the column.
+    // Round 7 (owner Round 6 A22 / C01): the owner rejected squeezing tagged / slashed Special
+    // values into the numeric STATS column. Gen I is the reference: plain numbers in the columns,
+    // and SpA / SpD in the lower-middle "CALCULATED SPECIAL STATS" block below the grid. No
+    // off-grid SpD line, no tags in the column. Round 11 (owner H22, deliberate change): the
+    // Special row's Calculated cell shows the two numbers (Sp. Atk then Sp. Def) instead of nothing.
     assert(unified.find("drawGen2CalculatedColumn(fb, battle, x, y, w);") != std::string::npos);
     assert(unified.find("drawGen2SpecialBlock(fb, battle, x, y);") != std::string::npos);
     assert(unified.find("y + 246") == std::string::npos);
     assert(unified.find("Special DV / Stat Exp shared by SpA and SpD") == std::string::npos);
     const auto gen2Presentation = readFile("include/UI/Gen2WorkspacePresentation.h");
     assert(gen2Presentation.find("if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);") !=
+           std::string::npos);
+    assert(gen2Presentation.find("if (row == kSpecialRow) return std::to_string(battle[4]) + kSpecialCellGap + std::to_string(battle[5]);") !=
            std::string::npos);
     assert(unified.find("y + B::kCaptionY, \"CALCULATED SPECIAL STATS\"") != std::string::npos);
     // R2-GOLD: calculated stats are ReadOnly gold through the shared field-state contract.
