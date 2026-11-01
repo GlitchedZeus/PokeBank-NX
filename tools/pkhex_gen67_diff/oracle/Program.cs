@@ -1048,6 +1048,19 @@ static class DumpEncounters
                 }
             }
         }
+        // PIDVerifier.VerifyFutureOriginEC: PID = EC is allowed only for the fixed-EC Legends: Arceus and
+        // BD/SP gifts (WA8/WB8.IsEquivalentFixedECPID). kFixedEcGift[s]: bit 0 = such a WA8 of the
+        // species' line exists, bit 1 = such a WB8.
+        var fixedEc = new int[max + 1];
+        for (ushort sp = 1; sp <= max; sp++)
+        {
+            var line = DumpNames.LinePublic(sp);
+            foreach (var g in EncounterEvent.MGDB_G8A)
+                if (g is WA8 { IsEquivalentFixedECPID: true } && line.Contains(g.Species)) fixedEc[sp] |= 1;
+            foreach (var g in EncounterEvent.MGDB_G8B)
+                if (g is WB8 { IsEquivalentFixedECPID: true } && line.Contains(g.Species)) fixedEc[sp] |= 2;
+        }
+        Dump.Bytes(o, "kFixedEcGift", fixedEc);
         foreach (var (label, table) in new[] { ("kTera9Import", import), ("kTera9Egg", egg) })
         {
             o.WriteLine($"constexpr std::array<uint32_t, {table.Length}> {label}{{{{");

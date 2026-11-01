@@ -133,7 +133,7 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 | Level, EVs | experience above the level-100 total; level below met level; an EV above 252 or a total above 510 | `LevelVerifier`, `EffortValueVerifier` |
 | Moves and PP | unknown move, empty first slot, gaps, duplicates; any PP Up (Legends: Arceus has none); PP above its maximum | `Legal.IsPPUpAvailable`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability against the slots and number; nature; stat nature not the nature or a mint; ball 0 or above 37; language; held item | `GenderVerifier`, `AbilityVerifier`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `ItemVerifier` |
-| PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, so any Legends: Arceus or BD/SP origin), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
+| PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, for a Legends: Arceus or BD/SP origin whose line has such a gift, `kFixedEcGift`), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
 | Alpha | an alpha flag state no encounter or mystery gift of the line reaching the format has (`kAlpha8A`/`kAlpha9A`, `IAlphaReadOnly`) | `LegendsArceusVerifier`, `MiscVerifierPA9` |
 | Hyper Training | no HOME tracker (`IsHyperTrainingAvailable`: Legends: Arceus has no Hyper Training); below level 50; below 100 when no species of the line is in Scarlet/Violet or Z-A (`kVisit9`, so the evolution history cannot have visited them); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Arceus | noble flag; displayed scale not the height scalar; an Effort Level above its IV's cap | `LegendsArceusVerifier` |
@@ -142,7 +142,7 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 | Sizes | a Legends: Arceus record with no HOME tracker, not an alpha and not Enamorus whose stored height or weight is not the in-game calculation | `MiscVerifierPA8.VerifyAbsoluteSizes` |
 
 Not decided for PA8: encounters (alpha flag per encounter, alpha scalars, fixed gifts),
-learnsets and mastery by level, PID = EC on Legends: Arceus and BD/SP origins (fixed-EC gifts), HOME-calculated sizes (fused
+learnsets and mastery by level, PID = EC on Legends: Arceus and BD/SP origins of lines with fixed-EC gifts, HOME-calculated sizes (fused
 multiply-add) and pre-evolution sizes, Hyper Training at level 50–99 for a line present in
 Scarlet/Violet or Z-A, ball per encounter,
 nicknamed records, ribbons and memories.
@@ -161,7 +161,7 @@ into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, b
 | Level, EVs | experience above the level-100 total; level below met level; an EV above 252 or a total above 510 | `LevelVerifier`, `EffortValueVerifier` |
 | Moves and PP | an unknown or duplicated move; any PP Up; PP above its maximum, or neither full nor 0 (Z-A never uses PP; HOME writes 0) | `Legal.IsPPUpAvailable`, `Legal.IsPPUnused`, `MovePPVerifier` |
 | Identity | gender against the ratio; ability number not 1, 2 or 4 (the ability itself is the encounter species' birth ability); nature; stat nature not the nature or a mint; ball 0 or above 37; language 0, 6, above 11, or Spanish (LATAM) on a non-Z-A origin; held item | `GenderVerifier`, `AbilityVerifier.VerifyBirthAbility`, `MiscVerifierHelpers.VerifyStatAlignment`, `BallVerifier`, `LanguageVerifier`, `ItemVerifier` |
-| PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, so any Legends: Arceus or BD/SP origin), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
+| PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, for a Legends: Arceus or BD/SP origin whose line has such a gift, `kFixedEcGift`), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
 | Alpha | an alpha flag state no encounter or mystery gift of the line reaching the format has (`kAlpha8A`/`kAlpha9A`, `IAlphaReadOnly`) | `LegendsArceusVerifier`, `MiscVerifierPA9` |
 | Hyper Training | below level 50 (a Z-A record has visited Z-A); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Z-A | level boost at rest; a Plus flag past the 340 used; a Plus flag for a move that no form of the species or its pre-evolutions learns by TM, level up or Plus learnset | `LegendsZAVerifier`, `LegendsZAVerifier.GetInvalidPlusMove`, `PA9.GetMovePlusFlagAnyImpossible` |
@@ -169,7 +169,7 @@ into `Gen9aLegalityData.inc` (species ≤ 1000, moves ≤ 920, items ≤ 2684, b
 
 Not decided for PA9: empty or rearranged move slots (moves can be removed through HOME and the
 move menu; PKHeX checks them against the encounter's minimum moveset), encounters, the birth
-ability, Plus moves per level (a flag the line can learn is not decided), alpha per encounter, PID = EC on Legends: Arceus and BD/SP origins, ball per encounter, nicknamed records, ribbons and memories.
+ability, Plus moves per level (a flag the line can learn is not decided), alpha per encounter, PID = EC on Legends: Arceus and BD/SP origins of lines with fixed-EC gifts, ball per encounter, nicknamed records, ribbons and memories.
 
 ## PK8 (Sword/Shield) rules
 
@@ -229,7 +229,7 @@ above that is not Sword/Shield-specific applies, with these differences:
 | Origin | a version no game writes into a PB8; Scarlet/Violet and Legends: Z-A are allowed (HOME) | `PKM.Generation` |
 | Hyper Training | below level 100 | `HyperTrainingVerifier` (`Legal.GetMinLevelHyperTraining`, BD/SP) |
 | BD/SP fields | sociability set; the Dpr-illegal flag set; Spinda or Nincada not from BD/SP; a Spinda with a HOME tracker; Gigantamax flag; Dynamax level; any TR byte on a non-egg; battle version rule as PK8 | `MiscVerifierPB8`, `IBattleVersion` |
-| PID = EC | not decided on a BD/SP native (fixed-EC `WB8` gifts) or a Sword/Shield record with EC 0 (`WC8` HOME gifts) | `PIDVerifier.VerifyEC` |
+| PID = EC | Invalid unless the record is a Legends: Arceus or BD/SP origin whose line has a fixed-EC `WA8`/`WB8` gift (`kFixedEcGift`), a Sword/Shield record with EC 0 (`WC8` HOME gifts) or a HOME side transfer | `PIDVerifier.VerifyEC` |
 
 TR learnability (Sword/Shield TRs) is not checked for PB8. Not implemented for PB8: encounter
 tables (wild, Grand Underground, gifts, eggs, roamers), learnsets and TM flags, ball per
@@ -440,26 +440,26 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB7 | 2 / 4 | 3,050 | 1,132 | 1,918 | 1,765 (92.0%) | 0 | 0 |
 | PB7 | 3 / 16 | 9,865 | 2,144 | 7,721 | 7,025 (91.0%) | 0 | 0 |
 | PB7 | 4 / 8 | 5,286 | 1,437 | 3,849 | 3,547 (92.2%) | 0 | 0 |
-| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,935 (78.9%) | 0 | 0 |
-| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,629 (79.3%) | 0 | 0 |
-| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 13,953 (79.7%) | 0 | 0 |
-| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,549 (79.7%) | 0 | 0 |
-| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 9,404 (77.8%) | 0 | 0 |
-| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,484 (77.9%) | 0 | 0 |
-| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 18,327 (77.7%) | 0 | 0 |
-| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 9,495 (78.5%) | 0 | 0 |
-| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,234 (85.9%) | 0 | 0 |
-| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,194 (85.9%) | 0 | 0 |
-| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,547 (85.9%) | 0 | 0 |
-| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 29,866 (86.0%) | 0 | 0 |
-| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,246 (87.2%) | 0 | 0 |
-| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
-| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |
-| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 24,740 (87.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,401 (86.5%) | 0 | 0 |
-| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,680 (87.0%) | 0 | 0 |
-| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,880 (87.0%) | 0 | 0 |
-| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,550 (87.2%) | 0 | 0 |
+| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 7,029 (79.9%) | 0 | 0 |
+| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,730 (80.4%) | 0 | 0 |
+| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 14,106 (80.6%) | 0 | 0 |
+| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,635 (80.6%) | 0 | 0 |
+| PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 9,430 (78.0%) | 0 | 0 |
+| PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,519 (78.1%) | 0 | 0 |
+| PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 18,385 (78.0%) | 0 | 0 |
+| PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 9,515 (78.7%) | 0 | 0 |
+| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,243 (85.9%) | 0 | 0 |
+| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,205 (85.9%) | 0 | 0 |
+| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,558 (86.0%) | 0 | 0 |
+| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 29,872 (86.1%) | 0 | 0 |
+| PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,541 (88.3%) | 0 | 0 |
+| PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,707 (88.3%) | 0 | 0 |
+| PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 48,444 (88.4%) | 0 | 0 |
+| PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 25,034 (88.6%) | 0 | 0 |
+| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,461 (86.8%) | 0 | 0 |
+| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,733 (87.3%) | 0 | 0 |
+| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,989 (87.3%) | 0 | 0 |
+| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,605 (87.4%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.
@@ -484,7 +484,7 @@ encounter, learnset-only moves, nickname language for relaxed species; largest P
 encounter, fateful flags, Gigantamax on species with some Gigantamax encounter, nickname language for relaxed species, PID type per
 encounter, ball per encounter, egg histories from other games; largest PB8
 groups: no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, PID = EC
-on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg histories from other games; largest PK9 groups:
+on BD/SP natives of lines with fixed-EC WB8 gifts, egg histories from other games; largest PK9 groups:
 no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, Tera type per
 encounter or evolution chain, ball availability, gift matching, learnset-only moves). The driver
 prints this gap list ("left Incomplete, by first PKHeX result") on every run; with
@@ -499,7 +499,7 @@ interface and fuzz checks. `tests/fixtures/gen67/pkhexb8_seed2_sample.txt` (2,57
 from `generate8b 2 4`) is checked by the same test, with PB8 field edits (sociability,
 Dpr-illegal flag, Gigantamax, Dynamax, TR bytes, battle version, Hyper Training below 100,
 species above 493, ball, Spinda tracker, Spinda/Nincada moved in) and edits that must stay
-undecided (PID = EC on a native, EC 0 on a Sword/Shield record, battle version on a moved
+undecided (PID = EC on a native of a line with a fixed-EC gift, EC 0 on a Sword/Shield record, battle version on a moved
 record, TR bytes on an egg). `tests/fixtures/gen67/pkhex9_seed2_sample.txt` (2,202 PK9 records
 from `generate9 2 4`, with up to eight unmutated records per stratum) adds PK9 edits: Tera
 types, obedience level, battle version, origin, internal species id, language, Hyper Training,
@@ -528,8 +528,8 @@ battle version, natures, height, weight, species, presence, ball, language, Hype
 held item, checksum, sanity), edits that must stay undecided (a permitted purchase, a mastered
 alpha move on an alpha, sizes with a HOME tracker, on an alpha or on a transfer), the
 source-game warning, the interface contract and a fuzz pass. Its largest PKHeX gaps are
-encounter matching, alpha size and alpha flag per encounter, fateful flags, mastery without a
-purchase, PID = EC and ball per encounter.
+encounter matching, alpha size and alpha flag per encounter, fateful flags, mastery learned by level,
+PID = EC on lines with fixed-EC gifts and ball per encounter.
 
 `tests/fixtures/gen67/pkhex9a_seed2_sample.txt` (2,196 PA9 records from `generate9a 2 4`) is
 checked by `tests/test_legality_gen9a.cpp` (`test_legality_gen9a{,_sanitize}`), with PA9 edits
@@ -540,4 +540,4 @@ Plus move the line learns, a
 Sword/Shield battle version, a native alpha's scalars, another species' ability, an empty first
 slot, Spanish (LATAM) on a Z-A origin), the source-game warning and a fuzz pass. Its largest
 PKHeX gaps are encounter matching, Plus moves per level, ball per encounter, nickname
-language, fateful flags and PID = EC.
+language and fateful flags.

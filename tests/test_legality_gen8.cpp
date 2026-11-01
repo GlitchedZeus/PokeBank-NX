@@ -303,9 +303,17 @@ void testBdsp(const std::vector<Record>& records) {
     // Values a legitimate BD/SP record can hold stay undecided.
     expectNotInvalid(n, "battle version zero", [](auto& b) { b[0xDF] = 0; });
     expectNotInvalid(*home, "battle version on a moved record", [](auto& b) { b[0xDF] = 44; });
-    // PID equal to the EC on a BD/SP native may be a fixed-EC WB8 gift; on a Sword/Shield
-    // record with EC 0 it may be a HOME gift (WC8.IsHOMEGift). Neither is decided here.
-    expectNotInvalid(n, "pid==ec native", [](auto& b) { PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); });
+    // PID equal to the EC on a BD/SP native is undecided only when the line has a fixed-EC WB8
+    // gift; on a Sword/Shield record with EC 0 it may be a HOME gift (WC8.IsHOMEGift).
+    {
+        auto pidIsEc = [](auto& b) { PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); };
+        if (Legality::ModernEncounter::fixedEcGiftPossible(PK8::read16(n.plain, 0x08), n.plain[0xDE]))
+            expectNotInvalid(n, "pid==ec native, line with a fixed-EC gift", pidIsEc);
+        else
+            expectInvalid(n, "pid==ec native", pidIsEc, "PID equals the encryption constant");
+        check(Legality::ModernEncounter::fixedEcGiftPossible(5000, 48), "an unknown species may be a fixed-EC gift");
+        check(!Legality::ModernEncounter::fixedEcGiftPossible(25, 44), "only Legends: Arceus and BD/SP origins have fixed-EC gifts");
+    }
     expectNotInvalid(*home, "ec 0 pid 0 from sword", [](auto& b) { PK8::write32(b, 0x00, 0); PK8::write32(b, 0x1C, 0); b[0xDE] = 44; b[0xDF] = 0; });
     // Egg TR bytes are not checked (PKHeX skips eggs).
     Record egg = n;

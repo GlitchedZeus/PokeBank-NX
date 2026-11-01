@@ -245,7 +245,7 @@ private:
 
     // PIDVerifier.VerifyEC: a Generation III-V origin carries the Poke Transporter PID
     // (PK5.GetTransferPID); any other origin has PID != EC (VerifyFutureOriginEC), except the
-    // fixed-EC Legends: Arceus and BD/SP gifts (WA8/WB8.IsEquivalentFixedECPID), a Sword/Shield
+    // fixed-EC Legends: Arceus and BD/SP gifts of the line (WA8/WB8.IsEquivalentFixedECPID), a Sword/Shield
     // HOME gift with EC 0 (WC8.IsHOMEGift), and the Switch Virtual Console records, whose HOME PID
     // is not checked here.
     void checkPidEc() {
@@ -258,7 +258,7 @@ private:
                 invalid(CheckIdentifier::PidRng, "PID does not match the Poke Transporter PID for its encryption constant");
             return;
         }
-        const bool fixedEcGift = v == 47 || v == 48 || v == 49;
+        const bool fixedEcGift = ModernEncounter::fixedEcGiftPossible(species_, v);
         const bool homeGift = ec == 0 && (v == 44 || v == 45);
         if (pid == ec && !fixedEcGift && !homeGift)
             invalid(CheckIdentifier::PidRng, "PID equals the encryption constant");

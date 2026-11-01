@@ -145,6 +145,12 @@ bool alphaPossible(Modern::Format format, uint16_t species, bool alpha) noexcept
     return (table[species] & (alpha ? 1 : 2)) != 0;
 }
 
+bool fixedEcGiftPossible(uint16_t species, uint8_t version) noexcept {
+    const uint8_t bit = version == 47 ? 1 : (version == 48 || version == 49) ? 2 : 0;
+    if (bit == 0) return false;
+    return species >= kFixedEcGift.size() || (kFixedEcGift[species] & bit) != 0;
+}
+
 bool visitNinePossible(uint16_t species) noexcept {
     return species >= kVisit9.size() || kVisit9[species] != 0;
 }

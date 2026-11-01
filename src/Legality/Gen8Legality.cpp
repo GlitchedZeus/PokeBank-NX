@@ -390,7 +390,8 @@ private:
     // PIDVerifier.VerifyEC (format >= 6). Gen III-V origins carry the Poke Transporter PID;
     // Switch Virtual Console records carry HOME's PID (not checked here); everything else
     // has PID != EC, except fixed-EC Legends: Arceus / Brilliant Diamond / Shining Pearl
-    // gifts, which a record moved in from those games may be, and Sword/Shield HOME gifts.
+    // gifts of the line (ModernEncounter::fixedEcGiftPossible), which a record from those games
+    // may be, and Sword/Shield HOME gifts.
     void checkPidEc() {
         if (vc3()) return;
         const uint32_t pid = pk_.pid(), ec = pk_.encryptionConstant();
@@ -399,7 +400,7 @@ private:
                 invalid(CheckIdentifier::PidRng, "PID does not match the Poke Transporter PID for its encryption constant");
             return;
         }
-        const bool fixedEcGift = side_ != 0 || version_ == 47 || version_ == 48 || version_ == 49;
+        const bool fixedEcGift = side_ != 0 || ModernEncounter::fixedEcGiftPossible(species(), version_);
         // A Sword/Shield-origin record with EC 0 may be a HOME gift (WC8.IsHOMEGift), whose
         // EC PKHeX does not check; the encounter is not resolved here.
         const bool homeGift = ec == 0 && (version_ == 44 || version_ == 45);

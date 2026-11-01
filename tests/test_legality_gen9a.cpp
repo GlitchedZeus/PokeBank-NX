@@ -231,8 +231,12 @@ void testRuleEdits(const std::vector<Record>& records) {
         const uint8_t growth = personal ? personal->growth : 0;
             expectInvalid(n, "PID equals EC", [](auto& b) { b[0xCE] = 50; PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); },
                       "PID equals the encryption constant");
-        expectNoIssue(n, "PID equals EC on a BD/SP origin", [](auto& b) { b[0xCE] = 48; PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); },
-                      "PID equals the encryption constant");
+        if (Legality::ModernEncounter::fixedEcGiftPossible(Legality::Gen8::Data::nationalSpecies9(PK8::read16(n.plain, 0x08)), 48))
+            expectNoIssue(n, "PID equals EC on a BD/SP origin with a fixed-EC gift", [](auto& b) { b[0xCE] = 48; PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); },
+                          "PID equals the encryption constant");
+        else
+            expectInvalid(n, "PID equals EC on a BD/SP origin", [](auto& b) { b[0xCE] = 48; PK8::write32(b, 0x1C, PK8::read32(b, 0x00)); },
+                          "PID equals the encryption constant");
         expectInvalid(n, "Generation V PID", [](auto& b) { b[0xCE] = 21; PK8::write32(b, 0x1C, PK8::read32(b, 0x00) ^ 0x10000u); },
                       "Poke Transporter PID");
         {

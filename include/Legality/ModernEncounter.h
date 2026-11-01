@@ -50,6 +50,11 @@ bool alphaPossible(Modern::Format format, uint16_t species, bool alpha) noexcept
 /// the species' line that reaches PA8 carries move shop move `index` in a fixed moveset.
 bool masteryFromEncounterPossible(uint16_t species, size_t index) noexcept;
 
+/// PIDVerifier.VerifyFutureOriginEC: true when a record of this origin version may be a fixed-EC
+/// gift with PID = EC (WA8/WB8.IsEquivalentFixedECPID) of the species' line: a Legends: Arceus
+/// (47) or BD/SP (48/49) origin whose line has such a gift. Other versions return false.
+bool fixedEcGiftPossible(uint16_t species, uint8_t version) noexcept;
+
 /// IHyperTrain.GetHyperTrainMinLevel: false only when neither the species nor any of its
 /// pre-evolutions (in any form) is present in Scarlet/Violet or Z-A, so the record's evolution
 /// history cannot have visited those games and Hyper Training needs level 100.
