@@ -247,7 +247,7 @@ non-Sword/Shield-specific PK8 rule applies, with these differences:
 | Origin | a version no game writes into a PK9; Scarlet/Violet, Z-A and an unhatched egg's version 0 are allowed | `PKM.Generation`, `PK9.IsUnhatchedEgg` |
 | Form | Giratina-Origin ⇔ Griseous Core, Dialga-Origin ⇔ Adamant Crystal, Palkia-Origin ⇔ Lustrous Globe; Ogerpon's form ⇔ its mask; the Vivillon-pattern rule only for non-Scarlet/Violet origins | `FormVerifier` (format ≥ 9), `FormItem.GetFormOgerpon` |
 | Hyper Training | below level 50 (no Info line: Scarlet/Violet trains at 50) | `HyperTrainingVerifier` |
-| Tera type | an egg with an override; Terapagos with an override; Ogerpon's override not its mask type; an original type that does not exist; a record from another game without an override | `MiscVerifierPK9.VerifyTeraType`, `VerifyEncounter` |
+| Tera type | an egg with an override; Terapagos with an override; Ogerpon's override not its mask type; an original type that does not exist; a record from another game without an override, or with an original type that is no line member's HOME import type (`kTera9Import`, `GetTeraTypeImport`; Arceus only Normal); a hatched Scarlet/Violet record of a line without gift eggs whose original type is no line member's type (`kTera9Egg`, `IsMatchTeraTypePersonalEgg`) | `MiscVerifierPK9.VerifyTeraType`, `VerifyEncounter` |
 | Obedience | untraded (no handler, Gen IX origin): obedience ≠ met level; traded: below met level or above current level | `MiscVerifierHelpers.IsObedienceLevelValid`, `PK9.IsUntraded` |
 | TM flags | a flag no form of the species or of any pre-evolution can learn | `MiscVerifierPK9.VerifyTechRecordFlags` (superset of its evolution-chain check) |
 | Scale | a record with a HOME tracker whose height scalar is not its scale (not for Legends: Arceus or Z-A origins) | `MiscScaleVerifier.VerifyScale` |
@@ -255,7 +255,7 @@ non-Sword/Shield-specific PK8 rule applies, with these differences:
 | Battle version | as PK8 | `IBattleVersion` |
 
 Not implemented for PK9: encounter tables (wild, Tera raids, outbreaks, gifts, eggs), learnsets,
-Tera type per encounter or evolution chain, ball per encounter, fateful flags, egg locations,
+Tera type per encounter and exact evolution chain (the line union is wider), ball per encounter, fateful flags, egg locations,
 ribbons and marks, memories, trash bytes, nicknamed records, and HOME history (pre-DLC learnset limits,
 height/weight 0/0 after a Legends: Arceus visit).
 
@@ -452,10 +452,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |
 | PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 24,740 (87.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,205 (85.7%) | 0 | 0 |
-| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,440 (86.0%) | 0 | 0 |
-| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,497 (86.2%) | 0 | 0 |
-| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,332 (86.3%) | 0 | 0 |
+| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,401 (86.5%) | 0 | 0 |
+| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,680 (87.0%) | 0 | 0 |
+| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,880 (87.0%) | 0 | 0 |
+| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,550 (87.2%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.

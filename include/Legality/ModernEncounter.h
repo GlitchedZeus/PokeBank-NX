@@ -31,6 +31,15 @@ bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noex
 /// Soup cannot toggle it (never on an unhatched egg). Undecided species/forms return true.
 bool gigantamaxPossible(uint16_t species, uint8_t form, bool flag, bool egg) noexcept;
 
+/// MiscVerifierPK9.VerifyEncounter over the species' line (the species and every pre-evolution,
+/// any form): false only when no line member's HOME import Tera type (TeraTypeUtil.
+/// GetTeraTypeImport; Arceus only Normal) is this original Tera type, for a record from another game.
+bool teraImportPossible(uint16_t species, uint8_t original) noexcept;
+
+/// Tera9RNG.IsMatchTeraTypePersonalEgg over the line: false only when no line member (any form)
+/// has this type, so a Scarlet/Violet egg of the line cannot have hatched with it.
+bool teraEggPossible(uint16_t species, uint8_t original) noexcept;
+
 /// IHyperTrain.GetHyperTrainMinLevel: false only when neither the species nor any of its
 /// pre-evolutions (in any form) is present in Scarlet/Violet or Z-A, so the record's evolution
 /// history cannot have visited those games and Hyper Training needs level 100.

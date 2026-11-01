@@ -785,6 +785,21 @@ private:
         }
         if (!pk_.isEgg() && !svOrigin() && override_ == TeraOverrideNone)
             invalid(CheckIdentifier::Misc, "A record from another game must have a Tera type override");
+        // MiscVerifierPK9.VerifyEncounter: a record from another game arrives with its line's HOME
+        // import type as the original Tera type; a bred Scarlet/Violet egg hatches with one of its
+        // species' types (gift eggs and lines with any gift egg are not decided).
+        if (!pk_.isEgg() && s != Terapagos && s != Ogerpon && original <= TeraMaxType) {
+            if (!svOrigin()) {
+                if (!ModernEncounter::teraImportPossible(s, original))
+                    invalid(CheckIdentifier::Misc, "Original Tera type " + std::to_string(original) +
+                                                       " is not the HOME import type of any species of the line");
+            } else if (PK8::read16(plain_, 0x120) != 0) {
+                const auto eggs = ModernEncounter::eggFacts(Modern::Format::PK9, s);
+                if (eggs.decided && !eggs.gift && !eggs.nonEggEggLocation && !ModernEncounter::teraEggPossible(s, original))
+                    invalid(CheckIdentifier::Egg, "Original Tera type " + std::to_string(original) +
+                                                      " is not a type of any species of the line, so no egg could hatch with it");
+            }
+        }
         checkTechRecords9();
         // NicknameVerifier.VerifyNicknameEgg (EggStateLegality.IsNicknameFlagSet): a Scarlet/Violet
         // egg carries the nickname flag, except Jacq's gift egg (egg location 60005).

@@ -124,6 +124,14 @@ bool relearnPossible(Modern::Format origin, uint16_t species, uint16_t move, boo
     return std::binary_search(list.begin(), list.end(), move);
 }
 
+bool teraImportPossible(uint16_t species, uint8_t original) noexcept {
+    return species >= kTera9Import.size() || original > 31 || ((kTera9Import[species] >> original) & 1) != 0;
+}
+
+bool teraEggPossible(uint16_t species, uint8_t original) noexcept {
+    return species >= kTera9Egg.size() || original > 31 || ((kTera9Egg[species] >> original) & 1) != 0;
+}
+
 bool visitNinePossible(uint16_t species) noexcept {
     return species >= kVisit9.size() || kVisit9[species] != 0;
 }

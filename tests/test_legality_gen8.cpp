@@ -704,6 +704,31 @@ void testVisitNine() {
     check(E::visitNinePossible(5000), "an unknown species is not decided");
 }
 
+// MiscVerifierPK9.VerifyEncounter Tera types over the line (ModernEncounter::teraImportPossible /
+// teraEggPossible), and the PK9 rule on PKHeX-valid imports.
+void testTeraTypes(const std::vector<Record>& records) {
+    namespace E = Legality::ModernEncounter;
+    check(E::teraImportPossible(1, 11), "Bulbasaur imports as Grass");
+    check(!E::teraImportPossible(1, 9), "Bulbasaur never imports as Fire");
+    check(E::teraImportPossible(493, 0) && !E::teraImportPossible(493, 9), "Arceus imports only as Normal");
+    check(E::teraEggPossible(1, 3) && !E::teraEggPossible(1, 9), "a Bulbasaur egg hatches Grass or Poison");
+    int checked = 0;
+    for (const Record& r : records) {
+        if (!r.pkhexValid || r.format != Format::PK9 || r.plain[0xCE] == 50 || r.plain[0xCE] == 51 || r.plain[0xCE] == 0) continue;
+        const uint16_t s = Legality::Gen8::Data::nationalSpecies9(PK8::read16(r.plain, 0x08));
+        if (s == 1017 || s == 1024) continue;
+        const uint8_t original = r.plain[0x94];
+        check(E::teraImportPossible(s, original), r.label + ": a PKHeX-valid import keeps its Tera type");
+        uint8_t other = 0;
+        while (other <= 17 && E::teraImportPossible(s, other)) ++other;
+        if (other > 17) continue;
+        const auto rep = analyzePlain(r, edit(r.plain, [other](auto& b) { b[0x94] = other; }));
+        check(hasIssue(rep, Severity::Invalid, "is not the HOME import type"), r.label + ": another original Tera type: " + describe(rep));
+        if (++checked == 20) break;
+    }
+    check(checked > 0, "PK9 fixture has imports");
+}
+
 // The same seeds for a Sword/Shield record moved to Scarlet/Violet through HOME (PK9): a PKHeX-valid
 // record keeps its seed, and another EC loses it wherever the met location is seed-bound.
 void testOverworldSeedsPK9(const std::vector<Record>& records) {
@@ -740,6 +765,7 @@ int main() {
     testRaidSeeds(records);
     testOverworldSeeds(records);
     testVisitNine();
+    testTeraTypes(sv);
     testOverworldSeedsPK9(sv);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";

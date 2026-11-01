@@ -974,6 +974,35 @@ static class DumpEncounters
         o.WriteLine($"constexpr std::array<uint8_t, {max + 1}> kVisit9{{{{");
         for (int i = 0; i <= max; i += 32) o.WriteLine("    " + string.Join(",", visit.Skip(i).Take(32)) + ",");
         o.WriteLine("}};");
+        // MiscVerifierPK9.VerifyEncounter, made encounter-independent over the species' line (the
+        // species and every pre-evolution, every form): kTera9Import[s] = the original Tera types a
+        // record from another game can carry (TeraTypeUtil.GetTeraTypeImport of a line member's
+        // Scarlet/Violet types; Arceus only Normal), kTera9Egg[s] = the original Tera types a
+        // Scarlet/Violet egg of the line can hatch with (Tera9RNG.IsMatchTeraTypePersonalEgg: either
+        // personal type). Bit t = type t.
+        var sv = PersonalTable.SV;
+        var import = new uint[sv.MaxSpeciesID + 1];
+        var egg = new uint[sv.MaxSpeciesID + 1];
+        for (ushort sp = 1; sp <= sv.MaxSpeciesID; sp++)
+        {
+            if (sp == (int)Species.Arceus) { import[sp] = 1u << (int)MoveType.Normal; egg[sp] = import[sp]; continue; }
+            foreach (var member in DumpNames.LinePublic(sp))
+            {
+                if (member > sv.MaxSpeciesID) continue;
+                for (byte f = 0; f < Math.Max((byte)1, sv[member].FormCount); f++)
+                {
+                    var pi = sv.GetFormEntry(member, f);
+                    import[sp] |= 1u << (int)TeraTypeUtil.GetTeraTypeImport(pi.Type1, pi.Type2);
+                    egg[sp] |= (1u << pi.Type1) | (1u << pi.Type2);
+                }
+            }
+        }
+        foreach (var (label, table) in new[] { ("kTera9Import", import), ("kTera9Egg", egg) })
+        {
+            o.WriteLine($"constexpr std::array<uint32_t, {table.Length}> {label}{{{{");
+            for (int i = 0; i < table.Length; i += 16) o.WriteLine("    " + string.Join(",", table.Skip(i).Take(16)) + ",");
+            o.WriteLine("}};");
+        }
     }
 
     // Unhatched-egg facts of one egg encounter of the format's own context (eggs never leave it:
