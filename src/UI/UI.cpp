@@ -140,6 +140,7 @@ namespace UI {
                 case static_cast<int>(Kind::Gen4AssignedFile): return Kind::Gen4AssignedFile;
                 case static_cast<int>(Kind::Gen5AssignedFile): return Kind::Gen5AssignedFile;
                 case static_cast<int>(Kind::ModernAssignedFile): return Kind::ModernAssignedFile;
+                case static_cast<int>(Kind::ModernInstalledSnapshot): return Kind::ModernInstalledSnapshot;
                 default:                                       return Kind::None;
             }
         }
@@ -406,6 +407,19 @@ namespace UI {
                                             selectScreen.getSelectedGen5Copy(),
                                             selectScreen.getSelectedGen5Fingerprint(), error)) {
                             logErrorToFile("Generation V read-only source refused open", error.c_str());
+                            selectScreen.reportOpenFailure(error);
+                            fb.startFade();
+                            continue;
+                        }
+                    } else if (selectScreen.getSelectedSourceKind() ==
+                               SaveSelectScreen::SelectedSourceKind::ModernInstalledSnapshot) {
+                        std::string error;
+                        if (!handleModernInstalledView(selectScreen.getSelectedUser(),
+                                                       selectScreen.getSelectedTitleId(),
+                                                       selectScreen.getSelectedGameId(),
+                                                       selectScreen.getSelectedTitleName(),
+                                                       selectScreen.getOpenIntent(), error)) {
+                            logErrorToFile("Installed Gen VI-IX save refused open", error.c_str());
                             selectScreen.reportOpenFailure(error);
                             fb.startFade();
                             continue;
@@ -908,8 +922,11 @@ namespace UI {
         namespace Modern=PokeVault::Integration::Modern;
         error.clear();
         const auto* identity=PokeVault::Games::findGame(gameId);
+        // Switch Gen VI-IX titles are registered NativeSwitch, 3DS titles ReadOnly; both are served
+        // by the shared adapter. (Requiring ReadOnly refused every Switch card at open.)
         if (!identity || !Modern::isModernAssignedId(gameId) ||
-            identity->support!=PokeVault::Games::SourceSupport::ReadOnly ||
+            (identity->support!=PokeVault::Games::SourceSupport::ReadOnly &&
+             identity->support!=PokeVault::Games::SourceSupport::NativeSwitch) ||
             (intent!=SaveSelectScreen::OpenIntent::Default &&
              intent!=SaveSelectScreen::OpenIntent::Items)) {
             error="Shared editor requires an exact title served by the Modern adapter and a validated external save";
@@ -938,8 +955,15 @@ namespace UI {
             return false;
         }
         logInfoToFile("Opening assigned Modern-adapter source read-only",sourcePath.c_str());
+        runModernScreen(*trainer,"Pokemon "+std::string(identity->title),sourcePath,userUid,gameId,sourceType,intent);
+        return true;
+    }
+
+    void UIManager::runModernScreen(PokeVault::Legacy::ModernReadOnlyTrainer& trainer, const std::string& title,
+                                    const std::string& sourcePath, AccountUid userUid, const std::string& gameId,
+                                    const std::string& sourceType, SaveSelectScreen::OpenIntent intent) {
         TrainerViewScreen trainerScreen(
-            *trainer,"Pokemon "+std::string(identity->title),sourcePath,0,userUid,
+            trainer,title,sourcePath,0,userUid,
             PokeVault::Safety::SourceKind::ExternalLegacy,gameId,sourceType);
         // Same loaded-game hub as Gen I-V. ModernSharedSurface (src/UI/ModernSharedSurface.inc)
         // intercepts activation, Exit and Review on the hub and owns the entered panels, so the
@@ -966,6 +990,48 @@ namespace UI {
         } else {
             inputTrace().event("trainer:modern", "back-to-home");
         }
+    }
+
+    bool UIManager::handleModernInstalledView(
+        AccountUid userUid, u64 titleId, const std::string& gameId, const std::string& titleName,
+        SaveSelectScreen::OpenIntent intent, std::string& error) {
+        namespace Modern=PokeVault::Integration::Modern;
+        error.clear();
+        const auto* identity=PokeVault::Games::findGame(gameId);
+        if (!identity || !Modern::isModernAssignedId(gameId) ||
+            identity->support!=PokeVault::Games::SourceSupport::NativeSwitch || titleId==0 ||
+            (intent!=SaveSelectScreen::OpenIntent::Default && intent!=SaveSelectScreen::OpenIntent::Items)) {
+            error="The installed-save editor needs an installed Gen VI-IX Switch title";
+            return false;
+        }
+        // Read-only: the existing backup path mounts the console save, copies its files into an
+        // app-owned snapshot folder and unmounts. Nothing is ever restored or committed from here;
+        // edits stay staged in the shared session and only a verified Export Copy writes a file.
+        const std::string snapshotDir=backupSaveData(userUid,titleId,titleName);
+        if (snapshotDir.empty()) {
+            error="The installed save could not be copied for reading. X assigns an exported save instead.";
+            return false;
+        }
+        const std::string file=snapshotDir+"/"+Enums::getSaveFileName(Modern::gameGroupFor(gameId));
+        std::vector<uint8_t> bytes;
+        if (!Modern::readSourceFileReadOnly(file,bytes,error)) {
+            error="Installed save snapshot unreadable: "+error;
+            return false;
+        }
+        auto opened=Modern::openSession(gameId,bytes);
+        if (!opened.ready()) {
+            error="Installed save failed strict validation: "+opened.diagnostic;
+            return false;
+        }
+        auto trainer=PokeVault::Legacy::ModernReadOnlyTrainer::create(
+            std::move(opened.session),gameId,Modern::gameGroupFor(gameId),error);
+        if (!trainer) {
+            if (error.empty())error="Installed save presentation failed";
+            return false;
+        }
+        logInfoToFile("Opening installed Gen VI-IX save snapshot read-only",file.c_str());
+        runModernScreen(*trainer,"Pokemon "+std::string(identity->title),file,userUid,gameId,
+                        "Installed game (read-only snapshot)",intent);
         return true;
     }
 

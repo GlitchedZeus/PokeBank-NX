@@ -36,6 +36,56 @@ as read-only or refused with a reason on screen; a refusal with a correct reason
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 
+## Group GUX · One card per game (hardware UX repair, every Gen VI–IX title you own)
+
+Owner finding 2026-11-01: duplicate "(Save File)" / "… File" cards beside installed games, Poké Ball art,
+no path from the installed card into the editor. Retest on the bound experimental NRO.
+
+### GUX-01 · No duplicate File cards
+**Steps:** HOME, then Y (Games grid). Look for Shining Pearl, Brilliant Diamond, Legends: Arceus, Scarlet,
+Violet, Shield/Sword, Let's Go, Z-A.
+**Expected:** Exactly ONE card per game; no card named "(Save File)" or "… File"; installed games keep their
+console cover art; release-date order is unchanged when moving focus.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### GUX-02 · Installed game, nothing assigned: A opens the editor (read-only snapshot)
+**Steps:** Focus an installed Gen VIII/IX game with no save assigned → A.
+**Expected:** HOME says "Installed save. A opens it read-only in the editor; X assigns an exported save."; A
+opens the shared editor (Party/Boxes) on the installed save, source labelled "Installed game (read-only
+snapshot)". B returns HOME to the same card. Nothing is ever written to the installed save.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### GUX-03 · X assigns / changes the save under the same card
+**Steps:** Same card → X → Assign Save File Manually (exported copy) → back to HOME → A.
+**Expected:** Save Instances opens over the same card; after assigning, the card shows REMEMBERED, the
+trainer/party preview of the assigned save, and A opens that assigned save (not the installed one).
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### GUX-04 · Missing / changed assignment
+**Steps:** Rename or replace the assigned file on the SD card → restart PokeBank NX → focus the card → A.
+**Expected:** The card states the problem (MISSING, or the exact validation failure); A opens Save Instances
+with that reason first; the installed save is never silently substituted.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### GUX-05 · Launch and 3DS cards
+**Steps:** Installed game → ZR (then B in the dialog); a 3DS card (X/Y/ORAS/SM/USUM) → ZR, then A.
+**Expected:** ZR on the installed game opens the usual launch decision; ZR on a 3DS card launches nothing;
+A on an unassigned 3DS card opens Save Instances explaining "No save is assigned to … yet".
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
+### GUX-06 · Controls and title fit
+**Steps:** Repeat GUX-02/03 using the Games grid (Y → D-pad/stick → A / X / ZR) and by touch; check a long
+title (e.g. "Pokémon Brilliant Diamond") on the HOME glass card.
+**Expected:** Grid A/X/ZR behave like HOME A/X/ZR; the title is shortened with an ellipsis, never cut
+mid-character.
+- [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
+Comment: ________________
+
 ## Group G6 · Pokémon X / Y / Omega Ruby / Alpha Sapphire (repeat the table once per title you own)
 
 Title tested: ________ (X / Y / OR / AS)   Source kind: ________ (Dekopon / Checkpoint copy / manual)
@@ -223,9 +273,9 @@ Comment: ________________
 
 Prerequisite: a COPY of the game's `main` (0xB8800 or 1 MiB) on the SD card, exported by your save manager.
 
-### G7b-01 · Two cards, assign, open
-**Steps:** HOME → "Pokemon Let's Go Pikachu (Save File)" → Assign Save File Manually → open.
-**Expected:** The installed-title card is unchanged; the file validates as the exact title (an Eevee save is
+### G7b-01 · One card, assign, open
+**Steps:** HOME → "Pokemon Let's Go Pikachu" (the ONE card) → X → Assign Save File Manually → open.
+**Expected:** There is no separate "(Save File)" card; the file validates as the exact title (an Eevee save is
 refused on the Pikachu card); 40 × 25 Boxes and the party match the game; your partner shows
 "Partner Pokemon: Yes" in Origin & Legality.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
@@ -258,12 +308,12 @@ Comment: ________________
 ## Group G8 · Pokémon Sword / Shield (linked `main` file)
 
 Prerequisite: a COPY of the game's `main` save file on the SD card (exported by your save manager). Never
-point PokeBank NX at a live installed save; the installed-title card stays read-only and is a separate card.
+point PokeBank NX at a live installed save; the installed save is only ever read through an app-owned snapshot.
 
-### G8-01 · Two cards, clearly named
-**Steps:** On HOME, find "Pokemon Sword" (installed title, if installed) and "Pokemon Sword (Save File)".
-**Expected:** The installed card opens the existing read-only reader exactly as before; the Save File card
-offers Save Instances / Assign Save File Manually and never scans a folder layout.
+### G8-01 · One card per game
+**Steps:** On HOME, find "Pokemon Sword".
+**Expected:** Exactly one Sword card (see GUX-01); X on it offers Save Instances / Assign Save File Manually
+and never scans a folder layout.
 - [ ] PASS  - [ ] FAIL  - [ ] NOT TESTED
 Comment: ________________
 

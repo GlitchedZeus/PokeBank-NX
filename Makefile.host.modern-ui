@@ -184,6 +184,27 @@ MODERN_UI_TESTS += $(MODERN_UI_GEN9ZA_TEST)
 MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_GEN9ZA_SANITIZE)
 endif
 
+# Owner hardware finding 2026-11-01: ONE HOME card per Gen VI-IX game identity, Save Instances under
+# it, A/X/B/ZR/Y through the REAL SaveSelectScreen on a scripted console, for all 18 modern titles.
+ifneq ($(MODERN_UI_COMPILER_IS_CLANG),yes)
+MODERN_UI_CARDS_TEST := $(HOST_BUILD)/test_ui_modern_game_cards_host
+MODERN_UI_CARDS_SANITIZE := $(HOST_BUILD)/test_ui_modern_game_cards_host_sanitize
+MODERN_UI_CARDS_INPUTS := tests/test_ui_modern_game_cards_host.cpp tests/host-ui/HostUi.h tests/host-ui/switch.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(wildcard tests/fixtures/gen*/*.h) $(MODERN_UI_STUBS)
+HOST_TESTS += $(MODERN_UI_CARDS_TEST)
+HOST_SANITIZE_TESTS += $(MODERN_UI_CARDS_SANITIZE)
+host-test: $(MODERN_UI_CARDS_TEST)
+host-sanitize: $(MODERN_UI_CARDS_SANITIZE)
+$(MODERN_UI_CARDS_TEST): $(MODERN_UI_CARDS_INPUTS) $(MODERN_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_game_cards_host.cpp $(MODERN_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(MODERN_UI_ARCHIVE) -o $@
+$(MODERN_UI_CARDS_SANITIZE): $(MODERN_UI_CARDS_INPUTS) $(MODERN_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(MODERN_UI_SURFACE_FLAGS) tests/test_ui_modern_game_cards_host.cpp $(MODERN_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(MODERN_UI_SANITIZE_ARCHIVE) -o $@
+MODERN_UI_TESTS += $(MODERN_UI_CARDS_TEST)
+MODERN_UI_SANITIZE_TESTS += $(MODERN_UI_CARDS_SANITIZE)
+endif
+
 .PHONY: modern-ui-host-test modern-ui-host-sanitize
 modern-ui-host-test: $(MODERN_UI_TESTS)
 	@set -e; for test_bin in $(MODERN_UI_TESTS); do ./$$test_bin; done

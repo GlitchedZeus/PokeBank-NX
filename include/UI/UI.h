@@ -13,6 +13,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "Legacy/RetroArchFRLGDiscovery.h"
 #include "Legacy/LegacySourceBindings.h"
+#include "Legacy/ModernReadOnlyTrainer.h"
 #include "Utils/Keyboard.h"
 
 namespace Trainer {
@@ -73,6 +74,12 @@ namespace UI {
                             std::string& error);
         // Gen VI+ titles served by the shared Modern adapter (Integration/Modern): the ONE
         // TrainerViewScreen over a ModernReadOnlyTrainer; the source save is never written.
+        bool handleModernInstalledView(AccountUid userUid, u64 titleId, const std::string& gameId,
+                                       const std::string& titleName, SaveSelectScreen::OpenIntent intent,
+                                       std::string& error);
+        void runModernScreen(PokeVault::Legacy::ModernReadOnlyTrainer& trainer, const std::string& title,
+                             const std::string& sourcePath, AccountUid userUid, const std::string& gameId,
+                             const std::string& sourceType, SaveSelectScreen::OpenIntent intent);
         bool handleModernView(AccountUid userUid, const std::string& gameId,
                               SaveSelectScreen::OpenIntent intent,
                               std::string_view selectedFingerprint,

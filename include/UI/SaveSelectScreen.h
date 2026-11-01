@@ -8,7 +8,9 @@
 #include <vector>
 #include "UI/SourceBackupClassification.h"
 #include "UI/RecoveryManagementFs.h"
+#include <memory>
 #include <string>
+#include <string_view>
 
 #include <switch.h>
 
@@ -45,6 +47,10 @@ namespace UI {
             // Gen VI+ exact-game cards served by the shared Modern adapter (Integration/Modern):
             // explicit per-profile assignment of a validated external 3DS save archive.
             ModernAssignedFile,
+            // The installed Switch title of a Gen VI-IX game card with no external save assigned:
+            // its save is mounted read-only, copied into an app-owned snapshot and opened through
+            // the same shared adapter (UIManager::handleModernInstalledView). Never written back.
+            ModernInstalledSnapshot,
         };
 
         enum class OpenIntent { Default, Items, Backups };
@@ -114,6 +120,24 @@ namespace UI {
         // The card's raw provider label for an opened backup copy (top bar names its provider).
         const std::string& getSelectedBackupProvider() const { return selectedBackupProvider; }
 
+        // Read-only inspection used by host UI tests (tests/test_ui_modern_game_cards_host.cpp).
+        // Nothing here mutates sources; focusGameForInspection only moves HOME focus.
+        struct CardInspection {
+            std::string gameId;
+            std::string name;
+            std::string label;
+            std::string sourceLabel;
+            SelectedSourceKind sourceKind = SelectedSourceKind::None;
+            u64 titleId = 0;
+            bool linkedSave = false;
+        };
+        [[nodiscard]] std::vector<CardInspection> cardsForInspection() const;
+        bool focusGameForInspection(std::string_view gameId);
+        [[nodiscard]] std::string_view overlayForInspection() const;
+        [[nodiscard]] std::string noticeForInspection() const;
+        [[nodiscard]] const GameLaunchDescriptor& launchForInspection() const { return launchDescriptor; }
+        [[nodiscard]] int focusedIndexForInspection() const { return titleIndex; }
+
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
         struct TitleEntry {
@@ -142,6 +166,9 @@ namespace UI {
                 PokeVault::Source::SnapshotState::Unavailable;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
+            // A Gen VI-IX card merged with its installed Switch title keeps the console card's own
+            // facts here (titleId != 0 on the card as well), so reassignment can restore them.
+            std::shared_ptr<TitleEntry> installedFacts;
         };
         struct UserEntry {
             AccountUid uid;
@@ -468,6 +495,10 @@ namespace UI {
         bool unassignCurrentModernGame();
 
         const UserEntry* currentUser() const;
+        void selectInstalledModernSnapshot(const UserEntry& user, const TitleEntry& title);
+        void applyModernLaunchState(const TitleEntry& title);
+        void openModernSaveInstances(const std::string& gameId, const std::string& reason);
+        [[nodiscard]] std::string modernUnlinkedStatus(const TitleEntry& title) const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)
         int titleRows() const;         // rows those tiles occupy
         int classicTitleColumns() const;

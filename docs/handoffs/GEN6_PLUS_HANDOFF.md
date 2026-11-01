@@ -4,7 +4,7 @@
 > This lane is isolated from the Gen I–V repair campaign, #307, #314, #327/#328. No merge into `main` or
 > into the Gen I–V repair branch, no force-push, no branch deletion, no source-save write.
 
-Last updated: 2026-10-31 UTC (late), by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
+Last updated: 2026-11-01 UTC, by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
 
 ## Branching decision (owner, 2026-10-31)
 
@@ -31,7 +31,7 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
 | Adapters | `Gen6NativeSession`, `Gen7NativeSession`, `Gen8NativeSession` | X/Y/ORAS over the #309 staged session; SM/USUM over #311 (export blocked by the SAV7 signing gate); **Sword/Shield over the new `Gen8StagedSession`** (battle-team protection, canonical SwishCrypto re-encryption verifier, export to `exports/gen8`). |
 | Presentation bridge | `include/Pokemon/ModernRecordView.h`, `include/Legacy/ModernReadOnlyTrainer.h` | One presentation Pokémon and one Trainer bridge for the shared panels. |
 | Save Instances | `include/Integration/Modern/ModernSources.h` | 3DS: Checkpoint layout, Dekopon, manual (`3ds-single-copy`). SWSH: manual link only (`switch-main-single`); no Switch save-manager layout is assumed. Strict validation, per-profile binding, fingerprint-checked reopen, Home card snapshot. |
-| Routing | `SaveSelectScreen.cpp` (`ModernAssignedFile`), `UI.cpp` (`handleModernView`), `BackupReadOnlyTrainer.cpp` | Shared Home cards (Switch titles get a separate "(Save File)" card beside the installed-title card), the shared Save Instances overlays, one TrainerViewScreen over the bridge. |
+| Routing | `SaveSelectScreen.cpp` (`ModernAssignedFile`, `ModernInstalledSnapshot`), `UI.cpp` (`handleModernView`, `handleModernInstalledView`) | ONE Home card per Gen VI–IX game (an installed Switch title merges into it; no "(Save File)" card), Save Instances under that card (X), A opens the assigned save or, with nothing assigned, a read-only snapshot of the installed save; one TrainerViewScreen over the bridge. |
 | Shared surface | `src/UI/ModernSharedSurface.inc` + `ModernScreenState.h` | The Gen VI+ adapter of the shared Party/Boxes/Items/Trainer screen and the ONE editor workspace. Only `ExternalLegacy` screens with an adapter-served id reach it (installed-title SWSH stays on the legacy reader). |
 
 ## Commits on this lane
@@ -108,6 +108,34 @@ a **separate integration PR for owner approval**. Until then: no PR, no merge. T
   PA9 shares PK8 encryption and every editable offset, so the shared rules are reused. Export to `exports/za`.
 - PKHeX reference files were fetched from the pinned commit `6501f0ab` for offsets only (not vendored).
 
+## Session 4 milestones (QA D2/D3, 18-title sweep, hardware UX repair)
+
+| Commit | Content | Host evidence |
+| --- | --- | --- |
+| `5e1d7b7b` | QA D3: bounded, symlink-safe modern discovery (`DiscoveryLimits`, lstat/O_NOFOLLOW + fstat identity, newest-first before reading, truncation notice; explicit assignments never invalidated); 8 MiB read cap (SV DLC saves exceeded 4 MiB). QA D2: independent MiniGmp stress regression (8 threads × 40, 320/320; TSan clean) — the `1509a314` fix is kept, not replaced | `test_modern_discovery_bounds` 61, `test_mini_gmp_stress` |
+| `84a4e3a8` | 18-title hardening sweep: 18×18 identity matrix, blocked-op agreement, party release never offered, team/partner protections, export round trip, immutability | `test_modern_title_sweep` 598 (mutation-checked) |
+| (this commit) | **Hardware UX repair** (owner finding 2026-11-01): one HOME card per game identity | `test_ui_modern_game_cards_host` 845 (real SaveSelectScreen, scripted console, all 18 titles) |
+
+Hardware UX repair, what changed:
+- `loadModernCards` merges an installed Switch title into the one `ModernAssignedFile` card (installed name,
+  title id → console cover art and ZR Launch); the separate "(Save File)" / "… File" card is gone. A Switch
+  title that is neither installed nor assigned to this profile has no card; each 3DS title has one card.
+- A: assigned & valid → shared editor on the assigned save; assigned but missing/invalid/changed → Save
+  Instances with the reason first (never the installed save); nothing assigned & installed → the installed
+  save is mounted read-only, copied into an app-owned timestamped backup (`backupSaveData`) and that copy is
+  opened through the same adapter (`handleModernInstalledView`, source "Installed game (read-only snapshot)");
+  nothing assigned on 3DS → Save Instances ("No save is assigned to … yet"). Nothing writes installed savedata.
+- X on HOME (new, modern cards only) and in the Games grid → Save Instances under the same card. ZR in the
+  Games grid now launches like HOME ZR. 3DS cards report Launch unavailable.
+- Root cause found by code reading (not reproduced on hardware): `handleModernView` accepted only READ-ONLY
+  registry rows, but every Switch modern id is `NativeSwitch`, so an assigned Switch File card was refused at
+  open. It now accepts both.
+- HOME title is fitted by measured width (UTF-8 safe, ellipsis) instead of a 27-byte cut.
+- Reproduction: with the pre-fix `loadModernCards` the new test fails 212 checks, including two cards per
+  installed Switch game named exactly as reported ("Shining Pearl File", "Scarlet File", …).
+- Limits: the host cannot mount a console save, so the installed snapshot is proven only up to the
+  selection handed to UIManager; the device build links it. 3DS box art has no licence → fallback art remains.
+
 ## Status per game (host evidence only; NOT DEVICE TESTED)
 
 `docs/gen6-plus/CAPABILITY_MATRIX.md` (generated) is the 12-column table. Summary:
@@ -148,10 +176,11 @@ candidates; #313 open).
 
 ## Open work (in order)
 
-1. Owner: optional experimental device pass of the CI artifact with the G0/G6/G7/G8 checklist (does not
+1. Owner: retest the hardware UX repair with checklist group GUX on the bound experimental NRO (does not
    affect Gen I–V acceptance).
-2. LGPE adapter (PB7 pointer-backed storage), then BDSP (paired-file authority), PLA, SV, Z-A — each only
-   behind its own verified staged session.
+2. PKSE 1.2.2 differential audit and feature port (owner request 2026-11-01): mass-cloning on box move,
+   unknown-byte preservation, fail-closed parsing, team protections incl. Gen VII, checksum/size per edit;
+   then Hyper Training, ribbons/marks, PLA/Z-A Alpha in the shared editor; favourite folders last.
 3. Pinned learnsets/personal tables → unlock Moves/Species (Gen VI/VII) and IV/EV/Nature/Level (SWSH).
 4. Licensed artwork only (3DS box art has no redistribution licence; generated fallback cards are used).
 5. After Gen I–V acceptance: reconcile onto the final accepted shared UI, re-test, open the separate integration PR.

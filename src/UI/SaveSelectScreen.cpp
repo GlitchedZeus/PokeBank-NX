@@ -2,6 +2,7 @@
 #include "UI/BackupHistoryPresentation.h"
 #include "UI/SourceBackupOpen.h"
 #include <algorithm>
+#include <map>
 #include <array>
 #include <cstring>
 #include <cstdio>
@@ -1125,36 +1126,78 @@ namespace UI {
     } // namespace
 
     void SaveSelectScreen::loadModernCards() {
-        // Gen VI+ titles served by the shared Modern adapter: the same exact-game card rules as the
-        // Gen IV/V assigned files (explicit profile assignment, validated snapshot, read-only source).
+        // ONE card per Gen VI-IX game identity (owner hardware finding, 2026-11-01). Every exact game
+        // served by the shared Modern adapter is exactly one ModernAssignedFile card:
+        //   * an installed Switch title MERGES into that card: the console card is removed and its
+        //     titleId/name/artwork/console facts move onto the one card, so ZR still launches the
+        //     installed game and A can open a read-only snapshot of the installed save;
+        //   * external saves are Save Instances UNDER that card (profile assignment, X / Source);
+        //   * a Switch title that is neither installed nor assigned to this profile has no card;
+        //   * a 3DS title (never installed on a Switch) always has its one card, like Gen IV/V DS.
+        // Nothing here mounts or reads a save: it only rebuilds presentation from cached state.
+        namespace Modern = PokeVault::Integration::Modern;
         std::string focusedGame;
         if(const auto* user=currentUser(); user && titleIndex>=0 &&
            titleIndex<static_cast<int>(user->titles.size())) {
             const auto& focused=user->titles[static_cast<size_t>(titleIndex)];
-            if(focused.sourceKind==SelectedSourceKind::ModernAssignedFile)
+            if(Modern::isModernAssignedId(focused.gameId) &&
+               (focused.sourceKind==SelectedSourceKind::ModernAssignedFile ||
+                focused.sourceKind==SelectedSourceKind::SwitchTitle))
                 focusedGame=focused.gameId;
         }
         for(auto& user:users) {
+            // Installed-title facts per modern game: from a fresh console card, or carried by an
+            // already merged card (titleId != 0) when this runs again after an assignment change.
+            std::map<std::string,TitleEntry> installed;
+            for(const auto& title:user.titles) {
+                if(!Modern::isModernAssignedId(title.gameId) || title.titleId==0) continue;
+                if(title.sourceKind==SelectedSourceKind::SwitchTitle)
+                    installed[title.gameId]=title;
+                else if(title.sourceKind==SelectedSourceKind::ModernAssignedFile && !installed.count(title.gameId))
+                    installed[title.gameId]=title.installedFacts ? *title.installedFacts : title;
+            }
             user.titles.erase(std::remove_if(user.titles.begin(),user.titles.end(),
                 [](const auto& title) {
-                    return title.sourceKind==SelectedSourceKind::ModernAssignedFile;
+                    return title.sourceKind==SelectedSourceKind::ModernAssignedFile ||
+                           (title.sourceKind==SelectedSourceKind::SwitchTitle &&
+                            Modern::isModernAssignedId(title.gameId));
                 }),user.titles.end());
             const auto profile=profileIdentity(user.uid);
             for(const auto& game:PokeVault::Games::allGameDescriptors()) {
-                if(!PokeVault::Integration::Modern::isModernAssignedId(game.id))continue;
+                if(!Modern::isModernAssignedId(game.id))continue;
+                const std::string gameId(game.id);
+                const auto inst=installed.find(gameId);
                 TitleEntry card;
-                // A Switch title keeps its installed-title card (console save, legacy read-only
-                // reader); this second card is the linked `main` FILE served by the shared adapter,
-                // so it says so instead of reading as a duplicate.
-                const bool switchFile=PokeVault::Integration::Modern::sourceVariantFor(game.id)==
-                    PokeVault::Integration::Modern::kSourceVariantSwitchMain;
-                card.name="Pokemon "+std::string(game.title)+(switchFile?" (Save File)":"");
-                card.label=std::string(game.title)+(switchFile?" File":"");
-                card.gameId=std::string(game.id);
-                card.platformLabel=std::string(PokeVault::Integration::Modern::platformLabelFor(game.id));
-                card.artworkKey=card.gameId;
+                if(inst!=installed.end()) {
+                    card=inst->second;                    // installed name, titleId, artwork, platform
+                    card.installedFacts=std::make_shared<TitleEntry>(inst->second);
+                    card.installedFacts->installedFacts.reset();
+                } else {
+                    card.name="Pokemon "+std::string(game.title);
+                    card.label=std::string(game.title);
+                    card.platformLabel=std::string(Modern::platformLabelFor(game.id));
+                    card.artworkKey=gameId;
+                }
+                card.gameId=gameId;
                 card.sourceKind=SelectedSourceKind::ModernAssignedFile;
                 applyAssignedCardState(card,profile);
+                const bool assigned=legacyBindings &&
+                    legacyBindings->resolveFileForGame(profile,gameId).status!=PokeVault::Legacy::AssignedFileStatus::Unassigned;
+                const bool switchTitle=Modern::sourceVariantFor(game.id)==Modern::kSourceVariantSwitchMain;
+                if(!assigned && card.installedFacts) {
+                    // Unassigned installed game: the installed save is the card's source (opened
+                    // as a read-only snapshot); keep the console card's own facts, never a blank.
+                    const auto& facts=*card.installedFacts;
+                    card.sourceLabel="INSTALLED SAVE";
+                    card.trainerName=facts.trainerName;
+                    card.trainerGender=facts.trainerGender;
+                    card.trainerGenderKnown=facts.trainerGenderKnown;
+                    card.dexSeen=facts.dexSeen;
+                    card.dexCaught=facts.dexCaught;
+                    card.dexTotal=facts.dexTotal;
+                } else if(!assigned && switchTitle) {
+                    continue;                             // not installed, nothing assigned: no card
+                }
                 user.titles.push_back(std::move(card));
             }
         }
@@ -1167,6 +1210,37 @@ namespace UI {
                     gamesDrawerIndex=titleIndex;
                     break;
                 }
+    }
+
+    // A on a Gen VI-IX card that cannot open: Save Instances under the SAME card, and the reason the
+    // card did not open stays first in the notice (the discovery result follows it, never replaces it).
+    void SaveSelectScreen::openModernSaveInstances(const std::string& gameId, const std::string& reason) {
+        openGen5Setup(gameId, reason);
+        gen5AssignOnly = false;
+        discoverGen5Candidates();
+        if (!reason.empty() && gen5Notice.rfind(reason, 0) != 0)
+            gen5Notice = reason + (gen5Notice.empty() ? "" : " " + gen5Notice);
+    }
+
+    void SaveSelectScreen::applyModernLaunchState(const TitleEntry& title) {
+        launchDescriptor = {};
+        if (title.titleId != 0) {
+            launchDescriptor.state = GameLaunchState::Ready;
+            launchDescriptor.detail = "Launch target resolves when requested.";
+        } else {
+            launchDescriptor.state = GameLaunchState::Unavailable;
+            launchDescriptor.detail = "Nintendo 3DS games are not launched from PokeBank NX. A opens the assigned save.";
+        }
+    }
+
+    std::string SaveSelectScreen::modernUnlinkedStatus(const TitleEntry& title) const {
+        // Anything but "nothing assigned" means an assignment exists and failed to validate
+        // (MISSING / INVALID / AMBIGUOUS / RELINK SAVE / STALE): never fall back to another save.
+        if (title.sourceLabel != "CHOOSE SAVE" && title.sourceLabel != "INSTALLED SAVE")
+            return "The assigned save needs attention. A or X opens Save Instances.";
+        if (title.titleId != 0)
+            return "Installed save. A opens it read-only in the editor; X assigns an exported save.";
+        return "Choose Save: no save is assigned yet. A or X opens Save Instances.";
     }
 
     const PokeVault::Source::HomeCardSnapshot* SaveSelectScreen::refreshAssignedSnapshot(
@@ -1802,14 +1876,12 @@ namespace UI {
             if(snapshot)applySnapshotToHub(*snapshot);
             else partyPreviewStatus="Choose a validated Gen V Save Instance.";
         } else if (title.sourceKind == SelectedSourceKind::ModernAssignedFile) {
-            const std::string gen=modernGenerationShort(title.gameId);
-            launchDescriptor.state=GameLaunchState::ChooseSource;
-            launchDescriptor.detail="Select a "+gen+" Save Instance to open the shared staged editor.";
+            applyModernLaunchState(title);
             const auto* snapshot=title.linkedSave
                 ? homeSnapshots.find(homeSnapshotKey(profileIdentity(user->uid),title.gameId))
                 : nullptr;
             if(snapshot)applySnapshotToHub(*snapshot);
-            else partyPreviewStatus="Choose a validated "+gen+" Save Instance.";
+            else partyPreviewStatus=modernUnlinkedStatus(title);
         } else if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
             title.legacyInstances.size() > 1) {
             launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
@@ -1879,7 +1951,12 @@ namespace UI {
             }
         }
 
-        if (resolveLaunchTarget) {
+        if (title.sourceKind == SelectedSourceKind::ModernAssignedFile) {
+            // Only an installed Switch title has a launch target; a 3DS card never claims one.
+            if (title.titleId != 0 && resolveLaunchTarget)
+                launchDescriptor = resolveGameLaunch(title.titleId, title.gameId, {}, {}, {});
+            else applyModernLaunchState(title);
+        } else if (resolveLaunchTarget) {
             launchDescriptor = resolveGameLaunch(
                 title.titleId, title.gameId, providerId, sourcePath, bindingKey);
         } else {
@@ -2061,7 +2138,7 @@ namespace UI {
             else if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile)
                 partyPreviewStatus = "Choose a validated Gen V Save Instance.";
             else if (title.sourceKind == SelectedSourceKind::ModernAssignedFile)
-                partyPreviewStatus = "Choose a validated " + modernGenerationShort(title.gameId) + " Save Instance.";
+                partyPreviewStatus = modernUnlinkedStatus(title);
             else partyPreviewStatus = PokeVault::Integration::Gen4::UnavailablePartyReason;
             return;
         }
@@ -2874,6 +2951,54 @@ namespace UI {
         return true;
     }
 
+    std::vector<SaveSelectScreen::CardInspection> SaveSelectScreen::cardsForInspection() const {
+        std::vector<CardInspection> out;
+        if (const UserEntry* user = currentUser())
+            for (const auto& t : user->titles)
+                out.push_back({t.gameId, t.name, t.label, t.sourceLabel, t.sourceKind, t.titleId, t.linkedSave});
+        return out;
+    }
+
+    bool SaveSelectScreen::focusGameForInspection(std::string_view gameId) {
+        const UserEntry* user = currentUser();
+        if (!user) return false;
+        for (size_t i = 0; i < user->titles.size(); ++i)
+            if (user->titles[i].gameId == gameId) {
+                titleIndex = static_cast<int>(i);
+                gamesDrawerIndex = titleIndex;
+                overlay = Overlay::None;
+                refreshHubSelectionFromCache();
+                return true;
+            }
+        return false;
+    }
+
+    std::string_view SaveSelectScreen::overlayForInspection() const {
+        switch (overlay) {
+            case Overlay::None: return "None";
+            case Overlay::GamesDrawer: return "GamesDrawer";
+            case Overlay::Gen5Setup: return "SaveInstancesSetup";
+            case Overlay::Gen5Candidates: return "SaveInstances";
+            case Overlay::OpenFailure: return "OpenFailure";
+            case Overlay::QuitConfirm: return leaveKind == LeaveKind::Quit ? "QuitDecision" : "LaunchDecision";
+            default: return "Other";
+        }
+    }
+
+    std::string SaveSelectScreen::noticeForInspection() const {
+        return gen5Notice + "|" + hubNotice + "|" + gen5DirectOpenNotice;
+    }
+
+    void SaveSelectScreen::selectInstalledModernSnapshot(const UserEntry& user, const TitleEntry& title) {
+        selectedUserUid = user.uid;
+        selectedTitleId = title.titleId;
+        selectedTitleName = title.name;
+        selectedGameId = title.gameId;
+        selectedSourceKind = SelectedSourceKind::ModernInstalledSnapshot;
+        selectedGen5Fingerprint.clear();
+        titleSelected = true;
+    }
+
     bool SaveSelectScreen::openAssignedModernDirectly(
         const UserEntry& user, const TitleEntry& title, const std::string& gameId) {
         namespace Modern = PokeVault::Integration::Modern;
@@ -3211,14 +3336,28 @@ namespace UI {
         }
 
         if (selected.sourceKind == SelectedSourceKind::ModernAssignedFile) {
-            // Same rule as Gen IV/V: A opens the save already assigned to this card; a missing,
-            // ambiguous or invalid assignment falls back to the explicit Save Instances picker.
+            // ONE card per game: (1) an assigned external save opens in the shared editor; (2) a
+            // stale/invalid assignment falls back to Save Instances with the real reason; (3) with
+            // nothing assigned, an installed game opens a read-only snapshot of its installed save
+            // in the same shared editor, and a 3DS game opens Save Instances with an explanation.
+            if (openIntent == OpenIntent::Backups && selected.titleId != 0 && !selected.linkedSave) {
+                selectedUserUid = user->uid;              // installed historical backups, unchanged
+                selectedTitleId = selected.titleId;
+                selectedTitleName = selected.name;
+                this->selectedGameId = selectedGameId;
+                selectedSourceKind = SelectedSourceKind::SwitchTitle;
+                titleSelected = true;
+                return;
+            }
             if (openAssignedModernDirectly(*user, selected, selectedGameId)) return;
-            openGen5Setup(selectedGameId, gen5DirectOpenNotice.empty()
-                ? "Choose a validated "+modernGenerationShort(selectedGameId)+" Save Instance; source stays read-only."
+            if (selected.titleId != 0 && gen5DirectOpenNotice.empty()) {
+                selectInstalledModernSnapshot(*user, selected);
+                return;
+            }
+            openModernSaveInstances(selectedGameId, gen5DirectOpenNotice.empty()
+                ? "No save is assigned to " + selected.name + " yet. Choose a validated " +
+                      modernGenerationShort(selectedGameId) + " Save Instance; the original save stays read-only."
                 : gen5DirectOpenNotice);
-            gen5AssignOnly=false;
-            discoverGen5Candidates();
             return;
         }
 
@@ -3297,11 +3436,13 @@ namespace UI {
 
         if (title.sourceKind == SelectedSourceKind::ModernAssignedFile) {
             if (openAssignedModernDirectly(*user, title, title.gameId)) return;
-            openGen5Setup(title.gameId, gen5DirectOpenNotice.empty()
+            if (title.titleId != 0 && gen5DirectOpenNotice.empty()) {
+                selectInstalledModernSnapshot(*user, title);
+                return;
+            }
+            openModernSaveInstances(title.gameId, gen5DirectOpenNotice.empty()
                 ? "Choose a validated "+modernGenerationShort(title.gameId)+" Save Instance to open its Bag; source stays read-only."
                 : gen5DirectOpenNotice);
-            gen5AssignOnly=false;
-            discoverGen5Candidates();
             return;
         }
         if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
@@ -3691,7 +3832,8 @@ namespace UI {
                 exitRequested = true;
                 return;
             case 6: // Backups
-                if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
+                if (title.sourceKind == SelectedSourceKind::SwitchTitle ||
+                    (title.sourceKind == SelectedSourceKind::ModernAssignedFile && title.titleId != 0 && !title.linkedSave)) {
                     openIntent = OpenIntent::Backups;
                     overlay = Overlay::None;
                     selectCurrentTitle();
@@ -4084,6 +4226,19 @@ namespace UI {
                     scrollSelectionIntoView();
                     refreshHubSelectionFromCache();
                     openSaveSourceForCurrentTitle(true, false);
+                }
+                return;
+            }
+            if (kDown & HidNpadButton_ZR) {
+                // Same Launch as HOME: close the grid on that card and open the launch decision.
+                if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    quickDrawerMotion.snapClosed();
+                    gamesDrawerTouchScroll.stop();
+                    overlay = Overlay::None;
+                    refreshHubSelectionFromCache();
+                    launchCurrentTitle();
                 }
                 return;
             }
@@ -4874,6 +5029,15 @@ namespace UI {
             launchCurrentTitle();
             return;
         }
+        if (kDown & HidNpadButton_X) {
+            // Gen VI-IX cards: X changes or assigns the save UNDER this card (Save Instances), the
+            // same overlay the Games grid opens with X. Other cards keep X unbound on HOME.
+            const UserEntry* current = currentUser();
+            if (current && titleIndex >= 0 && titleIndex < static_cast<int>(current->titles.size()) &&
+                current->titles[static_cast<size_t>(titleIndex)].sourceKind == SelectedSourceKind::ModernAssignedFile)
+                openSaveSourceForCurrentTitle(false, false);
+            return;
+        }
         if (kDown & HidNpadButton_Plus) {
             const UserEntry* current = currentUser();
             if (current && titleIndex >= 0 &&
@@ -5362,7 +5526,24 @@ namespace UI {
             const Color heroMuted(177, 192, 214, 255);
 
             std::string gameTitle = title.name.empty() ? title.label : title.name;
-            if (gameTitle.size() > 27) gameTitle = gameTitle.substr(0, 26) + "…";
+            {
+                // Fit by rendered width inside the glass panel (never a byte count, never inside a
+                // UTF-8 sequence), leaving room for the favourite heart.
+                const int maxW = glassW - 28 - 52;
+                int tw = 0, th = 0;
+                fb.measureText(gameTitle, tw, th, TextStyle::Title);
+                if (tw > maxW) {
+                    std::string cut = gameTitle;
+                    while (!cut.empty()) {
+                        cut.pop_back();
+                        while (!cut.empty() && (static_cast<unsigned char>(cut.back()) & 0xC0) == 0x80) cut.pop_back();
+                        if (!cut.empty() && (static_cast<unsigned char>(cut.back()) & 0xC0) == 0xC0) cut.pop_back();
+                        fb.measureText(cut + "…", tw, th, TextStyle::Title);
+                        if (tw <= maxW) break;
+                    }
+                    gameTitle = cut + "…";
+                }
+            }
             fb.drawText(infoX, HUB_Y + 26, gameTitle, heroText, TextStyle::Title);
 
             if (titleFavorite(*u, title)) {
@@ -5667,8 +5848,17 @@ namespace UI {
 
         // The hero card already carries the big Launch button, so the global footer does not
         // repeat a ZR Launch hint. B only opens the "Quit PokeBank NX?" decision (P0 #320).
-        drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
-                        {"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});
+        bool modernFocused = false;
+        if (const UserEntry* hintUser = currentUser(); hintUser && titleIndex >= 0 &&
+            titleIndex < static_cast<int>(hintUser->titles.size()))
+            modernFocused = hintUser->titles[static_cast<size_t>(titleIndex)].sourceKind ==
+                            SelectedSourceKind::ModernAssignedFile;
+        if (modernFocused)
+            drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
+                            {"X", "Save"}, {"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});
+        else
+            drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
+                            {"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});
         }
 
         // Blocking overlays are shared by Product Home and the classic artwork browser.
