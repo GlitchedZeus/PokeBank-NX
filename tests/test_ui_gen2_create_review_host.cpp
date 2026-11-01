@@ -80,6 +80,37 @@ void chooseSpecies(Driver& d, int downs) {
     d.press(HidNpadButton_A);
 }
 
+// Round 11 (owner H28 / shared CreateRequiredFields): a Create draft starts with no moves and Keep
+// needs at least one (PokeBank app policy), so the scenario picks Move 1 through the real UI:
+// R to the Moves panel, A on Move 1 (its editor), A on its Move row (the picker), Down + A on the
+// first compatible move, then Apply in the move dialog.
+bool chooseFirstMove(Driver& d) {
+    bool opened = false;
+    for (int panel = 0; panel < 3 && !opened; ++panel) {
+        d.press(HidNpadButton_R);
+        d.press(HidNpadButton_A);
+        opened = visible("Move \xE2\x80\x94 Generation II");
+        if (!opened) {
+            d.press(HidNpadButton_A);
+            opened = visible("Move \xE2\x80\x94 Generation II");
+        }
+        if (!opened) { d.press(HidNpadButton_B); d.press(HidNpadButton_B); }
+    }
+    dump("move picker");
+    if (!opened) return false;
+    d.press(HidNpadButton_Down);   // past "Empty move slot" to the first compatible move
+    d.press(HidNpadButton_A);
+    dump("move chosen");
+    // The move dialog: Move, PP, PP Ups, Apply ("Keep these move details"), Cancel.
+    for (int i = 0; i < 6 && !visible("Keep these move details"); ++i) d.press(HidNpadButton_B);
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);   // Apply
+    dump("move applied");
+    const bool applied = !visible("Keep these move details") && !visible("Empty move slot");
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_L);
+    return applied && visible("DRAFT");
+}
+
 constexpr const char* kReviewTitle = "Review Pending Changes";
 
 void scenario(const std::string& game, bool crystal, bool unown) {
@@ -106,6 +137,7 @@ void scenario(const std::string& game, bool crystal, bool unown) {
     // 1. Create at slot 1 and stage it (B -> exit question -> A Keep / Add).
     openCreate(d, 1);
     if (unown) chooseSpecies(d, downs);
+    check(chooseFirstMove(d), what + ": Move 1 chosen through the real Move picker");
     dump("create 1");
     check(visible(title) && visible("DRAFT"), what + ": the Create workspace shows the " + title + " draft");
     d.press(HidNpadButton_B);

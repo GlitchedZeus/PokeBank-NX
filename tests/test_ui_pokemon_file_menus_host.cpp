@@ -466,7 +466,7 @@ void run(Case& c) {
         check(false, g + ": Move row");
     }
     // Round 11 ACTIONS (review): the Gen II / Gen III Actions -> Move entry points are new, so the
-    // drop is driven too: Y drops the carried Pokemon into an empty cell (Gen II: the next box, a
+    // drop is driven too: A (Round 11 H23: A places, B cancels) drops the carried Pokemon into an empty cell (Gen II: the next box, a
     // packed append to its first slot; Gen III: the cell one row down in the same sparse box); the
     // move is staged and the source cell no longer holds it.
     auto staged3 = staged2;
@@ -483,9 +483,9 @@ void run(Case& c) {
                 check(!c.speciesAt(dropBox, dropSlot), g + ": the drop cell starts empty");
                 d.press(HidNpadButton_Down);
             }
-            d.press(HidNpadButton_Y);
+            d.press(HidNpadButton_A);
             check(c.speciesAt(dropBox, dropSlot) == species && c.speciesAt(c.importBox, c.importSlot) != species,
-                  g + ": Actions -> Move, Y drops into Box " + std::to_string(dropBox + 1) + " / Slot " +
+                  g + ": Actions -> Move, A drops into Box " + std::to_string(dropBox + 1) + " / Slot " +
                       std::to_string(dropSlot + 1) + " (" + d.screen.storageStatus + ")");
             check(c.snapshot() != staged2, g + ": the drop is staged");
             staged3 = c.snapshot();
