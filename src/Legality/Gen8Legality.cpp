@@ -680,6 +680,12 @@ private:
         if (pk_.isEgg() ? social != 0 : social > 255)
             invalid(CheckIdentifier::Misc, pk_.isEgg() ? "An egg cannot have sociability" : "Sociability is above 255");
         checkBattleVersion();
+        // MiscVerifierPK8.VerifyGigantamax: the flag state must be the encounter's own, or one
+        // Gigantamax Soup can toggle (ModernEncounter.h; no encounter of the species and form allows it).
+        const bool gmax = (plain_[0x16] & 0x10) != 0;
+        if (!ModernEncounter::gigantamaxPossible(species(), form(), gmax, pk_.isEgg()))
+            invalid(CheckIdentifier::Misc, std::string("No encounter of the species and form allows the Gigantamax flag ") +
+                                               (gmax ? "set" : "clear") + (pk_.isEgg() ? " on an egg" : ", and Gigantamax Soup cannot change it"));
         // IDynamaxLevel.CanHaveDynamaxLevel: no egg and no Zacian/Zamazenta/Eternatus; at most 10.
         const uint8_t dynamax = pk_.dynamaxLevel();
         if (dynamax != 0) {

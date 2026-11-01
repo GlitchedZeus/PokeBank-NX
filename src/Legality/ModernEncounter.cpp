@@ -74,6 +74,15 @@ bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noex
     return allowed == 0 || (allowed & (fateful ? 1 : 2)) != 0;
 }
 
+bool gigantamaxPossible(uint16_t species, uint8_t form, bool flag, bool egg) noexcept {
+    if (species + 1u >= kGmax8Index.size()) return true;
+    const uint32_t at = kGmax8Index[species] + form;
+    if (at >= kGmax8Index[species + 1u]) return true;
+    const uint8_t v = kGmax8[at];
+    if ((v & 0x80) == 0) return true;
+    return (v & ((flag ? 1 : 2) << (egg ? 2 : 0))) != 0;
+}
+
 EggFacts eggFacts(Modern::Format format, uint16_t species) noexcept {
     // The format's own table only: no egg is ever carried into another format.
     const auto t = kEggs.get(format);

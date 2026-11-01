@@ -345,6 +345,17 @@ A hatched record's relearn moves must also equal the moves its egg could have ha
 and a Switch-game native's relearn move needs its encounter; both stay Incomplete. PB7 relearn
 moves are not checked yet.
 
+## Gigantamax flag (PK8)
+
+`MiscVerifierPK8.VerifyGigantamax` accepts the encounter's own Gigantamax state, or the other
+state when Gigantamax Soup can toggle it (`Gigantamax.CanToggle`: the current species and form,
+or an evolved-from origin species; never on an unhatched egg). `dumpencounters` records, for
+every species and form that reaches Sword/Shield, which states some generated encounter (or a
+mystery gift of the line) allows, as `kGmax8`. A PK8 record whose flag state no encounter of its
+species and form allows is Invalid (for example a cap Pikachu or Mew with the flag set, or any
+unhatched egg with it set). Which encounter the record came from is not resolved, so a species
+with any Gigantamax encounter stays undecided.
+
 ## Nickname rule (every format)
 
 `src/Legality/ModernNickname.cpp`, called by all five analyzers, mirrors two parts of
@@ -392,10 +403,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 8,671 (71.2%) | 0 | 0 |
 | PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 16,870 (71.5%) | 0 | 0 |
 | PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 8,696 (71.9%) | 0 | 0 |
-| PK8 | 1 / 4 | 49,195 | 21,531 | 27,664 | 22,110 (79.9%) | 0 | 0 |
-| PK8 | 2 / 4 | 47,964 | 20,517 | 27,447 | 21,975 (80.1%) | 0 | 0 |
-| PK8 | 3 / 8 | 87,799 | 31,825 | 55,974 | 44,754 (80.0%) | 0 | 0 |
-| PK8 | 4 / 4 | 50,156 | 21,633 | 28,523 | 22,919 (80.4%) | 0 | 0 |
+| PK8 | 1 / 4 | 49,195 | 21,531 | 27,664 | 23,029 (83.2%) | 0 | 0 |
+| PK8 | 2 / 4 | 47,964 | 20,517 | 27,447 | 22,795 (83.1%) | 0 | 0 |
+| PK8 | 3 / 8 | 87,799 | 31,825 | 55,974 | 46,700 (83.4%) | 0 | 0 |
+| PK8 | 4 / 4 | 50,156 | 21,633 | 28,523 | 23,851 (83.6%) | 0 | 0 |
 | PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,246 (87.2%) | 0 | 0 |
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |
@@ -425,7 +436,7 @@ much of PKHeX's rejection these encounter-independent rules reproduce. It is not
 rule completeness. The remaining ~12–30% need encounter, learnset, event or history data
 (largest PK6/PK7 groups: fateful flags, geography consistency, nickname language, ball per
 encounter, learnset-only moves, nickname language for relaxed species; largest PK8 groups: no matching
-encounter, fateful flags, Gigantamax per encounter, nickname language for relaxed species, PID type per
+encounter, fateful flags, Gigantamax on species with some Gigantamax encounter, nickname language for relaxed species, PID type per
 encounter, Hyper Training level 50–99, ball per encounter, egg histories from other games; largest PB8
 groups: no matching encounter, ball per encounter, fateful flags, nickname language for relaxed species, PID = EC
 on BD/SP natives (fixed-EC WB8 gifts need the encounter), egg histories from other games; largest PK9 groups:

@@ -207,6 +207,22 @@ void testRuleEdits(const std::vector<Record>& records) {
     // Values a legitimate record can hold stay undecided.
     expectNotInvalid(n, "mint stat nature", [](auto& b) { b[0x21] = b[0x20] == 1 ? 2 : 1; });
     expectNotInvalid(n, "dynamax 10", [](auto& b) { b[0x90] = 10; });
+    // Gigantamax (MiscVerifierPK8.VerifyGigantamax): Charizard can take Gigantamax Soup; Mew has no
+    // Gigantamax encounter; a cap Pikachu cannot toggle; an egg never toggles.
+    {
+        namespace E = Legality::ModernEncounter;
+        check(E::gigantamaxPossible(6, 0, true, false) && E::gigantamaxPossible(6, 0, false, false) &&
+                  !E::gigantamaxPossible(151, 0, true, false) && E::gigantamaxPossible(151, 0, false, false) &&
+                  E::gigantamaxPossible(25, 0, true, false) && !E::gigantamaxPossible(25, 1, true, false) &&
+                  !E::gigantamaxPossible(6, 0, true, true) && E::gigantamaxPossible(2000, 0, true, false),
+              "Gigantamax table facts");
+        const Record* plain = find(records, [](const Record& r) {
+            return r.pkhexValid && r.label.rfind("native8:base", 0) == 0 && !(r.plain[0x16] & 0x10) && !(r.plain[0x8F] & 0x40) &&
+                   !E::gigantamaxPossible(PK8::read16(r.plain, 0x08), r.plain[0x24], true, false);
+        });
+        check(plain != nullptr, "fixture has a native without Gigantamax encounters");
+        if (plain) expectInvalid(*plain, "gigantamax flag", [](auto& b) { b[0x16] |= 0x10; }, "Gigantamax flag set");
+    }
     // A battle version deletes the original moveset (relearn moves included).
     expectNotInvalid(*home7, "battle version on a Gen VII record", [](auto& b) {
         b[0xDF] = 45;

@@ -25,6 +25,11 @@ bool ballPossible(Modern::Format format, uint16_t species, uint8_t ball) noexcep
 /// state (set, or clear). Undecided cases as for ballPossible.
 bool fatefulPossible(Modern::Format format, uint16_t species, bool fateful) noexcept;
 
+/// MiscVerifierPK8.VerifyGigantamax over every encounter that can reach Sword/Shield (PK8): false
+/// only when no encounter of the species and form gives this Gigantamax flag state and Gigantamax
+/// Soup cannot toggle it (never on an unhatched egg). Undecided species/forms return true.
+bool gigantamaxPossible(uint16_t species, uint8_t form, bool flag, bool egg) noexcept;
+
 /// Unhatched-egg facts of the species in a format that has eggs (PK6, PK7, PK8, PB8, PK9), over
 /// the egg encounters of that format's own games only: transfer services and HOME never accept an
 /// egg, so an unhatched record is always in the format of the game it was laid in.

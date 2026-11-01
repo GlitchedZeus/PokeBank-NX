@@ -629,6 +629,7 @@ static class DumpEncounters
             var eggs = new int[maxSpecies + 1];
             var relearn = new List<ushort>[maxSpecies + 1];
             var relearnEgg = new List<ushort>[maxSpecies + 1];
+            var gmax = new List<int>[maxSpecies + 1];
             var context = proto.Context;
             var failed = new HashSet<GameVersion>();
             for (ushort s = 1; s <= maxSpecies; s++)
@@ -641,6 +642,7 @@ static class DumpEncounters
                 var relearnSet = new SortedSet<ushort>();
                 var relearnEggSet = new SortedSet<ushort>();
                 bool undecided = false;
+                var gmaxForms = new int[forms];
                 for (byte f = 0; f < forms; f++)
                 {
                     pk = make();
@@ -658,6 +660,7 @@ static class DumpEncounters
                                 if (enc.IsEgg && enc.Species == s && enc.Context == context) egg |= Egg(enc, pk);
                                 if (enc.Context == context && name is "6" or "7")
                                     AddRelearn(enc, enc.IsEgg ? relearnEggSet : relearnSet);
+                                if (name == "8") gmaxForms[f] |= GmaxStates(enc, s, f, enc.IsEgg);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -697,6 +700,15 @@ static class DumpEncounters
                 foreach (var g in gifts)
                     if (g.Context == context && reach(g) && line.Contains(g.Species) && name is "6" or "7")
                         AddRelearn(g, g.IsEgg ? relearnEggSet : relearnSet);
+                if (name == "8")
+                {
+                    // Mystery gifts of the line the generator may have filtered (date windows): their
+                    // fixed Gigantamax state (or a toggle) is possible for every form.
+                    foreach (var g in gifts)
+                        if (g.IsEntity && line.Contains(g.Species) && reach(g))
+                            for (byte f = 0; f < forms; f++) gmaxForms[f] |= GmaxStates(g, s, f, g.IsEgg);
+                    gmax[s] = undecided ? [.. gmaxForms.Select(_ => 0)] : [.. gmaxForms.Select(v => v | 0x80)];
+                }
                 relearn[s] = undecided ? [0xFFFF] : [.. relearnSet];
                 relearnEgg[s] = undecided ? [0xFFFF] : [.. relearnEggSet];
                 eggs[s] = undecided ? 0 : egg | 0x80;
@@ -711,6 +723,19 @@ static class DumpEncounters
             o.WriteLine("}};");
             Dump.Bytes(o, $"kFateful{key}", fateful);
             if (name is "6" or "7" or "8" or "8b" or "9") Dump.Bytes(o, $"kEgg{key}", eggs);
+            if (name == "8")
+            {
+                // kGmax8: per species and form (kGmax8Index[s] + form), the Gigantamax flag states some
+                // encounter allows (MiscVerifierPK8.VerifyGigantamax): bit 0 set, bit 1 clear; bits 2/3 the same
+                // for an unhatched egg; 0x80 = decided, 0 = undecided.
+                var index = new List<int> { 0 };
+                var all = new List<int>();
+                for (int sp = 0; sp <= maxSpecies; sp++) { all.AddRange(gmax[sp] ?? []); index.Add(all.Count); }
+                o.WriteLine($"constexpr std::array<uint16_t, {index.Count}> kGmax8Index{{{{");
+                for (int i = 0; i < index.Count; i += 16) o.WriteLine("    " + string.Join(",", index.Skip(i).Take(16)) + ",");
+                o.WriteLine("}};");
+                Dump.Bytes(o, "kGmax8", [.. all]);
+            }
             if (name is "6" or "7")
             {
                 // kRelearn / kRelearnEgg: per species, the sorted moves any non-egg / egg encounter of the
@@ -731,6 +756,18 @@ static class DumpEncounters
             }
         }
         HatchLocations(o);
+    }
+
+    // MiscVerifierPK8.VerifyGigantamax for a record of species s, form f from this encounter: the
+    // encounter's own state is allowed, and the other one when Gigantamax Soup can toggle it
+    // (never on an egg). Bit 0 = flag set allowed, bit 1 = flag clear allowed; on an egg, bit 2
+    // (set) and bit 3 (clear).
+    private static int GmaxStates(IEncounterTemplate enc, ushort s, byte f, bool egg)
+    {
+        bool origin = enc is IGigantamaxReadOnly { CanGigantamax: true };
+        bool toggle = Gigantamax.CanToggle(s, f, enc.Species, enc.Form);
+        int states = (origin ? 1 : 2) | (toggle ? 3 : 0);
+        return egg ? states | ((origin ? 1 : 2) << 2) : states;
     }
 
     // LearnVerifierRelearn: the moves an encounter can leave in the relearn slots. A fixed moveset
