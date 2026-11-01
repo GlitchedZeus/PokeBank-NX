@@ -7,6 +7,7 @@
 #include "UI/SharedBagTopUp.h"
 #include "Inventory/BulkItemAdaptersNds.h"
 #include "Names/LocationDisplayNames.h"
+#include "Enums/LanguageID.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
@@ -817,10 +818,15 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         openSpeciesPicker(screen, state);
         return true;
     }
+    // Round 11 H27: a Korean-language Pokemon's names open the keyboard on its Hangul page. The
+    // record's own language picks the script; setNickname / setOriginalTrainerName still round-trip
+    // through the Gen 4 character table and refuse what the game cannot store.
+    const bool korean = mon.language() == static_cast<uint8_t>(Enums::LanguageID::Korean);
     if (row == 1) {
         const auto current = Utils::utf16ToUtf8(mon.nickname());
-        const auto result = Utils::promptText(
-            "Nickname", "Pokemon nickname", current, 10);
+        const auto result = korean
+            ? Utils::promptKoreanName("Nickname", "Pokemon nickname", current, 10)
+            : Utils::promptText("Nickname", "Pokemon nickname", current, 10);
         if (result.accepted && !mon.setNickname(Utils::utf8ToUtf16(result.text)))
             screen.postStatus("That nickname cannot be represented by this Generation IV save", 300);
         return true;
@@ -842,8 +848,9 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
     }
     if (row == 4) {
         const auto current = Utils::utf16ToUtf8(p.originalTrainerName());
-        const auto r = Utils::promptText(
-            "Original Trainer", "1-7 Generation IV characters", current, 7);
+        const auto r = korean
+            ? Utils::promptKoreanName("Original Trainer", "1-7 Generation IV characters", current, 7)
+            : Utils::promptText("Original Trainer", "1-7 Generation IV characters", current, 7);
         if (r.accepted &&
             !mon.setOriginalTrainerName(Utils::utf8ToUtf16(r.text)))
             screen.postStatus("That OT name cannot be represented by this Generation IV save", 300);

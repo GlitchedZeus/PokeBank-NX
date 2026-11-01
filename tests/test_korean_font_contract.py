@@ -6,6 +6,11 @@ by tests/test_system_font_fallbacks.cpp): Standard (Japanese) and then Korean (P
 both as fallbacks of the primary Nunito face, after the two romfs symbol fonts, with system-owned
 memory (freeData = 0). The Gen V name display sites use the shared display decoder, while the edit
 and replay paths keep the ASCII write gate.
+
+Keyboards: a Korean-language Gen IV Pokemon's Nickname / OT prompts open the Hangul page
+(Utils::promptKoreanName); the writer still validates through the Gen 4 table. Gen V name entry
+stays ASCII (free Unicode is deferred until the Gen V glyph rules are verified), Gen III has no
+Korean, and Japanese Gen I / II editing stays behind JapaneseEditingGate.h.
 """
 from pathlib import Path
 
@@ -64,6 +69,23 @@ def main() -> None:
     assert "return displayGen5Text(raw,7);" in trainer
     native = read("include/Integration/Gen5/Gen5NativeText.h")
     assert "return displayGen5Text(raw,nameMaxLength5(nickname));" in native
+    # Hangul keyboard wiring.
+    gen4 = read("src/UI/Gen4SharedPokemonSurface.inc")
+    assert "mon.language() == static_cast<uint8_t>(Enums::LanguageID::Korean)" in gen4
+    assert ordered(gen4, "Utils::promptKoreanName(\"Nickname\"", "mon.setNickname(Utils::utf8ToUtf16(result.text))")
+    assert ordered(gen4, "Utils::promptKoreanName(\"Original Trainer\"",
+                   "mon.setOriginalTrainerName(Utils::utf8ToUtf16(r.text))")
+    for rel in ("src/UI/Gen5SharedReadOnlySurface.inc", "src/UI/Gen3SharedPokemonSurface.inc"):
+        assert "promptKoreanName" not in read(rel), rel
+    keyboard = read("src/Utils/Keyboard.cpp")
+    body = keyboard[keyboard.index("KeyboardResult promptKoreanName("):]
+    body = body[:body.index("NumberResult promptNumber(")]
+    assert "request.koreanHangul = true;" in body and "promptSystemText(" in body
+    dialog = read("src/UI/Dialogs/KeyboardDialog.cpp")
+    assert ": request.koreanHangul ? KeyboardPage::Hangul" in dialog
+    assert "H::compose(" in dialog
+    # Mojibake guard: the round-trip check in Pokemon4Mutable stays the storage rule.
+    assert "if (Utils::decodeGen4Field(encoded) != bounded) return false;" in read("src/Pokemon/Pokemon4Mutable.cpp")
     print("Korean shared font fallback and Gen V display decoder contract: PASS")
 
 

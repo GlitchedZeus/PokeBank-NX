@@ -75,6 +75,8 @@ inline std::deque<Utils::KeyboardResult> textAnswers;  // answers for promptText
 inline int promptCount = 0;                            // prompts shown so far
 inline int japanesePromptCount = 0;                    // of which kana name prompts (promptJapaneseName)
 inline int lastJapaneseMaxChars = 0;                   // the cap the last kana name prompt was opened with
+inline int koreanPromptCount = 0;                      // of which Hangul name prompts (promptKoreanName)
+inline int lastKoreanMaxChars = 0;                     // the cap the last Hangul name prompt was opened with
 
 inline Utils::NumberResult nextNumber() {
     ++promptCount;

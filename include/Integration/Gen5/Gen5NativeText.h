@@ -19,6 +19,12 @@ namespace PokeVault::Integration::Gen5 {
 // PK5 original trainer name 0x68: 8 units, max 7 characters.
 // This first text-editing tranche permits native ASCII only, not lossy
 // UTF-8-to-Pokemon glyph approximation. Non-ASCII source text is preserved.
+// Round 11 H27: the keyboard's Hangul / kana pages are therefore NOT offered for
+// Gen V. PK5 stores raw UTF-16, so any code unit "fits", but the games draw only
+// the glyphs in their own per-language font tables, which this project has not
+// verified (no Gen V equivalent of Gen4Text.h's table exists here). Without that
+// table a writer cannot refuse a syllable the game would draw as garbage, so free
+// non-ASCII entry waits for verified Gen V glyph rules; display is unaffected.
 [[nodiscard]] constexpr size_t nameOffset5(bool nickname) noexcept {
     return nickname ? 0x48 : 0x68;
 }
