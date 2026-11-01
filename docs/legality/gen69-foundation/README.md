@@ -136,7 +136,7 @@ battle forms, dumped by `oracle dump8a` into `Gen8aLegalityData.inc` (species �
 | PID and EC | a Generation III–V origin without the Poké Transporter PID (`PK5.GetTransferPID`); PID = EC on any other origin except fixed-EC Legends: Arceus and BD/SP gifts (`WA8`/`WB8.IsEquivalentFixedECPID`, so any Legends: Arceus or BD/SP origin), a Sword/Shield record with EC 0 (`WC8` HOME gift) and Switch Virtual Console records (HOME PID not checked) | `PIDVerifier.VerifyEC`, `VerifyTransferEC`, `VerifyFutureOriginEC` |
 | Hyper Training | no HOME tracker (`IsHyperTrainingAvailable`: Legends: Arceus has no Hyper Training); below level 50; below 100 when no species of the line is in Scarlet/Violet or Z-A (`kVisit9`, so the evolution history cannot have visited them); six perfect IVs; a perfect IV trained | `HyperTrainingVerifier`, `GetHyperTrainMinLevel` |
 | Legends: Arceus | noble flag; displayed scale not the height scalar; an Effort Level above its IV's cap | `LegendsArceusVerifier` |
-| Move shop | an alpha move on a non-alpha, not masterable by the species, or not mastered; a purchased move the species cannot buy | `LegendsArceusVerifier.CheckMastery` |
+| Move shop | an alpha move on a non-alpha, not masterable by the species, or not mastered; a purchased move the species cannot buy; a mastered move the species cannot buy that is not the alpha move and that no encounter or mystery gift of the line carries in a fixed moveset (`kMastery8a`) | `LegendsArceusVerifier.CheckMastery` |
 | Misc | sociability, Gigantamax, Dynamax level, TR flags, fullness or enjoyment set; battle version as Sword/Shield | `MiscVerifierPA8`, `FullnessRules` |
 | Sizes | a Legends: Arceus record with no HOME tracker, not an alpha and not Enamorus whose stored height or weight is not the in-game calculation | `MiscVerifierPA8.VerifyAbsoluteSizes` |
 
@@ -438,10 +438,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB7 | 2 / 4 | 3,050 | 1,132 | 1,918 | 1,765 (92.0%) | 0 | 0 |
 | PB7 | 3 / 16 | 9,865 | 2,144 | 7,721 | 7,025 (91.0%) | 0 | 0 |
 | PB7 | 4 / 8 | 5,286 | 1,437 | 3,849 | 3,547 (92.2%) | 0 | 0 |
-| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,725 (76.5%) | 0 | 0 |
-| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,392 (76.9%) | 0 | 0 |
-| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 13,560 (77.5%) | 0 | 0 |
-| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,345 (77.5%) | 0 | 0 |
+| PA8 | 1 / 4 | 15,012 | 6,220 | 8,792 | 6,928 (78.8%) | 0 | 0 |
+| PA8 | 2 / 4 | 16,422 | 6,806 | 9,616 | 7,620 (79.2%) | 0 | 0 |
+| PA8 | 3 / 8 | 26,497 | 8,998 | 17,499 | 13,943 (79.7%) | 0 | 0 |
+| PA8 | 4 / 4 | 16,073 | 6,598 | 9,475 | 7,540 (79.6%) | 0 | 0 |
 | PA9 | 1 / 4 | 21,939 | 9,852 | 12,087 | 9,398 (77.8%) | 0 | 0 |
 | PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 9,480 (77.8%) | 0 | 0 |
 | PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 18,319 (77.7%) | 0 | 0 |

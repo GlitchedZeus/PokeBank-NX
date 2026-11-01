@@ -25,6 +25,7 @@
 #include "Integration/Gen8/Gen8PK8.h"
 #include "Pokemon/Experience.h"
 #include "Legality/Gen8aLegality.h"
+#include "Legality/ModernEncounter.h"
 #include "Legality/ModernLegality.h"
 
 namespace {
@@ -255,6 +256,22 @@ void testRuleEdits(const std::vector<Record>& records) {
         if (forbidden >= 0)
             expectInvalid(n, "purchase", [forbidden](auto& b) { b[0x155 + forbidden / 8] |= static_cast<uint8_t>(1 << (forbidden % 8)); },
                           "purchased but the species cannot buy it");
+        // A mastered move the species cannot buy needs an encounter of the line that knows it.
+        const uint16_t sp = PK8::read16(n.plain, 0x08);
+        int unknown = -1, known = -1;
+        for (int i = 0; i < static_cast<int>(Legality::Gen8a::Data::moveShop().size()); ++i) {
+            if (((personal->moveShop >> i) & 1) != 0) continue;
+            const bool fromEncounter = Legality::ModernEncounter::masteryFromEncounterPossible(sp, static_cast<size_t>(i));
+            if (!fromEncounter && unknown < 0) unknown = i;
+            if (fromEncounter && known < 0) known = i;
+        }
+        if (unknown >= 0)
+            expectInvalid(n, "mastered unbuyable move", [unknown](auto& b) { b[0x15D + unknown / 8] |= static_cast<uint8_t>(1 << (unknown % 8)); },
+                          "is mastered but the species cannot buy it");
+        if (known >= 0)
+            expectNoIssue(n, "mastered encounter move", [known](auto& b) { b[0x15D + known / 8] |= static_cast<uint8_t>(1 << (known % 8)); },
+                          "is mastered but");
+        check(unknown >= 0, "the fixture species has a move shop move it cannot master");
         if (permitted >= 0) {
             expectNoIssue(n, "permitted purchase", [permitted](auto& b) { b[0x155 + permitted / 8] |= static_cast<uint8_t>(1 << (permitted % 8)); },
                           "Move shop");

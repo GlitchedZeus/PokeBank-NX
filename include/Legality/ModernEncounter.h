@@ -12,6 +12,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "Legality/ModernLegality.h"
@@ -39,6 +40,10 @@ bool teraImportPossible(uint16_t species, uint8_t original) noexcept;
 /// Tera9RNG.IsMatchTeraTypePersonalEgg over the line: false only when no line member (any form)
 /// has this type, so a Scarlet/Violet egg of the line cannot have hatched with it.
 bool teraEggPossible(uint16_t species, uint8_t original) noexcept;
+
+/// LegendsArceusVerifier.VerifyTutorMoveIndex: false only when no encounter or mystery gift of
+/// the species' line that reaches PA8 carries move shop move `index` in a fixed moveset.
+bool masteryFromEncounterPossible(uint16_t species, size_t index) noexcept;
 
 /// IHyperTrain.GetHyperTrainMinLevel: false only when neither the species nor any of its
 /// pre-evolutions (in any form) is present in Scarlet/Violet or Z-A, so the record's evolution

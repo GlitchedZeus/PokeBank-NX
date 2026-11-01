@@ -402,6 +402,16 @@ private:
                 return;
             }
         }
+        // VerifyTutorMoveIndex: a mastered move the species cannot buy must be the alpha move or a
+        // move of the encounter's fixed moveset (any encounter of the line, ModernEncounter).
+        for (size_t i = 0; i < shop.size() && i < 64; ++i) {
+            if (flag(0x15D, i) && !flag(0x155, i) && ((personal_->moveShop >> i) & 1) == 0 && shop[i] != alphaMove &&
+                !ModernEncounter::masteryFromEncounterPossible(species(), i)) {
+                invalid(CheckIdentifier::Moves, "Move shop move " + std::to_string(shop[i]) +
+                                                    " is mastered but the species cannot buy it and no encounter of its line knows it");
+                return;
+            }
+        }
     }
 
     // MiscVerifierPA8 and FullnessRules: no sociability, Gigantamax, Dynamax level or TR flags;

@@ -641,6 +641,8 @@ static class DumpEncounters
             var gmax = new List<int>[maxSpecies + 1];
             var raids = new List<int>[maxSpecies + 1];
             var swshFree = new int[maxSpecies + 1];
+            var mastery = new ulong[maxSpecies + 1];
+            var shop = PersonalTable.LA[1].RecordPermitIndexes.ToArray();
             var swshOverworld = new int[maxSpecies + 1];
             var context = proto.Context;
             var failed = new HashSet<GameVersion>();
@@ -656,6 +658,7 @@ static class DumpEncounters
                 bool undecided = false;
                 var gmaxForms = new int[forms];
                 var raidSet = new SortedSet<int>();
+                ulong masteryMask = 0;
                 var free = new RaidLocations();
                 var overworld = new RaidLocations();
                 for (byte f = 0; f < forms; f++)
@@ -677,6 +680,7 @@ static class DumpEncounters
                                     AddRelearn(enc, enc.IsEgg ? relearnEggSet : relearnSet);
                                 if (name == "8") gmaxForms[f] |= GmaxStates(enc, s, f, enc.IsEgg);
                                 if (name == "8") Raid(enc, raidSet, free, overworld);
+                                if (name == "8a") masteryMask |= ShopMoves(enc, shop);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -716,6 +720,12 @@ static class DumpEncounters
                 foreach (var g in gifts)
                     if (g.Context == context && reach(g) && line.Contains(g.Species) && name is "6" or "7")
                         AddRelearn(g, g.IsEgg ? relearnEggSet : relearnSet);
+                if (name == "8a")
+                {
+                    foreach (var g in gifts)
+                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) masteryMask |= ShopMoves(g, shop);
+                    mastery[s] = undecided ? ulong.MaxValue : masteryMask;
+                }
                 if (name == "8")
                 {
                     // Mystery gifts of the line the generator may have filtered (date windows): their
@@ -791,6 +801,16 @@ static class DumpEncounters
                     o.WriteLine("}};");
                 }
             }
+            if (name == "8a")
+            {
+                // LegendsArceusVerifier.VerifyTutorMoveIndex: a mastered move shop move the species cannot
+                // buy is allowed when the encounter's own moveset holds it. kMastery8a[s] = the move shop
+                // indexes any encounter or mystery gift of the line carries in a fixed moveset (IMoveset);
+                // all bits = undecided.
+                o.WriteLine($"constexpr std::array<uint64_t, {maxSpecies + 1}> kMastery8a{{{{");
+                for (int i = 0; i <= maxSpecies; i += 8) o.WriteLine("    " + string.Join(",", mastery.Skip(i).Take(8).Select(v => $"0x{v:X}ull")) + ",");
+                o.WriteLine("}};");
+            }
             if (name is "6" or "7")
             {
                 // kRelearn / kRelearnEgg: per species, the sorted moves any non-egg / egg encounter of the
@@ -811,6 +831,19 @@ static class DumpEncounters
             }
         }
         HatchLocations(o);
+    }
+
+    private static ulong ShopMoves(IEncounterTemplate enc, ushort[] shop)
+    {
+        if (enc is not IMoveset m) return 0;
+        ulong mask = 0;
+        var set = m.Moves;
+        foreach (var move in new[] { set.Move1, set.Move2, set.Move3, set.Move4 })
+        {
+            int index = Array.IndexOf(shop, move);
+            if (move != 0 && index >= 0) mask |= 1UL << index;
+        }
+        return mask;
     }
 
     private static readonly List<string> RaidParams = [];

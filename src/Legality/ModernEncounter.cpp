@@ -132,6 +132,10 @@ bool teraEggPossible(uint16_t species, uint8_t original) noexcept {
     return species >= kTera9Egg.size() || original > 31 || ((kTera9Egg[species] >> original) & 1) != 0;
 }
 
+bool masteryFromEncounterPossible(uint16_t species, size_t index) noexcept {
+    return species >= kMastery8a.size() || index >= 64 || ((kMastery8a[species] >> index) & 1) != 0;
+}
+
 bool visitNinePossible(uint16_t species) noexcept {
     return species >= kVisit9.size() || kVisit9[species] != 0;
 }
