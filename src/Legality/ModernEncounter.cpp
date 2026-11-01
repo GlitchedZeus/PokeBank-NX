@@ -295,30 +295,68 @@ bool hasLocation(uint32_t set, uint16_t location) noexcept {
     return set < kRaidLocations8.size() && location < 256 && ((kRaidLocations8[set][location >> 6] >> (location & 63)) & 1) != 0;
 }
 
+// Overworld8RNG.ValidateOverworldEncounter, made a superset: every seed GetOriginalSeed can give,
+// the PID as generated or forced shiny or non-shiny, any flawless IV count from 0 to 6, and a
+// 0/0 size (HomeQuirks.HasEnteredSetZeroScale) on any record.
+bool overworldVerify(const RaidRecord& pk) noexcept {
+    std::array<uint32_t, 3> seeds{pk.ec - 0x229D6A5Bu, 0, 0};
+    size_t count = 1;
+    if (pk.ec == 0xF8572EBEu) { seeds[1] = 0xD5B9C463u; seeds[2] = 0xDD6295A4u; count = 3; }
+    for (size_t k = 0; k < count; ++k) {
+        Xoro rng(seeds[k]);
+        if (static_cast<uint32_t>(rng.nextInt()) != pk.ec) continue;
+        const auto pid = static_cast<uint32_t>(rng.nextInt());
+        const uint32_t low = pid & 0xFFFFu;
+        const uint32_t forcedShiny = (((pk.id32 & 0xFFFFu) ^ (pk.id32 >> 16) ^ low) << 16) | low;
+        if (pid != pk.pid && (pid ^ 0x10000000u) != pk.pid && forcedShiny != pk.pid) continue;
+        for (int flawless = 0; flawless <= 6; ++flawless) {
+            Xoro copy = rng;
+            std::array<int, 6> ivs{-1, -1, -1, -1, -1, -1};
+            for (int i = 0; i < flawless; ++i) {
+                auto index = static_cast<size_t>(copy.nextInt(6));
+                while (ivs[index] != -1) index = static_cast<size_t>(copy.nextInt(6));
+                ivs[index] = 31;
+            }
+            for (int& v : ivs)
+                if (v == -1) v = static_cast<int>(copy.nextInt(32));
+            bool same = true;
+            for (size_t i = 0; i < 6; ++i) same = same && ivs[i] == pk.ivs[i];
+            if (!same) continue;
+            const auto h = static_cast<uint8_t>(copy.nextInt(0x81) + copy.nextInt(0x80));
+            const auto w = static_cast<uint8_t>(copy.nextInt(0x81) + copy.nextInt(0x80));
+            if (pk.height == h && (pk.weight == w || (h == 0 && pk.weight == 0))) return true;
+            if (pk.height == 0 && pk.weight == 0) return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 RaidResult raidSeed(const RaidRecord& pk) noexcept {
-    // Pokemon Den (162) and Max Lair (244) are raid-only met locations in Sword/Shield's own text;
-    // elsewhere a wandering symbol encounter may have crossed over from another area.
-    constexpr uint16_t kDen = 162, kLair = 244;
     const uint16_t loc = pk.metLocation;
-    if (loc >= 256 || pk.species + 1u >= kRaid8Index.size() || pk.species >= kRaidNonRaid8.size()) return RaidResult::Undecided;
-    const uint16_t nonRaid = kRaidNonRaid8[pk.species];
-    if (nonRaid == 0xFFFF) return RaidResult::Undecided;
-    if ((nonRaid & 0x8000) != 0 && loc != kDen && loc != kLair) return RaidResult::Undecided;
-    if (hasLocation(nonRaid & 0x7FFF, loc)) return RaidResult::Undecided;
-    if (shinyXor(pk.pid ^ pk.id32) < 16) return RaidResult::Undecided;
-    bool any = false;
-    for (uint32_t i = kRaid8Index[pk.species]; i < kRaid8Index[pk.species + 1u]; ++i) {
+    const uint16_t s = pk.species;
+    if (loc >= 256 || s + 1u >= kRaid8Index.size() || s >= kSwshFree8.size() || s >= kOverworld8.size()) return RaidResult::Undecided;
+    const uint16_t free = kSwshFree8[s], overworld = kOverworld8[s];
+    if (free == 0xFFFF || overworld == 0xFFFF || hasLocation(free, loc)) return RaidResult::Undecided;
+    // A Curry-marked record may come from a hidden slot without the correlation, and Shedinja's
+    // Curry mark is affixed or inherited from Nincada.
+    if (pk.curryMark || s == 292) return RaidResult::Undecided;
+    const bool shiny = shinyXor(pk.pid ^ pk.id32) < 16;
+    bool raid = false;
+    const bool correlated = hasLocation(overworld, loc);
+    if (correlated && overworldVerify(pk)) return RaidResult::SeedFound;
+    for (uint32_t i = kRaid8Index[s]; i < kRaid8Index[s + 1u]; ++i) {
         const uint32_t e = kRaid8[i];
         if (!hasLocation(e >> 16, loc)) continue;
-        any = true;
+        raid = true;
+        if (shiny) return RaidResult::Undecided;  // PKHeX does not check a shiny raid's seed
         const RaidParam8& p = kRaidParams8[e & 0xFFFF];
         for (uint32_t third : {pk.pid, pk.pid ^ 0x10000000u})
             if (forEachSeed(pk.ec, third, [&](uint64_t seed) { return raidVerify(pk, seed, p, false) || raidVerify(pk, seed, p, true); }))
                 return RaidResult::SeedFound;
     }
-    return any ? RaidResult::NoSeed : RaidResult::Undecided;
+    return raid || correlated ? RaidResult::NoSeed : RaidResult::Undecided;
 }
 
 } // namespace Legality::ModernEncounter

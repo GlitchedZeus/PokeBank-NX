@@ -605,11 +605,11 @@ void testRaidSeeds(const std::vector<Record>& records) {
         const uint32_t pid = PK8::read32(r.plain, 0x1C), id32 = PK8::read32(r.plain, 0x0C);
         if ((((pid ^ id32) ^ ((pid ^ id32) >> 16)) & 0xFFFF) < 16) continue;
         const auto base = analyzePlain(r, r.plain);
-        check(!hasIssue(base, Severity::Invalid, "Max Raid"), "valid raid record keeps a seed: " + describe(base));
+        check(!hasIssue(base, Severity::Invalid, "Max Raid seed"), "valid raid record keeps a seed: " + describe(base));
         auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0x00] ^= 1; }));
-        check(hasIssue(rep, Severity::Invalid, "No Max Raid seed"), "raid record with a changed EC: " + describe(rep));
+        check(hasIssue(rep, Severity::Invalid, "No overworld or Max Raid seed"), "raid record with a changed EC: " + describe(rep));
         rep = analyzePlain(r, edit(r.plain, [](auto& b) { PK8::write32(b, 0x8C, PK8::read32(b, 0x8C) ^ 1u); }));
-        check(hasIssue(rep, Severity::Invalid, "No Max Raid seed"), "raid record with a changed HP IV: " + describe(rep));
+        check(hasIssue(rep, Severity::Invalid, "No overworld or Max Raid seed"), "raid record with a changed HP IV: " + describe(rep));
         // The same record met at one of its raids' Wild Area dens, when no other encounter of its
         // line can carry that location: still a seed; with another EC, none.
         E::RaidRecord rr;
@@ -643,6 +643,58 @@ void testRaidSeeds(const std::vector<Record>& records) {
     check(dens > 0, "some raid record is decidable at a Wild Area den");
 }
 
+// Overworld8RNG (ModernEncounter::raidSeed): a PKHeX-valid wild or static Sword/Shield record met
+// where every encounter of its line is seed-bound keeps its overworld seed; another EC, IV or size
+// leaves none, and a Curry mark makes the record undecided.
+void testOverworldSeeds(const std::vector<Record>& records) {
+    namespace E = Legality::ModernEncounter;
+    int found = 0;
+    for (const Record& r : records) {
+        if (!r.pkhexValid || r.format != Format::PK8 || r.label.rfind("native8:base:EncounterS", 0) != 0) continue;
+        const uint16_t loc = PK8::read16(r.plain, 0x122);
+        if (loc == 162 || loc == 244 || PK8::read16(r.plain, 0x120) != 0) continue;
+        E::RaidRecord rr;
+        rr.species = PK8::read16(r.plain, 0x08);
+        rr.form = r.plain[0x24];
+        rr.metLocation = loc;
+        rr.ec = PK8::read32(r.plain, 0x00);
+        rr.pid = PK8::read32(r.plain, 0x1C);
+        rr.id32 = PK8::read32(r.plain, 0x0C);
+        const uint32_t iv32 = PK8::read32(r.plain, 0x8C);
+        auto iv = [&](int i) { return static_cast<uint8_t>((iv32 >> (5 * i)) & 31); };
+        rr.ivs = {iv(0), iv(1), iv(2), iv(4), iv(5), iv(3)};
+        rr.abilityNumber = r.plain[0x16] & 7;
+        rr.gender = (r.plain[0x22] >> 2) & 3;
+        rr.nature = r.plain[0x20];
+        rr.height = r.plain[0x50];
+        rr.weight = r.plain[0x51];
+        rr.curryMark = (r.plain[0x40] & 0x08) != 0;
+        const auto result = E::raidSeed(rr);
+        check(result != E::RaidResult::NoSeed, r.label + ": a PKHeX-valid record keeps a seed");
+        if (result != E::RaidResult::SeedFound || rr.curryMark) continue;
+        const auto base = analyzePlain(r, r.plain);
+        check(!hasIssue(base, Severity::Invalid, "Max Raid seed"), r.label + ": no seed issue: " + describe(base));
+        auto other = rr;
+        other.ec ^= 0x100;
+        check(E::raidSeed(other) == E::RaidResult::NoSeed, r.label + ": another EC has no seed");
+        other = rr;
+        other.ivs[0] ^= 1;
+        check(E::raidSeed(other) == E::RaidResult::NoSeed, r.label + ": another HP IV has no seed");
+        other = rr;
+        other.height = static_cast<uint8_t>(other.height + 1);
+        if (!(other.height == 0 && other.weight == 0))
+            check(E::raidSeed(other) == E::RaidResult::NoSeed, r.label + ": another height has no seed");
+        other = rr;
+        other.ivs[0] ^= 1;
+        other.curryMark = true;
+        check(E::raidSeed(other) == E::RaidResult::Undecided, r.label + ": a Curry mark is undecided");
+        const auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0x01] ^= 1; }));
+        check(hasIssue(rep, Severity::Invalid, "No overworld or Max Raid seed"), r.label + ": record with another EC: " + describe(rep));
+        ++found;
+    }
+    check(found > 0, "fixture has overworld-correlated records");
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -661,6 +713,7 @@ int main() {
     testEggs(all);
     testRelearn(all);
     testRaidSeeds(records);
+    testOverworldSeeds(records);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

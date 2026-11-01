@@ -209,7 +209,7 @@ history.
 Not implemented for PK8 (keeps the report Incomplete): encounter tables (wild, raids, dens,
 gifts, eggs), learnsets and relearn moves, Gigantamax per encounter, HOME tracker and size
 re-roll history, egg locations, fateful flags, balls per encounter, IV/shiny/PID correlations
-per encounter, ribbons and marks, memories, trash bytes, nicknamed records/word filter, Pokémon GO
+per encounter beyond the overworld and raid seeds of seed-bound met locations, ribbons and marks, memories, trash bytes, nicknamed records/word filter, Pokémon GO
 and Let's Go transfer details.
 
 ## PB8 (Brilliant Diamond/Shining Pearl) rules
@@ -356,36 +356,42 @@ species and form allows is Invalid (for example a cap Pikachu or Mew with the fl
 unhatched egg with it set). Which encounter the record came from is not resolved, so a species
 with any Gigantamax encounter stays undecided.
 
-## Max Raid seeds (PK8)
+## Overworld and Max Raid seeds (PK8)
 
 `EncounterStatic8Nest.TryGetSeed` and `RaidRNG.Verify` are ported to
 `ModernEncounter::raidSeed`: the Xoroshiro128+ generator, the `XoroMachineSkip` reversal that
 recovers every 64-bit seed whose first and third outputs are the EC and the PID (or the PID with
 bit 28 flipped, the non-shiny fix-up), and the raid generation order (EC, fake trainer, PID,
 flawless IV slots, IVs, ability, gender, nature or Toxtricity's nature table, height, weight).
+The same function ports `Overworld8RNG.ValidateOverworldEncounter`: the 32-bit overworld seed is
+the EC minus the low half of the Xoroshiro constant (`GetOriginalSeed`, with its two-seed EC), and
+the seed must give the EC, the PID (as generated, forced shiny or forced non-shiny), the IVs after
+a number of flawless slots, and the height and weight.
+
 `dumpencounters` writes each raid template's `GenerateParam8` (gender ratio, flawless IV count,
 ability permission, fixed IVs) as `kRaidParams8`, the raids of each species' line (dens, Watchtower
 crystals, distributions and Max Lair adventures) with the met locations each one's own
-`IsMatchLocation` accepts as `kRaid8` / `kRaidLocations8`, and the met locations any non-raid
-Sword/Shield encounter or gift of the line can carry as `kRaidNonRaid8` (wild slots, statics and
-their `Crossover8` areas, gifts and trades), with a mark when a wandering symbol slot of the line
-may be caught in any area (`EncounterArea8.CanCrossoverTo`).
+`IsMatchLocation` accepts as `kRaid8` / `kRaidLocations8`, and two more location sets per line:
 
-A non-shiny, untransferred Sword/Shield record (not an egg, no egg location) is Invalid when its
-met location is used only by raids of its line and no recovered seed of any of those raids
-reproduces its IVs, ability, gender, nature and sizes. That covers the Pokémon Den (162) and Max
-Lair (244), which the games' own location text gives only to raid captures (crossover cannot
-produce them), and a raid's Wild Area den location when no wild, static or gift encounter of the
-line can be met there (any Wild Area location is undecided for a line with a crossover-capable
-symbol slot). The check is a superset of PKHeX's: both forced-non-shiny states are tried; raid
-level, rank and Dynamax level are not checked; a HOME-tracked record may have Ability Patch on a
-hidden-ability raid and HOME's 0/0 size reset. Shiny records stay undecided, as in PKHeX.
-Overworld8 (wild and static) seeds are not decided yet.
+* `kOverworld8`: where some encounter of the line must carry the overworld correlation
+  (`IOverworldCorrelation8.GetRequirement` MustHave): wild slots other than tree slots, at the
+  locations their area's own `IsMatchLocation` accepts (symbol areas include the areas their
+  encounters wander to), and statics that are neither gifts nor scripted, at their location and
+  `Crossover8` areas.
+* `kSwshFree8`: where some other encounter of the line can be met: tree slots (MustNotHave or
+  CanBeEither), gift and scripted statics, trades and every mystery gift of the line.
 
-The PK8 generator now also emits every den, crystal and distribution raid re-met at one of its
-own Wild Area locations (about 1,700 PKHeX-valid records per seed, plus their mutations). Those
-mutations are mostly on lines with crossover slots and stay Incomplete, which is why the PK8
-caught rate is lower than at the previous milestone on the larger corpus.
+An untransferred Sword/Shield record (not an egg, no egg location) whose met location is in a
+seed-bound set of its line and not in the free set is Invalid when no overworld seed (if the
+location is in `kOverworld8`) and no recovered seed of any raid of the line accepting the location
+reproduces it. A Curry-marked record (hidden slots then need no correlation), Shedinja (its Curry
+mark may be affixed) and a shiny record that could only be a raid (PKHeX does not check its seed)
+stay undecided. The check is a superset of PKHeX's: any flawless IV count from 0 to 6, every
+shiny fix-up and a 0/0 size on any record for overworld seeds; both forced-non-shiny states, no
+raid level, rank or Dynamax filter, and HOME's Ability Patch and size resets for raids.
+
+The PK8 generator also emits every den, crystal and distribution raid re-met at one of its own
+Wild Area locations (about 1,700 PKHeX-valid records per seed, plus their mutations).
 
 ## Nickname rule (every format)
 
@@ -434,10 +440,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PA9 | 2 / 4 | 21,946 | 9,765 | 12,181 | 8,671 (71.2%) | 0 | 0 |
 | PA9 | 3 / 8 | 37,412 | 13,827 | 23,585 | 16,870 (71.5%) | 0 | 0 |
 | PA9 | 4 / 4 | 21,856 | 9,766 | 12,090 | 8,696 (71.9%) | 0 | 0 |
-| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 28,215 (82.9%) | 0 | 0 |
-| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 29,171 (83.0%) | 0 | 0 |
-| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 57,470 (82.9%) | 0 | 0 |
-| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 28,837 (83.1%) | 0 | 0 |
+| PK8 | 1 / 4 | 59,530 | 25,492 | 34,038 | 29,180 (85.7%) | 0 | 0 |
+| PK8 | 2 / 4 | 60,415 | 25,264 | 35,151 | 30,127 (85.7%) | 0 | 0 |
+| PK8 | 3 / 8 | 106,567 | 37,284 | 69,283 | 59,408 (85.7%) | 0 | 0 |
+| PK8 | 4 / 4 | 60,311 | 25,601 | 34,710 | 29,805 (85.9%) | 0 | 0 |
 | PB8 | 1 / 4 | 48,023 | 20,216 | 27,807 | 24,246 (87.2%) | 0 | 0 |
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |

@@ -39,17 +39,21 @@ struct RaidRecord {
     std::array<uint8_t, 6> ivs{};  // HP, Atk, Def, SpA, SpD, Spe
     uint8_t form = 0, abilityNumber = 0, gender = 0, nature = 0, height = 0, weight = 0;
     bool homeTracker = false;
+    bool curryMark = false;
 };
 
 enum class RaidResult : uint8_t { Undecided, SeedFound, NoSeed };
 
-/// EncounterStatic8Nest.TryGetSeed over every raid of the species' line whose own location check
-/// accepts the met location: the Pokemon Den (162), Max Lair (244), Watchtower Ruins or a den's
-/// Wild Area location. Undecided for a shiny record (PKHeX does not check its seed), a met location
-/// some non-raid encounter of the line can carry (any location but 162/244 when a wandering symbol
-/// slot of the line can cross over), a location no raid of the line accepts, or a species without
-/// generated encounters. NoSeed: no seed from (EC, PID) generates the record's IVs, ability,
-/// gender, nature and sizes for any of those raids' parameters.
+/// The seed rules of Sword/Shield encounters at a met location below 256, over the species' line:
+/// Overworld8RNG correlation for wild slots (other than tree slots) and statics that are neither
+/// gifts nor scripted (IOverworldCorrelation8 MustHave), and EncounterStatic8Nest.TryGetSeed for
+/// raids whose own location check accepts the location (the Pokemon Den 162, Max Lair 244,
+/// Watchtower Ruins or a den's Wild Area location). Undecided when some other encounter, trade or
+/// gift of the line can be met there (tree slots, gift or scripted statics), when the record has
+/// a Curry mark or is Shedinja, for a shiny record that could only be a raid (PKHeX does not check
+/// its seed), for a location no seed-bound encounter of the line accepts, or for a species without
+/// generated encounters. NoSeed: neither the overworld seed of the EC nor any raid seed of
+/// (EC, PID) generates the record's PID, IVs (and, for raids, ability, gender and nature) and sizes.
 RaidResult raidSeed(const RaidRecord& record) noexcept;
 
 /// Unhatched-egg facts of the species in a format that has eggs (PK6, PK7, PK8, PB8, PK9), over

@@ -696,10 +696,11 @@ private:
         }
     }
 
-    // EncounterStatic8Nest.TryGetSeed: a Sword/Shield record met where only raids of its line occur
-    // (the Pokemon Den 162, Max Lair 244, or a raid's Wild Area location no other encounter of the
-    // line uses) must come from a raid seed (ModernEncounter::raidSeed). Shiny records are not
-    // checked, as in PKHeX.
+    // Overworld8RNG and EncounterStatic8Nest.TryGetSeed: a Sword/Shield record met where every
+    // encounter of its line is seed-bound (overworld-correlated wild slots and statics, raids at the
+    // Pokemon Den 162, Max Lair 244 or their Wild Area locations) must come from one of those seeds
+    // (ModernEncounter::raidSeed). Curry-marked records, Shedinja, and shiny records that could only
+    // be raids are not checked, as in PKHeX.
     void checkRaidSeed() {
         if (pk_.isEgg() || side_ != 0 || (version_ != VersionSW && version_ != VersionSH) || PK8::read16(plain_, 0x120) != 0) return;
         ModernEncounter::RaidRecord r;
@@ -716,9 +717,10 @@ private:
         r.height = plain_[0x50];
         r.weight = plain_[0x51];
         r.homeTracker = (PK8::read32(plain_, 0x135) | PK8::read32(plain_, 0x139)) != 0;
+        r.curryMark = (plain_[0x40] & 0x08) != 0;  // G8PKM.RibbonMarkCurry
         if (ModernEncounter::raidSeed(r) == ModernEncounter::RaidResult::NoSeed)
-            invalid(CheckIdentifier::PidRng, "No Max Raid seed of the species' line gives this EC, PID, IVs, ability, gender, nature "
-                                          "and size, and only raids of its line use this met location");
+            invalid(CheckIdentifier::PidRng, "No overworld or Max Raid seed of the species' line gives this EC, PID, IVs, ability, "
+                                          "gender, nature and size, and every encounter of its line met here is seed-bound");
     }
 
     // MiscVerifierPB8: BD/SP has no sociability, Dynamax, Gigantamax or TR flags (a

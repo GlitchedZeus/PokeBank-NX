@@ -640,7 +640,8 @@ static class DumpEncounters
             var relearnEgg = new List<ushort>[maxSpecies + 1];
             var gmax = new List<int>[maxSpecies + 1];
             var raids = new List<int>[maxSpecies + 1];
-            var raidNonRaid = new int[maxSpecies + 1];
+            var swshFree = new int[maxSpecies + 1];
+            var swshOverworld = new int[maxSpecies + 1];
             var context = proto.Context;
             var failed = new HashSet<GameVersion>();
             for (ushort s = 1; s <= maxSpecies; s++)
@@ -655,7 +656,8 @@ static class DumpEncounters
                 bool undecided = false;
                 var gmaxForms = new int[forms];
                 var raidSet = new SortedSet<int>();
-                var nonRaid = new RaidLocations();
+                var free = new RaidLocations();
+                var overworld = new RaidLocations();
                 for (byte f = 0; f < forms; f++)
                 {
                     pk = make();
@@ -674,7 +676,7 @@ static class DumpEncounters
                                 if (enc.Context == context && name is "6" or "7")
                                     AddRelearn(enc, enc.IsEgg ? relearnEggSet : relearnSet);
                                 if (name == "8") gmaxForms[f] |= GmaxStates(enc, s, f, enc.IsEgg);
-                                if (name == "8") Raid(enc, raidSet, nonRaid);
+                                if (name == "8") Raid(enc, raidSet, free, overworld);
                                 if (enc.Context == context)
                                     egg |= enc.IsEgg ? 64 : enc is ILocation { EggLocation: not (0 or Locations.Default8bNone) } ? 32 : 0;
                             }
@@ -723,9 +725,10 @@ static class DumpEncounters
                             for (byte f = 0; f < forms; f++) gmaxForms[f] |= GmaxStates(g, s, f, g.IsEgg);
                     gmax[s] = undecided ? [.. gmaxForms.Select(_ => 0)] : [.. gmaxForms.Select(v => v | 0x80)];
                     foreach (var g in gifts)
-                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) Raid(g, raidSet, nonRaid);
+                        if (g.IsEntity && line.Contains(g.Species) && reach(g)) Raid(g, raidSet, free, overworld);
                     raids[s] = undecided ? [] : [.. raidSet];
-                    raidNonRaid[s] = undecided ? 0xFFFF : LocationSet(nonRaid.Bits) | (nonRaid.Anywhere ? 0x8000 : 0);
+                    swshFree[s] = undecided ? 0xFFFF : LocationSet(free.Bits);
+                    swshOverworld[s] = undecided ? 0xFFFF : LocationSet(overworld.Bits);
                 }
                 relearn[s] = undecided ? [0xFFFF] : [.. relearnSet];
                 relearnEgg[s] = undecided ? [0xFFFF] : [.. relearnEggSet];
@@ -757,10 +760,15 @@ static class DumpEncounters
                 // ratio, flawless IV count, ability kind 0 = Any12H / 1 = Any12 / 2 = fixed first or
                 // second / 3 = fixed hidden, Toxtricity nature table, fixed IVs HP/Atk/Def/SpA/SpD/Spe or -1).
                 // kRaid8[kRaid8Index[s]..[s+1]]: every raid of the species' line, param index | (index of
-                // its met-location set in kRaidLocations8 << 16). kRaidNonRaid8[s]: the kRaidLocations8 set
-                // of met locations some non-raid Sword/Shield encounter or gift of the line uses, | 0x8000
-                // when a wandering symbol slot of the line may be caught in any area (EncounterArea8.
-                // CanCrossoverTo); 0xFFFF = undecided. Location sets are 256-bit masks, low word first.
+                // its met-location set in kRaidLocations8 << 16). kOverworld8[s]: the kRaidLocations8 set of
+                // met locations where some Sword/Shield encounter of the line must carry the Overworld8RNG
+                // correlation (IOverworldCorrelation8.GetRequirement MustHave for a record without a Curry
+                // mark: wild slots other than tree slots, and statics that are neither gifts nor scripted).
+                // kSwshFree8[s]: the set where some other non-raid encounter, trade or gift of the line can
+                // be met (tree slots, gift and scripted statics, trades, mystery gifts). 0xFFFF = undecided.
+                // Each slot's set is its area's own IsMatchLocation (symbol areas include the areas their
+                // encounters wander to); a static's is its location and crossover list. Location sets are
+                // 256-bit masks, low word first.
                 var rindex = new List<int> { 0 };
                 var rall = new List<long>();
                 for (int sp = 0; sp <= maxSpecies; sp++) { rall.AddRange((raids[sp] ?? []).Select(v => (long)v)); rindex.Add(rall.Count); }
@@ -776,9 +784,12 @@ static class DumpEncounters
                 o.WriteLine($"constexpr std::array<std::array<uint64_t, 4>, {LocationSets.Count}> kRaidLocations8{{{{");
                 foreach (var b in LocationSets) o.WriteLine($"    {{{b}}},");
                 o.WriteLine("}};");
-                o.WriteLine($"constexpr std::array<uint16_t, {maxSpecies + 1}> kRaidNonRaid8{{{{");
-                for (int i = 0; i <= maxSpecies; i += 16) o.WriteLine("    " + string.Join(",", raidNonRaid.Skip(i).Take(16)) + ",");
-                o.WriteLine("}};");
+                foreach (var (label, table) in new[] { ("kOverworld8", swshOverworld), ("kSwshFree8", swshFree) })
+                {
+                    o.WriteLine($"constexpr std::array<uint16_t, {maxSpecies + 1}> {label}{{{{");
+                    for (int i = 0; i <= maxSpecies; i += 16) o.WriteLine("    " + string.Join(",", table.Skip(i).Take(16)) + ",");
+                    o.WriteLine("}};");
+                }
             }
             if (name is "6" or "7")
             {
@@ -808,7 +819,6 @@ static class DumpEncounters
     private sealed class RaidLocations
     {
         public readonly ulong[] Bits = new ulong[4];
-        public bool Anywhere;
         public void Add(int location) { if ((uint)location < 256) Bits[location >> 6] |= 1UL << (location & 63); }
     }
 
@@ -821,10 +831,17 @@ static class DumpEncounters
     }
 
     // A raid template's RaidRNG.Verify parameters (RaidParams) and the met locations it accepts
-    // (its own IsMatchLocation, asked for every byte location) into set; or, for any other Sword/Shield
-    // encounter or gift, the met locations it can carry into nonRaid.
-    private static void Raid(IEncounterTemplate enc, SortedSet<int> set, RaidLocations nonRaid)
+    // (its own IsMatchLocation, asked for every byte location) into set; for any other Sword/Shield
+    // encounter or gift, the met locations it can carry into overworld (Overworld8RNG correlation
+    // required) or free (not required).
+    private static void Raid(IEncounterTemplate enc, SortedSet<int> set, RaidLocations free, RaidLocations overworld)
     {
+        if (enc is MysteryGift { IsEntity: true } gift)
+        {
+            // Whatever version the gift names: its met location can never need a seed.
+            free.Add(gift.Location);
+            return;
+        }
         if (enc.Version is not (GameVersion.SW or GameVersion.SH or GameVersion.SWSH)) return;
         if (enc is EncounterStatic8N or EncounterStatic8NC or EncounterStatic8ND or EncounterStatic8U)
         {
@@ -860,16 +877,26 @@ static class DumpEncounters
         switch (enc)
         {
             case EncounterSlot8 slot:
-                nonRaid.Add(slot.Location);
-                if (slot.Type.CanCrossover()) nonRaid.Anywhere = true;
+            {
+                // EncounterSlot8.GetRequirement: symbol areas MustHave; tree slots MustNotHave or
+                // CanBeEither; every other slot MustHave unless the record has a Curry mark (the
+                // analyzer leaves Curry-marked records undecided).
+                bool tree = !slot.Parent.PermitCrossover && (slot.Weather & AreaWeather8.Shaking_Trees) != 0;
+                var target = tree ? free : overworld;
+                for (int l = 0; l < 256; l++)
+                    if (slot.Parent.IsMatchLocation((ushort)l)) target.Add(l);
                 break;
+            }
             case EncounterStatic8 st:
-                nonRaid.Add(st.Location);
+            {
+                var target = st.IsOverworldCorrelation ? overworld : free;
+                target.Add(st.Location);
                 foreach (var l in new[] { st.Crossover.L1, st.Crossover.L2, st.Crossover.L3, st.Crossover.L4, st.Crossover.L5, st.Crossover.L6, st.Crossover.L7 })
-                    if (l != 0) nonRaid.Add(l);
+                    if (l != 0) target.Add(l);
                 break;
+            }
             default:
-                if (enc is ILocation l2) nonRaid.Add(l2.Location);
+                if (enc is ILocation l2) free.Add(l2.Location);
                 break;
         }
     }
