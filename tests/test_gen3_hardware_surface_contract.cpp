@@ -214,8 +214,32 @@ int main() {
     contains(surface, "Encounter origin");
     contains(surface, "met as ");
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
-    assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
+    // Round 11 FRLG (owner Extra 2): the picker no longer fails closed when the exact game has no
+    // catch template for the species (Rayquaza / Charizard in FireRed). Deliberately updated: the
+    // old refusal literal was pinned here; it is now forbidden, and the picker lists the record's
+    // origin-game templates plus every other native location (Kanto for FR/LG), honestly labelled.
+    assert(surface.find("No supported exact-game encounter templates for this Pokemon") == std::string::npos);
+    contains(surface, "EncounterPicker::templatesForOrigin(");
+    contains(surface, "EncounterPicker::rowValuesWithNative(");
+    contains(surface, "EncounterPicker::selectedRowWithNative(");
+    contains(surface, "MetRows::isOtherNativeRow(value)");
+    contains(surface, "MetRows::gen3OtherDetail(");
+    {
+        // The Met Location picker, Met Level row and Encounter origin text read the RECORD's origin
+        // game, never the save's (a Ruby-origin Pokemon in a FireRed save is not offered Kanto rows).
+        const auto open = surface.find("} else if (target == PickerTarget::MetLocation) {");
+        assert(open != std::string::npos);
+        const auto openEnd = surface.find("} else if (target == PickerTarget::Nature) {", open);
+        const std::string body = surface.substr(open, openEnd - open);
+        assert(body.find("screen.sourceGameId") == std::string::npos);
+        assert(body.find("state.session.working.originGame") != std::string::npos);
+        const auto origin = surface.find("std::string encounterOriginText(");
+        const std::string originBody = surface.substr(origin, surface.find("\n}\n", origin) - origin);
+        assert(originBody.find("screen.sourceGameId") == std::string::npos);
+        assert(originBody.find("templatesForOrigin(p.originGame") != std::string::npos);
+    }
     contains(surface, "Met Level for selected encounter");
+    contains(surface, "Met Level (not a listed encounter)");
     contains(surface, "state.session.setEncounterMetLevel(choice->encounter.minLevel)");
     contains(surface, "state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value))");
     contains(surface, "only native Generation III ability");

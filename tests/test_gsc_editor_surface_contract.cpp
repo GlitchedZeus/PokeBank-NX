@@ -255,7 +255,11 @@ int main() {
     assert(finalFix.find("std::max(0, w - 36)") != std::string::npos);
     assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
     assert(nativePresentation.find("Current level below met level") != std::string::npos);
-    assert(picker.find("Gen2Picker::locationRowText(") != std::string::npos);
+    // Round 11 (deliberately updated): the chooser draws each row through locationRowTextAt, which
+    // keeps locationRowText for every catch template and labels the other native landmarks.
+    assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find(
+               "return locationRowText(model.encounterChoices[static_cast<std::size_t>(row)]);") != std::string::npos);
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
            std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
@@ -295,7 +299,13 @@ int main() {
     // actual species-scoped encounters and native minimum-level presentation.
     assert(picker.find("\"Met Location\"") != std::string::npos);
     assert(picker.find("model.locationCount()") != std::string::npos);
-    assert(picker.find("model.encounterChoices[") != std::string::npos);
+    // Round 11 (deliberately updated from model.encounterChoices[): rows are drawn through
+    // locationRowTextAt, catch templates first; the other native landmarks follow, labelled
+    // unverified, and choosing one writes only the landmark (otherLocationChoice), never a
+    // template's level.
+    assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
+    assert(pickerModel.find("model.encounterChoices[static_cast<std::size_t>(row)]") != std::string::npos);
+    assert(picker.find("picker.model.otherLocationChoice()") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("Encounter::timeAllowed(*encounter, resolvedMetTime)") != std::string::npos);
     assert(picker.find("drawPokerusPicker") == std::string::npos);

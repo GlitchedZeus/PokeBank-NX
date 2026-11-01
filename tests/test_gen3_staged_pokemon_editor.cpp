@@ -197,10 +197,13 @@ void runGame(SourceGame game, Family family) {
         {
             auto reviewed=StagedPokemonEditor::create(source,game,error);assert(reviewed);
             BoxPokemonEdit request;request.nature=static_cast<uint8_t>((before->nature+1)%25);
-            request.language=3;request.ball=2;request.metLocation=2;request.metLevel=19;
+            // Round 11 FRLG: an exact-game native location (FR/LG Kanto 89 Viridian City, R/S/E
+            // Hoenn 2 Dewford Town); deliberately updated from 2 for every game.
+            const uint16_t nativeMet=family==Family::FRLG?89:2;
+            request.language=3;request.ball=2;request.metLocation=nativeMet;request.metLevel=19;
             request.friendship=99;request.pokerus=0x13;request.otName="WILL";
             assert(reviewed->stagePartyPokemonEdit(0,request,error));
-            const auto expectedLocation=Names::getMetLocationDisplayName(before->originGame,2);
+            const auto expectedLocation=Names::getMetLocationDisplayName(before->originGame,nativeMet);
             size_t named=0;
             for(const auto& row:reviewed->pendingChanges()) {
                 assert(row.beforeValue!=row.afterValue && row.party);
@@ -536,7 +539,8 @@ void runGame(SourceGame game, Family family) {
     edit.language = 2;
     edit.ball = 4;
     edit.metLevel = 12;
-    edit.metLocation = 2;
+    // Round 11 FRLG: exact-game native ids (deliberately updated from 2, a Hoenn id, for FR/LG).
+    edit.metLocation = family == Family::FRLG ? 89 : 2;
     assert(editor->stageBoxPokemonEdit(0, 0, edit, error));
 
     auto after = editor->boxedPokemon(0, 0, error);
@@ -587,7 +591,9 @@ void runGame(SourceGame game, Family family) {
     create.friendship = 88;
     create.pokerus = 0x21;
     create.ball = 4;
-    create.metLocation = family == Family::FRLG ? 1 : 57;
+    // Round 11 FRLG (owner Extra 2): FireRed / LeafGreen Create writes a Kanto id. Deliberately
+    // updated from 1 (Oldale Town, a Hoenn id the old test pinned for FR/LG) to 101 (Route 1).
+    create.metLocation = family == Family::FRLG ? 101 : 57;
     create.metLevel = 25;
     create.abilityNumber = 1;
     assert(editor->stageAddBoxPokemon(0, 2, create, error));
@@ -601,6 +607,55 @@ void runGame(SourceGame game, Family family) {
     assert(created->language == create.language && created->friendship == create.friendship);
     assert(created->pokerus == create.pokerus && created->ball == create.ball);
     assert(created->metLocation == create.metLocation && created->metLevel == create.metLevel);
+    {
+        // Round 11 FRLG: the stored met location of a created record is native to the save's own
+        // game (Names::isGen3NativeMetLocation): FR/LG never write a Hoenn id, R/S/E never a Kanto
+        // id. A foreign id is refused atomically; 0 stays the unchosen draft value.
+        const bool frlg = family == Family::FRLG;
+        const auto stagedBefore = editor->stagedBytes();
+        const auto changesBefore = editor->pendingChanges().size();
+        for (const uint16_t foreign : frlg ? std::vector<uint16_t>{1, 16, 57, 85, 197, 212}
+                                           : std::vector<uint16_t>{88, 101, 141, 187, 196}) {
+            BoxPokemonCreate bad = create; bad.metLocation = foreign;
+            std::string why;
+            assert(!editor->stageAddBoxPokemon(0, 5, bad, why));
+            assert(why.find("met location") != std::string::npos);
+            assert(editor->stagedBytes() == stagedBefore && editor->pendingChanges().size() == changesBefore);
+        }
+        if (game != SourceGame::EmeraldGBA) {
+            BoxPokemonCreate bad = create; bad.metLocation = 200;   // Emerald-only Birth Island
+            std::string why;
+            assert(!editor->stageAddBoxPokemon(0, 5, bad, why) && editor->stagedBytes() == stagedBefore);
+        }
+        // Markers (in-game trade / fateful encounter) are native to every Gen III game; a traded
+        // Rayquaza created in FireRed with a Kanto location stages and reads back the Kanto id.
+        auto probe = StagedPokemonEditor::create(editor->stagedBytes(), game, error); assert(probe);
+        BoxPokemonCreate rayquaza; rayquaza.species = 384; rayquaza.level = 70; rayquaza.metLevel = 70;
+        rayquaza.metLocation = frlg ? 141 : 85;    // Cerulean Cave / Sky Pillar
+        rayquaza.moves = {33, 0, 0, 0}; rayquaza.pp = {35, 0, 0, 0};
+        assert(probe->stageAddBoxPokemon(0, 5, rayquaza, error));
+        const auto readBack = probe->boxedPokemon(0, 5, error);
+        assert(readBack && readBack->species == 384 && readBack->metLocation == rayquaza.metLocation);
+        assert(readBack->originGame == origin(game));
+        assert(Names::isGen3NativeMetLocation(readBack->originGame, readBack->metLocation));
+        for (const uint16_t marker : {254, 255}) {
+            auto markerProbe = StagedPokemonEditor::create(editor->stagedBytes(), game, error); assert(markerProbe);
+            BoxPokemonCreate traded = rayquaza; traded.metLocation = marker;
+            assert(markerProbe->stageAddBoxPokemon(0, 5, traded, error));
+            assert(markerProbe->boxedPokemon(0, 5, error)->metLocation == marker);
+        }
+        // Edit: a changed met location must be native to the RECORD's origin game; the stored
+        // value itself (even a legacy foreign id) is always kept unchanged.
+        auto editProbe = StagedPokemonEditor::create(editor->stagedBytes(), game, error); assert(editProbe);
+        const auto record = editProbe->boxedPokemon(0, 2, error); assert(record);
+        BoxPokemonEdit foreignEdit; foreignEdit.metLocation = frlg ? 16 : 101;
+        assert(!editProbe->stageBoxPokemonEdit(0, 2, foreignEdit, error));
+        assert(editProbe->stagedBytes() == editor->stagedBytes());
+        BoxPokemonEdit keepEdit; keepEdit.metLocation = record->metLocation; keepEdit.nickname = "KEPT";
+        assert(editProbe->stageBoxPokemonEdit(0, 2, keepEdit, error));
+        assert(editProbe->boxedPokemon(0, 2, error)->metLocation == record->metLocation);
+        assert(editProbe->originalBytes() == editor->stagedBytes());
+    }
     assert(created->abilityNumber == 1);
     assert(!created->shiny);
 

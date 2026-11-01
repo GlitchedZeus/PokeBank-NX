@@ -77,6 +77,7 @@ namespace SessionModel = PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
+namespace MetRows = PokeBank::UIModel::ExactGameMetLocations;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
@@ -415,18 +416,19 @@ constexpr int kMetLocationPickerWidth = 620;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
-std::string encounterOriginText(const TrainerViewScreen& screen,
+std::string encounterOriginText(const TrainerViewScreen&,
                                 const Gen3::StagedPokemonRecord& p) {
     if (p.metLocation == 0) return "Unknown";
-    const auto choices = Encounter::forGameSpeciesWithGen3Provenance(
-        screen.sourceGameId, p.species);
+    // Round 11 FRLG: the record's own origin game's catch templates (not the save's). A location
+    // with no template is valid trade / gift / hatch history the data cannot confirm.
+    const auto choices = EncounterPicker::templatesForOrigin(p.originGame, p.species);
     const Encounter::EncounterProvenanceChoice* selected = nullptr;
     for (const auto& choice : choices) {
         if (choice.encounter.location != p.metLocation) continue;
         if (!selected) selected = &choice;
         if (choice.encounter.containsLevel(p.metLevel)) { selected = &choice; break; }
     }
-    if (!selected) return "Unresolved";
+    if (!selected) return "Not a listed catch; unverified";
     if (!selected->evolved) return std::string(Names::getSpeciesName(p.species));
     return std::string(Names::getSpeciesName(selected->originalEncounterSpecies)) +
            " → " + Names::getSpeciesName(p.species);
@@ -604,6 +606,12 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
         return {"Keep stored: " + Names::getMetLocationDisplayName(stored.originGame, stored.metLocation),
                 "Met Lv. " + std::to_string(stored.metLevel)};   // the name already says "Keep stored"
     }
+    if (MetRows::isOtherNativeRow(value)) {
+        // Round 11 FRLG: a location native to the record's origin game where this species is not a
+        // listed catch (or a trade / egg / event marker): honest, never presented as a catch.
+        const auto location = MetRows::otherNativeRowLocation(value);
+        return {Names::getMetLocationDisplayName(stored.originGame, location), MetRows::gen3OtherDetail(location)};
+    }
     const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
     if (!selected) return {"Unknown location", {}};
     const auto& encounter = selected->encounter;
@@ -725,17 +733,20 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         const auto balls = Enums::getBallList(Enums::GameVersion::FRLG);
         state.pickerValues.assign(balls.begin(), balls.end());
     } else if (target == PickerTarget::MetLocation) {
-        state.encounterChoices = Encounter::forGameSpeciesWithGen3Provenance(
-            screen.sourceGameId, state.session.working.species);
-        if (state.encounterChoices.empty()) {
+        // Round 11 FRLG: the record's origin game decides the list (FireRed / LeafGreen: Kanto and
+        // Sevii; R/S/E: Hoenn), never the save's. A species with no catch template in that game
+        // (a traded Rayquaza, an evolved Charizard) still gets every native location.
+        const uint8_t origin = state.session.working.originGame;
+        state.encounterChoices = EncounterPicker::templatesForOrigin(origin, state.session.working.species);
+        // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
+        state.pickerValues = EncounterPicker::rowValuesWithNative(
+            state.encounterChoices, state.session.working.metLocation, origin);
+        if (state.pickerValues.empty()) {
             state.pickerTarget = PickerTarget::None;
-            screen.postStatus("No supported exact-game encounter templates for this Pokemon", 300);
+            screen.postStatus("Met Location has no native Generation III list for this origin game", 300);
             return;
         }
-        // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
-        state.pickerValues = EncounterPicker::rowValuesWithStored(
-            state.encounterChoices, state.session.working.metLocation);
-        state.pickerRow = EncounterPicker::selectedRowWithStored(
+        state.pickerRow = EncounterPicker::selectedRowWithNative(
             state.encounterChoices, state.pickerValues, state.session.working.metLocation,
             state.session.working.metLevel);
         state.valuePicker = true;
@@ -820,7 +831,11 @@ void applyValuePicker(State& state) {
             state.session.setUnownLetter(static_cast<uint8_t>(value));
             break;
         case PickerTarget::MetLocation: {
-            if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
+            if (MetRows::isOtherNativeRow(value)) {
+                // No template: the met level stays as entered (Met Level row prompts 0-100).
+                p.metLocation = MetRows::otherNativeRowLocation(value);
+                state.selectedEncounter.reset();
+            } else if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
                 p.metLocation = choice->encounter.location;
                 state.session.setEncounterMetLevel(choice->encounter.minLevel);
                 state.selectedEncounter = *choice;
@@ -943,7 +958,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
     if (row == 12) {
-        auto choices = Encounter::forGameSpeciesWithGen3Provenance(screen.sourceGameId, p.species);
+        auto choices = EncounterPicker::templatesForOrigin(p.originGame, p.species);
         std::optional<Encounter::EncounterProvenanceChoice> chosen = state.selectedEncounter;
         if (!chosen || chosen->encounter.location != p.metLocation) {
             chosen.reset();
@@ -955,7 +970,14 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
             }
         }
         if (!chosen) {
-            screen.postStatus("Choose a legitimate Met Location encounter first", 300);
+            if (p.metLocation == 0) {
+                screen.postStatus("Choose a Met Location first", 300);
+                return;
+            }
+            // Round 11 FRLG: a native location with no catch template (trade / gift / hatch
+            // history, or a kept stored value): any native met level; 0 is the hatched marker.
+            const auto r = Utils::promptNumber("Met Level (not a listed encounter)", p.metLevel, 0, 100);
+            if (r.accepted) state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value));
             return;
         }
         const auto& encounter = chosen->encounter;

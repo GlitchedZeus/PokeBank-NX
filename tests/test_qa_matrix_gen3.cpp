@@ -756,7 +756,10 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
                 edit.working.pokerus = 0x21;
                 edit.working.ball = 2;
                 edit.working.metLevel = 5;
-                edit.working.metLocation = 10;
+                // Round 11 FRLG (deliberately updated from 10 for every game): a changed met location
+                // must be native to the record's origin game; FR/LG take a Kanto id (89 Viridian City).
+                const uint16_t nativeMet = baseRecord->originGame == 4 || baseRecord->originGame == 5 ? 89 : 10;
+                edit.working.metLocation = nativeMet;
                 const bool kept = edit.keep(editor, 0, 0, err);
                 e.expect(kept, "Keep (plain fields): " + err);
                 auto rec = editor.boxedPokemon(0, 0, err);
@@ -766,7 +769,7 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
                                  rec->ppUps == edit.working.ppUps && rec->ivs == edit.working.ivs &&
                                  rec->evs == edit.working.evs && rec->otName == "QAOT" && rec->tid == 1111 &&
                                  rec->friendship == 123 && rec->pokerus == 0x21 && rec->ball == 2 &&
-                                 rec->metLevel == 5 && rec->metLocation == 10,
+                                 rec->metLevel == 5 && rec->metLocation == nativeMet,
                              "plain field values did not round-trip");
                     e.expect(rec->shiny == baseRecord->shiny, "TID edit flipped shininess");
                 }
