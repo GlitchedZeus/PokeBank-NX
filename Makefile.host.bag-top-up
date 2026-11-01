@@ -3,7 +3,8 @@
 # synthetic saves, plus the shared SETUP / PREVIEW model (include/UI/BagTopUpModel.h). The real
 # TrainerViewScreen flow (ZR -> preview -> B / A -> Review) is tests/test_ui_bag_top_up_host.cpp in
 # Makefile.host.host-ui. Opt-in real saves: POKEBANK_REAL_SAVES=<folder> (never copied into the repo)
-# runs tests/test_bag_top_up_real_saves.cpp against every Gen III / IV / V save found there.
+# runs tests/test_bag_top_up_real_saves.cpp against every Gen I-V save found there (Gen I-III with
+# the Bag + PC Items scope; Japanese Gen I / II listed, never edited).
 # Included by Makefile.host after Makefile.host.jp-gen2.
 
 BAG_TOP_UP_COMMON_SOURCES := $(sort \

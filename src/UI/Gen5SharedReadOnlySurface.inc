@@ -1019,7 +1019,7 @@ bool planGen5TopUp(TrainerViewScreen& screen,BI::Plan& out,std::vector<BI::Pocke
     const size_t pocket=trainer.bagScreen().pocket();
     if(pocket>=BI::Gen5Bag::kPockets.size()) {error="Gen V pocket is unavailable";return false;}
     const auto request=PokeBank::UIModel::BagTopUp::request(editorStateFor(screen).bagTopUp.model,
-        BI::Gen5Bag::kPockets[pocket],BI::bagPockets(pockets));
+        BI::Gen5Bag::kPockets[pocket],pockets);
     covered=request.pockets;
     out=BI::plan(*game,request,pockets);
     return true;

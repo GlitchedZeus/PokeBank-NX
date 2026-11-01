@@ -1765,7 +1765,7 @@ bool planGen4TopUp(TrainerViewScreen& screen,const State& state,BI::Plan& out,
     const auto pockets=BI::Gen4Bag::pockets(*staged,error);
     if(pockets.empty())return false;
     const auto request=PokeBank::UIModel::BagTopUp::request(state.itemTopUp.model,
-        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],BI::bagPockets(pockets));
+        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],pockets);
     covered=request.pockets;
     out=BI::plan(*game,request,pockets);
     return true;
@@ -1775,7 +1775,9 @@ void openGen4TopUp(TrainerViewScreen& screen,State& state) {
         screen.postStatus("Gen IV Top Up requires a validated native source bag",300);
         return;
     }
-    PokeBank::UIModel::BagTopUp::open(state.itemTopUp.model);
+    // No PC item storage in Gen IV: SETUP offers This pocket / All Bag pockets only.
+    PokeBank::UIModel::BagTopUp::open(state.itemTopUp.model,
+        BI::Gen4Bag::kPockets[static_cast<size_t>(screen.selectedCategory)],false);
     screen.controllerNavigation.reset();
 }
 void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const TouchInput& touch) {
