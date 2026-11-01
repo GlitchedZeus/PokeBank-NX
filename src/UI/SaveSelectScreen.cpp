@@ -4217,6 +4217,7 @@ namespace UI {
                         case Overlay::LegacyInstances: legacyInstanceIndex = r.idx; break;
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
+                        case Overlay::LinkEmulator: linkEmulatorIndex = r.idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
                         case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
@@ -4249,6 +4250,7 @@ namespace UI {
                         case Overlay::LegacyInstances: legacyInstanceIndex = idx; break;
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = idx; break;
+                        case Overlay::LinkEmulator: linkEmulatorIndex = idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = idx; break;
                         case Overlay::Gen5Candidates: gen5CandidateIndex = idx; break;
                         case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
@@ -4449,6 +4451,24 @@ namespace UI {
             return;
         }
 
+        if (overlay == Overlay::LinkEmulator) {
+            namespace Link = PokeBank::UIModel::LinkEmulator;
+            const auto rows = Link::choices(linkPlatform);
+            if (kDown & HidNpadButton_B) {
+                overlay = linkFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
+                if (overlay == Overlay::GamesDrawer) {
+                    gamesDrawerIndex = titleIndex;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
+                }
+                return;
+            }
+            if (kDown & HidNpadButton_Up)
+                linkEmulatorIndex = Link::wrapIndex(linkEmulatorIndex, -1, rows.size());
+            if (kDown & HidNpadButton_Down)
+                linkEmulatorIndex = Link::wrapIndex(linkEmulatorIndex, 1, rows.size());
+            if (kDown & HidNpadButton_A) activateLinkEmulator();
+            return;
+        }
         if (overlay == Overlay::GameFilePicker) {
             const int count = static_cast<int>(launchFileEntries.size());
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
@@ -6474,6 +6494,41 @@ namespace UI {
             for (size_t offset = 70; offset < path.size() && offset < 210; offset += 70)
                 drawLine("", path.substr(offset, 70));
             drawNavBar(fb, {{"B", "Back to Save List"}});
+        } else if (overlay == Overlay::LinkEmulator && u) {
+            namespace Link = PokeBank::UIModel::LinkEmulator;
+            const auto choices = Link::choices(linkPlatform);
+            constexpr int w = 900, h = 608, rowH = 68;
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const auto* game = PokeVault::Games::findGame(linkTargetGameId);
+            fb.drawText(x + 28, y + 18,
+                        std::string(Link::platformLabel(linkPlatform)) + " / SAVE SOURCES",
+                        Colors::Accent, TextStyle::Caption);
+            fb.drawText(x + 28, y + 44,
+                        game ? "Pokémon " + std::string(game->title) : "Link Emulator",
+                        Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 78,
+                        "Choose emulator to find saves. The source stays read-only.",
+                        Colors::TextSecondary, TextStyle::Caption);
+            for (int i = 0; i < static_cast<int>(choices.size()); ++i) {
+                const int ry = y + 116 + i * rowH;
+                const auto& choice = choices[static_cast<size_t>(i)];
+                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 6,
+                                i == linkEmulatorIndex, 10);
+                overlayRects.push_back({x + 24, ry, w - 48, rowH - 6, i});
+                fb.drawText(x + 46, ry + 4, std::string(choice.title),
+                            i == linkEmulatorIndex ? Colors::TextPrimary :
+                                                     Colors::TextSecondary, TextStyle::Body);
+                fb.drawText(x + 46, ry + 34, std::string(choice.description),
+                            Colors::TextMuted, TextStyle::Caption);
+            }
+            if (!linkNotice.empty())
+                fb.drawText(x + 28, y + h - 55,
+                            fitTextToWidth(fb, linkNotice, w - 60, TextStyle::Caption),
+                            Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"D-pad/Stick", "Choose Emulator"},
+                            {"A", "Find Saves"}, {"B", "Back"}});
         } else if (overlay == Overlay::Gen5Setup && u) {
             constexpr int w=800,h=520,rowH=62;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
