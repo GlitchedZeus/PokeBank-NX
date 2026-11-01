@@ -700,7 +700,9 @@ private:
     // encounter of its line is seed-bound (overworld-correlated wild slots and statics, raids at the
     // Pokemon Den 162, Max Lair 244 or their Wild Area locations) must come from one of those seeds
     // (ModernEncounter::raidSeed). Curry-marked records, Shedinja, and shiny records that could only
-    // be raids are not checked, as in PKHeX.
+    // be raids are not checked, as in PKHeX. HOME keeps every field these seeds fix, so the same
+    // rule holds for a Sword/Shield record in Scarlet/Violet (PK9, whose sizes sit at 0x48/0x49);
+    // HOME's size and Ability Patch quirks are allowed for any record with a HOME tracker.
     void checkRaidSeed() {
         if (pk_.isEgg() || side_ != 0 || (version_ != VersionSW && version_ != VersionSH) || PK8::read16(plain_, 0x120) != 0) return;
         ModernEncounter::RaidRecord r;
@@ -712,11 +714,12 @@ private:
         r.id32 = PK8::read32(plain_, 0x0C);
         r.ivs = {pk_.iv(0), pk_.iv(1), pk_.iv(2), pk_.iv(4), pk_.iv(5), pk_.iv(3)};
         r.abilityNumber = pk_.abilityNumber();
-        r.gender = pk_.gender();
+        r.gender = gender();
         r.nature = pk_.nature();
-        r.height = plain_[0x50];
-        r.weight = plain_[0x51];
-        r.homeTracker = (PK8::read32(plain_, 0x135) | PK8::read32(plain_, 0x139)) != 0;
+        const size_t size = sv() ? 0x48 : 0x50, tracker = sv() ? 0x127 : 0x135;
+        r.height = plain_[size];
+        r.weight = plain_[size + 1];
+        r.homeTracker = sv() || (PK8::read32(plain_, tracker) | PK8::read32(plain_, tracker + 4)) != 0;
         r.curryMark = (plain_[0x40] & 0x08) != 0;  // G8PKM.RibbonMarkCurry
         if (ModernEncounter::raidSeed(r) == ModernEncounter::RaidResult::NoSeed)
             invalid(CheckIdentifier::PidRng, "No overworld or Max Raid seed of the species' line gives this EC, PID, IVs, ability, "
@@ -752,6 +755,7 @@ private:
     // has a Tera type override).
     void checkScarletVioletFields() {
         checkBattleVersion();
+        checkRaidSeed();
         if (personal_) {
             const uint8_t obey = plain_[0x11F], met = pk_.metLevel();
             // PK9.IsUntraded: no handling trainer name and a Gen IX origin (or an unhatched egg).

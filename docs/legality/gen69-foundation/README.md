@@ -390,6 +390,10 @@ stay undecided. The check is a superset of PKHeX's: any flawless IV count from 0
 shiny fix-up and a 0/0 size on any record for overworld seeds; both forced-non-shiny states, no
 raid level, rank or Dynamax filter, and HOME's Ability Patch and size resets for raids.
 
+HOME keeps every field these seeds fix, so the same rule runs for a Sword/Shield record in
+Scarlet/Violet (PK9, sizes at 0x48/0x49): every such record has been through HOME, so HOME's size
+and Ability Patch quirks are always allowed for it.
+
 The PK8 generator also emits every den, crystal and distribution raid re-met at one of its own
 Wild Area locations (about 1,700 PKHeX-valid records per seed, plus their mutations).
 
@@ -448,10 +452,10 @@ It fails on any false Invalid (PKHeX valid, NX Invalid) or false Valid (PKHeX in
 | PB8 | 2 / 4 | 46,147 | 19,303 | 26,844 | 23,419 (87.2%) | 0 | 0 |
 | PB8 | 3 / 8 | 83,515 | 28,699 | 54,816 | 47,818 (87.2%) | 0 | 0 |
 | PB8 | 4 / 4 | 48,319 | 20,078 | 28,241 | 24,740 (87.6%) | 0 | 0 |
-| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,173 (85.6%) | 0 | 0 |
-| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,408 (85.9%) | 0 | 0 |
-| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,409 (86.0%) | 0 | 0 |
-| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,297 (86.1%) | 0 | 0 |
+| PK9 | 1 / 4 | 44,177 | 20,598 | 23,579 | 20,205 (85.7%) | 0 | 0 |
+| PK9 | 2 / 4 | 44,463 | 20,702 | 23,761 | 20,440 (86.0%) | 0 | 0 |
+| PK9 | 3 / 8 | 77,301 | 30,323 | 46,978 | 40,497 (86.2%) | 0 | 0 |
+| PK9 | 4 / 4 | 44,104 | 20,536 | 23,568 | 20,332 (86.3%) | 0 | 0 |
 
 PB7 runs use `run.sh PKHEX SEED MUTATIONS 7b`, PA8 runs `8a`, PA9 runs `9a`, PK8 runs `8`, PB8 runs `8b` and PK9 runs `9`.
 The PB7 corpus is smaller because Let's Go has far fewer encounters; it uses more mutations per record.

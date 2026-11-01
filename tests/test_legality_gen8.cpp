@@ -695,6 +695,22 @@ void testOverworldSeeds(const std::vector<Record>& records) {
     check(found > 0, "fixture has overworld-correlated records");
 }
 
+// The same seeds for a Sword/Shield record moved to Scarlet/Violet through HOME (PK9): a PKHeX-valid
+// record keeps its seed, and another EC loses it wherever the met location is seed-bound.
+void testOverworldSeedsPK9(const std::vector<Record>& records) {
+    int valid = 0, decided = 0;
+    for (const Record& r : records) {
+        if (!r.pkhexValid || r.format != Format::PK9 || (r.plain[0xCE] != 44 && r.plain[0xCE] != 45)) continue;
+        const auto base = analyzePlain(r, r.plain);
+        check(!hasIssue(base, Severity::Invalid, "Max Raid seed"), r.label + ": PK9 from Sword/Shield keeps a seed: " + describe(base));
+        ++valid;
+        const auto rep = analyzePlain(r, edit(r.plain, [](auto& b) { b[0x01] ^= 1; }));
+        if (hasIssue(rep, Severity::Invalid, "No overworld or Max Raid seed")) ++decided;
+    }
+    check(valid > 0, "PK9 fixture has Sword/Shield records");
+    check(decided > 0, "some PK9 Sword/Shield record has a seed-bound met location");
+}
+
 int main() {
     const auto records = loadFixture("GEN8_FIXTURE", "tests/fixtures/gen67/pkhex8_seed2_sample.txt", "8");
     const auto bdsp = loadFixture("GEN8B_FIXTURE", "tests/fixtures/gen67/pkhexb8_seed2_sample.txt", "8b");
@@ -714,6 +730,7 @@ int main() {
     testRelearn(all);
     testRaidSeeds(records);
     testOverworldSeeds(records);
+    testOverworldSeedsPK9(sv);
     testFuzz(all);
     std::cout << "test_legality_gen8: " << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;
