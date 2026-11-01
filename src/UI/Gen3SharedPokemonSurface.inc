@@ -1306,6 +1306,8 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         (down & HidNpadButton_B) != 0, (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0,
         chosen, 386, gen3SpeciesAvailable, gen3SpeciesName);
     state.speciesPreview = chosen;
+    // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y does.
+    if (touched.previewShinyTapped) down |= HidNpadButton_Y;
     if (touched.keys || keyed.keys)
         down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
                   HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |

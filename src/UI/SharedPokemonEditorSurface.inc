@@ -350,6 +350,9 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                 available, sharedSpeciesName);
             state.pickerRow = speciesRowIn(state.pickerValues, chosen, state.pickerRow);
             speciesTouchOwned = touched.touch;
+            // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y
+            // does (Gen IV and Gen V both run this shared handler).
+            if (touched.previewShinyTapped) down |= HidNpadButton_Y;
             if (touched.keys || keyed.keys)
                 down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
                           HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
