@@ -417,6 +417,66 @@ void run(Case& c) {
     cancelFrom("a footer tap on - Cancel", [&] {}, [&] {
         check(d.tapNav(HidNpadButton_Minus), g + ": the - Cancel footer badge is tappable");
     });
+
+    // ---- Round 11 X-IMPEXP: X on the Boxes grid ----------------------------------------------
+    // The imported slot is occupied in every generation: its footer names X Export and X writes a
+    // new file without touching the workspace (no sheet in between).
+    const auto boxGrid = [&](int box, int slot) {
+        d.screen.goBack = false;
+        d.screen.helpOverlayActive = false;
+        d.screen.detailViewActive = true;
+        d.screen.selectedMode = View::Boxes;
+        d.screen.selectedBoxIndex = box;
+        d.screen.selectedItemIndex = slot;
+        d.frame();
+        d.frame();
+    };
+    const auto staged2 = c.snapshot();
+    boxGrid(c.importBox, c.importSlot);
+    check(drawn("Export") && !drawn("Import") && !drawn("Add"),
+          g + ": an occupied box slot's footer names X Export (no X Add) " + allTexts());
+    d.press(HidNpadButton_X);
+    const std::string xStatus = d.screen.storageStatus;
+    check(xStatus.rfind("Exported to " + folder + "/", 0) == 0 && !dialogShown(c.generation) && sheetRows().empty(),
+          g + ": X on an occupied box slot exports it (" + xStatus + ")");
+    check(c.snapshot() == staged2, g + ": X Export leaves the workspace unchanged");
+    // An empty cell: X Import opens the same file dialog ('-' cancels it, nothing staged).
+    boxGrid(c.spareBox, c.spareCell);
+    check(drawn("Import") && !drawn("Export"), g + ": an empty box slot's footer names X Import " + allTexts());
+    d.press(HidNpadButton_X);
+    check(dialogShown(c.generation), g + ": X on an empty box slot opens Import from file, never Create");
+    d.press(HidNpadButton_Minus);
+    check(!dialogShown(c.generation) && c.snapshot() == staged2, g + ": cancelled X Import stages nothing");
+    // Create stays reachable: the empty slot's A sheet still starts with Add Pokemon.
+    openSheet(d, View::Boxes, c.spareBox, c.spareCell);
+    check(sheetRow("Add Pokemon") == 0, g + ": Add Pokemon stays first on the empty slot's Actions");
+    d.press(HidNpadButton_B);
+
+    // ---- Round 11 ACTIONS: one order, Move and Review in every generation ---------------------
+    openSheet(d, View::Boxes, c.importBox, c.importSlot);
+    const std::vector<std::string> order{"View", "Edit", "Clone", "Move", "Release", "Origin & Legality",
+                                         "Export to file", "Review Pending Changes", "Cancel"};
+    check(sheetRows() == order, g + ": the occupied box Actions follow the shared order (" + joined(sheetRows()) + ")");
+    if (chooseAction(d, "Move")) {
+        check(d.screen.storageStatus.find("picked up") != std::string::npos && sheetRows().empty(),
+              g + ": Actions -> Move picks the Pokemon up (" + d.screen.storageStatus + ")");
+        d.press(HidNpadButton_B);
+        check(c.snapshot() == staged2, g + ": B cancels the Move and the box is unchanged");
+    } else {
+        check(false, g + ": Move row");
+    }
+    // Party (where the save has one): Review Pending Changes is listed while changes are staged and
+    // opens the shared Review.
+    if (d.screen.trainer.getPartySize() > 0) {
+        openSheet(d, View::Party, 0, 0);
+        const auto rows = sheetRows();
+        check(rows.size() >= 2 && rows[rows.size() - 2] == "Review Pending Changes" && rows.back() == "Cancel",
+              g + ": the Party Actions list Review Pending Changes before Cancel (" + joined(rows) + ")");
+        if (chooseAction(d, "Review Pending Changes"))
+            check(drawn("Review Pending Changes") && sheetRows().empty(), g + ": Party Review opens the shared Review");
+        d.press(HidNpadButton_B);
+        check(c.snapshot() == staged2, g + ": opening Review from Party changes nothing");
+    }
     std::cout << g << ": Export / Import from file checked\n";
 }
 

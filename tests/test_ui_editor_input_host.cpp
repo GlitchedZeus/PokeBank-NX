@@ -465,9 +465,12 @@ void gen3CreatePokerus() {
     d.screen.selectedBoxIndex = 0;
     d.screen.selectedItemIndex = 0;   // the fixture's boxes are empty
     d.frame();
-    d.press(HidNpadButton_X);         // X on an empty box slot: Add (staged Create)
+    // Round 11 X-IMPEXP (owner request): X on an empty box slot is Import from file now, so Create
+    // is reached the documented way: A (Empty Slot Actions) -> Add Pokemon (the first row) -> A.
+    d.press(HidNpadButton_A);
+    d.press(HidNpadButton_A);
     check(drawnValue("Species").find("Pikachu") != std::string::npos || drawnValue("Species").find("#") != std::string::npos,
-          "Gen III X on an empty box slot opens Create (status: " + d.screen.storageStatus + ", species " + drawnValue("Species") + ")");
+          "Gen III A -> Add Pokemon on an empty box slot opens Create (status: " + d.screen.storageStatus + ", species " + drawnValue("Species") + ")");
     constexpr int kGen3DetailTouchBase = 31000, kPokerusRow = 14;
     for (int i = 0; i < 20 && !d.target(kGen3DetailTouchBase + kPokerusRow); ++i) d.press(HidNpadButton_Down);
     check(d.tap(kGen3DetailTouchBase + kPokerusRow), "Gen III Create: Pokérus row publishes a touch target");
@@ -675,10 +678,13 @@ void gen3NoStateAcrossScreens() {
         d.frame();
         check(cells(d, 4000).empty(), "save B: no picker carried over");
         check(drawnValue("Pokerus").front() == '<', "save B: no editor carried over");
-        d.press(HidNpadButton_X);           // X here must be B's own Add, never A's stale Keep
+        // Round 11 X-IMPEXP: Create is A -> Add Pokemon (X is Import from file); it must be B's own
+        // Add, never A's stale draft.
+        d.press(HidNpadButton_A);
+        d.press(HidNpadButton_A);
         check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");
         check(drawnValue("Species").find("#") != std::string::npos && trainerB->stagedPokemon()->pendingChanges().empty(),
-              "save B: X opens a fresh Create draft (species " + drawnValue("Species") + ")");
+              "save B: A -> Add Pokemon opens a fresh Create draft (species " + drawnValue("Species") + ")");
     }
     b->~TrainerViewScreen();
 }

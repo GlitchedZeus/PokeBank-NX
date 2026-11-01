@@ -5327,7 +5327,8 @@ int reviewGeneration(const std::string& gameId) {
                     if (selectedItemIndex == -1) {
                         instructions = "L/R: Box  |  A: Rename  |  B: Back";
                     } else {
-                        // Gen IV uses the native staged PC action menu and X-to-Add.
+                        // Gen IV uses the native staged PC action menu; X exports / imports a
+                        // file (Round 11 X-IMPEXP), Add Pokemon is on the A sheet.
                         // The inherited Create / Release / Grab hints target the
                         // legacy mutable save and are misleading on immutable sources.
                         const auto group = trainer.getGameGroup();
@@ -5336,8 +5337,8 @@ int reviewGeneration(const std::string& gameId) {
                             group == Enums::GameVersion::HGSS;
                         if (gen4Staged) {
                             instructions = occ
-                                ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  B: Back"
-                                : "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Add  |  B: Back";
+                                ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Export  |  B: Back"
+                                : "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Import  |  B: Back";
                         } else {
                             instructions = occ
                                 ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Release  |  Y: Grab/Move  |  B: Back"

@@ -13,6 +13,9 @@ bool hidesGen4CarriedSource(const TrainerViewScreen& screen, int box, int slot);
 // R2-CHECK-009: Gen I Box Actions -> Move. Starts the SAME Boxes-view carry as a Y tap, with this
 // Pokemon picked up (Y drops, B cancels). False when no carry could start.
 bool beginGen1FromAction(TrainerViewScreen& screen, int box, int slot);
+// Round 11 ACTIONS: the same for Gen II (packed box) and Gen III (sparse box) Box Actions -> Move.
+bool beginGen2FromAction(TrainerViewScreen& screen, int box, int slot);
+bool beginGen3FromAction(TrainerViewScreen& screen, int box, int slot);
 } // namespace ClassicPackedMove
 } // namespace UI
 

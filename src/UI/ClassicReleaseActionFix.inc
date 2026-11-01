@@ -161,17 +161,6 @@ ReleaseConfirmState& releaseConfirmStateFor(const TrainerViewScreen& screen) {
     return state;
 }
 
-PokeBank::UIModel::SharedPokemonEditor::ActionCapabilities releaseActionCapabilities() noexcept {
-    PokeBank::UIModel::SharedPokemonEditor::ActionCapabilities caps;
-    caps.canClone = true;
-    caps.canRemove = true;
-    caps.hasLegalityProvenance = true;
-    // Feature A: this sheet exists only with a staged Gen II editor (Import / Export to file).
-    caps.canImportFile = true;
-    caps.canExportFile = true;
-    return caps;
-}
-
 void dismissActionSheetForWorkspace(TrainerViewScreen& screen) {
     auto& legacy = editorOverlayState(screen);
     legacy.active = false;
@@ -337,7 +326,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                                         static_cast<std::size_t>(legacy.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
     const auto actions = PokeBank::UIModel::SharedPokemonEditor::actionsForSlot(
-        occupied, releaseActionCapabilities(), !editor->pendingChanges().empty());
+        occupied, gen2ActionCapabilities(screen), !editor->pendingChanges().empty());
     if (actions.count == 0) return true;
 
     // Gen II matches Gen I, III and IV: never shift the action cursor on
@@ -437,8 +426,19 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
+        case Action::Move: {
+            // Round 11 ACTIONS: the accepted hold-Y packed carry, picked up (Y drops, B cancels).
+            // Close the sheet fully first: the carry layer only runs with no Gen II overlay active.
+            if (!pokemon) return true;
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginGen2FromAction(screen, box, slot))
+                screen.postStatus("Move could not start from here", 240);
+            return true;
+        }
         case Action::None:
-        case Action::Move: // Not offered by the Gen II action set.
             return true;
     }
     return true;
@@ -482,7 +482,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                                static_cast<std::size_t>(legacy.pokemonSlot), error);
     const auto actions = PokeBank::UIModel::SharedPokemonEditor::actionsForSlot(
-        static_cast<bool>(pokemon), releaseActionCapabilities(),
+        static_cast<bool>(pokemon), gen2ActionCapabilities(screen),
         !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0,
         std::max(0, static_cast<int>(actions.count) - 1));

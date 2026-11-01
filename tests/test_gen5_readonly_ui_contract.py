@@ -581,9 +581,14 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 # native Create/Clone action contracts that inspect them.
 native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
 native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
+# Round 11 ACTIONS (owner Extra 7: one Actions model for every generation): the Gen V bridge
+# fills in the shared SharedPokemonEditor capability model instead of appending rows itself; the
+# rows and their conditions are unchanged (pinned behaviourally by test_gen5_party_box_parity /
+# test_gen5_staged_slot_actions / test_gen5_readonly_save).
 require(native_bridge,
         "workspace.emptyCloneDestination(slot.location.box,slot.location.slot)",
-        "append(Shared::Action::Add)")
+        "caps.canAdd=live.validated && !live.occupied && box &&",
+        "return Shared::actionsForSlot(live.occupied,caps,workspace.hasChanges());")
 require(native_screen,
         "ConfirmCreateBox",
         "if(action==Action::Add)",
@@ -631,7 +636,7 @@ require(read("include/Integration/Gen5/Gen5SharedReview.h"),
         "verifyStagedReview(fieldsOnly,error)",
         "result.fields.insert(result.fields.end()")
 require(native_bridge,
-        "append(Shared::Action::Edit)",
+        "return Shared::actionsForSlot(live.occupied,caps,workspace.hasChanges());",
         "workspace.originalOccupied(slot.location)")
 require(read("tests/test_gen5_create_integration.cpp"),
         "editCreated.activate(workspace,Action::Edit,error)",
@@ -1037,8 +1042,8 @@ require(candidate,
         "Gen V clone source differs from immutable SAV5",
         "Gen5StagedPokemonWorkspace::ChangeKind::RemoveBox",
         "Gen V export candidate did not preserve exact staged PK5 bytes")
-require(native_bridge,"append(Shared::Action::Clone)",
-        "append(Shared::Action::Remove)",
+require(native_bridge,"caps.canClone=operand && destination;",
+        "caps.canRemove=box && operand;",
         "workspace.originalOccupied(slot.location)")
 require(native_screen,"Surface::CloneDestination",
         "Surface::ConfirmRemoveBox",
@@ -1149,7 +1154,7 @@ require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocket
 require(surface, "state.moveDestination()", '"Move to Slot"',
         )
 assert "dynamic_cast" not in surface
-require(native_bridge, "append(Shared::Action::Move);")
+require(native_bridge, "caps.canMove=box && operand && destination;")
 require(native_screen, "workspace.moveToEmptyBox(target_,")
 require(read("tests/test_gen5_party_box_parity.cpp"), "Action::Move", "originSummary5(")
 

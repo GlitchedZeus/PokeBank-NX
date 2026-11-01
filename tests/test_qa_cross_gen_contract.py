@@ -1746,8 +1746,9 @@ def contracts(sources: list[Source]) -> list[Result]:
                 r.violations.append(f"Gen {g}: shared Party sheet never opens its native Actions state")
             if not composite or '#include "ClassicPartyActions.inc"' not in composite.code or "ClassicPartyActions::handle(*this" not in composite.code or "ClassicPartyActions::draw(*this" not in composite.code:
                 r.violations.append("Shared Party Actions is missing from actual frame input/draw")
-            if common and "actionsForSlot(true,{false,false,true},false)" not in common.code:
-                r.violations.append("Shared Party Actions no longer offers View/Edit/Origin/Cancel")
+            # Round 11 ACTIONS: the shared model with the real pending state (Review while staged).
+            if common and "actionsForSlot(true,{false,false,true,false,true},pendingChanges(screen))" not in common.code:
+                r.violations.append("Shared Party Actions no longer offers View/Edit/Origin/Export/[Review]/Cancel")
             backend=src(f"src/Integration/Gen{g}/Gen{g}StagedPokemonEditor.cpp" if g!=2 else "src/Integration/Gen2/Gen2StagedEditor.cpp")
             if not backend or "stagePartyPokemonEdit(" not in backend.code:
                 r.violations.append(f"Gen {g}: Party Edit has no native staged writer")

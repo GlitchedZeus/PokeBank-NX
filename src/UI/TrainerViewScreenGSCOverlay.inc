@@ -185,31 +185,6 @@ std::array<uint8_t, 4> editableDVs(const PokeVault::Integration::Gen2::PokemonRe
     return {pokemon.dvs[1], pokemon.dvs[2], pokemon.dvs[3], pokemon.dvs[4]};
 }
 
-bool openPokemonActions(TrainerViewScreen& screen) {
-    auto* editor = stagedEditor(screen);
-    if (!editor) {
-        screen.postStatus("Staged Pokemon editor is unavailable; source remains read-only");
-        return false;
-    }
-    if (screen.selectedBoxIndex < 0 || screen.selectedItemIndex < 0 ||
-        screen.selectedBoxIndex >= static_cast<int>(editor->metadata().boxCount) ||
-        screen.selectedItemIndex >= static_cast<int>(editor->metadata().boxCapacity)) {
-        screen.postStatus("Select a Generation II box slot first");
-        return false;
-    }
-    auto& state = editorOverlayState(screen);
-    state.active = true;
-    state.review = false;
-    state.pokemonActions = true;
-    state.pokemonFields = false;
-    state.pokemonBox = screen.selectedBoxIndex;
-    state.pokemonParty = false;
-    state.pokemonSlot = screen.selectedItemIndex;
-    state.pokemonRow = 0;
-    state.reviewRow = 0;
-    return true;
-}
-
 bool stagePokemonFieldEdit(TrainerViewScreen& screen, int row) {
     auto* editor = stagedEditor(screen);
     auto& state = editorOverlayState(screen);
@@ -934,11 +909,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         const bool pokemonEntrySurface = detailViewActive && selectedMode == ViewMode::Boxes &&
             selectedItemIndex >= 0 && !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
             !saveConfirmActive && !pickerActive && !itemEditDialogActive;
-        if (pokemonEntrySurface && (down & HidNpadButton_X)) {
-            openPokemonActions(*this);
-            controllerNavigation.reset();
-            return;
-        }
+        // Round 11 X-IMPEXP: on the Boxes grid X is Import / Export, handled by the staged parity
+        // surface. Without a staged editor (nothing can be imported or exported) X is inert here
+        // rather than a hidden second way into Pokemon Actions; A still opens them.
+        if (pokemonEntrySurface && (down & HidNpadButton_X)) return;
 
         const bool editorEntrySurface = detailViewActive &&
             selectedMode == ViewMode::Trainer &&

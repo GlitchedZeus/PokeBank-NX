@@ -913,6 +913,20 @@ bool slotOccupiedForFooter(TrainerViewScreen& screen) {
     return pokemon && pokemon->speciesID() != 0;
 }
 
+// Round 11 X-IMPEXP: Import / Export to file need the generation's validated staged editor, the
+// same one the A sheet's file rows need (SharedPokemonEditor::fileCapabilities).
+bool stagedEditorForFiles(TrainerViewScreen& screen) {
+    if (isGen1(screen))
+        return static_cast<PokeVault::Legacy::RBYReadOnlyTrainer&>(screen.trainer).stagedPokemon() != nullptr;
+    if (isGen2(screen))
+        return static_cast<PokeVault::Legacy::GSCReadOnlyTrainer&>(screen.trainer).stagedEditor() != nullptr;
+    if (isGen3(screen))
+        return static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer).stagedPokemon() != nullptr;
+    if (isGen4(screen))
+        return static_cast<PokeVault::Legacy::Gen4ReadOnlyTrainer&>(screen.trainer).stagedPokemon() != nullptr;
+    return false;
+}
+
 std::optional<CellRect> selectedCell(TrainerViewScreen& screen) {
     const auto& state = stateFor(screen);
     return cellRect(screen, state, cursorSlot(screen, state));
@@ -1021,6 +1035,36 @@ bool beginGen1FromAction(TrainerViewScreen& screen, int box, int slot) {
     screen.selectedBoxIndex = box;
     screen.selectedItemIndex = slot;
     beginGen1(screen, state, box, slot);
+    return state.active;
+}
+
+// Round 11 ACTIONS: Gen II / Gen III Box Actions -> Move start the SAME Boxes-view carry as a Y
+// tap (the accepted hold-Y backends beginGen2 / beginGen3), with this Pokemon picked up. The caller
+// closes its sheet first so classicPackedMoveLayerAvailable routes the carry keys here. beginGen2 /
+// beginGen3 return true even when they refuse, so the result is state.active (as for Gen I).
+bool beginGen2FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen2(screen) || screen.selectedMode != TrainerViewScreen::ViewMode::Boxes ||
+        box < 0 || slot < 0 || slot >= classicCapacity(screen))
+        return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    state.storage = false;
+    screen.selectedBoxIndex = box;
+    screen.selectedItemIndex = slot;
+    beginGen2(screen, state, box, slot);
+    return state.active;
+}
+
+bool beginGen3FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen3(screen) || screen.selectedMode != TrainerViewScreen::ViewMode::Boxes ||
+        box < 0 || slot < 0 || slot >= classicCapacity(screen))
+        return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    state.storage = false;
+    screen.selectedBoxIndex = box;
+    screen.selectedItemIndex = slot;
+    beginGen3(screen, state, box, {static_cast<std::size_t>(slot)});
     return state.active;
 }
 
@@ -1279,12 +1323,14 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         spec.canOpen = true;
         spec.openLabel = "Actions";
         spec.boxes = true;
-        if (occupied)
-            spec.actions = {{"Y", "Move / Hold Multi"}};
-        else if (storageMode(screen, state))  // the save pane adds through Actions (X stays read-only)
-            spec.actions = {{"Y", "Hold Multi"}};
-        else
-            spec.actions = {{"X", "Add"}, {"Y", "Hold Multi"}};
+        // Round 11 X-IMPEXP: on the Boxes grid X is Export (occupied) / Import (empty), named from
+        // the same shared decision the surfaces' X key uses; Add Pokemon stays on the A sheet. The
+        // Storage save pane has no X shortcut.
+        namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+        const char* x = storageMode(screen, state)
+            ? nullptr : Shared::boxXLabel(occupied, Shared::fileCapabilities(stagedEditorForFiles(screen)));
+        if (x) spec.actions.push_back({"X", x});
+        spec.actions.push_back({"Y", occupied ? "Move / Hold Multi" : "Hold Multi"});
         // Round 6 (B08): Review on the Boxes grid is + (Y stays Move / Multi), the key
         // openClassicBrowseReview reads there (ReviewEntry.h). The Storage grid has no Review key.
         if (screen.selectedMode == TrainerViewScreen::ViewMode::Boxes) {

@@ -306,10 +306,13 @@ void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // footer names it too, in ClassicBrowseFooter's place (after L/R, before B).
     static_assert(PokeBank::UIModel::ReviewEntry::footerHint(PokeBank::UIModel::ReviewEntry::Screen::Boxes, 2)
                       .glyph[0] == '+');
-    if (occupied)
-        drawNavBar(fb, {{"A", "Actions"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
+    // Round 11 X-IMPEXP: X Export (occupied) / Import (empty) from the shared decision, only with the
+    // staged editor the file actions need; Add Pokemon stays on the A sheet.
+    namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    if (const char* x = Shared::boxXLabel(occupied, Shared::fileCapabilities(stagedEditor(screen) != nullptr)))
+        drawNavBar(fb, {{"A", "Actions"}, {"X", x}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
     else
-        drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
+        drawNavBar(fb, {{"A", "Actions"}, {"L/R", "Box"}, {"+", "Review"}, {"B", "Back"}});
 }
 
 constexpr int kPartyTouchBase = 6200;
