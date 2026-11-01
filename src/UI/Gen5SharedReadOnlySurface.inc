@@ -392,8 +392,9 @@ struct Gen5Editor {
         switch (row) {
             case Species: return std::string(Names::getSpeciesName(p.species())) + " #" + std::to_string(p.species());
             case Nickname: case OriginalTrainer: {
-                const auto name = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), row == Nickname);
-                return name ? *name : std::string("(native glyphs)");
+                // Round 11 H27: the name as stored, in the record's language (display only).
+                const auto name = PokeVault::Integration::Gen5::displayName5(p.decodedBytes(), row == Nickname);
+                return name ? *name : std::string("(unreadable)");
             }
             case Level: return std::to_string(Fields::level(p, b2w2(screen)));
             case Experience: return std::to_string(p.experience());
@@ -436,9 +437,13 @@ struct Gen5Editor {
                 return true;
             case Nickname: case OriginalTrainer: {
                 const bool nickname = row == Nickname;
+                // The ASCII write gate seeds the prompt: a stored Japanese / Korean / accented name is
+                // never re-encoded. It can only be replaced, and the guide says so (Round 11 H27).
                 const auto current = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), nickname);
-                const auto r = Utils::promptText(nickname ? "Nickname" : "Original Trainer",
-                    nickname ? "1-10 ASCII characters" : "1-7 ASCII characters",
+                const char* guide = current ? (nickname ? "1-10 ASCII characters" : "1-7 ASCII characters")
+                                            : (nickname ? "Native name: replace with 1-10 ASCII characters"
+                                                        : "Native name: replace with 1-7 ASCII characters");
+                const auto r = Utils::promptText(nickname ? "Nickname" : "Original Trainer", guide,
                     current ? *current : std::string{}, nickname ? 10 : 7);
                 if (r.accepted && !d.stageName(nickname ? Field::NicknameText : Field::OriginalTrainerText,
                                                r.text, error))
@@ -870,7 +875,10 @@ struct Gen5Editor {
         const auto& backendState = backend(screen);
         EditorSurface::ChromeInfo info;
         info.species = p.species();
-        const auto nickname = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), true);
+        // Round 11 H27: the stored name in every Gen V language, as Gen III / IV headers already
+        // do, so cycling Language visibly changes an un-nicknamed name. Display only: the edit and
+        // replay paths keep the asciiName5 write gate. Unreadable -> the species-name fallback.
+        const auto nickname = PokeVault::Integration::Gen5::displayName5(p.decodedBytes(), true);
         info.nickname = nickname ? *nickname : std::string{};
         info.level = Fields::level(p, b2w2(screen));
         info.gender = p.gender();
@@ -2084,7 +2092,7 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 if(v.field==F::EV && v.stat<6)evs[v.stat]=v.after;
             }
             if(!moves.empty())rows.push_back({loc+" / Moves",moves});
-            const auto ot=G::asciiName5(after.decodedBytes(),false);
+            const auto ot=G::displayName5(after.decodedBytes(),false);
             rows.push_back({loc+" / OT / TID / SID",(ot && !ot->empty()?*ot:std::string("(none)"))+" / "+
                 std::to_string(after.tid())+" / "+std::to_string(after.sid())});
             for(const auto& v:verified->created) {
@@ -2107,10 +2115,10 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
             std::string detail=reviewedFieldLabel(field);
             if(field.field==F::NicknameText || field.field==F::OriginalTrainerText) {
                 const bool nickname=field.field==F::NicknameText;
-                const auto from=G::asciiName5(before.decodedBytes(),nickname);
-                const auto to=G::asciiName5(after.decodedBytes(),nickname);
-                detail=std::string(nickname?"Nickname: ":"OT Name: ")+(from?*from:"Native glyphs")+
-                    " -> "+(to?*to:"Native glyphs");
+                const auto from=G::displayName5(before.decodedBytes(),nickname);
+                const auto to=G::displayName5(after.decodedBytes(),nickname);
+                detail=std::string(nickname?"Nickname: ":"OT Name: ")+(from?*from:"(unreadable)")+
+                    " -> "+(to?*to:"(unreadable)");
             }
             if(field.field==F::AbilitySlot)
                 detail=std::string("Ability: ")+Trainer::getAbilityName(before.ability())+" -> "+Trainer::getAbilityName(after.ability());
@@ -2154,10 +2162,10 @@ void drawLegality5(TrainerViewScreen& screen,PKSEFramebuffer& fb,const ScreenSta
     if(p && p->valid() && !p->empty()) {
         const auto origin=p->originVersion();const auto date=p->metDate();
         rows.push_back({"Pokemon",std::string(Names::getSpeciesName(p->species()))+" #"+std::to_string(p->species())});
-        const auto nickname=PokeVault::Integration::Gen5::asciiName5(p->decodedBytes(),true);
-        const auto ot=PokeVault::Integration::Gen5::asciiName5(p->decodedBytes(),false);
-        rows.push_back({"Nickname",nickname?*nickname:"Native glyphs"});
-        rows.push_back({"Original Trainer",ot?*ot:"Native glyphs"});
+        const auto nickname=PokeVault::Integration::Gen5::displayName5(p->decodedBytes(),true);
+        const auto ot=PokeVault::Integration::Gen5::displayName5(p->decodedBytes(),false);
+        rows.push_back({"Nickname",nickname?*nickname:"(unreadable)"});
+        rows.push_back({"Original Trainer",ot?*ot:"(unreadable)"});
         rows.push_back({"Trainer / Secret ID",std::to_string(p->tid())+" / "+std::to_string(p->sid())});
         rows.push_back({"Origin game",Enums::getOriginGameName(origin)});
         rows.push_back({"Met location",metLocationText5(origin,p->metLocation())});

@@ -161,7 +161,8 @@ namespace UI {
         int fontSans;                // Nunito (primary); the symbol fonts are added as fallbacks to it
         int fontSym;                 // Noto Sans Symbols (♂ ♀ ★ …)
         int fontSym2;                // Noto Sans Symbols 2 (card suits ♥ …)
-        int fontJapanese = -1;       // console shared "Standard" font (kana), last fallback
+        int fontJapanese = -1;       // console shared "Standard" font (kana), fallback after the symbols
+        int fontKorean = -1;         // console shared Korean font (Hangul), last fallback
         bool plStarted = false;      // pl service opened for the shared font; closed in the destructor
         bool frameActive = false;    // true between the frame's first draw/clear and flush()
         int width;
