@@ -329,7 +329,12 @@ int main() {
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
     assert(unified.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
-    assert(picker.find("state.working.caughtData = 0") != std::string::npos);
+    // Round 11 follow-up (updated pin, owner H25 clarification 2): the species picker used to clear
+    // Crystal caught data itself after ANY species change -- an existing Pokemon's (Edit) history
+    // too. Session::setSpecies owns the policy now: a Create draft's no-longer-valid location resets
+    // with a visible status; an existing Pokemon keeps its caught data and is flagged instead.
+    assert(picker.find("state.working.caughtData = 0") == std::string::npos);
+    assert(picker.find("state.speciesChangeResetStatus()") != std::string::npos);
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.
     const auto contextualMoveEditor = unified.substr(unified.find("bool handleUnifiedMoveEditor("),

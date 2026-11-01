@@ -10,6 +10,7 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/Gen2PokemonPickerModel.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 
 #include <algorithm>
@@ -163,6 +164,53 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
             const bool locationValidForArbok = false;  // no Crystal template puts Arbok at location 50
             require(s.working.caughtData == (create && !locationValidForArbok ? 0 : caughtRaw),
                     "Create clears a location Arbok was never met at; Edit keeps its recorded history");
+            // Round 11 follow-up: a Create reset is visible (caught data is optional in Crystal, so
+            // it says "cleared", not "needs a new choice"); Edit resets nothing and says nothing.
+            require(s.speciesChangeResetStatus() ==
+                        (create ? std::string("Species changed: Pokérus cleared and Met Location cleared") : std::string()),
+                    "reset status: " + s.speciesChangeResetStatus());
+            // Edit: the kept Crystal caught data is flagged (editor), never cleared; Gold / Silver
+            // carry no caught data to judge.
+            const auto flags = s.historyFlags(sourceId);
+            if (create || !crystal) require(flags.empty(), "no flag for a Create draft or Gold / Silver");
+            else
+                require(!flags.empty() && flags.front() == "Met Location is not a listed catch for Arbok (history kept)",
+                        "Crystal Edit flag: " + (flags.empty() ? std::string("(none)") : flags.front()));
+        }
+        if (crystal) {
+            // Edit Pikachu -> Arbok with Crystal caught data and Pokerus: Keep -> Review (caution note)
+            // -> export -> strict reparse keeps Pokerus and the caught data byte for byte.
+            auto historyEditor = StagedEditor::create(*parsed.save, error);
+            PokemonRecord p = entry;
+            p.moves = {84, 92, 0, 0};   // Thunder Shock, Toxic (TM06: Arbok keeps it)
+            p.pp = {30, 10, 0, 0};
+            p.pokerus = 0x21;
+            p.caughtData = caughtRaw;
+            Session seed;
+            seed.begin(entry, SessionMode::Edit);
+            seed.working = p;   // stage the history first, as an earlier session would have
+            require(seed.keep(*historyEditor, 1, 0, error), "stage Pikachu with caught data: " + error);
+            const auto seeded = *historyEditor->boxedPokemon(1, 0, error);
+            require(seeded.caughtData == caughtRaw && seeded.pokerus == 0x21, "seeded history");
+            Session e;
+            e.begin(seeded, SessionMode::Edit);
+            require(e.setSpecies(24, sourceId), "Edit Pikachu -> Arbok");
+            const auto flags = e.historyFlags(sourceId);
+            require(!flags.empty() && e.missingRequiredFields().empty(), "flagged, and Keep is not refused");
+            require(e.keep(*historyEditor, 1, 0, error), "keep Arbok: " + error);
+            bool cautionRow = false;
+            for (const auto& change : historyEditor->pendingChanges())
+                cautionRow |= change.label == "Box 2 Slot 1 Caution" && change.beforeValue.empty() &&
+                              change.afterValue == PokeBank::UIModel::HistoryConsistency::joined(flags);
+            require(cautionRow, "Review carries the caution note on Arbok's entry");
+            const auto exported = historyEditor->finalizedBytes(error);
+            require(!exported.empty() && error.empty(), "export: " + error);
+            auto reread = parse(exported, game);
+            require(static_cast<bool>(reread), "strict reparse");
+            auto rereadEditor = StagedEditor::create(*reread.save, error);
+            const auto arbok = rereadEditor->boxedPokemon(1, 0, error);
+            require(arbok && arbok->species == 24 && arbok->caughtData == caughtRaw && arbok->pokerus == 0x21,
+                    "reparsed Arbok kept its Pokerus and Crystal caught data byte for byte");
         }
         if (crystal) {
             // Ekans -> Arbok at location 52, where Crystal has both: the caught data stays.
@@ -178,6 +226,84 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
             require(s.setSpecies(24, sourceId) && s.working.caughtData == p.caughtData && s.working.pokerus == 0,
                     "Create: a location still valid for Arbok is kept; Pokerus still resets");
         }
+    }
+
+    // Round 11 follow-up (independent QA finding 1): every species 1-251 has at least one Crystal Met
+    // Location row -- verified catch templates first, then every other native landmark labelled
+    // unverified (Gift / Event markers name themselves) -- so no species x Crystal combination is
+    // empty. Crystal caught data stays optional (Create is not refused without it); a chosen row
+    // still round-trips through Add -> export -> strict reparse.
+    if (crystal) {
+        namespace Picker = PokeBank::UIModel::Gen2PokemonPicker;
+        namespace Native = PokeBank::UIModel::Gen2Native;
+        std::size_t empty = 0, rows = 0, templates = 0, others = 0, staged = 0;
+        for (uint16_t species = 1; species <= 251; ++species) {
+            Picker::Model model;
+            model.openLocation(sourceId, species, 0, 0);
+            if (model.locationCount() == 0) { ++empty; continue; }
+            for (int row = 0; row < model.locationCount(); ++row) {
+                model.index = row;
+                const auto text = Picker::locationRowTextAt(model, row);
+                const bool unverified = text.detail.find("unverified") != std::string::npos;
+                if (const auto* encounter = model.locationChoice()) {
+                    ++templates;
+                    // (an Odd Egg template is hatched at landmark 0, Crystal's own egg record)
+                    require(!unverified && text.detail.find("Lv. ") != std::string::npos &&
+                            (encounter->location == 0 ||
+                             PokeBank::UIModel::ExactGameMetLocations::crystalNativeCaughtLocation(encounter->location)),
+                            "a Crystal catch template says its method / level, never unverified: " + text.detail);
+                } else {
+                    ++others;
+                    const auto other = model.otherLocationChoice();
+                    require(other && unverified &&
+                            PokeBank::UIModel::ExactGameMetLocations::crystalNativeCaughtLocation(*other),
+                            "an other Crystal landmark is labelled unverified, never a catch: " + text.detail);
+                }
+                ++rows;
+            }
+            // Create with a usable move: no caught data is fine (optional), and the rotating row
+            // chosen round-trips.
+            uint8_t move = 0;
+            for (uint16_t m = 1; m <= 251 && !move; ++m)
+                if (PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(game, species, m)) move = static_cast<uint8_t>(m);
+            require(move != 0, "a learnable Crystal move exists for " + std::to_string(species));
+            auto createEditor = StagedEditor::create(*parsed.save, error);
+            PokemonRecord fresh = entry;
+            fresh.level = 5;
+            fresh.moves = {};
+            fresh.pp = {};
+            fresh.ppUps = {};
+            fresh.pokerus = 0;
+            fresh.caughtData = 0;
+            Session create;
+            create.begin(fresh, SessionMode::Create);
+            require(create.setSpecies(species, sourceId) && create.setLevel(5) && create.setMove(0, move),
+                    "Crystal Create " + std::to_string(species));
+            require(create.missingRequiredFields().empty(), "Crystal caught data stays optional");
+            model.index = species % model.locationCount();
+            Native::CrystalCaughtData caught;
+            caught.present = true;
+            caught.timeOfDay = 1;
+            caught.levelCode = 5;
+            caught.location = model.locationChoice() ? static_cast<uint8_t>(model.locationChoice()->location)
+                                                     : *model.otherLocationChoice();
+            create.working.caughtData = Native::encodeCrystalCaughtData(caught);
+            std::size_t slot = 99;
+            require(create.add(*createEditor, 2, slot, error), "Crystal Create add " + std::to_string(species) + ": " + error);
+            const auto out = createEditor->finalizedBytes(error);
+            require(!out.empty() && error.empty(), "Crystal export: " + error);
+            auto reread = parse(out, game);
+            require(static_cast<bool>(reread), "Crystal strict reparse");
+            auto rereadEditor = StagedEditor::create(*reread.save, error);
+            const auto back = rereadEditor->boxedPokemon(2, slot, error);
+            require(back && back->species == species &&
+                    Native::decodeCrystalCaughtData(back->caughtData).location == caught.location,
+                    "the chosen Crystal location round-trips for " + std::to_string(species));
+            ++staged;
+        }
+        require(empty == 0 && templates > 0 && others > 0, "Crystal species with no Met Location row: " + std::to_string(empty));
+        std::cout << "crystal_gbc: 251 species, " << rows << " rows (" << templates << " catch templates, " << others
+                  << " unverified), " << staged << " staged and reparsed, " << empty << " empty\n";
     }
 
     // An existing Pokemon whose species change leaves no usable move cannot be kept moveless.

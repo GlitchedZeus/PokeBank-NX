@@ -587,6 +587,53 @@ void gen3CreatePokerus() {
     for (int i = 0; i < 3; ++i) d.press(HidNpadButton_B);
 }
 
+// Round 11 follow-up (owner H25 clarification 2), through the real screen: an EXISTING FireRed Pikachu
+// (Met Location 1, a Hoenn id that is no FireRed place) changed to Rattata keeps its history; the
+// editor draws a Caution line in its Origin & Legality pane and Review draws the same caution note on
+// the entry. Keep is not refused, and no Met Location / Pokerus change is staged.
+std::string drawnJoined() {
+    std::string all;
+    for (const auto& t : HostUi::texts) all += t + " ";
+    return all;
+}
+void gen3EditSpeciesChangeCaution() {
+    auto& g3 = openGen3(13);
+    if (!g3.screen) return;
+    Driver d{*g3.screen, {}, {}};
+    if (!openGen3PartyEdit(d)) return;
+    const std::string flag = "Origin game has no record of this Met Location (history kept)";
+    d.frame();
+    check(drawnJoined().find(flag) == std::string::npos, "no caution before the species changes");
+    d.press(HidNpadButton_A);                          // Species row: open the species picker
+    for (int i = 0; i < 6; ++i) d.press(HidNpadButton_Up);   // Pikachu #25 -> Rattata #19
+    d.press(HidNpadButton_A);
+    check(drawnValue("Species").find("Rattata") != std::string::npos,
+          "Gen III Edit species is Rattata (got " + drawnValue("Species") + ")");
+    d.frame();
+    const auto editor = drawnJoined();
+    check(editor.find("Caution") != std::string::npos && editor.find(flag) != std::string::npos,
+          "Gen III Edit draws the history caution in the Origin & Legality pane");
+    check(d.screen.storageStatus.find("Pok\xC3\xA9rus cleared") == std::string::npos &&
+              d.screen.storageStatus.find("needs a new choice") == std::string::npos,
+          "an Edit species change resets nothing and says nothing about a reset");
+    d.press(HidNpadButton_X);                          // Keep: a flag never refuses it
+    const auto& rows = g3.trainer->stagedPokemon()->pendingChanges();
+    bool caution = false, metOrPokerus = false;
+    std::string labels;
+    for (const auto& r : rows) {
+        labels += r.label + "=" + r.afterValue + "; ";
+        caution = caution || (r.label == "Party 1 Caution" && r.afterValue.find(flag) == 0 && r.createdDetail);
+        metOrPokerus = metOrPokerus || r.label.find("Met Location") != std::string::npos ||
+                       r.label.find("Met Level") != std::string::npos || r.label.find("Pok") != std::string::npos;
+    }
+    check(!rows.empty() && caution, "Gen III Keep stages the change with one caution note (" + labels + ")");
+    check(!metOrPokerus, "the kept history stages no Met Location / Met Level / Pokerus change");
+    check(d.screen.openStagedReview(false), "Gen III Review opens after Keep");
+    d.frame();
+    check(drawnJoined().find(flag) != std::string::npos, "Gen III Review draws the caution note on the entry");
+    for (int i = 0; i < 3; ++i) d.press(HidNpadButton_B);
+}
+
 // Ids of the picker cells the last draw published (the visible, possibly clipped, grid).
 std::vector<int> cells(const Driver& d, int base) {
     std::vector<int> ids;
@@ -1225,6 +1272,7 @@ int main() {
     gen5LanguageNoToast();
     gen5EditShinyInline();
     gen3ViewOnly();
+    gen3EditSpeciesChangeCaution();
     gen5ViewOnly();
     gen4ViewOnly();
     if (failures) {

@@ -8,6 +8,9 @@
 #include "UI/SpeciesChangeMoves.h"
 #include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/CreateRequiredFields.h"
+#include "UI/ExactGameMetLocations.h"
+#include "UI/Gen3EncounterPickerModel.h"
+#include "UI/HistoryConsistencyFacts.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
 
@@ -98,6 +101,7 @@ struct Session {
     // encounter invalid clears it again (encounterReset tells the surface to say so).
     bool metLocationChosen = false;
     bool encounterReset = false;
+    bool pokerusCleared = false;   // the last Create species change cleared a non-zero Pokerus
     ProgressionSource progression = ProgressionSource::Unchanged;
     Gen3::StagedPokemonRecord baseline{};
     Gen3::StagedPokemonRecord working{};
@@ -113,6 +117,7 @@ struct Session {
         confirmExit = false;
         metLocationChosen = false;
         encounterReset = false;
+        pokerusCleared = false;
         requestedNature.reset();
         requestedGender.reset();
         requestedShiny.reset();
@@ -142,6 +147,7 @@ struct Session {
     bool dirty() const noexcept { return !sameEditableRecord(baseline, working); }
 
     bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
+        encounterReset = pokerusCleared = false;   // a reselect resets nothing and says nothing
         if (!editable() || species == 0 || species > 386) return false;
         if (species == working.species) return true;
         working.species = species;
@@ -164,12 +170,14 @@ struct Session {
             return game && Gen3::Learnset::classify(*game, species, move, {}) != Gen3::Learnset::Availability::Invalid;
         });
         // Round 11 (owner H25, SpeciesChangeHistoryPolicy.h): a Create draft's Pokerus resets and a
-        // chosen encounter that is no longer an exact-game encounter of the new species (or its
-        // ancestry, R2 provenance) is cleared. An existing Pokemon keeps its recorded history.
+        // chosen encounter that is no longer a catch template of the new species (or its ancestry,
+        // R2 provenance) in the RECORD's origin game is cleared; resetStatus() names both. An
+        // existing Pokemon keeps its recorded history (historyFlags() flags a misfit instead).
         const auto history = SpeciesChangeHistoryPolicy::reconcile(
             mode == Mode::Create ? SpeciesChangeHistoryPolicy::Mode::Create : SpeciesChangeHistoryPolicy::Mode::Edit,
-            metLocationChosen, [&] { return encounterStillValid(sourceGameId); });
+            metLocationChosen, [&] { return encounterStillValid(); });
         encounterReset = history.resetMetLocation;
+        pokerusCleared = history.resetPokerus && working.pokerus != 0;
         if (history.resetPokerus) working.pokerus = 0;
         if (history.resetMetLocation) {
             working.metLocation = 0;
@@ -179,24 +187,78 @@ struct Session {
         return true;
     }
 
-    // The draft's Met Location / Met Level is an exact-game encounter of its current species.
-    bool encounterStillValid(std::string_view sourceGameId) const {
-        for (const auto& choice :
-             PokeVault::Integration::EncounterGuardrails::forGameSpeciesWithGen3Provenance(sourceGameId, working.species))
+    // The status a Create species change posts: what it reset ("" when nothing was).
+    std::string speciesChangeResetStatus() const {
+        return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, encounterReset);
+    }
+
+    // The draft's Met Location / Met Level is a catch template of its current species (or its
+    // ancestry) in the record's own origin game -- the same list the Met Location picker offers as
+    // verified catches (EncounterPicker::templatesForOrigin), never the save being edited.
+    bool encounterStillValid() const {
+        for (const auto& choice : Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species))
             if (choice.encounter.location == working.metLocation && choice.encounter.containsLevel(working.metLevel))
                 return true;
         return false;
     }
+
+    // Round 11 (owner clarification 2): an existing Pokemon whose species was changed in this
+    // session keeps its history; a combination that no longer fits is flagged (editor + Review),
+    // never cleared. Empty for Create / View or an unchanged species.
+    std::vector<std::string> historyFlags() const {
+        if (mode != Mode::Edit || working.species == baseline.species) return {};
+        return HistoryConsistency::gen3Flags(working.species, working.originGame, working.metLocation,
+                                             working.metLevel, working.level);
+    }
     // The surface's Met Location picker applied an encounter the user chose.
     void noteMetLocationChosen() noexcept { if (mode == Mode::Create) metLocationChosen = true; }
 
-    // Gen III chooses a Met Location only from the exact game's encounter templates (species plus
-    // R2 provenance). A species with none in this game has nothing the picker could offer, so the
-    // requirement cannot be met there and is not imposed (the picker says why); see the Round 11
-    // report. A Create draft's origin game is the save's own game.
+    // The Met Location picker's model for this draft (Round 11 follow-up): the record's origin
+    // game's catch templates for the species, and the rows the picker shows -- keep-stored, those
+    // templates, then every other native location of that origin game and its markers.
+    struct MetLocationPicker {
+        std::vector<PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice> choices;
+        std::vector<uint16_t> rows;
+    };
+    MetLocationPicker metLocationPicker() const {
+        MetLocationPicker picker;
+        picker.choices = Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species);
+        picker.rows = Gen3EncounterPicker::rowValuesWithNative(picker.choices, working.metLocation, working.originGame);
+        return picker;
+    }
+
+    // Applies one picker row; every offered row is an explicit choice (catch template, other native
+    // location, trade / egg / event marker, or keep-stored), so each one marks a Create draft's Met
+    // Location chosen. Returns the template applied, nullptr for any other row; false when `row` is
+    // not a row of `picker`.
+    bool applyMetLocationRow(const MetLocationPicker& picker, uint16_t row,
+                             const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice*& applied) {
+        applied = nullptr;
+        if (!editable() || std::find(picker.rows.begin(), picker.rows.end(), row) == picker.rows.end()) return false;
+        if (ExactGameMetLocations::isOtherNativeRow(row)) {
+            // No template: the met level stays as entered (the Met Level row prompts 0-100).
+            working.metLocation = ExactGameMetLocations::otherNativeRowLocation(row);
+        } else if (row != Gen3EncounterPicker::kKeepStoredRow) {
+            const auto* choice = Gen3EncounterPicker::choiceAt(picker.choices, row);
+            if (!choice) return false;
+            working.metLocation = choice->encounter.location;
+            if (!setEncounterMetLevel(choice->encounter.minLevel)) return false;
+            applied = choice;
+        }
+        noteMetLocationChosen();
+        return true;
+    }
+
+    // Round 11 follow-up (QA finding 1): the Met Location picker always offers the record's origin
+    // game's own native list -- verified catch templates first, then every other native location
+    // labelled unverified, plus the trade / egg / event markers (Gen3EncounterPickerModel.h). So a
+    // Create draft whose origin game has a native list always has something to choose, and its
+    // Met Location is required as an explicit choice even when the species has no catch template
+    // there (a FireRed Rayquaza or Charizard). Only an origin with no native Gen III GBA list
+    // (Colosseum / XD, unknown) has nothing to offer.
     bool metLocationChoosable() const {
-        return !PokeVault::Integration::EncounterGuardrails::forGameSpeciesWithGen3Provenance(
-            sourceIdForOrigin(working.originGame), working.species).empty();
+        return !ExactGameMetLocations::gen3OfferedLocations(working.originGame).empty() ||
+               !Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species).empty();
     }
 
     // The shared Round 11 rule (UI/CreateRequiredFields.h): a Create draft needs a chosen Met

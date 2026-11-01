@@ -13,6 +13,7 @@
 #include "Enums/Ball.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/StringHelpers.h"
+#include "UI/HistoryConsistencyFacts.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -221,6 +222,18 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
             if(from!=to)rows.push_back({location+" / "+field,from+" -> "+to});
         };
         emit("Species",Names::getSpeciesName(a.species()),Names::getSpeciesName(b.species()));
+        // Round 11 (owner H25 clarification 2): the species changed and the record kept its own
+        // history; a misfit is one caution note on this entry, never a change or a refusal. HG/SS
+        // keep their Met Location in the extended field (Gen4SharedEditor::metLocationOf).
+        if(a.species()!=b.species()) {
+            const Pokemon::Pokemon4ReadOnlyView view(b);
+            const uint8_t origin=static_cast<uint8_t>(b.originVersion());
+            const uint16_t met=origin==7 || origin==8 ? b.metLocationExtended() : view.metLocation();
+            namespace History=PokeBank::UIModel::HistoryConsistency;
+            if(const auto caution=History::joined(History::gen45Flags(b.species(),origin,met,b.metLevel(),
+                   static_cast<uint8_t>(view.level())));!caution.empty())
+                rows.push_back({location+" / "+History::kCautionLabel,caution});
+        }
         emit("Nickname",Utils::utf16ToUtf8(a.nickname()),Utils::utf16ToUtf8(b.nickname()));
         emit("Original Trainer",Utils::utf16ToUtf8(a.originalTrainerName()),Utils::utf16ToUtf8(b.originalTrainerName()));
         emit("Trainer ID",std::to_string(a.tid()),std::to_string(b.tid()));

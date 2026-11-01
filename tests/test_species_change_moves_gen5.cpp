@@ -190,6 +190,13 @@ void run(G::SaveFamily family, std::string_view game, uint8_t version) {
     ui.editDraft() = std::move(probe);
     const auto fearow = *ui.draft().current();
     require(fearow.moves()[0] != 0, "Fearow keeps at least one usable move");
+    // Round 11 follow-up (owner H25 clarification 2): the Edit draft keeps its history, and the
+    // editor's Caution row and Review's note come from the one shared check (historyFlags5).
+    require(ui.historyFlags() == G::historyFlags5(fearow, b2w2), std::string(game) + ": editor flags");
+    require(!ui.historyFlags().empty() &&
+                ui.historyFlags().front() == "Met Location is not a listed catch for Fearow (history kept)",
+            std::string(game) + ": the Eevee location (16) is not a listed Fearow catch: flagged, kept");
+    require(ui.missingRequiredFields().empty(), "a flag never refuses Keep");
     // Only species, ability, the four moves / PP / PP Ups and the checksum differ.
     const auto& now = fearow.decodedBytes();
     for (size_t i = 0; i < originalDecoded.size(); ++i) {
@@ -221,6 +228,9 @@ void run(G::SaveFamily family, std::string_view game, uint8_t version) {
     require(back->pid() == original.pid() && back->ivs() == original.ivs() && back->evs() == original.evs() &&
             back->metLocation() == original.metLocation() && back->tid() == original.tid(),
             "PID, IVs, EVs, met data, TID untouched");
+    require(back->metLevel() == original.metLevel() && back->pokerusMode() == original.pokerusMode() &&
+            back->originVersion() == original.originVersion(),
+            "Edit species change kept Met Level, Pokerus and origin through reparse");
     require(reopened->boxPokemon(0, 1)->species() == 495, "Snivy untouched");
     require(sav == pristine, "source bytes never change");
 }
@@ -279,11 +289,18 @@ void createHistory(G::SaveFamily family, std::string_view game, uint8_t version)
         require(movesOf(*ui.draft().current()) == (std::array<uint16_t, 4>{}), "a species change adds no move");
         require(ui.editDraft().stage(Field::MetLocation, 0, *patratAt, error), "met where Patrat lives: " + error);
         ui.noteCreateMetLocationChosen();
+        require(ui.editDraft().stage(Field::Pokerus, 0, 2, error), "Pokerus on the draft: " + error);
         bool reset = true;
         require(ui.recreateCreateSpecies(ws, next, false, next == 151 ? "Mew" : "Watchog", "Patrat", ok, error, reset),
                 std::string(game) + " -> " + std::to_string(next) + ": " + error);
         const auto now = *ui.draft().current();
         require(now.species() == next && now.pokerusMode() == 0, "rebuilt; no Pokerus");
+        // Round 11 follow-up: the reset is visible; the status the surface posts names it.
+        require(ui.createSpeciesResetStatus(reset) ==
+                    (next == 151 ? std::string("Species changed: Pokérus cleared and Met Location needs a new choice")
+                                 : std::string("Species changed: Pokérus cleared")),
+                std::string(game) + " Create reset status: " + ui.createSpeciesResetStatus(reset));
+        require(ui.historyFlags().empty(), "a Create draft is never flagged (it resets instead)");
         if (next == 151) {
             require(reset && ui.createNeedsMetLocation() &&
                     now.metLocation() == G::Gen5SharedScreenState::kSharedCreateMetLocation,

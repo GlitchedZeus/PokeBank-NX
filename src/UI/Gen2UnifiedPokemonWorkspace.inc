@@ -1148,7 +1148,9 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
     drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + UI::SharedMovesPanel::kDataPaneOffset,
-                                                   w, h - 256, state.working, *game);
+                                                   w, h - 256, state.working, *game,
+                                                   PokeBank::UIModel::HistoryConsistency::joined(
+                                                       state.historyFlags(screen.sourceGameId)));
 }
 
 void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified) {

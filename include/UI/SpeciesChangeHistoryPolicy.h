@@ -13,12 +13,17 @@
 //    the user is told to choose a new encounter.
 //  - Edit (an existing Pokemon): its Met Location and Pokerus are its own recorded history, which
 //    the editor never clears behind the user's back (the encounter tables are wild-only and
-//    cannot judge gift / static / trade / event histories). Nothing is reset.
+//    cannot judge gift / static / trade / event histories). Nothing is reset; a combination that
+//    no longer fits the new species is flagged instead (UI/HistoryConsistency.h).
+//
+// A Create reset is never silent: the species-apply point posts resetStatus(), naming what was
+// reset (owner clarification 2: new drafts reset properly, and visibly).
 //
 // Gen I has neither field. This header decides; each generation applies the decision to its own
 // draft with its own setters, so byte layout, checksums and commit paths are untouched.
 
 #include <cstdint>
+#include <string>
 
 namespace PokeBank::UIModel::SpeciesChangeHistoryPolicy {
 
@@ -29,7 +34,22 @@ struct Decision {
     bool resetMetLocation = false;  // Met Location and Met Level back to "not chosen"
 };
 
-inline constexpr const char* kChooseEncounterStatus = "Species changed; choose a new legitimate encounter";
+// Round 11 follow-up: the status names what was reset and says what to do; it no longer says
+// "legitimate", which read as a legality claim the encounter tables cannot make.
+inline constexpr const char* kChooseEncounterStatus = "Species changed: Met Location needs a new choice";
+
+// The visible Create status after a species change: what was reset, or "" when nothing was.
+// `metLocationRequired` is false for Crystal caught data, which stays optional: it was cleared, and
+// no new choice is demanded.
+[[nodiscard]] inline std::string resetStatus(bool pokerusCleared, bool metLocationReset,
+                                             bool metLocationRequired = true) {
+    if (!pokerusCleared && !metLocationReset) return {};
+    std::string text = "Species changed: ";
+    if (pokerusCleared) text += "Pokérus cleared";
+    if (pokerusCleared && metLocationReset) text += " and ";
+    if (metLocationReset) text += metLocationRequired ? "Met Location needs a new choice" : "Met Location cleared";
+    return text;
+}
 
 // metLocationChosen: the draft holds a Met Location the user picked (not the unset placeholder).
 // stillValid(): true when that location is an encounter of the new species or its ancestry; it is

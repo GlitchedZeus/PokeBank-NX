@@ -6,6 +6,7 @@
 #include "UI/SpeciesChangeMoves.h"
 #include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/CreateRequiredFields.h"
+#include "UI/HistoryConsistencyFacts.h"
 #include "UI/Gen2NativePresentation.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "UI/PokemonEditorExitGuard.h"
@@ -39,8 +40,11 @@ struct Session {
     bool confirmExit = false;
     ProgressionSource progression = ProgressionSource::Unchanged;
     Gen2::PokemonRecord baseline{}, working{};
+    // The last Create species change cleared a non-zero Pokerus / the chosen caught data.
+    bool pokerusCleared = false, caughtDataCleared = false;
     void begin(const Gen2::PokemonRecord& p, SessionMode next) {
         baseline = working = p; mode = next; confirmExit = false;
+        pokerusCleared = caughtDataCleared = false;
         progression = next == SessionMode::Create ? ProgressionSource::Level : ProgressionSource::Unchanged;
     }
     bool editable() const noexcept { return mode == SessionMode::Create || mode == SessionMode::Edit; }
@@ -66,6 +70,7 @@ struct Session {
         return true;
     }
     bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
+        pokerusCleared = caughtDataCleared = false;
         if (!editable() || !Gen2::personalRecord(species)) return false;
         if (species == working.species) return true;
         const uint8_t nextLevel =
@@ -100,9 +105,27 @@ struct Session {
                     if (encounter.location == caught.location) return true;
                 return false;
             });
+        pokerusCleared = history.resetPokerus && working.pokerus != 0;
+        caughtDataCleared = history.resetMetLocation;
         if (history.resetPokerus) working.pokerus = 0;
         if (history.resetMetLocation) working.caughtData = 0;
         return true;
+    }
+    // The status a Create species change posts: what it reset ("" when nothing was). Crystal caught
+    // data is optional, so a cleared location is reported, not demanded again.
+    std::string speciesChangeResetStatus() const {
+        return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, caughtDataCleared, false);
+    }
+    // Round 11 (owner H25 clarification 2): an existing Crystal Pokemon whose species was changed
+    // in this session keeps its caught data; a misfit is flagged (editor + Review), never cleared.
+    // Gold / Silver have no caught data to judge.
+    std::vector<std::string> historyFlags(std::string_view sourceGameId) const {
+        if (mode != SessionMode::Edit || working.species == baseline.species) return {};
+        if (exactGameFromSourceId(sourceGameId) != Gen2::SourceGame::Crystal) return {};
+        const auto caught = Gen2Native::decodeCrystalCaughtData(working.caughtData);
+        if (!caught.present) return {};
+        return HistoryConsistency::crystalFlags(working.species, sourceGameId, caught.location,
+                                                caught.levelCode, working.level);
     }
     uint8_t maximumPP(size_t slot) const noexcept {
         return slot < 4 ? Gen2::StagedEditor::gen2MoveMaxPP(working.moves[slot],working.ppUps[slot]) : 0;

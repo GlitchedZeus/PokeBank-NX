@@ -8,6 +8,7 @@
 // The per-generation wiring is covered by tests/test_species_change_moves_gen1.cpp ... _gen5.cpp
 // and tests/test_gen4_create_species_change_history.cpp.
 #include "UI/CreateRequiredFields.h"
+#include "UI/HistoryConsistency.h"
 #include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/SpeciesChangeMoves.h"
 
@@ -55,8 +56,87 @@ void historyPolicy() {
         require(!d.resetPokerus && !d.resetMetLocation, "Edit keeps Met Location and Pokerus");
     }
     require(asked == 0, "Edit never consults the wild tables");
-    require(std::string(H::kChooseEncounterStatus) == "Species changed; choose a new legitimate encounter",
-            "same status Gen III already showed");
+    // Round 11 follow-up (updated pin): the Create reset is visible and names what was reset; the old
+    // "choose a new legitimate encounter" read as a legality claim the wild tables cannot make.
+    require(std::string(H::kChooseEncounterStatus) == "Species changed: Met Location needs a new choice",
+            "the Met Location reset status");
+    require(H::resetStatus(true, true) == "Species changed: Pokérus cleared and Met Location needs a new choice",
+            "Pokerus and Met Location reset named together");
+    require(H::resetStatus(false, true) == H::kChooseEncounterStatus, "Met Location only");
+    require(H::resetStatus(true, false) == "Species changed: Pokérus cleared", "Pokerus only");
+    require(H::resetStatus(false, false).empty(), "nothing reset: no status (never a silent claim)");
+    require(H::resetStatus(true, true, false) == "Species changed: Pokérus cleared and Met Location cleared",
+            "Crystal caught data is optional: cleared, not demanded");
+    for (const bool p : {false, true})
+        for (const bool m : {false, true})
+            for (const bool required : {false, true}) {
+                const auto text = H::resetStatus(p, m, required);
+                require(text.find("legal") == std::string::npos && text.find("illegal") == std::string::npos,
+                        "a reset status never makes a legality claim");
+            }
+}
+
+// The pure H25 history check (UI/HistoryConsistency.h): flags only, never a verdict.
+void historyConsistency() {
+    namespace HC = PokeBank::UIModel::HistoryConsistency;
+    HC::Facts f;
+    f.species = "Arbok";
+    require(HC::flags(f).empty(), "nothing recorded, nothing judged");
+    f.metLocationRecorded = true;
+    f.originKnown = true;
+    f.catchDataAvailable = true;
+    f.listedCatch = false;
+    auto out = HC::flags(f);
+    require(out.size() == 1 && out[0] == "Met Location is not a listed catch for Arbok (history kept)",
+            "the owner's Trophy Garden Arbok: not a listed catch, kept");
+    f.listedCatch = true;
+    require(HC::flags(f).empty(), "a listed catch (species or ancestry) is not flagged");
+    f.listedCatch = false;
+    f.marker = true;
+    require(HC::flags(f).empty(), "a trade / egg / event marker is not a catch claim");
+    f.marker = false;
+    f.catchDataAvailable = false;
+    require(HC::flags(f).empty(), "no catch data for the origin: nothing to compare");
+    f.catchDataAvailable = true;
+    f.nativeToOrigin = false;
+    out = HC::flags(f);
+    require(out.size() == 1 && out[0] == "Origin game has no record of this Met Location (history kept)",
+            "a location outside the origin game's own list (and no catch claim on top)");
+    f.originKnown = false;
+    require(HC::flags(f).size() == 1 && HC::flags(f)[0].find("not a listed catch") != std::string::npos,
+            "an unknown origin list is never judged as foreign");
+    f = {};
+    f.species = "Raichu";
+    f.levelsKnown = true;
+    f.metLevel = 30;
+    f.level = 22;
+    out = HC::flags(f);
+    require(out.size() == 1 && out[0] == "Met Level is above the current level (history kept)", "met level above level");
+    f.metLevel = 0;
+    require(HC::flags(f).empty(), "met level 0 (hatched / not recorded) is not judged");
+    f.metLevel = 22;
+    require(HC::flags(f).empty(), "equal levels are fine");
+    f.metLevel = 30;
+    f.levelsKnown = false;
+    require(HC::flags(f).empty(), "unknown levels are not judged");
+    // Several flags join into one caution line, in a fixed order.
+    f = {};
+    f.species = "Arbok";
+    f.metLocationRecorded = f.originKnown = f.catchDataAvailable = f.levelsKnown = true;
+    f.metLevel = 40;
+    f.level = 22;
+    const auto line = HC::joined(HC::flags(f));
+    require(line == "Met Location is not a listed catch for Arbok (history kept); "
+                    "Met Level is above the current level (history kept)", "joined: " + line);
+    require(HC::joined({}).empty(), "no flags: no line");
+    require(std::string(HC::kCautionLabel) == "Caution", "caution label");
+    // Wording: suspect / kept as recorded, never a legality verdict.
+    for (const auto& text : {HC::notListedCatch("Pikachu"), std::string(HC::kNotNativeToOrigin),
+                             std::string(HC::kMetLevelAboveLevel)}) {
+        require(text.find("legal") == std::string::npos && text.find("Illegal") == std::string::npos,
+                "no legality wording: " + text);
+        require(text.find("(history kept)") != std::string::npos, "says the history was kept: " + text);
+    }
 }
 
 struct FakeGen4 {
@@ -172,6 +252,7 @@ void requiredFields() {
 
 int main() {
     historyPolicy();
+    historyConsistency();
     movePolicy();
     requiredFields();
     require(failures == 0, "all Round 11 species/Create policy checks");

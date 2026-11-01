@@ -1,10 +1,14 @@
 #pragma once
 
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Names/LocationDisplayNames.h"
+#include "Names/SpeciesNames.h"
 #include "UI/ExactGameMetLocations.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen3EncounterPicker {
@@ -127,6 +131,45 @@ inline int selectedRowWithNative(const std::vector<Choice>& choices, const std::
         if (MetRows::isOtherNativeRow(row) && MetRows::otherNativeRowLocation(row) == currentLocation) return i;
     }
     return 0;
+}
+
+// One picker row as {place, detail}. Round 11 follow-up: a verified catch template says its method
+// and level ("Wild Lv. 3–5"); every other native location says "Not a listed catch; unverified" (or
+// names its trade / egg / event marker, also "unverified"), and the keep-stored row is the save's
+// own value, never judged. A template row is never labelled unverified, and no row says "legal".
+struct RowText {
+    std::string place;
+    std::string detail;
+    bool verifiedCatch = false;   // a catch template of the species / its ancestry in the origin game
+};
+template <typename Choice>
+inline RowText rowText(const std::vector<Choice>& choices, uint16_t value, uint8_t origin,
+                       uint16_t storedLocation, uint8_t storedMetLevel) {
+    if (value == kKeepStoredRow) {
+        // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
+        return {"Keep stored: " + Names::getMetLocationDisplayName(origin, storedLocation),
+                "Met Lv. " + std::to_string(storedMetLevel), false};
+    }
+    if (MetRows::isOtherNativeRow(value)) {
+        const auto location = MetRows::otherNativeRowLocation(value);
+        return {Names::getMetLocationDisplayName(origin, location), MetRows::gen3OtherDetail(location), false};
+    }
+    const auto* selected = choiceAt(choices, value);
+    if (!selected) return {"Unknown location", {}, false};
+    const auto& encounter = encounterOf(*selected);
+    RowText out{Names::getMetLocationDisplayName(origin, encounter.location), {}, true};
+    // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
+    // (tests/test_met_location_fit.cpp).
+    out.detail = std::string(Encounter::methodName(encounter.method)) + " Lv. " + std::to_string(encounter.minLevel);
+    if (encounter.maxLevel != encounter.minLevel) out.detail += "–" + std::to_string(encounter.maxLevel);
+    if constexpr (requires { selected->evolved; }) {
+        if (selected->evolved) {
+            out.detail += ", met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
+            if (selected->minimumEvolutionLevel != 0)
+                out.detail += " (evo. " + std::to_string(selected->minimumEvolutionLevel) + ")";
+        }
+    }
+    return out;
 }
 
 } // namespace PokeBank::UIModel::Gen3EncounterPicker

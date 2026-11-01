@@ -824,8 +824,9 @@ struct Gen5Editor {
                 screen.postStatus(error, 360);
                 return false;
             }
-            if (encounterReset)
-                screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
+            // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
+            if (const auto reset = backendState.createSpeciesResetStatus(encounterReset); !reset.empty())
+                screen.postStatus(reset, 300);
             return true;
         }
         const auto why = backendState.speciesRefusal(species);
@@ -919,6 +920,11 @@ struct Gen5Editor {
             {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
                 PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete)},
         };
+        // Round 11 (owner H25 clarification 2): an existing Pokemon whose species changed keeps its
+        // history; a misfit is a caution line right under the met rows, never a change.
+        namespace History = PokeBank::UIModel::HistoryConsistency;
+        if (const auto caution = History::joined(backend(screen).historyFlags()); !caution.empty())
+            rows.insert(rows.begin() + 6, {History::kCautionLabel, caution});
         return rows;
     }
 };
@@ -951,8 +957,9 @@ bool handlePidConfirmation(TrainerViewScreen& screen, Gen5EditorState& state, u6
             Names::getSpeciesName(pending.species), Names::getSpeciesName(current->species()),
             [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); }, error,
             encounterReset);
-        if (applied && encounterReset)
-            screen.postStatus(PokeBank::UIModel::SpeciesChangeHistoryPolicy::kChooseEncounterStatus, 300);
+        if (applied)
+            if (const auto reset = trainer.sharedScreen().createSpeciesResetStatus(encounterReset); !reset.empty())
+                screen.postStatus(reset, 300);
         const auto rebuilt = trainer.sharedScreen().draft().current();
         applied = applied && rebuilt && Gen5Editor::pidLinksHold(*rebuilt, b2w2);
     } else if (pending.probe) {
@@ -2126,6 +2133,14 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 detail="Met Location: "+Names::getMetLocationDisplayName(before.originVersion(),before.metLocation())+
                     " -> "+Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
             rows.push_back({location(c.location),detail});
+        }
+        // Round 11 (owner H25 clarification 2): the species changed and the record kept its own
+        // history; a misfit is one caution note on this entry, never a change or a refusal.
+        if(before.species()!=after.species()) {
+            namespace History=PokeBank::UIModel::HistoryConsistency;
+            if(const auto caution=History::joined(G::historyFlags5(after,
+                   nativeTrainer(screen).sharedScreen().black2White2()));!caution.empty())
+                rows.push_back({location(c.location),std::string(History::kCautionLabel)+": "+caution});
         }
     }
     for(const auto& c:ws.bagReviewChanges())rows.push_back({std::string("Bag / ")+G::bagPocketName5(c.pocket)+" / "+bagItemLabel(screen,c.itemId),

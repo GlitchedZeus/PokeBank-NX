@@ -11,6 +11,7 @@
 #include "Names/MoveNames.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "UI/Gen2NativePresentation.h"
+#include "UI/HistoryConsistencyFacts.h"
 #include "Pokemon/Experience.h"
 #include "PokemonFile/NativePokemonFile.h"
 
@@ -1182,6 +1183,19 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
     const std::string labelPrefix = party?"Party "+std::to_string(slot+1)+" ":"Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) + " ";
     if (before.species != verified->species)
         setChange(prefix + "species", labelPrefix + "Species", Names::getSpeciesName(before.species), Names::getSpeciesName(verified->species));
+    // Round 11 (owner H25 clarification 2): a Crystal Pokemon whose species changed keeps its caught
+    // data; a misfit is one caution note on this entry (value alone), never a change or a refusal.
+    if (before.species != verified->species) {
+        clearChange(prefix + "history_caution");
+        const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
+        if (sourceGame_ == SourceGame::Crystal && caught.present) {
+            namespace History = PokeBank::UIModel::HistoryConsistency;
+            const auto caution = History::joined(History::crystalFlags(
+                verified->species, "crystal_gbc", caught.location, caught.levelCode, verified->level));
+            if (!caution.empty())
+                setChange(prefix + "history_caution", labelPrefix + History::kCautionLabel, "", caution);
+        }
+    }
     if (before.nickname != verified->nickname)
         setChange(prefix + "nickname", labelPrefix + "Nickname", before.nickname, verified->nickname);
     if (before.level != verified->level || before.experience != verified->experience)

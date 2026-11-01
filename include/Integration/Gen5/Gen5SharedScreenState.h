@@ -9,6 +9,7 @@
 #include "Integration/Gen5/Gen5MoveCompatibility.h"
 #include "Integration/Encounter/EncounterContext45.h"
 #include "UI/CreateRequiredFields.h"
+#include "UI/HistoryConsistencyFacts.h"
 #include "UI/SharedReviewPresentation.h"
 #include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/SpeciesChangeMoves.h"
@@ -23,8 +24,21 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace PokeVault::Integration::Gen5 {
+
+// Round 11 (owner H25 clarification 2): the caution flags for a Gen V record whose species changed
+// and whose recorded history was kept (UI/HistoryConsistency.h). Editor and Review both use it.
+[[nodiscard]] inline std::vector<std::string> historyFlags5(const Pokemon5ReadOnly& p, bool b2w2) {
+    uint8_t level=1;
+    if(p.partyRecord())level=p.partyLevel();
+    else if(const auto personal=personal5(p.species(),p.form(),b2w2))
+        level=levelForExperience5(personal.info->growthRate,p.experience());
+    return PokeBank::UIModel::HistoryConsistency::gen45Flags(static_cast<uint16_t>(p.species()),
+        static_cast<uint8_t>(p.originVersion()),static_cast<uint16_t>(p.metLocation()),
+        static_cast<uint8_t>(p.metLevel()),level);
+}
 
 // Round 11 (owner H28, UI/SpeciesChangeMoves.h): the moves a Gen V Pokemon keeps when it becomes
 // `species` -- each current move the new species can use in this exact game (Gen5MoveCompatibility:
@@ -424,6 +438,20 @@ public:
     // placeholder's own value explicitly counts as a choice).
     [[nodiscard]] bool createNeedsMetLocation() const noexcept { return createPending_ && !createMetLocationChosen_; }
     void noteCreateMetLocationChosen() noexcept { if(createPending_) createMetLocationChosen_=true; }
+    // Round 11 (owner H25 clarification 2): an existing Pokemon whose species was changed in this
+    // draft keeps its history; a misfit is flagged (editor + Review), never cleared. Empty otherwise.
+    [[nodiscard]] std::vector<std::string> historyFlags() const {
+        if(createPending_)return {};
+        const auto current=draft_.current();
+        const auto original=draft_.originalRecord();
+        if(!current || !original || !current->valid() || current->empty() ||
+           current->species()==original->species())return {};
+        return historyFlags5(*current,black2White2_);
+    }
+    // The status a Create species rebuild posts: what it reset ("" when nothing was).
+    [[nodiscard]] std::string createSpeciesResetStatus(bool encounterReset) const {
+        return PokeBank::UIModel::SpeciesChangeHistoryPolicy::resetStatus(createPokerusCleared_,encounterReset);
+    }
     // Round 11: the shared Gen I-V Keep rule (UI/CreateRequiredFields.h) for the open draft. A
     // pending Create needs a chosen Met Location and at least one move (it starts with none); an
     // Edit is refused only when this session took the record's last move away. Empty: Keep may run.
@@ -616,6 +644,7 @@ public:
                                              Refresh&& refresh,std::string& error,
                                              bool& encounterReset) {
         encounterReset=false;
+        createPokerusCleared_=false;
         const auto p=draft_.current();
         if(!createPending_ || surface_!=Surface::Edit || !p ||
            target_.region!=Workspace::Region::Box) {
@@ -653,6 +682,7 @@ public:
         const auto nickname=asciiName5(p->decodedBytes(),true);
         r.nickname=nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
         const auto met=p->metDate();
+        const bool hadPokerus=p->pokerusMode()!=0;   // the rebuild never carries it
         namespace History=PokeBank::UIModel::SpeciesChangeHistoryPolicy;
         const uint8_t origin=static_cast<uint8_t>(trainer.gameVersion);
         const auto history=species==p->species() ? History::Decision{} : History::reconcile(
@@ -702,6 +732,7 @@ public:
         }
         if(history.resetMetLocation)createMetLocationChosen_=false;
         encounterReset=history.resetMetLocation;
+        createPokerusCleared_=hadPokerus;   // Create's policy (and the rebuild) never carry Pokerus
         error.clear();
         return true;
     }
@@ -938,6 +969,7 @@ private:
     std::optional<CreateRequest5> pendingCreateInput_;
     bool createPending_=false;
     bool createMetLocationChosen_=false;
+    bool createPokerusCleared_=false;   // the last Create species rebuild dropped a Pokerus state
     Surface reviewReturn_=Surface::Browse;
 public:
     // Shared Create defaults (not format rules): a native species, move and

@@ -78,14 +78,12 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
                 state, picker.model.speciesChoice(), picker.model.previewShiny,
                 screen.sourceGameId)) return false;
         refreshDerived(state.working);
-        if (screen.sourceGameId == "crystal_gbc") {
-            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
-            if (caught.present &&
-                !Encounter::locationAllowed(screen.sourceGameId, state.working.species, caught.location)) {
-                state.working.caughtData = 0;
-                screen.postStatus("Species changed; choose a new legitimate Crystal encounter", 300);
-            }
-        }
+        // Round 11 follow-up (owner H25 clarification 2): Session::setSpecies owns the history
+        // policy. A Create draft's Pokerus and a chosen Crystal location that is no longer a catch of
+        // the new species reset, and the status says so; an EXISTING Pokemon keeps its caught data
+        // (it was cleared here before, in Edit too) and a misfit is flagged in the editor and Review.
+        if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
+            screen.postStatus(reset, 300);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
