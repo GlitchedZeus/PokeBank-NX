@@ -859,6 +859,15 @@ struct Gen5Editor {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
             return false;
         }
+        // Round 13 owner decision 9: the Pokemon kept its level; an EXP change is named.
+        if (species != p.species()) {
+            ::Pokemon::SpeciesChangeExperience::Result kept;
+            kept.level = Fields::level(*probe.current(), b2w2(screen));
+            kept.experience = probe.current()->experience();
+            kept.experienceChanged = kept.experience != p.experience();
+            if (const auto note = ::Pokemon::SpeciesChangeExperience::note(p.experience(), kept); !note.empty())
+                screen.postStatus(note, 300);
+        }
         return offer(screen, state, std::move(probe),
                      std::string("Species ") + Names::getSpeciesName(species) +
                          (state.speciesPreviewShiny ? ", Shiny" : ", not Shiny"));

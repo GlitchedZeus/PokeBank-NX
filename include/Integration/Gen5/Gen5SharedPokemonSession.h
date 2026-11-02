@@ -205,7 +205,16 @@ public:
         // A level picker writes the exact EXP growth threshold; an EXP
         // picker can retain partial progress. Replayed party level/stats
         // must match the entire original local draft byte for byte.
-        if(before.experience()!=after.experience()) {
+        // Round 13 owner decision 9: the replayed Species step reconciles EXP
+        // from the ORIGINAL record, so compare with the replayed slot too (a
+        // draft whose EXP was edited back to the original value still needs it).
+        const auto replayed=readSlot(tentative,location_);
+        if(!replayed || !replayed->valid() || replayed->empty()) {
+            error="Gen V Keep lost the staged slot during species replay";
+            return false;
+        }
+        if(before.experience()!=after.experience() || replayed->experience()!=after.experience() ||
+           (after.partyRecord() && replayed->partyLevel()!=after.partyLevel())) {
             const auto personal=personal5(after.species(),after.form(),workspace.black2White2());
             if(!personal) {error="Gen V EXP requires exact growth data";return false;}
             const uint8_t level=after.partyRecord()?after.partyLevel():

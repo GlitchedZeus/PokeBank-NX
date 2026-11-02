@@ -84,6 +84,9 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         // (it was cleared here before, in Edit too) and a misfit is flagged in the editor and Review.
         if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
             screen.postStatus(reset, 300);
+        // Round 13 owner decision 9: an existing Pokemon keeps its level; an EXP change is named.
+        else if (const auto exp = state.speciesChangeExperienceNote(); !exp.empty())
+            screen.postStatus(exp, 300);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
