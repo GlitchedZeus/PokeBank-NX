@@ -1875,12 +1875,14 @@ int main() {
         assert(ui.editDraft().stageName(GField::OriginalTrainerText,"NXT",error));
         // Occupied-slot species changes explain their native restriction.
         assert(ui.speciesRefusal(26).empty());
-        assert(!ui.speciesRefusal(1).empty());   // Different growth group.
+        // Round 13 owner decision 9: a different EXP growth group is no longer refused (the level
+        // is kept and EXP reconciled); Bulbasaur is still refused here for its PID-read gender.
+        assert(ui.speciesRefusal(1)=="That species would read this Pokemon's PID as the other gender");
         assert(!ui.speciesRefusal(650).empty()); // Never a later-generation species.
         assert(ui.draft().current()->species()==25);
         assert(ui.editDraft().stage(GField::Species,0,26,error));
         assert(ui.draft().current()->species()==26);
-        assert(!ui.editDraft().stage(GField::Species,0,1,error)); // Growth differs: fail closed.
+        assert(!ui.editDraft().stage(GField::Species,0,1,error)); // PID-read gender: fail closed.
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->hiddenAbility());
         assert(localUiWorkspace.viewParty(0)->gender()==1);

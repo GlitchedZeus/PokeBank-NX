@@ -3,6 +3,7 @@
 #include "Conversion/Gen3PidSearch.h"
 #include "Encryption/Encryption4.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Pokemon/PersonalInfo4DP.h"
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
@@ -424,6 +425,7 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
 
     const auto backup = decrypted_;
     const uint8_t oldLevel = level();
+    const uint8_t oldGrowth = personalFor(sourceGroup_, species(), form()).growthRate;
     const uint8_t oldNature = nature();
     const bool oldShiny = shiny();
     const uint8_t oldGender = gender();
@@ -449,9 +451,12 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
         target.ability2 != 0 && target.ability2 != target.ability1;
     const int wantedAbilityBit = targetDual ? static_cast<int>(oldAbilitySlot) : -1;
 
-    // Preserve Level across growth-rate changes, and preserve Nature/Shiny plus Gender
-    // where the target species permits it. PID search is bounded and rollback-safe.
-    write32(0x10, getExpForLevel(oldLevel, target.growthRate));
+    // Preserve Level across growth-rate changes (Round 13 owner decision 9: EXP is kept when it
+    // already lies in that level's range for the new growth rate, else it becomes the level's
+    // minimum; Pokemon/SpeciesChangeExperience.h), and preserve Nature/Shiny plus Gender where the
+    // target species permits it. PID search is bounded and rollback-safe.
+    write32(0x10, SpeciesChangeExperience::keepLevel(oldLevel, experience(), oldGrowth == target.growthRate,
+        [&](uint8_t level) { return getExpForLevel(level, target.growthRate); }).experience);
     if (!rerollPid(oldShiny ? 1 : 0, wantedGender, oldNature, wantedAbilityBit)) {
         decrypted_ = backup;
         return false;

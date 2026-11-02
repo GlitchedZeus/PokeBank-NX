@@ -83,8 +83,12 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
         for (const uint16_t species : chain) {
             const auto before = s.working;
             require(s.setSpecies(species, sourceId), "setSpecies " + std::to_string(species));
-            require(s.working.level == PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, species),
-                    "level policy unchanged");
+            // Round 13 owner decision 9: a Create draft takes the default level; an existing
+            // Pokemon keeps its level (tests/test_species_change_level_gen2.cpp covers the EXP).
+            require(s.working.level == (mode == SessionMode::Create
+                                            ? PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, species)
+                                            : entry.level),
+                    "level policy");
             checkKeptMoves(before, s.working, game, std::string(sourceId) + " -> " + std::to_string(species));
             for (const auto move : s.working.moves)
                 require(move != 84 || species == 25 || species == 26, "Thunder Shock never survives a change away from Pikachu");

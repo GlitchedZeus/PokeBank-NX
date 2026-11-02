@@ -1,11 +1,16 @@
 #pragma once
 
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 
 #include <cstdint>
 #include <string_view>
 
 namespace PokeBank::UIModel::SpeciesChangeLevelPolicy {
+
+// The default level below is for a CREATE draft only. Round 13 owner decision 9: an EXISTING
+// Pokemon keeps its current level on a species change and its EXP is reconciled to the new
+// species' growth rate by Pokemon/SpeciesChangeExperience.h (keepLevel), in every generation.
 
 // Deterministic fallback for an exact game/species whose encounter provider is
 // not populated yet. It is never inherited from the previous species.
