@@ -6,9 +6,10 @@
 namespace PokeBank::UIModel::ClassicHelp {
 enum class Page { Hub,Pokemon,Party,Items,Trainer };
 // Round 5 4D: every control named here performs that action in that generation.
-// Round 7 (ReviewEntry.h): one Review key per page, the one its footer shows: Y on Trainer, Party
-// and Gen V Boxes; + on Gen I-IV Boxes and the Bag (Y moves / removes there). The Gen I-IV save
-// hub still reaches Review through the staged exit menu (B, then A in that menu:
+// Round 7 (ReviewEntry.h): one Review key per page, the one its footer shows: Y on Trainer and
+// Party; + on Boxes and the Bag (Y moves / removes there). Round 12 R12-001 (owner H03 / H16): Gen V
+// Boxes match Gen I-IV - + Review, Y tap / hold Move - so the Pokemon page is one list for Gen I-V.
+// The Gen I-IV save hub still reaches Review through the staged exit menu (B, then A in that menu:
 // ClassicStagedExit::choose).
 //
 // Round 6 E05: every row after the banner starts with real controller keys, so the Help window
@@ -40,10 +41,10 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back("A   Actions: View, Edit, Clone, Move, Release, Origin, Export     A   Empty slot: Add Pokemon");
             out.push_back("X   Export to file; on an empty slot: Import from file");
             out.push_back("L / R   Previous / next box     ZL / ZR   Jump boxes");
-            out.push_back(generation==5?kYReview:kPlusReview);   // Gen I-IV Boxes: Y is Move
-            // Round 11 H23 (owner): Y picks up, A places, B cancels (ClassicCarryRules, every
-            // generation). Gen V's Y is Review, so its pickup is A -> Move / Clone (the first row).
-            if(generation!=5)out.push_back("Y   Tap: pick up to move     Y   Hold: multi-select");
+            out.push_back(kPlusReview);   // Boxes: Y is Move in Gen I-V (R12-001)
+            // Round 11 H23 / Round 12 R12-001 (owner): Y picks up, A places, B cancels
+            // (ClassicCarryRules, every generation, Gen V included). 10 rows with the banner and close.
+            out.push_back("Y   Tap: pick up to move     Y   Hold: multi-select");
             out.push_back(kCarryPlace);
             out.push_back("Y   Release question: only Y releases; B cancels");
             break;

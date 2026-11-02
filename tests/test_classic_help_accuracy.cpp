@@ -49,11 +49,10 @@ void testPlusOnlyWhereHandled() {
             }));
         }
     // Round 7 (ReviewEntry.h): each page names the ONE key its footer shows. Party and Trainer: Y;
-    // Boxes: + in Gen I-IV (Y is Move), Y in Gen V; Bag: + (Y is Remove).
+    // Boxes: + (Y is Move; Gen V too since Round 12 R12-001); Bag: + (Y is Remove).
     for (int gen = 1; gen <= 5; ++gen)
         for (const auto page : {Help::Page::Pokemon, Help::Page::Party, Help::Page::Items, Help::Page::Trainer}) {
-            const bool y = page == Help::Page::Party || page == Help::Page::Trainer ||
-                           (page == Help::Page::Pokemon && gen == 5);
+            const bool y = page == Help::Page::Party || page == Help::Page::Trainer;
             int named = 0;
             for (const auto& line : Help::lines(page, gen))
                 if (line.find("Review staged changes") != std::string::npos ||

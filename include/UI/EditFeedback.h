@@ -17,13 +17,22 @@
 // Every other edit (Kind::Field) keeps its generation's own message: commits (Keep / Review /
 // Export / Discard), derived-field hints and PID notices are not routine edits.
 //
+// Round 12 R12-002 (owner H03: "when a pokemon is picked up we have a little boc pop up telling the
+// controls we dont need that we have the footer for that ... the only pop we need is \"there is no
+// pokemon in this slot to move\""; H04: clone "has a pop up menu thing on the botom about cloned
+// pop dont need it"): Kind::Carry is the Gen I-V box carry (ClassicCarryRules). Picking up, placing,
+// a multi-move, a placed clone, a cancel and a key the carry swallows are routine: the moved sprite,
+// the carry footer and the grid ARE the feedback. Refusals (no Pokemon there, no room for the group,
+// occupied / protected / source changed) and failures still post. settled() also retires a refusal
+// still on screen when the carry ends, so "That slot is occupied" never lingers over a placed Pokemon.
+//
 // Display only: nothing here stages, encrypts or writes.
 
 #include <string>
 
 namespace PokeBank::UIModel::EditFeedback {
 
-enum class Kind : unsigned char { Field, Reroll, UnownLetter, Shiny };
+enum class Kind : unsigned char { Field, Reroll, UnownLetter, Shiny, Carry };
 enum class Outcome : unsigned char { Applied, Unchanged, Warning, Refused };
 
 [[nodiscard]] constexpr bool routine(Kind kind) noexcept { return kind != Kind::Field; }
@@ -48,9 +57,17 @@ constexpr void applied(Screen&, Kind kind) noexcept {
     static_cast<void>(kind);
 }
 
+// A routine step that ENDS an interaction (a carry placed or cancelled): posts nothing and clears
+// whatever transient line the interaction left (a refusal the player has now answered).
+template <class Screen>
+void settled(Screen& screen, Kind kind) {
+    if (routine(kind)) screen.postStatus(std::string(), 0);
+}
+
 static_assert(!postsStatus(Kind::Reroll, Outcome::Applied) && !postsStatus(Kind::UnownLetter, Outcome::Applied) &&
-              !postsStatus(Kind::Shiny, Outcome::Applied));
+              !postsStatus(Kind::Shiny, Outcome::Applied) && !postsStatus(Kind::Carry, Outcome::Applied));
 static_assert(postsStatus(Kind::Reroll, Outcome::Unchanged) && postsStatus(Kind::Shiny, Outcome::Warning) &&
-              postsStatus(Kind::UnownLetter, Outcome::Refused) && postsStatus(Kind::Field, Outcome::Applied));
+              postsStatus(Kind::UnownLetter, Outcome::Refused) && postsStatus(Kind::Field, Outcome::Applied) &&
+              postsStatus(Kind::Carry, Outcome::Refused));
 
 } // namespace PokeBank::UIModel::EditFeedback

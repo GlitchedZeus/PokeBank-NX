@@ -6,11 +6,15 @@
 // fixed to just the Y button, or whatever the correct button is in the current menu or window"):
 // exactly ONE Review key per screen, and it is the key that screen's footer and Help show.
 //
-//   Y Review   where Y is free: Trainer Info (the accepted Gen V convention), Party, and Gen V
-//              Boxes. + does nothing for Review there.
-//   + Review   where Y already does needed work: Bag (Remove Item), Gen I-IV Boxes (Move / hold
-//              for Multi), Create and Edit (re-roll, and Discard inside the exit confirmation).
+//   Y Review   where Y is free: Trainer Info (the accepted Gen V convention) and Party. + does
+//              nothing for Review there.
+//   + Review   where Y already does needed work: Bag (Remove Item), Boxes in every generation (Move
+//              / hold for Multi), Create and Edit (re-roll, and Discard inside the exit confirmation).
 //              Y keeps that job there and never opens Review.
+//
+// Round 12 R12-001 (owner H03: "gen 5: ... Y is review in gen 5 and that is wrong that should be
+// move, reivew should be what ever button gens 1-4 use"): Gen V Boxes moved from Y to +, the Gen I-IV
+// key; its Y picks up to Move / holds for Multi (ClassicPackedMoveOverlay handleGen5BoxInput).
 //
 // (The Gen V save hub keeps its + Review; the hub is not one of these screens. The Gen I-IV hub
 // reaches Review through the staged exit menu.)
@@ -31,10 +35,11 @@ inline constexpr std::uint64_t kButtonPlus = 1ull << 10;
 
 // Y opens Review only where Y has no other job on that screen.
 [[nodiscard]] constexpr bool yOpensReview(Screen screen, int generation) noexcept {
+    static_cast<void>(generation);   // the same rule in Gen I-V since Round 12 R12-001
     switch (screen) {
         case Screen::Trainer:
         case Screen::Party:  return true;
-        case Screen::Boxes:  return generation == 5;   // Gen I-IV Boxes: Y is Move / Multi
+        case Screen::Boxes:                            // Y is Move / Multi (Gen I-V, R12-001)
         case Screen::Bag:                              // Y is Remove Item
         case Screen::Create:                           // Y is re-roll / confirm Discard
         case Screen::Edit:   return false;
