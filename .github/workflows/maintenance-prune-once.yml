@@ -1,68 +1,92 @@
-name: One-time owner-approved branch prune
+name: One-time verified fully-contained branch cleanup
 on:
   push:
     branches: [main]
 permissions:
   contents: write
 concurrency:
-  group: owner-branch-prune
-  cancel-in-progress: true
+  group: contained-only-branch-prune
+  cancel-in-progress: false
 jobs:
-  prune:
-    if: "${{ false }}"
+  safe-prune:
+    if: "${{ github.event.head_commit.message == 'chore(maintenance): delete only 14 verified contained branches' }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 45
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BACKUP_TAG: maintenance/pre-branch-prune-20261102-bbc9dd69
+      RECOVERY_RELEASE: maintenance/pre-branch-prune-20261102-bbc9dd69
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
-      - name: Pin the audited script and set archive tag identity
+      - name: Verify full preservation archive and all current branches
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
-          git switch --detach cf891c50ad8184d3cf95c010f1b2ad425b1c62d2
-          bash -n tools/qa/maintenance/prune_branches.sh
-          test -f docs/maintenance/branch_audit_2026-11-02_phase2.json
-          echo "BRANCHES BEFORE RESUME: $(git ls-remote --heads origin | wc -l)"
-      - name: Restore first-run deletion ledger and verify permanent recovery release
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh release view "$BACKUP_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/archive-assets.txt"
-          for asset in PokeBank-NX-PRE-PRUNE.bundle PokeBank-NX-PRE-PRUNE.bundle.sha256 refs.tsv BRANCH_DELETION_LOG.md BRANCH_DELETION_LOG.tsv; do
-            grep -Fxq "$asset" "$RUNNER_TEMP/archive-assets.txt" || { echo "Missing recovery release asset: $asset"; exit 1; }
+          gh release view "$RECOVERY_RELEASE" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/assets.txt"
+          for asset in PokeBank-NX-PRE-PRUNE.bundle PokeBank-NX-PRE-PRUNE.bundle.sha256 refs.tsv BRANCH_DELETION_LOG.tsv; do
+            grep -Fxq "$asset" "$RUNNER_TEMP/assets.txt"
           done
-          mkdir -p "$RUNNER_TEMP/previous-deletion-log"
-          gh release download "$BACKUP_TAG" --dir "$RUNNER_TEMP/previous-deletion-log" \
-            --pattern 'BRANCH_DELETION_LOG.*'
-          cp "$RUNNER_TEMP/previous-deletion-log/BRANCH_DELETION_LOG.md" docs/maintenance/BRANCH_DELETION_LOG.md
-          cp "$RUNNER_TEMP/previous-deletion-log/BRANCH_DELETION_LOG.tsv" docs/maintenance/BRANCH_DELETION_LOG.tsv
-          deleted="$(awk -F '\t' '$9=="DELETE"{n++} END{print n+0}' docs/maintenance/BRANCH_DELETION_LOG.tsv)"
-          echo "VERIFIED PREVIOUS DELETIONS: $deleted"
-          test "$deleted" -ge 200
-      - name: Resume archived unique and patch-equivalent branches only
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RECOVERY_RELEASE" \
+            --jq '.assets[]|select(.name=="PokeBank-NX-PRE-PRUNE.bundle")|.size' | grep -qx 207503872
+          git fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*'
+          echo "BEFORE: $(git ls-remote --heads origin | wc -l) branches"
+      - name: Remove only exact SHA branches contained in surviving refs and not used by any live PR
         shell: bash
         run: |
           set -euo pipefail
-          bash tools/qa/maintenance/prune_branches.sh --execute --yes \
-            --group equivalent-archive --group unique-archive \
-            --bundle-dir "$RUNNER_TEMP" --batch-size 25
-      - name: Persist combined deletion ledger in permanent release and report branches
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          if gh release view "$BACKUP_TAG" >/dev/null 2>&1; then
-            for f in docs/maintenance/BRANCH_DELETION_LOG.md docs/maintenance/BRANCH_DELETION_LOG.tsv; do
-              if [[ -f "$f" ]]; then gh release upload "$BACKUP_TAG" "$f" --clobber; fi
-            done
-          fi
-          echo "LIVE BRANCHES AFTER: $(git ls-remote --heads origin | wc -l)"
+          cat > "$RUNNER_TEMP/contained-candidates.txt" <<'CANDIDATES'
+audit/app-qa-20261014|aecc9ea69a98da1c5ed2e96ce8e376ff0f547614|main
+claude/gen4-capture-ball|b8eb006ebb85900684ce4caac4d75a18ebb5a8be|claude/gen1-5-legality-campaign-w9mkom
+claude/gen5-home-providers-20261015|ece88e279ba3185619f229fb8bed9e0cf27969ec|main
+claude/gen14-campaign-20261015|73248a1549d80f745fb927e9849a87e922c483b0|main
+claude/gen14-final-20261014|4b9b9f656ae204a8ddda0bb44cbe2d79ce7e9be5|main
+claude/launch-return-20261015|e7bce8cbb7be2bc18265d1208370b7c10044ea61|main
+claude/pensive-cerf-pueceq|bc9d8c205b05a55bfbad3c913c0a52bedce0b71a|claude/gen1-5-legality-campaign-w9mkom
+claude/pickers-search-scrollbar-20261017|e52b7d97ba25cd4b1aa7d19a67d8925775d11d47|main
+claude/shared-editor-gen35-20261016|42a9278065dc9056a4744a7c06365a4282d06654|main
+audit/legality-integration-hardening-20261012|67f56f38008d1fc716756683a49654b25fb053fc|claude/gen1-5-legality-campaign-w9mkom
+claude/legality-gen3-negai-boshi-lifetime|2761a75d5a2d934cf56123c8d129600ec6a44678|claude/gen1-5-legality-campaign-w9mkom
+feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011|a1eea80bdd1bdd611cf1d528adb807524d8b6716|feature/legality-sourcefree-egg-move-guard-20261011
+feature/legality-sourcefree-pk4-palpark-move-history-20261011|3df1de8316d14ab0e2b3405655e88880834092d4|feature/legality-sourcefree-egg-move-guard-20261011
+feature/legality-sourcefree-pk12-move-compatibility-20261011|14baf42c03acd36915b90b5f70761a89055fbdd9|feature/legality-sourcefree-egg-move-guard-20261011
+CANDIDATES
+          deleted=0
+          skipped=0
+          while IFS='|' read -r branch expected containing; do
+            echo "CHECK: $branch"
+            # Live PR API errors abort before deletion. Heads and bases are protected.
+            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+              --jq '.[] | .head.ref, .base.ref' > "$RUNNER_TEMP/open-pr-refs.txt"
+            if grep -Fxq "$branch" "$RUNNER_TEMP/open-pr-refs.txt"; then
+              echo "SKIP open PR dependency: $branch"
+              skipped=$((skipped+1))
+              continue
+            fi
+            current="$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')"
+            if [[ -z "$current" ]]; then
+              echo "SKIP already absent: $branch"
+              skipped=$((skipped+1))
+              continue
+            fi
+            if [[ "$current" != "$expected" ]]; then
+              echo "SKIP changed tip: $branch at $current"
+              skipped=$((skipped+1))
+              continue
+            fi
+            # Must be FULL COMMIT HISTORY containment, not patch equivalence.
+            survivor="$(git ls-remote --heads origin "refs/heads/$containing" | awk '{print $1}')"
+            if [[ -z "$survivor" ]] || ! git cat-file -e "$survivor^{commit}" || \
+               ! git merge-base --is-ancestor "$expected" "$survivor"; then
+              echo "SKIP no live full containment: $branch into $containing"
+              skipped=$((skipped+1))
+              continue
+            fi
+            git push --quiet "--force-with-lease=refs/heads/$branch:$expected" origin --delete "$branch"
+            test -z "$(git ls-remote --heads origin "refs/heads/$branch")"
+            echo "DELETED verified contained: $branch@$expected in $containing@$survivor"
+            deleted=$((deleted+1))
+          done < "$RUNNER_TEMP/contained-candidates.txt"
+          echo "FINAL: deleted $deleted, skipped $skipped, live branches $(git ls-remote --heads origin | wc -l)"
+          test "$deleted" -gt 0
