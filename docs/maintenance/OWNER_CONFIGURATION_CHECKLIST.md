@@ -16,24 +16,31 @@ branch protection. Each item says where to make the change. Tick items off as yo
 GitHub → Settings → Branches (or Rules → Rulesets) → add a rule.
 
 **`main`**
-- [ ] Require a pull request before merging, with at least one approval. You can approve your own PRs as the
-      repository owner if you merge them yourself; keep the PR requirement anyway so every change has a CI
-      record.
-- [ ] Require status checks to pass, and require branches to be up to date before merging. Mark these checks
-      required (they run on every PR into `main` today):
-  - `Host tests (GCC)`
-  - `Host tests + ASan/UBSan (Clang)`
-  - `Export contracts (g++, plain + ASan/UBSan)`
-  - `Export contracts (clang++, plain + ASan/UBSan)`
-  - `Deterministic mutation runner (g++, plain + ASan/UBSan)`
-  - `Deterministic mutation runner (clang++, plain + ASan/UBSan)`
-  - `libFuzzer (clang -fsanitize=fuzzer,address,undefined)`
-  - `unfiltered devkitA64 compile/link`
-  - `Gen I-V integrated devkitA64 NRO + packaged RomFS verification`
-  - `Native touch contracts`
-  - `NRO audit tooling regression`
-  - `Exact-head audit of the published candidate NRO`. This check only runs on PRs that bind a candidate. Make
-    it required only if every PR into `main` carries a candidate binding; otherwise leave it optional.
+- [ ] Require a pull request before merging. Set **required approvals to 0** for now. GitHub does not let a PR's
+      author approve their own PR, so a mandatory approval would block the project's only maintainer. When a
+      suitable independent reviewer joins, raise required approvals to 1 (and consider "Require review from Code
+      Owners" with a `CODEOWNERS` file).
+- [ ] Require status checks to pass before merging, and require branches to be up to date. Mark **only** these
+      four checks required. Each one was verified on Nov 2, 2026: it runs on every pull request into `main` (no
+      path or branch filter and no job-level condition in its workflow on `main`), and it reported `success` on
+      the last normal PR into `main` (#330, head `67b1b6a0`).
+  - `Host tests (GCC)` (`host-tests.yml`)
+  - `Host tests + ASan/UBSan (Clang)` (`host-tests-clang.yml`)
+  - `unfiltered devkitA64 compile/link` (`native-pr-build.yml`)
+  - `Gen I-V integrated devkitA64 NRO + packaged RomFS verification` (`gen15-integrated-candidate.yml`)
+- [ ] Leave every other check **optional**. They still run and show on the PR, but a required check that does not
+      run blocks the merge forever:
+  - Path-filtered (they run only when matching files change): `Export contracts (…)`,
+    `NRO audit tooling regression`, `Deterministic mutation runner (…)`, `libFuzzer (…)`,
+    `Native touch contracts`, `Exact head PK5 read-only and staged contracts`, `Packed move host regression`,
+    `Packed multi-move and Release regression`, `Every workflow file parses`.
+  - Conditional on a manual step: `Exact-head audit of the published candidate NRO`. It runs on every PR but
+    passes only when the PR carries a freshly bound candidate (`docs/qa/CANDIDATE_UNDER_AUDIT.env`). An ordinary
+    code PR fails it by design.
+  - Superseded: `Gen I-IV combined devkitA64 NRO + packaged RomFS verification` (the Gen I–V build covers it; see
+    `WORKFLOW_AUDIT_2026-11-02.md`).
+- [ ] Re-check the list before saving: open the newest PR into `main` and confirm each required name appears there
+      with exactly this spelling. If a workflow is renamed or retired, update this list first.
 - [ ] Block force pushes.
 - [ ] Block deletion.
 - [ ] Optionally require linear history. Leave it off: this project merges with merge commits.
