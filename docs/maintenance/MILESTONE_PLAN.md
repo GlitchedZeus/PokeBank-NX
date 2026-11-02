@@ -2,7 +2,7 @@
 
 No milestones exist yet, and development sessions cannot create them (see
 [`OWNER_CONFIGURATION_CHECKLIST.md`](OWNER_CONFIGURATION_CHECKLIST.md) §3). After the owner creates the four
-milestones, assign issues and open PRs as follows. `tools/maintenance/prune_branches.sh --with-metadata` reads
+milestones, assign issues and open PRs as follows. `tools/qa/maintenance/prune_branches.sh --with-metadata` reads
 this table.
 
 | Milestone | Issues | Open PRs |

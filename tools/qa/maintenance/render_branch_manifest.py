@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render docs/maintenance/BRANCH_ARCHIVE_MANIFEST.md from branch_audit.py JSON.
 
-    python3 tools/maintenance/render_branch_manifest.py \
+    python3 tools/qa/maintenance/render_branch_manifest.py \
         docs/maintenance/branch_audit_2026-11-02.json \
         --releases releases.json \
         --out docs/maintenance/BRANCH_ARCHIVE_MANIFEST.md
@@ -79,7 +79,7 @@ def main():
       "Every row's Phase 2 status is **PENDING OWNER APPROVAL**. Companion report: "
       "[REPO_CLEANUP_AUDIT_2026-11-02.md](REPO_CLEANUP_AUDIT_2026-11-02.md); machine-readable data: "
       "[branch_audit_2026-11-02.json](branch_audit_2026-11-02.json); generator: "
-      "`tools/maintenance/branch_audit.py` + `tools/maintenance/render_branch_manifest.py`.")
+      "`tools/qa/maintenance/branch_audit.py` + `tools/qa/maintenance/render_branch_manifest.py`.")
     w("")
     w("## Method")
     w("")

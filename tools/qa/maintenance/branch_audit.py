@@ -12,7 +12,7 @@ Re-run before Phase 2 to detect drift:
 
     git fetch origin                      # never --prune
     git fetch origin 'refs/tags/*:refs/tags/*'
-    python3 tools/maintenance/branch_audit.py --repo . --fetch-prs \
+    python3 tools/qa/maintenance/branch_audit.py --repo . --fetch-prs \
         --out /tmp/branch_audit_new.json \
         --compare docs/maintenance/branch_audit_2026-11-02.json
 

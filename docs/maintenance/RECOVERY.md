@@ -1,6 +1,6 @@
 # Recovering deleted branches and archived history
 
-This page explains how to restore anything that `tools/maintenance/prune_branches.sh` (repository cleanup, Phase 2) removed from GitHub. Nothing that script deletes is lost. Every deleted branch tip stays available through at least two of these:
+This page explains how to restore anything that `tools/qa/maintenance/prune_branches.sh` (repository cleanup, Phase 2) removed from GitHub. Nothing that script deletes is lost. Every deleted branch tip stays available through at least two of these:
 
 1. **The full backup bundle** made at the start of every run, which includes every branch and tag on the remote.
 2. **An archive tag** `archive/branches/<branch name>` at the exact tip, for the groups that get tags: `equivalent-archive` and `unique-archive`.
@@ -77,7 +77,7 @@ git push origin 'refs/tags/archive/local-reflog-20261102/<12hex>^{commit}:refs/h
 
 ## Notes
 
-- The no-tag groups depend on the containing branch staying alive. That branch is usually `main`, `fix/round11-gen15-repairs`, `development/gen6-plus`, `audit/gen1-4-legality-research-20261011` or `audit/legality-integration-hardening-20261012`. Before you delete one of those containers later, re-run `tools/maintenance/branch_audit.py`. Its contents then need their own tag or containment.
+- The no-tag groups depend on the containing branch staying alive. That branch is usually `main`, `fix/round11-gen15-repairs`, `development/gen6-plus`, `audit/gen1-4-legality-research-20261011` or `audit/legality-integration-hardening-20261012`. Before you delete one of those containers later, re-run `tools/qa/maintenance/branch_audit.py`. Its contents then need their own tag or containment.
 - GitHub never re-opens a pull request that was closed because its branch was deleted. Restoring the branch lets you re-open it by hand.
 - Restoring a branch never needs a force push. If the name already exists with other content, restore it under a different name, such as `restore/<name>`.
 
@@ -87,7 +87,7 @@ The `nro/*` pre-releases hold the exact candidate NRO files. The table and SHA-2
 
 Round 1 (`nro/7fea1797`) and Round 2 (`nro/e10f307f`) could not be published by the archive workflow: release creation returned `HTTP 403: Resource not accessible by integration`. To publish them from the owner's account:
 
-1. Run `tools/maintenance/prune_branches.sh --archive-nro-fallback`. This needs `gh` to be logged in. It is a dry run: it downloads and verifies but publishes nothing.
+1. Run `tools/qa/maintenance/prune_branches.sh --archive-nro-fallback`. This needs `gh` to be logged in. It is a dry run: it downloads and verifies but publishes nothing.
 2. Run the same command with `--execute` to publish.
 
 Before publishing, the script:

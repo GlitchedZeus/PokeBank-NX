@@ -6,8 +6,8 @@
 |---|---|
 | [BRANCH_ARCHIVE_MANIFEST.md](BRANCH_ARCHIVE_MANIFEST.md) | One row per remote branch (tip SHA, last activity, PRs, classification, unique work, action, preservation location, Phase 2 status), plus tags/releases, the NRO archive and all 252 PRs |
 | [branch_audit_2026-11-02.json](branch_audit_2026-11-02.json) | The same data in machine-readable form |
-| `tools/maintenance/branch_audit.py` | Read-only generator; re-run it with `--compare` before Phase 2 to detect drift |
-| `tools/maintenance/render_branch_manifest.py` | Renders the manifest from the JSON |
+| `tools/qa/maintenance/branch_audit.py` | Read-only generator; re-run it with `--compare` before Phase 2 to detect drift |
+| `tools/qa/maintenance/render_branch_manifest.py` | Renders the manifest from the JSON |
 
 This audit builds on [GITHUB_CLEANUP_20261015.md](../archive/sessions/GITHUB_CLEANUP_20261015.md), [THREE_BRANCH_CONSOLIDATION_PLAN.md](THREE_BRANCH_CONSOLIDATION_PLAN.md) and the October 31 ledger `docs/MAIN_CONSOLIDATION_20261031.md` on `main`. That ledger has 316 refs; there are 8 more (net) since then, including `audit/gen12-independent-20261013`, which appeared during this audit. NRO preservation follows `docs/hardware/NRO_ARCHIVE.md` and `.github/workflows/archive-candidate-nro.yml`.
 
@@ -218,7 +218,7 @@ Run from a clean worktree. **Never** use force-push, rebase, reset or `git fetch
    ```sh
    git fetch origin
    git fetch origin 'refs/tags/*:refs/tags/*'
-   python3 tools/maintenance/branch_audit.py --repo . --fetch-prs \
+   python3 tools/qa/maintenance/branch_audit.py --repo . --fetch-prs \
      --out /tmp/branch_audit_phase2.json \
      --compare docs/maintenance/branch_audit_2026-11-02.json
    ```

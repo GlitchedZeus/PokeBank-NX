@@ -2,11 +2,12 @@
 
 Branch `chore/ci-cleanup-20261102`, cut from `origin/main` at `9ce7f737` (PR #330 consolidation). The owner authorized retiring obsolete workflows, but only after confirming two things for each one: that active CI does not reference it, and that any important coverage it had is still provided by a kept workflow.
 
-**Result: 48 workflows → 24.** This branch retires 24 files:
+**Result: 48 workflows → 24.** This branch retires 24 workflow files:
 
 - 21 one-time patch workflows;
-- 3 workflows whose coverage is duplicated elsewhere;
-- the 20 `tools/` helper files that only the one-time workflows used.
+- 3 workflows whose coverage is duplicated elsewhere.
+
+The 20 `tools/` helper files that only the one-time workflows used are now orphaned but **kept for now**. Deleting them changes paths outside the exact-NRO audit's staleness exclusions, which would mark `main`'s bound candidate stale. They are removed in the next PR that rebinds a candidate.
 
 No Makefile changes (§4). The prune script for remote branches, and its recovery guide, are in [RECOVERY.md](RECOVERY.md) and §5.
 
@@ -163,7 +164,7 @@ Recommendation: consolidate only after round 11/12 and Gen VI+ have merged.
 
 ## 5. Branch prune script (owner-run)
 
-`tools/maintenance/prune_branches.sh` carries out Phase 2 of the cleanup in [REPO_CLEANUP_AUDIT_2026-11-02.md](REPO_CLEANUP_AUDIT_2026-11-02.md), using [branch_audit_2026-11-02.json](branch_audit_2026-11-02.json). Its behavior and safety rules are in its header. Restore procedures are in [RECOVERY.md](RECOVERY.md). Its actions are logged in [BRANCH_DELETION_LOG.md](BRANCH_DELETION_LOG.md). Repository description and topics are in [REPO_METADATA.md](REPO_METADATA.md).
+`tools/qa/maintenance/prune_branches.sh` carries out Phase 2 of the cleanup in [REPO_CLEANUP_AUDIT_2026-11-02.md](REPO_CLEANUP_AUDIT_2026-11-02.md), using [branch_audit_2026-11-02.json](branch_audit_2026-11-02.json). Its behavior and safety rules are in its header. Restore procedures are in [RECOVERY.md](RECOVERY.md). Its actions are logged in [BRANCH_DELETION_LOG.md](BRANCH_DELETION_LOG.md). Repository description and topics are in [REPO_METADATA.md](REPO_METADATA.md).
 
 ### Dry run on 2026-11-02 (this session cannot delete refs or push tags)
 

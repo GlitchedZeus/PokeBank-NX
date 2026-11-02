@@ -2,7 +2,7 @@
 
 **Snapshot:** 2026-11-02T08:56:10Z (remote `origin`, `main` @ `9ce7f737`), 325 remote branches, 71 remote tags, 252 pull requests.
 
-**Status: PHASE 1 AUDIT ONLY.** Nothing listed here has been deleted, tagged, closed or edited. Every row's Phase 2 status is **PENDING OWNER APPROVAL**. Companion report: [REPO_CLEANUP_AUDIT_2026-11-02.md](REPO_CLEANUP_AUDIT_2026-11-02.md); machine-readable data: [branch_audit_2026-11-02.json](branch_audit_2026-11-02.json); generator: `tools/maintenance/branch_audit.py` + `tools/maintenance/render_branch_manifest.py`.
+**Status: PHASE 1 AUDIT ONLY.** Nothing listed here has been deleted, tagged, closed or edited. Every row's Phase 2 status is **PENDING OWNER APPROVAL**. Companion report: [REPO_CLEANUP_AUDIT_2026-11-02.md](REPO_CLEANUP_AUDIT_2026-11-02.md); machine-readable data: [branch_audit_2026-11-02.json](branch_audit_2026-11-02.json); generator: `tools/qa/maintenance/branch_audit.py` + `tools/qa/maintenance/render_branch_manifest.py`.
 
 ## Method
 

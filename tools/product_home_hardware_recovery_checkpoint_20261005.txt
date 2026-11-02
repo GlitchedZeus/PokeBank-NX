@@ -1,0 +1,4 @@
+Focused Product Home hardware recovery checkpoint
+Runtime source parent: 2e41d3fd6dc94c1cfcfa752523eb59a5ca9ed09f
+Behavior reference: dee2ad4745a8d83d3d804a3e244e33cfd2c39525
+DEVICE_ACCEPTED=false

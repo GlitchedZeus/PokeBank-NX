@@ -1,6 +1,6 @@
 # Repository metadata
 
-`tools/maintenance/prune_branches.sh --with-metadata` reads the two lines below. It needs `gh` to be logged in, and it applies them only together with `--execute`; otherwise it prints what it would change. It adds topics and never removes existing ones.
+`tools/qa/maintenance/prune_branches.sh --with-metadata` reads the two lines below. It needs `gh` to be logged in, and it applies them only together with `--execute`; otherwise it prints what it would change. It adds topics and never removes existing ones.
 
 Description: Offline Pokémon save editor and bank for Nintendo Switch homebrew (Gen I–V; Gen VI–IX and legality checking in development)
 Topics: nintendo-switch,switch-homebrew,homebrew,libnx,devkitpro,pokemon,save-editor,cpp,cpp20

@@ -6,7 +6,7 @@ branch protection. Each item says where to make the change. Tick items off as yo
 
 ## 1. Branch pruning
 
-- [ ] Run `tools/maintenance/prune_branches.sh` in dry-run mode, then with `--execute`. The script, its checks and
+- [ ] Run `tools/qa/maintenance/prune_branches.sh` in dry-run mode, then with `--execute`. The script, its checks and
       the exact commands are described in [`RECOVERY.md`](RECOVERY.md) and at the top of the script.
 - [ ] Keep the bundle the script creates (`pokebank-nx-full-<date>.bundle` plus its manifest and SHA-256) outside
       the repository, for example on a second drive.
@@ -60,7 +60,7 @@ GitHub → Issues → Milestones → New milestone.
 - [ ] `Legality integration`
 
 The issue-to-milestone assignment table is in [`MILESTONE_PLAN.md`](MILESTONE_PLAN.md).
-`tools/maintenance/prune_branches.sh --with-metadata` creates the milestones and applies the table when `gh` is
+`tools/qa/maintenance/prune_branches.sh --with-metadata` creates the milestones and applies the table when `gh` is
 logged in.
 
 - [ ] Labels: the 12 labels exist (bug, enhancement, hardware-qa, legality, vault, gen-i-v, gen-vi-ix,
@@ -78,7 +78,7 @@ The archive workflow (`.github/workflows/archive-candidate-nro.yml`) published R
 (`7fea1797`) and 2 (`e10f307f`) failed twice with `HTTP 403: Resource not accessible by integration` when creating
 the release. Their artifacts expire on **2027-01-14** and **2027-01-16**.
 
-- [ ] Publish them from your account before then. `tools/maintenance/prune_branches.sh --archive-nro-fallback`
+- [ ] Publish them from your account before then. `tools/qa/maintenance/prune_branches.sh --archive-nro-fallback`
       does this with `gh`. It downloads each original artifact (`gh run download`), checks the SHA-256 against
       `docs/hardware/NRO_ARCHIVE.md`, creates the pre-release `nro/<sha8>` on the exact commit, re-downloads the
       asset and checks the hash again.

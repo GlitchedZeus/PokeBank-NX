@@ -40,7 +40,7 @@
 #     exist on the remote.
 #
 # Usage:
-#   tools/maintenance/prune_branches.sh [options]
+#   tools/qa/maintenance/prune_branches.sh [options]
 #     --execute                 perform tags/deletions (asks you to type the confirmation phrase)
 #     --yes                     skip the interactive confirmation (only with --execute)
 #     --group NAME              repeatable; see groups above (default: all)
@@ -131,7 +131,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || die "run inside the 
 cd "$REPO_ROOT"
 AUDIT_JSON="${AUDIT_JSON:-docs/maintenance/branch_audit_2026-11-02_phase2.json}"
 [[ -f "$AUDIT_JSON" ]] || die "audit JSON not found: $AUDIT_JSON"
-[[ -f tools/maintenance/branch_audit.py ]] || die "tools/maintenance/branch_audit.py not found"
+[[ -f tools/qa/maintenance/branch_audit.py ]] || die "tools/qa/maintenance/branch_audit.py not found"
 git remote get-url "$REMOTE" >/dev/null 2>&1 || die "no git remote named $REMOTE"
 
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -374,7 +374,7 @@ PY
       echo
       echo "Check the SHA-256 before use. Back up your saves; development builds can contain defects."
       echo
-      echo "Published by the owner with tools/maintenance/prune_branches.sh --archive-nro-fallback (the archive workflow's"
+      echo "Published by the owner with tools/qa/maintenance/prune_branches.sh --archive-nro-fallback (the archive workflow's"
       echo "release step was refused with HTTP 403)."
     } > "$dir/notes.md"
     if (( ! EXECUTE )); then
@@ -653,7 +653,7 @@ if (( SKIP_DRIFT )); then
 else
   note "step 2: re-running branch_audit.py --compare (read-only; this takes a few minutes)"
   rc=0   # exit 1 just means "some drift"; the lines are judged below (|| keeps the ERR trap quiet)
-  python3 tools/maintenance/branch_audit.py --repo . --remote "$REMOTE" --fetch-prs \
+  python3 tools/qa/maintenance/branch_audit.py --repo . --remote "$REMOTE" --fetch-prs \
     --out "$WORK/branch_audit_live.json" --compare "$AUDIT_JSON" > "$WORK/drift.txt" 2>&1 || rc=$?
   grep -q '^drift items:' "$WORK/drift.txt" || { cat "$WORK/drift.txt" >&2; die "branch_audit.py failed (exit $rc)"; }
   bad=0
@@ -705,7 +705,7 @@ if (( EXECUTE )); then
     printf 'utc_time\trun\tbatch\tbranch\ttip\tgroup\tpreserved_by\ttag\taction\n' > "$LOG_TSV"
   fi
   if [[ ! -f "$LOG_MD" ]]; then
-    printf '# Branch deletion log\n\nAppended by tools/maintenance/prune_branches.sh.\n\n| UTC time | Run | Batch | Branch | Tip | Group | Preserved by | Tag | Action |\n|---|---|---|---|---|---|---|---|---|\n' > "$LOG_MD"
+    printf '# Branch deletion log\n\nAppended by tools/qa/maintenance/prune_branches.sh.\n\n| UTC time | Run | Batch | Branch | Tip | Group | Preserved by | Tag | Action |\n|---|---|---|---|---|---|---|---|---|\n' > "$LOG_MD"
   fi
 fi
 log_action() {  # batch branch tip group preserved tag action
