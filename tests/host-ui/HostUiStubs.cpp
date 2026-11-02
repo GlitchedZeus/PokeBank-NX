@@ -55,7 +55,9 @@ void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int radi
     HostUi::fills.push_back({x, y, w, h, radius, c.toRGBA8()});
     if (x == 0 && w == width && y == height - 56) ++HostUi::footerBars;   // ScreenChrome::drawNavBar band
 }
-void PKSEFramebuffer::drawRoundedRect(int, int, int, int, int, Color, int) {}
+void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int radius, Color c, int thickness) {
+    HostUi::outlines.push_back({x, y, w, h, radius, thickness, c.toRGBA8()});
+}
 void PKSEFramebuffer::drawFilledCircle(int, int, int, Color) {}
 void PKSEFramebuffer::drawCircle(int, int, int, Color, int) {}
 void PKSEFramebuffer::drawEgg(int, int, int) {}
