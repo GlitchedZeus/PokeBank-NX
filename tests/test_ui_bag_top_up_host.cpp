@@ -183,10 +183,18 @@ void flow(const std::string& game, UI::TrainerViewScreen& screen, const std::fun
     d.press(HidNpadButton_A);
     check(d.drawn("Preview: Top Up / Add Missing"), game + ": PREVIEW again");
     d.press(HidNpadButton_A);
-    check(!d.drawn("Preview: Top Up / Add Missing") && !d.drawn("Preview changes"), game + ": A closes the flow");
+    check(!d.drawn("Preview: Top Up / Add Missing") && !d.drawn("Preview changes"), game + ": A closes the preview");
     check(staged(), game + ": A stages the plan");
     check(held() == 50, game + ": the held stack reads 50 (" + std::to_string(held()) + ")");
     check(d.drawn("Staged:") || d.drawn("topped up"), game + ": a status names the counts");
+    // Round 14 (shared-UX audit P0-9, owner H07): RESULT lists what was staged and what was not;
+    // it stages nothing more, and A / B close it.
+    check(d.drawn("Result: Top Up / Add Missing") && d.drawn(probeName + " " + std::to_string(heldBefore) + " \xE2\x86\x92 50"),
+          game + ": RESULT lists the staged top-up");
+    check(footerShows("Close"), game + ": RESULT draws its own Close footer");
+    check(noOverlaps(), game + ": RESULT text never overlaps");
+    d.press(HidNpadButton_B);
+    check(!d.drawn("Result: Top Up / Add Missing") && held() == 50, game + ": B closes RESULT; the staged change stays");
 
     // + opens Review, which lists the Bag change.
     d.press(HidNpadButton_Plus);
@@ -310,7 +318,7 @@ int main(int argc, char** argv) {
                 // One Potion stack: 19 of the 20 shared Bag slots are free; the Items category's 19
                 // candidates take them and every other category's new items are reported.
                 scopeFlow("Red", *screen, [inv] { return inv->hasPendingChanges(); }, true,
-                          "Bag (every category shares 20 slots): 19 free");
+                          "Bag (all categories share 20 native slots): 1 used. Only 19 fit");   // Round 14 wording (H07)
             }
         }
     }
@@ -379,7 +387,7 @@ int main(int argc, char** argv) {
                 check(inv->inventoryEntries(G3::InventoryPouch::KeyItems, keyErr).empty(), "FireRed: no Key Item staged");
                 inv->discard();
                 check(!inv->hasPendingChanges() && inv->stagedBytes() == inv->originalBytes(), "FireRed: Discard restores");
-                scopeFlow("FireRed", *frScreen, [inv] { return inv->hasPendingChanges(); }, true, "(42 slots): 41 free");
+                scopeFlow("FireRed", *frScreen, [inv] { return inv->hasPendingChanges(); }, true, "Items: 42 native slots, 1 used. Only 41 fit");   // Round 14 wording (H07)
             }
         }
     }

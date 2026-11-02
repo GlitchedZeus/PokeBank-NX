@@ -141,18 +141,27 @@ int main() {
             if (k.reason != B::SkipReason::PocketFull) continue;
             if (k.pocket == Pocket::PCItems) {
                 ++pcFull;
-                assert(!k.sharedList && B::skipText(k) == "pocket full (2 slots)");
+                assert(!k.sharedList && B::skipText(k) == "won't fit (this pocket has only 2 native slots)");
             } else {
                 ++bagFull;   // Items AND Medicine skips count against the one shared record
-                assert(k.sharedList && B::skipText(k) == "Bag full: its 3 slots are shared by every category");
+                // Round 14: an item the PC then takes says so ("; added to PC Items instead").
+                assert(k.sharedList && B::skipText(k).rfind("won't fit (the Bag's 3 native slots are shared by every category)", 0) == 0);
+                assert(k.addedToPc == (B::skipText(k).find("added to PC Items instead") != std::string::npos));
             }
         }
         assert(plan.full[0].notFitted == bagFull && plan.full[1].notFitted == pcFull && bagFull > 0 && pcFull > 0);
-        assert(B::skipText({Pocket::Items, 1, B::SkipReason::PocketFull}) == "pocket full");
+        assert(B::skipText({Pocket::Items, 1, B::SkipReason::PocketFull}) == "won't fit (no free native slot)");   // Round 14 wording (H07)
         assert(B::skipText({Pocket::Items, 1, B::SkipReason::KeyOrStoryItem}) == "Key Item (excluded: can gate story events)");
-        // The same ordinary item may be added to the Bag AND the PC (native: a Potion in each).
+        // Round 14 (owner H07 "only adds some of the items"): the PC's slots go first to items that
+        // did not fit in the Bag / are held nowhere (Escape Rope 29, Repel 30), so Moon Stone, added
+        // to the Bag, is not repeated while different items still wait for a slot.
         const auto both = std::count_if(plan.adds.begin(), plan.adds.end(), [&](const B::Add& x) { return x.itemId == plan.adds[0].itemId; });
-        assert(plan.adds[0].pocket == Pocket::Items && both == 2);
+        assert(plan.adds[0].pocket == Pocket::Items && plan.adds[0].itemId == 10 && both == 1);
+        assert(add(plan, 29) && add(plan, 29)->pocket == Pocket::PCItems && add(plan, 30) && add(plan, 30)->pocket == Pocket::PCItems);
+        // A second copy is still native: a PC with room left after every different item takes it.
+        std::vector<B::PocketState> roomy{items, medicine, {Pocket::PCItems, {}, 5, {10, 29, 30}}};
+        const auto spare = B::plan(Game::Red, {B::Mode::AddMissing, 5, {}}, roomy);
+        assert(std::count_if(spare.adds.begin(), spare.adds.end(), [](const B::Add& x) { return x.itemId == 10; }) == 2);
     }
     // An item the game allows only once is never added while it is held in ANY list (defensive: in
     // Gen I-V the only unique non-story items, Gen V TMs, live in one pocket).

@@ -35,6 +35,12 @@
 //   * PC Items is its own scope (Round 11 H34): bagPockets() never includes it, pcPockets() is only
 //     it. An ordinary item may natively sit in the Bag AND the PC, so each list is planned on its
 //     own; an item the game allows only once is never added while it is held (or added) anywhere.
+//   * Round 14 (owner H07 "again only adds some of the items", H08 TMs/HMs): the pockets are planned
+//     in the REQUEST's order (the pocket on screen first, PC Items last), so a shared list (Gen I's
+//     20-slot Bag) is filled from the category the player is looking at; and when the Bag and the
+//     PC are planned together, the PC first takes the items that did not fit in the Bag, then items
+//     held nowhere, and only then second copies of items the Bag already has: Bag + PC covers as
+//     many DIFFERENT items as the native slots allow (it used to repeat the Bag's lowest ids).
 //   * A generation whose writer sets an item's quantity by id (it merges or clears further stacks of
 //     that item: Gen I, Gen III) sets perSlotTopUp = false; an item held in several stacks there is
 //     reported and left alone, so a top-up can never lower the item's total.
@@ -96,6 +102,7 @@ struct Skip {
     SkipReason reason;
     std::size_t slots = 0;      // PocketFull: native slots of the list that ran out (0 = not known)
     bool sharedList = false;    // PocketFull: that list is shared by several pockets (Gen I Bag)
+    bool addedToPc = false;     // PocketFull: the same plan adds the item to PC Items instead
 };
 // A native list that ran out of free slots for new stacks while this plan was built: every slot that
 // was free (freeBefore) now takes a new stack, and notFitted more candidates were reported PocketFull.
@@ -134,19 +141,23 @@ struct Plan {
         case SkipReason::OnlyOnce: return "the game allows only one";
         case SkipReason::AlreadyAtTarget: return "already at or above the amount";
         case SkipReason::Exclusive: return "you already have its alternative";
-        case SkipReason::PocketFull: return "pocket full";
-        case SkipReason::NotInPocket: return "not a native item of this pocket";
+        case SkipReason::PocketFull: return "won't fit (no free native slot)";
+        case SkipReason::NotInPocket: return "not valid in this pocket for this game";
         case SkipReason::SeveralStacks: return "held in several stacks; edit it on its own";
     }
     return "skipped";
 }
 // The preview text of one skip: a full list names its native slot count, and a list that several
 // pockets share says so (Gen I: every Bag category is a view of ONE 20-slot list).
+// Round 14 (owner H07): a "won't fit" line says the game's own slot count, and where the item went
+// instead when the same plan puts it in PC Items.
 [[nodiscard]] inline std::string skipText(const Skip& s) {
     if (s.reason != SkipReason::PocketFull || s.slots == 0) return std::string(skipReasonText(s.reason));
-    if (s.sharedList)
-        return "Bag full: its " + std::to_string(s.slots) + " slots are shared by every category";
-    return "pocket full (" + std::to_string(s.slots) + " slots)";
+    std::string text = s.sharedList
+        ? "won't fit (the Bag's " + std::to_string(s.slots) + " native slots are shared by every category)"
+        : "won't fit (this pocket has only " + std::to_string(s.slots) + " native slots)";
+    if (s.addedToPc) text += "; added to PC Items instead";
+    return text;
 }
 
 // Only Key Items gate story events. TMs and HMs are ordinary native TM/HM items (Round 12 H12).
@@ -198,8 +209,20 @@ struct Plan {
     }
     const auto groupStart = groupFree;
 
-    for (const auto& p : state) {
-        if (!wanted(p.pocket)) continue;
+    // Round 14 (H07 / H08): plan in the request's order (the pocket on screen first), PC Items last.
+    std::vector<const PocketState*> order;
+    for (const auto pocket : request.pockets)
+        for (const auto& p : state)
+            if (p.pocket == pocket && pocket != Pocket::PCItems &&
+                std::find(order.begin(), order.end(), &p) == order.end()) order.push_back(&p);
+    for (const auto& p : state)
+        if (wanted(p.pocket) && p.pocket != Pocket::PCItems && std::find(order.begin(), order.end(), &p) == order.end())
+            order.push_back(&p);
+    for (const auto& p : state)
+        if (wanted(p.pocket) && p.pocket == Pocket::PCItems) order.push_back(&p);
+
+    for (const PocketState* at : order) {
+        const PocketState& p = *at;
         if (topUp) {
             for (const auto& h : p.held) {
                 const auto stacks = std::count_if(p.held.begin(), p.held.end(),
@@ -243,6 +266,19 @@ struct Plan {
             std::vector<uint16_t> candidates(p.addableItems.begin(), p.addableItems.end());
             std::sort(candidates.begin(), candidates.end());
             candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+            if (p.pocket == Pocket::PCItems) {
+                // Bag + PC: the PC's free slots go first to what did not fit in the Bag, then to
+                // items held nowhere, then to second copies (each group in ascending id).
+                const auto rank = [&](uint16_t id) {
+                    const bool overflow = std::any_of(out.skipped.begin(), out.skipped.end(), [&](const Skip& k) {
+                        return k.itemId == id && k.reason == SkipReason::PocketFull && k.pocket != Pocket::PCItems;
+                    });
+                    if (overflow) return 0;
+                    return std::find(heldAnywhere.begin(), heldAnywhere.end(), id) == heldAnywhere.end() ? 1 : 2;
+                };
+                std::stable_sort(candidates.begin(), candidates.end(),
+                                 [&](uint16_t a, uint16_t b) { return rank(a) < rank(b); });
+            }
             for (const uint16_t id : candidates) {
                 if (id == 0) continue;
                 const bool held = std::any_of(p.held.begin(), p.held.end(), [id](const HeldStack& h) { return h.itemId == id; });
@@ -279,6 +315,10 @@ struct Plan {
                 ++out.rooms[room].planned;
                 heldAnywhere.push_back(id);
                 --freeSlots;
+                if (p.pocket == Pocket::PCItems)
+                    for (auto& k : out.skipped)
+                        if (k.itemId == id && k.reason == SkipReason::PocketFull && k.pocket != Pocket::PCItems)
+                            k.addedToPc = true;
             }
         }
     }
