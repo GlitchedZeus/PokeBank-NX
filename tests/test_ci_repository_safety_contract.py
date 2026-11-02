@@ -80,7 +80,7 @@ if not re.search(r"(?m)^\s*ASAN_OPTIONS:\s*detect_leaks=1\s*$", host_text):
 if 'ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}"' not in host_text:
     fail("AUDIT-006: focused sanitizer regression must inherit the CI leak policy")
 
-make_text = (ROOT / "Makefile.host.base").read_text(encoding="utf-8")
+make_text = (ROOT / "build-system/host/Makefile.host.base").read_text(encoding="utf-8")
 if "ASAN_OPTIONS ?= detect_leaks=0" not in make_text:
     fail("AUDIT-006: constrained local default must remain explicit")
 if 'ASAN_OPTIONS="$(ASAN_OPTIONS)" $$test_bin' not in make_text:
