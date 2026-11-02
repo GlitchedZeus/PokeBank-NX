@@ -93,7 +93,7 @@
 **Reproduce:** On disposable save for Gen I–V choose This Pocket/All Bag/PC/Bag+PC and Top Up/Add Missing; compare available vs selected counts, review capacity/overflow.
 **Evidence qualification:** Owner reported; review screenshot shows Gen II 83 staged TM edits but not exact All Bag coverage
 **Required acceptance:** No silent subset selection; exact eligible count, capacity and excluded reasons shown; enforce native slot/item restrictions and do not create impossible inventories.
-**Screenshot files:** 2026110120154000_c.jpg
+**Screenshot files:** 2026110120215300_c.jpg *(corrected from 2026110120154000_c.jpg; see SCREENSHOT_INDEX.md)*
 
 ### R12-007 — All eligible TM/HM choices in inventory management (P1)
 
@@ -103,7 +103,7 @@
 **Reproduce:** Gen I–V Bag/PC → TM/HM → Add Missing; enumerate candidates and explain disabled/omitted IDs.
 **Evidence qualification:** Owner request; Gen II Review screenshot supplied
 **Required acceptance:** Expose every supported native-format TM/HM allowed under safe policy or give explicit refusal reason; no unsafe key item/flag mutation.
-**Screenshot files:** 2026110120154000_c.jpg
+**Screenshot files:** 2026110120215300_c.jpg *(corrected from 2026110120154000_c.jpg; see SCREENSHOT_INDEX.md)*
 
 ### R12-008 — Gen III language may reset PID and computed stats (P0)
 

@@ -14,7 +14,7 @@ These are original user-provided image files. They are UI evidence, not native s
 - `2026110120052600_c.jpg` — Crystal Arbok met location: unverified landmarks and Event/Gift markers. — sha256 `9be6b9dc1b483680c184276cc6435c159e5ea03b1c776e491aae4c92cbea2be8`
 - `2026110120053700_c.jpg` — Crystal Arbok met location: Route 42, Silver Cave, Route 3 wild rows. — sha256 `127d04f491cb780617562a3bc08cb92c9a190c634c8670b8c976f1005fa01044`
 - `2026110120152900_c.jpg` — Black Mankey Gen V editor; + Review footer and move with Transfer label. — sha256 `e7b7b08e662f0eadfbbf8ed0cf98bf874d150443b20668a6af9defa24f25a006`
-- `2026110120154000_c.jpg` — Gen II Review shows extensive staged TM/HM items (83 changes, page 13/21). — sha256 `67f56bbff7c4d1ef7063a52907778453ebf5a8248bda37eb712a9a26af122c34`
-- `2026110120215300_c.jpg` — Gen V Mankey move picker; move properties and list. — sha256 `4e21e3795d0fb684dc8ae406b7b4665a80ae1a64b3c32920dc64673f5b167d62`
+- `2026110120154000_c.jpg` — Gen V Mankey move picker; move properties and list. *(Corrected: the intake's index had swapped this description with `2026110120215300_c.jpg`; verified by viewing both images.)* — sha256 `67f56bbff7c4d1ef7063a52907778453ebf5a8248bda37eb712a9a26af122c34`
+- `2026110120215300_c.jpg` — Gen II Review shows extensive staged TM/HM items (83 changes, page 13/21). *(Corrected; see above.)* — sha256 `4e21e3795d0fb684dc8ae406b7b4665a80ae1a64b3c32920dc64673f5b167d62`
 - `2026110120462700_c.jpg` — LeafGreen Pikachu English: nonzero PID, calculated stats visible. — sha256 `9dc364da84017327bb52990fdb4ff84b10b761a5fc1dfae891b887c61eebda3a`
 - `2026110120463000_c.jpg` — LeafGreen Pikachu Japanese: PID 0, stats dashes, empty radar. — sha256 `8beac74548452e3d42ee37ce82b69508b6c7f6dcc5f2929f8f4708bb05ce43f0`
