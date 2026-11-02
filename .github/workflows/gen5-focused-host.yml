@@ -29,8 +29,8 @@ on:
       - 'include/UI/UI.h'
       - 'src/UI/SaveSelectScreen.cpp'
       - 'Makefile.host'
-      - 'Makefile.host.gen5'
-      - 'Makefile.host.gen5-create'
+      - 'build-system/host/generations.mk'
+      - 'build-system/host/standalone/gen5-create.mk'
       - '.github/workflows/gen5-focused-host.yml'
   pull_request:
     paths:
@@ -57,8 +57,8 @@ on:
       - 'include/UI/UI.h'
       - 'src/UI/SaveSelectScreen.cpp'
       - 'Makefile.host'
-      - 'Makefile.host.gen5'
-      - 'Makefile.host.gen5-create'
+      - 'build-system/host/generations.mk'
+      - 'build-system/host/standalone/gen5-create.mk'
       - '.github/workflows/gen5-focused-host.yml'
   workflow_dispatch:
 
