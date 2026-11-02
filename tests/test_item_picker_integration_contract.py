@@ -18,6 +18,10 @@ gen3=source("src/UI/Gen3SharedPokemonSurface.inc")
 gen4=source("src/UI/Gen4SharedPokemonSurface.inc")
 art=source("include/UI/ClassicMachineArtwork.h")
 sort=source("include/UI/ItemPickerSort.h")
+gen5=source("src/UI/Gen5SharedReadOnlySurface.inc")
+gen5bag=source("include/Integration/Gen5/Gen5BagScreen.h")
+contract=source("include/UI/InventoryUIContract.h")
+assert '{"X", "Sort"}' in contract
 
 assert "pocket == ClassicPocket::PCItems" in catalog
 assert "526,241" not in catalog  # Incorrect later-generation Electric TM.
@@ -33,13 +37,16 @@ for name,body,native in [
     ("Gen III Held",gen3,"pickerNativeValues"),
     ("Gen IV Held",gen4,"pickerNativeValues"),
     ("Gen IV Add",gen4,"itemAddNativeChoices"),
+    # Round 14 R08: the Gen V Add picker sorts too (Gen5BagScreen cycleAddSort, X in its input).
+    ("Gen V Add",gen5bag+gen5,"addNativeChoices_"),
 ]:
     assert native in body, (name,"native sort snapshot missing")
     assert "ItemPickerSort::reorder(" in body, (name,"reorder not wired")
     assert "ItemPickerSort::next(" in body, (name,"sort X cycle missing")
-    # The shared picker footer (SharedEditorPresentation::pickerFooter) names X Sort as xLabel.
+    # The shared picker footer (SharedEditorPresentation::pickerFooter) names X Sort as xLabel; the Bag
+    # Add pickers draw the ONE Gen I-V Add picker footer (InventoryUIContract addItemPickerFooterHints).
     assert ('{"X", "Sort"}' in body or '{"X","Sort"}' in body or
-            'footer.xLabel = "Sort"' in body), (name,"controller help missing")
+            'footer.xLabel = "Sort"' in body or "addItemPickerFooterHints(true)" in body), (name,"controller help missing")
     assert "ItemPickerSort::label(" in body, (name,"sort label missing")
 
 # Original game item IDs must be mapped to move type before asking for art.

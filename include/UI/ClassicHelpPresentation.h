@@ -9,8 +9,8 @@ enum class Page { Hub,Pokemon,Party,Items,Trainer };
 // Round 7 (ReviewEntry.h): one Review key per page, the one its footer shows: Y on Trainer and
 // Party; + on Boxes and the Bag (Y moves / removes there). Round 12 R12-001 (owner H03 / H16): Gen V
 // Boxes match Gen I-IV - + Review, Y tap / hold Move - so the Pokemon page is one list for Gen I-V.
-// The Gen I-IV save hub still reaches Review through the staged exit menu (B, then A in that menu:
-// ClassicStagedExit::choose).
+// Round 14 R08: the save hub's + opens Review in every generation (Gen I-IV ClassicBrowseReview::open,
+// Gen V routeHub5), as its footer shows.
 //
 // Round 6 E05: every row after the banner starts with real controller keys, so the Help window
 // draws them as the coloured badges (GlyphInstruction::helpLine; "A or tap" or "Review Changes"
@@ -33,7 +33,7 @@ inline std::vector<std::string> lines(Page page,int generation) {
             out.push_back("A   Open the highlighted Pokemon, Party, Items or Trainer panel");
             out.push_back("B   Leave this save; staged edits open the four-choice exit menu");
             out.push_back(kExitMenu);
-            if(generation==5)out.push_back("+   Review staged Pokemon, Bag and Trainer changes");
+            out.push_back("+   Review staged Pokemon, Bag and Trainer changes");
             break;
         case Page::Pokemon:
             // Round 11: the shared Actions order (NarrowPokemonActionMenu.h) and X = file shortcut.

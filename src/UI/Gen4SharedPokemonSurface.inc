@@ -1145,7 +1145,7 @@ bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
 void exportStagedGen4Copy(TrainerViewScreen& screen) {
     auto* staged = editor(screen);
     if (!staged || !staged->hasChanges()) {
-        screen.postStatus("No staged Generation IV changes to export", 240);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::kNothingToExport, 240);
         return;
     }
     std::string error;
@@ -1153,7 +1153,7 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
         !PokeBank::Paths::isSafeTimestamp(timestamp)) {
-        screen.postStatus(error.empty() ? "Could not prepare the Generation IV export folder" : error, 420);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error.empty() ? "could not prepare the export folder" : error), 420);
         return;
     }
     PokeVault::Integration::Gen4::Gen4ExportRequest request;
@@ -1168,10 +1168,10 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
 #endif
     const auto result = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*staged, request);
     if (!result.success) {
-        screen.postStatus(result.error.empty() ? "Verified Generation IV export failed" : result.error, 480);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(result.error), 480);
         return;
     }
-    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+    screen.postStatus(PokeBank::UIModel::ExportMessages::exported(result.directory + "/edited.sav"), 600);
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
@@ -2280,8 +2280,8 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
             return Names::getMachineDescriptor(game,state.itemAddChoices[static_cast<size_t>(index)]).moveId;
         },
         stateFor(screen).itemAddScrollbar);   // shared draggable scrollbar, published by the grid
-    drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
-                   {"A","Add"},{"B","Cancel"},{"X","Sort"}});
+    // Round 14 R08: the ONE Gen I-V Add picker footer (InventoryUIContract.h), Gen I-III wording.
+    drawNavBar(fb,PokeBank::UIModel::serializeInventoryFooter(PokeBank::UIModel::addItemPickerFooterHints(true)));
 }
 
 void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {

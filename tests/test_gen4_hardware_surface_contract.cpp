@@ -745,9 +745,13 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    // Round 14 R08 (owner: "gen 4 footer says edit quanitty not edit amout or what gen 1-3 have for the A
+    // button"): the Gen IV Bag draws the ONE Gen I-V Bag footer model (Gen I-III wording), whose A is
+    // shown only for a quantity-editable item (the Gen IV QuantityPolicy query feeds it).
+    contains(baseUi, "quantityEditable = raw < pouch.size() &&");
     contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
-    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
+    contains(baseUi, "true, true, hasItem, quantityEditable,");   // PokeBank::UIModel::inventoryFooter(
+    assert(baseUi.find("Edit Quantity") == std::string::npos);
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");

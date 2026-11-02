@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Integration/Gen5/Gen5Pokedex.h"
+#include "UI/ClassicTrainerSession.h"
 
 #include <array>
 #include <cstddef>
@@ -182,11 +183,13 @@ public:
         if (!open_) return {{"A", "Open"}, {"B", "Back"}};
         if (dex_.open())
             return {{"D-pad/Stick", "Browse"}, {"L/R", "Prev/Next Registered"}, {"B", "Back"}};
-        if (selectedRow() == Row::Pokedex)
-            return {{"D-pad/Stick", "Choose"}, {"A", "Open Pokedex"}, {"Y", "Review"}, {"B", "Back"}};
-        if (editable(selectedRow()))
-            return {{"D-pad/Stick", "Choose"}, {"A", "Edit"}, {"Y", "Review"}, {"B", "Back"}};
-        return {{"D-pad/Stick", "Choose"}, {"Y", "Review"}, {"B", "Back"}};
+        // Round 14 R08: the ONE Gen I-V Trainer footer (UI/ClassicTrainerSession.h), Gen I-IV wording:
+        // Up/Down Select, A (only where the focused row acts), Y Review, B Back, - Help.
+        const auto shared = PokeBank::UIModel::ClassicTrainerSession::trainerFooterHints(
+            selectedRow() == Row::Pokedex ? "Open Pokedex" : editable(selectedRow()) ? "Edit" : nullptr);
+        std::vector<FooterEntry> out;
+        for (const auto& hint : shared) out.push_back({hint.glyph, hint.label});
+        return out;
     }
     // R2-BUG-001 parity (Gen I-IV Trainer footer, Lane C cccec27b): "A: Edit" appears only
     // when the FOCUSED row can really be edited in this session. A new-game save has no

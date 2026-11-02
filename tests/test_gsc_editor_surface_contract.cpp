@@ -299,8 +299,10 @@ int main() {
 
     const auto overlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
     assert(overlay.find("publishVerifiedStagedEditorExport(editor, request)") != std::string::npos);
-    assert(overlay.find("Verified staged export: ") != std::string::npos);
-    assert(overlay.find("source remains unchanged") != std::string::npos);
+    // Round 14 R08 (owner regression list "save-export messages"): the one Gen I-V wording
+    // (UI/ExportMessages.h), which says the original save is unchanged.
+    assert(overlay.find("PokeBank::UIModel::ExportMessages::exported(exportDir)") != std::string::npos);
+    assert(overlay.find("PokeBank::UIModel::ExportMessages::failed(error)") != std::string::npos);
     assert(overlay.find("std::fopen") == std::string::npos);
     assert(overlay.find("std::fwrite") == std::string::npos);
     assert(overlay.find("writeBytes(") == std::string::npos);

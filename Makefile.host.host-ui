@@ -278,4 +278,21 @@ $(HOST_UI_TOUCH_MULTI_TEST): $(HOST_UI_TOUCH_MULTI_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_TOUCH_MULTI_SANITIZE): $(HOST_UI_TOUCH_MULTI_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_touch_multiselect_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 14 R08 (owner: "gen 4 footer says edit quanitty ... gen 5 has almost none of the proper footers"):
+# the Bag / Add picker / Party / Boxes / Trainer footers are the same (button, label) list in Gen I-V, and
+# every advertised button acts, through the real TrainerViewScreen.
+HOST_UI_FOOTER_PARITY_TEST := $(HOST_BUILD)/test_ui_footer_parity_host
+HOST_UI_FOOTER_PARITY_SANITIZE := $(HOST_BUILD)/test_ui_footer_parity_host_sanitize
+HOST_UI_FOOTER_PARITY_INPUTS := tests/test_ui_footer_parity_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_FOOTER_PARITY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_FOOTER_PARITY_SANITIZE)
+host-test: $(HOST_UI_FOOTER_PARITY_TEST)
+host-sanitize: $(HOST_UI_FOOTER_PARITY_SANITIZE)
+$(HOST_UI_FOOTER_PARITY_TEST): $(HOST_UI_FOOTER_PARITY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_footer_parity_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_FOOTER_PARITY_SANITIZE): $(HOST_UI_FOOTER_PARITY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_footer_parity_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
