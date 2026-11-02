@@ -217,15 +217,20 @@ int main() {
     // surface calls them; the pinned code is checked where it now lives.
     const auto metModel = surface + read("include/UI/Gen3SharedPokemonSession.h") +
                           read("include/UI/Gen3EncounterPickerModel.h");
-    contains(surface, "state.session.metLocationPicker()");
+    // Round 12 (R12-004 / R12-005, owner H14 / H08; updated pins): the picker opens on the default
+    // list (metLocationPicker(false)); its last row opens the unverified list (metLocationPicker(true)).
+    contains(surface, "state.session.metLocationPicker(false)");
+    contains(surface, "state.session.metLocationPicker(true)");
+    contains(surface, "value == EncounterPicker::kUnverifiedListRow");
     contains(surface, "state.session.applyMetLocationRow(picker, value, applied)");
     contains(surface, "EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,");
-    contains(metModel, "Gen3EncounterPicker::rowValuesWithNative(");
+    contains(metModel, "Gen3EncounterPicker::defaultRows(");
+    contains(metModel, "Gen3EncounterPicker::unverifiedRows(");
     contains(surface, "EncounterPicker::selectedRow");
     contains(metModel, "Gen3EncounterPicker::choiceAt");
     contains(surface, "forGameSpeciesWithGen3Provenance");
     contains(surface, "Encounter origin");
-    contains(metModel, "met as ");
+    contains(metModel, "\" via \" + std::string(Names::getSpeciesName(selected->originalEncounterSpecies))");   // Round 12 (was "met as ")
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
     // Round 11 FRLG (owner Extra 2): the picker no longer fails closed when the exact game has no
     // catch template for the species (Rayquaza / Charizard in FireRed). Deliberately updated: the
@@ -233,8 +238,9 @@ int main() {
     // origin-game templates plus every other native location (Kanto for FR/LG), honestly labelled.
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") == std::string::npos);
     contains(surface, "EncounterPicker::templatesForOrigin(");
-    contains(metModel, "Gen3EncounterPicker::rowValuesWithNative(picker.choices, working.metLocation, working.originGame)");
-    contains(surface, "EncounterPicker::selectedRowWithNative(");
+    contains(metModel, "Gen3EncounterPicker::defaultRows(picker.choices, working.metLocation, working.originGame, working.level)");
+    contains(metModel, "Gen3EncounterPicker::unverifiedRows(picker.choices, working.metLocation, working.originGame, working.level)");
+    contains(surface, "EncounterPicker::selectedRowIn(");
     contains(metModel, "ExactGameMetLocations::isOtherNativeRow(row)");
     contains(metModel, "MetRows::gen3OtherDetail(");
     {
@@ -245,10 +251,10 @@ int main() {
         const auto openEnd = surface.find("} else if (target == PickerTarget::Nature) {", open);
         const std::string body = surface.substr(open, openEnd - open);
         assert(body.find("screen.sourceGameId") == std::string::npos);
-        assert(body.find("state.session.metLocationPicker()") != std::string::npos);
+        assert(body.find("state.session.metLocationPicker(false)") != std::string::npos);
         // ... whose model reads the record's own origin game (Session::metLocationPicker).
         const auto session = read("include/UI/Gen3SharedPokemonSession.h");
-        const auto model = session.substr(session.find("MetLocationPicker metLocationPicker() const {"));
+        const auto model = session.substr(session.find("MetLocationPicker metLocationPicker(bool unverifiedList = false) const {"));
         assert(model.find("templatesForOrigin(working.originGame, working.species)") <
                model.find("\n    }\n"));
         const auto origin = surface.find("std::string encounterOriginText(");

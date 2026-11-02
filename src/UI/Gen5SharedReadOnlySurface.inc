@@ -520,7 +520,8 @@ struct Gen5Editor {
                 }
                 EditorSurface::openContextualMetLocationPicker(screen, state, p.originVersion(),
                     p.species(), p.metLocation(), Fields::metLocationChoices(),
-                    {p.eggLocation(), p.egg(), p.fatefulEncounter()});
+                    {p.eggLocation(), p.egg(), p.fatefulEncounter()},
+                    static_cast<uint8_t>(Fields::level(p, b2w2(screen))));
                 return true;
             case Pokerus: {
                 // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
@@ -729,6 +730,9 @@ struct Gen5Editor {
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
                 std::string label = Names::getMetLocationChoiceName(p ? p->originVersion() : 20, value);   // P5
+                // Round 12 (R12-004): the default list's last row opens the unverified list.
+                if (PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value))
+                    label = PokeVault::Integration::MetLocationPolicy::kUnverifiedListRowPlace;
                 if (state.pickerMetContextActive)
                     label += "  |  " + state.pickerMetContext.detail(value,
                         [](uint16_t species) { return Names::getSpeciesName(species); });
@@ -925,6 +929,9 @@ struct Gen5Editor {
         namespace History = PokeBank::UIModel::HistoryConsistency;
         if (const auto caution = History::joined(backend(screen).historyFlags()); !caution.empty())
             rows.insert(rows.begin() + 6, {History::kCautionLabel, caution});
+        // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled, under "Met".
+        if (auto note = PokeVault::Integration::Gen5::metEvidence5(p, b2w2(screen)); !note.empty())
+            rows.insert(rows.begin() + 5, {"Met evidence", std::move(note)});
         return rows;
     }
 };
@@ -2111,12 +2118,17 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 std::string name=reviewedFieldName(v);
                 if(v.field==F::AbilitySlot)name="Ability";
                 rows.push_back({loc+" / "+name,value});
+                // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled in Review.
+                if(v.field==F::MetLocation)
+                    if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2());
+                       !note.empty())rows.push_back({loc+" / Met evidence",note});
             }
             constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
             if(const auto line=CR::nonZero(statLabels,ivs);!line.empty())rows.push_back({loc+" / IVs",line});
             if(const auto line=CR::nonZero(statLabels,evs);!line.empty())rows.push_back({loc+" / EVs",line});
             continue;
         }
+        bool metEvidenceShown=false;
         for(const auto& field:verified->fields) {
             using F=G::StagedPokemon5Record::Field;
             std::string detail=reviewedFieldLabel(field);
@@ -2133,6 +2145,12 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 detail="Met Location: "+Names::getMetLocationDisplayName(before.originVersion(),before.metLocation())+
                     " -> "+Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
             rows.push_back({location(c.location),detail});
+            // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled in Review.
+            if((field.field==F::MetLocation || field.field==F::MetLevel) && !metEvidenceShown) {
+                metEvidenceShown=true;
+                if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2());
+                   !note.empty())rows.push_back({location(c.location),"Met evidence: "+note});
+            }
         }
         // Round 11 (owner H25 clarification 2): the species changed and the record kept its own
         // history; a misfit is one caution note on this entry, never a change or a refusal.

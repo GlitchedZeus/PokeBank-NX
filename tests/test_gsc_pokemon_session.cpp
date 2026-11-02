@@ -124,23 +124,37 @@ void runSession(const L& layout,SourceGame game) {
     assert(selectedLocation->containsLevel(25));
     assert(!selectedLocation->containsLevel(83));
     // Round 11 (FRLG closed-list fix, Crystal path; deliberately updated): the Gift row at 71 is
-    // Pikachu's last catch template, and the rows after it are now the other native landmarks
-    // (no template, honestly labelled), so stepping down leaves the templates.
+    // Pikachu's last catch template, and the rows after the templates are not templates.
+    // Round 12 (R12-004 / owner H08 "evolved"; updated): Pichu's Odd Egg (its pre-evolution) is now
+    // listed after Pikachu's own rows, and the rows after the templates are the Gift / Event markers.
     locations.stepList(1);
+    assert(locations.locationChoice() && locations.locationChoice()->species == 172);
+    locations.index = static_cast<int>(locations.encounterChoices.size());
     assert(!locations.locationChoice() && locations.otherLocationChoice());
-    assert(*locations.otherLocationChoice() != 50 && *locations.otherLocationChoice() != 71);
+    assert(*locations.otherLocationChoice() == 0x7E);
+    locations.index = static_cast<int>(locations.encounterChoices.size()) - 1;
     locations.stepList(-2);
     selectedLocation = locations.locationChoice();
     assert(selectedLocation);
     assert(selectedLocation->sourceGameId == "crystal_gbc");
     assert(selectedLocation->species == 25);
 
-    // Graveler's repeated-looking rows are genuine Morning/Day/Night variants.
+    // Graveler's repeated-looking template rows are genuine Morning/Day/Night variants in the data.
+    // Round 12 (R12-004, owner H08 "massive amounts for met lcoation"; updated deliberately): the
+    // chooser shows such variants as ONE row naming every time ("Morning/Day/Night").
     Picker::Model gravelerLocations;
     gravelerLocations.openLocation("crystal_gbc", 75, 35, 31);
+    int mergedMtMortar31 = 0;
+    for (const auto& encounter : gravelerLocations.encounterChoices)
+        if (encounter.species == 75 && encounter.location == 35 && encounter.minLevel == 31 && encounter.maxLevel == 31 &&
+            encounter.method == PokeVault::Integration::EncounterGuardrails::Method::Grass) {
+            ++mergedMtMortar31;
+            assert(Picker::encounterTimeLabel(encounter.timeMask) == "Morning/Day/Night");
+        }
+    assert(mergedMtMortar31 == 1);
     int mtMortar31 = 0;
     bool sawMorning = false, sawDay = false, sawNight = false, sawRoute45NightRange = false;
-    for (const auto& encounter : gravelerLocations.encounterChoices) {
+    for (const auto& encounter : PokeVault::Integration::EncounterGuardrails::forGameSpecies("crystal_gbc", 75)) {
         assert(encounter.minLevel >= 2 ||
                encounter.method == PokeVault::Integration::EncounterGuardrails::Method::Egg);
         if (encounter.location == 35 && encounter.minLevel == 31 && encounter.maxLevel == 31) {

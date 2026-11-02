@@ -3,7 +3,7 @@
 // Round 11 (owner H25 / safety clarification 2): each generation's facts for the pure
 // HistoryConsistency check, built only from data already in the repository:
 //  - Gen III: the record's origin game's native list (Names::isGen3NativeMetLocation) and its catch
-//    templates with R2 evolution provenance (EncounterGuardrails::forGameSpeciesWithGen3Provenance);
+//    templates with ancestry (ExactGameMetLocations::templatesWithAncestry, Round 12);
 //  - Gen IV / V: the origin game's bank-0 native list (Gen IV: isGen4NativeMetLocation; Gen V: the
 //    origin's own name table), the special / trade / egg / event markers (SpecialMetLocationNotes)
 //    and the wild catalogue with ancestry (EncounterContext45);
@@ -38,8 +38,9 @@ namespace PokeBank::UIModel::HistoryConsistency {
     facts.marker = metLocation >= 253 && metLocation <= 255;   // gift egg / in-game trade / fateful
     facts.catchDataAvailable = facts.originKnown;
     if (facts.originKnown && facts.metLocationRecorded)
-        for (const auto& choice : PokeVault::Integration::EncounterGuardrails::forGameSpeciesWithGen3Provenance(
-                 ExactGameMetLocations::gen3GameIdForOrigin(origin), species))
+        // Round 12: the same species + pre-evolution templates the Met Location picker verifies.
+        for (const auto& choice : ExactGameMetLocations::templatesWithAncestry(
+                 ExactGameMetLocations::gen3GameIdForOrigin(origin), species, 386))
             if (choice.encounter.location == metLocation) { facts.listedCatch = true; break; }
     facts.metLevel = metLevel;
     facts.level = level;
