@@ -84,7 +84,8 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
         // species / its pre-evolutions at this level stays labelled unverified.
         if (game == G::SourceGame::Crystal)
             if (auto note = ExactGameMetLocations::crystalUnverifiedNote("crystal_gbc", p.species, caught.location,
-                                                                         caught.levelCode, p.level);
+                                                                         caught.levelCode, p.level,
+                                                                         caught.timeOfDay);
                 !note.empty())
                 rows.push_back({"Met evidence", std::move(note)});
         if (!caution.empty()) rows.push_back({"Caution", caution});

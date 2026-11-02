@@ -92,8 +92,9 @@ namespace PokeBank::UIModel::HistoryConsistency {
         const auto family = PokeVault::Integration::EncounterContext45::ancestry(4, species);
         for (uint16_t member = 1; member <= 251 && !facts.listedCatch; ++member) {
             if (!family[member]) continue;
+            // Round 13: the same templates the Crystal picker verifies (source-backed gift / static rows).
             for (const auto& encounter :
-                 PokeVault::Integration::EncounterGuardrails::forGameSpecies(crystalSourceGameId, member))
+                 PokeVault::Integration::GiftStaticEncounters::metTemplates(crystalSourceGameId, member))
                 if (encounter.location == location) { facts.listedCatch = true; break; }
         }
     }

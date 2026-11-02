@@ -1241,7 +1241,8 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
         const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
         if (caught.present)
             if (const auto note = PokeBank::UIModel::ExactGameMetLocations::crystalUnverifiedNote(
-                    "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level);
+                    "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level,
+                    caught.timeOfDay);
                 !note.empty())
                 setChange(prefix + "met_evidence", labelPrefix + "Met evidence", "", note);
     }
@@ -1527,7 +1528,8 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
                           PokeBank::UIModel::Gen2Native::crystalCaughtLevelText(caught));
         // Round 12 (R12-004 / R12-005): an unverified caught history stays labelled in Review.
         if (const auto note = PokeBank::UIModel::ExactGameMetLocations::crystalUnverifiedNote(
-                "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level);
+                "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level,
+                caught.timeOfDay);
             !note.empty())
             detail("Met evidence", note);
     }

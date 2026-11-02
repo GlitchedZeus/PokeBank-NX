@@ -292,8 +292,10 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 all.index = row;
                 const auto text = Picker::locationRowTextAt(all, row);
                 const auto other = all.otherLocationChoice();
-                // (a level-blocked Odd Egg template keeps Crystal's own egg landmark 0)
-                require(!all.locationChoice() && other && !Rows::crystalMarkerLocation(*other) &&
+                // (a level-blocked Odd Egg template keeps Crystal's own egg landmark 0; Round 13, owner
+                // decision 7: a level-blocked gift / trade data row may sit at the Gift landmark 0x7E)
+                require(!all.locationChoice() && other &&
+                        (!Rows::crystalMarkerLocation(*other) || all.levelBlockedAt(row)) &&
                         (Rows::crystalNativeCaughtLocation(*other) || (*other == 0 && all.levelBlockedAt(row))),
                         what + ": an unverified row is a landmark, never a template");
                 if (const auto* blocked = all.levelBlockedAt(row)) {
@@ -335,10 +337,10 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 caught.timeOfDay = 1;
                 caught.levelCode = static_cast<uint8_t>(std::clamp<int>(level, 2, 63));
                 if (const auto* encounter = list.locationChoice()) {
-                    caught.location = static_cast<uint8_t>(encounter->location);
-                    caught.levelCode = encounter->method == PokeVault::Integration::EncounterGuardrails::Method::Egg
-                        ? 1 : static_cast<uint8_t>(std::clamp<int>(encounter->minLevel, 2, 63));
-                    caught.timeOfDay = encounter->timeMask & 2 ? 1 : encounter->timeMask & 4 ? 2 : encounter->timeMask & 8 ? 3 : 1;
+                    // Round 13 (owner decisions 7 / 8; updated deliberately): the overlay's one rule
+                    // for a verified row's caught data (a gift / trade at the Gift landmark is written
+                    // as Crystal writes it: level 0, time 0; a timed row writes its first time).
+                    caught = Picker::caughtForTemplate(*encounter, 0, false).caught;
                 } else {
                     caught.location = *list.otherLocationChoice();
                 }

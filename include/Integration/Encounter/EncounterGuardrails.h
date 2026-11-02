@@ -14,6 +14,9 @@ enum class Method : uint8_t {
     Static = 9, Gift = 10, Egg = 11, Event = 12,
     HoneyTree = 13, SafariGrass = 14, SafariSurf = 15, SafariOldRod = 16,
     SafariGoodRod = 17, SafariSuperRod = 18, Standard = 19, Swarm = 20, HiddenGrotto = 21,
+    // Round 13 (owner decision 7): the source-backed gift / static table's kinds
+    // (Integration/Encounter/GiftStaticEncounters.h).
+    Trade = 22, Fossil = 23, Roaming = 24, Prize = 25,
 };
 
 struct EncounterTemplate {
@@ -67,6 +70,10 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::Standard: return "Wild";
         case Method::Swarm: return "Swarm";
         case Method::HiddenGrotto: return "Hidden Grotto";
+        case Method::Trade: return "Trade";
+        case Method::Fossil: return "Fossil";
+        case Method::Roaming: return "Roaming";
+        case Method::Prize: return "Prize";
     }
     return "Encounter";
 }
