@@ -140,6 +140,37 @@ HEADER_NOTE = ("**Status rules.** A status is never inferred from a passing test
                "identical to candidate `066e1db9`, NOT DEVICE TESTED).")
 
 
+
+# Round 12 owner results (docs/hardware/round12/ISSUE_LEDGER.csv, QA intake of the owner's 066e1db9 sheet)
+# and their state on fix/round12-gen15-repairs. A repair is never Hardware Accepted until the owner tests it.
+R12_STATUS = {**{f"R12-{n:03d}": ("Fixed in Code — Awaiting Hardware", f"H{n + 1:02d}") for n in range(1, 11)},
+              "R12-011": ("Missing Feature", "not in build (v1.0 blocker)"),
+              "R12-012": ("Missing Feature", "not in build (v1.0 blocker)")}
+
+
+def round12_section():
+    import csv
+    path = os.path.join(REPO, "docs", "hardware", "round12", "ISSUE_LEDGER.csv")
+    if not os.path.isfile(path):
+        return []
+    with open(path, encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    out = ["## Round 12 owner results → Round 13 repairs", "",
+           "Source: `docs/hardware/round12/ISSUE_LEDGER.csv` (QA intake of the owner's `066e1db9` results). "
+           "Root causes, fixes and regressions: `docs/hardware/round12/ROUND12_REPAIR_MAPPING.md`. "
+           "Owner checklist: `docs/hardware/RETEST_ROUND13_TEMPLATE.md` (mapped by ID and title, not H-number). "
+           "**NOT DEVICE TESTED.**", "",
+           "| ID | Priority | Title | Owner result on 066e1db9 | Status now | Round 13 item |",
+           "|---|---|---|---|---|---|"]
+    for r in rows:
+        status, item = R12_STATUS.get(r["id"], ("Needs Investigation", "—"))
+        out.append("| " + " | ".join([f"`{r['id']}`", r["priority"], cell(r["title"], 120),
+                                      cell(r["status"]), status, item]) + " |")
+    missing = sorted(set(R12_STATUS) - {r["id"] for r in rows})
+    if missing:
+        raise SystemExit(f"Round 12 ledger is missing {missing}")
+    return out + [""]
+
 def write_ledger(issues, C):
     by_area = collections.defaultdict(list)
     for i in issues:
@@ -176,6 +207,7 @@ def write_ledger(issues, C):
     leftovers = [a for a in by_area if a not in AREA_NAMES]
     for area in leftovers:
         out += [f"## {area}", ""] + [f"- `{i['id']}` {cell(i.get('title'))} — {i['status']}" for i in by_area[area]] + [""]
+    out += round12_section()
     out += ["Legend: ⚠️ safety-critical · 🎯v1 required for v1.0.", ""]
     open(os.path.join(OUT, "MASTER_HARDWARE_ACCEPTANCE_LEDGER.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 

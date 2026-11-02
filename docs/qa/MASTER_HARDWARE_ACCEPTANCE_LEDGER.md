@@ -462,4 +462,23 @@ Generated from the historical reconciliation of every Round 1–12 hardware reco
 | `PBX-OTH-024` | Round 11's 34 owner-PASS items are not frozen in the regression gate | all | R11 intake §1 note (3634d1e6) | n/a (REQ §1 note) | Open Defect | — | — | 066e1db9 R12 H18 (smoke only) | Add a GUARDS_ROUND11 block (34 IDs, count-checked against ROUND11_OWNER_WORKSHEET.md) to tests/test_hw_round1_regression_gate.py. |
 | `PBX-OTH-025` | No developer / implementation wording in user-visible strings (CG04) - host contract only; Gen I edit status texts still say '... staged; source .srm unchanged' | I, II, III, IV, V | PRE GEN1_5_UI_AUDIT_MATRIX CG04 | PASS (PRE CG04) | Needs Investigation | 36a89388 ui: return Gen II Add directly to packed box selection (Gen II toast reworded); f2cf5954 Gen I-V: no toast after routine edits; Gen V Shiny toggles inline (H22, H29) | tests/test_qa_cross_gen_contract.py:882-888 CG04-no-developer-wording : no '(DV-derived)', 'commits to draft', game-group or raw-ID suffixes in user-visible literals; tests/test_hw_round1_regression_gate.py:210-213 : CG04 is part of the frozen guards for owner-PASSed picker items | none (not on any checklist) | Trace whether Gen I ux2CommitEdit success texts reach the screen on 066e1db9; if so, reword them and extend CG04 to reject 'source .srm unchanged'-style implementation wording. |
 
+## Round 12 owner results → Round 13 repairs
+
+Source: `docs/hardware/round12/ISSUE_LEDGER.csv` (QA intake of the owner's `066e1db9` results). Root causes, fixes and regressions: `docs/hardware/round12/ROUND12_REPAIR_MAPPING.md`. Owner checklist: `docs/hardware/RETEST_ROUND13_TEMPLATE.md` (mapped by ID and title, not H-number). **NOT DEVICE TESTED.**
+
+| ID | Priority | Title | Owner result on 066e1db9 | Status now | Round 13 item |
+|---|---|---|---|---|---|
+| `R12-001` | P1 | Gen V Boxes Y/Review vs Move controls | Open defect | Fixed in Code — Awaiting Hardware | H02 |
+| `R12-002` | P2 | Routine move/clone toast and hint clutter | Open UX defect | Fixed in Code — Awaiting Hardware | H03 |
+| `R12-003` | P1 | Gen I–II packed-box clone shows second cursor / wrong destination | Open defect | Fixed in Code — Awaiting Hardware | H04 |
+| `R12-004` | P1 | Met-location list mixes legitimate catches with unverified fallback | Open design/correctness defect | Fixed in Code — Awaiting Hardware | H05 |
+| `R12-005` | P1 | Shown met-level / current-level contradictions | Requires investigation | Fixed in Code — Awaiting Hardware | H06 |
+| `R12-006` | P1 | Top Up/Add Missing appears limited to ~20 items | Open defect or capacity UX | Fixed in Code — Awaiting Hardware | H07 |
+| `R12-007` | P1 | All eligible TM/HM choices in inventory management | Requested enhancement with safety review | Fixed in Code — Awaiting Hardware | H08 |
+| `R12-008` | P0 | Gen III language may reset PID and computed stats | Requires investigation | Fixed in Code — Awaiting Hardware | H09 |
+| `R12-009` | P1 | Gen III and Gen V Japanese/Korean name glyph display inconsistent | Open localization gap | Fixed in Code — Awaiting Hardware | H10 |
+| `R12-010` | P2 | Stale export confirmation overlays unrelated active editor/modal | Requires investigation | Fixed in Code — Awaiting Hardware | H11 |
+| `R12-011` | P1 | Move to Vault / Deposit / Withdraw absent from release flow | Missing release feature | Missing Feature | not in build (v1.0 blocker) |
+| `R12-012` | P1 | Vault Pokémon search missing | Missing release feature | Missing Feature | not in build (v1.0 blocker) |
+
 Legend: ⚠️ safety-critical · 🎯v1 required for v1.0.
